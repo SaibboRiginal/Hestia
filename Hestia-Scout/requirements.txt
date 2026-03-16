@@ -1,0 +1,8 @@
+requests
+python-dotenv
+beautifulsoup4
+google-genai
+bs4
+fastapi
+uvicorn
+pydantic

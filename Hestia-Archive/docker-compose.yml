@@ -1,0 +1,40 @@
+services:
+  db:
+    image: ankane/pgvector
+    container_name: hestia_db
+    restart: always
+    environment:
+      POSTGRES_USER: hestia_admin
+      POSTGRES_PASSWORD: super_secret_local_password
+      POSTGRES_DB: hestia_memory
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - hestia_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hestia_admin -d hestia_memory"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    container_name: hestia_archive
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://hestia_admin:super_secret_local_password@db:5432/hestia_memory
+      HUB_API_URL: http://hestia_hub:8005/api
+      ARCHIVE_SERVICE_BASE_URL: http://hestia_archive:8000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true
