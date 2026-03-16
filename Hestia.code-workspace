@@ -1,0 +1,82 @@
+{
+  "folders": [
+    {
+      "name": "Hestia Ingest",
+      "path": "Hestia-Ingest",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Archive",
+      "path": "Hestia-Archive",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Hub",
+      "path": "Hestia-Hub",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Atlas",
+      "path": "Hestia-Atlas",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Scout",
+      "path": "Hestia-Scout",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Oracle",
+      "path": "Hestia-Oracle",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Hermes",
+      "path": "Hestia-Hermes",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia Telegram",
+      "path": "Hestia-Telegram",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hestia [ROOT]",
+      "path": ".",
+      "settings": {
+        "files.exclude": {
+          "Hestia-Ingest": true,
+          "Hestia-Archive": true,
+          "Hestia-Hub": true,
+          "Hestia-Scout": true,
+          "Hestia-Oracle": true,
+          "Hestia-Hermes": true,
+          "Hestia-Telegram": true,
+          "**/.venv": true,
+          "**/.vscode": true,
+        },
+      },
+    },
+  ],
+  "settings": {
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.terminal.activateEnvironment": true,
+    "terminal.integrated.cwd": "${workspaceFolder}",
+  },
+}

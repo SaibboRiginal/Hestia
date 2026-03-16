@@ -1,0 +1,21 @@
+services:
+  ingest:
+    build: .
+    container_name: hestia_ingest
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1 # <-- FORZA LA STAMPA DEI LOG IN TEMPO REALE
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:8001
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./data:/code/data
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

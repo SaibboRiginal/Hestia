@@ -1,0 +1,22 @@
+services:
+  scout:
+    build: .
+    container_name: hestia_scout
+    restart: always  # If it crashes, Docker automatically restarts it
+    env_file:
+      - ./app/.env
+    environment:
+      # Change these to match your actual Ingest and Archive container names!
+      # E.g., if your archive container is named 'hestia_archive', use that instead of localhost.
+      - PYTHONUNBUFFERED=1
+      - ARCHIVE_API_URL=http://hestia_archive:8000/api/archive
+      - INGEST_API_URL=http://hestia_ingest:8001/api
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:8010
+      - SCOUT_TOOLS_PORT=8010
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

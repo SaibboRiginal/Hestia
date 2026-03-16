@@ -1,0 +1,19 @@
+services:
+  __SERVICE_KEY__:
+    build: .
+    container_name: hestia___SERVICE_KEY__
+    restart: unless-stopped
+    ports:
+      - "__SERVICE_PORT__:__SERVICE_PORT__"
+    env_file:
+      - ./app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - SERVICE_BASE_URL=http://hestia___SERVICE_KEY__:__SERVICE_PORT__
+      - PYTHONUNBUFFERED=1
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

@@ -1,0 +1,20 @@
+services:
+  telegram_bot:
+    build: .
+    container_name: hestia_telegram
+    restart: always
+    environment:
+      # Tell the bot how to reach the Oracle on the internal Docker network
+      - ORACLE_API_URL=http://hestia_oracle:8002/api/chat
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - PYTHONUNBUFFERED=1 # <-- FORZA LA STAMPA DEI LOG IN TEMPO REALE
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./data:/code/data
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

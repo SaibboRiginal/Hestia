@@ -1,0 +1,38 @@
+# Git and version control
+.git
+.gitignore
+.github
+
+# Python cache and virtual environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.venv
+venv
+env
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Development and testing
+.pytest_cache
+.coverage
+htmlcov
+.tox
+
+# Data and temporary files (exclude only large ones)
+*.log
+.env.local
+node_modules
+
+# Documentation
+*.md
+!requirements.txt

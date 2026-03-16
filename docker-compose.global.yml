@@ -1,0 +1,177 @@
+services:
+  hub:
+    build:
+      context: ./Hestia-Hub
+    container_name: hestia_hub
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - HUB_HEALTHCHECK_TIMEOUT=3
+      - PYTHONUNBUFFERED=1
+    networks:
+      - hestia_net
+
+  archive_db:
+    image: ankane/pgvector
+    container_name: hestia_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hestia_admin
+      POSTGRES_PASSWORD: super_secret_local_password
+      POSTGRES_DB: hestia_memory
+    ports:
+      - "5432:5432"
+    volumes:
+      - hestia_archive_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hestia_admin -d hestia_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hestia_net
+
+  archive:
+    build:
+      context: ./Hestia-Archive
+    container_name: hestia_archive
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://hestia_admin:super_secret_local_password@archive_db:5432/hestia_memory
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:8000
+    depends_on:
+      archive_db:
+        condition: service_healthy
+      hub:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  ingest:
+    build:
+      context: ./Hestia-Ingest
+    container_name: hestia_ingest
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./Hestia-Ingest/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:8001
+      - ARCHIVE_API_URL=http://hestia_archive:8000/api/archive
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Ingest/data:/code/data
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  oracle:
+    build:
+      context: ./Hestia-Oracle
+    container_name: hestia_oracle
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    env_file:
+      - ./Hestia-Oracle/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:8002
+      - ARCHIVE_API_URL=http://hestia_archive:8000/api
+      - MODULE_TOOLS_URL=http://hestia_scout:8010/api/module-tools
+      - OLLAMA_URL=http://host.docker.internal:11434/api/generate
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  hermes:
+    build:
+      context: ./Hestia-Hermes
+    container_name: hestia_hermes
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    environment:
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:8006
+      - ARCHIVE_API_URL=http://hestia_archive:8000/api
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  telegram:
+    build:
+      context: ./Hestia-Telegram
+    container_name: hestia_telegram
+    restart: unless-stopped
+    env_file:
+      - ./Hestia-Telegram/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - ORACLE_API_URL=http://hestia_oracle:8002/api/chat
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Telegram/data:/code/data
+    depends_on:
+      hub:
+        condition: service_started
+      oracle:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  scout:
+    build:
+      context: ./Hestia-Scout
+    container_name: hestia_scout
+    restart: unless-stopped
+    env_file:
+      - ./Hestia-Scout/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:8005/api
+      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:8010
+      - SCOUT_TOOLS_PORT=8010
+      - INGEST_API_URL=http://hestia_ingest:8001/api
+      - ARCHIVE_API_URL=http://hestia_archive:8000/api/archive
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+      ingest:
+        condition: service_started
+      hermes:
+        condition: service_started
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true
+    name: hestia_net
+
+volumes:
+  hestia_archive_pgdata:

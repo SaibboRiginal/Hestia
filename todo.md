@@ -1,0 +1,2 @@
+- Mettere il limite di numero di chat un parametro!
+- avere preferenze globali non solo di un dominio!

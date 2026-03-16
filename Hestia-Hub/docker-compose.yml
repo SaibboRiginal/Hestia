@@ -1,0 +1,16 @@
+services:
+  hub:
+    build: .
+    container_name: hestia_hub
+    restart: always
+    ports:
+      - "8005:8005"
+    environment:
+      - HUB_HEALTHCHECK_TIMEOUT=3
+      - PYTHONUNBUFFERED=1
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true
