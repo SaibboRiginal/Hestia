@@ -5,10 +5,10 @@ services:
     restart: always
     environment:
       - PYTHONUNBUFFERED=1 # <-- FORZA LA STAMPA DEI LOG IN TEMPO REALE
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:8001
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
     ports:
-      - "8001:8001"
+      - "19003:19003"
     env_file:
       - ./app/.env
     volumes:

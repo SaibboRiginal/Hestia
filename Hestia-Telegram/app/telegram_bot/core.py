@@ -17,11 +17,11 @@ ALLOWED_USER_ID = os.getenv("ALLOWED_USER_ID")
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 HUB_API_URL = os.getenv(
-    "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+    "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 ORACLE_API_URL = os.getenv(
-    "ORACLE_API_URL", "http://hestia_oracle:8002/api/chat")
+    "ORACLE_API_URL", "http://hestia_oracle:19004/api/chat")
 ORACLE_FORMAT_API_URL = os.getenv(
-    "ORACLE_FORMAT_API_URL", "http://hestia_oracle:8002/api/format")
+    "ORACLE_FORMAT_API_URL", "http://hestia_oracle:19004/api/format")
 
 STATE_FILE = "data/telegram_state.json"
 SESSION_SETTINGS_FILE = "data/session_settings.json"
@@ -80,6 +80,23 @@ def resolve_oracle_chat_url() -> str:
     except Exception:
         pass
     return ORACLE_API_URL
+
+
+def resolve_oracle_document_url() -> str:
+    """Return the Oracle document analysis endpoint URL via Hub service registry."""
+    try:
+        response = requests.get(f"{HUB_API_URL}/registry/services", timeout=4)
+        if response.status_code == 200:
+            services = response.json().get("services", []) or []
+            for service in services:
+                if str(service.get("name", "")).strip().lower() == "oracle":
+                    base_url = str(service.get("base_url", "")).rstrip("/")
+                    if base_url:
+                        return f"{base_url}/api/chat/document"
+    except Exception:
+        pass
+    base = ORACLE_API_URL.rsplit("/api/chat", 1)[0]
+    return f"{base}/api/chat/document"
 
 
 def get_session(chat_id: str) -> str:

@@ -7,6 +7,7 @@ from telegram_bot.services.chat_service import (
     handle_chat_message,
     handle_cancel_flow,
     handle_confirmation,
+    handle_file_message,
     handle_run_command,
     handle_set_picker,
     send_welcome,
@@ -52,6 +53,11 @@ def on_set_picker(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("cancel_flow"))
 def on_cancel_flow(call):
     handle_cancel_flow(call)
+
+
+@bot.message_handler(content_types=["document", "photo"])
+def on_file(message):
+    handle_file_message(message)
 
 
 @bot.message_handler(func=lambda message: True)

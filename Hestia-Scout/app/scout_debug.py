@@ -196,7 +196,7 @@ def debug_url(url: str):
     if result is None:
         log_error(
             "Atlas fetch failed. Verify Hub is reachable and Atlas is registered.")
-        log_info("Host mode tip: HUB_API_URL=http://localhost:8005/api")
+        log_info("Host mode tip: HUB_API_URL=http://localhost:19001/api")
         log_info("Start Atlas with: cd Hestia-Atlas && run_host.bat")
         return
 

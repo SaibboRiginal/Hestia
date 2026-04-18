@@ -15,9 +15,13 @@ The conversational AI brain of Hestia. Receives messages from interface services
 ## Core Features
 
 ### Universal LLM Connector
-- Abstracts cloud LLM providers (e.g. OpenAI, Anthropic) and local Ollama behind a single interface.
-- Provider is selected via environment config at deploy time.
-- If Ollama (Main PC) is unavailable, falls back to cloud provider automatically.
+- Abstracts cloud LLM providers (Gemini) and local Ollama behind a single `UniversalAgent` interface.
+- Provider and model are selected via environment config at deploy time.
+- **LLM roles:** `router` (classification), `scribe` (extraction), `analyst` (heavy reasoning), `embedder`. Each role has a primary + fallback agent pair.
+- **Ollama primary model:** `gemma-4-26B-A4B-it-UD-IQ4_NL:latest` (all roles).
+- **Gemini fallbacks per role** (to spread free-tier quota): router → `gemini-2.0-flash-lite`, scribe → `gemini-2.0-flash`, analyst → `gemini-2.5-flash`, embedding → `gemini-embedding-001`.
+- If Ollama (Main PC) is unavailable, falls back to the assigned Gemini model automatically.
+- `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
 ### Session Management
 - Each interface (e.g. Telegram) has one active session at a time.
@@ -42,6 +46,14 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Hermes consumes subscriptions from Archive and performs event matching + dispatch.
 - Oracle never dispatches notifications directly.
 
+### Multimodal Document Understanding
+- Oracle accepts file attachments (images and PDFs) via `POST /api/chat/document` (multipart/form-data).
+- Supported types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/heic`, `image/heif`, `application/pdf`.
+- **Gemini path:** file bytes are sent natively as `types.Part.from_bytes()` in the contents list — Gemini handles images and PDFs without preprocessing.
+- **Ollama path:** images are base64-encoded and passed in the `images` field; PDFs are pre-converted to text with `pypdf` before the text prompt.
+- The analyst LLM reasons over the document and the user's instruction together, then returns a streamed NDJSON reply (same protocol as `/api/chat`).
+- Document turns are persisted in chat history so the session remains coherent.
+
 ### Retrieval Strategy
 - Oracle invokes module tools via a generic endpoint (`POST /api/module-tools/query`) using domain + query + routing metadata.
 - Modules interpret domain-specific filters/preferences internally.
@@ -62,10 +74,13 @@ The conversational AI brain of Hestia. Receives messages from interface services
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/chat` | Send a message, receive a response |
-| `DELETE` | `/sessions/{session_id}` | Clear a session |
-| `GET` | `/sessions/{session_id}` | Retrieve session history |
-| `GET` | `/health` | Service health + LLM provider status |
+| `POST` | `/api/chat` | Send a message, receive NDJSON stream |
+| `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
+| `POST` | `/api/format` | Format a structured payload into human-readable text |
+| `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
+| `POST` | `/api/llm/generate` | Raw LLM call for internal service use |
+| `DELETE` | `/api/chat/{session_id}` | Clear a session |
+| `GET` | `/health` | Service health |
 
 ### `POST /chat` payload
 ```json

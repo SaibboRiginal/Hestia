@@ -5,7 +5,7 @@ services:
     container_name: hestia_hub
     restart: unless-stopped
     ports:
-      - "8005:8005"
+      - "19001:19001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -40,11 +40,11 @@ services:
     container_name: hestia_archive
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "19002:19002"
     environment:
       - DATABASE_URL=postgresql://hestia_admin:super_secret_local_password@archive_db:5432/hestia_memory
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:8000
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:19002
     depends_on:
       archive_db:
         condition: service_healthy
@@ -59,13 +59,13 @@ services:
     container_name: hestia_ingest
     restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "19003:19003"
     env_file:
       - ./Hestia-Ingest/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:8001
-      - ARCHIVE_API_URL=http://hestia_archive:8000/api/archive
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Ingest/data:/code/data
@@ -83,14 +83,14 @@ services:
     container_name: hestia_oracle
     restart: unless-stopped
     ports:
-      - "8002:8002"
+      - "19004:19004"
     env_file:
       - ./Hestia-Oracle/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:8002
-      - ARCHIVE_API_URL=http://hestia_archive:8000/api
-      - MODULE_TOOLS_URL=http://hestia_scout:8010/api/module-tools
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api
+      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate
       - PYTHONUNBUFFERED=1
     depends_on:
@@ -107,11 +107,11 @@ services:
     container_name: hestia_hermes
     restart: unless-stopped
     ports:
-      - "8006:8006"
+      - "19005:19005"
     environment:
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:8006
-      - ARCHIVE_API_URL=http://hestia_archive:8000/api
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -129,8 +129,8 @@ services:
     env_file:
       - ./Hestia-Telegram/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - ORACLE_API_URL=http://hestia_oracle:8002/api/chat
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Telegram/data:/code/data
@@ -150,11 +150,11 @@ services:
     env_file:
       - ./Hestia-Scout/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:8010
-      - SCOUT_TOOLS_PORT=8010
-      - INGEST_API_URL=http://hestia_ingest:8001/api
-      - ARCHIVE_API_URL=http://hestia_archive:8000/api/archive
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:19006
+      - SCOUT_TOOLS_PORT=19006
+      - INGEST_API_URL=http://hestia_ingest:19003/api
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -164,6 +164,54 @@ services:
       ingest:
         condition: service_started
       hermes:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  chronos:
+    build:
+      context: ./Hestia-Chronos
+    container_name: hestia_chronos
+    restart: unless-stopped
+    ports:
+      - "19007:19007"
+    env_file:
+      - ./Hestia-Chronos/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - CALENDAR_SERVICE_BASE_URL=http://hestia_chronos:19007
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      hub:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  argus:
+    build:
+      context: ./Hestia-Argus
+    container_name: hestia_argus
+    restart: unless-stopped
+    ports:
+      - "19008:19008"
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - ARGUS_SERVICE_BASE_URL=http://hestia_argus:19008
+      - HERMES_API_URL=http://hestia_hermes:19005
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
+      - ARGUS_PORT=19008
+      - ARGUS_POLL_INTERVAL=60
+      - ARGUS_LOG_BUFFER_SIZE=500
+      - ARGUS_LOG_BACKFILL_MINUTES=5
+      - ARGUS_NOTIFY_TARGET=
+      - ALERT_COOLDOWN_MINUTES=60
+      - HESTIA_DOCS_PATH=/hestia_root
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./:/hestia_root:ro
+    depends_on:
+      hub:
         condition: service_started
     networks:
       - hestia_net

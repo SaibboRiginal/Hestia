@@ -11,8 +11,9 @@ from worker.extractor import (
     get_extractor_brain,
     normalize_listing_url,
     parse_ai_entities,
-    sanitize_email_for_ai,
 )
+from worker.pre_parser import pre_parse_records, select_representative_records
+from worker.status_updater import StatusUpdater
 
 
 class ScoutWorker:
@@ -25,7 +26,7 @@ class ScoutWorker:
                                for item in configured_filters if str(item).strip()]
 
         self.hub_api_url = os.getenv(
-            "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+            "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
         self.vault = ArchiveClient(
             api_url="",
@@ -33,6 +34,9 @@ class ScoutWorker:
         )
         self.brain = get_extractor_brain()
         self.geocoder = GeocodingService(user_agent="hestia-scout-worker/1.0")
+        self.status_updater = StatusUpdater(
+            vault=self.vault, target_domain=target_domain
+        )
         self.reconcile_every_cycles = int(
             os.getenv("SCOUT_RECONCILE_EVERY_CYCLES", "1"))
         self.min_batch_size = int(os.getenv("SCOUT_MIN_BATCH_SIZE", "1"))
@@ -188,6 +192,20 @@ class ScoutWorker:
             f"[✓] Gateway fetch round complete across {len(self.target_filters)} filter(s). Total fetched: {total_fetched}")
 
     def run_cycle(self):
+        """Main work cycle for the Scout worker.
+
+        Optimized pipeline:
+        1. Command Ingest to fetch new emails.
+        2. Fetch all unevaluated email records.
+        3. Pre-parse every email (no LLM) to extract listing URLs.
+        4. Load all known entity IDs from Archive for the domain.
+        5. Classify each URL as new or existing.
+        6. Status-update path: existing URLs not covered by LLM records
+           → keyword scan → patch listing_status if changed.
+        7. LLM extraction path: one representative record per new URL
+           (deduplicated) + unclassified records (no detected URLs).
+        8. Mark all email records as parsed.
+        """
         print("=== Hestia-Scout: Activating Parser & Extractor ===")
         self._cycle_counter += 1
 
@@ -196,6 +214,7 @@ class ScoutWorker:
 
         self.command_gateway_to_fetch()
 
+        # ── 1. Fetch emails ──────────────────────────────────────────
         print("\n[*] Checking Vault for unread emails...")
         pending_records = self.vault.get_unevaluated(domain=self.target_domain)
         if not pending_records:
@@ -204,12 +223,16 @@ class ScoutWorker:
 
         if len(pending_records) < max(1, self.min_batch_size):
             print(
-                f"[*] Only {len(pending_records)} emails found. Waiting for minimum batch size {self.min_batch_size}.")
+                f"[*] Only {len(pending_records)} emails found. "
+                f"Waiting for minimum batch size {self.min_batch_size}."
+            )
             return
 
         if self.batch_debounce_seconds > 0:
             print(
-                f"[*] Debounce window active ({self.batch_debounce_seconds}s) to accumulate near-simultaneous emails.")
+                f"[*] Debounce window active ({self.batch_debounce_seconds}s) "
+                "to accumulate near-simultaneous emails."
+            )
             time.sleep(self.batch_debounce_seconds)
             pending_records = self.vault.get_unevaluated(
                 domain=self.target_domain)
@@ -217,141 +240,248 @@ class ScoutWorker:
                 print("[*] No pending records after debounce.")
                 return
 
-        print(f"[*] Found {len(pending_records)} unread emails to parse.\n")
+        print(f"[*] Found {len(pending_records)} unread emails to process.\n")
 
-        batch_size = max(1, self.max_batch_size)
-        batches = [pending_records[i: i + batch_size]
-                   for i in range(0, len(pending_records), batch_size)]
+        # ── 2. Pre-parse: extract URLs from all emails without LLM ───
+        print("[PRE-PARSE] Extracting listing URLs from all emails (no LLM)...")
+        parsed = pre_parse_records(pending_records)
 
-        for batch_index, batch in enumerate(batches):
-            print(
-                f"\n-> Processing Batch {batch_index + 1}/{len(batches)} (Contains {len(batch)} emails)...")
+        total_unique_urls = len(parsed.url_to_record_ids)
+        print(
+            f"[PRE-PARSE] Found {total_unique_urls} unique listing URLs across "
+            f"{len(pending_records)} emails. "
+            f"{len(parsed.unclassified_record_ids)} email(s) had no detectable links."
+        )
 
-            combined_text_to_read = ""
-            record_ids_in_batch = []
+        # ── 3. Load all known entity IDs from Archive ────────────────
+        print("[DEDUP] Loading known entity IDs from Archive...")
+        known_entity_ids = self.vault.get_all_entity_ids(
+            domain=self.target_domain)
+        print(f"[DEDUP] {len(known_entity_ids)} entities already in Archive.")
 
-            for item_index, record in enumerate(batch):
-                record_id = record["id"]
-                record_ids_in_batch.append(record_id)
+        new_urls: set[str] = set()
+        existing_urls: set[str] = set()
+        for url in parsed.url_to_record_ids:
+            if url in known_entity_ids:
+                existing_urls.add(url)
+            else:
+                new_urls.add(url)
 
-                raw_html = record["payload"].get(
-                    "body", "") + " " + record["payload"].get("title", "")
-                clean_text = sanitize_email_for_ai(raw_html)
+        print(
+            f"[DEDUP] Classification: {len(new_urls)} new, "
+            f"{len(existing_urls)} already known."
+        )
 
-                if len(clean_text) > 20:
-                    combined_text_to_read += f"\n\n--- EMAIL {item_index + 1} ---\n{clean_text}"
-                else:
-                    self.vault.save_evaluation(
-                        record_id, {"status": "skipped_empty"})
+        # ── 4. Select representative records for LLM extraction ──────
+        # One record per new URL (deduplicated) + all unclassified records.
+        representative_ids = select_representative_records(
+            new_urls=new_urls,
+            url_to_record_ids=parsed.url_to_record_ids,
+            record_id_to_clean_text=parsed.record_id_to_clean_text,
+        )
+        representative_ids.update(parsed.unclassified_record_ids)
 
-            if not combined_text_to_read.strip():
-                print("   [!] All emails in this batch were empty. Skipping.")
+        print(
+            f"[LLM] {len(representative_ids)} record(s) queued for LLM extraction "
+            f"(covers {len(new_urls)} new URLs + {len(parsed.unclassified_record_ids)} unclassified)."
+        )
+
+        # ── 5. Status-update path for already-known listings ─────────
+        # Only process existing URLs whose covering records are NOT already
+        # going to the LLM (those will be re-upserted by the LLM path).
+        status_update_count = 0
+        for url in existing_urls:
+            covering_record_ids = parsed.url_to_record_ids.get(url, [])
+            if any(rid in representative_ids for rid in covering_record_ids):
+                # The LLM path will refresh this entity — skip.
                 continue
 
-            ai_response = self.brain.evaluate(combined_text_to_read)
-            raw_text = ai_response.get("raw_response", "").strip()
+            combined_text = "\n\n".join(
+                parsed.record_id_to_clean_text[rid]
+                for rid in covering_record_ids
+                if rid in parsed.record_id_to_clean_text
+            )
+            existing_entity = self.vault.get_entity_by_id(url) or {}
+            updated = self.status_updater.check_and_update(
+                entity_id=url,
+                combined_email_text=combined_text,
+                existing_entity=existing_entity,
+            )
+            if updated:
+                status_update_count += 1
 
-            if ai_response.get("error"):
-                print(f"   [!] {ai_response['error']}")
-                if "All models exhausted" in ai_response["error"]:
-                    print("   [🛑] Global Quota hit. Shutting down for the day.")
-                    break
-                continue
+        print(
+            f"[STATUS] {status_update_count} existing listing(s) had status updates.")
 
-            try:
-                extracted_data = parse_ai_entities(raw_text)
-                found_entities = 0
+        # ── 6. LLM extraction path ────────────────────────────────────
+        if not representative_ids:
+            print("[LLM] No records require LLM extraction.")
+        else:
+            record_map = {r["id"]: r for r in pending_records}
+            llm_records = [
+                record_map[rid]
+                for rid in representative_ids
+                if rid in record_map
+            ]
+
+            batch_size = max(1, self.max_batch_size)
+            batches = [
+                llm_records[i: i + batch_size]
+                for i in range(0, len(llm_records), batch_size)
+            ]
+
+            quota_exhausted = False
+            for batch_index, batch in enumerate(batches):
                 print(
-                    f"   [AI] Parsed {len(extracted_data)} entities from AI response")
+                    f"\n-> LLM Batch {batch_index + 1}/{len(batches)} "
+                    f"({len(batch)} record(s))..."
+                )
+                quota_exhausted = self._process_llm_batch(
+                    batch_index, batch, parsed.record_id_to_clean_text
+                )
+                if quota_exhausted:
+                    break
 
-                for item in extracted_data:
-                    entity_id = item.get("entity_id")
-                    payload = item.get("payload")
+                print(
+                    f"   [-] Cooling down {self.batch_cooldown_seconds}s "
+                    "to respect RPM limits..."
+                )
+                time.sleep(max(0, self.batch_cooldown_seconds))
 
-                    if not isinstance(payload, dict):
-                        payload = item
-                        entity_id = entity_id or item.get("url")
-                    elif not entity_id:
-                        entity_id = payload.get("url")
+        # ── 7. Mark ALL email records as parsed ───────────────────────
+        # Records that went through neither path (e.g. empty-text emails)
+        # are marked skipped_empty so they don't accumulate.
+        for record in pending_records:
+            record_id = record["id"]
+            clean_text = parsed.record_id_to_clean_text.get(record_id, "")
+            if len(clean_text) <= 20:
+                self.vault.save_evaluation(
+                    record_id, {"status": "skipped_empty"})
+            else:
+                self.vault.save_evaluation(record_id, {"status": "parsed"})
 
-                    if not entity_id or entity_id in ["", "null", None]:
-                        continue
+        print("\n[✓] Cycle complete.")
 
-                    # Log raw AI extraction before enrichment
-                    raw_summary = str(payload.get("summary", "")).strip(
-                    ) if isinstance(payload, dict) else ""
-                    raw_address = str(payload.get("address", "")).strip(
-                    ) if isinstance(payload, dict) else ""
-                    print(f"   [AI-RAW] entity={entity_id}")
+    # ─────────────────────────────────────────────────────────────────
+    #  Private helpers
+    # ─────────────────────────────────────────────────────────────────
+
+    def _process_llm_batch(
+        self,
+        batch_index: int,
+        batch: list[dict],
+        record_id_to_clean_text: dict[int, str],
+    ) -> bool:
+        """Run LLM extraction on one batch of email records.
+
+        Returns ``True`` if the quota was exhausted (caller should stop).
+        """
+        combined_text_to_read = ""
+        for item_index, record in enumerate(batch):
+            record_id = record["id"]
+            clean_text = record_id_to_clean_text.get(record_id) or (
+                record.get("payload", {}).get("body", "")
+                + " "
+                + record.get("payload", {}).get("title", "")
+            )
+            if isinstance(clean_text, str) and len(clean_text) > 20:
+                combined_text_to_read += f"\n\n--- EMAIL {item_index + 1} ---\n{clean_text}"
+
+        if not combined_text_to_read.strip():
+            print("   [!] All emails in this batch were empty. Skipping.")
+            return False
+
+        ai_response = self.brain.evaluate(combined_text_to_read)
+        raw_text = ai_response.get("raw_response", "").strip()
+
+        if ai_response.get("error"):
+            print(f"   [!] {ai_response['error']}")
+            if "All models exhausted" in ai_response["error"]:
+                print("   [🛑] Global Quota hit. Shutting down for the day.")
+                return True
+            return False
+
+        try:
+            extracted_data = parse_ai_entities(raw_text)
+            found_entities = 0
+            print(
+                f"   [AI] Parsed {len(extracted_data)} entities from AI response")
+
+            for item in extracted_data:
+                entity_id = item.get("entity_id")
+                payload = item.get("payload")
+
+                if not isinstance(payload, dict):
+                    payload = item
+                    entity_id = entity_id or item.get("url")
+                elif not entity_id:
+                    entity_id = payload.get("url")
+
+                if not entity_id or entity_id in ["", "null", None]:
+                    continue
+
+                raw_summary = str(payload.get("summary", "")).strip(
+                ) if isinstance(payload, dict) else ""
+                raw_address = str(payload.get("address", "")).strip(
+                ) if isinstance(payload, dict) else ""
+                print(f"   [AI-RAW] entity={entity_id}")
+                print(
+                    f"      raw_summary_len={len(raw_summary)} raw_address='{raw_address}'")
+                if raw_summary and (raw_summary.endswith("...") or raw_summary.endswith("…")):
                     print(
-                        f"      raw_summary_len={len(raw_summary)} raw_address='{raw_address}'")
-                    if raw_summary and (raw_summary.endswith("...") or raw_summary.endswith("…")):
-                        print(
-                            f"      WARNING: AI returned truncated summary: {raw_summary[:150]}")
+                        f"      WARNING: AI returned truncated summary: {raw_summary[:150]}")
 
-                    normalized_entity_id = normalize_listing_url(
-                        str(entity_id))
-                    payload_url = payload.get("url") if isinstance(
-                        payload, dict) else None
-                    if payload_url:
-                        payload["url"] = normalize_listing_url(
-                            str(payload_url))
-                    else:
-                        payload["url"] = normalized_entity_id
+                normalized_entity_id = normalize_listing_url(str(entity_id))
+                payload_url = payload.get("url") if isinstance(
+                    payload, dict) else None
+                if payload_url:
+                    payload["url"] = normalize_listing_url(str(payload_url))
+                else:
+                    payload["url"] = normalized_entity_id
 
-                    payload = enrich_payload_geolocation(
-                        payload, self.geocoder)
-                    if self.enable_listing_enrichment:
-                        payload = enrich_payload_from_listing(payload)
+                payload = enrich_payload_geolocation(payload, self.geocoder)
+                if self.enable_listing_enrichment:
+                    payload = enrich_payload_from_listing(payload)
 
-                    # Canonicalize the entity shape before Archive upsert.
-                    house = HouseEntity.from_extracted(
+                house = HouseEntity.from_extracted(
+                    entity_id=normalized_entity_id,
+                    payload=payload,
+                    domain=self.target_domain,
+                    status=item.get("status", "active"),
+                )
+                normalized_entity_id = house.entity_id
+                payload = house.payload.model_dump()
+
+                final_summary = str(payload.get("summary", "")).strip()
+                final_address = str(payload.get("address", "")).strip()
+                final_location = payload.get("location") if isinstance(
+                    payload.get("location"), dict) else {}
+                has_geo = final_location.get("lat") is not None
+                summary_truncated = final_summary.endswith(
+                    "...") or final_summary.endswith("…")
+                print(f"   [ENTITY] {normalized_entity_id}")
+                print(
+                    f"      address='{final_address}' geo={'yes' if has_geo else 'NO'}")
+                print(
+                    f"      summary_len={len(final_summary)} truncated={summary_truncated}")
+                if summary_truncated:
+                    print(
+                        f"      WARNING: Truncated summary: {final_summary[:150]}")
+
+                entity_upsert_payload = house.to_archive_upsert_payload()
+                if self.vault.upsert_entity(entity_upsert_payload):
+                    found_entities += 1
+                    self._publish_entity_event(
                         entity_id=normalized_entity_id,
                         payload=payload,
-                        domain=self.target_domain,
-                        status=item.get("status", "active"),
                     )
-                    normalized_entity_id = house.entity_id
-                    payload = house.payload.model_dump()
-
-                    # Log final payload state before upsert
-                    final_summary = str(payload.get("summary", "")).strip()
-                    final_address = str(payload.get("address", "")).strip()
-                    final_location = payload.get("location") if isinstance(
-                        payload.get("location"), dict) else {}
-                    has_geo = final_location.get("lat") is not None
-                    summary_truncated = final_summary.endswith(
-                        "...") or final_summary.endswith("…")
-                    print(f"   [ENTITY] {normalized_entity_id}")
-                    print(
-                        f"      address='{final_address}' geo={'yes' if has_geo else 'NO'}")
-                    print(
-                        f"      summary_len={len(final_summary)} truncated={summary_truncated}")
-                    if summary_truncated:
-                        print(
-                            f"      WARNING: Truncated summary: {final_summary[:150]}")
-
-                    entity_upsert_payload = house.to_archive_upsert_payload()
-                    if self.vault.upsert_entity(entity_upsert_payload):
-                        found_entities += 1
-                        self._publish_entity_event(
-                            entity_id=normalized_entity_id,
-                            payload=payload,
-                        )
-
-                print(
-                    f"   [✓] Extracted {found_entities} entities using {ai_response.get('model_used')}.")
-
-                for record_id in record_ids_in_batch:
-                    self.vault.save_evaluation(record_id, {"status": "parsed"})
-
-            except Exception as error:
-                print(f"   [!] Failed to parse AI JSON: {error}")
-                with open(f"debug_broken_batch_{batch_index}.txt", "w", encoding="utf-8") as handle:
-                    handle.write(raw_text)
 
             print(
-                f"   [-] Sleeping for {self.batch_cooldown_seconds} seconds to respect RPM limits...")
-            time.sleep(max(0, self.batch_cooldown_seconds))
+                f"   [✓] Extracted {found_entities} entities using {ai_response.get('model_used')}.")
 
-        print("\n[✓] All batches processed.")
+        except Exception as error:
+            print(f"   [!] Failed to parse AI JSON: {error}")
+            with open(f"debug_broken_batch_{batch_index}.txt", "w", encoding="utf-8") as handle:
+                handle.write(raw_text)
+
+        return False

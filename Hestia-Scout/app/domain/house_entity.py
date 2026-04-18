@@ -6,6 +6,8 @@ from urllib.parse import urlparse, urlunparse
 
 from pydantic import BaseModel, Field
 
+from domain.listing_status import ListingStatus, coerce_listing_status
+
 
 class HouseLocation(BaseModel):
     lat: Optional[float] = None
@@ -76,6 +78,9 @@ class HousePayload(BaseModel):
     address: Optional[str] = None
     summary: Optional[str] = None
     image: Optional[str] = None
+    # Availability status inferred from email signals or page enrichment.
+    # Defaults to unknown — callers must not treat unknown as unavailable.
+    listing_status: ListingStatus = ListingStatus.UNKNOWN
     specs: HouseSpecs = Field(default_factory=HouseSpecs)
     location: Optional[HouseLocation] = None
     pricing: Optional[HousePricing] = None
@@ -138,7 +143,8 @@ class HouseEntity(BaseModel):
         payload_copy["energy"] = _normalize_energy(payload_copy)
         payload_copy["contact"] = _normalize_contact(payload_copy)
         payload_copy["media"] = _normalize_media(payload_copy)
-        payload_copy["surfaces"] = _normalize_surfaces(payload_copy.get("surfaces"))
+        payload_copy["surfaces"] = _normalize_surfaces(
+            payload_copy.get("surfaces"))
         payload_copy["characteristics"] = _normalize_characteristics(
             payload_copy.get("characteristics")
         )
@@ -146,6 +152,10 @@ class HouseEntity(BaseModel):
             payload_copy.get("additional_features")
         )
         payload_copy["listing"] = _normalize_listing_context(payload_copy)
+
+        raw_listing_status = payload_copy.pop("listing_status", None)
+        payload_copy["listing_status"] = coerce_listing_status(
+            raw_listing_status)
 
         return cls(
             entity_id=normalized_id,
@@ -194,24 +204,30 @@ def _normalize_specs(specs: dict) -> dict:
 
 
 def _normalize_pricing(payload: dict) -> Optional[dict]:
-    source = payload.get("pricing") if isinstance(payload.get("pricing"), dict) else {}
-    extras = payload.get("extras") if isinstance(payload.get("extras"), dict) else {}
+    source = payload.get("pricing") if isinstance(
+        payload.get("pricing"), dict) else {}
+    extras = payload.get("extras") if isinstance(
+        payload.get("extras"), dict) else {}
 
     result = {
         "price": _to_int_or_none(source.get("price") or payload.get("price")),
         "price_per_m2": _to_int_or_none(source.get("price_per_m2") or extras.get("price_per_m2")),
         "condo_fees": _to_str_or_none(source.get("condo_fees") or extras.get("condo_fees")),
         "condo_fees_monthly_eur": _to_int_or_none(
-            source.get("condo_fees_monthly_eur") or extras.get("condo_fees_monthly_eur")
+            source.get("condo_fees_monthly_eur") or extras.get(
+                "condo_fees_monthly_eur")
         ),
     }
     return result if any(v is not None for v in result.values()) else None
 
 
 def _normalize_energy(payload: dict) -> Optional[dict]:
-    source = payload.get("energy") if isinstance(payload.get("energy"), dict) else {}
-    extras = payload.get("extras") if isinstance(payload.get("extras"), dict) else {}
-    specs = payload.get("specs") if isinstance(payload.get("specs"), dict) else {}
+    source = payload.get("energy") if isinstance(
+        payload.get("energy"), dict) else {}
+    extras = payload.get("extras") if isinstance(
+        payload.get("extras"), dict) else {}
+    specs = payload.get("specs") if isinstance(
+        payload.get("specs"), dict) else {}
 
     result = {
         "year_built": _to_int_or_none(source.get("year_built") or extras.get("year_built")),
@@ -223,8 +239,10 @@ def _normalize_energy(payload: dict) -> Optional[dict]:
 
 
 def _normalize_contact(payload: dict) -> Optional[dict]:
-    source = payload.get("contact") if isinstance(payload.get("contact"), dict) else {}
-    extras = payload.get("extras") if isinstance(payload.get("extras"), dict) else {}
+    source = payload.get("contact") if isinstance(
+        payload.get("contact"), dict) else {}
+    extras = payload.get("extras") if isinstance(
+        payload.get("extras"), dict) else {}
 
     result = {
         "reference_id": _to_str_or_none(source.get("reference_id") or extras.get("reference_id")),
@@ -236,10 +254,13 @@ def _normalize_contact(payload: dict) -> Optional[dict]:
 
 
 def _normalize_media(payload: dict) -> Optional[dict]:
-    source = payload.get("media") if isinstance(payload.get("media"), dict) else {}
-    extras = payload.get("extras") if isinstance(payload.get("extras"), dict) else {}
+    source = payload.get("media") if isinstance(
+        payload.get("media"), dict) else {}
+    extras = payload.get("extras") if isinstance(
+        payload.get("extras"), dict) else {}
 
-    images = source.get("images") if isinstance(source.get("images"), list) else []
+    images = source.get("images") if isinstance(
+        source.get("images"), list) else []
     clean_images = []
     for image in images:
         text = _to_str_or_none(image)
@@ -300,7 +321,8 @@ def _normalize_characteristics(value) -> dict[str, str]:
 
 
 def _normalize_listing_context(payload: dict) -> Optional[dict]:
-    source = payload.get("listing") if isinstance(payload.get("listing"), dict) else {}
+    source = payload.get("listing") if isinstance(
+        payload.get("listing"), dict) else {}
     result = {
         "nav_position": _to_str_or_none(source.get("nav_position")),
         "position": _to_int_or_none(source.get("position")),

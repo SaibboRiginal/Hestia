@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY ./app/ /code/
 
 # Expose the API port
-EXPOSE 8002
+EXPOSE 19004
 
 # Start the FastAPI server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "19004"]

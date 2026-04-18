@@ -64,6 +64,13 @@ CRITICAL:
 5. If a property has no link, skip it.
 6. For summary: extract the FULL description text from the email. \
 DO NOT truncate or summarize. Include ALL details provided.
+7. For listing_status: infer from the email text. Use ONLY one of:
+   "available" | "in_negotiation" | "investment_occupied" | "sold" | "unknown"
+   - "in_negotiation" if the email mentions "trattativa", "under offer" or similar.
+   - "investment_occupied" if the listing is rented out or sold as investment with tenants.
+   - "sold" if the property is already sold.
+   - "available" if explicitly stated as free/available.
+   - "unknown" if you cannot determine the status with confidence.
 
 [
     {
@@ -74,6 +81,7 @@ DO NOT truncate or summarize. Include ALL details provided.
             "title": "string",
             "price": 150000,
             "address": "string (full address with city/area if available)",
+            "listing_status": "available | in_negotiation | investment_occupied | sold | unknown",
             "specs": {
                 "surface_m2": 97,
                 "rooms": 3,

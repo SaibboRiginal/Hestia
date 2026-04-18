@@ -1,56 +1,70 @@
 {
   "folders": [
     {
-      "name": "Hestia Ingest",
+      "name": "Ingest",
       "path": "Hestia-Ingest",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Archive",
+      "name": "Archive",
       "path": "Hestia-Archive",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Hub",
+      "name": "Hub",
       "path": "Hestia-Hub",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Atlas",
+      "name": "Atlas",
       "path": "Hestia-Atlas",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Scout",
+      "name": "Argus",
+      "path": "Hestia-Argus",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Scout",
       "path": "Hestia-Scout",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Oracle",
+      "name": "Chronos",
+      "path": "Hestia-Chronos",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Oracle",
       "path": "Hestia-Oracle",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Hermes",
+      "name": "Hermes",
       "path": "Hestia-Hermes",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Hestia Telegram",
+      "name": "Telegram",
       "path": "Hestia-Telegram",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
@@ -63,10 +77,13 @@
         "files.exclude": {
           "Hestia-Ingest": true,
           "Hestia-Archive": true,
+          "Hestia-Argus": true,
+          "Hestia-Atlas": true,
+          "Hestia-Chronos": true,
+          "Hestia-Hermes": true,
           "Hestia-Hub": true,
           "Hestia-Scout": true,
           "Hestia-Oracle": true,
-          "Hestia-Hermes": true,
           "Hestia-Telegram": true,
           "**/.venv": true,
           "**/.vscode": true,

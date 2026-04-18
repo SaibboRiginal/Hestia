@@ -4,7 +4,7 @@ services:
     container_name: hestia_hub
     restart: always
     ports:
-      - "8005:8005"
+      - "19001:19001"
     environment:
       - HUB_HEALTHCHECK_TIMEOUT=3
       - PYTHONUNBUFFERED=1

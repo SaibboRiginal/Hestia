@@ -11,7 +11,7 @@ logger = logging.getLogger("hestia_hermes.dispatch")
 class DispatchService:
     def __init__(self):
         self.hub_api_url = os.getenv(
-            "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+            "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
     def send(self, channel: str, target: str, payload: dict[str, Any] | None = None, message: str | None = None, domain: str = "", entity_id: str = "", subscription_id: int | None = None, metadata: dict[str, Any] | None = None) -> tuple[bool, str]:
         normalized = (channel or "").strip().lower()

@@ -6,7 +6,7 @@ class ArchiveClient:
     def __init__(self, api_url: str):
         self.api_url = api_url
         self.hub_api_url = os.getenv(
-            "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+            "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
     def _route_archive(self, payload: dict) -> bool:
         response = requests.post(

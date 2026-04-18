@@ -4,13 +4,13 @@ services:
     container_name: hestia_hermes
     restart: always
     ports:
-      - "8006:8006"
+      - "19005:19005"
     env_file:
       - ./src/.env
     environment:
-      - ARCHIVE_API_URL=http://hestia_archive:8000/api
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:8006
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005
       - PYTHONUNBUFFERED=1
     networks:
       - hestia_net

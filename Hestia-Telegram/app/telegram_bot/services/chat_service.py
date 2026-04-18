@@ -409,3 +409,140 @@ def handle_chat_message(message):
         )
     finally:
         stop_typing.set()
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  File / document handling
+# ─────────────────────────────────────────────────────────────────────
+
+_PHOTO_MIME = "image/jpeg"
+
+
+def _download_telegram_file(file_id: str) -> bytes:
+    """Download a file from Telegram servers and return its raw bytes."""
+    file_info = core.bot.get_file(file_id)
+    file_url = (
+        f"https://api.telegram.org/file/bot{core.bot.token}/{file_info.file_path}"
+    )
+    response = requests.get(file_url, timeout=30)
+    response.raise_for_status()
+    return response.content
+
+
+def handle_file_message(message):
+    """Handle an incoming document or photo message by forwarding it to Oracle."""
+    if not is_authorized(message):
+        return
+
+    chat_id = message.chat.id
+    session_id = core.get_session(chat_id)
+
+    # Determine file_id and mime_type based on message content type.
+    if message.content_type == "photo":
+        # Telegram sends multiple sizes; pick the highest resolution (last item).
+        photo = message.photo[-1]
+        file_id = photo.file_id
+        mime_type = _PHOTO_MIME
+    elif message.content_type == "document":
+        doc = message.document
+        file_id = doc.file_id
+        mime_type = (
+            doc.mime_type or "application/octet-stream").split(";")[0].strip().lower()
+    else:
+        core.bot.reply_to(message, "⚠️ Tipo di file non supportato.")
+        return
+
+    # Accept only what Oracle can handle.
+    ACCEPTED_MIMES = {
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        "image/heic", "image/heif",
+        "application/pdf",
+    }
+    if mime_type not in ACCEPTED_MIMES:
+        core.bot.reply_to(
+            message,
+            f"⚠️ Formato non supportato: <code>{mime_type}</code>\n"
+            "Invia un'immagine (JPEG, PNG, WebP) o un PDF.",
+            parse_mode="HTML",
+        )
+        return
+
+    # Caption is the user's instruction; fall back to generic prompt.
+    user_text = (message.caption or "").strip() or "Analizza questo documento."
+
+    status_msg = core.bot.reply_to(
+        message, "⏳ *Download e analisi documento...*", parse_mode="Markdown"
+    )
+
+    stop_typing = threading.Event()
+
+    def typing_loop():
+        while not stop_typing.is_set():
+            try:
+                core.bot.send_chat_action(chat_id, "typing")
+            except Exception:
+                pass
+            stop_typing.wait(4)
+
+    threading.Thread(target=typing_loop, daemon=True).start()
+
+    try:
+        file_bytes = _download_telegram_file(file_id)
+
+        oracle_doc_url = core.resolve_oracle_document_url()
+        with requests.post(
+            oracle_doc_url,
+            data={
+                "message": user_text,
+                "session_id": session_id,
+                "notify_target": str(chat_id),
+                "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
+            },
+            files={
+                "file": (f"attachment.{mime_type.split('/')[-1]}", file_bytes, mime_type)},
+            stream=True,
+            timeout=120,
+        ) as res:
+            res.raise_for_status()
+
+            final_answer = ""
+            for line in res.iter_lines():
+                if not line:
+                    continue
+                data = json.loads(line)
+                if data.get("type") == "status":
+                    try:
+                        core.bot.edit_message_text(
+                            f"⏳ *{data['content']}*",
+                            chat_id=chat_id,
+                            message_id=status_msg.message_id,
+                            parse_mode="Markdown",
+                        )
+                    except Exception:
+                        pass
+                elif data.get("type") == "final":
+                    final_answer = str(data.get("reply", "")).strip()
+
+        if not final_answer:
+            final_answer = "⚠️ Nessuna risposta ricevuta."
+
+        message_parts = core.build_chat_messages(final_answer)
+        core.bot.edit_message_text(
+            message_parts[0] if message_parts else final_answer,
+            chat_id=chat_id,
+            message_id=status_msg.message_id,
+            parse_mode="HTML",
+        )
+        for part in (message_parts[1:] if message_parts else []):
+            if part.strip():
+                core.send_user_message(chat_id, part, parse_mode="HTML")
+
+    except Exception as error:
+        core.bot.edit_message_text(
+            f"⚠️ **Analisi documento fallita**\n`{error}`",
+            chat_id=chat_id,
+            message_id=status_msg.message_id,
+            parse_mode="Markdown",
+        )
+    finally:
+        stop_typing.set()
