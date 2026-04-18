@@ -11,9 +11,9 @@ logger = logging.getLogger("hestia_hermes.archive")
 class ArchiveClient:
     def __init__(self):
         self.hub_api_url = os.getenv(
-            "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+            "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
         self.base_url = os.getenv(
-            "ARCHIVE_API_URL", "http://hestia_archive:8000/api").rstrip("/")
+            "ARCHIVE_API_URL", "http://hestia_archive:19002/api").rstrip("/")
 
     def _route_archive(self, method: str, endpoint: str, body=None, query=None, timeout: int = 8):
         normalized = endpoint.lstrip("/")

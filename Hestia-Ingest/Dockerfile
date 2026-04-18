@@ -11,5 +11,5 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 # Copy all application code last (this layer changes frequently)
 COPY ./app/ /code/
 
-# Start the Factory on port 8001
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Start the Factory on port 19003
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "19003"]

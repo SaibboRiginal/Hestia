@@ -12,11 +12,11 @@ Stack baseline: Python · FastAPI · PostgreSQL + pgvector · Docker · Ollama.
 
 ## Core Topology
 
-Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Ingest`, `Hermes`
+Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Ingest`, `Hermes`, `Chronos`
 
 Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), Ollama, local DB replica.
 
-Host OS shared utility (Windows/Linux): `Fetch` (runs outside Docker, registers in Hub)
+Host OS shared utility (Windows/Linux): `Atlas` (runs outside Docker, registers in Hub)
 
 ---
 
@@ -39,6 +39,8 @@ Conversational reasoning layer.
 - Handles chat sessions and long-term preferences.
 - Uses Hub discovery + module tools for domain retrieval.
 - Compiles user intents into generic subscription requests written to Archive.
+- Accepts file attachments (images, PDFs) via `POST /api/chat/document` and reasons over them using multimodal LLM (Gemini vision + pypdf for Ollama path).
+- LLM roles: `router` → `gemini-2.0-flash-lite`, `scribe` → `gemini-2.0-flash`, `analyst` → `gemini-2.5-flash`; Ollama primary for all roles (`gemma-4-26B-A4B-it-UD-IQ4_NL:latest`).
 
 ### Hestia-Hermes 📨
 Proactive dispatch core (new).
@@ -56,7 +58,17 @@ Host-side shared web fetch gateway.
 - Registers into Hub as `fetch` so callers can route through Hub (`/api/route/fetch/...`).
 
 ### Hestia-Telegram 💬
-User interface relay for chat + clear session commands.
+User interface relay for chat, file attachments, and clear session commands.
+- Forwards photos and documents (PDF, images) to Oracle's multimodal endpoint.
+- Streams NDJSON status frames back as typing indicators while Oracle processes.
+
+### Hestia-Chronos 📅
+Bidirectional calendar integration gateway (port 8008).
+- Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
+- `target_providers: []` in a request writes to all configured providers at once.
+- Provider failures are isolated per-provider and returned as structured error results.
+- Consumed by Oracle via Hub routing for document-to-event flows.
+- See `hestia-chronos.md` for credential setup and provider details.
 
 ---
 
@@ -64,8 +76,10 @@ User interface relay for chat + clear session commands.
 
 ### Hestia-Scout 🏠
 Real-estate domain module.
-- Fetches and extracts entities.
-- Persists entities in Archive under `real_estate`.
+- **Pre-parse pipeline:** extracts property URLs from all emails first (zero LLM calls), deduplicates against Archive, then splits into an existing-entity path and a new-entity path.
+- **Status update path:** keyword regex scan updates `listing_status` for known entities without LLM.
+- **LLM path:** only the minimal representative email set per new URL is sent to the LLM extractor.
+- Persists entities in Archive under `real_estate` with `listing_status` field (`available`, `in_negotiation`, `investment_occupied`, `sold`, `unknown`).
 - Publishes `entity.upserted` events to Hermes for proactive matching.
 - Exposes generic module tools for Oracle retrieval.
 
@@ -96,6 +110,7 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 5. **HTML parse mode**: all rich user-facing output uses HTML. No markdown bold (`**`) inside HTML content.
 6. **Conversational alerts**: proactive multi-alert dispatches must read as natural chat, not disconnected notifications.
 7. **Message splitting logic is global** via `build_delivery_messages()` and reused by all send paths.
+8. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
 
 ## Logging Contract (Global Observability)
 

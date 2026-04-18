@@ -5,8 +5,8 @@ services:
     restart: always
     environment:
       # Tell the bot how to reach the Oracle on the internal Docker network
-      - ORACLE_API_URL=http://hestia_oracle:8002/api/chat
-      - HUB_API_URL=http://hestia_hub:8005/api
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
+      - HUB_API_URL=http://hestia_hub:19001/api
       - PYTHONUNBUFFERED=1 # <-- FORZA LA STAMPA DEI LOG IN TEMPO REALE
     env_file:
       - ./app/.env

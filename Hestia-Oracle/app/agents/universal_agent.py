@@ -1,3 +1,4 @@
+import io
 import os
 import requests
 from google import genai
@@ -52,10 +53,91 @@ class UniversalAgent:
             except Exception as e:
                 raise RuntimeError(f"Ollama Error: {e}")
 
+    def complete(self, prompt: str) -> str:
+        """Alias for ask() — used by the /api/llm/generate endpoint."""
+        return self.ask(prompt)
+
+    def ask_with_attachment(
+        self,
+        file_bytes: bytes,
+        mime_type: str,
+        user_message: str,
+    ) -> str:
+        """Reason over an attached document or image together with the user message.
+
+        Supports any MIME type that the underlying provider can handle:
+        - Gemini: all image types + application/pdf (native support).
+        - Ollama: image/* via base64 in the images field; PDFs are
+          pre-converted to text with pypdf before the call.
+
+        Raises ``RuntimeError`` on provider error.
+        """
+        if self.provider == "gemini":
+            return self._ask_with_attachment_gemini(file_bytes, mime_type, user_message)
+        elif self.provider == "ollama":
+            return self._ask_with_attachment_ollama(file_bytes, mime_type, user_message)
+        return self.ask(user_message)
+
+    # ─────────────────────────────────────────────────────────────────
+    #  Attachment helpers
+    # ─────────────────────────────────────────────────────────────────
+
+    def _ask_with_attachment_gemini(
+        self, file_bytes: bytes, mime_type: str, user_message: str
+    ) -> str:
+        try:
+            file_part = types.Part.from_bytes(
+                data=file_bytes, mime_type=mime_type)
+            contents = [file_part, user_message]
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.role_prompt
+                ),
+            )
+            return response.text.strip()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Gemini attachment error ({self.model_name}): {exc}") from exc
+
+    def _ask_with_attachment_ollama(
+        self, file_bytes: bytes, mime_type: str, user_message: str
+    ) -> str:
+        if mime_type == "application/pdf":
+            extracted_text = _extract_pdf_text(file_bytes)
+            augmented_message = (
+                f"[Attached document content]\n{extracted_text}\n\n"
+                f"[User instruction]\n{user_message}"
+            )
+            return self.ask(augmented_message)
+
+        if mime_type.startswith("image/"):
+            import base64
+            image_b64 = base64.b64encode(file_bytes).decode("utf-8")
+            payload = {
+                "model": self.model_name,
+                "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
+                "images": [image_b64],
+                "stream": False,
+            }
+            try:
+                response = requests.post(
+                    self.ollama_url,
+                    json=payload,
+                    timeout=self.ollama_timeout_sec,
+                )
+                response.raise_for_status()
+                return response.json().get("response", "").strip()
+            except Exception as exc:
+                raise RuntimeError(f"Ollama vision error: {exc}") from exc
+
+        # Fallback: treat as plain text
+        return self.ask(user_message)
+
     def embed(self, text: str) -> list[float]:
         if self.provider == "gemini":
             try:
-                # La sintassi corretta e ufficiale del SDK
                 response = self.client.models.embed_content(
                     model=self.model_name,
                     contents=text,
@@ -80,3 +162,22 @@ class UniversalAgent:
             except Exception as e:
                 raise RuntimeError(f"Ollama Embedding Error: {e}")
         return []
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Module-level helpers
+# ─────────────────────────────────────────────────────────────────────
+
+def _extract_pdf_text(file_bytes: bytes) -> str:
+    """Extract plain text from a PDF using pypdf.
+
+    Returns an empty string if the PDF is scanned / unreadable.
+    """
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(file_bytes))
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n".join(pages).strip()
+    except Exception:
+        return ""

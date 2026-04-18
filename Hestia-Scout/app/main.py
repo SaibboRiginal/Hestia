@@ -44,8 +44,8 @@ api_app = FastAPI(title="Hestia Scout Tools", version="2.0.0")
 
 def _build_retrieval_service() -> ScoutRetrievalService:
     archive_api_url = os.getenv(
-        "ARCHIVE_API_URL", "http://hestia_archive:8000/api/archive")
-    hub_api_url = os.getenv("HUB_API_URL", "http://hestia_hub:8005/api")
+        "ARCHIVE_API_URL", "http://hestia_archive:19002/api/archive")
+    hub_api_url = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api")
     geocoder = GeocodingService(user_agent="hestia-scout-tools/1.0")
     return ScoutRetrievalService(
         archive_api_url=archive_api_url,
@@ -114,7 +114,7 @@ def _start_tools_api():
 
 def _register_with_hub(port: int):
     hub_api_url = os.getenv(
-        "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
         "SCOUT_SERVICE_BASE_URL", f"http://hestia_scout:{port}")
     payload = {
@@ -156,7 +156,7 @@ def _register_with_hub(port: int):
 
 if __name__ == "__main__":
     load_dotenv()
-    tools_port = int(os.getenv("SCOUT_TOOLS_PORT", "8010"))
+    tools_port = int(os.getenv("SCOUT_TOOLS_PORT", "19006"))
     _start_tools_api()
     _register_with_hub(tools_port)
 

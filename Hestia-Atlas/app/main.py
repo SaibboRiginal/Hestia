@@ -33,7 +33,7 @@ load_dotenv()
 
 SERVICE_NAME = os.getenv("SERVICE_NAME", "atlas")
 SERVICE_BASE_URL = os.getenv(
-    "SERVICE_BASE_URL", "http://host.docker.internal:8095")
+    "SERVICE_BASE_URL", "http://host.docker.internal:19009")
 SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
 SERVICE_TYPE = os.getenv("SERVICE_TYPE", "integration")
 SERVICE_TAGS = [

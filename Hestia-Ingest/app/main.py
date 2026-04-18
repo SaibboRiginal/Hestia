@@ -17,9 +17,9 @@ memory = StateManager("data/state.json")  # Move this to a mounted volume!
 @app.on_event("startup")
 def register_on_hub_startup():
     hub_api_url = os.getenv(
-        "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
-        "INGEST_SERVICE_BASE_URL", "http://hestia_ingest:8001")
+        "INGEST_SERVICE_BASE_URL", "http://hestia_ingest:19003")
     payload = {
         "name": "ingest",
         "base_url": service_base_url,

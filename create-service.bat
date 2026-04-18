@@ -55,7 +55,7 @@ if errorlevel 1 (
   echo SERVICE_VERSION=1.0.0
   echo SERVICE_TYPE=%SERVICE_TYPE%
   echo SERVICE_TAGS=%SERVICE_TYPE%
-  echo HUB_API_URL=http://hestia_hub:8005/api
+  echo HUB_API_URL=http://hestia_hub:19001/api
 ) > "%TARGET_DIR%\app\.env"
 
 powershell -NoProfile -Command "$files=@('%TARGET_DIR%\Dockerfile','%TARGET_DIR%\docker-compose.yml','%TARGET_DIR%\app\.env.example'); foreach($f in $files){ $c=Get-Content -Raw $f; $c=$c.Replace('__SERVICE_KEY__','%SERVICE_KEY%').Replace('__SERVICE_PORT__','%SERVICE_PORT%'); Set-Content -NoNewline -Path $f -Value $c }"

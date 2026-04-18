@@ -2,7 +2,7 @@ import uuid
 import os
 import requests
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -21,9 +21,9 @@ engine = OracleEngine()
 @app.on_event("startup")
 def register_on_hub_startup():
     hub_api_url = os.getenv(
-        "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
-        "ORACLE_SERVICE_BASE_URL", "http://hestia_oracle:8002")
+        "ORACLE_SERVICE_BASE_URL", "http://hestia_oracle:19004")
     payload = {
         "name": "oracle",
         "base_url": service_base_url,
@@ -107,9 +107,53 @@ def chat_endpoint(req: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/format", response_model=FormatResponse)
-def format_endpoint(req: FormatRequest):
+@app.post("/api/chat/document")
+async def chat_document_endpoint(
+    message: str = Form(default=""),
+    session_id: Optional[str] = Form(default=None),
+    notify_target: Optional[str] = Form(default=None),
+    client_instructions: Optional[str] = Form(default=None),
+    file: UploadFile = File(...),
+):
+    """Accept a file (image or PDF) with an optional text instruction and stream
+    an NDJSON analysis back to the caller.
+
+    Accepted MIME types: image/jpeg, image/png, image/webp, image/gif,
+    application/pdf.
+    """
+    ACCEPTED_MIMES = {
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        "image/heic", "image/heif",
+        "application/pdf",
+    }
+    content_type = (file.content_type or "").split(";")[0].strip().lower()
+    if content_type not in ACCEPTED_MIMES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type: {content_type}. Accepted: {', '.join(sorted(ACCEPTED_MIMES))}",
+        )
     try:
+        file_bytes = await file.read()
+        current_session = session_id if session_id else str(uuid.uuid4())
+        return StreamingResponse(
+            engine.analyze_document(
+                file_bytes=file_bytes,
+                mime_type=content_type,
+                user_message=message.strip() or "Analizza questo documento.",
+                session_id=current_session,
+                notify_target=notify_target,
+                client_instructions=client_instructions,
+            ),
+            media_type="application/x-ndjson",
+        )
+    except Exception as exc:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/format", response_model=FormatResponse)
+def format_endpoint(req: FormatRequest): try:
         text = engine.format_payload(
             command=req.command,
             payload=req.payload,

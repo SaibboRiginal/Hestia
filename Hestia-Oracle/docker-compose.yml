@@ -5,12 +5,12 @@ services:
     container_name: hestia_oracle
     restart: always
     ports:
-      - "8002:8002"
+      - "19004:19004"
     environment:
-      - ARCHIVE_API_URL=http://hestia_archive:8000/api
-      - MODULE_TOOLS_URL=http://hestia_scout:8010/api/module-tools
-      - HUB_API_URL=http://hestia_hub:8005/api
-      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:8002
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api
+      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate
       - PYTHONUNBUFFERED=1
     env_file:

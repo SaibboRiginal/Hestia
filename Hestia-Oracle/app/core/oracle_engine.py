@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 class OracleEngine:
     def __init__(self):
         self.hub_api_url = os.getenv(
-            "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+            "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
         self.archive_url = os.getenv(
-            "ARCHIVE_API_URL", "http://hestia_archive:8000/api")
+            "ARCHIVE_API_URL", "http://hestia_archive:19002/api")
 
         module_tools_urls_env = os.getenv("MODULE_TOOLS_URLS", "")
         module_tools_url_single = os.getenv("MODULE_TOOLS_URL", "")
@@ -769,3 +769,71 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
     def extract_and_save_preferences(self, user_message: str, session_id: str):
         self.memory_service.extract_and_save_preferences(
             user_message, session_id)
+
+    def analyze_document(
+        self,
+        file_bytes: bytes,
+        mime_type: str,
+        user_message: str,
+        session_id: str,
+        notify_target: str | None = None,
+        client_instructions: str | None = None,
+    ):
+        """Reason over an attached document and stream an NDJSON reply.
+
+        This is the multimodal entry point.  It intentionally skips the
+        domain-query routing path because document understanding is a direct
+        analyst call — the user provides the context as a file.
+
+        Supported formats: any image MIME type, application/pdf.
+        """
+        yield self._emit_status("📄 Analisi documento in corso...")
+
+        # Build the analyst prompt with style contract so answers are consistent.
+        full_prompt = (
+            f"{self._conversation_style_contract()}\n\n"
+            f"The user has attached a document and is asking the following:\n"
+            f"{user_message}"
+        )
+        if client_instructions and str(client_instructions).strip():
+            full_prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{str(client_instructions).strip()}"
+
+        final_answer = ""
+        try:
+            yield self._emit_status("🤖 Elaborazione con LLM...")
+            final_answer = self.analyst.ask_with_attachment(
+                file_bytes=file_bytes,
+                mime_type=mime_type,
+                user_message=full_prompt,
+            )
+        except Exception as primary_exc:
+            logger.warning(
+                "Primary analyst document analysis failed: %s", primary_exc)
+            try:
+                final_answer = self.fallback_analyst.ask_with_attachment(
+                    file_bytes=file_bytes,
+                    mime_type=mime_type,
+                    user_message=full_prompt,
+                )
+            except Exception as fallback_exc:
+                logger.error("Fallback analyst also failed: %s", fallback_exc)
+                final_answer = "⚠️ Non riesco ad analizzare il documento in questo momento."
+
+        # Persist this turn in chat history.
+        try:
+            history_entry = {
+                "session_id": session_id,
+                "role": "user",
+                "content": f"[Document: {mime_type}] {user_message}",
+            }
+            self._api_post("/chat/history", history_entry)
+            self._api_post("/chat/history", {
+                "session_id": session_id,
+                "role": "assistant",
+                "content": final_answer,
+            })
+        except Exception as hist_exc:
+            logger.warning(
+                "Failed to persist document analysis history: %s", hist_exc)
+
+        yield self._emit_final(final_answer, "document")

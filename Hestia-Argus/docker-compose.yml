@@ -1,0 +1,29 @@
+services:
+  argus:
+    build: .
+    container_name: hestia_argus
+    restart: unless-stopped
+    ports:
+      - "19008:19008"
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - ARGUS_SERVICE_BASE_URL=http://hestia_argus:19008
+      - HERMES_API_URL=http://hestia_hermes:19005
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
+      - ARGUS_PORT=19008
+      - ARGUS_POLL_INTERVAL=60
+      - ARGUS_LOG_BUFFER_SIZE=500
+      - ARGUS_LOG_BACKFILL_MINUTES=5
+      - ARGUS_NOTIFY_TARGET=
+      - ALERT_COOLDOWN_MINUTES=60
+      - HESTIA_DOCS_PATH=/hestia_root
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../:/hestia_root:ro
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

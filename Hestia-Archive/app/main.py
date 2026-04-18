@@ -22,9 +22,9 @@ app = FastAPI(title="Hestia-Archive Vault",
 @app.on_event("startup")
 def register_on_hub_startup():
     hub_api_url = os.getenv(
-        "HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
-        "ARCHIVE_SERVICE_BASE_URL", "http://hestia_archive:8000")
+        "ARCHIVE_SERVICE_BASE_URL", "http://hestia_archive:19002")
     payload = {
         "name": "archive",
         "base_url": service_base_url,

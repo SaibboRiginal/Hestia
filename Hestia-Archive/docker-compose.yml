@@ -24,11 +24,11 @@ services:
     container_name: hestia_archive
     restart: always
     ports:
-      - "8000:8000"
+      - "19002:19002"
     environment:
       DATABASE_URL: postgresql://hestia_admin:super_secret_local_password@db:5432/hestia_memory
-      HUB_API_URL: http://hestia_hub:8005/api
-      ARCHIVE_SERVICE_BASE_URL: http://hestia_archive:8000
+      HUB_API_URL: http://hestia_hub:19001/api
+      ARCHIVE_SERVICE_BASE_URL: http://hestia_archive:19002
     depends_on:
       db:
         condition: service_healthy

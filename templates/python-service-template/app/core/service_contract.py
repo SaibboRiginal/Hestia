@@ -20,7 +20,7 @@ class ServiceDescriptor:
 class HestiaServiceBase(ABC):
     def __init__(self, descriptor: ServiceDescriptor):
         self.descriptor = descriptor
-        self.hub_api_url = os.getenv("HUB_API_URL", "http://hestia_hub:8005/api").rstrip("/")
+        self.hub_api_url = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
     @abstractmethod
     def build_capabilities(self) -> dict[str, Any]:

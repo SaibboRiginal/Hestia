@@ -8,7 +8,7 @@ class ArchiveClient:
     def __init__(self, api_url: str, hub_api_url: str | None = None):
         self.api_url = api_url
         self.hub_api_url = (hub_api_url or os.getenv(
-            "HUB_API_URL", "http://hestia_hub:8005/api")).rstrip("/")
+            "HUB_API_URL", "http://hestia_hub:19001/api")).rstrip("/")
 
     def _route_archive(self, method: str, endpoint: str, body=None, query=None, timeout: int = 8):
         normalized = endpoint.lstrip("/")
@@ -87,6 +87,28 @@ class ArchiveClient:
         except Exception as e:
             print(f"[-] Failed to fetch entity records: {e}")
         return []
+
+    def get_all_entity_ids(self, domain: str, status: str = "active", limit: int = 5000) -> set[str]:
+        """Return a set of all known entity_ids for a domain from Archive.
+
+        Used for pre-parse deduplication: the result is a local cache that
+        avoids per-URL round trips to Archive during the classification phase.
+        """
+        records = self.get_entity_records(
+            domain=domain, status=status, limit=limit)
+        return {str(r["entity_id"]) for r in records if r.get("entity_id")}
+
+    def get_entity_by_id(self, entity_id: str) -> dict | None:
+        """Fetch a single entity record by its entity_id."""
+        try:
+            payload = self._route_archive(
+                "GET", f"api/entities/{entity_id}", query={}, timeout=6
+            )
+            if isinstance(payload, dict):
+                return payload
+        except Exception as e:
+            print(f"[-] Failed to fetch entity {entity_id}: {e}")
+        return None
 
     def cleanup_entities(self, domain: str, required_fields: list[str], require_created_at: bool = True, dry_run: bool = False) -> dict:
         payload = {

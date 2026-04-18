@@ -39,8 +39,8 @@ class AtlasClient:
                 if localhost_candidate.rstrip("/") not in candidates:
                     candidates.append(localhost_candidate.rstrip("/"))
         else:
-            candidates = ["http://hestia_hub:8005/api",
-                          "http://localhost:8005/api"]
+            candidates = ["http://hestia_hub:19001/api",
+                          "http://localhost:19001/api"]
 
         self._hub_api_candidates = candidates
 
