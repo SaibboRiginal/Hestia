@@ -5,14 +5,23 @@ services:
     container_name: hestia_oracle
     restart: always
     ports:
-      - "19004:19004"
+      - "19004:19004"  # Oracle API port
     environment:
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api
-      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004
-      - OLLAMA_URL=http://host.docker.internal:11434/api/generate
-      - PYTHONUNBUFFERED=1
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API base URL for memory, entities, history
+      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools  # Primary module-tool endpoint (Scout)
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004   # This service's public URL as seen by Hub
+      - ORACLE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
+      - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
+      # Tuning parameters (set in app/.env or override here):
+      # ORACLE_HISTORY_LIMIT=6          number of past messages included in context (int)
+      # ORACLE_HISTORY_CHAR_LIMIT=500   max chars per history message before truncation (int)
+      # ORACLE_CONTEXT_ENTITIES_LIMIT=12  max entities injected into the analysis prompt (int)
+      # ORACLE_CONTEXT_FIELD_CHAR_LIMIT=280  max chars per entity field value (int)
+      # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  cache TTL for module-tool registry (int)
+      # ORACLE_FORCE_TELEGRAM_TARGET=1  force all subscription channels to use the user's Telegram chat_id (0|1)
     env_file:
       - ./app/.env
     networks:

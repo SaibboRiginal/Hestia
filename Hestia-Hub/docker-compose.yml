@@ -4,10 +4,12 @@ services:
     container_name: hestia_hub
     restart: always
     ports:
-      - "19001:19001"
+      - "19001:19001"  # Hub API port — must match HUB_API_URL on all other services
     environment:
-      - HUB_HEALTHCHECK_TIMEOUT=3
-      - PYTHONUNBUFFERED=1
+      - HUB_HEALTHCHECK_TIMEOUT=3        # seconds to wait when polling service /health (int, default 3)
+      - HUB_NOTIFY_TIMEOUT=2             # seconds to wait when fanning out registry-change webhooks (float, default 2)
+      - LOG_LEVEL=INFO                   # logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1               # flush stdout/stderr immediately (required for Docker log streaming)
     networks:
       - hestia_net
 

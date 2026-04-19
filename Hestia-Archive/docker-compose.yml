@@ -4,11 +4,11 @@ services:
     container_name: hestia_db
     restart: always
     environment:
-      POSTGRES_USER: hestia_admin
-      POSTGRES_PASSWORD: super_secret_local_password
-      POSTGRES_DB: hestia_memory
+      POSTGRES_USER: hestia_admin          # PostgreSQL superuser name
+      POSTGRES_PASSWORD: super_secret_local_password  # PostgreSQL password — change in production!
+      POSTGRES_DB: hestia_memory           # Name of the primary database
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Exposed for local psql access; remove in production
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     networks:
@@ -24,11 +24,13 @@ services:
     container_name: hestia_archive
     restart: always
     ports:
-      - "19002:19002"
+      - "19002:19002"  # Archive REST API port
     environment:
-      DATABASE_URL: postgresql://hestia_admin:super_secret_local_password@db:5432/hestia_memory
-      HUB_API_URL: http://hestia_hub:19001/api
-      ARCHIVE_SERVICE_BASE_URL: http://hestia_archive:19002
+      DATABASE_URL: postgresql://hestia_admin:super_secret_local_password@db:5432/hestia_memory  # Full SQLAlchemy connection string
+      HUB_API_URL: http://hestia_hub:19001/api      # Hub base URL for service registration
+      ARCHIVE_SERVICE_BASE_URL: http://hestia_archive:19002  # This service's public URL as seen by Hub
+      ARCHIVE_SERVICE_VERSION: 1.0.0                # Reported version in Hub registry
+      LOG_LEVEL: INFO                               # Logging verbosity: DEBUG | INFO | WARNING | ERROR
     depends_on:
       db:
         condition: service_healthy

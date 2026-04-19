@@ -21,7 +21,8 @@ from .modules.schemas import (
 )
 
 logging.basicConfig(
-    level=logging.INFO,
+    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger("hestia_hub")
@@ -50,7 +51,8 @@ def register_service(req: RegisterServiceRequest):
     service = req.model_dump()
     registry.register(service)
     events.bump(registry.all_services(), reason="register")
-    logger.info("Service registered | name=%s base_url=%s", req.name, req.base_url)
+    logger.info("Service registered | name=%s base_url=%s",
+                req.name, req.base_url)
     return {"status": "ok"}
 
 
@@ -58,7 +60,8 @@ def register_service(req: RegisterServiceRequest):
 def deregister_service(req: DeregisterServiceRequest):
     registry.deregister(req.name, req.base_url)
     events.bump(registry.all_services(), reason="deregister")
-    logger.info("Service deregistered | name=%s base_url=%s", req.name, req.base_url)
+    logger.info("Service deregistered | name=%s base_url=%s",
+                req.name, req.base_url)
     return {"status": "ok"}
 
 
@@ -135,7 +138,8 @@ def registration_standard():
 def route_request(service_name: str, path: str, req: RouteRequest):
     candidates = registry.get(service_name)
     if not candidates:
-        raise HTTPException(status_code=404, detail=f"Service not registered: {service_name}")
+        raise HTTPException(
+            status_code=404, detail=f"Service not registered: {service_name}")
 
     last_error = None
     for service in candidates:

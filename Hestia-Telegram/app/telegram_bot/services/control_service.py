@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -7,6 +8,8 @@ import requests
 
 from telegram_bot import core
 from telegram_bot.services.command_service import refresh_command_registry
+
+logger = logging.getLogger("hestia_telegram.control")
 
 
 class ControlRequestHandler(BaseHTTPRequestHandler):
@@ -56,8 +59,9 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                 if entity_payload and isinstance(entity_payload, dict):
                     title = entity_payload.get(
                         "title", entity_payload.get("summary", ""))
-                    print(
-                        f"[DISPATCH] Buffering alert for chat_id={chat_id} domain={domain} entity={entity_id} title='{str(title)[:60]}'")
+                    logger.info(
+                        "Buffering alert | chat_id=%s domain=%s entity=%s title='%s'",
+                        chat_id, domain, entity_id, str(title)[:60])
                     core.buffer_alert(
                         chat_id, entity_payload, domain, entity_id)
                     self._send_json(

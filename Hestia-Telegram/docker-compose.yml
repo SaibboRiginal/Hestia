@@ -4,10 +4,18 @@ services:
     container_name: hestia_telegram
     restart: always
     environment:
-      # Tell the bot how to reach the Oracle on the internal Docker network
-      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - PYTHONUNBUFFERED=1 # <-- FORZA LA STAMPA DEI LOG IN TEMPO REALE
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat   # Oracle chat endpoint URL for message processing
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - TELEGRAM_BASE_URL=http://hestia_telegram:8010        # This service's public URL as seen by Hub (includes control port)
+      - TELEGRAM_CONTROL_PORT=8010                           # Internal HTTP port for Hub dispatch and health (int, default 8010)
+      - TELEGRAM_COMMAND_REFRESH_SECONDS=0                   # Seconds between command registry polls; 0 = use webhook only (int)
+      - ALERT_BUFFER_WINDOW_SECONDS=0.8                      # Seconds to buffer consecutive alerts before grouping into one message (float)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
+      # Optional overrides (set in app/.env):
+      # TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS  default tone/style instructions sent to Oracle with each message
+      # TELEGRAM_HIDDEN_COMMAND_SERVICES      comma-separated service names whose commands are hidden from the menu
+      # TELEGRAM_HIDDEN_DYNAMIC_COMMANDS      comma-separated command names to hide from the Telegram command list
     env_file:
       - ./app/.env
     volumes:

@@ -5,12 +5,14 @@ services:
     container_name: hestia_hub
     restart: unless-stopped
     ports:
-      - "19001:19001"
+      - "19001:19001"  # Hub API port — must match HUB_API_URL on all other services
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - HUB_HEALTHCHECK_TIMEOUT=3
-      - PYTHONUNBUFFERED=1
+      - HUB_HEALTHCHECK_TIMEOUT=3    # seconds to wait when polling service /health (int, default 3)
+      - HUB_NOTIFY_TIMEOUT=2         # seconds to wait when fanning out registry-change webhooks (float, default 2)
+      - LOG_LEVEL=INFO               # logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1           # flush stdout/stderr immediately (required for Docker log streaming)
     networks:
       - hestia_net
 
@@ -19,11 +21,11 @@ services:
     container_name: hestia_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: hestia_admin
-      POSTGRES_PASSWORD: super_secret_local_password
-      POSTGRES_DB: hestia_memory
+      POSTGRES_USER: hestia_admin          # PostgreSQL superuser name
+      POSTGRES_PASSWORD: super_secret_local_password  # PostgreSQL password — change in production!
+      POSTGRES_DB: hestia_memory           # Name of the primary database
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Exposed for local psql access; remove in production
     volumes:
       - hestia_archive_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -40,11 +42,14 @@ services:
     container_name: hestia_archive
     restart: unless-stopped
     ports:
-      - "19002:19002"
+      - "19002:19002"  # Archive REST API port
     environment:
-      - DATABASE_URL=postgresql://hestia_admin:super_secret_local_password@archive_db:5432/hestia_memory
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:19002
+      - DATABASE_URL=postgresql://hestia_admin:super_secret_local_password@archive_db:5432/hestia_memory  # Full SQLAlchemy connection string
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:19002  # This service's public URL as seen by Hub
+      - ARCHIVE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
+      - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1
     depends_on:
       archive_db:
         condition: service_healthy
@@ -59,15 +64,20 @@ services:
     container_name: hestia_ingest
     restart: unless-stopped
     ports:
-      - "19003:19003"
+      - "19003:19003"  # Ingest API port
     env_file:
       - ./Hestia-Ingest/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
-      - ARCHIVE_URL=http://hestia_archive:19002
-      - CHRONOS_URL=http://hestia_chronos:19007
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003   # This service's public URL as seen by Hub
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive  # Archive API for record retrieval
+      - ARCHIVE_URL=http://hestia_archive:19002               # Archive base URL for direct calendar writes
+      - CHRONOS_URL=http://hestia_chronos:19007               # Chronos base URL (calendar sync target)
+      - INGEST_SERVICE_VERSION=1.0.0                          # Reported version in Hub registry
+      - INGEST_CALENDAR_BACKFILL_DAYS=7                       # Days back to include when syncing calendar (int, default 7)
+      - INGEST_ARCHIVE_ROUTE_TIMEOUT=8                        # Seconds to wait for Hub-routed Archive writes (int, default 8)
+      - INGEST_CALENDAR_WRITE_TIMEOUT=10                      # Seconds to wait for direct calendar item writes (int, default 10)
+      - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Ingest/data:/code/data
@@ -85,16 +95,25 @@ services:
     container_name: hestia_oracle
     restart: unless-stopped
     ports:
-      - "19004:19004"
+      - "19004:19004"  # Oracle API port
     env_file:
       - ./Hestia-Oracle/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api
-      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools
-      - OLLAMA_URL=http://host.docker.internal:11434/api/generate
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004   # This service's public URL as seen by Hub
+      - ORACLE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API for memory, entities, history
+      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools  # Primary module-tool endpoint (Scout)
+      - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
+      # Tuning (override as needed):
+      # ORACLE_HISTORY_LIMIT=6          past messages included in context (int)
+      # ORACLE_HISTORY_CHAR_LIMIT=500   max chars per history message (int)
+      # ORACLE_CONTEXT_ENTITIES_LIMIT=12  max entities in analysis prompt (int)
+      # ORACLE_CONTEXT_FIELD_CHAR_LIMIT=280  max chars per entity field (int)
+      # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  module-tool cache TTL (int)
+      # ORACLE_FORCE_TELEGRAM_TARGET=1  force subscription channels to user's chat_id (0|1)
     depends_on:
       hub:
         condition: service_started
@@ -109,11 +128,15 @@ services:
     container_name: hestia_hermes
     restart: unless-stopped
     ports:
-      - "19005:19005"
+      - "19005:19005"  # Hermes API port
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005   # This service's public URL as seen by Hub
+      - HERMES_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API for reading subscriptions and writing dispatch logs
+      - HERMES_HUB_REGISTER_RETRIES=8                        # Max Hub registration attempts on startup (int, default 8)
+      - HERMES_HUB_REGISTER_RETRY_DELAY=2                    # Seconds between registration retry attempts (float, default 2)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -131,8 +154,13 @@ services:
     env_file:
       - ./Hestia-Telegram/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat   # Oracle chat endpoint URL
+      - TELEGRAM_BASE_URL=http://hestia_telegram:8010        # This service's public URL (includes control port)
+      - TELEGRAM_CONTROL_PORT=8010                           # Internal HTTP port for Hub dispatch and health (int, default 8010)
+      - TELEGRAM_COMMAND_REFRESH_SECONDS=0                   # Seconds between command registry polls; 0 = webhook only (int)
+      - ALERT_BUFFER_WINDOW_SECONDS=0.8                      # Seconds to buffer consecutive alerts before grouping (float)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Telegram/data:/code/data
@@ -152,11 +180,14 @@ services:
     env_file:
       - ./Hestia-Scout/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:19006
-      - SCOUT_TOOLS_PORT=19006
-      - INGEST_API_URL=http://hestia_ingest:19003/api
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:19006     # This service's public URL as seen by Hub
+      - SCOUT_SERVICE_VERSION=1.0.0                          # Reported version in Hub registry
+      - SCOUT_TOOLS_PORT=19006                               # Port for Scout tools HTTP API (int, default 19006)
+      - SCOUT_POLL_INTERVAL_SECONDS=1800                     # Seconds between email polling cycles (int, default 1800 = 30 min)
+      - INGEST_API_URL=http://hestia_ingest:19003/api        # Ingest API URL for triggering fetches
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive  # Archive API for record retrieval
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -176,18 +207,19 @@ services:
     container_name: hestia_chronos
     restart: unless-stopped
     ports:
-      - "19007:19007"
+      - "19007:19007"  # Chronos API port
     env_file:
       - ./Hestia-Chronos/app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - CALENDAR_SERVICE_BASE_URL=http://hestia_chronos:19007
-      - CALENDAR_PORT=19007
-      - ARCHIVE_URL=http://hestia_archive:19002
-      - HERMES_URL=http://hestia_hermes:19005
-      - NOTIFY_TARGET=
-      - CHRONOS_NOTIFY_POLL_SECONDS=300
-      - NOTIFY_LOOK_AHEAD_HOURS=26
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - CALENDAR_SERVICE_BASE_URL=http://hestia_chronos:19007  # This service's public URL as seen by Hub
+      - CALENDAR_PORT=19007                                  # Port this service listens on (int)
+      - ARCHIVE_URL=http://hestia_archive:19002               # Archive base URL for calendar items
+      - HERMES_URL=http://hestia_hermes:19005                 # Hermes URL for dispatching notifications
+      - NOTIFY_TARGET=                                        # Telegram chat_id for event reminders (string, required)
+      - CHRONOS_NOTIFY_POLL_SECONDS=300                       # Seconds between notification polling cycles (int, default 300 = 5 min)
+      - NOTIFY_LOOK_AHEAD_HOURS=26                            # Hours ahead to check for upcoming events (int, default 26)
+      - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -205,23 +237,24 @@ services:
     container_name: hestia_argus
     restart: unless-stopped
     ports:
-      - "19008:19008"
+      - "19008:19008"  # Argus API port
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - ARGUS_SERVICE_BASE_URL=http://hestia_argus:19008
-      - HERMES_API_URL=http://hestia_hermes:19005
-      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
-      - ARGUS_PORT=19008
-      - ARGUS_POLL_INTERVAL=60
-      - ARGUS_LOG_BUFFER_SIZE=500
-      - ARGUS_LOG_BACKFILL_MINUTES=5
-      - ARGUS_NOTIFY_TARGET=
-      - ALERT_COOLDOWN_MINUTES=60
-      - HESTIA_DOCS_PATH=/hestia_root
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - ARGUS_SERVICE_BASE_URL=http://hestia_argus:19008     # This service's public URL as seen by Hub
+      - HERMES_API_URL=http://hestia_hermes:19005            # Hermes URL for alert dispatch
+      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat   # Oracle URL for AI-formatted alerts
+      - ARGUS_PORT=19008                  # Port this service listens on (int)
+      - ARGUS_POLL_INTERVAL=60            # Seconds between Docker log polling cycles (int, default 60)
+      - ARGUS_LOG_BUFFER_SIZE=500         # Max log lines kept in memory per container (int, default 500)
+      - ARGUS_LOG_BACKFILL_MINUTES=5      # Minutes of past logs to load on startup per container (int, default 5)
+      - ARGUS_NOTIFY_TARGET=              # Telegram chat_id for alert notifications (string, required for alerts)
+      - ALERT_COOLDOWN_MINUTES=60         # Minimum minutes between repeated alerts per container (int, default 60)
+      - HESTIA_DOCS_PATH=/hestia_root     # Mount path for the Hestia repo (for doc context)
+      - LOG_LEVEL=INFO                    # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./:/hestia_root:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only Docker socket for log tailing
+      - ./:/hestia_root:ro                            # Hestia repo root mounted for doc access
     depends_on:
       hub:
         condition: service_started

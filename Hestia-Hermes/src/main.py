@@ -9,7 +9,8 @@ from .modules.schemas import DispatchSendRequest, EventIngestRequest
 from .modules.service import HermesService
 
 logging.basicConfig(
-    level=logging.INFO,
+    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s"
 )
 logger = logging.getLogger("hestia_hermes")
