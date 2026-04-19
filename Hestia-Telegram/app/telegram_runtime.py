@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from telegram_bot.core import bot, TELEGRAM_COMMAND_REFRESH_SECONDS
@@ -20,6 +21,9 @@ from telegram_bot.services.command_service import (
     watch_command_registry_loop,
 )
 from telegram_bot.services.control_service import run_control_api
+
+
+logger = logging.getLogger("hestia_telegram")
 
 
 @bot.message_handler(commands=["start", "help"])
@@ -80,14 +84,21 @@ def on_chat(message):
 def run():
     threading.Thread(target=run_control_api, daemon=True).start()
 
-    register_telegram_service()
+    ok = register_telegram_service()
+    if ok:
+        logger.info("Telegram service registered on Hub")
+    else:
+        logger.warning(
+            "Telegram Hub registration failed (will retry on webhook)")
     refresh_command_registry(force=True)
 
     if TELEGRAM_COMMAND_REFRESH_SECONDS > 0:
         threading.Thread(target=watch_command_registry_loop,
                          daemon=True).start()
+        logger.info("Command registry refresh loop started | interval=%ds",
+                    TELEGRAM_COMMAND_REFRESH_SECONDS)
 
-    print("[*] Telegram interface starting... Waiting for messages.")
+    logger.info("Telegram interface starting — waiting for messages")
     bot.infinity_polling()
 
 

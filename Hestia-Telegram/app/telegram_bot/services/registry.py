@@ -1,6 +1,7 @@
 """Command registry management — Hub discovery, revision polling, and Telegram menu setup."""
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import Any
@@ -9,6 +10,8 @@ import requests
 from telebot.types import BotCommand, BotCommandScopeChat, InlineKeyboardButton, InlineKeyboardMarkup
 
 from telegram_bot import core
+
+logger = logging.getLogger("hestia_telegram.registry")
 
 # ── Hub discovery ─────────────────────────────────────────────────────────────
 
@@ -20,6 +23,8 @@ def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
             f"{core.HUB_API_URL}/discovery/commands", params={"client": "telegram"}, timeout=6
         )
         if response.status_code != 200:
+            logger.warning(
+                "Hub command discovery returned non-200 | status=%s", response.status_code)
             return {}
         discovered: dict[str, dict[str, Any]] = {}
         for item in response.json().get("commands", []) or []:
@@ -28,8 +33,10 @@ def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
             name = str(item.get("command", "")).strip().lower()
             if name:
                 discovered[name] = item
+        logger.debug("Discovered %d commands from Hub", len(discovered))
         return discovered
-    except Exception:
+    except Exception as exc:
+        logger.warning("Hub command discovery failed: %s", exc)
         return {}
 
 
@@ -61,6 +68,8 @@ def refresh_command_registry(force: bool = False) -> bool:
         core.COMMAND_REGISTRY = discovered
         if revision is not None:
             core.COMMAND_REGISTRY_REVISION = revision
+    logger.info("Command registry refreshed | revision=%s commands=%d",
+                revision, len(discovered))
     setup_commands()
     return True
 
@@ -93,8 +102,13 @@ def register_telegram_service() -> bool:
     try:
         response = requests.post(
             f"{core.HUB_API_URL}/registry/register", json=payload, timeout=6)
-        return response.status_code == 200
-    except Exception:
+        if response.status_code == 200:
+            return True
+        logger.warning("Hub registration non-success | status=%s",
+                       response.status_code)
+        return False
+    except Exception as exc:
+        logger.warning("Hub registration request failed: %s", exc)
         return False
 
 
@@ -198,4 +212,4 @@ def setup_commands():
                 chat_id=int(str(core.ALLOWED_USER_ID))))
         except Exception:
             pass
-    print(f"[*] Telegram Command Menu updated ({len(commands)} commands).")
+    logger.info("Telegram command menu updated | commands=%d", len(commands))

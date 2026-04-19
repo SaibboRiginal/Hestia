@@ -10,9 +10,11 @@ from core.oracle_engine import OracleEngine
 
 
 logging.basicConfig(
-    level=logging.INFO,
+    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s"
 )
+logger = logging.getLogger("hestia_oracle")
 
 app = FastAPI(title="Hestia Oracle Microservice", version="1.0")
 engine = OracleEngine()
@@ -36,10 +38,16 @@ def register_on_hub_startup():
         },
     }
     try:
-        requests.post(f"{hub_api_url}/registry/register",
-                      json=payload, timeout=4)
-    except Exception:
-        pass
+        resp = requests.post(
+            f"{hub_api_url}/registry/register", json=payload, timeout=4)
+        if resp.status_code < 400:
+            logger.info("Registered on Hub | hub=%s base_url=%s",
+                        hub_api_url, service_base_url)
+        else:
+            logger.warning("Hub registration non-success | status=%s body=%s",
+                           resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("Hub registration failed (non-fatal): %s", exc)
 
 
 class ChatRequest(BaseModel):
@@ -102,8 +110,8 @@ def chat_endpoint(req: ChatRequest):
             media_type="application/x-ndjson"
         )
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.exception(
+            "Unhandled error in chat endpoint | session=%s", req.session_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -189,8 +197,7 @@ async def chat_document_endpoint(
             media_type="application/x-ndjson",
         )
     except Exception as exc:
-        import traceback
-        print(traceback.format_exc())
+        logger.exception("Unhandled error in document endpoint")
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -205,8 +212,7 @@ def format_endpoint(req: FormatRequest):
         )
         return {"text": text}
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.exception("Unhandled error in format endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -220,8 +226,7 @@ def compile_subscription_endpoint(req: NotificationCompileRequest):
         )
         return result
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.exception("Unhandled error in compile endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -247,8 +252,7 @@ def llm_generate_endpoint(req: dict):
 
         return {"response": response_text, "model": model, "provider": provider}
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.exception("Unhandled error in llm/generate endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -2,18 +2,19 @@ services:
   scout:
     build: .
     container_name: hestia_scout
-    restart: always  # If it crashes, Docker automatically restarts it
+    restart: always
     env_file:
       - ./app/.env
     environment:
-      # Change these to match your actual Ingest and Archive container names!
-      # E.g., if your archive container is named 'hestia_archive', use that instead of localhost.
-      - PYTHONUNBUFFERED=1
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
-      - INGEST_API_URL=http://hestia_ingest:19003/api
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:19006
-      - SCOUT_TOOLS_PORT=19006
+      - PYTHONUNBUFFERED=1               # flush stdout/stderr immediately (required for Docker log streaming)
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive  # Archive API base URL for record retrieval
+      - INGEST_API_URL=http://hestia_ingest:19003/api             # Ingest API URL for triggering fetches
+      - HUB_API_URL=http://hestia_hub:19001/api                   # Hub base URL for service registration and routing
+      - SCOUT_SERVICE_BASE_URL=http://hestia_scout:19006          # This service's public URL as seen by Hub
+      - SCOUT_TOOLS_PORT=19006            # Port for the Scout tools HTTP API (int, default 19006)
+      - SCOUT_SERVICE_VERSION=1.0.0       # Reported version in Hub registry
+      - SCOUT_POLL_INTERVAL_SECONDS=1800  # Seconds between email polling cycles (int, default 1800 = 30 min)
+      - LOG_LEVEL=INFO                    # Logging verbosity: DEBUG | INFO | WARNING | ERROR
     networks:
       - hestia_net
 

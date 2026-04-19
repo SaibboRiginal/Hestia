@@ -1,3 +1,4 @@
+import logging
 import os
 import threading
 import time
@@ -12,17 +13,21 @@ from tools.retrieval import ScoutRetrievalService
 from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
 from worker.runner import ScoutWorker
 
+logging.basicConfig(
+    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("hestia_scout")
+
 TARGET_DOMAIN = "real_estate"
 TARGET_SOURCE = "gmail_imap"
-
-
-def _build_target_filters() -> list[str]:
-    explicit_filters = [
-        item.strip()
-        for item in os.getenv("SCOUT_FILTER_QUERIES", "").split("||")
-        if item.strip()
-    ]
-    if explicit_filters:
+  explicit_filters = [
+       item.strip()
+       for item in os.getenv("SCOUT_FILTER_QUERIES", "").split("||")
+       if item.strip()
+       ]
+   if explicit_filters:
         return explicit_filters
 
     sender_list_raw = os.getenv(
@@ -102,14 +107,15 @@ def search_real_estate(req: RealEstateSearchRequest):
 
 
 def _start_tools_api():
-    port = int(os.getenv("SCOUT_TOOLS_PORT", "8010"))
+    # SCOUT_TOOLS_PORT: HTTP port for the tools API
+    port = int(os.getenv("SCOUT_TOOLS_PORT", "19006"))
 
     def run_server():
         uvicorn.run(api_app, host="0.0.0.0", port=port, log_level="info")
 
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
-    print(f"[✓] Scout tools API online at 0.0.0.0:{port}")
+    logger.info("Scout tools API online at 0.0.0.0:%d", port)
 
 
 def _register_with_hub(port: int):
@@ -149,9 +155,10 @@ def _register_with_hub(port: int):
     try:
         requests.post(f"{hub_api_url}/registry/register",
                       json=payload, timeout=4)
-        print("[✓] Scout registered in Hub")
+        logger.info("Registered on Hub | hub=%s base_url=%s",
+                    hub_api_url, service_base_url)
     except Exception as error:
-        print(f"[!] Scout Hub registration failed: {error}")
+        logger.warning("Hub registration failed (non-fatal): %s", error)
 
 
 if __name__ == "__main__":
@@ -160,11 +167,14 @@ if __name__ == "__main__":
     _start_tools_api()
     _register_with_hub(tools_port)
 
+    # SCOUT_POLL_INTERVAL_SECONDS: seconds between email polling cycles (default 1800 = 30 min)
+    poll_interval = int(os.getenv("SCOUT_POLL_INTERVAL_SECONDS", "1800"))
     while True:
         try:
             worker.run_cycle()
         except Exception as error:
-            print(f"[!] Critical Error in Scout Loop: {error}")
+            logger.error("Critical error in Scout polling loop: %s", error)
 
-        print("\n💤 Scout resting for 30 minutes before checking for new emails...")
-        time.sleep(1800)
+        logger.info(
+            "Scout resting for %d seconds before next cycle", poll_interval)
+        time.sleep(poll_interval)

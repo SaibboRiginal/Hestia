@@ -3,6 +3,7 @@
 Single responsibility: bootstrap the app (database setup, Hub registration)
 and wire in the domain routers. All endpoint logic lives in app/routers/.
 """
+import logging
 import os
 
 import requests
@@ -13,6 +14,13 @@ from . import models, database
 from .database import engine
 from .routers import archive, chat, calendar, documents, entities, memory
 
+logging.basicConfig(
+    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("hestia_archive")
+
 # ── Database bootstrap ────────────────────────────────────────────────────────
 with engine.connect() as conn:
     conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -21,7 +29,8 @@ with engine.connect() as conn:
 models.Base.metadata.create_all(bind=engine)
 
 # ── Application ───────────────────────────────────────────────────────────────
-app = FastAPI(title="Hestia-Archive Vault", version="3.0.0 (Entity & Vector Ready)")
+app = FastAPI(title="Hestia-Archive Vault",
+              version="3.0.0 (Entity & Vector Ready)")
 
 # Include all domain routers
 app.include_router(archive.router)
@@ -134,8 +143,16 @@ _HUB_REGISTRATION_PAYLOAD = {
 @app.on_event("startup")
 def register_on_hub_startup():
     """Register this service with the Hub on startup (best-effort)."""
-    hub_url = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    hub_url = os.getenv(
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     try:
-        requests.post(f"{hub_url}/registry/register", json=_HUB_REGISTRATION_PAYLOAD, timeout=4)
-    except Exception:
-        pass
+        resp = requests.post(f"{hub_url}/registry/register",
+                             json=_HUB_REGISTRATION_PAYLOAD, timeout=4)
+        if resp.status_code < 400:
+            logger.info("Registered on Hub | hub=%s base_url=%s", hub_url,
+                        _HUB_REGISTRATION_PAYLOAD.get("base_url"))
+        else:
+            logger.warning("Hub registration non-success | status=%s body=%s",
+                           resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("Hub registration failed (non-fatal): %s", exc)

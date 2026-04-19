@@ -1,6 +1,15 @@
-import requests
+import logging
 import os
 from typing import Any, Optional
+
+import requests
+
+logger = logging.getLogger("hestia_ingest.archive_client")
+
+# INGEST_ARCHIVE_ROUTE_TIMEOUT: seconds to wait for Hub-routed Archive writes (default 8)
+_ROUTE_TIMEOUT = int(os.getenv("INGEST_ARCHIVE_ROUTE_TIMEOUT", "8"))
+# INGEST_CALENDAR_WRITE_TIMEOUT: seconds to wait for calendar item writes to Archive (default 10)
+_CALENDAR_TIMEOUT = int(os.getenv("INGEST_CALENDAR_WRITE_TIMEOUT", "10"))
 
 
 class ArchiveClient:
@@ -12,18 +21,24 @@ class ArchiveClient:
             "ARCHIVE_URL", "http://hestia_archive:19002")
 
     def _route_archive(self, payload: dict) -> bool:
-        response = requests.post(
-            f"{self.hub_api_url}/route/archive/api/archive",
-            json={
-                "method": "POST",
-                "headers": {},
-                "query": {},
-                "body": payload,
-                "timeout_seconds": 8,
-            },
-            timeout=9,
-        )
+        try:
+            response = requests.post(
+                f"{self.hub_api_url}/route/archive/api/archive",
+                json={
+                    "method": "POST",
+                    "headers": {},
+                    "query": {},
+                    "body": payload,
+                    "timeout_seconds": _ROUTE_TIMEOUT,
+                },
+                timeout=_ROUTE_TIMEOUT + 2,
+            )
+        except Exception as exc:
+            logger.warning("Hub route request failed: %s", exc)
+            return False
         if response.status_code != 200:
+            logger.warning("Hub returned non-200 | status=%s",
+                           response.status_code)
             return False
         routed = response.json() or {}
         return int(routed.get("status_code", 500)) < 400
@@ -40,17 +55,21 @@ class ArchiveClient:
 
         try:
             if self._route_archive(data):
-                print(f"[✓] Vault saved raw record safely.")
+                logger.debug(
+                    "Record shipped via Hub | domain=%s source=%s", domain, source)
                 return True
 
             response = requests.post(self.api_url, json=data)
             if response.status_code == 200:
-                print(f"[✓] Vault saved raw record safely.")
+                logger.debug(
+                    "Record shipped via direct URL | domain=%s source=%s", domain, source)
                 return True
-            print(f"[!] Vault rejected record: {response.text}")
+            logger.warning("Archive rejected record | domain=%s source=%s status=%s",
+                           domain, source, response.text[:200])
             return False
         except Exception as e:
-            print(f"[-] Failed to ship to Vault: {e}")
+            logger.error(
+                "Failed to ship to Vault | domain=%s source=%s error=%s", domain, source, e)
             return False
 
     def ship_calendar_item(self, item: dict[str, Any]) -> bool:
@@ -65,13 +84,16 @@ class ArchiveClient:
             resp = requests.post(
                 f"{self.archive_base_url.rstrip('/')}/api/calendar/items",
                 json=item,
-                timeout=10,
+                timeout=_CALENDAR_TIMEOUT,
             )
             if resp.status_code < 300:
-                print(f"[✓] Calendar item archived: {item.get('title', '?')}")
+                logger.debug("Calendar item archived | title=%s",
+                             item.get('title', '?'))
                 return True
-            print(f"[!] Archive rejected calendar item: {resp.text[:200]}")
+            logger.warning("Archive rejected calendar item | title=%s status=%s body=%s",
+                           item.get('title', '?'), resp.status_code, resp.text[:200])
             return False
         except Exception as exc:
-            print(f"[-] Failed to archive calendar item: {exc}")
+            logger.error("Failed to archive calendar item | title=%s error=%s", item.get(
+                'title', '?'), exc)
             return False

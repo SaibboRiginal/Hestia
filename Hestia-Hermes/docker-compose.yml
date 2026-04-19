@@ -4,14 +4,18 @@ services:
     container_name: hestia_hermes
     restart: always
     ports:
-      - "19005:19005"
+      - "19005:19005"  # Hermes API port
     env_file:
       - ./src/.env
     environment:
-      - ARCHIVE_API_URL=http://hestia_archive:19002/api
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005
-      - PYTHONUNBUFFERED=1
+      - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API base URL for reading subscriptions and writing dispatch logs
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing Telegram dispatch and service registration
+      - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005   # This service's public URL as seen by Hub
+      - HERMES_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
+      - HERMES_HUB_REGISTER_RETRIES=8                        # Max Hub registration attempts on startup (int, default 8)
+      - HERMES_HUB_REGISTER_RETRY_DELAY=2                    # Seconds between registration retry attempts (float, default 2)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
     networks:
       - hestia_net
 
