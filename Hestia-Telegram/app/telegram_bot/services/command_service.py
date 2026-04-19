@@ -30,8 +30,10 @@ from telegram_bot.services.calendar_wizard import (
 
 from telegram_bot.services.registry import (
     build_commands_keyboard,
+    build_group_commands_keyboard,
     discover_commands_from_hub,
     fetch_registry_revision,
+    get_grouped_commands,
     get_local_command_items,
     get_visible_command_items,
     refresh_command_registry,
@@ -47,6 +49,7 @@ from telegram_bot.services.executor import (
     execute_direct_command,
     execute_local_command,
     handle_doc_callback,
+    handle_group_callback,
     open_arg_picker,
     prompt_clear_confirmation,
     prompt_set_parameter_picker,

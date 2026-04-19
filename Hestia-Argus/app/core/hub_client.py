@@ -25,12 +25,12 @@ def register() -> bool:
         "service_version": "1.0.0",
         "tags": ["core", "monitoring"],
         "capabilities": {
-            "argus.status": {
+            "argus_status": {
                 "description": "Live health snapshot of all Hestia services",
                 "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/status",
                 "method": "GET",
             },
-            "argus.logs": {
+            "argus_logs": {
                 "description": "Recent filtered log events from a service container",
                 "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/logs",
                 "method": "GET",
@@ -40,7 +40,7 @@ def register() -> bool:
                     "since": "Time window e.g. 30m, 1h",
                 },
             },
-            "argus.analyze": {
+            "argus_analyze": {
                 "description": "Full system analysis combining health and logs",
                 "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/analyze",
                 "method": "POST",
@@ -55,9 +55,11 @@ def register() -> bool:
                     "clients": ["telegram", "ui"],
                     "response_mode": "oracle_natural",
                     "response_prompt": (
-                        "Mostra lo stato di salute di tutti i servizi Hestia in modo "
-                        "leggibile. Elenca i servizi attivi con ✅ e quelli con problemi "
-                        "con ⚠️ o ❌. Sii conciso. Se tutto funziona, dillo chiaramente."
+                        "Sii ESTREMAMENTE conciso. "
+                        "Una riga introduttiva con il conteggio (es. '9/9 servizi online'). "
+                        "Poi una lista puntata • con ogni servizio: ✅ nome se up, ❌ nome — motivo se down/degraded. "
+                        "Se tutto funziona scrivi solo la riga introduttiva senza lista. "
+                        "Nessun paragrafo aggiuntivo, nessuna conclusione."
                     ),
                 },
                 {
@@ -70,9 +72,12 @@ def register() -> bool:
                     "clients": ["telegram", "ui"],
                     "response_mode": "oracle_natural",
                     "response_prompt": (
-                        "Mostra i log di errore e warning recenti in modo leggibile. "
-                        "Raggruppa per servizio, indica il livello di gravità e il "
-                        "messaggio principale. Se non ci sono problemi, dillo chiaramente."
+                        "Sii ESTREMAMENTE conciso. "
+                        "Se non ci sono eventi: una sola frase '✅ Nessun warning recente.' "
+                        "Altrimenti: una riga con il totale, poi lista puntata • per ogni problema "
+                        "nel formato '• [LIVELLO] servizio — messaggio breve'. "
+                        "Raggruppa per servizio se ci sono più eventi dallo stesso. "
+                        "Nessun paragrafo introduttivo, nessuna conclusione."
                     ),
                 },
                 {
@@ -83,7 +88,15 @@ def register() -> bool:
                     "path": "/api/argus/analyze",
                     "body_template": {},
                     "clients": ["telegram", "ui"],
-                    "response_mode": "direct",
+                    "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Sii conciso e diretto. Struttura SEMPRE così: "
+                        "1) Una riga di stato globale (es. '✅ Sistema sano' o '⚠️ X problemi rilevati'). "
+                        "2) Se ci sono problemi: lista puntata • con ogni issue — servizio, sintomo, causa probabile. "
+                        "3) Se necessario: lista puntata • con azioni suggerite, massimo 3. "
+                        "Preferisci liste puntate a paragrafi. Nessun testo introduttivo o di chiusura. "
+                        "Usa il campo 'summary' come base per l'analisi AI già elaborata."
+                    ),
                 },
             ],
         },

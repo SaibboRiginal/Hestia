@@ -15,6 +15,7 @@ from telegram_bot.services.chat_service import (
     handle_set_picker,
     send_welcome,
 )
+from telegram_bot.services.executor import handle_group_callback
 from telegram_bot.services.command_service import (
     refresh_command_registry,
     register_telegram_service,
@@ -34,6 +35,11 @@ def on_welcome(message):
 @bot.message_handler(commands=["clear"])
 def on_clear(message):
     clear_memory(message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("grp:"))
+def on_group_nav(call):
+    handle_group_callback(call)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm:") or call.data.startswith("cancel:") or call.data.startswith("confirm_cmd:") or call.data.startswith("cancel_cmd:"))

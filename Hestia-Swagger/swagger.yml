@@ -1,0 +1,2053 @@
+openapi: 3.0.3
+
+info:
+  title: Hestia — API Reference
+  description: |
+    Aggregated API reference for all Hestia services.
+    Each path overrides the server URL to route to the correct service.
+
+    | Service   | Port  |
+    |-----------|-------|
+    | Hub       | 19001 |
+    | Archive   | 19002 |
+    | Ingest    | 19003 |
+    | Oracle    | 19004 |
+    | Hermes    | 19005 |
+    | Scout     | 19006 |
+    | Chronos   | 19007 |
+    | Argus     | 19008 |
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:19001
+    description: Hub (default)
+
+tags:
+  - name: Hub
+    description: Service registry and request routing
+  - name: Archive — Records
+    description: Raw domain records ingested from external sources
+  - name: Archive — Entities
+    description: Structured persistent entities (real estate listings, etc.)
+  - name: Archive — Chat
+    description: Conversation history
+  - name: Archive — Memory
+    description: User preferences and long-term memory
+  - name: Archive — Subscriptions
+    description: Proactive notification subscriptions
+  - name: Archive — Dispatch Logs
+    description: Delivery logs for dispatched notifications
+  - name: Archive — Calendar
+    description: Calendar items (events, tasks, reminders)
+  - name: Archive — Documents
+    description: Uploaded and indexed documents with embeddings
+  - name: Ingest
+    description: Data ingestion triggers
+  - name: Oracle
+    description: LLM chat, document analysis and formatting
+  - name: Hermes
+    description: Event-driven dispatch and direct messaging
+  - name: Scout
+    description: Real estate search and module tools
+  - name: Chronos
+    description: Calendar CRUD and agenda
+  - name: Argus
+    description: System health monitoring and log analysis
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Shared components
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: hestia_hub
+
+    # ── Hub ───────────────────────────────────────────────────────────────────
+    RegisterServiceRequest:
+      type: object
+      required:
+        [name, base_url, health_endpoint, service_type, service_version, tags]
+      properties:
+        name:
+          type: string
+          pattern: "^[a-z0-9_-]{2,40}$"
+          example: my_service
+        base_url:
+          type: string
+          example: http://hestia_myservice:9999
+        health_endpoint:
+          type: string
+          example: /health
+        service_type:
+          type: string
+          enum: [core, module, integration]
+        service_version:
+          type: string
+          example: 1.0.0
+        tags:
+          type: array
+          items:
+            type: string
+            enum:
+              [
+                core,
+                module,
+                storage,
+                connector,
+                chat,
+                dispatch,
+                real_estate,
+                integration,
+                messaging,
+                monitoring,
+              ]
+        capabilities:
+          type: object
+          additionalProperties: true
+
+    RouteRequest:
+      type: object
+      required: [method]
+      properties:
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        query:
+          type: object
+          additionalProperties: true
+        body:
+          type: object
+          additionalProperties: true
+        timeout_seconds:
+          type: number
+          default: 8.0
+
+    # ── Archive ───────────────────────────────────────────────────────────────
+    ArchiveRecord:
+      type: object
+      required: [domain, source, payload]
+      properties:
+        reference_id:
+          type: string
+        domain:
+          type: string
+          example: real_estate
+        source:
+          type: string
+          example: immobiliare_it
+        payload:
+          type: object
+          additionalProperties: true
+
+    EntityUpsertRequest:
+      type: object
+      required: [entity_id, domain, payload]
+      properties:
+        entity_id:
+          type: string
+        domain:
+          type: string
+        status:
+          type: string
+          default: active
+        payload:
+          type: object
+          additionalProperties: true
+        embedding:
+          type: array
+          items:
+            type: number
+
+    EntitySearchRequest:
+      type: object
+      properties:
+        domain:
+          type: string
+        limit:
+          type: integer
+          default: 50
+        query_vector:
+          type: array
+          items:
+            type: number
+        filters:
+          type: object
+          additionalProperties: true
+        filters_gt:
+          type: object
+          additionalProperties: true
+        filters_lt:
+          type: object
+          additionalProperties: true
+        sort_by:
+          type: string
+        sort_order:
+          type: string
+          enum: [asc, desc]
+
+    ChatMessageRequest:
+      type: object
+      required: [session_id, role, content]
+      properties:
+        session_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+
+    PreferenceRequest:
+      type: object
+      required: [fact]
+      properties:
+        fact:
+          type: string
+          example: Preferisce risposte brevi
+        domain:
+          type: string
+          default: general
+        weight:
+          type: number
+          default: 1.0
+
+    SubscriptionRequest:
+      type: object
+      required: [subscription_id, owner, domain, event_type, filters, channels]
+      properties:
+        subscription_id:
+          type: string
+        owner:
+          type: string
+        domain:
+          type: string
+        event_type:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+        channels:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+          default: true
+
+    CalendarItemRequest:
+      type: object
+      required: [source, kind, title, start_at]
+      properties:
+        external_id:
+          type: string
+        source:
+          type: string
+          example: google
+        kind:
+          type: string
+          enum: [event, task, reminder]
+        title:
+          type: string
+        description:
+          type: string
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        all_day:
+          type: boolean
+          default: false
+        location:
+          type: string
+        attendees:
+          type: array
+          items:
+            type: object
+        recurrence:
+          type: string
+        status:
+          type: string
+          default: confirmed
+        html_link:
+          type: string
+        nag_enabled:
+          type: boolean
+          default: true
+
+    DocumentRequest:
+      type: object
+      required: [document_id]
+      properties:
+        document_id:
+          type: string
+        session_id:
+          type: string
+        chat_id:
+          type: string
+        filename:
+          type: string
+        mime_type:
+          type: string
+        file_size_bytes:
+          type: integer
+        file_hash:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        extracted_text:
+          type: string
+        embedding:
+          type: array
+          items:
+            type: number
+        is_permanent:
+          type: boolean
+          default: false
+        domain:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        chunks:
+          type: array
+          items:
+            type: object
+            properties:
+              chunk_index:
+                type: integer
+              chunk_text:
+                type: string
+              embedding:
+                type: array
+                items:
+                  type: number
+
+    # ── Oracle ────────────────────────────────────────────────────────────────
+    ChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        session_id:
+          type: string
+        notify_target:
+          type: string
+        force_notification_compiler:
+          type: boolean
+          default: false
+        client_instructions:
+          type: string
+
+    FormatRequest:
+      type: object
+      required: [command, payload]
+      properties:
+        command:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        response_prompt:
+          type: string
+        client_instructions:
+          type: string
+        thinking:
+          type: boolean
+          default: false
+        max_length:
+          type: integer
+        locale:
+          type: string
+          default: it
+
+    # ── Hermes ────────────────────────────────────────────────────────────────
+    HermesEventRequest:
+      type: object
+      required: [event_type, domain, entity_id, payload]
+      properties:
+        event_type:
+          type: string
+          example: new_listing
+        domain:
+          type: string
+          example: real_estate
+        entity_id:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        event_ts:
+          type: string
+          format: date-time
+
+    DispatchSendRequest:
+      type: object
+      required: [channel, target, message]
+      properties:
+        channel:
+          type: string
+          example: telegram
+        target:
+          type: string
+          example: "5770661128"
+        message:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # ── Chronos ───────────────────────────────────────────────────────────────
+    CalendarEvent:
+      type: object
+      required: [title, start_datetime, end_datetime]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        start_datetime:
+          type: string
+          format: date-time
+        end_datetime:
+          type: string
+          format: date-time
+        location:
+          type: string
+        timezone:
+          type: string
+          default: Europe/Rome
+        all_day:
+          type: boolean
+          default: false
+        reminders_minutes_before:
+          type: array
+          items:
+            type: integer
+          default: [30]
+        source_reference:
+          type: string
+
+    CreateEventRequest:
+      type: object
+      required: [event]
+      properties:
+        event:
+          $ref: "#/components/schemas/CalendarEvent"
+        target_providers:
+          type: array
+          items:
+            type: string
+          default: []
+        calendar_id:
+          type: string
+          default: primary
+
+    ListEventsRequest:
+      type: object
+      required: [start_datetime, end_datetime]
+      properties:
+        start_datetime:
+          type: string
+          format: date-time
+        end_datetime:
+          type: string
+          format: date-time
+        target_providers:
+          type: array
+          items:
+            type: string
+        calendar_id:
+          type: string
+          default: primary
+        max_results:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 250
+
+    # ── Scout ─────────────────────────────────────────────────────────────────
+    ModuleToolQueryRequest:
+      type: object
+      required: [domain]
+      properties:
+        domain:
+          type: string
+          example: real_estate
+        query:
+          type: string
+        session_id:
+          type: string
+        limit:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+        filters:
+          type: object
+          additionalProperties: true
+        filters_gt:
+          type: object
+          additionalProperties: true
+        filters_lt:
+          type: object
+          additionalProperties: true
+        sort_by:
+          type: string
+        sort_order:
+          type: string
+          enum: [asc, desc]
+        preferences:
+          type: array
+          items:
+            type: object
+
+    RealEstateSearchRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        limit:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 50
+        city:
+          type: string
+        nearby:
+          type: string
+        radius_km:
+          type: number
+        price_max:
+          type: number
+        price_min:
+          type: number
+        rooms_min:
+          type: integer
+        surface_min:
+          type: number
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Paths
+# ─────────────────────────────────────────────────────────────────────────────
+paths:
+  # ══════════════════════════════════════════════════════════════════════════
+  #  HUB — 19001
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /health:
+    get:
+      tags: [Hub]
+      summary: Hub health check
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/registry/register:
+    post:
+      tags: [Hub]
+      summary: Register a service
+      servers:
+        - url: http://localhost:19001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterServiceRequest"
+      responses:
+        "200":
+          description: Registered
+
+  /api/registry/deregister:
+    post:
+      tags: [Hub]
+      summary: Deregister a service
+      servers:
+        - url: http://localhost:19001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                base_url:
+                  type: string
+      responses:
+        "200":
+          description: Deregistered
+
+  /api/registry/revision:
+    get:
+      tags: [Hub]
+      summary: Get current registry revision number
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revision:
+                    type: integer
+                  updated_at:
+                    type: string
+                  services_count:
+                    type: integer
+
+  /api/registry/services:
+    get:
+      tags: [Hub]
+      summary: List all registered services
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      type: object
+
+  /api/discovery/commands:
+    get:
+      tags: [Hub]
+      summary: Discover all routable commands
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: client
+          in: query
+          schema:
+            type: string
+          example: telegram
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commands:
+                    type: array
+                    items:
+                      type: object
+
+  /api/discovery/module-tools:
+    get:
+      tags: [Hub]
+      summary: Discover module-tool endpoints
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: OK
+
+  /api/status:
+    get:
+      tags: [Hub]
+      summary: Health status of all registered services
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: OK
+
+  /api/standards/registration:
+    get:
+      tags: [Hub]
+      summary: Registration standards and allowed values
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: OK
+
+  /api/route/{service_name}/{path}:
+    post:
+      tags: [Hub]
+      summary: Route a request to a registered service
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: service_name
+          in: path
+          required: true
+          schema:
+            type: string
+          example: archive
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          example: api/entities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteRequest"
+      responses:
+        "200":
+          description: Proxied response from the target service
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  ARCHIVE — 19002
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /archive/health:
+    get:
+      tags: [Archive — Records]
+      summary: Archive health check
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200":
+          description: OK
+
+  /api/archive:
+    post:
+      tags: [Archive — Records]
+      summary: Ingest a raw domain record
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveRecord"
+      responses:
+        "200":
+          description: Saved record
+
+  /api/archive/{domain}/unevaluated:
+    get:
+      tags: [Archive — Records]
+      summary: List unevaluated records for a domain
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of records
+
+  /api/archive/{record_id}:
+    patch:
+      tags: [Archive — Records]
+      summary: Mark a record as evaluated
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: record_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                evaluation:
+                  type: object
+      responses:
+        "200":
+          description: Updated record
+
+  /api/domains:
+    get:
+      tags: [Archive — Entities]
+      summary: List all known entity domains
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200":
+          description: List of domain strings
+
+  /api/schemas:
+    get:
+      tags: [Archive — Entities]
+      summary: Entity field schemas per domain
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200":
+          description: Map of domain to field list
+
+  /api/entities:
+    post:
+      tags: [Archive — Entities]
+      summary: Create or update an entity
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityUpsertRequest"
+      responses:
+        "200":
+          description: Entity
+    get:
+      tags: [Archive — Entities]
+      summary: List active entities (flat format)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of entity dicts
+
+  /api/entities/records:
+    get:
+      tags: [Archive — Entities]
+      summary: List entities with full record metadata
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: List of EntityResponse
+
+  /api/entities/search:
+    post:
+      tags: [Archive — Entities]
+      summary: Search entities with filters or vector similarity
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntitySearchRequest"
+      responses:
+        "200":
+          description: Matched entity dicts
+
+  /api/entities/cleanup:
+    post:
+      tags: [Archive — Entities]
+      summary: Delete entities missing required fields
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain:
+                  type: string
+                required_fields:
+                  type: array
+                  items:
+                    type: string
+                require_created_at:
+                  type: boolean
+                delete_limit:
+                  type: integer
+                dry_run:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Cleanup result
+
+  /api/chat/history/all:
+    get:
+      tags: [Archive — Chat]
+      summary: Get all chat history
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200":
+          description: All messages
+    delete:
+      tags: [Archive — Chat]
+      summary: Delete all chat history
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200":
+          description: Deleted count
+
+  /api/chat/history:
+    post:
+      tags: [Archive — Chat]
+      summary: Append a chat message
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageRequest"
+      responses:
+        "200":
+          description: Saved message
+
+  /api/chat/history/{session_id}:
+    get:
+      tags: [Archive — Chat]
+      summary: Get chat history for a session
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Messages
+    delete:
+      tags: [Archive — Chat]
+      summary: Delete chat history for a session
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+
+  /api/memory:
+    post:
+      tags: [Archive — Memory]
+      summary: Store a user preference/memory fact
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferenceRequest"
+      responses:
+        "200":
+          description: Saved preference
+
+  /api/memory/active:
+    get:
+      tags: [Archive — Memory]
+      summary: List active preferences
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of preferences
+
+  /api/memory/{pref_id}:
+    patch:
+      tags: [Archive — Memory]
+      summary: Toggle or reweight a preference
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: pref_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+                weight:
+                  type: number
+      responses:
+        "200":
+          description: Updated preference
+
+  /api/subscriptions:
+    post:
+      tags: [Archive — Subscriptions]
+      summary: Create a notification subscription
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionRequest"
+      responses:
+        "200":
+          description: Subscription
+
+  /api/subscriptions/active:
+    get:
+      tags: [Archive — Subscriptions]
+      summary: List active subscriptions
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of subscriptions
+
+  /api/subscriptions/{subscription_id}/active:
+    patch:
+      tags: [Archive — Subscriptions]
+      summary: Enable or disable a subscription
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: subscription_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated subscription
+
+  /api/dispatch/logs:
+    post:
+      tags: [Archive — Dispatch Logs]
+      summary: Record a dispatch log entry
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                [
+                  subscription_id,
+                  event_type,
+                  domain,
+                  entity_id,
+                  channel,
+                  target,
+                  success,
+                ]
+              properties:
+                subscription_id:
+                  type: string
+                event_type:
+                  type: string
+                domain:
+                  type: string
+                entity_id:
+                  type: string
+                channel:
+                  type: string
+                target:
+                  type: string
+                success:
+                  type: boolean
+                detail:
+                  type: string
+      responses:
+        "200":
+          description: Log entry
+    get:
+      tags: [Archive — Dispatch Logs]
+      summary: List dispatch logs
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: subscription_id
+          in: query
+          schema:
+            type: string
+        - name: entity_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of log entries
+
+  /api/dispatch/logs/enriched:
+    get:
+      tags: [Archive — Dispatch Logs]
+      summary: List dispatch logs enriched with entity metadata
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: subscription_id
+          in: query
+          schema:
+            type: string
+        - name: entity_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 15
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 72
+      responses:
+        "200":
+          description: Enriched log entries
+
+  /api/calendar/items:
+    post:
+      tags: [Archive — Calendar]
+      summary: Create or update a calendar item
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarItemRequest"
+      responses:
+        "200":
+          description: CalendarItemRead
+    get:
+      tags: [Archive — Calendar]
+      summary: List calendar items
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: source
+          in: query
+          schema:
+            type: string
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [event, task, reminder]
+        - name: status_filter
+          in: query
+          schema:
+            type: string
+        - name: nag_enabled
+          in: query
+          schema:
+            type: boolean
+        - name: from_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: List of calendar items
+
+  /api/calendar/items/{item_id}:
+    get:
+      tags: [Archive — Calendar]
+      summary: Get a calendar item by ID
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CalendarItemRead
+    delete:
+      tags: [Archive — Calendar]
+      summary: Delete a calendar item
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "{success: true}"
+
+  /api/calendar/items/{item_id}/nag:
+    patch:
+      tags: [Archive — Calendar]
+      summary: Toggle nag (reminder notifications) for an item
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nag_enabled]
+              properties:
+                nag_enabled:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated item
+
+  /api/calendar/items/{item_id}/notified:
+    patch:
+      tags: [Archive — Calendar]
+      summary: Update last_notified_bucket for a calendar item
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [last_notified_bucket]
+              properties:
+                last_notified_bucket:
+                  type: string
+                  enum: [30m, 2h, 1d]
+      responses:
+        "200":
+          description: Updated item
+
+  /api/calendar/items/by-external/{source}/{external_id}:
+    delete:
+      tags: [Archive — Calendar]
+      summary: Delete a calendar item by provider + external ID
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: source
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: external_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{success: true}"
+
+  /api/documents:
+    post:
+      tags: [Archive — Documents]
+      summary: Index a document with optional embeddings
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentRequest"
+      responses:
+        "200":
+          description: DocumentRead
+    get:
+      tags: [Archive — Documents]
+      summary: List indexed documents
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: chat_id
+          in: query
+          schema:
+            type: string
+        - name: is_permanent
+          in: query
+          schema:
+            type: boolean
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of documents
+
+  /api/documents/search:
+    post:
+      tags: [Archive — Documents]
+      summary: Semantic search over document chunks
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query_vector]
+              properties:
+                query_vector:
+                  type: array
+                  items:
+                    type: number
+                session_id:
+                  type: string
+                chat_id:
+                  type: string
+                is_permanent:
+                  type: boolean
+                domain:
+                  type: string
+                limit:
+                  type: integer
+                  default: 5
+                threshold:
+                  type: number
+                  default: 0.7
+                track_access:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: List of matching document chunks
+
+  /api/documents/prune:
+    delete:
+      tags: [Archive — Documents]
+      summary: Prune idle non-permanent documents
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idle_days:
+                  type: integer
+                  default: 7
+                max_access_count:
+                  type: integer
+                dry_run:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Prune result
+
+  /api/documents/{document_id}:
+    get:
+      tags: [Archive — Documents]
+      summary: Get a document by ID
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: DocumentRead
+    delete:
+      tags: [Archive — Documents]
+      summary: Delete a document
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+
+  /api/documents/{document_id}/permanent:
+    patch:
+      tags: [Archive — Documents]
+      summary: Toggle document permanence
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_permanent]
+              properties:
+                is_permanent:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  INGEST — 19003
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /ingest/health:
+    get:
+      tags: [Ingest]
+      summary: Ingest health check
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200":
+          description: OK
+
+  /api/ingest/trigger:
+    post:
+      tags: [Ingest]
+      summary: Trigger a data fetch for a domain/source
+      servers:
+        - url: http://localhost:19003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain, source]
+              properties:
+                domain:
+                  type: string
+                  example: real_estate
+                source:
+                  type: string
+                  example: immobiliare_it
+                filter_query:
+                  type: string
+      responses:
+        "200":
+          description: "{status, fetched}"
+
+  /api/ingest/calendar/trigger:
+    post:
+      tags: [Ingest]
+      summary: Trigger calendar sync from providers to Archive
+      servers:
+        - url: http://localhost:19003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sources:
+                  type: array
+                  items:
+                    type: string
+                    enum: [gcal, outlook_calendar]
+                  description: Defaults to all available
+                calendar_id:
+                  type: string
+                  default: primary
+      responses:
+        "200":
+          description: "{status, sources: {source: {fetched, archived, error?}}, total_archived}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  ORACLE — 19004
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /oracle/health:
+    get:
+      tags: [Oracle]
+      summary: Oracle health check
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200":
+          description: OK
+
+  /api/chat:
+    post:
+      tags: [Oracle]
+      summary: Send a chat message (streaming NDJSON)
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: NDJSON stream — each line is {reply, domain_used, session_id}
+
+  /api/chat/document:
+    post:
+      tags: [Oracle]
+      summary: Analyse an uploaded document (streaming)
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [message, file]
+              properties:
+                message:
+                  type: string
+                session_id:
+                  type: string
+                notify_target:
+                  type: string
+                client_instructions:
+                  type: string
+                filename:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: NDJSON analysis stream
+
+  /api/format:
+    post:
+      tags: [Oracle]
+      summary: Format a command payload as HTML via LLM
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormatRequest"
+      responses:
+        "200":
+          description: "{text}"
+
+  /api/subscriptions/compile:
+    post:
+      tags: [Oracle]
+      summary: Extract subscription signals from a natural-language message
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message, session_id]
+              properties:
+                message:
+                  type: string
+                session_id:
+                  type: string
+                notify_target:
+                  type: string
+      responses:
+        "200":
+          description: "{ok, message, signals[...]}"
+
+  /api/llm/generate:
+    post:
+      tags: [Oracle]
+      summary: Raw LLM generation (bypass Oracle agent chain)
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                model:
+                  type: string
+                provider:
+                  type: string
+      responses:
+        "200":
+          description: "{response, model, provider}"
+
+  /api/chat/{session_id}:
+    delete:
+      tags: [Oracle]
+      summary: Clear Oracle in-memory session state
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status, session_id}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  HERMES — 19005
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /hermes/health:
+    get:
+      tags: [Hermes]
+      summary: Hermes health check
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200":
+          description: OK
+
+  /api/events/ingest:
+    post:
+      tags: [Hermes]
+      summary: Ingest a domain event — matches subscriptions and dispatches notifications
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HermesEventRequest"
+      responses:
+        "200":
+          description: "{status: ok, result: {subscriptions_matched, deliveries, ...}}"
+
+  /api/dispatch/send:
+    post:
+      tags: [Hermes]
+      summary: Send a direct message to a channel target
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchSendRequest"
+      responses:
+        "200":
+          description: "{success, detail}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  SCOUT — 19006
+  #  Note: expose port 19006 in docker-compose.global.yml to test locally
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /scout/health:
+    get:
+      tags: [Scout]
+      summary: Scout health check
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200":
+          description: OK
+
+  /api/module-tools/domains:
+    get:
+      tags: [Scout]
+      summary: List domains served by Scout module tools
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200":
+          description: '{domains: ["real_estate"]}'
+
+  /api/module-tools/query:
+    post:
+      tags: [Scout]
+      summary: Query entities via module-tool interface
+      servers:
+        - url: http://localhost:19006
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModuleToolQueryRequest"
+      responses:
+        "200":
+          description: "{domain, items: [...]}"
+
+  /api/tools:
+    get:
+      tags: [Scout]
+      summary: List available Scout tools
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200":
+          description: "{tools: [{name, path, description}]}"
+
+  /api/tools/real_estate/search:
+    post:
+      tags: [Scout]
+      summary: Search real estate listings
+      servers:
+        - url: http://localhost:19006
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RealEstateSearchRequest"
+      responses:
+        "200":
+          description: List of real estate entity items
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  CHRONOS — 19007
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /chronos/health:
+    get:
+      tags: [Chronos]
+      summary: Chronos health check (includes provider status)
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200":
+          description: "{status, service, providers: {active[], unavailable{}}}"
+
+  /api/calendar/events:
+    post:
+      tags: [Chronos]
+      summary: Create a calendar event in one or more providers
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "200":
+          description: "{results[{provider, success, event_id?, error?}], total_created, total_failed}"
+
+  /api/calendar/events/list:
+    post:
+      tags: [Chronos]
+      summary: List events from calendar providers
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListEventsRequest"
+      responses:
+        "200":
+          description: "{events[...], provider_errors{}}"
+
+  /api/calendar/events/{event_id}:
+    delete:
+      tags: [Chronos]
+      summary: Delete a calendar event
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider:
+                  type: string
+                calendar_id:
+                  type: string
+                  default: primary
+      responses:
+        "200":
+          description: "{success: true}"
+    patch:
+      tags: [Chronos]
+      summary: Update a calendar event
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, updates]
+              properties:
+                provider:
+                  type: string
+                updates:
+                  type: object
+                  additionalProperties: true
+                calendar_id:
+                  type: string
+                  default: primary
+      responses:
+        "200":
+          description: "{success: true}"
+
+  /api/calendar/providers:
+    get:
+      tags: [Chronos]
+      summary: List active calendar providers
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200":
+          description: "{active[], unavailable{}}"
+
+  /api/calendar/agenda:
+    get:
+      tags: [Chronos]
+      summary: Get upcoming agenda from Archive
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 7
+            minimum: 1
+            maximum: 90
+        - name: source
+          in: query
+          schema:
+            type: string
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [event, task, reminder]
+      responses:
+        "200":
+          description: "{from, to, days, count, items[...]}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  ARGUS — 19008
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /argus/health:
+    get:
+      tags: [Argus]
+      summary: Argus health check
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200":
+          description: OK
+
+  /api/argus/status:
+    get:
+      tags: [Argus]
+      summary: Health status of all monitored services
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200":
+          description: "{healthy_count, unhealthy_count, services: {name: {status, ...}}}"
+
+  /api/argus/logs:
+    get:
+      tags: [Argus]
+      summary: Query collected service logs
+      servers:
+        - url: http://localhost:19008
+      parameters:
+        - name: service
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+            default: WARNING
+        - name: since
+          in: query
+          schema:
+            type: string
+            default: 30m
+          description: "e.g. '30m', '2h', '1d'"
+      responses:
+        "200":
+          description: "{count, filters{}, events[]}"
+
+  /api/argus/analyze:
+    post:
+      tags: [Argus]
+      summary: Run an LLM system analysis across all monitored logs
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200":
+          description: "SystemReport: {status, summary (LLM text), events[], ...}"

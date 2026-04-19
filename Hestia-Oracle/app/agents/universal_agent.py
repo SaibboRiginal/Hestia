@@ -6,10 +6,11 @@ from google.genai import types
 
 
 class UniversalAgent:
-    def __init__(self, role_prompt: str = "", provider: str = "gemini", model_name: str = "gemini-2.5-flash"):
+    def __init__(self, role_prompt: str = "", provider: str = "gemini", model_name: str = "gemini-2.5-flash", thinking: bool = True):
         self.role_prompt = role_prompt
         self.provider = provider.lower()
         self.model_name = model_name
+        self.thinking = thinking
         self.ollama_timeout_sec = int(os.getenv("OLLAMA_TIMEOUT_SEC", "120"))
         self.ollama_embed_timeout_sec = int(
             os.getenv("OLLAMA_EMBED_TIMEOUT_SEC", "60"))
@@ -40,8 +41,10 @@ class UniversalAgent:
             payload = {
                 "model": self.model_name,
                 "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
-                "stream": False
+                "stream": False,
             }
+            if not self.thinking:
+                payload["think"] = False
             try:
                 response = requests.post(
                     self.ollama_url,

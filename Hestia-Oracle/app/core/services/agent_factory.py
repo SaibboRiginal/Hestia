@@ -46,12 +46,15 @@ Output ONLY valid JSON array or NONE.
 _CONVERSATION_STYLE_CONTRACT = """
 CONVERSATION STYLE CONTRACT (MANDATORY):
 - The reply must feel like an ongoing chat, not a ticket closure.
-- Never end with generic assistant closure lines in any language (examples: "Fammi sapere...", "Se in futuro...", "If you need anything else...", "Let me know if...").
-- End directly on useful content (fact, answer, suggestion, or next concrete step), without ritual outro.
+- NEVER end with generic assistant closure lines in any language (examples: "Fammi sapere...", "Se in futuro...", "If you need anything else...", "Let me know if...", "Posso aiutarti con altro?", "Hai altri dubbi?").
+- NEVER offer help with topics or tasks not mentioned in the current user message.
+- NEVER ask follow-up questions or propose alternatives unless the user's request is genuinely ambiguous.
+- End directly on useful content (fact, answer, confirmation, or concrete next step), without ritual outro.
 - Keep tone personal, natural, and context-aware.
+- Reply ONLY to what was asked. Do not introduce related subjects unprompted.
 """.strip()
 
-_ANALYST_PROMPT = f"""Sei Hestia, assistente IA universale.
+_ANALYST_PROMPT_DEFAULT = f"""Sei Hestia, assistente IA universale.
 
 REGOLE CORE:
 1. Rispondi nella lingua dell'utente.
@@ -60,18 +63,18 @@ REGOLE CORE:
 4. Se i record sono molti, sintetizza e mostra solo i migliori risultati.
 5. Puoi attivare notifiche proattive: quando l'utente chiede avvisi/notifiche automatiche, conferma che Hestia può salvarle come sottoscrizioni e inviare alert via Hermes (non dire che non puoi farlo).
 
-FORMATTAZIONE:
-- Solo Markdown.
-- Usa elenchi puntati e grassetto per chiarezza.
-- Se un record contiene URL/link, includilo quando utile.
-- LINK POLICY: Per OGNI link/URL, usa SEMPRE il titolo o una descrizione significativa dell'elemento come testo del link.
-  ESEMPI CORRETTI: [Appartamento 3 camere via Roma](URL), [Villa con giardino](URL), [Casa luminosa centro](URL)
-  MAI USARE: "Apri annuncio", "Clicca qui", "Link", "URL", "Vedi qui" o altri testi generici.
+FORMATTAZIONE HTML TELEGRAM (OBBLIGATORIA):
+- Usa <b>testo</b> per grassetto, <i>testo</i> per corsivo.
+- Usa <a href="url">testo</a> per link — usa SEMPRE il titolo o una descrizione significativa come testo del link, MAI "Apri annuncio", "Clicca qui", "Link" o testi generici.
+- Per liste usa il simbolo \u2022 direttamente (MAI trattini - o asterischi * come marcatori di lista).
+- MAI usare sintassi Markdown (**testo**, _testo_, ##, [testo](url), * testo, - testo come lista).
 - Non mostrare URL lunghi in chiaro.
 
 STILE FINALE:
 {_CONVERSATION_STYLE_CONTRACT}
 """
+
+_ANALYST_PROMPT = os.getenv("HESTIA_PERSONA", _ANALYST_PROMPT_DEFAULT)
 
 
 @dataclass
@@ -155,18 +158,21 @@ class AgentFactory:
 
     @staticmethod
     def _build_bundle(models: dict[str, dict[str, str]]) -> AgentBundle:
-        def _agent(key: str, prompt: str) -> UniversalAgent:
+        def _agent(key: str, prompt: str, thinking: bool = True) -> UniversalAgent:
             return UniversalAgent(
                 role_prompt=prompt,
                 provider=models[key]["prov"],
                 model_name=models[key]["mod"],
+                thinking=thinking,
             )
 
         return AgentBundle(
-            router=_agent("router", _ROUTER_PROMPT),
-            fallback_router=_agent("fallback_router", _ROUTER_PROMPT),
-            scribe=_agent("scribe", _SCRIBE_PROMPT),
-            fallback_scribe=_agent("fallback_scribe", _SCRIBE_PROMPT),
+            router=_agent("router", _ROUTER_PROMPT, thinking=False),
+            fallback_router=_agent(
+                "fallback_router", _ROUTER_PROMPT, thinking=False),
+            scribe=_agent("scribe", _SCRIBE_PROMPT, thinking=False),
+            fallback_scribe=_agent(
+                "fallback_scribe", _SCRIBE_PROMPT, thinking=False),
             analyst=_agent("analyst", _ANALYST_PROMPT),
             fallback_analyst=_agent("fallback_analyst", _ANALYST_PROMPT),
             embedder=_agent("embedder", ""),

@@ -37,6 +37,7 @@ TELEGRAM_CONTROL_PORT = int(os.getenv("TELEGRAM_CONTROL_PORT", "8010"))
 TELEGRAM_BASE_URL = os.getenv(
     "TELEGRAM_BASE_URL", f"http://hestia_telegram:{TELEGRAM_CONTROL_PORT}"
 ).rstrip("/")
+TELEGRAM_LOCALE = os.getenv("TELEGRAM_LOCALE", "it")
 
 TELEGRAM_HIDDEN_COMMAND_SERVICES = {
     item.strip().lower()

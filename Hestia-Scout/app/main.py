@@ -7,6 +7,7 @@ import requests
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from tools.geocoding import GeocodingService
 from tools.retrieval import ScoutRetrievalService
@@ -22,12 +23,15 @@ logger = logging.getLogger("hestia_scout")
 
 TARGET_DOMAIN = "real_estate"
 TARGET_SOURCE = "gmail_imap"
-  explicit_filters = [
-       item.strip()
-       for item in os.getenv("SCOUT_FILTER_QUERIES", "").split("||")
-       if item.strip()
-       ]
-   if explicit_filters:
+
+
+def _build_target_filters():
+    explicit_filters = [
+        item.strip()
+        for item in os.getenv("SCOUT_FILTER_QUERIES", "").split("||")
+        if item.strip()
+    ]
+    if explicit_filters:
         return explicit_filters
 
     sender_list_raw = os.getenv(
@@ -45,6 +49,8 @@ TARGET_SOURCE = "gmail_imap"
 TARGET_FILTERS = _build_target_filters()
 
 api_app = FastAPI(title="Hestia Scout Tools", version="2.0.0")
+api_app.add_middleware(CORSMiddleware, allow_origins=[
+                       "*"], allow_methods=["*"], allow_headers=["*"])
 
 
 def _build_retrieval_service() -> ScoutRetrievalService:
@@ -166,6 +172,17 @@ if __name__ == "__main__":
     tools_port = int(os.getenv("SCOUT_TOOLS_PORT", "19006"))
     _start_tools_api()
     _register_with_hub(tools_port)
+    # Periodically re-register with Hub so a Hub restart doesn't lose this service.
+
+    def _hub_keepalive():
+        while True:
+            time.sleep(60)
+            try:
+                _register_with_hub(tools_port)
+            except Exception:
+                pass
+    threading.Thread(target=_hub_keepalive, daemon=True,
+                     name="hub-keepalive").start()
 
     # SCOUT_POLL_INTERVAL_SECONDS: seconds between email polling cycles (default 1800 = 30 min)
     poll_interval = int(os.getenv("SCOUT_POLL_INTERVAL_SECONDS", "1800"))

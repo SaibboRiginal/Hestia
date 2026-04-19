@@ -8,6 +8,7 @@ import os
 
 import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from .modules.discovery import discover_commands, discover_module_tools
 from .modules.events import RegistryEvents
@@ -30,6 +31,8 @@ logger = logging.getLogger("hestia_hub")
 # ── Singletons ────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Hestia Hub", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 registry = ServiceRegistry()
 events = RegistryEvents(
     notify_timeout=float(os.getenv("HUB_NOTIFY_TIMEOUT", "2")),

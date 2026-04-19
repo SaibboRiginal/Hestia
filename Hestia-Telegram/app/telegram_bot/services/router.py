@@ -112,10 +112,10 @@ def route_service_command(
                 "method": str(method or "GET").upper(),
                 "headers": {},
                 "query": query or {},
-                "body": body if body else None,
-                "timeout_seconds": 10,
+                "body": body,
+                "timeout_seconds": 25,
             },
-            timeout=12,
+            timeout=30,
         )
         if response.status_code != 200:
             print(

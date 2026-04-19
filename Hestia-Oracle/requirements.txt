@@ -4,6 +4,7 @@ pydantic
 requests
 google-genai
 pypdf
+python-multipart
 
 # ── Office document extraction ────────────────────────────────────────────────
 python-docx          # .docx (Word)

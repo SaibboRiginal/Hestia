@@ -144,7 +144,6 @@ class CalendarItem(Base):
         # multiple Hestia-native items (external_id=NULL) per source.
         UniqueConstraint("external_id", "source",
                          name="uq_calendar_external_source"),
-        Index("ix_calendar_items_start_at", "start_at"),
     )
 
 
@@ -229,7 +228,3 @@ class DocumentChunk(Base):
     chunk_text = Column(String, nullable=False)
     # Contextualised chunk embedding (title+summary prepended before embedding)
     embedding = Column(Vector(768), nullable=True)
-
-    __table_args__ = (
-        Index("ix_document_chunks_document_id", "document_id"),
-    )

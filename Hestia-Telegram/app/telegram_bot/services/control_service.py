@@ -15,11 +15,16 @@ logger = logging.getLogger("hestia_telegram.control")
 class ControlRequestHandler(BaseHTTPRequestHandler):
     def _send_json(self, status_code: int, payload: dict[str, Any]):
         encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
+        try:
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+        except BrokenPipeError:
+            logger.debug("Client disconnected before receiving response")
+        except ConnectionResetError:
+            logger.debug("Connection reset by peer")
 
     def do_GET(self):
         if self.path == "/health":
@@ -29,12 +34,14 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/api/events/registry-changed":
-            refreshed = refresh_command_registry(force=True)
+            import threading
+            threading.Thread(target=refresh_command_registry, kwargs={
+                             "force": True}, daemon=True).start()
             self._send_json(
                 200,
                 {
                     "status": "ok",
-                    "refreshed": refreshed,
+                    "reason": "refresh scheduled",
                     "revision": core.COMMAND_REGISTRY_REVISION,
                 },
             )

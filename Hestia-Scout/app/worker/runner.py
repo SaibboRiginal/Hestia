@@ -49,7 +49,8 @@ class ScoutWorker:
             "SCOUT_ENABLE_LISTING_ENRICHMENT", "1").strip().lower() not in {"0", "false", "no"}
         self._cycle_counter = 0
 
-    def _publish_entity_event(self, entity_id: str, payload: dict):
+    def _publish_entity_event(self, entity_id: str, payload: dict) -> bool:
+        """Publish entity.upserted to Hermes via Hub. Returns True on success."""
         event_payload = {
             "event_type": "entity.upserted",
             "domain": self.target_domain,
@@ -74,7 +75,7 @@ class ScoutWorker:
                 print(
                     f"[!] Hermes route call failed via Hub | entity_id={entity_id} status={response.status_code} body={response.text[:250]}"
                 )
-                return
+                return False
 
             routed = response.json() or {}
             routed_status = int(routed.get("status_code", 500) or 500)
@@ -82,13 +83,15 @@ class ScoutWorker:
                 print(
                     f"[!] Hermes rejected event via Hub | entity_id={entity_id} routed_status={routed_status} target={routed.get('target')} payload={str(routed.get('payload'))[:250]}"
                 )
-                return
+                return False
 
             print(
                 f"[✓] Hermes event published via Hub | entity_id={entity_id} target={routed.get('target')}"
             )
+            return True
         except Exception as error:
             print(f"[!] Failed publishing event to Hermes via Hub: {error}")
+            return False
 
     def reconcile_entities(self):
         print(
@@ -133,6 +136,92 @@ class ScoutWorker:
 
         print(
             f"[🧹] Reconciliation geo enrichment complete: {enriched} entities updated.")
+
+        # ── Atlas enrichment retry ─────────────────────────────────────────────
+        # Any entity explicitly marked atlas_enriched=False is retried here.
+        # This handles the case where Atlas was down when the entity was first
+        # processed. The archive is updated silently (no re-dispatch to Hermes)
+        # so the user is not flooded with duplicate notifications; the enriched
+        # data will appear on the next Oracle query for that entity.
+        if self.enable_listing_enrichment:
+            atlas_retried = 0
+            atlas_failed_again = 0
+            for record in records:
+                entity_id = record.get("entity_id")
+                payload = record.get("payload") if isinstance(
+                    record.get("payload"), dict) else {}
+                if not entity_id or not payload:
+                    continue
+
+                # Only retry entities explicitly marked as failed
+                if payload.get("atlas_enriched") is not False:
+                    continue
+
+                print(f"[🔄] Retrying Atlas enrichment for {entity_id}...")
+                enriched_payload = enrich_payload_from_listing(payload)
+                if enriched_payload.get("atlas_enriched") is not True:
+                    atlas_failed_again += 1
+                    continue  # Atlas still unavailable — will retry next cycle
+
+                upsert_payload = {
+                    "entity_id": str(entity_id),
+                    "domain": record.get("domain", self.target_domain),
+                    "status": record.get("status", "active"),
+                    "payload": enriched_payload,
+                }
+                if self.vault.upsert_entity(upsert_payload):
+                    atlas_retried += 1
+                    print(f"[🔄] Atlas re-enrichment succeeded: {entity_id}")
+
+            if atlas_retried or atlas_failed_again:
+                print(
+                    f"[🔄] Atlas retry complete: {atlas_retried} re-enriched, "
+                    f"{atlas_failed_again} still pending (Atlas likely still down)."
+                )
+
+        # ── Hermes notification retry ──────────────────────────────────────────
+        # Entities marked hermes_notified=False were successfully stored in
+        # Archive but the Hermes/Hub call failed at the time. Re-fetch fresh
+        # records (Atlas retry above may have just enriched some of them) and
+        # notify Hermes for any that are still pending.
+        # We intentionally notify even if atlas_enriched=False — the user
+        # deserves to know about the entity even with partial data.
+        print("[🔔] Checking for entities pending Hermes notification...")
+        fresh_records = self.vault.get_entity_records(
+            domain=self.target_domain, status="active", limit=2000)
+        hermes_retried = 0
+        hermes_still_pending = 0
+        for record in (fresh_records or []):
+            entity_id = record.get("entity_id")
+            payload = record.get("payload") if isinstance(
+                record.get("payload"), dict) else {}
+            if not entity_id or not payload:
+                continue
+            if payload.get("hermes_notified") is not False:
+                continue  # Not pending; skip
+
+            print(f"[🔔] Retrying Hermes notification for {entity_id}...")
+            ok = self._publish_entity_event(entity_id, payload)
+            if ok:
+                # Clear the pending flag in archive
+                notified_payload = dict(payload)
+                notified_payload["hermes_notified"] = True
+                self.vault.upsert_entity({
+                    "entity_id": str(entity_id),
+                    "domain": record.get("domain", self.target_domain),
+                    "status": record.get("status", "active"),
+                    "payload": notified_payload,
+                })
+                hermes_retried += 1
+                print(f"[🔔] Hermes notification sent: {entity_id}")
+            else:
+                hermes_still_pending += 1
+
+        if hermes_retried or hermes_still_pending:
+            print(
+                f"[🔔] Hermes retry complete: {hermes_retried} notified, "
+                f"{hermes_still_pending} still pending (Hermes/Hub likely still down)."
+            )
 
         cleanup_result = self.vault.cleanup_entities(
             domain=self.target_domain,
@@ -471,10 +560,21 @@ class ScoutWorker:
                 entity_upsert_payload = house.to_archive_upsert_payload()
                 if self.vault.upsert_entity(entity_upsert_payload):
                     found_entities += 1
-                    self._publish_entity_event(
+                    ok = self._publish_entity_event(
                         entity_id=normalized_entity_id,
                         payload=payload,
                     )
+                    if not ok:
+                        # Mark as pending notification so reconcile can retry
+                        # when Hermes / Hub recovers.
+                        pending_payload = dict(payload)
+                        pending_payload["hermes_notified"] = False
+                        self.vault.upsert_entity({
+                            "entity_id": str(normalized_entity_id),
+                            "domain": self.target_domain,
+                            "status": house.status,
+                            "payload": pending_payload,
+                        })
 
             print(
                 f"   [✓] Extracted {found_entities} entities using {ai_response.get('model_used')}.")

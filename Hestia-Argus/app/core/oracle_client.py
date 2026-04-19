@@ -7,6 +7,7 @@ service is supposed to do when it interprets health and log data.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 
@@ -42,6 +43,7 @@ def analyze(prompt: str, context: str = "") -> str:
     payload: dict = {
         "message": prompt,
         "session_id": ORACLE_SESSION_ID,
+        "save_history": False,
     }
     if instructions:
         payload["client_instructions"] = instructions
@@ -49,8 +51,18 @@ def analyze(prompt: str, context: str = "") -> str:
     try:
         resp = requests.post(ORACLE_URL, json=payload, timeout=60)
         resp.raise_for_status()
-        data = resp.json()
-        return data.get("reply", "")
+        # Oracle streams NDJSON — iterate lines to find the "final" event
+        for line in resp.text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                if obj.get("type") == "final":
+                    return str(obj.get("reply", "")).strip()
+            except json.JSONDecodeError:
+                continue
+        return ""
     except Exception as exc:
         logger.warning("Oracle analysis call failed: %s", exc)
         return ""

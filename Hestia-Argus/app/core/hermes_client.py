@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 import requests
 
@@ -20,12 +21,35 @@ HERMES_URL = os.getenv(
 NOTIFY_TARGET = os.getenv("ARGUS_NOTIFY_TARGET", "")
 
 
-def send_message(text: str, chat_id: str | None = None) -> bool:
-    """Send a plain-text message to Telegram via Hermes dispatch.
+def publish_event(domain: str, event_type: str, entity_id: str, payload: dict[str, Any]) -> bool:
+    """Publish an event to Hermes for subscription-based delivery.
 
-    Uses ``chat_id`` if provided, otherwise falls back to ``ARGUS_NOTIFY_TARGET``.
-    Returns ``True`` on success, ``False`` on any failure.
+    Include ``_message`` in *payload* with a pre-formatted HTML string so
+    Hermes dispatches it as direct text without Oracle narration.
     """
+    body = {
+        "domain": domain,
+        "event_type": event_type,
+        "entity_id": entity_id,
+        "payload": payload,
+    }
+    try:
+        resp = requests.post(
+            f"{HERMES_URL}/api/events/ingest", json=body, timeout=10)
+        if resp.status_code < 300:
+            result = (resp.json() if resp.content else {}).get("result", {})
+            logger.info("[HERMES] Event published domain=%s event=%s deliveries=%s",
+                        domain, event_type, result.get("deliveries", 0))
+            return True
+        logger.warning("[HERMES] publish_event status=%s body=%s",
+                       resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("[HERMES] publish_event failed: %s", exc)
+    return False
+
+
+def send_message(text: str, chat_id: str | None = None) -> bool:
+    """Legacy direct-send (bypasses subscriptions). Prefer publish_event."""
     target = chat_id or NOTIFY_TARGET
     if not target:
         logger.warning(

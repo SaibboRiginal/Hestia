@@ -6,6 +6,7 @@ all other service modules and orchestrates the full execution lifecycle.
 from __future__ import annotations
 
 import re
+import threading
 import time
 import uuid
 from html import escape
@@ -224,6 +225,34 @@ def _execute_delete_document(document_id: str, chat_id: int):
             f"⚠️ Impossibile eliminare.\n<code>{escape(str(exc)[:200])}</code>",
             parse_mode="HTML",
         )
+
+
+def handle_group_callback(call):
+    """Handle ``grp:<key>`` callback queries for the submenu navigation."""
+    from telegram_bot.services.registry import GROUP_ORDER, build_commands_keyboard, build_group_commands_keyboard
+
+    group_key = call.data[len("grp:"):]
+    if group_key == "__main__":
+        kb = build_commands_keyboard()
+        core.bot.edit_message_text(
+            "🏛️ <b>Hestia</b> — scegli una categoria:",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML",
+            reply_markup=kb,
+        )
+    else:
+        label = next((lbl for k, lbl, _ in GROUP_ORDER if k ==
+                     group_key), group_key.capitalize())
+        kb = build_group_commands_keyboard(group_key)
+        core.bot.edit_message_text(
+            f"<b>{label}</b>",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            parse_mode="HTML",
+            reply_markup=kb,
+        )
+    core.bot.answer_callback_query(call.id)
 
 
 def handle_doc_callback(call):
@@ -503,11 +532,49 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
         return
 
     response_mode = str(command.get(
-        "response_mode", "raw_json")).strip().lower()
+        "response_mode", "oracle_natural")).strip().lower()
     response_prompt = str(command.get("response_prompt", "")).strip()
     print(f"[CMD] Rendering /{normalized} response_mode={response_mode}")
+
+    command_title = str(command.get("title", "")).strip()
+
+    # Send a pending status message; animate via typing indicator while rendering
+    pending_msg = None
+    stop_typing = threading.Event()
+
+    if command_title:
+        pending_msg = core.bot.send_message(
+            chat_id,
+            f"⌛ <i>{escape(command_title)}...</i>",
+            parse_mode="HTML",
+        )
+
+        def _typing_loop():
+            while not stop_typing.is_set():
+                try:
+                    core.bot.send_chat_action(chat_id, "typing")
+                except Exception:
+                    pass
+                stop_typing.wait(4)
+
+        threading.Thread(target=_typing_loop, daemon=True).start()
+
     output, parse_mode = render_direct_command_output(
         normalized, payload, response_mode, response_prompt)
     print(
         f"[CMD] Output for /{normalized}: {len(output)} chars, parse_mode={parse_mode}")
+
+    stop_typing.set()
+
+    if pending_msg:
+        try:
+            core.bot.edit_message_text(
+                f"<b>{escape(command_title)}</b>",
+                chat_id=chat_id,
+                message_id=pending_msg.message_id,
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
     core.send_user_message(chat_id, output, parse_mode=parse_mode)

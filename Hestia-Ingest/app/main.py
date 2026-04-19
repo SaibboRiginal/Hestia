@@ -1,6 +1,8 @@
 import logging
 import os
+import threading
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -18,6 +20,8 @@ logging.basicConfig(
 logger = logging.getLogger("hestia_ingest")
 
 app = FastAPI(title="Hestia-Ingest Factory", version="3.0")
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 vault = ArchiveClient(api_url="")
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
 
@@ -71,6 +75,20 @@ def register_on_hub_startup():
                            resp.status_code, resp.text[:200])
     except Exception as exc:
         logger.warning("Hub registration failed (non-fatal): %s", exc)
+
+    # Periodically re-register with Hub so a Hub restart doesn't lose this service.
+    def _hub_keepalive():
+        import time
+        while True:
+            time.sleep(60)
+            try:
+                import requests as _req
+                _req.post(f"{hub_api_url}/registry/register",
+                          json=payload, timeout=4)
+            except Exception:
+                pass
+    threading.Thread(target=_hub_keepalive, daemon=True,
+                     name="hub-keepalive").start()
 
 
 @app.get("/health")

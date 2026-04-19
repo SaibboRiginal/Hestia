@@ -8,6 +8,7 @@ import os
 
 import requests
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from . import models, database
@@ -31,6 +32,8 @@ models.Base.metadata.create_all(bind=engine)
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Hestia-Archive Vault",
               version="3.0.0 (Entity & Vector Ready)")
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 
 # Include all domain routers
 app.include_router(archive.router)
@@ -73,10 +76,8 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "description": "Mostra le notifiche automatiche attive",
                 "method": "GET",
                 "path": "/api/subscriptions/active",
-                "query_template": {"owner": "$session_id"},
                 "clients": ["telegram", "ui"],
-                "response_mode": "oracle_natural",
-                "response_prompt": "Mostra le notifiche attive con filtri principali, stato e cosa verrà notificato, in modo leggibile e breve.",
+                "response_mode": "raw_json",
             },
             {
                 "command": "avvisi_recenti",
@@ -103,7 +104,6 @@ _HUB_REGISTRATION_PAYLOAD = {
                         "service": "archive",
                         "method": "GET",
                         "path": "/api/subscriptions/active",
-                        "query_template": {"owner": "$session_id"},
                     },
                     "value_field": "subscription_id",
                     "label_fields": ["domain", "event_type", "filters"],
@@ -126,7 +126,6 @@ _HUB_REGISTRATION_PAYLOAD = {
                         "service": "archive",
                         "method": "GET",
                         "path": "/api/subscriptions/active",
-                        "query_template": {"owner": "$session_id"},
                     },
                     "value_field": "subscription_id",
                     "label_fields": ["domain", "event_type", "filters"],
@@ -134,6 +133,68 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "clients": ["telegram", "ui"],
                 "response_mode": "oracle_natural",
                 "response_prompt": "Conferma chiaramente l'avvenuta riattivazione della notifica.",
+            },
+            # ── Calendar reminder subscriptions ───────────────────────────────
+            {
+                "command": "iscriviti_calendario",
+                "title": "📅 Attiva promemoria calendario",
+                "description": "Ricevi promemoria automatici per eventi del calendario",
+                "method": "POST",
+                "path": "/api/subscriptions",
+                "body_template": {
+                    "subscription_id": "cal-reminder-$chat_id",
+                    "owner": "$chat_id",
+                    "domain": "calendar",
+                    "event_type": "calendar.reminder",
+                    "filters": {},
+                    "channels": [{"type": "telegram", "target": "$chat_id"}],
+                    "is_active": True,
+                },
+                "clients": ["telegram", "ui"],
+                "response_mode": "oracle_natural",
+                "response_prompt": "Conferma brevemente l'attivazione dei promemoria calendario.",
+            },
+            {
+                "command": "disiscriviti_calendario",
+                "title": "📅 Disattiva promemoria calendario",
+                "description": "Smetti di ricevere promemoria automatici del calendario",
+                "method": "PATCH",
+                "path": "/api/subscriptions/cal-reminder-$chat_id/active",
+                "body_template": {"is_active": False},
+                "clients": ["telegram", "ui"],
+                "response_mode": "oracle_natural",
+                "response_prompt": "Conferma brevemente la disattivazione dei promemoria calendario.",
+            },
+            # ── System health alert subscriptions ─────────────────────────────
+            {
+                "command": "iscriviti_sistema",
+                "title": "🔧 Attiva allerte sistema",
+                "description": "Ricevi notifiche sullo stato dei servizi Hestia",
+                "method": "POST",
+                "path": "/api/subscriptions",
+                "body_template": {
+                    "subscription_id": "sys-health-$chat_id",
+                    "owner": "$chat_id",
+                    "domain": "system",
+                    "event_type": "service.health",
+                    "filters": {},
+                    "channels": [{"type": "telegram", "target": "$chat_id"}],
+                    "is_active": True,
+                },
+                "clients": ["telegram", "ui"],
+                "response_mode": "oracle_natural",
+                "response_prompt": "Conferma brevemente l'attivazione delle allerte di sistema.",
+            },
+            {
+                "command": "disiscriviti_sistema",
+                "title": "🔧 Disattiva allerte sistema",
+                "description": "Smetti di ricevere notifiche sullo stato dei servizi Hestia",
+                "method": "PATCH",
+                "path": "/api/subscriptions/sys-health-$chat_id/active",
+                "body_template": {"is_active": False},
+                "clients": ["telegram", "ui"],
+                "response_mode": "oracle_natural",
+                "response_prompt": "Conferma brevemente la disattivazione delle allerte di sistema.",
             },
         ],
     },
