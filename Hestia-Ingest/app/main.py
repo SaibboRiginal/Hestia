@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
-from core.registry import get_fetcher_class
+from core.registry import get_fetcher_class, FETCHER_REGISTRY
 from core.archive_client import ArchiveClient
 from core.state_manager import StateManager
 
@@ -12,6 +12,8 @@ load_dotenv()
 app = FastAPI(title="Hestia-Ingest Factory", version="3.0")
 vault = ArchiveClient(api_url="")
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
+
+_CALENDAR_SOURCES = {"gcal", "outlook_calendar"}
 
 
 @app.on_event("startup")
@@ -29,6 +31,24 @@ def register_on_hub_startup():
         "tags": ["core", "connector"],
         "capabilities": {
             "ingest_trigger": "/api/ingest/trigger",
+            "calendar_sync": "/api/ingest/calendar/trigger",
+            "commands": [
+                {
+                    "command": "sync_calendar",
+                    "title": "🔄 Sincronizza calendario",
+                    "description": "Sincronizza gli eventi del calendario da Google e Outlook in Hestia",
+                    "method": "POST",
+                    "path": "/api/ingest/calendar/trigger",
+                    "body_template": {},
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Conferma la sincronizzazione del calendario. Indica quanti eventi "
+                        "sono stati trovati per ogni provider (Google, Outlook). "
+                        "Sii conciso e usa un tono da assistente."
+                    ),
+                },
+            ],
         },
     }
     try:
@@ -96,3 +116,77 @@ def trigger_fetch(command: FetchCommand):
     finally:
         # This will ALWAYS run, closing the connection safely.
         fetcher_instance.disconnect()
+
+
+class CalendarSyncCommand(BaseModel):
+    """Request body for the calendar sync trigger.
+
+    Leave ``sources`` empty to sync all configured calendar providers.
+    ``calendar_id`` is the calendar identifier within each provider
+    (e.g. "primary", or a specific Google Calendar email address).
+    """
+    sources: list[str] = Field(
+        default_factory=list,
+        description="Calendar fetcher sources to sync: 'gcal', 'outlook_calendar'. "
+                    "Empty means all calendar sources.",
+    )
+    calendar_id: str = Field(
+        "primary",
+        description="Calendar id to fetch from each provider.",
+    )
+
+
+@app.post("/api/ingest/calendar/trigger")
+def trigger_calendar_sync(command: CalendarSyncCommand):
+    """Fetch calendar events from Google and/or Outlook and archive them as CalendarItems.
+
+    Unlike the generic /api/ingest/trigger, this endpoint writes to
+    Archive's /api/calendar/items (CalendarItem table) rather than the raw
+    archive store, enabling the Chronos notification worker and Oracle to
+    access a unified calendar view without querying each provider directly.
+    """
+    from datetime import datetime, timedelta, timezone as _tz
+
+    sources = command.sources or list(_CALENDAR_SOURCES)
+    # Keep only valid calendar sources
+    sources = [s for s in sources if s in _CALENDAR_SOURCES]
+    if not sources:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No valid calendar sources specified. Available: {sorted(_CALENDAR_SOURCES)}",
+        )
+
+    results: dict[str, dict] = {}
+    # include recent past events
+    since = datetime.now(_tz.utc) - timedelta(days=7)
+
+    for source in sources:
+        try:
+            FetcherClass = get_fetcher_class(source)
+            fetcher = FetcherClass()
+        except ValueError as exc:
+            results[source] = {"error": str(exc), "fetched": 0, "archived": 0}
+            continue
+
+        if not fetcher.connect():
+            results[source] = {"error": "Connection failed",
+                               "fetched": 0, "archived": 0}
+            continue
+
+        try:
+            items = fetcher.fetch_new_data(
+                since_date=since,
+                custom_filter=command.calendar_id,
+            )
+            archived = 0
+            for item in items:
+                if vault.ship_calendar_item(item):
+                    archived += 1
+            results[source] = {"fetched": len(items), "archived": archived}
+        except Exception as exc:
+            results[source] = {"error": str(exc), "fetched": 0, "archived": 0}
+        finally:
+            fetcher.disconnect()
+
+    total_archived = sum(r.get("archived", 0) for r in results.values())
+    return {"status": "success", "sources": results, "total_archived": total_archived}

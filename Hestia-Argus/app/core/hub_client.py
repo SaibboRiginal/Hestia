@@ -20,8 +20,9 @@ def register() -> bool:
     payload = {
         "name": "argus",
         "base_url": ARGUS_SERVICE_BASE_URL,
-        "version": "1.0.0",
+        "health_endpoint": "/health",
         "service_type": "core",
+        "service_version": "1.0.0",
         "tags": ["core", "monitoring"],
         "capabilities": {
             "argus.status": {
@@ -44,23 +45,52 @@ def register() -> bool:
                 "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/analyze",
                 "method": "POST",
             },
-        },
-        "telegram_commands": {
-            "system_status": {
-                "description": "Show the health status of all Hestia services",
-                "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/status",
-                "method": "GET",
-            },
-            "system_logs": {
-                "description": "Show recent warning/error log events",
-                "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/logs",
-                "method": "GET",
-            },
+            "commands": [
+                {
+                    "command": "system_status",
+                    "title": "🖥️ Stato sistema",
+                    "description": "Mostra lo stato di salute di tutti i servizi Hestia",
+                    "method": "GET",
+                    "path": "/api/argus/status",
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Mostra lo stato di salute di tutti i servizi Hestia in modo "
+                        "leggibile. Elenca i servizi attivi con ✅ e quelli con problemi "
+                        "con ⚠️ o ❌. Sii conciso. Se tutto funziona, dillo chiaramente."
+                    ),
+                },
+                {
+                    "command": "system_log",
+                    "title": "📋 Log di sistema",
+                    "description": "Mostra gli errori e warning recenti dei servizi",
+                    "method": "GET",
+                    "path": "/api/argus/logs",
+                    "query_template": {"level": "WARNING"},
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Mostra i log di errore e warning recenti in modo leggibile. "
+                        "Raggruppa per servizio, indica il livello di gravità e il "
+                        "messaggio principale. Se non ci sono problemi, dillo chiaramente."
+                    ),
+                },
+                {
+                    "command": "system_analysis",
+                    "title": "🔍 Analisi sistema",
+                    "description": "Esegui un'analisi completa dei servizi con AI",
+                    "method": "POST",
+                    "path": "/api/argus/analyze",
+                    "body_template": {},
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "direct",
+                },
+            ],
         },
     }
     try:
         resp = requests.post(
-            f"{HUB_API_URL}/register", json=payload, timeout=10
+            f"{HUB_API_URL}/registry/register", json=payload, timeout=10
         )
         resp.raise_for_status()
         logger.info("Argus registered with Hub successfully")
@@ -73,9 +103,9 @@ def register() -> bool:
 def discover_services() -> list[dict]:
     """Query Hub registry and return the list of registered services."""
     try:
-        resp = requests.get(f"{HUB_API_URL}/registry", timeout=10)
+        resp = requests.get(f"{HUB_API_URL}/registry/services", timeout=10)
         resp.raise_for_status()
-        return resp.json()
+        return resp.json().get("services", [])
     except Exception as exc:
         logger.warning("Could not fetch service registry from Hub: %s", exc)
         return []

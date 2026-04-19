@@ -6,9 +6,16 @@ import requests
 
 from telegram_bot import core
 from telegram_bot.services.command_service import (
+    _AFFIRMATIVE,
+    _NEGATIVE,
+    _execute_delete_document,
     build_commands_keyboard,
+    execute_calendar_create_confirm,
     execute_direct_command,
     execute_local_command,
+    handle_calendar_step_callback,
+    handle_calendar_wizard_text,
+    handle_doc_callback,
     prompt_tone_presets,
     refresh_command_registry,
     render_direct_command_output,
@@ -112,6 +119,35 @@ def handle_confirmation(call):
             core.bot.answer_callback_query(call.id, "Notifica disattivata")
             return
 
+        # Handle calendar item creation confirmation
+        if payload.get("action") == "calendar_create_confirm":
+            chat_id = call.message.chat.id
+            # Clear any awaiting_confirm workflow for this chat
+            core.PENDING_WORKFLOWS.pop(str(chat_id), None)
+            core.bot.answer_callback_query(call.id, "⏳ Creazione in corso…")
+            execute_calendar_create_confirm(
+                payload,
+                chat_id=chat_id,
+                message_id=call.message.message_id,
+            )
+            return
+
+        # Handle document deletion confirmation
+        if payload.get("action") == "delete_document":
+            chat_id = int(payload.get("chat_id", call.message.chat.id))
+            document_id = str(payload.get("document_id", ""))
+            try:
+                core.bot.edit_message_text(
+                    "🗑️ Eliminazione in corso…",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                )
+            except Exception:
+                pass
+            core.bot.answer_callback_query(call.id, "✅ Eliminazione")
+            _execute_delete_document(document_id, chat_id)
+            return
+
         core.bot.answer_callback_query(call.id, "Nessuna azione")
     except Exception as error:
         print(f"[-] Confirmation handler error: {error}")
@@ -193,6 +229,18 @@ def handle_set_picker(call):
         core.bot.answer_callback_query(call.id, "Azione non valida")
     except Exception as error:
         print(f"[-] Set picker handler error: {error}")
+
+
+def handle_calendar_step(call):
+    """Route inline button callbacks for the calendar creation wizard."""
+    try:
+        user_id = str(call.from_user.id)
+        if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
+            core.bot.answer_callback_query(call.id, "Azione non autorizzata")
+            return
+        handle_calendar_step_callback(call)
+    except Exception as error:
+        print(f"[-] Calendar step callback error: {error}")
 
 
 def handle_cancel_flow(call):
@@ -316,6 +364,43 @@ def handle_chat_message(message):
         core.send_user_message(message.chat.id, output, parse_mode=parse_mode)
         return
 
+    # ── Calendar creation wizard ─────────────────────────────────────
+    if pending_flow and pending_flow.get("action") == "calendar_create_wizard":
+        handle_calendar_wizard_text(
+            chat_id=int(chat_id),
+            text=str(message.text or "").strip(),
+            workflow=pending_flow,
+        )
+        return
+
+    # ── Calendar confirm — handle affirmative / negative plain text ──
+    if pending_flow and pending_flow.get("action") == "calendar_awaiting_confirm":
+        token = str(pending_flow.get("token", ""))
+        confirmation = core.PENDING_CONFIRMATIONS.get(token)
+        text_lower = str(message.text or "").strip().lower()
+        if not confirmation:
+            core.bot.reply_to(
+                message, "⚠️ La conferma è scaduta. Riprova con il comando.")
+            return
+        if text_lower in _AFFIRMATIVE:
+            core.PENDING_CONFIRMATIONS.pop(token, None)
+            execute_calendar_create_confirm(confirmation, chat_id=int(chat_id))
+            return
+        if text_lower in _NEGATIVE:
+            core.PENDING_CONFIRMATIONS.pop(token, None)
+            core.bot.reply_to(message, "❌ Operazione annullata.")
+            return
+        # Unrecognised text — keep the confirmation alive and nudge the user
+        core.PENDING_WORKFLOWS[str(chat_id)] = pending_flow
+        core.bot.reply_to(
+            message,
+            "💬 Rispondi <b>sì</b> per creare oppure <b>no</b> per annullare, "
+            "o usa i pulsanti qui sopra.",
+            parse_mode="HTML",
+        )
+        return
+    # ────────────────────────────────────────────────────────────────
+
     session_id = core.get_session(chat_id)
 
     status_msg = core.bot.reply_to(
@@ -437,38 +522,98 @@ def handle_file_message(message):
     chat_id = message.chat.id
     session_id = core.get_session(chat_id)
 
-    # Determine file_id and mime_type based on message content type.
+    # Determine file_id, mime_type, and filename based on message content type.
+    filename: str | None = None
     if message.content_type == "photo":
         # Telegram sends multiple sizes; pick the highest resolution (last item).
         photo = message.photo[-1]
         file_id = photo.file_id
         mime_type = _PHOTO_MIME
+        filename = "photo.jpg"
+    elif message.content_type == "audio":
+        audio = message.audio
+        file_id = audio.file_id
+        mime_type = (
+            audio.mime_type or "audio/mpeg").split(";")[0].strip().lower()
+        filename = audio.file_name or f"audio.{mime_type.split('/')[-1]}"
+    elif message.content_type == "voice":
+        voice = message.voice
+        file_id = voice.file_id
+        mime_type = (
+            voice.mime_type or "audio/ogg").split(";")[0].strip().lower()
+        filename = f"voice.{mime_type.split('/')[-1]}"
+    elif message.content_type == "video":
+        video = message.video
+        file_id = video.file_id
+        mime_type = (
+            video.mime_type or "video/mp4").split(";")[0].strip().lower()
+        filename = video.file_name or f"video.{mime_type.split('/')[-1]}"
+    elif message.content_type == "video_note":
+        vn = message.video_note
+        file_id = vn.file_id
+        mime_type = "video/mp4"
+        filename = "video_note.mp4"
     elif message.content_type == "document":
         doc = message.document
         file_id = doc.file_id
         mime_type = (
             doc.mime_type or "application/octet-stream").split(";")[0].strip().lower()
+        filename = doc.file_name or None
     else:
         core.bot.reply_to(message, "⚠️ Tipo di file non supportato.")
         return
 
-    # Accept only what Oracle can handle.
+    # Accept only what Oracle can handle (mirrors ACCEPTED_MIMES in oracle/main.py)
     ACCEPTED_MIMES = {
-        "image/jpeg", "image/png", "image/webp", "image/gif",
-        "image/heic", "image/heif",
+        # Images
+        "image/jpeg", "image/jpg", "image/png", "image/webp",
+        "image/gif", "image/heic", "image/heif", "image/bmp", "image/tiff",
+        # PDFs
         "application/pdf",
+        # Audio
+        "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
+        "audio/ogg", "audio/vorbis", "audio/flac", "audio/aac",
+        "audio/x-aac", "audio/m4a", "audio/mp4",
+        # Video
+        "video/mp4", "video/mpeg", "video/webm", "video/ogg",
+        "video/quicktime", "video/x-msvideo",
+        # Office docs
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "application/vnd.oasis.opendocument.presentation",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        # Text / code / data
+        "text/plain", "text/csv", "text/markdown", "text/html",
+        "application/json", "application/xml", "text/xml",
+        "application/x-yaml", "application/yaml",
     }
-    if mime_type not in ACCEPTED_MIMES:
+    is_text_like = mime_type.startswith("text/") or mime_type in (
+        "application/json", "application/xml", "application/yaml", "application/x-yaml"
+    )
+    if mime_type not in ACCEPTED_MIMES and not is_text_like:
         core.bot.reply_to(
             message,
             f"⚠️ Formato non supportato: <code>{mime_type}</code>\n"
-            "Invia un'immagine (JPEG, PNG, WebP) o un PDF.",
+            "Puoi inviare: immagini, PDF, audio (mp3/ogg/wav), video (mp4), "
+            "documenti Word/LibreOffice, fogli Excel, testo/JSON/CSV.",
             parse_mode="HTML",
         )
         return
 
-    # Caption is the user's instruction; fall back to generic prompt.
-    user_text = (message.caption or "").strip() or "Analizza questo documento."
+    # Caption is the user's instruction
+    _DEFAULT_MSG: dict[str, str] = {
+        "audio": "Trascrivi e riassumi questo audio.",
+        "voice": "Trascrivi questo messaggio vocale.",
+        "video": "Trascrivi e riassumi questo video.",
+        "video_note": "Trascrivi questo video messaggio.",
+    }
+    user_text = (message.caption or "").strip() or _DEFAULT_MSG.get(
+        message.content_type, "Analizza questo file."
+    )
 
     status_msg = core.bot.reply_to(
         message, "⏳ *Download e analisi documento...*", parse_mode="Markdown"
@@ -497,15 +642,18 @@ def handle_file_message(message):
                 "session_id": session_id,
                 "notify_target": str(chat_id),
                 "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
+                **({"filename": filename} if filename else {}),
             },
             files={
-                "file": (f"attachment.{mime_type.split('/')[-1]}", file_bytes, mime_type)},
+                "file": (filename or f"attachment.{mime_type.split('/')[-1]}", file_bytes, mime_type)},
             stream=True,
             timeout=120,
         ) as res:
             res.raise_for_status()
 
             final_answer = ""
+            streamed_signals: list[dict] = []
+
             for line in res.iter_lines():
                 if not line:
                     continue
@@ -520,6 +668,8 @@ def handle_file_message(message):
                         )
                     except Exception:
                         pass
+                elif data.get("type") == "signal":
+                    streamed_signals.append(data)
                 elif data.get("type") == "final":
                     final_answer = str(data.get("reply", "")).strip()
 
@@ -536,6 +686,20 @@ def handle_file_message(message):
         for part in (message_parts[1:] if message_parts else []):
             if part.strip():
                 core.send_user_message(chat_id, part, parse_mode="HTML")
+
+        # Show document-saved signal card (and any other signals)
+        for sig in streamed_signals:
+            sig_event = str(sig.get("event", ""))
+            sig_data = sig.get("data") or {}
+            if sig_event == "document_saved":
+                doc_fname = sig_data.get("filename") or "documento"
+                doc_id = sig_data.get("document_id", "")
+                card_html = (
+                    f"📎 <b>Documento salvato</b>\n"
+                    f"<code>{doc_fname}</code> è stato archiviato con embeddings.\n"
+                    f"Usa /documents per visualizzarlo o <b>📌 Pin</b> per renderlo permanente."
+                )
+                core.send_user_message(chat_id, card_html, parse_mode="HTML")
 
     except Exception as error:
         core.bot.edit_message_text(

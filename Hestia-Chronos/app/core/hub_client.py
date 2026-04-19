@@ -35,10 +35,40 @@ def register_on_hub(
             "tool_endpoints": {
                 "calendar.create_event": f"{service_base_url}/api/calendar/events",
                 "calendar.list_events": f"{service_base_url}/api/calendar/events/list",
+                "calendar.agenda": f"{service_base_url}/api/calendar/agenda",
             },
             "commands": [
                 {
-                    "command": "calendar_create",
+                    "command": "agenda",
+                    "title": "📅 Agenda",
+                    "description": "Mostra gli eventi in agenda nei prossimi 7 giorni",
+                    "method": "GET",
+                    "path": "/api/calendar/agenda",
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Mostra gli eventi dell'agenda in modo leggibile e cronologico. "
+                        "Per ogni evento indica titolo, data/ora, luogo (se presente) e "
+                        "una breve descrizione. Raggruppa per giorno. Usa un tono da "
+                        "assistente personale, amichevole e conciso."
+                    ),
+                },
+                {
+                    "command": "agenda_today",
+                    "title": "📋 Agenda di oggi",
+                    "description": "Mostra gli eventi di oggi",
+                    "method": "GET",
+                    "path": "/api/calendar/agenda",
+                    "query_template": {"days": 1},
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Mostra gli eventi di oggi in modo conciso. Se non ci sono "
+                        "eventi, dillo chiaramente. Usa linguaggio da assistente personale."
+                    ),
+                },
+                {
+                    "command": "create_event",
                     "title": "📅 Crea evento",
                     "description": "Crea un evento nel calendario",
                     "method": "POST",

@@ -1,12 +1,18 @@
 """Calendar service — orchestrates multi-provider event operations.
 
 All business logic lives here; the FastAPI layer is a thin HTTP adapter.
+After every successful mutation (create / update / delete) the service
+asynchronously mirrors the change to Archive so that:
+  * The notification worker can operate independently of provider APIs.
+  * Oracle and other services see a consistent view of the user's calendar.
 """
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime
 
+from core import archive_client as _archive
 from providers.registry import CalendarProviderRegistry
 from schemas.events import (
     CalendarEvent,
@@ -17,6 +23,10 @@ from schemas.events import (
 )
 
 logger = logging.getLogger("hestia_chronos.service")
+
+
+def _dt_to_iso(dt: datetime | None) -> str | None:
+    return dt.isoformat() if dt else None
 
 
 class CalendarService:
@@ -84,6 +94,27 @@ class CalendarService:
 
         total_created = sum(1 for r in results if r.success)
         total_failed = len(results) - total_created
+
+        # Mirror every successfully created event to Archive (fire-and-forget).
+        for result in results:
+            if result.success and result.event_id:
+                threading.Thread(
+                    target=_archive.upsert_calendar_item,
+                    kwargs={
+                        "external_id": result.event_id,
+                        "source": result.provider,
+                        "kind": "event",
+                        "title": event.title,
+                        "description": event.description,
+                        "start_at": _dt_to_iso(event.start_datetime),
+                        "end_at": _dt_to_iso(event.end_datetime),
+                        "all_day": event.all_day,
+                        "location": event.location,
+                        "nag_enabled": True,
+                    },
+                    daemon=True,
+                ).start()
+
         return CreateEventResponse(
             results=results,
             total_created=total_created,
@@ -138,6 +169,12 @@ class CalendarService:
             found = provider.delete_event(event_id, calendar_id=calendar_id)
             if found:
                 logger.info("[DELETE] %s event_id=%s", provider_name, event_id)
+                # Mirror deletion to Archive (fire-and-forget).
+                threading.Thread(
+                    target=_archive.delete_calendar_item_by_external,
+                    args=(provider_name, event_id),
+                    daemon=True,
+                ).start()
             else:
                 logger.warning(
                     "[DELETE] %s event_id=%s not found", provider_name, event_id

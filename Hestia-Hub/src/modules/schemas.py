@@ -13,6 +13,7 @@ ALLOWED_TAGS = {
     "real_estate",
     "integration",
     "messaging",
+    "monitoring",
 }
 
 

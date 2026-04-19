@@ -66,6 +66,8 @@ services:
       - HUB_API_URL=http://hestia_hub:19001/api
       - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
       - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
+      - ARCHIVE_URL=http://hestia_archive:19002
+      - CHRONOS_URL=http://hestia_chronos:19007
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Ingest/data:/code/data
@@ -180,9 +182,19 @@ services:
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
       - CALENDAR_SERVICE_BASE_URL=http://hestia_chronos:19007
+      - CALENDAR_PORT=19007
+      - ARCHIVE_URL=http://hestia_archive:19002
+      - HERMES_URL=http://hestia_hermes:19005
+      - NOTIFY_TARGET=
+      - CHRONOS_NOTIFY_POLL_SECONDS=300
+      - NOTIFY_LOOK_AHEAD_HOURS=26
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
+        condition: service_started
+      archive:
+        condition: service_started
+      hermes:
         condition: service_started
     networks:
       - hestia_net

@@ -113,36 +113,78 @@ async def chat_document_endpoint(
     session_id: Optional[str] = Form(default=None),
     notify_target: Optional[str] = Form(default=None),
     client_instructions: Optional[str] = Form(default=None),
+    filename: Optional[str] = Form(default=None),
     file: UploadFile = File(...),
 ):
-    """Accept a file (image or PDF) with an optional text instruction and stream
-    an NDJSON analysis back to the caller.
+    """Accept any file type and stream an NDJSON analysis back to the caller.
 
-    Accepted MIME types: image/jpeg, image/png, image/webp, image/gif,
-    application/pdf.
+    Accepts: images, PDFs, audio, video, office docs, text/code files.
+    Capability-aware: uses model vision/audio features when available,
+    falls back to local extraction (WhisperX, CLIP, YOLO, python-docx, etc.)
+    otherwise.
     """
     ACCEPTED_MIMES = {
-        "image/jpeg", "image/png", "image/webp", "image/gif",
-        "image/heic", "image/heif",
+        # Images
+        "image/jpeg", "image/jpg", "image/png", "image/webp",
+        "image/gif", "image/heic", "image/heif", "image/bmp",
+        "image/tiff", "image/svg+xml",
+        # PDFs
         "application/pdf",
+        # Audio
+        "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
+        "audio/ogg", "audio/vorbis", "audio/flac", "audio/aac",
+        "audio/x-aac", "audio/m4a", "audio/mp4",
+        # Video
+        "video/mp4", "video/mpeg", "video/webm", "video/ogg",
+        "video/quicktime", "video/x-msvideo",
+        # Office docs
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "application/vnd.oasis.opendocument.presentation",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        # Text / code / data
+        "text/plain", "text/csv", "text/markdown", "text/html",
+        "text/xml", "application/xml",
+        "application/json",
+        "application/x-yaml", "application/yaml",
     }
     content_type = (file.content_type or "").split(";")[0].strip().lower()
-    if content_type not in ACCEPTED_MIMES:
+    # Accept unknown subtypes of text/ and application/ gracefully
+    is_text_like = content_type.startswith("text/") or content_type in (
+        "application/json", "application/xml", "application/yaml", "application/x-yaml"
+    )
+    if content_type not in ACCEPTED_MIMES and not is_text_like:
         raise HTTPException(
             status_code=415,
-            detail=f"Unsupported file type: {content_type}. Accepted: {', '.join(sorted(ACCEPTED_MIMES))}",
+            detail=f"Unsupported file type: '{content_type}'. Send images, PDFs, audio, video, or office/text documents.",
         )
     try:
         file_bytes = await file.read()
         current_session = session_id if session_id else str(uuid.uuid4())
+        resolved_filename = filename or file.filename or None
+
+        # Infer a sensible default message per file category
+        default_message = "Analizza questo file."
+        if content_type.startswith("audio/") or content_type.startswith("video/"):
+            default_message = "Trascrivi e riassumi questo file audio/video."
+        elif content_type.startswith("image/"):
+            default_message = "Descrivi questa immagine."
+        elif content_type == "application/pdf":
+            default_message = "Riassumi e analizza questo documento."
+
         return StreamingResponse(
             engine.analyze_document(
                 file_bytes=file_bytes,
                 mime_type=content_type,
-                user_message=message.strip() or "Analizza questo documento.",
+                user_message=message.strip() or default_message,
                 session_id=current_session,
                 notify_target=notify_target,
                 client_instructions=client_instructions,
+                filename=resolved_filename,
             ),
             media_type="application/x-ndjson",
         )
@@ -153,7 +195,8 @@ async def chat_document_endpoint(
 
 
 @app.post("/api/format", response_model=FormatResponse)
-def format_endpoint(req: FormatRequest): try:
+def format_endpoint(req: FormatRequest):
+    try:
         text = engine.format_payload(
             command=req.command,
             payload=req.payload,
