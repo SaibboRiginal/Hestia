@@ -1,0 +1,195 @@
+"""Archive client — thin HTTP wrapper used by Chronos to sync calendar items.
+
+Chronos is the authoritative writer for calendar events created / updated /
+deleted through its own API.  After each mutation it calls Archive to keep
+the persistent calendar-item store up to date so that:
+
+  * The Chronos notification worker can query upcoming events without
+    needing to contact each calendar provider at notification time.
+  * Oracle and other services can read the assistant's full calendar
+    context directly from Archive.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from typing import Any, Optional
+
+import requests
+
+logger = logging.getLogger("hestia_chronos.archive_client")
+
+_ARCHIVE_URL = os.getenv("ARCHIVE_URL", "http://hestia_archive:19002")
+_TIMEOUT = 8
+
+
+def _base() -> str:
+    return _ARCHIVE_URL.rstrip("/")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Write helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def upsert_calendar_item(
+    *,
+    external_id: Optional[str],
+    source: str,
+    kind: str = "event",
+    title: str,
+    description: Optional[str] = None,
+    start_at: str,
+    end_at: Optional[str] = None,
+    all_day: bool = False,
+    location: Optional[str] = None,
+    attendees: Optional[list[dict[str, Any]]] = None,
+    recurrence: Optional[str] = None,
+    status: str = "confirmed",
+    html_link: Optional[str] = None,
+    nag_enabled: bool = True,
+) -> Optional[dict]:
+    """Upsert a calendar event / task / reminder into Archive.
+
+    Returns the saved CalendarItemRead dict on success, or None on failure.
+    Failures are logged as warnings — they must not propagate to the caller
+    so that a transient Archive outage never blocks calendar CRUD operations.
+    """
+    payload: dict[str, Any] = {
+        "external_id": external_id,
+        "source": source,
+        "kind": kind,
+        "title": title,
+        "description": description,
+        "start_at": start_at,
+        "end_at": end_at,
+        "all_day": all_day,
+        "location": location,
+        "attendees": attendees or [],
+        "recurrence": recurrence,
+        "status": status,
+        "html_link": html_link,
+        "nag_enabled": nag_enabled,
+    }
+    try:
+        resp = requests.post(
+            f"{_base()}/api/calendar/items", json=payload, timeout=_TIMEOUT
+        )
+        if resp.status_code < 300:
+            return resp.json()
+        logger.warning(
+            "[ARCHIVE] upsert_calendar_item failed status=%s body=%s",
+            resp.status_code,
+            resp.text[:200],
+        )
+    except Exception as exc:
+        logger.warning("[ARCHIVE] upsert_calendar_item error: %s", exc)
+    return None
+
+
+def delete_calendar_item_by_external(source: str, external_id: str) -> bool:
+    """Remove a calendar item from Archive after it has been deleted from its provider."""
+    try:
+        resp = requests.delete(
+            f"{_base()}/api/calendar/items/by-external/{source}/{external_id}",
+            timeout=_TIMEOUT,
+        )
+        return resp.status_code < 300
+    except Exception as exc:
+        logger.warning("[ARCHIVE] delete_calendar_item error: %s", exc)
+        return False
+
+
+def mark_notified(item_id: int, bucket: str) -> bool:
+    """Update last_notified_bucket for a CalendarItem (called by notification worker)."""
+    try:
+        resp = requests.patch(
+            f"{_base()}/api/calendar/items/{item_id}/notified",
+            json={"last_notified_bucket": bucket},
+            timeout=_TIMEOUT,
+        )
+        return resp.status_code < 300
+    except Exception as exc:
+        logger.warning("[ARCHIVE] mark_notified error: %s", exc)
+        return False
+
+
+def set_nag(item_id: int, enabled: bool) -> bool:
+    """Toggle nag for a specific calendar item."""
+    try:
+        resp = requests.patch(
+            f"{_base()}/api/calendar/items/{item_id}/nag",
+            json={"nag_enabled": enabled},
+            timeout=_TIMEOUT,
+        )
+        return resp.status_code < 300
+    except Exception as exc:
+        logger.warning("[ARCHIVE] set_nag error: %s", exc)
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Read helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def list_upcoming(
+    from_time: str,
+    to_time: str,
+    nag_enabled: Optional[bool] = None,
+    limit: int = 200,
+) -> list[dict]:
+    """Return calendar items whose start_at falls in [from_time, to_time].
+
+    Used by the notification worker to discover events that need reminders.
+    """
+    params: dict[str, Any] = {
+        "from_time": from_time,
+        "to_time": to_time,
+        "status_filter": "confirmed",
+        "limit": limit,
+    }
+    if nag_enabled is not None:
+        params["nag_enabled"] = str(nag_enabled).lower()
+    try:
+        resp = requests.get(
+            f"{_base()}/api/calendar/items", params=params, timeout=_TIMEOUT
+        )
+        if resp.status_code < 300:
+            return resp.json()
+        logger.warning(
+            "[ARCHIVE] list_upcoming failed status=%s", resp.status_code
+        )
+    except Exception as exc:
+        logger.warning("[ARCHIVE] list_upcoming error: %s", exc)
+    return []
+
+
+def list_items(
+    from_time: Optional[str] = None,
+    to_time: Optional[str] = None,
+    source: Optional[str] = None,
+    kind: Optional[str] = None,
+    limit: int = 100,
+) -> list[dict]:
+    """General calendar item listing used by the agenda endpoint."""
+    params: dict[str, Any] = {"limit": limit}
+    if from_time:
+        params["from_time"] = from_time
+    if to_time:
+        params["to_time"] = to_time
+    if source:
+        params["source"] = source
+    if kind:
+        params["kind"] = kind
+    try:
+        resp = requests.get(
+            f"{_base()}/api/calendar/items", params=params, timeout=_TIMEOUT
+        )
+        if resp.status_code < 300:
+            return resp.json()
+        logger.warning(
+            "[ARCHIVE] list_items failed status=%s", resp.status_code)
+    except Exception as exc:
+        logger.warning("[ARCHIVE] list_items error: %s", exc)
+    return []

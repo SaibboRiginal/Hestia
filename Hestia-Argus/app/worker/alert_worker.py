@@ -77,9 +77,9 @@ _STATUS_EMOJI = {"down": "💀", "degraded": "⚠️", "up": "✅"}
 def _format_health_alert(alert: ServiceAlert) -> str:
     emoji = _STATUS_EMOJI.get(alert.level.lower(), "⚠️")
     return (
-        f"{emoji} *Hestia Monitor — Service Alert*\n"
-        f"Service: `{alert.service}`\n"
-        f"Status: *{alert.level.upper()}*\n"
+        f"{emoji} <b>Hestia Monitor — Service Alert</b>\n"
+        f"Service: <code>{alert.service}</code>\n"
+        f"Status: <b>{alert.level.upper()}</b>\n"
         f"Detail: {alert.message}"
     )
 
@@ -87,15 +87,15 @@ def _format_health_alert(alert: ServiceAlert) -> str:
 def _format_log_alert(alert: ServiceAlert) -> str:
     emoji = _LEVEL_EMOJI.get(alert.level.upper(), "⚠️")
     return (
-        f"{emoji} *Hestia Monitor — Log Alert*\n"
-        f"Service: `{alert.service}`\n"
-        f"Level: *{alert.level.upper()}*\n"
-        f"```\n{alert.message[:400]}\n```"
+        f"{emoji} <b>Hestia Monitor — Log Alert</b>\n"
+        f"Service: <code>{alert.service}</code>\n"
+        f"Level: <b>{alert.level.upper()}</b>\n"
+        f"<pre>{alert.message[:400]}</pre>"
     )
 
 
 def _format_recovery(service: str) -> str:
-    return f"✅ *Hestia Monitor — Recovery*\nService `{service}` is back online."
+    return f"✅ <b>Hestia Monitor — Recovery</b>\nService <code>{service}</code> is back online."
 
 
 # ---------------------------------------------------------------------------

@@ -4,9 +4,11 @@ from telegram_bot.core import bot, TELEGRAM_COMMAND_REFRESH_SECONDS
 from telegram_bot.services.chat_service import (
     clear_memory,
     handle_arg_picker,
+    handle_calendar_step,
     handle_chat_message,
     handle_cancel_flow,
     handle_confirmation,
+    handle_doc_callback,
     handle_file_message,
     handle_run_command,
     handle_set_picker,
@@ -55,7 +57,17 @@ def on_cancel_flow(call):
     handle_cancel_flow(call)
 
 
-@bot.message_handler(content_types=["document", "photo"])
+@bot.callback_query_handler(func=lambda call: call.data.startswith("cal_"))
+def on_calendar_step(call):
+    handle_calendar_step(call)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("doc_"))
+def on_doc_callback(call):
+    handle_doc_callback(call)
+
+
+@bot.message_handler(content_types=["document", "photo", "audio", "voice", "video", "video_note"])
 def on_file(message):
     handle_file_message(message)
 

@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
+from core import archive_client
 from core.hub_client import register_on_hub
 from providers.registry import CalendarProviderRegistry
 from schemas.events import (
@@ -24,6 +26,7 @@ from schemas.events import (
     UpdateEventRequest,
 )
 from services.calendar_service import CalendarService
+from services import notification_worker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,6 +65,9 @@ def on_startup() -> None:
     )
 
     register_on_hub(hub_api_url, service_base_url)
+
+    # Start the proactive notification worker (background daemon thread).
+    notification_worker.start()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -147,11 +153,43 @@ def list_providers() -> dict:
     return _registry.status_report()
 
 
+@app.get("/api/calendar/agenda")
+def get_agenda(
+    days: int = Query(
+        7, ge=1, le=90, description="How many days ahead to look"),
+    source: str | None = Query(
+        None, description="Filter by source: google, outlook, hestia, …"),
+    kind: str | None = Query(
+        None, description="Filter by kind: event, task, reminder"),
+) -> dict:
+    """Return upcoming calendar items from Archive for the requested window.
+
+    This endpoint is used by Telegram commands (``/agenda``, ``/agenda_oggi``)
+    and by Oracle when the user asks about their schedule.
+    """
+    now = datetime.now(timezone.utc)
+    to_time = now + timedelta(days=days)
+    items = archive_client.list_items(
+        from_time=now.isoformat(),
+        to_time=to_time.isoformat(),
+        source=source,
+        kind=kind,
+        limit=200,
+    )
+    return {
+        "from": now.isoformat(),
+        "to": to_time.isoformat(),
+        "days": days,
+        "count": len(items),
+        "items": items,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────
 #  Entry point
 # ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    port = int(os.getenv("CALENDAR_PORT", "8008"))
+    port = int(os.getenv("CALENDAR_PORT", "19007"))
     uvicorn.run("main:app", host="0.0.0.0", port=port,
                 reload=False)  # WORKDIR=/code, flat imports

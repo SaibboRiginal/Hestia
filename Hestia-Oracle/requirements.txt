@@ -4,3 +4,22 @@ pydantic
 requests
 google-genai
 pypdf
+
+# ── Office document extraction ────────────────────────────────────────────────
+python-docx          # .docx (Word)
+odfpy                # .odt / .ods / .odp (LibreOffice)
+openpyxl             # .xlsx (Excel)
+xlrd                 # .xls (legacy Excel)
+python-pptx          # .pptx (PowerPoint)
+beautifulsoup4       # HTML text extraction
+
+# ── Image analysis: local CLIP + YOLO (optional, graceful fallback) ───────────
+# Install these to enable offline image classification without a vision LLM.
+# torch and torchvision are auto-installed as transitive deps of transformers.
+# transformers>=4.35   # CLIPModel + CLIPProcessor
+# ultralytics          # YOLOv8 (auto-downloads yolov8n.pt on first use)
+# Pillow               # required by both CLIP and YOLO image loaders
+
+# ── Audio / video transcription: WhisperX (optional, graceful fallback) ───────
+# Install these to enable offline transcription for audio/video messages.
+# whisperx             # WhisperX (installs torch, faster-whisper, etc.)

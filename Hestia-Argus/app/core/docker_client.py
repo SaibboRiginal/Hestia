@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import struct
 import threading
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -63,6 +64,47 @@ def _parse_level(line: str) -> str | None:
         if any(f.upper() == lvl for f in found):
             return lvl
     return None
+
+
+def _demux_docker_logs(raw: bytes) -> list[bytes]:
+    """Demultiplex Docker log stream, stripping the 8-byte frame headers.
+
+    Docker's log API uses a multiplexed stream format for non-TTY containers:
+        [stream_type: 1 byte][padding: 3 bytes][payload_size: 4 bytes big-endian]
+        [payload: payload_size bytes] ...
+
+    stream_type: 1 = stdout, 2 = stderr.  TTY containers have no headers.
+    We detect the multiplexed format by checking whether the first byte is 1 or 2
+    and whether the encoded size is consistent with the buffer length.
+    """
+    if not raw:
+        return []
+
+    # Heuristic: valid multiplexed stream starts with stream_type 1 or 2
+    # and the 4-byte size at bytes 4-8 must be <= remaining buffer length.
+    if len(raw) >= 8 and raw[0] in (1, 2):
+        size_hint = struct.unpack(">I", raw[4:8])[0]
+        if size_hint <= len(raw) - 8:
+            # Looks like a multiplexed stream — demux it properly.
+            lines: list[bytes] = []
+            pos = 0
+            while pos < len(raw):
+                if pos + 8 > len(raw):
+                    break
+                stream_type = raw[pos]
+                if stream_type not in (1, 2):
+                    # Frame header no longer valid — treat rest as raw.
+                    lines.extend(raw[pos:].splitlines())
+                    break
+                size = struct.unpack(">I", raw[pos + 4: pos + 8])[0]
+                pos += 8
+                chunk = raw[pos: pos + size]
+                pos += size
+                lines.extend(chunk.splitlines())
+            return lines
+
+    # TTY container or already decoded raw bytes.
+    return raw.splitlines()
 
 
 def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent]:
@@ -114,7 +156,7 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
         return []
 
     new_events: list[LogEvent] = []
-    for raw_line in raw.splitlines():
+    for raw_line in _demux_docker_logs(raw):
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line:
             continue

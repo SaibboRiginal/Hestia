@@ -166,3 +166,168 @@ class DispatchLogResponse(DispatchLogCreate):
 
     class Config:
         from_attributes = True
+
+
+# --- CALENDAR ITEM SCHEMAS ---
+
+
+class CalendarItemCreate(BaseModel):
+    """Upsert payload for a calendar event / task / reminder.
+
+    If ``external_id`` + ``source`` already exist the existing row is updated;
+    otherwise a new row is inserted.  When ``external_id`` is omitted a new row
+    is always inserted (used for Hestia-native items without a provider id).
+    """
+    external_id: Optional[str] = Field(
+        None, description="Provider-issued id (Google event id, Outlook event id, …)")
+    source: str = Field(
+        ..., description="Origin system: 'google', 'outlook', 'hestia', …")
+    kind: str = Field(
+        "event", description="'event', 'task', or 'reminder'")
+    title: str
+    description: Optional[str] = None
+    start_at: datetime = Field(..., description="Event start (timezone-aware)")
+    end_at: Optional[datetime] = Field(
+        None, description="Event end — may be None for reminders/tasks")
+    all_day: bool = False
+    location: Optional[str] = None
+    attendees: Optional[List[Dict[str, Any]]] = Field(
+        default_factory=list, description='[{"name": "…", "email": "…"}, …]')
+    recurrence: Optional[str] = Field(
+        None, description="RRULE string for recurring items")
+    status: str = Field(
+        "confirmed", description="confirmed / tentative / cancelled / completed")
+    html_link: Optional[str] = None
+    nag_enabled: bool = Field(
+        True, description="Whether the notification worker should nag about this item")
+
+
+class CalendarItemRead(CalendarItemCreate):
+    id: int
+    last_notified_bucket: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CalendarItemNagUpdate(BaseModel):
+    """Toggle nag on or off for a specific calendar item."""
+    nag_enabled: bool
+
+
+class CalendarItemNotifiedUpdate(BaseModel):
+    """Record which notification bucket was last sent for deduplication."""
+    last_notified_bucket: str = Field(
+        ..., description="'1d', '2h', or '30m'")
+
+
+# --- DOCUMENT STORAGE & RAG SCHEMAS ---
+
+class DocumentChunkIngest(BaseModel):
+    """A single chunk to store alongside a DocumentRecord."""
+    chunk_index: int
+    chunk_text: str
+    embedding: Optional[List[float]] = Field(
+        None, description="Pre-computed embedding vector for this chunk")
+
+
+class DocumentIngest(BaseModel):
+    """Full payload to store a document with all its chunks in one request."""
+    document_id: str = Field(...,
+                             description="Caller-assigned UUID hex (no dashes)")
+    session_id: str
+    chat_id: Optional[str] = Field(
+        None, description="Telegram chat_id as string")
+    filename: Optional[str] = None
+    mime_type: str
+    file_size_bytes: Optional[int] = None
+    # SHA-256 hex digest of original file bytes (for dedup / future blob recall)
+    file_hash: Optional[str] = None
+    title: Optional[str] = Field(
+        None, description="LLM-generated document title")
+    summary: Optional[str] = Field(
+        None, description="2-3 sentence LLM summary")
+    extracted_text: Optional[str] = Field(
+        None, description="Truncated full extracted text (max ~40k chars)")
+    embedding: Optional[List[float]] = Field(
+        None, description="Document-level summary embedding")
+    is_permanent: bool = False
+    # Hestia domain this document belongs to (LLM-assigned)
+    domain: Optional[str] = Field(
+        None, description="Hestia domain slug, e.g. 'real_estate'")
+    # JSON-encoded list of keyword tags, e.g. '["lease","2024","contract"]'
+    tags: Optional[str] = Field(
+        None, description="JSON-encoded list of keyword tags")
+    chunks: List[DocumentChunkIngest] = Field(default_factory=list)
+
+
+class DocumentRead(BaseModel):
+    """Public representation of a stored document (no raw text or embeddings)."""
+    document_id: str
+    session_id: str
+    chat_id: Optional[str] = None
+    filename: Optional[str] = None
+    mime_type: str
+    file_size_bytes: Optional[int] = None
+    file_hash: Optional[str] = None
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    chunk_count: int
+    is_permanent: bool
+    domain: str = "documents"
+    tags: Optional[str] = None          # JSON-encoded list string
+    access_count: int = 0
+    last_accessed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentPermanentUpdate(BaseModel):
+    is_permanent: bool
+
+
+class DocumentSearchRequest(BaseModel):
+    """Semantic chunk search request."""
+    query_vector: List[float]
+    chat_id: Optional[str] = None
+    session_id: Optional[str] = None
+    is_permanent: Optional[bool] = None
+    # Filter by domain (e.g. only search within 'real_estate' docs)
+    domain: Optional[str] = None
+    limit: int = Field(5, ge=1, le=20)
+    threshold: float = Field(
+        1.2, description="Maximum L2 distance to consider relevant (lower = stricter)")
+    # When True, update last_accessed_at + access_count for matched documents
+    track_access: bool = True
+
+
+class DocumentSearchResult(BaseModel):
+    """A chunk that matched the semantic query, with its parent document metadata."""
+    document_id: str
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    chunk_text: str
+    chunk_index: int
+    distance: float
+    is_permanent: bool
+    domain: str = "documents"
+    tags: Optional[str] = None
+    created_at: datetime
+    last_accessed_at: Optional[datetime] = None
+    access_count: int = 0
+
+
+class DocumentPruneRequest(BaseModel):
+    """Parameters for bulk-pruning old non-permanent documents."""
+    # Prune docs not accessed for more than this many days
+    idle_days: int = Field(
+        30, ge=1, description="Days since last access (or creation if never accessed)")
+    # Also require total access count to be below this threshold (0 = never retrieved)
+    max_access_count: int = Field(0, ge=0)
+    # Dry-run: return what would be deleted without actually deleting
+    dry_run: bool = False

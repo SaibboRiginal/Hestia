@@ -7,6 +7,8 @@ services:
       - PYTHONUNBUFFERED=1 # <-- FORZA LA STAMPA DEI LOG IN TEMPO REALE
       - HUB_API_URL=http://hestia_hub:19001/api
       - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
+      - ARCHIVE_URL=http://hestia_archive:19002
+      - CHRONOS_URL=http://hestia_chronos:19007
     ports:
       - "19003:19003"
     env_file:

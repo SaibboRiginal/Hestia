@@ -1,7 +1,11 @@
 from fetchers.gmail_fetcher import GmailIMAPFetcher
+from fetchers.gcal_fetcher import GCalFetcher
+from fetchers.outlook_fetcher import OutlookFetcher
 
 FETCHER_REGISTRY = {
     "gmail_imap": GmailIMAPFetcher,
+    "gcal": GCalFetcher,
+    "outlook_calendar": OutlookFetcher,
 }
 
 
