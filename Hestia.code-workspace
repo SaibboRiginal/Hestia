@@ -43,6 +43,11 @@
       },
     },
     {
+      "name": "Swagger",
+      "path": "Hestia-Swagger",
+      "settings": {},
+    },
+    {
       "name": "Chronos",
       "path": "Hestia-Chronos",
       "settings": {

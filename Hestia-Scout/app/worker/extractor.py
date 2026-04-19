@@ -260,9 +260,12 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
     result = _get_atlas().fetch_html(normalized_url, timeout_seconds=timeout_seconds)
     if result is None or not result.html:
         print(f"[ENRICH] No HTML from Atlas for {normalized_url}")
+        enriched["atlas_enriched"] = False
         return enriched
 
     print(
         f"[ENRICH] Got {result.content_length} chars, enriching via {handler.site_name}")
     soup = BeautifulSoup(result.html, "html.parser")
-    return handler.enrich(soup, enriched)
+    result_payload = handler.enrich(soup, enriched)
+    result_payload["atlas_enriched"] = True
+    return result_payload

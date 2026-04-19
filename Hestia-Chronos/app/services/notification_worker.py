@@ -166,7 +166,13 @@ def _tick() -> None:
             continue
 
         message = _build_notification(item, bucket)
-        ok = hermes_client.send_message(message)
+        event_payload = {**item, "_message": message, "_bucket": bucket}
+        ok = hermes_client.publish_event(
+            domain="calendar",
+            event_type="calendar.reminder",
+            entity_id=str(item.get("id", "")),
+            payload=event_payload,
+        )
         if ok:
             archive_client.mark_notified(item["id"], bucket)
             sent += 1

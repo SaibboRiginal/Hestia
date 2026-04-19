@@ -139,7 +139,8 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
             return
 
         try:
-            self._service = build("calendar", "v3", credentials=creds)
+            self._service = build(
+                "calendar", "v3", credentials=creds, cache_discovery=False)
             logger.info("[GOOGLE] Calendar service initialised successfully.")
         except Exception as exc:
             self._init_error = str(exc)

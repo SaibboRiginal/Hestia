@@ -37,7 +37,7 @@ def send_welcome(message):
     if not is_authorized(message):
         return
     refresh_command_registry(force=False)
-    welcome_text = "🏛️ <b>Hestia pronta</b>\nScegli un comando dai pulsanti qui sotto."
+    welcome_text = "🏛️ <b>Hestia pronta</b>\nScegli una categoria per vedere i comandi disponibili."
     core.bot.reply_to(message, welcome_text, parse_mode="HTML",
                       reply_markup=build_commands_keyboard())
 

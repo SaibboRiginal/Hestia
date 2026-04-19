@@ -34,7 +34,8 @@ def format_for_telegram(text: str) -> str:
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     text = re.sub(r'(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)', r'<i>\1</i>', text)
     text = re.sub(r'```(.*?)```', r'<pre>\1</pre>', text, flags=re.DOTALL)
-    text = text.replace("* ", "• ")
+    # Convert markdown bullet starters (both * and -) to bullet symbol
+    text = re.sub(r'^[*\-]\s+', '• ', text, flags=re.MULTILINE)
     return text
 
 
@@ -48,8 +49,17 @@ def split_long_message(text: str, max_length: int = 4000) -> list[str]:
         split_point = remaining.rfind("\n", 0, max_length)
         if split_point == -1:
             split_point = max_length
-        chunks.append(remaining[:split_point])
-        remaining = remaining[split_point:]
+        chunk = remaining[:split_point]
+        # If we're splitting inside an unclosed <pre> block, close it here and
+        # reopen it in the next chunk so Telegram can parse entities correctly.
+        open_pre = chunk.count("<pre>")
+        close_pre = chunk.count("</pre>")
+        if open_pre > close_pre:
+            chunk = chunk + "</pre>"
+            remaining = "<pre>" + remaining[split_point:]
+        else:
+            remaining = remaining[split_point:]
+        chunks.append(chunk)
 
     if remaining:
         chunks.append(remaining)
@@ -119,15 +129,39 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
     if not text:
         return []
 
+    # If the LLM already output HTML (analyst prompt now instructs HTML output),
+    # use the HTML-aware splitter directly — do NOT run format_for_telegram which
+    # would escape the angle brackets and destroy the markup.
+    if re.search(r'<(?:b|i|a[\s>]|code|pre|br)[\s/>]', text, re.IGNORECASE):
+        parts = _split_html_link_bullets(text)
+        return parts if parts else split_long_message(text)
+
+    # Legacy Markdown path (kept for backward compatibility / fallback models).
+    # Protect code fence blocks from being split at paragraph (\n\n) boundaries.
+    # Replace them with null-byte placeholders, split, then restore.
+    _fence_re = re.compile(r'```.*?```', re.DOTALL)
+    _fences: dict[str, str] = {}
+
+    def _protect(m: re.Match) -> str:
+        key = f"\x00FENCE{len(_fences)}\x00"
+        _fences[key] = m.group(0)
+        return key
+
+    text_safe = _fence_re.sub(_protect, text)
+
     link_pattern = re.compile(r'\[([^\]]+)\]\((https?://[^\)]+)\)')
     paragraphs = [
         part.strip()
-        for part in re.split(r'\n\s*\n+', text)
+        for part in re.split(r'\n\s*\n+', text_safe)
         if part and part.strip()
     ]
 
     messages: list[str] = []
     for paragraph in paragraphs:
+        # Restore any fences in this paragraph before processing
+        for key, fence in _fences.items():
+            paragraph = paragraph.replace(key, fence)
+
         links = link_pattern.findall(paragraph)
         if not links:
             rendered = format_for_telegram(paragraph).strip()
@@ -152,20 +186,29 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
                 if intro_rendered:
                     messages.extend(split_long_message(intro_rendered))
 
-            for bullet_line in bullet_lines_with_links:
-                rendered_bullet = format_for_telegram(bullet_line).strip()
-                if rendered_bullet:
-                    messages.extend(split_long_message(rendered_bullet))
-
-            non_link_bullets = [
-                line for line in bullet_lines if line not in bullet_lines_with_links
-            ]
-            if non_link_bullets:
-                rendered_non_link_bullets = format_for_telegram(
-                    "\n".join(non_link_bullets)).strip()
-                if rendered_non_link_bullets:
-                    messages.extend(split_long_message(
-                        rendered_non_link_bullets))
+            # Process all bullet lines in original order to preserve sequence
+            current_non_link_group: list[str] = []
+            for bullet_line in bullet_lines:
+                if bullet_line in bullet_lines_with_links:
+                    # Flush any accumulated non-link bullets before this link bullet
+                    if current_non_link_group:
+                        rendered_non_link = format_for_telegram(
+                            "\n".join(current_non_link_group)).strip()
+                        if rendered_non_link:
+                            messages.extend(
+                                split_long_message(rendered_non_link))
+                        current_non_link_group = []
+                    rendered_bullet = format_for_telegram(bullet_line).strip()
+                    if rendered_bullet:
+                        messages.extend(split_long_message(rendered_bullet))
+                else:
+                    current_non_link_group.append(bullet_line)
+            # Flush any remaining non-link bullets
+            if current_non_link_group:
+                rendered_non_link = format_for_telegram(
+                    "\n".join(current_non_link_group)).strip()
+                if rendered_non_link:
+                    messages.extend(split_long_message(rendered_non_link))
             continue
 
         paragraph_without_links = link_pattern.sub(

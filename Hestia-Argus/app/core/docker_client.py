@@ -38,6 +38,14 @@ BUFFER_SIZE = int(os.getenv("ARGUS_LOG_BUFFER_SIZE", "500"))
 BACKFILL_MINUTES = int(os.getenv("ARGUS_LOG_BACKFILL_MINUTES", "5"))
 LOG_LEVEL_PATTERN = re.compile(r"\b(WARNING|ERROR|CRITICAL)\b", re.IGNORECASE)
 
+# Comma-separated substrings — log lines containing any of these are silently dropped.
+# Set via ARGUS_IGNORE_PATTERNS env var.
+_IGNORE_PATTERNS: list[str] = [
+    p.strip().lower()
+    for p in os.getenv("ARGUS_IGNORE_PATTERNS", "").split(",")
+    if p.strip()
+]
+
 # Time when this module was imported — used as the default cursor base.
 _MODULE_START: datetime = datetime.now(tz=timezone.utc)
 
@@ -159,6 +167,8 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
     for raw_line in _demux_docker_logs(raw):
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line:
+            continue
+        if _IGNORE_PATTERNS and any(p in line.lower() for p in _IGNORE_PATTERNS):
             continue
         level = _parse_level(line)
         if level is None:

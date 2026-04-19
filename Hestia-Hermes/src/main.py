@@ -1,9 +1,11 @@
 import logging
 import os
+import threading
 import time
 import requests
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .modules.schemas import DispatchSendRequest, EventIngestRequest
 from .modules.service import HermesService
@@ -16,6 +18,8 @@ logging.basicConfig(
 logger = logging.getLogger("hestia_hermes")
 
 app = FastAPI(title="Hestia Hermes", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 service = HermesService()
 
 
@@ -72,6 +76,18 @@ def register_on_hub_startup():
         "Unable to register Hermes on Hub after %s attempt(s)",
         max_attempts,
     )
+
+    # Regardless of initial result, keep re-registering so a Hub restart doesn't lose this service.
+    def _hub_keepalive():
+        while True:
+            time.sleep(60)
+            try:
+                requests.post(f"{hub_api_url}/registry/register",
+                              json=payload, timeout=4)
+            except Exception:
+                pass
+    threading.Thread(target=_hub_keepalive, daemon=True,
+                     name="hub-keepalive").start()
 
 
 @app.get("/health")

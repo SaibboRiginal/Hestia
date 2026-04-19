@@ -3,6 +3,7 @@ import os
 import requests
 import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -17,6 +18,8 @@ logging.basicConfig(
 logger = logging.getLogger("hestia_oracle")
 
 app = FastAPI(title="Hestia Oracle Microservice", version="1.0")
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 engine = OracleEngine()
 
 
@@ -57,6 +60,8 @@ class ChatRequest(BaseModel):
     notify_target: Optional[str] = None
     force_notification_compiler: Optional[bool] = False
     client_instructions: Optional[str] = None
+    # Set False for service-to-service calls (Argus, Hermes)
+    save_history: bool = True
 
 
 class ChatResponse(BaseModel):
@@ -70,6 +75,9 @@ class FormatRequest(BaseModel):
     payload: object
     response_prompt: Optional[str] = None
     client_instructions: Optional[str] = None
+    thinking: bool = False
+    max_length: Optional[int] = None
+    locale: str = "it"
 
 
 class FormatResponse(BaseModel):
@@ -106,7 +114,8 @@ def chat_endpoint(req: ChatRequest):
                         notify_target=req.notify_target,
                         force_notification_compiler=bool(
                             req.force_notification_compiler),
-                        client_instructions=req.client_instructions),
+                        client_instructions=req.client_instructions,
+                        save_history=req.save_history),
             media_type="application/x-ndjson"
         )
     except Exception as e:
@@ -209,6 +218,9 @@ def format_endpoint(req: FormatRequest):
             payload=req.payload,
             response_prompt=req.response_prompt,
             client_instructions=req.client_instructions,
+            thinking=req.thinking,
+            max_length=req.max_length,
+            locale=req.locale,
         )
         return {"text": text}
     except Exception as e:

@@ -185,8 +185,10 @@ def parse_subscription_actions(
         if not channels:
             continue
 
+        # Exclude owner (session_id, changes per conversation) from the hash so
+        # the same logical subscription from the same chat_id never duplicates.
         signature_payload = json.dumps(
-            {"owner": owner, "domain": domain, "event_type": event_type,
+            {"domain": domain, "event_type": event_type,
              "filters": filters, "channels": channels},
             sort_keys=True, ensure_ascii=False,
         )

@@ -348,10 +348,12 @@ def format_command_payload_with_oracle(command_name: str, payload: Any, response
         "payload": payload,
         "response_prompt": response_prompt,
         "client_instructions": core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS,
+        "thinking": False,
+        "locale": core.TELEGRAM_LOCALE,
     }
     try:
         response = requests.post(
-            core.ORACLE_FORMAT_API_URL, json=request_payload, timeout=12)
+            core.ORACLE_FORMAT_API_URL, json=request_payload, timeout=30)
         if response.status_code != 200:
             return None
         text = str((response.json() or {}).get("text", "")).strip()
@@ -370,10 +372,23 @@ def render_direct_command_output(
 
     Returns ``(text, parse_mode)`` where parse_mode is one of
     ``"HTML"``, ``"Markdown"``, or ``"plain"``.
+
+    Oracle rendering always takes priority when mode is ``oracle_natural``.
+    Hardcoded domain formatters are used as fallback when Oracle is unavailable,
+    or as the primary renderer for ``raw_json`` mode.
     """
     mode = str(response_mode or "raw_json").strip().lower()
     normalized = str(command_name or "").strip().lower()
 
+    # ── Oracle rendering (highest priority) ──────────────────────────────────
+    if mode == "oracle_natural":
+        formatted = format_command_payload_with_oracle(
+            command_name, payload, response_prompt)
+        if formatted:
+            return formatted, "HTML"
+        # Oracle unavailable — fall through to hardcoded formatters below
+
+    # ── Hardcoded domain formatters (fallback or raw_json mode) ──────────────
     if normalized == "scout_listings":
         out = format_scout_listings(payload)
         if out:
@@ -393,13 +408,6 @@ def render_direct_command_output(
         out = format_active_preferences(payload)
         if out:
             return out, "HTML"
-
-    if mode == "oracle_natural":
-        formatted = format_command_payload_with_oracle(
-            command_name, payload, response_prompt)
-        if formatted:
-            return formatted, "Markdown"
-        return core.format_payload_raw(payload), "Markdown"
 
     if mode == "text":
         return str(payload), "plain"

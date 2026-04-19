@@ -107,10 +107,10 @@ def build_system_report(project_context: str = "") -> SystemReport:
         + "\n".join(health_lines or ["  (no services registered)"])
         + "\n\nRecent log events (WARNING and above):\n"
         + "\n".join(log_lines or ["  (none)"])
-        + "\n\nProvide a concise, friendly analysis of the system state. "
-        "Highlight any problems, their likely cause based on what you know about "
-        "these services, and suggested next steps. Use plain text suitable for "
-        "Telegram."
+        + "\n\nProvide a concise analysis of the system state. "
+        "Be brief: one status line, then bullet points for any issues (service, symptom, likely cause), "
+        "then bullet points for suggested actions if needed (max 3). "
+        "Prefer bullet lists over paragraphs. No intro or closing phrases."
     )
 
     llm_summary = oracle_client.analyze(prompt, context=project_context)

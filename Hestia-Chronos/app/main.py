@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from core import archive_client
@@ -26,7 +29,7 @@ from schemas.events import (
     UpdateEventRequest,
 )
 from services.calendar_service import CalendarService
-from services import notification_worker
+from services import notification_worker, sync_worker
 
 logging.basicConfig(
     # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
@@ -40,6 +43,8 @@ logger = logging.getLogger("hestia_chronos")
 # ─────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Hestia Chronos", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 
 _registry = CalendarProviderRegistry()
 _service = CalendarService(_registry)
@@ -66,9 +71,22 @@ def on_startup() -> None:
     )
 
     register_on_hub(hub_api_url, service_base_url)
+    # Periodically re-register with Hub so a Hub restart doesn't lose this service.
+
+    def _hub_keepalive():
+        while True:
+            time.sleep(60)
+            try:
+                register_on_hub(hub_api_url, service_base_url)
+            except Exception:
+                pass
+    threading.Thread(target=_hub_keepalive, daemon=True,
+                     name="hub-keepalive").start()
 
     # Start the proactive notification worker (background daemon thread).
     notification_worker.start()
+    # Start the calendar sync worker (pulls events from providers into Archive).
+    sync_worker.start(_registry)
 
 
 # ─────────────────────────────────────────────────────────────────────

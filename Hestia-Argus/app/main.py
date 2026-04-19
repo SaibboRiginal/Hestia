@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from core import context_loader, hub_client
 from core.health_poller import poll_all
@@ -33,6 +36,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     # Register with Hub (non-fatal).
     hub_client.register()
+    # Periodically re-register with Hub so a Hub restart doesn't lose this service.
+
+    def _hub_keepalive():
+        while True:
+            time.sleep(60)
+            try:
+                hub_client.register()
+            except Exception:
+                pass
+    threading.Thread(target=_hub_keepalive, daemon=True,
+                     name="hub-keepalive").start()
     # Start background monitoring loop.
     monitor_service.start()
     yield
@@ -44,6 +58,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.add_middleware(CORSMiddleware, allow_origins=[
+                   "*"], allow_methods=["*"], allow_headers=["*"])
 
 
 # ---------------------------------------------------------------------------

@@ -70,11 +70,32 @@ def register_on_hub(
                 {
                     "command": "create_event",
                     "title": "📅 Crea evento",
-                    "description": "Crea un evento nel calendario",
+                    "description": "Crea un nuovo evento nel calendario connesso (Google Calendar, Outlook). Usa per: crea evento, aggiungi appuntamento, imposta promemoria, pianifica riunione.",
                     "method": "POST",
                     "path": "/api/calendar/events",
+                    "body_template": {
+                        "event": {
+                            "title": "$title",
+                            "start_datetime": "$start_datetime",
+                            "end_datetime": "$end_datetime",
+                            "description": "$description",
+                            "location": "$location",
+                        }
+                    },
+                    "arguments_schema": {
+                        "title": {"type": "string", "required": True, "description": "Titolo o nome dell'evento"},
+                        "start_datetime": {"type": "string", "required": True, "description": "Data e ora di inizio nel formato ISO 8601 (YYYY-MM-DDTHH:MM:SS). Risolvi le date relative come 'domani', 'lunedì prossimo' con la data reale."},
+                        "end_datetime": {"type": "string", "required": False, "description": "Data e ora di fine nel formato ISO 8601. Se non specificato, usa start_datetime + 1 ora."},
+                        "description": {"type": "string", "required": False, "description": "Descrizione o note aggiuntive dell'evento"},
+                        "location": {"type": "string", "required": False, "description": "Luogo fisico o virtuale dell'evento"},
+                    },
                     "clients": ["telegram", "ui"],
                     "response_mode": "oracle_natural",
+                    "response_prompt": (
+                        "Conferma la creazione dell'evento con un messaggio breve e naturale. "
+                        "Includi titolo, data/ora di inizio. Se il provider ha restituito un link o ID, menzionalo. "
+                        "Usa un tono diretto e amichevole."
+                    ),
                     "telegram_visible": False,
                 },
             ],

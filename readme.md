@@ -98,6 +98,12 @@ Real-estate domain module.
    - `requirements.txt`
    - `src/` with `main.py` and modules
 6. Requirement changes must be reflected in service markdown files (`hestia-*.md`) and root documentation in the same change set.
+7. **Every service must be unconditionally resilient — no task is ever abandoned.**
+   - If a dependency (Atlas, Hermes, Hub, Archive, geocoder, etc.) is unavailable, the work unit must be **flagged as incomplete** in a durable store (Archive entity payload or a local queue file) and **retried automatically** on every subsequent reconcile/recovery cycle.
+   - Incomplete work is tracked via explicit payload flags (e.g. `atlas_enriched=False`, `hermes_notified=False`, `geo_enriched=False`). A missing flag or `True` means done; `False` means pending retry.
+   - The reconcile loop (or equivalent periodic recovery pass) of every module **must** check all pending flags and resume the failed step before considering a record complete.
+   - Data in Archive is never considered partial or stale as long as pending flags remain; enrichment and notification retries run until they succeed or the data expires naturally (e.g. listing sold/removed).
+   - Errors are logged with `[🔄]` prefix and enough context to diagnose the failure. Silent failure is forbidden.
 
 ## Messaging Contract (Global UX Rules)
 

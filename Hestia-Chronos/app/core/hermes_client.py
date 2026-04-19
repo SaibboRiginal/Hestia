@@ -14,12 +14,41 @@ _NOTIFY_TARGET = os.getenv("NOTIFY_TARGET", "")
 _TIMEOUT = 8
 
 
-def send_message(text: str, chat_id: Optional[str] = None) -> bool:
-    """Send a plain-text or HTML message to the user via Hermes.
+def publish_event(domain: str, event_type: str, entity_id: str, payload: dict[str, Any]) -> bool:
+    """Publish an event to Hermes for subscription-based delivery.
 
-    Uses NOTIFY_TARGET env as the default Telegram chat_id.
-    Returns True when Hermes confirms delivery.
+    Callers who have an active subscription for domain+event_type will receive
+    the notification. The payload may include a ``_message`` key with a
+    pre-formatted HTML string so Hermes skips Oracle narration.
     """
+    body = {
+        "domain": domain,
+        "event_type": event_type,
+        "entity_id": entity_id,
+        "payload": payload,
+    }
+    try:
+        resp = requests.post(
+            f"{_HERMES_URL.rstrip('/')}/api/events/ingest",
+            json=body,
+            timeout=_TIMEOUT,
+        )
+        if resp.status_code < 300:
+            result = (resp.json() if resp.content else {}).get("result", {})
+            logger.info(
+                "[HERMES] Event published domain=%s event=%s deliveries=%s",
+                domain, event_type, result.get("deliveries", 0),
+            )
+            return True
+        logger.warning("[HERMES] Event publish status=%s body=%s",
+                       resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("[HERMES] publish_event error: %s", exc)
+    return False
+
+
+def send_message(text: str, chat_id: Optional[str] = None) -> bool:
+    """Legacy direct-send (bypasses subscriptions). Prefer publish_event."""
     target = chat_id or _NOTIFY_TARGET
     if not target:
         logger.warning(

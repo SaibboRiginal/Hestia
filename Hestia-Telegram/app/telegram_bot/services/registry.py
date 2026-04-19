@@ -13,6 +13,23 @@ from telegram_bot import core
 
 logger = logging.getLogger("hestia_telegram.registry")
 
+# ── setup_commands debounce ───────────────────────────────────────────────────
+_SETUP_COMMANDS_COOLDOWN_SEC = 60
+_setup_commands_lock = threading.Lock()
+_setup_commands_last_run: float = 0.0
+
+# ── Group definitions (order matters for display) ─────────────────────────────
+# Each tuple: (group_key, display_label, short_description)
+GROUP_ORDER: list[tuple[str, str, str]] = [
+    ("notifiche",      "🔔 Notifiche",      "Gestisci notifiche proattive"),
+    ("immobiliare",    "🏠 Immobiliare",    "Cerca e monitora annunci"),
+    ("pianificazione", "📅 Pianificazione", "Crea eventi, task e promemoria"),
+    ("documenti",      "📎 Documenti",      "Documenti caricati e archiviati"),
+    ("sistema",        "⚙️ Sistema",        "Stato e diagnostica del sistema"),
+    ("impostazioni",   "⚙️ Impostazioni",   "Sessione, tono e preferenze"),
+    ("altro",          "🔧 Altro",          "Altri comandi disponibili"),
+]
+
 # ── Hub discovery ─────────────────────────────────────────────────────────────
 
 
@@ -78,6 +95,10 @@ def watch_command_registry_loop():
     """Background loop: poll Hub for registry changes and refresh as needed."""
     interval = max(5, core.TELEGRAM_COMMAND_REFRESH_SECONDS)
     while True:
+        try:
+            register_telegram_service()
+        except Exception:
+            pass
         try:
             refresh_command_registry(force=False)
         except Exception:
@@ -158,14 +179,13 @@ def get_visible_command_items(surface: str = "menu") -> list[tuple[str, dict[str
 
 
 def build_commands_keyboard() -> InlineKeyboardMarkup:
-    """Build the inline command picker keyboard for a chat."""
+    """Build the main category keyboard — one button per non-empty group."""
+    grouped = get_grouped_commands()
     kb = InlineKeyboardMarkup(row_width=2)
     buttons = [
-        InlineKeyboardButton(
-            str(meta.get("title", name)).strip()[:62],
-            callback_data=f"run:{name}",
-        )
-        for name, meta in get_visible_command_items(surface="menu")
+        InlineKeyboardButton(label, callback_data=f"grp:{key}")
+        for key, label, _ in GROUP_ORDER
+        if key in grouped
     ]
     for i in range(0, len(buttons), 2):
         if i + 1 < len(buttons):
@@ -175,8 +195,61 @@ def build_commands_keyboard() -> InlineKeyboardMarkup:
     return kb
 
 
+def build_group_commands_keyboard(group_key: str) -> InlineKeyboardMarkup:
+    """Build the command list keyboard for a single group, with a Back button."""
+    grouped = get_grouped_commands()
+    kb = InlineKeyboardMarkup(row_width=1)
+    for name, meta in (grouped.get(group_key) or []):
+        title = str(meta.get("title", name)).strip()[:62]
+        kb.add(InlineKeyboardButton(title, callback_data=f"run:{name}"))
+    kb.add(InlineKeyboardButton("← Indietro", callback_data="grp:__main__"))
+    return kb
+
+
+def _infer_group(name: str, meta: dict) -> str | None:
+    """Return the group key for a command, or 'altro' as catch-all fallback."""
+    explicit = str(meta.get("group", "")).strip().lower()
+    if explicit:
+        return explicit
+    service = str(meta.get("service", "")).strip().lower()
+    if service == "scout" or name.startswith("scout_"):
+        return "immobiliare"
+    if service in ("chronos", "ingest"):
+        return "pianificazione"
+    if service == "argus":
+        return "sistema"
+    if service == "archive":
+        # Archive commands are mostly notification/subscription management
+        return "notifiche"
+    # Catch-all: any remaining visible command appears under "Altro"
+    return "altro"
+
+
+def get_grouped_commands() -> dict[str, list[tuple[str, dict]]]:
+    """Return all visible menu commands bucketed by group key."""
+    groups: dict[str, list[tuple[str, dict]]] = {}
+    for name, meta in get_visible_command_items(surface="menu"):
+        group = _infer_group(name, meta)
+        if group:
+            groups.setdefault(group, []).append((name, meta))
+    return groups
+
+
 def setup_commands():
-    """Sync the Telegram native command menu with the current registry."""
+    """Sync the Telegram native command menu with the current registry.
+
+    Calls to set_my_commands are debounced: no more than one call every
+    _SETUP_COMMANDS_COOLDOWN_SEC seconds to avoid Telegram 429 errors when
+    multiple services register in quick succession.
+    """
+    global _setup_commands_last_run
+    with _setup_commands_lock:
+        now = time.time()
+        if now - _setup_commands_last_run < _SETUP_COMMANDS_COOLDOWN_SEC:
+            logger.debug("setup_commands skipped (cooldown)")
+            return
+        _setup_commands_last_run = now
+
     visible_map: dict[str, dict[str, Any]] = {}
 
     for name, meta in sorted(core.LOCAL_COMMANDS.items()):
@@ -200,12 +273,22 @@ def setup_commands():
         if name not in visible_map:
             visible_map[name] = meta
 
+    def _command_sort_key(item: tuple[str, dict]) -> tuple[int, str]:
+        name = item[0]
+        if name == "help":
+            return (0, "")
+        return (1, name)
+
     commands = [
         BotCommand(
             name, str(meta.get("title", meta.get("description", name))).strip()[:256])
-        for name, meta in sorted(visible_map.items())
+        for name, meta in sorted(visible_map.items(), key=_command_sort_key)
     ]
-    core.bot.set_my_commands(commands)
+    try:
+        core.bot.set_my_commands(commands)
+    except Exception as e:
+        logger.warning("set_my_commands failed (global scope): %s", e)
+        return
     if core.ALLOWED_USER_ID and str(core.ALLOWED_USER_ID).isdigit():
         try:
             core.bot.set_my_commands(commands, scope=BotCommandScopeChat(

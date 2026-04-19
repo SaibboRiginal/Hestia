@@ -88,3 +88,51 @@ class HubClient:
         if int(routed.get("status_code", 500)) >= 400:
             raise RuntimeError(routed.get("payload", "delete failed"))
         return routed.get("payload")
+
+    def get_commands(self, client: str = "") -> list[dict]:
+        """Fetch all registered service commands from Hub discovery endpoint."""
+        try:
+            url = f"{self._base}/discovery/commands"
+            if client:
+                url += f"?client={client}"
+            resp = requests.get(url, timeout=5)
+            if resp.status_code == 200:
+                return resp.json().get("commands") or []
+        except Exception as exc:
+            logger.debug("[HubClient] get_commands failed: %s", exc)
+        return []
+
+    def route_to_service(
+        self,
+        service: str,
+        path: str,
+        method: str,
+        body: dict | None = None,
+        query: dict | None = None,
+        timeout: int = 15,
+    ) -> tuple[bool, object]:
+        """Route a request to any registered service via Hub routing envelope."""
+        clean_path = path.lstrip("/")
+        try:
+            resp = requests.post(
+                f"{self._base}/route/{service}/{clean_path}",
+                json={
+                    "method": method.upper(),
+                    "query": query or {},
+                    "headers": {},
+                    "body": body,
+                    "timeout_seconds": timeout,
+                },
+                timeout=timeout + 2,
+            )
+            if resp.status_code != 200:
+                return False, resp.text
+            routed = resp.json() or {}
+            status = int(routed.get("status_code", 500))
+            if status >= 400:
+                return False, routed.get("payload")
+            return True, routed.get("payload")
+        except Exception as exc:
+            logger.debug(
+                "[HubClient] route_to_service %s/%s failed: %s", service, path, exc)
+            return False, str(exc)

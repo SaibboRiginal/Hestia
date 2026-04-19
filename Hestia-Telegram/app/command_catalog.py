@@ -36,8 +36,9 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "clients": ["telegram", "ui"],
             "response_mode": "telegram_local",
             "telegram_visible": True,
-            "telegram_menu_visible": False,
-            "telegram_help_visible": False,
+            "telegram_menu_visible": True,
+            "telegram_help_visible": True,
+            "group": "impostazioni",
         },
         {
             "command": "set",
@@ -48,9 +49,10 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "clients": ["telegram", "ui"],
             "response_mode": "telegram_local",
             "telegram_visible": True,
-            "telegram_menu_visible": False,
-            "telegram_help_visible": False,
+            "telegram_menu_visible": True,
+            "telegram_help_visible": True,
             "arguments_help": "<parametro>",
+            "group": "impostazioni",
         },
         {
             "command": "settings",
@@ -61,8 +63,9 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "clients": ["telegram", "ui"],
             "response_mode": "telegram_local",
             "telegram_visible": True,
-            "telegram_menu_visible": False,
-            "telegram_help_visible": False,
+            "telegram_menu_visible": True,
+            "telegram_help_visible": True,
+            "group": "impostazioni",
         },
         {
             "command": "reset_settings",
@@ -73,8 +76,9 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "clients": ["telegram", "ui"],
             "response_mode": "telegram_local",
             "telegram_visible": True,
-            "telegram_menu_visible": False,
-            "telegram_help_visible": False,
+            "telegram_menu_visible": True,
+            "telegram_help_visible": True,
+            "group": "impostazioni",
         },
         {
             "command": "notifica_add",
@@ -87,6 +91,7 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_visible": True,
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
+            "group": "notifiche",
         },
         {
             "command": "notifica_get",
@@ -99,6 +104,7 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_visible": True,
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
+            "group": "notifiche",
         },
         {
             "command": "notifica_remove",
@@ -112,6 +118,7 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
             "arguments_help": "subscription_id=<id>",
+            "group": "notifiche",
         },
         {
             "command": "create_event",
@@ -124,6 +131,7 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_visible": True,
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
+            "group": "pianificazione",
         },
         {
             "command": "create_task",
@@ -136,6 +144,7 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_visible": True,
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
+            "group": "pianificazione",
         },
         {
             "command": "create_reminder",
@@ -148,6 +157,7 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_visible": True,
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
+            "group": "pianificazione",
         },
         {
             "command": "documents",
@@ -160,5 +170,6 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_visible": True,
             "telegram_menu_visible": True,
             "telegram_help_visible": True,
+            "group": "documenti",
         },
     ]
