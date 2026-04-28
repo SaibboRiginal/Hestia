@@ -1,7 +1,8 @@
 services:
   hub:
     build:
-      context: ./Hestia-Hub
+      context: .
+      dockerfile: Hestia-Hub/Dockerfile
     container_name: hestia_hub
     restart: unless-stopped
     ports:
@@ -38,7 +39,8 @@ services:
 
   archive:
     build:
-      context: ./Hestia-Archive
+      context: .
+      dockerfile: Hestia-Archive/Dockerfile
     container_name: hestia_archive
     restart: unless-stopped
     ports:
@@ -60,7 +62,8 @@ services:
 
   ingest:
     build:
-      context: ./Hestia-Ingest
+      context: .
+      dockerfile: Hestia-Ingest/Dockerfile
     container_name: hestia_ingest
     restart: unless-stopped
     ports:
@@ -91,7 +94,8 @@ services:
 
   oracle:
     build:
-      context: ./Hestia-Oracle
+      context: .
+      dockerfile: Hestia-Oracle/Dockerfile
     container_name: hestia_oracle
     restart: unless-stopped
     ports:
@@ -108,6 +112,7 @@ services:
       - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools  # Primary module-tool endpoint (Scout)
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONPATH=/code                                     # Ensure shared package /code/hestia_common is importable
       - PYTHONUNBUFFERED=1
       # Tuning (override as needed):
       # ORACLE_HISTORY_LIMIT=6          past messages included in context (int)
@@ -126,7 +131,8 @@ services:
 
   hermes:
     build:
-      context: ./Hestia-Hermes
+      context: .
+      dockerfile: Hestia-Hermes/Dockerfile
     container_name: hestia_hermes
     restart: unless-stopped
     ports:
@@ -152,7 +158,8 @@ services:
 
   telegram:
     build:
-      context: ./Hestia-Telegram
+      context: .
+      dockerfile: Hestia-Telegram/Dockerfile
     container_name: hestia_telegram
     restart: unless-stopped
     env_file:
@@ -197,7 +204,8 @@ services:
 
   scout:
     build:
-      context: ./Hestia-Scout
+      context: .
+      dockerfile: Hestia-Scout/Dockerfile
     container_name: hestia_scout
     restart: unless-stopped
     ports:
@@ -228,7 +236,8 @@ services:
 
   chronos:
     build:
-      context: ./Hestia-Chronos
+      context: .
+      dockerfile: Hestia-Chronos/Dockerfile
     container_name: hestia_chronos
     restart: unless-stopped
     ports:
@@ -258,7 +267,8 @@ services:
 
   argus:
     build:
-      context: ./Hestia-Argus
+      context: .
+      dockerfile: Hestia-Argus/Dockerfile
     container_name: hestia_argus
     restart: unless-stopped
     ports:
@@ -282,6 +292,64 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only Docker socket for log tailing
       - ./:/hestia_root:ro                            # Hestia repo root mounted for doc access
+    depends_on:
+      hub:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  athena:
+    build:
+      context: .
+      dockerfile: Hestia-Athena/Dockerfile
+    container_name: hestia_athena
+    restart: unless-stopped
+    ports:
+      - "19009:19009"  # Athena API port
+    env_file:
+      - ./Hestia-Athena/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - SERVICE_NAME=athena                                  # Registered service name on Hub
+      - SERVICE_BASE_URL=http://hestia_athena:19009          # This service's public URL as seen by Hub
+      - SERVICE_VERSION=1.0.0                                # Reported version in Hub registry
+      - SERVICE_TYPE=core                                    # Service category in Hub registry
+      - SERVICE_TAGS=core                                    # Hub tags for routing/discovery
+      - HERMES_API_URL=http://hestia_hermes:19005            # Hermes ingest API base URL
+      - ATHENA_LOOP_ENABLED=1                                # Enable periodic focus brief loop (0|1)
+      - ATHENA_BRIEF_INTERVAL_SECONDS=300                    # Seconds between periodic focus brief evaluations (int)
+      - ATHENA_RELEVANCE_THRESHOLD=0.55                      # Gate threshold for emitting briefs (float 0..1)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      hub:
+        condition: service_started
+      hermes:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  hephaestus:
+    build:
+      context: .
+      dockerfile: Hestia-Hephaestus/Dockerfile
+    container_name: hestia_hephaestus
+    restart: unless-stopped
+    ports:
+      - "19010:19010"  # Hephaestus API port
+    env_file:
+      - ./Hestia-Hephaestus/app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - SERVICE_NAME=hephaestus                              # Registered service name on Hub
+      - SERVICE_BASE_URL=http://hestia_hephaestus:19010      # This service's public URL as seen by Hub
+      - SERVICE_VERSION=1.0.0                                # Reported version in Hub registry
+      - SERVICE_TYPE=core                                    # Service category in Hub registry
+      - SERVICE_TAGS=core                                    # Hub tags for routing/discovery
+      - HEPHAESTUS_READ_ONLY_MODE=1                          # Keep Hephaestus in diagnostics-only mode (0|1)
+      - HEPHAESTUS_ALLOW_PROD_EXECUTION=0                    # Block production execution in MVP (0|1)
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - PYTHONUNBUFFERED=1
     depends_on:
       hub:
         condition: service_started

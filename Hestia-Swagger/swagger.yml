@@ -37,6 +37,10 @@ tags:
     description: Proactive notification subscriptions
   - name: Archive — Dispatch Logs
     description: Delivery logs for dispatched notifications
+  - name: Archive — Outbound Events
+    description: Outbound delivery lifecycle and dedupe tracking
+  - name: Archive — Feedback
+    description: Quality feedback records and JSONL export
   - name: Archive — Calendar
     description: Calendar items (events, tasks, reminders)
   - name: Archive — Documents
@@ -413,6 +417,75 @@ components:
           type: object
           additionalProperties: true
 
+    OutboundEventUpsertRequest:
+      type: object
+      required: [outbound_event_id, dedupe_key, lifecycle_state, event_type]
+      properties:
+        outbound_event_id:
+          type: string
+        dedupe_key:
+          type: string
+        lifecycle_state:
+          type: string
+          enum:
+            [
+              created,
+              queued,
+              delivered,
+              seen,
+              answered,
+              dismissed,
+              superseded,
+              failed,
+            ]
+        event_type:
+          type: string
+        domain:
+          type: string
+        entity_id:
+          type: string
+        subscription_id:
+          type: string
+        channel:
+          type: string
+        target:
+          type: string
+        question_id:
+          type: string
+        brief_id:
+          type: string
+        source_service:
+          type: string
+        superseded_by:
+          type: string
+        detail:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+
+    OutboundEventStateUpdateRequest:
+      type: object
+      required: [lifecycle_state]
+      properties:
+        lifecycle_state:
+          type: string
+          enum:
+            [
+              created,
+              queued,
+              delivered,
+              seen,
+              answered,
+              dismissed,
+              superseded,
+              failed,
+            ]
+        detail:
+          type: string
+        superseded_by:
+          type: string
+
     # ── Chronos ───────────────────────────────────────────────────────────────
     CalendarEvent:
       type: object
@@ -697,6 +770,132 @@ paths:
       responses:
         "200":
           description: OK
+
+  /api/logs:
+    get:
+      tags: [Hub]
+      summary: Retrieve buffered runtime logs (service-local endpoint)
+      description: |
+        Implemented in all runtime services.
+        Current instances:
+        - Hub (19001)
+        - Archive (19002)
+        - Ingest (19003)
+        - Oracle (19004)
+        - Hermes (19005)
+        - Scout (19006)
+        - Chronos (19007)
+        - Argus (19008)
+        - Athena (19009)
+        - Hephaestus (19010)
+        - Telegram control API (internal: hestia_telegram:8010)
+
+        Sensitive values (tokens, passwords, secrets, credential URLs, auth headers)
+        are redacted before entries are buffered and returned.
+
+        Use query filters to keep output dense and useful for troubleshooting.
+      servers:
+        - url: http://localhost:19001
+          description: Hub
+        - url: http://localhost:19002
+          description: Archive
+        - url: http://localhost:19003
+          description: Ingest
+        - url: http://localhost:19004
+          description: Oracle
+        - url: http://localhost:19005
+          description: Hermes
+        - url: http://localhost:19006
+          description: Scout
+        - url: http://localhost:19007
+          description: Chronos
+        - url: http://localhost:19008
+          description: Argus
+        - url: http://localhost:19009
+          description: Athena
+        - url: http://localhost:19010
+          description: Hephaestus
+        - url: http://hestia_telegram:8010
+          description: Telegram control API (Docker network)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+            maximum: 2000
+        - name: level
+          in: query
+          schema:
+            type: string
+            example: INFO
+        - name: contains
+          in: query
+          schema:
+            type: string
+            example: outbound_event_id=p2-4-smoke-3
+      responses:
+        "200":
+          description: "{service, count, logs[]}"
+
+  /api/monitor/logs/{service_name}:
+    get:
+      tags: [Hub]
+      summary: Retrieve logs for a registered service through Hub monitoring proxy
+      description: |
+        Supports multiple output modes:
+        - raw: original proxied payload
+        - text/transcribe: flattened plain-text log stream
+        - ai/analyze/summary: Oracle-formatted analysis, with text fallback
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: service_name
+          in: path
+          required: true
+          schema:
+            type: string
+          example: archive
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+            maximum: 2000
+        - name: level
+          in: query
+          schema:
+            type: string
+            example: WARNING
+        - name: contains
+          in: query
+          schema:
+            type: string
+            example: event=hub_register_non_success
+        - name: mode
+          in: query
+          schema:
+            type: string
+            enum: [raw, text, transcribe, ai, analyze, summary]
+            default: raw
+        - name: response_prompt
+          in: query
+          schema:
+            type: string
+            example: Summarize critical errors and actionable next checks.
+        - name: include_raw
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: timeout_seconds
+          in: query
+          schema:
+            type: number
+            default: 8.0
+      responses:
+        "200":
+          description: "Mode-dependent payload. Raw: {status_code, service, target, payload}; Text/AI: {status_code, service, target, mode, text, line_count[, payload]}"
 
   /api/route/{service_name}/{path}:
     post:
@@ -1203,6 +1402,262 @@ paths:
         "200":
           description: Enriched log entries
 
+  /api/interaction-ledger:
+    post:
+      tags: [Archive — Memory]
+      summary: Append a compact typed interaction ledger record
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_type]
+              properties:
+                session_id:
+                  type: string
+                actor:
+                  type: string
+                event_type:
+                  type: string
+                domain:
+                  type: string
+                source_service:
+                  type: string
+                reference_id:
+                  type: string
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Created record
+    get:
+      tags: [Archive — Memory]
+      summary: Query interaction ledger records
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: source_service
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+      responses:
+        "200":
+          description: List of interaction ledger records
+
+  /archive/api/feedback:
+    post:
+      tags: [Archive — Feedback]
+      summary: Append a quality feedback record
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quality_label]
+              properties:
+                feedback_id:
+                  type: string
+                session_id:
+                  type: string
+                interaction_id:
+                  type: string
+                source_service:
+                  type: string
+                  default: oracle
+                source_client:
+                  type: string
+                quality_label:
+                  type: string
+                  enum: [excellent, good, mixed, poor, rejected]
+                quality_score:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                outcome_label:
+                  type: string
+                feedback_text:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Created feedback record
+    get:
+      tags: [Archive — Feedback]
+      summary: List feedback records
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: quality_label
+          in: query
+          schema:
+            type: string
+            enum: [excellent, good, mixed, poor, rejected]
+        - name: source_client
+          in: query
+          schema:
+            type: string
+        - name: source_service
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+      responses:
+        "200":
+          description: List of feedback records
+
+  /archive/api/feedback/export/jsonl:
+    get:
+      tags: [Archive — Feedback]
+      summary: Export filtered feedback records as JSONL
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: quality_label
+          in: query
+          schema:
+            type: string
+            enum: [excellent, good, mixed, poor, rejected]
+        - name: source_client
+          in: query
+          schema:
+            type: string
+        - name: source_service
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1000
+      responses:
+        "200":
+          description: application/x-ndjson JSONL export
+
+  /api/outbound-events/upsert:
+    post:
+      tags: [Archive — Outbound Events]
+      summary: Upsert outbound event lifecycle record
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutboundEventUpsertRequest"
+      responses:
+        "200":
+          description: Upserted outbound event
+
+  /api/outbound-events:
+    get:
+      tags: [Archive — Outbound Events]
+      summary: List outbound event lifecycle records
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: dedupe_key
+          in: query
+          schema:
+            type: string
+        - name: lifecycle_state
+          in: query
+          schema:
+            type: string
+        - name: subscription_id
+          in: query
+          schema:
+            type: string
+        - name: question_id
+          in: query
+          schema:
+            type: string
+        - name: brief_id
+          in: query
+          schema:
+            type: string
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: target
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+      responses:
+        "200":
+          description: List of outbound event records
+
+  /api/outbound-events/{outbound_event_id}/state:
+    patch:
+      tags: [Archive — Outbound Events]
+      summary: Update outbound event lifecycle state
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - name: outbound_event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutboundEventStateUpdateRequest"
+      responses:
+        "200":
+          description: Updated outbound event
+
   /api/calendar/items:
     post:
       tags: [Archive — Calendar]
@@ -1697,6 +2152,103 @@ paths:
         "200":
           description: "{ok, message, signals[...]}"
 
+  /api/feedback:
+    post:
+      tags: [Oracle]
+      summary: Persist explicit quality feedback for a response/session
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                interaction_id:
+                  type: string
+                source_client:
+                  type: string
+                quality_label:
+                  type: string
+                  enum: [excellent, good, mixed, poor, rejected]
+                quality_score:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                outcome_label:
+                  type: string
+                feedback_text:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: "{ok, feedback}"
+    get:
+      tags: [Oracle]
+      summary: List Oracle feedback records
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: quality_label
+          in: query
+          schema:
+            type: string
+            enum: [excellent, good, mixed, poor, rejected]
+        - name: source_client
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+      responses:
+        "200":
+          description: "{count, feedback}"
+
+  /api/feedback/export/jsonl:
+    get:
+      tags: [Oracle]
+      summary: Export Oracle feedback as JSONL
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: quality_label
+          in: query
+          schema:
+            type: string
+            enum: [excellent, good, mixed, poor, rejected]
+        - name: source_client
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1000
+      responses:
+        "200":
+          description: application/x-ndjson JSONL export
+
   /api/llm/generate:
     post:
       tags: [Oracle]
@@ -1782,6 +2334,43 @@ paths:
       responses:
         "200":
           description: "{success, detail}"
+
+  /api/outbound-events/state:
+    post:
+      tags: [Hermes]
+      summary: Update lifecycle state for a tracked outbound event
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outbound_event_id, lifecycle_state]
+              properties:
+                outbound_event_id:
+                  type: string
+                lifecycle_state:
+                  type: string
+                  enum:
+                    [
+                      created,
+                      queued,
+                      delivered,
+                      seen,
+                      answered,
+                      dismissed,
+                      superseded,
+                      failed,
+                    ]
+                detail:
+                  type: string
+                superseded_by:
+                  type: string
+      responses:
+        "200":
+          description: "{status, updated}"
 
   # ══════════════════════════════════════════════════════════════════════════
   #  SCOUT — 19006

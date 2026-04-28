@@ -1,6 +1,8 @@
 import logging
 import os
 import threading
+from pathlib import Path
+import sys
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -12,12 +14,16 @@ from core.state_manager import StateManager
 
 load_dotenv()
 
-logging.basicConfig(
-    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
-logger = logging.getLogger("hestia_ingest")
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
+
+logger, log_buffer = setup_service_logging("hestia_ingest")
 
 app = FastAPI(title="Hestia-Ingest Factory", version="3.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
@@ -94,6 +100,16 @@ def register_on_hub_startup():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_ingest"}
+
+
+@app.get("/api/logs")
+def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
+    rows = log_buffer.query(limit=limit, level=level, contains=contains)
+    return {
+        "service": "hestia_ingest",
+        "count": len(rows),
+        "logs": rows,
+    }
 
 
 class FetchCommand(BaseModel):

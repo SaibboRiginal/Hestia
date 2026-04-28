@@ -1,8 +1,16 @@
 import io
 import os
+import time
+import logging
 import requests
 from google import genai
 from google.genai import types
+
+# Retry configuration — overridable via env
+_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
+_RETRY_BASE_DELAY = float(os.getenv("LLM_RETRY_BASE_DELAY_SEC", "1.0"))
+
+logger = logging.getLogger(__name__)
 
 
 class UniversalAgent:
@@ -16,26 +24,64 @@ class UniversalAgent:
             os.getenv("OLLAMA_EMBED_TIMEOUT_SEC", "60"))
 
         if self.provider == "gemini":
-            api_key = os.getenv("GEMINI_API_KEY")
-            self.client = genai.Client(api_key=api_key)
+            api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+            if not api_key:
+                logger.warning(
+                    "GEMINI_API_KEY missing for model '%s'; auto-fallback to Ollama.",
+                    self.model_name,
+                )
+                self.provider = "ollama"
+                # Preserve explicit model when it already targets local Ollama.
+                if "gemini" in (self.model_name or "").lower() or "models/" in (self.model_name or "").lower():
+                    self.model_name = "qwen2.5:7b"
+                self._init_ollama_defaults()
+            else:
+                self.client = genai.Client(api_key=api_key)
 
         elif self.provider == "ollama":
-            self.ollama_url = os.getenv(
-                "OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
+            self._init_ollama_defaults()
+
+    def _init_ollama_defaults(self) -> None:
+        self.ollama_url = os.getenv(
+            "OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
+
+    # ─────────────────────────────────────────────────────────────────
+    #  Internal retry helper
+    # ─────────────────────────────────────────────────────────────────
+
+    def _with_retry(self, fn, *args, **kwargs):
+        """Call fn(*args, **kwargs) with exponential backoff on failure.
+
+        Raises the last exception if all attempts are exhausted.
+        """
+        last_exc = None
+        for attempt in range(_MAX_RETRIES):
+            try:
+                return fn(*args, **kwargs)
+            except Exception as exc:
+                last_exc = exc
+                if attempt < _MAX_RETRIES - 1:
+                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    time.sleep(delay)
+        raise last_exc
+
+    # ─────────────────────────────────────────────────────────────────
+    #  Core ask
+    # ─────────────────────────────────────────────────────────────────
 
     def ask(self, user_message: str) -> str:
+        return self._with_retry(self._ask_once, user_message)
+
+    def _ask_once(self, user_message: str) -> str:
         if self.provider == "gemini":
-            try:
-                response = self.client.models.generate_content(
-                    model=self.model_name,
-                    contents=user_message,
-                    config=types.GenerateContentConfig(
-                        system_instruction=self.role_prompt
-                    )
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.role_prompt
                 )
-                return response.text.strip()
-            except Exception as e:
-                raise RuntimeError(f"API Error ({self.model_name}): {e}")
+            )
+            return response.text.strip()
 
         elif self.provider == "ollama":
             payload = {
@@ -45,19 +91,85 @@ class UniversalAgent:
             }
             if not self.thinking:
                 payload["think"] = False
-            try:
-                response = requests.post(
-                    self.ollama_url,
-                    json=payload,
-                    timeout=self.ollama_timeout_sec
-                )
-                response.raise_for_status()
-                return response.json().get("response", "").strip()
-            except Exception as e:
-                raise RuntimeError(f"Ollama Error: {e}")
+            response = requests.post(
+                self.ollama_url,
+                json=payload,
+                timeout=self.ollama_timeout_sec
+            )
+            response.raise_for_status()
+            return response.json().get("response", "").strip()
+
+        raise RuntimeError(f"Unknown provider: {self.provider}")
+
+    # ─────────────────────────────────────────────────────────────────
+    #  Token-level streaming
+    # ─────────────────────────────────────────────────────────────────
+
+    def ask_stream(self, user_message: str):
+        """Yield incremental token strings as they arrive from the provider.
+
+        Falls back to a single chunk if the provider does not support streaming.
+        """
+        if self.provider == "gemini":
+            yield from self._ask_stream_gemini(user_message)
+        elif self.provider == "ollama":
+            yield from self._ask_stream_ollama(user_message)
+        else:
+            yield self.ask(user_message)
+
+    def _ask_stream_gemini(self, user_message: str):
+        try:
+            for chunk in self.client.models.generate_content_stream(
+                model=self.model_name,
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.role_prompt
+                ),
+            ):
+                if chunk.text:
+                    yield chunk.text
+        except Exception as exc:
+            raise RuntimeError(
+                f"Gemini stream error ({self.model_name}): {exc}") from exc
+
+    def _ask_stream_ollama(self, user_message: str):
+        import json as _json
+        payload = {
+            "model": self.model_name,
+            "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
+            "stream": True,
+        }
+        if not self.thinking:
+            payload["think"] = False
+        try:
+            with requests.post(
+                self.ollama_url,
+                json=payload,
+                timeout=self.ollama_timeout_sec,
+                stream=True,
+            ) as resp:
+                resp.raise_for_status()
+                for line in resp.iter_lines():
+                    if not line:
+                        continue
+                    try:
+                        data = _json.loads(line)
+                    except ValueError:
+                        continue
+                    token = data.get("response", "")
+                    if token:
+                        yield token
+                    if data.get("done"):
+                        break
+        except Exception as exc:
+            raise RuntimeError(f"Ollama stream error: {exc}") from exc
+
+    # ─────────────────────────────────────────────────────────────────
+    #  Backward-compat alias
+    # ─────────────────────────────────────────────────────────────────
 
     def complete(self, prompt: str) -> str:
-        """Alias for ask() — used by the /api/llm/generate endpoint."""
+        """Alias for ask() — kept for backward compatibility."""
         return self.ask(prompt)
 
     def ask_with_attachment(

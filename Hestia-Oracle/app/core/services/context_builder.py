@@ -1,5 +1,28 @@
 import json
+import logging
+import os
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# ── Compaction thresholds ─────────────────────────────────────────────────────
+# Trigger background compaction when history exceeds this many messages.
+_COMPACT_TRIGGER_MESSAGES: int = int(
+    os.getenv("ORACLE_COMPACT_TRIGGER_MSGS", "20"))
+# Keep this many recent (uncompressed) messages after compaction.
+_COMPACT_KEEP_RECENT: int = int(os.getenv("ORACLE_COMPACT_KEEP_RECENT", "6"))
+
+# ── Protected content classes (must NOT be lossy-summarised) ──────────────────
+# These role+content patterns are extracted before compaction and preserved
+# as structured state, not prose.
+_PROTECTED_PREFIXES = (
+    "[PREFERENCE]",
+    "[SUBSCRIPTION]",
+    "[COMMITMENT]",
+    "[QUESTION]",
+    "[CORRECTION]",
+    "[PINNED]",
+)
 
 
 class ContextBuilder:
@@ -131,3 +154,126 @@ class ContextBuilder:
             f"CONTEXT_DATA_RECORDS:\n{formatted_context}\n\n"
             f"{history_text}USER_QUESTION: {user_message}"
         )
+
+    # ── Context compaction ────────────────────────────────────────────────────
+
+    def needs_compaction(self, history_data: list) -> bool:
+        """Return True when history is long enough to warrant background compaction."""
+        return len(history_data) >= _COMPACT_TRIGGER_MESSAGES
+
+    def extract_protected_messages(self, history_data: list) -> list[dict]:
+        """Extract messages containing protected content (must not be lossy-summarised).
+
+        Protected messages include anything tagged with a known prefix in their
+        content (preferences, subscriptions, commitments, unresolved questions,
+        corrections, pinned entities).
+        """
+        protected = []
+        for msg in history_data:
+            content = str(msg.get("content", ""))
+            if any(content.startswith(pfx) for pfx in _PROTECTED_PREFIXES):
+                protected.append(msg)
+        return protected
+
+    def build_compaction_prompt(self, history_to_compact: list) -> str:
+        """Build the scribe prompt for summarising old history segments."""
+        lines = []
+        for msg in history_to_compact:
+            role = "User" if msg.get("role") == "user" else "Hestia"
+            lines.append(f"{role}: {msg.get('content', '')}")
+        history_text = "\n".join(lines)
+
+        return (
+            "You are Hestia's memory compactor. Produce a compact, factual bullet-point "
+            "summary of the following conversation segment. "
+            "Capture: key user requests, decisions made, information shared, and any "
+            "commitments or open questions. Use 5-10 bullets maximum. "
+            "Do NOT paraphrase protected content (preferences, subscriptions, commitments) — "
+            "instead reproduce them verbatim as a bullet starting with their original tag.\n\n"
+            f"CONVERSATION SEGMENT:\n{history_text}\n\n"
+            "COMPACT SUMMARY (bullets only):"
+        )
+
+    def run_background_compaction(
+        self,
+        session_id: str,
+        history_data: list,
+        scribe_agent,
+        hub_client,
+    ) -> bool:
+        """Summarise old history and persist the snapshot via Hub/Archive.
+
+        Designed to run in a daemon thread (non-blocking for the chat path).
+        Returns True if compaction was performed, False if skipped.
+
+        Steps:
+        1. Split history into: old segment (to compact) + recent (to keep as-is).
+        2. Extract protected messages from old segment and keep verbatim.
+        3. Run scribe LLM to summarise the non-protected old messages.
+        4. Build a snapshot = [protected messages] + [summary message].
+        5. Delete old history turns and replace with snapshot via Hub.
+        """
+        if not self.needs_compaction(history_data):
+            return False
+
+        # Partition history
+        old_segment = history_data[:-_COMPACT_KEEP_RECENT]
+        recent_segment = history_data[-_COMPACT_KEEP_RECENT:]
+
+        if not old_segment:
+            return False
+
+        # Extract protected messages (reproduced verbatim in snapshot)
+        protected = self.extract_protected_messages(old_segment)
+        compactable = [m for m in old_segment if m not in protected]
+
+        # Build summary via scribe
+        summary_text = ""
+        if compactable:
+            compaction_prompt = self.build_compaction_prompt(compactable)
+            try:
+                summary_text = scribe_agent.ask(compaction_prompt).strip()
+            except Exception as exc:
+                logger.warning("Compaction scribe call failed: %s", exc)
+                return False
+
+        # Persist snapshot via Hub (replaces old turns with summary)
+        try:
+            # Clear full history for this session
+            hub_client.delete(f"/chat/history/{session_id}")
+
+            # Re-write: snapshot (protected + summary) + recent
+            if protected:
+                protected_text = "\n".join(
+                    f"{m.get('role', '?')}: {m.get('content', '')}" for m in protected
+                )
+                hub_client.post("/chat/history", {
+                    "session_id": session_id,
+                    "role": "system",
+                    "content": f"[PROTECTED_FACTS]\n{protected_text}",
+                })
+
+            if summary_text:
+                hub_client.post("/chat/history", {
+                    "session_id": session_id,
+                    "role": "system",
+                    "content": f"[COMPACTED_MEMORY]\n{summary_text}",
+                })
+
+            for msg in recent_segment:
+                hub_client.post("/chat/history", {
+                    "session_id": session_id,
+                    "role": msg.get("role", "user"),
+                    "content": msg.get("content", ""),
+                })
+
+            logger.info(
+                "Context compacted | session=%s old=%d protected=%d summary_len=%d recent=%d",
+                session_id, len(old_segment), len(protected), len(
+                    summary_text), len(recent_segment),
+            )
+            return True
+
+        except Exception as exc:
+            logger.warning("Compaction persistence failed: %s", exc)
+            return False

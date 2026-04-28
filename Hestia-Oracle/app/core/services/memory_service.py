@@ -26,6 +26,14 @@ from core.services.memory_parsers import (
 
 logger = logging.getLogger(__name__)
 
+# ── Memory taxonomy classes (P1-8) ──────────────────────────────────────────
+# Keep these classes distinct in storage and retrieval to avoid state mixing.
+MEMORY_CLASS_CONVERSATION = "conversational_history"
+MEMORY_CLASS_PREFERENCE = "durable_user_preference"
+MEMORY_CLASS_TASK = "task_goal_state"
+MEMORY_CLASS_DOMAIN_FACT = "domain_fact_entity"
+MEMORY_CLASS_COMMITMENT = "assistant_commitment"
+
 _PREF_PROMPT_TEMPLATE = """
 You are Hestia's enterprise Memory Manager.
 
@@ -151,13 +159,15 @@ class MemoryService:
                 return payload.get("payload")
             return None
         except Exception as exc:
-            logger.debug("[MemoryService] _route_archive %s %s failed: %s", method, endpoint, exc)
+            logger.debug(
+                "[MemoryService] _route_archive %s %s failed: %s", method, endpoint, exc)
             return None
 
     def _api_get(self, endpoint: str, default_val=None):
         """GET an Archive endpoint and return its payload or *default_val*."""
         parsed = urlparse(endpoint)
-        path = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"
+        path = parsed.path if parsed.path.startswith(
+            "/") else f"/{parsed.path}"
         query = {
             k: v[0] if len(v) == 1 else v
             for k, v in parse_qs(parsed.query).items()
@@ -166,6 +176,66 @@ class MemoryService:
         if result is None:
             return default_val if default_val is not None else []
         return result
+
+    def _get_active_memory(self, domain: str | None = None, memory_class: str | None = None) -> list[dict]:
+        """Load active memory rows with optional class/domain filters.
+
+        Compatibility note:
+        Archive may not yet enforce/filter on memory_class. We still send it,
+        then defensively post-filter client-side when possible.
+        """
+        query_parts = []
+        if domain:
+            query_parts.append(f"domain={domain}")
+        if memory_class:
+            query_parts.append(f"memory_class={memory_class}")
+        query = "&".join(query_parts)
+        endpoint = "/memory/active" + (f"?{query}" if query else "")
+        rows = self._api_get(endpoint, default_val=[]) or []
+        if not isinstance(rows, list):
+            return []
+
+        if memory_class:
+            # If Archive ignores unknown query params, keep backward-compat by
+            # accepting untyped rows too (legacy data), but prefer typed rows.
+            typed = [r for r in rows if str(
+                r.get("memory_class", "")).strip() == memory_class]
+            if typed:
+                return typed
+        return rows
+
+    def _save_memory_fact(self, fact: str, domain: str, memory_class: str) -> bool:
+        """Persist a typed memory fact row."""
+        payload = {
+            "fact": fact,
+            "domain": domain,
+            "weight": 1.0,
+            "memory_class": memory_class,
+        }
+        created = self._route_archive("POST", "/memory", body=payload)
+        return created is not None
+
+    def _append_interaction_ledger(
+        self,
+        *,
+        event_type: str,
+        session_id: str,
+        actor: str,
+        domain: str,
+        reference_id: str | None = None,
+        payload: dict | None = None,
+    ) -> None:
+        """Best-effort write of a compact typed interaction record."""
+        body = {
+            "session_id": session_id,
+            "actor": actor,
+            "event_type": event_type,
+            "domain": domain,
+            "source_service": "oracle",
+            "reference_id": reference_id,
+            "payload": payload or {},
+        }
+        self._route_archive("POST", "/interaction-ledger", body=body)
 
     # ── LLM interaction helpers ───────────────────────────────────────────────
 
@@ -183,8 +253,10 @@ class MemoryService:
 
     def _build_conversation_context(self, session_id: str) -> tuple[list[dict], list[str], str]:
         """Fetch and return (active_prefs, domains, history_text) from Archive."""
-        prefs: list[dict] = self._api_get("/memory/active") or []
-        domains: list[str] = self._api_get("/domains", ["general"]) or ["general"]
+        prefs: list[dict] = self._get_active_memory(
+            memory_class=MEMORY_CLASS_PREFERENCE) or []
+        domains: list[str] = self._api_get(
+            "/domains", ["general"]) or ["general"]
         if "general" not in domains:
             domains.append("general")
 
@@ -205,11 +277,12 @@ class MemoryService:
         signals: list[dict] = []
         for action in actions:
             if action.get("action") == "ADD" and action.get("fact"):
-                created = self._route_archive(
-                    "POST", "/memory",
-                    body={"fact": action["fact"], "domain": action.get("domain", "general"), "weight": 1.0},
+                saved = self._save_memory_fact(
+                    fact=action["fact"],
+                    domain=action.get("domain", "general"),
+                    memory_class=MEMORY_CLASS_PREFERENCE,
                 )
-                if created is not None:
+                if saved:
                     signals.append({
                         "event": "memory.preference.added",
                         "message": f"Preferenza salvata: {action['fact']}",
@@ -220,8 +293,10 @@ class MemoryService:
                 pref_id = action["id"]
                 removed_pref = prefs_by_id.get(int(pref_id)) or {}
                 removed_fact = str(removed_pref.get("fact", "")).strip()
-                removed_domain = str(removed_pref.get("domain", "general")).strip() or "general"
-                updated = self._route_archive("PATCH", f"/memory/{pref_id}", body={"is_active": False})
+                removed_domain = str(removed_pref.get(
+                    "domain", "general")).strip() or "general"
+                updated = self._route_archive(
+                    "PATCH", f"/memory/{pref_id}", body={"is_active": False})
                 if updated is not None:
                     message_text = f"Preferenza rimossa: {removed_fact}" if removed_fact else "Preferenza rimossa."
                     signals.append({
@@ -264,7 +339,8 @@ class MemoryService:
                     "owner": existing.get("owner", session_id),
                     "is_active": False,
                 }
-                updated = self._route_archive("POST", "/subscriptions", body=disabled_payload)
+                updated = self._route_archive(
+                    "POST", "/subscriptions", body=disabled_payload)
                 if updated is not None:
                     signals.append({
                         "event": "subscription.removed",
@@ -276,6 +352,27 @@ class MemoryService:
                             "channels": disabled_payload.get("channels") or [],
                         },
                     })
+                    self._append_interaction_ledger(
+                        event_type="assistant_commitment_completed",
+                        session_id=session_id,
+                        actor="assistant",
+                        domain=str(disabled_payload.get(
+                            "domain", "general")) or "general",
+                        reference_id=sub_id,
+                        payload={
+                            "subscription_id": sub_id,
+                            "event_type": disabled_payload.get("event_type"),
+                            "filters": disabled_payload.get("filters") or {},
+                            "reason": "subscription_deactivated",
+                        },
+                    )
+                    # Track assistant-side commitment lifecycle in a dedicated class.
+                    self._save_memory_fact(
+                        fact=f"[COMMITMENT] subscription removed: {sub_id}",
+                        domain=str(disabled_payload.get(
+                            "domain", "general")) or "general",
+                        memory_class=MEMORY_CLASS_COMMITMENT,
+                    )
                 continue
 
             sub_payload = {
@@ -292,7 +389,8 @@ class MemoryService:
                 continue
 
             previous = existing_map.get(sub_id)
-            result = self._route_archive("POST", "/subscriptions", body=sub_payload)
+            result = self._route_archive(
+                "POST", "/subscriptions", body=sub_payload)
             if result is None:
                 continue
 
@@ -309,6 +407,26 @@ class MemoryService:
                     },
                 })
                 existing_map[sub_id] = sub_payload
+                self._append_interaction_ledger(
+                    event_type="assistant_commitment_created",
+                    session_id=session_id,
+                    actor="assistant",
+                    domain=str(sub_payload.get(
+                        "domain", "general")) or "general",
+                    reference_id=sub_id,
+                    payload={
+                        "subscription_id": sub_id,
+                        "event_type": sub_payload.get("event_type"),
+                        "filters": sub_payload.get("filters") or {},
+                        "channels": sub_payload.get("channels") or [],
+                    },
+                )
+                self._save_memory_fact(
+                    fact=f"[COMMITMENT] active subscription {sub_id} ({sub_payload.get('event_type')})",
+                    domain=str(sub_payload.get(
+                        "domain", "general")) or "general",
+                    memory_class=MEMORY_CLASS_COMMITMENT,
+                )
             elif _normalize_signature(previous) != _normalize_signature(sub_payload):
                 signals.append({
                     "event": "subscription.changed",
@@ -322,6 +440,27 @@ class MemoryService:
                     },
                 })
                 existing_map[sub_id] = sub_payload
+                self._append_interaction_ledger(
+                    event_type="assistant_commitment_created",
+                    session_id=session_id,
+                    actor="assistant",
+                    domain=str(sub_payload.get(
+                        "domain", "general")) or "general",
+                    reference_id=sub_id,
+                    payload={
+                        "subscription_id": sub_id,
+                        "event_type": sub_payload.get("event_type"),
+                        "filters": sub_payload.get("filters") or {},
+                        "channels": sub_payload.get("channels") or [],
+                        "reason": "subscription_updated",
+                    },
+                )
+                self._save_memory_fact(
+                    fact=f"[COMMITMENT] subscription updated: {sub_id}",
+                    domain=str(sub_payload.get(
+                        "domain", "general")) or "general",
+                    memory_class=MEMORY_CLASS_COMMITMENT,
+                )
 
         return signals
 
@@ -356,12 +495,14 @@ class MemoryService:
         """
         signals: list[dict] = []
         should_extract_prefs = has_preference_intent(user_message)
-        should_extract_subs = force_notification_compiler or has_notification_intent(user_message)
+        should_extract_subs = force_notification_compiler or has_notification_intent(
+            user_message)
 
         if not should_extract_prefs and not should_extract_subs:
             return signals
 
-        prefs, domains, history_text = self._build_conversation_context(session_id)
+        prefs, domains, history_text = self._build_conversation_context(
+            session_id)
         prefs_by_id: dict[int, dict] = {
             int(p["id"]): p for p in prefs if p.get("id") is not None
         }
@@ -383,9 +524,11 @@ class MemoryService:
                 raw_pref, domains, prefs, user_message, allow_deprecate=allow_deprecate
             )
             try:
-                signals.extend(self._save_preferences(pref_actions, prefs_by_id))
+                signals.extend(self._save_preferences(
+                    pref_actions, prefs_by_id))
             except Exception as exc:
-                logger.warning("[MemoryService] save preferences failed: %s", exc)
+                logger.warning(
+                    "[MemoryService] save preferences failed: %s", exc)
 
         if not should_extract_subs:
             return signals
@@ -407,7 +550,8 @@ class MemoryService:
         if not subscriptions:
             return signals
 
-        existing_subs = self._api_get(f"/subscriptions/active?owner={session_id}", default_val=[]) or []
+        existing_subs = self._api_get(
+            f"/subscriptions/active?owner={session_id}", default_val=[]) or []
         existing_map: dict[str, dict] = {
             str(s["subscription_id"]): s
             for s in existing_subs
@@ -415,8 +559,10 @@ class MemoryService:
         }
 
         try:
-            signals.extend(self._save_subscriptions(subscriptions, existing_map, session_id))
+            signals.extend(self._save_subscriptions(
+                subscriptions, existing_map, session_id))
         except Exception as exc:
-            logger.warning("[MemoryService] save subscriptions failed: %s", exc)
+            logger.warning(
+                "[MemoryService] save subscriptions failed: %s", exc)
 
         return signals

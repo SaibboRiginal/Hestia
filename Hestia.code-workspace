@@ -1,29 +1,8 @@
 {
   "folders": [
     {
-      "name": "Ingest",
-      "path": "Hestia-Ingest",
-      "settings": {
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-      },
-    },
-    {
       "name": "Archive",
       "path": "Hestia-Archive",
-      "settings": {
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-      },
-    },
-    {
-      "name": "Hub",
-      "path": "Hestia-Hub",
-      "settings": {
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-      },
-    },
-    {
-      "name": "Atlas",
-      "path": "Hestia-Atlas",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
@@ -36,20 +15,50 @@
       },
     },
     {
-      "name": "Scout",
-      "path": "Hestia-Scout",
+      "name": "Athena",
+      "path": "Hestia-Athena",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
     },
     {
-      "name": "Swagger",
-      "path": "Hestia-Swagger",
-      "settings": {},
+      "name": "Atlas",
+      "path": "Hestia-Atlas",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
     },
     {
       "name": "Chronos",
       "path": "Hestia-Chronos",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hephaestus",
+      "path": "Hestia-Hephaestus",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hermes",
+      "path": "Hestia-Hermes",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Hub",
+      "path": "Hestia-Hub",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Ingest",
+      "path": "Hestia-Ingest",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
@@ -62,11 +71,20 @@
       },
     },
     {
-      "name": "Hermes",
-      "path": "Hestia-Hermes",
+      "name": "Scout",
+      "path": "Hestia-Scout",
       "settings": {
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
       },
+    },
+    {
+      "name": "Shared",
+      "path": "Hestia-Shared",
+    },
+    {
+      "name": "Swagger",
+      "path": "Hestia-Swagger",
+      "settings": {},
     },
     {
       "name": "Telegram",
@@ -80,15 +98,19 @@
       "path": ".",
       "settings": {
         "files.exclude": {
-          "Hestia-Ingest": true,
           "Hestia-Archive": true,
           "Hestia-Argus": true,
+          "Hestia-Athena": true,
           "Hestia-Atlas": true,
           "Hestia-Chronos": true,
+          "Hestia-Heaphaestus": true,
           "Hestia-Hermes": true,
           "Hestia-Hub": true,
-          "Hestia-Scout": true,
+          "Hestia-Ingest": true,
           "Hestia-Oracle": true,
+          "Hestia-Scout": true,
+          "Hestia-Shared": true,
+          "Hestia-Swagger": true,
           "Hestia-Telegram": true,
           "**/.venv": true,
           "**/.vscode": true,

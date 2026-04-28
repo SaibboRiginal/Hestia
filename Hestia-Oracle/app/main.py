@@ -2,20 +2,25 @@ import uuid
 import os
 import requests
 import logging
+from pathlib import Path
+import sys
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import Optional
+from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel, Field
+from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
 
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
 
-logging.basicConfig(
-    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s"
-)
-logger = logging.getLogger("hestia_oracle")
+logger, log_buffer = setup_service_logging("hestia_oracle")
 
 app = FastAPI(title="Hestia Oracle Microservice", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
@@ -96,9 +101,55 @@ class NotificationCompileResponse(BaseModel):
     signals: list[dict]
 
 
+class QuestionAnswerRequest(BaseModel):
+    session_id: str
+    question_id: str
+    answer: str
+    client: Optional[str] = None  # e.g. "telegram", "web", "voice"
+
+
+class UserControlsPatch(BaseModel):
+    proactive_enabled: Optional[bool] = None
+    allowed_categories: Optional[list[str]] = None
+    quiet_hours: Optional[dict] = None
+    reminder_aggressiveness: Optional[str] = None
+    dont_ask_again: Optional[list[str]] = None
+    reset_scope: Optional[str] = None
+
+
+QualityLabel = Literal["excellent", "good", "mixed", "poor", "rejected"]
+
+
+class FeedbackRequest(BaseModel):
+    session_id: Optional[str] = None
+    interaction_id: Optional[str] = None
+    source_client: Optional[str] = None
+    quality_label: Optional[str] = None
+    quality_score: Optional[int] = Field(default=None, ge=1, le=5)
+    outcome_label: Optional[str] = None
+    feedback_text: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class FeedbackResponse(BaseModel):
+    ok: bool
+    feedback: dict[str, Any]
+
+
 @app.get("/health")
 def health_endpoint():
     return {"status": "ok", "service": "hestia_oracle"}
+
+
+@app.get("/api/logs")
+def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
+    rows = log_buffer.query(limit=limit, level=level, contains=contains)
+    return {
+        "service": "hestia_oracle",
+        "count": len(rows),
+        "logs": rows,
+    }
 
 
 @app.post("/api/chat")
@@ -242,6 +293,122 @@ def compile_subscription_endpoint(req: NotificationCompileRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/chat/question-answer")
+def question_answer_endpoint(req: QuestionAnswerRequest):
+    """Receive a user's answer to a previously emitted question frame.
+
+    Used by any client (Telegram, web, voice) to close out a pending question.
+    Returns 200 with {resolved: true} or 404 if question_id is unknown.
+    """
+    try:
+        resolved = engine.answer_question(req.question_id, req.answer)
+        if not resolved:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Question '{req.question_id}' not found or already resolved.",
+            )
+        return {"resolved": True, "question_id": req.question_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in question-answer endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/user/controls")
+def get_user_controls_endpoint():
+    """Read durable user controllability settings."""
+    try:
+        return {"controls": engine.get_user_controls()}
+    except Exception as e:
+        logger.exception("Unhandled error in get user controls endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/user/controls")
+def update_user_controls_endpoint(req: UserControlsPatch):
+    """Apply partial updates to durable user controllability settings."""
+    try:
+        controls, saved = engine.update_user_controls(
+            req.model_dump(exclude_none=True),
+            source="api",
+        )
+        return {"updated": bool(saved), "controls": controls}
+    except Exception as e:
+        logger.exception("Unhandled error in update user controls endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/feedback", response_model=FeedbackResponse)
+def create_feedback_endpoint(req: FeedbackRequest):
+    """Capture explicit quality feedback and store it in Archive via Hub route."""
+    try:
+        record = engine.submit_feedback(
+            quality_label=req.quality_label or "mixed",
+            quality_score=req.quality_score,
+            session_id=req.session_id,
+            interaction_id=req.interaction_id,
+            source_client=req.source_client,
+            outcome_label=req.outcome_label,
+            feedback_text=req.feedback_text,
+            tags=req.tags,
+            payload=req.payload,
+        )
+        if not record:
+            raise HTTPException(
+                status_code=502,
+                detail="feedback persistence unavailable",
+            )
+        return {"ok": True, "feedback": record}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in feedback endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/feedback")
+def list_feedback_endpoint(
+    session_id: Optional[str] = None,
+    quality_label: Optional[QualityLabel] = None,
+    source_client: Optional[str] = None,
+    limit: int = 200,
+):
+    """List feedback records for dashboarding or audits."""
+    try:
+        rows = engine.list_feedback(
+            session_id=session_id,
+            quality_label=quality_label,
+            source_client=source_client,
+            limit=limit,
+        )
+        return {"count": len(rows), "feedback": rows}
+    except Exception as e:
+        logger.exception("Unhandled error in list feedback endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/feedback/export/jsonl")
+def export_feedback_jsonl_endpoint(
+    session_id: Optional[str] = None,
+    quality_label: Optional[QualityLabel] = None,
+    source_client: Optional[str] = None,
+    limit: int = 1000,
+):
+    """Export feedback as JSONL for offline quality analysis/training."""
+    try:
+        jsonl_payload = engine.export_feedback_jsonl(
+            session_id=session_id,
+            quality_label=quality_label,
+            source_client=source_client,
+            limit=limit,
+        )
+        return Response(content=jsonl_payload, media_type="application/x-ndjson")
+    except Exception as e:
+        logger.exception("Unhandled error in feedback export endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """
@@ -249,18 +416,25 @@ def llm_generate_endpoint(req: dict):
     Accepts: {"prompt": "...", "model": "...", "provider": "..."}
     Returns: {"response": "..."}
     """
+    from agents.universal_agent import UniversalAgent
     try:
         prompt = req.get("prompt", "").strip()
         if not prompt:
             raise HTTPException(status_code=400, detail="prompt required")
 
-        model = req.get("model", engine.models["analyst"]["mod"])
-        provider = req.get("provider", engine.models["analyst"]["prov"])
+        # Resolve defaults from env (same source as AgentFactory) so we never
+        # reference the non-existent engine.models dict.
+        default_provider = os.getenv(
+            "ANALYST_PROVIDER", os.getenv("LLM_PROVIDER", "gemini"))
+        default_model = os.getenv("ANALYST_MODEL", os.getenv(
+            "LLM_MODEL", "gemini-2.5-flash"))
 
-        from agents.universal_agent import UniversalAgent
+        model = req.get("model") or default_model
+        provider = req.get("provider") or default_provider
+
         agent = UniversalAgent(
             role_prompt="", provider=provider, model_name=model)
-        response_text = agent.complete(prompt)
+        response_text = agent.ask(prompt)
 
         return {"response": response_text, "model": model, "provider": provider}
     except Exception as e:

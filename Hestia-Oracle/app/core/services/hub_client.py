@@ -6,6 +6,7 @@ POST /route/archive/{endpoint} envelope.
 """
 import logging
 from urllib.parse import urlparse, parse_qs
+from typing import Any
 
 import requests
 
@@ -136,3 +137,114 @@ class HubClient:
             logger.debug(
                 "[HubClient] route_to_service %s/%s failed: %s", service, path, exc)
             return False, str(exc)
+
+    def get_history(self, session_id: str, limit: int = 200) -> list[dict]:
+        """Fetch raw history list (untruncated) for a session from Archive via Hub.
+
+        Used by background compaction — fetches more than the hot-path limit
+        to assess whether compaction is actually warranted.
+        """
+        result = self.get(f"/chat/history/{session_id}?limit={limit}")
+        if isinstance(result, list):
+            return result
+        return []
+
+    def append_interaction_ledger(
+        self,
+        *,
+        event_type: str,
+        session_id: str | None = None,
+        actor: str = "assistant",
+        domain: str = "general",
+        source_service: str = "oracle",
+        reference_id: str | None = None,
+        payload: dict[str, Any] | None = None,
+        timeout: int = 6,
+    ) -> dict | None:
+        """Append a typed interaction event to Archive's interaction ledger."""
+        body = {
+            "session_id": session_id,
+            "actor": actor,
+            "event_type": event_type,
+            "domain": domain,
+            "source_service": source_service,
+            "reference_id": reference_id,
+            "payload": payload or {},
+        }
+        try:
+            routed = self.post("/interaction-ledger", body, timeout=timeout)
+            if not isinstance(routed, dict):
+                return None
+            if int(routed.get("status_code", 500)) >= 400:
+                return None
+            out = routed.get("payload")
+            return out if isinstance(out, dict) else None
+        except Exception as exc:
+            logger.debug(
+                "[HubClient] append_interaction_ledger failed: %s", exc)
+            return None
+
+    def create_feedback_record(
+        self,
+        body: dict[str, Any],
+        timeout: int = 6,
+    ) -> dict | None:
+        """Create a feedback record in Archive via Hub routing."""
+        try:
+            routed = self.post("/feedback", body, timeout=timeout)
+            if not isinstance(routed, dict):
+                return None
+            if int(routed.get("status_code", 500)) >= 400:
+                return None
+            out = routed.get("payload")
+            return out if isinstance(out, dict) else None
+        except Exception as exc:
+            logger.debug("[HubClient] create_feedback_record failed: %s", exc)
+            return None
+
+    def list_feedback_records(
+        self,
+        *,
+        session_id: str | None = None,
+        quality_label: str | None = None,
+        source_client: str | None = None,
+        source_service: str | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        """Fetch feedback records from Archive via Hub routing."""
+        query_parts: list[str] = [f"limit={max(1, min(limit, 5000))}"]
+        if session_id:
+            query_parts.append(f"session_id={session_id}")
+        if quality_label:
+            query_parts.append(f"quality_label={quality_label}")
+        if source_client:
+            query_parts.append(f"source_client={source_client}")
+        if source_service:
+            query_parts.append(f"source_service={source_service}")
+        result = self.get(f"/feedback?{'&'.join(query_parts)}", default=[])
+        if isinstance(result, list):
+            return [row for row in result if isinstance(row, dict)]
+        return []
+
+    def export_feedback_jsonl(
+        self,
+        *,
+        session_id: str | None = None,
+        quality_label: str | None = None,
+        source_client: str | None = None,
+        source_service: str | None = None,
+        limit: int = 1000,
+    ) -> str:
+        """Build JSONL text from filtered feedback records."""
+        rows = self.list_feedback_records(
+            session_id=session_id,
+            quality_label=quality_label,
+            source_client=source_client,
+            source_service=source_service,
+            limit=limit,
+        )
+        lines: list[str] = []
+        import json
+        for row in rows:
+            lines.append(json.dumps(row, ensure_ascii=False))
+        return "\n".join(lines) + ("\n" if lines else "")

@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -162,6 +162,106 @@ class DispatchLogCreate(BaseModel):
 
 class DispatchLogResponse(DispatchLogCreate):
     id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InteractionLedgerCreate(BaseModel):
+    session_id: Optional[str] = None
+    actor: str = "assistant"
+    event_type: str
+    domain: str = "general"
+    source_service: str = "oracle"
+    reference_id: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class InteractionLedgerResponse(InteractionLedgerCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+OutboundLifecycleState = Literal[
+    "created",
+    "queued",
+    "delivered",
+    "seen",
+    "answered",
+    "dismissed",
+    "superseded",
+    "failed",
+]
+
+
+class OutboundEventUpsert(BaseModel):
+    outbound_event_id: str
+    dedupe_key: str
+    lifecycle_state: OutboundLifecycleState = "created"
+    event_type: str
+    domain: str = "general"
+    entity_id: Optional[str] = None
+    subscription_id: Optional[str] = None
+    channel: Optional[str] = None
+    target: Optional[str] = None
+    question_id: Optional[str] = None
+    brief_id: Optional[str] = None
+    source_service: str = "hermes"
+    superseded_by: Optional[str] = None
+    detail: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class OutboundEventStateUpdate(BaseModel):
+    lifecycle_state: OutboundLifecycleState
+    detail: Optional[str] = None
+    superseded_by: Optional[str] = None
+
+
+class OutboundEventResponse(OutboundEventUpsert):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+FeedbackQualityLabel = Literal[
+    "excellent",
+    "good",
+    "mixed",
+    "poor",
+    "rejected",
+]
+
+
+class FeedbackCreate(BaseModel):
+    feedback_id: Optional[str] = None
+    session_id: Optional[str] = None
+    interaction_id: Optional[str] = None
+    source_service: str = "oracle"
+    source_client: Optional[str] = None
+    quality_label: FeedbackQualityLabel
+    quality_score: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=5,
+        description="Optional 1-5 explicit score from user/client",
+    )
+    outcome_label: Optional[str] = None
+    feedback_text: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FeedbackResponse(FeedbackCreate):
+    id: int
+    feedback_id: str
     created_at: datetime
 
     class Config:

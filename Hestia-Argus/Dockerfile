@@ -2,11 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /code
 
-COPY requirements.txt /code/requirements.txt
+COPY Hestia-Argus/requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy app contents directly to /code so flat imports resolve correctly
-COPY ./app /code
+COPY Hestia-Shared/hestia_common /code/hestia_common
+COPY Hestia-Argus/app /code
 
 EXPOSE 19008
 

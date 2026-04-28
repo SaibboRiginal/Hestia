@@ -1,0 +1,19 @@
+services:
+  athena:
+    build: .
+    container_name: hestia_athena
+    restart: unless-stopped
+    ports:
+      - "19009:19009"
+    env_file:
+      - ./app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - SERVICE_BASE_URL=http://hestia_athena:19009
+      - PYTHONUNBUFFERED=1
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

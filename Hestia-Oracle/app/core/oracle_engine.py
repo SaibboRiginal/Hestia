@@ -12,7 +12,10 @@ import json
 import logging
 import os
 import re
+import threading
 import time
+from dataclasses import dataclass, field
+from typing import Any, Iterator, Optional
 
 from core.services.agent_factory import AgentFactory, conversation_style_contract
 from core.services.hub_client import HubClient
@@ -20,11 +23,13 @@ from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_
 from core.services import stream_emitter
 from core.services.context_builder import ContextBuilder
 from core.services.memory_service import MemoryService
+from core.services.user_control_service import UserControlService
 from core.services.module_registry import ModuleToolRegistry
 from core.services.retrieval_service import RetrievalService
 from core.document.archiver import DocumentArchiver
 from core.document.rag import DocumentRAG
 from core.document.analyser import DocumentAnalyser
+from core.agent_loop import run_agent_loop, ToolDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +71,20 @@ def _strip_nones(obj):
     if isinstance(obj, list):
         return [_strip_nones(item) for item in obj if item is not None]
     return obj
+
+
+@dataclass
+class SessionIntent:
+    """Structured result of the CLASSIFY phase."""
+    mode: str
+    explicit_domain: str | None
+    confidence: float
+    valid_domains: list = field(default_factory=list)
+    filters: dict = field(default_factory=dict)
+    filters_gt: dict = field(default_factory=dict)
+    filters_lt: dict = field(default_factory=dict)
+    sort_by: str | None = None
+    sort_order: str | None = None
 
 
 class OracleEngine:
@@ -123,6 +142,12 @@ class OracleEngine:
             context_builder=self._context_builder,
         )
 
+        self._control_service = UserControlService(
+            hub_client=self._hub,
+            scribe_agent=self._agents.scribe,
+            fallback_scribe_agent=self._agents.fallback_scribe,
+        )
+
         self._classifier = ChatClassifier(
             router_agent=self._agents.router,
             fallback_router_agent=self._agents.fallback_router,
@@ -149,7 +174,110 @@ class OracleEngine:
             style_contract_fn=conversation_style_contract,
         )
 
+        # ── Cross-client question store ────────────────────────────────────────
+        # In-process dict: question_id → {session_id, question, answer, resolved}
+        # Future: persist to Archive for multi-process / restart resilience.
+        self._pending_questions: dict[str, dict] = {}
+        self._questions_lock = threading.Lock()
+
     # ── Public API ────────────────────────────────────────────────────────────
+
+    def ask_question(
+        self,
+        session_id: str,
+        question_id: str,
+        header: str,
+        prompt: str,
+        kind: str = "free_text",
+        options: list | None = None,
+        timeout_sec: int | None = None,
+        required: bool = True,
+    ) -> str:
+        """Register a pending question and return the NDJSON question frame to emit."""
+        with self._questions_lock:
+            self._pending_questions[question_id] = {
+                "session_id": session_id,
+                "header": header,
+                "prompt": prompt,
+                "kind": kind,
+                "answer": None,
+                "resolved": False,
+            }
+        self._append_interaction_ledger(
+            event_type="question_asked",
+            session_id=session_id,
+            actor="assistant",
+            domain="general",
+            reference_id=question_id,
+            payload={
+                "header": header,
+                "prompt": prompt,
+                "kind": kind,
+                "options": options or [],
+                "required": required,
+                "timeout_sec": timeout_sec,
+            },
+        )
+        return stream_emitter.emit_question(
+            question_id=question_id,
+            header=header,
+            prompt=prompt,
+            kind=kind,
+            options=options,
+            timeout_sec=timeout_sec,
+            required=required,
+        )
+
+    def answer_question(self, question_id: str, answer: str) -> bool:
+        """Record the user's answer to a pending question. Returns True if found."""
+        with self._questions_lock:
+            entry = self._pending_questions.get(question_id)
+            if not entry:
+                return False
+            entry["answer"] = answer
+            entry["resolved"] = True
+        self._append_interaction_ledger(
+            event_type="question_answered",
+            session_id=str(entry.get("session_id") or ""),
+            actor="user",
+            domain="general",
+            reference_id=question_id,
+            payload={"answer": answer},
+        )
+        return True
+
+    def get_question_answer(self, question_id: str) -> Optional[str]:
+        """Return the recorded answer for question_id, or None if unresolved."""
+        with self._questions_lock:
+            entry = self._pending_questions.get(question_id)
+            if entry and entry.get("resolved"):
+                return entry.get("answer")
+        return None
+
+    def _append_interaction_ledger(
+        self,
+        *,
+        event_type: str,
+        session_id: str,
+        actor: str,
+        domain: str,
+        reference_id: str | None = None,
+        payload: dict | None = None,
+    ) -> None:
+        """Best-effort interaction ledger write via Hub-routed Archive."""
+        try:
+            self._hub.append_interaction_ledger(
+                event_type=event_type,
+                session_id=session_id,
+                actor=actor,
+                domain=domain,
+                source_service="oracle",
+                reference_id=reference_id,
+                payload=payload or {},
+            )
+        except Exception as exc:
+            logger.debug(
+                "Interaction ledger append failed (non-fatal): %s", exc)
 
     def chat(
         self,
@@ -160,38 +288,36 @@ class OracleEngine:
         client_instructions: str | None = None,
         save_history: bool = True,
     ):
-        """Main conversational loop. Yields NDJSON lines."""
+        """Main conversational loop. Yields NDJSON lines.
+
+        Phases:
+          INIT     → load history + domain manifest
+          CLASSIFY → route intent (quick_chat vs domain_query)
+          CONTEXT  → load prefs, retrieve entities, build prompt
+          GENERATE → stream LLM tokens
+          PERSIST  → save history (sync), memory extraction (background)
+        """
         t0 = time.perf_counter()
         logger.info("Chat | session=%s msg_len=%s",
                     session_id, len(user_message or ""))
 
+        # ── Phase 1: INIT ─────────────────────────────────────────────────────
         yield stream_emitter.emit_status("📂 Recupero cronologia e routing...")
+        history_text, available_domains, schemas = self._phase_init(session_id)
 
-        history_data = self._hub.get(
-            f"/chat/history/{session_id}?limit={self._context_builder.max_history_messages}"
-        )
-        history_text = self._context_builder.compact_history(history_data)
-
-        available_domains = self._hub.get("/domains") or ["general"]
-        schemas = self._hub.get("/schemas") or {}
-
-        mode, explicit_domain, confidence, valid_domains, filters, filters_gt, filters_lt, sort_by, sort_order = (
-            self._classifier.classify(
-                user_message, history_text, available_domains, schemas)
-        )
+        # ── Phase 2: CLASSIFY ─────────────────────────────────────────────────
+        intent = self._phase_classify(
+            user_message, history_text, available_domains, schemas)
         logger.info("Classify | mode=%s domain=%s conf=%.2f",
-                    mode, explicit_domain, confidence)
+                    intent.mode, intent.explicit_domain, intent.confidence)
 
-        # ── Quick chat path ───────────────────────────────────────────────────
-        if mode == "quick_chat" and confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD:
+        # ── Phase 3a: QUICK CHAT shortcut ─────────────────────────────────────
+        if intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD:
             yield stream_emitter.emit_status("💬 Conversazione rapida...")
-
             extra_context = ""
             if self._doc_rag.message_is_about_docs(user_message):
                 extra_context = self._doc_rag.list_user_docs_brief(
-                    chat_id=notify_target, session_id=session_id
-                )
-
+                    chat_id=notify_target, session_id=session_id)
             answer = self._quick_answer(
                 user_message, history_text, client_instructions, extra_context or None)
             if save_history:
@@ -199,19 +325,15 @@ class OracleEngine:
             logger.info("Quick chat done in %sms", int(
                 (time.perf_counter() - t0) * 1000))
             yield stream_emitter.emit_final(answer, "general")
+            self._phase_background_memory(
+                user_message, session_id, notify_target, force_notification_compiler)
             return
 
-        # ── Domain query path ─────────────────────────────────────────────────
-        if explicit_domain and explicit_domain not in valid_domains:
-            valid_domains = [explicit_domain] + \
-                [d for d in valid_domains if d != explicit_domain]
-
-        # ── Action call (tool use) — try before retrieval ─────────────────────
+        # ── Phase 3b: ACTION CHECK ────────────────────────────────────────────
         yield stream_emitter.emit_status("⚙️ Verifica azioni disponibili...")
         try:
             action_answer = self._try_action_call(
-                user_message, history_text, client_instructions, session_id, notify_target
-            )
+                user_message, history_text, client_instructions, session_id, notify_target)
         except Exception as exc:
             logger.warning("Action call attempt failed (non-fatal): %s", exc)
             action_answer = None
@@ -219,91 +341,74 @@ class OracleEngine:
         if action_answer is not None:
             if save_history:
                 self._save_history(session_id, user_message, action_answer)
-            logger.info("Action call done in %sms",
-                        int((time.perf_counter() - t0) * 1000))
+            logger.info("Action call done in %sms", int(
+                (time.perf_counter() - t0) * 1000))
             yield stream_emitter.emit_final(action_answer, "action")
+            self._phase_background_memory(
+                user_message, session_id, notify_target, force_notification_compiler)
             return
 
-        yield stream_emitter.emit_status(f"🧠 Analisi domini: {', '.join(valid_domains)}...")
+        # ── Phase 4: CONTEXT + GENERATE (agentic loop) ───────────────────────
+        yield stream_emitter.emit_status(f"🧠 Analisi domini: {', '.join(intent.valid_domains)}...")
         yield stream_emitter.emit_status("🧾 Recupero preferenze attive...")
 
-        all_prefs = self._load_preferences(valid_domains)
+        all_prefs = self._load_preferences(intent.valid_domains)
         preference_facts = [str(p.get("fact", "")).strip()
                             for p in all_prefs if p.get("fact")]
 
-        yield stream_emitter.emit_status("🔎 Recupero entità dai moduli/Archive...")
-        all_entities = self._retrieval_service.retrieve_entities(
-            user_message=user_message,
-            session_id=session_id,
-            valid_domains=valid_domains,
-            preference_facts=preference_facts,
-            active_filters=filters,
-            filters_gt=filters_gt,
-            filters_lt=filters_lt,
-            sort_by=sort_by,
-            sort_order=sort_order,
-        )
+        # Build domain tools from module registry for this session
+        domain_tools = self._build_domain_tools(
+            intent, session_id, notify_target)
 
-        yield stream_emitter.emit_status("🧱 Compattazione contesto...")
-        formatted_context = self._context_builder.compact_entities_for_prompt(
-            all_entities)
+        if domain_tools:
+            # Agentic loop: LLM decides which tools to call and when
+            yield stream_emitter.emit_status("🔄 Ciclo agente in corso...")
 
-        # Inject relevant document chunks
-        doc_chunks = self._doc_rag.search_relevant_chunks(
-            user_message, notify_target, session_id)
-        if doc_chunks:
-            doc_section = DocumentRAG.format_chunks_for_prompt(doc_chunks)
-            formatted_context = f"{formatted_context}\n\n{doc_section}".strip(
-            ) if formatted_context else doc_section
-        elif self._doc_rag.message_is_about_docs(user_message):
-            brief = self._doc_rag.list_user_docs_brief(
-                chat_id=notify_target, session_id=session_id)
-            if brief:
-                formatted_context = f"{formatted_context}\n\n{brief}".strip(
-                ) if formatted_context else brief
+            # Accumulate token strings for streaming to client
+            streamed_tokens: list[str] = []
 
-        analysis_prompt = self._context_builder.build_analysis_prompt(
-            preference_facts=preference_facts,
-            valid_domains=valid_domains,
-            active_filters=filters,
-            filters_gt=filters_gt,
-            filters_lt=filters_lt,
-            sort_by=sort_by,
-            sort_order=sort_order,
-            formatted_context=formatted_context,
-            history_text=history_text,
-            user_message=user_message,
-        )
-        analysis_prompt += f"\n\n{conversation_style_contract()}"
-        if client_instructions and str(client_instructions).strip():
-            analysis_prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{str(client_instructions).strip()}"
+            def _stream_token_and_yield(token: str) -> None:
+                streamed_tokens.append(token)
 
-        yield stream_emitter.emit_status("🧠 Sintesi finale in corso...")
-        answer = self._ask_analyst(analysis_prompt)
+            # For the streaming path we yield token frames as they arrive
+            # via a wrapper generator used only by run_agent_loop's final turn
+            def _stream_final(prompt: str) -> Iterator[str]:
+                for tok in self._agents.analyst.ask_stream(prompt):
+                    yield tok
 
+            answer, tokens = run_agent_loop(
+                user_message=user_message,
+                history_text=history_text,
+                preference_facts=preference_facts,
+                tools=domain_tools,
+                ask_fn=self._ask_analyst,
+                stream_fn=_stream_final,
+                client_instructions=client_instructions,
+                conversation_style=conversation_style_contract(),
+            )
+
+            # Emit token frames from the final streaming turn
+            for token in tokens:
+                yield stream_emitter.emit_token(token)
+
+        else:
+            # Fallback: no domain tools — use pre-fetch approach (original flow)
+            yield stream_emitter.emit_status("🔎 Recupero entità dai moduli/Archive...")
+            yield stream_emitter.emit_status("🧱 Compattazione contesto...")
+            analysis_prompt = self._phase_context(
+                user_message, intent, client_instructions, notify_target, session_id, history_text
+            )
+            yield stream_emitter.emit_status("🧠 Sintesi finale in corso...")
+            answer = yield from self._stream_analyst(analysis_prompt)
+
+        # ── Phase 6: PERSIST ──────────────────────────────────────────────────
         if save_history:
             self._save_history(session_id, user_message, answer)
-
-        yield stream_emitter.emit_status("🔔 Aggiornamento preferenze e notifiche...")
-        try:
-            signals = self._memory_service.extract_and_save_preferences(
-                user_message, session_id,
-                notify_target=notify_target,
-                force_notification_compiler=force_notification_compiler,
-            )
-            for signal in signals or []:
-                yield stream_emitter.emit_signal(
-                    event=str(signal.get("event", "info")),
-                    message=str(signal.get(
-                        "message", "Aggiornamento eseguito.")),
-                    data=signal.get("data") or {},
-                )
-        except Exception as exc:
-            logger.warning("Memory sync failed: %s", exc)
-
         logger.info("Chat done | session=%s total=%sms", session_id,
                     int((time.perf_counter() - t0) * 1000))
-        yield stream_emitter.emit_final(answer, valid_domains[0])
+        yield stream_emitter.emit_final(answer, intent.valid_domains[0] if intent.valid_domains else "general")
+        self._phase_background_memory(
+            user_message, session_id, notify_target, force_notification_compiler)
 
     def analyze_document(
         self,
@@ -403,12 +508,387 @@ class OracleEngine:
         """Delete chat history for *session_id* via Hub/Archive."""
         return self._hub.delete(f"/chat/history/{session_id}")
 
+    def get_user_controls(self) -> dict:
+        """Return current durable user controls."""
+        return self._control_service.get_controls()
+
+    def update_user_controls(self, patch: dict, source: str = "api") -> tuple[dict, bool]:
+        """Apply a partial control update and persist the merged result."""
+        return self._control_service.update_controls(patch, source=source)
+
     def extract_and_save_preferences(self, user_message: str, session_id: str) -> None:
         """Delegate preference extraction to MemoryService."""
         self._memory_service.extract_and_save_preferences(
             user_message, session_id)
 
+    def submit_feedback(
+        self,
+        *,
+        quality_label: str,
+        quality_score: int | None = None,
+        session_id: str | None = None,
+        interaction_id: str | None = None,
+        source_client: str | None = None,
+        outcome_label: str | None = None,
+        feedback_text: str | None = None,
+        tags: list[str] | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> dict | None:
+        """Persist a feedback record in Archive and return the created row."""
+        normalized_label = self._derive_quality_label(
+            quality_label, quality_score)
+        data_payload: dict[str, Any] = payload.copy(
+        ) if isinstance(payload, dict) else {}
+        if session_id and ("instruction" not in data_payload or "output" not in data_payload):
+            data_payload.update(
+                self._build_feedback_io_from_history(session_id))
+        body = {
+            "session_id": session_id,
+            "interaction_id": interaction_id,
+            "source_service": "oracle",
+            "source_client": source_client,
+            "quality_label": normalized_label,
+            "quality_score": quality_score,
+            "outcome_label": outcome_label,
+            "feedback_text": feedback_text,
+            "tags": tags or [],
+            "payload": data_payload,
+        }
+        return self._hub.create_feedback_record(body)
+
+    def list_feedback(
+        self,
+        *,
+        session_id: str | None = None,
+        quality_label: str | None = None,
+        source_client: str | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        """Return feedback records from Archive."""
+        normalized = self._derive_quality_label(
+            quality_label, None) if quality_label else None
+        return self._hub.list_feedback_records(
+            session_id=session_id,
+            quality_label=normalized,
+            source_client=source_client,
+            source_service="oracle",
+            limit=limit,
+        )
+
+    def export_feedback_jsonl(
+        self,
+        *,
+        session_id: str | None = None,
+        quality_label: str | None = None,
+        source_client: str | None = None,
+        limit: int = 1000,
+    ) -> str:
+        """Return filtered feedback rows as JSONL text."""
+        normalized = self._derive_quality_label(
+            quality_label, None) if quality_label else None
+        return self._hub.export_feedback_jsonl(
+            session_id=session_id,
+            quality_label=normalized,
+            source_client=source_client,
+            source_service="oracle",
+            limit=limit,
+        )
+
     # ── Private helpers ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _derive_quality_label(
+        quality_label: str | None,
+        quality_score: int | None,
+    ) -> str:
+        """Normalize explicit labels and derive one from score when needed."""
+        if quality_label:
+            normalized = str(quality_label).strip().lower()
+            alias_map = {
+                "great": "excellent",
+                "excellent": "excellent",
+                "good": "good",
+                "ok": "mixed",
+                "mixed": "mixed",
+                "bad": "poor",
+                "poor": "poor",
+                "reject": "rejected",
+                "rejected": "rejected",
+            }
+            if normalized in alias_map:
+                return alias_map[normalized]
+        if quality_score is None:
+            return "mixed"
+        if quality_score >= 5:
+            return "excellent"
+        if quality_score == 4:
+            return "good"
+        if quality_score == 3:
+            return "mixed"
+        if quality_score == 2:
+            return "poor"
+        return "rejected"
+
+    def _build_feedback_io_from_history(self, session_id: str) -> dict[str, str]:
+        """Extract latest user input / assistant output pair from chat history."""
+        rows = self._hub.get(f"/chat/history/{session_id}?limit=20") or []
+        if not isinstance(rows, list):
+            return {}
+        last_user = None
+        last_assistant = None
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            role = str(row.get("role", "")).strip().lower()
+            content = str(row.get("content", "")).strip()
+            if not content:
+                continue
+            if role == "assistant":
+                last_assistant = content
+            elif role == "user":
+                last_user = content
+        out: dict[str, str] = {}
+        if last_user:
+            out["instruction"] = last_user
+            out["input"] = last_user
+        if last_assistant:
+            out["output"] = last_assistant
+        return out
+
+    def _phase_init(self, session_id: str) -> tuple:
+        """Load history and domain manifest from Hub. Returns (history_text, domains, schemas)."""
+        history_data = self._hub.get(
+            f"/chat/history/{session_id}?limit={self._context_builder.max_history_messages}"
+        )
+        history_text = self._context_builder.compact_history(history_data)
+        available_domains = self._hub.get("/domains") or ["general"]
+        schemas = self._hub.get("/schemas") or {}
+        return history_text, available_domains, schemas
+
+    def _phase_classify(
+        self,
+        user_message: str,
+        history_text: str,
+        available_domains: list,
+        schemas: dict,
+    ) -> SessionIntent:
+        """Run router LLM to classify intent. Returns a SessionIntent."""
+        mode, explicit_domain, confidence, valid_domains, filters, filters_gt, filters_lt, sort_by, sort_order = (
+            self._classifier.classify(
+                user_message, history_text, available_domains, schemas)
+        )
+        # Ensure explicit_domain is surfaced first in valid_domains
+        if explicit_domain and explicit_domain not in valid_domains:
+            valid_domains = [explicit_domain] + \
+                [d for d in valid_domains if d != explicit_domain]
+        return SessionIntent(
+            mode=mode,
+            explicit_domain=explicit_domain,
+            confidence=confidence,
+            valid_domains=valid_domains,
+            filters=filters or {},
+            filters_gt=filters_gt or {},
+            filters_lt=filters_lt or {},
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+
+    def _phase_context(
+        self,
+        user_message: str,
+        intent: SessionIntent,
+        client_instructions: str | None,
+        notify_target: str | None,
+        session_id: str,
+        history_text: str = "",
+    ) -> str:
+        """Load preferences, retrieve entities, build the analyst prompt. Returns prompt str."""
+        all_prefs = self._load_preferences(intent.valid_domains)
+        preference_facts = [str(p.get("fact", "")).strip()
+                            for p in all_prefs if p.get("fact")]
+
+        all_entities = self._retrieval_service.retrieve_entities(
+            user_message=user_message,
+            session_id=session_id,
+            valid_domains=intent.valid_domains,
+            preference_facts=preference_facts,
+            active_filters=intent.filters,
+            filters_gt=intent.filters_gt,
+            filters_lt=intent.filters_lt,
+            sort_by=intent.sort_by,
+            sort_order=intent.sort_order,
+        )
+
+        formatted_context = self._context_builder.compact_entities_for_prompt(
+            all_entities)
+
+        # Inject relevant document chunks
+        doc_chunks = self._doc_rag.search_relevant_chunks(
+            user_message, notify_target, session_id)
+        if doc_chunks:
+            doc_section = DocumentRAG.format_chunks_for_prompt(doc_chunks)
+            formatted_context = f"{formatted_context}\n\n{doc_section}".strip(
+            ) if formatted_context else doc_section
+        elif self._doc_rag.message_is_about_docs(user_message):
+            brief = self._doc_rag.list_user_docs_brief(
+                chat_id=notify_target, session_id=session_id)
+            if brief:
+                formatted_context = f"{formatted_context}\n\n{brief}".strip(
+                ) if formatted_context else brief
+
+        prompt = self._context_builder.build_analysis_prompt(
+            preference_facts=preference_facts,
+            valid_domains=intent.valid_domains,
+            active_filters=intent.filters,
+            filters_gt=intent.filters_gt,
+            filters_lt=intent.filters_lt,
+            sort_by=intent.sort_by,
+            sort_order=intent.sort_order,
+            formatted_context=formatted_context,
+            history_text=history_text,
+            user_message=user_message,
+        )
+        prompt += f"\n\n{conversation_style_contract()}"
+        if client_instructions and str(client_instructions).strip():
+            prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{str(client_instructions).strip()}"
+        return prompt
+
+    def _phase_background_memory(
+        self,
+        user_message: str,
+        session_id: str,
+        notify_target: str | None,
+        force_notification_compiler: bool,
+    ) -> None:
+        """Fire-and-forget memory extraction + compaction check in a daemon thread."""
+        def _run():
+            # ── Memory extraction ──────────────────────────────────────────────
+            try:
+                self._memory_service.extract_and_save_preferences(
+                    user_message, session_id,
+                    notify_target=notify_target,
+                    force_notification_compiler=force_notification_compiler,
+                )
+            except Exception as exc:
+                logger.warning("Background memory sync failed: %s", exc)
+
+            # ── User controllability extraction (P1-9) ────────────────────────
+            try:
+                self._control_service.extract_and_save_controls(user_message)
+            except Exception as exc:
+                logger.warning("Background control extraction failed: %s", exc)
+
+            # ── Context compaction (inactivity trigger — runs only when needed) ─
+            try:
+                history_data = self._hub.get_history(session_id)
+                if self._context_builder.needs_compaction(history_data):
+                    self._context_builder.run_background_compaction(
+                        session_id=session_id,
+                        history_data=history_data,
+                        scribe_agent=self._agents.scribe,
+                        hub_client=self._hub,
+                    )
+            except Exception as exc:
+                logger.warning("Background compaction check failed: %s", exc)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _build_domain_tools(
+        self,
+        intent: "SessionIntent",
+        session_id: str,
+        notify_target: str | None,
+    ) -> list[ToolDefinition]:
+        """Build ToolDefinitions for the agentic loop from registered module tools.
+
+        Each domain in the intent gets a '{domain}.search' tool that calls the
+        retrieval service. Document chunk search is added when relevant.
+        Returns an empty list if no module tools are registered (falls back to
+        the pre-fetch approach in the caller).
+        """
+        tools: list[ToolDefinition] = []
+        rs = self._retrieval_service
+
+        for domain in intent.valid_domains:
+            # Capture domain in closure
+            _domain = domain
+
+            def _domain_search_handler(
+                query: str = "",
+                filters: dict | None = None,
+                filters_gt: dict | None = None,
+                filters_lt: dict | None = None,
+                sort_by: str | None = None,
+                sort_order: str | None = None,
+                _d: str = _domain,
+            ) -> tuple[bool, list]:
+                try:
+                    entities = rs.retrieve_entities(
+                        user_message=query,
+                        session_id=session_id,
+                        valid_domains=[_d],
+                        preference_facts=[],
+                        active_filters=filters or {},
+                        filters_gt=filters_gt or {},
+                        filters_lt=filters_lt or {},
+                        sort_by=sort_by,
+                        sort_order=sort_order,
+                    )
+                    return (True, entities)
+                except Exception as exc:
+                    return (False, f"Search failed: {exc}")
+
+            tools.append(ToolDefinition(
+                name=f"{domain}.search",
+                description=f"Search {domain} domain entities. Use for queries related to {domain}.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query text"},
+                        "filters": {"type": "object", "description": "Exact-match field filters"},
+                        "filters_gt": {"type": "object", "description": "Greater-than numeric filters"},
+                        "filters_lt": {"type": "object", "description": "Less-than numeric filters"},
+                        "sort_by": {"type": "string", "description": "Field to sort by"},
+                        "sort_order": {"type": "string", "enum": ["asc", "desc"]},
+                    },
+                    "required": [],
+                },
+                handler=_domain_search_handler,
+            ))
+
+        # Document chunk search tool
+        doc_rag = self._doc_rag
+
+        def _doc_search_handler(query: str = "") -> tuple[bool, str]:
+            try:
+                chunks = doc_rag.search_relevant_chunks(
+                    query, notify_target, session_id)
+                if not chunks:
+                    return (True, "No relevant document chunks found.")
+                return (True, DocumentRAG.format_chunks_for_prompt(chunks))
+            except Exception as exc:
+                return (False, f"Document search failed: {exc}")
+
+        tools.append(ToolDefinition(
+            name="documents.search",
+            description="Search through uploaded documents and files for relevant content.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                },
+                "required": ["query"],
+            },
+            handler=_doc_search_handler,
+        ))
+
+        # Only return tools if domain module tools are actually registered
+        if self._module_registry._needs_refresh():
+            self._module_registry.refresh()
+        if not self._module_registry._domain_to_urls:
+            return []
+
+        return tools
 
     def _try_action_call(
         self,
@@ -582,6 +1062,44 @@ class OracleEngine:
             logger.error("Fallback analyst also failed: %s", exc)
             return "⚠️ In questo momento i modelli sono temporaneamente non disponibili. Riprova tra poco."
 
+    def _stream_analyst(self, prompt: str):
+        """Stream tokens from primary analyst, falling back to secondary on error.
+
+        Yields NDJSON token frames as they arrive from the provider.
+        Returns (via StopIteration.value / ``yield from``) the full joined text.
+
+        Fallback strategy:
+        - If primary fails BEFORE any tokens are yielded → try fallback streaming.
+        - If primary fails AFTER tokens have been yielded → stop mid-stream and
+          return whatever was collected (avoids duplicate content to client).
+        - If fallback also fails → return generic error message.
+        """
+        tokens: list[str] = []
+        try:
+            for token in self._agents.analyst.ask_stream(prompt):
+                tokens.append(token)
+                yield stream_emitter.emit_token(token)
+            return "".join(tokens)
+        except Exception as exc:
+            if tokens:
+                # Mid-stream failure after partial output — don't retry (client
+                # has already received partial tokens; retrying would duplicate).
+                logger.warning(
+                    "Primary analyst failed mid-stream (%d tokens): %s", len(tokens), exc)
+                return "".join(tokens)
+            logger.warning(
+                "Primary analyst stream failed (0 tokens), trying fallback: %s", exc)
+
+        # Fallback — primary yielded nothing
+        try:
+            for token in self._agents.fallback_analyst.ask_stream(prompt):
+                tokens.append(token)
+                yield stream_emitter.emit_token(token)
+            return "".join(tokens)
+        except Exception as exc:
+            logger.error("Fallback analyst stream also failed: %s", exc)
+            return "⚠️ In questo momento i modelli sono temporaneamente non disponibili. Riprova tra poco."
+
     def _quick_answer(
         self,
         user_message: str,
@@ -622,7 +1140,13 @@ class OracleEngine:
         all_prefs: list[dict] = []
         seen: set = set()
         for domain in valid_domains:
-            for pref in (self._hub.get(f"/memory/active?domain={domain}") or []):
+            # P1-8 taxonomy: prefer durable preference class.
+            rows = self._hub.get(
+                f"/memory/active?domain={domain}&memory_class=durable_user_preference") or []
+            # Backward compatibility with legacy untyped preference rows.
+            if not rows:
+                rows = self._hub.get(f"/memory/active?domain={domain}") or []
+            for pref in rows:
                 pid = pref.get("id")
                 if pid and pid not in seen:
                     all_prefs.append(pref)

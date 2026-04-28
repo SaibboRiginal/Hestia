@@ -10,6 +10,8 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
+import sys
 from datetime import datetime, timedelta, timezone
 
 import uvicorn
@@ -31,12 +33,16 @@ from schemas.events import (
 from services.calendar_service import CalendarService
 from services import notification_worker, sync_worker
 
-logging.basicConfig(
-    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
-logger = logging.getLogger("hestia_chronos")
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
+
+logger, log_buffer = setup_service_logging("hestia_chronos")
 
 # ─────────────────────────────────────────────────────────────────────
 #  App bootstrap
@@ -101,6 +107,16 @@ def health() -> dict:
         "status": "ok",
         "service": "hestia_chronos",
         "providers": status,
+    }
+
+
+@app.get("/api/logs")
+def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
+    rows = log_buffer.query(limit=limit, level=level, contains=contains)
+    return {
+        "service": "hestia_chronos",
+        "count": len(rows),
+        "logs": rows,
     }
 
 
