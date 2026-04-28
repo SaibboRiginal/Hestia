@@ -8,13 +8,14 @@ WORKDIR /code
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (cached independently of code changes)
-COPY requirements.txt /code/requirements.txt
+COPY Hestia-Oracle/requirements.txt /code/requirements.txt
 
 # Install dependencies (cached independently of code changes)
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy all application code last (this layer changes frequently)
-COPY ./app/ /code/
+COPY Hestia-Shared/hestia_common /code/hestia_common
+COPY Hestia-Oracle/app/ /code/
 
 # Expose the API port
 EXPOSE 19004

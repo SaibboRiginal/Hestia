@@ -1,4 +1,7 @@
 import os
+from pathlib import Path
+import sys
+import logging
 
 import uvicorn
 from dotenv import load_dotenv
@@ -7,6 +10,15 @@ from fastapi import FastAPI, HTTPException
 from .core.service_contract import HestiaServiceBase, ServiceDescriptor
 from .fetcher import fetch_html
 from .schemas import FetchHtmlRequest, FetchHtmlResponse
+
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
 
 
 class FetchService(HestiaServiceBase):
@@ -52,6 +64,8 @@ service = FetchService(
     )
 )
 
+logger, log_buffer = setup_service_logging("hestia_atlas")
+
 app = FastAPI(title="Hestia Atlas", version=SERVICE_VERSION)
 
 
@@ -59,9 +73,10 @@ app = FastAPI(title="Hestia Atlas", version=SERVICE_VERSION)
 def register_on_hub_startup():
     try:
         service.register_to_hub(timeout_seconds=4)
-        print("[ATLAS] Registered in Hub")
+        logger.info("Registered on Hub | name=%s base_url=%s",
+                    SERVICE_NAME, SERVICE_BASE_URL)
     except Exception as error:
-        print(f"[ATLAS] Hub registration failed: {error}")
+        logger.warning("Hub registration failed (non-fatal): %s", error)
 
 
 @app.get("/health")
@@ -72,6 +87,16 @@ def health():
         "version": SERVICE_VERSION,
         "service_type": service.descriptor.service_type,
         "tags": service.descriptor.tags,
+    }
+
+
+@app.get("/api/logs")
+def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
+    rows = log_buffer.query(limit=limit, level=level, contains=contains)
+    return {
+        "service": "hestia_atlas",
+        "count": len(rows),
+        "logs": rows,
     }
 
 

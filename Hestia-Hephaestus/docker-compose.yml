@@ -1,0 +1,19 @@
+services:
+  hephaestus:
+    build: .
+    container_name: hestia_hephaestus
+    restart: unless-stopped
+    ports:
+      - "19010:19010"
+    env_file:
+      - ./app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - SERVICE_BASE_URL=http://hestia_hephaestus:19010
+      - PYTHONUNBUFFERED=1
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

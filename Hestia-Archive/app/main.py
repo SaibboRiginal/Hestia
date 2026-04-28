@@ -5,6 +5,8 @@ and wire in the domain routers. All endpoint logic lives in app/routers/.
 """
 import logging
 import os
+from pathlib import Path
+import sys
 
 import requests
 from fastapi import FastAPI
@@ -15,12 +17,16 @@ from . import models, database
 from .database import engine
 from .routers import archive, chat, calendar, documents, entities, memory
 
-logging.basicConfig(
-    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
-logger = logging.getLogger("hestia_archive")
+try:
+    from hestia_common.logging_utils import log_event, setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import log_event, setup_service_logging
+
+logger, log_buffer = setup_service_logging("hestia_archive")
 
 # ── Database bootstrap ────────────────────────────────────────────────────────
 with engine.connect() as conn:
@@ -47,6 +53,15 @@ app.include_router(documents.router)
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_archive"}
+
+
+@app.get("/api/logs")
+def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
+    return {
+        "service": "hestia_archive",
+        "count": len(log_buffer.query(limit=limit, level=level, contains=contains)),
+        "logs": log_buffer.query(limit=limit, level=level, contains=contains),
+    }
 
 
 # ── Hub registration ──────────────────────────────────────────────────────────
@@ -210,10 +225,31 @@ def register_on_hub_startup():
         resp = requests.post(f"{hub_url}/registry/register",
                              json=_HUB_REGISTRATION_PAYLOAD, timeout=4)
         if resp.status_code < 400:
-            logger.info("Registered on Hub | hub=%s base_url=%s", hub_url,
-                        _HUB_REGISTRATION_PAYLOAD.get("base_url"))
+            log_event(
+                logger,
+                logging.INFO,
+                "hub_register_success",
+                service="archive",
+                hub=hub_url,
+                base_url=_HUB_REGISTRATION_PAYLOAD.get("base_url"),
+                status_code=resp.status_code,
+            )
         else:
-            logger.warning("Hub registration non-success | status=%s body=%s",
-                           resp.status_code, resp.text[:200])
+            log_event(
+                logger,
+                logging.WARNING,
+                "hub_register_non_success",
+                service="archive",
+                hub=hub_url,
+                status_code=resp.status_code,
+                body_preview=resp.text[:200],
+            )
     except Exception as exc:
-        logger.warning("Hub registration failed (non-fatal): %s", exc)
+        log_event(
+            logger,
+            logging.WARNING,
+            "hub_register_exception",
+            service="archive",
+            hub=hub_url,
+            error=str(exc),
+        )

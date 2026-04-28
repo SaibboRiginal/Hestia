@@ -20,10 +20,12 @@ from .modules.schemas import (
     RouteRequest,
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = os.getenv(
+    "LOG_FORMAT",
+    "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
+logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
 logger = logging.getLogger("hestia_hub")
 
 # ── Singletons ────────────────────────────────────────────────────────────────

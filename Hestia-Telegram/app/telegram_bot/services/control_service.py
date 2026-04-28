@@ -30,6 +30,28 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self._send_json(200, {"status": "ok", "service": "telegram"})
             return
+        if self.path.startswith("/api/logs"):
+            from urllib.parse import parse_qs, urlsplit
+
+            parsed = urlsplit(self.path)
+            query = parse_qs(parsed.query)
+            try:
+                limit = int((query.get("limit") or ["200"])[0])
+            except Exception:
+                limit = 200
+            level = (query.get("level") or [None])[0]
+            contains = (query.get("contains") or [None])[0]
+            rows = core.LOG_BUFFER.query(
+                limit=limit, level=level, contains=contains)
+            self._send_json(
+                200,
+                {
+                    "service": "hestia_telegram",
+                    "count": len(rows),
+                    "logs": rows,
+                },
+            )
+            return
         self._send_json(404, {"status": "error", "detail": "not found"})
 
     def do_POST(self):

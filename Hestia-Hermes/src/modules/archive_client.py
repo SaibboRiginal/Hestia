@@ -114,3 +114,95 @@ class ArchiveClient:
             if str(record.get("entity_id")) == str(entity_id):
                 return record
         return None
+
+    def upsert_outbound_event(self, payload: dict[str, Any]) -> dict[str, Any] | None:
+        try:
+            routed = self._route_archive(
+                "POST", "api/outbound-events/upsert", body=payload, timeout=8)
+            if isinstance(routed, dict):
+                return routed
+        except Exception as error:
+            logger.warning(
+                "Archive route exception for outbound upsert | error=%s", error)
+
+        endpoint = f"{self.base_url}/outbound-events/upsert"
+        try:
+            response = requests.post(endpoint, json=payload, timeout=8)
+            if response.status_code < 400:
+                return response.json() or {}
+            logger.warning(
+                "Archive direct outbound upsert failed | status=%s body=%s",
+                response.status_code,
+                response.text[:250],
+            )
+        except Exception as error:
+            logger.warning(
+                "Archive direct outbound upsert exception | error=%s", error)
+        return None
+
+    def get_outbound_events(self, query: dict[str, Any]) -> list[dict[str, Any]]:
+        try:
+            routed = self._route_archive(
+                "GET", "api/outbound-events", query=query, timeout=8)
+            if isinstance(routed, list):
+                return routed
+        except Exception as error:
+            logger.warning(
+                "Archive route exception for outbound list | error=%s", error)
+
+        endpoint = f"{self.base_url}/outbound-events"
+        try:
+            response = requests.get(endpoint, params=query, timeout=8)
+            if response.status_code < 400:
+                payload = response.json() or []
+                return payload if isinstance(payload, list) else []
+            logger.warning(
+                "Archive direct outbound list failed | status=%s body=%s",
+                response.status_code,
+                response.text[:250],
+            )
+        except Exception as error:
+            logger.warning(
+                "Archive direct outbound list exception | error=%s", error)
+        return []
+
+    def update_outbound_event_state(
+        self,
+        outbound_event_id: str,
+        lifecycle_state: str,
+        detail: str | None = None,
+        superseded_by: str | None = None,
+    ) -> bool:
+        body = {
+            "lifecycle_state": lifecycle_state,
+            "detail": detail,
+            "superseded_by": superseded_by,
+        }
+        endpoint_path = f"api/outbound-events/{outbound_event_id}/state"
+        try:
+            routed = self._route_archive(
+                "PATCH", endpoint_path, body=body, timeout=8)
+            if isinstance(routed, dict):
+                return True
+        except Exception as error:
+            logger.warning(
+                "Archive route exception for outbound state update | error=%s", error)
+
+        endpoint = f"{self.base_url}/outbound-events/{outbound_event_id}/state"
+        try:
+            response = requests.patch(endpoint, json=body, timeout=8)
+            return response.status_code < 400
+        except Exception as error:
+            logger.warning(
+                "Archive direct outbound state update exception | error=%s", error)
+            return False
+
+    def find_active_outbound_event(self, dedupe_key: str) -> dict[str, Any] | None:
+        rows = self.get_outbound_events(
+            {"dedupe_key": dedupe_key, "limit": 20})
+        active_states = {"created", "queued", "delivered", "seen", "answered"}
+        for row in rows:
+            state = str(row.get("lifecycle_state", "")).strip().lower()
+            if state in active_states:
+                return row
+        return None

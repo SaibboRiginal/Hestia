@@ -99,6 +99,91 @@ class DispatchLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class InteractionLedgerRecord(Base):
+    """Compact typed interaction events for behavior/state tracking."""
+    __tablename__ = "interaction_ledger"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, index=True, nullable=True)
+    actor = Column(String, index=True, nullable=False, default="assistant")
+    event_type = Column(String, index=True, nullable=False)
+    domain = Column(String, index=True, nullable=False, default="general")
+    source_service = Column(
+        String, index=True, nullable=False, default="oracle")
+    reference_id = Column(String, index=True, nullable=True)
+    payload = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True),
+                        server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_interaction_ledger_payload_gin",
+              payload, postgresql_using="gin"),
+    )
+
+
+class OutboundEventRecord(Base):
+    """Delivery lifecycle state for a logical outbound event."""
+    __tablename__ = "outbound_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    outbound_event_id = Column(String, unique=True, index=True, nullable=False)
+    dedupe_key = Column(String, index=True, nullable=False)
+    lifecycle_state = Column(
+        String, index=True, nullable=False, default="created")
+
+    event_type = Column(String, index=True, nullable=False)
+    domain = Column(String, index=True, nullable=False, default="general")
+    entity_id = Column(String, index=True, nullable=True)
+    subscription_id = Column(String, index=True, nullable=True)
+    channel = Column(String, index=True, nullable=True)
+    target = Column(String, nullable=True)
+
+    question_id = Column(String, index=True, nullable=True)
+    brief_id = Column(String, index=True, nullable=True)
+    source_service = Column(
+        String, index=True, nullable=False, default="hermes")
+    superseded_by = Column(String, index=True, nullable=True)
+    detail = Column(String, nullable=True)
+    payload = Column(JSONB, nullable=False, default=dict)
+
+    created_at = Column(DateTime(timezone=True),
+                        server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(
+    ), server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_outbound_events_payload_gin",
+              payload, postgresql_using="gin"),
+    )
+
+
+class FeedbackRecord(Base):
+    """User and client quality feedback used for tuning/evaluation exports."""
+    __tablename__ = "feedback_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    feedback_id = Column(String, unique=True, index=True, nullable=False)
+    session_id = Column(String, index=True, nullable=True)
+    interaction_id = Column(String, index=True, nullable=True)
+    source_service = Column(
+        String, index=True, nullable=False, default="oracle")
+    source_client = Column(String, index=True, nullable=True)
+    quality_label = Column(String, index=True, nullable=False)
+    quality_score = Column(Integer, index=True, nullable=True)
+    outcome_label = Column(String, index=True, nullable=True)
+    feedback_text = Column(String, nullable=True)
+    tags = Column(JSONB, nullable=False, default=list)
+    payload = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True),
+                        server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_feedback_records_payload_gin",
+              payload, postgresql_using="gin"),
+        Index("ix_feedback_records_tags_gin", tags, postgresql_using="gin"),
+    )
+
+
 class CalendarItem(Base):
     """Provider-agnostic calendar event / task / reminder stored for assistant memory.
 

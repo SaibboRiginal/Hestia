@@ -1,6 +1,9 @@
 import os
 import threading
 from typing import Any
+from pathlib import Path
+import sys
+import logging
 
 import requests
 import telebot
@@ -8,6 +11,21 @@ import telebot
 import message_format
 import session_store
 from command_catalog import telegram_local_commands
+
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    # Docker image layout: /code/hestia_common, app runs from /code/app.
+    if str(_workspace_root) not in sys.path:
+        sys.path.insert(0, str(_workspace_root))
+    # Local workspace layout: <root>/Hestia-Shared/hestia_common.
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if _shared_pkg.exists() and str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
+
+LOGGER, LOG_BUFFER = setup_service_logging("hestia_telegram")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_TOKEN:

@@ -27,3 +27,10 @@ class Subscription(BaseModel):
     filters: dict[str, Any] = Field(default_factory=dict)
     channels: list[dict[str, Any]] = Field(default_factory=list)
     is_active: bool = True
+
+
+class OutboundEventStateUpdateRequest(BaseModel):
+    outbound_event_id: str
+    lifecycle_state: str
+    detail: str | None = None
+    superseded_by: str | None = None

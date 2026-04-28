@@ -2,6 +2,8 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
+import sys
 import requests
 
 import uvicorn
@@ -14,12 +16,16 @@ from tools.retrieval import ScoutRetrievalService
 from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
 from worker.runner import ScoutWorker
 
-logging.basicConfig(
-    # LOG_LEVEL: DEBUG | INFO | WARNING | ERROR
-    level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
-logger = logging.getLogger("hestia_scout")
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
+
+logger, log_buffer = setup_service_logging("hestia_scout")
 
 TARGET_DOMAIN = "real_estate"
 TARGET_SOURCE = "gmail_imap"
@@ -77,6 +83,16 @@ worker = ScoutWorker(
 @api_app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_scout_tools"}
+
+
+@api_app.get("/api/logs")
+def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
+    rows = log_buffer.query(limit=limit, level=level, contains=contains)
+    return {
+        "service": "hestia_scout",
+        "count": len(rows),
+        "logs": rows,
+    }
 
 
 @api_app.get("/api/module-tools/domains")

@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
+from pathlib import Path
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -16,11 +19,16 @@ from core.hub_client import discover_services
 from schemas.reports import SystemReport
 from services import analysis_service, monitor_service
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logger = logging.getLogger("argus")
+try:
+    from hestia_common.logging_utils import setup_service_logging
+except ModuleNotFoundError:
+    _workspace_root = Path(__file__).resolve().parents[2]
+    _shared_pkg = _workspace_root / "Hestia-Shared"
+    if str(_shared_pkg) not in sys.path:
+        sys.path.insert(0, str(_shared_pkg))
+    from hestia_common.logging_utils import setup_service_logging
+
+logger, log_buffer = setup_service_logging("hestia_argus")
 
 # Loaded once at startup; injected into Oracle calls.
 _project_context: str = ""
@@ -69,6 +77,16 @@ app.add_middleware(CORSMiddleware, allow_origins=[
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     return {"status": "ok", "service": "argus"}
+
+
+@app.get("/api/logs", tags=["meta"])
+def service_logs(limit: int = 200, level: str | None = None, contains: str | None = None) -> dict:
+    rows = log_buffer.query(limit=limit, level=level, contains=contains)
+    return {
+        "service": "hestia_argus",
+        "count": len(rows),
+        "logs": rows,
+    }
 
 
 # ---------------------------------------------------------------------------
