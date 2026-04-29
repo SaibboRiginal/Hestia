@@ -125,4 +125,9 @@ def fetch_html_endpoint(req: FetchHtmlRequest):
 if __name__ == "__main__":
     host = os.getenv("FETCH_HOST", "0.0.0.0")
     port = int(os.getenv("FETCH_PORT", "8095"))
-    uvicorn.run("app.main:app", host=host, port=port, log_level="info")
+    uvicorn.run(
+        "app.main:app",
+        host=host,
+        port=port,
+        log_level=os.getenv("LOG_LEVEL", "INFO").lower(),
+    )

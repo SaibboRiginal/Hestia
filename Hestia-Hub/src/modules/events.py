@@ -28,6 +28,7 @@ class RegistryEvents:
         self._updated_at: float = time.time()
         self._notify_timeout = notify_timeout
         self._lock = threading.Lock()
+        self._changed = threading.Condition(self._lock)
 
     # ── Read-only properties ──────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ class RegistryEvents:
             self._updated_at = time.time()
             revision = self._revision
             updated_at = self._updated_at
+            self._changed.notify_all()
 
         notify_thread = threading.Thread(
             target=self._notify_all,
@@ -65,6 +67,20 @@ class RegistryEvents:
             daemon=True,
         )
         notify_thread.start()
+
+    def wait_for_change(self, after_revision: int, timeout_seconds: float) -> tuple[int, float, bool]:
+        """Block until registry revision changes or timeout is reached.
+
+        Returns tuple: (revision, updated_at, changed)
+        """
+        with self._changed:
+            if self._revision > max(0, after_revision):
+                return self._revision, self._updated_at, True
+
+            timeout_value = max(0.0, float(timeout_seconds))
+            self._changed.wait(timeout=timeout_value)
+            changed = self._revision > max(0, after_revision)
+            return self._revision, self._updated_at, changed
 
     # ── Private helpers ───────────────────────────────────────────────────────
 

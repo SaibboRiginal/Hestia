@@ -23,7 +23,7 @@ class HermesService:
     def process_event(self, event_type: str, domain: str, entity_id: str, payload: dict):
         subscriptions = self.archive.get_active_subscriptions(
             domain=domain, event_type=event_type)
-        logger.info(
+        logger.debug(
             "Loaded active subscriptions | domain=%s event_type=%s count=%s",
             domain,
             event_type,
@@ -36,7 +36,7 @@ class HermesService:
             subscription_id = subscription.get("id")
             matches = subscription_matches(subscription, payload)
             if not matches:
-                logger.info(
+                logger.debug(
                     "Subscription not matched | subscription_id=%s filters=%s",
                     subscription_id,
                     subscription.get("filters") or {},

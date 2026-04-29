@@ -55,7 +55,7 @@ Generic connector runtime for raw data fetching.
 Host-side shared web fetch gateway.
 - Runs directly on host OS (not in Docker) for browser-assisted retrieval.
 - Provides `/api/fetch/html` for modules that need resilient page fetching.
-- Registers into Hub as `fetch` so callers can route through Hub (`/api/route/fetch/...`).
+- Registers into Hub as `atlas` so callers can route through Hub (`/api/route/atlas/...`).
 
 ### Hestia-Telegram 💬
 User interface relay for chat, file attachments, and clear session commands.
@@ -80,6 +80,7 @@ Real-estate domain module.
 - **Status update path:** keyword regex scan updates `listing_status` for known entities without LLM.
 - **LLM path:** only the minimal representative email set per new URL is sent to the LLM extractor.
 - Persists entities in Archive under `real_estate` with `listing_status` field (`available`, `in_negotiation`, `investment_occupied`, `sold`, `unknown`).
+- If any downstream step is unavailable (content enrichment, dispatch, etc.), entities are persisted with a generic pending-step marker and retried automatically on later cycles.
 - Publishes `entity.upserted` events to Hermes for proactive matching.
 - Exposes generic module tools for Oracle retrieval.
 
@@ -96,11 +97,11 @@ Real-estate domain module.
    - `Dockerfile`
    - `docker-compose.yml`
    - `requirements.txt`
-   - `src/` with `main.py` and modules
+   - main package (`app/` or `src/`) with `main.py` and modules
 6. Requirement changes must be reflected in service markdown files (`hestia-*.md`) and root documentation in the same change set.
 7. **Every service must be unconditionally resilient — no task is ever abandoned.**
    - If a dependency (Atlas, Hermes, Hub, Archive, geocoder, etc.) is unavailable, the work unit must be **flagged as incomplete** in a durable store (Archive entity payload or a local queue file) and **retried automatically** on every subsequent reconcile/recovery cycle.
-   - Incomplete work is tracked via explicit payload flags (e.g. `atlas_enriched=False`, `hermes_notified=False`, `geo_enriched=False`). A missing flag or `True` means done; `False` means pending retry.
+   - Incomplete work is tracked via generic pending markers (for example `pending_steps.<step_name>=true` or equivalent queue metadata) instead of service-specific coupling.
    - The reconcile loop (or equivalent periodic recovery pass) of every module **must** check all pending flags and resume the failed step before considering a record complete.
    - Data in Archive is never considered partial or stale as long as pending flags remain; enrichment and notification retries run until they succeed or the data expires naturally (e.g. listing sold/removed).
    - Errors are logged with `[🔄]` prefix and enough context to diagnose the failure. Silent failure is forbidden.
@@ -124,6 +125,20 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 2. Scout must log: fetch method used, pre/post enrichment summary state, truncation warnings, geocoding results.
 3. Telegram must log: command execution, output rendering mode, message part count, dispatch buffering.
 4. Logs must be actionable — include the data that helps diagnose issues (lengths, truncation status, entity IDs).
+5. Routine keepalive success logs must be `DEBUG`; `INFO` is reserved for state changes (created/updated registration, forced refreshes, startup milestones).
+
+## Startup Readiness Contract
+
+1. Services must wait for Hub readiness before initial Hub registration.
+2. If a service has strict startup dependencies (for example Scout requiring Archive/Ingest presence in Hub), it must wait for those dependencies to appear in Hub registry before entering its main processing loop.
+3. `STARTUP_WAIT_TIMEOUT_SECONDS=0` means wait indefinitely (default), so transient boot ordering does not produce false failure storms.
+4. Startup wait checks are generic and shared (`hestia_common.startup_utils`) rather than hardcoding peer-specific logic per service.
+
+## Registry Propagation Contract
+
+1. Registry change propagation is push-first through Hub events (`hub.registry.changed`) and registered webhooks.
+2. Polling is fallback-only (hybrid/poll modes), never the primary update path when push webhook support exists.
+3. Telegram command refresh should be webhook-driven by default (`TELEGRAM_REGISTRY_UPDATE_MODE=push`).
 
 ## Communication Policy (Hot Swap)
 
@@ -135,6 +150,7 @@ To support hot swapping core instances across Raspberry and Main PC:
 4. Services register on startup and are health-checked by Hub.
 5. If one instance goes offline, callers continue through Hub to next healthy instance.
 6. External host-only helpers (like `fetch`) must still be consumed via Hub route API when possible.
+   - Atlas route example: `/api/route/atlas/api/fetch/html`
 
 ## Service Template Generator
 

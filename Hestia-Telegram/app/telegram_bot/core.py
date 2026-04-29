@@ -49,8 +49,6 @@ TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS = os.getenv(
     "Rispondi in modo conciso (massimo 6-8 righe), personale e caldo. Parla in prima persona femminile e usa il nome Mark quando naturale.",
 )
 
-TELEGRAM_COMMAND_REFRESH_SECONDS = int(
-    os.getenv("TELEGRAM_COMMAND_REFRESH_SECONDS", "0"))
 TELEGRAM_CONTROL_PORT = int(os.getenv("TELEGRAM_CONTROL_PORT", "8010"))
 TELEGRAM_BASE_URL = os.getenv(
     "TELEGRAM_BASE_URL", f"http://hestia_telegram:{TELEGRAM_CONTROL_PORT}"
@@ -176,9 +174,13 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
     if not messages:
         return
 
-    print(
-        f"[SEND] chat_id={chat_id} parts={len(messages)} parse_mode={normalized_parse_mode}")
-    for idx, part in enumerate(messages):
+    LOGGER.debug(
+        "send_user_message | chat_id=%s parts=%d parse_mode=%s",
+        chat_id,
+        len(messages),
+        normalized_parse_mode,
+    )
+    for part in messages:
         if not str(part).strip():
             continue
         if normalized_parse_mode:
@@ -251,4 +253,4 @@ def flush_buffered_alerts(chat_id: str):
     try:
         send_user_message(chat_id, message, parse_mode="HTML")
     except Exception as e:
-        print(f"[-] Failed to send buffered alert message: {e}")
+        LOGGER.warning("Failed to send buffered alert message: %s", e)

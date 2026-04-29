@@ -251,10 +251,13 @@ class AgentFactory:
             models["analyst"]["mod"], models["embedder"]["mod"],
             models["coder"]["mod"],
         )
-        print(
-            f"🧠 Oracle Init | Planner: {models['router']['mod']} | "
-            f"FastChat: {models['scribe']['mod']} | Analyst: {models['analyst']['mod']} | "
-            f"Embedder: {models['embedder']['mod']} | Coder: {models['coder']['mod']}"
+        logger.info(
+            "Oracle init models | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
+            models["router"]["mod"],
+            models["scribe"]["mod"],
+            models["analyst"]["mod"],
+            models["embedder"]["mod"],
+            models["coder"]["mod"],
         )
 
     @staticmethod

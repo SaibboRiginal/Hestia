@@ -141,7 +141,7 @@ Scout also runs on an internal schedule (configurable interval via env).
 After AI extraction, each entity goes through a multi-stage enrichment:
 
 1. **Geolocation**: expanded candidate queries with ", Italia" fallback, city-only last resort.
-2. **Page Atlas**: shared `Hestia-Atlas` via Hub route preferred, then local Playwright, then HTTP fallback.
+2. **Page retrieval**: shared `Hestia-Atlas` via Hub route (`/api/route/atlas/api/fetch/html`) as the standard fetch path.
 3. **Data Extraction** from page (in priority order):
    - JSON-LD structured data
    - Embedded JSON in script tags
@@ -159,7 +159,6 @@ All extraction and enrichment steps log with tagged prefixes:
 - `[AI-RAW]`: raw data from LLM extraction (summary length, truncation flag)
 - `[ENRICH]`: pre/post enrichment state (fetch method, summary length, address, truncation)
 - `[EXTRACT]`: per-stage extraction progress (JSON-LD count, summary length at each step)
-- `[PLAYWRIGHT]`: browser launch, success/failure, content size
 - `[ENTITY]`: final entity state before upsert (address, geo, summary quality)
 
 Truncation warnings are always logged when a summary still ends with "..." after enrichment.
@@ -180,7 +179,7 @@ Truncation warnings are always logged when a summary still ends with "..." after
 | `GMAIL_FOLDER` | Mailbox folder to watch (e.g. `Immobiliare`) |
 | `SCOUT_EMAIL_SENDERS` | Comma-separated sender list used to build IMAP filters (e.g. `nonrispondere@idealista.it,noreply@notifiche.immobiliare.it`) |
 | `SCOUT_FILTER_QUERIES` | Optional advanced IMAP filters separated by `\|\|` (overrides sender list) |
-| `SCOUT_FETCH_API_URL` | Hub route endpoint to shared fetch service (recommended: `http://hestia_hub:19001/api/route/fetch/api/fetch/html`) |
+| `SCOUT_FETCH_API_URL` | Hub route endpoint to shared fetch service (recommended: `http://hestia_hub:19001/api/route/atlas/api/fetch/html`) |
 | `SCOUT_FETCH_VIA_HUB` | `true` to send route-envelope payload to Hub, `false` for direct fetch service call |
 | `LLM_PROVIDER` | `ollama` or `cloud` |
 | `LLM_MODEL` | Model name (e.g. `llama3`, `gpt-4o`) |

@@ -21,12 +21,14 @@ from services import analysis_service, monitor_service
 
 try:
     from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 logger, log_buffer = setup_service_logging("hestia_argus")
 
@@ -42,6 +44,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info(
         "Project context loaded (%d chars)", len(_project_context)
     )
+    hub_api_url = os.getenv(
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    startup_wait_timeout = float(
+        os.getenv("STARTUP_WAIT_TIMEOUT_SECONDS", "0"))
+    wait_for_http_ready(
+        hub_health_url(hub_api_url),
+        timeout_seconds=startup_wait_timeout,
+        logger=logger,
+        description="hub",
+    )
     # Register with Hub (non-fatal).
     hub_client.register()
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
@@ -50,9 +62,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         while True:
             time.sleep(60)
             try:
-                hub_client.register()
-            except Exception:
-                pass
+                hub_client.register(quiet_success=True)
+            except Exception as error:
+                logger.warning("Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
     # Start background monitoring loop.

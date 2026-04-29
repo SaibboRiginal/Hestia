@@ -25,6 +25,9 @@ from typing import Callable, Iterator
 logger = logging.getLogger(__name__)
 
 MAX_AGENT_TURNS: int = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "6"))
+TOOL_RESULT_MAX_CHARS: int = int(
+    os.getenv("ORACLE_TOOL_RESULT_MAX_CHARS", "2000")
+)
 
 # ── Tool definition ────────────────────────────────────────────────────────────
 
@@ -82,7 +85,7 @@ def _extract_tool_call(text: str) -> dict | None:
         return None
 
 
-def _truncate_tool_result(result: str, max_chars: int = 2000) -> str:
+def _truncate_tool_result(result: str, max_chars: int = TOOL_RESULT_MAX_CHARS) -> str:
     """Truncate a verbose tool result and add a pointer note."""
     if len(result) <= max_chars:
         return result

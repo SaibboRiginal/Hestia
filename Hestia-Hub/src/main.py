@@ -76,13 +76,15 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 @app.post("/api/registry/register")
 def register_service(req: RegisterServiceRequest):
     service = req.model_dump()
-    registry.register(service)
-    events.bump(registry.all_services(), reason="register")
+    register_status = registry.register(service)
+    if register_status != "refreshed":
+        events.bump(registry.all_services(), reason="register")
     log_event(
         logger,
-        logging.INFO,
+        logging.DEBUG if register_status == "refreshed" else logging.INFO,
         "service_registered",
         service="hub",
+        register_status=register_status,
         name=req.name,
         base_url=redact_sensitive_text(req.base_url),
     )
@@ -109,6 +111,20 @@ def get_registry_revision():
     return {
         "revision": events.revision,
         "updated_at": events.updated_at,
+        "services_count": len(registry.all_services()),
+    }
+
+
+@app.get("/api/registry/wait")
+def wait_registry_revision(after_revision: int = 0, timeout_seconds: float = 120.0):
+    revision, updated_at, changed = events.wait_for_change(
+        after_revision=after_revision,
+        timeout_seconds=min(300.0, max(1.0, timeout_seconds)),
+    )
+    return {
+        "revision": revision,
+        "updated_at": updated_at,
+        "changed": changed,
         "services_count": len(registry.all_services()),
     }
 

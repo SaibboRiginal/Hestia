@@ -6,10 +6,14 @@ never manages browsers or direct HTTP sessions itself.
 """
 
 import os
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 import requests
+
+
+logger = logging.getLogger("hestia_scout.atlas_client")
 
 
 @dataclass(frozen=True)
@@ -98,7 +102,8 @@ class AtlasClient:
                     continue
 
                 if index > 0:
-                    print(f"[ATLAS] Fallback succeeded via {hub_api_url}")
+                    logger.info(
+                        "Atlas fallback hub candidate succeeded | hub_api_url=%s", hub_api_url)
 
                 return FetchResult(
                     html=html,
@@ -114,8 +119,9 @@ class AtlasClient:
                 continue
 
         if failures:
-            print(f"[ATLAS] All Hub candidates failed for {url}")
+            logger.warning("All Atlas hub candidates failed | url=%s", url)
             for item in failures:
-                print(f"[ATLAS] - {item}")
+                logger.warning(
+                    "Atlas candidate failure detail | detail=%s", item)
 
         return None

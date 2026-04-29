@@ -20,6 +20,7 @@ services:
       # ORACLE_HISTORY_CHAR_LIMIT=500   max chars per history message before truncation (int)
       # ORACLE_CONTEXT_ENTITIES_LIMIT=12  max entities injected into the analysis prompt (int)
       # ORACLE_CONTEXT_FIELD_CHAR_LIMIT=280  max chars per entity field value (int)
+      # ORACLE_TOOL_RESULT_MAX_CHARS=2000  max chars retained from each tool result in agent loop (int)
       # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  cache TTL for module-tool registry (int)
       # ORACLE_FORCE_TELEGRAM_TARGET=1  force all subscription channels to use the user's Telegram chat_id (0|1)
     env_file:

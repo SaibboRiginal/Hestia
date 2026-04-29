@@ -39,7 +39,6 @@ from telegram_bot.services.registry import (
     refresh_command_registry,
     register_telegram_service,
     setup_commands,
-    watch_command_registry_loop,
 )
 
 from telegram_bot.services.executor import (

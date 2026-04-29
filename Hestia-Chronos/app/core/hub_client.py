@@ -16,6 +16,7 @@ def register_on_hub(
     *,
     max_attempts: int = 8,
     retry_delay: float = 2.0,
+    quiet_success: bool = False,
 ) -> None:
     """Register this service in Hub with retry logic.
 
@@ -108,12 +109,20 @@ def register_on_hub(
                 f"{hub_api_url}/registry/register", json=payload, timeout=4
             )
             if resp.status_code < 400:
-                logger.info(
-                    "[HUB] Registered | attempt=%s hub=%s base_url=%s",
-                    attempt,
-                    hub_api_url,
-                    service_base_url,
-                )
+                if quiet_success:
+                    logger.debug(
+                        "[HUB] Registered | attempt=%s hub=%s base_url=%s",
+                        attempt,
+                        hub_api_url,
+                        service_base_url,
+                    )
+                else:
+                    logger.info(
+                        "[HUB] Registered | attempt=%s hub=%s base_url=%s",
+                        attempt,
+                        hub_api_url,
+                        service_base_url,
+                    )
                 return
             logger.warning(
                 "[HUB] Registration returned non-success | attempt=%s status=%s",

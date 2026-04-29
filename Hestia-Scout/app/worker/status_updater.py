@@ -8,8 +8,13 @@ stored entity payload — leaving all other enriched data intact.
 
 from __future__ import annotations
 
+import logging
+
 from domain.listing_status import ListingStatus, detect_listing_status
 from core.archive_client import ArchiveClient
+
+
+logger = logging.getLogger("hestia_scout.status_updater")
 
 
 class StatusUpdater:
@@ -47,9 +52,7 @@ class StatusUpdater:
         detected = detect_listing_status(combined_email_text)
 
         if detected is ListingStatus.UNKNOWN:
-            print(
-                f"[STATUS] No status signal for {entity_id} \u2014 keeping existing status."
-            )
+            logger.info("No status signal detected | entity_id=%s", entity_id)
             return False
 
         existing_payload = (
@@ -61,14 +64,15 @@ class StatusUpdater:
         current = _coerce_safely(current_raw)
 
         if detected == current:
-            print(
-                f"[STATUS] Status unchanged ({current.value}) for {entity_id}."
-            )
+            logger.info(
+                "Listing status unchanged | entity_id=%s status=%s", entity_id, current.value)
             return False
 
-        print(
-            f"[STATUS] Status change detected for {entity_id}: "
-            f"{current.value} \u2192 {detected.value}"
+        logger.info(
+            "Listing status change detected | entity_id=%s from=%s to=%s",
+            entity_id,
+            current.value,
+            detected.value,
         )
 
         updated_payload = dict(existing_payload)

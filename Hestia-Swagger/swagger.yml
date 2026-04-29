@@ -697,6 +697,40 @@ paths:
                   services_count:
                     type: integer
 
+  /api/registry/wait:
+    get:
+      tags: [Hub]
+      summary: Wait for registry revision change (long-poll)
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: after_revision
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: timeout_seconds
+          in: query
+          schema:
+            type: number
+            default: 120
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revision:
+                    type: integer
+                  updated_at:
+                    type: number
+                  changed:
+                    type: boolean
+                  services_count:
+                    type: integer
+
   /api/registry/services:
     get:
       tags: [Hub]
@@ -2151,6 +2185,77 @@ paths:
       responses:
         "200":
           description: "{ok, message, signals[...]}"
+
+  /api/chat/question-answer:
+    post:
+      tags: [Oracle]
+      summary: Submit an answer for a pending Oracle question frame
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, question_id, answer]
+              properties:
+                session_id:
+                  type: string
+                question_id:
+                  type: string
+                answer:
+                  type: string
+                client:
+                  type: string
+      responses:
+        "200":
+          description: "{resolved, question_id}"
+        "404":
+          description: "question not found or already resolved"
+
+  /api/user/controls:
+    get:
+      tags: [Oracle]
+      summary: Read durable user controllability settings
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200":
+          description: "{controls}"
+    post:
+      tags: [Oracle]
+      summary: Patch durable user controllability settings
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                proactive_enabled:
+                  type: boolean
+                allowed_categories:
+                  type: array
+                  items:
+                    type: string
+                quiet_hours:
+                  type: object
+                  additionalProperties: true
+                reminder_aggressiveness:
+                  type: string
+                dont_ask_again:
+                  type: array
+                  items:
+                    type: string
+                reset_scope:
+                  type: string
+                  enum: [branch, primary]
+      responses:
+        "200":
+          description: "{updated, controls}"
 
   /api/feedback:
     post:
