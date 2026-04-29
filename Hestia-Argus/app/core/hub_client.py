@@ -15,7 +15,7 @@ ARGUS_SERVICE_BASE_URL = os.getenv(
 ).rstrip("/")
 
 
-def register() -> bool:
+def register(*, quiet_success: bool = False) -> bool:
     """Register Argus with the Hub service registry. Returns True on success."""
     payload = {
         "name": "argus",
@@ -106,7 +106,10 @@ def register() -> bool:
             f"{HUB_API_URL}/registry/register", json=payload, timeout=10
         )
         resp.raise_for_status()
-        logger.info("Argus registered with Hub successfully")
+        if quiet_success:
+            logger.debug("Argus registered with Hub successfully")
+        else:
+            logger.info("Argus registered with Hub successfully")
         return True
     except Exception as exc:
         logger.warning("Hub registration failed: %s", exc)

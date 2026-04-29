@@ -16,6 +16,7 @@ services:
       - ARGUS_LOG_BACKFILL_MINUTES=5      # Minutes of past logs to load on startup per container (int, default 5)
       - ARGUS_NOTIFY_TARGET=              # Telegram chat_id that receives alert notifications (string, required for alerts)
       - ALERT_COOLDOWN_MINUTES=60         # Minimum minutes between repeated alerts for the same container (int, default 60)
+      - STARTUP_WAIT_TIMEOUT_SECONDS=0    # Seconds to wait for Hub readiness before startup registration (0 = wait indefinitely)
       - HESTIA_DOCS_PATH=/hestia_root     # Path inside container where Hestia repo is mounted (for doc context)
       - LOG_LEVEL=INFO                    # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1                # flush stdout/stderr immediately (required for Docker log streaming)

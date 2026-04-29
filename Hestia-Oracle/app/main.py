@@ -448,6 +448,6 @@ def clear_chat_endpoint(session_id: str):
         engine.delete_chat_history(session_id)
         return {"status": "cleared", "session_id": session_id}
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
+        logger.exception(
+            "Unhandled error clearing chat history | session_id=%s", session_id)
         raise HTTPException(status_code=500, detail=str(e))

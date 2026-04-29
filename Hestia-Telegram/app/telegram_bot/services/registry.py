@@ -1,9 +1,8 @@
-"""Command registry management — Hub discovery, revision polling, and Telegram menu setup."""
+"""Command registry management — Hub discovery, refresh, and Telegram menu setup."""
 from __future__ import annotations
 
 import logging
 import threading
-import time
 from typing import Any
 
 import requests
@@ -85,25 +84,14 @@ def refresh_command_registry(force: bool = False) -> bool:
         core.COMMAND_REGISTRY = discovered
         if revision is not None:
             core.COMMAND_REGISTRY_REVISION = revision
-    logger.info("Command registry refreshed | revision=%s commands=%d",
-                revision, len(discovered))
+    if force:
+        logger.info("Command registry refreshed | revision=%s commands=%d",
+                    revision, len(discovered))
+    else:
+        logger.debug("Command registry refreshed | revision=%s commands=%d",
+                     revision, len(discovered))
     setup_commands()
     return True
-
-
-def watch_command_registry_loop():
-    """Background loop: poll Hub for registry changes and refresh as needed."""
-    interval = max(5, core.TELEGRAM_COMMAND_REFRESH_SECONDS)
-    while True:
-        try:
-            register_telegram_service()
-        except Exception:
-            pass
-        try:
-            refresh_command_registry(force=False)
-        except Exception:
-            pass
-        time.sleep(interval)
 
 
 def register_telegram_service() -> bool:
@@ -295,4 +283,4 @@ def setup_commands():
                 chat_id=int(str(core.ALLOWED_USER_ID))))
         except Exception:
             pass
-    logger.info("Telegram command menu updated | commands=%d", len(commands))
+    logger.debug("Telegram command menu updated | commands=%d", len(commands))

@@ -9,6 +9,7 @@ import re
 import threading
 import time
 import uuid
+import logging
 from html import escape
 from typing import Any
 
@@ -39,6 +40,8 @@ from telegram_bot.services.router import (
     route_command_from_metadata,
     route_service_command,
 )
+
+logger = logging.getLogger("hestia_telegram.executor")
 
 # Make _AFFIRMATIVE and _NEGATIVE importable from this module for backward compat
 __all__ = [
@@ -475,7 +478,8 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
     with core.COMMAND_REGISTRY_LOCK:
         command = core.COMMAND_REGISTRY.get(normalized)
     if not command:
-        print(f"[-] Command not available: {command_name} → {normalized}")
+        logger.warning(
+            "Command not available | requested=%s normalized=%s", command_name, normalized)
         core.bot.send_message(chat_id, "Comando non disponibile.")
         return
 
@@ -526,7 +530,8 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
 
     ok, payload = route_command_from_metadata(command, chat_id, parsed_args)
     if not ok:
-        print(f"[CMD] Command /{normalized} failed: {payload}")
+        logger.warning(
+            "Command execution failed | command=%s error=%s", normalized, payload)
         core.bot.send_message(
             chat_id, f"⚠️ Errore comando /{normalized}: {payload}")
         return
@@ -534,7 +539,8 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
     response_mode = str(command.get(
         "response_mode", "oracle_natural")).strip().lower()
     response_prompt = str(command.get("response_prompt", "")).strip()
-    print(f"[CMD] Rendering /{normalized} response_mode={response_mode}")
+    logger.info("Rendering command output | command=%s response_mode=%s",
+                normalized, response_mode)
 
     command_title = str(command.get("title", "")).strip()
 
@@ -561,8 +567,12 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
 
     output, parse_mode = render_direct_command_output(
         normalized, payload, response_mode, response_prompt)
-    print(
-        f"[CMD] Output for /{normalized}: {len(output)} chars, parse_mode={parse_mode}")
+    logger.info(
+        "Command output ready | command=%s output_chars=%s parse_mode=%s",
+        normalized,
+        len(output),
+        parse_mode,
+    )
 
     stop_typing.set()
 

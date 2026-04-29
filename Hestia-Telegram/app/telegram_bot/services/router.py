@@ -6,11 +6,14 @@ and the command executor, plus argument parsing and template resolution.
 from __future__ import annotations
 
 import re
+import logging
 from typing import Any
 
 import requests
 
 from telegram_bot import core
+
+logger = logging.getLogger("hestia_telegram.router")
 
 # ── Argument helpers ──────────────────────────────────────────────────────────
 
@@ -118,21 +121,36 @@ def route_service_command(
             timeout=30,
         )
         if response.status_code != 200:
-            print(
-                f"[-] Route failed: service={service} method={method} path={normalized_path} status={response.status_code}")
+            logger.warning(
+                "Route envelope request failed | service=%s method=%s path=%s status=%s",
+                service,
+                method,
+                normalized_path,
+                response.status_code,
+            )
             return False, response.text
 
         routed = response.json() or {}
         status_code = int(routed.get("status_code", 500))
         payload = routed.get("payload")
         if status_code >= 400:
-            print(
-                f"[-] Routed error: service={service} method={method} path={normalized_path} status={status_code}")
+            logger.warning(
+                "Routed service returned error | service=%s method=%s path=%s status=%s",
+                service,
+                method,
+                normalized_path,
+                status_code,
+            )
             return False, payload
         return True, payload
     except Exception as error:
-        print(
-            f"[-] Route exception: service={service} method={method} path={normalized_path} error={error}")
+        logger.warning(
+            "Route exception | service=%s method=%s path=%s error=%s",
+            service,
+            method,
+            normalized_path,
+            error,
+        )
         return False, str(error)
 
 

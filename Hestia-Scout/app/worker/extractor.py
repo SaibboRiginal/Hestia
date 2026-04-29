@@ -9,6 +9,7 @@ Orchestrates:
 import json
 import os
 import re
+import logging
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -18,6 +19,9 @@ from core.atlas_client import AtlasClient
 from evaluators.cloud_evaluator import CloudEvaluator
 from tools.geocoding import GeocodingService
 from worker.sites.registry import SiteHandlerRegistry
+
+
+logger = logging.getLogger("hestia_scout.extractor")
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -184,7 +188,7 @@ def enrich_payload_geolocation(payload: dict, geocoder: GeocodingService) -> dic
 
     address = str(payload.get("address", "")).strip()
     title = str(payload.get("title", "")).strip()
-    print(f"[GEO] No geolocation for '{address or title}'")
+    logger.warning("No geolocation result | query=%s", address or title)
     return payload
 
 
@@ -220,6 +224,19 @@ _atlas: Optional[AtlasClient] = None
 _site_registry: Optional[SiteHandlerRegistry] = None
 
 
+def _set_pending_step(payload: dict, step_name: str, pending: bool) -> dict:
+    """Set or clear a generic pending step marker on a payload."""
+    enriched = dict(payload)
+    pending_steps = (
+        dict(enriched.get("pending_steps"))
+        if isinstance(enriched.get("pending_steps"), dict)
+        else {}
+    )
+    pending_steps[step_name] = bool(pending)
+    enriched["pending_steps"] = pending_steps
+    return enriched
+
+
 def _get_atlas() -> AtlasClient:
     global _atlas
     if _atlas is None:
@@ -241,13 +258,14 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
 
     url = str(payload.get("url", "")).strip()
     if not url:
-        print("[ENRICH] Skipped: no URL in payload")
+        logger.warning("Listing enrichment skipped: missing URL")
         return payload
 
     registry = _get_site_registry()
     handler = registry.get_handler(url)
     if handler is None:
-        print(f"[ENRICH] No site handler for {url}, skipping page enrichment")
+        logger.warning(
+            "No site handler for listing URL, skipping enrichment | url=%s", url)
         return payload
 
     normalized_url = handler.normalize_url(url)
@@ -255,17 +273,20 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
     enriched["url"] = normalized_url
     enriched["source_site"] = handler.site_name
 
-    print(
-        f"[ENRICH] Fetching {normalized_url} via Atlas ({handler.site_name})")
+    logger.info("Fetching listing via Atlas | url=%s site=%s",
+                normalized_url, handler.site_name)
     result = _get_atlas().fetch_html(normalized_url, timeout_seconds=timeout_seconds)
     if result is None or not result.html:
-        print(f"[ENRICH] No HTML from Atlas for {normalized_url}")
-        enriched["atlas_enriched"] = False
-        return enriched
+        logger.warning("No HTML from Atlas | url=%s", normalized_url)
+        return _set_pending_step(enriched, "listing_content_enrichment", True)
 
-    print(
-        f"[ENRICH] Got {result.content_length} chars, enriching via {handler.site_name}")
+    logger.info("Atlas fetch succeeded | url=%s content_length=%s site=%s",
+                normalized_url, result.content_length, handler.site_name)
     soup = BeautifulSoup(result.html, "html.parser")
     result_payload = handler.enrich(soup, enriched)
-    result_payload["atlas_enriched"] = True
+    result_payload = _set_pending_step(
+        result_payload, "listing_content_enrichment", False)
+    # Backward-compatible cleanup of legacy marker when present.
+    if "atlas_enriched" in result_payload:
+        result_payload.pop("atlas_enriched", None)
     return result_payload

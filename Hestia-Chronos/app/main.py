@@ -35,12 +35,22 @@ from services import notification_worker, sync_worker
 
 try:
     from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.startup_utils import (
+        hub_health_url,
+        wait_for_http_ready,
+        wait_for_hub_services,
+    )
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.startup_utils import (
+        hub_health_url,
+        wait_for_http_ready,
+        wait_for_hub_services,
+    )
 
 logger, log_buffer = setup_service_logging("hestia_chronos")
 
@@ -76,6 +86,21 @@ def on_startup() -> None:
         list(status["unavailable"].keys()),
     )
 
+    startup_wait_timeout = float(
+        os.getenv("STARTUP_WAIT_TIMEOUT_SECONDS", "0"))
+    wait_for_http_ready(
+        hub_health_url(hub_api_url),
+        timeout_seconds=startup_wait_timeout,
+        logger=logger,
+        description="hub",
+    )
+    wait_for_hub_services(
+        hub_api_url,
+        ["archive"],
+        timeout_seconds=startup_wait_timeout,
+        logger=logger,
+    )
+
     register_on_hub(hub_api_url, service_base_url)
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
@@ -83,9 +108,15 @@ def on_startup() -> None:
         while True:
             time.sleep(60)
             try:
-                register_on_hub(hub_api_url, service_base_url)
-            except Exception:
-                pass
+                register_on_hub(
+                    hub_api_url,
+                    service_base_url,
+                    max_attempts=1,
+                    quiet_success=True,
+                )
+            except Exception as error:
+                logger.warning(
+                    "[HUB] Keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 
@@ -227,4 +258,5 @@ def get_agenda(
 if __name__ == "__main__":
     port = int(os.getenv("CALENDAR_PORT", "19007"))
     uvicorn.run("main:app", host="0.0.0.0", port=port,
-                reload=False)  # WORKDIR=/code, flat imports
+                # WORKDIR=/code, flat imports
+                reload=False, log_level=os.getenv("LOG_LEVEL", "INFO").lower())

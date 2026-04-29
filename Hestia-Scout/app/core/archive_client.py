@@ -1,5 +1,9 @@
 import requests
 import os
+import logging
+
+
+logger = logging.getLogger("hestia_scout.archive_client")
 
 
 class ArchiveClient:
@@ -38,7 +42,7 @@ class ArchiveClient:
             if isinstance(payload, list):
                 return payload
         except Exception as e:
-            print(f"[-] Vault connection failed: {e}")
+            logger.warning("Vault connection failed: %s", e)
         return []
 
     def save_evaluation(self, record_id: int, evaluation: dict) -> bool:
@@ -49,11 +53,11 @@ class ArchiveClient:
             routed_payload = self._route_archive(
                 "PATCH", f"api/archive/{record_id}", body=payload)
             if routed_payload is not None:
-                print(f"[✓] Vault updated record #{record_id}")
+                logger.info("Vault updated record | record_id=%s", record_id)
                 return True
-            print(f"[!] Vault rejected update for #{record_id}")
+            logger.warning("Vault rejected update | record_id=%s", record_id)
         except Exception as e:
-            print(f"[-] Failed to update Vault: {e}")
+            logger.warning("Failed to update Vault: %s", e)
         return False
 
     def upsert_entity(self, entity_data: dict) -> bool:
@@ -66,12 +70,12 @@ class ArchiveClient:
             routed_payload = self._route_archive(
                 "POST", "api/entities", body=entity_data)
             if routed_payload is not None:
-                print(
-                    f"[✓] Vault upserted Entity: {entity_data.get('entity_id')}")
+                logger.info("Vault upserted entity | entity_id=%s",
+                            entity_data.get("entity_id"))
                 return True
-            print(f"[!] Vault rejected Entity payload")
+            logger.warning("Vault rejected entity payload")
         except Exception as e:
-            print(f"[-] Failed to route Entity to Vault: {e}")
+            logger.warning("Failed to route entity to Vault: %s", e)
         return False
 
     def get_entity_records(self, domain: str, status: str = "active", limit: int = 1000) -> list:
@@ -83,9 +87,9 @@ class ArchiveClient:
             }, timeout=8)
             if isinstance(payload, list):
                 return payload
-            print("[!] Vault rejected entity records request")
+            logger.warning("Vault rejected entity records request")
         except Exception as e:
-            print(f"[-] Failed to fetch entity records: {e}")
+            logger.warning("Failed to fetch entity records: %s", e)
         return []
 
     def get_all_entity_ids(self, domain: str, status: str = "active", limit: int = 5000) -> set[str]:
@@ -107,7 +111,8 @@ class ArchiveClient:
             if isinstance(payload, dict):
                 return payload
         except Exception as e:
-            print(f"[-] Failed to fetch entity {entity_id}: {e}")
+            logger.warning(
+                "Failed to fetch entity | entity_id=%s error=%s", entity_id, e)
         return None
 
     def cleanup_entities(self, domain: str, required_fields: list[str], require_created_at: bool = True, dry_run: bool = False) -> dict:
@@ -123,7 +128,7 @@ class ArchiveClient:
                 "POST", "api/entities/cleanup", body=payload, timeout=10)
             if isinstance(routed_payload, dict):
                 return routed_payload
-            print("[!] Vault cleanup request failed")
+            logger.warning("Vault cleanup request failed")
         except Exception as e:
-            print(f"[-] Failed cleanup call: {e}")
+            logger.warning("Failed cleanup call: %s", e)
         return {}

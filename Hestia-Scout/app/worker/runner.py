@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import requests
 
 from core.archive_client import ArchiveClient
@@ -14,6 +15,9 @@ from worker.extractor import (
 )
 from worker.pre_parser import pre_parse_records, select_representative_records
 from worker.status_updater import StatusUpdater
+
+
+logger = logging.getLogger("hestia_scout.runner")
 
 
 class ScoutWorker:
@@ -49,6 +53,24 @@ class ScoutWorker:
             "SCOUT_ENABLE_LISTING_ENRICHMENT", "1").strip().lower() not in {"0", "false", "no"}
         self._cycle_counter = 0
 
+    def _is_step_pending(self, payload: dict, step_name: str, legacy_key: str | None = None) -> bool:
+        pending_steps = payload.get("pending_steps") if isinstance(
+            payload.get("pending_steps"), dict) else {}
+        if pending_steps.get(step_name) is True:
+            return True
+        return bool(legacy_key and payload.get(legacy_key) is False)
+
+    def _set_step_pending(self, payload: dict, step_name: str, pending: bool, legacy_key: str | None = None) -> dict:
+        updated = dict(payload)
+        pending_steps = updated.get("pending_steps") if isinstance(
+            updated.get("pending_steps"), dict) else {}
+        pending_steps = dict(pending_steps)
+        pending_steps[step_name] = bool(pending)
+        updated["pending_steps"] = pending_steps
+        if legacy_key and legacy_key in updated:
+            updated.pop(legacy_key, None)
+        return updated
+
     def _publish_entity_event(self, entity_id: str, payload: dict) -> bool:
         """Publish entity.upserted to Hermes via Hub. Returns True on success."""
         event_payload = {
@@ -72,7 +94,7 @@ class ScoutWorker:
                 timeout=8,
             )
             if response.status_code != 200:
-                print(
+                logger.info(
                     f"[!] Hermes route call failed via Hub | entity_id={entity_id} status={response.status_code} body={response.text[:250]}"
                 )
                 return False
@@ -80,27 +102,28 @@ class ScoutWorker:
             routed = response.json() or {}
             routed_status = int(routed.get("status_code", 500) or 500)
             if routed_status >= 400:
-                print(
+                logger.info(
                     f"[!] Hermes rejected event via Hub | entity_id={entity_id} routed_status={routed_status} target={routed.get('target')} payload={str(routed.get('payload'))[:250]}"
                 )
                 return False
 
-            print(
+            logger.info(
                 f"[✓] Hermes event published via Hub | entity_id={entity_id} target={routed.get('target')}"
             )
             return True
         except Exception as error:
-            print(f"[!] Failed publishing event to Hermes via Hub: {error}")
+            logger.info(
+                f"[!] Failed publishing event to Hermes via Hub: {error}")
             return False
 
     def reconcile_entities(self):
-        print(
+        logger.info(
             "\n[🧹] Scout reconciliation: checking existing entities for missing geo/date/url...")
 
         records = self.vault.get_entity_records(
             domain=self.target_domain, status="active", limit=2000)
         if not records:
-            print("[🧹] No active entities found for reconciliation.")
+            logger.info("[🧹] No active entities found for reconciliation.")
             return
 
         enriched = 0
@@ -134,18 +157,15 @@ class ScoutWorker:
             if self.vault.upsert_entity(upsert_payload):
                 enriched += 1
 
-        print(
+        logger.info(
             f"[🧹] Reconciliation geo enrichment complete: {enriched} entities updated.")
 
-        # ── Atlas enrichment retry ─────────────────────────────────────────────
-        # Any entity explicitly marked atlas_enriched=False is retried here.
-        # This handles the case where Atlas was down when the entity was first
-        # processed. The archive is updated silently (no re-dispatch to Hermes)
-        # so the user is not flooded with duplicate notifications; the enriched
-        # data will appear on the next Oracle query for that entity.
+        # ── Listing enrichment retry ───────────────────────────────────────────
+        # Any entity with pending_steps.listing_content_enrichment=true
+        # is retried here (legacy atlas_enriched=False is still read).
         if self.enable_listing_enrichment:
-            atlas_retried = 0
-            atlas_failed_again = 0
+            enrichment_retried = 0
+            enrichment_failed_again = 0
             for record in records:
                 entity_id = record.get("entity_id")
                 payload = record.get("payload") if isinstance(
@@ -153,15 +173,30 @@ class ScoutWorker:
                 if not entity_id or not payload:
                     continue
 
-                # Only retry entities explicitly marked as failed
-                if payload.get("atlas_enriched") is not False:
+                if not self._is_step_pending(
+                    payload,
+                    "listing_content_enrichment",
+                    legacy_key="atlas_enriched",
+                ):
                     continue
 
-                print(f"[🔄] Retrying Atlas enrichment for {entity_id}...")
+                logger.info(
+                    f"[🔄] Retrying listing enrichment for {entity_id}...")
                 enriched_payload = enrich_payload_from_listing(payload)
-                if enriched_payload.get("atlas_enriched") is not True:
-                    atlas_failed_again += 1
-                    continue  # Atlas still unavailable — will retry next cycle
+                if self._is_step_pending(
+                    enriched_payload,
+                    "listing_content_enrichment",
+                    legacy_key="atlas_enriched",
+                ):
+                    enrichment_failed_again += 1
+                    continue
+
+                enriched_payload = self._set_step_pending(
+                    enriched_payload,
+                    "listing_content_enrichment",
+                    False,
+                    legacy_key="atlas_enriched",
+                )
 
                 upsert_payload = {
                     "entity_id": str(entity_id),
@@ -170,23 +205,24 @@ class ScoutWorker:
                     "payload": enriched_payload,
                 }
                 if self.vault.upsert_entity(upsert_payload):
-                    atlas_retried += 1
-                    print(f"[🔄] Atlas re-enrichment succeeded: {entity_id}")
+                    enrichment_retried += 1
+                    logger.info(
+                        f"[🔄] Listing enrichment succeeded: {entity_id}")
 
-            if atlas_retried or atlas_failed_again:
-                print(
-                    f"[🔄] Atlas retry complete: {atlas_retried} re-enriched, "
-                    f"{atlas_failed_again} still pending (Atlas likely still down)."
+            if enrichment_retried or enrichment_failed_again:
+                logger.info(
+                    f"[🔄] Listing enrichment retry complete: {enrichment_retried} succeeded, "
+                    f"{enrichment_failed_again} still pending."
                 )
 
-        # ── Hermes notification retry ──────────────────────────────────────────
-        # Entities marked hermes_notified=False were successfully stored in
+        # ── Notification retry ──────────────────────────────────────────────────
+        # Entities marked pending for dispatch were successfully stored in
         # Archive but the Hermes/Hub call failed at the time. Re-fetch fresh
-        # records (Atlas retry above may have just enriched some of them) and
-        # notify Hermes for any that are still pending.
-        # We intentionally notify even if atlas_enriched=False — the user
+        # records (enrichment retry above may have just updated some of them)
+        # and notify Hermes for any that are still pending.
+        # We intentionally notify even if enrichment is still pending — the user
         # deserves to know about the entity even with partial data.
-        print("[🔔] Checking for entities pending Hermes notification...")
+        logger.info("[🔔] Checking for entities pending Hermes notification...")
         fresh_records = self.vault.get_entity_records(
             domain=self.target_domain, status="active", limit=2000)
         hermes_retried = 0
@@ -197,15 +233,23 @@ class ScoutWorker:
                 record.get("payload"), dict) else {}
             if not entity_id or not payload:
                 continue
-            if payload.get("hermes_notified") is not False:
+            if not self._is_step_pending(
+                payload,
+                "event_dispatch",
+                legacy_key="hermes_notified",
+            ):
                 continue  # Not pending; skip
 
-            print(f"[🔔] Retrying Hermes notification for {entity_id}...")
+            logger.info(f"[🔔] Retrying Hermes notification for {entity_id}...")
             ok = self._publish_entity_event(entity_id, payload)
             if ok:
                 # Clear the pending flag in archive
-                notified_payload = dict(payload)
-                notified_payload["hermes_notified"] = True
+                notified_payload = self._set_step_pending(
+                    payload,
+                    "event_dispatch",
+                    False,
+                    legacy_key="hermes_notified",
+                )
                 self.vault.upsert_entity({
                     "entity_id": str(entity_id),
                     "domain": record.get("domain", self.target_domain),
@@ -213,12 +257,12 @@ class ScoutWorker:
                     "payload": notified_payload,
                 })
                 hermes_retried += 1
-                print(f"[🔔] Hermes notification sent: {entity_id}")
+                logger.info(f"[🔔] Hermes notification sent: {entity_id}")
             else:
                 hermes_still_pending += 1
 
         if hermes_retried or hermes_still_pending:
-            print(
+            logger.info(
                 f"[🔔] Hermes retry complete: {hermes_retried} notified, "
                 f"{hermes_still_pending} still pending (Hermes/Hub likely still down)."
             )
@@ -230,7 +274,7 @@ class ScoutWorker:
             dry_run=False,
         )
         if cleanup_result:
-            print(
+            logger.info(
                 f"[🧹] Cleanup complete: scanned={cleanup_result.get('scanned', 0)} deleted={cleanup_result.get('deleted', 0)}")
 
     def _trigger_fetch_for_filter(self, filter_query: str) -> int:
@@ -257,27 +301,30 @@ class ScoutWorker:
                 payload = routed.get("payload") or {}
                 if status_code < 400:
                     fetched = int(payload.get("fetched", 0) or 0)
-                    print(f"[✓] Gateway fetched {fetched} matching items.")
+                    logger.info(
+                        f"[✓] Gateway fetched {fetched} matching items.")
                     return fetched
 
-            print(
+            logger.info(
                 f"[!] Gateway error via Hub: {response.text if response.status_code != 200 else routed.get('payload')}")
             return 0
         except Exception as error:
-            print(f"[-] Could not reach Gateway via Hub: {error}")
+            logger.info(f"[-] Could not reach Gateway via Hub: {error}")
             return 0
 
     def command_gateway_to_fetch(self):
         if not self.target_filters:
-            print("\n[⚠] No target filters configured for Scout ingestion.")
+            logger.info(
+                "\n[⚠] No target filters configured for Scout ingestion.")
             return
 
         total_fetched = 0
         for filter_query in self.target_filters:
-            print(f"\n[⚡] Commanding Gateway to fetch: {filter_query}...")
+            logger.info(
+                f"\n[⚡] Commanding Gateway to fetch: {filter_query}...")
             total_fetched += self._trigger_fetch_for_filter(filter_query)
 
-        print(
+        logger.info(
             f"[✓] Gateway fetch round complete across {len(self.target_filters)} filter(s). Total fetched: {total_fetched}")
 
     def run_cycle(self):
@@ -295,7 +342,7 @@ class ScoutWorker:
            (deduplicated) + unclassified records (no detected URLs).
         8. Mark all email records as parsed.
         """
-        print("=== Hestia-Scout: Activating Parser & Extractor ===")
+        logger.info("=== Hestia-Scout: Activating Parser & Extractor ===")
         self._cycle_counter += 1
 
         if self.reconcile_every_cycles > 0 and self._cycle_counter % self.reconcile_every_cycles == 0:
@@ -304,21 +351,21 @@ class ScoutWorker:
         self.command_gateway_to_fetch()
 
         # ── 1. Fetch emails ──────────────────────────────────────────
-        print("\n[*] Checking Vault for unread emails...")
+        logger.info("\n[*] Checking Vault for unread emails...")
         pending_records = self.vault.get_unevaluated(domain=self.target_domain)
         if not pending_records:
-            print("[*] No new emails found. Going back to sleep.")
+            logger.info("[*] No new emails found. Going back to sleep.")
             return
 
         if len(pending_records) < max(1, self.min_batch_size):
-            print(
+            logger.info(
                 f"[*] Only {len(pending_records)} emails found. "
                 f"Waiting for minimum batch size {self.min_batch_size}."
             )
             return
 
         if self.batch_debounce_seconds > 0:
-            print(
+            logger.info(
                 f"[*] Debounce window active ({self.batch_debounce_seconds}s) "
                 "to accumulate near-simultaneous emails."
             )
@@ -326,27 +373,30 @@ class ScoutWorker:
             pending_records = self.vault.get_unevaluated(
                 domain=self.target_domain)
             if not pending_records:
-                print("[*] No pending records after debounce.")
+                logger.info("[*] No pending records after debounce.")
                 return
 
-        print(f"[*] Found {len(pending_records)} unread emails to process.\n")
+        logger.info(
+            f"[*] Found {len(pending_records)} unread emails to process.\n")
 
         # ── 2. Pre-parse: extract URLs from all emails without LLM ───
-        print("[PRE-PARSE] Extracting listing URLs from all emails (no LLM)...")
+        logger.info(
+            "[PRE-PARSE] Extracting listing URLs from all emails (no LLM)...")
         parsed = pre_parse_records(pending_records)
 
         total_unique_urls = len(parsed.url_to_record_ids)
-        print(
+        logger.info(
             f"[PRE-PARSE] Found {total_unique_urls} unique listing URLs across "
             f"{len(pending_records)} emails. "
             f"{len(parsed.unclassified_record_ids)} email(s) had no detectable links."
         )
 
         # ── 3. Load all known entity IDs from Archive ────────────────
-        print("[DEDUP] Loading known entity IDs from Archive...")
+        logger.info("[DEDUP] Loading known entity IDs from Archive...")
         known_entity_ids = self.vault.get_all_entity_ids(
             domain=self.target_domain)
-        print(f"[DEDUP] {len(known_entity_ids)} entities already in Archive.")
+        logger.info(
+            f"[DEDUP] {len(known_entity_ids)} entities already in Archive.")
 
         new_urls: set[str] = set()
         existing_urls: set[str] = set()
@@ -356,7 +406,7 @@ class ScoutWorker:
             else:
                 new_urls.add(url)
 
-        print(
+        logger.info(
             f"[DEDUP] Classification: {len(new_urls)} new, "
             f"{len(existing_urls)} already known."
         )
@@ -370,7 +420,7 @@ class ScoutWorker:
         )
         representative_ids.update(parsed.unclassified_record_ids)
 
-        print(
+        logger.info(
             f"[LLM] {len(representative_ids)} record(s) queued for LLM extraction "
             f"(covers {len(new_urls)} new URLs + {len(parsed.unclassified_record_ids)} unclassified)."
         )
@@ -399,12 +449,12 @@ class ScoutWorker:
             if updated:
                 status_update_count += 1
 
-        print(
+        logger.info(
             f"[STATUS] {status_update_count} existing listing(s) had status updates.")
 
         # ── 6. LLM extraction path ────────────────────────────────────
         if not representative_ids:
-            print("[LLM] No records require LLM extraction.")
+            logger.info("[LLM] No records require LLM extraction.")
         else:
             record_map = {r["id"]: r for r in pending_records}
             llm_records = [
@@ -421,7 +471,7 @@ class ScoutWorker:
 
             quota_exhausted = False
             for batch_index, batch in enumerate(batches):
-                print(
+                logger.info(
                     f"\n-> LLM Batch {batch_index + 1}/{len(batches)} "
                     f"({len(batch)} record(s))..."
                 )
@@ -431,7 +481,7 @@ class ScoutWorker:
                 if quota_exhausted:
                     break
 
-                print(
+                logger.info(
                     f"   [-] Cooling down {self.batch_cooldown_seconds}s "
                     "to respect RPM limits..."
                 )
@@ -449,7 +499,7 @@ class ScoutWorker:
             else:
                 self.vault.save_evaluation(record_id, {"status": "parsed"})
 
-        print("\n[✓] Cycle complete.")
+        logger.info("\n[✓] Cycle complete.")
 
     # ─────────────────────────────────────────────────────────────────
     #  Private helpers
@@ -477,23 +527,25 @@ class ScoutWorker:
                 combined_text_to_read += f"\n\n--- EMAIL {item_index + 1} ---\n{clean_text}"
 
         if not combined_text_to_read.strip():
-            print("   [!] All emails in this batch were empty. Skipping.")
+            logger.info(
+                "   [!] All emails in this batch were empty. Skipping.")
             return False
 
         ai_response = self.brain.evaluate(combined_text_to_read)
         raw_text = ai_response.get("raw_response", "").strip()
 
         if ai_response.get("error"):
-            print(f"   [!] {ai_response['error']}")
+            logger.info(f"   [!] {ai_response['error']}")
             if "All models exhausted" in ai_response["error"]:
-                print("   [🛑] Global Quota hit. Shutting down for the day.")
+                logger.info(
+                    "   [🛑] Global Quota hit. Shutting down for the day.")
                 return True
             return False
 
         try:
             extracted_data = parse_ai_entities(raw_text)
             found_entities = 0
-            print(
+            logger.info(
                 f"   [AI] Parsed {len(extracted_data)} entities from AI response")
 
             for item in extracted_data:
@@ -513,11 +565,11 @@ class ScoutWorker:
                 ) if isinstance(payload, dict) else ""
                 raw_address = str(payload.get("address", "")).strip(
                 ) if isinstance(payload, dict) else ""
-                print(f"   [AI-RAW] entity={entity_id}")
-                print(
+                logger.info(f"   [AI-RAW] entity={entity_id}")
+                logger.info(
                     f"      raw_summary_len={len(raw_summary)} raw_address='{raw_address}'")
                 if raw_summary and (raw_summary.endswith("...") or raw_summary.endswith("…")):
-                    print(
+                    logger.info(
                         f"      WARNING: AI returned truncated summary: {raw_summary[:150]}")
 
                 normalized_entity_id = normalize_listing_url(str(entity_id))
@@ -548,13 +600,13 @@ class ScoutWorker:
                 has_geo = final_location.get("lat") is not None
                 summary_truncated = final_summary.endswith(
                     "...") or final_summary.endswith("…")
-                print(f"   [ENTITY] {normalized_entity_id}")
-                print(
+                logger.info(f"   [ENTITY] {normalized_entity_id}")
+                logger.info(
                     f"      address='{final_address}' geo={'yes' if has_geo else 'NO'}")
-                print(
+                logger.info(
                     f"      summary_len={len(final_summary)} truncated={summary_truncated}")
                 if summary_truncated:
-                    print(
+                    logger.info(
                         f"      WARNING: Truncated summary: {final_summary[:150]}")
 
                 entity_upsert_payload = house.to_archive_upsert_payload()
@@ -567,8 +619,12 @@ class ScoutWorker:
                     if not ok:
                         # Mark as pending notification so reconcile can retry
                         # when Hermes / Hub recovers.
-                        pending_payload = dict(payload)
-                        pending_payload["hermes_notified"] = False
+                        pending_payload = self._set_step_pending(
+                            payload,
+                            "event_dispatch",
+                            True,
+                            legacy_key="hermes_notified",
+                        )
                         self.vault.upsert_entity({
                             "entity_id": str(normalized_entity_id),
                             "domain": self.target_domain,
@@ -576,11 +632,11 @@ class ScoutWorker:
                             "payload": pending_payload,
                         })
 
-            print(
+            logger.info(
                 f"   [✓] Extracted {found_entities} entities using {ai_response.get('model_used')}.")
 
         except Exception as error:
-            print(f"   [!] Failed to parse AI JSON: {error}")
+            logger.info(f"   [!] Failed to parse AI JSON: {error}")
             with open(f"debug_broken_batch_{batch_index}.txt", "w", encoding="utf-8") as handle:
                 handle.write(raw_text)
 

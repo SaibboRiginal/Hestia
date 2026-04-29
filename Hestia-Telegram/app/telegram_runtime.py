@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from telegram_bot.core import bot, TELEGRAM_COMMAND_REFRESH_SECONDS
+from telegram_bot.core import bot
 from telegram_bot.services.chat_service import (
     clear_memory,
     handle_arg_picker,
@@ -19,7 +19,6 @@ from telegram_bot.services.executor import handle_group_callback
 from telegram_bot.services.command_service import (
     refresh_command_registry,
     register_telegram_service,
-    watch_command_registry_loop,
 )
 from telegram_bot.services.control_service import run_control_api
 
@@ -97,12 +96,9 @@ def run():
         logger.warning(
             "Telegram Hub registration failed (will retry on webhook)")
     refresh_command_registry(force=True)
-
-    if TELEGRAM_COMMAND_REFRESH_SECONDS > 0:
-        threading.Thread(target=watch_command_registry_loop,
-                         daemon=True).start()
-        logger.info("Command registry refresh loop started | interval=%ds",
-                    TELEGRAM_COMMAND_REFRESH_SECONDS)
+    logger.info(
+        "Command registry update mode=push (webhook-only after initial sync)"
+    )
 
     logger.info("Telegram interface starting — waiting for messages")
     bot.infinity_polling()

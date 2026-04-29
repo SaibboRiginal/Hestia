@@ -18,12 +18,22 @@ from worker.runner import ScoutWorker
 
 try:
     from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.startup_utils import (
+        hub_health_url,
+        wait_for_http_ready,
+        wait_for_hub_services,
+    )
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.startup_utils import (
+        hub_health_url,
+        wait_for_http_ready,
+        wait_for_hub_services,
+    )
 
 logger, log_buffer = setup_service_logging("hestia_scout")
 
@@ -133,7 +143,12 @@ def _start_tools_api():
     port = int(os.getenv("SCOUT_TOOLS_PORT", "19006"))
 
     def run_server():
-        uvicorn.run(api_app, host="0.0.0.0", port=port, log_level="info")
+        uvicorn.run(
+            api_app,
+            host="0.0.0.0",
+            port=port,
+            log_level=os.getenv("LOG_LEVEL", "INFO").lower(),
+        )
 
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
@@ -177,8 +192,8 @@ def _register_with_hub(port: int):
     try:
         requests.post(f"{hub_api_url}/registry/register",
                       json=payload, timeout=4)
-        logger.info("Registered on Hub | hub=%s base_url=%s",
-                    hub_api_url, service_base_url)
+        logger.debug("Registered on Hub | hub=%s base_url=%s",
+                     hub_api_url, service_base_url)
     except Exception as error:
         logger.warning("Hub registration failed (non-fatal): %s", error)
 
@@ -186,6 +201,24 @@ def _register_with_hub(port: int):
 if __name__ == "__main__":
     load_dotenv()
     tools_port = int(os.getenv("SCOUT_TOOLS_PORT", "19006"))
+    hub_api_url = os.getenv(
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    startup_wait_timeout = float(
+        os.getenv("STARTUP_WAIT_TIMEOUT_SECONDS", "0"))
+
+    wait_for_http_ready(
+        hub_health_url(hub_api_url),
+        timeout_seconds=startup_wait_timeout,
+        logger=logger,
+        description="hub",
+    )
+    wait_for_hub_services(
+        hub_api_url,
+        ["archive", "ingest"],
+        timeout_seconds=startup_wait_timeout,
+        logger=logger,
+    )
+
     _start_tools_api()
     _register_with_hub(tools_port)
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
@@ -195,8 +228,8 @@ if __name__ == "__main__":
             time.sleep(60)
             try:
                 _register_with_hub(tools_port)
-            except Exception:
-                pass
+            except Exception as error:
+                logger.warning("Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 

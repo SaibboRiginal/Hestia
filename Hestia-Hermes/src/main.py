@@ -11,12 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 try:
     from hestia_common.logging_utils import log_event, setup_service_logging
+    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import log_event, setup_service_logging
+    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 from .modules.schemas import DispatchSendRequest, EventIngestRequest, OutboundEventStateUpdateRequest
 from .modules.service import HermesService
@@ -48,6 +50,15 @@ def register_on_hub_startup():
     }
     max_attempts = int(os.getenv("HERMES_HUB_REGISTER_RETRIES", "8"))
     retry_delay = float(os.getenv("HERMES_HUB_REGISTER_RETRY_DELAY", "2"))
+    startup_wait_timeout = float(
+        os.getenv("STARTUP_WAIT_TIMEOUT_SECONDS", "0"))
+
+    wait_for_http_ready(
+        hub_health_url(hub_api_url),
+        timeout_seconds=startup_wait_timeout,
+        logger=logger,
+        description="hub",
+    )
 
     for attempt in range(1, max_attempts + 1):
         try:

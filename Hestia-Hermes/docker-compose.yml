@@ -14,6 +14,7 @@ services:
       - HERMES_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
       - HERMES_HUB_REGISTER_RETRIES=8                        # Max Hub registration attempts on startup (int, default 8)
       - HERMES_HUB_REGISTER_RETRY_DELAY=2                    # Seconds between registration retry attempts (float, default 2)
+      - STARTUP_WAIT_TIMEOUT_SECONDS=0                       # Seconds to wait for Hub readiness before registration (0 = wait indefinitely)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
     networks:

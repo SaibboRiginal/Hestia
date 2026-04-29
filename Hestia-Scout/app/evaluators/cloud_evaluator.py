@@ -1,6 +1,10 @@
+import logging
+
 from google import genai
 from google.genai import types
 from core.base_evaluator import BaseEvaluator
+
+logger = logging.getLogger("hestia_scout.evaluator")
 
 
 class CloudEvaluator(BaseEvaluator):
@@ -40,8 +44,8 @@ class CloudEvaluator(BaseEvaluator):
                 error_msg = str(e)
                 # If it's a Quota/Rate Limit error (429), loop to the next model!
                 if "429" in error_msg or "quota" in error_msg.lower():
-                    print(
-                        f"      [!] {model_name} quota exhausted. Switching to next model...")
+                    logger.info(
+                        "Model quota exhausted, switching | model=%s", model_name)
                     last_error = error_msg
                     continue
                 else:

@@ -8,7 +8,7 @@ class ServiceRegistry:
         self._services: dict[str, list[dict[str, Any]]] = {}
         self._lock = threading.Lock()
 
-    def register(self, service: dict[str, Any]):
+    def register(self, service: dict[str, Any]) -> str:
         normalized_name = service["name"].strip().lower()
         service["name"] = normalized_name
         service["updated_at"] = time.time()
@@ -21,9 +21,18 @@ class ServiceRegistry:
                     existing = item
                     break
             if existing:
+                # Treat identical keepalive re-registration as a refresh, not a change.
+                comparable_existing = {
+                    k: v for k, v in existing.items() if k != "updated_at"
+                }
+                comparable_incoming = {
+                    k: v for k, v in service.items() if k != "updated_at"
+                }
                 existing.update(service)
+                return "updated" if comparable_existing != comparable_incoming else "refreshed"
             else:
                 current.append(service)
+                return "created"
 
     def deregister(self, name: str, base_url: str | None = None):
         normalized_name = name.strip().lower()
