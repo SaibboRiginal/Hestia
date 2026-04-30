@@ -15,7 +15,7 @@ import logging
 import os
 import tempfile
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── CLIP singleton ────────────────────────────────────────────────────────────
 _CLIP_LOADED = False
@@ -50,9 +50,9 @@ def _load_clip():
         _CLIP_PROCESSOR = _CLIPProc.from_pretrained(
             "openai/clip-vit-base-patch32")
         _CLIP_MODEL.eval()
-        logger.info("[LOCAL] CLIP loaded on %s", _CLIP_DEVICE)
+        logger.info("event=local_clip_loaded [LOCAL] CLIP loaded on %s", _CLIP_DEVICE)
     except Exception as exc:
-        logger.info("[LOCAL] CLIP unavailable: %s", exc)
+        logger.info("event=local_clip_unavailable [LOCAL] CLIP unavailable: %s", exc)
     return _CLIP_MODEL, _CLIP_PROCESSOR, _CLIP_DEVICE
 
 
@@ -70,9 +70,9 @@ def _load_yolo():
     try:
         from ultralytics import YOLO as _YOLO
         _YOLO_MODEL = _YOLO("yolov8n.pt")
-        logger.info("[LOCAL] YOLOv8-nano loaded")
+        logger.info("event=local_yolov8_nano_loaded [LOCAL] YOLOv8-nano loaded")
     except Exception as exc:
-        logger.info("[LOCAL] YOLO unavailable: %s", exc)
+        logger.info("event=local_yolo_unavailable [LOCAL] YOLO unavailable: %s", exc)
     return _YOLO_MODEL
 
 
@@ -106,10 +106,10 @@ def _load_whisper():
             device="cpu",
             compute_type="int8",
         )
-        logger.info("[LOCAL] WhisperX model loaded (%s)",
+        logger.info("event=local_whisperx_model_loaded [LOCAL] WhisperX model loaded (%s)",
                     os.getenv("WHISPER_MODEL", "base"))
     except Exception as exc:
-        logger.info("[LOCAL] WhisperX unavailable: %s", exc)
+        logger.info("event=local_whisperx_unavailable [LOCAL] WhisperX unavailable: %s", exc)
     return _WHISPER_MODEL
 
 
@@ -129,7 +129,7 @@ def analyze_image(file_bytes: bytes) -> dict:
     try:
         pil_img = _PILImage.open(io.BytesIO(file_bytes)).convert("RGB")
     except Exception as exc:
-        logger.warning("[LOCAL] Cannot open image: %s", exc)
+        logger.warning("event=local_cannot_open_image [LOCAL] Cannot open image: %s", exc)
         return {"description": "", "tags": [], "clip_available": False, "yolo_available": False}
 
     tags: list[str] = []
@@ -153,7 +153,7 @@ def analyze_image(file_bytes: bytes) -> dict:
                 tags.append(obj)
                 yolo_lines.append(f"  - {count}× {obj}")
         except Exception as exc:
-            logger.warning("[LOCAL] YOLO inference failed: %s", exc)
+            logger.warning("event=local_yolo_inference_failed [LOCAL] YOLO inference failed: %s", exc)
 
     # CLIP zero-shot classification
     clip_model, clip_proc, clip_device = _load_clip()
@@ -177,7 +177,7 @@ def analyze_image(file_bytes: bytes) -> dict:
                     if short not in tags:
                         tags.append(short)
         except Exception as exc:
-            logger.warning("[LOCAL] CLIP inference failed: %s", exc)
+            logger.warning("event=local_clip_inference_failed [LOCAL] CLIP inference failed: %s", exc)
 
     desc_parts: list[str] = []
     if yolo_lines:
@@ -212,7 +212,7 @@ def transcribe_audio(file_bytes: bytes, mime_type: str) -> str:
         segments = result.get("segments") or []
         return " ".join(seg.get("text", "").strip() for seg in segments if seg.get("text", "").strip())
     except Exception as exc:
-        logger.warning("[LOCAL] WhisperX transcription failed: %s", exc)
+        logger.warning("event=local_whisperx_transcription_failed [LOCAL] WhisperX transcription failed: %s", exc)
         return ""
     finally:
         if tmp_path:

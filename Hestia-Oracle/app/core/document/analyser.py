@@ -22,7 +22,7 @@ from core.document.archiver import DocumentArchiver
 from core.document.extractor import extract_text
 from core.services.hub_client import HubClient
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _MAX_DOC_ARCHIVE_BYTES = int(
     os.getenv("DOC_MAX_ARCHIVE_BYTES", str(10 * 1024 * 1024)))  # 10 MB
@@ -112,7 +112,7 @@ class DocumentAnalyser:
             )
         else:
             logger.info(
-                "[ANALYSER] File too large to archive (%s bytes > %s limit).",
+                "event=analyser_file_too_large_archive [ANALYSER] File too large to archive (%s bytes > %s limit).",
                 len(file_bytes), _MAX_DOC_ARCHIVE_BYTES,
             )
 
@@ -158,14 +158,14 @@ class DocumentAnalyser:
                 file_bytes=file_bytes, mime_type=mime_type, user_message=full_prompt
             )
         except Exception as exc1:
-            logger.warning("[ANALYSER] Primary analyst failed: %s", exc1)
+            logger.warning("event=analyser_primary_analyst_failed [ANALYSER] Primary analyst failed: %s", exc1)
 
         try:
             return self._fallback.ask_with_attachment(
                 file_bytes=file_bytes, mime_type=mime_type, user_message=full_prompt
             )
         except Exception as exc2:
-            logger.warning("[ANALYSER] Fallback analyst failed: %s", exc2)
+            logger.warning("event=analyser_fallback_analyst_failed [ANALYSER] Fallback analyst failed: %s", exc2)
 
         # Last resort: extract text locally and ask text-only
         local_text = extract_text(file_bytes, mime_type)
@@ -195,4 +195,4 @@ class DocumentAnalyser:
                 "content": answer,
             })
         except Exception as exc:
-            logger.warning("[ANALYSER] Failed to persist history: %s", exc)
+            logger.warning("event=analyser_failed_persist_history [ANALYSER] Failed to persist history: %s", exc)

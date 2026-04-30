@@ -8,7 +8,7 @@ import requests
 
 from schemas.reports import HealthReport
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 _TIMEOUT = 5  # seconds per request
 

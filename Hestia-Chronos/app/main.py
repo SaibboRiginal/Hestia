@@ -81,7 +81,7 @@ def on_startup() -> None:
 
     status = _registry.status_report()
     logger.info(
-        "[STARTUP] Active providers: %s | Unavailable: %s",
+        "event=startup_active_providers_unavailable [STARTUP] Active providers: %s | Unavailable: %s",
         status["active"],
         list(status["unavailable"].keys()),
     )
@@ -116,7 +116,7 @@ def on_startup() -> None:
                 )
             except Exception as error:
                 logger.warning(
-                    "[HUB] Keepalive registration failed: %s", error)
+                    "event=hub_keepalive_registration_failed [HUB] Keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 

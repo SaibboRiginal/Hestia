@@ -112,7 +112,7 @@ def _build_notification(item: dict, bucket: str) -> str:
 
 def _run_loop() -> None:
     logger.info(
-        "[NOTIFY] Worker started — poll every %ds, look-ahead %.0fh",
+        "event=notify_worker_started_poll_every [NOTIFY] Worker started — poll every %ds, look-ahead %.0fh",
         _POLL_SECONDS,
         _LOOK_AHEAD_HOURS,
     )
@@ -120,7 +120,7 @@ def _run_loop() -> None:
         try:
             _tick()
         except Exception as exc:
-            logger.error("[NOTIFY] Unhandled error in tick: %s", exc)
+            logger.error("event=notify_unhandled_error_tick [NOTIFY] Unhandled error in tick: %s", exc)
         time.sleep(_POLL_SECONDS)
 
 
@@ -136,7 +136,7 @@ def _tick() -> None:
     )
 
     if not items:
-        logger.debug("[NOTIFY] No upcoming nag-enabled items found")
+        logger.debug("event=notify_upcoming_nag_enabled_items [NOTIFY] No upcoming nag-enabled items found")
         return
 
     sent = 0
@@ -177,20 +177,20 @@ def _tick() -> None:
             archive_client.mark_notified(item["id"], bucket)
             sent += 1
             logger.info(
-                "[NOTIFY] Sent bucket=%s for item_id=%s title=%r",
+                "event=notify_sent_bucket_item_id_title [NOTIFY] Sent bucket=%s for item_id=%s title=%r",
                 bucket,
                 item["id"],
                 item.get("title", ""),
             )
         else:
             logger.warning(
-                "[NOTIFY] Failed to send bucket=%s for item_id=%s",
+                "event=notify_failed_send_bucket_item_id [NOTIFY] Failed to send bucket=%s for item_id=%s",
                 bucket,
                 item["id"],
             )
 
     if sent:
-        logger.info("[NOTIFY] Tick complete — %d notification(s) sent", sent)
+        logger.info("event=notify_tick_complete_notification_sent [NOTIFY] Tick complete — %d notification(s) sent", sent)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -203,4 +203,4 @@ def start() -> None:
     t = threading.Thread(
         target=_run_loop, name="chronos-notify-worker", daemon=True)
     t.start()
-    logger.info("[NOTIFY] Daemon thread started")
+    logger.info("event=notify_daemon_thread_started [NOTIFY] Daemon thread started")

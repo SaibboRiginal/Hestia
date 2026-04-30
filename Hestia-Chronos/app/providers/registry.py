@@ -82,14 +82,14 @@ class CalendarProviderRegistry:
                 if instance.is_available():
                     self._active[instance.name] = instance
                     logger.info(
-                        "[REGISTRY] Provider '%s' is active.", instance.name)
+                        "event=registry_provider_active [REGISTRY] Provider '%s' is active.", instance.name)
                 else:
                     # Collect the init error if the provider exposes one
                     error_msg = getattr(
                         instance, "_init_error", "not configured")
                     self._unavailable[instance.name] = error_msg or "not available"
                     logger.warning(
-                        "[REGISTRY] Provider '%s' is unavailable: %s",
+                        "event=registry_provider_unavailable [REGISTRY] Provider '%s' is unavailable: %s",
                         instance.name,
                         error_msg,
                     )
@@ -97,4 +97,4 @@ class CalendarProviderRegistry:
                 name = getattr(cls, "__name__", str(cls))
                 self._unavailable[name] = str(exc)
                 logger.error(
-                    "[REGISTRY] Failed to instantiate provider %s: %s", name, exc)
+                    "event=registry_failed_instantiate_provider [REGISTRY] Failed to instantiate provider %s: %s", name, exc)

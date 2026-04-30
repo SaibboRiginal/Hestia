@@ -3,7 +3,7 @@ import time
 import logging
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class RetrievalService:
@@ -29,17 +29,17 @@ class RetrievalService:
         query_vector = self.embedder(user_message) if any(
             d != "general" for d in valid_domains) else None
         if query_vector:
-            logger.info("Embedding generated with %s dimensions",
+            logger.info("event=embedding_generated_with_dimensions Embedding generated with %s dimensions",
                         len(query_vector))
         else:
             logger.info(
-                "No embedding used for this query (general-only route)")
+                "event=embedding_used_this_query_general No embedding used for this query (general-only route)")
 
         for domain in valid_domains:
             if domain == "general":
                 continue
 
-            logger.info("Retrieval start for domain '%s'", domain)
+            logger.info("event=retrieval_start_domain Retrieval start for domain '%s'", domain)
             domain_start = time.perf_counter()
 
             module_payload = {
@@ -70,7 +70,7 @@ class RetrievalService:
 
             elapsed_ms = int((time.perf_counter() - domain_start) * 1000)
             logger.info(
-                "Retrieval complete for domain '%s': %s item(s) via %s in %sms",
+                "event=retrieval_complete_domain_item_ms Retrieval complete for domain '%s': %s item(s) via %s in %sms",
                 domain,
                 len(entities),
                 source,
@@ -119,13 +119,13 @@ class RetrievalService:
                 data = routed.get("payload") if status_code < 400 else []
                 if not isinstance(data, list):
                     data = []
-                logger.info("Archive search domain '%s' returned %s item(s) in %sms", domain, len(
+                logger.info("event=archive_search_domain_returned_item Archive search domain '%s' returned %s item(s) in %sms", domain, len(
                     data), elapsed_ms)
                 return data
-            logger.warning("Archive search domain '%s' returned status %s in %sms",
+            logger.warning("event=archive_search_domain_returned_status Archive search domain '%s' returned status %s in %sms",
                            domain, response.status_code, elapsed_ms)
         except Exception as error:
             logger.warning(
-                "Archive search failed for domain '%s': %s", domain, error)
+                "event=archive_search_failed_domain Archive search failed for domain '%s': %s", domain, error)
             pass
         return []

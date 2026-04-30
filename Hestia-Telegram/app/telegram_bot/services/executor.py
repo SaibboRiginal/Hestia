@@ -479,7 +479,7 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
         command = core.COMMAND_REGISTRY.get(normalized)
     if not command:
         logger.warning(
-            "Command not available | requested=%s normalized=%s", command_name, normalized)
+            "event=command_available_requested_normalized Command not available | requested=%s normalized=%s", command_name, normalized)
         core.bot.send_message(chat_id, "Comando non disponibile.")
         return
 
@@ -531,7 +531,7 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
     ok, payload = route_command_from_metadata(command, chat_id, parsed_args)
     if not ok:
         logger.warning(
-            "Command execution failed | command=%s error=%s", normalized, payload)
+            "event=command_execution_failed_command_error Command execution failed | command=%s error=%s", normalized, payload)
         core.bot.send_message(
             chat_id, f"⚠️ Errore comando /{normalized}: {payload}")
         return
@@ -539,7 +539,7 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
     response_mode = str(command.get(
         "response_mode", "oracle_natural")).strip().lower()
     response_prompt = str(command.get("response_prompt", "")).strip()
-    logger.info("Rendering command output | command=%s response_mode=%s",
+    logger.info("event=rendering_command_output_command_response_mode Rendering command output | command=%s response_mode=%s",
                 normalized, response_mode)
 
     command_title = str(command.get("title", "")).strip()
@@ -568,7 +568,7 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
     output, parse_mode = render_direct_command_output(
         normalized, payload, response_mode, response_prompt)
     logger.info(
-        "Command output ready | command=%s output_chars=%s parse_mode=%s",
+        "event=command_output_ready_command_output_chars Command output ready | command=%s output_chars=%s parse_mode=%s",
         normalized,
         len(output),
         parse_mode,

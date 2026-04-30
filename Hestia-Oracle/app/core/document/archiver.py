@@ -21,7 +21,7 @@ from typing import Callable
 from core.services.hub_client import HubClient
 from core.document import capabilities, extractor as file_extractor, local_models
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Chunking constants ────────────────────────────────────────────────────────
 _CHUNK_SIZE = 900
@@ -169,11 +169,11 @@ class DocumentArchiver:
         try:
             self._hub.post("/documents", body, timeout=60)
             logger.info(
-                "[ARCHIVER] Saved | id=%s chunks=%s title=%r domain=%s tags=%s",
+                "event=archiver_saved_id_chunks_title [ARCHIVER] Saved | id=%s chunks=%s title=%r domain=%s tags=%s",
                 document_id, len(embedded_chunks), title, domain, tags,
             )
         except Exception as exc:
-            logger.warning("[ARCHIVER] Save failed: %s", exc)
+            logger.warning("event=archiver_save_failed [ARCHIVER] Save failed: %s", exc)
 
     # ── Extraction branches ───────────────────────────────────────────────────
 
@@ -231,7 +231,7 @@ class DocumentArchiver:
             tags = local["tags"]
             extracted_text = local["description"]
         except Exception as exc:
-            logger.warning("[ARCHIVER] Local image analysis error: %s", exc)
+            logger.warning("event=archiver_local_image_analysis_error [ARCHIVER] Local image analysis error: %s", exc)
 
         if model_has_vision:
             prompt = self._extraction_prompt(
@@ -323,14 +323,14 @@ class DocumentArchiver:
             )
         except Exception as exc1:
             logger.warning(
-                "[ARCHIVER] Primary LLM attachment call failed: %s", exc1)
+                "event=archiver_primary_llm_attachment_call [ARCHIVER] Primary LLM attachment call failed: %s", exc1)
         try:
             return self._fallback.ask_with_attachment(
                 file_bytes=file_bytes, mime_type=mime_type, user_message=prompt
             )
         except Exception as exc2:
             logger.warning(
-                "[ARCHIVER] Fallback LLM attachment call failed: %s", exc2)
+                "event=archiver_fallback_llm_attachment_call [ARCHIVER] Fallback LLM attachment call failed: %s", exc2)
         return ""
 
     def _enrich_metadata(
@@ -352,5 +352,5 @@ class DocumentArchiver:
             tags = [str(t) for t in (data.get("tags") or []) if str(t).strip()]
             return title, summary, domain, tags
         except Exception as exc:
-            logger.debug("[ARCHIVER] Metadata enrichment failed: %s", exc)
+            logger.debug("event=archiver_metadata_enrichment_failed [ARCHIVER] Metadata enrichment failed: %s", exc)
             return None, None, "documents", []

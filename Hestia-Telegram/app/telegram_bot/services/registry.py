@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 import requests
@@ -40,7 +41,7 @@ def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
         )
         if response.status_code != 200:
             logger.warning(
-                "Hub command discovery returned non-200 | status=%s", response.status_code)
+                "event=hub_command_discovery_returned_non Hub command discovery returned non-200 | status=%s", response.status_code)
             return {}
         discovered: dict[str, dict[str, Any]] = {}
         for item in response.json().get("commands", []) or []:
@@ -49,10 +50,10 @@ def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
             name = str(item.get("command", "")).strip().lower()
             if name:
                 discovered[name] = item
-        logger.debug("Discovered %d commands from Hub", len(discovered))
+        logger.debug("event=discovered_commands_from_hub Discovered %d commands from Hub", len(discovered))
         return discovered
     except Exception as exc:
-        logger.warning("Hub command discovery failed: %s", exc)
+        logger.warning("event=hub_command_discovery_failed Hub command discovery failed: %s", exc)
         return {}
 
 
@@ -85,10 +86,10 @@ def refresh_command_registry(force: bool = False) -> bool:
         if revision is not None:
             core.COMMAND_REGISTRY_REVISION = revision
     if force:
-        logger.info("Command registry refreshed | revision=%s commands=%d",
+        logger.info("event=command_registry_refreshed_revision_commands Command registry refreshed | revision=%s commands=%d",
                     revision, len(discovered))
     else:
-        logger.debug("Command registry refreshed | revision=%s commands=%d",
+        logger.debug("event=command_registry_refreshed_revision_commands Command registry refreshed | revision=%s commands=%d",
                      revision, len(discovered))
     setup_commands()
     return True
@@ -113,11 +114,11 @@ def register_telegram_service() -> bool:
             f"{core.HUB_API_URL}/registry/register", json=payload, timeout=6)
         if response.status_code == 200:
             return True
-        logger.warning("Hub registration non-success | status=%s",
+        logger.warning("event=hub_registration_non_success_status Hub registration non-success | status=%s",
                        response.status_code)
         return False
     except Exception as exc:
-        logger.warning("Hub registration request failed: %s", exc)
+        logger.warning("event=hub_registration_request_failed Hub registration request failed: %s", exc)
         return False
 
 
@@ -234,7 +235,7 @@ def setup_commands():
     with _setup_commands_lock:
         now = time.time()
         if now - _setup_commands_last_run < _SETUP_COMMANDS_COOLDOWN_SEC:
-            logger.debug("setup_commands skipped (cooldown)")
+            logger.debug("event=setup_commands_skipped_cooldown setup_commands skipped (cooldown)")
             return
         _setup_commands_last_run = now
 
@@ -275,7 +276,7 @@ def setup_commands():
     try:
         core.bot.set_my_commands(commands)
     except Exception as e:
-        logger.warning("set_my_commands failed (global scope): %s", e)
+        logger.warning("event=set_my_commands_failed_global_scope set_my_commands failed (global scope): %s", e)
         return
     if core.ALLOWED_USER_ID and str(core.ALLOWED_USER_ID).isdigit():
         try:
@@ -283,4 +284,4 @@ def setup_commands():
                 chat_id=int(str(core.ALLOWED_USER_ID))))
         except Exception:
             pass
-    logger.debug("Telegram command menu updated | commands=%d", len(commands))
+    logger.debug("event=telegram_command_menu_updated_commands Telegram command menu updated | commands=%d", len(commands))

@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime, timedelta
 
 from core.docker_client import get_events
 from core.health_poller import poll_all
-from core.hub_client import discover_services
+from core.hub_client import discover_services, fetch_service_log_events
 from schemas.reports import LogEvent, SystemReport
+
+
+LOG_SOURCE = os.getenv("ARGUS_LOG_SOURCE", "hub").strip().lower()
+HUB_LOG_LIMIT = int(os.getenv("ARGUS_HUB_LOG_LIMIT", "200"))
 
 
 def _since_to_timedelta(since: str) -> timedelta:
@@ -32,9 +37,35 @@ def get_filtered_logs(
 ) -> list[LogEvent]:
     """Return log events filtered by service, time window, and log level."""
     cutoff = datetime.utcnow() - _since_to_timedelta(since)
-    container_filter = f"hestia_{service_name}" if service_name else None
-    all_events = get_events(container_name=container_filter, level_min=level)
-    return [e for e in all_events if e.timestamp >= cutoff.isoformat()]
+    if LOG_SOURCE == "docker":
+        container_filter = f"hestia_{service_name}" if service_name else None
+        all_events = get_events(
+            container_name=container_filter, level_min=level)
+    else:
+        targets = [service_name] if service_name else [
+            str(s.get("name", "")).strip()
+            for s in discover_services()
+            if str(s.get("name", "")).strip()
+        ]
+        all_events = []
+        for target in targets:
+            all_events.extend(
+                fetch_service_log_events(
+                    target,
+                    level=level,
+                    limit=HUB_LOG_LIMIT,
+                )
+            )
+
+    filtered: list[LogEvent] = []
+    for event in all_events:
+        try:
+            event_time = datetime.fromisoformat(str(event.timestamp))
+        except ValueError:
+            continue
+        if event_time >= cutoff:
+            filtered.append(event)
+    return filtered
 
 
 def build_raw_report() -> SystemReport:
@@ -45,7 +76,10 @@ def build_raw_report() -> SystemReport:
     healthy = sum(1 for r in health_snapshot.values() if r.status == "up")
     unhealthy = sum(1 for r in health_snapshot.values() if r.status != "up")
 
-    recent_events = get_events(level_min="WARNING")
+    if LOG_SOURCE == "docker":
+        recent_events = get_events(level_min="WARNING")
+    else:
+        recent_events = get_filtered_logs(since="30m", level="WARNING")
     recent_events = sorted(
         recent_events, key=lambda e: e.timestamp, reverse=True)[:50]
 

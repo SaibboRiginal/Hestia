@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from agents.universal_agent import UniversalAgent
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Gemini model normalisation ────────────────────────────────────────────────
 # These prefixes identify local / incompatible model names that are sometimes
@@ -206,7 +206,7 @@ class AgentFactory:
                 continue
             replacement = _GEMINI_EMBED_DEFAULT if "embed" in key else _GEMINI_TEXT_DEFAULT
             logger.warning(
-                "Invalid Gemini model for %s: '%s'. Auto-switching to '%s'.",
+                "event=invalid_gemini_model_auto_switching Invalid Gemini model for %s: '%s'. Auto-switching to '%s'.",
                 key, name, replacement,
             )
             cfg["mod"] = replacement
@@ -235,7 +235,7 @@ class AgentFactory:
                 fallback_model = "qwen2.5:7b"
 
             logger.warning(
-                "Gemini API key missing; remapping %s from gemini/%s to ollama/%s.",
+                "event=gemini_api_key_remapping_from Gemini API key missing; remapping %s from gemini/%s to ollama/%s.",
                 key,
                 cfg.get("mod", ""),
                 fallback_model,
@@ -246,13 +246,13 @@ class AgentFactory:
     @staticmethod
     def _log_config(models: dict[str, dict[str, str]]) -> None:
         logger.info(
-            "Oracle agents | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
+            "event=oracle_agents_planner_fast_chat_analyst Oracle agents | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
             models["router"]["mod"], models["scribe"]["mod"],
             models["analyst"]["mod"], models["embedder"]["mod"],
             models["coder"]["mod"],
         )
         logger.info(
-            "Oracle init models | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
+            "event=oracle_init_models_planner_fast_chat Oracle init models | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
             models["router"]["mod"],
             models["scribe"]["mod"],
             models["analyst"]["mod"],

@@ -31,7 +31,7 @@ from core.document.rag import DocumentRAG
 from core.document.analyser import DocumentAnalyser
 from core.agent_loop import run_agent_loop, ToolDefinition
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 # ── Tool-call helper functions ─────────────────────────────────────────────────
@@ -277,7 +277,7 @@ class OracleEngine:
             )
         except Exception as exc:
             logger.debug(
-                "Interaction ledger append failed (non-fatal): %s", exc)
+                "event=interaction_ledger_append_failed_non Interaction ledger append failed (non-fatal): %s", exc)
 
     def chat(
         self,
@@ -298,7 +298,7 @@ class OracleEngine:
           PERSIST  → save history (sync), memory extraction (background)
         """
         t0 = time.perf_counter()
-        logger.info("Chat | session=%s msg_len=%s",
+        logger.info("event=chat_session_msg_len Chat | session=%s msg_len=%s",
                     session_id, len(user_message or ""))
 
         # ── Phase 1: INIT ─────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ class OracleEngine:
         # ── Phase 2: CLASSIFY ─────────────────────────────────────────────────
         intent = self._phase_classify(
             user_message, history_text, available_domains, schemas)
-        logger.info("Classify | mode=%s domain=%s conf=%.2f",
+        logger.info("event=classify_mode_domain_conf Classify | mode=%s domain=%s conf=%.2f",
                     intent.mode, intent.explicit_domain, intent.confidence)
 
         # ── Phase 3a: QUICK CHAT shortcut ─────────────────────────────────────
@@ -322,7 +322,7 @@ class OracleEngine:
                 user_message, history_text, client_instructions, extra_context or None)
             if save_history:
                 self._save_history(session_id, user_message, answer)
-            logger.info("Quick chat done in %sms", int(
+            logger.info("event=quick_chat_done_ms Quick chat done in %sms", int(
                 (time.perf_counter() - t0) * 1000))
             yield stream_emitter.emit_final(answer, "general")
             self._phase_background_memory(
@@ -335,13 +335,13 @@ class OracleEngine:
             action_answer = self._try_action_call(
                 user_message, history_text, client_instructions, session_id, notify_target)
         except Exception as exc:
-            logger.warning("Action call attempt failed (non-fatal): %s", exc)
+            logger.warning("event=action_call_attempt_failed_non Action call attempt failed (non-fatal): %s", exc)
             action_answer = None
 
         if action_answer is not None:
             if save_history:
                 self._save_history(session_id, user_message, action_answer)
-            logger.info("Action call done in %sms", int(
+            logger.info("event=action_call_done_ms Action call done in %sms", int(
                 (time.perf_counter() - t0) * 1000))
             yield stream_emitter.emit_final(action_answer, "action")
             self._phase_background_memory(
@@ -404,7 +404,7 @@ class OracleEngine:
         # ── Phase 6: PERSIST ──────────────────────────────────────────────────
         if save_history:
             self._save_history(session_id, user_message, answer)
-        logger.info("Chat done | session=%s total=%sms", session_id,
+        logger.info("event=chat_done_session_total_ms Chat done | session=%s total=%sms", session_id,
                     int((time.perf_counter() - t0) * 1000))
         yield stream_emitter.emit_final(answer, intent.valid_domains[0] if intent.valid_domains else "general")
         self._phase_background_memory(
@@ -770,13 +770,13 @@ class OracleEngine:
                     force_notification_compiler=force_notification_compiler,
                 )
             except Exception as exc:
-                logger.warning("Background memory sync failed: %s", exc)
+                logger.warning("event=background_memory_sync_failed Background memory sync failed: %s", exc)
 
             # ── User controllability extraction (P1-9) ────────────────────────
             try:
                 self._control_service.extract_and_save_controls(user_message)
             except Exception as exc:
-                logger.warning("Background control extraction failed: %s", exc)
+                logger.warning("event=background_control_extraction_failed Background control extraction failed: %s", exc)
 
             # ── Context compaction (inactivity trigger — runs only when needed) ─
             try:
@@ -789,7 +789,7 @@ class OracleEngine:
                         hub_client=self._hub,
                     )
             except Exception as exc:
-                logger.warning("Background compaction check failed: %s", exc)
+                logger.warning("event=background_compaction_check_failed Background compaction check failed: %s", exc)
 
         threading.Thread(target=_run, daemon=True).start()
 
@@ -969,7 +969,7 @@ class OracleEngine:
             try:
                 raw = self._agents.fallback_scribe.ask(selection_prompt)
             except Exception as exc:
-                logger.warning("Tool selection LLM failed: %s", exc)
+                logger.warning("event=tool_selection_llm_failed Tool selection LLM failed: %s", exc)
                 return None
 
         # Parse the JSON response
@@ -982,7 +982,7 @@ class OracleEngine:
             selection = json.loads(raw_stripped)
         except Exception as exc:
             logger.debug(
-                "Tool selection JSON parse failed: %s | raw=%s", exc, raw[:300])
+                "event=tool_selection_json_parse_failed Tool selection JSON parse failed: %s | raw=%s", exc, raw[:300])
             return None
 
         action_name = selection.get("action")
@@ -993,7 +993,7 @@ class OracleEngine:
             (c for c in action_commands if c["command"] == action_name), None)
         if not matched:
             logger.warning(
-                "Tool selected '%s' not found in commands", action_name)
+                "event=tool_selected_found_commands Tool selected '%s' not found in commands", action_name)
             return None
 
         user_params = selection.get("params") or {}
@@ -1015,7 +1015,7 @@ class OracleEngine:
             query = {k: v for k, v in query.items() if v is not None}
 
         logger.info(
-            "Tool call | cmd=%s service=%s path=%s",
+            "event=tool_call_cmd_service_path Tool call | cmd=%s service=%s path=%s",
             action_name, matched.get("service", ""), matched.get("path", ""),
         )
         ok, result = self._hub.route_to_service(
@@ -1028,7 +1028,7 @@ class OracleEngine:
 
         if not ok:
             logger.warning(
-                "Tool call failed | cmd=%s | result=%s", action_name, result)
+                "event=tool_call_failed_cmd_result Tool call failed | cmd=%s | result=%s", action_name, result)
             return "⚠️ Non è stato possibile completare l'azione. Il servizio non è disponibile o i parametri non sono validi."
 
         answer = self.format_payload(
@@ -1055,11 +1055,11 @@ class OracleEngine:
         try:
             return self._agents.analyst.ask(prompt)
         except Exception as exc:
-            logger.warning("Primary analyst failed, using fallback: %s", exc)
+            logger.warning("event=primary_analyst_failed_using_fallback Primary analyst failed, using fallback: %s", exc)
         try:
             return self._agents.fallback_analyst.ask(prompt)
         except Exception as exc:
-            logger.error("Fallback analyst also failed: %s", exc)
+            logger.error("event=fallback_analyst_also_failed Fallback analyst also failed: %s", exc)
             return "⚠️ In questo momento i modelli sono temporaneamente non disponibili. Riprova tra poco."
 
     def _stream_analyst(self, prompt: str):
@@ -1085,10 +1085,10 @@ class OracleEngine:
                 # Mid-stream failure after partial output — don't retry (client
                 # has already received partial tokens; retrying would duplicate).
                 logger.warning(
-                    "Primary analyst failed mid-stream (%d tokens): %s", len(tokens), exc)
+                    "event=primary_analyst_failed_mid_stream Primary analyst failed mid-stream (%d tokens): %s", len(tokens), exc)
                 return "".join(tokens)
             logger.warning(
-                "Primary analyst stream failed (0 tokens), trying fallback: %s", exc)
+                "event=primary_analyst_stream_failed_tokens Primary analyst stream failed (0 tokens), trying fallback: %s", exc)
 
         # Fallback — primary yielded nothing
         try:
@@ -1097,7 +1097,7 @@ class OracleEngine:
                 yield stream_emitter.emit_token(token)
             return "".join(tokens)
         except Exception as exc:
-            logger.error("Fallback analyst stream also failed: %s", exc)
+            logger.error("event=fallback_analyst_stream_also_failed Fallback analyst stream also failed: %s", exc)
             return "⚠️ In questo momento i modelli sono temporaneamente non disponibili. Riprova tra poco."
 
     def _quick_answer(
@@ -1134,7 +1134,7 @@ class OracleEngine:
             self._hub.post(
                 "/chat/history", {"session_id": session_id, "role": "assistant", "content": answer})
         except Exception as exc:
-            logger.warning("Failed to persist chat history: %s", exc)
+            logger.warning("event=failed_persist_chat_history Failed to persist chat history: %s", exc)
 
     def _load_preferences(self, valid_domains: list[str]) -> list[dict]:
         all_prefs: list[dict] = []

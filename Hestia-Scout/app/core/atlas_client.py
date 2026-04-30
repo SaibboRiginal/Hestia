@@ -103,7 +103,7 @@ class AtlasClient:
 
                 if index > 0:
                     logger.info(
-                        "Atlas fallback hub candidate succeeded | hub_api_url=%s", hub_api_url)
+                        "event=atlas_fallback_hub_candidate_succeeded Atlas fallback hub candidate succeeded | hub_api_url=%s", hub_api_url)
 
                 return FetchResult(
                     html=html,
@@ -119,9 +119,9 @@ class AtlasClient:
                 continue
 
         if failures:
-            logger.warning("All Atlas hub candidates failed | url=%s", url)
+            logger.warning("event=all_atlas_hub_candidates_failed All Atlas hub candidates failed | url=%s", url)
             for item in failures:
                 logger.warning(
-                    "Atlas candidate failure detail | detail=%s", item)
+                    "event=atlas_candidate_failure_detail_detail Atlas candidate failure detail | detail=%s", item)
 
         return None

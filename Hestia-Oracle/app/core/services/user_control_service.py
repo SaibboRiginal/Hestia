@@ -11,7 +11,7 @@ import json
 import logging
 import re
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _CONTROL_DOMAIN = "user_controls"
 _CONTROL_CLASS = "durable_user_preference"
@@ -205,7 +205,8 @@ class UserControlService:
             self._hub.post("/memory", payload)
             return True
         except Exception as exc:
-            logger.warning("Control save failed: %s", exc)
+            logger.warning(
+                "event=control_save_failed Control save failed: %s", exc)
             return False
 
     def get_controls(self) -> dict:
@@ -238,7 +239,8 @@ class UserControlService:
         return merged, saved
 
     def extract_and_save_controls(self, user_message: str) -> list[dict]:
-        prompt = _EXTRACT_PROMPT.format(user_message=user_message)
+        # Keep literal JSON braces in _EXTRACT_PROMPT intact.
+        prompt = _EXTRACT_PROMPT.replace("{user_message}", user_message)
         raw = self._ask(prompt)
         if not raw or raw.strip().upper() == "NONE":
             return []

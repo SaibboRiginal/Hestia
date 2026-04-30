@@ -13,7 +13,7 @@ from typing import Any
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 HERMES_URL = os.getenv(
     "HERMES_API_URL", "http://hestia_hermes:19005"
@@ -38,13 +38,13 @@ def publish_event(domain: str, event_type: str, entity_id: str, payload: dict[st
             f"{HERMES_URL}/api/events/ingest", json=body, timeout=10)
         if resp.status_code < 300:
             result = (resp.json() if resp.content else {}).get("result", {})
-            logger.info("[HERMES] Event published domain=%s event=%s deliveries=%s",
+            logger.info("event=hermes_event_published_domain_event [HERMES] Event published domain=%s event=%s deliveries=%s",
                         domain, event_type, result.get("deliveries", 0))
             return True
-        logger.warning("[HERMES] publish_event status=%s body=%s",
+        logger.warning("event=hermes_publish_event_status_body [HERMES] publish_event status=%s body=%s",
                        resp.status_code, resp.text[:200])
     except Exception as exc:
-        logger.warning("[HERMES] publish_event failed: %s", exc)
+        logger.warning("event=hermes_publish_event_failed [HERMES] publish_event failed: %s", exc)
     return False
 
 
@@ -53,7 +53,7 @@ def send_message(text: str, chat_id: str | None = None) -> bool:
     target = chat_id or NOTIFY_TARGET
     if not target:
         logger.warning(
-            "No ARGUS_NOTIFY_TARGET configured; cannot send Hermes message."
+            "event=argus_notify_target_cannot_send_hermes_message No ARGUS_NOTIFY_TARGET configured; cannot send Hermes message."
         )
         return False
 
@@ -72,9 +72,9 @@ def send_message(text: str, chat_id: str | None = None) -> bool:
         resp.raise_for_status()
         data = resp.json()
         if not data.get("success", False):
-            logger.warning("Hermes dispatch returned success=false: %s", data)
+            logger.warning("event=hermes_dispatch_returned_success_false Hermes dispatch returned success=false: %s", data)
             return False
         return True
     except Exception as exc:
-        logger.warning("Hermes dispatch failed: %s", exc)
+        logger.warning("event=hermes_dispatch_failed Hermes dispatch failed: %s", exc)
         return False

@@ -22,9 +22,9 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(encoded)
         except BrokenPipeError:
-            logger.debug("Client disconnected before receiving response")
+            logger.debug("event=client_disconnected_before_receiving_response Client disconnected before receiving response")
         except ConnectionResetError:
-            logger.debug("Connection reset by peer")
+            logger.debug("event=connection_reset_peer Connection reset by peer")
 
     def do_GET(self):
         if self.path == "/health":
@@ -89,7 +89,7 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                     title = entity_payload.get(
                         "title", entity_payload.get("summary", ""))
                     logger.info(
-                        "Buffering alert | chat_id=%s domain=%s entity=%s title='%s'",
+                        "event=buffering_alert_chat_id_domain_entity Buffering alert | chat_id=%s domain=%s entity=%s title='%s'",
                         chat_id, domain, entity_id, str(title)[:60])
                     core.buffer_alert(
                         chat_id, entity_payload, domain, entity_id)

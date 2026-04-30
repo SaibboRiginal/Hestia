@@ -30,7 +30,7 @@ logger = logging.getLogger("hestia_telegram.chat_service")
 def is_authorized(message) -> bool:
     user_id = str(message.from_user.id)
     if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
-        logger.warning("Unauthorized access attempt | user_id=%s", user_id)
+        logger.warning("event=unauthorized_access_attempt_user_id Unauthorized access attempt | user_id=%s", user_id)
         core.bot.reply_to(
             message, "⛔ **Access Denied.** This Hestia instance is private.")
         return False
@@ -84,7 +84,7 @@ def handle_confirmation(call):
                 delete_url = f"{oracle_chat_url}/{old_session_id}"
                 requests.delete(delete_url, timeout=5)
             except Exception as error:
-                logger.warning("Failed to purge remote history: %s", error)
+                logger.warning("event=failed_purge_remote_history Failed to purge remote history: %s", error)
 
             core.reset_session(chat_id)
             core.reset_session_settings(chat_id)
@@ -154,7 +154,7 @@ def handle_confirmation(call):
 
         core.bot.answer_callback_query(call.id, "Nessuna azione")
     except Exception as error:
-        logger.warning("Confirmation handler error: %s", error)
+        logger.warning("event=confirmation_handler_error Confirmation handler error: %s", error)
 
 
 def handle_arg_picker(call):
@@ -176,7 +176,7 @@ def handle_arg_picker(call):
             command_name, call.message.chat.id, f"{arg}={value}")
         core.bot.answer_callback_query(call.id, "Comando eseguito")
     except Exception as error:
-        logger.warning("Arg picker handler error: %s", error)
+        logger.warning("event=arg_picker_handler_error Arg picker handler error: %s", error)
 
 
 def handle_run_command(call):
@@ -189,7 +189,7 @@ def handle_run_command(call):
         execute_direct_command(command_name, call.message.chat.id, "")
         core.bot.answer_callback_query(call.id, "Comando eseguito")
     except Exception as error:
-        logger.warning("Run command handler error: %s", error)
+        logger.warning("event=run_command_handler_error Run command handler error: %s", error)
 
 
 def handle_set_picker(call):
@@ -232,7 +232,7 @@ def handle_set_picker(call):
 
         core.bot.answer_callback_query(call.id, "Azione non valida")
     except Exception as error:
-        logger.warning("Set picker handler error: %s", error)
+        logger.warning("event=set_picker_handler_error Set picker handler error: %s", error)
 
 
 def handle_calendar_step(call):
@@ -244,7 +244,7 @@ def handle_calendar_step(call):
             return
         handle_calendar_step_callback(call)
     except Exception as error:
-        logger.warning("Calendar step callback error: %s", error)
+        logger.warning("event=calendar_step_callback_error Calendar step callback error: %s", error)
 
 
 def handle_cancel_flow(call):
@@ -263,7 +263,7 @@ def handle_cancel_flow(call):
         )
         core.bot.answer_callback_query(call.id, "Annullato")
     except Exception as error:
-        logger.warning("Cancel flow handler error: %s", error)
+        logger.warning("event=cancel_flow_handler_error Cancel flow handler error: %s", error)
 
 
 def _run_notification_shortcut(chat_id: int, session_id: str, user_message: str, status_message_id: int):

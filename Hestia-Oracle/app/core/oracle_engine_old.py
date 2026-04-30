@@ -17,7 +17,7 @@ from core.services.retrieval_service import RetrievalService
 from core.services.router_service import RouterService
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Document archiving constants ──────────────────────────────────────────────
 _MAX_DOC_ARCHIVE_BYTES = int(
@@ -62,9 +62,9 @@ def _load_clip():
         _CLIP_MODEL = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(_CLIP_DEVICE)
         _CLIP_PROCESSOR = _CLIPProc.from_pretrained("openai/clip-vit-base-patch32")
         _CLIP_MODEL.eval()
-        logger.info("[LOCAL] CLIP model loaded (openai/clip-vit-base-patch32) on %s", _CLIP_DEVICE)
+        logger.info("event=local_clip_model_loaded_openai [LOCAL] CLIP model loaded (openai/clip-vit-base-patch32) on %s", _CLIP_DEVICE)
     except Exception as exc:
-        logger.info("[LOCAL] CLIP unavailable: %s", exc)
+        logger.info("event=local_clip_unavailable [LOCAL] CLIP unavailable: %s", exc)
     return _CLIP_MODEL, _CLIP_PROCESSOR, _CLIP_DEVICE
 
 
@@ -81,9 +81,9 @@ def _load_yolo():
     try:
         from ultralytics import YOLO as _YOLO
         _YOLO_MODEL = _YOLO("yolov8n.pt")
-        logger.info("[LOCAL] YOLOv8-nano loaded")
+        logger.info("event=local_yolov8_nano_loaded [LOCAL] YOLOv8-nano loaded")
     except Exception as exc:
-        logger.info("[LOCAL] YOLO unavailable: %s", exc)
+        logger.info("event=local_yolo_unavailable [LOCAL] YOLO unavailable: %s", exc)
     return _YOLO_MODEL
 
 
@@ -104,9 +104,9 @@ def _load_whisper():
             device="cpu",
             compute_type="int8",
         )
-        logger.info("[LOCAL] WhisperX model loaded (%s)", os.getenv("WHISPER_MODEL", "base"))
+        logger.info("event=local_whisperx_model_loaded [LOCAL] WhisperX model loaded (%s)", os.getenv("WHISPER_MODEL", "base"))
     except Exception as exc:
-        logger.info("[LOCAL] WhisperX unavailable: %s", exc)
+        logger.info("event=local_whisperx_unavailable [LOCAL] WhisperX unavailable: %s", exc)
     return _WHISPER_MODEL
 
 
@@ -157,7 +157,7 @@ class OracleEngine:
             f"🧠 Oracle Init | Router: {self.models['router']['mod']} | Scribe: {self.models['scribe']['mod']} | Analyst: {self.models['analyst']['mod']} | Embedder: {self.models['embedder']['mod']}"
         )
         logger.info(
-            "Oracle initialized with models | router=%s scribe=%s analyst=%s embedder=%s",
+            "event=oracle_initialized_with_models_router Oracle initialized with models | router=%s scribe=%s analyst=%s embedder=%s",
             self.models["router"]["mod"],
             self.models["scribe"]["mod"],
             self.models["analyst"]["mod"],
@@ -209,7 +209,7 @@ CONVERSATION STYLE CONTRACT (MANDATORY):
             if lower_model.startswith("gemma") or ":" in lower_model:
                 replacement = "models/embedding-001" if "embed" in model_key else fallback_for_text
                 logger.warning(
-                    "Invalid Gemini model configured for %s: '%s'. Auto-switching to '%s'.",
+                    "event=invalid_gemini_model_configured_auto Invalid Gemini model configured for %s: '%s'. Auto-switching to '%s'.",
                     model_key,
                     model_name,
                     replacement,
@@ -652,7 +652,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
 
     def chat(self, user_message: str, session_id: str, notify_target: str | None = None, force_notification_compiler: bool = False, client_instructions: str | None = None):
         request_started = time.perf_counter()
-        logger.info("Chat request started | session_id=%s message_len=%s",
+        logger.info("event=chat_request_started_session_id_message_len Chat request started | session_id=%s message_len=%s",
                     session_id, len(user_message or ""))
 
         # Standard path for data/domain queries
@@ -662,17 +662,17 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         history_data = self._api_get(
             f"/chat/history/{session_id}?limit={self.context_builder.max_history_messages}")
         history_text = self.context_builder.compact_history(history_data)
-        logger.info("History loaded | session_id=%s messages=%s in %sms", session_id, len(
+        logger.info("event=history_loaded_session_id_messages_ms History loaded | session_id=%s messages=%s in %sms", session_id, len(
             history_data or []), int((time.perf_counter() - step_start) * 1000))
 
         step_start = time.perf_counter()
         available_domains = self._api_get("/domains") or ["general"]
-        logger.info("Domains loaded | count=%s in %sms", len(available_domains), int(
+        logger.info("event=domains_loaded_count_ms Domains loaded | count=%s in %sms", len(available_domains), int(
             (time.perf_counter() - step_start) * 1000))
 
         step_start = time.perf_counter()
         schemas = self._api_get("/schemas") or {}
-        logger.info("Metadata loaded | available_domains=%s schema_domains=%s in %sms",
+        logger.info("event=metadata_loaded_available_domains_schema_domains_ms Metadata loaded | available_domains=%s schema_domains=%s in %sms",
                     available_domains, len(schemas or {}), int((time.perf_counter() - step_start) * 1000))
 
         classification_start = time.perf_counter()
@@ -683,7 +683,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             schemas=schemas,
         )
         logger.info(
-            "Mode/routing classification | mode=%s domain=%s confidence=%.2f in %sms",
+            "event=mode_routing_classification_mode_domain Mode/routing classification | mode=%s domain=%s confidence=%.2f in %sms",
             mode,
             explicit_domain,
             mode_confidence,
@@ -692,7 +692,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
 
         if mode == "quick_chat" and mode_confidence >= 0.55:
             logger.info(
-                "Quick conversation path selected | session_id=%s", session_id)
+                "event=quick_conversation_path_selected_session_id Quick conversation path selected | session_id=%s", session_id)
             yield self._emit_status("💬 Conversazione rapida...")
 
             # If the user's message is about stored documents, inject the
@@ -704,7 +704,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     chat_id=notify_target, session_id=session_id)
                 if doc_context_for_quick:
                     logger.info(
-                        "[DOC] Injected brief doc catalogue into quick_chat context")
+                        "event=doc_injected_brief_doc_catalogue [DOC] Injected brief doc catalogue into quick_chat context")
 
             analysis_start = time.perf_counter()
             final_answer = self._generate_quick_chat_answer(
@@ -713,7 +713,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 client_instructions=client_instructions,
                 extra_context=doc_context_for_quick or None,
             )
-            logger.info("Quick conversational response generated in %sms", int(
+            logger.info("event=quick_conversational_response_generated_ms Quick conversational response generated in %sms", int(
                 (time.perf_counter() - analysis_start) * 1000))
 
             yield self._emit_status("✍️ Consegna...")
@@ -729,12 +729,12 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     {"session_id": session_id,
                         "role": "assistant", "content": final_answer},
                 )
-                logger.info("History persisted in %sms", int(
+                logger.info("event=history_persisted_ms History persisted in %sms", int(
                     (time.perf_counter() - save_start) * 1000))
             except Exception as error:
-                logger.warning("Failed persisting chat history: %s", error)
+                logger.warning("event=failed_persisting_chat_history Failed persisting chat history: %s", error)
 
-            logger.info("Quick chat request completed | session_id=%s total=%sms",
+            logger.info("event=quick_chat_request_completed_session_id Quick chat request completed | session_id=%s total=%sms",
                         session_id, int((time.perf_counter() - request_started) * 1000))
             yield self._emit_final(final_answer, "general")
             return
@@ -744,7 +744,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 domain for domain in valid_domains if domain != explicit_domain]
 
         logger.info(
-            "Routing complete | domains=%s filters=%s filters_gt=%s filters_lt=%s sort_by=%s sort_order=%s",
+            "event=routing_complete_domains_filters_filters_gt Routing complete | domains=%s filters=%s filters_gt=%s filters_lt=%s sort_by=%s sort_order=%s",
             valid_domains,
             active_filters,
             filters_gt,
@@ -765,7 +765,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 if pref_id and pref_id not in seen_pref_ids:
                     all_prefs.append(pref)
                     seen_pref_ids.add(pref_id)
-        logger.info("Preferences loaded | count=%s in %sms", len(
+        logger.info("event=preferences_loaded_count_ms Preferences loaded | count=%s in %sms", len(
             all_prefs), int((time.perf_counter() - pref_step_start) * 1000))
 
         preference_facts = [str(p.get("fact", "")).strip()
@@ -784,13 +784,13 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             sort_by=sort_by,
             sort_order=sort_order,
         )
-        logger.info("Entities retrieval complete | count=%s in %sms", len(
+        logger.info("event=entities_retrieval_complete_count_ms Entities retrieval complete | count=%s in %sms", len(
             all_entities), int((time.perf_counter() - retrieval_start) * 1000))
 
         yield self._emit_status("🧱 Compattazione contesto...")
         formatted_context = self.context_builder.compact_entities_for_prompt(
             all_entities)
-        logger.info("Context compacted | has_entities=%s", bool(all_entities))
+        logger.info("event=context_compacted_has_entities Context compacted | has_entities=%s", bool(all_entities))
 
         # ── Semantic document chunk injection ────────────────────────────────
         # Search stored document chunks semantically relevant to this query.
@@ -808,7 +808,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 else doc_section
             )
             logger.info(
-                "[DOC] Injected %s chunk(s) from archived docs into context", len(doc_chunks))
+                "event=doc_injected_chunk_from_archived [DOC] Injected %s chunk(s) from archived docs into context", len(doc_chunks))
         elif self._message_is_about_docs(user_message):
             # No chunks matched but user is asking about their documents —
             # inject the catalogue so the analyst can list them.
@@ -821,7 +821,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     else brief
                 )
                 logger.info(
-                    "[DOC] Injected brief doc catalogue (no chunk match) into domain_query context")
+                    "event=doc_injected_brief_doc_catalogue [DOC] Injected brief doc catalogue (no chunk match) into domain_query context")
 
         analysis_prompt = self.context_builder.build_analysis_prompt(
             preference_facts=preference_facts,
@@ -847,18 +847,18 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         analysis_start = time.perf_counter()
         try:
             final_answer = self.analyst.ask(analysis_prompt)
-            logger.info("Analyst response generated with primary model in %sms", int(
+            logger.info("event=analyst_response_generated_with_primary Analyst response generated with primary model in %sms", int(
                 (time.perf_counter() - analysis_start) * 1000))
         except Exception as primary_error:
             logger.warning(
-                "Primary analyst failed, switching to fallback: %s", primary_error)
+                "event=primary_analyst_failed_switching_fallback Primary analyst failed, switching to fallback: %s", primary_error)
             fallback_start = time.perf_counter()
             try:
                 final_answer = self.fallback_analyst.ask(analysis_prompt)
-                logger.info("Analyst response generated with fallback model in %sms", int(
+                logger.info("event=analyst_response_generated_with_fallback Analyst response generated with fallback model in %sms", int(
                     (time.perf_counter() - fallback_start) * 1000))
             except Exception as fallback_error:
-                logger.error("Fallback analyst failed: %s", fallback_error)
+                logger.error("event=fallback_analyst_failed Fallback analyst failed: %s", fallback_error)
                 final_answer = (
                     "⚠️ In questo momento i modelli sono temporaneamente non disponibili. "
                     "Riprova tra poco."
@@ -878,10 +878,10 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 {"session_id": session_id,
                     "role": "assistant", "content": final_answer},
             )
-            logger.info("History persisted in %sms", int(
+            logger.info("event=history_persisted_ms History persisted in %sms", int(
                 (time.perf_counter() - save_start) * 1000))
         except Exception as error:
-            logger.warning("Failed persisting chat history: %s", error)
+            logger.warning("event=failed_persisting_chat_history Failed persisting chat history: %s", error)
             pass
 
         yield self._emit_status("🔔 Aggiornamento preferenze e notifiche...")
@@ -894,7 +894,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 force_notification_compiler=force_notification_compiler,
             )
             logger.info(
-                "Preference/subscription sync completed | signals=%s in %sms",
+                "event=preference_subscription_sync_completed_signals Preference/subscription sync completed | signals=%s in %sms",
                 len(signals or []),
                 int((time.perf_counter() - memory_start) * 1000),
             )
@@ -906,9 +906,9 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     data=signal.get("data") or {},
                 )
         except Exception as error:
-            logger.warning("Preference/subscription sync failed: %s", error)
+            logger.warning("event=preference_subscription_sync_failed Preference/subscription sync failed: %s", error)
 
-        logger.info("Chat request completed | session_id=%s total=%sms",
+        logger.info("event=chat_request_completed_session_id_total Chat request completed | session_id=%s total=%sms",
                     session_id, int((time.perf_counter() - request_started) * 1000))
         yield self._emit_final(final_answer, valid_domains[0])
 
@@ -981,7 +981,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         parts.append(row_text)
             return "\n".join(parts)
         except Exception as exc:
-            logger.warning("[DOC] docx extraction failed: %s", exc)
+            logger.warning("event=doc_docx_extraction_failed [DOC] docx extraction failed: %s", exc)
             return ""
 
     @staticmethod
@@ -994,7 +994,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             texts = doc.getElementsByType(_odf_text.P)
             return "\n".join(_odf_tt.extractText(t) for t in texts if _odf_tt.extractText(t).strip())
         except Exception as exc:
-            logger.warning("[DOC] odf extraction failed: %s", exc)
+            logger.warning("event=doc_odf_extraction_failed [DOC] odf extraction failed: %s", exc)
             return ""
 
     @staticmethod
@@ -1012,7 +1012,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         parts.append(row_text)
             return "\n".join(parts)
         except Exception as exc:
-            logger.warning("[DOC] xlsx extraction failed: %s", exc)
+            logger.warning("event=doc_xlsx_extraction_failed [DOC] xlsx extraction failed: %s", exc)
             return ""
 
     @staticmethod
@@ -1030,7 +1030,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         parts.append(row_text)
             return "\n".join(parts)
         except Exception as exc:
-            logger.warning("[DOC] xls extraction failed: %s", exc)
+            logger.warning("event=doc_xls_extraction_failed [DOC] xls extraction failed: %s", exc)
             return ""
 
     @staticmethod
@@ -1047,7 +1047,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         parts.append(shape.text)
             return "\n".join(parts)
         except Exception as exc:
-            logger.warning("[DOC] pptx extraction failed: %s", exc)
+            logger.warning("event=doc_pptx_extraction_failed [DOC] pptx extraction failed: %s", exc)
             return ""
 
     @staticmethod
@@ -1063,7 +1063,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     parts.append(t)
             return "\n".join(parts)
         except Exception as exc:
-            logger.warning("[DOC] pypdf text extraction failed: %s", exc)
+            logger.warning("event=doc_pypdf_text_extraction_failed [DOC] pypdf text extraction failed: %s", exc)
             return ""
 
     # ── Local vision analysis: CLIP + YOLO ───────────────────────────────────
@@ -1083,7 +1083,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         try:
             pil_img = _PILImage.open(io.BytesIO(file_bytes)).convert("RGB")
         except Exception as exc:
-            logger.warning("[DOC] Cannot open image for local analysis: %s", exc)
+            logger.warning("event=doc_cannot_open_image_local [DOC] Cannot open image for local analysis: %s", exc)
             return {"description": "", "tags": [], "clip_available": False, "yolo_available": False}
 
         tags: list[str] = []
@@ -1108,7 +1108,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         tags.append(obj)
                         yolo_lines.append(f"  - {count}× {obj}")
             except Exception as exc:
-                logger.warning("[DOC] YOLO inference failed: %s", exc)
+                logger.warning("event=doc_yolo_inference_failed [DOC] YOLO inference failed: %s", exc)
 
         # CLIP zero-shot classification against a broad scene/object taxonomy
         clip_model, clip_proc, clip_device = _load_clip()
@@ -1140,7 +1140,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         if short not in tags:
                             tags.append(short)
             except Exception as exc:
-                logger.warning("[DOC] CLIP inference failed: %s", exc)
+                logger.warning("event=doc_clip_inference_failed [DOC] CLIP inference failed: %s", exc)
 
         desc_parts: list[str] = []
         if yolo_lines:
@@ -1188,7 +1188,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             segments = result.get("segments") or []
             return " ".join(seg.get("text", "").strip() for seg in segments if seg.get("text", "").strip())
         except Exception as exc:
-            logger.warning("[DOC] WhisperX transcription failed: %s", exc)
+            logger.warning("event=doc_whisperx_transcription_failed [DOC] WhisperX transcription failed: %s", exc)
             return ""
         finally:
             if tmp_path:
@@ -1290,12 +1290,12 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 return self.analyst.ask_with_attachment(
                     file_bytes=file_bytes, mime_type=mime_type, user_message=prompt)
             except Exception as exc1:
-                logger.warning("[DOC] Primary analyst attachment call failed: %s", exc1)
+                logger.warning("event=doc_primary_analyst_attachment_call [DOC] Primary analyst attachment call failed: %s", exc1)
                 try:
                     return self.fallback_analyst.ask_with_attachment(
                         file_bytes=file_bytes, mime_type=mime_type, user_message=prompt)
                 except Exception as exc2:
-                    logger.warning("[DOC] Fallback analyst attachment call failed: %s", exc2)
+                    logger.warning("event=doc_fallback_analyst_attachment_call [DOC] Fallback analyst attachment call failed: %s", exc2)
                     return ""
 
         # ──────────────────────────────────────────────────────────────────────
@@ -1304,7 +1304,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         is_audio = mime_type.startswith("audio/")
         is_video = mime_type.startswith("video/")
         if is_audio or is_video:
-            logger.info("[DOC] Audio/video path | model_audio=%s", model_has_audio)
+            logger.info("event=doc_audio_video_path_model_audio [DOC] Audio/video path | model_audio=%s", model_has_audio)
             transcribed = ""
             # Try WhisperX first (works offline, highly accurate)
             transcribed = self._transcribe_audio(file_bytes, mime_type)
@@ -1339,7 +1339,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         # BRANCH 2 — IMAGES → CLIP+YOLO local, then LLM vision if capable
         # ──────────────────────────────────────────────────────────────────────
         elif mime_type.startswith("image/"):
-            logger.info("[DOC] Image path | model_vision=%s", model_has_vision)
+            logger.info("event=doc_image_path_model_vision [DOC] Image path | model_vision=%s", model_has_vision)
 
             # Always run local analysis first (fast, offline, enriches tags)
             try:
@@ -1349,11 +1349,11 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 if local["description"]:
                     extracted_text = local["description"]
                 logger.info(
-                    "[DOC] Local image analysis | CLIP=%s YOLO=%s tags=%s",
+                    "event=doc_local_image_analysis_clip [DOC] Local image analysis | CLIP=%s YOLO=%s tags=%s",
                     local["clip_available"], local["yolo_available"], tags,
                 )
             except Exception as exc:
-                logger.warning("[DOC] Local image analysis error: %s", exc)
+                logger.warning("event=doc_local_image_analysis_error [DOC] Local image analysis error: %s", exc)
 
             # If the analyst supports vision, get a richer LLM description
             if model_has_vision:
@@ -1368,7 +1368,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         data["tags"] = merged_tags
                         _apply_llm_data(data)
                     except Exception as exc:
-                        logger.warning("[DOC] Image LLM parse failed: %s", exc)
+                        logger.warning("event=doc_image_llm_parse_failed [DOC] Image LLM parse failed: %s", exc)
                         if not extracted_text:
                             extracted_text = raw[:_MAX_EXTRACTED_TEXT_CHARS]
 
@@ -1380,7 +1380,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         # BRANCH 3 — PDF → LLM multimodal (if capable) else pypdf text
         # ──────────────────────────────────────────────────────────────────────
         elif mime_type == "application/pdf":
-            logger.info("[DOC] PDF path | model_vision=%s", model_has_vision)
+            logger.info("event=doc_pdf_path_model_vision [DOC] PDF path | model_vision=%s", model_has_vision)
             if model_has_vision:
                 prompt = _llm_extraction_prompt("complete verbatim text content of the PDF")
                 raw = _llm_ask_with_attachment(prompt)
@@ -1392,7 +1392,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
 
             # Always supplement with pypdf if LLM text came out empty
             if not extracted_text:
-                logger.info("[DOC] PDF fallback: using pypdf text extraction")
+                logger.info("event=doc_pdf_fallback_using_pypdf [DOC] PDF fallback: using pypdf text extraction")
                 extracted_text = self._extract_pdf_text(file_bytes)
 
         # ──────────────────────────────────────────────────────────────────────
@@ -1402,7 +1402,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/msword",
         ):
-            logger.info("[DOC] DOCX/DOC path")
+            logger.info("event=doc_docx_doc_path [DOC] DOCX/DOC path")
             extracted_text = self._extract_docx(file_bytes)
 
         elif mime_type in (
@@ -1410,23 +1410,23 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             "application/vnd.oasis.opendocument.spreadsheet",
             "application/vnd.oasis.opendocument.presentation",
         ):
-            logger.info("[DOC] ODF path")
+            logger.info("event=doc_odf_path [DOC] ODF path")
             extracted_text = self._extract_odf(file_bytes)
 
         elif mime_type in (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ):
-            logger.info("[DOC] XLSX path")
+            logger.info("event=doc_xlsx_path [DOC] XLSX path")
             extracted_text = self._extract_xlsx(file_bytes)
 
         elif mime_type in ("application/vnd.ms-excel",):
-            logger.info("[DOC] XLS path")
+            logger.info("event=doc_xls_path [DOC] XLS path")
             extracted_text = self._extract_xls(file_bytes)
 
         elif mime_type in (
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         ):
-            logger.info("[DOC] PPTX path")
+            logger.info("event=doc_pptx_path [DOC] PPTX path")
             extracted_text = self._extract_pptx(file_bytes)
 
         # ──────────────────────────────────────────────────────────────────────
@@ -1437,7 +1437,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             "application/x-yaml", "application/yaml",
             "application/xml", "text/xml",
         ):
-            logger.info("[DOC] Text path | mime=%s", mime_type)
+            logger.info("event=doc_text_path_mime [DOC] Text path | mime=%s", mime_type)
             if "json" in mime_type:
                 extracted_text = self._extract_json(file_bytes)
             elif "html" in mime_type:
@@ -1449,7 +1449,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         # BRANCH 6 — UNKNOWN / BINARY → fallback to Oracle's analysis answer
         # ──────────────────────────────────────────────────────────────────────
         else:
-            logger.info("[DOC] Unknown mime type '%s', using final_answer as text", mime_type)
+            logger.info("event=doc_unknown_mime_type_using [DOC] Unknown mime type '%s', using final_answer as text", mime_type)
 
         # For office/text docs with no metadata yet, ask a text-only LLM to enrich
         if extracted_text and not title and not is_audio and not is_video and not mime_type.startswith("image/"):
@@ -1463,7 +1463,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 raw_meta = self.analyst.ask(meta_prompt)
                 _apply_llm_data(_parse_llm_json(raw_meta))
             except Exception as exc:
-                logger.debug("[DOC] Metadata enrichment LLM call failed: %s", exc)
+                logger.debug("event=doc_metadata_enrichment_llm_call [DOC] Metadata enrichment LLM call failed: %s", exc)
 
         # ── Fallback defaults ─────────────────────────────────────────────────
         if not extracted_text:
@@ -1512,11 +1512,11 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
         try:
             self._api_post("/documents", body, timeout=60)
             logger.info(
-                "[DOC] Archived | id=%s chunks=%s title=%r domain=%s tags=%s model_vision=%s",
+                "event=doc_archived_id_chunks_title [DOC] Archived | id=%s chunks=%s title=%r domain=%s tags=%s model_vision=%s",
                 document_id, len(embedded_chunks), title, domain, tags, model_has_vision,
             )
         except Exception as exc:
-            logger.warning("[DOC] Archive save failed: %s", exc)
+            logger.warning("event=doc_archive_save_failed [DOC] Archive save failed: %s", exc)
 
     def _search_relevant_docs(
         self,
@@ -1543,7 +1543,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             if isinstance(payload, list):
                 return payload
         except Exception as exc:
-            logger.debug("[DOC] Chunk search failed (non-fatal): %s", exc)
+            logger.debug("event=doc_chunk_search_failed_non [DOC] Chunk search failed (non-fatal): %s", exc)
         return []
 
     @staticmethod
@@ -1611,7 +1611,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     f"  • {title}{tag_str} — domain:{domain}, {perm}, accessed {accessed}×")
             return "\n".join(lines)
         except Exception as exc:
-            logger.debug("[DOC] Brief doc list failed (non-fatal): %s", exc)
+            logger.debug("event=doc_brief_doc_list_failed [DOC] Brief doc list failed (non-fatal): %s", exc)
             return ""
 
     _DOC_AWARENESS_KEYWORDS = frozenset([
@@ -1699,7 +1699,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                     user_message=full_prompt,
                 )
             except Exception as primary_exc:
-                logger.warning("Primary analyst document analysis failed: %s", primary_exc)
+                logger.warning("event=primary_analyst_document_analysis_failed Primary analyst document analysis failed: %s", primary_exc)
                 try:
                     final_answer = self.fallback_analyst.ask_with_attachment(
                         file_bytes=file_bytes,
@@ -1707,7 +1707,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                         user_message=full_prompt,
                     )
                 except Exception as fallback_exc:
-                    logger.error("Fallback analyst also failed: %s", fallback_exc)
+                    logger.error("event=fallback_analyst_also_failed Fallback analyst also failed: %s", fallback_exc)
                     # Last resort for non-vision model receiving a text-based doc:
                     # extract text locally and ask as text
                     local_text = ""
@@ -1743,7 +1743,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
                 "content": final_answer,
             })
         except Exception as hist_exc:
-            logger.warning("Failed to persist document analysis history: %s", hist_exc)
+            logger.warning("event=failed_persist_document_analysis_history Failed to persist document analysis history: %s", hist_exc)
 
         # ── Archive document for RAG ──────────────────────────────────────────
         import uuid as _uuid
@@ -1772,7 +1772,7 @@ Se non serve recuperare dati strutturati, resta in conversazione diretta.
             )
         else:
             logger.info(
-                "[DOC] File too large to archive (%s bytes > %s limit), analysis only.",
+                "event=doc_file_too_large_archive [DOC] File too large to archive (%s bytes > %s limit), analysis only.",
                 len(file_bytes), _MAX_DOC_ARCHIVE_BYTES,
             )
 

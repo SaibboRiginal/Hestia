@@ -68,7 +68,7 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
             .execute()
         )
         event_id: str = result.get("id", "")
-        logger.info("[GOOGLE] Created event id=%s title=%s",
+        logger.info("event=google_created_event_id_title [GOOGLE] Created event id=%s title=%s",
                     event_id, event.title)
         return event_id
 
@@ -101,7 +101,7 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
             self._service.events().delete(
                 calendarId=calendar_id, eventId=event_id
             ).execute()
-            logger.info("[GOOGLE] Deleted event id=%s", event_id)
+            logger.info("event=google_deleted_event_id [GOOGLE] Deleted event id=%s", event_id)
             return True
         except Exception as exc:
             if "404" in str(exc):
@@ -120,7 +120,7 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
         self._service.events().patch(
             calendarId=calendar_id, eventId=event_id, body=patch
         ).execute()
-        logger.info("[GOOGLE] Updated event id=%s fields=%s",
+        logger.info("event=google_updated_event_id_fields [GOOGLE] Updated event id=%s fields=%s",
                     event_id, list(updates.keys()))
         return True
 
@@ -131,7 +131,7 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
     def _setup(self) -> None:
         if not _GOOGLE_LIBS_AVAILABLE:
             self._init_error = "google-api-python-client not installed"
-            logger.warning("[GOOGLE] %s", self._init_error)
+            logger.warning("event=google [GOOGLE] %s", self._init_error)
             return
 
         creds = self._load_credentials()
@@ -141,10 +141,10 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
         try:
             self._service = build(
                 "calendar", "v3", credentials=creds, cache_discovery=False)
-            logger.info("[GOOGLE] Calendar service initialised successfully.")
+            logger.info("event=google_calendar_service_initialised_successfully [GOOGLE] Calendar service initialised successfully.")
         except Exception as exc:
             self._init_error = str(exc)
-            logger.error("[GOOGLE] Failed to build service: %s", exc)
+            logger.error("event=google_failed_build_service [GOOGLE] Failed to build service: %s", exc)
 
     def _load_credentials(self):
         # Priority 1: service account
@@ -157,7 +157,7 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
                 )
             except Exception as exc:
                 self._init_error = f"Service account parse error: {exc}"
-                logger.error("[GOOGLE] %s", self._init_error)
+                logger.error("event=google [GOOGLE] %s", self._init_error)
                 return None
 
         # Priority 2: user OAuth token
@@ -169,18 +169,18 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
                     token_data, _SCOPES)
                 if creds.expired and creds.refresh_token:
                     creds.refresh(Request())
-                    logger.info("[GOOGLE] OAuth token refreshed.")
+                    logger.info("event=google_oauth_token_refreshed [GOOGLE] OAuth token refreshed.")
                 return creds
             except Exception as exc:
                 self._init_error = f"OAuth token parse/refresh error: {exc}"
-                logger.error("[GOOGLE] %s", self._init_error)
+                logger.error("event=google [GOOGLE] %s", self._init_error)
                 return None
 
         self._init_error = (
             "No Google credentials configured. "
             "Set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_TOKEN_JSON."
         )
-        logger.warning("[GOOGLE] %s", self._init_error)
+        logger.warning("event=google [GOOGLE] %s", self._init_error)
         return None
 
 

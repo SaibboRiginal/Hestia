@@ -10,7 +10,7 @@ from google.genai import types
 _MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
 _RETRY_BASE_DELAY = float(os.getenv("LLM_RETRY_BASE_DELAY_SEC", "1.0"))
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class UniversalAgent:
@@ -27,7 +27,7 @@ class UniversalAgent:
             api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
             if not api_key:
                 logger.warning(
-                    "GEMINI_API_KEY missing for model '%s'; auto-fallback to Ollama.",
+                    "event=gemini_api_key_missing_model_auto_fallback GEMINI_API_KEY missing for model '%s'; auto-fallback to Ollama.",
                     self.model_name,
                 )
                 self.provider = "ollama"

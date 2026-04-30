@@ -80,7 +80,7 @@ def _flush(key: tuple) -> None:
 
     n = len(entry.entities)
     logger.info(
-        "[BATCH] Flushing %d entit%s | subscription=%s target=%s",
+        "event=batch_flushing_entit_subscription_target [BATCH] Flushing %d entit%s | subscription=%s target=%s",
         n,
         "y" if n == 1 else "ies",
         entry.subscription_id,
@@ -95,7 +95,7 @@ def _flush(key: tuple) -> None:
     )
     if ok:
         logger.info(
-            "[BATCH] Dispatched %d entit%s | subscription=%s target=%s",
+            "event=batch_dispatched_entit_subscription_target [BATCH] Dispatched %d entit%s | subscription=%s target=%s",
             n,
             "y" if n == 1 else "ies",
             entry.subscription_id,
@@ -103,7 +103,7 @@ def _flush(key: tuple) -> None:
         )
     else:
         logger.warning(
-            "[BATCH] Dispatch failed | subscription=%s target=%s detail=%s",
+            "event=batch_dispatch_failed_subscription_target [BATCH] Dispatch failed | subscription=%s target=%s detail=%s",
             entry.subscription_id,
             entry.channel_target,
             detail,
@@ -243,7 +243,7 @@ def enqueue_entity(
         queued_count = len(entry.entities)
 
     logger.info(
-        "[BATCH] Enqueued entity | subscription=%s target=%s queued=%d entity_id=%s",
+        "event=batch_enqueued_entity_subscription_target [BATCH] Enqueued entity | subscription=%s target=%s queued=%d entity_id=%s",
         subscription_id,
         channel_target,
         queued_count,

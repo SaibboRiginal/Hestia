@@ -10,7 +10,7 @@ from typing import Any
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _ROUTE_PREFIX = "/route/archive/"
 
@@ -60,7 +60,7 @@ class HubClient:
             return default if default is not None else []
         except Exception as exc:
             logger.debug(
-                "[HubClient] GET %s failed (non-fatal): %s", endpoint, exc)
+                "event=hubclient_get_failed_non_fatal [HubClient] GET %s failed (non-fatal): %s", endpoint, exc)
             return default if default is not None else []
 
     def post(self, endpoint: str, body: dict, timeout: int = 6):
@@ -100,7 +100,7 @@ class HubClient:
             if resp.status_code == 200:
                 return resp.json().get("commands") or []
         except Exception as exc:
-            logger.debug("[HubClient] get_commands failed: %s", exc)
+            logger.debug("event=hubclient_get_commands_failed [HubClient] get_commands failed: %s", exc)
         return []
 
     def route_to_service(
@@ -135,7 +135,7 @@ class HubClient:
             return True, routed.get("payload")
         except Exception as exc:
             logger.debug(
-                "[HubClient] route_to_service %s/%s failed: %s", service, path, exc)
+                "event=hubclient_route_to_service_failed [HubClient] route_to_service %s/%s failed: %s", service, path, exc)
             return False, str(exc)
 
     def get_history(self, session_id: str, limit: int = 200) -> list[dict]:
@@ -181,7 +181,7 @@ class HubClient:
             return out if isinstance(out, dict) else None
         except Exception as exc:
             logger.debug(
-                "[HubClient] append_interaction_ledger failed: %s", exc)
+                "event=hubclient_append_interaction_ledger_failed [HubClient] append_interaction_ledger failed: %s", exc)
             return None
 
     def create_feedback_record(
@@ -199,7 +199,7 @@ class HubClient:
             out = routed.get("payload")
             return out if isinstance(out, dict) else None
         except Exception as exc:
-            logger.debug("[HubClient] create_feedback_record failed: %s", exc)
+            logger.debug("event=hubclient_create_feedback_record_failed [HubClient] create_feedback_record failed: %s", exc)
             return None
 
     def list_feedback_records(

@@ -111,29 +111,29 @@ def register_on_hub(
             if resp.status_code < 400:
                 if quiet_success:
                     logger.debug(
-                        "[HUB] Registered | attempt=%s hub=%s base_url=%s",
+                        "event=hub_registered_attempt_hub_base_url [HUB] Registered | attempt=%s hub=%s base_url=%s",
                         attempt,
                         hub_api_url,
                         service_base_url,
                     )
                 else:
                     logger.info(
-                        "[HUB] Registered | attempt=%s hub=%s base_url=%s",
+                        "event=hub_registered_attempt_hub_base_url [HUB] Registered | attempt=%s hub=%s base_url=%s",
                         attempt,
                         hub_api_url,
                         service_base_url,
                     )
                 return
             logger.warning(
-                "[HUB] Registration returned non-success | attempt=%s status=%s",
+                "event=hub_registration_returned_non_success [HUB] Registration returned non-success | attempt=%s status=%s",
                 attempt,
                 resp.status_code,
             )
         except Exception as exc:
             logger.warning(
-                "[HUB] Registration attempt %s failed: %s", attempt, exc)
+                "event=hub_registration_attempt_failed [HUB] Registration attempt %s failed: %s", attempt, exc)
 
         if attempt < max_attempts:
             time.sleep(retry_delay)
 
-    logger.error("[HUB] All %s registration attempts failed.", max_attempts)
+    logger.error("event=hub_all_registration_attempts_failed [HUB] All %s registration attempts failed.", max_attempts)

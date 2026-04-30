@@ -51,7 +51,7 @@ def _notify_registry_change(reason: str):
         try:
             requests.post(endpoint, json=payload, timeout=notify_timeout)
         except requests.RequestException:
-            logger.debug("Registry notify failed | endpoint=%s", endpoint)
+            logger.debug("event=registry_notify_failed_endpoint Registry notify failed | endpoint=%s", endpoint)
 
 
 def _bump_registry_revision(reason: str):
@@ -73,7 +73,7 @@ def register_service(req: RegisterServiceRequest):
     service = req.model_dump()
     registry.register(service)
     _bump_registry_revision(reason="register")
-    logger.info("Service registered | name=%s base_url=%s",
+    logger.info("event=service_registered_name_base_url Service registered | name=%s base_url=%s",
                 req.name, req.base_url)
     return {"status": "ok"}
 
@@ -82,7 +82,7 @@ def register_service(req: RegisterServiceRequest):
 def deregister_service(req: DeregisterServiceRequest):
     registry.deregister(req.name, req.base_url)
     _bump_registry_revision(reason="deregister")
-    logger.info("Service deregistered | name=%s base_url=%s",
+    logger.info("event=service_deregistered_name_base_url Service deregistered | name=%s base_url=%s",
                 req.name, req.base_url)
     return {"status": "ok"}
 

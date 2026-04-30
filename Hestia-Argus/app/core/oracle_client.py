@@ -13,7 +13,7 @@ import os
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 ORACLE_URL = os.getenv(
     "ORACLE_API_URL", "http://hestia_oracle:19004/api/chat"
@@ -64,5 +64,5 @@ def analyze(prompt: str, context: str = "") -> str:
                 continue
         return ""
     except Exception as exc:
-        logger.warning("Oracle analysis call failed: %s", exc)
+        logger.warning("event=oracle_analysis_call_failed Oracle analysis call failed: %s", exc)
         return ""

@@ -91,16 +91,16 @@ def run():
 
     ok = register_telegram_service()
     if ok:
-        logger.info("Telegram service registered on Hub")
+        logger.info("event=telegram_service_registered_hub Telegram service registered on Hub")
     else:
         logger.warning(
-            "Telegram Hub registration failed (will retry on webhook)")
+            "event=telegram_hub_registration_failed_will Telegram Hub registration failed (will retry on webhook)")
     refresh_command_registry(force=True)
     logger.info(
-        "Command registry update mode=push (webhook-only after initial sync)"
+        "event=command_registry_update_mode_push Command registry update mode=push (webhook-only after initial sync)"
     )
 
-    logger.info("Telegram interface starting — waiting for messages")
+    logger.info("event=telegram_interface_starting_waiting_messages Telegram interface starting — waiting for messages")
     bot.infinity_polling()
 
 

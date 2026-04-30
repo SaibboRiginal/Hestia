@@ -122,7 +122,7 @@ def route_service_command(
         )
         if response.status_code != 200:
             logger.warning(
-                "Route envelope request failed | service=%s method=%s path=%s status=%s",
+                "event=route_envelope_request_failed_service Route envelope request failed | service=%s method=%s path=%s status=%s",
                 service,
                 method,
                 normalized_path,
@@ -135,7 +135,7 @@ def route_service_command(
         payload = routed.get("payload")
         if status_code >= 400:
             logger.warning(
-                "Routed service returned error | service=%s method=%s path=%s status=%s",
+                "event=routed_service_returned_error_service Routed service returned error | service=%s method=%s path=%s status=%s",
                 service,
                 method,
                 normalized_path,
@@ -145,7 +145,7 @@ def route_service_command(
         return True, payload
     except Exception as error:
         logger.warning(
-            "Route exception | service=%s method=%s path=%s error=%s",
+            "event=route_exception_service_method_path Route exception | service=%s method=%s path=%s error=%s",
             service,
             method,
             normalized_path,

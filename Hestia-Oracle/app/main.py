@@ -49,13 +49,13 @@ def register_on_hub_startup():
         resp = requests.post(
             f"{hub_api_url}/registry/register", json=payload, timeout=4)
         if resp.status_code < 400:
-            logger.info("Registered on Hub | hub=%s base_url=%s",
+            logger.info("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
                         hub_api_url, service_base_url)
         else:
-            logger.warning("Hub registration non-success | status=%s body=%s",
+            logger.warning("event=hub_registration_non_success_status Hub registration non-success | status=%s body=%s",
                            resp.status_code, resp.text[:200])
     except Exception as exc:
-        logger.warning("Hub registration failed (non-fatal): %s", exc)
+        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", exc)
 
 
 class ChatRequest(BaseModel):
@@ -171,7 +171,7 @@ def chat_endpoint(req: ChatRequest):
         )
     except Exception as e:
         logger.exception(
-            "Unhandled error in chat endpoint | session=%s", req.session_id)
+            "event=unhandled_error_chat_endpoint_session Unhandled error in chat endpoint | session=%s", req.session_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -257,7 +257,7 @@ async def chat_document_endpoint(
             media_type="application/x-ndjson",
         )
     except Exception as exc:
-        logger.exception("Unhandled error in document endpoint")
+        logger.exception("event=unhandled_error_document_endpoint Unhandled error in document endpoint")
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -275,7 +275,7 @@ def format_endpoint(req: FormatRequest):
         )
         return {"text": text}
     except Exception as e:
-        logger.exception("Unhandled error in format endpoint")
+        logger.exception("event=unhandled_error_format_endpoint Unhandled error in format endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -289,7 +289,7 @@ def compile_subscription_endpoint(req: NotificationCompileRequest):
         )
         return result
     except Exception as e:
-        logger.exception("Unhandled error in compile endpoint")
+        logger.exception("event=unhandled_error_compile_endpoint Unhandled error in compile endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -311,7 +311,7 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Unhandled error in question-answer endpoint")
+        logger.exception("event=unhandled_error_question_answer_endpoint Unhandled error in question-answer endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -321,7 +321,7 @@ def get_user_controls_endpoint():
     try:
         return {"controls": engine.get_user_controls()}
     except Exception as e:
-        logger.exception("Unhandled error in get user controls endpoint")
+        logger.exception("event=unhandled_error_get_user_controls Unhandled error in get user controls endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -335,7 +335,7 @@ def update_user_controls_endpoint(req: UserControlsPatch):
         )
         return {"updated": bool(saved), "controls": controls}
     except Exception as e:
-        logger.exception("Unhandled error in update user controls endpoint")
+        logger.exception("event=unhandled_error_update_user_controls Unhandled error in update user controls endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -363,7 +363,7 @@ def create_feedback_endpoint(req: FeedbackRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Unhandled error in feedback endpoint")
+        logger.exception("event=unhandled_error_feedback_endpoint Unhandled error in feedback endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -384,7 +384,7 @@ def list_feedback_endpoint(
         )
         return {"count": len(rows), "feedback": rows}
     except Exception as e:
-        logger.exception("Unhandled error in list feedback endpoint")
+        logger.exception("event=unhandled_error_list_feedback_endpoint Unhandled error in list feedback endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -405,7 +405,7 @@ def export_feedback_jsonl_endpoint(
         )
         return Response(content=jsonl_payload, media_type="application/x-ndjson")
     except Exception as e:
-        logger.exception("Unhandled error in feedback export endpoint")
+        logger.exception("event=unhandled_error_feedback_export_endpoint Unhandled error in feedback export endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -438,7 +438,7 @@ def llm_generate_endpoint(req: dict):
 
         return {"response": response_text, "model": model, "provider": provider}
     except Exception as e:
-        logger.exception("Unhandled error in llm/generate endpoint")
+        logger.exception("event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -449,5 +449,5 @@ def clear_chat_endpoint(session_id: str):
         return {"status": "cleared", "session_id": session_id}
     except Exception as e:
         logger.exception(
-            "Unhandled error clearing chat history | session_id=%s", session_id)
+            "event=unhandled_error_clearing_chat_history Unhandled error clearing chat history | session_id=%s", session_id)
         raise HTTPException(status_code=500, detail=str(e))

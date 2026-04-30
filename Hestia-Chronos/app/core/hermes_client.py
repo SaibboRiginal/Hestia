@@ -36,14 +36,14 @@ def publish_event(domain: str, event_type: str, entity_id: str, payload: dict[st
         if resp.status_code < 300:
             result = (resp.json() if resp.content else {}).get("result", {})
             logger.info(
-                "[HERMES] Event published domain=%s event=%s deliveries=%s",
+                "event=hermes_event_published_domain_event [HERMES] Event published domain=%s event=%s deliveries=%s",
                 domain, event_type, result.get("deliveries", 0),
             )
             return True
-        logger.warning("[HERMES] Event publish status=%s body=%s",
+        logger.warning("event=hermes_event_publish_status_body [HERMES] Event publish status=%s body=%s",
                        resp.status_code, resp.text[:200])
     except Exception as exc:
-        logger.warning("[HERMES] publish_event error: %s", exc)
+        logger.warning("event=hermes_publish_event_error [HERMES] publish_event error: %s", exc)
     return False
 
 
@@ -52,7 +52,7 @@ def send_message(text: str, chat_id: Optional[str] = None) -> bool:
     target = chat_id or _NOTIFY_TARGET
     if not target:
         logger.warning(
-            "[HERMES] No NOTIFY_TARGET configured — skipping notification")
+            "event=hermes_notify_target_configured_skipping_notification [HERMES] No NOTIFY_TARGET configured — skipping notification")
         return False
 
     payload: dict[str, Any] = {
@@ -71,10 +71,10 @@ def send_message(text: str, chat_id: Optional[str] = None) -> bool:
         if data.get("success", False) or resp.status_code < 300:
             return True
         logger.warning(
-            "[HERMES] Dispatch returned non-success status=%s body=%s",
+            "event=hermes_dispatch_returned_non_success [HERMES] Dispatch returned non-success status=%s body=%s",
             resp.status_code,
             resp.text[:200],
         )
     except Exception as exc:
-        logger.warning("[HERMES] send_message error: %s", exc)
+        logger.warning("event=hermes_send_message_error [HERMES] send_message error: %s", exc)
     return False

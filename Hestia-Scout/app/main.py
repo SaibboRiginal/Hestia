@@ -152,7 +152,7 @@ def _start_tools_api():
 
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
-    logger.info("Scout tools API online at 0.0.0.0:%d", port)
+    logger.info("event=scout_tools_api_online Scout tools API online at 0.0.0.0:%d", port)
 
 
 def _register_with_hub(port: int):
@@ -192,10 +192,10 @@ def _register_with_hub(port: int):
     try:
         requests.post(f"{hub_api_url}/registry/register",
                       json=payload, timeout=4)
-        logger.debug("Registered on Hub | hub=%s base_url=%s",
+        logger.debug("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
                      hub_api_url, service_base_url)
     except Exception as error:
-        logger.warning("Hub registration failed (non-fatal): %s", error)
+        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
 
 
 if __name__ == "__main__":
@@ -229,7 +229,7 @@ if __name__ == "__main__":
             try:
                 _register_with_hub(tools_port)
             except Exception as error:
-                logger.warning("Hub keepalive registration failed: %s", error)
+                logger.warning("event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 
@@ -239,8 +239,8 @@ if __name__ == "__main__":
         try:
             worker.run_cycle()
         except Exception as error:
-            logger.error("Critical error in Scout polling loop: %s", error)
+            logger.error("event=critical_error_scout_polling_loop Critical error in Scout polling loop: %s", error)
 
         logger.info(
-            "Scout resting for %d seconds before next cycle", poll_interval)
+            "event=scout_resting_seconds_before_next Scout resting for %d seconds before next cycle", poll_interval)
         time.sleep(poll_interval)

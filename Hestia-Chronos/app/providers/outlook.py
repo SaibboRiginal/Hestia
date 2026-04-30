@@ -67,7 +67,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
         body = _build_outlook_event_body(event)
         resp = self._post(url, body)
         event_id: str = resp.get("id", "")
-        logger.info("[OUTLOOK] Created event id=%s title=%s",
+        logger.info("event=outlook_created_event_id_title [OUTLOOK] Created event id=%s title=%s",
                     event_id, event.title)
         return event_id
 
@@ -100,7 +100,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             if resp.status_code == 404:
                 return False
             resp.raise_for_status()
-            logger.info("[OUTLOOK] Deleted event id=%s", event_id)
+            logger.info("event=outlook_deleted_event_id [OUTLOOK] Deleted event id=%s", event_id)
             return True
         except Exception as exc:
             raise RuntimeError(f"Outlook delete failed: {exc}") from exc
@@ -114,7 +114,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             url, json=patch, headers=self._auth_headers(), timeout=10
         )
         resp.raise_for_status()
-        logger.info("[OUTLOOK] Updated event id=%s fields=%s",
+        logger.info("event=outlook_updated_event_id_fields [OUTLOOK] Updated event id=%s fields=%s",
                     event_id, list(updates.keys()))
         return True
 
@@ -125,7 +125,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
     def _setup(self) -> None:
         if not _OUTLOOK_LIBS_AVAILABLE:
             self._init_error = "msal and requests not installed"
-            logger.warning("[OUTLOOK] %s", self._init_error)
+            logger.warning("event=outlook [OUTLOOK] %s", self._init_error)
             return
 
         client_id = os.getenv("OUTLOOK_CLIENT_ID", "").strip()
@@ -135,7 +135,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             self._init_error = (
                 "OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set."
             )
-            logger.warning("[OUTLOOK] %s", self._init_error)
+            logger.warning("event=outlook [OUTLOOK] %s", self._init_error)
             return
 
         # Try delegated flow first (refresh token)
@@ -155,7 +155,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
                 "Provide OUTLOOK_REFRESH_TOKEN (personal/delegated) or "
                 "OUTLOOK_CLIENT_SECRET (application flow)."
             )
-            logger.warning("[OUTLOOK] %s", self._init_error)
+            logger.warning("event=outlook [OUTLOOK] %s", self._init_error)
 
     def _acquire_token_by_refresh(
         self, client_id: str, tenant_id: str, client_secret: str, refresh_token: str
@@ -166,10 +166,10 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             refresh_token, scopes=_SCOPE_CALENDAR
         )
         if "access_token" in result:
-            logger.info("[OUTLOOK] Token acquired via refresh token.")
+            logger.info("event=outlook_token_acquired_refresh_token [OUTLOOK] Token acquired via refresh token.")
             return result["access_token"]
         self._init_error = f"Token refresh failed: {result.get('error_description')}"
-        logger.error("[OUTLOOK] %s", self._init_error)
+        logger.error("event=outlook [OUTLOOK] %s", self._init_error)
         return None
 
     def _acquire_token_client_credentials(
@@ -183,10 +183,10 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             scopes=["https://graph.microsoft.com/.default"]
         )
         if "access_token" in result:
-            logger.info("[OUTLOOK] Token acquired via client credentials.")
+            logger.info("event=outlook_token_acquired_client_credentials [OUTLOOK] Token acquired via client credentials.")
             return result["access_token"]
         self._init_error = f"Client credentials failed: {result.get('error_description')}"
-        logger.error("[OUTLOOK] %s", self._init_error)
+        logger.error("event=outlook [OUTLOOK] %s", self._init_error)
         return None
 
     def _auth_headers(self) -> dict:

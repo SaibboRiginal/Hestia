@@ -175,7 +175,7 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
         return
 
     LOGGER.debug(
-        "send_user_message | chat_id=%s parts=%d parse_mode=%s",
+        "event=send_user_message_chat_id_parts_parse_mode send_user_message | chat_id=%s parts=%d parse_mode=%s",
         chat_id,
         len(messages),
         normalized_parse_mode,
@@ -253,4 +253,4 @@ def flush_buffered_alerts(chat_id: str):
     try:
         send_user_message(chat_id, message, parse_mode="HTML")
     except Exception as e:
-        LOGGER.warning("Failed to send buffered alert message: %s", e)
+        LOGGER.warning("event=failed_send_buffered_alert_message Failed to send buffered alert message: %s", e)

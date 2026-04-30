@@ -24,7 +24,7 @@ from core.services.memory_parsers import (
     parse_subscription_actions,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _PREF_PROMPT_TEMPLATE = """
 You are Hestia's enterprise Memory Manager.
@@ -152,7 +152,7 @@ class MemoryService:
             return None
         except Exception as exc:
             logger.debug(
-                "[MemoryService] _route_archive %s %s failed: %s", method, endpoint, exc)
+                "event=memoryservice_failed [MemoryService] _route_archive %s %s failed: %s", method, endpoint, exc)
             return None
 
     def _api_get(self, endpoint: str, default_val=None):
@@ -397,7 +397,7 @@ class MemoryService:
                     pref_actions, prefs_by_id))
             except Exception as exc:
                 logger.warning(
-                    "[MemoryService] save preferences failed: %s", exc)
+                    "event=memoryservice_save_preferences_failed [MemoryService] save preferences failed: %s", exc)
 
         if not should_extract_subs:
             return signals
@@ -432,6 +432,6 @@ class MemoryService:
                 subscriptions, existing_map, session_id))
         except Exception as exc:
             logger.warning(
-                "[MemoryService] save subscriptions failed: %s", exc)
+                "event=memoryservice_save_subscriptions_failed [MemoryService] save subscriptions failed: %s", exc)
 
         return signals

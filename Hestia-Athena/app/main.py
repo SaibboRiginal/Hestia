@@ -150,7 +150,7 @@ class AthenaRuntime:
             self._last_error = None
 
         logger.info(
-            "Focus brief emitted | brief_id=%s score=%.3f threshold=%.3f",
+            "event=focus_brief_emitted_brief_id_score Focus brief emitted | brief_id=%s score=%.3f threshold=%.3f",
             brief["brief_id"],
             score,
             threshold,
@@ -168,7 +168,7 @@ class AthenaRuntime:
 
         if score < self.emit_threshold:
             logger.info(
-                "Focus brief skipped by relevance gate | score=%.3f threshold=%.3f",
+                "event=focus_brief_skipped_relevance_gate Focus brief skipped by relevance gate | score=%.3f threshold=%.3f",
                 score,
                 self.emit_threshold,
             )
@@ -185,11 +185,11 @@ class AthenaRuntime:
         except Exception as error:
             with self._lock:
                 self._last_error = str(error)
-            logger.warning("Hermes emit failed: %s", error)
+            logger.warning("event=hermes_emit_failed Hermes emit failed: %s", error)
 
     def _loop(self) -> None:
         logger.info(
-            "Athena loop started | interval_seconds=%s threshold=%.3f",
+            "event=athena_loop_started_interval_seconds_threshold Athena loop started | interval_seconds=%s threshold=%.3f",
             self.interval_seconds,
             self.emit_threshold,
         )
@@ -199,7 +199,7 @@ class AthenaRuntime:
 
     def start(self) -> None:
         if not self.loop_enabled:
-            logger.info("Athena loop disabled via ATHENA_LOOP_ENABLED=0")
+            logger.info("event=athena_loop_disabled_athena_loop_enabled Athena loop disabled via ATHENA_LOOP_ENABLED=0")
             return
         if self._thread and self._thread.is_alive():
             return
@@ -257,7 +257,7 @@ class AthenaRuntime:
                 }
         else:
             logger.info(
-                "Manual brief skipped by relevance gate | score=%.3f threshold=%.3f",
+                "event=manual_brief_skipped_relevance_gate Manual brief skipped by relevance gate | score=%.3f threshold=%.3f",
                 score,
                 self.emit_threshold,
             )
@@ -299,10 +299,10 @@ app = FastAPI(title="Hestia Athena", version=SERVICE_VERSION)
 def startup() -> None:
     try:
         service.register_to_hub(timeout_seconds=4)
-        logger.info("Registered on Hub | name=%s base_url=%s",
+        logger.info("event=registered_hub_name_base_url Registered on Hub | name=%s base_url=%s",
                     SERVICE_NAME, SERVICE_BASE_URL)
     except Exception as error:
-        logger.warning("Hub registration failed (non-fatal): %s", error)
+        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
     runtime.start()
 
 

@@ -40,9 +40,9 @@ class OutlookFetcher(BaseFetcher):
             if resp.status_code < 300:
                 return True
             logger.warning(
-                "[OUTLOOK] Chronos health check failed status=%s", resp.status_code)
+                "event=outlook_chronos_health_check_failed [OUTLOOK] Chronos health check failed status=%s", resp.status_code)
         except Exception as exc:
-            logger.warning("[OUTLOOK] Cannot reach Chronos: %s", exc)
+            logger.warning("event=outlook_cannot_reach_chronos [OUTLOOK] Cannot reach Chronos: %s", exc)
         return False
 
     def fetch_new_data(self, since_date: datetime, custom_filter: str = "primary") -> list[dict[str, Any]]:
@@ -74,7 +74,7 @@ class OutlookFetcher(BaseFetcher):
             )
             resp.raise_for_status()
         except Exception as exc:
-            logger.error("[OUTLOOK] list_events call failed: %s", exc)
+            logger.error("event=outlook_list_events_call_failed [OUTLOOK] list_events call failed: %s", exc)
             return []
 
         data = resp.json()

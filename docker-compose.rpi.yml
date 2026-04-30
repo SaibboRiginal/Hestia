@@ -8,6 +8,7 @@ services:
       - "19001:19001"
     environment:
       - HUB_HEALTHCHECK_TIMEOUT=3
+      - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1
     networks:
       - hestia_net
@@ -23,6 +24,7 @@ services:
       - DATABASE_URL=${ARCHIVE_DATABASE_URL}
       - HUB_API_URL=http://hestia_hub:19001/api
       - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:19002
+      - LOG_HEALTH_ACCESS_MODE=off
     depends_on:
       hub:
         condition: service_started
@@ -42,6 +44,7 @@ services:
       - HUB_API_URL=http://hestia_hub:19001/api
       - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
       - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
+      - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Ingest/data:/code/data
@@ -68,6 +71,7 @@ services:
       - ARCHIVE_API_URL=http://hestia_archive:19002/api
       - MODULE_TOOLS_URL=
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate
+      - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -88,6 +92,7 @@ services:
       - HUB_API_URL=http://hestia_hub:19001/api
       - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005
       - ARCHIVE_API_URL=http://hestia_archive:19002/api
+      - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1
     depends_on:
       hub:
@@ -107,6 +112,7 @@ services:
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
       - ORACLE_API_URL=http://hestia_oracle:19004/api/chat
+      - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Telegram/data:/code/data

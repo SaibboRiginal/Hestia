@@ -34,10 +34,10 @@ class ArchiveClient:
                 timeout=_ROUTE_TIMEOUT + 2,
             )
         except Exception as exc:
-            logger.warning("Hub route request failed: %s", exc)
+            logger.warning("event=hub_route_request_failed Hub route request failed: %s", exc)
             return False
         if response.status_code != 200:
-            logger.warning("Hub returned non-200 | status=%s",
+            logger.warning("event=hub_returned_non_status Hub returned non-200 | status=%s",
                            response.status_code)
             return False
         routed = response.json() or {}
@@ -56,20 +56,20 @@ class ArchiveClient:
         try:
             if self._route_archive(data):
                 logger.debug(
-                    "Record shipped via Hub | domain=%s source=%s", domain, source)
+                    "event=record_shipped_hub_domain_source Record shipped via Hub | domain=%s source=%s", domain, source)
                 return True
 
             response = requests.post(self.api_url, json=data)
             if response.status_code == 200:
                 logger.debug(
-                    "Record shipped via direct URL | domain=%s source=%s", domain, source)
+                    "event=record_shipped_direct_url_domain Record shipped via direct URL | domain=%s source=%s", domain, source)
                 return True
-            logger.warning("Archive rejected record | domain=%s source=%s status=%s",
+            logger.warning("event=archive_rejected_record_domain_source Archive rejected record | domain=%s source=%s status=%s",
                            domain, source, response.text[:200])
             return False
         except Exception as e:
             logger.error(
-                "Failed to ship to Vault | domain=%s source=%s error=%s", domain, source, e)
+                "event=failed_ship_vault_domain_source Failed to ship to Vault | domain=%s source=%s error=%s", domain, source, e)
             return False
 
     def ship_calendar_item(self, item: dict[str, Any]) -> bool:
@@ -87,13 +87,13 @@ class ArchiveClient:
                 timeout=_CALENDAR_TIMEOUT,
             )
             if resp.status_code < 300:
-                logger.debug("Calendar item archived | title=%s",
+                logger.debug("event=calendar_item_archived_title Calendar item archived | title=%s",
                              item.get('title', '?'))
                 return True
-            logger.warning("Archive rejected calendar item | title=%s status=%s body=%s",
+            logger.warning("event=archive_rejected_calendar_item_title Archive rejected calendar item | title=%s status=%s body=%s",
                            item.get('title', '?'), resp.status_code, resp.text[:200])
             return False
         except Exception as exc:
-            logger.error("Failed to archive calendar item | title=%s error=%s", item.get(
+            logger.error("event=failed_archive_calendar_item_title Failed to archive calendar item | title=%s error=%s", item.get(
                 'title', '?'), exc)
             return False

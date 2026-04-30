@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Any
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Compaction thresholds ─────────────────────────────────────────────────────
 # Trigger background compaction when history exceeds this many messages.
@@ -234,7 +234,7 @@ class ContextBuilder:
             try:
                 summary_text = scribe_agent.ask(compaction_prompt).strip()
             except Exception as exc:
-                logger.warning("Compaction scribe call failed: %s", exc)
+                logger.warning("event=compaction_scribe_call_failed Compaction scribe call failed: %s", exc)
                 return False
 
         # Persist snapshot via Hub (replaces old turns with summary)
@@ -268,12 +268,12 @@ class ContextBuilder:
                 })
 
             logger.info(
-                "Context compacted | session=%s old=%d protected=%d summary_len=%d recent=%d",
+                "event=context_compacted_session_old_protected Context compacted | session=%s old=%d protected=%d summary_len=%d recent=%d",
                 session_id, len(old_segment), len(protected), len(
                     summary_text), len(recent_segment),
             )
             return True
 
         except Exception as exc:
-            logger.warning("Compaction persistence failed: %s", exc)
+            logger.warning("event=compaction_persistence_failed Compaction persistence failed: %s", exc)
             return False

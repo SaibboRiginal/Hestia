@@ -94,36 +94,48 @@ class ScoutWorker:
                 timeout=8,
             )
             if response.status_code != 200:
-                logger.info(
-                    f"[!] Hermes route call failed via Hub | entity_id={entity_id} status={response.status_code} body={response.text[:250]}"
+                logger.warning(
+                    "event=hermes_route_call_failed_hub Hermes route call failed via Hub | entity_id=%s status=%s body=%s",
+                    entity_id,
+                    response.status_code,
+                    response.text[:250],
                 )
                 return False
 
             routed = response.json() or {}
             routed_status = int(routed.get("status_code", 500) or 500)
             if routed_status >= 400:
-                logger.info(
-                    f"[!] Hermes rejected event via Hub | entity_id={entity_id} routed_status={routed_status} target={routed.get('target')} payload={str(routed.get('payload'))[:250]}"
+                logger.warning(
+                    "event=hermes_rejected_event_hub Hermes rejected event via Hub | entity_id=%s routed_status=%s target=%s payload=%s",
+                    entity_id,
+                    routed_status,
+                    routed.get("target"),
+                    str(routed.get("payload"))[:250],
                 )
                 return False
 
             logger.info(
-                f"[✓] Hermes event published via Hub | entity_id={entity_id} target={routed.get('target')}"
+                "event=hermes_event_published_hub Hermes event published via Hub | entity_id=%s target=%s",
+                entity_id,
+                routed.get("target"),
             )
             return True
         except Exception as error:
-            logger.info(
-                f"[!] Failed publishing event to Hermes via Hub: {error}")
+            logger.warning(
+                "event=failed_publishing_event_hermes_hub Failed publishing event to Hermes via Hub | error=%s",
+                error,
+            )
             return False
 
     def reconcile_entities(self):
         logger.info(
-            "\n[🧹] Scout reconciliation: checking existing entities for missing geo/date/url...")
+            "event=scout_reconciliation_checking_existing_entities \n[🧹] Scout reconciliation: checking existing entities for missing geo/date/url...")
 
         records = self.vault.get_entity_records(
             domain=self.target_domain, status="active", limit=2000)
         if not records:
-            logger.info("[🧹] No active entities found for reconciliation.")
+            logger.info(
+                "event=active_entities_found_reconciliation [🧹] No active entities found for reconciliation.")
             return
 
         enriched = 0
@@ -158,7 +170,9 @@ class ScoutWorker:
                 enriched += 1
 
         logger.info(
-            f"[🧹] Reconciliation geo enrichment complete: {enriched} entities updated.")
+            "event=reconciliation_geo_enrichment_complete_entities Reconciliation geo enrichment complete | enriched=%s",
+            enriched,
+        )
 
         # ── Listing enrichment retry ───────────────────────────────────────────
         # Any entity with pending_steps.listing_content_enrichment=true
@@ -181,7 +195,9 @@ class ScoutWorker:
                     continue
 
                 logger.info(
-                    f"[🔄] Retrying listing enrichment for {entity_id}...")
+                    "event=retrying_listing_enrichment Retrying listing enrichment | entity_id=%s",
+                    entity_id,
+                )
                 enriched_payload = enrich_payload_from_listing(payload)
                 if self._is_step_pending(
                     enriched_payload,
@@ -207,12 +223,15 @@ class ScoutWorker:
                 if self.vault.upsert_entity(upsert_payload):
                     enrichment_retried += 1
                     logger.info(
-                        f"[🔄] Listing enrichment succeeded: {entity_id}")
+                        "event=listing_enrichment_succeeded Listing enrichment succeeded | entity_id=%s",
+                        entity_id,
+                    )
 
             if enrichment_retried or enrichment_failed_again:
                 logger.info(
-                    f"[🔄] Listing enrichment retry complete: {enrichment_retried} succeeded, "
-                    f"{enrichment_failed_again} still pending."
+                    "event=listing_enrichment_retry_complete Listing enrichment retry complete | succeeded=%s pending=%s",
+                    enrichment_retried,
+                    enrichment_failed_again,
                 )
 
         # ── Notification retry ──────────────────────────────────────────────────
@@ -222,7 +241,8 @@ class ScoutWorker:
         # and notify Hermes for any that are still pending.
         # We intentionally notify even if enrichment is still pending — the user
         # deserves to know about the entity even with partial data.
-        logger.info("[🔔] Checking for entities pending Hermes notification...")
+        logger.info(
+            "event=checking_entities_pending_hermes_notification [🔔] Checking for entities pending Hermes notification...")
         fresh_records = self.vault.get_entity_records(
             domain=self.target_domain, status="active", limit=2000)
         hermes_retried = 0
@@ -240,7 +260,10 @@ class ScoutWorker:
             ):
                 continue  # Not pending; skip
 
-            logger.info(f"[🔔] Retrying Hermes notification for {entity_id}...")
+            logger.info(
+                "event=retrying_hermes_notification Retrying Hermes notification | entity_id=%s",
+                entity_id,
+            )
             ok = self._publish_entity_event(entity_id, payload)
             if ok:
                 # Clear the pending flag in archive
@@ -257,14 +280,18 @@ class ScoutWorker:
                     "payload": notified_payload,
                 })
                 hermes_retried += 1
-                logger.info(f"[🔔] Hermes notification sent: {entity_id}")
+                logger.info(
+                    "event=hermes_notification_sent Hermes notification sent | entity_id=%s",
+                    entity_id,
+                )
             else:
                 hermes_still_pending += 1
 
         if hermes_retried or hermes_still_pending:
             logger.info(
-                f"[🔔] Hermes retry complete: {hermes_retried} notified, "
-                f"{hermes_still_pending} still pending (Hermes/Hub likely still down)."
+                "event=hermes_retry_complete Hermes retry complete | notified=%s pending=%s",
+                hermes_retried,
+                hermes_still_pending,
             )
 
         cleanup_result = self.vault.cleanup_entities(
@@ -275,7 +302,10 @@ class ScoutWorker:
         )
         if cleanup_result:
             logger.info(
-                f"[🧹] Cleanup complete: scanned={cleanup_result.get('scanned', 0)} deleted={cleanup_result.get('deleted', 0)}")
+                "event=cleanup_complete_scanned_deleted Cleanup complete | scanned=%s deleted=%s",
+                cleanup_result.get("scanned", 0),
+                cleanup_result.get("deleted", 0),
+            )
 
     def _trigger_fetch_for_filter(self, filter_query: str) -> int:
         command = {
@@ -302,30 +332,44 @@ class ScoutWorker:
                 if status_code < 400:
                     fetched = int(payload.get("fetched", 0) or 0)
                     logger.info(
-                        f"[✓] Gateway fetched {fetched} matching items.")
+                        "event=gateway_fetched_matching_items Gateway fetched matching items | fetched=%s",
+                        fetched,
+                    )
                     return fetched
 
-            logger.info(
-                f"[!] Gateway error via Hub: {response.text if response.status_code != 200 else routed.get('payload')}")
+            logger.warning(
+                "event=gateway_error_hub Gateway error via Hub | status_code=%s detail=%s",
+                response.status_code,
+                response.text if response.status_code != 200 else routed.get(
+                    "payload"),
+            )
             return 0
         except Exception as error:
-            logger.info(f"[-] Could not reach Gateway via Hub: {error}")
+            logger.warning(
+                "event=could_not_reach_gateway_hub Could not reach Gateway via Hub | error=%s",
+                error,
+            )
             return 0
 
     def command_gateway_to_fetch(self):
         if not self.target_filters:
             logger.info(
-                "\n[⚠] No target filters configured for Scout ingestion.")
+                "event=target_filters_configured_scout_ingestion \n[⚠] No target filters configured for Scout ingestion.")
             return
 
         total_fetched = 0
         for filter_query in self.target_filters:
             logger.info(
-                f"\n[⚡] Commanding Gateway to fetch: {filter_query}...")
+                "event=commanding_gateway_fetch Commanding Gateway fetch | filter_query=%s",
+                filter_query,
+            )
             total_fetched += self._trigger_fetch_for_filter(filter_query)
 
         logger.info(
-            f"[✓] Gateway fetch round complete across {len(self.target_filters)} filter(s). Total fetched: {total_fetched}")
+            "event=gateway_fetch_round_complete Gateway fetch round complete | filters=%s total_fetched=%s",
+            len(self.target_filters),
+            total_fetched,
+        )
 
     def run_cycle(self):
         """Main work cycle for the Scout worker.
@@ -342,7 +386,8 @@ class ScoutWorker:
            (deduplicated) + unclassified records (no detected URLs).
         8. Mark all email records as parsed.
         """
-        logger.info("=== Hestia-Scout: Activating Parser & Extractor ===")
+        logger.info(
+            "event=hestia_scout_activating_parser_extractor === Hestia-Scout: Activating Parser & Extractor ===")
         self._cycle_counter += 1
 
         if self.reconcile_every_cycles > 0 and self._cycle_counter % self.reconcile_every_cycles == 0:
@@ -351,52 +396,62 @@ class ScoutWorker:
         self.command_gateway_to_fetch()
 
         # ── 1. Fetch emails ──────────────────────────────────────────
-        logger.info("\n[*] Checking Vault for unread emails...")
+        logger.info(
+            "event=checking_vault_unread_emails \n[*] Checking Vault for unread emails...")
         pending_records = self.vault.get_unevaluated(domain=self.target_domain)
         if not pending_records:
-            logger.info("[*] No new emails found. Going back to sleep.")
+            logger.info(
+                "event=new_emails_found_going_back [*] No new emails found. Going back to sleep.")
             return
 
         if len(pending_records) < max(1, self.min_batch_size):
             logger.info(
-                f"[*] Only {len(pending_records)} emails found. "
-                f"Waiting for minimum batch size {self.min_batch_size}."
+                "event=only_emails_found Waiting for minimum batch size | emails_found=%s min_batch_size=%s",
+                len(pending_records),
+                self.min_batch_size,
             )
             return
 
         if self.batch_debounce_seconds > 0:
             logger.info(
-                f"[*] Debounce window active ({self.batch_debounce_seconds}s) "
-                "to accumulate near-simultaneous emails."
+                "event=debounce_window_active Debounce window active | seconds=%s",
+                self.batch_debounce_seconds,
             )
             time.sleep(self.batch_debounce_seconds)
             pending_records = self.vault.get_unevaluated(
                 domain=self.target_domain)
             if not pending_records:
-                logger.info("[*] No pending records after debounce.")
+                logger.info(
+                    "event=pending_records_after_debounce [*] No pending records after debounce.")
                 return
 
         logger.info(
-            f"[*] Found {len(pending_records)} unread emails to process.\n")
+            "event=found_unread_emails_process Found unread emails to process | count=%s",
+            len(pending_records),
+        )
 
         # ── 2. Pre-parse: extract URLs from all emails without LLM ───
         logger.info(
-            "[PRE-PARSE] Extracting listing URLs from all emails (no LLM)...")
+            "event=pre_parse_extracting_listing_urls [PRE-PARSE] Extracting listing URLs from all emails (no LLM)...")
         parsed = pre_parse_records(pending_records)
 
         total_unique_urls = len(parsed.url_to_record_ids)
         logger.info(
-            f"[PRE-PARSE] Found {total_unique_urls} unique listing URLs across "
-            f"{len(pending_records)} emails. "
-            f"{len(parsed.unclassified_record_ids)} email(s) had no detectable links."
+            "event=pre_parse_found_unique_listing Pre-parse URL summary | unique_urls=%s emails=%s unclassified=%s",
+            total_unique_urls,
+            len(pending_records),
+            len(parsed.unclassified_record_ids),
         )
 
         # ── 3. Load all known entity IDs from Archive ────────────────
-        logger.info("[DEDUP] Loading known entity IDs from Archive...")
+        logger.info(
+            "event=dedup_loading_known_entity_ids [DEDUP] Loading known entity IDs from Archive...")
         known_entity_ids = self.vault.get_all_entity_ids(
             domain=self.target_domain)
         logger.info(
-            f"[DEDUP] {len(known_entity_ids)} entities already in Archive.")
+            "event=dedup_entities_already_archive Existing entities loaded from Archive | count=%s",
+            len(known_entity_ids),
+        )
 
         new_urls: set[str] = set()
         existing_urls: set[str] = set()
@@ -407,8 +462,9 @@ class ScoutWorker:
                 new_urls.add(url)
 
         logger.info(
-            f"[DEDUP] Classification: {len(new_urls)} new, "
-            f"{len(existing_urls)} already known."
+            "event=dedup_classification_urls Dedup classification complete | new=%s existing=%s",
+            len(new_urls),
+            len(existing_urls),
         )
 
         # ── 4. Select representative records for LLM extraction ──────
@@ -421,8 +477,10 @@ class ScoutWorker:
         representative_ids.update(parsed.unclassified_record_ids)
 
         logger.info(
-            f"[LLM] {len(representative_ids)} record(s) queued for LLM extraction "
-            f"(covers {len(new_urls)} new URLs + {len(parsed.unclassified_record_ids)} unclassified)."
+            "event=llm_records_queued_llm_extraction LLM extraction queue built | queued=%s new_urls=%s unclassified=%s",
+            len(representative_ids),
+            len(new_urls),
+            len(parsed.unclassified_record_ids),
         )
 
         # ── 5. Status-update path for already-known listings ─────────
@@ -450,11 +508,14 @@ class ScoutWorker:
                 status_update_count += 1
 
         logger.info(
-            f"[STATUS] {status_update_count} existing listing(s) had status updates.")
+            "event=status_existing_listing_updates Existing listing status updates complete | count=%s",
+            status_update_count,
+        )
 
         # ── 6. LLM extraction path ────────────────────────────────────
         if not representative_ids:
-            logger.info("[LLM] No records require LLM extraction.")
+            logger.info(
+                "event=llm_records_require_llm_extraction [LLM] No records require LLM extraction.")
         else:
             record_map = {r["id"]: r for r in pending_records}
             llm_records = [
@@ -472,8 +533,10 @@ class ScoutWorker:
             quota_exhausted = False
             for batch_index, batch in enumerate(batches):
                 logger.info(
-                    f"\n-> LLM Batch {batch_index + 1}/{len(batches)} "
-                    f"({len(batch)} record(s))..."
+                    "event=llm_batch LLM batch start | batch_index=%s batch_total=%s batch_size=%s",
+                    batch_index + 1,
+                    len(batches),
+                    len(batch),
                 )
                 quota_exhausted = self._process_llm_batch(
                     batch_index, batch, parsed.record_id_to_clean_text
@@ -482,8 +545,8 @@ class ScoutWorker:
                     break
 
                 logger.info(
-                    f"   [-] Cooling down {self.batch_cooldown_seconds}s "
-                    "to respect RPM limits..."
+                    "event=cooling_down Cooling down for RPM limits | seconds=%s",
+                    self.batch_cooldown_seconds,
                 )
                 time.sleep(max(0, self.batch_cooldown_seconds))
 
@@ -499,7 +562,7 @@ class ScoutWorker:
             else:
                 self.vault.save_evaluation(record_id, {"status": "parsed"})
 
-        logger.info("\n[✓] Cycle complete.")
+        logger.info("event=cycle_complete \n[✓] Cycle complete.")
 
     # ─────────────────────────────────────────────────────────────────
     #  Private helpers
@@ -528,17 +591,20 @@ class ScoutWorker:
 
         if not combined_text_to_read.strip():
             logger.info(
-                "   [!] All emails in this batch were empty. Skipping.")
+                "event=all_emails_this_batch_were [!] All emails in this batch were empty. Skipping.")
             return False
 
         ai_response = self.brain.evaluate(combined_text_to_read)
         raw_text = ai_response.get("raw_response", "").strip()
 
         if ai_response.get("error"):
-            logger.info(f"   [!] {ai_response['error']}")
+            logger.warning(
+                "event=ai_evaluate_error AI evaluate error | error=%s",
+                ai_response.get("error"),
+            )
             if "All models exhausted" in ai_response["error"]:
                 logger.info(
-                    "   [🛑] Global Quota hit. Shutting down for the day.")
+                    "event=global_quota_hit_shutting_down [🛑] Global Quota hit. Shutting down for the day.")
                 return True
             return False
 
@@ -546,7 +612,9 @@ class ScoutWorker:
             extracted_data = parse_ai_entities(raw_text)
             found_entities = 0
             logger.info(
-                f"   [AI] Parsed {len(extracted_data)} entities from AI response")
+                "event=ai_parsed_entities_from_ai Parsed entities from AI response | count=%s",
+                len(extracted_data),
+            )
 
             for item in extracted_data:
                 entity_id = item.get("entity_id")
@@ -565,12 +633,20 @@ class ScoutWorker:
                 ) if isinstance(payload, dict) else ""
                 raw_address = str(payload.get("address", "")).strip(
                 ) if isinstance(payload, dict) else ""
-                logger.info(f"   [AI-RAW] entity={entity_id}")
                 logger.info(
-                    f"      raw_summary_len={len(raw_summary)} raw_address='{raw_address}'")
+                    "event=ai_raw_entity AI raw entity | entity_id=%s",
+                    entity_id,
+                )
+                logger.info(
+                    "event=raw_summary_len_raw_address AI raw fields | raw_summary_len=%s raw_address=%s",
+                    len(raw_summary),
+                    raw_address,
+                )
                 if raw_summary and (raw_summary.endswith("...") or raw_summary.endswith("…")):
-                    logger.info(
-                        f"      WARNING: AI returned truncated summary: {raw_summary[:150]}")
+                    logger.warning(
+                        "event=ai_returned_truncated_summary AI returned truncated summary | preview=%s",
+                        raw_summary[:150],
+                    )
 
                 normalized_entity_id = normalize_listing_url(str(entity_id))
                 payload_url = payload.get("url") if isinstance(
@@ -600,14 +676,25 @@ class ScoutWorker:
                 has_geo = final_location.get("lat") is not None
                 summary_truncated = final_summary.endswith(
                     "...") or final_summary.endswith("…")
-                logger.info(f"   [ENTITY] {normalized_entity_id}")
                 logger.info(
-                    f"      address='{final_address}' geo={'yes' if has_geo else 'NO'}")
+                    "event=entity_processed Entity processed | entity_id=%s",
+                    normalized_entity_id,
+                )
                 logger.info(
-                    f"      summary_len={len(final_summary)} truncated={summary_truncated}")
+                    "event=address_geo Entity address and geo | address=%s geo=%s",
+                    final_address,
+                    "yes" if has_geo else "no",
+                )
+                logger.info(
+                    "event=summary_len_truncated Entity summary stats | summary_len=%s truncated=%s",
+                    len(final_summary),
+                    summary_truncated,
+                )
                 if summary_truncated:
-                    logger.info(
-                        f"      WARNING: Truncated summary: {final_summary[:150]}")
+                    logger.warning(
+                        "event=truncated_summary Truncated summary | preview=%s",
+                        final_summary[:150],
+                    )
 
                 entity_upsert_payload = house.to_archive_upsert_payload()
                 if self.vault.upsert_entity(entity_upsert_payload):
@@ -633,10 +720,16 @@ class ScoutWorker:
                         })
 
             logger.info(
-                f"   [✓] Extracted {found_entities} entities using {ai_response.get('model_used')}.")
+                "event=extracted_entities_using Extracted entities | count=%s model=%s",
+                found_entities,
+                ai_response.get("model_used"),
+            )
 
         except Exception as error:
-            logger.info(f"   [!] Failed to parse AI JSON: {error}")
+            logger.warning(
+                "event=failed_parse_ai_json Failed to parse AI JSON | error=%s",
+                error,
+            )
             with open(f"debug_broken_batch_{batch_index}.txt", "w", encoding="utf-8") as handle:
                 handle.write(raw_text)
 

@@ -78,12 +78,12 @@ def upsert_calendar_item(
         if resp.status_code < 300:
             return resp.json()
         logger.warning(
-            "[ARCHIVE] upsert_calendar_item failed status=%s body=%s",
+            "event=archive_upsert_calendar_item_failed_status_body [ARCHIVE] upsert_calendar_item failed status=%s body=%s",
             resp.status_code,
             resp.text[:200],
         )
     except Exception as exc:
-        logger.warning("[ARCHIVE] upsert_calendar_item error: %s", exc)
+        logger.warning("event=archive_upsert_calendar_item_error [ARCHIVE] upsert_calendar_item error: %s", exc)
     return None
 
 
@@ -96,7 +96,7 @@ def delete_calendar_item_by_external(source: str, external_id: str) -> bool:
         )
         return resp.status_code < 300
     except Exception as exc:
-        logger.warning("[ARCHIVE] delete_calendar_item error: %s", exc)
+        logger.warning("event=archive_delete_calendar_item_error [ARCHIVE] delete_calendar_item error: %s", exc)
         return False
 
 
@@ -110,7 +110,7 @@ def mark_notified(item_id: int, bucket: str) -> bool:
         )
         return resp.status_code < 300
     except Exception as exc:
-        logger.warning("[ARCHIVE] mark_notified error: %s", exc)
+        logger.warning("event=archive_mark_notified_error [ARCHIVE] mark_notified error: %s", exc)
         return False
 
 
@@ -124,7 +124,7 @@ def set_nag(item_id: int, enabled: bool) -> bool:
         )
         return resp.status_code < 300
     except Exception as exc:
-        logger.warning("[ARCHIVE] set_nag error: %s", exc)
+        logger.warning("event=archive_set_nag_error [ARCHIVE] set_nag error: %s", exc)
         return False
 
 
@@ -158,10 +158,10 @@ def list_upcoming(
         if resp.status_code < 300:
             return resp.json()
         logger.warning(
-            "[ARCHIVE] list_upcoming failed status=%s", resp.status_code
+            "event=archive_list_upcoming_failed_status [ARCHIVE] list_upcoming failed status=%s", resp.status_code
         )
     except Exception as exc:
-        logger.warning("[ARCHIVE] list_upcoming error: %s", exc)
+        logger.warning("event=archive_list_upcoming_error [ARCHIVE] list_upcoming error: %s", exc)
     return []
 
 
@@ -189,7 +189,7 @@ def list_items(
         if resp.status_code < 300:
             return resp.json()
         logger.warning(
-            "[ARCHIVE] list_items failed status=%s", resp.status_code)
+            "event=archive_list_items_failed_status [ARCHIVE] list_items failed status=%s", resp.status_code)
     except Exception as exc:
-        logger.warning("[ARCHIVE] list_items error: %s", exc)
+        logger.warning("event=archive_list_items_error [ARCHIVE] list_items error: %s", exc)
     return []

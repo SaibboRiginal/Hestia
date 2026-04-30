@@ -61,25 +61,25 @@ def wait_for_http_ready(
             if 200 <= response.status_code < 300:
                 if logger:
                     logger.info(
-                        "Startup dependency ready | target=%s", description)
+                        "event=startup_dependency_ready_target Startup dependency ready | target=%s", description)
                 return True
             if logger:
                 logger.warning(
-                    "Startup dependency not ready yet | target=%s status=%s",
+                    "event=startup_dependency_ready_yet_target Startup dependency not ready yet | target=%s status=%s",
                     description,
                     response.status_code,
                 )
         except Exception as error:
             if logger:
                 logger.warning(
-                    "Startup dependency check failed | target=%s error=%s",
+                    "event=startup_dependency_check_failed_target Startup dependency check failed | target=%s error=%s",
                     description,
                     error,
                 )
 
         if deadline is not None and time.time() >= deadline:
             if logger:
-                logger.error("Startup wait timed out | target=%s", description)
+                logger.error("event=startup_wait_timed_out_target Startup wait timed out | target=%s", description)
             return False
         time.sleep(max(0.2, interval_seconds))
 
@@ -123,29 +123,29 @@ def wait_for_hub_services(
                 if not missing:
                     if logger:
                         logger.info(
-                            "Startup dependencies ready | hub_services=%s",
+                            "event=startup_dependencies_ready_hub_services Startup dependencies ready | hub_services=%s",
                             ",".join(sorted(normalized_required)),
                         )
                     return True
                 if logger:
                     logger.warning(
-                        "Waiting for Hub services | missing=%s",
+                        "event=waiting_hub_services_missing Waiting for Hub services | missing=%s",
                         ",".join(missing),
                     )
             else:
                 if logger:
                     logger.warning(
-                        "Hub registry probe returned non-success | status=%s",
+                        "event=hub_registry_probe_returned_non Hub registry probe returned non-success | status=%s",
                         response.status_code,
                     )
         except Exception as error:
             if logger:
-                logger.warning("Hub registry probe failed: %s", error)
+                logger.warning("event=hub_registry_probe_failed Hub registry probe failed: %s", error)
 
         if deadline is not None and time.time() >= deadline:
             if logger:
                 logger.error(
-                    "Startup wait timed out | required_hub_services=%s",
+                    "event=startup_wait_timed_out_required_hub_services Startup wait timed out | required_hub_services=%s",
                     ",".join(sorted(normalized_required)),
                 )
             return False
