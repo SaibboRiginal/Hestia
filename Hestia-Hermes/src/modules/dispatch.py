@@ -49,7 +49,7 @@ class DispatchService:
             if response.status_code != 200:
                 detail = response.text[:250]
                 logger.warning(
-                    "Telegram route via Hub failed | chat_id=%s status=%s detail=%s",
+                    "event=telegram_route_hub_failed_chat_id Telegram route via Hub failed | chat_id=%s status=%s detail=%s",
                     chat_id,
                     response.status_code,
                     detail,
@@ -61,7 +61,7 @@ class DispatchService:
             if routed_status >= 400:
                 detail = str(routed.get("payload", ""))[:250]
                 logger.warning(
-                    "Telegram service rejected dispatch | chat_id=%s status=%s detail=%s",
+                    "event=telegram_service_rejected_dispatch_chat_id Telegram service rejected dispatch | chat_id=%s status=%s detail=%s",
                     chat_id,
                     routed_status,
                     detail,
@@ -71,7 +71,7 @@ class DispatchService:
             return True, "sent"
         except requests.RequestException as error:
             logger.warning(
-                "Telegram service request failed | chat_id=%s error=%s",
+                "event=telegram_service_request_failed_chat_id Telegram service request failed | chat_id=%s error=%s",
                 chat_id,
                 error,
             )

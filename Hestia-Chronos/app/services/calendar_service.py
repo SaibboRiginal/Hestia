@@ -54,7 +54,7 @@ class CalendarService:
         providers = self._registry.resolve(target_providers)
         if not providers:
             logger.warning(
-                "[CREATE] No active providers available for targets=%s", target_providers
+                "event=create_active_providers_available_targets [CREATE] No active providers available for targets=%s", target_providers
             )
             return CreateEventResponse(results=[], total_created=0, total_failed=0)
 
@@ -71,7 +71,7 @@ class CalendarService:
                     )
                 )
                 logger.info(
-                    "[CREATE] %s → event_id=%s title='%s'",
+                    "event=create_event_id_title [CREATE] %s → event_id=%s title='%s'",
                     provider.name,
                     event_id,
                     event.title,
@@ -86,7 +86,7 @@ class CalendarService:
                     )
                 )
                 logger.error(
-                    "[CREATE] %s failed title='%s': %s",
+                    "event=create_failed_title [CREATE] %s failed title='%s': %s",
                     provider.name,
                     event.title,
                     error_msg,
@@ -144,11 +144,11 @@ class CalendarService:
                 )
                 all_events.extend(events)
                 logger.info(
-                    "[LIST] %s → %d event(s)", provider.name, len(events)
+                    "event=list_event [LIST] %s → %d event(s)", provider.name, len(events)
                 )
             except Exception as exc:
                 errors[provider.name] = str(exc)
-                logger.error("[LIST] %s failed: %s", provider.name, exc)
+                logger.error("event=list_failed [LIST] %s failed: %s", provider.name, exc)
 
         all_events.sort(
             key=lambda e: e.start_datetime or "",
@@ -168,7 +168,7 @@ class CalendarService:
         try:
             found = provider.delete_event(event_id, calendar_id=calendar_id)
             if found:
-                logger.info("[DELETE] %s event_id=%s", provider_name, event_id)
+                logger.info("event=delete_event_id [DELETE] %s event_id=%s", provider_name, event_id)
                 # Mirror deletion to Archive (fire-and-forget).
                 threading.Thread(
                     target=_archive.delete_calendar_item_by_external,
@@ -177,11 +177,11 @@ class CalendarService:
                 ).start()
             else:
                 logger.warning(
-                    "[DELETE] %s event_id=%s not found", provider_name, event_id
+                    "event=delete_event_id_found [DELETE] %s event_id=%s not found", provider_name, event_id
                 )
             return {"success": found, "error": None if found else "Event not found."}
         except Exception as exc:
-            logger.error("[DELETE] %s event_id=%s: %s",
+            logger.error("event=delete_event_id [DELETE] %s event_id=%s: %s",
                          provider_name, event_id, exc)
             return {"success": False, "error": str(exc)}
 
@@ -202,13 +202,13 @@ class CalendarService:
         try:
             provider.update_event(event_id, updates, calendar_id=calendar_id)
             logger.info(
-                "[UPDATE] %s event_id=%s fields=%s",
+                "event=update_event_id_fields [UPDATE] %s event_id=%s fields=%s",
                 provider_name,
                 event_id,
                 list(updates.keys()),
             )
             return {"success": True, "error": None}
         except Exception as exc:
-            logger.error("[UPDATE] %s event_id=%s: %s",
+            logger.error("event=update_event_id [UPDATE] %s event_id=%s: %s",
                          provider_name, event_id, exc)
             return {"success": False, "error": str(exc)}

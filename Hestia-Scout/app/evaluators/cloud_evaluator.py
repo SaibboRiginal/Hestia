@@ -45,7 +45,7 @@ class CloudEvaluator(BaseEvaluator):
                 # If it's a Quota/Rate Limit error (429), loop to the next model!
                 if "429" in error_msg or "quota" in error_msg.lower():
                     logger.info(
-                        "Model quota exhausted, switching | model=%s", model_name)
+                        "event=model_quota_exhausted_switching_model Model quota exhausted, switching | model=%s", model_name)
                     last_error = error_msg
                     continue
                 else:

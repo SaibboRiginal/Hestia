@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Load Hestia project docs for Oracle context.
     _project_context = context_loader.get_context()
     logger.info(
-        "Project context loaded (%d chars)", len(_project_context)
+        "event=project_context_loaded_chars Project context loaded (%d chars)", len(_project_context)
     )
     hub_api_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             try:
                 hub_client.register(quiet_success=True)
             except Exception as error:
-                logger.warning("Hub keepalive registration failed: %s", error)
+                logger.warning("event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
     # Start background monitoring loop.

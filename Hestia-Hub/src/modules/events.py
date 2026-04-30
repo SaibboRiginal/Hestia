@@ -11,7 +11,7 @@ import time
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_hub.{__name__}")
 
 
 class RegistryEvents:
@@ -110,4 +110,4 @@ class RegistryEvents:
                               timeout=self._notify_timeout)
             except requests.RequestException:
                 logger.debug(
-                    "[RegistryEvents] Notify failed | endpoint=%s", endpoint)
+                    "event=registryevents_notify_failed_endpoint [RegistryEvents] Notify failed | endpoint=%s", endpoint)

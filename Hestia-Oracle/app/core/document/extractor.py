@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Callable
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Individual extractors ─────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ def _pdf_text(file_bytes: bytes) -> str:
         parts = [p.extract_text() for p in reader.pages if p.extract_text()]
         return "\n".join(parts)
     except Exception as exc:
-        logger.warning("[EXTRACT] pypdf failed: %s", exc)
+        logger.warning("event=extract_pypdf_failed [EXTRACT] pypdf failed: %s", exc)
         return ""
 
 
@@ -73,7 +73,7 @@ def _docx_text(file_bytes: bytes) -> str:
                     parts.append(row_text)
         return "\n".join(parts)
     except Exception as exc:
-        logger.warning("[EXTRACT] docx failed: %s", exc)
+        logger.warning("event=extract_docx_failed [EXTRACT] docx failed: %s", exc)
         return ""
 
 
@@ -89,7 +89,7 @@ def _odf_text(file_bytes: bytes) -> str:
             if _tt.extractText(p).strip()
         )
     except Exception as exc:
-        logger.warning("[EXTRACT] odf failed: %s", exc)
+        logger.warning("event=extract_odf_failed [EXTRACT] odf failed: %s", exc)
         return ""
 
 
@@ -108,7 +108,7 @@ def _xlsx_text(file_bytes: bytes) -> str:
                     parts.append(row_text)
         return "\n".join(parts)
     except Exception as exc:
-        logger.warning("[EXTRACT] xlsx failed: %s", exc)
+        logger.warning("event=extract_xlsx_failed [EXTRACT] xlsx failed: %s", exc)
         return ""
 
 
@@ -127,7 +127,7 @@ def _xls_text(file_bytes: bytes) -> str:
                     parts.append(row_text)
         return "\n".join(parts)
     except Exception as exc:
-        logger.warning("[EXTRACT] xls failed: %s", exc)
+        logger.warning("event=extract_xls_failed [EXTRACT] xls failed: %s", exc)
         return ""
 
 
@@ -144,7 +144,7 @@ def _pptx_text(file_bytes: bytes) -> str:
                     parts.append(shape.text)
         return "\n".join(parts)
     except Exception as exc:
-        logger.warning("[EXTRACT] pptx failed: %s", exc)
+        logger.warning("event=extract_pptx_failed [EXTRACT] pptx failed: %s", exc)
         return ""
 
 

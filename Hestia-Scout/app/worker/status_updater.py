@@ -52,7 +52,7 @@ class StatusUpdater:
         detected = detect_listing_status(combined_email_text)
 
         if detected is ListingStatus.UNKNOWN:
-            logger.info("No status signal detected | entity_id=%s", entity_id)
+            logger.info("event=status_signal_detected_entity_id No status signal detected | entity_id=%s", entity_id)
             return False
 
         existing_payload = (
@@ -65,11 +65,11 @@ class StatusUpdater:
 
         if detected == current:
             logger.info(
-                "Listing status unchanged | entity_id=%s status=%s", entity_id, current.value)
+                "event=listing_status_unchanged_entity_id_status Listing status unchanged | entity_id=%s status=%s", entity_id, current.value)
             return False
 
         logger.info(
-            "Listing status change detected | entity_id=%s from=%s to=%s",
+            "event=listing_status_change_detected_entity_id Listing status change detected | entity_id=%s from=%s to=%s",
             entity_id,
             current.value,
             detected.value,

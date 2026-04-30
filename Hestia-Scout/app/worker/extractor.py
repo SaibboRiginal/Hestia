@@ -188,7 +188,7 @@ def enrich_payload_geolocation(payload: dict, geocoder: GeocodingService) -> dic
 
     address = str(payload.get("address", "")).strip()
     title = str(payload.get("title", "")).strip()
-    logger.warning("No geolocation result | query=%s", address or title)
+    logger.warning("event=geolocation_result_query No geolocation result | query=%s", address or title)
     return payload
 
 
@@ -258,14 +258,14 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
 
     url = str(payload.get("url", "")).strip()
     if not url:
-        logger.warning("Listing enrichment skipped: missing URL")
+        logger.warning("event=listing_enrichment_skipped_missing_url Listing enrichment skipped: missing URL")
         return payload
 
     registry = _get_site_registry()
     handler = registry.get_handler(url)
     if handler is None:
         logger.warning(
-            "No site handler for listing URL, skipping enrichment | url=%s", url)
+            "event=site_handler_listing_url_skipping No site handler for listing URL, skipping enrichment | url=%s", url)
         return payload
 
     normalized_url = handler.normalize_url(url)
@@ -273,14 +273,14 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
     enriched["url"] = normalized_url
     enriched["source_site"] = handler.site_name
 
-    logger.info("Fetching listing via Atlas | url=%s site=%s",
+    logger.info("event=fetching_listing_atlas_url_site Fetching listing via Atlas | url=%s site=%s",
                 normalized_url, handler.site_name)
     result = _get_atlas().fetch_html(normalized_url, timeout_seconds=timeout_seconds)
     if result is None or not result.html:
-        logger.warning("No HTML from Atlas | url=%s", normalized_url)
+        logger.warning("event=html_from_atlas_url No HTML from Atlas | url=%s", normalized_url)
         return _set_pending_step(enriched, "listing_content_enrichment", True)
 
-    logger.info("Atlas fetch succeeded | url=%s content_length=%s site=%s",
+    logger.info("event=atlas_fetch_succeeded_url_content_length Atlas fetch succeeded | url=%s content_length=%s site=%s",
                 normalized_url, result.content_length, handler.site_name)
     soup = BeautifulSoup(result.html, "html.parser")
     result_payload = handler.enrich(soup, enriched)

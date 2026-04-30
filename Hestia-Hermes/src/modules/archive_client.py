@@ -30,7 +30,7 @@ class ArchiveClient:
         )
         if response.status_code != 200:
             logger.warning(
-                "Archive route call failed | endpoint=%s status=%s body=%s",
+                "event=archive_route_call_failed_endpoint Archive route call failed | endpoint=%s status=%s body=%s",
                 endpoint,
                 response.status_code,
                 response.text[:250],
@@ -39,7 +39,7 @@ class ArchiveClient:
         routed = response.json() or {}
         if int(routed.get("status_code", 500)) >= 400:
             logger.warning(
-                "Archive route returned non-success | endpoint=%s routed_status=%s payload=%s",
+                "event=archive_route_returned_non_success Archive route returned non-success | endpoint=%s routed_status=%s payload=%s",
                 endpoint,
                 routed.get("status_code"),
                 str(routed.get("payload"))[:250],
@@ -59,7 +59,7 @@ class ArchiveClient:
                 return payload
         except Exception as error:
             logger.warning(
-                "Archive route exception for subscriptions | domain=%s event_type=%s error=%s",
+                "event=archive_route_exception_subscriptions_domain Archive route exception for subscriptions | domain=%s event_type=%s error=%s",
                 domain,
                 event_type,
                 error,
@@ -70,7 +70,7 @@ class ArchiveClient:
             endpoint, params={"domain": domain, "event_type": event_type}, timeout=8)
         if response.status_code != 200:
             logger.warning(
-                "Archive direct subscriptions failed | endpoint=%s status=%s body=%s",
+                "event=archive_direct_subscriptions_failed_endpoint Archive direct subscriptions failed | endpoint=%s status=%s body=%s",
                 endpoint,
                 response.status_code,
                 response.text[:250],
@@ -86,20 +86,20 @@ class ArchiveClient:
                 return
         except Exception as error:
             logger.warning(
-                "Archive route exception for dispatch log | error=%s", error)
+                "event=archive_route_exception_dispatch_log Archive route exception for dispatch log | error=%s", error)
 
         endpoint = f"{self.base_url}/dispatch/logs"
         try:
             response = requests.post(endpoint, json=payload, timeout=8)
             if response.status_code >= 400:
                 logger.warning(
-                    "Archive direct dispatch log failed | status=%s body=%s",
+                    "event=archive_direct_dispatch_log_failed Archive direct dispatch log failed | status=%s body=%s",
                     response.status_code,
                     response.text[:250],
                 )
         except Exception as error:
             logger.warning(
-                "Archive direct dispatch log exception | error=%s", error)
+                "event=archive_direct_dispatch_log_exception Archive direct dispatch log exception | error=%s", error)
             return
 
     def find_entity(self, domain: str, entity_id: str) -> dict[str, Any] | None:
@@ -123,7 +123,7 @@ class ArchiveClient:
                 return routed
         except Exception as error:
             logger.warning(
-                "Archive route exception for outbound upsert | error=%s", error)
+                "event=archive_route_exception_outbound_upsert Archive route exception for outbound upsert | error=%s", error)
 
         endpoint = f"{self.base_url}/outbound-events/upsert"
         try:
@@ -131,13 +131,13 @@ class ArchiveClient:
             if response.status_code < 400:
                 return response.json() or {}
             logger.warning(
-                "Archive direct outbound upsert failed | status=%s body=%s",
+                "event=archive_direct_outbound_upsert_failed Archive direct outbound upsert failed | status=%s body=%s",
                 response.status_code,
                 response.text[:250],
             )
         except Exception as error:
             logger.warning(
-                "Archive direct outbound upsert exception | error=%s", error)
+                "event=archive_direct_outbound_upsert_exception Archive direct outbound upsert exception | error=%s", error)
         return None
 
     def get_outbound_events(self, query: dict[str, Any]) -> list[dict[str, Any]]:
@@ -148,7 +148,7 @@ class ArchiveClient:
                 return routed
         except Exception as error:
             logger.warning(
-                "Archive route exception for outbound list | error=%s", error)
+                "event=archive_route_exception_outbound_list Archive route exception for outbound list | error=%s", error)
 
         endpoint = f"{self.base_url}/outbound-events"
         try:
@@ -157,13 +157,13 @@ class ArchiveClient:
                 payload = response.json() or []
                 return payload if isinstance(payload, list) else []
             logger.warning(
-                "Archive direct outbound list failed | status=%s body=%s",
+                "event=archive_direct_outbound_list_failed Archive direct outbound list failed | status=%s body=%s",
                 response.status_code,
                 response.text[:250],
             )
         except Exception as error:
             logger.warning(
-                "Archive direct outbound list exception | error=%s", error)
+                "event=archive_direct_outbound_list_exception Archive direct outbound list exception | error=%s", error)
         return []
 
     def update_outbound_event_state(
@@ -186,7 +186,7 @@ class ArchiveClient:
                 return True
         except Exception as error:
             logger.warning(
-                "Archive route exception for outbound state update | error=%s", error)
+                "event=archive_route_exception_outbound_state Archive route exception for outbound state update | error=%s", error)
 
         endpoint = f"{self.base_url}/outbound-events/{outbound_event_id}/state"
         try:
@@ -194,7 +194,7 @@ class ArchiveClient:
             return response.status_code < 400
         except Exception as error:
             logger.warning(
-                "Archive direct outbound state update exception | error=%s", error)
+                "event=archive_direct_outbound_state_update Archive direct outbound state update exception | error=%s", error)
             return False
 
     def find_active_outbound_event(self, dedupe_key: str) -> dict[str, Any] | None:

@@ -5,7 +5,7 @@
 ## Purpose
 
 Argus continuously monitors every Hestia service by polling their `/health` endpoints and
-streaming Docker container logs. When an issue is detected it alerts the operator via the
+collecting runtime logs (Hub monitor API by default, Docker tailing as fallback). When an issue is detected it alerts the operator via the
 Oracle → Hermes → Telegram chain. Argus also exposes an on-demand HTTP API so the Oracle
 chatbox and Telegram commands can query the current system state at any time.
 
@@ -23,7 +23,7 @@ Hub registry
     ▼
 Health Poller ──────────────────┐
     │                           │
-Docker Log Tails (per container)│
+Hub Monitor Logs / Docker Tails │
     │                           │
     └──────────► Monitor Loop ──┴──► Alert Worker
                                          │
@@ -63,13 +63,17 @@ Docker Log Tails (per container)│
 | `ARGUS_SERVICE_BASE_URL` | `http://hestia_argus:19008` | This service's externally reachable URL |
 | `ARGUS_PORT` | `19008` | Listening port |
 | `ARGUS_POLL_INTERVAL` | `60` | Seconds between health polls |
+| `ARGUS_LOG_SOURCE` | `hub` | Log source mode: `hub` (via Hub `/api/monitor/logs`) or `docker` |
+| `ARGUS_HUB_LOG_LIMIT` | `200` | Per-service max log rows fetched from Hub for each polling cycle |
+| `ARGUS_LOG_SEEN_CACHE_SIZE` | `5000` | In-memory dedupe window for hub-sourced log alerts |
 | `ARGUS_LOG_BUFFER_SIZE` | `500` | Max log events kept per container |
+| `ARGUS_IGNORE_HEALTH_ACCESS` | `true` | Ignore container health-check access lines (e.g. `GET /health`) during log monitoring |
 | `ARGUS_NOTIFY_TARGET` | — | Telegram chat_id for proactive alerts (optional) |
 | `ORACLE_API_URL` | `http://hestia_oracle:19004/api/chat` | Oracle endpoint for alert dispatch |
 
 ## Docker
 
-Argus requires access to the Docker socket for log streaming:
+When `ARGUS_LOG_SOURCE=docker`, Argus requires access to the Docker socket for log streaming:
 
 ```yaml
 volumes:

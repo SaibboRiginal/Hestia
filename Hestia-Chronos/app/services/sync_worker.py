@@ -126,7 +126,7 @@ def _tick() -> None:
     global _first_tick_done
 
     if _registry is None:
-        logger.warning("[SYNC] Registry not injected — skipping tick")
+        logger.warning("event=sync_registry_injected_skipping_tick [SYNC] Registry not injected — skipping tick")
         return
 
     now = datetime.now(timezone.utc)
@@ -135,7 +135,7 @@ def _tick() -> None:
 
     active = _registry.active_providers
     if not active:
-        logger.debug("[SYNC] No active providers — skipping tick")
+        logger.debug("event=sync_active_providers_skipping_tick [SYNC] No active providers — skipping tick")
         return
 
     newly_seen: list = []
@@ -150,7 +150,7 @@ def _tick() -> None:
             )
         except Exception as exc:
             logger.warning(
-                "[SYNC] list_events failed for provider=%s: %s", provider.name, exc)
+                "event=sync_list_events_failed_provider [SYNC] list_events failed for provider=%s: %s", provider.name, exc)
             continue
 
         for record in records:
@@ -187,7 +187,7 @@ def _tick() -> None:
         if not _first_tick_done:
             _first_tick_done = True
             logger.info(
-                "[SYNC] First tick complete — %d event(s) pre-loaded into known set",
+                "event=sync_first_tick_complete_event [SYNC] First tick complete — %d event(s) pre-loaded into known set",
                 len(_known_external_ids),
             )
             return
@@ -203,7 +203,7 @@ def _tick() -> None:
                      "provider": record.provider},
         )
         logger.info(
-            "[SYNC] New-event notification sent=%s | provider=%s title=%r",
+            "event=sync_new_event_notification_sent [SYNC] New-event notification sent=%s | provider=%s title=%r",
             ok,
             record.provider,
             record.title,
@@ -217,7 +217,7 @@ def _tick() -> None:
 
 def _run_loop() -> None:
     logger.info(
-        "[SYNC] Worker started — poll every %ds | window -%dd to +%dd | notify_new=%s",
+        "event=sync_worker_started_poll_every [SYNC] Worker started — poll every %ds | window -%dd to +%dd | notify_new=%s",
         _POLL_SECONDS,
         _LOOK_BACK_DAYS,
         _LOOK_AHEAD_DAYS,
@@ -227,7 +227,7 @@ def _run_loop() -> None:
         try:
             _tick()
         except Exception as exc:
-            logger.error("[SYNC] Unhandled error in tick: %s", exc)
+            logger.error("event=sync_unhandled_error_tick [SYNC] Unhandled error in tick: %s", exc)
         time.sleep(_POLL_SECONDS)
 
 
@@ -244,10 +244,10 @@ def start(registry: CalendarProviderRegistry) -> None:
     """
     global _registry
     if not _ENABLED:
-        logger.info("[SYNC] Sync worker disabled (CHRONOS_SYNC_ENABLED=false)")
+        logger.info("event=sync_sync_worker_disabled_chronos_sync_enabled [SYNC] Sync worker disabled (CHRONOS_SYNC_ENABLED=false)")
         return
     _registry = registry
     t = threading.Thread(
         target=_run_loop, name="chronos-sync-worker", daemon=True)
     t.start()
-    logger.info("[SYNC] Daemon thread started")
+    logger.info("event=sync_daemon_thread_started [SYNC] Daemon thread started")

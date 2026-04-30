@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 from core import hermes_client, oracle_client
 from schemas.reports import ServiceAlert
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 COOLDOWN_MINUTES = int(os.getenv("ALERT_COOLDOWN_MINUTES", "60"))
 BATCH_WINDOW_SECONDS = float(os.getenv("ALERT_BATCH_WINDOW_SECONDS", "60"))
@@ -98,7 +98,7 @@ def _flush_batch() -> None:
     if not batch:
         return
 
-    logger.info("Flushing batch of %d alert(s)", len(batch))
+    logger.info("event=flushing_batch_alert Flushing batch of %d alert(s)", len(batch))
     text = _narrate_batch(batch)
     event_payload = {
         "_message": text,
@@ -116,9 +116,9 @@ def _flush_batch() -> None:
     )
     if ok:
         logger.info(
-            "Batch of %d alert(s) dispatched via subscriptions", len(batch))
+            "event=batch_alert_dispatched_subscriptions Batch of %d alert(s) dispatched via subscriptions", len(batch))
     else:
-        logger.warning("Batch dispatch failed (%d alert(s))", len(batch))
+        logger.warning("event=batch_dispatch_failed_alert Batch dispatch failed (%d alert(s))", len(batch))
 
 
 def _narrate_batch(alerts: list[ServiceAlert]) -> str:
@@ -183,7 +183,7 @@ def send_alert(alert: ServiceAlert) -> None:
         fp = _log_fingerprint(alert.service, alert.level, alert.message)
 
     if _is_suppressed(fp):
-        logger.debug("Alert suppressed (cooldown active): %s", fp)
+        logger.debug("event=alert_suppressed_cooldown_active Alert suppressed (cooldown active): %s", fp)
         return
 
     # Record immediately — prevents re-queuing even if the flush later fails
@@ -192,7 +192,7 @@ def send_alert(alert: ServiceAlert) -> None:
     with _pending_lock:
         _pending.append(alert)
 
-    logger.debug("Alert enqueued for batch (window=%.0fs): %s",
+    logger.debug("event=alert_enqueued_batch_window Alert enqueued for batch (window=%.0fs): %s",
                  BATCH_WINDOW_SECONDS, fp)
     _schedule_flush()
 
@@ -218,4 +218,4 @@ def send_recovery(service: str) -> None:
         entity_id=service,
         payload={"_message": text, "service": service, "status": "recovered"},
     )
-    logger.info("Recovery notification published for: %s", service)
+    logger.info("event=recovery_notification_published Recovery notification published for: %s", service)

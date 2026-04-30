@@ -24,7 +24,7 @@ class HermesService:
         subscriptions = self.archive.get_active_subscriptions(
             domain=domain, event_type=event_type)
         logger.debug(
-            "Loaded active subscriptions | domain=%s event_type=%s count=%s",
+            "event=loaded_active_subscriptions_domain_event_type Loaded active subscriptions | domain=%s event_type=%s count=%s",
             domain,
             event_type,
             len(subscriptions),
@@ -37,7 +37,7 @@ class HermesService:
             matches = subscription_matches(subscription, payload)
             if not matches:
                 logger.debug(
-                    "Subscription not matched | subscription_id=%s filters=%s",
+                    "event=subscription_matched_subscription_id_filters Subscription not matched | subscription_id=%s filters=%s",
                     subscription_id,
                     subscription.get("filters") or {},
                 )
@@ -46,7 +46,7 @@ class HermesService:
             matched += 1
             channels = subscription.get("channels") or []
             logger.info(
-                "Subscription matched | subscription_id=%s channels=%s",
+                "event=subscription_matched_subscription_id_channels Subscription matched | subscription_id=%s channels=%s",
                 subscription_id,
                 channels,
             )
@@ -74,7 +74,7 @@ class HermesService:
                 if existing and str(existing.get("outbound_event_id")) != outbound_event_id:
                     existing_id = str(existing.get("outbound_event_id"))
                     logger.info(
-                        "Dispatch deduped | dedupe_key=%s existing_outbound_event_id=%s skipped_outbound_event_id=%s question_id=%s brief_id=%s",
+                        "event=dispatch_deduped_dedupe_key_existing_outbound_event_id_skipp Dispatch deduped | dedupe_key=%s existing_outbound_event_id=%s skipped_outbound_event_id=%s question_id=%s brief_id=%s",
                         dedupe_key,
                         existing_id,
                         outbound_event_id,
@@ -169,7 +169,7 @@ class HermesService:
                         detail=detail,
                     )
                 logger.info(
-                    "Dispatch attempted | subscription_id=%s channel=%s target=%s success=%s outbound_event_id=%s question_id=%s brief_id=%s detail=%s",
+                    "event=dispatch_attempted_subscription_id_channel_target Dispatch attempted | subscription_id=%s channel=%s target=%s success=%s outbound_event_id=%s question_id=%s brief_id=%s detail=%s",
                     subscription_id,
                     channel_type,
                     channel_target,

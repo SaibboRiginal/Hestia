@@ -32,11 +32,18 @@ import docker  # type: ignore
 
 from schemas.reports import LogEvent
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 BUFFER_SIZE = int(os.getenv("ARGUS_LOG_BUFFER_SIZE", "500"))
 BACKFILL_MINUTES = int(os.getenv("ARGUS_LOG_BACKFILL_MINUTES", "5"))
 LOG_LEVEL_PATTERN = re.compile(r"\b(WARNING|ERROR|CRITICAL)\b", re.IGNORECASE)
+HEALTH_ACCESS_PATTERN = re.compile(
+    r'"(?:GET|HEAD|OPTIONS)\s+/(?:health|healthz|ready|live)\b',
+    re.IGNORECASE,
+)
+IGNORE_HEALTH_ACCESS = os.getenv("ARGUS_IGNORE_HEALTH_ACCESS", "true").lower() in {
+    "1", "true", "yes", "on"
+}
 
 # Comma-separated substrings — log lines containing any of these are silently dropped.
 # Set via ARGUS_IGNORE_PATTERNS env var.
@@ -59,7 +66,7 @@ def _get_docker_client() -> docker.DockerClient | None:
     try:
         return docker.from_env()
     except Exception as exc:
-        logger.warning("Cannot connect to Docker socket: %s", exc)
+        logger.warning("event=cannot_connect_docker_socket Cannot connect to Docker socket: %s", exc)
         return None
 
 
@@ -146,10 +153,10 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
         container = client.containers.get(container_name)
     except docker.errors.NotFound:
         logger.debug(
-            "Container not found (may not be running): %s", container_name)
+            "event=container_found_may_running Container not found (may not be running): %s", container_name)
         return []
     except Exception as exc:
-        logger.warning("Cannot get container %s: %s", container_name, exc)
+        logger.warning("event=cannot_get_container Cannot get container %s: %s", container_name, exc)
         return []
 
     try:
@@ -160,13 +167,15 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
             timestamps=False,
         )
     except Exception as exc:
-        logger.warning("log fetch failed for %s: %s", container_name, exc)
+        logger.warning("event=log_fetch_failed log fetch failed for %s: %s", container_name, exc)
         return []
 
     new_events: list[LogEvent] = []
     for raw_line in _demux_docker_logs(raw):
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line:
+            continue
+        if IGNORE_HEALTH_ACCESS and HEALTH_ACCESS_PATTERN.search(line):
             continue
         if _IGNORE_PATTERNS and any(p in line.lower() for p in _IGNORE_PATTERNS):
             continue
@@ -190,7 +199,7 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
 
     if new_events:
         logger.debug(
-            "Fetched %d new log events from %s", len(
+            "event=fetched_new_log_events_from Fetched %d new log events from %s", len(
                 new_events), container_name
         )
     return new_events

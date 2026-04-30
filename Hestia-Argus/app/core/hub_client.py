@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime
 
 import requests
 
-logger = logging.getLogger(__name__)
+from schemas.reports import LogEvent
+
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -107,12 +110,12 @@ def register(*, quiet_success: bool = False) -> bool:
         )
         resp.raise_for_status()
         if quiet_success:
-            logger.debug("Argus registered with Hub successfully")
+            logger.debug("event=argus_registered_with_hub_successfully Argus registered with Hub successfully")
         else:
-            logger.info("Argus registered with Hub successfully")
+            logger.info("event=argus_registered_with_hub_successfully Argus registered with Hub successfully")
         return True
     except Exception as exc:
-        logger.warning("Hub registration failed: %s", exc)
+        logger.warning("event=hub_registration_failed Hub registration failed: %s", exc)
         return False
 
 
@@ -123,5 +126,60 @@ def discover_services() -> list[dict]:
         resp.raise_for_status()
         return resp.json().get("services", [])
     except Exception as exc:
-        logger.warning("Could not fetch service registry from Hub: %s", exc)
+        logger.warning("event=could_fetch_service_registry_from Could not fetch service registry from Hub: %s", exc)
+        return []
+
+
+def fetch_service_log_events(
+    service_name: str,
+    *,
+    level: str = "WARNING",
+    limit: int = 200,
+    contains: str | None = None,
+    timeout_seconds: float = 8.0,
+) -> list[LogEvent]:
+    """Fetch service logs via Hub monitor endpoint and normalize into LogEvent rows."""
+    params: dict[str, object] = {
+        "mode": "raw",
+        "limit": max(1, min(limit, 2000)),
+        "level": level,
+        "timeout_seconds": timeout_seconds,
+    }
+    if contains:
+        params["contains"] = contains
+
+    try:
+        response = requests.get(
+            f"{HUB_API_URL}/monitor/logs/{service_name}",
+            params=params,
+            timeout=max(2.0, timeout_seconds + 2.0),
+        )
+        response.raise_for_status()
+        payload = (response.json() or {}).get("payload") or {}
+        rows = payload.get("logs") or []
+        if not isinstance(rows, list):
+            return []
+
+        events: list[LogEvent] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            events.append(
+                LogEvent(
+                    timestamp=str(
+                        row.get("ts") or datetime.utcnow().isoformat()),
+                    service=service_name,
+                    container=f"hestia_{service_name}",
+                    level=str(row.get("level") or "INFO").upper(),
+                    message=str(row.get("formatted") or row.get(
+                        "message") or "").strip(),
+                )
+            )
+        return events
+    except Exception as exc:
+        logger.warning(
+            "event=could_fetch_logs_hub_monitor Could not fetch logs via Hub monitor | service=%s error=%s",
+            service_name,
+            exc,
+        )
         return []

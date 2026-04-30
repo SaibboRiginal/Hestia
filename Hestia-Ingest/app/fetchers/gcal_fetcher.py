@@ -41,9 +41,9 @@ class GCalFetcher(BaseFetcher):
             if resp.status_code < 300:
                 return True
             logger.warning(
-                "[GCAL] Chronos health check failed status=%s", resp.status_code)
+                "event=gcal_chronos_health_check_failed [GCAL] Chronos health check failed status=%s", resp.status_code)
         except Exception as exc:
-            logger.warning("[GCAL] Cannot reach Chronos: %s", exc)
+            logger.warning("event=gcal_cannot_reach_chronos [GCAL] Cannot reach Chronos: %s", exc)
         return False
 
     def fetch_new_data(self, since_date: datetime, custom_filter: str = "primary") -> list[dict[str, Any]]:
@@ -78,7 +78,7 @@ class GCalFetcher(BaseFetcher):
             )
             resp.raise_for_status()
         except Exception as exc:
-            logger.error("[GCAL] list_events call failed: %s", exc)
+            logger.error("event=gcal_list_events_call_failed [GCAL] list_events call failed: %s", exc)
             return []
 
         data = resp.json()

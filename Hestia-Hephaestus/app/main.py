@@ -245,10 +245,10 @@ app = FastAPI(title="Hestia Hephaestus", version=SERVICE_VERSION)
 def register_on_hub_startup() -> None:
     try:
         service.register_to_hub(timeout_seconds=4)
-        logger.info("Registered on Hub | name=%s base_url=%s",
+        logger.info("event=registered_hub_name_base_url Registered on Hub | name=%s base_url=%s",
                     SERVICE_NAME, SERVICE_BASE_URL)
     except Exception as error:
-        logger.warning("Hub registration failed (non-fatal): %s", error)
+        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
 
 
 @app.get("/health")

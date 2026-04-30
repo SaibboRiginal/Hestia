@@ -74,13 +74,13 @@ def register_on_hub_startup():
         resp = requests.post(
             f"{hub_api_url}/registry/register", json=payload, timeout=4)
         if resp.status_code < 400:
-            logger.info("Registered on Hub | hub=%s base_url=%s",
+            logger.info("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
                         hub_api_url, service_base_url)
         else:
-            logger.warning("Hub registration non-success | status=%s body=%s",
+            logger.warning("event=hub_registration_non_success_status Hub registration non-success | status=%s body=%s",
                            resp.status_code, resp.text[:200])
     except Exception as exc:
-        logger.warning("Hub registration failed (non-fatal): %s", exc)
+        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", exc)
 
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
     def _hub_keepalive():
@@ -122,7 +122,7 @@ class FetchCommand(BaseModel):
 
 @app.post("/api/ingest/trigger")
 def trigger_fetch(command: FetchCommand):
-    logger.info("Ingest trigger | domain=%s source=%s",
+    logger.info("event=ingest_trigger_domain_source Ingest trigger | domain=%s source=%s",
                 command.domain, command.source)
 
     try:
@@ -140,11 +140,11 @@ def trigger_fetch(command: FetchCommand):
 
     # THE CLEANUP: Use try/finally to ensure disconnect is ALWAYS called
     try:
-        logger.info("Fetching since %s | task=%s",
+        logger.info("event=fetching_since_task Fetching since %s | task=%s",
                     last_run.strftime("%Y-%m-%d"), task_name)
         raw_data = fetcher_instance.fetch_new_data(
             since_date=last_run, custom_filter=command.filter_query)
-        logger.info("Fetched %d items | task=%s", len(raw_data), task_name)
+        logger.info("event=fetched_items_task Fetched %d items | task=%s", len(raw_data), task_name)
 
         for item in raw_data:
             vault.ship_record(
@@ -160,7 +160,7 @@ def trigger_fetch(command: FetchCommand):
 
     except Exception as e:
         logger.error(
-            "Critical error during extraction/shipping | task=%s error=%s", task_name, e)
+            "event=critical_error_during_extraction_shipping Critical error during extraction/shipping | task=%s error=%s", task_name, e)
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
@@ -210,7 +210,7 @@ def trigger_calendar_sync(command: CalendarSyncCommand):
     # INGEST_CALENDAR_BACKFILL_DAYS: how many days back to include recent past events (default 7)
     backfill_days = int(os.getenv("INGEST_CALENDAR_BACKFILL_DAYS", "7"))
     since = datetime.now(_tz.utc) - timedelta(days=backfill_days)
-    logger.info("Calendar sync | sources=%s backfill_days=%d since=%s",
+    logger.info("event=calendar_sync_sources_backfill_days_since Calendar sync | sources=%s backfill_days=%d since=%s",
                 sources, backfill_days, since.date())
 
     for source in sources:
@@ -222,7 +222,7 @@ def trigger_calendar_sync(command: CalendarSyncCommand):
             continue
 
         if not fetcher.connect():
-            logger.warning("Calendar connection failed | source=%s", source)
+            logger.warning("event=calendar_connection_failed_source Calendar connection failed | source=%s", source)
             results[source] = {"error": "Connection failed",
                                "fetched": 0, "archived": 0}
             continue
@@ -236,17 +236,17 @@ def trigger_calendar_sync(command: CalendarSyncCommand):
             for item in items:
                 if vault.ship_calendar_item(item):
                     archived += 1
-            logger.info("Calendar sync done | source=%s fetched=%d archived=%d", source, len(
+            logger.info("event=calendar_sync_done_source_fetched Calendar sync done | source=%s fetched=%d archived=%d", source, len(
                 items), archived)
             results[source] = {"fetched": len(items), "archived": archived}
         except Exception as exc:
             logger.error(
-                "Calendar sync error | source=%s error=%s", source, exc)
+                "event=calendar_sync_error_source_error Calendar sync error | source=%s error=%s", source, exc)
             results[source] = {"error": str(exc), "fetched": 0, "archived": 0}
         finally:
             fetcher.disconnect()
 
     total_archived = sum(r.get("archived", 0) for r in results.values())
-    logger.info("Calendar sync complete | total_archived=%d sources=%s",
+    logger.info("event=calendar_sync_complete_total_archived_sources Calendar sync complete | total_archived=%d sources=%s",
                 total_archived, list(results.keys()))
     return {"status": "success", "sources": results, "total_archived": total_archived}

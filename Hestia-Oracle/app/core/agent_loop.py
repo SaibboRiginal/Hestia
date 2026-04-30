@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterator
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 MAX_AGENT_TURNS: int = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "6"))
 TOOL_RESULT_MAX_CHARS: int = int(
@@ -162,7 +162,7 @@ def run_agent_loop(
             raw_response = ask_fn(prompt)
         except Exception as exc:
             logger.error(
-                "Agent loop LLM call failed at turn %d: %s", turn, exc)
+                "event=agent_loop_llm_call_failed Agent loop LLM call failed at turn %d: %s", turn, exc)
             final_answer = "⚠️ Il modello non è disponibile. Riprova tra poco."
             break
 
@@ -179,7 +179,7 @@ def run_agent_loop(
             if not tool_def:
                 tool_result = f"ERROR: Tool '{tool_name}' not found in manifest."
                 logger.warning(
-                    "Agent loop: LLM called unknown tool '%s'", tool_name)
+                    "event=agent_loop_llm_called_unknown Agent loop: LLM called unknown tool '%s'", tool_name)
             else:
                 try:
                     ok, result = tool_def.handler(**tool_params)
@@ -187,12 +187,12 @@ def run_agent_loop(
                         result, str) else result
                     tool_result = _truncate_tool_result(
                         raw_result) if ok else f"TOOL_ERROR: {result}"
-                    logger.info("Agent loop | turn=%d tool=%s ok=%s",
+                    logger.info("event=agent_loop_turn_tool_ok Agent loop | turn=%d tool=%s ok=%s",
                                 turn, tool_name, ok)
                 except Exception as exc:
                     tool_result = f"TOOL_ERROR: {exc}"
                     logger.warning(
-                        "Agent loop tool execution failed | tool=%s error=%s", tool_name, exc)
+                        "event=agent_loop_tool_execution_failed Agent loop tool execution failed | tool=%s error=%s", tool_name, exc)
 
             scratchpad.append(ScratchMessage(
                 "tool", f"[{tool_name}] {tool_result}"))
@@ -213,12 +213,12 @@ def run_agent_loop(
                     final_answer = "".join(final_tokens)
                 except Exception as exc:
                     logger.warning(
-                        "Agent loop final stream failed, using non-streamed answer: %s", exc)
+                        "event=agent_loop_final_stream_failed Agent loop final stream failed, using non-streamed answer: %s", exc)
                     final_answer = clean
             else:
                 final_answer = clean
 
-            logger.info("Agent loop completed | turns=%d final_len=%d",
+            logger.info("event=agent_loop_completed_turns_final_len Agent loop completed | turns=%d final_len=%d",
                         turn + 1, len(final_answer))
             break
 

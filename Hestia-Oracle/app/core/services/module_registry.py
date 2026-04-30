@@ -3,7 +3,7 @@ import logging
 import requests
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class ModuleToolRegistry:
@@ -40,9 +40,9 @@ class ModuleToolRegistry:
                                     mapping.setdefault(
                                         normalized_domain, []).append(endpoint_val)
                         logger.info(
-                            "Module registry hydrated from Hub with %s domain(s)", len(mapping))
+                            "event=module_registry_hydrated_from_hub Module registry hydrated from Hub with %s domain(s)", len(mapping))
             except Exception as error:
-                logger.warning("Hub discovery failed: %s", error)
+                logger.warning("event=hub_discovery_failed Hub discovery failed: %s", error)
 
             try:
                 services_response = requests.get(
@@ -62,27 +62,27 @@ class ModuleToolRegistry:
                                 normalized_domain, []).append(service_name)
             except Exception as error:
                 logger.warning(
-                    "Hub services registry lookup failed: %s", error)
+                    "event=hub_services_registry_lookup_failed Hub services registry lookup failed: %s", error)
 
-        logger.info("Refreshing module tool registry from %s endpoint(s)", len(
+        logger.info("event=refreshing_module_tool_registry_from Refreshing module tool registry from %s endpoint(s)", len(
             self.module_tool_urls))
         for base_url in self.module_tool_urls:
             try:
                 response = requests.get(f"{base_url}/domains", timeout=4)
                 if response.status_code != 200:
                     logger.warning(
-                        "Module registry source %s returned status %s", base_url, response.status_code)
+                        "event=module_registry_source_returned_status Module registry source %s returned status %s", base_url, response.status_code)
                     continue
                 domains = response.json().get("domains", [])
                 logger.info(
-                    "Module registry source %s exposes domains: %s", base_url, domains)
+                    "event=module_registry_source_exposes_domains Module registry source %s exposes domains: %s", base_url, domains)
                 for domain in domains:
                     normalized_domain = str(domain).strip().lower()
                     if not normalized_domain:
                         continue
                     mapping.setdefault(normalized_domain, []).append(base_url)
             except Exception as error:
-                logger.warning("Failed refreshing from %s: %s",
+                logger.warning("event=failed_refreshing_from Failed refreshing from %s: %s",
                                base_url, error)
                 continue
 
@@ -95,7 +95,7 @@ class ModuleToolRegistry:
         self._domain_to_urls = mapping
         self._domain_to_services = service_mapping
         self._last_refresh = time.time()
-        logger.info("Module registry cache refreshed: %s",
+        logger.info("event=module_registry_cache_refreshed Module registry cache refreshed: %s",
                     self._domain_to_urls)
 
     def get_services_for_domain(self, domain: str) -> list[str]:
@@ -133,20 +133,20 @@ class ModuleToolRegistry:
                         continue
                     data = routed.get("payload")
                     if isinstance(data, list):
-                        logger.info("Hub-routed module tool %s for domain '%s' returned %s items in %sms",
+                        logger.info("event=hub_routed_module_tool_domain Hub-routed module tool %s for domain '%s' returned %s items in %sms",
                                     service_name, domain, len(data), elapsed_ms)
                         return data
                     if isinstance(data, dict) and isinstance(data.get("items"), list):
-                        logger.info("Hub-routed module tool %s for domain '%s' returned %s items in %sms",
+                        logger.info("event=hub_routed_module_tool_domain Hub-routed module tool %s for domain '%s' returned %s items in %sms",
                                     service_name, domain, len(data.get("items")), elapsed_ms)
                         return data.get("items")
                 except Exception as error:
                     logger.warning(
-                        "Hub-routed module tool query failure for %s domain '%s': %s", service_name, domain, error)
+                        "event=hub_routed_module_tool_query Hub-routed module tool query failure for %s domain '%s': %s", service_name, domain, error)
 
         candidate_urls = self.get_urls_for_domain(domain)
         if not candidate_urls:
-            logger.info("No module tool registered for domain '%s'", domain)
+            logger.info("event=module_tool_registered_domain No module tool registered for domain '%s'", domain)
             return []
 
         for base_url in candidate_urls:
@@ -156,23 +156,23 @@ class ModuleToolRegistry:
                     f"{base_url}/query", json=payload, timeout=8)
                 elapsed_ms = int((time.perf_counter() - start) * 1000)
                 if response.status_code != 200:
-                    logger.warning("Module tool %s/query for domain '%s' returned %s in %sms",
+                    logger.warning("event=module_tool_query_domain_returned Module tool %s/query for domain '%s' returned %s in %sms",
                                    base_url, domain, response.status_code, elapsed_ms)
                     continue
                 data = response.json()
                 if isinstance(data, list):
-                    logger.info("Module tool %s/query for domain '%s' returned %s items in %sms",
+                    logger.info("event=module_tool_query_domain_returned Module tool %s/query for domain '%s' returned %s items in %sms",
                                 base_url, domain, len(data), elapsed_ms)
                     return data
                 if isinstance(data, dict) and isinstance(data.get("items"), list):
-                    logger.info("Module tool %s/query for domain '%s' returned %s items in %sms",
+                    logger.info("event=module_tool_query_domain_returned Module tool %s/query for domain '%s' returned %s items in %sms",
                                 base_url, domain, len(data.get("items")), elapsed_ms)
                     return data.get("items")
                 logger.warning(
-                    "Module tool %s/query for domain '%s' returned unexpected payload", base_url, domain)
+                    "event=module_tool_query_domain_returned Module tool %s/query for domain '%s' returned unexpected payload", base_url, domain)
             except Exception as error:
                 logger.warning(
-                    "Module tool query failure for %s domain '%s': %s", base_url, domain, error)
+                    "event=module_tool_query_failure_domain Module tool query failure for %s domain '%s': %s", base_url, domain, error)
                 continue
 
         return []

@@ -15,7 +15,7 @@ import requests
 
 from core.services.hub_client import HubClient
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _DOC_SEARCH_THRESHOLD = float(os.getenv("DOC_SEARCH_THRESHOLD", "1.2"))
 
@@ -64,7 +64,7 @@ class DocumentRAG:
             if isinstance(payload, list):
                 return payload
         except Exception as exc:
-            logger.debug("[RAG] Chunk search failed (non-fatal): %s", exc)
+            logger.debug("event=rag_chunk_search_failed_non [RAG] Chunk search failed (non-fatal): %s", exc)
         return []
 
     def list_user_docs_brief(
@@ -95,7 +95,7 @@ class DocumentRAG:
                     f"  • {title}{tag_str} — domain:{domain}, {perm}, accessed {accessed}×")
             return "\n".join(lines)
         except Exception as exc:
-            logger.debug("[RAG] Brief doc list failed (non-fatal): %s", exc)
+            logger.debug("event=rag_brief_doc_list_failed [RAG] Brief doc list failed (non-fatal): %s", exc)
             return ""
 
     @staticmethod

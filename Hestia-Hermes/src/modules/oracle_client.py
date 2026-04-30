@@ -31,7 +31,7 @@ def narrate(prompt: str) -> str:
         )
         if resp.status_code >= 400:
             logger.warning(
-                "Oracle narration returned status %s", resp.status_code)
+                "event=oracle_narration_returned_status Oracle narration returned status %s", resp.status_code)
             return ""
         # Oracle streams NDJSON — iterate lines to find the "final" event
         for line in resp.text.splitlines():
@@ -46,5 +46,5 @@ def narrate(prompt: str) -> str:
                 continue
         return ""
     except Exception as exc:
-        logger.warning("Oracle narration failed: %s", exc)
+        logger.warning("event=oracle_narration_failed Oracle narration failed: %s", exc)
         return ""

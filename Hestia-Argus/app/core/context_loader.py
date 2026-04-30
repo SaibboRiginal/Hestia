@@ -15,7 +15,7 @@ import logging
 import os
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 DOCS_PATH = Path(os.getenv("HESTIA_DOCS_PATH", "/hestia_root"))
 
@@ -26,7 +26,7 @@ def _load_docs() -> str:
     """Scan DOCS_PATH for hestia-*.md files and return concatenated content."""
     if not DOCS_PATH.exists():
         logger.warning(
-            "HESTIA_DOCS_PATH '%s' does not exist; analysis will lack project context.",
+            "event=hestia_docs_path_does_analysis_will_lack HESTIA_DOCS_PATH '%s' does not exist; analysis will lack project context.",
             DOCS_PATH,
         )
         return ""
@@ -36,7 +36,7 @@ def _load_docs() -> str:
 
     if not md_files:
         logger.warning(
-            "No hestia-*.md files found under '%s'; analysis will lack project context.",
+            "event=hestia_md_files_found_under No hestia-*.md files found under '%s'; analysis will lack project context.",
             DOCS_PATH,
         )
         return ""
@@ -46,9 +46,9 @@ def _load_docs() -> str:
             text = path.read_text(encoding="utf-8", errors="replace")
             parts.append(f"--- {path.name} ---\n{text.strip()}")
         except Exception as exc:
-            logger.warning("Could not read %s: %s", path, exc)
+            logger.warning("event=could_read Could not read %s: %s", path, exc)
 
-    logger.info("Loaded %d project context file(s) from %s",
+    logger.info("event=loaded_project_context_file_from Loaded %d project context file(s) from %s",
                 len(parts), DOCS_PATH)
     return "\n\n".join(parts)
 

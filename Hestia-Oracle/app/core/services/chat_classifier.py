@@ -10,7 +10,7 @@ without touching the main chat orchestrator.
 import json
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _DEFAULT_MODE = "domain_query"
 _CONFIDENCE_THRESHOLD = 0.55  # Minimum confidence to accept quick_chat classification

@@ -18,7 +18,7 @@ class GmailIMAPFetcher(BaseFetcher):
 
     def connect(self) -> bool:
         if not self.email_address or not self.app_password:
-            logger.warning("Gmail credentials missing from environment")
+            logger.warning("event=gmail_credentials_missing_from_environment Gmail credentials missing from environment")
             return False
 
         try:
@@ -26,7 +26,7 @@ class GmailIMAPFetcher(BaseFetcher):
             self.mail.login(self.email_address, self.app_password)
             return True
         except Exception as e:
-            logger.warning("Gmail connection failed: %s", e)
+            logger.warning("event=gmail_connection_failed Gmail connection failed: %s", e)
             return False
 
     def fetch_new_data(self, since_date: datetime, custom_filter: str) -> list:
@@ -92,7 +92,7 @@ class GmailIMAPFetcher(BaseFetcher):
                         body_text += payload.decode(charset,
                                                     errors='ignore') + "\n\n"
                 except Exception as e:
-                    logger.warning("Failed to decode email part: %s", e)
+                    logger.warning("event=failed_decode_email_part Failed to decode email part: %s", e)
                     pass
 
         return body_text.strip() if body_text.strip() else "Could not extract text body."
@@ -105,4 +105,4 @@ class GmailIMAPFetcher(BaseFetcher):
                 self.mail.logout()
             except Exception:
                 pass  # If it's already closed, just ignore
-            logger.info("Disconnected from Gmail")
+            logger.info("event=disconnected_from_gmail Disconnected from Gmail")

@@ -52,7 +52,7 @@ def register_service(req: RegisterServiceRequest):
     service = req.model_dump()
     registry.register(service)
     events.bump(registry.all_services(), reason="register")
-    logger.info("Service registered | name=%s base_url=%s",
+    logger.info("event=service_registered_name_base_url Service registered | name=%s base_url=%s",
                 req.name, req.base_url)
     return {"status": "ok"}
 
@@ -61,7 +61,7 @@ def register_service(req: RegisterServiceRequest):
 def deregister_service(req: DeregisterServiceRequest):
     registry.deregister(req.name, req.base_url)
     events.bump(registry.all_services(), reason="deregister")
-    logger.info("Service deregistered | name=%s base_url=%s",
+    logger.info("event=service_deregistered_name_base_url Service deregistered | name=%s base_url=%s",
                 req.name, req.base_url)
     return {"status": "ok"}
 
