@@ -566,7 +566,12 @@ def execute_direct_command(command_name: str, chat_id: int, raw_args_text: str):
         threading.Thread(target=_typing_loop, daemon=True).start()
 
     output, parse_mode = render_direct_command_output(
-        normalized, payload, response_mode, response_prompt)
+        normalized,
+        payload,
+        response_mode,
+        response_prompt,
+        chat_id=chat_id,
+    )
     logger.info(
         "event=command_output_ready_command_output_chars Command output ready | command=%s output_chars=%s parse_mode=%s",
         normalized,

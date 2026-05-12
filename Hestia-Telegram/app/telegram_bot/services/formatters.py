@@ -341,13 +341,23 @@ def strip_formatter_intro(text: str) -> str:
     return "\n".join(cleaned).strip() or str(text or "").strip()
 
 
-def format_command_payload_with_oracle(command_name: str, payload: Any, response_prompt: str = "") -> str | None:
+def format_command_payload_with_oracle(
+    command_name: str,
+    payload: Any,
+    response_prompt: str = "",
+    chat_id: str | int | None = None,
+) -> str | None:
     """Ask Oracle to format *payload* into natural language."""
+    effective_instructions = (
+        core.build_client_instructions_for_chat(str(chat_id))
+        if chat_id is not None
+        else core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS
+    )
     request_payload = {
         "command": command_name,
         "payload": payload,
         "response_prompt": response_prompt,
-        "client_instructions": core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS,
+        "client_instructions": effective_instructions,
         "thinking": False,
         "locale": core.TELEGRAM_LOCALE,
     }
@@ -367,6 +377,7 @@ def render_direct_command_output(
     payload: Any,
     response_mode: str = "raw_json",
     response_prompt: str = "",
+    chat_id: str | int | None = None,
 ) -> tuple[str, str]:
     """Select and apply the best formatter for a command response.
 
@@ -383,7 +394,7 @@ def render_direct_command_output(
     # ── Oracle rendering (highest priority) ──────────────────────────────────
     if mode == "oracle_natural":
         formatted = format_command_payload_with_oracle(
-            command_name, payload, response_prompt)
+            command_name, payload, response_prompt, chat_id=chat_id)
         if formatted:
             return formatted, "HTML"
         # Oracle unavailable — fall through to hardcoded formatters below

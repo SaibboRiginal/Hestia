@@ -62,3 +62,11 @@ Adding a new data source = implementing this interface and registering the conne
 - Connector credentials/config are passed at registration time and held in memory only — never persisted by Ingest.
 - Ingest has no knowledge of what the fetched data will be used for.
 - Ingest does not publish notifications and does not call Hermes.
+
+
+## Documentation Synchronization (Required)
+
+1. Any behavior, command, or contract change must update this service document in the same change set.
+2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
+3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
+4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.

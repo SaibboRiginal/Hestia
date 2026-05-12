@@ -95,6 +95,12 @@ data/
 postgres_data/
 ref/
 AI_RULEBOOK.md
+.github/
+!.github/
+.github/*
+!.github/workflows/
+!.github/workflows/*.yml
+!.github/workflows/*.yaml
 
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is

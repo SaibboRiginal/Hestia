@@ -8,8 +8,21 @@ services:
     env_file:
       - ./app/.env
     environment:
-      - HUB_API_URL=http://hestia_hub:19001/api
-      - SERVICE_BASE_URL=http://hestia_hephaestus:19010
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - SERVICE_NAME=hephaestus                              # Registered service name on Hub
+      - SERVICE_BASE_URL=http://hestia_hephaestus:19010      # This service's public URL as seen by Hub
+      - SERVICE_VERSION=1.0.0                                # Reported version in Hub registry
+      - SERVICE_TYPE=core                                    # Service category in Hub registry
+      - SERVICE_TAGS=core                                    # Hub tags for routing/discovery
+      - HEPHAESTUS_EXECUTION_TIMEOUT_SECONDS=25              # Hub-routed maintenance execution timeout in seconds (float)
+      - HEPHAESTUS_REQUIRE_APPROVAL_FOR_MUTATION=1           # Require explicit approval for non-dry-run remediation (0|1)
+      - HEPHAESTUS_ALLOW_AUTO_APPROVE_NON_PROD=0             # Allow non-prod auto-approval without human gate (0|1)
+      - HEPHAESTUS_MAINTENANCE_PATHS=/api/module/maintenance/reconcile,/api/maintenance/reconcile,/api/$$service/maintenance/reconcile  # Fallback maintenance endpoint candidates
+      - HERMES_API_URL=http://hestia_hermes:19005            # Hermes ingest API base URL for remediation notifications
+      - HEPHAESTUS_NOTIFY_TARGET=                            # Optional notification target identifier
+      - HEPHAESTUS_BASELINE_REF=HEAD                         # Baseline ref captured for rollback metadata
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
     networks:
       - hestia_net

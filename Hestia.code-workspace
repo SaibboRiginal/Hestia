@@ -36,6 +36,13 @@
       },
     },
     {
+      "name": "Dummy",
+      "path": "Hestia-Dummy",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
       "name": "Hephaestus",
       "path": "Hestia-Hephaestus",
       "settings": {
@@ -103,6 +110,7 @@
           "Hestia-Athena": true,
           "Hestia-Atlas": true,
           "Hestia-Chronos": true,
+          "Hestia-Dummy": true,
           "Hestia-Heaphaestus": true,
           "Hestia-Hermes": true,
           "Hestia-Hub": true,

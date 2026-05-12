@@ -160,3 +160,11 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 - Calendar has no conversation or AI logic — it is a pure I/O adapter.
 - Provider failures never propagate to callers — they are collected and returned as structured error results.
 - All event times must be provided in ISO 8601 format with explicit timezone.
+
+
+## Documentation Synchronization (Required)
+
+1. Any behavior, command, or contract change must update this service document in the same change set.
+2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
+3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
+4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.

@@ -1,9 +1,12 @@
 import json
 import threading
 import logging
+import time
+from html import escape
 from typing import Any
 
 import requests
+from telebot import types
 
 from telegram_bot import core
 from telegram_bot.services.command_service import (
@@ -27,10 +30,51 @@ from telegram_bot.services.command_service import (
 logger = logging.getLogger("hestia_telegram.chat_service")
 
 
+def _build_confirmation_keyboard(token: str, confirm_label: str = "Conferma", cancel_label: str = "Annulla"):
+    markup = types.InlineKeyboardMarkup()
+    markup.row(
+        types.InlineKeyboardButton(
+            confirm_label, callback_data=f"confirm:{token}"),
+        types.InlineKeyboardButton(
+            cancel_label, callback_data=f"cancel:{token}"),
+    )
+    return markup
+
+
+def _respond_oracle_high_impact_approval(
+    token: str,
+    approve: bool,
+    chat_id: int,
+    actor: str | None = None,
+    trace_id: str | None = None,
+):
+    oracle_chat_url = core.resolve_oracle_chat_url()
+    oracle_base_url = oracle_chat_url.rsplit("/api/chat", 1)[0]
+    url = f"{oracle_base_url}/api/actions/approval/respond"
+    headers: dict[str, str] = {}
+    if trace_id:
+        headers["X-Trace-Id"] = str(trace_id)
+    response = requests.post(
+        url,
+        json={
+            "approval_token": token,
+            "approve": bool(approve),
+            "actor": actor,
+            "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
+        },
+        headers=headers,
+        timeout=35,
+    )
+    response.raise_for_status()
+    payload = response.json() if response.content else {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def is_authorized(message) -> bool:
     user_id = str(message.from_user.id)
     if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
-        logger.warning("event=unauthorized_access_attempt_user_id Unauthorized access attempt | user_id=%s", user_id)
+        logger.warning(
+            "event=unauthorized_access_attempt_user_id Unauthorized access attempt | user_id=%s", user_id)
         core.bot.reply_to(
             message, "⛔ **Access Denied.** This Hestia instance is private.")
         return False
@@ -65,6 +109,78 @@ def handle_confirmation(call):
             core.bot.answer_callback_query(call.id, "Richiesta scaduta")
             return
 
+        # Handle Oracle high-impact action approval confirmation/cancel.
+        if payload.get("action") == "oracle_high_impact_approval":
+            approved = action not in {"cancel", "cancel_cmd"}
+            try:
+                response_payload = _respond_oracle_high_impact_approval(
+                    token=token,
+                    approve=approved,
+                    chat_id=call.message.chat.id,
+                    actor=str(call.from_user.id),
+                    trace_id=str(payload.get("trace_id")
+                                 or "").strip() or None,
+                )
+            except requests.HTTPError as http_error:
+                status_code = getattr(http_error.response, "status_code", None)
+                if status_code == 404:
+                    core.bot.edit_message_text(
+                        "⚠️ Richiesta scaduta o già risolta.",
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                    )
+                    core.bot.answer_callback_query(call.id, "Scaduta")
+                    return
+                core.PENDING_CONFIRMATIONS[token] = payload
+                logger.warning(
+                    "event=oracle_action_approval_http_error status=%s error=%s",
+                    status_code,
+                    http_error,
+                )
+                core.bot.edit_message_text(
+                    "⚠️ Errore durante la conferma dell'azione.",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                )
+                core.bot.answer_callback_query(call.id, "Errore")
+                return
+            except Exception as error:
+                core.PENDING_CONFIRMATIONS[token] = payload
+                logger.warning(
+                    "event=oracle_action_approval_error Approval callback error: %s",
+                    error,
+                )
+                core.bot.edit_message_text(
+                    "⚠️ Errore durante la conferma dell'azione.",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                )
+                core.bot.answer_callback_query(call.id, "Errore")
+                return
+
+            status = str(response_payload.get("status") or "")
+            if not approved or status == "canceled":
+                core.bot.edit_message_text(
+                    "Operazione annullata.",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                )
+                core.bot.answer_callback_query(call.id, "Annullato")
+                return
+
+            result_payload = response_payload.get("result") if isinstance(
+                response_payload.get("result"), dict) else {}
+            final_text = str(result_payload.get("text")
+                             or "").strip() or "✅ Azione completata."
+            core.bot.edit_message_text(
+                core.format_for_telegram(final_text),
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode="HTML",
+            )
+            core.bot.answer_callback_query(call.id, "Confermato")
+            return
+
         # Handle cancel action
         if action == "cancel" or action == "cancel_cmd":
             core.bot.edit_message_text(
@@ -84,7 +200,8 @@ def handle_confirmation(call):
                 delete_url = f"{oracle_chat_url}/{old_session_id}"
                 requests.delete(delete_url, timeout=5)
             except Exception as error:
-                logger.warning("event=failed_purge_remote_history Failed to purge remote history: %s", error)
+                logger.warning(
+                    "event=failed_purge_remote_history Failed to purge remote history: %s", error)
 
             core.reset_session(chat_id)
             core.reset_session_settings(chat_id)
@@ -154,7 +271,8 @@ def handle_confirmation(call):
 
         core.bot.answer_callback_query(call.id, "Nessuna azione")
     except Exception as error:
-        logger.warning("event=confirmation_handler_error Confirmation handler error: %s", error)
+        logger.warning(
+            "event=confirmation_handler_error Confirmation handler error: %s", error)
 
 
 def handle_arg_picker(call):
@@ -176,7 +294,8 @@ def handle_arg_picker(call):
             command_name, call.message.chat.id, f"{arg}={value}")
         core.bot.answer_callback_query(call.id, "Comando eseguito")
     except Exception as error:
-        logger.warning("event=arg_picker_handler_error Arg picker handler error: %s", error)
+        logger.warning(
+            "event=arg_picker_handler_error Arg picker handler error: %s", error)
 
 
 def handle_run_command(call):
@@ -189,7 +308,8 @@ def handle_run_command(call):
         execute_direct_command(command_name, call.message.chat.id, "")
         core.bot.answer_callback_query(call.id, "Comando eseguito")
     except Exception as error:
-        logger.warning("event=run_command_handler_error Run command handler error: %s", error)
+        logger.warning(
+            "event=run_command_handler_error Run command handler error: %s", error)
 
 
 def handle_set_picker(call):
@@ -232,7 +352,8 @@ def handle_set_picker(call):
 
         core.bot.answer_callback_query(call.id, "Azione non valida")
     except Exception as error:
-        logger.warning("event=set_picker_handler_error Set picker handler error: %s", error)
+        logger.warning(
+            "event=set_picker_handler_error Set picker handler error: %s", error)
 
 
 def handle_calendar_step(call):
@@ -244,7 +365,8 @@ def handle_calendar_step(call):
             return
         handle_calendar_step_callback(call)
     except Exception as error:
-        logger.warning("event=calendar_step_callback_error Calendar step callback error: %s", error)
+        logger.warning(
+            "event=calendar_step_callback_error Calendar step callback error: %s", error)
 
 
 def handle_cancel_flow(call):
@@ -263,7 +385,8 @@ def handle_cancel_flow(call):
         )
         core.bot.answer_callback_query(call.id, "Annullato")
     except Exception as error:
-        logger.warning("event=cancel_flow_handler_error Cancel flow handler error: %s", error)
+        logger.warning(
+            "event=cancel_flow_handler_error Cancel flow handler error: %s", error)
 
 
 def _run_notification_shortcut(chat_id: int, session_id: str, user_message: str, status_message_id: int):
@@ -364,7 +487,12 @@ def handle_chat_message(message):
             "response_mode", "raw_json")).strip().lower()
         response_prompt = str(command_meta.get("response_prompt", "")).strip()
         output, parse_mode = render_direct_command_output(
-            command_name, payload, response_mode, response_prompt)
+            command_name,
+            payload,
+            response_mode,
+            response_prompt,
+            chat_id=message.chat.id,
+        )
         core.send_user_message(message.chat.id, output, parse_mode=parse_mode)
         return
 
@@ -448,6 +576,7 @@ def handle_chat_message(message):
 
             final_answer = ""
             streamed_signals: list[dict[str, Any]] = []
+            streamed_questions: list[dict[str, Any]] = []
             for line in res.iter_lines():
                 if not line:
                     continue
@@ -463,6 +592,8 @@ def handle_chat_message(message):
                     final_answer = data.get("reply")
                 elif data.get("type") == "signal":
                     streamed_signals.append(data)
+                elif data.get("type") == "question":
+                    streamed_questions.append(data)
 
         message_parts = core.build_chat_messages(final_answer)
         if not message_parts:
@@ -487,6 +618,55 @@ def handle_chat_message(message):
 
         for card in core.build_signal_cards(streamed_signals):
             core.send_user_message(chat_id, card, parse_mode="HTML")
+
+        for question in streamed_questions:
+            token = str(question.get("id") or "").strip()
+            if not token:
+                continue
+
+            options = question.get("options") if isinstance(
+                question.get("options"), list) else []
+            confirm_label = str(options[0]).strip() if len(options) >= 1 and str(
+                options[0]).strip() else "Conferma"
+            cancel_label = str(options[1]).strip() if len(options) >= 2 and str(
+                options[1]).strip() else "Annulla"
+
+            signal_match = next(
+                (
+                    sig for sig in streamed_signals
+                    if str(sig.get("event") or "") == "action.approval.required"
+                    and str((sig.get("data") or {}).get("approval_token") or "") == token
+                ),
+                {},
+            )
+            trace_id = str(signal_match.get("trace_id")
+                           or question.get("trace_id") or "").strip()
+            timeout_sec = int(question.get("timeout_sec") or 0)
+            core.PENDING_CONFIRMATIONS[token] = {
+                "action": "oracle_high_impact_approval",
+                "chat_id": str(chat_id),
+                "trace_id": trace_id or None,
+                "created_at": int(time.time()),
+                "expires_at": int(time.time()) + max(30, timeout_sec) if timeout_sec > 0 else None,
+            }
+
+            header = str(question.get("header")
+                         or "Conferma richiesta").strip()
+            prompt = str(question.get("prompt") or "").strip()
+            question_html = f"<b>{escape(header)}</b>"
+            if prompt:
+                question_html += f"\n{escape(prompt)}"
+
+            core.bot.send_message(
+                chat_id,
+                question_html,
+                parse_mode="HTML",
+                reply_markup=_build_confirmation_keyboard(
+                    token,
+                    confirm_label=confirm_label,
+                    cancel_label=cancel_label,
+                ),
+            )
 
     except Exception as error:
         error_msg = f"⚠️ **Connessione all'Oracle fallita**\n`{error}`"

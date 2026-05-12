@@ -125,6 +125,14 @@ services:
       # ORACLE_CONTEXT_FIELD_CHAR_LIMIT=280  max chars per entity field (int)
       # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  module-tool cache TTL (int)
       # ORACLE_FORCE_TELEGRAM_TARGET=1  force subscription channels to user's chat_id (0|1)
+      # ORACLE_ATHENA_HINTS_ENABLED=1  enable Athena advisory hint ingestion (0|1)
+      # ORACLE_ATHENA_HINTS_TTL_SECONDS=7200  Athena hint TTL in Oracle buffer (int)
+      # ORACLE_ATHENA_HINTS_MAX=300  max Athena hints retained in memory (int)
+      # ORACLE_PROMPT_AB_ALERT_ENABLED=0  enable alert formatter A/B prompt gating (0|1)
+      # ORACLE_PROMPT_AB_ALERT_VARIANTS=control,experimental  alert prompt variants
+      # ORACLE_PROMPT_AB_PLANNER_ENABLED=0  enable planner behavior A/B prompt gating (0|1)
+      # ORACLE_PROMPT_AB_PLANNER_VARIANTS=control,experimental  planner prompt variants
+      # ORACLE_PROMPT_AB_SALT=hestia  deterministic bucketing salt for prompt experiments
     depends_on:
       hub:
         condition: service_started
@@ -175,6 +183,8 @@ services:
       - TELEGRAM_BASE_URL=http://hestia_telegram:8010        # This service's public URL (includes control port)
       - TELEGRAM_CONTROL_PORT=8010                           # Internal HTTP port for Hub dispatch and health (int, default 8010)
       - TELEGRAM_COMMAND_REFRESH_SECONDS=0                   # Seconds between command registry polls; 0 = webhook only (int)
+      - TELEGRAM_SIGNAL_STYLE=minimal                        # Signal card detail level: minimal | compact | rich
+      - TELEGRAM_SIGNAL_STYLE_BY_FAMILY=action=compact       # Optional overrides (CSV key=value), e.g. action=compact,memory=minimal,subscription=minimal
       - ALERT_BUFFER_WINDOW_SECONDS=0.8                      # Seconds to buffer consecutive alerts before grouping (float)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
@@ -291,6 +301,10 @@ services:
       - ARGUS_LOG_BUFFER_SIZE=500         # Max log lines kept in memory per container (int, default 500)
       - ARGUS_LOG_BACKFILL_MINUTES=0      # Minutes of past logs to load on startup per container (int, default 5)
       - ARGUS_IGNORE_PATTERNS=OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set  # Comma-separated substrings to suppress from alerts
+      - ARGUS_AUTO_REMEDIATE_ENABLED=1    # Emit remediation intents to Hephaestus for newly unhealthy services (0|1)
+      - ARGUS_AUTO_REMEDIATE_DRY_RUN=1    # Default remediation intents in dry-run mode (0|1)
+      - ARGUS_AUTO_REMEDIATE_ENVIRONMENT=dev  # Environment forwarded to Hephaestus remediation tasks
+      - ARGUS_REMEDIATE_TIMEOUT_SECONDS=15 # Hub-routed timeout for Hephaestus remediation requests (seconds)
       - ALERT_BATCH_WINDOW_SECONDS=20     # Seconds to wait for burst to settle before sending a single batched notification (int, default 20)
       - ARGUS_NOTIFY_TARGET=5770661128  # Telegram chat_id for alert notifications (string, required for alerts)
       - ALERT_COOLDOWN_MINUTES=60         # Minimum minutes between repeated alerts per container (int, default 60)
@@ -328,6 +342,14 @@ services:
       - ATHENA_LOOP_ENABLED=1                                # Enable periodic focus brief loop (0|1)
       - ATHENA_BRIEF_INTERVAL_SECONDS=300                    # Seconds between periodic focus brief evaluations (int)
       - ATHENA_RELEVANCE_THRESHOLD=0.55                      # Gate threshold for emitting briefs (float 0..1)
+      - ATHENA_ORACLE_HINT_ENABLED=1                         # Publish advisory hints to Oracle via Hub route (0|1)
+      - ATHENA_ORACLE_HINT_ROUTE=api/athena/hints            # Oracle hint endpoint path routed via Hub
+      - ATHENA_ORACLE_HINT_TIMEOUT_SECONDS=8                 # Timeout for Hub-routed Oracle hint publish (int)
+      - ATHENA_RETROSPECTIVE_WINDOW=24                       # Number of recent outcomes included in retrospective synthesis (int)
+      - ATHENA_RETRO_FAILURE_URGENCY_BOOST=0.07              # Urgency boost per consecutive failure in retrospective scoring (float)
+      - ATHENA_RETRO_UNRESOLVED_URGENCY_BOOST=0.04           # Urgency boost per unresolved commitment (float)
+      - ATHENA_RETRO_UNRESOLVED_USEFULNESS_BOOST=0.03        # Usefulness boost per unresolved commitment (float)
+      - ATHENA_COMMITMENT_TTL_SECONDS=86400                  # Retention window for unresolved commitments (int)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
@@ -356,8 +378,39 @@ services:
       - SERVICE_VERSION=1.0.0                                # Reported version in Hub registry
       - SERVICE_TYPE=core                                    # Service category in Hub registry
       - SERVICE_TAGS=core                                    # Hub tags for routing/discovery
-      - HEPHAESTUS_READ_ONLY_MODE=1                          # Keep Hephaestus in diagnostics-only mode (0|1)
-      - HEPHAESTUS_ALLOW_PROD_EXECUTION=0                    # Block production execution in MVP (0|1)
+      - HEPHAESTUS_EXECUTION_TIMEOUT_SECONDS=25              # Hub-routed maintenance execution timeout in seconds (float)
+      - HEPHAESTUS_REQUIRE_APPROVAL_FOR_MUTATION=1           # Require explicit approval for non-dry-run remediation (0|1)
+      - HEPHAESTUS_ALLOW_AUTO_APPROVE_NON_PROD=0             # Allow non-prod auto-approval without human gate (0|1)
+      - HEPHAESTUS_MAINTENANCE_PATHS=/api/module/maintenance/reconcile,/api/maintenance/reconcile,/api/$$service/maintenance/reconcile  # Fallback maintenance endpoint candidates
+      - HERMES_API_URL=http://hestia_hermes:19005            # Hermes ingest API base URL for remediation notifications
+      - HEPHAESTUS_NOTIFY_TARGET=                             # Optional notification target identifier
+      - HEPHAESTUS_BASELINE_REF=HEAD                          # Baseline ref captured for rollback metadata
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      hub:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  dummy:
+    build:
+      context: .
+      dockerfile: Hestia-Dummy/Dockerfile
+    container_name: hestia_dummy
+    restart: unless-stopped
+    ports:
+      - "19011:19011"  # Dummy testing module API port
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - SERVICE_NAME=dummy                                   # Registered service name on Hub
+      - SERVICE_BASE_URL=http://hestia_dummy:19011           # This service's public URL as seen by Hub
+      - SERVICE_VERSION=1.0.0                                # Reported version in Hub registry
+      - SERVICE_TYPE=module                                  # Service category in Hub registry
+      - SERVICE_TAGS=module                                  # Hub tags for routing/discovery
+      - DUMMY_PORT=19011                                     # Port this service listens on (int)
+      - DUMMY_MUTATION_DELAY_MS=80                           # Simulated processing latency for testing mutation path (int)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1

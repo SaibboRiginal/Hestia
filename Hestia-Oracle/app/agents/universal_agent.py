@@ -3,6 +3,7 @@ import os
 import time
 import logging
 import requests
+import json
 from google import genai
 from google.genai import types
 
@@ -22,6 +23,8 @@ class UniversalAgent:
         self.ollama_timeout_sec = int(os.getenv("OLLAMA_TIMEOUT_SEC", "120"))
         self.ollama_embed_timeout_sec = int(
             os.getenv("OLLAMA_EMBED_TIMEOUT_SEC", "60"))
+        self.ollama_tool_call_mode = os.getenv(
+            "OLLAMA_TOOL_CALL_MODE", "auto").strip().lower()
 
         if self.provider == "gemini":
             api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
@@ -72,6 +75,40 @@ class UniversalAgent:
     def ask(self, user_message: str) -> str:
         return self._with_retry(self._ask_once, user_message)
 
+    def ask_with_tools(self, user_message: str, tools: list[dict]) -> dict:
+        """Ask model with native tool-calling when provider/model supports it.
+
+        Returns:
+          {"tool_call": {"name": str, "params": dict}, "text": str}
+          or
+          {"tool_call": None, "text": str}
+        """
+        return self._with_retry(self._ask_with_tools_once, user_message, tools)
+
+    def _ask_with_tools_once(self, user_message: str, tools: list[dict]) -> dict:
+        if not tools:
+            return {"tool_call": None, "text": self._ask_once(user_message)}
+
+        if self.provider == "gemini":
+            return self._ask_with_tools_gemini(user_message, tools)
+
+        if self.provider == "ollama":
+            if self.ollama_tool_call_mode in {"native", "auto"}:
+                try:
+                    return self._ask_with_tools_ollama_native(user_message, tools)
+                except Exception as exc:
+                    if self.ollama_tool_call_mode == "native":
+                        raise
+                    logger.debug(
+                        "event=ollama_native_tool_call_fallback Ollama native tool calling unavailable, falling back to prompt mode: %s", exc)
+            # prompt fallback for models without native tool calling
+            return {
+                "tool_call": None,
+                "text": self._ask_once(user_message),
+            }
+
+        return {"tool_call": None, "text": self._ask_once(user_message)}
+
     def _ask_once(self, user_message: str) -> str:
         if self.provider == "gemini":
             response = self.client.models.generate_content(
@@ -100,6 +137,119 @@ class UniversalAgent:
             return response.json().get("response", "").strip()
 
         raise RuntimeError(f"Unknown provider: {self.provider}")
+
+    def _ask_with_tools_gemini(self, user_message: str, tools: list[dict]) -> dict:
+        declarations: list[types.FunctionDeclaration] = []
+        for tool in tools:
+            declarations.append(
+                types.FunctionDeclaration(
+                    name=str(tool.get("name", "")).strip(),
+                    description=str(tool.get("description", "")).strip(),
+                    parameters=tool.get("parameters") or {
+                        "type": "object", "properties": {}},
+                )
+            )
+
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=self.role_prompt,
+                tools=[types.Tool(function_declarations=declarations)],
+            ),
+        )
+
+        # Native function call path
+        fn_calls = getattr(response, "function_calls", None) or []
+        if fn_calls:
+            call = fn_calls[0]
+            return {
+                "tool_call": {
+                    "name": str(getattr(call, "name", "") or ""),
+                    "params": dict(getattr(call, "args", {}) or {}),
+                },
+                "text": "",
+            }
+
+        # Candidate parts fallback path
+        try:
+            candidates = getattr(response, "candidates", None) or []
+            if candidates:
+                parts = getattr(candidates[0].content, "parts", None) or []
+                for part in parts:
+                    fn = getattr(part, "function_call", None)
+                    if fn:
+                        return {
+                            "tool_call": {
+                                "name": str(getattr(fn, "name", "") or ""),
+                                "params": dict(getattr(fn, "args", {}) or {}),
+                            },
+                            "text": "",
+                        }
+        except Exception:
+            pass
+
+        return {"tool_call": None, "text": (response.text or "").strip()}
+
+    def _ask_with_tools_ollama_native(self, user_message: str, tools: list[dict]) -> dict:
+        chat_url = self.ollama_url.replace("/api/generate", "/api/chat")
+        ollama_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": str(t.get("name", "")).strip(),
+                    "description": str(t.get("description", "")).strip(),
+                    "parameters": t.get("parameters") or {"type": "object", "properties": {}},
+                },
+            }
+            for t in tools
+        ]
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": self.role_prompt or ""},
+                {"role": "user", "content": user_message},
+            ],
+            "tools": ollama_tools,
+            "stream": False,
+        }
+        if not self.thinking:
+            payload["think"] = False
+
+        response = requests.post(
+            chat_url,
+            json=payload,
+            timeout=self.ollama_timeout_sec,
+        )
+        response.raise_for_status()
+        data = response.json() or {}
+        message = data.get("message") if isinstance(
+            data.get("message"), dict) else {}
+
+        tool_calls = message.get("tool_calls") if isinstance(
+            message.get("tool_calls"), list) else []
+        if tool_calls:
+            first = tool_calls[0] if isinstance(tool_calls[0], dict) else {}
+            fn = first.get("function") if isinstance(
+                first.get("function"), dict) else {}
+            args = fn.get("arguments")
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except Exception:
+                    args = {}
+            return {
+                "tool_call": {
+                    "name": str(fn.get("name", "") or ""),
+                    "params": dict(args or {}),
+                },
+                "text": "",
+            }
+
+        return {
+            "tool_call": None,
+            "text": str(message.get("content", "") or "").strip(),
+        }
 
     # ─────────────────────────────────────────────────────────────────
     #  Token-level streaming

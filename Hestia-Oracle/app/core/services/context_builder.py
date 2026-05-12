@@ -3,6 +3,8 @@ import logging
 import os
 from typing import Any
 
+from core.services import prompt_config
+
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Compaction thresholds ─────────────────────────────────────────────────────
@@ -183,15 +185,9 @@ class ContextBuilder:
             lines.append(f"{role}: {msg.get('content', '')}")
         history_text = "\n".join(lines)
 
-        return (
-            "You are Hestia's memory compactor. Produce a compact, factual bullet-point "
-            "summary of the following conversation segment. "
-            "Capture: key user requests, decisions made, information shared, and any "
-            "commitments or open questions. Use 5-10 bullets maximum. "
-            "Do NOT paraphrase protected content (preferences, subscriptions, commitments) — "
-            "instead reproduce them verbatim as a bullet starting with their original tag.\n\n"
-            f"CONVERSATION SEGMENT:\n{history_text}\n\n"
-            "COMPACT SUMMARY (bullets only):"
+        return prompt_config.prompt(
+            "memory_compactor_template",
+            history_text=history_text,
         )
 
     def run_background_compaction(
@@ -234,7 +230,8 @@ class ContextBuilder:
             try:
                 summary_text = scribe_agent.ask(compaction_prompt).strip()
             except Exception as exc:
-                logger.warning("event=compaction_scribe_call_failed Compaction scribe call failed: %s", exc)
+                logger.warning(
+                    "event=compaction_scribe_call_failed Compaction scribe call failed: %s", exc)
                 return False
 
         # Persist snapshot via Hub (replaces old turns with summary)
@@ -275,5 +272,6 @@ class ContextBuilder:
             return True
 
         except Exception as exc:
-            logger.warning("event=compaction_persistence_failed Compaction persistence failed: %s", exc)
+            logger.warning(
+                "event=compaction_persistence_failed Compaction persistence failed: %s", exc)
             return False

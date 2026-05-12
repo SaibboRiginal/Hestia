@@ -46,6 +46,17 @@ Telegram must:
 - If output contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram native link preview).
 - Raw JSON is allowed only as technical fallback when no formatter path exists.
 
+### Signal Rendering Policy (Client-Specific, Standardized)
+- Signal payloads remain canonical and information-rich in the backend for audit and cross-client reuse.
+- Telegram applies a client-side policy to choose what to display: `minimal`, `compact`, or `rich`.
+- Default behavior is minimal one-line outcome cards for operational events.
+- Optional per-family overrides are supported (`memory`, `subscription`, `action`, `other`) through env configuration.
+- Unknown/generic signal content is suppressed in minimal mode to avoid chat noise.
+
+Environment knobs:
+- `TELEGRAM_SIGNAL_STYLE=minimal|compact|rich`
+- `TELEGRAM_SIGNAL_STYLE_BY_FAMILY=action=compact,memory=minimal,subscription=minimal`
+
 ### Input Collection Contract (Global)
 - Commands must not rely on technical `key=value` syntax as primary UX.
 - When a command requires missing input, Telegram asks for it via the next user message.
@@ -80,3 +91,11 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 - Telegram does not evaluate domain events or matching logic.
 - Telegram may perform presentation-layer formatting and message splitting.
 - Telegram does not access database directly.
+
+
+## Documentation Synchronization (Required)
+
+1. Any behavior, command, or contract change must update this service document in the same change set.
+2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
+3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
+4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.

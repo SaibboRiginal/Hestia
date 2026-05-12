@@ -1,6 +1,7 @@
 import os
 from typing import Any
 import logging
+from uuid import uuid4
 
 import requests
 
@@ -15,16 +16,33 @@ class DispatchService:
 
     def send(self, channel: str, target: str, payload: dict[str, Any] | None = None, message: str | None = None, domain: str = "", entity_id: str = "", subscription_id: int | None = None, metadata: dict[str, Any] | None = None) -> tuple[bool, str]:
         normalized = (channel or "").strip().lower()
+        trace_id = ""
+        if isinstance(metadata, dict):
+            trace_id = str(metadata.get("trace_id") or metadata.get(
+                "x_trace_id") or "").strip()
+        if not trace_id:
+            trace_id = str(uuid4())
+
         if normalized == "telegram":
-            return self._send_telegram_via_service(target, payload=payload, message=message, domain=domain, entity_id=entity_id, subscription_id=subscription_id)
+            return self._send_telegram_via_service(
+                target,
+                payload=payload,
+                message=message,
+                domain=domain,
+                entity_id=entity_id,
+                subscription_id=subscription_id,
+                trace_id=trace_id,
+            )
 
         return False, f"unsupported channel: {channel}"
 
-    def _send_telegram_via_service(self, chat_id: str, payload: dict[str, Any] | None = None, message: str | None = None, domain: str = "", entity_id: str = "", subscription_id: int | None = None) -> tuple[bool, str]:
+    def _send_telegram_via_service(self, chat_id: str, payload: dict[str, Any] | None = None, message: str | None = None, domain: str = "", entity_id: str = "", subscription_id: int | None = None, trace_id: str | None = None) -> tuple[bool, str]:
         """Route to Telegram service's control API for message dispatch via Hub"""
         endpoint = f"{self.hub_api_url}/route/telegram/api/dispatch/send"
+        effective_trace_id = str(trace_id or "").strip() or str(uuid4())
         dispatch_body = {
             "target": str(chat_id),
+            "trace_id": effective_trace_id,
         }
         if payload is not None:
             dispatch_body["payload"] = payload
@@ -39,7 +57,9 @@ class DispatchService:
                 endpoint,
                 json={
                     "method": "POST",
-                    "headers": {},
+                    "headers": {
+                        "X-Trace-Id": effective_trace_id,
+                    },
                     "query": {},
                     "body": dispatch_body,
                     "timeout_seconds": 8,

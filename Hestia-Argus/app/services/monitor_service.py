@@ -28,6 +28,12 @@ POLL_INTERVAL = int(os.getenv("ARGUS_POLL_INTERVAL", "60"))
 LOG_SOURCE = os.getenv("ARGUS_LOG_SOURCE", "hub").strip().lower()
 HUB_LOG_LIMIT = int(os.getenv("ARGUS_HUB_LOG_LIMIT", "200"))
 SEEN_CACHE_SIZE = max(500, int(os.getenv("ARGUS_LOG_SEEN_CACHE_SIZE", "5000")))
+AUTO_REMEDIATE_ENABLED = os.getenv("ARGUS_AUTO_REMEDIATE_ENABLED", "1").strip(
+).lower() not in {"0", "false", "off", "no"}
+AUTO_REMEDIATE_DRY_RUN = os.getenv("ARGUS_AUTO_REMEDIATE_DRY_RUN", "1").strip(
+).lower() not in {"0", "false", "off", "no"}
+AUTO_REMEDIATE_ENVIRONMENT = os.getenv(
+    "ARGUS_AUTO_REMEDIATE_ENVIRONMENT", "dev").strip().lower() or "dev"
 
 # Services currently known to be unhealthy — used to detect recovery.
 # Value is the last known bad status string.
@@ -70,7 +76,8 @@ def _monitor_loop() -> None:
         try:
             _run_once()
         except Exception as exc:
-            logger.error("event=error_monitor_loop Error in monitor loop: %s", exc, exc_info=True)
+            logger.error(
+                "event=error_monitor_loop Error in monitor loop: %s", exc, exc_info=True)
         time.sleep(POLL_INTERVAL)
 
 
@@ -97,6 +104,29 @@ def _run_once() -> None:
                     ),
                 )
             )
+            if AUTO_REMEDIATE_ENABLED and not was_unhealthy:
+                ok, response = hub_client.request_hephaestus_remediation(
+                    source="argus.monitor",
+                    service=name,
+                    issue=f"service_{report.status}",
+                    severity="critical" if report.status == "down" else "warning",
+                    requested_action="auto_health_recovery",
+                    environment=AUTO_REMEDIATE_ENVIRONMENT,
+                    dry_run=AUTO_REMEDIATE_DRY_RUN,
+                    auto_approve=False,
+                    metadata={
+                        "status": report.status,
+                        "error": report.error,
+                        "from_monitor_loop": True,
+                    },
+                )
+                logger.info(
+                    "event=argus_autoremediate_requested service=%s ok=%s dry_run=%s response=%s",
+                    name,
+                    ok,
+                    AUTO_REMEDIATE_DRY_RUN,
+                    str(response)[:250],
+                )
         elif was_unhealthy:
             with _unhealthy_lock:
                 _unhealthy.pop(name, None)
@@ -126,4 +156,5 @@ def start() -> None:
         name="argus-monitor-loop",
     )
     thread.start()
-    logger.info("event=argus_monitor_loop_started_interval Argus monitor loop started (interval=%ss)", POLL_INTERVAL)
+    logger.info(
+        "event=argus_monitor_loop_started_interval Argus monitor loop started (interval=%ss)", POLL_INTERVAL)

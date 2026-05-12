@@ -1,0 +1,33 @@
+name: Governance Checks
+
+on:
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Docs sync gate
+        run: |
+          python tools/governance/check_docs_sync.py \
+            --base "${{ github.event.pull_request.base.sha || github.sha }}" \
+            --head "${{ github.sha }}"
+
+      - name: Command contract gate
+        run: |
+          python tools/governance/check_command_contracts.py \
+            --base "${{ github.event.pull_request.base.sha || github.sha }}" \
+            --head "${{ github.sha }}"

@@ -16,6 +16,8 @@ info:
     | Scout     | 19006 |
     | Chronos   | 19007 |
     | Argus     | 19008 |
+    | Hephaestus| 19010 |
+    | Dummy     | 19011 |
   version: 1.0.0
 
 servers:
@@ -57,6 +59,12 @@ tags:
     description: Calendar CRUD and agenda
   - name: Argus
     description: System health monitoring and log analysis
+  - name: Hephaestus
+    description: Guarded self-healing remediation workflows
+  - name: Dummy
+    description: Deterministic generic testing module
+  - name: Athena
+    description: Retrospective focus-brief cognition runtime
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Shared components
@@ -72,8 +80,6 @@ components:
         service:
           type: string
           example: hestia_hub
-
-    # ── Hub ───────────────────────────────────────────────────────────────────
     RegisterServiceRequest:
       type: object
       required:
@@ -380,6 +386,281 @@ components:
         locale:
           type: string
           default: it
+
+    ActionApprovalResponseRequest:
+      type: object
+      required: [approval_token, approve]
+      properties:
+        approval_token:
+          type: string
+        approve:
+          type: boolean
+        actor:
+          type: string
+          nullable: true
+        client_instructions:
+          type: string
+          nullable: true
+
+    AthenaHintIngestRequest:
+      type: object
+      required: [summary]
+      properties:
+        hint_id:
+          type: string
+        source:
+          type: string
+          default: athena
+        hint_type:
+          type: string
+          default: focus_brief
+        session_id:
+          type: string
+          nullable: true
+        domain:
+          type: string
+          nullable: true
+        domains:
+          type: array
+          items:
+            type: string
+        priority:
+          type: string
+          default: normal
+        summary:
+          type: string
+        brief:
+          type: object
+          additionalProperties: true
+        gate:
+          type: object
+          additionalProperties: true
+        retrospective:
+          type: object
+          additionalProperties: true
+        ttl_seconds:
+          type: integer
+          nullable: true
+        trace_id:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+
+    AthenaCommitmentRecord:
+      type: object
+      properties:
+        brief_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        domain:
+          type: string
+        score:
+          type: number
+        trace_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        resolution_status:
+          type: string
+          nullable: true
+        resolution_note:
+          type: string
+          nullable: true
+
+    TaskLifecycleRecord:
+      type: object
+      properties:
+        task_id:
+          type: string
+        task_type:
+          type: string
+        lifecycle_state:
+          type: string
+          enum: [queued, running, succeeded, failed, canceled]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        session_id:
+          type: string
+          nullable: true
+        trace_id:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+        result:
+          type: object
+          additionalProperties: true
+          nullable: true
+        error:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    ArgusRemediationRequest:
+      type: object
+      required: [service, issue]
+      properties:
+        service:
+          type: string
+        issue:
+          type: string
+        severity:
+          type: string
+          default: warning
+        requested_action:
+          type: string
+          default: runbook_autoselect
+        environment:
+          type: string
+          default: dev
+        dry_run:
+          type: boolean
+          default: true
+        auto_approve:
+          type: boolean
+          default: false
+        metadata:
+          type: object
+          additionalProperties: true
+
+    HephaestusRemediationRequest:
+      type: object
+      required: [service, issue]
+      properties:
+        source:
+          type: string
+          default: argus
+        incident_id:
+          type: string
+        service:
+          type: string
+        issue:
+          type: string
+        severity:
+          type: string
+          default: warning
+        requested_action:
+          type: string
+          default: runbook_autoselect
+        environment:
+          type: string
+          default: dev
+        dry_run:
+          type: boolean
+          default: true
+        auto_approve:
+          type: boolean
+          default: false
+        metadata:
+          type: object
+          additionalProperties: true
+
+    HephaestusRemediationApproveRequest:
+      type: object
+      properties:
+        approved_by:
+          type: string
+          default: operator
+        note:
+          type: string
+          nullable: true
+        dry_run_override:
+          type: boolean
+          nullable: true
+
+    HephaestusRemediationRollbackRequest:
+      type: object
+      properties:
+        requested_by:
+          type: string
+          default: operator
+        reason:
+          type: string
+          default: manual_rollback
+
+    HephaestusTaskRecord:
+      type: object
+      properties:
+        task_id:
+          type: string
+        incident_id:
+          type: string
+        source:
+          type: string
+        service:
+          type: string
+        issue:
+          type: string
+        severity:
+          type: string
+        environment:
+          type: string
+        requested_action:
+          type: string
+        runbook_id:
+          type: string
+        state:
+          type: string
+          enum: [pending_approval, running, succeeded, failed, rolled_back]
+        dry_run:
+          type: boolean
+        auto_approve:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        branch:
+          type: string
+        baseline_ref:
+          type: string
+        commit_ref:
+          type: string
+          nullable: true
+        rollback_ref:
+          type: string
+        notifications:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
 
     # ── Hermes ────────────────────────────────────────────────────────────────
     HermesEventRequest:
@@ -2394,6 +2675,124 @@ paths:
         "200":
           description: "{status, session_id}"
 
+  /api/tasks:
+    get:
+      tags: [Oracle]
+      summary: List Oracle background task lifecycle records
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - name: task_type
+          in: query
+          schema:
+            type: string
+            example: oracle.compaction
+        - name: lifecycle_state
+          in: query
+          schema:
+            type: string
+            enum: [queued, running, succeeded, failed, canceled]
+      responses:
+        "200":
+          description: "{count, tasks[]}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TaskLifecycleRecord"
+
+  /api/tasks/{task_id}:
+    get:
+      tags: [Oracle]
+      summary: Get one Oracle background task lifecycle record
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{task}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: "#/components/schemas/TaskLifecycleRecord"
+        "404":
+          description: task not found
+
+  /api/actions/approval/respond:
+    post:
+      tags: [Oracle]
+      summary: Approve or cancel a pending high-impact action
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionApprovalResponseRequest"
+      responses:
+        "200":
+          description: Approval response result
+        "400":
+          description: Invalid payload
+        "404":
+          description: Approval token not found or expired
+
+  /api/athena/hints:
+    post:
+      tags: [Oracle]
+      summary: Ingest advisory hints emitted by Athena
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthenaHintIngestRequest"
+      responses:
+        "200":
+          description: "{status, stored, hint}"
+    get:
+      tags: [Oracle]
+      summary: List currently active Athena advisory hints in Oracle
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 200
+      responses:
+        "200":
+          description: "{count, hints[]}"
+
   # ══════════════════════════════════════════════════════════════════════════
   #  HERMES — 19005
   # ══════════════════════════════════════════════════════════════════════════
@@ -2745,3 +3144,457 @@ paths:
       responses:
         "200":
           description: "SystemReport: {status, summary (LLM text), events[], ...}"
+
+  /api/argus/remediate:
+    post:
+      tags: [Argus]
+      summary: Forward remediation intent to Hephaestus through Hub routing
+      servers:
+        - url: http://localhost:19008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArgusRemediationRequest"
+      responses:
+        "200":
+          description: "{status, forwarded_to, result}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  HEPHAESTUS — 19010
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /hephaestus/health:
+    get:
+      tags: [Hephaestus]
+      summary: Hephaestus health check
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200":
+          description: OK
+
+  /api/hephaestus/status:
+    get:
+      tags: [Hephaestus]
+      summary: Hephaestus runtime status
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200":
+          description: "{status, mode, self_healing_preview_only, runbook_count}"
+
+  /api/hephaestus/runbooks:
+    get:
+      tags: [Hephaestus]
+      summary: List available Hephaestus runbooks
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200":
+          description: "{status, runbooks[]}"
+
+  /api/hephaestus/tasks:
+    get:
+      tags: [Hephaestus]
+      summary: List remediation tasks
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [pending_approval, running, succeeded, failed, rolled_back]
+      responses:
+        "200":
+          description: "{status, count, tasks[]}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HephaestusTaskRecord"
+
+  /api/hephaestus/tasks/{task_id}:
+    get:
+      tags: [Hephaestus]
+      summary: Retrieve one remediation task
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status, task}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  task:
+                    $ref: "#/components/schemas/HephaestusTaskRecord"
+
+  /api/hephaestus/remediate:
+    post:
+      tags: [Hephaestus]
+      summary: Create a remediation task (policy-gated skeleton flow)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HephaestusRemediationRequest"
+      responses:
+        "200":
+          description: "{status, task, approval_required}"
+
+  /api/hephaestus/remediate/{task_id}/approve:
+    post:
+      tags: [Hephaestus]
+      summary: Approve and execute a pending remediation task
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HephaestusRemediationApproveRequest"
+      responses:
+        "200":
+          description: "{status, task}"
+
+  /api/hephaestus/remediate/{task_id}/rollback:
+    post:
+      tags: [Hephaestus]
+      summary: Record rollback execution for a remediation task
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HephaestusRemediationRollbackRequest"
+      responses:
+        "200":
+          description: "{status, task}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  DUMMY — 19011
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /dummy/health:
+    get:
+      tags: [Dummy]
+      summary: Dummy module health check
+      servers:
+        - url: http://localhost:19011
+      responses:
+        "200":
+          description: OK
+
+  /api/dummy/status:
+    get:
+      tags: [Dummy]
+      summary: Read current dummy module state
+      servers:
+        - url: http://localhost:19011
+      responses:
+        "200":
+          description: "{status, service, state}"
+
+  /api/module/maintenance/reconcile:
+    post:
+      tags: [Dummy]
+      summary: Execute deterministic maintenance reconcile on dummy module
+      servers:
+        - url: http://localhost:19011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source:
+                  type: string
+                task_id:
+                  type: string
+                  nullable: true
+                issue:
+                  type: string
+                  nullable: true
+                requested_action:
+                  type: string
+                  nullable: true
+                environment:
+                  type: string
+                  default: dev
+                dry_run:
+                  type: boolean
+                  default: true
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: "{status, service, dry_run, task_id, executed_at, actions, state}"
+
+  /api/maintenance/reconcile:
+    post:
+      tags: [Dummy]
+      summary: Alias of dummy maintenance reconcile endpoint
+      servers:
+        - url: http://localhost:19011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: "Alias response; same as /api/module/maintenance/reconcile"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  ATHENA — 19009
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /athena/health:
+    get:
+      tags: [Athena]
+      summary: Athena health check
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200":
+          description: OK
+
+  /api/athena/status:
+    get:
+      tags: [Athena]
+      summary: Athena runtime status
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200":
+          description: "{status, runtime}"
+
+  /api/athena/trigger:
+    post:
+      tags: [Athena]
+      summary: Manually trigger one Athena focus brief evaluation
+      servers:
+        - url: http://localhost:19009
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                summary:
+                  type: string
+                domain:
+                  type: string
+                  default: cognition
+                signals:
+                  type: object
+                  properties:
+                    urgency:
+                      type: number
+                      minimum: 0
+                      maximum: 1
+                    usefulness:
+                      type: number
+                      minimum: 0
+                      maximum: 1
+                    novelty:
+                      type: number
+                      minimum: 0
+                      maximum: 1
+                    interruption_cost:
+                      type: number
+                      minimum: 0
+                      maximum: 1
+                    confidence:
+                      type: number
+                      minimum: 0
+                      maximum: 1
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: "{status, accepted, score, threshold, brief}"
+
+  /api/athena/tasks:
+    get:
+      tags: [Athena]
+      summary: List Athena task lifecycle records
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - name: task_type
+          in: query
+          schema:
+            type: string
+            example: athena.focus_brief.periodic
+        - name: lifecycle_state
+          in: query
+          schema:
+            type: string
+            enum: [queued, running, succeeded, failed, canceled]
+      responses:
+        "200":
+          description: "{status, count, tasks[]}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  tasks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TaskLifecycleRecord"
+
+  /api/athena/tasks/{task_id}:
+    get:
+      tags: [Athena]
+      summary: Get one Athena task lifecycle record
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status, task}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  task:
+                    $ref: "#/components/schemas/TaskLifecycleRecord"
+        "404":
+          description: task not found
+
+  /api/athena/commitments:
+    get:
+      tags: [Athena]
+      summary: List unresolved or historical Athena commitments
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+        - name: include_resolved
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: "{status, count, commitments[]}"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  count:
+                    type: integer
+                  commitments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AthenaCommitmentRecord"
+
+  /api/athena/commitments/{brief_id}/resolve:
+    post:
+      tags: [Athena]
+      summary: Resolve an open Athena commitment
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - name: brief_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  default: resolved
+                note:
+                  type: string
+      responses:
+        "200":
+          description: "{status, commitment}"
+        "404":
+          description: commitment not found

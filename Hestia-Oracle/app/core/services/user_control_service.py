@@ -11,6 +11,8 @@ import json
 import logging
 import re
 
+from core.services import prompt_config
+
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 _CONTROL_DOMAIN = "user_controls"
@@ -18,35 +20,6 @@ _CONTROL_CLASS = "durable_user_preference"
 _CONTROL_PREFIX = "[CONTROL]"
 _ALLOWED_AGGRESSIVENESS = {"low", "normal", "high"}
 _DEFAULT_CATEGORIES = ["alerts", "tasks", "reminders", "insights"]
-
-_EXTRACT_PROMPT = """
-You are Hestia's control extractor.
-
-Given a user message, extract ONLY durable controllability updates.
-If there is no clear control change, output NONE.
-
-Control schema (partial object allowed):
-{
-  "proactive_enabled": true|false,
-  "allowed_categories": ["alerts","tasks","reminders","insights", "..."],
-  "quiet_hours": {
-    "enabled": true|false,
-    "start": "HH:MM",
-    "end": "HH:MM"
-  },
-  "reminder_aggressiveness": "low"|"normal"|"high",
-  "dont_ask_again": ["topic1", "topic2"],
-  "reset_scope": "primary"|"branch"
-}
-
-Rules:
-- Output ONLY JSON object or NONE.
-- Do not invent fields outside schema.
-- Use 24h HH:MM format for quiet hours when present.
-
-USER MESSAGE:
-{user_message}
-"""
 
 
 class UserControlService:
@@ -239,8 +212,10 @@ class UserControlService:
         return merged, saved
 
     def extract_and_save_controls(self, user_message: str) -> list[dict]:
-        # Keep literal JSON braces in _EXTRACT_PROMPT intact.
-        prompt = _EXTRACT_PROMPT.replace("{user_message}", user_message)
+        prompt = prompt_config.prompt(
+            "user_control_extract_template",
+            user_message=user_message,
+        )
         raw = self._ask(prompt)
         if not raw or raw.strip().upper() == "NONE":
             return []
