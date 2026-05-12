@@ -198,7 +198,13 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
             )
 
 
-def buffer_alert(chat_id: str, entity_payload: dict[str, Any], domain: str = "", entity_id: str = ""):
+def buffer_alert(
+    chat_id: str,
+    entity_payload: dict[str, Any],
+    domain: str = "",
+    entity_id: str = "",
+    trace_id: str | None = None,
+):
     """Add alert to buffer and schedule flush if needed"""
     with ALERT_BUFFER_LOCK:
         if chat_id not in ALERT_BUFFER:
@@ -208,6 +214,7 @@ def buffer_alert(chat_id: str, entity_payload: dict[str, Any], domain: str = "",
             "payload": entity_payload,
             "domain": domain,
             "entity_id": entity_id,
+            "trace_id": str(trace_id or "").strip(),
         })
 
         # Cancel existing timer for this chat if any
@@ -236,7 +243,16 @@ def flush_buffered_alerts(chat_id: str):
 
     from telegram_bot.services.control_service import format_multiple_alerts_with_oracle, build_alert_fallback_message
 
-    message = format_multiple_alerts_with_oracle(alerts)
+    trace_id = next(
+        (str(a.get("trace_id") or "").strip()
+         for a in alerts if str(a.get("trace_id") or "").strip()),
+        "",
+    )
+    message = format_multiple_alerts_with_oracle(
+        alerts,
+        chat_id=chat_id,
+        trace_id=trace_id or None,
+    )
     if not message:
         for alert in alerts:
             try:
@@ -253,4 +269,5 @@ def flush_buffered_alerts(chat_id: str):
     try:
         send_user_message(chat_id, message, parse_mode="HTML")
     except Exception as e:
-        LOGGER.warning("event=failed_send_buffered_alert_message Failed to send buffered alert message: %s", e)
+        LOGGER.warning(
+            "event=failed_send_buffered_alert_message Failed to send buffered alert message: %s", e)

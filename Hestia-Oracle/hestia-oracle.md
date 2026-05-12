@@ -60,6 +60,16 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - If no module tool responds, Oracle falls back to Archive `/api/entities/search`.
 - Context sent to the analyst model is compacted to avoid context bloat.
 
+### Athena Advisory Hints
+- Oracle can ingest Athena advisory hints through `POST /api/athena/hints`.
+- Hints are advisory-only context and do not bypass Oracle action execution contracts.
+- Chat/planner prompt assembly can include relevant non-expired hints for the active session and domain.
+
+### Prompt Variant Gating (A/B)
+- Planner and alert formatter prompts support env-gated variant selection.
+- Deterministic variant selection uses a stable bucketing seed (`session_id`, command/trace context, and salt).
+- Selected variant IDs are logged for regression and quality comparisons.
+
 ### Internal Architecture (SoC)
 - `core/oracle_engine.py`: thin orchestration layer only.
 - `core/services/router_service.py`: domain routing JSON extraction.
@@ -79,6 +89,8 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
 | `POST` | `/api/llm/generate` | Raw LLM call for internal service use |
+| `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
+| `GET` | `/api/athena/hints` | List non-expired Athena hints (optional `session_id`) |
 | `DELETE` | `/api/chat/{session_id}` | Clear a session |
 | `GET` | `/health` | Service health |
 
@@ -110,3 +122,11 @@ This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI 
 - No domain-specific logic is hardcoded — domain routing is driven by config, not code.
 - Oracle does not know which interface is calling it — session_id is the only identity.
 - Oracle does not dispatch push alerts; it only compiles user intent into generic subscriptions.
+
+
+## Documentation Synchronization (Required)
+
+1. Any behavior, command, or contract change must update this service document in the same change set.
+2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
+3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
+4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.

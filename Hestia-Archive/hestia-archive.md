@@ -43,3 +43,11 @@ It stores and serves all persistent state through generic APIs.
 - No domain-specific ranking/business rules.
 - No notification dispatch decisions.
 - No module-specific parsing.
+
+
+## Documentation Synchronization (Required)
+
+1. Any behavior, command, or contract change must update this service document in the same change set.
+2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
+3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
+4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.

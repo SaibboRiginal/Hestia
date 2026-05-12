@@ -70,6 +70,32 @@ Bidirectional calendar integration gateway (port 8008).
 - Consumed by Oracle via Hub routing for document-to-event flows.
 - See `hestia-chronos.md` for credential setup and provider details.
 
+### Hestia-Argus 👁️
+System health and log intelligence monitor.
+- Sole monitoring authority for health/log anomaly detection.
+- Aggregates service health and logs via Hub monitor APIs.
+- Emits remediation intents when auto-fix policy allows.
+- Does not mutate source code or execute code changes directly.
+
+### Hestia-Hephaestus 🔧
+Guarded remediation and coding executor.
+- Executes remediation plans produced from Argus/Oracle-triggered incidents.
+- Must keep full audit trail and user-visible notifications for each mutation.
+- Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
+- May execute local build/deploy workflows according to policy tiers.
+
+### Hestia-Athena 🧭
+Proactive cognition and advisory strategy engine.
+- Computes bounded proactive hints and priorities.
+- Feeds advisory context to Oracle without overriding execution truth.
+- Keeps runtime/task observability for why it suggested action or silence.
+
+### Hestia-Dummy 🧪
+Generic integration testing module.
+- Provides deterministic test endpoints for routing, execution, and policy validation.
+- Safe mutable/non-mutable testing via `dry_run` toggles.
+- Not tied to a single organ; usable by any service that needs an integration target.
+
 ---
 
 ## Domain Modules
@@ -83,6 +109,12 @@ Real-estate domain module.
 - If any downstream step is unavailable (content enrichment, dispatch, etc.), entities are persisted with a generic pending-step marker and retried automatically on later cycles.
 - Publishes `entity.upserted` events to Hermes for proactive matching.
 - Exposes generic module tools for Oracle retrieval.
+
+### Hestia-Hephaestus (Module Execution Role)
+Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
+- Trigger source: Argus/Oracle/explicit user command.
+- Execution scope: runbook-first, policy-gated mutations.
+- Mandatory: notify before/after changes, log commit/branch references, preserve rollback path.
 
 ---
 
@@ -105,6 +137,60 @@ Real-estate domain module.
    - The reconcile loop (or equivalent periodic recovery pass) of every module **must** check all pending flags and resume the failed step before considering a record complete.
    - Data in Archive is never considered partial or stale as long as pending flags remain; enrichment and notification retries run until they succeed or the data expires naturally (e.g. listing sold/removed).
    - Errors are logged with `[🔄]` prefix and enough context to diagnose the failure. Silent failure is forbidden.
+8. **Organ Model (No functional overlap):**
+   - Argus = observe and decide incidents.
+   - Hephaestus = execute remediation and controlled code changes.
+   - Oracle = reason and orchestrate tool/command flow.
+   - Hermes = dispatch notifications.
+   Multiple services must not duplicate the same responsibility in parallel without an explicit contract reason.
+
+## Autonomous Remediation Contract
+
+1. Monitoring is centralized in Argus; Hephaestus consumes remediation requests and executes.
+2. Every mutating remediation must produce:
+   - pre-change notice,
+   - execution trace,
+   - post-change summary,
+   - rollback reference.
+3. Source control safety is mandatory for autonomous mutation:
+   - isolated branch per remediation,
+   - atomic commit set,
+   - reversible deployment path.
+4. Local-first execution is allowed; remote/cluster rollout must be policy-gated and observable.
+5. Triggering a personal IDE Copilot session is not a runtime contract; automation must use repository/workflow APIs and service endpoints.
+
+## Deployment Evolution Contract
+
+1. Current default: local build/deploy orchestration.
+2. Future target: multi-node/cluster delivery with shared Hub discovery.
+3. Required for remote rollout:
+   - deployment controller contract,
+   - health-gated progressive rollout,
+   - automatic rollback on failed SLO checks,
+   - Argus verification after deploy.
+
+## Documentation Governance (Mandatory)
+
+For every behavior or contract change, update documentation in the same change set:
+
+1. Root documentation: `readme.md`.
+2. Impacted service docs: `Hestia-*/hestia-*.md`.
+3. API contract docs: `Hestia-Swagger/swagger.yml` whenever endpoints, schemas, or Hub-routed command contracts change.
+
+No code-only behavior changes are considered complete without synchronized docs.
+
+## Capability Discovery Contract (Mandatory)
+
+1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
+2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.
+3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
+
+## Governance Automation (Mandatory)
+
+1. Pull requests must run the governance checks in `tools/governance/`.
+2. `check_docs_sync.py` enforces documentation synchronization for behavior changes.
+3. `check_command_contracts.py` enforces command metadata quality and contract-drift safeguards.
+4. Rule updates must keep policy text and automation logic aligned in the same change set.
 
 ## Messaging Contract (Global UX Rules)
 

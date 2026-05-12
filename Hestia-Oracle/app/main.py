@@ -4,7 +4,7 @@ import requests
 import logging
 from pathlib import Path
 import sys
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
@@ -55,7 +55,8 @@ def register_on_hub_startup():
             logger.warning("event=hub_registration_non_success_status Hub registration non-success | status=%s body=%s",
                            resp.status_code, resp.text[:200])
     except Exception as exc:
-        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", exc)
+        logger.warning(
+            "event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", exc)
 
 
 class ChatRequest(BaseModel):
@@ -137,6 +138,30 @@ class FeedbackResponse(BaseModel):
     feedback: dict[str, Any]
 
 
+class ActionApprovalResponseRequest(BaseModel):
+    approval_token: str
+    approve: bool
+    actor: Optional[str] = None
+    client_instructions: Optional[str] = None
+
+
+class AthenaHintIngestRequest(BaseModel):
+    hint_id: Optional[str] = None
+    source: str = "athena"
+    hint_type: str = "focus_brief"
+    session_id: Optional[str] = None
+    domain: Optional[str] = None
+    domains: list[str] = Field(default_factory=list)
+    priority: str = "normal"
+    summary: str
+    brief: dict[str, Any] = Field(default_factory=dict)
+    gate: dict[str, Any] = Field(default_factory=dict)
+    retrospective: dict[str, Any] = Field(default_factory=dict)
+    ttl_seconds: Optional[int] = None
+    trace_id: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 @app.get("/health")
 def health_endpoint():
     return {"status": "ok", "service": "hestia_oracle"}
@@ -150,6 +175,63 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "count": len(rows),
         "logs": rows,
     }
+
+
+@app.get("/api/tasks")
+def list_background_tasks(
+    limit: int = 100,
+    task_type: str | None = None,
+    lifecycle_state: str | None = None,
+):
+    rows = engine.list_background_tasks(
+        limit=limit,
+        task_type=task_type,
+        lifecycle_state=lifecycle_state,
+    )
+    return {
+        "count": len(rows),
+        "tasks": rows,
+    }
+
+
+@app.get("/api/tasks/{task_id}")
+def get_background_task(task_id: str):
+    row = engine.get_background_task(task_id)
+    if not row:
+        raise HTTPException(
+            status_code=404, detail=f"task '{task_id}' not found")
+    return {"task": row}
+
+
+@app.post("/api/athena/hints")
+def ingest_athena_hint_endpoint(req: AthenaHintIngestRequest, request: Request):
+    """Ingest advisory hints produced by Athena through Hub-routed calls."""
+    try:
+        trace_id = str(
+            request.headers.get("X-Trace-Id") or req.trace_id or "").strip() or None
+        result = engine.ingest_athena_hint(
+            hint_payload=req.model_dump(exclude_none=True),
+            trace_id=trace_id,
+        )
+        return result
+    except Exception as e:
+        logger.exception(
+            "event=unhandled_error_ingest_athena_hint_endpoint Unhandled error in Athena hint ingest endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/athena/hints")
+def list_athena_hints_endpoint(session_id: str | None = None, limit: int = 20):
+    try:
+        rows = engine.list_athena_hints(session_id=session_id, limit=limit)
+        return {
+            "count": len(rows),
+            "hints": rows,
+        }
+    except Exception as e:
+        logger.exception(
+            "event=unhandled_error_list_athena_hints_endpoint Unhandled error in Athena hints list endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/chat")
@@ -257,12 +339,21 @@ async def chat_document_endpoint(
             media_type="application/x-ndjson",
         )
     except Exception as exc:
-        logger.exception("event=unhandled_error_document_endpoint Unhandled error in document endpoint")
+        logger.exception(
+            "event=unhandled_error_document_endpoint Unhandled error in document endpoint")
         raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/api/format", response_model=FormatResponse)
-def format_endpoint(req: FormatRequest):
+def format_endpoint(req: FormatRequest, request: Request):
+    trace_id = str(request.headers.get("X-Trace-Id") or "").strip()
+    if trace_id:
+        logger.info(
+            "event=format_request_received trace_id=%s command=%s payload_type=%s",
+            trace_id,
+            req.command,
+            type(req.payload).__name__,
+        )
     try:
         text = engine.format_payload(
             command=req.command,
@@ -272,10 +363,21 @@ def format_endpoint(req: FormatRequest):
             thinking=req.thinking,
             max_length=req.max_length,
             locale=req.locale,
+            variant_seed=trace_id or None,
         )
+        if trace_id:
+            logger.info(
+                "event=format_request_completed trace_id=%s command=%s output_chars=%s",
+                trace_id,
+                req.command,
+                len(text or ""),
+            )
         return {"text": text}
     except Exception as e:
-        logger.exception("event=unhandled_error_format_endpoint Unhandled error in format endpoint")
+        logger.exception(
+            "event=unhandled_error_format_endpoint trace_id=%s Unhandled error in format endpoint",
+            trace_id,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -289,7 +391,8 @@ def compile_subscription_endpoint(req: NotificationCompileRequest):
         )
         return result
     except Exception as e:
-        logger.exception("event=unhandled_error_compile_endpoint Unhandled error in compile endpoint")
+        logger.exception(
+            "event=unhandled_error_compile_endpoint Unhandled error in compile endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -311,7 +414,34 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("event=unhandled_error_question_answer_endpoint Unhandled error in question-answer endpoint")
+        logger.exception(
+            "event=unhandled_error_question_answer_endpoint Unhandled error in question-answer endpoint")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/actions/approval/respond")
+def action_approval_response_endpoint(req: ActionApprovalResponseRequest):
+    """Resolve a pending high-impact action approval token."""
+    try:
+        result = engine.respond_high_impact_action_approval(
+            approval_token=req.approval_token,
+            approve=req.approve,
+            actor=req.actor,
+            client_instructions=req.client_instructions,
+        )
+        status = str(result.get("status") or "")
+        if status == "not_found":
+            raise HTTPException(
+                status_code=404, detail="approval token not found or expired")
+        if status == "invalid":
+            raise HTTPException(status_code=400, detail=str(
+                result.get("error") or "invalid approval payload"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(
+            "event=unhandled_error_action_approval_response_endpoint Unhandled error in action approval response endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -321,7 +451,8 @@ def get_user_controls_endpoint():
     try:
         return {"controls": engine.get_user_controls()}
     except Exception as e:
-        logger.exception("event=unhandled_error_get_user_controls Unhandled error in get user controls endpoint")
+        logger.exception(
+            "event=unhandled_error_get_user_controls Unhandled error in get user controls endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -335,7 +466,8 @@ def update_user_controls_endpoint(req: UserControlsPatch):
         )
         return {"updated": bool(saved), "controls": controls}
     except Exception as e:
-        logger.exception("event=unhandled_error_update_user_controls Unhandled error in update user controls endpoint")
+        logger.exception(
+            "event=unhandled_error_update_user_controls Unhandled error in update user controls endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -363,7 +495,8 @@ def create_feedback_endpoint(req: FeedbackRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("event=unhandled_error_feedback_endpoint Unhandled error in feedback endpoint")
+        logger.exception(
+            "event=unhandled_error_feedback_endpoint Unhandled error in feedback endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -384,7 +517,8 @@ def list_feedback_endpoint(
         )
         return {"count": len(rows), "feedback": rows}
     except Exception as e:
-        logger.exception("event=unhandled_error_list_feedback_endpoint Unhandled error in list feedback endpoint")
+        logger.exception(
+            "event=unhandled_error_list_feedback_endpoint Unhandled error in list feedback endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -405,7 +539,8 @@ def export_feedback_jsonl_endpoint(
         )
         return Response(content=jsonl_payload, media_type="application/x-ndjson")
     except Exception as e:
-        logger.exception("event=unhandled_error_feedback_export_endpoint Unhandled error in feedback export endpoint")
+        logger.exception(
+            "event=unhandled_error_feedback_export_endpoint Unhandled error in feedback export endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -438,7 +573,8 @@ def llm_generate_endpoint(req: dict):
 
         return {"response": response_text, "model": model, "provider": provider}
     except Exception as e:
-        logger.exception("event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")
+        logger.exception(
+            "event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 

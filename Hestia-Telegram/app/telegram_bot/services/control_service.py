@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
@@ -22,9 +23,11 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(encoded)
         except BrokenPipeError:
-            logger.debug("event=client_disconnected_before_receiving_response Client disconnected before receiving response")
+            logger.debug(
+                "event=client_disconnected_before_receiving_response Client disconnected before receiving response")
         except ConnectionResetError:
-            logger.debug("event=connection_reset_peer Connection reset by peer")
+            logger.debug(
+                "event=connection_reset_peer Connection reset by peer")
 
     def do_GET(self):
         if self.path == "/health":
@@ -79,6 +82,8 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                 entity_payload = payload.get("payload")
                 domain = str(payload.get("domain", "")).strip()
                 entity_id = str(payload.get("entity_id", "")).strip()
+                trace_id = str(self.headers.get(
+                    "X-Trace-Id") or payload.get("trace_id") or "").strip() or uuid.uuid4().hex
 
                 if not chat_id:
                     self._send_json(
@@ -89,10 +94,15 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                     title = entity_payload.get(
                         "title", entity_payload.get("summary", ""))
                     logger.info(
-                        "event=buffering_alert_chat_id_domain_entity Buffering alert | chat_id=%s domain=%s entity=%s title='%s'",
-                        chat_id, domain, entity_id, str(title)[:60])
+                        "event=buffering_alert_chat_id_domain_entity_trace_id Buffering alert | chat_id=%s domain=%s entity=%s trace_id=%s title='%s'",
+                        chat_id, domain, entity_id, trace_id, str(title)[:60])
                     core.buffer_alert(
-                        chat_id, entity_payload, domain, entity_id)
+                        chat_id,
+                        entity_payload,
+                        domain,
+                        entity_id,
+                        trace_id=trace_id,
+                    )
                     self._send_json(
                         200, {"status": "ok", "sent": True, "buffered": True})
                     return
@@ -128,15 +138,34 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
         return build_alert_fallback_message(entity_payload, domain, entity_id)
 
 
-def _format_single_alert_with_oracle(entity_payload: dict[str, Any], domain: str, entity_id: str) -> str | None:
+def _format_single_alert_with_oracle(
+    entity_payload: dict[str, Any],
+    domain: str,
+    entity_id: str,
+    chat_id: str | int | None = None,
+    trace_id: str | None = None,
+) -> str | None:
     """Call Oracle to format entity alert using AI"""
     try:
         title = entity_payload.get("title") or entity_payload.get(
             "summary") or "questa proprietà"
 
+        effective_instructions = (
+            core.build_client_instructions_for_chat(str(chat_id))
+            if chat_id is not None
+            else core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS
+        )
         request_payload = {
             "command": f"alert:{domain}",
-            "payload": entity_payload,
+            "payload": {
+                **entity_payload,
+                "delivery_context": {
+                    "domain": domain,
+                    "entity_id": entity_id,
+                    "chat_id": str(chat_id) if chat_id is not None else "",
+                    "session_settings": core.get_session_settings(str(chat_id)) if chat_id is not None else {},
+                },
+            },
             "response_prompt": (
                 "Sei Hestia e stai PROATTIVAMENTE informando l'utente di una nuova proprietà che corrisponde alle sue preferenze. "
                 "Scrivi come se TU stessi iniziando la conversazione per dirgli: 'Ho trovato questa casa per te!'. "
@@ -145,11 +174,13 @@ def _format_single_alert_with_oracle(entity_payload: dict[str, Any], domain: str
                 "Sii entusiasta ma professionale. Usa emoji appropriate (🏠 📍 💶 📐). "
                 "NON usare saluti come 'Ciao' o 'Ecco'. Inizia direttamente con l'informazione importante."
             ),
-            "client_instructions": core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS,
+            "client_instructions": effective_instructions,
         }
         response = requests.post(
             core.ORACLE_FORMAT_API_URL,
             json=request_payload,
+            headers={"X-Trace-Id": str(trace_id or "").strip()
+                     } if str(trace_id or "").strip() else None,
             timeout=12,
         )
         if response.status_code != 200:
@@ -201,7 +232,11 @@ def build_alert_fallback_message(entity_payload: dict[str, Any], domain: str, en
     return "\n".join(lines)
 
 
-def format_multiple_alerts_with_oracle(alerts: list[dict[str, Any]]) -> str | None:
+def format_multiple_alerts_with_oracle(
+    alerts: list[dict[str, Any]],
+    chat_id: str | int | None = None,
+    trace_id: str | None = None,
+) -> str | None:
     """Format multiple consecutive alerts as one continuous chat message via Oracle"""
     if not alerts:
         return None
@@ -210,10 +245,28 @@ def format_multiple_alerts_with_oracle(alerts: list[dict[str, Any]]) -> str | No
     combined_payload = {
         "multiple_alerts": True,
         "count": len(alerts),
-        "properties": [alert.get("payload", {}) for alert in alerts]
+        "properties": [alert.get("payload", {}) for alert in alerts],
+        "alert_meta": [
+            {
+                "domain": str(alert.get("domain") or "").strip(),
+                "entity_id": str(alert.get("entity_id") or "").strip(),
+            }
+            for alert in alerts
+        ],
+        "delivery_context": {
+            "chat_id": str(chat_id) if chat_id is not None else "",
+            "session_settings": core.get_session_settings(str(chat_id)) if chat_id is not None else {},
+            "domains": sorted({str(alert.get("domain") or "").strip() for alert in alerts if str(alert.get("domain") or "").strip()}),
+            "trace_id": str(trace_id or "").strip(),
+        },
     }
 
     try:
+        effective_instructions = (
+            core.build_client_instructions_for_chat(str(chat_id))
+            if chat_id is not None
+            else core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS
+        )
         request_payload = {
             "command": f"alert:multi",
             "payload": combined_payload,
@@ -228,11 +281,13 @@ def format_multiple_alerts_with_oracle(alerts: list[dict[str, Any]]) -> str | No
                 "Sii entusiasta ma professionale. Usa emoji appropriati. "
                 "NON usare saluti iniziali o frasi di apertura. Inizia DIRETTAMENTE con l'informazione."
             ),
-            "client_instructions": core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS,
+            "client_instructions": effective_instructions,
         }
         response = requests.post(
             core.ORACLE_FORMAT_API_URL,
             json=request_payload,
+            headers={"X-Trace-Id": str(trace_id or "").strip()
+                     } if str(trace_id or "").strip() else None,
             timeout=15,
         )
         if response.status_code != 200:

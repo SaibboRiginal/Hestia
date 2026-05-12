@@ -21,6 +21,10 @@ class HermesService:
         self.dispatch = DispatchService()
 
     def process_event(self, event_type: str, domain: str, entity_id: str, payload: dict):
+        event_trace_id = ""
+        if isinstance(payload, dict):
+            event_trace_id = str(payload.get("trace_id")
+                                 or payload.get("x_trace_id") or "").strip()
         subscriptions = self.archive.get_active_subscriptions(
             domain=domain, event_type=event_type)
         logger.debug(
@@ -46,9 +50,10 @@ class HermesService:
             matched += 1
             channels = subscription.get("channels") or []
             logger.info(
-                "event=subscription_matched_subscription_id_channels Subscription matched | subscription_id=%s channels=%s",
+                "event=subscription_matched_subscription_id_channels Subscription matched | subscription_id=%s channels=%s trace_id=%s",
                 subscription_id,
                 channels,
+                event_trace_id,
             )
 
             # Route batched domains (e.g. real_estate) through the batch dispatcher
@@ -74,12 +79,13 @@ class HermesService:
                 if existing and str(existing.get("outbound_event_id")) != outbound_event_id:
                     existing_id = str(existing.get("outbound_event_id"))
                     logger.info(
-                        "event=dispatch_deduped_dedupe_key_existing_outbound_event_id_skipp Dispatch deduped | dedupe_key=%s existing_outbound_event_id=%s skipped_outbound_event_id=%s question_id=%s brief_id=%s",
+                        "event=dispatch_deduped_dedupe_key_existing_outbound_event_id_skipp Dispatch deduped | dedupe_key=%s existing_outbound_event_id=%s skipped_outbound_event_id=%s question_id=%s brief_id=%s trace_id=%s",
                         dedupe_key,
                         existing_id,
                         outbound_event_id,
                         question_id,
                         brief_id,
+                        event_trace_id,
                     )
                     self.archive.upsert_outbound_event(
                         {
@@ -147,6 +153,8 @@ class HermesService:
                     "queued",
                     detail="dispatch queued",
                 )
+                trace_id = str(payload.get("trace_id") or payload.get(
+                    "x_trace_id") or outbound_event_id or "").strip()
                 ok, detail = self.dispatch.send(
                     channel=channel_type,
                     target=str(channel_target),
@@ -155,6 +163,7 @@ class HermesService:
                     domain=domain,
                     entity_id=entity_id,
                     subscription_id=subscription.get("id"),
+                    metadata={"trace_id": trace_id},
                 )
                 if ok:
                     self.archive.update_outbound_event_state(
@@ -169,7 +178,7 @@ class HermesService:
                         detail=detail,
                     )
                 logger.info(
-                    "event=dispatch_attempted_subscription_id_channel_target Dispatch attempted | subscription_id=%s channel=%s target=%s success=%s outbound_event_id=%s question_id=%s brief_id=%s detail=%s",
+                    "event=dispatch_attempted_subscription_id_channel_target Dispatch attempted | subscription_id=%s channel=%s target=%s success=%s outbound_event_id=%s question_id=%s brief_id=%s trace_id=%s detail=%s",
                     subscription_id,
                     channel_type,
                     channel_target,
@@ -177,6 +186,7 @@ class HermesService:
                     outbound_event_id,
                     question_id,
                     brief_id,
+                    trace_id,
                     detail,
                 )
                 if ok:

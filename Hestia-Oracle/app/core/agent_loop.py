@@ -22,6 +22,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable, Iterator
 
+from core.services import prompt_config
+
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 MAX_AGENT_TURNS: int = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "6"))
@@ -54,21 +56,7 @@ class ScratchMessage:
 _TOOL_CALL_PATTERN = re.compile(
     r'<tool_call>\s*(\{.*?\})\s*</tool_call>', re.DOTALL
 )
-
-_SYSTEM_PREAMBLE = """\
-You are Hestia's reasoning engine. You have access to the following tools.
-
-To call a tool, output EXACTLY this XML block (nothing before or after on the same line):
-<tool_call>
-{{"name": "<tool_name>", "params": {{...}}}}
-</tool_call>
-
-After receiving a tool result, continue reasoning and either call another tool or produce your final answer.
-When you are ready to give your final answer, output it directly without any tool_call block.
-
-Available tools:
-{tools_json}
-"""
+_JSON_BLOCK_PATTERN = re.compile(r'```(?:json)?\s*(\{.*?\})\s*```', re.DOTALL)
 
 
 def _extract_tool_call(text: str) -> dict | None:
@@ -76,11 +64,65 @@ def _extract_tool_call(text: str) -> dict | None:
 
     Returns a dict with 'name' and 'params', or None if no tool call found.
     """
+    if not text:
+        return None
+
+    def _normalize_tool_call(candidate: dict) -> dict | None:
+        if not isinstance(candidate, dict):
+            return None
+
+        # Native shape already normalized
+        if isinstance(candidate.get("name"), str):
+            return {
+                "name": str(candidate.get("name") or "").strip(),
+                "params": candidate.get("params") if isinstance(candidate.get("params"), dict) else {},
+            }
+
+        # OpenAI/Ollama-like function wrapper
+        fn = candidate.get("function")
+        if isinstance(fn, dict) and isinstance(fn.get("name"), str):
+            raw_args = fn.get("arguments")
+            if isinstance(raw_args, str):
+                try:
+                    raw_args = json.loads(raw_args)
+                except Exception:
+                    raw_args = {}
+            return {
+                "name": str(fn.get("name") or "").strip(),
+                "params": raw_args if isinstance(raw_args, dict) else {},
+            }
+
+        return None
+
     m = _TOOL_CALL_PATTERN.search(text)
     if not m:
+        # Fallback 1: fenced JSON object
+        fm = _JSON_BLOCK_PATTERN.search(text)
+        if fm:
+            try:
+                normalized = _normalize_tool_call(json.loads(fm.group(1)))
+                if normalized and normalized.get("name"):
+                    return normalized
+            except (ValueError, KeyError):
+                pass
+
+        # Fallback 2: any JSON object in plain text
+        try:
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                normalized = _normalize_tool_call(
+                    json.loads(text[start:end + 1]))
+                if normalized and normalized.get("name"):
+                    return normalized
+        except Exception:
+            pass
         return None
     try:
-        return json.loads(m.group(1))
+        normalized = _normalize_tool_call(json.loads(m.group(1)))
+        if normalized and normalized.get("name"):
+            return normalized
+        return None
     except (ValueError, KeyError):
         return None
 
@@ -98,6 +140,7 @@ def run_agent_loop(
     preference_facts: list[str],
     tools: list[ToolDefinition],
     ask_fn: Callable[[str], str],
+    ask_tools_fn: Callable[[str, list[dict]], dict] | None = None,
     stream_fn: Callable[[str], Iterator[str]] | None = None,
     client_instructions: str | None = None,
     conversation_style: str = "",
@@ -127,29 +170,40 @@ def run_agent_loop(
     ]
     tools_json = json.dumps(tools_manifest, ensure_ascii=False, indent=2)
 
-    system_prompt = _SYSTEM_PREAMBLE.format(tools_json=tools_json)
+    system_prompt = prompt_config.prompt(
+        "agent_loop_system_preamble",
+        tools_json=tools_json,
+    )
     if preference_facts:
-        system_prompt += "\n\nACTIVE USER PREFERENCES:\n" + \
-            "\n".join(f"- {f}" for f in preference_facts)
+        system_prompt += prompt_config.optional_section(
+            "ACTIVE USER PREFERENCES",
+            "\n".join(f"- {fact}" for fact in preference_facts),
+        )
     if conversation_style:
         system_prompt += f"\n\n{conversation_style}"
     if client_instructions:
-        system_prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{client_instructions}"
+        system_prompt += prompt_config.optional_section(
+            "CLIENT INSTRUCTIONS",
+            client_instructions,
+        )
 
     # Scratchpad: ephemeral tool-call/result messages for this session turn only
     scratchpad: list[ScratchMessage] = []
 
     def _build_prompt(is_final: bool = False) -> str:
-        parts = [system_prompt]
+        dynamic_parts: list[str] = []
         if history_text:
-            parts.append(f"\nCONVERSATION HISTORY:\n{history_text}")
-        parts.append(f"\nUSER: {user_message}")
+            dynamic_parts.append(f"CONVERSATION HISTORY:\n{history_text}")
+        dynamic_parts.append(f"USER: {user_message}")
         for msg in scratchpad:
-            parts.append(f"\n[{msg.role.upper()}]: {msg.content}")
+            dynamic_parts.append(f"[{msg.role.upper()}]: {msg.content}")
         if is_final:
-            parts.append(
-                "\nNow provide your final answer to the user (no tool_call blocks):")
-        return "\n".join(parts)
+            dynamic_parts.append(
+                "Now provide your final answer to the user (no tool_call blocks):")
+        return prompt_config.compose_with_dynamic_boundary(
+            static_sections=[system_prompt],
+            dynamic_sections=dynamic_parts,
+        )
 
     final_answer = ""
     final_tokens: list[str] = []
@@ -158,22 +212,51 @@ def run_agent_loop(
         is_last_turn = (turn == MAX_AGENT_TURNS - 1)
         prompt = _build_prompt(is_final=is_last_turn)
 
+        raw_response = ""
+        tool_call = None
         try:
-            raw_response = ask_fn(prompt)
+            if ask_tools_fn is not None and not is_last_turn:
+                decision = ask_tools_fn(prompt, tools_manifest) or {}
+                maybe_tool = decision.get("tool_call") if isinstance(
+                    decision, dict) else None
+                if isinstance(maybe_tool, dict) and maybe_tool.get("name"):
+                    tool_call = {
+                        "name": str(maybe_tool.get("name") or "").strip(),
+                        "params": maybe_tool.get("params") or {},
+                    }
+                    raw_response = ""
+                else:
+                    raw_response = str(
+                        (decision or {}).get("text") or "").strip()
+                    # Some providers return tool intents as plain text blocks.
+                    # Parse XML fallback here before falling through to final answer.
+                    if raw_response:
+                        tool_call = _extract_tool_call(raw_response)
+
+                if tool_call is None:
+                    logger.info(
+                        "event=agent_loop_tool_decision_none turn=%s tools=%s response_len=%s",
+                        turn,
+                        len(tools_manifest),
+                        len(raw_response or ""),
+                    )
+
+            if not raw_response and tool_call is None:
+                raw_response = ask_fn(prompt)
+                tool_call = _extract_tool_call(
+                    raw_response) if not is_last_turn else None
         except Exception as exc:
             logger.error(
                 "event=agent_loop_llm_call_failed Agent loop LLM call failed at turn %d: %s", turn, exc)
             final_answer = "⚠️ Il modello non è disponibile. Riprova tra poco."
             break
 
-        tool_call = _extract_tool_call(
-            raw_response) if not is_last_turn else None
-
         if tool_call:
             # ── Tool call turn ─────────────────────────────────────────────
             tool_name = tool_call.get("name", "")
             tool_params = tool_call.get("params") or {}
-            scratchpad.append(ScratchMessage("assistant", raw_response))
+            if raw_response:
+                scratchpad.append(ScratchMessage("assistant", raw_response))
 
             tool_def = tool_map.get(tool_name)
             if not tool_def:
@@ -202,6 +285,13 @@ def run_agent_loop(
             # ── Final answer turn ──────────────────────────────────────────
             # Strip any residual tool_call blocks from final answer
             clean = _TOOL_CALL_PATTERN.sub("", raw_response).strip()
+
+            if turn == 0 and tools_manifest:
+                logger.info(
+                    "event=agent_loop_no_tool_call_first_turn tools=%s response_preview=%s",
+                    len(tools_manifest),
+                    clean[:200],
+                )
 
             if stream_fn is not None and turn < MAX_AGENT_TURNS - 1:
                 # Re-issue the final prompt through the streaming path so the

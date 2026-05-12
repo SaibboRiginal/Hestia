@@ -147,6 +147,10 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 
 @app.post("/api/events/ingest")
 def ingest_event(req: EventIngestRequest):
+    trace_id = ""
+    if isinstance(req.payload, dict):
+        trace_id = str(req.payload.get("trace_id")
+                       or req.payload.get("x_trace_id") or "").strip()
     log_event(
         logger,
         logging.INFO,
@@ -155,6 +159,7 @@ def ingest_event(req: EventIngestRequest):
         event_type=req.event_type,
         domain=req.domain,
         entity_id=req.entity_id,
+        trace_id=trace_id,
         payload_keys=sorted(list(req.payload.keys())) if isinstance(
             req.payload, dict) else [],
     )
@@ -172,6 +177,7 @@ def ingest_event(req: EventIngestRequest):
         event_type=req.event_type,
         domain=req.domain,
         entity_id=req.entity_id,
+        trace_id=trace_id,
         subscriptions_matched=result["subscriptions_matched"],
         deliveries=result["deliveries"],
     )

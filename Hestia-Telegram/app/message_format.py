@@ -1,7 +1,70 @@
+import os
 import json
 import re
 from typing import Any
 from urllib.parse import urlparse
+
+
+_SIGNAL_STYLE_ALLOWED = {"minimal", "compact", "rich"}
+
+
+def _normalize_signal_style(value: str | None, fallback: str = "minimal") -> str:
+    style = str(value or "").strip().lower()
+    return style if style in _SIGNAL_STYLE_ALLOWED else fallback
+
+
+def _parse_signal_style_overrides(raw: str) -> dict[str, str]:
+    # Format: "memory=minimal,subscription=minimal,action=compact,default=minimal"
+    out: dict[str, str] = {}
+    for part in str(raw or "").split(","):
+        item = part.strip()
+        if not item or "=" not in item:
+            continue
+        key, value = item.split("=", 1)
+        normalized_key = str(key).strip().lower()
+        if not normalized_key:
+            continue
+        out[normalized_key] = _normalize_signal_style(
+            str(value).strip().lower(), fallback="minimal"
+        )
+    return out
+
+
+_TELEGRAM_SIGNAL_STYLE = _normalize_signal_style(
+    os.getenv("TELEGRAM_SIGNAL_STYLE", "minimal"),
+    fallback="minimal",
+)
+_TELEGRAM_SIGNAL_STYLE_BY_FAMILY = _parse_signal_style_overrides(
+    os.getenv("TELEGRAM_SIGNAL_STYLE_BY_FAMILY", "")
+)
+
+
+def _signal_family(event: str) -> str:
+    normalized = str(event or "").strip().lower()
+    if normalized.startswith("memory."):
+        return "memory"
+    if normalized.startswith("subscription."):
+        return "subscription"
+    if normalized.startswith("action."):
+        return "action"
+    return "other"
+
+
+def _resolve_signal_style(signal: dict[str, Any], event: str) -> str:
+    family = _signal_family(event)
+    override = _TELEGRAM_SIGNAL_STYLE_BY_FAMILY.get(family) or _TELEGRAM_SIGNAL_STYLE_BY_FAMILY.get(
+        "default"
+    )
+    style = _normalize_signal_style(override, fallback=_TELEGRAM_SIGNAL_STYLE)
+
+    # Optional per-signal client override (keeps payload canonical while client chooses rendering).
+    ui = signal.get("ui") if isinstance(signal.get("ui"), dict) else {}
+    telegram_ui = ui.get("telegram") if isinstance(
+        ui.get("telegram"), dict) else {}
+    forced = _normalize_signal_style(
+        str(telegram_ui.get("style") or "").strip().lower(), fallback=style
+    )
+    return forced
 
 
 def prettify_link_label(label: str, url: str) -> str:
@@ -263,86 +326,120 @@ def build_signal_cards(signals: list[dict]) -> list[str]:
     if not signals:
         return []
 
+    def _safe_inline(value: Any) -> str:
+        text = format_for_telegram(str(value or "")).replace("\n", " ").strip()
+        return re.sub(r"\s+", " ", text)
+
     cards: list[str] = []
     for signal in signals:
         event = str(signal.get("event", "")).strip().lower()
         data = signal.get("data") if isinstance(
             signal.get("data"), dict) else {}
+        style = _resolve_signal_style(signal, event)
 
         if event == "memory.preference.added":
-            fact = str(data.get("fact", "")).strip()
-            domain = str(data.get("domain", "general")).strip()
-            cards.append(
-                "🧠 <b>Nuova preferenza salvata</b>\n"
-                f"• <b>Dominio:</b> {domain}\n"
-                f"• <b>Dettaglio:</b> {fact}"
-            )
+            fact = _safe_inline(data.get("fact", ""))
+            domain = _safe_inline(data.get("domain", "general")) or "general"
+            if fact:
+                if style == "compact":
+                    cards.append(
+                        "🧠 Preferenza salvata\n"
+                        f"<i>{fact}</i>"
+                    )
+                elif style == "rich":
+                    cards.append(
+                        "🧠 <b>Preferenza salvata</b>\n"
+                        f"• <b>Dominio:</b> {domain}\n"
+                        f"• <b>Dettaglio:</b> {fact}"
+                    )
+                else:
+                    cards.append(f"🧠 Preferenza salvata: <i>{fact}</i>")
+            else:
+                cards.append("🧠 Preferenza salvata")
             continue
 
         if event == "memory.preference.removed":
-            pref_id = str(data.get("id", "-")).strip()
-            domain = str(data.get("domain", "general")).strip() or "general"
-            fact = str(data.get("fact", "")).strip()
-            detail_line = f"• <b>Dettaglio:</b> {fact}" if fact else "• <b>Dettaglio:</b> n/d"
-            cards.append(
-                "🧠 <b>Preferenza disattivata</b>\n"
-                f"• <b>Dominio:</b> {domain}\n"
-                f"{detail_line}\n"
-                f"• <b>Riferimento ID:</b> {pref_id}"
-            )
+            fact = _safe_inline(data.get("fact", ""))
+            domain = _safe_inline(data.get("domain", "general")) or "general"
+            if fact:
+                if style == "compact":
+                    cards.append(
+                        "🧠 Preferenza disattivata\n"
+                        f"<i>{fact}</i>"
+                    )
+                elif style == "rich":
+                    cards.append(
+                        "🧠 <b>Preferenza disattivata</b>\n"
+                        f"• <b>Dominio:</b> {domain}\n"
+                        f"• <b>Dettaglio:</b> {fact}"
+                    )
+                else:
+                    cards.append(f"🧠 Preferenza disattivata: <i>{fact}</i>")
+            else:
+                cards.append("🧠 Preferenza disattivata")
             continue
 
         if event in {"subscription.added", "subscription.changed", "subscription.removed"}:
-            sub_id = str(data.get("subscription_id", "-")).strip()
-            domain = str(data.get("domain", "general")).strip()
+            domain = _safe_inline(data.get("domain", "general")) or "general"
+            domain_suffix = "" if domain == "general" else f" ({domain})"
             filters = data.get("filters") if isinstance(
                 data.get("filters"), dict) else {}
-            channels = data.get("channels") if isinstance(
-                data.get("channels"), list) else []
-
-            filter_lines = []
-            for key, value in filters.items():
-                filter_lines.append(
-                    f"• <b>{str(key).replace('_', ' ').title()}:</b> {value}")
-            if not filter_lines:
-                filter_lines.append("• <b>Filtri:</b> nessuno")
-
-            channel_label = "telegram"
-            target_label = "-"
-            if channels and isinstance(channels[0], dict):
-                channel_label = str(channels[0].get("type", "telegram"))
-                target_label = str(channels[0].get("target", "-")).strip()
-
-            if event == "subscription.added":
-                title = "🔔 <b>Nuova notifica attivata</b>"
-            elif event == "subscription.changed":
-                title = "🔔 <b>Notifica aggiornata</b>"
-            else:
-                title = "🔕 <b>Notifica disattivata</b>"
-
-            summary_parts = [f"dominio {domain}"]
-            if filters:
-                human_filters = ", ".join(
-                    [f"{str(key).replace('_', ' ')}={value}" for key,
-                     value in filters.items()]
+            filters_summary = _safe_inline(
+                ", ".join(
+                    f"{str(key).replace('_', ' ')}={value}"
+                    for key, value in filters.items()
                 )
-                summary_parts.append(human_filters)
-            summary_line = "• <b>Regola:</b> " + " | ".join(summary_parts)
-
-            cards.append(
-                f"{title}\n"
-                f"{summary_line}\n"
-                f"• <b>Dominio:</b> {domain}\n"
-                f"• <b>Canale:</b> {channel_label}\n"
-                f"• <b>Target:</b> {target_label}\n"
-                f"• <b>Riferimento ID:</b> {sub_id}\n"
-                + "\n".join(filter_lines)
             )
+            if event == "subscription.added":
+                if style == "compact" and filters_summary:
+                    cards.append(
+                        f"🔔 Notifica attivata{domain_suffix}\n"
+                        f"<i>{filters_summary}</i>"
+                    )
+                else:
+                    cards.append(f"🔔 Notifica attivata{domain_suffix}")
+            elif event == "subscription.changed":
+                if style == "compact" and filters_summary:
+                    cards.append(
+                        f"🔔 Notifica aggiornata{domain_suffix}\n"
+                        f"<i>{filters_summary}</i>"
+                    )
+                else:
+                    cards.append(f"🔔 Notifica aggiornata{domain_suffix}")
+            else:
+                cards.append(f"🔕 Notifica disattivata{domain_suffix}")
             continue
 
-        content = str(signal.get("content", "")).strip()
-        if content:
-            cards.append(f"ℹ️ <b>Aggiornamento</b>\n{content}")
+        if event == "action.executed":
+            title = _safe_inline(data.get("title", ""))
+            command = _safe_inline(data.get("command", ""))
+            path = _safe_inline(data.get("path", ""))
+            label = title or command or "azione"
+            if style == "compact" and path:
+                cards.append(
+                    f"✅ Eseguito: <i>{label}</i>\n<code>{path}</code>")
+            else:
+                cards.append(f"✅ Eseguito: <i>{label}</i>")
+            continue
+
+        if event == "action.failed":
+            title = _safe_inline(data.get("title", ""))
+            command = _safe_inline(data.get("command", ""))
+            error = _safe_inline(data.get("error", ""))
+            label = title or command or "azione"
+            if style in {"compact", "rich"} and error:
+                cards.append(
+                    f"❌ Non riuscito: <i>{label}</i>\n"
+                    f"<i>{error[:220]}</i>"
+                )
+            else:
+                cards.append(f"❌ Non riuscito: <i>{label}</i>")
+            continue
+
+        if style in {"compact", "rich"}:
+            content = _safe_inline(signal.get("content", ""))
+            if content:
+                cards.append(f"<i>{content}</i>")
 
     return cards
 

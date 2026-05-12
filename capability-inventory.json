@@ -1,0 +1,105 @@
+{
+  "updated_at": "2026-05-12",
+  "discovery_baseline": {
+    "registry_service": "hub",
+    "commands_endpoint": "/api/discovery/commands",
+    "routing_pattern": "/route/{service}/..."
+  },
+  "services": [
+    {
+      "name": "archive",
+      "folder": "Hestia-Archive",
+      "role": "persistence and storage workflows",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "argus",
+      "folder": "Hestia-Argus",
+      "role": "alerting, monitoring, remediation intent emission",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "athena",
+      "folder": "Hestia-Athena",
+      "role": "proactive intelligence and planning orchestration",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "atlas",
+      "folder": "Hestia-Atlas",
+      "role": "external fetch and aggregation",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "chronos",
+      "folder": "Hestia-Chronos",
+      "role": "time and scheduling integrations",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "dummy",
+      "folder": "Hestia-Dummy",
+      "role": "deterministic maintenance test module for remediation execution",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "hephaestus",
+      "folder": "Hestia-Hephaestus",
+      "role": "autonomous remediation orchestration and execution",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "hermes",
+      "folder": "Hestia-Hermes",
+      "role": "dispatch and executor workflows",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "hub",
+      "folder": "Hestia-Hub",
+      "role": "registry, discovery, routing",
+      "discovery_mode": "owns discovery and routing endpoints"
+    },
+    {
+      "name": "ingest",
+      "folder": "Hestia-Ingest",
+      "role": "ingestion and feed pipelines",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "oracle",
+      "folder": "Hestia-Oracle",
+      "role": "llm reasoning and tool-call orchestration",
+      "discovery_mode": "consumes hub command discovery"
+    },
+    {
+      "name": "scout",
+      "folder": "Hestia-Scout",
+      "role": "exploration and scouting intelligence",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "telegram",
+      "folder": "Hestia-Telegram",
+      "role": "ui and delivery channel",
+      "discovery_mode": "consumes hub command discovery"
+    },
+    {
+      "name": "shared",
+      "folder": "Hestia-Shared",
+      "role": "shared libraries and utilities",
+      "discovery_mode": "not applicable"
+    },
+    {
+      "name": "swagger",
+      "folder": "Hestia-Swagger",
+      "role": "api documentation aggregator",
+      "discovery_mode": "not applicable"
+    }
+  ],
+  "gaps": [
+    "expand hephaestus skeleton executor to real branch/commit/deploy operations with strict policy gates",
+    "add post-remediation verification loop where argus confirms recovery and can recommend rollback",
+    "add command-level schema conformance checks between hub discovery payloads and openapi schemas"
+  ]
+}

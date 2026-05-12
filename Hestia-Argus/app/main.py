@@ -12,6 +12,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from core import context_loader, hub_client
 from core.health_poller import poll_all
@@ -32,6 +33,18 @@ except ModuleNotFoundError:
 
 logger, log_buffer = setup_service_logging("hestia_argus")
 
+
+class RemediationRequest(BaseModel):
+    service: str
+    issue: str
+    severity: str = "warning"
+    requested_action: str = "runbook_autoselect"
+    environment: str = "dev"
+    dry_run: bool = True
+    auto_approve: bool = False
+    metadata: dict[str, object] = Field(default_factory=dict)
+
+
 # Loaded once at startup; injected into Oracle calls.
 _project_context: str = ""
 
@@ -42,7 +55,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Load Hestia project docs for Oracle context.
     _project_context = context_loader.get_context()
     logger.info(
-        "event=project_context_loaded_chars Project context loaded (%d chars)", len(_project_context)
+        "event=project_context_loaded_chars Project context loaded (%d chars)", len(
+            _project_context)
     )
     hub_api_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -64,7 +78,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             try:
                 hub_client.register(quiet_success=True)
             except Exception as error:
-                logger.warning("event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
+                logger.warning(
+                    "event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
     # Start background monitoring loop.
@@ -144,3 +159,23 @@ def analyze() -> dict:
         project_context=_project_context
     )
     return report.model_dump(mode="json")
+
+
+@app.post("/api/argus/remediate", tags=["argus"])
+def request_remediation(req: RemediationRequest) -> dict:
+    ok, result = hub_client.request_hephaestus_remediation(
+        source="argus",
+        service=req.service,
+        issue=req.issue,
+        severity=req.severity,
+        requested_action=req.requested_action,
+        environment=req.environment,
+        dry_run=req.dry_run,
+        auto_approve=req.auto_approve,
+        metadata=req.metadata,
+    )
+    return {
+        "status": "ok" if ok else "error",
+        "forwarded_to": "hephaestus",
+        "result": result,
+    }

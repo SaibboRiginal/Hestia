@@ -35,7 +35,7 @@ class HubClient:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def get(self, endpoint: str, default=None):
+    def get(self, endpoint: str, default=None, timeout: int = 6, headers: dict | None = None):
         """Route a GET request to Archive via Hub. Returns payload or *default*."""
         try:
             parsed = urlparse(endpoint)
@@ -48,9 +48,9 @@ class HubClient:
             url = self._route_url(self._normalize(path))
             resp = requests.post(
                 url,
-                json={"method": "GET", "query": query, "headers": {},
-                      "body": None, "timeout_seconds": 6},
-                timeout=7,
+                json={"method": "GET", "query": query, "headers": headers or {},
+                      "body": None, "timeout_seconds": timeout},
+                timeout=timeout + 1,
             )
             if resp.status_code != 200:
                 return default if default is not None else []
@@ -63,24 +63,24 @@ class HubClient:
                 "event=hubclient_get_failed_non_fatal [HubClient] GET %s failed (non-fatal): %s", endpoint, exc)
             return default if default is not None else []
 
-    def post(self, endpoint: str, body: dict, timeout: int = 6):
+    def post(self, endpoint: str, body: dict, timeout: int = 6, headers: dict | None = None):
         """Route a POST request to Archive via Hub. Raises on HTTP error."""
         url = self._route_url(self._normalize(endpoint))
         resp = requests.post(
             url,
-            json={"method": "POST", "query": {}, "headers": {},
+            json={"method": "POST", "query": {}, "headers": headers or {},
                   "body": body, "timeout_seconds": timeout},
             timeout=timeout + 1,
         )
         resp.raise_for_status()
         return resp.json() or {}
 
-    def delete(self, endpoint: str, timeout: int = 6):
+    def delete(self, endpoint: str, timeout: int = 6, headers: dict | None = None):
         """Route a DELETE request to Archive via Hub. Raises on HTTP or Archive error."""
         url = self._route_url(self._normalize(endpoint))
         resp = requests.post(
             url,
-            json={"method": "DELETE", "query": {}, "headers": {},
+            json={"method": "DELETE", "query": {}, "headers": headers or {},
                   "body": None, "timeout_seconds": timeout},
             timeout=timeout + 1,
         )
@@ -100,7 +100,8 @@ class HubClient:
             if resp.status_code == 200:
                 return resp.json().get("commands") or []
         except Exception as exc:
-            logger.debug("event=hubclient_get_commands_failed [HubClient] get_commands failed: %s", exc)
+            logger.debug(
+                "event=hubclient_get_commands_failed [HubClient] get_commands failed: %s", exc)
         return []
 
     def route_to_service(
@@ -111,6 +112,7 @@ class HubClient:
         body: dict | None = None,
         query: dict | None = None,
         timeout: int = 15,
+        headers: dict | None = None,
     ) -> tuple[bool, object]:
         """Route a request to any registered service via Hub routing envelope."""
         clean_path = path.lstrip("/")
@@ -120,7 +122,7 @@ class HubClient:
                 json={
                     "method": method.upper(),
                     "query": query or {},
-                    "headers": {},
+                    "headers": headers or {},
                     "body": body,
                     "timeout_seconds": timeout,
                 },
@@ -138,13 +140,14 @@ class HubClient:
                 "event=hubclient_route_to_service_failed [HubClient] route_to_service %s/%s failed: %s", service, path, exc)
             return False, str(exc)
 
-    def get_history(self, session_id: str, limit: int = 200) -> list[dict]:
+    def get_history(self, session_id: str, limit: int = 200, timeout: int = 6) -> list[dict]:
         """Fetch raw history list (untruncated) for a session from Archive via Hub.
 
         Used by background compaction — fetches more than the hot-path limit
         to assess whether compaction is actually warranted.
         """
-        result = self.get(f"/chat/history/{session_id}?limit={limit}")
+        result = self.get(
+            f"/chat/history/{session_id}?limit={limit}", timeout=timeout)
         if isinstance(result, list):
             return result
         return []
@@ -199,7 +202,8 @@ class HubClient:
             out = routed.get("payload")
             return out if isinstance(out, dict) else None
         except Exception as exc:
-            logger.debug("event=hubclient_create_feedback_record_failed [HubClient] create_feedback_record failed: %s", exc)
+            logger.debug(
+                "event=hubclient_create_feedback_record_failed [HubClient] create_feedback_record failed: %s", exc)
             return None
 
     def list_feedback_records(

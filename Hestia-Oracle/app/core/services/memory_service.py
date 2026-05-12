@@ -16,13 +16,13 @@ from urllib.parse import urlparse, parse_qs
 
 from core.services.memory_intent import (
     has_notification_intent,
-    has_preference_intent,
     has_deprecate_intent,
 )
 from core.services.memory_parsers import (
     parse_preference_actions,
     parse_subscription_actions,
 )
+from core.services import prompt_config
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -33,74 +33,6 @@ MEMORY_CLASS_PREFERENCE = "durable_user_preference"
 MEMORY_CLASS_TASK = "task_goal_state"
 MEMORY_CLASS_DOMAIN_FACT = "domain_fact_entity"
 MEMORY_CLASS_COMMITMENT = "assistant_commitment"
-
-_PREF_PROMPT_TEMPLATE = """
-You are Hestia's enterprise Memory Manager.
-
-TASK:
-Infer enduring user preferences, constraints, and profile facts from natural language context.
-Do not rely on explicit trigger phrases. Infer intent semantically.
-
-CURRENT PREFS: {pref_context}
-KNOWN DOMAINS: {domains}
-USER MESSAGE: "{user_message}"
-
-CONVERSATION CONTEXT:
-{history_text}
-
-RULES:
-1. Ignore temporary requests and conversational noise (e.g., "ciao", "grazie", "ok").
-2. Add only durable preferences likely useful in future interactions.
-3. NEVER emit DEPRECATE unless user explicitly requests removal with clear keywords like: "cancella", "rimuovi", "elimina", "dimentica", "reset", "togli".
-4. Even if a message seems to contradict a preference, preserve the old value unless removal is explicit.
-5. Use known domains; fallback to "general" when uncertain.
-6. When uncertain, output NONE rather than guessing.
-
-ACTION SCHEMA:
-- ADD: {{"action":"ADD","fact":"<durable fact>","domain":"<known_domain_or_general>"}}
-- DEPRECATE: {{"action":"DEPRECATE","id":<existing_pref_id>}}
-
-Output ONLY JSON array or NONE.
-"""
-
-_SUB_PROMPT_TEMPLATE = """
-You are Hestia's subscription compiler.
-
-Given user message and context, create subscriptions ONLY when user intent is explicit and direct.
-If the user is only chatting, sharing preferences, or discussing hobbies/plans without asking alerts, output NONE.
-
-KNOWN DOMAINS: {domains}
-USER MESSAGE: "{user_message}"
-CONTEXT:
-{history_text}
-
-Return ONLY JSON array with items:
-{{
-    "action": "ADD",
-  "domain": "<known_domain_or_general>",
-  "event_type": "entity.upserted",
-  "filters": {{"city": "...", "max_price": 350000}},
-  "channels": [{{"type": "telegram", "target": "<id>"}}]
-}}
-
-For removals/disabling, use:
-{{"action":"DEPRECATE","subscription_id":"<existing_subscription_id>"}}
-
-If user changes criteria, prefer ADD with updated filters (same deterministic subscription_id logic will upsert).
-
-STRICT RULE:
-- Do not create subscriptions unless user clearly asks for alerts/notifications.
-
-Output NONE when not needed.
-"""
-
-_SUB_FORCED_SUFFIX = """
-
-FORCED MODE:
-- The current request explicitly asks to create/update a notification workflow.
-- Do not output NONE unless absolutely impossible due to missing mandatory details.
-- If details are partially missing, infer safe defaults and still produce one ADD action.
-"""
 
 
 class MemoryService:
@@ -494,7 +426,12 @@ class MemoryService:
             Emitted memory/subscription signals (e.g. ``{"event": "memory.preference.added", ...}``).
         """
         signals: list[dict] = []
-        should_extract_prefs = has_preference_intent(user_message)
+        normalized_message = str(user_message or "").strip().lower()
+        trivial_turns = {"ok", "okay", "grazie",
+                         "thanks", "si", "sì", "no", "ciao"}
+        # Prefer semantic extraction over rigid keyword gating, but skip obvious short acknowledgements.
+        should_extract_prefs = bool(
+            normalized_message) and normalized_message not in trivial_turns
         should_extract_subs = force_notification_compiler or has_notification_intent(
             user_message)
 
@@ -513,7 +450,8 @@ class MemoryService:
 
         if should_extract_prefs:
             allow_deprecate = has_deprecate_intent(user_message)
-            pref_prompt = _PREF_PROMPT_TEMPLATE.format(
+            pref_prompt = prompt_config.prompt(
+                "memory_preferences_template",
                 pref_context=pref_context,
                 domains=", ".join(domains),
                 user_message=user_message,
@@ -533,13 +471,15 @@ class MemoryService:
         if not should_extract_subs:
             return signals
 
-        sub_prompt = _SUB_PROMPT_TEMPLATE.format(
+        sub_prompt = prompt_config.prompt(
+            "memory_subscriptions_template",
             domains=", ".join(domains),
             user_message=user_message,
             history_text=history_text,
         )
         if force_notification_compiler:
-            sub_prompt += _SUB_FORCED_SUFFIX
+            sub_prompt += prompt_config.prompt(
+                "memory_subscriptions_forced_suffix")
 
         raw_sub = self._ask(sub_prompt)
         fallback_target = (notify_target or "").strip() or session_id
