@@ -72,6 +72,7 @@ _HUB_REGISTRATION_PAYLOAD = {
     "service_type": "core",
     "service_version": os.getenv("ARCHIVE_SERVICE_VERSION", "1.0.0"),
     "tags": ["core", "storage"],
+    "topology_tags": ["layer:foundation", "domain:storage", "status:stable"],
     "capabilities": {
         "api_prefix": "/api",
         "commands": [

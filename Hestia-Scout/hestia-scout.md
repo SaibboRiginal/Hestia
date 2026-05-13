@@ -17,7 +17,7 @@ Scout is also an event producer for proactive workflows: when entities are creat
 ## Pipeline
 
 ```
-[Ingest: GmailIMAPFetcher]
+[Hecate: IrisEmailFetcher]
         │  raw emails
         ▼
 [Scout: pre_parser.py]          ← URL extraction, zero LLM calls
@@ -39,8 +39,8 @@ Scout is also an event producer for proactive workflows: when entities are creat
                              [Hermes: entity.upserted event]
 ```
 
-1. **Startup:** Scout registers a `GmailIMAPFetcher` connector with Ingest (credentials from env).
-2. **Scheduled fetch:** Scout calls Ingest to retrieve new emails from the configured Gmail account.
+1. **Startup:** Scout targets Hecate `iris_email` source for email retrieval.
+2. **Scheduled fetch:** Scout calls Hecate (via Hub route) to retrieve new domain emails.
 3. **Pre-parse (no LLM):** `pre_parser.py` strips HTML, extracts `[PROPERTY_LINK: url]` markers from every record. Builds a `url → record_id` map and a `record_id → clean_text` map.
 4. **Deduplication:** `archive_client.get_all_entity_ids()` fetches all known property URLs from Archive. New vs. existing URLs are classified without any LLM call.
 5. **Status update path (existing):** For known entities whose URL appeared in the new emails, `StatusUpdater` runs a regex keyword scan on the email text to detect `listing_status` changes (`available → in_negotiation → sold` etc.). If the status changed, only the `listing_status` field is patched in Archive — no full LLM extraction.
@@ -50,7 +50,7 @@ Scout is also an event producer for proactive workflows: when entities are creat
 9. **Event emission:** Scout publishes `entity.upserted` event to Hermes (via Hub routing).
 10. **Mark parsed:** All processed Ingest records are marked parsed regardless of which path handled them.
 11. **Availability:** Oracle queries module tools / Archive for `real_estate` data.
-12. **Shutdown:** Scout deregisters its Ingest connector.
+12. **Shutdown:** Scout stops scheduled cycles (no direct connector deregistration needed).
 
 ---
 

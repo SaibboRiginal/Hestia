@@ -33,6 +33,7 @@ class RuntimeConfig:
     service_version: str
     service_type: str
     service_tags: list[str]
+    service_topology_tags: list[str]
     hub_api_url: str
     port: int
     mutation_delay_ms: int
@@ -61,6 +62,14 @@ def _load_runtime_config() -> RuntimeConfig:
             for tag in os.getenv("SERVICE_TAGS", service_type).split(",")
             if tag.strip()
         ],
+        service_topology_tags=[
+            tag.strip().lower()
+            for tag in os.getenv(
+                "SERVICE_TOPOLOGY_TAGS",
+                "layer:testing,domain:mock,status:stable",
+            ).split(",")
+            if tag.strip()
+        ],
         hub_api_url=os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/"),
         port=int(os.getenv("DUMMY_PORT", "19011")),
@@ -77,6 +86,7 @@ def _register_to_hub(config: RuntimeConfig, logger) -> None:
         "service_type": config.service_type,
         "service_version": config.service_version,
         "tags": config.service_tags,
+        "topology_tags": config.service_topology_tags,
         "capabilities": {
             "commands": [
                 {

@@ -53,6 +53,14 @@ SERVICE_TAGS = [
     for tag in os.getenv("SERVICE_TAGS", "integration").split(",")
     if tag.strip()
 ]
+SERVICE_TOPOLOGY_TAGS = [
+    tag.strip().lower()
+    for tag in os.getenv(
+        "SERVICE_TOPOLOGY_TAGS",
+        "layer:gateway,domain:browser,status:stable",
+    ).split(",")
+    if tag.strip()
+]
 
 service = FetchService(
     ServiceDescriptor(
@@ -61,6 +69,7 @@ service = FetchService(
         service_type=SERVICE_TYPE,
         service_version=SERVICE_VERSION,
         tags=SERVICE_TAGS,
+        topology_tags=SERVICE_TOPOLOGY_TAGS,
     )
 )
 
@@ -76,7 +85,8 @@ def register_on_hub_startup():
         logger.info("event=registered_hub_name_base_url Registered on Hub | name=%s base_url=%s",
                     SERVICE_NAME, SERVICE_BASE_URL)
     except Exception as error:
-        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
+        logger.warning(
+            "event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
 
 
 @app.get("/health")

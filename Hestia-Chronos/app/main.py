@@ -21,7 +21,6 @@ from fastapi.responses import JSONResponse
 
 from core import archive_client
 from core.hub_client import register_on_hub
-from providers.registry import CalendarProviderRegistry
 from schemas.events import (
     CreateEventRequest,
     CreateEventResponse,
@@ -30,7 +29,6 @@ from schemas.events import (
     ListEventsResponse,
     UpdateEventRequest,
 )
-from services.calendar_service import CalendarService
 from services import notification_worker, sync_worker
 
 try:
@@ -62,8 +60,33 @@ app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 
-_registry = CalendarProviderRegistry()
-_service = CalendarService(_registry)
+
+def _route_hecate(
+    *,
+    method: str,
+    path: str,
+    query: dict | None = None,
+    body: dict | None = None,
+    timeout_seconds: float = 20.0,
+) -> tuple[int, dict]:
+    import requests
+
+    hub_api_url = os.getenv(
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    response = requests.post(
+        f"{hub_api_url}/route/hecate/{path.lstrip('/')}",
+        json={
+            "method": method,
+            "headers": {},
+            "query": query or {},
+            "body": body,
+            "timeout_seconds": timeout_seconds,
+        },
+        timeout=max(5.0, timeout_seconds + 2.0),
+    )
+    response.raise_for_status()
+    routed = response.json() if response.content else {}
+    return int((routed or {}).get("status_code", 500)), (routed or {}).get("payload") or {}
 
 # ─────────────────────────────────────────────────────────────────────
 #  Lifecycle
@@ -77,13 +100,6 @@ def on_startup() -> None:
     ).rstrip("/")
     service_base_url = os.getenv(
         "CALENDAR_SERVICE_BASE_URL", "http://hestia_chronos:19007"
-    )
-
-    status = _registry.status_report()
-    logger.info(
-        "event=startup_active_providers_unavailable [STARTUP] Active providers: %s | Unavailable: %s",
-        status["active"],
-        list(status["unavailable"].keys()),
     )
 
     startup_wait_timeout = float(
@@ -122,8 +138,8 @@ def on_startup() -> None:
 
     # Start the proactive notification worker (background daemon thread).
     notification_worker.start()
-    # Start the calendar sync worker (pulls events from providers into Archive).
-    sync_worker.start(_registry)
+    # Start the calendar sync worker (pulls events from Hecate into Archive).
+    sync_worker.start()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -133,11 +149,15 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health() -> dict:
-    status = _registry.status_report()
+    status_code, status_payload = _route_hecate(
+        method="GET",
+        path="/api/gateway/providers",
+        timeout_seconds=10,
+    )
     return {
         "status": "ok",
         "service": "hestia_chronos",
-        "providers": status,
+        "providers": status_payload if status_code < 400 else {},
     }
 
 
@@ -158,65 +178,88 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 
 @app.post("/api/calendar/events", response_model=CreateEventResponse)
 def create_event(req: CreateEventRequest) -> CreateEventResponse:
-    """Create a calendar event across one or more providers."""
-    if not _registry.active_providers:
-        raise HTTPException(
-            status_code=503,
-            detail="No calendar providers are configured and available.",
-        )
-    return _service.create_event(
-        event=req.event,
-        target_providers=req.target_providers,
-        calendar_id=req.calendar_id,
+    body = req.model_dump(mode="json")
+    status_code, payload = _route_hecate(
+        method="POST",
+        path="/api/gateway/calendar/events",
+        body=body,
+        timeout_seconds=20,
     )
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=payload)
+    return CreateEventResponse.model_validate(payload)
 
 
 @app.post("/api/calendar/events/list", response_model=ListEventsResponse)
 def list_events(req: ListEventsRequest) -> ListEventsResponse:
-    """List events within a time window across one or more providers."""
-    return _service.list_events(
-        start=req.start_datetime,
-        end=req.end_datetime,
-        target_providers=req.target_providers,
-        calendar_id=req.calendar_id,
-        max_results=req.max_results,
+    provider = req.target_providers[0] if req.target_providers else None
+    query = {
+        "start_datetime": req.start_datetime.isoformat(),
+        "end_datetime": req.end_datetime.isoformat(),
+        "provider": provider,
+        "calendar_id": req.calendar_id,
+        "max_results": req.max_results,
+    }
+    status_code, payload = _route_hecate(
+        method="GET",
+        path="/api/gateway/calendar/events",
+        query=query,
+        timeout_seconds=20,
     )
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=payload)
+    return ListEventsResponse.model_validate(payload)
 
 
 @app.delete("/api/calendar/events/{event_id}")
 def delete_event(event_id: str, req: DeleteEventRequest) -> JSONResponse:
-    """Delete a calendar event by its provider-issued ID."""
-    result = _service.delete_event(
-        event_id=event_id,
-        provider_name=req.provider,
-        calendar_id=req.calendar_id,
+    status_code, payload = _route_hecate(
+        method="DELETE",
+        path=f"/api/gateway/calendar/events/{event_id}",
+        query={"provider": req.provider, "calendar_id": req.calendar_id},
+        timeout_seconds=20,
     )
-    if not result["success"]:
-        status_code = 404 if "not found" in (
-            result.get("error") or "").lower() else 502
-        raise HTTPException(status_code=status_code,
-                            detail=result.get("error"))
-    return JSONResponse({"success": True})
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=payload)
+    return JSONResponse(payload)
 
 
 @app.patch("/api/calendar/events/{event_id}")
 def update_event(event_id: str, req: UpdateEventRequest) -> JSONResponse:
-    """Partially update an existing event."""
-    result = _service.update_event(
-        event_id=event_id,
-        provider_name=req.provider,
-        updates=req.updates,
-        calendar_id=req.calendar_id,
+    status_code, payload = _route_hecate(
+        method="PUT",
+        path=f"/api/gateway/calendar/events/{event_id}",
+        body=req.model_dump(mode="json"),
+        timeout_seconds=20,
     )
-    if not result["success"]:
-        raise HTTPException(status_code=502, detail=result.get("error"))
-    return JSONResponse({"success": True})
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=payload)
+    return JSONResponse(payload)
 
 
 @app.get("/api/calendar/providers")
 def list_providers() -> dict:
-    """Return active and unavailable provider information."""
-    return _registry.status_report()
+    status_code, payload = _route_hecate(
+        method="GET",
+        path="/api/gateway/providers",
+        timeout_seconds=10,
+    )
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=payload)
+    return payload
+
+
+@app.post("/api/calendar/providers/{provider}/refresh")
+def refresh_provider(provider: str) -> dict:
+    status_code, payload = _route_hecate(
+        method="POST",
+        path=f"/api/gateway/auth/refresh/{provider}",
+        body={},
+        timeout_seconds=15,
+    )
+    if status_code >= 400:
+        raise HTTPException(status_code=status_code, detail=payload)
+    return payload
 
 
 @app.get("/api/calendar/agenda")

@@ -8,7 +8,7 @@ docker network create hestia_net
 
 1. `Hestia-Hub`
 2. `Hestia-Archive`
-3. `Hestia-Ingest`
+3. `Hestia-Hecate`
 4. `Hestia-Hermes`
 5. `Hestia-Oracle`
 6. `Hestia-Scout`

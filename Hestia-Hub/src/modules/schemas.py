@@ -16,6 +16,39 @@ ALLOWED_TAGS = {
     "monitoring",
 }
 
+ALLOWED_TOPOLOGY_DIMENSIONS = {
+    "layer": {
+        "foundation",
+        "gateway",
+        "domain",
+        "cognition",
+        "client",
+        "testing",
+    },
+    "domain": {
+        "registry",
+        "storage",
+        "dispatch",
+        "observability",
+        "auth_api",
+        "browser",
+        "ui",
+        "calendar",
+        "email",
+        "real_estate",
+        "llm",
+        "strategy",
+        "remediation",
+        "mock",
+    },
+    "status": {
+        "stable",
+        "beta",
+        "experimental",
+        "deprecated",
+    },
+}
+
 
 class RegisterServiceRequest(BaseModel):
     name: str
@@ -24,6 +57,7 @@ class RegisterServiceRequest(BaseModel):
     service_type: Literal["core", "module", "integration"] = "core"
     service_version: str = "1.0.0"
     tags: list[str] = Field(default_factory=list)
+    topology_tags: list[str] = Field(default_factory=list)
     capabilities: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("name")
@@ -89,6 +123,39 @@ class RegisterServiceRequest(BaseModel):
                 )
             cleaned[normalized_key] = item
         return cleaned
+
+    @field_validator("topology_tags")
+    @classmethod
+    def validate_topology_tags(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen_dimensions: set[str] = set()
+        for raw_value in values:
+            tag = str(raw_value).strip().lower()
+            if not tag:
+                continue
+            if ":" not in tag:
+                raise ValueError(
+                    "topology_tags entries must follow '<dimension>:<value>'"
+                )
+            dimension, value = tag.split(":", 1)
+            dimension = dimension.strip()
+            value = value.strip()
+            allowed_values = ALLOWED_TOPOLOGY_DIMENSIONS.get(dimension)
+            if not allowed_values:
+                raise ValueError(
+                    f"Unsupported topology dimension '{dimension}'. Allowed: {sorted(ALLOWED_TOPOLOGY_DIMENSIONS)}"
+                )
+            if value not in allowed_values:
+                raise ValueError(
+                    f"Unsupported topology value '{value}' for dimension '{dimension}'. Allowed: {sorted(allowed_values)}"
+                )
+            if dimension in seen_dimensions:
+                raise ValueError(
+                    f"Duplicate topology dimension '{dimension}' in topology_tags"
+                )
+            seen_dimensions.add(dimension)
+            normalized.append(f"{dimension}:{value}")
+        return normalized
 
     @model_validator(mode="after")
     def validate_type_tag_alignment(self):

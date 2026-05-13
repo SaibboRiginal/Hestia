@@ -34,6 +34,7 @@ from .modules.events import RegistryEvents
 from .modules.registry import ServiceRegistry
 from .modules.router import proxy_request
 from .modules.schemas import (
+    ALLOWED_TOPOLOGY_DIMENSIONS,
     ALLOWED_TAGS,
     DeregisterServiceRequest,
     RegisterServiceRequest,
@@ -154,6 +155,10 @@ def registration_standard():
     return {
         "service_type_allowed": ["core", "module", "integration"],
         "tags_allowed": sorted(ALLOWED_TAGS),
+        "topology_tags_allowed": {
+            key: sorted(values)
+            for key, values in ALLOWED_TOPOLOGY_DIMENSIONS.items()
+        },
         "service_version_format": "major.minor.patch",
         "rules": [
             "service name: lowercase [a-z0-9_-]{2,40}",
@@ -161,6 +166,8 @@ def registration_standard():
             "health_endpoint: must start with /",
             "capabilities keys: snake_case [a-z0-9_]",
             "tags must include service_type",
+            "topology_tags entries must be '<dimension>:<value>'",
+            "topology_tags dimensions are unique (one tag per dimension)",
             "optional capabilities.commands entries can expose direct user commands",
         ],
         "example": {
@@ -170,6 +177,11 @@ def registration_standard():
             "service_type": "integration",
             "service_version": "1.0.0",
             "tags": ["integration", "messaging"],
+            "topology_tags": [
+                "layer:client",
+                "domain:ui",
+                "status:stable",
+            ],
             "capabilities": {
                 "health_check": "/health",
                 "commands": [

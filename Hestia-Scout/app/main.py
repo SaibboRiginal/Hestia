@@ -38,7 +38,7 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_scout")
 
 TARGET_DOMAIN = "real_estate"
-TARGET_SOURCE = "gmail_imap"
+TARGET_SOURCE = "iris_email"
 
 
 def _build_target_filters():
@@ -152,7 +152,8 @@ def _start_tools_api():
 
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
-    logger.info("event=scout_tools_api_online Scout tools API online at 0.0.0.0:%d", port)
+    logger.info(
+        "event=scout_tools_api_online Scout tools API online at 0.0.0.0:%d", port)
 
 
 def _register_with_hub(port: int):
@@ -167,6 +168,7 @@ def _register_with_hub(port: int):
         "service_type": "module",
         "service_version": os.getenv("SCOUT_SERVICE_VERSION", "1.0.0"),
         "tags": ["module", "real_estate"],
+        "topology_tags": ["layer:domain", "domain:real_estate", "status:stable"],
         "capabilities": {
             "module_tool_domains": [TARGET_DOMAIN],
             "module_tool_endpoint": f"{service_base_url.rstrip('/')}/api/module-tools",
@@ -195,7 +197,8 @@ def _register_with_hub(port: int):
         logger.debug("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
                      hub_api_url, service_base_url)
     except Exception as error:
-        logger.warning("event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
+        logger.warning(
+            "event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)
 
 
 if __name__ == "__main__":
@@ -229,7 +232,8 @@ if __name__ == "__main__":
             try:
                 _register_with_hub(tools_port)
             except Exception as error:
-                logger.warning("event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
+                logger.warning(
+                    "event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 
@@ -239,7 +243,8 @@ if __name__ == "__main__":
         try:
             worker.run_cycle()
         except Exception as error:
-            logger.error("event=critical_error_scout_polling_loop Critical error in Scout polling loop: %s", error)
+            logger.error(
+                "event=critical_error_scout_polling_loop Critical error in Scout polling loop: %s", error)
 
         logger.info(
             "event=scout_resting_seconds_before_next Scout resting for %d seconds before next cycle", poll_interval)

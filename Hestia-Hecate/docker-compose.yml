@@ -1,0 +1,27 @@
+services:
+  hecate:
+    build: .
+    container_name: hestia_hecate
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1               # flush stdout/stderr immediately (required for Docker log streaming)
+      - HUB_API_URL=http://hestia_hub:19001/api          # Hub base URL for routing and service registration
+      - HECATE_SERVICE_BASE_URL=http://hestia_hecate:19003  # Hecate service URL advertised to Hub
+      - ARCHIVE_URL=http://hestia_archive:19002             # Direct Archive base URL (used for calendar writes)
+      - HECATE_SERVICE_VERSION=1.0.0                        # Reported version in Hub registry
+      - LOG_LEVEL=INFO                                      # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - HECATE_CALENDAR_BACKFILL_DAYS=7                     # How many days back to fetch when syncing calendar (int, default 7)
+      - HECATE_ARCHIVE_ROUTE_TIMEOUT=8                      # Seconds to wait for Hub-routed Archive writes (int, default 8)
+      - HECATE_CALENDAR_WRITE_TIMEOUT=10                    # Seconds to wait for direct calendar item writes (int, default 10)
+    ports:
+      - "19003:19003"  # Hecate API port
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./data:/code/data
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

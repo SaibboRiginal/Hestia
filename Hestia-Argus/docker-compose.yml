@@ -9,7 +9,7 @@ services:
       - HUB_API_URL=http://hestia_hub:19001/api          # Hub base URL for service registration
       - ARGUS_SERVICE_BASE_URL=http://hestia_argus:19008  # This service's public URL as seen by Hub
       - HERMES_API_URL=http://hestia_hermes:19005         # Hermes URL for alert dispatch
-      - ORACLE_API_URL=http://hestia_oracle:19004/api/chat  # Oracle URL for AI-formatted alerts
+      - ORACLE_ROUTE_PATH=api/chat                        # Hub-routed Oracle path for AI analysis
       - ARGUS_PORT=19008                  # Port this service listens on (int)
       - ARGUS_POLL_INTERVAL=60            # Seconds between Docker log polling cycles (int, default 60)
       - ARGUS_LOG_SOURCE=hub              # Log source: hub (recommended) | docker (legacy socket tail)

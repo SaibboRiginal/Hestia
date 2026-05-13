@@ -50,10 +50,12 @@ def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
             name = str(item.get("command", "")).strip().lower()
             if name:
                 discovered[name] = item
-        logger.debug("event=discovered_commands_from_hub Discovered %d commands from Hub", len(discovered))
+        logger.debug(
+            "event=discovered_commands_from_hub Discovered %d commands from Hub", len(discovered))
         return discovered
     except Exception as exc:
-        logger.warning("event=hub_command_discovery_failed Hub command discovery failed: %s", exc)
+        logger.warning(
+            "event=hub_command_discovery_failed Hub command discovery failed: %s", exc)
         return {}
 
 
@@ -104,6 +106,7 @@ def register_telegram_service() -> bool:
         "service_type": "integration",
         "service_version": "1.0.0",
         "tags": ["integration", "messaging", "chat"],
+        "topology_tags": ["layer:client", "domain:ui", "status:stable"],
         "capabilities": {
             "interface": "telegram",
             "hub_events_webhook": "/api/events/registry-changed",
@@ -118,7 +121,8 @@ def register_telegram_service() -> bool:
                        response.status_code)
         return False
     except Exception as exc:
-        logger.warning("event=hub_registration_request_failed Hub registration request failed: %s", exc)
+        logger.warning(
+            "event=hub_registration_request_failed Hub registration request failed: %s", exc)
         return False
 
 
@@ -203,7 +207,7 @@ def _infer_group(name: str, meta: dict) -> str | None:
     service = str(meta.get("service", "")).strip().lower()
     if service == "scout" or name.startswith("scout_"):
         return "immobiliare"
-    if service in ("chronos", "ingest"):
+    if service in ("chronos", "ingest", "hecate"):
         return "pianificazione"
     if service == "argus":
         return "sistema"
@@ -235,7 +239,8 @@ def setup_commands():
     with _setup_commands_lock:
         now = time.time()
         if now - _setup_commands_last_run < _SETUP_COMMANDS_COOLDOWN_SEC:
-            logger.debug("event=setup_commands_skipped_cooldown setup_commands skipped (cooldown)")
+            logger.debug(
+                "event=setup_commands_skipped_cooldown setup_commands skipped (cooldown)")
             return
         _setup_commands_last_run = now
 
@@ -276,7 +281,8 @@ def setup_commands():
     try:
         core.bot.set_my_commands(commands)
     except Exception as e:
-        logger.warning("event=set_my_commands_failed_global_scope set_my_commands failed (global scope): %s", e)
+        logger.warning(
+            "event=set_my_commands_failed_global_scope set_my_commands failed (global scope): %s", e)
         return
     if core.ALLOWED_USER_ID and str(core.ALLOWED_USER_ID).isdigit():
         try:
@@ -284,4 +290,5 @@ def setup_commands():
                 chat_id=int(str(core.ALLOWED_USER_ID))))
         except Exception:
             pass
-    logger.debug("event=telegram_command_menu_updated_commands Telegram command menu updated | commands=%d", len(commands))
+    logger.debug(
+        "event=telegram_command_menu_updated_commands Telegram command menu updated | commands=%d", len(commands))

@@ -315,7 +315,7 @@ class ScoutWorker:
         }
         try:
             response = requests.post(
-                f"{self.hub_api_url}/route/ingest/api/ingest/trigger",
+                f"{self.hub_api_url}/route/hecate/api/ingest/trigger",
                 json={
                     "method": "POST",
                     "headers": {},

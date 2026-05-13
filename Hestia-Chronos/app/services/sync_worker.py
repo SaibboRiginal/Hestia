@@ -1,34 +1,4 @@
-"""Chronos sync worker — periodic Google/Outlook Calendar → Archive sync.
-
-Background thread started at FastAPI startup.  Every CHRONOS_SYNC_POLL_SECONDS
-(default 900 = 15 minutes) it:
-
-  1. Fetches events from all active calendar providers for a configurable
-     time window (CHRONOS_SYNC_LOOK_BACK_DAYS before now →
-     CHRONOS_SYNC_LOOK_AHEAD_DAYS ahead of now).
-  2. Upserts every event into Archive (idempotent — external_id deduplicates).
-  3. If CHRONOS_SYNC_NOTIFY_NEW=true (default), dispatches a Hermes
-     notification for each event that appears for the first time *and* starts
-     in the future (i.e. not a historical back-fill item).
-
-New-event detection:
-  A module-level set (``_known_external_ids``) is populated on the very first
-  sync tick.  On subsequent ticks, any ``external_id`` not yet in the set is
-  treated as "new" and triggers a notification.  The set persists in memory
-  for the lifetime of the process (cleared on container restart).  This means:
-    • No notification spam after a container restart (first tick always
-      populates the set silently).
-    • New events added to Google Calendar between ticks generate a
-      notification on the next tick.
-
-Env vars (all optional):
-  CHRONOS_SYNC_ENABLED           — "true" / "false" (default: "true")
-  CHRONOS_SYNC_POLL_SECONDS      — int (default: 900)
-  CHRONOS_SYNC_LOOK_BACK_DAYS    — int, days to fetch behind now (default: 1)
-  CHRONOS_SYNC_LOOK_AHEAD_DAYS   — int, days to fetch ahead of now (default: 30)
-  CHRONOS_SYNC_NOTIFY_NEW        — "true" / "false" (default: "true")
-  CHRONOS_SYNC_CALENDAR_ID       — calendar id to query (default: "primary")
-"""
+"""Chronos sync worker — periodic Hecate Calendar → Archive sync."""
 from __future__ import annotations
 
 import logging
@@ -36,10 +6,10 @@ import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+
+import requests
 
 from core import archive_client, hermes_client
-from providers.registry import CalendarProviderRegistry
 
 logger = logging.getLogger("hestia_chronos.sync_worker")
 
@@ -65,22 +35,17 @@ _known_external_ids: set[str] = set()
 _first_tick_done: bool = False
 _state_lock = threading.Lock()
 
-# Shared provider registry injected by main.py at startup.
-_registry: Optional[CalendarProviderRegistry] = None
+_HUB_API_URL = os.getenv(
+    "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def _format_event_notification(record) -> str:
+def _format_event_notification(record: dict) -> str:
     """Build an HTML notification message for a new calendar event."""
-    title = record.title or "Nuovo evento"
-    start = record.start_datetime or ""
-    end = record.end_datetime or ""
-    location = record.location or ""
-    provider = record.provider or "calendar"
+    title = str((record or {}).get("title") or "Nuovo evento")
+    start = str((record or {}).get("start_datetime") or "")
+    end = str((record or {}).get("end_datetime") or "")
+    location = str((record or {}).get("location") or "")
+    provider = str((record or {}).get("provider") or "calendar")
 
     lines = [
         f"🆕 <b>Nuovo evento nel calendario</b>",
@@ -92,9 +57,10 @@ def _format_event_notification(record) -> str:
         lines.append(f"🕔 fine: {_format_dt(end)}")
     if location:
         lines.append(f"📍 {location}")
-    if record.html_link:
+    html_link = (record or {}).get("html_link")
+    if html_link:
         lines.append(
-            f'<a href="{record.html_link}">Apri in {provider.capitalize()}</a>')
+            f'<a href="{html_link}">Apri in {provider.capitalize()}</a>')
     return "\n".join(lines)
 
 
@@ -106,10 +72,11 @@ def _format_dt(iso_str: str) -> str:
         return iso_str
 
 
-def _is_future_event(record) -> bool:
+def _is_future_event(record: dict) -> bool:
     """Return True if the event starts in the future (relevant for new-event notifications)."""
     try:
-        start = datetime.fromisoformat(record.start_datetime or "")
+        start = datetime.fromisoformat(
+            str((record or {}).get("start_datetime") or ""))
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
         return start > datetime.now(timezone.utc)
@@ -125,37 +92,51 @@ def _is_future_event(record) -> bool:
 def _tick() -> None:
     global _first_tick_done
 
-    if _registry is None:
-        logger.warning("event=sync_registry_injected_skipping_tick [SYNC] Registry not injected — skipping tick")
-        return
-
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(days=_LOOK_BACK_DAYS)
     window_end = now + timedelta(days=_LOOK_AHEAD_DAYS)
 
-    active = _registry.active_providers
-    if not active:
-        logger.debug("event=sync_active_providers_skipping_tick [SYNC] No active providers — skipping tick")
-        return
+    active = ["google", "outlook"]
 
     newly_seen: list = []
 
     for provider in active:
+        envelope = {
+            "method": "GET",
+            "headers": {},
+            "query": {
+                "start_datetime": window_start.isoformat(),
+                "end_datetime": window_end.isoformat(),
+                "provider": provider,
+                "calendar_id": _CALENDAR_ID,
+                "max_results": 250,
+            },
+            "body": None,
+            "timeout_seconds": 20,
+        }
         try:
-            records = provider.list_events(
-                start=window_start,
-                end=window_end,
-                calendar_id=_CALENDAR_ID,
-                max_results=250,
+            response = requests.post(
+                f"{_HUB_API_URL}/route/hecate/api/gateway/calendar/events",
+                json=envelope,
+                timeout=22,
             )
+            response.raise_for_status()
+            routed = response.json() if response.content else {}
+            if int((routed or {}).get("status_code", 500)) >= 400:
+                continue
+            payload = (routed or {}).get("payload") or {}
+            records = payload.get("events") if isinstance(
+                payload, dict) else []
+            if not isinstance(records, list):
+                continue
         except Exception as exc:
             logger.warning(
-                "event=sync_list_events_failed_provider [SYNC] list_events failed for provider=%s: %s", provider.name, exc)
+                "event=sync_list_events_failed_provider [SYNC] list_events failed for provider=%s: %s", provider, exc)
             continue
 
         for record in records:
-            ext_id = record.event_id or ""
-            composite_key = f"{provider.name}:{ext_id}"
+            ext_id = str((record or {}).get("event_id") or "")
+            composite_key = f"{provider}:{ext_id}"
 
             with _state_lock:
                 is_new = composite_key not in _known_external_ids
@@ -164,15 +145,16 @@ def _tick() -> None:
             # Upsert into Archive (idempotent)
             archive_client.upsert_calendar_item(
                 external_id=ext_id or None,
-                source=provider.name,
+                source=provider,
                 kind="event",
-                title=record.title or "Evento senza titolo",
-                description=record.description,
-                start_at=record.start_datetime or now.isoformat(),
-                end_at=record.end_datetime,
+                title=(record or {}).get("title") or "Evento senza titolo",
+                description=(record or {}).get("description"),
+                start_at=(record or {}).get(
+                    "start_datetime") or now.isoformat(),
+                end_at=(record or {}).get("end_datetime"),
                 all_day=False,
-                location=record.location,
-                html_link=record.html_link,
+                location=(record or {}).get("location"),
+                html_link=(record or {}).get("html_link"),
                 nag_enabled=True,
             )
 
@@ -198,15 +180,18 @@ def _tick() -> None:
         ok = hermes_client.publish_event(
             domain="calendar",
             event_type="calendar.sync",
-            entity_id=record.event_id or "",
-            payload={"_message": msg, "title": record.title,
-                     "provider": record.provider},
+            entity_id=str((record or {}).get("event_id") or ""),
+            payload={
+                "_message": msg,
+                "title": (record or {}).get("title"),
+                "provider": (record or {}).get("provider"),
+            },
         )
         logger.info(
             "event=sync_new_event_notification_sent [SYNC] New-event notification sent=%s | provider=%s title=%r",
             ok,
-            record.provider,
-            record.title,
+            (record or {}).get("provider"),
+            (record or {}).get("title"),
         )
 
 
@@ -227,7 +212,8 @@ def _run_loop() -> None:
         try:
             _tick()
         except Exception as exc:
-            logger.error("event=sync_unhandled_error_tick [SYNC] Unhandled error in tick: %s", exc)
+            logger.error(
+                "event=sync_unhandled_error_tick [SYNC] Unhandled error in tick: %s", exc)
         time.sleep(_POLL_SECONDS)
 
 
@@ -236,18 +222,14 @@ def _run_loop() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def start(registry: CalendarProviderRegistry) -> None:
-    """Start the sync worker in a daemon thread.
-
-    Args:
-        registry: The shared CalendarProviderRegistry instance from main.py.
-    """
-    global _registry
+def start() -> None:
+    """Start the sync worker in a daemon thread."""
     if not _ENABLED:
-        logger.info("event=sync_sync_worker_disabled_chronos_sync_enabled [SYNC] Sync worker disabled (CHRONOS_SYNC_ENABLED=false)")
+        logger.info(
+            "event=sync_sync_worker_disabled_chronos_sync_enabled [SYNC] Sync worker disabled (CHRONOS_SYNC_ENABLED=false)")
         return
-    _registry = registry
     t = threading.Thread(
         target=_run_loop, name="chronos-sync-worker", daemon=True)
     t.start()
-    logger.info("event=sync_daemon_thread_started [SYNC] Daemon thread started")
+    logger.info(
+        "event=sync_daemon_thread_started [SYNC] Daemon thread started")

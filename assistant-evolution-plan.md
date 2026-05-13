@@ -196,7 +196,7 @@ Files to keep synchronized in implementation phases:
 - Hestia-Hephaestus/hestia-hephaestus.md
 - Hestia-Hermes/hestia-hermes.md
 - Hestia-Hub/hestia-hub.md
-- Hestia-Ingest/hestia-ingest.md
+- Hestia-Hecate/hestia-hecate.md
 - Hestia-Oracle/hestia-oracle.md
 - Hestia-Scout/hestia-scout.md
 - Hestia-Telegram/hestia-telegram.md

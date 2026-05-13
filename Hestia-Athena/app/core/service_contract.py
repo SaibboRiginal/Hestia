@@ -14,13 +14,15 @@ class ServiceDescriptor:
     service_type: str = "integration"
     service_version: str = "1.0.0"
     tags: list[str] = field(default_factory=lambda: ["integration"])
+    topology_tags: list[str] = field(default_factory=list)
     capabilities: dict[str, Any] = field(default_factory=dict)
 
 
 class HestiaServiceBase(ABC):
     def __init__(self, descriptor: ServiceDescriptor):
         self.descriptor = descriptor
-        self.hub_api_url = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+        self.hub_api_url = os.getenv(
+            "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
     @abstractmethod
     def build_capabilities(self) -> dict[str, Any]:
@@ -34,6 +36,7 @@ class HestiaServiceBase(ABC):
             "service_type": self.descriptor.service_type,
             "service_version": self.descriptor.service_version,
             "tags": self.descriptor.tags,
+            "topology_tags": self.descriptor.topology_tags,
             "capabilities": self.build_capabilities(),
         }
         return payload

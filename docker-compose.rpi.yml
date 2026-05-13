@@ -31,23 +31,23 @@ services:
     networks:
       - hestia_net
 
-  ingest:
+  hecate:
     build:
-      context: ./Hestia-Ingest
-    container_name: hestia_ingest
+      context: ./Hestia-Hecate
+    container_name: hestia_hecate
     restart: unless-stopped
     ports:
       - "19003:19003"
     env_file:
-      - ./Hestia-Ingest/app/.env
+      - ./Hestia-Hecate/app/.env
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
-      - INGEST_SERVICE_BASE_URL=http://hestia_ingest:19003
+      - HECATE_SERVICE_BASE_URL=http://hestia_hecate:19003
       - ARCHIVE_API_URL=http://hestia_archive:19002/api/archive
       - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./Hestia-Ingest/data:/code/data
+      - ./Hestia-Hecate/data:/code/data
     depends_on:
       hub:
         condition: service_started
