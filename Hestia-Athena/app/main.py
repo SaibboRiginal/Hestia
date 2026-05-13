@@ -90,6 +90,14 @@ SERVICE_TAGS = [
     for tag in os.getenv("SERVICE_TAGS", SERVICE_TYPE).split(",")
     if tag.strip()
 ]
+SERVICE_TOPOLOGY_TAGS = [
+    tag.strip().lower()
+    for tag in os.getenv(
+        "SERVICE_TOPOLOGY_TAGS",
+        "layer:cognition,domain:strategy,status:beta",
+    ).split(",")
+    if tag.strip()
+]
 
 service = AthenaService(
     ServiceDescriptor(
@@ -98,6 +106,7 @@ service = AthenaService(
         service_type=SERVICE_TYPE,
         service_version=SERVICE_VERSION,
         tags=SERVICE_TAGS,
+        topology_tags=SERVICE_TOPOLOGY_TAGS,
     )
 )
 runtime = AthenaRuntime()

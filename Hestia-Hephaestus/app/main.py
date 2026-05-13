@@ -40,6 +40,7 @@ service = HephaestusService(
         service_type=config.service_type,
         service_version=config.service_version,
         tags=config.service_tags,
+        topology_tags=config.service_topology_tags,
     )
 )
 

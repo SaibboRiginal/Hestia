@@ -41,6 +41,7 @@ def register_on_hub_startup():
         "service_type": "core",
         "service_version": os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"),
         "tags": ["core", "chat"],
+        "topology_tags": ["layer:cognition", "domain:llm", "status:stable"],
         "capabilities": {
             "chat_endpoint": "/api/chat",
         },

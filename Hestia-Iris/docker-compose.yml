@@ -1,0 +1,21 @@
+services:
+  iris:
+    build: .
+    container_name: hestia_iris
+    restart: unless-stopped
+    ports:
+      - "19012:19012"
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - IRIS_SERVICE_BASE_URL=http://hestia_iris:19012
+      - IRIS_SERVICE_VERSION=1.0.0
+      - STARTUP_WAIT_TIMEOUT_SECONDS=0
+      - LOG_LEVEL=INFO
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

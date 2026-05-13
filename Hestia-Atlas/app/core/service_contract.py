@@ -14,6 +14,7 @@ class ServiceDescriptor:
     service_type: str = "integration"
     service_version: str = "1.0.0"
     tags: list[str] = field(default_factory=lambda: ["integration"])
+    topology_tags: list[str] = field(default_factory=list)
 
 
 class HestiaServiceBase(ABC):
@@ -34,6 +35,7 @@ class HestiaServiceBase(ABC):
             "service_type": self.descriptor.service_type,
             "service_version": self.descriptor.service_version,
             "tags": self.descriptor.tags,
+            "topology_tags": self.descriptor.topology_tags,
             "capabilities": self.build_capabilities(),
         }
 

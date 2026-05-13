@@ -21,11 +21,12 @@ This draft maps service ownership and command/capability discovery expectations 
 | Athena | Hestia-Athena | Proactive intelligence/planning orchestration | `capabilities.commands` -> Hub discovery | Strategy and proactive reasoning layer |
 | Atlas | Hestia-Atlas | External fetch/aggregation | `capabilities.commands` -> Hub discovery | Ingestion-facing fetch workflows |
 | Chronos | Hestia-Chronos | Time/calendar and scheduling integrations | `capabilities.commands` -> Hub discovery | Credentialed calendar routines |
-| Dummy | Hestia-Dummy | Deterministic maintenance test module for remediation execution | `capabilities.commands` -> Hub discovery | Dedicated safe target for Hephaestus remediation integration tests |
+| Dummy | Hestia-Dummy | Deterministic generic integration testing module | `capabilities.commands` -> Hub discovery | Dedicated safe target for cross-service routing, policy, and execution validation |
 | Hephaestus | Hestia-Hephaestus | Autonomous remediation orchestration and execution | `capabilities.commands` -> Hub discovery | Owns remediation tasks/approval/rollback APIs and Hub-routed maintenance execution contract |
 | Hermes | Hestia-Hermes | Dispatch/executor workflows | `capabilities.commands` -> Hub discovery | Command dispatch and execution support |
 | Hub | Hestia-Hub | Registry, discovery, routing | Native owner of `/api/discovery/commands` and `/route/{service}/...` | Single source of truth for cross-service command lookup |
-| Ingest | Hestia-Ingest | Ingestion and feed pipelines | `capabilities.commands` -> Hub discovery | Fetchers and stateful ingest control |
+| Hecate | Hestia-Hecate | Gateway and provider-ingestion pipelines | `capabilities.commands` -> Hub discovery | Sole gateway for provider-facing APIs and auth lifecycle |
+| Iris | Hestia-Iris | Email domain workflows | `capabilities.commands` -> Hub discovery | Provides domain email search/send/thread contracts |
 | Oracle | Hestia-Oracle | LLM reasoning and tool-call orchestration | Consumes Hub discovery to execute tools | Must prefer deterministic command execution when metadata is complete |
 | Scout | Hestia-Scout | Exploration/scouting intelligence | `capabilities.commands` -> Hub discovery | Discovery and reconnaissance support |
 | Telegram | Hestia-Telegram | User interface and delivery channel | Consumes Hub discovery for command catalog | Client display policy (`minimal|compact|rich`) applies at rendering layer |

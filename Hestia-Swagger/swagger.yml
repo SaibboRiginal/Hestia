@@ -10,12 +10,13 @@ info:
     |-----------|-------|
     | Hub       | 19001 |
     | Archive   | 19002 |
-    | Ingest    | 19003 |
+    | Hecate    | 19003 |
     | Oracle    | 19004 |
     | Hermes    | 19005 |
     | Scout     | 19006 |
     | Chronos   | 19007 |
     | Argus     | 19008 |
+    | Iris      | 19012 |
     | Hephaestus| 19010 |
     | Dummy     | 19011 |
   version: 1.0.0
@@ -47,8 +48,8 @@ tags:
     description: Calendar items (events, tasks, reminders)
   - name: Archive — Documents
     description: Uploaded and indexed documents with embeddings
-  - name: Ingest
-    description: Data ingestion triggers
+  - name: Hecate
+    description: API gateway and ingestion triggers
   - name: Oracle
     description: LLM chat, document analysis and formatting
   - name: Hermes
@@ -59,6 +60,8 @@ tags:
     description: Calendar CRUD and agenda
   - name: Argus
     description: System health monitoring and log analysis
+  - name: Iris
+    description: Email domain APIs
   - name: Hephaestus
     description: Guarded self-healing remediation workflows
   - name: Dummy
@@ -118,6 +121,11 @@ components:
                 messaging,
                 monitoring,
               ]
+        topology_tags:
+          type: array
+          items:
+            type: string
+            pattern: "^(layer|domain|status):[a-z_]+$"
         capabilities:
           type: object
           additionalProperties: true
@@ -1095,7 +1103,7 @@ paths:
         Current instances:
         - Hub (19001)
         - Archive (19002)
-        - Ingest (19003)
+        - Hecate (19003)
         - Oracle (19004)
         - Hermes (19005)
         - Scout (19006)
@@ -1115,7 +1123,9 @@ paths:
         - url: http://localhost:19002
           description: Archive
         - url: http://localhost:19003
-          description: Ingest
+          description: Hecate
+        - url: http://localhost:19012
+          description: Iris
         - url: http://localhost:19004
           description: Oracle
         - url: http://localhost:19005
@@ -2301,13 +2311,13 @@ paths:
           description: Updated
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  INGEST — 19003
+  #  HECATE — 19003
   # ══════════════════════════════════════════════════════════════════════════
 
   /ingest/health:
     get:
-      tags: [Ingest]
-      summary: Ingest health check
+      tags: [Hecate]
+      summary: Hecate health check
       servers:
         - url: http://localhost:19003
       responses:
@@ -2316,7 +2326,7 @@ paths:
 
   /api/ingest/trigger:
     post:
-      tags: [Ingest]
+      tags: [Hecate]
       summary: Trigger a data fetch for a domain/source
       servers:
         - url: http://localhost:19003
@@ -2342,7 +2352,7 @@ paths:
 
   /api/ingest/calendar/trigger:
     post:
-      tags: [Ingest]
+      tags: [Hecate]
       summary: Trigger calendar sync from providers to Archive
       servers:
         - url: http://localhost:19003
@@ -2365,6 +2375,225 @@ paths:
       responses:
         "200":
           description: "{status, sources: {source: {fetched, archived, error?}}, total_archived}"
+
+  /api/gateway/providers:
+    get:
+      tags: [Hecate]
+      summary: List configured gateway providers and availability
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200":
+          description: "{status, providers[]}"
+
+  /api/gateway/auth/status:
+    get:
+      tags: [Hecate]
+      summary: Show provider auth status snapshot
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200":
+          description: "{status, providers[]}"
+
+  /api/gateway/auth/refresh/{provider}:
+    post:
+      tags: [Hecate]
+      summary: Trigger provider auth refresh (re-acquires token via provider.refresh())
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, microsoft]
+      responses:
+        "200":
+          description: "{status, provider, refreshed, details}"
+        "400":
+          description: Unsupported provider
+
+  /api/gateway/auth/initiate/{provider}:
+    post:
+      tags: [Hecate]
+      summary: Start OAuth flow for a provider (Google redirect / Microsoft device-code)
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, microsoft]
+      responses:
+        "200":
+          description: "Google: {status, auth_url, instructions} | Microsoft: {status, user_code, verification_url, expires_in, instructions}"
+        "400":
+          description: Missing credentials or unsupported provider
+        "501":
+          description: Auth library not installed
+    delete:
+      tags: [Hecate]
+      summary: Cancel a pending OAuth flow
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status: cancelled, provider}"
+
+  /api/gateway/auth/poll/{provider}:
+    get:
+      tags: [Hecate]
+      summary: Poll completion of a pending OAuth device-code flow
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status: authorized|pending|no_pending_flow|error}"
+
+  /api/gateway/auth/complete/{provider}:
+    post:
+      tags: [Hecate]
+      summary: Exchange the authorization code for a token (Google redirect flow)
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, microsoft]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Authorization code returned by the Google OAuth consent screen
+      responses:
+        "200":
+          description: "{status: authorized, provider, active_providers[], note}"
+        "400":
+          description: Missing code or unsupported provider
+        "404":
+          description: No pending flow — call initiate first
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  IRIS — 19012
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /iris/health:
+    get:
+      tags: [Iris]
+      summary: Iris health check
+      servers:
+        - url: http://localhost:19012
+      responses:
+        "200":
+          description: OK
+
+  /api/email/inbox:
+    get:
+      tags: [Iris]
+      summary: List inbox messages
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: "{status, count, messages[]}"
+
+  /api/email/messages:
+    get:
+      tags: [Iris]
+      summary: Search messages by free-text query
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: "{status, query, count, messages[]}"
+
+  /api/email/send:
+    post:
+      tags: [Iris]
+      summary: Send an email via Iris domain service
+      servers:
+        - url: http://localhost:19012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, subject, body]
+              properties:
+                to:
+                  type: string
+                subject:
+                  type: string
+                body:
+                  type: string
+                thread_id:
+                  type: string
+      responses:
+        "200":
+          description: "{status, sent}"
+
+  /api/email/threads/{thread_id}:
+    get:
+      tags: [Iris]
+      summary: Get one email thread
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - name: thread_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status, thread_id, count, messages[]}"
+        "404":
+          description: thread not found
 
   # ══════════════════════════════════════════════════════════════════════════
   #  ORACLE — 19004

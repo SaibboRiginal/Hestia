@@ -1,40 +1,37 @@
 # Hestia-Chronos 📅
 
-**Role:** Integration Service — Bidirectional Calendar Gateway
+**Role:** Domain Service — Calendar Workflows and Archive/Notification Orchestration
 **Node:** Raspberry Pi (Always-On)
-**Stack:** Python · FastAPI · Docker · Google Calendar API v3 · Microsoft Graph API
+**Stack:** Python · FastAPI · Docker
 **Port:** 8008
 
 ---
 
 ## Responsibility
 
-Hestia-Chronos is the bidirectional gateway between Hestia and external calendar providers (Google Calendar and Microsoft Outlook). It provides a unified CRUD API over multiple providers simultaneously, so a single call can create an event in both Google and Outlook at the same time.
+Hestia-Chronos is the calendar domain service. It exposes domain-facing calendar endpoints, syncs items into Archive, and emits notification events via Hermes.
 
-This service owns no domain logic — it is a pure integration adapter with provider-specific credential management and a common event schema.
-
----
-
-## Providers
-
-### Google Calendar
-- **Auth:** Service account JSON (`GOOGLE_SERVICE_ACCOUNT_JSON` env var, base64) preferred. Falls back to OAuth user token (`GOOGLE_TOKEN_JSON` env var, base64) with automatic refresh.
-- **Setup script:** `scripts/google_oauth_setup.py` — one-time host script for the OAuth user-token flow.
-- **API:** Google Calendar API v3 via `google-api-python-client`.
-
-### Microsoft Outlook
-- **Auth:** MSAL device-code flow (personal account) or client-credentials flow (organizational M365). Token stored as `OUTLOOK_TOKEN_JSON` env var (base64).
-- **Setup script:** `scripts/outlook_oauth_setup.py` — one-time host script for MSAL device-code auth.
-- **API:** Microsoft Graph API `https://graph.microsoft.com/v1.0` via `requests`.
-- **Target user:** `OUTLOOK_USER_ID` env var selects whose calendar to write to (`me` for personal accounts).
+Chronos no longer owns provider credentials/OAuth flows and no longer calls Google/Outlook APIs directly. Provider-facing operations are delegated to Hecate through Hub-routed calls.
 
 ---
 
-## Multi-Provider Dispatch
+## Provider Ownership
 
-- `CreateEventRequest.target_providers: list[str]` — list of provider names to target (e.g. `["google", "outlook"]`). **Empty list = all configured and available providers.**
-- Failures per provider are collected as `ProviderEventResult` objects and returned in the response without crashing the others.
-- `CalendarProviderRegistry` auto-detects which providers are available at startup based on credentials present in env vars.
+- Provider ownership (Google/Outlook auth and runtime loading) belongs to Hecate.
+- Chronos forwards CRUD/list/provider-refresh requests to Hecate via Hub routing.
+- Credential setup scripts and provider SDK dependencies were moved out of Chronos runtime paths.
+
+## Routing Model
+
+- Chronos receives domain-level calendar requests and routes provider-facing work to Hecate (`/route/hecate/...`).
+- Sync workers fetch provider events through Hub-routed Hecate endpoints, then persist normalized events in Archive.
+- Notification worker behavior is unchanged: Chronos remains responsible for emitting outbound calendar notifications.
+
+## Dispatch Behavior
+
+- Chronos forwards provider target lists transparently to Hecate.
+- Per-provider success/failure details are returned by Hecate and propagated by Chronos.
+- Chronos never instantiates provider SDK clients locally.
 
 ---
 
@@ -126,13 +123,9 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 
 ## Internal Architecture (SoC)
 
-- `main.py`: FastAPI app, Hub registration, route definitions.
+- `main.py`: FastAPI app, Hub registration, route definitions, Hub-routed delegation to Hecate.
 - `core/hub_client.py`: Hub registration with retry logic.
-- `providers/base.py`: `AbstractCalendarProvider` ABC.
-- `providers/google.py`: `GoogleCalendarProvider` — full CRUD via Google Calendar API v3.
-- `providers/outlook.py`: `OutlookCalendarProvider` — full CRUD via Microsoft Graph API.
-- `providers/registry.py`: `CalendarProviderRegistry` — instantiates and validates all providers at startup.
-- `services/calendar_service.py`: `CalendarService` — multi-provider orchestration with per-provider failure isolation.
+- `services/sync_worker.py`: Pulls provider events through Hecate and writes Archive calendar items.
 - `schemas/events.py`: Pydantic event schemas.
 
 ---
@@ -141,25 +134,18 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 
 | Variable | Description |
 |---|---|
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | Base64-encoded service account JSON (priority 1) |
-| `GOOGLE_TOKEN_JSON` | Base64-encoded OAuth user token JSON (priority 2) |
-| `GOOGLE_CALENDAR_ID` | Calendar ID to write to (default: `primary`) |
-| `OUTLOOK_CLIENT_ID` | Azure app client ID |
-| `OUTLOOK_CLIENT_SECRET` | Azure app client secret |
-| `OUTLOOK_TENANT_ID` | Azure tenant ID (`consumers` for personal accounts) |
-| `OUTLOOK_TOKEN_JSON` | Base64-encoded MSAL token cache |
-| `OUTLOOK_USER_ID` | Graph API user identifier (default: `me`) |
 | `HUB_API_URL` | Hub API base URL |
 | `CALENDAR_SERVICE_BASE_URL` | This service's public base URL for Hub registration |
+| `ARCHIVE_URL` | Archive base URL for calendar persistence |
+| `HERMES_URL` | Hermes base URL for notifications |
 
 ---
 
 ## Constraints
 
-- Calendar never accesses Archive or any database directly.
-- Calendar has no conversation or AI logic — it is a pure I/O adapter.
-- Provider failures never propagate to callers — they are collected and returned as structured error results.
-- All event times must be provided in ISO 8601 format with explicit timezone.
+- Chronos does not own provider OAuth/token lifecycle.
+- Chronos always reaches Hecate through Hub routing for provider-facing actions.
+- Chronos persists/syncs calendar state in Archive and emits notifications through Hermes.
 
 
 ## Documentation Synchronization (Required)

@@ -11,6 +11,7 @@ class RuntimeConfig:
     service_version: str
     service_type: str
     service_tags: list[str]
+    service_topology_tags: list[str]
     hub_api_url: str
     hermes_api_url: str
     hephaestus_notify_target: str
@@ -44,6 +45,14 @@ def load_runtime_config() -> RuntimeConfig:
         service_tags=[
             tag.strip().lower()
             for tag in os.getenv("SERVICE_TAGS", service_type).split(",")
+            if tag.strip()
+        ],
+        service_topology_tags=[
+            tag.strip().lower()
+            for tag in os.getenv(
+                "SERVICE_TOPOLOGY_TAGS",
+                "layer:cognition,domain:remediation,status:beta",
+            ).split(",")
             if tag.strip()
         ],
         hub_api_url=os.getenv(

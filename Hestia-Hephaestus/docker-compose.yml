@@ -14,6 +14,7 @@ services:
       - SERVICE_VERSION=1.0.0                                # Reported version in Hub registry
       - SERVICE_TYPE=core                                    # Service category in Hub registry
       - SERVICE_TAGS=core                                    # Hub tags for routing/discovery
+      - SERVICE_TOPOLOGY_TAGS=layer:cognition,domain:remediation,status:beta  # Topology taxonomy dimensions
       - HEPHAESTUS_EXECUTION_TIMEOUT_SECONDS=25              # Hub-routed maintenance execution timeout in seconds (float)
       - HEPHAESTUS_REQUIRE_APPROVAL_FOR_MUTATION=1           # Require explicit approval for non-dry-run remediation (0|1)
       - HEPHAESTUS_ALLOW_AUTO_APPROVE_NON_PROD=0             # Allow non-prod auto-approval without human gate (0|1)

@@ -39,7 +39,7 @@
     {
       "name": "dummy",
       "folder": "Hestia-Dummy",
-      "role": "deterministic maintenance test module for remediation execution",
+      "role": "deterministic generic integration testing module",
       "discovery_mode": "publishes capabilities.commands to hub"
     },
     {
@@ -61,9 +61,15 @@
       "discovery_mode": "owns discovery and routing endpoints"
     },
     {
-      "name": "ingest",
-      "folder": "Hestia-Ingest",
-      "role": "ingestion and feed pipelines",
+      "name": "hecate",
+      "folder": "Hestia-Hecate",
+      "role": "gateway and provider-ingestion pipelines",
+      "discovery_mode": "publishes capabilities.commands to hub"
+    },
+    {
+      "name": "iris",
+      "folder": "Hestia-Iris",
+      "role": "email domain workflows",
       "discovery_mode": "publishes capabilities.commands to hub"
     },
     {

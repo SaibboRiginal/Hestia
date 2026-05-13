@@ -32,6 +32,7 @@ def register_on_hub(
         "service_type": "integration",
         "service_version": os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"),
         "tags": ["core", "integration"],
+        "topology_tags": ["layer:domain", "domain:calendar", "status:stable"],
         "capabilities": {
             "tool_endpoints": {
                 "calendar.create_event": f"{service_base_url}/api/calendar/events",
@@ -99,6 +100,75 @@ def register_on_hub(
                     ),
                     "telegram_visible": False,
                 },
+                {
+                    "command": "calendar_list_events",
+                    "title": "📆 Elenca eventi",
+                    "description": "Elenca gli eventi in un intervallo temporale per provider calendario.",
+                    "method": "POST",
+                    "path": "/api/calendar/events/list",
+                    "body_template": {
+                        "start_datetime": "$start_datetime",
+                        "end_datetime": "$end_datetime",
+                        "target_providers": ["$provider"],
+                        "calendar_id": "$calendar_id",
+                        "max_results": "$max_results",
+                    },
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "telegram_visible": False,
+                },
+                {
+                    "command": "calendar_create_event",
+                    "title": "📅 Crea evento calendario",
+                    "description": "Crea un evento calendario con payload completo.",
+                    "method": "POST",
+                    "path": "/api/calendar/events",
+                    "body_template": {
+                        "event": {
+                            "title": "$title",
+                            "start_datetime": "$start_datetime",
+                            "end_datetime": "$end_datetime",
+                            "description": "$description",
+                            "location": "$location",
+                        },
+                        "target_providers": ["$provider"],
+                        "calendar_id": "$calendar_id",
+                    },
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "telegram_visible": False,
+                },
+                {
+                    "command": "calendar_update_event",
+                    "title": "✏️ Aggiorna evento calendario",
+                    "description": "Aggiorna campi di un evento calendario esistente.",
+                    "method": "PATCH",
+                    "path": "/api/calendar/events/$arg.event_id",
+                    "body_template": {
+                        "provider": "$provider",
+                        "calendar_id": "$calendar_id",
+                        "updates": "$updates",
+                    },
+                    "arguments_help": "event_id=<id> provider=<google|outlook>",
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "telegram_visible": False,
+                },
+                {
+                    "command": "calendar_delete_event",
+                    "title": "🗑️ Elimina evento calendario",
+                    "description": "Elimina un evento calendario esistente.",
+                    "method": "DELETE",
+                    "path": "/api/calendar/events/$arg.event_id",
+                    "body_template": {
+                        "provider": "$provider",
+                        "calendar_id": "$calendar_id",
+                    },
+                    "arguments_help": "event_id=<id> provider=<google|outlook>",
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "telegram_visible": False,
+                },
             ],
         },
     }
@@ -136,4 +206,5 @@ def register_on_hub(
         if attempt < max_attempts:
             time.sleep(retry_delay)
 
-    logger.error("event=hub_all_registration_attempts_failed [HUB] All %s registration attempts failed.", max_attempts)
+    logger.error(
+        "event=hub_all_registration_attempts_failed [HUB] All %s registration attempts failed.", max_attempts)

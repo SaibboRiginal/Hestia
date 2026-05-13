@@ -44,6 +44,7 @@ def register_on_hub_startup():
         "service_type": "core",
         "service_version": os.getenv("HERMES_SERVICE_VERSION", "1.0.0"),
         "tags": ["core", "dispatch"],
+        "topology_tags": ["layer:foundation", "domain:dispatch", "status:stable"],
         "capabilities": {
             "event_ingest": "/api/events/ingest"
         },

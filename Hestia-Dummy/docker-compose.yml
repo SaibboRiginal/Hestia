@@ -12,6 +12,7 @@ services:
       - SERVICE_VERSION=1.0.0                                   # Reported version in Hub registry
       - SERVICE_TYPE=module                                     # Service category in Hub registry
       - SERVICE_TAGS=module                                     # Hub tags for routing/discovery
+      - SERVICE_TOPOLOGY_TAGS=layer:testing,domain:mock,status:stable  # Topology taxonomy dimensions
       - DUMMY_PORT=19011                                        # HTTP port (int)
       - DUMMY_MUTATION_DELAY_MS=80                              # Simulated processing latency for mutation path (int)
       - LOG_LEVEL=INFO                                          # Logging verbosity: DEBUG | INFO | WARNING | ERROR

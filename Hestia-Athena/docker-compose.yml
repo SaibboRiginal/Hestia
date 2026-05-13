@@ -10,6 +10,7 @@ services:
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
       - SERVICE_BASE_URL=http://hestia_athena:19009
+      - SERVICE_TOPOLOGY_TAGS=layer:cognition,domain:strategy,status:beta
       - ATHENA_ORACLE_HINT_ENABLED=1
       - ATHENA_ORACLE_HINT_ROUTE=api/athena/hints
       - ATHENA_ORACLE_HINT_TIMEOUT_SECONDS=8

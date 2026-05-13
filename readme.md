@@ -12,7 +12,7 @@ Stack baseline: Python · FastAPI · PostgreSQL + pgvector · Docker · Ollama.
 
 ## Core Topology
 
-Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Ingest`, `Hermes`, `Chronos`
+Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Hecate`, `Hermes`, `Chronos`, `Iris`
 
 Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), Ollama, local DB replica.
 
@@ -48,8 +48,10 @@ Proactive dispatch core (new).
 - Deduplicates alerts and dispatches via generic channels.
 - Writes delivery outcomes to Archive.
 
-### Hestia-Ingest 📥
-Generic connector runtime for raw data fetching.
+### Hestia-Hecate 📥
+Gateway and connector runtime for external providers.
+- Sole gateway for provider-facing APIs (calendar/email).
+- Owns provider auth lifecycle and refresh orchestration.
 
 ### Hestia-Atlas 🌐
 Host-side shared web fetch gateway.
@@ -69,6 +71,11 @@ Bidirectional calendar integration gateway (port 8008).
 - Provider failures are isolated per-provider and returned as structured error results.
 - Consumed by Oracle via Hub routing for document-to-event flows.
 - See `hestia-chronos.md` for credential setup and provider details.
+
+### Hestia-Iris ✉️
+Email domain module.
+- Provides inbox/message/thread domain APIs.
+- Registers `email_search`, `email_send`, and `email_thread` commands to Hub discovery.
 
 ### Hestia-Argus 👁️
 System health and log intelligence monitor.
