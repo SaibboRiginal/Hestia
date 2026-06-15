@@ -111,6 +111,8 @@ Scout manages its own LLM connector independently from Oracle. This is intention
 | `POST` | `/api/module-tools/query` | Generic module-tool query contract (domain + query + constraints) |
 | `GET` | `/api/tools` | Optional module-local tool listing |
 | `POST` | `/api/tools/real_estate/search` | Optional direct domain endpoint (internal/debug use) |
+| `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
+| `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
 
 Scout also runs on an internal schedule (configurable interval via env).
 
@@ -174,11 +176,10 @@ Truncation warnings are always logged when a summary still ends with "..." after
 
 | Variable | Description |
 |---|---|
-| `GMAIL_EMAIL` | Gmail account to fetch from |
-| `GMAIL_PASSWORD` | App password for IMAP |
-| `GMAIL_FOLDER` | Mailbox folder to watch (e.g. `Immobiliare`) |
+| `SCOUT_EMAIL_SOURCE_CONNECTOR` | Hecate connector type for email source (default: `iris_email`) |
+| `SCOUT_HECATE_FETCH_ROUTE` | Hub-routed Hecate fetch endpoint used by Scout for domain email retrieval |
 | `SCOUT_EMAIL_SENDERS` | Comma-separated sender list used to build IMAP filters (e.g. `nonrispondere@idealista.it,noreply@notifiche.immobiliare.it`) |
-| `SCOUT_FILTER_QUERIES` | Optional advanced IMAP filters separated by `\|\|` (overrides sender list) |
+| `SCOUT_FILTER_QUERIES` | Optional advanced provider-domain filters separated by `\|\|` |
 | `SCOUT_FETCH_API_URL` | Hub route endpoint to shared fetch service (recommended: `http://hestia_hub:19001/api/route/atlas/api/fetch/html`) |
 | `SCOUT_FETCH_VIA_HUB` | `true` to send route-envelope payload to Hub, `false` for direct fetch service call |
 | `LLM_PROVIDER` | `ollama` or `cloud` |

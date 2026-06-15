@@ -43,6 +43,8 @@ Telegram must:
 - Minimal emojis: one per section header, none on detail lines.
 - HTML parse mode is the default render mode for user-facing rich content.
 - No markdown bold (`**`) inside HTML output — use `<b>` tags only.
+- Outbound HTML is normalized to Telegram-supported tags before send (for example `<em>` → `<i>`, `<strong>` → `<b>`) to avoid parse errors.
+- If Telegram rejects an HTML fragment (`can't parse entities`), delivery retries automatically as plain text for that message part.
 - If output contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram native link preview).
 - Raw JSON is allowed only as technical fallback when no formatter path exists.
 

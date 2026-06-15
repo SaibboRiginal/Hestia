@@ -80,6 +80,32 @@ class EntityCleanupResponse(BaseModel):
     sampled_deleted_ids: List[str]
     dry_run: bool
 
+
+class ModuleMaintenanceRequest(BaseModel):
+    source: str = "oracle"
+    task_id: Optional[str] = None
+    issue: Optional[str] = None
+    requested_action: Optional[str] = "reconcile_entities"
+    environment: str = "dev"
+    dry_run: bool = True
+    domain: Optional[str] = None
+    required_fields: List[str] = Field(default_factory=list)
+    require_created_at: bool = True
+    delete_limit: int = 500
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ModuleMaintenanceResponse(BaseModel):
+    status: str
+    service: str
+    dry_run: bool
+    task_id: str
+    executed_at: datetime
+    retriable: bool
+    summary: str
+    mutation_count: int
+    details: Dict[str, Any]
+
 # --- CHAT HISTORY SCHEMAS ---
 
 

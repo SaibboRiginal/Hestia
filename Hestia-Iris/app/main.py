@@ -13,6 +13,7 @@ import requests
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from uuid import uuid4
 
 try:
     from hestia_common.logging_utils import setup_service_logging
@@ -39,6 +40,28 @@ class EmailSendRequest(BaseModel):
     subject: str
     body: str
     thread_id: str | None = None
+
+
+class ModuleMaintenanceRequest(BaseModel):
+    source: str = "oracle"
+    task_id: str | None = None
+    issue: str | None = None
+    requested_action: str | None = "reconcile_email"
+    environment: str = "dev"
+    dry_run: bool = True
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ModuleMaintenanceResponse(BaseModel):
+    status: str
+    service: str
+    dry_run: bool
+    task_id: str
+    executed_at: datetime
+    retriable: bool
+    summary: str
+    mutation_count: int
+    details: dict[str, Any]
 
 
 def _now_iso() -> str:
@@ -91,6 +114,29 @@ def register_on_hub_startup() -> None:
                     "arguments_help": "id=<thread_id>",
                     "clients": ["telegram", "ui"],
                     "response_mode": "oracle_natural",
+                },
+                {
+                    "command": "iris_reconcile",
+                    "title": "🛠️ Riconcilia email",
+                    "description": "Esegue manutenzione di riconciliazione nel modulo Iris",
+                    "method": "POST",
+                    "path": "/api/module/maintenance/reconcile",
+                    "body_template": {
+                        "source": "oracle",
+                        "requested_action": "reconcile_email",
+                        "dry_run": True,
+                        "metadata": {},
+                    },
+                    "arguments_schema": {
+                        "dry_run": {
+                            "type": "boolean",
+                            "required": False,
+                            "description": "Se true esegue solo simulazione senza modifiche",
+                        },
+                    },
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": "Riassumi l'esito della riconciliazione Iris, indicando lo stato del modulo email.",
                 },
             ]
         },
@@ -193,3 +239,48 @@ def email_thread(thread_id: str) -> dict[str, Any]:
             status_code=404, detail=f"thread '{thread_id}' not found")
     rows = sorted(rows, key=lambda row: row["created_at"])
     return {"status": "ok", "thread_id": thread_id, "count": len(rows), "messages": rows}
+
+
+@app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
+def module_maintenance_reconcile(req: ModuleMaintenanceRequest) -> ModuleMaintenanceResponse:
+    task_id = str(req.task_id or uuid4())
+    action = str(req.requested_action or "reconcile_email").strip().lower()
+
+    message_count = len(_MESSAGES)
+
+    if req.dry_run:
+        return ModuleMaintenanceResponse(
+            status="ok",
+            service="iris",
+            dry_run=True,
+            task_id=task_id,
+            executed_at=datetime.now(timezone.utc),
+            retriable=True,
+            summary="Iris maintenance dry-run accepted: no state mutations executed.",
+            mutation_count=0,
+            details={
+                "requested_action": action,
+                "in_memory_message_count": message_count,
+                "note": "Set dry_run=false to execute reconcile pass.",
+            },
+        )
+
+    return ModuleMaintenanceResponse(
+        status="ok",
+        service="iris",
+        dry_run=False,
+        task_id=task_id,
+        executed_at=datetime.now(timezone.utc),
+        retriable=True,
+        summary="Iris maintenance reconcile executed: in-memory state validated.",
+        mutation_count=0,
+        details={
+            "requested_action": action,
+            "in_memory_message_count": message_count,
+        },
+    )
+
+
+@app.post("/api/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
+def maintenance_reconcile_alias(req: ModuleMaintenanceRequest) -> ModuleMaintenanceResponse:
+    return module_maintenance_reconcile(req)

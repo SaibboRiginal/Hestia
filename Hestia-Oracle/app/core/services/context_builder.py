@@ -138,6 +138,7 @@ class ContextBuilder:
         formatted_context: str,
         history_text: str,
         user_message: str,
+        current_datetime_context: str | None = None,
     ) -> str:
         pref_text = "\n".join([f"- {fact}" for fact in preference_facts]
                               ) if preference_facts else "Nessuna preferenza."
@@ -150,7 +151,14 @@ class ContextBuilder:
             "sort_order": sort_order,
         }
 
+        datetime_section = (
+            f"CURRENT_DATETIME_CONTEXT:\n{str(current_datetime_context or '').strip()}\n\n"
+            if str(current_datetime_context or "").strip()
+            else ""
+        )
+
         return (
+            f"{datetime_section}"
             f"USER_PREFERENCES:\n{pref_text}\n\n"
             f"ROUTE_METADATA:\n{json.dumps(route_metadata, ensure_ascii=False)}\n\n"
             f"CONTEXT_DATA_RECORDS:\n{formatted_context}\n\n"

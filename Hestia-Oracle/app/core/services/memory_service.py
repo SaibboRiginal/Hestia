@@ -396,6 +396,76 @@ class MemoryService:
 
         return signals
 
+    # ── Agent-loop tool handlers (public, callable from ToolDefinition) ───────
+
+    def save_memory(self, fact: str, domain: str = "general") -> tuple[bool, str]:
+        """Save a durable memory fact. Usable as an agent loop tool handler.
+
+        Returns (ok, message).
+        """
+        clean_fact = str(fact or "").strip()
+        if not clean_fact:
+            return (False, "Cannot save empty memory fact.")
+        clean_domain = str(domain or "general").strip() or "general"
+        try:
+            saved = self._save_memory_fact(
+                fact=clean_fact,
+                domain=clean_domain,
+                memory_class=MEMORY_CLASS_PREFERENCE,
+            )
+            if saved:
+                logger.info(
+                    "event=memory_tool_saved domain=%s fact_preview=%s",
+                    clean_domain,
+                    clean_fact[:120],
+                )
+                return (True, f"Memory saved: {clean_fact}")
+            return (False, "Failed to persist memory fact.")
+        except Exception as exc:
+            logger.warning(
+                "event=memory_tool_save_failed error=%s", exc)
+            return (False, f"Memory save error: {exc}")
+
+    def search_memories(self, query: str) -> tuple[bool, list[dict]]:
+        """Search active user memories by keyword. Usable as an agent loop tool handler.
+
+        Returns (ok, list_of_memory_dicts).
+        """
+        clean_query = str(query or "").strip().lower()
+        try:
+            all_memories = self._get_active_memory(
+                memory_class=MEMORY_CLASS_PREFERENCE) or []
+            if not clean_query:
+                return (True, all_memories[:20])
+
+            # Simple relevance: keyword overlap on fact text
+            scored: list[tuple[int, dict]] = []
+            for mem in all_memories:
+                if not isinstance(mem, dict):
+                    continue
+                fact_text = str(mem.get("fact", "")).strip().lower()
+                if not fact_text:
+                    continue
+                score = sum(
+                    1 for word in clean_query.split()
+                    if word in fact_text
+                )
+                if score > 0:
+                    scored.append((score, mem))
+
+            scored.sort(key=lambda item: item[0], reverse=True)
+            results = [mem for _, mem in scored[:15]]
+            logger.info(
+                "event=memory_tool_search query=%s results=%s",
+                clean_query,
+                len(results),
+            )
+            return (True, results)
+        except Exception as exc:
+            logger.warning(
+                "event=memory_tool_search_failed error=%s", exc)
+            return (False, f"Memory search error: {exc}")
+
     # ── Public API ────────────────────────────────────────────────────────────
 
     def extract_and_save_preferences(

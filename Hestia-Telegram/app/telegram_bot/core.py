@@ -183,17 +183,36 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
     for part in messages:
         if not str(part).strip():
             continue
-        if normalized_parse_mode:
-            bot.send_message(
+        try:
+            if normalized_parse_mode:
+                bot.send_message(
+                    chat_id,
+                    part,
+                    parse_mode=normalized_parse_mode,
+                    disable_web_page_preview=disable_web_page_preview,
+                )
+            else:
+                bot.send_message(
+                    chat_id,
+                    part,
+                    disable_web_page_preview=disable_web_page_preview,
+                )
+        except Exception as exc:
+            err_text = str(exc or "")
+            is_parse_error = "can't parse entities" in err_text.lower()
+            if not (normalized_parse_mode == "HTML" and is_parse_error):
+                raise
+
+            LOGGER.warning(
+                "event=send_user_message_html_parse_error_fallback Parse error while sending HTML, retrying as plain text | chat_id=%s error=%s",
                 chat_id,
-                part,
-                parse_mode=normalized_parse_mode,
-                disable_web_page_preview=disable_web_page_preview,
+                err_text,
             )
-        else:
+            fallback_text = message_format.html_to_plain_text(
+                part) or "[contenuto non visualizzabile]"
             bot.send_message(
                 chat_id,
-                part,
+                fallback_text,
                 disable_web_page_preview=disable_web_page_preview,
             )
 

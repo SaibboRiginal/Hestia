@@ -45,7 +45,7 @@ def test_health(client):
 
 def test_detect_providers_empty(monkeypatch):
     for key in [
-        "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
         "GOOGLE_REFRESH_TOKEN", "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET",
         "OUTLOOK_TENANT_ID", "OUTLOOK_REFRESH_TOKEN",
         "HECATE_ENABLE_PROVIDER_GOOGLE", "HECATE_ENABLE_PROVIDER_MICROSOFT",
@@ -60,18 +60,18 @@ def test_detect_providers_google_configured(monkeypatch):
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "gtoken")
 
-    providers = {row["provider"]                 : row for row in hecate_main.detect_gateway_providers()}
+    providers = {row["provider"]: row for row in hecate_main.detect_gateway_providers()}
     assert "google" in providers
     assert providers["google"]["configured"] is True
     assert providers["google"]["auth_status"] == "configured"
 
 
 def test_detect_providers_google_force_enabled(monkeypatch):
-    for key in ["GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
+    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("HECATE_ENABLE_PROVIDER_GOOGLE", "true")
 
-    providers = {row["provider"]                 : row for row in hecate_main.detect_gateway_providers()}
+    providers = {row["provider"]: row for row in hecate_main.detect_gateway_providers()}
     assert "google" in providers
     assert providers["google"]["configured"] is False
     assert providers["google"]["enabled"] is True
@@ -83,7 +83,7 @@ def test_detect_providers_microsoft_configured(monkeypatch):
     monkeypatch.setenv("OUTLOOK_TENANT_ID", "tenant")
     monkeypatch.setenv("OUTLOOK_REFRESH_TOKEN", "mtoken")
 
-    providers = {row["provider"]                 : row for row in hecate_main.detect_gateway_providers()}
+    providers = {row["provider"]: row for row in hecate_main.detect_gateway_providers()}
     assert "microsoft" in providers
     assert providers["microsoft"]["configured"] is True
 
@@ -106,7 +106,7 @@ def test_gateway_providers_endpoint(client, monkeypatch):
 
 
 def test_gateway_auth_status_endpoint(client, monkeypatch):
-    for key in ["GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
+    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
                 "GOOGLE_REFRESH_TOKEN", "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET",
                 "OUTLOOK_TENANT_ID", "OUTLOOK_REFRESH_TOKEN"]:
         monkeypatch.delenv(key, raising=False)
@@ -130,7 +130,7 @@ def test_gateway_auth_refresh_unsupported_provider(client):
 
 
 def test_gateway_auth_refresh_unconfigured_provider(client, monkeypatch):
-    for key in ["GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
+    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.delenv("HECATE_ENABLE_PROVIDER_GOOGLE", raising=False)
 
@@ -148,9 +148,7 @@ def test_gateway_auth_refresh_calls_provider_refresh(monkeypatch):
     mock_provider.name = "google"
 
     monkeypatch.setattr(hecate_main._calendar_registry,
-                        "active_providers", [mock_provider])
-    monkeypatch.setattr(hecate_main._calendar_registry, "status_report", lambda: {
-                        "active": ["google"], "unavailable": {}})
+                        "_active", {"google": mock_provider})
 
     result = hecate_main._refresh_calendar_registry()
 
@@ -160,7 +158,10 @@ def test_gateway_auth_refresh_calls_provider_refresh(monkeypatch):
 
 def test_gateway_auth_refresh_fallback_when_no_active_providers(monkeypatch):
     """When no providers are active, registry is reinitialised."""
-    monkeypatch.setattr(hecate_main._calendar_registry, "active_providers", [])
+    # Save and restore _calendar_registry since _refresh_calendar_registry may replace it
+    monkeypatch.setattr(hecate_main, "_calendar_registry",
+                        hecate_main._calendar_registry)
+    monkeypatch.setattr(hecate_main._calendar_registry, "_active", {})
 
     new_registry = MagicMock()
     new_registry.status_report.return_value = {"active": [], "unavailable": {}}
@@ -177,7 +178,7 @@ def test_gateway_auth_refresh_fallback_when_no_active_providers(monkeypatch):
 
 def test_gateway_calendar_events_no_providers(client, monkeypatch):
     """When no providers are active and none explicitly requested, return empty."""
-    monkeypatch.setattr(hecate_main._calendar_registry, "active_providers", [])
+    monkeypatch.setattr(hecate_main._calendar_registry, "_active", {})
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "resolve", lambda targets: [])
 
@@ -192,12 +193,11 @@ def test_gateway_calendar_events_with_mock_provider(monkeypatch):
     from app.schemas.calendar_events import CalendarEventRecord
 
     fake_event = CalendarEventRecord(
-        external_id="evt1",
-        source="google",
-        kind="event",
+        provider="google",
+        event_id="evt1",
         title="Test Event",
-        start_at=datetime(2026, 5, 14, 10, 0, tzinfo=timezone.utc),
-        end_at=datetime(2026, 5, 14, 11, 0, tzinfo=timezone.utc),
+        start_datetime="2026-05-14T10:00:00Z",
+        end_datetime="2026-05-14T11:00:00Z",
     )
 
     mock_provider = MagicMock()
@@ -205,7 +205,7 @@ def test_gateway_calendar_events_with_mock_provider(monkeypatch):
     mock_provider.list_events.return_value = [fake_event]
 
     monkeypatch.setattr(hecate_main._calendar_registry,
-                        "active_providers", [mock_provider])
+                        "_active", {"google": mock_provider})
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "resolve", lambda targets: [])
 
@@ -235,7 +235,7 @@ def test_gateway_calendar_events_provider_error_is_captured(monkeypatch):
     mock_provider.list_events.side_effect = RuntimeError("API timeout")
 
     monkeypatch.setattr(hecate_main._calendar_registry,
-                        "active_providers", [mock_provider])
+                        "_active", {"google": mock_provider})
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "resolve", lambda targets: [])
 
@@ -254,7 +254,7 @@ def test_gateway_calendar_events_provider_error_is_captured(monkeypatch):
 
 
 def test_gateway_calendar_create_no_providers(client, monkeypatch):
-    monkeypatch.setattr(hecate_main._calendar_registry, "active_providers", [])
+    monkeypatch.setattr(hecate_main._calendar_registry, "_active", {})
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "resolve", lambda targets: [])
 
@@ -282,7 +282,7 @@ def test_gateway_calendar_create_success(monkeypatch):
     mock_provider.create_event.return_value = "new-event-id"
 
     monkeypatch.setattr(hecate_main._calendar_registry,
-                        "active_providers", [mock_provider])
+                        "_active", {"google": mock_provider})
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "resolve", lambda targets: [])
     monkeypatch.setattr(hecate_main.vault,
@@ -311,7 +311,7 @@ def test_gateway_calendar_create_partial_failure(monkeypatch):
     mock_bad.create_event.side_effect = RuntimeError("Outlook quota exceeded")
 
     monkeypatch.setattr(hecate_main._calendar_registry,
-                        "active_providers", [mock_good, mock_bad])
+                        "_active", {"google": mock_good, "outlook": mock_bad})
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "resolve", lambda targets: [])
     monkeypatch.setattr(hecate_main.vault,

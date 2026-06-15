@@ -1,5 +1,7 @@
 """Entity CRUD, domain discovery, and hybrid search engine."""
+from datetime import datetime, timezone
 from typing import Any, List, Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import String, cast, desc, or_
@@ -246,3 +248,60 @@ def cleanup_entities(req: schemas.EntityCleanupRequest, db: Session = Depends(da
         sampled_deleted_ids=sampled_ids,
         dry_run=req.dry_run,
     )
+
+
+@router.post("/api/module/maintenance/reconcile", response_model=schemas.ModuleMaintenanceResponse)
+def module_maintenance_reconcile(req: schemas.ModuleMaintenanceRequest, db: Session = Depends(database.get_db)):
+    """Run a generic maintenance reconcile pass over Archive entities."""
+    metadata = req.metadata if isinstance(req.metadata, dict) else {}
+    domain = req.domain
+    if not domain and isinstance(metadata.get("domain"), str):
+        domain = metadata.get("domain")
+
+    required_fields = list(req.required_fields or [])
+    if not required_fields and isinstance(metadata.get("required_fields"), list):
+        required_fields = metadata.get("required_fields")
+
+    require_created_at = bool(req.require_created_at)
+    if "require_created_at" in metadata:
+        require_created_at = bool(metadata.get("require_created_at"))
+
+    delete_limit = int(req.delete_limit or 500)
+    if "delete_limit" in metadata:
+        delete_limit = int(metadata.get("delete_limit") or delete_limit)
+
+    cleanup_req = schemas.EntityCleanupRequest(
+        domain=domain,
+        required_fields=[str(item)
+                         for item in required_fields if str(item).strip()],
+        require_created_at=require_created_at,
+        delete_limit=max(1, min(delete_limit, 5000)),
+        dry_run=req.dry_run,
+    )
+    cleanup_result = cleanup_entities(cleanup_req, db)
+
+    deleted = int(cleanup_result.deleted or 0)
+    scanned = int(cleanup_result.scanned or 0)
+    task_id = str(req.task_id or uuid4())
+    summary = (
+        f"Archive reconcile completed: scanned={scanned}, "
+        f"deleted={deleted}, dry_run={req.dry_run}."
+    )
+
+    return schemas.ModuleMaintenanceResponse(
+        status="ok",
+        service="archive",
+        dry_run=req.dry_run,
+        task_id=task_id,
+        executed_at=datetime.now(timezone.utc),
+        retriable=True,
+        summary=summary,
+        mutation_count=deleted,
+        details=cleanup_result.model_dump(),
+    )
+
+
+@router.post("/api/maintenance/reconcile", response_model=schemas.ModuleMaintenanceResponse)
+def maintenance_reconcile_alias(req: schemas.ModuleMaintenanceRequest, db: Session = Depends(database.get_db)):
+    """Compatibility alias for module maintenance reconcile."""
+    return module_maintenance_reconcile(req, db)

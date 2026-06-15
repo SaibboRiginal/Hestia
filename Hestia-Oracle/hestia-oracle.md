@@ -29,6 +29,11 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Sessions are persisted to and retrieved from **Archive** (`user` domain) — Oracle holds no local state.
 - Sessions can be cleared via an explicit command (triggered by the interface service).
 
+### Temporal Context Awareness
+- Every chat turn injects explicit current date/time context (timezone-aware) into routing and analysis prompts.
+- Relative temporal expressions such as "oggi", "domani", and "la prossima settimana" are resolved against that context before planning/tool reasoning.
+- Timezone is configurable via environment (`ORACLE_TIMEZONE`, default `Europe/Rome`).
+
 ### User Preferences
 - Oracle reads and writes user preferences from Archive (`user` domain).
 - Preferences are injected into the system prompt to personalize every response.
@@ -70,13 +75,37 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Deterministic variant selection uses a stable bucketing seed (`session_id`, command/trace context, and salt).
 - Selected variant IDs are logged for regression and quality comparisons.
 
+### Agentic Tool Calling (Unified)
+- All tool execution flows through a single ReAct-style agent loop (`core/agent_loop.py`).
+- A single tool manifest is built per turn: domain search tools + all Hub-discovered commands + memory tools.
+- The LLM decides which tools to call and in what order — no separate pre-check or heuristic routing.
+- **Max agent turns:** configurable via `ORACLE_MAX_AGENT_TURNS` (default 25). Complex multi-step tasks can use many turns; simple tasks exit early (1-2 turns).
+- **Early exit:** when the LLM produces text without tool calls for 2 consecutive turns after having already called tools, the loop terminates.
+
+### Visible Thinking
+- The agent loop emits **thinking** NDJSON events (`type: "thinking"`) for real-time visibility:
+  - `action: "reasoning"` — LLM reasoning before a tool call
+  - `action: "tool_call"` — about to execute a named tool
+  - `action: "tool_result"` — tool execution completed (with result count, duration)
+- A **tool summary** signal (`event: "tool.summary"`) is emitted after the final answer, carrying a compact log of every tool invocation with parameters, results, and timing.
+- Clients (e.g. Telegram) render tool activity as status updates during the loop and a compact summary card after the answer.
+
+### Memory as First-Class Tools
+- `memory.save` — agent loop tool to persist a durable user fact immediately.
+- `memory.search` — agent loop tool to recall saved preferences/memories during conversation.
+- Background memory extraction still runs as a safety net, but the primary memory path is tool-driven.
+- Memory taxonomy (P1-8): `conversational_history`, `durable_user_preference`, `task_goal_state`, `domain_fact_entity`, `assistant_commitment`.
+
 ### Internal Architecture (SoC)
-- `core/oracle_engine.py`: thin orchestration layer only.
-- `core/services/router_service.py`: domain routing JSON extraction.
+- `core/oracle_engine.py`: thin orchestration layer — wires services, runs the chat phases.
+- `core/agent_loop.py`: ReAct-style multi-turn tool execution loop with thinking emission.
+- `core/services/chat_classifier.py`: single LLM call for mode + domain + action_intent.
 - `core/services/module_registry.py`: Hub-based dynamic tool discovery and per-domain endpoint registry.
 - `core/services/retrieval_service.py`: module-tool query + Archive fallback retrieval pipeline.
-- `core/services/memory_service.py`: LLM-first preference extraction + subscription intent extraction.
+- `core/services/memory_service.py`: LLM-first preference extraction + subscription intent extraction + agent-loop memory tools.
 - `core/services/context_builder.py`: history/entity compaction + final analyst prompt assembly.
+- `core/services/prompt_config.py`: centralized prompt management with A/B variant gating.
+- `core/services/stream_emitter.py`: NDJSON event formatting for all stream types.
 
 ---
 
@@ -107,9 +136,12 @@ The conversational AI brain of Hestia. Receives messages from interface services
 
 All interfaces consume the same event schema from Oracle:
 
-- `{"type":"status","content":"..."}`
-- `{"type":"signal","event":"memory.preference.added|memory.preference.removed|subscription.added|subscription.changed|subscription.removed","content":"...","data":{...}}`
-- `{"type":"final","reply":"...","domain":"..."}`
+- `{"type":"status","content":"..."}` — progress messages (shown as live status updates).
+- `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
+- `{"type":"token","text":"..."}` — incremental LLM output tokens.
+- `{"type":"final","reply":"...","domain":"..."}` — terminal answer event.
+- `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary.
+- `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts.
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 

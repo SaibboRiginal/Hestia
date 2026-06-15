@@ -13,11 +13,14 @@ import time
 from pathlib import Path
 import sys
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from core import archive_client
 from core.hub_client import register_on_hub
@@ -52,9 +55,32 @@ except ModuleNotFoundError:
 
 logger, log_buffer = setup_service_logging("hestia_chronos")
 
+
+class ModuleMaintenanceRequest(BaseModel):
+    source: str = "oracle"
+    task_id: str | None = None
+    issue: str | None = None
+    requested_action: str | None = "reconcile_calendar"
+    environment: str = "dev"
+    dry_run: bool = True
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ModuleMaintenanceResponse(BaseModel):
+    status: str
+    service: str
+    dry_run: bool
+    task_id: str
+    executed_at: datetime
+    retriable: bool
+    summary: str
+    mutation_count: int
+    details: dict[str, Any]
+
 # ─────────────────────────────────────────────────────────────────────
 #  App bootstrap
 # ─────────────────────────────────────────────────────────────────────
+
 
 app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
@@ -292,6 +318,70 @@ def get_agenda(
         "count": len(items),
         "items": items,
     }
+
+
+@app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
+def module_maintenance_reconcile(req: ModuleMaintenanceRequest) -> ModuleMaintenanceResponse:
+    task_id = str(req.task_id or uuid4())
+    action = str(req.requested_action or "reconcile_calendar").strip().lower()
+
+    if req.dry_run:
+        return ModuleMaintenanceResponse(
+            status="ok",
+            service="chronos",
+            dry_run=True,
+            task_id=task_id,
+            executed_at=datetime.now(timezone.utc),
+            retriable=True,
+            summary="Chronos maintenance dry-run accepted: no worker ticks executed.",
+            mutation_count=0,
+            details={
+                "requested_action": action,
+                "note": "Set dry_run=false to execute maintenance tick(s).",
+            },
+        )
+
+    tick_results: dict[str, str] = {}
+    mutation_count = 0
+
+    if action in {"reconcile_calendar", "sync", "sync_tick", "full"}:
+        try:
+            sync_worker._tick()  # pylint: disable=protected-access
+            tick_results["sync"] = "ok"
+            mutation_count += 1
+        except Exception as error:
+            tick_results["sync"] = f"error:{error}"
+
+    if action in {"reconcile_calendar", "notify", "notify_tick", "full"}:
+        try:
+            notification_worker._tick()  # pylint: disable=protected-access
+            tick_results["notify"] = "ok"
+            mutation_count += 1
+        except Exception as error:
+            tick_results["notify"] = f"error:{error}"
+
+    if not tick_results:
+        tick_results["noop"] = "unsupported_requested_action"
+
+    return ModuleMaintenanceResponse(
+        status="ok",
+        service="chronos",
+        dry_run=False,
+        task_id=task_id,
+        executed_at=datetime.now(timezone.utc),
+        retriable=True,
+        summary="Chronos maintenance reconcile executed.",
+        mutation_count=mutation_count,
+        details={
+            "requested_action": action,
+            "ticks": tick_results,
+        },
+    )
+
+
+@app.post("/api/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
+def maintenance_reconcile_alias(req: ModuleMaintenanceRequest) -> ModuleMaintenanceResponse:
+    return module_maintenance_reconcile(req)
 
 
 # ─────────────────────────────────────────────────────────────────────

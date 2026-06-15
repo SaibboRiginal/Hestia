@@ -47,7 +47,8 @@ def _parse_bool(value: str | None, default: bool = False) -> bool:
 def _provider_env_is_configured(provider: str) -> bool:
     if provider == "google":
         return bool(
-            os.getenv("GOOGLE_CREDENTIALS_JSON")
+            os.getenv("GOOGLE_TOKEN_JSON")
+            or os.getenv("GOOGLE_CREDENTIALS_JSON")
             or (
                 os.getenv("GOOGLE_CLIENT_ID")
                 and os.getenv("GOOGLE_CLIENT_SECRET")
