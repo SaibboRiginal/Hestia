@@ -18,6 +18,52 @@ Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), Ollama, lo
 
 Host OS shared utility (Windows/Linux): `Atlas` (runs outside Docker, registers in Hub)
 
+Shared library: `Hestia-Shared` (common logging, startup, and lifecycle utilities consumed by all services)
+
+---
+
+## Quick Start
+
+### Setup
+
+```bash
+docker network create hestia_net
+```
+
+### Suggested Startup Order
+
+1. `Hestia-Hub`
+2. `Hestia-Archive`
+3. `Hestia-Hecate`
+4. `Hestia-Hermes`
+5. `Hestia-Oracle`
+6. `Hestia-Scout`
+7. `Hestia-Telegram`
+
+### One-Command Orchestration
+
+**Full stack (all services):**
+```bash
+docker compose -f docker-compose.global.yml up --build -d
+```
+
+**Raspberry Pi deployment (always-on core services):**
+Set `ARCHIVE_DATABASE_URL` first (cloud DB or remote DB), then:
+```bash
+docker compose -f docker-compose.rpi.yml up --build -d
+```
+
+### New Service Scaffolding
+
+Use the shared generator to create a service that already follows the Hub contract:
+```bash
+create-service.bat <name> [core|module|integration] [port]
+```
+Example:
+```bash
+create-service.bat Markets module 8012
+```
+
 ---
 
 ## Core Services (Generic)
@@ -253,7 +299,7 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 ## Startup Readiness Contract
 
 1. Services must wait for Hub readiness before initial Hub registration.
-2. If a service has strict startup dependencies (for example Scout requiring Archive/Ingest presence in Hub), it must wait for those dependencies to appear in Hub registry before entering its main processing loop.
+2. If a service has strict startup dependencies (for example Scout requiring Archive/Hecate presence in Hub), it must wait for those dependencies to appear in Hub registry before entering its main processing loop.
 3. `STARTUP_WAIT_TIMEOUT_SECONDS=0` means wait indefinitely (default), so transient boot ordering does not produce false failure storms.
 4. Startup wait checks are generic and shared (`hestia_common.startup_utils`) rather than hardcoding peer-specific logic per service.
 

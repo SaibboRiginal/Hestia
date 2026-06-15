@@ -168,13 +168,9 @@ def main() -> int:
         has_contract_changes = any(has_contract_change(path)
                                    for path in changed)
         if has_contract_changes:
-            if "capability-inventory.md" not in changed_set:
+            if "architecture-and-flow-map.md" not in changed_set:
                 errors.append(
-                    "Contract-related changes detected but capability-inventory.md was not updated."
-                )
-            if "capability-inventory.json" not in changed_set:
-                errors.append(
-                    "Contract-related changes detected but capability-inventory.json was not updated."
+                    "Contract-related changes detected but architecture-and-flow-map.md was not updated."
                 )
             if "Hestia-Swagger/swagger.yml" not in changed_set:
                 errors.append(

@@ -25,8 +25,7 @@ DOC_ALWAYS = {
     ".github/copilot-instructions.md",
     "readme.md",
     "Hestia-Swagger/swagger.yml",
-    "capability-inventory.md",
-    "capability-inventory.json",
+    "architecture-and-flow-map.md",
 }
 
 NON_BEHAVIOR_PREFIXES = (

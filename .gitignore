@@ -91,6 +91,7 @@ profile_default/
 ipython_config.py
 
 # Custom additions:
+cloudflared.exe
 data/
 postgres_data/
 ref/
