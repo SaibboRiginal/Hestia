@@ -1,11 +1,127 @@
 import os
 import json
 import re
+from html import escape as html_escape
+from html import unescape
+from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
 
 
 _SIGNAL_STYLE_ALLOWED = {"minimal", "compact", "rich"}
+
+_ALLOWED_TELEGRAM_HTML_TAGS = {"b", "i", "u", "s", "code", "pre", "a", "br"}
+_TELEGRAM_HTML_TAG_ALIASES = {
+    "strong": "b",
+    "em": "i",
+    "ins": "u",
+    "strike": "s",
+    "del": "s",
+}
+
+
+class _TelegramHTMLSanitizer(HTMLParser):
+    """Normalize lightweight HTML to Telegram-compatible tags and nesting."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+        self._stack: list[str] = []
+
+    def _normalize_tag(self, tag: str) -> str:
+        normalized = str(tag or "").strip().lower()
+        return _TELEGRAM_HTML_TAG_ALIASES.get(normalized, normalized)
+
+    def _push_start_tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "a":
+            href = ""
+            for key, value in attrs:
+                if str(key or "").strip().lower() != "href":
+                    continue
+                candidate = str(value or "").strip()
+                if candidate.startswith("http://") or candidate.startswith("https://"):
+                    href = candidate
+                    break
+            if not href:
+                return
+            self._parts.append(f'<a href="{html_escape(href, quote=True)}">')
+            self._stack.append("a")
+            return
+
+        if tag == "br":
+            self._parts.append("<br>")
+            return
+
+        self._parts.append(f"<{tag}>")
+        self._stack.append(tag)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        normalized = self._normalize_tag(tag)
+        if normalized not in _ALLOWED_TELEGRAM_HTML_TAGS:
+            return
+        self._push_start_tag(normalized, attrs)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        normalized = self._normalize_tag(tag)
+        if normalized == "br":
+            self._parts.append("<br>")
+            return
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        normalized = self._normalize_tag(tag)
+        if normalized not in _ALLOWED_TELEGRAM_HTML_TAGS or normalized == "br":
+            return
+        if normalized not in self._stack:
+            return
+
+        # Close any nested tags first so the final output has valid nesting.
+        while self._stack:
+            top = self._stack.pop()
+            self._parts.append(f"</{top}>")
+            if top == normalized:
+                break
+
+    def handle_data(self, data: str) -> None:
+        self._parts.append(html_escape(data or "", quote=False))
+
+    def close_and_render(self) -> str:
+        self.close()
+        while self._stack:
+            self._parts.append(f"</{self._stack.pop()}>")
+        return "".join(self._parts)
+
+
+def normalize_telegram_html(text: str) -> str:
+    """Return HTML that is safe for Telegram parse_mode=HTML."""
+    raw = str(text or "")
+    if not raw.strip():
+        return ""
+
+    sanitizer = _TelegramHTMLSanitizer()
+    try:
+        sanitizer.feed(raw)
+        return sanitizer.close_and_render().strip()
+    except Exception:
+        # Safety net: minimal alias normalization if parser unexpectedly fails.
+        fallback = raw.replace("<strong>", "<b>").replace("</strong>", "</b>")
+        fallback = fallback.replace("<em>", "<i>").replace("</em>", "</i>")
+        return fallback.strip()
+
+
+def html_to_plain_text(text: str) -> str:
+    """Convert HTML-ish content to plain text fallback for resilient delivery."""
+    raw = str(text or "")
+    if not raw.strip():
+        return ""
+    normalized = re.sub(r"<br\s*/?>", "\n", raw, flags=re.IGNORECASE)
+    normalized = re.sub(r"</(p|div|li)>", "\n",
+                        normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"<[^>]+>", "", normalized)
+    normalized = unescape(normalized)
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+    return normalized.strip()
 
 
 def _normalize_signal_style(value: str | None, fallback: str = "minimal") -> str:
@@ -110,7 +226,9 @@ def split_long_message(text: str, max_length: int = 4000) -> list[str]:
     remaining = text
     while len(remaining) > max_length:
         split_point = remaining.rfind("\n", 0, max_length)
-        if split_point == -1:
+        if split_point <= 0:
+            # No newline found (or newline is at the very start — would not advance).
+            # Fall back to a hard split at max_length so the loop always progresses.
             split_point = max_length
         chunk = remaining[:split_point]
         # If we're splitting inside an unclosed <pre> block, close it here and
@@ -136,7 +254,7 @@ def _split_html_link_bullets(html_text: str) -> list[str]:
     - Bullet lists where each bullet has a link (one message per bullet-link)
     - Block-separated content (double newline) where blocks contain links
     """
-    text = str(html_text or "").strip()
+    text = normalize_telegram_html(str(html_text or "")).strip()
     if not text:
         return []
 
@@ -434,6 +552,35 @@ def build_signal_cards(signals: list[dict]) -> list[str]:
                 )
             else:
                 cards.append(f"❌ Non riuscito: <i>{label}</i>")
+            continue
+
+        if event == "tool.summary":
+            calls = data.get("calls") if isinstance(
+                data.get("calls"), list) else []
+            if not calls:
+                continue
+            if style == "minimal":
+                tool_names = ", ".join(
+                    str(c.get("tool", "?")).replace(".search", "").replace("_", " ")
+                    for c in calls[:6]
+                )
+                cards.append(f"🔧 <b>Strumenti usati:</b> {tool_names}")
+                continue
+            # compact / rich: one bullet per tool call
+            lines: list[str] = ["🔧 <b>Riepilogo strumenti</b>"]
+            for c in calls[:8]:
+                tool = str(c.get("tool", "?")).replace(".search", "")
+                ok = bool(c.get("ok"))
+                count = c.get("result_count")
+                duration = c.get("duration_ms")
+                icon = "✅" if ok else "❌"
+                detail_parts: list[str] = [icon, f"<code>{tool}</code>"]
+                if count is not None:
+                    detail_parts.append(f"({count} risultati)")
+                if duration is not None:
+                    detail_parts.append(f"{duration}ms")
+                lines.append(" ".join(detail_parts))
+            cards.append("\n".join(lines))
             continue
 
         if style in {"compact", "rich"}:

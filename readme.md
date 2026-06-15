@@ -33,14 +33,20 @@ Single database gateway.
 - Stores records, entities, memory, sessions.
 - Exposes generic search/filter/query APIs.
 - Stores **subscriptions** and **dispatch logs** for proactive notifications.
+- Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered archive hygiene tasks.
 
 ### Hestia-Oracle 🧠
-Conversational reasoning layer.
-- Handles chat sessions and long-term preferences.
-- Uses Hub discovery + module tools for domain retrieval.
+Conversational reasoning layer with unified agentic tool calling.
+- **Single tool-calling path:** all Hub commands + domain tools + memory tools flow through one ReAct agent loop (no separate pre-check or heuristic routing).
+- **Visible thinking:** emits `thinking` NDJSON events during the agent loop (reasoning, tool_call, tool_result) and a `tool.summary` signal after the answer.
+- **Memory tools:** `memory.save` and `memory.search` are first-class agent loop tools — the LLM decides when to persist or recall facts.
+- **Single classify call:** mode + domain + action_intent detected in one LLM call (no separate action intent detection).
+- Handles chat sessions and long-term preferences via background memory extraction as safety net.
+- Uses Hub discovery + module tools for domain retrieval. Agent loop handles up to 25 turns with early exit for simple tasks.
 - Compiles user intents into generic subscription requests written to Archive.
-- Accepts file attachments (images, PDFs) via `POST /api/chat/document` and reasons over them using multimodal LLM (Gemini vision + pypdf for Ollama path).
-- LLM roles: `router` → `gemini-2.0-flash-lite`, `scribe` → `gemini-2.0-flash`, `analyst` → `gemini-2.5-flash`; Ollama primary for all roles (`gemma-4-26B-A4B-it-UD-IQ4_NL:latest`).
+- Injects timezone-aware current datetime context in each turn.
+- Accepts file attachments (images, PDFs) via `POST /api/chat/document` with multimodal reasoning.
+- LLM roles: primary via Ollama (`gemma4:e4b`), cloud fallback via Gemini (Flash Lite for router, Flash for scribe, 2.5 Flash for analyst). Fallback chain at every call site — if local model fails, cloud takes over transparently.
 
 ### Hestia-Hermes 📨
 Proactive dispatch core (new).
@@ -52,6 +58,12 @@ Proactive dispatch core (new).
 Gateway and connector runtime for external providers.
 - Sole gateway for provider-facing APIs (calendar/email).
 - Owns provider auth lifecycle and refresh orchestration.
+
+Provider access model (single entry point):
+- Google/Outlook provider runtime and OAuth ownership are centralized in Hecate.
+- Domain modules do not open direct provider SDK sessions in their own runtime.
+- Domain-level email business APIs are owned by Iris; Hecate can proxy/provider-orchestrate calls through Hub-routed contracts.
+- Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
 
 ### Hestia-Atlas 🌐
 Host-side shared web fetch gateway.
@@ -70,12 +82,23 @@ Bidirectional calendar integration gateway (port 8008).
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
 - Consumed by Oracle via Hub routing for document-to-event flows.
+- Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered calendar maintenance ticks.
 - See `hestia-chronos.md` for credential setup and provider details.
+
+Scope boundary:
+- Chronos is calendar-domain orchestration only.
+- Chronos does not own provider OAuth/token lifecycle.
+- Chronos routes provider-facing calendar operations through Hecate.
+- If provider access fails, inspect Hecate configuration/logs before Chronos.
 
 ### Hestia-Iris ✉️
 Email domain module.
 - Provides inbox/message/thread domain APIs.
 - Registers `email_search`, `email_send`, and `email_thread` commands to Hub discovery.
+
+Scope boundary:
+- Iris owns email-domain business logic (search, threading, send abstractions).
+- Provider gateway/runtime concerns remain in Hecate when provider mediation is required.
 
 ### Hestia-Argus 👁️
 System health and log intelligence monitor.
@@ -93,9 +116,14 @@ Guarded remediation and coding executor.
 
 ### Hestia-Athena 🧭
 Proactive cognition and advisory strategy engine.
-- Computes bounded proactive hints and priorities.
-- Feeds advisory context to Oracle without overriding execution truth.
-- Keeps runtime/task observability for why it suggested action or silence.
+- Runs periodic observe→think→score→act→archive loop.
+- **Observer**: gathers system state via Hub routing (service health, entity domains, self-state).
+- **Strategist**: calls Oracle LLM for reasoning, generates structured action candidates (advisory, remediation, notification, maintenance).
+- **Relevance gate**: scores each candidate on urgency, usefulness, novelty, interruption_cost, confidence with retrospective boosting.
+- Emits accepted actions to Hermes as `athena.focus_brief` events; publishes advisory hints to Oracle.
+- Archives every thinking cycle for audit and client display (`GET /api/athena/thinking`).
+- Resource-conscious: single Oracle call per cycle, compact prompts, source-level failure isolation.
+- Tracks commitments (action items) with TTL, resolution, and pruning.
 
 ### Hestia-Dummy 🧪
 Generic integration testing module.
@@ -116,6 +144,7 @@ Real-estate domain module.
 - If any downstream step is unavailable (content enrichment, dispatch, etc.), entities are persisted with a generic pending-step marker and retried automatically on later cycles.
 - Publishes `entity.upserted` events to Hermes for proactive matching.
 - Exposes generic module tools for Oracle retrieval.
+- Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered Scout data hygiene.
 
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
@@ -208,9 +237,10 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 3. **Minimal emojis**: one or two per section header maximum; no emoji on every line.
 4. **Link splitting**: if a message contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram link previews).
 5. **HTML parse mode**: all rich user-facing output uses HTML. No markdown bold (`**`) inside HTML content.
-6. **Conversational alerts**: proactive multi-alert dispatches must read as natural chat, not disconnected notifications.
-7. **Message splitting logic is global** via `build_delivery_messages()` and reused by all send paths.
-8. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
+6. **HTML resilience**: client renderers must normalize non-Telegram tags (for example `<em>/<strong>`) to Telegram-compatible tags before send; on Telegram parse-entity failure, retry the affected part as plain text.
+7. **Conversational alerts**: proactive multi-alert dispatches must read as natural chat, not disconnected notifications.
+8. **Message splitting logic is global** via `build_delivery_messages()` and reused by all send paths.
+9. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
 
 ## Logging Contract (Global Observability)
 
@@ -257,3 +287,7 @@ This creates:
 - `Hestia-<Name>/app/main.py` with `HestiaServiceBase`
 - `Dockerfile`, `docker-compose.yml`, `requirements.txt`
 - `.env` prefilled with standardized `SERVICE_TYPE`, `SERVICE_TAGS`, and Hub URL
+
+## Dependency and Flow Map
+
+See `architecture-and-flow-map.md` for a concise dependency graph and end-to-end data flow map.

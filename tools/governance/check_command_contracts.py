@@ -4,6 +4,8 @@
 Checks:
 1) Validate Telegram local command catalog entries include required fields.
 2) If command-contract files changed, require capability inventory and Swagger sync.
+3) Verify maintenance-eligible services each expose a *_reconcile command that
+   routes to /api/module/maintenance/reconcile (Phase 5 contract enforcement).
 """
 
 from __future__ import annotations
@@ -35,6 +37,16 @@ CONTRACT_KEYWORDS = (
     "route",
     "router",
 )
+
+# Services that must expose a *_reconcile maintenance command (Phase 5 contract).
+# Each entry: (service_label, path_to_hub_registration_source_file)
+MAINTENANCE_ELIGIBLE_SERVICES: list[tuple[str, str]] = [
+    ("archive", "Hestia-Archive/app/main.py"),
+    ("scout", "Hestia-Scout/app/main.py"),
+    ("chronos", "Hestia-Chronos/app/core/hub_client.py"),
+    ("iris", "Hestia-Iris/app/main.py"),
+]
+MAINTENANCE_RECONCILE_PATH = "/api/module/maintenance/reconcile"
 
 
 def run_git(args: list[str]) -> str:
@@ -95,6 +107,36 @@ def has_contract_change(path: str) -> bool:
     return any(token in lower for token in CONTRACT_KEYWORDS)
 
 
+def check_maintenance_contracts(errors: list[str]) -> None:
+    """Phase 5: verify each eligible service has a reconcile command registered."""
+    for service_label, rel_path in MAINTENANCE_ELIGIBLE_SERVICES:
+        src_file = ROOT / rel_path
+        if not src_file.exists():
+            errors.append(
+                f"Maintenance contract check: source file not found for {service_label}: {rel_path}"
+            )
+            continue
+
+        source = src_file.read_text(encoding="utf-8")
+
+        # Check 1: a command name ending in _reconcile is declared
+        has_reconcile_cmd = "_reconcile" in source and "command" in source
+        # Check 2: the canonical maintenance path is present
+        has_maintenance_path = MAINTENANCE_RECONCILE_PATH in source
+
+        if not has_reconcile_cmd:
+            errors.append(
+                f"Maintenance contract: {service_label} has no *_reconcile command registered in {rel_path}. "
+                "Add a '<service>_reconcile' entry to capabilities.commands."
+            )
+        if not has_maintenance_path:
+            errors.append(
+                f"Maintenance contract: {service_label} does not reference the canonical path "
+                f"'{MAINTENANCE_RECONCILE_PATH}' in {rel_path}. "
+                "Ensure the reconcile command points to the standardized endpoint."
+            )
+
+
 def main() -> int:
     args = parse_args()
     if args.base:
@@ -138,6 +180,9 @@ def main() -> int:
                 errors.append(
                     "Contract-related changes detected but Hestia-Swagger/swagger.yml was not updated."
                 )
+
+    # Phase 5: maintenance contract enforcement (always runs, not diff-gated)
+    check_maintenance_contracts(errors)
 
     if errors:
         print("check_command_contracts: FAILED")

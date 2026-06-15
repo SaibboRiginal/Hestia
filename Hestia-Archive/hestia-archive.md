@@ -30,6 +30,8 @@ It stores and serves all persistent state through generic APIs.
 |---|---|---|
 | `POST` | `/api/entities` | Upsert one entity |
 | `POST` | `/api/entities/search` | Generic hybrid search |
+| `POST` | `/api/module/maintenance/reconcile` | Run generic maintenance reconcile (standard contract) |
+| `POST` | `/api/maintenance/reconcile` | Compatibility alias for maintenance reconcile |
 | `GET` | `/api/memory/active` | Active preferences |
 | `POST` | `/api/subscriptions` | Create/update subscription |
 | `GET` | `/api/subscriptions/active` | List active subscriptions |

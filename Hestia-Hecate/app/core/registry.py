@@ -1,9 +1,9 @@
 from fetchers.gcal_fetcher import GCalFetcher
-from fetchers.iris_email_fetcher import IrisEmailFetcher
+from fetchers.email_fetcher import EmailFetcher
 from fetchers.outlook_fetcher import OutlookFetcher
 
 FETCHER_REGISTRY = {
-    "iris_email": IrisEmailFetcher,
+    "iris_email": EmailFetcher,
     "gcal": GCalFetcher,
     "outlook_calendar": OutlookFetcher,
 }

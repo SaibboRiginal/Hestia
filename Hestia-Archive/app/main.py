@@ -212,6 +212,34 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_mode": "oracle_natural",
                 "response_prompt": "Conferma brevemente la disattivazione delle allerte di sistema.",
             },
+            {
+                "command": "archive_reconcile",
+                "title": "🛠️ Riconcilia archivio",
+                "description": "Esegue una manutenzione di riconciliazione sui record entita in Archive",
+                "method": "POST",
+                "path": "/api/module/maintenance/reconcile",
+                "body_template": {
+                    "source": "oracle",
+                    "requested_action": "reconcile_entities",
+                    "dry_run": True,
+                    "metadata": {},
+                },
+                "arguments_schema": {
+                    "dry_run": {
+                        "type": "boolean",
+                        "required": False,
+                        "description": "Se true esegue solo simulazione senza cancellazioni",
+                    },
+                    "domain": {
+                        "type": "string",
+                        "required": False,
+                        "description": "Dominio opzionale su cui limitare la riconciliazione",
+                    },
+                },
+                "clients": ["telegram", "ui"],
+                "response_mode": "oracle_natural",
+                "response_prompt": "Riassumi l'esito della riconciliazione includendo record analizzati, modifiche applicate e se l'esecuzione era dry-run.",
+            },
         ],
     },
 }

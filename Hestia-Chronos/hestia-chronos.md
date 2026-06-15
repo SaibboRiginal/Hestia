@@ -11,6 +11,8 @@
 
 Hestia-Chronos is the calendar domain service. It exposes domain-facing calendar endpoints, syncs items into Archive, and emits notification events via Hermes.
 
+Chronos scope is calendar only. It is not the email-domain service.
+
 Chronos no longer owns provider credentials/OAuth flows and no longer calls Google/Outlook APIs directly. Provider-facing operations are delegated to Hecate through Hub-routed calls.
 
 ---
@@ -19,7 +21,8 @@ Chronos no longer owns provider credentials/OAuth flows and no longer calls Goog
 
 - Provider ownership (Google/Outlook auth and runtime loading) belongs to Hecate.
 - Chronos forwards CRUD/list/provider-refresh requests to Hecate via Hub routing.
-- Credential setup scripts and provider SDK dependencies were moved out of Chronos runtime paths.
+- Chronos must not contain provider token.json, credentials.json, or OAuth client secrets as its runtime source of truth.
+- Credential setup scripts and provider SDK dependencies live in Hecate or host-side setup flows, not in Chronos runtime paths.
 
 ## Routing Model
 
@@ -83,6 +86,8 @@ Chronos no longer owns provider credentials/OAuth flows and no longer calls Goog
 | `DELETE` | `/api/calendar/events/{event_id}` | Delete an event |
 | `PATCH` | `/api/calendar/events/{event_id}` | Update an event |
 | `GET` | `/api/calendar/providers` | List available (configured) providers |
+| `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
+| `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
 | `GET` | `/health` | Service health |
 
 ### `POST /api/calendar/events` payload
@@ -146,6 +151,7 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 - Chronos does not own provider OAuth/token lifecycle.
 - Chronos always reaches Hecate through Hub routing for provider-facing actions.
 - Chronos persists/syncs calendar state in Archive and emits notifications through Hermes.
+- If Google/Outlook fetch is failing, inspect Hecate provider configuration and Hub-routed Hecate logs first.
 
 
 ## Documentation Synchronization (Required)

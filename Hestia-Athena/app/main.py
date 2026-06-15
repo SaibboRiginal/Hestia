@@ -31,11 +31,23 @@ class AthenaService(HestiaServiceBase):
                 "repeated_failures",
                 "unresolved_commitments",
             ],
+            "observation_sources": [
+                "hub_registry",
+                "argus_health",
+                "archive_entities",
+                "self_state",
+            ],
+            "thinking_modules": [
+                "observer",
+                "strategist",
+            ],
             "event_emit_endpoint": "/api/events/ingest",
             "oracle_hint_route": "/api/athena/hints",
             "status_endpoint": "/api/athena/status",
             "manual_trigger_endpoint": "/api/athena/trigger",
             "commitments_endpoint": "/api/athena/commitments",
+            "thinking_endpoint": "/api/athena/thinking",
+            "observation_endpoint": "/api/athena/observation",
         }
 
 
@@ -223,4 +235,36 @@ def resolve_athena_commitment(brief_id: str, request: CommitmentResolveRequest) 
     return {
         "status": "ok",
         "commitment": row,
+    }
+
+
+@app.get("/api/athena/thinking")
+def athena_thinking(
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Return recent thinking records — observation → candidates → decisions.
+
+    Each record shows what Athena observed, what it considered doing,
+    and what it actually emitted. This is the audit trail for proactive
+    cognition that a client can display to show "what Athena is thinking."
+    """
+    rows = runtime.list_thinking_records(limit=limit)
+    return {
+        "status": "ok",
+        "count": len(rows),
+        "thinking": rows,
+    }
+
+
+@app.get("/api/athena/observation")
+def athena_observation() -> dict[str, Any]:
+    """Return the most recent observation snapshot.
+
+    Shows live system state as last seen by Athena: registered services,
+    unhealthy services, domain entity summaries, and self-state.
+    """
+    snapshot = runtime._observe()
+    return {
+        "status": "ok",
+        "observation": snapshot.model_dump(),
     }

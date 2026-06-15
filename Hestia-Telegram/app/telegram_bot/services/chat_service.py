@@ -588,6 +588,29 @@ def handle_chat_message(message):
                         message_id=status_msg.message_id,
                         parse_mode="Markdown",
                     )
+                elif data.get("type") == "thinking":
+                    # Update status message with thinking context
+                    action = data.get("action", "")
+                    tool = data.get("tool", "")
+                    turn = data.get("turn", 0)
+                    if action == "tool_call" and tool:
+                        core.bot.edit_message_text(
+                            f"⏳ *Chiamata strumento: `{tool}` (turno {turn})*",
+                            chat_id=chat_id,
+                            message_id=status_msg.message_id,
+                            parse_mode="Markdown",
+                        )
+                    elif action == "tool_result" and tool:
+                        meta = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                        ok = "✅" if meta.get("ok") else "❌"
+                        count = meta.get("result_count")
+                        suffix = f": {count} risultati" if count else ""
+                        core.bot.edit_message_text(
+                            f"⏳ *{ok} `{tool}`{suffix} ({meta.get('duration_ms', '?')}ms)*",
+                            chat_id=chat_id,
+                            message_id=status_msg.message_id,
+                            parse_mode="Markdown",
+                        )
                 elif data.get("type") == "final":
                     final_answer = data.get("reply")
                 elif data.get("type") == "signal":
@@ -850,6 +873,19 @@ def handle_file_message(message):
                             message_id=status_msg.message_id,
                             parse_mode="Markdown",
                         )
+                    except Exception:
+                        pass
+                elif data.get("type") == "thinking":
+                    try:
+                        action = data.get("action", "")
+                        tool = data.get("tool", "")
+                        if action == "tool_call" and tool:
+                            core.bot.edit_message_text(
+                                f"⏳ *Chiamata strumento: `{tool}`*",
+                                chat_id=chat_id,
+                                message_id=status_msg.message_id,
+                                parse_mode="Markdown",
+                            )
                     except Exception:
                         pass
                 elif data.get("type") == "signal":

@@ -12,6 +12,8 @@ A gateway runtime that executes provider-facing operations on behalf of domain s
 
 Hecate registers itself into Hub (service name `hecate`) and remains discoverable as gateway + fetch runtime.
 
+Hecate is the only service boundary that should hold provider OAuth credentials/tokens for Google and Outlook. Domain services must not keep token.json, credentials.json, refresh tokens, or service-account JSON as their runtime source of truth.
+
 ---
 
 ## Core Features
@@ -112,13 +114,20 @@ Falls back to full registry reinit if no providers are active.
 | `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
 
+## Provider Credential Ownership
+
+- Google and Outlook OAuth material belongs in Hecate runtime configuration only.
+- Chronos and Iris may reference Hecate through Hub routes, but they must not store provider tokens as their own source of truth.
+- If provider access fails, the first place to inspect is Hecate provider config and logs, not downstream domain modules.
+
 
 
 ---
 
 ## Constraints
 
-- Hecate owns provider auth/runtime; Chronos and Iris call provider-facing APIs through Hub-routed Hecate endpoints.
+- Hecate owns provider auth/runtime and provider gateway orchestration (Google/Outlook); domain modules route provider-facing operations through Hub-routed Hecate endpoints.
+- Iris remains the email-domain owner for business APIs (search/send/thread); Hecate may proxy/provider-orchestrate email flows through Iris contracts.
 - Generic connector fetches return raw data and remain domain-agnostic.
 - Calendar gateway operations can mirror events into Archive to support downstream domain workflows.
 - Hecate does not publish notifications directly; downstream services handle dispatch logic.

@@ -7,6 +7,7 @@ def _providers_index(rows: list[dict]) -> dict[str, dict]:
 
 def test_detect_gateway_providers_empty(monkeypatch):
     keys = [
+        "GOOGLE_TOKEN_JSON",
         "GOOGLE_CREDENTIALS_JSON",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
@@ -29,6 +30,19 @@ def test_detect_gateway_providers_configured_google(monkeypatch):
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "x")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "y")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "z")
+    monkeypatch.delenv("HECATE_ENABLE_PROVIDER_GOOGLE", raising=False)
+
+    providers = _providers_index(detect_gateway_providers())
+    assert "google" in providers
+    assert providers["google"]["configured"] is True
+    assert providers["google"]["auth_status"] == "configured"
+
+
+def test_detect_gateway_providers_configured_google_token_json(monkeypatch):
+    monkeypatch.setenv(
+        "GOOGLE_TOKEN_JSON",
+        '{"token":"x","refresh_token":"y","client_id":"z","client_secret":"w"}',
+    )
     monkeypatch.delenv("HECATE_ENABLE_PROVIDER_GOOGLE", raising=False)
 
     providers = _providers_index(detect_gateway_providers())

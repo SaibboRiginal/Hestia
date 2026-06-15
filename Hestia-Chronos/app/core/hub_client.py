@@ -169,6 +169,34 @@ def register_on_hub(
                     "response_mode": "oracle_natural",
                     "telegram_visible": False,
                 },
+                {
+                    "command": "chronos_reconcile",
+                    "title": "🛠️ Riconcilia calendario",
+                    "description": "Esegue manutenzione di riconciliazione nel modulo Chronos",
+                    "method": "POST",
+                    "path": "/api/module/maintenance/reconcile",
+                    "body_template": {
+                        "source": "oracle",
+                        "requested_action": "reconcile_calendar",
+                        "dry_run": True,
+                        "metadata": {},
+                    },
+                    "arguments_schema": {
+                        "dry_run": {
+                            "type": "boolean",
+                            "required": False,
+                            "description": "Se true esegue solo simulazione senza avviare i worker tick",
+                        },
+                        "requested_action": {
+                            "type": "string",
+                            "required": False,
+                            "description": "Azione opzionale: reconcile_calendar|sync|notify|full",
+                        },
+                    },
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": "Riassumi l'esito della riconciliazione Chronos, indicando quali tick sono stati eseguiti e se era dry-run.",
+                },
             ],
         },
     }

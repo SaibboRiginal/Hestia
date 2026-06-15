@@ -1,8 +1,8 @@
 """Chat mode classifier — determines routing intent from a user message.
 
 Single responsibility: decide whether a message is a quick conversational
-exchange ("quick_chat") or a data retrieval request ("domain_query"), and
-extract structured routing parameters.
+exchange ("quick_chat") or a data retrieval / action request ("domain_query"),
+and extract structured routing parameters including action intent.
 
 Open/Closed: change the classification prompt or tune thresholds here
 without touching the main chat orchestrator.
@@ -17,7 +17,7 @@ _CONFIDENCE_THRESHOLD = 0.55  # Minimum confidence to accept quick_chat classifi
 
 
 class ChatClassifier:
-    """Classifies a user message and returns routing parameters."""
+    """Classifies a user message and returns routing parameters including action intent."""
 
     def __init__(self, router_agent, fallback_router_agent) -> None:
         self._router = router_agent
@@ -29,7 +29,8 @@ class ChatClassifier:
         history_text: str,
         available_domains: list[str],
         schemas: dict | None = None,
-    ) -> tuple[str, str | None, float, list[str], dict, dict, dict, str | None, str]:
+        current_datetime_context: str | None = None,
+    ) -> tuple[str, str | None, float, list[str], dict, dict, dict, str | None, str, bool]:
         """Classify *user_message* and return routing parameters.
 
         Returns:
@@ -42,9 +43,11 @@ class ChatClassifier:
             filters_lt: numeric less-than filter dict
             sort_by: field name or None
             sort_order: "asc" or "desc"
+            action_intent: True if the user is explicitly requesting a
+                           state-changing action (create, update, delete, etc.)
         """
         prompt = self._build_prompt(
-            user_message, history_text, available_domains, schemas)
+            user_message, history_text, available_domains, schemas, current_datetime_context)
         defaults = self._defaults()
 
         try:
@@ -63,7 +66,7 @@ class ChatClassifier:
     def _defaults() -> tuple:
         return (
             _DEFAULT_MODE, None, 0.0, ["general"],
-            {}, {}, {}, None, "desc",
+            {}, {}, {}, None, "desc", False,
         )
 
     @staticmethod
@@ -72,12 +75,18 @@ class ChatClassifier:
         history_text: str,
         available_domains: list[str],
         schemas: dict | None,
+        current_datetime_context: str | None = None,
     ) -> str:
         domain_candidates = [
             d.strip().lower()
             for d in (available_domains or [])
             if d.strip().lower() and d.strip().lower() != "general"
         ]
+        datetime_block = (
+            f"CURRENT_DATETIME_CONTEXT:\n{str(current_datetime_context or '').strip()}\n\n"
+            if str(current_datetime_context or "").strip()
+            else ""
+        )
         return (
             "You classify and route user intent for a chat orchestrator.\n\n"
             "Return ONLY valid JSON with:\n"
@@ -89,14 +98,23 @@ class ChatClassifier:
             '6) "filters_gt": numeric greater-than filters object\n'
             '7) "filters_lt": numeric less-than filters object\n'
             '8) "sort_by": field name or null\n'
-            '9) "sort_order": "asc" or "desc"\n\n'
+            '9) "sort_order": "asc" or "desc"\n'
+            '10) "action_intent": true if the message explicitly requests a state-changing '
+            "action (create, update, delete, enable, disable, set, remove, execute), "
+            "false for informational queries, chat, or read-only requests\n\n"
             "Rules:\n"
             '- Use "quick_chat" for normal conversation, generic Q&A, short personal exchanges, '
-            "or messages that do not need structured retrieval.\n"
-            '- Use "domain_query" only when the user clearly asks for domain records, '
-            "filters, listings, alerts/subscriptions, or data-driven operations.\n"
+            "or messages that do not need structured retrieval or actions.\n"
+            '- Use "domain_query" when the user asks for domain records, '
+            "filters, listings, alerts/subscriptions, data-driven operations, "
+            "OR explicitly requests a state-changing action.\n"
             "- Set \"domain\" only if it is explicit/high-confidence from AVAILABLE_DOMAINS; otherwise null.\n\n"
+            "- Resolve relative time references (oggi, domani, next week) using CURRENT_DATETIME_CONTEXT when available.\n"
+            '- Set "action_intent": true for imperative action requests (commands like /xxx, '
+            "or natural language like 'crea', 'aggiungi', 'modifica', 'elimina', 'imposta', "
+            "'esegui', 'disattiva'). Use semantic intent, not keyword spotting.\n\n"
             f"AVAILABLE_DOMAINS: {', '.join(domain_candidates) or 'none'}\n\n"
+            f"{datetime_block}"
             f"CONTEXT DATA STRUCTURES:\n{json.dumps(schemas or {}, ensure_ascii=False, indent=2)}\n\n"
             f"CONTEXT:\n{history_text}\n\n"
             f"USER_MESSAGE: {user_message}\n"
@@ -110,7 +128,7 @@ class ChatClassifier:
     ) -> tuple:
         (
             default_mode, _, _, _, default_filters,
-            default_filters_gt, default_filters_lt, _, default_sort_order,
+            default_filters_gt, default_filters_lt, _, default_sort_order, _,
         ) = defaults
 
         domain_candidates = [d.strip().lower()
@@ -155,7 +173,9 @@ class ChatClassifier:
             sort_order = "asc" if str(
                 data.get("sort_order", "desc")).lower() == "asc" else "desc"
 
-            return mode, domain, confidence, valid_domains, filters, filters_gt, filters_lt, sort_by, sort_order
+            action_intent = bool(data.get("action_intent"))
+
+            return mode, domain, confidence, valid_domains, filters, filters_gt, filters_lt, sort_by, sort_order, action_intent
         except Exception:
             return defaults
 

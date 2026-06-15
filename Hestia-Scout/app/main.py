@@ -2,14 +2,18 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
+from typing import Any
+from uuid import uuid4
 import requests
 
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from tools.geocoding import GeocodingService
 from tools.retrieval import ScoutRetrievalService
@@ -63,6 +67,29 @@ def _build_target_filters():
 
 
 TARGET_FILTERS = _build_target_filters()
+
+
+class ModuleMaintenanceRequest(BaseModel):
+    source: str = "oracle"
+    task_id: str | None = None
+    issue: str | None = None
+    requested_action: str | None = "reconcile_entities"
+    environment: str = "dev"
+    dry_run: bool = True
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ModuleMaintenanceResponse(BaseModel):
+    status: str
+    service: str
+    dry_run: bool
+    task_id: str
+    executed_at: datetime
+    retriable: bool
+    summary: str
+    mutation_count: int
+    details: dict[str, Any]
+
 
 api_app = FastAPI(title="Hestia Scout Tools", version="2.0.0")
 api_app.add_middleware(CORSMiddleware, allow_origins=[
@@ -138,6 +165,47 @@ def search_real_estate(req: RealEstateSearchRequest):
     return retrieval_service.search(req)
 
 
+@api_app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
+def module_maintenance_reconcile(req: ModuleMaintenanceRequest):
+    task_id = str(req.task_id or uuid4())
+    if req.dry_run:
+        return ModuleMaintenanceResponse(
+            status="ok",
+            service="scout",
+            dry_run=True,
+            task_id=task_id,
+            executed_at=datetime.now(timezone.utc),
+            retriable=True,
+            summary="Scout maintenance dry-run accepted: no mutations executed.",
+            mutation_count=0,
+            details={
+                "requested_action": req.requested_action,
+                "note": "Set dry_run=false to execute reconciliation.",
+            },
+        )
+
+    worker.reconcile_entities()
+    return ModuleMaintenanceResponse(
+        status="ok",
+        service="scout",
+        dry_run=False,
+        task_id=task_id,
+        executed_at=datetime.now(timezone.utc),
+        retriable=True,
+        summary="Scout maintenance reconcile completed.",
+        mutation_count=0,
+        details={
+            "requested_action": req.requested_action,
+            "note": "Reconciliation executed; check Scout logs for detailed mutation counts.",
+        },
+    )
+
+
+@api_app.post("/api/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
+def maintenance_reconcile_alias(req: ModuleMaintenanceRequest):
+    return module_maintenance_reconcile(req)
+
+
 def _start_tools_api():
     # SCOUT_TOOLS_PORT: HTTP port for the tools API
     port = int(os.getenv("SCOUT_TOOLS_PORT", "19006"))
@@ -187,6 +255,29 @@ def _register_with_hub(port: int):
                     "response_mode": "oracle_natural",
                     "response_prompt": "Mostra una lista breve e leggibile delle case trovate con punti chiave e link.",
                     "telegram_visible": True,
+                },
+                {
+                    "command": "scout_reconcile",
+                    "title": "🛠️ Riconcilia Scout",
+                    "description": "Esegue manutenzione di riconciliazione dati del modulo Scout",
+                    "method": "POST",
+                    "path": "/api/module/maintenance/reconcile",
+                    "body_template": {
+                        "source": "oracle",
+                        "requested_action": "reconcile_entities",
+                        "dry_run": True,
+                        "metadata": {},
+                    },
+                    "arguments_schema": {
+                        "dry_run": {
+                            "type": "boolean",
+                            "required": False,
+                            "description": "Se true esegue solo simulazione senza mutazioni",
+                        },
+                    },
+                    "clients": ["telegram", "ui"],
+                    "response_mode": "oracle_natural",
+                    "response_prompt": "Riassumi esito della riconciliazione Scout, indicando se era dry-run e cosa e stato verificato.",
                 },
             ],
         },

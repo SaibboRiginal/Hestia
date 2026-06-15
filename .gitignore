@@ -96,6 +96,7 @@ postgres_data/
 ref/
 AI_RULEBOOK.md
 .github/
+.claude/
 !.github/
 .github/*
 !.github/workflows/

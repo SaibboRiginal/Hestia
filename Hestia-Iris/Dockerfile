@@ -5,8 +5,8 @@ WORKDIR /code
 COPY Hestia-Iris/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY Hestia-Shared/hestia_common /code/hestia_common
 COPY Hestia-Iris /code
-COPY Hestia-Shared /code/Hestia-Shared
 
 ENV PYTHONPATH=/code
 ENV PYTHONUNBUFFERED=1
