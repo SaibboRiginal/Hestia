@@ -4,9 +4,10 @@ from __future__ import annotations
 import os
 import sys
 
-_ATLAS_APP = os.path.join(os.path.dirname(__file__), "..", "app")
-_SHARED = os.path.join(os.path.dirname(__file__), "..", "..", "Hestia-Shared")
-for _p in [_ATLAS_APP, _SHARED]:
+_ATLAS_ROOT = os.path.dirname(os.path.dirname(__file__))
+_ATLAS_APP = os.path.join(_ATLAS_ROOT, "app")
+_SHARED = os.path.join(_ATLAS_ROOT, "..", "Hestia-Shared")
+for _p in [_ATLAS_ROOT, _ATLAS_APP, _SHARED]:
     _abs = os.path.abspath(_p)
     if _abs not in sys.path:
         sys.path.insert(0, _abs)

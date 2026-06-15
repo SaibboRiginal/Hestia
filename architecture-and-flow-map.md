@@ -18,7 +18,6 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
 | Hephaestus | Core Organ | Yes (remediation execution policy) | No | Executes policy-gated remediation via Hub contracts |
 | Athena | Core Organ | Yes (proactive advisory cognition) | No | Produces bounded advisory hints for Oracle |
-| Ingest | Core Utility | Generic ingestion orchestration | No | Generic fetch/state handling, domain-agnostic |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |
@@ -44,7 +43,6 @@ flowchart LR
     HUB --> CH[Chronos Calendar Domain]
     HUB --> IR[Iris Email Domain]
     HUB --> SC[Scout Real Estate Domain]
-    HUB --> IN[Ingest Utility]
     HUB --> AT[Athena Advisory Engine]
     HUB --> AG[Argus Monitoring]
     HUB --> HP[Hephaestus Remediation]
@@ -56,7 +54,6 @@ flowchart LR
     CH -->|provider calendar ops via Hub route| HE
     IR -->|provider mediation when needed| HE
     SC -->|domain email source via iris_email connector| HE
-    IN -->|generic connector/fetch triggers| HE
 
     HE --> GP[Google Provider Runtime]
     HE --> OP[Outlook Provider Runtime]
@@ -72,7 +69,6 @@ flowchart LR
     CH --> AR
     IR --> AR
     SC --> AR
-    IN --> AR
     OR --> AR
 
     SC --> HM
@@ -94,7 +90,7 @@ flowchart LR
 - Core: Hub, Archive, Oracle, Hermes, Telegram, Hecate
 - Domain: Chronos, Iris, Scout
 - Organ services: Argus, Hephaestus, Athena
-- Utility/support: Ingest, Atlas, Dummy, Swagger, Shared
+- Utility/support: Atlas, Dummy, Swagger, Shared
 
 ## Practical Flows
 

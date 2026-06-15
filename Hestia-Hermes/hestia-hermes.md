@@ -39,7 +39,7 @@ Hermes is core and generic: no domain-specific rules are implemented in Hermes.
 - No domain-specific ranking logic.
 - No DB access outside Archive APIs.
 - No chat orchestration (Oracle responsibility).
-- No connector/data-fetching logic (Ingest/module responsibility).
+- No connector/data-fetching logic (Hecate/module responsibility).
 
 
 ## Documentation Synchronization (Required)

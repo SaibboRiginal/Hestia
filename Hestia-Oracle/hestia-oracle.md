@@ -150,7 +150,7 @@ This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI 
 ## Constraints
 
 - Oracle never accesses the database directly — all persistence goes through Archive.
-- Oracle does not manage Ingest connectors or trigger data fetches — it only reads from Archive.
+- Oracle does not manage Hecate connectors or trigger data fetches — it only reads from Archive.
 - No domain-specific logic is hardcoded — domain routing is driven by config, not code.
 - Oracle does not know which interface is calling it — session_id is the only identity.
 - Oracle does not dispatch push alerts; it only compiles user intent into generic subscriptions.

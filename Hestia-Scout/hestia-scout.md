@@ -48,7 +48,7 @@ Scout is also an event producer for proactive workflows: when entities are creat
 7. **LLM extraction (new entities only):** The minimal representative set is passed to the LLM extractor in batches. The LLM extracts structured property data including `listing_status`.
 8. **Storage:** Structured listings are saved to Archive under the `real_estate` domain.
 9. **Event emission:** Scout publishes `entity.upserted` event to Hermes (via Hub routing).
-10. **Mark parsed:** All processed Ingest records are marked parsed regardless of which path handled them.
+10. **Mark parsed:** All processed Hecate-sourced records are marked parsed regardless of which path handled them.
 11. **Availability:** Oracle queries module tools / Archive for `real_estate` data.
 12. **Shutdown:** Scout stops scheduled cycles (no direct connector deregistration needed).
 

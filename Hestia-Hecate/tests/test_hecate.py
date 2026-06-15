@@ -10,6 +10,8 @@ import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 
+import app.main as hecate_main
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Provider detection
@@ -19,17 +21,19 @@ from unittest.mock import patch, MagicMock
 @pytest.mark.unit
 class TestProviderDetection:
     def test_no_env_vars_no_providers(self, monkeypatch):
-        monkeypatch.delenv("GOOGLE_CREDENTIALS_JSON", raising=False)
-        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
-        monkeypatch.delenv("OUTLOOK_CLIENT_ID", raising=False)
-        from main import detect_gateway_providers
-        providers = detect_gateway_providers()
-        assert providers == []
+        for key in [
+            "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
+            "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET",
+            "OUTLOOK_TENANT_ID", "OUTLOOK_REFRESH_TOKEN",
+            "HECATE_ENABLE_PROVIDER_GOOGLE", "HECATE_ENABLE_PROVIDER_MICROSOFT",
+        ]:
+            monkeypatch.delenv(key, raising=False)
+        assert hecate_main.detect_gateway_providers() == []
 
     def test_google_enabled_via_force_env(self, monkeypatch):
         monkeypatch.setenv("HECATE_ENABLE_PROVIDER_GOOGLE", "1")
-        from main import detect_gateway_providers
-        providers = detect_gateway_providers()
+        providers = hecate_main.detect_gateway_providers()
         assert any(p["provider"] == "google" for p in providers)
         monkeypatch.setenv("HECATE_ENABLE_PROVIDER_GOOGLE", "0")
 
