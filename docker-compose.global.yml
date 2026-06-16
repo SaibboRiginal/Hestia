@@ -15,6 +15,9 @@ services:
       - LOG_LEVEL=INFO               # logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off   # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1           # flush stdout/stderr immediately (required for Docker log streaming)
+    volumes:
+      - ./Hestia-Hub/src:/code/src
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     networks:
       - hestia_net
 
@@ -54,6 +57,9 @@ services:
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Archive/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       archive_db:
         condition: service_healthy
@@ -86,6 +92,8 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Hecate/data:/code/data
+      - ./Hestia-Hecate/app:/code              # live code mount (restart to apply)
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -111,7 +119,6 @@ services:
       - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004   # This service's public URL as seen by Hub
       - ORACLE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
       - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API for memory, entities, history
-      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools  # Primary module-tool endpoint (Scout)
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
@@ -132,6 +139,9 @@ services:
       # ORACLE_PROMPT_AB_PLANNER_ENABLED=0  enable planner behavior A/B prompt gating (0|1)
       # ORACLE_PROMPT_AB_PLANNER_VARIANTS=control,experimental  planner prompt variants
       # ORACLE_PROMPT_AB_SALT=hestia  deterministic bucketing salt for prompt experiments
+    volumes:
+      - ./Hestia-Oracle/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -160,6 +170,9 @@ services:
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Hermes/src:/code/src
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -190,6 +203,8 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Telegram/data:/code/data
+      - ./Hestia-Telegram/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -239,6 +254,9 @@ services:
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Scout/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -273,6 +291,9 @@ services:
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Chronos/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -299,6 +320,9 @@ services:
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Iris/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -337,6 +361,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro  # Read-only Docker socket for log tailing
       - ./:/hestia_root:ro                            # Hestia repo root mounted for doc access
+      - ./Hestia-Argus/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -376,6 +402,9 @@ services:
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Athena/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -412,6 +441,9 @@ services:
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Hephaestus/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started
@@ -439,6 +471,9 @@ services:
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Dummy/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
     depends_on:
       hub:
         condition: service_started

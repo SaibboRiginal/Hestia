@@ -347,7 +347,7 @@ if __name__ == "__main__":
     )
     wait_for_hub_services(
         hub_api_url,
-        ["archive", "ingest"],
+        ["archive", "hecate"],
         timeout_seconds=startup_wait_timeout,
         logger=logger,
     )

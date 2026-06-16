@@ -881,7 +881,15 @@ def _complete_google_oauth(body: dict) -> dict:
             "client_secret": creds.client_secret,
             "scopes": list(creds.scopes or []),
         }
+        # Persist to BOTH os.environ (process lifetime) AND the
+        # volume-mounted file (survives container restarts).
         os.environ["GOOGLE_TOKEN_JSON"] = _json.dumps(token_data)
+        try:
+            from providers.google import GoogleCalendarProvider
+            GoogleCalendarProvider.persist_token(token_data)
+        except Exception as _persist_exc:
+            logger.warning(
+                "event=google_oauth_persist_warning error=%s", _persist_exc)
         _pending_auth.pop("google", None)
         refreshed = _refresh_calendar_registry()
         logger.info("event=google_oauth_complete active_providers=%s",

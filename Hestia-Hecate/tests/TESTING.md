@@ -18,3 +18,6 @@
 | 7.7 | `test_calendar_fetch_all_providers` | ⬜ |
 | 7.8 | `test_email_fetch_routed_to_correct_provider` | ⬜ |
 | 7.9 | `test_provider_failure_isolated` | ⬜ |
+| 7.10 | `test_google_token_persisted_on_refresh` | ⬜ |
+| 7.11 | `test_google_token_loaded_from_file_first` | ⬜ |
+| 7.12 | `test_google_token_persisted_on_oauth_complete` | ⬜ |

@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy application code last (this layer changes frequently)
 COPY Hestia-Shared/hestia_common /code/hestia_common
-COPY Hestia-Telegram/app /code/app
+COPY Hestia-Telegram/app /code
 
 # Start the FastAPI server
-CMD ["python", "app/main.py"]
+CMD ["python", "main.py"]

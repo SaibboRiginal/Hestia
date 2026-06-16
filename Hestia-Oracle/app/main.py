@@ -564,19 +564,56 @@ def llm_generate_endpoint(req: dict):
 
         # Resolve defaults from env (same source as AgentFactory) so we never
         # reference the non-existent engine.models dict.
+        # Read the SAME config as the rest of Oracle (AgentFactory).
+        # MODEL_USECASE_GENERIC is what the user actually sets in .env
         default_provider = os.getenv(
-            "ANALYST_PROVIDER", os.getenv("LLM_PROVIDER", "gemini"))
-        default_model = os.getenv("ANALYST_MODEL", os.getenv(
-            "LLM_MODEL", "gemini-2.5-flash"))
+            "MODEL_USECASE_GENERIC_PROVIDER",
+            os.getenv("ANALYST_PROVIDER", os.getenv("LLM_PROVIDER", "ollama")))
+        default_model = os.getenv(
+            "MODEL_USECASE_GENERIC_MODEL",
+            os.getenv("ANALYST_MODEL", os.getenv("LLM_MODEL", "gemma4:e4b")))
 
         model = req.get("model") or default_model
         provider = req.get("provider") or default_provider
 
         agent = UniversalAgent(
             role_prompt="", provider=provider, model_name=model)
-        response_text = agent.ask(prompt)
-
-        return {"response": response_text, "model": model, "provider": provider}
+        try:
+            response_text = agent.ask(prompt)
+            return {"response": response_text, "model": model, "provider": provider}
+        except Exception as primary_exc:
+            logger.warning(
+                "event=llm_generate_primary_failed "
+                "provider=%s model=%s error=%s — trying fallback",
+                provider, model, primary_exc)
+            # Fallback: try Ollama (local, no external API dependency)
+            fallback_provider = "ollama"
+            fallback_model = os.getenv(
+                "ANALYST_FALLBACK_MODEL",
+                os.getenv("LLM_FALLBACK_MODEL", "gemma4:e4b"))
+            try:
+                fallback_agent = UniversalAgent(
+                    role_prompt="", provider=fallback_provider,
+                    model_name=fallback_model)
+                response_text = fallback_agent.ask(prompt)
+                logger.info(
+                    "event=llm_generate_fallback_success "
+                    "fallback_provider=%s fallback_model=%s",
+                    fallback_provider, fallback_model)
+                return {
+                    "response": response_text,
+                    "model": fallback_model,
+                    "provider": fallback_provider,
+                }
+            except Exception as fallback_exc:
+                logger.exception(
+                    "event=llm_generate_fallback_failed "
+                    "fallback_provider=%s fallback_model=%s",
+                    fallback_provider, fallback_model)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Primary ({provider}/{model}): {primary_exc} | "
+                           f"Fallback ({fallback_provider}/{fallback_model}): {fallback_exc}")
     except Exception as e:
         logger.exception(
             "event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")

@@ -8,7 +8,10 @@ services:
       - "19004:19004"  # Oracle API port
     environment:
       - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API base URL for memory, entities, history
-      - MODULE_TOOLS_URL=http://hestia_scout:19006/api/module-tools  # Primary module-tool endpoint (Scout)
+      # Module tools are discovered dynamically via Hub (/api/discovery/module-tools
+      # and /api/registry/services).  No hardcoded peer URLs — Hub routing is the
+      # single source of truth for which modules are alive.
+      # MODULE_TOOLS_URL=  (legacy — leave empty to use Hub discovery exclusively)
       - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
       - ORACLE_SERVICE_BASE_URL=http://hestia_oracle:19004   # This service's public URL as seen by Hub
       - ORACLE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
