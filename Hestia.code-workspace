@@ -78,6 +78,20 @@
       },
     },
     {
+      "name": "MCP",
+      "path": "Hestia-MCP",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
+      "name": "Metis",
+      "path": "Hestia-Metis",
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+      },
+    },
+    {
       "name": "Oracle",
       "path": "Hestia-Oracle",
       "settings": {
@@ -123,6 +137,8 @@
           "Hestia-Hub": true,
           "Hestia-Hecate": true,
           "Hestia-Iris": true,
+          "Hestia-MCP": true,
+          "Hestia-Metis": true,
           "Hestia-Scout": true,
           "Hestia-Shared": true,
           "Hestia-Swagger": true,

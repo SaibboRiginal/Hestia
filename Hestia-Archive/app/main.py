@@ -13,8 +13,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from . import models, database
-from .database import engine
+from . import models, database, schemas
+from .database import engine, SessionLocal
 from .routers import archive, chat, calendar, documents, entities, memory
 
 try:
@@ -48,6 +48,107 @@ app.include_router(chat.router)
 app.include_router(memory.router)
 app.include_router(calendar.router)
 app.include_router(documents.router)
+
+# ── MCP tools ──────────────────────────────────────────────────────────────────
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+
+    def _feedback_submit_handler(
+        session_id: str = "",
+        interaction_id: str = "",
+        quality_label: str = "mixed",
+        quality_score: int = None,
+        feedback_text: str = "",
+        tags: list = None,
+    ) -> dict:
+        """Persist a quality feedback record via Archive's own DB session."""
+        import uuid
+
+        db = SessionLocal()
+        try:
+            feedback_id = f"fbk-{uuid.uuid4().hex[:16]}"
+            row = models.FeedbackRecord(
+                feedback_id=feedback_id,
+                session_id=str(session_id or "").strip() or None,
+                interaction_id=str(interaction_id or "").strip() or None,
+                source_service="mcp",
+                quality_label=str(quality_label or "mixed").strip().lower(),
+                quality_score=int(quality_score) if quality_score is not None else None,
+                feedback_text=str(feedback_text or "").strip() or None,
+                tags=list(tags or []) if isinstance(tags, list) else [],
+                payload={},
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+            return {
+                "status": "stored",
+                "feedback_id": row.feedback_id,
+                "quality_label": row.quality_label,
+            }
+        except Exception as exc:
+            db.rollback()
+            return {"status": "error", "error": str(exc)}
+        finally:
+            db.close()
+
+    _archive_mcp_tools = [
+        MCPTool(
+            name="feedback_submit",
+            description=(
+                "Store a quality grade for a chat interaction. "
+                "Pure persistence — no business logic. "
+                "Used by clients (Telegram, web UI) after rendering an assistant response."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "description": "Session identifier for the conversation",
+                    },
+                    "interaction_id": {
+                        "type": "string",
+                        "description": "Specific interaction/message identifier",
+                    },
+                    "quality_label": {
+                        "type": "string",
+                        "enum": ["excellent", "good", "mixed", "poor", "rejected"],
+                        "description": "Quality grade label",
+                    },
+                    "quality_score": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "description": "Optional numeric quality score 1-5",
+                    },
+                    "feedback_text": {
+                        "type": "string",
+                        "description": "Optional free-text feedback",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional tags for categorization",
+                    },
+                },
+                "required": ["session_id", "quality_label"],
+            },
+            handler=_feedback_submit_handler,
+            title="📊 Valuta risposta",
+            method="POST",
+            path="/api/feedback",
+            clients=["telegram", "ui"],
+            response_mode="direct",
+            telegram_visible=False,
+        ),
+    ]
+    app.include_router(
+        create_mcp_router(_archive_mcp_tools, service_name="archive")
+    )
+    logger.info("event=mcp_router_mounted service=archive tools=%d", len(_archive_mcp_tools))
+except ModuleNotFoundError:
+    logger.info("event=mcp_router_skipped service=archive reason=hestia_common_not_available")
 
 
 @app.get("/health")

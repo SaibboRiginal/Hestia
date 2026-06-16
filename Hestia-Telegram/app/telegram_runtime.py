@@ -10,9 +10,12 @@ from telegram_bot.services.chat_service import (
     handle_cancel_flow,
     handle_confirmation,
     handle_doc_callback,
+    handle_feedback_callback,
+    handle_feedback_command,
     handle_file_message,
     handle_run_command,
     handle_set_picker,
+    handle_snooze_feedback_command,
     send_welcome,
 )
 from telegram_bot.services.executor import handle_group_callback
@@ -34,6 +37,16 @@ def on_welcome(message):
 @bot.message_handler(commands=["clear"])
 def on_clear(message):
     clear_memory(message)
+
+
+@bot.message_handler(commands=["feedback"])
+def on_feedback(message):
+    handle_feedback_command(message)
+
+
+@bot.message_handler(commands=["snooze_feedback"])
+def on_snooze_feedback(message):
+    handle_snooze_feedback_command(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("grp:"))
@@ -69,6 +82,11 @@ def on_cancel_flow(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("cal_"))
 def on_calendar_step(call):
     handle_calendar_step(call)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("fb:"))
+def on_feedback_callback(call):
+    handle_feedback_callback(call)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("doc_"))

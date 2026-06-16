@@ -17,7 +17,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.agent_loop import ToolDefinition, run_agent_loop
+from core.services import prompt_config
 from agents.universal_agent import UniversalAgent
+
+_STYLE = prompt_config.conversation_style_contract()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,6 +93,7 @@ class TestLiveToolCalling:
             preference_facts=[],
             tools=[],
             ask_fn=agent.ask,
+            conversation_style=_STYLE,
         )
         assert isinstance(answer, str)
         assert len(answer) > 0
@@ -112,6 +116,7 @@ class TestLiveToolCalling:
             tools=[tool],
             ask_fn=agent.ask,
             ask_tools_fn=agent.ask_with_tools,
+            conversation_style=_STYLE,
         )
         assert isinstance(answer, str)
         assert len(answer) > 0
@@ -128,6 +133,7 @@ class TestLiveToolCalling:
             tools=[tool],
             ask_fn=agent.ask,
             ask_tools_fn=agent.ask_with_tools,
+            conversation_style=_STYLE,
         )
         # Either the tool was called (result in answer) or direct answer given
         assert isinstance(answer, str)
@@ -143,6 +149,7 @@ class TestLiveToolCalling:
                 "L'utente preferisce risposte in elenco puntato", "Budget max 200k"],
             tools=[],
             ask_fn=agent.ask,
+            conversation_style=_STYLE,
         )
         assert isinstance(answer, str)
         assert len(answer) > 0
@@ -158,6 +165,7 @@ class TestLiveToolCalling:
             tools=[tool],
             ask_fn=agent.ask,
             ask_tools_fn=agent.ask_with_tools,
+            conversation_style=_STYLE,
         )
         assert "<tool_call>" not in answer
         assert "</tool_call>" not in answer
@@ -171,6 +179,7 @@ class TestLiveToolCalling:
             preference_facts=[],
             tools=[],
             ask_fn=agent.ask,
+            conversation_style=_STYLE,
         )
         # Should not contain markdown bold ** or heading ##
         assert "**" not in answer, f"Raw Markdown found in answer: {answer[:300]}"
@@ -191,6 +200,7 @@ class TestLiveToolCalling:
             preference_facts=[],
             tools=[],
             ask_fn=agent.ask,
+            conversation_style=_STYLE,
         )
         # The model should know the name from context
         assert "Marco" in answer or "marco" in answer.lower()
@@ -213,6 +223,7 @@ class TestLiveToolCalling:
             tools=[weather_tool, listings_tool],
             ask_fn=agent.ask,
             ask_tools_fn=agent.ask_with_tools,
+            conversation_style=_STYLE,
         )
         # Answer should be weather-related, not real estate
         assert isinstance(answer, str)
@@ -229,6 +240,7 @@ class TestLiveToolCalling:
             tools=[tool],
             ask_fn=agent.ask,
             ask_tools_fn=agent.ask_with_tools,
+            conversation_style=_STYLE,
         )
         assert isinstance(answer, str)
         assert len(answer) > 0

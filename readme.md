@@ -14,7 +14,7 @@ Stack baseline: Python · FastAPI · PostgreSQL + pgvector · Docker · Ollama.
 
 Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Hecate`, `Hermes`, `Chronos`, `Iris`, `MCP`
 
-Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), Ollama, local DB replica.
+Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), `Metis`, Ollama, local DB replica.
 
 Host OS shared utility (Windows/Linux): `Atlas` (runs outside Docker, registers in Hub)
 
@@ -170,6 +170,14 @@ Proactive cognition and advisory strategy engine.
 - Archives every thinking cycle for audit and client display (`GET /api/athena/thinking`).
 - Resource-conscious: single Oracle call per cycle, compact prompts, source-level failure isolation.
 - Tracks commitments (action items) with TTL, resolution, and pruning.
+
+### Hestia-Metis 🦉
+Continuous improvement organ — dataset curation, benchmark evaluation, LoRA training orchestration.
+- **Fifth organ** in the Hestia organ model. Operates on the system's **trajectory over time** (are we improving?), unlike the other four organs that operate on current state.
+- **Owns:** feedback aggregation → dataset building → ChatML export → benchmark runs → LoRA training orchestration.
+- **Does NOT own:** runtime model inference (Oracle), raw grade storage (Archive), quality judgment (Athena), feedback UI (Telegram).
+- Exposes five MCP tools: `metis_dataset_build`, `metis_dataset_export`, `metis_dataset_status`, `metis_benchmark_run`, `metis_loRA_train`.
+- In-memory dataset store with configurable deduplication and quality filtering. Exports ChatML, Alpaca, and ShareGPT formats.
 
 ### Hestia-Dummy 🧪
 Generic integration testing module.

@@ -19,6 +19,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hephaestus | Core Organ | Yes (remediation execution policy) | No | Executes policy-gated remediation via Hub contracts |
 | Athena | Core Organ | Yes (proactive advisory cognition) | No | Produces bounded advisory hints for Oracle |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
+| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |
 | Shared | Shared Library | No | No | Common runtime/logging/startup helpers for services |
@@ -46,6 +47,7 @@ flowchart LR
     HUB --> AT[Athena Advisory Engine]
     HUB --> AG[Argus Monitoring]
     HUB --> HP[Hephaestus Remediation]
+    HUB --> MT[Metis Improvement]
     HUB --> DU[Dummy Test Module]
     HUB --> AL[Atlas Fetch Gateway]
     HUB --> AR[Archive]
@@ -71,10 +73,14 @@ flowchart LR
     SC --> AR
     OR --> AR
 
+    MT[Metis Improvement] --> AR
+    MT --> OR
+
     SC --> HM
     CH --> HM
     OR --> HM
     AG --> HM
+    MT --> HM
 ```
 
 ## Runtime Placement
@@ -82,14 +88,14 @@ flowchart LR
 | Node | Services |
 |---|---|
 | Raspberry Pi (always-on) | Hub, Archive, Oracle, Telegram, Hecate, Hermes, Chronos, Iris |
-| Main PC (best-effort) | Scout and other domain modules, local LLM/runtime helpers |
+| Main PC (best-effort) | Scout and other domain modules, Metis, local LLM/runtime helpers |
 | Host utility (outside Docker) | Atlas |
 
 ## Coverage Checklist
 
 - Core: Hub, Archive, Oracle, Hermes, Telegram, Hecate
 - Domain: Chronos, Iris, Scout
-- Organ services: Argus, Hephaestus, Athena
+- Organ services: Argus, Hephaestus, Athena, Metis
 - Utility/support: Atlas, Dummy, Swagger, Shared
 
 ## Practical Flows
