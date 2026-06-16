@@ -73,6 +73,14 @@ Environment knobs:
 | `/avvisi_recenti` | Show recent alerts in natural formatted text |
 | `/notifiche_attive` | Show active subscriptions in readable format |
 | `/scout_listings` | Show property list with HTML links |
+| `/snooze_feedback` | Suspend feedback prompts for 7 days |
+| `/feedback good` / `/feedback bad` | Rate last Oracle response |
+
+### Feedback Collection
+- Inline 👍/👎 buttons appear after eligible chat responses (configurable rate, default ~15%).
+- Never on greetings, trivial messages, or during snooze periods.
+- Feedback is submitted to Archive's `feedback_submit` MCP tool via Hub routing.
+- Snooze via `/snooze_feedback` — writes a durable preference to Archive; auto-expires after 7 days.
 
 ---
 

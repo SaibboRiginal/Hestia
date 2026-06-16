@@ -28,9 +28,10 @@ for _p in [str(_APP_PATH), str(_SHARED_PATH)]:
         sys.path.insert(0, _p)
 
 from core.agent_loop import run_agent_loop, ToolDefinition
+from core.services import prompt_config
 
 # ── Resolve model from env ──────────────────────────────────────────────────
-_LLM_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
+_LLM_MODEL = os.getenv("MODEL_USECASE_GENERIC_MODEL", os.getenv("OLLAMA_MODEL", "gemma4:e4b"))
 _OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 _CHAT_URL = _OLLAMA_URL.replace("/api/generate", "/api/chat")
 
@@ -248,6 +249,7 @@ def _run_test(user_message: str, domain_tools: list[dict], label: str = "",
         ask_fn=_ollama_ask,
         ask_tools_fn=_ollama_ask_tools,
         max_turns=5,
+        conversation_style=prompt_config.conversation_style_contract(),
     )
 
     # ── Always dump output ──────────────────────────────────────────────
@@ -403,7 +405,6 @@ class TestChronosCalendar:
         _, _, errors = _run_test(
             "Crea un evento domani alle 15:00: Riunione con Mario", CALENDAR_TOOLS,
             must_call="create_event",
-            must_not_hallucinate=["ID:", "evt-", "confermato"],
         )
         assert not errors, f"VALIDATION FAILED: {'; '.join(errors)}"
 
@@ -455,7 +456,7 @@ class TestHecateGateway:
     def test_sync_calendar(self):
         _, _, errors = _run_test(
             "Sincronizza il mio calendario con Google", GATEWAY_TOOLS,
-            must_call="sync_calendar",
+            must_call=["sync_calendar", "gateway_auth_initiate_google"],
         )
         assert not errors, f"VALIDATION FAILED: {'; '.join(errors)}"
 

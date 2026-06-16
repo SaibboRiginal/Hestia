@@ -3,8 +3,11 @@ setlocal enabledelayedexpansion
 chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 
-set EXTRA=%1
-if "%EXTRA%"=="" set EXTRA=-v
+if "%1"=="" (
+    set FLAGS=-s -v
+) else (
+    set FLAGS=%1 %2 %3
+)
 
 echo.
 echo ============================================================
@@ -26,12 +29,12 @@ echo.
 
 echo === 1/2  All Tools by Domain ===
 echo.
-python -m pytest tests/test_live_all_tools.py -m llm_live --run-live %EXTRA% --tb=long
+python -m pytest tests/test_live_all_tools.py -m llm_live --run-live %FLAGS% --tb=long
 
 echo.
 echo === 2/2  Tool-Calling Comprehensive ===
 echo.
-python -m pytest tests/test_live_tool_calling_comprehensive.py -m llm_live --run-live %EXTRA% --tb=long
+python -m pytest tests/test_live_tool_calling_comprehensive.py -m llm_live --run-live %FLAGS% --tb=long
 
 echo.
 echo ============================================================

@@ -45,3 +45,18 @@
 | 3.3.2 | `test_get_logs_returns_list` | ⬜ |
 | 3.3.3 | `test_trigger_hint_endpoint` | ⬜ |
 | 3.3.4 | `test_status_endpoint_returns_runtime_stats` | ⬜ |
+
+### 3.4 Conversation Auditor (`auditor.py`)
+
+**File:** `Hestia-Athena/tests/test_auditor.py`
+**Markers:** `unit`
+
+| # | Test Case | Status |
+|---|-----------|--------|
+| 3.4.1 | `test_audit_session_no_history` | ⬜ |
+| 3.4.2 | `test_audit_session_scores_and_submits` | ⬜ |
+| 3.4.3 | `test_audit_session_oracle_fails` | ⬜ |
+| 3.4.4 | `test_parse_scores_extracts_json_array` | ⬜ |
+| 3.4.5 | `test_parse_scores_handles_malformed` | ⬜ |
+| 3.4.6 | `test_judge_prompt_contains_key_elements` | ⬜ |
+| 3.4.7 | `test_submit_score_calls_archive` | ⬜ |

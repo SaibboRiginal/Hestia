@@ -642,6 +642,13 @@ def handle_chat_message(message):
         for card in core.build_signal_cards(streamed_signals):
             core.send_user_message(chat_id, card, parse_mode="HTML")
 
+        # ── Feedback prompt (selective, rate-limited, snoozeable) ──────────
+        _maybe_prompt_feedback(
+            chat_id=chat_id,
+            message_text=str(message.text or "").strip(),
+            session_id=session_id,
+        )
+
         for question in streamed_questions:
             token = str(question.get("id") or "").strip()
             if not token:
@@ -930,3 +937,143 @@ def handle_file_message(message):
         )
     finally:
         stop_typing.set()
+
+
+# ── Feedback helpers ────────────────────────────────────────────────────────
+
+def _maybe_prompt_feedback(
+    chat_id: str | int,
+    message_text: str,
+    session_id: str,
+):
+    """Conditionally append a feedback keyboard after an Oracle response."""
+    chat_str = str(chat_id)
+    if not core.should_show_feedback_prompt(chat_str, message_text):
+        return
+    markup = core.build_feedback_keyboard()
+    try:
+        core.bot.send_message(
+            chat_id,
+            "⚡ <i>Valuta questa risposta</i>",
+            parse_mode="HTML",
+            reply_markup=markup,
+        )
+    except Exception as exc:
+        logger.debug("event=feedback_prompt_send_failed error=%s", exc)
+
+
+def handle_feedback_callback(call):
+    """Handle 👍/👎 feedback button presses."""
+    try:
+        user_id = str(call.from_user.id)
+        if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
+            core.bot.answer_callback_query(call.id, "Non autorizzato")
+            return
+
+        parts = str(call.data or "").split(":", 2)
+        if len(parts) < 2 or parts[0] != "fb":
+            core.bot.answer_callback_query(call.id, "Azione non valida")
+            return
+
+        label = parts[1]
+        interaction_id = parts[2] if len(parts) > 2 else ""
+
+        if label == "good":
+            quality_label = "good"
+            quality_score = 4
+            emoji = "👍"
+        elif label == "bad":
+            quality_label = "poor"
+            quality_score = 2
+            emoji = "👎"
+        else:
+            core.bot.answer_callback_query(call.id, "Non riconosciuto")
+            return
+
+        chat_str = str(call.message.chat.id)
+        session_id = core.get_session(chat_str)
+        ok = core.submit_feedback_to_archive(
+            session_id=session_id,
+            interaction_id=interaction_id,
+            quality_label=quality_label,
+            quality_score=quality_score,
+            tags=["telegram_inline"],
+        )
+
+        if ok:
+            core.bot.edit_message_text(
+                f"{emoji} <i>Grazie per il feedback</i>",
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode="HTML",
+            )
+        else:
+            core.bot.edit_message_text(
+                f"{emoji} <i>Feedback registrato</i>",
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode="HTML",
+            )
+        core.bot.answer_callback_query(call.id, "Registrato")
+    except Exception as exc:
+        logger.warning("event=feedback_callback_error error=%s", exc)
+        try:
+            core.bot.answer_callback_query(call.id, "Errore")
+        except Exception:
+            pass
+
+
+def handle_snooze_feedback_command(message):
+    """Handle /snooze_feedback slash command."""
+    if not is_authorized(message):
+        return
+    chat_str = str(message.chat.id)
+    until_iso = core.snooze_feedback(chat_str)
+    if until_iso:
+        core.bot.reply_to(
+            message,
+            f"🔕 Feedback sospesi fino al <b>{until_iso[:10]}</b>.",
+            parse_mode="HTML",
+        )
+    else:
+        core.bot.reply_to(
+            message,
+            "⚠️ Non è stato possibile sospendere i feedback. Riprova.",
+        )
+
+
+def handle_feedback_command(message):
+    """Handle /feedback good|bad [reason] slash command."""
+    if not is_authorized(message):
+        return
+    args = str(message.text or "").strip().split()
+    if len(args) < 2 or args[1].lower() not in ("good", "bad"):
+        core.bot.reply_to(
+            message,
+            "Usa: /feedback good oppure /feedback bad [motivo]",
+        )
+        return
+    label = args[1].lower()
+    reason = " ".join(args[2:]) if len(args) > 2 else ""
+    chat_str = str(message.chat.id)
+    session_id = core.get_session(chat_str)
+    quality_label = "good" if label == "good" else "poor"
+    quality_score = 4 if label == "good" else 2
+    ok = core.submit_feedback_to_archive(
+        session_id=session_id,
+        quality_label=quality_label,
+        quality_score=quality_score,
+        feedback_text=reason,
+        tags=["telegram_command"],
+    )
+    if ok:
+        core.bot.reply_to(
+            message,
+            f"👍 Feedback '<b>{quality_label}</b>' registrato.",
+            parse_mode="HTML",
+        )
+    else:
+        core.bot.reply_to(
+            message,
+            "⚠️ Feedback non registrato. Riprova.",
+        )

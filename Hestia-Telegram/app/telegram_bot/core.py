@@ -85,6 +85,170 @@ ALERT_BUFFER_LOCK = threading.Lock()
 ALERT_BUFFER_TIMERS: dict[str, threading.Timer] = {}  # chat_id -> timer
 ALERT_BUFFER_WINDOW = float(os.getenv("ALERT_BUFFER_WINDOW_SECONDS", "0.8"))
 
+# ── Feedback prompting ──────────────────────────────────────────────────────
+FEEDBACK_PROMPT_RATE = float(os.getenv("TELEGRAM_FEEDBACK_PROMPT_RATE", "0.15"))
+FEEDBACK_SNOOZE_DEFAULT_DAYS = int(os.getenv("FEEDBACK_SNOOZE_DEFAULT_DAYS", "7"))
+FEEDBACK_ARCHIVE_URL = os.getenv(
+    "FEEDBACK_ARCHIVE_URL",
+    f"{HUB_API_URL}/route/archive/api/feedback",
+)
+
+_feedback_turn_counts: dict[str, int] = {}
+_feedback_eligibility_lock = threading.Lock()
+
+
+def _is_feedback_eligible(message_text: str, has_tools: bool = False) -> bool:
+    """Check if this turn should get a feedback prompt."""
+    text = str(message_text or "").strip().lower()
+    if not text or len(text) < 10:
+        return False
+    # Skip greetings and trivial messages
+    greetings = {"ciao", "hey", "ehi", "buongiorno", "buonasera", "ok", "grazie"}
+    if text in greetings or any(text.startswith(g) for g in greetings if len(g) > 3):
+        return False
+    # Always skip commands
+    if text.startswith("/"):
+        return False
+    return True
+
+
+def _is_feedback_snoozed(chat_id: str) -> bool:
+    """Check if feedback prompting is snoozed for this chat."""
+    try:
+        resp = requests.get(
+            f"{HUB_API_URL}/route/archive/api/memory/active?domain=controls",
+            json={
+                "method": "GET", "headers": {}, "query": {
+                    "domain": "controls",
+                }, "body": None, "timeout_seconds": 5,
+            },
+            timeout=9,
+        )
+        if resp.status_code != 200:
+            return False
+        routed = resp.json() if resp.content else {}
+        memories = (routed or {}).get("payload", [])
+        if not isinstance(memories, list):
+            return False
+        for mem in memories:
+            fact = str(mem.get("fact", "") or mem.get("content", ""))
+            if "feedback_prompting_paused_until" in fact:
+                # Extract ISO date
+                import re as _re
+                import datetime as _dt
+                match = _re.search(
+                    r"feedback_prompting_paused_until=(\S+)", fact)
+                if match:
+                    try:
+                        until = _dt.datetime.fromisoformat(
+                            match.group(1).replace("Z", "+00:00"))
+                        if until > _dt.datetime.now(_dt.timezone.utc):
+                            return True
+                    except (ValueError, TypeError):
+                        pass
+        return False
+    except Exception:
+        return False
+
+
+def should_show_feedback_prompt(chat_id: str, message_text: str, has_tools: bool = False) -> bool:
+    """Decide whether to show feedback UI after this turn."""
+    if not _is_feedback_eligible(message_text, has_tools):
+        return False
+    if _is_feedback_snoozed(chat_id):
+        return False
+    with _feedback_eligibility_lock:
+        count = _feedback_turn_counts.get(chat_id, 0) + 1
+        _feedback_turn_counts[chat_id] = count
+    # Always prompt on first eligible turn; afterward at random rate
+    if count == 1:
+        return True
+    import random
+    return random.random() < FEEDBACK_PROMPT_RATE
+
+
+def build_feedback_keyboard(interaction_id: str = "") -> "types.InlineKeyboardMarkup":
+    """Build the inline 👍/👎 keyboard for feedback."""
+    from telebot import types
+    markup = types.InlineKeyboardMarkup()
+    markup.row(
+        types.InlineKeyboardButton(
+            "👍", callback_data=f"fb:good:{interaction_id}"),
+        types.InlineKeyboardButton(
+            "👎", callback_data=f"fb:bad:{interaction_id}"),
+    )
+    return markup
+
+
+def submit_feedback_to_archive(
+    session_id: str,
+    interaction_id: str = "",
+    quality_label: str = "mixed",
+    quality_score: int = None,
+    feedback_text: str = "",
+    tags: list = None,
+) -> bool:
+    """Submit a feedback grade to Archive via Hub routing."""
+    try:
+        body = {
+            "session_id": session_id,
+            "interaction_id": interaction_id,
+            "quality_label": quality_label,
+        }
+        if quality_score is not None:
+            body["quality_score"] = quality_score
+        if feedback_text:
+            body["feedback_text"] = feedback_text
+        if tags:
+            body["tags"] = tags
+        envelope = {
+            "method": "POST",
+            "headers": {},
+            "query": {},
+            "body": body,
+            "timeout_seconds": 6,
+        }
+        resp = requests.post(
+            FEEDBACK_ARCHIVE_URL,
+            json=envelope,
+            timeout=10,
+        )
+        return resp.status_code < 400
+    except Exception:
+        return False
+
+
+def snooze_feedback(chat_id: str, days: int = FEEDBACK_SNOOZE_DEFAULT_DAYS) -> str:
+    """Save a snooze preference to Archive. Returns until-ISO string."""
+    import datetime as _dt
+    until = _dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(days=days)
+    until_iso = until.isoformat()
+    fact = f"feedback_prompting_paused_until={until_iso}"
+    try:
+        resp = requests.post(
+            f"{HUB_API_URL}/route/archive/api/memory",
+            json={
+                "method": "POST",
+                "headers": {},
+                "query": {},
+                "body": {
+                    "domain": "controls",
+                    "fact": fact,
+                    "memory_class": "durable_user_preference",
+                    "owner": str(chat_id),
+                },
+                "timeout_seconds": 8,
+            },
+            timeout=12,
+        )
+        if resp.status_code < 400:
+            LOGGER.info(
+                "event=feedback_snoozed chat_id=%s until=%s", chat_id, until_iso)
+            return until_iso
+    except Exception as exc:
+        LOGGER.warning("event=feedback_snooze_failed error=%s", exc)
+    return ""
+
 
 def resolve_oracle_chat_url() -> str:
     try:

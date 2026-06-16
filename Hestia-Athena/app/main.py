@@ -268,3 +268,77 @@ def athena_observation() -> dict[str, Any]:
         "status": "ok",
         "observation": snapshot.model_dump(),
     }
+
+
+# ── MCP tools ──────────────────────────────────────────────────────────────────
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+    from .core.auditor import ConversationAuditor
+
+    _ATHENA_HUB_URL = os.getenv(
+        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+
+    def _athena_audit_handler(
+        session_id: str = "",
+        limit: int = 20,
+    ) -> dict:
+        """Run a quality audit on recent conversation turns."""
+        auditor = ConversationAuditor(_ATHENA_HUB_URL)
+        result = auditor.audit_session(
+            session_id=str(session_id or "").strip(),
+            limit=int(limit) if limit else 20,
+        )
+        return result
+
+    _athena_mcp_tools = [
+        MCPTool(
+            name="athena_audit_conversation",
+            description=(
+                "Run a quality audit on recent conversation turns using the "
+                "26B reasoning model. Scores style adherence, accuracy, and "
+                "usefulness for each assistant turn. Persists scores via "
+                "Archive's feedback_submit. On-demand only — no automated loop."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "description": "Session identifier to audit",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "description": "Max conversation turns to pull (default 20)",
+                    },
+                },
+                "required": ["session_id"],
+            },
+            handler=_athena_audit_handler,
+            title="🔍 Audita conversazione",
+            method="POST",
+            path="/api/athena/audit/conversation",
+            clients=["telegram", "ui"],
+            response_mode="oracle_natural",
+            response_prompt=(
+                "Riporta i risultati dell'audit in modo chiaro: numero di "
+                "risposte valutate e distribuzione dei punteggi per stile, "
+                "accuratezza e utilità. Sii conciso."
+            ),
+            telegram_visible=True,
+            telegram_group="chat",
+        ),
+    ]
+    app.include_router(
+        create_mcp_router(_athena_mcp_tools, service_name="athena")
+    )
+    logger.info(
+        "event=mcp_router_mounted service=athena tools=%d",
+        len(_athena_mcp_tools),
+    )
+except ModuleNotFoundError:
+    logger.info(
+        "event=mcp_router_skipped service=athena "
+        "reason=hestia_common_not_available"
+    )
