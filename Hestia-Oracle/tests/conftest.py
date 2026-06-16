@@ -63,43 +63,32 @@ def _make_agent_mock(default_response: str = "ok") -> MagicMock:
 
 
 @pytest.fixture()
-def mock_analyst_agent():
-    return _make_agent_mock("Mock analyst answer.")
-
-
-@pytest.fixture()
-def mock_router_agent():
-    """Router always returns quick_chat classification by default."""
-    agent = _make_agent_mock(
-        json.dumps({"domains": ["general"], "filters": {}, "filters_gt": {
-        }, "filters_lt": {}, "sort_by": None, "sort_order": "desc"})
-    )
+def mock_generic_agent():
+    """Generic agent handles chat, classify, tools, memory — everything."""
+    agent = _make_agent_mock("Mock generic answer.")
+    # For classify calls, return valid JSON
+    agent.ask.return_value = json.dumps({
+        "mode": "quick_chat", "domain": None, "confidence": 0.9,
+        "domains": ["general"], "filters": {}, "filters_gt": {},
+        "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+        "action_intent": False,
+    })
     return agent
 
 
 @pytest.fixture()
-def mock_scribe_agent():
-    return _make_agent_mock("NONE")
-
-
-@pytest.fixture()
-def mock_agent_bundle(mock_analyst_agent, mock_router_agent, mock_scribe_agent):
-    """Full AgentBundle with all agents mocked."""
+def mock_agent_bundle(mock_generic_agent):
+    """Full AgentBundle with use-case agents mocked."""
     bundle = MagicMock()
-    bundle.analyst = mock_analyst_agent
-    bundle.fallback_analyst = _make_agent_mock("Fallback analyst answer.")
-    bundle.router = mock_router_agent
-    bundle.fallback_router = _make_agent_mock(
-        json.dumps({"domains": ["general"], "filters": {}, "filters_gt": {
-        }, "filters_lt": {}, "sort_by": None, "sort_order": "desc"})
-    )
-    bundle.scribe = mock_scribe_agent
-    bundle.fallback_scribe = _make_agent_mock("NONE")
-    bundle.embedder = _make_agent_mock("")
-    bundle.fallback_embedder = _make_agent_mock("")
-    bundle.coder = _make_agent_mock("")
-    bundle.fallback_coder = _make_agent_mock("")
-    bundle.analyst_model_name = "mock-model"
+    bundle.generic = mock_generic_agent
+    bundle.generic_fallback = _make_agent_mock("Fallback generic answer.")
+    bundle.reasoning = _make_agent_mock("Mock reasoning answer.")
+    bundle.reasoning_fallback = _make_agent_mock("Fallback reasoning answer.")
+    bundle.code = _make_agent_mock("Mock code answer.")
+    bundle.code_fallback = _make_agent_mock("Fallback code answer.")
+    bundle.embedding = _make_agent_mock("")
+    bundle.embedding_fallback = _make_agent_mock("")
+    bundle.generic_model_name = "mock-model"
     return bundle
 
 

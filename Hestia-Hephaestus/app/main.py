@@ -106,6 +106,94 @@ app = FastAPI(title="Hestia Hephaestus",
               version=config.service_version, lifespan=lifespan)
 app.include_router(create_hephaestus_router(remediation_service))
 
+# ─────────────────────────────────────────────────────────────────────
+#  MCP tools
+# ─────────────────────────────────────────────────────────────────────
+
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+
+    _hephaestus_mcp_tools = [
+        MCPTool(
+            name="hephaestus_status",
+            description="Mostra lo stato del motore di remediation",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "hephaestus_status", "params": kw},
+            title="Hephaestus stato", method="GET", path="/api/hephaestus/status",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="hephaestus_tasks",
+            description="Lista task remediation recenti",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "hephaestus_tasks", "params": kw},
+            title="Hephaestus task remediation", method="GET", path="/api/hephaestus/tasks",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="hephaestus_remediate",
+            description="Crea un task remediation policy-gated",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "source": {"type": "string", "description": "Origine richiesta (argus/oracle/user)"},
+                    "service": {"type": "string", "description": "Servizio target"},
+                    "issue": {"type": "string", "description": "Incidente rilevato"},
+                    "severity": {"type": "string", "description": "warning|error|critical"},
+                    "requested_action": {"type": "string", "description": "Azione richiesta"},
+                    "environment": {"type": "string", "description": "dev|staging|prod"},
+                    "dry_run": {"type": "boolean", "description": "Esecuzione dry-run"},
+                    "auto_approve": {"type": "boolean", "description": "Auto-approvazione policy-gated"},
+                },
+                "required": ["service", "issue"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "hephaestus_remediate", "params": kw},
+            title="Avvia remediation", method="POST", path="/api/hephaestus/remediate",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="hephaestus_approve",
+            description="Approva ed esegue un task remediation pendente",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task remediation ID"},
+                    "approved_by": {"type": "string", "description": "Attore approvatore"},
+                    "note": {"type": "string", "description": "Nota approvazione"},
+                },
+                "required": ["task_id"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "hephaestus_approve", "params": kw},
+            title="Approva remediation", method="POST", path="/api/hephaestus/remediate/$task_id/approve",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="hephaestus_rollback",
+            description="Esegue rollback logico di un task remediation",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task remediation ID"},
+                    "requested_by": {"type": "string", "description": "Attore rollback"},
+                    "reason": {"type": "string", "description": "Motivazione rollback"},
+                },
+                "required": ["task_id"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "hephaestus_rollback", "params": kw},
+            title="Rollback remediation", method="POST", path="/api/hephaestus/remediate/$task_id/rollback",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+    ]
+    app.include_router(create_mcp_router(_hephaestus_mcp_tools, service_name="hephaestus"))
+    logger.info("event=mcp_router_mounted service=hephaestus")
+except ModuleNotFoundError:
+    logger.info("event=mcp_router_skipped service=hephaestus reason=hestia_common_not_available")
+
 
 @app.get("/health")
 def health() -> dict[str, Any]:

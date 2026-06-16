@@ -31,6 +31,101 @@ logger, log_buffer = setup_service_logging("hestia_hecate")
 app = FastAPI(title="Hestia-Hecate Gateway", version="3.1")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
+
+# ─────────────────────────────────────────────────────────────────────
+#  MCP tools
+# ─────────────────────────────────────────────────────────────────────
+
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+
+    _hecate_mcp_tools = [
+        MCPTool(
+            name="sync_calendar",
+            description="Sincronizza gli eventi del calendario da Google e Outlook in Hestia",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "sources": {"type": "array", "items": {"type": "string"}, "description": "Calendar fetcher sources: gcal, outlook_calendar"},
+                    "calendar_id": {"type": "string", "description": "Calendar ID to fetch from each provider"},
+                },
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "sync_calendar", "params": kw},
+            title="\U0001f504 Sincronizza calendario", method="POST", path="/api/ingest/calendar/trigger",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Conferma la sincronizzazione del calendario. Indica quanti eventi "
+                "sono stati trovati per ogni provider (Google, Outlook). "
+                "Sii conciso e usa un tono da assistente."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="gateway_auth_status",
+            description="Verifica quali provider (Google, Outlook) sono autenticati e attivi",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_status", "params": kw},
+            title="\U0001f510 Stato autenticazione provider", method="GET", path="/api/gateway/auth/status",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Elenca i provider configurati e il loro stato di autenticazione. "
+                "Sii diretto e usa un tono da assistente."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="gateway_auth_initiate_google",
+            description="Avvia il flusso OAuth per Google Calendar",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_initiate_google", "params": kw},
+            title="\U0001f511 Connetti Google Calendar", method="POST", path="/api/gateway/auth/initiate/google",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Presenta il link di autorizzazione Google all'utente. "
+                "Invita l'utente ad aprire il link, concedere l'accesso e poi "
+                "inviare il codice via POST /api/gateway/auth/complete/google."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="gateway_auth_initiate_microsoft",
+            description="Avvia il flusso device-code OAuth per Outlook/Microsoft",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_initiate_microsoft", "params": kw},
+            title="\U0001f511 Connetti Outlook Calendar", method="POST", path="/api/gateway/auth/initiate/microsoft",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Presenta il codice device e l'URL di verifica Microsoft all'utente. "
+                "Invita l'utente ad aprire l'URL e inserire il codice. "
+                "Poi usa GET /api/gateway/auth/poll/microsoft per verificare il completamento."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="gateway_auth_poll",
+            description="Controlla se l'utente ha completato il flusso OAuth",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "provider": {"type": "string", "description": "Provider da verificare (google, microsoft)"},
+                },
+                "required": ["provider"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_poll", "params": kw},
+            title="⏳ Verifica completamento autenticazione", method="GET", path="/api/gateway/auth/poll/{provider}",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Comunica all'utente se l'autenticazione è stata completata con successo "
+                "o se è ancora in attesa. Sii diretto."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+    ]
+    app.include_router(create_mcp_router(_hecate_mcp_tools, service_name="hecate"))
+    logger.info("event=mcp_router_mounted service=hecate")
+except ModuleNotFoundError:
+    logger.info("event=mcp_router_skipped service=hecate reason=hestia_common_not_available")
+
 vault = ArchiveClient(api_url="")
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
 _calendar_registry = CalendarProviderRegistry()
@@ -213,81 +308,7 @@ def register_on_hub_startup():
         "capabilities": {
             "ingest_trigger": "/api/ingest/trigger",
             "calendar_sync": "/api/ingest/calendar/trigger",
-            "commands": [
-                {
-                    "command": "sync_calendar",
-                    "title": "🔄 Sincronizza calendario",
-                    "description": "Sincronizza gli eventi del calendario da Google e Outlook in Hestia",
-                    "method": "POST",
-                    "path": "/api/ingest/calendar/trigger",
-                    "body_template": {},
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": (
-                        "Conferma la sincronizzazione del calendario. Indica quanti eventi "
-                        "sono stati trovati per ogni provider (Google, Outlook). "
-                        "Sii conciso e usa un tono da assistente."
-                    ),
-                },
-                {
-                    "command": "gateway_auth_status",
-                    "title": "🔐 Stato autenticazione provider",
-                    "description": "Verifica quali provider (Google, Outlook) sono autenticati e attivi",
-                    "method": "GET",
-                    "path": "/api/gateway/auth/status",
-                    "body_template": {},
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": (
-                        "Elenca i provider configurati e il loro stato di autenticazione. "
-                        "Sii diretto e usa un tono da assistente."
-                    ),
-                },
-                {
-                    "command": "gateway_auth_initiate_google",
-                    "title": "🔑 Connetti Google Calendar",
-                    "description": "Avvia il flusso OAuth per Google Calendar",
-                    "method": "POST",
-                    "path": "/api/gateway/auth/initiate/google",
-                    "body_template": {},
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": (
-                        "Presenta il link di autorizzazione Google all'utente. "
-                        "Invita l'utente ad aprire il link, concedere l'accesso e poi "
-                        "inviare il codice via POST /api/gateway/auth/complete/google."
-                    ),
-                },
-                {
-                    "command": "gateway_auth_initiate_microsoft",
-                    "title": "🔑 Connetti Outlook Calendar",
-                    "description": "Avvia il flusso device-code OAuth per Outlook/Microsoft",
-                    "method": "POST",
-                    "path": "/api/gateway/auth/initiate/microsoft",
-                    "body_template": {},
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": (
-                        "Presenta il codice device e l'URL di verifica Microsoft all'utente. "
-                        "Invita l'utente ad aprire l'URL e inserire il codice. "
-                        "Poi usa GET /api/gateway/auth/poll/microsoft per verificare il completamento."
-                    ),
-                },
-                {
-                    "command": "gateway_auth_poll",
-                    "title": "⏳ Verifica completamento autenticazione",
-                    "description": "Controlla se l'utente ha completato il flusso OAuth",
-                    "method": "GET",
-                    "path": "/api/gateway/auth/poll/{provider}",
-                    "body_template": {"provider": "google"},
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": (
-                        "Comunica all'utente se l'autenticazione è stata completata con successo "
-                        "o se è ancora in attesa. Sii diretto."
-                    ),
-                },
-            ],
+            "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
         },
     }
     try:

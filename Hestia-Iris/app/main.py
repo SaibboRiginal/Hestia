@@ -32,6 +32,83 @@ app = FastAPI(title="Hestia-Iris", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 
+# ─────────────────────────────────────────────────────────────────────
+#  MCP tools
+# ─────────────────────────────────────────────────────────────────────
+
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+
+    _iris_mcp_tools = [
+        MCPTool(
+            name="email_search",
+            description="Cerca messaggi email per testo",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string", "description": "Testo da cercare"},
+                    "limit": {"type": "integer", "description": "Numero massimo risultati (max 200)"},
+                },
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "email_search", "params": kw},
+            title="Email - Cerca messaggi", method="GET", path="/api/email/messages",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="altro",
+        ),
+        MCPTool(
+            name="email_send",
+            description="Invia una email",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Destinatario"},
+                    "subject": {"type": "string", "description": "Oggetto"},
+                    "body": {"type": "string", "description": "Corpo del messaggio"},
+                    "thread_id": {"type": "string", "description": "ID thread per rispondere in un thread esistente"},
+                },
+                "required": ["to", "subject", "body"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "email_send", "params": kw},
+            title="Email - Invia", method="POST", path="/api/email/send",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="altro",
+        ),
+        MCPTool(
+            name="email_thread",
+            description="Mostra un thread email",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "ID del thread"},
+                },
+                "required": ["id"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "email_thread", "params": kw},
+            title="Email - Thread", method="GET", path="/api/email/threads/$arg.id",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="altro",
+        ),
+        MCPTool(
+            name="iris_reconcile",
+            description="Esegue manutenzione di riconciliazione nel modulo Iris",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "dry_run": {"type": "boolean", "description": "Se true esegue solo simulazione senza modifiche"},
+                },
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "iris_reconcile", "params": kw},
+            title="\U0001f6e0️ Riconcilia email", method="POST", path="/api/module/maintenance/reconcile",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Riassumi l'esito della riconciliazione Iris, indicando lo stato del modulo email.",
+            telegram_visible=True, telegram_group="altro",
+        ),
+    ]
+    app.include_router(create_mcp_router(_iris_mcp_tools, service_name="iris"))
+    logger.info("event=mcp_router_mounted service=iris")
+except ModuleNotFoundError:
+    logger.info("event=mcp_router_skipped service=iris reason=hestia_common_not_available")
+
 _MESSAGES: list[dict[str, Any]] = []
 
 
@@ -86,59 +163,7 @@ def register_on_hub_startup() -> None:
         "tags": ["module", "integration"],
         "topology_tags": ["layer:domain", "domain:email", "status:experimental"],
         "capabilities": {
-            "commands": [
-                {
-                    "command": "email_search",
-                    "title": "Email - Cerca messaggi",
-                    "description": "Cerca messaggi email per testo",
-                    "method": "GET",
-                    "path": "/api/email/messages",
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                },
-                {
-                    "command": "email_send",
-                    "title": "Email - Invia",
-                    "description": "Invia una email",
-                    "method": "POST",
-                    "path": "/api/email/send",
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                },
-                {
-                    "command": "email_thread",
-                    "title": "Email - Thread",
-                    "description": "Mostra un thread email",
-                    "method": "GET",
-                    "path": "/api/email/threads/$arg.id",
-                    "arguments_help": "id=<thread_id>",
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                },
-                {
-                    "command": "iris_reconcile",
-                    "title": "🛠️ Riconcilia email",
-                    "description": "Esegue manutenzione di riconciliazione nel modulo Iris",
-                    "method": "POST",
-                    "path": "/api/module/maintenance/reconcile",
-                    "body_template": {
-                        "source": "oracle",
-                        "requested_action": "reconcile_email",
-                        "dry_run": True,
-                        "metadata": {},
-                    },
-                    "arguments_schema": {
-                        "dry_run": {
-                            "type": "boolean",
-                            "required": False,
-                            "description": "Se true esegue solo simulazione senza modifiche",
-                        },
-                    },
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": "Riassumi l'esito della riconciliazione Iris, indicando lo stato del modulo email.",
-                },
-            ]
+            "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp"
         },
     }
 

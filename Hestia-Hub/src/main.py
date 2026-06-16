@@ -29,7 +29,7 @@ except ModuleNotFoundError:
         setup_service_logging,
     )
 
-from .modules.discovery import discover_commands, discover_module_tools
+from .modules.discovery import discover_module_tools
 from .modules.events import RegistryEvents
 from .modules.registry import ServiceRegistry
 from .modules.router import proxy_request
@@ -141,11 +141,6 @@ def list_services():
 def module_tools_discovery():
     return {"mapping": discover_module_tools(registry)}
 
-
-@app.get("/api/discovery/commands")
-def discovery_commands_endpoint(client: str | None = None):
-    commands = discover_commands(registry, client_key=client or "")
-    return {"commands": commands}
 
 # ── Standards ─────────────────────────────────────────────────────────────────
 

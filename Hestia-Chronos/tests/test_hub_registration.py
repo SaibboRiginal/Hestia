@@ -5,7 +5,7 @@ class _DummyResponse:
     status_code = 200
 
 
-def test_register_on_hub_payload_contains_topology_and_commands(monkeypatch):
+def test_register_on_hub_payload_contains_topology_and_mcp(monkeypatch):
     captured = {}
 
     def fake_post(url, json, timeout):
@@ -29,11 +29,11 @@ def test_register_on_hub_payload_contains_topology_and_commands(monkeypatch):
         "domain:calendar",
         "status:stable",
     ]
-    command_names = {row.get("command")
-                     for row in payload["capabilities"]["commands"]}
-    assert "agenda" in command_names
-    assert "create_event" in command_names
-    assert "calendar_list_events" in command_names
-    assert "calendar_create_event" in command_names
-    assert "calendar_update_event" in command_names
-    assert "calendar_delete_event" in command_names
+
+    # MCP endpoint must be present (replaces legacy commands list)
+    caps = payload["capabilities"]
+    assert "mcp_endpoint" in caps, f"Expected mcp_endpoint in capabilities, got keys: {list(caps.keys())}"
+    assert caps["mcp_endpoint"].endswith("/mcp")
+
+    # Tool endpoints still present for backward compat
+    assert "tool_endpoints" in caps

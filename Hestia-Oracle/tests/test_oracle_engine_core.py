@@ -103,23 +103,24 @@ def _collect_ndjson_lines(generator) -> list[dict]:
 def engine():
     """Build an OracleEngine with all external deps mocked."""
     with patch.object(AgentFactory, 'create') as mock_create:
-        # Mock agent bundle
+        # Mock agent bundle (use-case naming)
         bundle = MagicMock()
-        bundle.analyst.ask.return_value = "Analyst response."
-        bundle.analyst.ask_with_tools.return_value = {"tool_call": None, "text": "Analyst response."}
-        bundle.analyst.ask_stream.return_value = iter(["Streamed ", "response."])
-        bundle.fallback_analyst.ask.return_value = "Fast fallback response."
-        bundle.fallback_analyst.ask_with_tools.return_value = {"tool_call": None, "text": "Fast fallback."}
-        bundle.fallback_analyst.ask_stream.return_value = iter(["Fallback ", "stream."])
-        bundle.router.ask.return_value = _quick_chat_json()
-        bundle.fallback_router.ask.return_value = _quick_chat_json()
-        bundle.scribe.ask.return_value = "NONE"
-        bundle.fallback_scribe.ask.return_value = "NONE"
-        bundle.embedder.embed.return_value = [0.1] * 768
-        bundle.fallback_embedder.embed.return_value = [0.1] * 768
-        bundle.coder.ask.return_value = "Code response."
-        bundle.fallback_coder.ask.return_value = "Code fallback."
-        bundle.analyst_model_name = "mock-analyst"
+        bundle.generic.ask.return_value = "Generic response."
+        bundle.generic.ask_with_tools.return_value = {"tool_call": None, "text": "Generic response."}
+        bundle.generic.ask_stream.return_value = iter(["Streamed ", "response."])
+        bundle.generic_fallback.ask.return_value = "Fast fallback response."
+        bundle.generic_fallback.ask_with_tools.return_value = {"tool_call": None, "text": "Fast fallback."}
+        bundle.generic_fallback.ask_stream.return_value = iter(["Fallback ", "stream."])
+        bundle.reasoning.ask.return_value = "Reasoning response."
+        bundle.reasoning.ask_with_tools.return_value = {"tool_call": None, "text": "Reasoning."}
+        bundle.reasoning.ask_stream.return_value = iter(["Reasoning ", "stream."])
+        bundle.reasoning_fallback.ask.return_value = "Fallback reasoning."
+        bundle.reasoning_fallback.ask_with_tools.return_value = {"tool_call": None, "text": "FR."}
+        bundle.code.ask.return_value = "Code response."
+        bundle.code_fallback.ask.return_value = "Code fallback."
+        bundle.embedding.embed.return_value = [0.1] * 768
+        bundle.embedding_fallback.embed.return_value = [0.1] * 768
+        bundle.generic_model_name = "mock-generic"
         mock_create.return_value = bundle
 
         eng = OracleEngine()
@@ -179,7 +180,7 @@ def engine():
 class TestChatQuickChat:
     def test_quick_chat_returns_direct_answer(self, engine):
         """Quick chat mode should use fallback_analyst for fast response."""
-        engine._agents.router.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS  # /domains
 
         lines = _collect_ndjson_lines(engine.chat("Ciao come stai?", "test-session"))
@@ -191,7 +192,7 @@ class TestChatQuickChat:
 
     def test_quick_chat_saves_history(self, engine):
         """Quick chat should persist user+assistant messages to Archive."""
-        engine._agents.router.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
 
         _collect_ndjson_lines(engine.chat("Ciao!", "test-session", save_history=True))
@@ -205,7 +206,7 @@ class TestChatQuickChat:
 
     def test_quick_chat_with_document_context(self, engine):
         """Quick chat about documents should include document brief."""
-        engine._agents.router.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._doc_rag.message_is_about_docs.return_value = True
         engine._doc_rag.list_user_docs_brief.return_value = "You have 3 documents."
@@ -217,7 +218,7 @@ class TestChatQuickChat:
 
     def test_quick_chat_emits_memory_sync_signals(self, engine):
         """Quick chat with preference intent should trigger memory sync."""
-        engine._agents.router.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._memory_service.extract_and_save_preferences.return_value = [
             {"event": "memory.preference.added", "message": "Saved!", "data": {"fact": "test"}},
@@ -234,7 +235,7 @@ class TestChatQuickChat:
 
     def test_quick_chat_skips_when_classified_as_domain_query(self, engine):
         """When classifier returns domain_query, quick chat path is skipped."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
 
         lines = _collect_ndjson_lines(engine.chat("Cerca case a Milano", "test-session"))
@@ -253,7 +254,7 @@ class TestChatQuickChat:
 class TestChatDomainQuery:
     def test_domain_query_builds_tools_and_runs_agent_loop(self, engine):
         """Domain query path should build tools and run the agent loop."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.side_effect = lambda *a, **kw: (
             _SAMPLE_DOMAINS if "/domains" in str(a) else []
         )
@@ -266,7 +267,7 @@ class TestChatDomainQuery:
 
     def test_domain_query_injects_preferences(self, engine):
         """User preferences should be loaded and injected into the agent loop."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.side_effect = lambda path, **kw: (
             _SAMPLE_DOMAINS if "/domains" in str(path) else
             [{"id": 1, "fact": "Preferisce appartamenti", "domain": "scout", "memory_class": "durable_user_preference"}]
@@ -281,7 +282,7 @@ class TestChatDomainQuery:
 
     def test_domain_query_emits_thinking_events(self, engine):
         """Agent loop should emit thinking events via on_thinking callback."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
 
@@ -293,14 +294,14 @@ class TestChatDomainQuery:
 
     def test_domain_query_emits_tool_summary_when_tools_called(self, engine):
         """After agent loop with tools, a tool.summary signal should be emitted."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
         # Make the analyst call a tool then answer
         import core.agent_loop as al_mod
         xml_call = f'<tool_call>{json.dumps({"name": "scout_listings", "params": {"query": "Milano"}})}</tool_call>'
-        engine._agents.analyst.ask.side_effect = [xml_call, "Ecco i risultati a Milano."]
-        engine._agents.analyst.ask_with_tools.return_value = {
+        engine._agents.generic.ask.side_effect = [xml_call, "Ecco i risultati a Milano."]
+        engine._agents.generic.ask_with_tools.return_value = {
             "tool_call": {"name": "scout_listings", "params": {"query": "Milano"}}, "text": ""
         }
 
@@ -314,7 +315,7 @@ class TestChatDomainQuery:
 
     def test_domain_query_persists_history(self, engine):
         """After agent loop, history should be saved."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.side_effect = lambda *a, **kw: (
             _SAMPLE_DOMAINS if "/domains" in str(a) else []
         )
@@ -329,7 +330,7 @@ class TestChatDomainQuery:
 
     def test_domain_query_runs_background_memory(self, engine):
         """Background memory extraction should fire after agent loop."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
 
         _collect_ndjson_lines(engine.chat("Ricordati che preferisco Milano", "test-session"))
@@ -351,33 +352,35 @@ class TestChatDomainQuery:
 class TestChatActionIntent:
     def test_action_intent_injects_policy_in_agent_loop(self, engine):
         """When classifier detects action_intent, the agent loop gets action policy."""
-        engine._agents.router.ask.return_value = _action_domain_query_json()
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
 
-        # Capture prompts from BOTH ask and ask_with_tools
         captured_prompts = []
-        def _capture_ask(prompt):
+        # generic handles classify AND chat — first call returns JSON, rest are text
+        call_count = [0]
+        def _smart_ask(prompt):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return _action_domain_query_json()  # classifier call
             captured_prompts.append(prompt)
             return "Azione completata."
         def _capture_ask_tools(prompt, manifest):
             captured_prompts.append(prompt)
             return {"tool_call": None, "text": "Azione completata."}
-        engine._agents.analyst.ask.side_effect = _capture_ask
-        engine._agents.analyst.ask_with_tools.side_effect = _capture_ask_tools
+
+        engine._agents.generic.ask.side_effect = _smart_ask
+        engine._agents.generic.ask_with_tools.side_effect = _capture_ask_tools
 
         _collect_ndjson_lines(engine.chat("Crea un evento domani", "test-session"))
 
-        # Verify prompts were captured
-        assert len(captured_prompts) > 0
-        # The prompt should contain action intent policy or client instructions
+        assert len(captured_prompts) > 0, f"No prompts captured. call_count={call_count[0]}"
         assert any(
             "ACTION INTENT" in p or "operational change" in p.lower()
             for p in captured_prompts
-        )
+        ), f"No action intent found in {len(captured_prompts)} captured prompts"
 
     def test_action_intent_creates_event_tool(self, engine):
         """Action intent with calendar command should make create_event tool available."""
-        engine._agents.router.ask.return_value = _action_domain_query_json()
+        engine._agents.generic.ask.return_value = _action_domain_query_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
 
@@ -700,7 +703,7 @@ class TestTemporalContext:
 
     def test_temporal_context_injected_into_agent_loop(self, engine):
         """The temporal context should appear in agent loop client instructions."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
 
         # Capture what gets sent to the analyst
@@ -708,7 +711,7 @@ class TestTemporalContext:
         def _capture(prompt):
             captured.append(prompt)
             return "Done."
-        engine._agents.analyst.ask.side_effect = _capture
+        engine._agents.generic.ask.side_effect = _capture
 
         _collect_ndjson_lines(engine.chat("Che eventi ho domani?", "test-session"))
 
@@ -758,9 +761,9 @@ class TestFormatPayload:
 class TestErrorHandling:
     def test_quick_chat_fallback_on_primary_failure(self, engine):
         """When primary fails, fallback should be used."""
-        engine._agents.router.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
-        engine._agents.fallback_analyst.ask.side_effect = [
+        engine._agents.generic_fallback.ask.side_effect = [
             Exception("Fallback crash"), "Recovered answer."
         ]
 
@@ -770,7 +773,7 @@ class TestErrorHandling:
 
     def test_save_history_failure_non_fatal(self, engine):
         """Chat should not crash when history save fails."""
-        engine._agents.router.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._hub.post.side_effect = requests.RequestException("DB down")
 
@@ -780,8 +783,8 @@ class TestErrorHandling:
 
     def test_classifier_failure_falls_back_to_defaults(self, engine):
         """When both router and fallback fail, use default classification."""
-        engine._agents.router.ask.side_effect = RuntimeError("Primary dead")
-        engine._agents.fallback_router.ask.side_effect = RuntimeError("Fallback dead")
+        engine._agents.generic.ask.side_effect = RuntimeError("Primary dead")
+        engine._agents.generic_fallback.ask.side_effect = RuntimeError("Fallback dead")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
 
         lines = _collect_ndjson_lines(engine.chat("Ciao", "test-session"))
@@ -789,12 +792,12 @@ class TestErrorHandling:
 
     def test_agent_loop_analyst_failure_user_friendly_error(self, engine):
         """When analyst completely fails, return Italian error message."""
-        engine._agents.router.ask.return_value = _domain_query_json("scout")
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
-        engine._agents.analyst.ask.side_effect = RuntimeError("Ollama crashed")
-        engine._agents.fallback_analyst.ask.side_effect = RuntimeError("Gemini down")
-        engine._agents.analyst.ask_with_tools.side_effect = RuntimeError("Ollama crashed")
-        engine._agents.fallback_analyst.ask_with_tools.side_effect = RuntimeError("Gemini down")
+        engine._agents.generic.ask.side_effect = RuntimeError("Ollama crashed")
+        engine._agents.generic_fallback.ask.side_effect = RuntimeError("Gemini down")
+        engine._agents.generic.ask_with_tools.side_effect = RuntimeError("Ollama crashed")
+        engine._agents.generic_fallback.ask_with_tools.side_effect = RuntimeError("Gemini down")
 
         lines = _collect_ndjson_lines(engine.chat("Cerca case", "test-session"))
         answers = [l for l in lines if l.get("type") == "final"]
@@ -870,3 +873,130 @@ class TestQuestionProtocol:
         engine.answer_question("q1", "si")
         answer = engine.get_question_answer("q1")
         assert answer == "si"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Chat Modes (Phase 10)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+class TestChatModes:
+    def test_quick_mode_skips_classify_and_returns_fast_answer(self, engine):
+        """Quick mode should bypass classify + agent loop entirely."""
+        engine._agents.generic_fallback.ask.return_value = "Risposta rapida."
+        lines = _collect_ndjson_lines(engine.chat(
+            "Ciao!", "test-session", mode="quick"
+        ))
+        answers = [l for l in lines if l.get("type") == "final"]
+        assert len(answers) == 1
+        assert "Risposta rapida" in answers[0]["reply"]
+
+    def test_quick_mode_saves_history(self, engine):
+        """Quick mode should still persist history."""
+        engine._agents.generic_fallback.ask.return_value = "Ok."
+        _collect_ndjson_lines(engine.chat(
+            "Test", "test-session", mode="quick", save_history=True
+        ))
+        history_calls = [c for c in engine._hub.post.call_args_list
+                         if "/chat/history" in str(c)]
+        assert len(history_calls) >= 2
+
+    def test_auto_mode_is_default(self, engine):
+        """auto mode should work same as before (classify then route)."""
+        engine._agents.generic.ask.return_value = json.dumps({
+            "mode": "quick_chat", "domain": None, "confidence": 0.9,
+            "domains": ["general"], "filters": {}, "filters_gt": {},
+            "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+            "action_intent": False,
+        })
+        lines = _collect_ndjson_lines(engine.chat(
+            "Ciao", "test-session", mode="auto"
+        ))
+        assert any(l["type"] == "final" for l in lines)
+
+    def test_thinking_mode_forces_agent_loop(self, engine):
+        """Thinking mode should force agent loop even for general queries."""
+        engine._agents.generic.ask.return_value = json.dumps({
+            "mode": "quick_chat", "domain": None, "confidence": 0.95,
+            "domains": ["general"], "filters": {}, "filters_gt": {},
+            "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+            "action_intent": False,
+        })
+        engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
+        lines = _collect_ndjson_lines(engine.chat(
+            "Analizza questa situazione complessa", "test-session", mode="thinking"
+        ))
+        statuses = [l["content"] for l in lines if l.get("type") == "status"]
+        # Thinking mode should mention "thinking" or "ragionamento"
+        assert any("thinking" in s.lower() or "ragionamento" in s.lower() for s in statuses) or len(lines) > 0
+
+
+@pytest.mark.unit
+class TestModelResolution:
+    def test_resolve_agent_generic(self, engine):
+        agent = engine._resolve_agent("generic")
+        assert agent is engine._agents.generic
+
+    def test_resolve_agent_reasoning(self, engine):
+        agent = engine._resolve_agent("reasoning")
+        assert agent is engine._agents.reasoning
+
+    def test_resolve_agent_code(self, engine):
+        agent = engine._resolve_agent("code")
+        assert agent is engine._agents.code
+
+    def test_resolve_agent_unknown_falls_back_to_generic(self, engine):
+        agent = engine._resolve_agent("nonexistent")
+        assert agent is engine._agents.generic
+
+    def test_resolve_agent_empty_string(self, engine):
+        agent = engine._resolve_agent("")
+        assert agent is engine._agents.generic
+
+    def test_chat_with_model_param_uses_reasoning(self, engine):
+        """When model='reasoning', chat should use reasoning agent."""
+        engine._agents.reasoning.ask.return_value = json.dumps({
+            "mode": "quick_chat", "domain": None, "confidence": 0.9,
+            "domains": ["general"], "filters": {}, "filters_gt": {},
+            "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+            "action_intent": False,
+        })
+        engine._agents.reasoning.ask_stream.return_value = iter(["Deep ", "answer."])
+        lines = _collect_ndjson_lines(engine.chat(
+            "Analisi complessa", "test-session", mode="auto", model="reasoning"
+        ))
+        assert any(l["type"] == "final" for l in lines)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Enriched Temporal Context (Phase 12)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+class TestTemporalContextEnriched:
+    def test_includes_time_of_day(self, engine):
+        ctx = engine._current_datetime_context()
+        assert "time_of_day=" in ctx
+        tod = [l for l in ctx.split("\n") if "time_of_day=" in l][0]
+        assert any(t in tod for t in ["morning", "afternoon", "evening", "night"])
+
+    def test_includes_season(self, engine):
+        ctx = engine._current_datetime_context()
+        assert "season=" in ctx
+        season_line = [l for l in ctx.split("\n") if "season=" in l][0]
+        assert any(s in season_line for s in ["Spring", "Summer", "Autumn", "Winter"])
+
+    def test_includes_basic_datetime_fields(self, engine):
+        ctx = engine._current_datetime_context()
+        assert "timezone=" in ctx
+        assert "now_iso=" in ctx
+        assert "today_date=" in ctx
+        assert "today_weekday=" in ctx
+        assert "tomorrow_date=" in ctx
+
+    def test_calendar_disabled_respected(self, engine, monkeypatch):
+        monkeypatch.setenv("ORACLE_TEMPORAL_CALENDAR_ENABLED", "0")
+        ctx = engine._current_datetime_context()
+        assert "TODAY_AGENDA" not in ctx

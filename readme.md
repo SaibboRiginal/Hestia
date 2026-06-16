@@ -12,7 +12,7 @@ Stack baseline: Python · FastAPI · PostgreSQL + pgvector · Docker · Ollama.
 
 ## Core Topology
 
-Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Hecate`, `Hermes`, `Chronos`, `Iris`
+Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Hecate`, `Hermes`, `Chronos`, `Iris`, `MCP`
 
 Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), Ollama, local DB replica.
 
@@ -176,6 +176,13 @@ Generic integration testing module.
 - Provides deterministic test endpoints for routing, execution, and policy validation.
 - Safe mutable/non-mutable testing via `dry_run` toggles.
 - Not tied to a single organ; usable by any service that needs an integration target.
+
+### Hestia-MCP 🔌
+Model Context Protocol gateway — single tool source for the ecosystem.
+- Aggregates MCP tools from all Hestia services and third-party MCP servers.
+- Domain-aware tool filtering — Oracle never sees more than ~12 tools at once.
+- Proxies tool calls to target services via Hub routing.
+- Replaces Hub's `/discovery/commands` as the canonical tool registry.
 
 ---
 

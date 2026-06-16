@@ -1,0 +1,19 @@
+services:
+  hestia_mcp:
+    build:
+      context: ..
+      dockerfile: Hestia-MCP/Dockerfile
+    container_name: hestia_mcp
+    ports:
+      - "19013:19013"
+    env_file:
+      - app/.env
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - LOG_LEVEL=INFO
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true

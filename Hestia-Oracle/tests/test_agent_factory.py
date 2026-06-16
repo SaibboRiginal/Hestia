@@ -124,20 +124,14 @@ class TestAgentFactory:
     def test_bundle_has_all_agents(self, monkeypatch):
         self._patch_agent_init(monkeypatch)
         bundle = AgentFactory.create()
-        assert bundle.router is not None
-        assert bundle.analyst is not None
-        assert bundle.scribe is not None
-        assert bundle.embedder is not None
-        assert bundle.coder is not None
-        assert bundle.fallback_analyst is not None
-
-    def test_analyst_prompt_from_env_var(self, monkeypatch):
-        monkeypatch.setenv("HESTIA_PERSONA", "Custom persona text")
-        self._patch_agent_init(monkeypatch)
-        # AgentFactory._ANALYST_PROMPT is module-level; ensure the env override logic
-        # would produce the right string without re-importing the module
-        custom = os.getenv("HESTIA_PERSONA", "")
-        assert "Custom persona" in custom
+        assert bundle.generic is not None
+        assert bundle.generic_fallback is not None
+        assert bundle.reasoning is not None
+        assert bundle.reasoning_fallback is not None
+        assert bundle.code is not None
+        assert bundle.code_fallback is not None
+        assert bundle.embedding is not None
+        assert bundle.embedding_fallback is not None
 
     def test_ollama_fallback_when_no_gemini_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
@@ -145,8 +139,7 @@ class TestAgentFactory:
         bundle = AgentFactory.create()
         assert bundle is not None
 
-    def test_analyst_model_name_property(self, monkeypatch):
+    def test_generic_model_name_property(self, monkeypatch):
         self._patch_agent_init(monkeypatch)
         bundle = AgentFactory.create()
-        # analyst_model_name is a property — should return a string
-        assert isinstance(bundle.analyst_model_name, str)
+        assert isinstance(bundle.generic_model_name, str)

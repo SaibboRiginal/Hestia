@@ -62,13 +62,15 @@ def register_on_hub_startup():
 
 class ChatRequest(BaseModel):
     message: str
-    # 🆕 The frontend now passes an ID, not the whole history!
     session_id: Optional[str] = None
     notify_target: Optional[str] = None
     force_notification_compiler: Optional[bool] = False
     client_instructions: Optional[str] = None
-    # Set False for service-to-service calls (Argus, Hermes)
     save_history: bool = True
+    # Execution mode: quick (1 call, no tools), auto (classify+loop), thinking (full agent loop)
+    mode: str = "auto"
+    # Which use-case model: generic (daily), reasoning (deep), code (coding)
+    model: str = "generic"
 
 
 class ChatResponse(BaseModel):
@@ -249,7 +251,9 @@ def chat_endpoint(req: ChatRequest):
                         force_notification_compiler=bool(
                             req.force_notification_compiler),
                         client_instructions=req.client_instructions,
-                        save_history=req.save_history),
+                        save_history=req.save_history,
+                        mode=req.mode,
+                        model=req.model),
             media_type="application/x-ndjson"
         )
     except Exception as e:

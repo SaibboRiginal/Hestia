@@ -306,28 +306,28 @@ class OracleEngine:
         self._memory_service = MemoryService(
             archive_url=self._archive_url,
             hub_api_url=self._hub_url,
-            scribe_agent=self._agents.scribe,
-            fallback_scribe_agent=self._agents.fallback_scribe,
+            scribe_agent=self._agents.generic,
+            fallback_scribe_agent=self._agents.generic_fallback,
             context_builder=self._context_builder,
         )
 
         self._control_service = UserControlService(
             hub_client=self._hub,
-            scribe_agent=self._agents.scribe,
-            fallback_scribe_agent=self._agents.fallback_scribe,
+            scribe_agent=self._agents.generic,
+            fallback_scribe_agent=self._agents.generic_fallback,
         )
 
         self._classifier = ChatClassifier(
-            router_agent=self._agents.router,
-            fallback_router_agent=self._agents.fallback_router,
+            router_agent=self._agents.generic,
+            fallback_router_agent=self._agents.generic_fallback,
         )
 
         # ── Document pipeline ─────────────────────────────────────────────────
         self._archiver = DocumentArchiver(
             hub_client=self._hub,
             embed_fn=self._embed,
-            analyst=self._agents.analyst,
-            fallback_analyst=self._agents.fallback_analyst,
+            analyst=self._agents.generic,
+            fallback_analyst=self._agents.generic_fallback,
         )
 
         self._doc_rag = DocumentRAG(
@@ -338,8 +338,8 @@ class OracleEngine:
         self._doc_analyser = DocumentAnalyser(
             hub_client=self._hub,
             archiver=self._archiver,
-            analyst=self._agents.analyst,
-            fallback_analyst=self._agents.fallback_analyst,
+            analyst=self._agents.generic,
+            fallback_analyst=self._agents.generic_fallback,
             style_contract_fn=conversation_style_contract,
         )
 
@@ -779,15 +779,20 @@ class OracleEngine:
         force_notification_compiler: bool = False,
         client_instructions: str | None = None,
         save_history: bool = True,
+        mode: str = "auto",
+        model: str = "generic",
     ):
         """Main conversational loop. Yields NDJSON lines.
 
-        Phases (simplified, single tool-calling path):
-          INIT      → load history + domain manifest
-          CLASSIFY  → single LLM call: mode + domain + action_intent
-          QUICK_CHAT → fast answer (fast model, no tools)
-          AGENT_LOOP → all tools: domain search + Hub commands + memory
-          PERSIST    → save history, memory extraction (background)
+        Modes (control PROCESS, same model for all):
+          quick    → single ask(), no classify, no tools. <2s latency.
+          auto     → classify → agent loop if domain_query. Default.
+          thinking → full agent loop, visible chain-of-thought, higher max_turns.
+
+        Model (controls which BRAIN):
+          generic   → daily driver (gemma4:e4b)
+          reasoning → deep thinking (26B, loaded on demand)
+          code      → code generation
         """
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex[:12]
@@ -800,6 +805,9 @@ class OracleEngine:
             bool(force_notification_compiler),
         )
 
+        # ── Resolve agent by use case ──────────────────────────────────────────
+        agent = self._resolve_agent(model)
+
         # ── Phase 1: INIT ─────────────────────────────────────────────────────
         yield stream_emitter.emit_status("📂 Recupero cronologia e routing...")
         t_init = time.perf_counter()
@@ -807,6 +815,23 @@ class OracleEngine:
             session_id,
             trace_id=trace_id,
         )
+
+        # ── MODE: quick ───────────────────────────────────────────────────────
+        if mode == "quick":
+            yield stream_emitter.emit_status("💬 Risposta rapida...")
+            temporal_context = self._current_datetime_context()
+            answer = self._quick_answer(
+                user_message, history_text, client_instructions,
+                extra_context=None, current_datetime_context=temporal_context,
+            )
+            if save_history:
+                self._save_history(session_id, user_message, answer, trace_id=trace_id)
+            yield stream_emitter.emit_final(answer, "general")
+            self._phase_background_memory(
+                user_message, session_id, notify_target,
+                force_notification_compiler, trace_id=trace_id,
+            )
+            return
         logger.debug(
             "event=chat_phase_timing_ms Chat phase timing | session=%s phase=init ms=%s domains=%s",
             session_id,
@@ -947,7 +972,7 @@ class OracleEngine:
 
         # Streaming callback for the final answer turn
         def _stream_final(prompt: str) -> Iterator[str]:
-            for tok in self._agents.analyst.ask_stream(prompt):
+            for tok in self._agents.generic.ask_stream(prompt):
                 yield tok
 
         yield stream_emitter.emit_status("🔄 Ciclo agente in corso...")
@@ -956,6 +981,9 @@ class OracleEngine:
         # Resolve max turns: higher when action_intent is True (complex tasks)
         _default_max_turns = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "25"))
         resolved_max_turns = _default_max_turns
+        if mode == "thinking":
+            resolved_max_turns = max(resolved_max_turns, 50)
+            yield stream_emitter.emit_status("🧠 Modalità thinking attivata — ragionamento approfondito...")
 
         answer, tokens, tool_log = run_agent_loop(
             user_message=user_message,
@@ -1053,7 +1081,7 @@ class OracleEngine:
             notify_target=notify_target,
             client_instructions=client_instructions,
             filename=filename,
-            analyst_model_name=self._agents.analyst_model_name,
+            analyst_model_name=self._agents.generic_model_name,
         )
 
     def format_payload(
@@ -1569,7 +1597,7 @@ class OracleEngine:
                     self._context_builder.run_background_compaction(
                         session_id=session_id,
                         history_data=history_data,
-                        scribe_agent=self._agents.scribe,
+                        scribe_agent=self._agents.generic,
                         hub_client=self._hub,
                     )
                 self._task_store.mark_succeeded(
@@ -2061,7 +2089,7 @@ class OracleEngine:
 
     def _embed(self, text: str) -> list[float]:
         """Embed *text*, falling back to the secondary embedder on failure."""
-        for agent in (self._agents.embedder, self._agents.fallback_embedder):
+        for agent in (self._agents.embedding, self._agents.embedding_fallback):
             try:
                 vector = agent.embed(text)
                 if vector:
@@ -2070,15 +2098,24 @@ class OracleEngine:
                 pass
         return []
 
+    def _resolve_agent(self, model: str):
+        """Return the UniversalAgent for the given use case. Falls back to generic."""
+        usecase = str(model or "generic").strip().lower()
+        if usecase == "reasoning":
+            return self._agents.reasoning
+        if usecase == "code":
+            return self._agents.code
+        return self._agents.generic
+
     def _ask_analyst(self, prompt: str) -> str:
         """Ask the primary analyst, falling back to secondary on error."""
         try:
-            return self._agents.analyst.ask(prompt)
+            return self._agents.generic.ask(prompt)
         except Exception as exc:
             logger.warning(
                 "event=primary_analyst_failed_using_fallback Primary analyst failed, using fallback: %s", exc)
         try:
-            return self._agents.fallback_analyst.ask(prompt)
+            return self._agents.generic_fallback.ask(prompt)
         except Exception as exc:
             logger.error(
                 "event=fallback_analyst_also_failed Fallback analyst also failed: %s", exc)
@@ -2087,12 +2124,12 @@ class OracleEngine:
     def _ask_analyst_with_tools(self, prompt: str, tools_manifest: list[dict]) -> dict:
         """Ask analyst with provider-native tool-calling when available."""
         try:
-            return self._agents.analyst.ask_with_tools(prompt, tools_manifest)
+            return self._agents.generic.ask_with_tools(prompt, tools_manifest)
         except Exception as exc:
             logger.warning(
                 "event=primary_analyst_tool_call_failed_using_fallback Primary analyst tool call failed, using fallback: %s", exc)
         try:
-            return self._agents.fallback_analyst.ask_with_tools(prompt, tools_manifest)
+            return self._agents.generic_fallback.ask_with_tools(prompt, tools_manifest)
         except Exception as exc:
             logger.error(
                 "event=fallback_analyst_tool_call_also_failed Fallback analyst tool call also failed: %s", exc)
@@ -2112,7 +2149,7 @@ class OracleEngine:
         """
         tokens: list[str] = []
         try:
-            for token in self._agents.analyst.ask_stream(prompt):
+            for token in self._agents.generic.ask_stream(prompt):
                 tokens.append(token)
                 yield stream_emitter.emit_token(token)
             return "".join(tokens)
@@ -2128,7 +2165,7 @@ class OracleEngine:
 
         # Fallback — primary yielded nothing
         try:
-            for token in self._agents.fallback_analyst.ask_stream(prompt):
+            for token in self._agents.generic_fallback.ask_stream(prompt):
                 tokens.append(token)
                 yield stream_emitter.emit_token(token)
             return "".join(tokens)
@@ -2175,7 +2212,7 @@ class OracleEngine:
         )
         # For quick chat, prefer the fast fallback analyst (Gemini Flash) over the heavy local model
         try:
-            return self._agents.fallback_analyst.ask(prompt)
+            return self._agents.generic_fallback.ask(prompt)
         except Exception:
             return self._ask_analyst(prompt)
 
@@ -2192,18 +2229,70 @@ class OracleEngine:
         return datetime.now(datetime_timezone.utc)
 
     def _current_datetime_context(self) -> str:
-        """Build a deterministic temporal context block for relative date reasoning."""
+        """Build an enriched temporal context block for relative date reasoning.
+
+        Includes: timezone, datetime, weekday, time-of-day, season, and
+        calendar events from Chronos (when available).
+        """
         now_dt = self._now_in_oracle_timezone()
         tomorrow_dt = now_dt + timedelta(days=1)
 
-        return (
-            f"timezone={str(now_dt.tzinfo or 'UTC')}\n"
-            f"now_iso={now_dt.isoformat()}\n"
-            f"today_date={now_dt.strftime('%Y-%m-%d')}\n"
-            f"today_weekday={now_dt.strftime('%A')}\n"
-            f"tomorrow_date={tomorrow_dt.strftime('%Y-%m-%d')}\n"
-            f"tomorrow_weekday={tomorrow_dt.strftime('%A')}"
-        )
+        # Time-of-day
+        hour = now_dt.hour
+        if 5 <= hour < 12:
+            time_of_day = "morning"
+        elif 12 <= hour < 18:
+            time_of_day = "afternoon"
+        elif 18 <= hour < 22:
+            time_of_day = "evening"
+        else:
+            time_of_day = "night"
+
+        # Season (Northern Hemisphere)
+        month = now_dt.month
+        if 3 <= month <= 5:
+            season = "Spring"
+        elif 6 <= month <= 8:
+            season = "Summer"
+        elif 9 <= month <= 11:
+            season = "Autumn"
+        else:
+            season = "Winter"
+
+        lines = [
+            f"timezone={str(now_dt.tzinfo or 'UTC')}",
+            f"now_iso={now_dt.isoformat()}",
+            f"today_date={now_dt.strftime('%Y-%m-%d')}",
+            f"today_weekday={now_dt.strftime('%A')}",
+            f"tomorrow_date={tomorrow_dt.strftime('%Y-%m-%d')}",
+            f"tomorrow_weekday={tomorrow_dt.strftime('%A')}",
+            f"time_of_day={time_of_day}",
+            f"season={season}",
+        ]
+
+        # Calendar context from Chronos (best-effort, non-blocking)
+        if os.getenv("ORACLE_TEMPORAL_CALENDAR_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}:
+            try:
+                agenda = self._hub.route_to_service(
+                    service="chronos",
+                    path="api/calendar/agenda",
+                    method="GET",
+                    query={"days": 1},
+                    timeout=4,
+                )
+                if agenda[0] and isinstance(agenda[1], dict):
+                    events = agenda[1].get("events", [])
+                    if events:
+                        lines.append("TODAY_AGENDA:")
+                        for ev in events[:5]:
+                            title = ev.get("title", "?")
+                            start = ev.get("start", "")
+                            end = ev.get("end", "")
+                            lines.append(f"  {start} → {end}: {title}")
+            except Exception:
+                pass  # Non-critical — calendar context is a bonus
+
+        return "\n".join(lines)
 
     def _save_history(self, session_id: str, user_message: str, answer: str, trace_id: str | None = None) -> None:
         try:

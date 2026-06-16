@@ -1,10 +1,16 @@
-"""LLM agent factory — model normalisation and UniversalAgent wiring.
+"""LLM agent factory — use-case model config and UniversalAgent wiring.
 
-Single responsibility: read environment variables, validate model/provider
-pairs, and construct the set of UniversalAgent instances used by Oracle.
+Single responsibility: read USE-CASE environment variables, validate
+model/provider pairs, and construct UniversalAgent instances used by Oracle.
 
-Consumers receive an AgentBundle dataclass; they do not need to know anything
-about env-var names, Gemini model normalisation, or prompt templates.
+Four use cases — each with primary + fallback:
+  generic   → chat, classify, tool selection, memory extraction, formatting
+  reasoning → deep thinking, complex multi-step analysis (loaded on demand)
+  code      → code generation, debugging, technical tasks
+  embedding → vector embeddings (must output 768-dim vectors)
+
+Consumers receive an AgentBundle dataclass keyed by use case.
+Mode (quick/auto/thinking) controls orchestration; use case controls which brain.
 """
 import logging
 import os
@@ -15,233 +21,171 @@ from core.services import prompt_config
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-# ── Gemini model normalisation ────────────────────────────────────────────────
-# These prefixes identify local / incompatible model names that are sometimes
-# accidentally set for Gemini provider — they must be replaced with defaults.
-_GEMINI_TEXT_DEFAULT = "gemini-2.5-flash"
-_GEMINI_EMBED_DEFAULT = "models/embedding-001"
+# ── System prompts ────────────────────────────────────────────────────────────
 
-
-# ── System prompts (centralized + file-overridable) ─────────────────────────
-
-_ROUTER_PROMPT = prompt_config.prompt("router_system")
-_SCRIBE_PROMPT = prompt_config.prompt("scribe_system")
-_CONVERSATION_STYLE_CONTRACT = prompt_config.conversation_style_contract()
-_ANALYST_PROMPT_DEFAULT = prompt_config.analyst_persona_default()
-_ANALYST_PROMPT = os.getenv("HESTIA_PERSONA", _ANALYST_PROMPT_DEFAULT)
+_GENERIC_SYSTEM_PROMPT = os.getenv(
+    "HESTIA_PERSONA", prompt_config.analyst_persona_default())
+_CODE_SYSTEM_PROMPT = (
+    "You are an expert software engineer. Output clean, correct, well-structured code. "
+    "Think before writing. Explain your approach briefly, then provide the implementation."
+)
 
 
 @dataclass
 class AgentBundle:
-    """All LLM agents used by Oracle, fully initialised and ready to use."""
+    """LLM agents keyed by USE CASE, not internal role name.
 
-    router: UniversalAgent
-    fallback_router: UniversalAgent
-    scribe: UniversalAgent
-    fallback_scribe: UniversalAgent
-    analyst: UniversalAgent
-    fallback_analyst: UniversalAgent
-    embedder: UniversalAgent
-    fallback_embedder: UniversalAgent
-    coder: UniversalAgent
-    fallback_coder: UniversalAgent
+    generic   → daily driver: chat, classify, tool selection, memory, formatting
+    reasoning → heavy lifter: deep thinking, complex analysis (loaded on demand)
+    code      → specialist: code generation, debugging, technical tasks
+    embedding → vector embeddings (tiny model, always loaded, 768-dim output)
+    """
 
-    # Convenience: expose analyst model name for capability detection
+    generic: UniversalAgent
+    generic_fallback: UniversalAgent
+    reasoning: UniversalAgent
+    reasoning_fallback: UniversalAgent
+    code: UniversalAgent
+    code_fallback: UniversalAgent
+    embedding: UniversalAgent
+    embedding_fallback: UniversalAgent
+
     @property
-    def analyst_model_name(self) -> str:
-        return self.analyst.model_name or ""
+    def generic_model_name(self) -> str:
+        return self.generic.model_name or ""
 
 
 class AgentFactory:
-    """Reads configuration from environment and constructs an AgentBundle."""
+    """Reads MODEL_USECASE_* environment variables and constructs an AgentBundle."""
+
+    # ── Use-case defaults (provider, model) ──────────────────────────────────
+    _DEFAULTS: dict[str, tuple[str, str]] = {
+        "generic":   ("ollama", "gemma4:e4b"),
+        "reasoning": ("ollama", "gemma-4-26B-A4B-it-UD-IQ4_NL:latest"),
+        "code":      ("ollama", "gemma4:e4b"),
+        "embedding": ("ollama", "nomic-embed-text"),
+    }
 
     @staticmethod
     def create() -> AgentBundle:
-        """Build and return the full set of Oracle agents from env vars."""
-        models = AgentFactory._read_model_config()
-        AgentFactory._normalize_gemini_models(models)
-        AgentFactory._fallback_if_gemini_unconfigured(models)
-        AgentFactory._log_config(models)
-        return AgentFactory._build_bundle(models)
+        cfg = AgentFactory._read_config()
+        AgentFactory._normalize_gemini_models(cfg)
+        AgentFactory._remap_gemini_when_no_api_key(cfg)
+        AgentFactory._log_config(cfg)
+        return AgentFactory._build_bundle(cfg)
 
-    # ── Configuration reading ─────────────────────────────────────────────────
-
-    @staticmethod
-    def _read_model_config() -> dict[str, dict[str, str]]:
-        e = os.getenv
-
-        # ── New MODEL_CLASS_* vars (take precedence when set) ─────────────────
-        # Class → role mapping:
-        #   fast_chat  → used for quick responses, action selection, memory scribe
-        #   planner    → route classification / intent planning
-        #   analyst    → deep reasoning, domain synthesis (primary LLM)
-        #   formatter  → payload-to-text formatting
-        #   coder      → Hephaestus executor (code gen / bugfix)
-        # Fallback chain: MODEL_CLASS_<CLASS>_PRIMARY → legacy per-role env var → hard default
-
-        def _class_prov(cls: str, legacy_env: str, default: str) -> str:
-            return e(f"MODEL_CLASS_{cls.upper()}_PROVIDER") or e(f"MODEL_CLASS_{cls.upper()}_PRIMARY_PROVIDER") or e(legacy_env, default)
-
-        def _class_mod(cls: str, legacy_env: str, default: str) -> str:
-            return e(f"MODEL_CLASS_{cls.upper()}_MODEL") or e(f"MODEL_CLASS_{cls.upper()}_PRIMARY_MODEL") or e(legacy_env, default)
-
-        def _class_fb_prov(cls: str, legacy_env: str, default: str) -> str:
-            return e(f"MODEL_CLASS_{cls.upper()}_FALLBACK_PROVIDER") or e(legacy_env, default)
-
-        def _class_fb_mod(cls: str, legacy_env: str, default: str) -> str:
-            return e(f"MODEL_CLASS_{cls.upper()}_FALLBACK_MODEL") or e(legacy_env, default)
-
-        return {
-            # planner ≈ old router: intent/domain classification
-            "router": {
-                "prov": _class_prov("planner", "ROUTER_PROVIDER", "gemini"),
-                "mod":  _class_mod("planner", "ROUTER_MODEL", "gemma-3-12b-it"),
-            },
-            "fallback_router": {
-                "prov": _class_fb_prov("planner", "FALLBACK_ROUTER_PROVIDER", "ollama"),
-                "mod":  _class_fb_mod("planner", "FALLBACK_ROUTER_MODEL", "mistral:7b"),
-            },
-            # fast_chat ≈ old scribe: quick tasks, memory parsing, action selection
-            "scribe": {
-                "prov": _class_prov("fast_chat", "SCRIBE_PROVIDER",
-                                    e("FALLBACK_ANALYST_PROVIDER", e("ROUTER_PROVIDER", "ollama"))),
-                "mod":  _class_mod("fast_chat", "SCRIBE_MODEL",
-                                   e("FALLBACK_ANALYST_MODEL", e("ROUTER_MODEL", "qwen2.5:7b"))),
-            },
-            "fallback_scribe": {
-                "prov": _class_fb_prov("fast_chat", "FALLBACK_SCRIBE_PROVIDER",
-                                       e("SCRIBE_PROVIDER", e("FALLBACK_ROUTER_PROVIDER", "ollama"))),
-                "mod":  _class_fb_mod("fast_chat", "FALLBACK_SCRIBE_MODEL",
-                                      e("SCRIBE_MODEL", e("FALLBACK_ROUTER_MODEL", "mistral:7b"))),
-            },
-            # analyst: deep reasoning / domain synthesis (primary LLM)
-            "analyst": {
-                "prov": _class_prov("analyst", "ANALYST_PROVIDER", "gemini"),
-                "mod":  _class_mod("analyst", "ANALYST_MODEL", "gemma-3-27b-it"),
-            },
-            "fallback_analyst": {
-                "prov": _class_fb_prov("analyst", "FALLBACK_ANALYST_PROVIDER", "ollama"),
-                "mod":  _class_fb_mod("analyst", "FALLBACK_ANALYST_MODEL", "mistral:7b"),
-            },
-            # embedder: vector embedding
-            "embedder": {
-                "prov": _class_prov("embedder", "EMBEDDING_PROVIDER", "ollama"),
-                "mod":  _class_mod("embedder", "EMBEDDING_MODEL", "nomic-embed-text"),
-            },
-            "fallback_embedder": {
-                "prov": _class_fb_prov("embedder", "FALLBACK_EMBEDDING_PROVIDER", "gemini"),
-                "mod":  _class_fb_mod("embedder", "FALLBACK_EMBEDDING_MODEL", "models/embedding-001"),
-            },
-            # coder: used by Hephaestus executor (code gen / bugfix)
-            "coder": {
-                "prov": _class_prov("coder", "CODER_PROVIDER",
-                                    e("FALLBACK_ANALYST_PROVIDER", "ollama")),
-                "mod":  _class_mod("coder", "CODER_MODEL",
-                                   e("FALLBACK_ANALYST_MODEL", "qwen2.5-coder:7b")),
-            },
-            "fallback_coder": {
-                "prov": _class_fb_prov("coder", "FALLBACK_CODER_PROVIDER",
-                                       e("FALLBACK_ANALYST_PROVIDER", "ollama")),
-                "mod":  _class_fb_mod("coder", "FALLBACK_CODER_MODEL",
-                                      e("FALLBACK_ANALYST_MODEL", "mistral:7b")),
-            },
-        }
+    # ── Config reading ──────────────────────────────────────────────────────
 
     @staticmethod
-    def _normalize_gemini_models(models: dict[str, dict[str, str]]) -> None:
-        """Replace invalid Gemini model names with safe defaults (in-place)."""
-        for key, cfg in models.items():
-            if str(cfg.get("prov", "")).strip().lower() != "gemini":
+    def _read_config() -> dict[str, dict[str, str]]:
+        """Read MODEL_USECASE_<USECASE>_{PROVIDER,MODEL,FALLBACK_PROVIDER,FALLBACK_MODEL}."""
+        result: dict[str, dict[str, str]] = {}
+        for usecase, (def_prov, def_mod) in AgentFactory._DEFAULTS.items():
+            prefix = f"MODEL_USECASE_{usecase.upper()}"
+            result[usecase] = {
+                "prov": os.getenv(f"{prefix}_PROVIDER", def_prov),
+                "mod":  os.getenv(f"{prefix}_MODEL", def_mod),
+            }
+            result[f"{usecase}_fallback"] = {
+                "prov": os.getenv(f"{prefix}_FALLBACK_PROVIDER", "gemini"),
+                "mod":  os.getenv(f"{prefix}_FALLBACK_MODEL", _fallback_model_for(usecase)),
+            }
+        return result
+
+    # ── Gemini model name validation ─────────────────────────────────────────
+
+    _GEMINI_TEXT_DEFAULT = "gemini-2.5-flash"
+    _GEMINI_EMBED_DEFAULT = "models/embedding-001"
+
+    @staticmethod
+    def _normalize_gemini_models(cfg: dict[str, dict[str, str]]) -> None:
+        """Replace invalid Gemini model names with safe defaults."""
+        for key, entry in cfg.items():
+            if str(entry.get("prov", "")).strip().lower() != "gemini":
                 continue
-            name = str(cfg.get("mod", "")).strip()
+            name = str(entry.get("mod", "")).strip()
             lower = name.lower()
-            is_invalid = lower.startswith("gemma") or ":" in lower
-            if not is_invalid:
+            if not (lower.startswith("gemma") or ":" in lower):
                 continue
-            replacement = _GEMINI_EMBED_DEFAULT if "embed" in key else _GEMINI_TEXT_DEFAULT
+            replacement = (
+                AgentFactory._GEMINI_EMBED_DEFAULT if "embed" in key
+                else AgentFactory._GEMINI_TEXT_DEFAULT
+            )
             logger.warning(
-                "event=invalid_gemini_model_auto_switching Invalid Gemini model for %s: '%s'. Auto-switching to '%s'.",
+                "event=invalid_gemini_model_switching key=%s from=%s to=%s",
                 key, name, replacement,
             )
-            cfg["mod"] = replacement
+            entry["mod"] = replacement
+
+    # ── Gemini → Ollama fallback when no API key ─────────────────────────────
 
     @staticmethod
-    def _fallback_if_gemini_unconfigured(models: dict[str, dict[str, str]]) -> None:
-        """When no Gemini API key is present, remap Gemini providers to Ollama.
-
-        This keeps local/dev startup resilient instead of failing fast during
-        OracleEngine initialisation.
-        """
+    def _remap_gemini_when_no_api_key(cfg: dict[str, dict[str, str]]) -> None:
         api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
         if api_key:
             return
-
-        for key, cfg in models.items():
-            provider = str(cfg.get("prov", "")).strip().lower()
-            if provider != "gemini":
+        for key, entry in cfg.items():
+            if str(entry.get("prov", "")).strip().lower() != "gemini":
                 continue
-
             if "embed" in key:
-                fallback_model = "nomic-embed-text"
-            elif "coder" in key:
-                fallback_model = "qwen2.5-coder:7b"
+                fb = "nomic-embed-text"
+            elif "code" in key:
+                fb = "qwen2.5-coder:7b"
             else:
-                fallback_model = "qwen2.5:7b"
-
+                fb = "qwen2.5:7b"
             logger.warning(
-                "event=gemini_api_key_remapping_from Gemini API key missing; remapping %s from gemini/%s to ollama/%s.",
-                key,
-                cfg.get("mod", ""),
-                fallback_model,
+                "event=gemini_key_missing_remapping key=%s from=%s to=ollama/%s",
+                key, entry.get("mod", ""), fb,
             )
-            cfg["prov"] = "ollama"
-            cfg["mod"] = fallback_model
+            entry["prov"] = "ollama"
+            entry["mod"] = fb
+
+    # ── Build ────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _log_config(models: dict[str, dict[str, str]]) -> None:
-        logger.info(
-            "event=oracle_agents_planner_fast_chat_analyst Oracle agents | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
-            models["router"]["mod"], models["scribe"]["mod"],
-            models["analyst"]["mod"], models["embedder"]["mod"],
-            models["coder"]["mod"],
-        )
-        logger.info(
-            "event=oracle_init_models_planner_fast_chat Oracle init models | planner=%s fast_chat=%s analyst=%s embedder=%s coder=%s",
-            models["router"]["mod"],
-            models["scribe"]["mod"],
-            models["analyst"]["mod"],
-            models["embedder"]["mod"],
-            models["coder"]["mod"],
-        )
-
-    @staticmethod
-    def _build_bundle(models: dict[str, dict[str, str]]) -> AgentBundle:
-        def _agent(key: str, prompt: str, thinking: bool = True) -> UniversalAgent:
+    def _build_bundle(cfg: dict[str, dict[str, str]]) -> AgentBundle:
+        def _make(key: str, prompt: str, thinking: bool = True) -> UniversalAgent:
             return UniversalAgent(
                 role_prompt=prompt,
-                provider=models[key]["prov"],
-                model_name=models[key]["mod"],
+                provider=cfg[key]["prov"],
+                model_name=cfg[key]["mod"],
                 thinking=thinking,
             )
 
         return AgentBundle(
-            router=_agent("router", _ROUTER_PROMPT, thinking=False),
-            fallback_router=_agent(
-                "fallback_router", _ROUTER_PROMPT, thinking=False),
-            scribe=_agent("scribe", _SCRIBE_PROMPT, thinking=False),
-            fallback_scribe=_agent(
-                "fallback_scribe", _SCRIBE_PROMPT, thinking=False),
-            analyst=_agent("analyst", _ANALYST_PROMPT),
-            fallback_analyst=_agent("fallback_analyst", _ANALYST_PROMPT),
-            embedder=_agent("embedder", ""),
-            fallback_embedder=_agent("fallback_embedder", ""),
-            coder=_agent(
-                "coder", "You are an expert software engineer. Output clean, correct code.", thinking=True),
-            fallback_coder=_agent(
-                "fallback_coder", "You are an expert software engineer. Output clean, correct code.", thinking=True),
+            generic=_make("generic", _GENERIC_SYSTEM_PROMPT),
+            generic_fallback=_make("generic_fallback", _GENERIC_SYSTEM_PROMPT),
+            reasoning=_make("reasoning", _GENERIC_SYSTEM_PROMPT),
+            reasoning_fallback=_make("reasoning_fallback", _GENERIC_SYSTEM_PROMPT),
+            code=_make("code", _CODE_SYSTEM_PROMPT),
+            code_fallback=_make("code_fallback", _CODE_SYSTEM_PROMPT),
+            embedding=_make("embedding", ""),
+            embedding_fallback=_make("embedding_fallback", ""),
+        )
+
+    # ── Logging ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _log_config(cfg: dict[str, dict[str, str]]) -> None:
+        logger.info(
+            "event=oracle_agents_configured "
+            "generic=%s reasoning=%s code=%s embedding=%s",
+            cfg["generic"]["mod"],
+            cfg["reasoning"]["mod"],
+            cfg["code"]["mod"],
+            cfg["embedding"]["mod"],
         )
 
 
+def _fallback_model_for(usecase: str) -> str:
+    """Return sensible Gemini fallback model per use case."""
+    if usecase == "embedding":
+        return "gemini-embedding-001"
+    if usecase == "reasoning":
+        return "gemini-2.5-flash"
+    return "gemini-2.0-flash-lite"
+
+
 def conversation_style_contract() -> str:
-    """Return the mandatory conversation-style contract snippet for prompt injection."""
-    return _CONVERSATION_STYLE_CONTRACT
+    """Return the mandatory conversation-style contract for prompt injection."""
+    return prompt_config.conversation_style_contract()

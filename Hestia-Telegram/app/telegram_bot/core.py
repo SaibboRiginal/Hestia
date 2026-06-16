@@ -36,6 +36,8 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+MCP_API_URL = os.getenv(
+    "MCP_API_URL", "http://hestia_mcp:19013").rstrip("/")
 ORACLE_API_URL = os.getenv(
     "ORACLE_API_URL", "http://hestia_oracle:19004/api/chat")
 ORACLE_FORMAT_API_URL = os.getenv(

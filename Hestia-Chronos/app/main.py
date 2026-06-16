@@ -86,6 +86,172 @@ app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 
+# ─────────────────────────────────────────────────────────────────────
+#  MCP tools
+# ─────────────────────────────────────────────────────────────────────
+
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+
+    _chronos_mcp_tools = [
+        MCPTool(
+            name="agenda",
+            description="Mostra gli eventi in agenda nei prossimi 7 giorni",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "How many days ahead to look (default 7)"},
+                    "source": {"type": "string", "description": "Filter by source: google, outlook, hestia, ..."},
+                    "kind": {"type": "string", "description": "Filter by kind: event, task, reminder"},
+                },
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "agenda", "params": kw},
+            title="\U0001f4c5 Agenda", method="GET", path="/api/calendar/agenda",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Mostra gli eventi dell'agenda in modo leggibile e cronologico. "
+                "Per ogni evento indica titolo, data/ora, luogo (se presente) e "
+                "una breve descrizione. Raggruppa per giorno. Usa un tono da "
+                "assistente personale, amichevole e conciso."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_today",
+            description="Mostra gli eventi di oggi",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_today", "params": kw},
+            title="\U0001f4cb Agenda di oggi", method="GET", path="/api/calendar/agenda",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Mostra gli eventi di oggi in modo conciso. Se non ci sono "
+                "eventi, dillo chiaramente. Usa linguaggio da assistente personale."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="create_event",
+            description="Crea un nuovo evento nel calendario connesso (Google Calendar, Outlook). Usa per: crea evento, aggiungi appuntamento, imposta promemoria, pianifica riunione.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Titolo o nome dell'evento"},
+                    "start_datetime": {"type": "string", "description": "Data e ora di inizio nel formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)"},
+                    "end_datetime": {"type": "string", "description": "Data e ora di fine nel formato ISO 8601"},
+                    "description": {"type": "string", "description": "Descrizione o note aggiuntive dell'evento"},
+                    "location": {"type": "string", "description": "Luogo fisico o virtuale dell'evento"},
+                },
+                "required": ["title", "start_datetime"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "create_event", "params": kw},
+            title="\U0001f4c5 Crea evento", method="POST", path="/api/calendar/events",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Conferma la creazione dell'evento con un messaggio breve e naturale. "
+                "Includi titolo, data/ora di inizio. Se il provider ha restituito un link o ID, menzionalo. "
+                "Usa un tono diretto e amichevole."
+            ),
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="calendar_list_events",
+            description="Elenca gli eventi in un intervallo temporale per provider calendario.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "start_datetime": {"type": "string", "description": "Inizio intervallo ISO 8601"},
+                    "end_datetime": {"type": "string", "description": "Fine intervallo ISO 8601"},
+                    "target_providers": {"type": "array", "items": {"type": "string"}, "description": "Provider destinazione"},
+                    "calendar_id": {"type": "string", "description": "ID calendario"},
+                    "max_results": {"type": "integer", "description": "Numero massimo risultati"},
+                },
+                "required": ["start_datetime", "end_datetime"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "calendar_list_events", "params": kw},
+            title="\U0001f4c6 Elenca eventi", method="POST", path="/api/calendar/events/list",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="calendar_create_event",
+            description="Crea un evento calendario con payload completo.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Titolo evento"},
+                    "start_datetime": {"type": "string", "description": "Data/ora inizio ISO 8601"},
+                    "end_datetime": {"type": "string", "description": "Data/ora fine ISO 8601"},
+                    "description": {"type": "string", "description": "Descrizione"},
+                    "location": {"type": "string", "description": "Luogo"},
+                    "provider": {"type": "string", "description": "Provider calendario (google, outlook)"},
+                    "calendar_id": {"type": "string", "description": "ID calendario"},
+                },
+                "required": ["title", "start_datetime"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "calendar_create_event", "params": kw},
+            title="\U0001f4c5 Crea evento calendario", method="POST", path="/api/calendar/events",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="calendar_update_event",
+            description="Aggiorna campi di un evento calendario esistente.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "event_id": {"type": "string", "description": "ID evento"},
+                    "provider": {"type": "string", "description": "Provider calendario"},
+                    "calendar_id": {"type": "string", "description": "ID calendario"},
+                    "updates": {"type": "object", "description": "Campi da aggiornare"},
+                },
+                "required": ["event_id", "provider"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "calendar_update_event", "params": kw},
+            title="✏️ Aggiorna evento calendario", method="PATCH", path="/api/calendar/events/$arg.event_id",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="calendar_delete_event",
+            description="Elimina un evento calendario esistente.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "event_id": {"type": "string", "description": "ID evento"},
+                    "provider": {"type": "string", "description": "Provider calendario"},
+                    "calendar_id": {"type": "string", "description": "ID calendario"},
+                },
+                "required": ["event_id", "provider"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "calendar_delete_event", "params": kw},
+            title="\U0001f5d1️ Elimina evento calendario", method="DELETE", path="/api/calendar/events/$arg.event_id",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="chronos_reconcile",
+            description="Esegue manutenzione di riconciliazione nel modulo Chronos",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "dry_run": {"type": "boolean", "description": "Se true esegue solo simulazione senza avviare i worker tick"},
+                    "requested_action": {"type": "string", "description": "Azione opzionale: reconcile_calendar|sync|notify|full"},
+                },
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "chronos_reconcile", "params": kw},
+            title="\U0001f6e0️ Riconcilia calendario", method="POST", path="/api/module/maintenance/reconcile",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Riassumi l'esito della riconciliazione Chronos, indicando quali tick sono stati eseguiti e se era dry-run.",
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+    ]
+    app.include_router(create_mcp_router(_chronos_mcp_tools, service_name="chronos"))
+    logger.info("event=mcp_router_mounted service=chronos")
+except ModuleNotFoundError:
+    logger.info("event=mcp_router_skipped service=chronos reason=hestia_common_not_available")
+
+# ─────────────────────────────────────────────────────────────────────
+
 
 def _route_hecate(
     *,

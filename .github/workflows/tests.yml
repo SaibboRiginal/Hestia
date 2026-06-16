@@ -1,0 +1,76 @@
+name: Hestia Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - Oracle
+          - Athena
+          - Archive
+          - Argus
+          - Atlas
+          - Chronos
+          - Dummy
+          - Hecate
+          - Hephaestus
+          - Hermes
+          - Hub
+          - Iris
+          - Scout
+          - Swagger
+          - Telegram
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r Hestia-${{ matrix.service }}/requirements.txt 2>/dev/null || true
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          python -m pytest Hestia-${{ matrix.service }}/tests \
+            --junitxml=test-results.xml \
+            --cov=Hestia-${{ matrix.service }}/app \
+            --cov-report=term \
+            --ignore=Hestia-${{ matrix.service }}/tests/test_live_formatting.py \
+            --ignore=Hestia-${{ matrix.service }}/tests/test_live_tool_calling.py \
+            --ignore=Hestia-${{ matrix.service }}/tests/test_live_tool_calling_comprehensive.py \
+            --ignore=Hestia-${{ matrix.service }}/tests/test_live_all_tools.py \
+            -v --tb=short
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: ${{ matrix.service }}
+          path: test-results.xml
+          reporter: java-junit
+
+  summary:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "All services passed"
+            exit 0
+          else
+            echo "Some services failed"
+            exit 1
+          fi
