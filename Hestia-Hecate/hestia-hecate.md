@@ -91,6 +91,19 @@ These endpoints are registered in the Hub command catalog so Oracle and Telegram
 
 Falls back to full registry reinit if no providers are active.
 
+**Token persistence (Google):** After every successful credential refresh, the refreshed token
+(access + refresh) is automatically serialized to:
+1. The volume-mounted file at `GOOGLE_TOKEN_FILE` (default `/code/data/google_token.json`)
+2. The `GOOGLE_TOKEN_JSON` environment variable (process lifetime)
+
+On startup, Hecate loads from the persistent file first (it holds the most recent token
+from a prior container run), then falls back to `GOOGLE_TOKEN_JSON`.  This prevents the
+`invalid_grant` error that occurs when a stale refresh token from a static `.env` file is
+resent to Google after Google has rotated the token.
+
+If the persistent file exists and contains a valid refresh token, the `.env` value is
+effectively ignored — the volume-mounted copy is always more current.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -101,11 +114,13 @@ Falls back to full registry reinit if no providers are active.
 | `HECATE_CALENDAR_BACKFILL_DAYS` | `7` | Days back to fetch on calendar sync |
 | `HECATE_ARCHIVE_ROUTE_TIMEOUT` | `8` | Timeout (s) for Hub-routed Archive writes |
 | `HECATE_CALENDAR_WRITE_TIMEOUT` | `10` | Timeout (s) for calendar item writes |
-| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
-| `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (if pre-authorized) |
-| `GOOGLE_TOKEN_JSON` | — | Full Google token JSON (alternative to above) |
-| `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON |
+| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (never expires) |
+| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret (never expires) |
+| `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (never expires — the only secret needed for API access) |
+| `GOOGLE_TOKEN_JSON` | — | Bundled alternative — refresh_token extracted from here if `GOOGLE_REFRESH_TOKEN` not set |
+| `GOOGLE_TOKEN_FILE` | `/code/data/google_token.json` | Persistent token cache (volume-mounted `data/` dir) |
+| `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
 | `OUTLOOK_CLIENT_ID` | — | Microsoft OAuth app client ID |
 | `OUTLOOK_CLIENT_SECRET` | — | Microsoft OAuth client secret |
 | `OUTLOOK_TENANT_ID` | — | Microsoft Azure tenant ID |
@@ -113,6 +128,18 @@ Falls back to full registry reinit if no providers are active.
 | `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials |
 | `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
+
+**Canonical Google OAuth setup (no expiring values):**
+```
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REFRESH_TOKEN=...
+```
+These three values **never expire**. On every cold start, Hecate constructs fresh
+credentials using only the refresh token, calls Google's token endpoint to get a
+new access token, and caches the result to the persistent file. No access token
+or expiry timestamp is stored in `.env` — the 1‑hour access token is always
+obtained live.
 
 ## Provider Credential Ownership
 

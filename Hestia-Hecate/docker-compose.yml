@@ -5,6 +5,7 @@ services:
     restart: always
     environment:
       - PYTHONUNBUFFERED=1               # flush stdout/stderr immediately (required for Docker log streaming)
+      - TZ=Europe/Rome                   # Timezone — must match OAuth token issuance context
       - HUB_API_URL=http://hestia_hub:19001/api          # Hub base URL for routing and service registration
       - HECATE_SERVICE_BASE_URL=http://hestia_hecate:19003  # Hecate service URL advertised to Hub
       - ARCHIVE_URL=http://hestia_archive:19002             # Direct Archive base URL (used for calendar writes)
@@ -19,6 +20,7 @@ services:
       - ./app/.env
     volumes:
       - ./data:/code/data
+      - /etc/localtime:/etc/localtime:ro   # Sync container clock with Docker host (critical for OAuth token refresh)
     networks:
       - hestia_net
 

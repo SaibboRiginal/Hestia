@@ -14,7 +14,12 @@ if errorlevel 1 (
   docker network create hestia_net >nul
 )
 
-echo [Hestia] Building and starting Raspberry core stack...
-docker compose -f docker-compose.rpi.yml up -d --build
+if "%~1"=="--build" (
+  echo [Hestia] FULL REBUILD Raspberry Pi stack ...
+  docker compose -f docker-compose.rpi.yml up -d --build %2 %3 %4 %5
+) else (
+  echo [Hestia] Starting Raspberry Pi stack (use up-rpi --build for full rebuild) ...
+  docker compose -f docker-compose.rpi.yml up -d
+)
 
 endlocal
