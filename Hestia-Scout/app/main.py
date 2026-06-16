@@ -95,6 +95,13 @@ api_app = FastAPI(title="Hestia Scout Tools", version="2.0.0")
 api_app.add_middleware(CORSMiddleware, allow_origins=[
                        "*"], allow_methods=["*"], allow_headers=["*"])
 
+# ── MCP endpoint ──────────────────────────────────────────────────────────
+try:
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+    _HAS_MCP = True
+except ModuleNotFoundError:
+    _HAS_MCP = False
+
 
 def _build_retrieval_service() -> ScoutRetrievalService:
     archive_api_url = os.getenv(
@@ -224,6 +231,77 @@ def _start_tools_api():
         "event=scout_tools_api_online Scout tools API online at 0.0.0.0:%d", port)
 
 
+# ── MCP Tools ──────────────────────────────────────────────────────────────
+if _HAS_MCP:
+    from tools.schemas import RealEstateSearchRequest
+
+    def _mcp_scout_search(query: str = "", filters: dict | None = None,
+                          filters_gt: dict | None = None, filters_lt: dict | None = None,
+                          sort_by: str | None = None, sort_order: str = "desc",
+                          limit: int = 30) -> dict:
+        req = RealEstateSearchRequest(
+            domain=TARGET_DOMAIN, query=query,
+            filters=filters or {}, filters_gt=filters_gt or {},
+            filters_lt=filters_lt or {}, sort_by=sort_by,
+            sort_order=sort_order, limit=limit,
+        )
+        return {"domain": TARGET_DOMAIN, "items": retrieval_service.search_and_format(req)}
+
+    def _mcp_scout_listings(query: str = "", limit: int = 50) -> dict:
+        req = RealEstateSearchRequest(domain=TARGET_DOMAIN, query=query, limit=limit)
+        return {"domain": TARGET_DOMAIN, "items": retrieval_service.search_and_format(req)}
+
+    def _mcp_scout_reconcile(dry_run: bool = True) -> dict:
+        return retrieval_service.reconcile_entities(dry_run=dry_run)
+
+    mcp_tools = [
+        MCPTool(name="scout.search",
+                description="Search real estate listings by query, city, price range, surface, rooms.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Free-text search query"},
+                        "filters": {"type": "object", "description": "Exact-match filters (city, type)"},
+                        "filters_gt": {"type": "object", "description": "Numeric > filters (price_min)"},
+                        "filters_lt": {"type": "object", "description": "Numeric < filters (price_max)"},
+                        "sort_by": {"type": "string"},
+                        "sort_order": {"type": "string", "enum": ["asc", "desc"]},
+                        "limit": {"type": "integer", "description": "Max results (default 30)"},
+                    },
+                }, handler=_mcp_scout_search,
+                title="scout.search", method="POST", path="/api/tools/real_estate/search",
+                clients=["*"], response_mode="oracle_natural", response_prompt="",
+                telegram_visible=True, telegram_group="immobiliare"),
+        MCPTool(name="scout_listings",
+                description="Show available real estate listings. Use when user wants to browse listings.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query (city, neighborhood)"},
+                        "limit": {"type": "integer", "description": "Max results (default 50)"},
+                    },
+                }, handler=_mcp_scout_listings,
+                title="\U0001f3e0 Case disponibili", method="POST", path="/api/tools/real_estate/search",
+                clients=["telegram", "ui"], response_mode="oracle_natural",
+                response_prompt="Mostra una lista breve e leggibile delle case trovate con punti chiave e link.",
+                telegram_visible=True, telegram_group="immobiliare"),
+        MCPTool(name="scout_reconcile",
+                description="Run Scout data reconciliation maintenance.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "dry_run": {"type": "boolean", "description": "Simulate without changes"},
+                    },
+                }, handler=_mcp_scout_reconcile,
+                title="\U0001f6e0️ Riconcilia Scout", method="POST", path="/api/module/maintenance/reconcile",
+                clients=["telegram", "ui"], response_mode="oracle_natural",
+                response_prompt="Riassumi esito della riconciliazione Scout, indicando se era dry-run e cosa e stato verificato.",
+                telegram_visible=True, telegram_group="immobiliare"),
+    ]
+    api_app.include_router(create_mcp_router(mcp_tools, service_name="scout"))
+    logger.info("event=mcp_router_mounted service=scout tools=%d", len(mcp_tools))
+
+
 def _register_with_hub(port: int):
     hub_api_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -240,46 +318,7 @@ def _register_with_hub(port: int):
         "capabilities": {
             "module_tool_domains": [TARGET_DOMAIN],
             "module_tool_endpoint": f"{service_base_url.rstrip('/')}/api/module-tools",
-            "commands": [
-                {
-                    "command": "scout_listings",
-                    "title": "🏠 Case disponibili",
-                    "description": "Anteprima case da Scout (max 50)",
-                    "method": "POST",
-                    "path": "/api/tools/real_estate/search",
-                    "body_template": {
-                        "query": "",
-                        "limit": "$arg.limit",
-                    },
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": "Mostra una lista breve e leggibile delle case trovate con punti chiave e link.",
-                    "telegram_visible": True,
-                },
-                {
-                    "command": "scout_reconcile",
-                    "title": "🛠️ Riconcilia Scout",
-                    "description": "Esegue manutenzione di riconciliazione dati del modulo Scout",
-                    "method": "POST",
-                    "path": "/api/module/maintenance/reconcile",
-                    "body_template": {
-                        "source": "oracle",
-                        "requested_action": "reconcile_entities",
-                        "dry_run": True,
-                        "metadata": {},
-                    },
-                    "arguments_schema": {
-                        "dry_run": {
-                            "type": "boolean",
-                            "required": False,
-                            "description": "Se true esegue solo simulazione senza mutazioni",
-                        },
-                    },
-                    "clients": ["telegram", "ui"],
-                    "response_mode": "oracle_natural",
-                    "response_prompt": "Riassumi esito della riconciliazione Scout, indicando se era dry-run e cosa e stato verificato.",
-                },
-            ],
+            "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
         },
     }
     try:

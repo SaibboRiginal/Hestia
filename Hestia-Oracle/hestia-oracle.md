@@ -16,11 +16,8 @@ The conversational AI brain of Hestia. Receives messages from interface services
 
 ### Universal LLM Connector
 - Abstracts cloud LLM providers (Gemini) and local Ollama behind a single `UniversalAgent` interface.
-- Provider and model are selected via environment config at deploy time.
-- **LLM roles:** `router` (classification), `scribe` (extraction), `analyst` (heavy reasoning), `embedder`. Each role has a primary + fallback agent pair.
-- **Ollama primary model:** `gemma-4-26B-A4B-it-UD-IQ4_NL:latest` (all roles).
-- **Gemini fallbacks per role** (to spread free-tier quota): router → `gemini-2.0-flash-lite`, scribe → `gemini-2.0-flash`, analyst → `gemini-2.5-flash`, embedding → `gemini-embedding-001`.
-- If Ollama (Main PC) is unavailable, falls back to the assigned Gemini model automatically.
+- **Use-case model config** via `MODEL_USECASE_*` env vars: `generic` (chat, classify, tools, memory, format), `reasoning` (deep thinking, loaded on demand), `code` (code generation), `embedding` (vectors). Each use case has primary + fallback provider/model pair. Mode (quick/auto/thinking) controls orchestration process; use case controls which brain.
+- If primary (Ollama) is unavailable, falls back to the assigned Gemini model automatically at runtime.
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
 ### Session Management

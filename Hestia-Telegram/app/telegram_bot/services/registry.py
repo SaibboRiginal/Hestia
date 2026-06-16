@@ -33,15 +33,54 @@ GROUP_ORDER: list[tuple[str, str, str]] = [
 # ── Hub discovery ─────────────────────────────────────────────────────────────
 
 
+def discover_commands_from_mcp() -> dict[str, dict[str, Any]]:
+    """Fetch the full tool list from Hestia-MCP and convert to command format."""
+    mcp_url = (core.MCP_API_URL or "").strip().rstrip("/")
+    if not mcp_url:
+        return {}
+    try:
+        response = requests.get(f"{mcp_url}/tools/all", timeout=6)
+        if response.status_code != 200:
+            logger.debug("event=mcp_command_discovery_non200 status=%s", response.status_code)
+            return {}
+        discovered: dict[str, dict[str, Any]] = {}
+        for tool in response.json().get("tools", []) or []:
+            if not isinstance(tool, dict):
+                continue
+            name = str(tool.get("name", "")).strip().lower()
+            if not name:
+                continue
+            # Map MCP tool format → Hub command format
+            clients = tool.get("clients") or ["*"]
+            if isinstance(clients, str):
+                clients = [clients]
+            discovered[name] = {
+                "command": name,
+                "title": tool.get("title", name.replace("_", " ").title()),
+                "description": tool.get("description", ""),
+                "method": tool.get("method", "GET"),
+                "path": tool.get("path", ""),
+                "clients": clients,
+                "response_mode": tool.get("response_mode", "oracle_natural"),
+                "response_prompt": tool.get("response_prompt", ""),
+                "telegram_visible": tool.get("telegram_visible", True),
+                "telegram_group": tool.get("telegram_group", "altro"),
+                "service": name.split(".")[0] if "." in name else name.split("_")[0],
+            }
+        logger.info("event=discovered_commands_from_mcp count=%d", len(discovered))
+        return discovered
+    except Exception as exc:
+        logger.debug("event=mcp_command_discovery_failed error=%s", exc)
+        return {}
+
+
 def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
-    """Fetch the full command list from Hub and index by command name."""
+    """Fallback: fetch commands from Hub (legacy — being phased out)."""
     try:
         response = requests.get(
             f"{core.HUB_API_URL}/discovery/commands", params={"client": "telegram"}, timeout=6
         )
         if response.status_code != 200:
-            logger.warning(
-                "event=hub_command_discovery_returned_non Hub command discovery returned non-200 | status=%s", response.status_code)
             return {}
         discovered: dict[str, dict[str, Any]] = {}
         for item in response.json().get("commands", []) or []:
@@ -50,12 +89,10 @@ def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
             name = str(item.get("command", "")).strip().lower()
             if name:
                 discovered[name] = item
-        logger.debug(
-            "event=discovered_commands_from_hub Discovered %d commands from Hub", len(discovered))
+        logger.debug("event=discovered_commands_from_hub count=%d", len(discovered))
         return discovered
     except Exception as exc:
-        logger.warning(
-            "event=hub_command_discovery_failed Hub command discovery failed: %s", exc)
+        logger.debug("event=hub_command_discovery_failed error=%s", exc)
         return {}
 
 
@@ -72,7 +109,7 @@ def fetch_registry_revision() -> int | None:
 
 
 def refresh_command_registry(force: bool = False) -> bool:
-    """Refresh the in-memory command registry if the Hub revision has changed.
+    """Refresh the in-memory command registry. MCP-first, Hub-fallback.
 
     Returns True if the registry was actually updated.
     """
@@ -82,7 +119,11 @@ def refresh_command_registry(force: bool = False) -> bool:
     if not force and revision is not None and revision == core.COMMAND_REGISTRY_REVISION:
         return False
 
-    discovered = discover_commands_from_hub()
+    # MCP-first, Hub-fallback
+    discovered = discover_commands_from_mcp()
+    if not discovered:
+        discovered = discover_commands_from_hub()
+
     with core.COMMAND_REGISTRY_LOCK:
         core.COMMAND_REGISTRY = discovered
         if revision is not None:

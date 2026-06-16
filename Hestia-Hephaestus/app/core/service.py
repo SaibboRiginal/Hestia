@@ -8,4 +8,6 @@ from .service_contract import HestiaServiceBase
 
 class HephaestusService(HestiaServiceBase):
     def build_capabilities(self) -> dict[str, Any]:
-        return build_capabilities()
+        caps = build_capabilities()
+        caps["mcp_endpoint"] = f"{self.descriptor.base_url.rstrip('/')}/mcp"
+        return caps

@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import requests
 
+from .consolidator import MemoryConsolidator
 from .observer import Observer
 from .schemas import (
     ActionCandidate,
@@ -113,9 +114,11 @@ class AthenaRuntime:
             "ATHENA_THINKING_STORE_MAX", 100
         )
 
-        # Phase 3: Observer + Strategist
+        # Phase 3: Observer + Strategist + Consolidator
         self.observer = Observer(hub_api_url=self.hub_api_url)
         self.strategist = Strategist(hub_api_url=self.hub_api_url)
+        self.consolidator = MemoryConsolidator(hub_api_url=self.hub_api_url)
+        self._consolidation_ran_today: str = ""  # date iso
 
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
@@ -616,8 +619,29 @@ class AthenaRuntime:
     # ── Main loop ────────────────────────────────────────────────────────────
 
     def _run_once(self) -> None:
-        """Execute one thinking cycle: observe → think → gate → act → archive."""
+        """Execute one thinking cycle: observe → think → gate → act → archive.
+
+        Also checks if daily memory consolidation should run."""
         run_trace_id = f"athena-{uuid4().hex[:12]}"
+
+        # ── Daily memory consolidation (runs once per day during window) ───
+        today = datetime.now().strftime("%Y-%m-%d")
+        if (self.consolidator.should_run() and
+            self._consolidation_ran_today != today):
+            try:
+                sessions = self.consolidator.get_active_sessions()
+                for session_id in sessions:
+                    result = self.consolidator.consolidate(session_id)
+                    logger.info(
+                        "event=consolidation_complete session=%s facts=%d conflicts=%d",
+                        session_id,
+                        result.get("facts_extracted", 0),
+                        result.get("conflicts_detected", 0),
+                    )
+                self._consolidation_ran_today = today
+            except Exception as exc:
+                logger.warning("event=consolidation_failed error=%s", exc)
+
         retrospective = self._retrospective_snapshot()
 
         # Phase 1: Observe

@@ -1,14 +1,14 @@
 # Hestia-Oracle — Test Cases
 
 > Single source of truth for all Oracle test cases.
-> Updated 2026-06-15 — live LLM tests verified passing (34/34).
+> Updated 2026-06-16 — Phase 7 complete. Use-case model config. 263 tests pass.
 
 ## Test Summary
 
 | Suite | Tests | Coverage Target | Status |
 |-------|-------|-----------------|--------|
 | `test_agent_loop.py` | 35 | 91% | ✅ PASSING |
-| `test_agent_factory.py` | 11 | 98% | ✅ PASSING |
+| `test_agent_factory.py` | 9 | 98% | ✅ PASSING |
 | `test_chat_classifier.py` | 17 | 92% | ✅ PASSING |
 | `test_context_builder.py` | 2 | — | ✅ PASSING |
 | `test_context_builder_extra.py` | 26 | 73% (combined) | ✅ PASSING |
