@@ -71,9 +71,6 @@ class AthenaRuntime:
         self.emit_threshold = _parse_float_env(
             "ATHENA_RELEVANCE_THRESHOLD", 0.55
         )
-        self.hermes_api_url = os.getenv(
-            "HERMES_API_URL", "http://hestia_hermes:19005"
-        ).rstrip("/")
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api"
         ).rstrip("/")
@@ -492,14 +489,23 @@ class AthenaRuntime:
             },
         }
 
-        endpoint = f"{self.hermes_api_url}/api/events/ingest"
         response = requests.post(
-            endpoint,
-            json=payload,
-            headers={"X-Trace-Id": trace_id},
-            timeout=5,
+            f"{self.hub_api_url}/route/hermes/api/events/ingest",
+            json={
+                "method": "POST",
+                "headers": {"X-Trace-Id": trace_id},
+                "query": {},
+                "body": payload,
+                "timeout_seconds": 5,
+            },
+            timeout=6,
         )
         response.raise_for_status()
+        routed = response.json() if response.content else {}
+        if int((routed or {}).get("status_code", 500)) >= 400:
+            raise RuntimeError(
+                f"Hermes route returned status {routed.get('status_code')}: {str(routed.get('payload'))[:200]}"
+            )
 
         with self._lock:
             self._emitted += 1
@@ -836,7 +842,7 @@ class AthenaRuntime:
                 "last_score": self._last_score,
                 "last_emit_at": self._last_emit_at,
                 "last_error": self._last_error,
-                "hermes_api_url": self.hermes_api_url,
+                "hub_api_url": self.hub_api_url,
                 "oracle_hint_enabled": self.oracle_hint_enabled,
                 "oracle_hint_route": self.oracle_hint_route,
                 "strategist_enabled": self.strategist.enabled,

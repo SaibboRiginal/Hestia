@@ -6,6 +6,40 @@ from collections import deque
 from threading import Lock
 from typing import Any
 
+# ── Custom TRACE level (more verbose than DEBUG) ─────────────────────────────
+_TRACE_LEVEL = 5
+logging.addLevelName(_TRACE_LEVEL, "TRACE")
+
+
+def _trace(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
+    if self.isEnabledFor(_TRACE_LEVEL):
+        self._log(_TRACE_LEVEL, message, args, **kwargs)
+
+
+logging.Logger.trace = _trace  # type: ignore[attr-defined]
+
+# ── Monkey-patch uvicorn's AccessFormatter so it doesn't choke when our ─────
+# ── filter rewrites record.args from 5→4 elements ──────────────────────────
+try:
+    from uvicorn.logging import AccessFormatter
+    _orig_access_format_msg = AccessFormatter.formatMessage
+
+    def _patched_access_format_msg(self, record: logging.LogRecord) -> str:
+        # AccessFormatter expects exactly 5 positional args.  If our filter
+        # has rewritten args to a different length, fall back to the standard
+        # Formatter.formatMessage (record.msg % record.args).
+        if record.args and len(record.args) == 5:
+            return _orig_access_format_msg(self, record)
+        return logging.Formatter.formatMessage(self, record)
+
+    AccessFormatter.formatMessage = _patched_access_format_msg
+except ImportError:
+    pass  # uvicorn not installed — nothing to patch
+
+# ── Runtime log-level state (mutable via set_log_level) ────────────────────
+_LOG_LEVEL_LOCK = Lock()
+_CURRENT_LOG_LEVEL: str = "INFO"
+
 
 _SENSITIVE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (
@@ -65,6 +99,52 @@ class _UvicornHealthAccessFilter(logging.Filter):
         return True
 
 
+class _UvicornAccessLogFilter(logging.Filter):
+    """Downgrade ALL uvicorn.access logs to TRACE and normalise format.
+
+    Endpoint access logs (``GET /api/... 200``, etc.) are noisy at INFO.
+    This filter pushes every uvicorn.access record down to TRACE so they
+    only appear when ``LOG_LEVEL=TRACE`` is set explicitly.  Health-check
+    records are handled separately by ``_UvicornHealthAccessFilter`` and
+    may be dropped entirely before this filter runs.
+
+    Uvicorn emits: ``'%s - "%s %s HTTP/%s" %d', client_addr, method,
+    path, http_version, status_code`` — a 5-arg positional tuple.  The
+    filter rewrites the message into Hestia's ``event= key=value`` style.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name != "uvicorn.access":
+            return True
+
+        # Drop entirely unless LOG_LEVEL is TRACE or lower.  The level
+        # check runs *before* filters (the record arrives at INFO), so
+        # we must gate here — otherwise TRACE records leak at every level.
+        if logging.getLogger().getEffectiveLevel() > _TRACE_LEVEL:
+            return False
+
+        record.levelno = _TRACE_LEVEL
+        record.levelname = "TRACE"
+
+        # Reformat to structured key=value style.
+        # uvicorn args: (client_addr, method, path, http_version, status_code)
+        try:
+            if record.args and len(record.args) >= 5:
+                record.msg = (
+                    "event=http_access client=%s method=%s path=%s status=%s"
+                )
+                record.args = (
+                    str(record.args[0]),
+                    str(record.args[1]),
+                    str(record.args[2]),
+                    str(record.args[4]),
+                )
+        except Exception:
+            pass  # Keep original message if parsing fails
+
+        return True
+
+
 class _HestiaMessageStyleFilter(logging.Filter):
     """Normalize internal logs to key/value style.
 
@@ -120,6 +200,34 @@ def _attach_uvicorn_health_filter() -> None:
         for handler in target_logger.handlers:
             if not any(isinstance(current_filter, _UvicornHealthAccessFilter) for current_filter in handler.filters):
                 handler.addFilter(health_filter)
+
+
+def _attach_uvicorn_access_filter() -> None:
+    """Attach access-log→TRACE filter and strip uvicorn's AccessFormatter.
+
+    Must run *after* ``_attach_uvicorn_health_filter`` so health checks
+    are already dropped/downgraded before the blanket TRACE downgrade.
+
+    Uvicorn installs an ``AccessFormatter`` on the ``uvicorn.access``
+    handler that unpacks ``record.args`` as a 5-tuple.  Our filter
+    rewrites the args to a 4-tuple (dropping ``http_version``), so we
+    replace that formatter with a standard ``logging.Formatter`` that
+    delegates to ``record.msg % record.args``.
+    """
+    access_filter = _UvicornAccessLogFilter()
+    std_formatter = logging.Formatter(
+        os.getenv("LOG_FORMAT", "%(asctime)s | %(levelname)s | %(name)s | %(message)s"))
+
+    target_loggers = [logging.getLogger(), logging.getLogger("uvicorn.access")]
+    for target_logger in target_loggers:
+        if not any(isinstance(current_filter, _UvicornAccessLogFilter) for current_filter in target_logger.filters):
+            target_logger.addFilter(access_filter)
+        for handler in target_logger.handlers:
+            if not any(isinstance(current_filter, _UvicornAccessLogFilter) for current_filter in handler.filters):
+                handler.addFilter(access_filter)
+            # Replace uvicorn's AccessFormatter so it doesn't choke on our 4-tuple args
+            if handler.formatter is not None and type(handler.formatter).__name__ == "AccessFormatter":
+                handler.setFormatter(std_formatter)
 
 
 def _attach_hestia_style_filter() -> None:
@@ -206,7 +314,9 @@ class InMemoryLogBufferHandler(logging.Handler):
 
 
 def setup_service_logging(service_name: str) -> tuple[logging.Logger, InMemoryLogBufferHandler]:
+    global _CURRENT_LOG_LEVEL
     level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+    _CURRENT_LOG_LEVEL = level_name
     log_format = os.getenv(
         "LOG_FORMAT",
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -221,6 +331,7 @@ def setup_service_logging(service_name: str) -> tuple[logging.Logger, InMemoryLo
 
     root_logger = logging.getLogger()
     _attach_uvicorn_health_filter()
+    _attach_uvicorn_access_filter()
     _attach_hestia_style_filter()
 
     existing = next(
@@ -243,6 +354,100 @@ def setup_service_logging(service_name: str) -> tuple[logging.Logger, InMemoryLo
         buffer_size,
     )
     return logger, buffer_handler
+
+
+def set_log_level(level_name: str) -> str:
+    """Change the effective log level at runtime across all loggers.
+
+    Updates the root logger, all attached handlers, and uvicorn loggers
+    so the new threshold takes effect immediately without a restart.
+
+    Args:
+        level_name: One of ``TRACE``, ``DEBUG``, ``INFO``, ``WARNING``,
+                    ``ERROR``, ``CRITICAL`` (case-insensitive).
+
+    Returns:
+        The canonical (upper-case) level name that was applied.
+
+    Raises:
+        ValueError: If *level_name* is not a recognised log level.
+    """
+    global _CURRENT_LOG_LEVEL
+
+    normalized = level_name.upper().strip()
+
+    # TRACE (5) is a custom level — resolve it explicitly.
+    if normalized == "TRACE":
+        numeric_level = _TRACE_LEVEL
+    else:
+        numeric_level = logging.getLevelName(normalized)
+        if not isinstance(numeric_level, int):
+            raise ValueError(f"Unknown log level: {level_name!r}")
+
+    # Root logger + handlers
+    root = logging.getLogger()
+    root.setLevel(numeric_level)
+    for handler in root.handlers:
+        handler.setLevel(numeric_level)
+
+    # Uvicorn loggers (may have their own handlers installed by uvicorn)
+    for logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        uvicorn_logger = logging.getLogger(logger_name)
+        uvicorn_logger.setLevel(numeric_level)
+        for handler in uvicorn_logger.handlers:
+            handler.setLevel(numeric_level)
+
+    with _LOG_LEVEL_LOCK:
+        _CURRENT_LOG_LEVEL = normalized
+
+    logging.getLogger("hestia_common.logging_utils").info(
+        "event=log_level_changed level=%s", normalized)
+
+    return normalized
+
+
+def get_log_level() -> str:
+    """Return the current effective log level name (e.g. ``"INFO"``)."""
+    with _LOG_LEVEL_LOCK:
+        return _CURRENT_LOG_LEVEL
+
+
+def create_log_control_router(service_name: str):
+    """Create a FastAPI router for runtime log-level control.
+
+    Provides::
+
+        GET  /api/logs/level   →  {"service": "<name>", "level": "INFO"}
+        POST /api/logs/level   →  body: {"level": "DEBUG"}
+
+    Mount in every FastAPI-based Hestia service::
+
+        app.include_router(create_log_control_router("hestia_argus"))
+
+    FastAPI and Pydantic are imported lazily — services that don't call
+    this function (e.g. Telegram) are not required to install them.
+    """
+    from fastapi import APIRouter, HTTPException  # noqa: E402
+    from pydantic import BaseModel                # noqa: E402
+
+    class _SetLogLevelRequest(BaseModel):
+        level: str
+
+    router = APIRouter(tags=["meta"])
+
+    @router.get("/api/logs/level")
+    def _get_log_level():
+        return {"service": service_name, "level": get_log_level()}
+
+    @router.post("/api/logs/level")
+    def _set_log_level(req: _SetLogLevelRequest):
+        try:
+            applied = set_log_level(req.level)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"service": service_name, "level": applied}
+
+    return router
 
 
 def log_event(logger: logging.Logger, level: int, event: str, **fields: Any) -> None:

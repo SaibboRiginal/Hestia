@@ -199,6 +199,26 @@ def prettify_link_label(label: str, url: str) -> str:
         return "Apri link"
 
 
+def sanitize_telegram_html(text: str) -> str:
+    """Strip or fix common LLM HTML mistakes that Telegram rejects.
+
+    Telegram only supports: <b>, <i>, <u>, <s>, <code>, <pre>, <a href=\"...\">.
+    Everything else (style attrs, self-closing tags, <br/>, <div>, etc.) is stripped.
+    """
+    # Remove inline style attributes (Telegram ignores them and they break parsing)
+    text = re.sub(r'\s*style\s*=\s*"[^"]*"', '', text)
+    text = re.sub(r"\s*style\s*=\s*'[^']*'", '', text)
+    # Fix self-closing tags: <b/> → remove, <i/> → remove, etc.
+    text = re.sub(r'<(b|i|u|s|code|pre)\s*/>', '', text, flags=re.IGNORECASE)
+    # Remove <br/> and <br> (not valid in Telegram)
+    text = re.sub(r'<br\s*/?>', '', text, flags=re.IGNORECASE)
+    # Remove invalid tags: <div>, <span>, <p>, <h1>-<h6>, <ul>, <ol>, <li>
+    for tag in ('div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li'):
+        text = re.sub(rf'<{tag}[^>]*>', '', text, flags=re.IGNORECASE)
+        text = re.sub(rf'</{tag}>', '', text, flags=re.IGNORECASE)
+    return text
+
+
 def format_for_telegram(text: str) -> str:
     def convert_markdown_link(match: re.Match) -> str:
         label = match.group(1)
@@ -428,6 +448,11 @@ def build_delivery_messages(raw_text: str, parse_mode: str = "HTML") -> tuple[li
         return [format_for_telegram(text)], "HTML"
 
     if mode == "html":
+        # Sanitize invalid HTML (LLM mistakes like <b/>, style="", <br/>)
+        text = sanitize_telegram_html(text)
+        # Detect leaked Markdown and convert to HTML before splitting
+        if re.search(r'\*\*|\n\s*[-*]\s', text):
+            text = format_for_telegram(text)
         return _split_html_link_bullets(text), "HTML"
 
     return split_long_message(text), None

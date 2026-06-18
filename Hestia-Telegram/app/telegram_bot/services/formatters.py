@@ -363,7 +363,7 @@ def format_command_payload_with_oracle(
     }
     try:
         response = requests.post(
-            core.ORACLE_FORMAT_API_URL, json=request_payload, timeout=30)
+            core.resolve_oracle_format_url(), json=request_payload, timeout=30)
         if response.status_code != 200:
             return None
         text = str((response.json() or {}).get("text", "")).strip()

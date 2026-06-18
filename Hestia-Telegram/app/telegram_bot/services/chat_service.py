@@ -390,9 +390,7 @@ def handle_cancel_flow(call):
 
 
 def _run_notification_shortcut(chat_id: int, session_id: str, user_message: str, status_message_id: int):
-    oracle_chat_url = core.resolve_oracle_chat_url()
-    oracle_base_url = oracle_chat_url.rsplit("/api/chat", 1)[0]
-    compile_url = f"{oracle_base_url}/api/subscriptions/compile"
+    compile_url = f"{core.HUB_API_URL}/route/oracle/api/subscriptions/compile"
 
     response = requests.post(
         compile_url,

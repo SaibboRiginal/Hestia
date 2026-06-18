@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 import sys
 
@@ -22,13 +23,13 @@ from .core import dataset_builder
 
 # ── Shared imports ────────────────────────────────────────────────────────────
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 logger, log_buffer = setup_service_logging("hestia_metis")
 
@@ -111,10 +112,16 @@ try:
         format: str = "chatml",
     ) -> dict:
         """Export a built dataset as JSONL text."""
+        t_de = time.perf_counter()
         examples = dataset_builder.get_dataset_examples(
             str(name or "").strip()
         )
         if not examples:
+            logger.info(
+                "event=dataset_export_done ms=%d format=%s count=0",
+                int((time.perf_counter() - t_de) * 1000),
+                format,
+            )
             return {"status": "not_found", "name": name, "examples": 0}
 
         lines: list[str] = []
@@ -145,6 +152,12 @@ try:
                 }
             lines.append(json.dumps(record, ensure_ascii=False))
 
+        logger.info(
+            "event=dataset_export_done ms=%d format=%s count=%d",
+            int((time.perf_counter() - t_de) * 1000),
+            format,
+            len(lines),
+        )
         return {
             "status": "ok",
             "name": name,
@@ -165,10 +178,16 @@ try:
         baseline_model: str = "",
     ) -> dict:
         """Run a benchmark eval comparing candidate vs baseline on a held-out set."""
+        tb = time.perf_counter()
         examples = dataset_builder.get_dataset_examples(
             str(dataset_name or "").strip()
         )
         if not examples:
+            logger.info(
+                "event=benchmark_run_done ms=%d dataset=%s status=no_dataset",
+                int((time.perf_counter() - tb) * 1000),
+                dataset_name,
+            )
             return {
                 "status": "no_dataset",
                 "dataset_name": dataset_name,
@@ -202,6 +221,13 @@ try:
             provider=os.getenv("METIS_BENCHMARK_PROVIDER", ""),
         )
 
+        logger.info(
+            "event=benchmark_run_done ms=%d candidate=%s dataset=%s samples=%d",
+            int((time.perf_counter() - tb) * 1000),
+            candidate_model,
+            dataset_name,
+            len(sample),
+        )
         return {
             "status": "completed",
             "candidate_model": candidate_model,
@@ -456,6 +482,7 @@ except ModuleNotFoundError:
         "reason=hestia_common_not_available"
     )
 
+app.include_router(create_log_control_router("hestia_metis"))
 
 # ── Hub registration ──────────────────────────────────────────────────────────
 _HUB_REGISTRATION_PAYLOAD = {

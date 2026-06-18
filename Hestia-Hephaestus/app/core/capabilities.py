@@ -14,6 +14,7 @@ def build_capabilities() -> dict[str, Any]:
         "dry_run_default": True,
         "rollback_checkpoints": True,
         "production_execution_allowed": False,
+        "module_tool_domains": ["system"],
         "endpoints": {
             "runbooks": "/api/hephaestus/runbooks",
             "diagnose": "/api/hephaestus/diagnose",

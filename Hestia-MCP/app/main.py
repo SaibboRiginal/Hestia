@@ -28,13 +28,13 @@ from core.tool_registry import ToolRegistry
 
 # ── Logging setup ────────────────────────────────────────────────────────────
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 logger, log_buffer = setup_service_logging("hestia_mcp")
 
@@ -111,6 +111,9 @@ def health():
 def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):
     rows = log_buffer.query(limit=limit, level=level, contains=contains)
     return {"service": "hestia_mcp", "count": len(rows), "logs": rows}
+
+
+app.include_router(create_log_control_router("hestia_mcp"))
 
 
 class ToolCallRequest(BaseModel):

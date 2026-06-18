@@ -129,6 +129,7 @@ def _call_ollama(prompt: str, model: str = None) -> str:
         "model": model or _LLM_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
+        "think": False,  # Gemma 4: disable thinking to avoid <unused50> tokens
     }, timeout=120)
     resp.raise_for_status()
     return resp.json().get("message", {}).get("content", "")
@@ -185,6 +186,7 @@ def _ollama_ask_tools_fn(prompt: str, tools: list[dict]) -> dict:
         ],
         "tools": ollama_tools,
         "stream": False,
+        "think": False,  # Gemma 4: disable thinking for clean tool calls
     }, timeout=120)
     resp.raise_for_status()
     data = resp.json()

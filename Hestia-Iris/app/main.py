@@ -16,14 +16,14 @@ from pydantic import BaseModel, Field
 from uuid import uuid4
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 logger, log_buffer = setup_service_logging("hestia_iris")
@@ -51,9 +51,9 @@ try:
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_search", "params": kw},
-            title="Email - Cerca messaggi", method="GET", path="/api/email/messages",
+            title="\U0001f4e8 Cerca messaggi", method="GET", path="/api/email/messages",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="altro",
+            telegram_visible=True, telegram_group="notifiche",
         ),
         MCPTool(
             name="email_send",
@@ -69,9 +69,9 @@ try:
                 "required": ["to", "subject", "body"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_send", "params": kw},
-            title="Email - Invia", method="POST", path="/api/email/send",
+            title="\U0001f4e4 Invia messaggio", method="POST", path="/api/email/send",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="altro",
+            telegram_visible=True, telegram_group="notifiche",
         ),
         MCPTool(
             name="email_thread",
@@ -84,9 +84,9 @@ try:
                 "required": ["id"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_thread", "params": kw},
-            title="Email - Thread", method="GET", path="/api/email/threads/$arg.id",
+            title="\U0001f4ac Vedi conversazione", method="GET", path="/api/email/threads/$arg.id",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="altro",
+            telegram_visible=True, telegram_group="notifiche",
         ),
         MCPTool(
             name="iris_reconcile",
@@ -108,6 +108,8 @@ try:
     logger.info("event=mcp_router_mounted service=iris")
 except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=iris reason=hestia_common_not_available")
+
+app.include_router(create_log_control_router("hestia_iris"))
 
 _MESSAGES: list[dict[str, Any]] = []
 
@@ -163,7 +165,8 @@ def register_on_hub_startup() -> None:
         "tags": ["module", "integration"],
         "topology_tags": ["layer:domain", "domain:email", "status:experimental"],
         "capabilities": {
-            "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp"
+            "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
+            "module_tool_domains": ["email"],
         },
     }
 
@@ -224,6 +227,7 @@ def email_inbox(limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
 
 @app.get("/api/email/messages")
 def email_messages(q: str = "", limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
+    t0 = time.perf_counter()
     needle = q.strip().lower()
     rows = _MESSAGES
     if needle:
@@ -236,11 +240,18 @@ def email_messages(q: str = "", limit: int = Query(default=20, ge=1, le=200)) ->
         ]
     rows = sorted(rows, key=lambda row: row["created_at"], reverse=True)[
         :limit]
+    logger.info(
+        "event=email_search_done ms=%d query_len=%d results=%d",
+        int((time.perf_counter() - t0) * 1000),
+        len(q),
+        len(rows),
+    )
     return {"status": "ok", "query": q, "count": len(rows), "messages": rows}
 
 
 @app.post("/api/email/send")
 def email_send(req: EmailSendRequest) -> dict[str, Any]:
+    t0 = time.perf_counter()
     message_id = f"iris-{int(time.time() * 1000)}"
     thread_id = req.thread_id or message_id
     row = {
@@ -253,16 +264,28 @@ def email_send(req: EmailSendRequest) -> dict[str, Any]:
         "direction": "outbound",
     }
     _MESSAGES.append(row)
+    logger.info(
+        "event=email_send_done ms=%d thread_id=%s",
+        int((time.perf_counter() - t0) * 1000),
+        thread_id,
+    )
     return {"status": "ok", "sent": row}
 
 
 @app.get("/api/email/threads/{thread_id}")
 def email_thread(thread_id: str) -> dict[str, Any]:
+    t0 = time.perf_counter()
     rows = [row for row in _MESSAGES if row.get("thread_id") == thread_id]
     if not rows:
         raise HTTPException(
             status_code=404, detail=f"thread '{thread_id}' not found")
     rows = sorted(rows, key=lambda row: row["created_at"])
+    logger.info(
+        "event=email_thread_done ms=%d thread_id=%s message_count=%d",
+        int((time.perf_counter() - t0) * 1000),
+        thread_id,
+        len(rows),
+    )
     return {"status": "ok", "thread_id": thread_id, "count": len(rows), "messages": rows}
 
 

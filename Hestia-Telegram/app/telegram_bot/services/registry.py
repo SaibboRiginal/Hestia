@@ -35,11 +35,8 @@ GROUP_ORDER: list[tuple[str, str, str]] = [
 
 def discover_commands_from_mcp() -> dict[str, dict[str, Any]]:
     """Fetch the full tool list from Hestia-MCP and convert to command format."""
-    mcp_url = (core.MCP_API_URL or "").strip().rstrip("/")
-    if not mcp_url:
-        return {}
     try:
-        response = requests.get(f"{mcp_url}/tools/all", timeout=6)
+        response = requests.get(f"{core.resolve_mcp_url()}/tools/all", timeout=6)
         if response.status_code != 200:
             logger.debug("event=mcp_command_discovery_non200 status=%s", response.status_code)
             return {}
@@ -50,22 +47,33 @@ def discover_commands_from_mcp() -> dict[str, dict[str, Any]]:
             name = str(tool.get("name", "")).strip().lower()
             if not name:
                 continue
+            path = str(tool.get("path", "")).strip()
+            # Skip internal tools with no routable path (Oracle always-tools)
+            if not path:
+                continue
+            # Normalize name for Telegram compatibility (dots → underscores)
+            safe_name = name.replace(".", "_").replace("-", "_")
             # Map MCP tool format → Hub command format
             clients = tool.get("clients") or ["*"]
             if isinstance(clients, str):
                 clients = [clients]
-            discovered[name] = {
-                "command": name,
-                "title": tool.get("title", name.replace("_", " ").title()),
+            title = tool.get("title", "") or safe_name.replace("_", " ").title()
+            # Use MCP-provided service name — NEVER extract from tool name
+            service = str(tool.get("service", "")).strip().lower()
+            if not service:
+                continue
+            discovered[safe_name] = {
+                "command": safe_name,
+                "title": title,
                 "description": tool.get("description", ""),
                 "method": tool.get("method", "GET"),
-                "path": tool.get("path", ""),
+                "path": path,
                 "clients": clients,
                 "response_mode": tool.get("response_mode", "oracle_natural"),
                 "response_prompt": tool.get("response_prompt", ""),
                 "telegram_visible": tool.get("telegram_visible", True),
-                "telegram_group": tool.get("telegram_group", "altro"),
-                "service": name.split(".")[0] if "." in name else name.split("_")[0],
+                "telegram_group": tool.get("telegram_group", ""),
+                "service": service,
             }
         logger.info("event=discovered_commands_from_mcp count=%d", len(discovered))
         return discovered
@@ -109,7 +117,7 @@ def fetch_registry_revision() -> int | None:
 
 
 def refresh_command_registry(force: bool = False) -> bool:
-    """Refresh the in-memory command registry. MCP-first, Hub-fallback.
+    """Refresh the in-memory command registry from MCP.
 
     Returns True if the registry was actually updated.
     """
@@ -119,10 +127,7 @@ def refresh_command_registry(force: bool = False) -> bool:
     if not force and revision is not None and revision == core.COMMAND_REGISTRY_REVISION:
         return False
 
-    # MCP-first, Hub-fallback
     discovered = discover_commands_from_mcp()
-    if not discovered:
-        discovered = discover_commands_from_hub()
 
     with core.COMMAND_REGISTRY_LOCK:
         core.COMMAND_REGISTRY = discovered
@@ -194,13 +199,15 @@ def get_visible_command_items(surface: str = "menu") -> list[tuple[str, dict[str
     for name, meta in registry_items:
         if name in core.TELEGRAM_HIDDEN_DYNAMIC_COMMANDS:
             continue
+        # Respect explicit telegram_visible: false from MCP tools
+        if meta.get("telegram_visible") is False:
+            continue
         service = str(meta.get("service", "")).strip().lower()
         response_mode = str(
             meta.get("response_mode", "raw_json")).strip().lower()
-        explicitly_visible = bool(meta.get("telegram_visible", False))
-        if service in core.TELEGRAM_HIDDEN_COMMAND_SERVICES and not explicitly_visible:
+        if service in core.TELEGRAM_HIDDEN_COMMAND_SERVICES:
             continue
-        if response_mode == "raw_json" and not explicitly_visible:
+        if response_mode == "raw_json":
             continue
         if surface == "menu" and meta.get("telegram_menu_visible") is False:
             continue
@@ -230,32 +237,47 @@ def build_commands_keyboard() -> InlineKeyboardMarkup:
 
 
 def build_group_commands_keyboard(group_key: str) -> InlineKeyboardMarkup:
-    """Build the command list keyboard for a single group, with a Back button."""
+    """Build the command list keyboard for a single group in a 2-column grid, with a Back button."""
     grouped = get_grouped_commands()
-    kb = InlineKeyboardMarkup(row_width=1)
+    kb = InlineKeyboardMarkup(row_width=2)
+    buttons = []
     for name, meta in (grouped.get(group_key) or []):
         title = str(meta.get("title", name)).strip()[:62]
-        kb.add(InlineKeyboardButton(title, callback_data=f"run:{name}"))
+        buttons.append(InlineKeyboardButton(title, callback_data=f"run:{name}"))
+    for i in range(0, len(buttons), 2):
+        if i + 1 < len(buttons):
+            kb.row(buttons[i], buttons[i + 1])
+        else:
+            kb.row(buttons[i])
     kb.add(InlineKeyboardButton("← Indietro", callback_data="grp:__main__"))
     return kb
 
 
 def _infer_group(name: str, meta: dict) -> str | None:
-    """Return the group key for a command, or 'altro' as catch-all fallback."""
+    """Return the group key for a command.
+
+    Priority: MCP ``telegram_group`` → local ``group`` → service inference → "altro".
+    """
+    # MCP-declared group takes precedence
+    tg_group = str(meta.get("telegram_group", "")).strip().lower()
+    if tg_group:
+        return tg_group
+    # Local group fallback
     explicit = str(meta.get("group", "")).strip().lower()
     if explicit:
         return explicit
+    # Service-based inference
     service = str(meta.get("service", "")).strip().lower()
     if service == "scout" or name.startswith("scout_"):
         return "immobiliare"
-    if service in ("chronos", "ingest", "hecate"):
+    if service in ("chronos", "hecate"):
         return "pianificazione"
-    if service == "argus":
+    if service in ("argus", "hephaestus"):
         return "sistema"
-    if service == "archive":
-        # Archive commands are mostly notification/subscription management
+    if service == "iris":
         return "notifiche"
-    # Catch-all: any remaining visible command appears under "Altro"
+    if service == "archive":
+        return "notifiche"
     return "altro"
 
 
@@ -297,13 +319,14 @@ def setup_commands():
     for name, meta in registry_items:
         if name in core.TELEGRAM_HIDDEN_DYNAMIC_COMMANDS:
             continue
+        if meta.get("telegram_visible") is False:
+            continue
         service = str(meta.get("service", "")).strip().lower()
         response_mode = str(
             meta.get("response_mode", "raw_json")).strip().lower()
-        explicitly_visible = bool(meta.get("telegram_visible", False))
-        if service in core.TELEGRAM_HIDDEN_COMMAND_SERVICES and not explicitly_visible:
+        if service in core.TELEGRAM_HIDDEN_COMMAND_SERVICES:
             continue
-        if response_mode == "raw_json" and not explicitly_visible:
+        if response_mode == "raw_json":
             continue
         if name not in visible_map:
             visible_map[name] = meta

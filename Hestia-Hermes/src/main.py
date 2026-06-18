@@ -10,14 +10,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
-    from hestia_common.logging_utils import log_event, setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import log_event, setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 from .modules.schemas import DispatchSendRequest, EventIngestRequest, OutboundEventStateUpdateRequest
@@ -135,6 +135,7 @@ def register_on_hub_startup():
 def health():
     return {"status": "ok", "service": "hestia_hermes"}
 
+app.include_router(create_log_control_router("hestia_hermes"))
 
 @app.get("/api/logs")
 def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):

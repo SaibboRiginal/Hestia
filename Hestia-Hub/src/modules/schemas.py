@@ -14,6 +14,8 @@ ALLOWED_TAGS = {
     "integration",
     "messaging",
     "monitoring",
+    "mcp",
+    "gateway",
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -40,6 +42,7 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "strategy",
         "remediation",
         "mock",
+        "mcp",
     },
     "status": {
         "stable",

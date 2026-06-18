@@ -141,6 +141,7 @@ def engine():
             return []
 
         eng._hub.get = MagicMock(side_effect=_hub_get)
+        eng._hub.hub_get = MagicMock(return_value=_SAMPLE_DOMAINS)
         eng._hub.post = MagicMock(return_value={"ok": True})
         eng._hub.delete = MagicMock(return_value={"ok": True})
         eng._hub.get_commands = MagicMock(return_value=[])
@@ -179,8 +180,12 @@ def engine():
 @pytest.mark.unit
 class TestChatQuickChat:
     def test_quick_chat_returns_direct_answer(self, engine):
-        """Quick chat mode should use fallback_analyst for fast response."""
-        engine._agents.generic.ask.return_value = _quick_chat_json()
+        """Quick chat mode should use primary agent for fast response."""
+        # Classifier returns quick_chat JSON, then _quick_answer uses primary agent
+        engine._agents.generic.ask.side_effect = [
+            _quick_chat_json(),          # classifier call
+            "Fast fallback response.",   # _quick_answer call
+        ]
         engine._hub.get.return_value = _SAMPLE_DOMAINS  # /domains
 
         lines = _collect_ndjson_lines(engine.chat("Ciao come stai?", "test-session"))
@@ -206,7 +211,10 @@ class TestChatQuickChat:
 
     def test_quick_chat_with_document_context(self, engine):
         """Quick chat about documents should include document brief."""
-        engine._agents.generic.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.side_effect = [
+            _quick_chat_json(),       # classifier call
+            "Document response.",     # _quick_answer call
+        ]
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._doc_rag.message_is_about_docs.return_value = True
         engine._doc_rag.list_user_docs_brief.return_value = "You have 3 documents."
@@ -218,7 +226,10 @@ class TestChatQuickChat:
 
     def test_quick_chat_emits_memory_sync_signals(self, engine):
         """Quick chat with preference intent should trigger memory sync."""
-        engine._agents.generic.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.side_effect = [
+            _quick_chat_json(),       # classifier call
+            "Memory response.",       # _quick_answer call
+        ]
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._memory_service.extract_and_save_preferences.return_value = [
             {"event": "memory.preference.added", "message": "Saved!", "data": {"fact": "test"}},
@@ -467,12 +478,31 @@ class TestBuildDomainTools:
         engine._memory_service.search_memories.assert_called_with(query="Roma")
 
     def test_hub_commands_become_tools(self, engine):
-        """All Hub action commands should be registered as agent loop tools."""
+        """Hub commands filtered by classified domain — only domain-owner tools included."""
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
+        engine._module_registry.get_domain_owners = lambda d: (
+            ["scout"] if d == "scout" else ["chronos"] if d == "chronos" else []
+        )
         from core.oracle_engine import SessionIntent
         intent = SessionIntent(
             mode="domain_query", explicit_domain="scout",
             confidence=0.9, valid_domains=["scout"],
+        )
+
+        tools = engine._build_domain_tools(intent, "test-session", None)
+
+        tool_names = {t.name for t in tools}
+        assert "scout_listings" in tool_names  # scout domain owner
+        assert "create_event" not in tool_names  # chronos, not scout domain
+        assert "agenda" not in tool_names  # chronos, not scout domain
+
+    def test_hub_commands_all_domains_when_general(self, engine):
+        """When domain is general, ALL commands are included (no filter)."""
+        engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
+        from core.oracle_engine import SessionIntent
+        intent = SessionIntent(
+            mode="domain_query", explicit_domain=None,
+            confidence=0.5, valid_domains=["general"],
         )
 
         tools = engine._build_domain_tools(intent, "test-session", None)
@@ -485,10 +515,11 @@ class TestBuildDomainTools:
     def test_hub_command_tool_has_proper_schema(self, engine):
         """Hub command tools should have JSON Schema parameters."""
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
+        engine._module_registry.get_domain_owners = lambda d: ["chronos"] if d == "chronos" else []
         from core.oracle_engine import SessionIntent
         intent = SessionIntent(
-            mode="domain_query", explicit_domain="scout",
-            confidence=0.9, valid_domains=["scout"],
+            mode="domain_query", explicit_domain="chronos",
+            confidence=0.9, valid_domains=["chronos"],
         )
 
         tools = engine._build_domain_tools(intent, "test-session", None)
@@ -761,19 +792,25 @@ class TestFormatPayload:
 class TestErrorHandling:
     def test_quick_chat_fallback_on_primary_failure(self, engine):
         """When primary fails, fallback should be used."""
-        engine._agents.generic.ask.return_value = _quick_chat_json()
         engine._hub.get.return_value = _SAMPLE_DOMAINS
-        engine._agents.generic_fallback.ask.side_effect = [
-            Exception("Fallback crash"), "Recovered answer."
+        # Classifier succeeds, then _quick_answer primary fails, fallback recovers
+        engine._agents.generic.ask.side_effect = [
+            _quick_chat_json(),          # classifier call
+            Exception("Primary dead"),   # _quick_answer: primary fails
         ]
+        engine._agents.generic_fallback.ask.return_value = "Recovered answer."
 
         lines = _collect_ndjson_lines(engine.chat("Ciao", "test-session"))
         answers = [l for l in lines if l.get("type") == "final"]
         assert len(answers) == 1
+        assert "Recovered" in answers[0]["reply"]
 
     def test_save_history_failure_non_fatal(self, engine):
         """Chat should not crash when history save fails."""
-        engine._agents.generic.ask.return_value = _quick_chat_json()
+        engine._agents.generic.ask.side_effect = [
+            _quick_chat_json(),       # classifier call
+            "Chat response.",         # _quick_answer call
+        ]
         engine._hub.get.return_value = _SAMPLE_DOMAINS
         engine._hub.post.side_effect = requests.RequestException("DB down")
 
@@ -884,7 +921,7 @@ class TestQuestionProtocol:
 class TestChatModes:
     def test_quick_mode_skips_classify_and_returns_fast_answer(self, engine):
         """Quick mode should bypass classify + agent loop entirely."""
-        engine._agents.generic_fallback.ask.return_value = "Risposta rapida."
+        engine._agents.generic.ask.return_value = "Risposta rapida."
         lines = _collect_ndjson_lines(engine.chat(
             "Ciao!", "test-session", mode="quick"
         ))
@@ -894,7 +931,7 @@ class TestChatModes:
 
     def test_quick_mode_saves_history(self, engine):
         """Quick mode should still persist history."""
-        engine._agents.generic_fallback.ask.return_value = "Ok."
+        engine._agents.generic.ask.return_value = "Ok."
         _collect_ndjson_lines(engine.chat(
             "Test", "test-session", mode="quick", save_history=True
         ))
@@ -1000,3 +1037,224 @@ class TestTemporalContextEnriched:
         monkeypatch.setenv("ORACLE_TEMPORAL_CALENDAR_ENABLED", "0")
         ctx = engine._current_datetime_context()
         assert "TODAY_AGENDA" not in ctx
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# End-to-End Telegram Flow — tests the EXACT path Telegram uses
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CALENDAR_COMMANDS = [
+    {
+        "command": "agenda",
+        "title": "📅 Agenda",
+        "description": "Mostra gli eventi in agenda nei prossimi 7 giorni",
+        "method": "GET",
+        "path": "/api/calendar/agenda",
+        "service": "chronos",
+        "clients": ["telegram"],
+        "response_mode": "oracle_natural",
+        "arguments_schema": {
+            "days": {"type": "integer", "required": False, "description": "How many days ahead"},
+            "source": {"type": "string", "required": False, "description": "Filter by source"},
+        },
+    },
+    {
+        "command": "agenda_today",
+        "title": "📋 Agenda di oggi",
+        "description": "Mostra gli eventi di oggi",
+        "method": "GET",
+        "path": "/api/calendar/agenda",
+        "service": "chronos",
+        "clients": ["telegram"],
+        "response_mode": "oracle_natural",
+        "arguments_schema": {},
+    },
+    {
+        "command": "create_event",
+        "title": "📅 Crea evento",
+        "description": "Crea un nuovo evento nel calendario",
+        "method": "POST",
+        "path": "/api/calendar/events",
+        "service": "chronos",
+        "clients": ["telegram"],
+        "response_mode": "oracle_natural",
+        "arguments_schema": {
+            "title": {"type": "string", "required": True, "description": "Event title"},
+            "start_datetime": {"type": "string", "required": True, "description": "Start time ISO 8601"},
+            "end_datetime": {"type": "string", "required": False, "description": "End time ISO 8601"},
+        },
+    },
+]
+
+_CALENDAR_AGENDA_RESPONSE = {
+    "from": "2026-06-17T00:00:00+00:00",
+    "to": "2026-06-24T00:00:00+00:00",
+    "days": 7,
+    "count": 2,
+    "items": [
+        {"title": "Riunione team", "start": "2026-06-17T10:00:00", "end": "2026-06-17T11:00:00"},
+        {"title": "Dentista", "start": "2026-06-18T14:30:00", "end": "2026-06-18T15:30:00"},
+    ],
+}
+
+
+@pytest.mark.unit
+class TestEndToEndTelegramCalendarFlow:
+    """Tests the EXACT code path that Telegram uses:
+    Telegram → Hub → Oracle /api/chat → classify → build tools → agent loop → answer
+    """
+
+    def _setup_e2e_engine(self, engine):
+        """Configure mocks for the full Telegram→Oracle→Hub→Chronos flow."""
+        # Hub domains — include calendar so classifier knows about it
+        def _hub_get_side_effect(path, **kwargs):
+            path_str = str(path or "")
+            if "/chat/history" in path_str:
+                return []
+            if "/memory/active" in path_str:
+                return []
+            if "/subscriptions/active" in path_str:
+                return []
+            return []
+        engine._hub.get = MagicMock(side_effect=_hub_get_side_effect)
+        engine._hub.hub_get = MagicMock(return_value=["calendar", "scout", "general"])
+        engine._hub.get_history = MagicMock(return_value=[])
+        engine._hub.get_commands = MagicMock(return_value=_CALENDAR_COMMANDS)
+        engine._hub.route_to_service = MagicMock(return_value=(True, _CALENDAR_AGENDA_RESPONSE))
+        engine._hub.post = MagicMock(return_value={"ok": True})
+
+    def test_calendar_query_discovers_agenda_tool(self, engine):
+        """When user asks about calendar, the agenda tool MUST be among built tools."""
+        self._setup_e2e_engine(engine)
+
+        # Capture tools built by _build_domain_tools
+        original_build = engine._build_domain_tools
+
+        captured_tools: list[list] = []
+
+        def _capture_build(intent, session_id, notify_target, trace_id=None, fallback_domains=None):
+            tools = original_build(intent, session_id, notify_target, trace_id=trace_id, fallback_domains=fallback_domains)
+            captured_tools.append([t.name for t in tools])
+            return tools
+
+        engine._build_domain_tools = _capture_build
+
+        # Classifier → domain_query for general (since available_domains has calendar)
+        engine._agents.generic.ask.side_effect = [
+            json.dumps({
+                "mode": "domain_query", "domain": None, "confidence": 0.85,
+                "domains": ["general"], "filters": {}, "filters_gt": {},
+                "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+                "action_intent": False,
+            }),
+            "✅ Ecco i tuoi prossimi eventi:\n\n• <b>Riunione team</b> - 17 giugno 10:00-11:00\n• <b>Dentista</b> - 18 giugno 14:30-15:30",
+        ]
+
+        # Agent loop: first turn returns agenda tool call, second turn is final answer
+        engine._agents.generic.ask_with_tools.side_effect = [
+            {"tool_call": {"name": "agenda", "params": {"days": 7}}, "text": ""},
+            {"tool_call": None, "text": "Ecco i tuoi eventi."},
+        ]
+
+        lines = _collect_ndjson_lines(engine.chat(
+            "sai dirmi cosa ho in calendario?", "test-telegram-session"))
+
+        # ── Verify tool discovery ──────────────────────────────────────────
+        assert captured_tools, "No tools were built — _build_domain_tools was never called"
+        tool_names = captured_tools[0]
+        assert "agenda" in tool_names, (
+            f"agenda tool NOT in built tools! Tools: {tool_names}\n"
+            f"This means get_commands() returned empty or Hub commands weren't added."
+        )
+        assert "agenda_today" in tool_names, f"agenda_today missing. Tools: {tool_names}"
+        # create_event is POST — kept because POST is used for both search & create
+        assert "create_event" in tool_names, f"create_event missing. Tools: {tool_names}"
+
+        # ── Verify tool was called via Hub routing ─────────────────────────
+        route_calls = engine._hub.route_to_service.call_args_list
+        assert len(route_calls) >= 1, (
+            f"No Hub route_to_service calls — the agenda tool was never executed!\n"
+            f"route_to_service call count: {len(route_calls)}"
+        )
+        # First route call should be to chronos agenda
+        first_call = route_calls[0]
+        assert first_call.kwargs.get("service") == "chronos", (
+            f"Tool called wrong service: {first_call.kwargs.get('service')}, expected 'chronos'"
+        )
+        assert "agenda" in str(first_call.kwargs.get("path", "")), (
+            f"Tool called wrong path: {first_call.kwargs.get('path')}, expected agenda path"
+        )
+
+        # ── Verify final answer is emitted ─────────────────────────────────
+        finals = [l for l in lines if l.get("type") == "final"]
+        assert len(finals) == 1, f"Expected 1 final answer, got {len(finals)}: {finals}"
+        assert len(finals[0].get("reply", "")) > 10, (
+            f"Final answer too short: '{finals[0].get('reply')}'"
+        )
+
+        # ── Verify tool summary is emitted ─────────────────────────────────
+        summaries = [l for l in lines if l.get("event") == "tool.summary"]
+        assert len(summaries) >= 1, f"No tool.summary event emitted"
+
+    def test_calendar_query_no_tools_available_is_logged(self, engine):
+        """When Hub returns NO commands, the warning must be logged."""
+        self._setup_e2e_engine(engine)
+        engine._hub.get_commands = MagicMock(return_value=[])  # ← simulate broken discovery
+
+        engine._agents.generic.ask.side_effect = [
+            json.dumps({
+                "mode": "domain_query", "domain": None, "confidence": 0.85,
+                "domains": ["general"], "filters": {}, "filters_gt": {},
+                "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+                "action_intent": False,
+            }),
+            "Non posso accedere al calendario.",
+        ]
+        engine._agents.generic.ask_with_tools.return_value = {"tool_call": None, "text": "Non posso accedere al calendario."}
+
+        lines = _collect_ndjson_lines(engine.chat(
+            "sai dirmi cosa ho in calendario?", "test-no-tools"))
+
+        finals = [l for l in lines if l.get("type") == "final"]
+        assert len(finals) == 1
+        # Without tools, the answer should NOT contain real calendar data
+        reply = finals[0].get("reply", "").lower()
+        assert "riunione team" not in reply, (
+            f"Answer contains calendar data but no tools were available! reply={reply[:200]}"
+        )
+
+    def test_create_event_tool_routes_to_chronos(self, engine):
+        """Creating a calendar event must route POST to Chronos via Hub."""
+        self._setup_e2e_engine(engine)
+
+        engine._agents.generic.ask.side_effect = [
+            json.dumps({
+                "mode": "domain_query", "domain": None, "confidence": 0.85,
+                "domains": ["general"], "filters": {}, "filters_gt": {},
+                "filters_lt": {}, "sort_by": None, "sort_order": "desc",
+                "action_intent": True,
+            }),
+            "✅ Evento creato con successo!",
+        ]
+        engine._agents.generic.ask_with_tools.side_effect = [
+            {"tool_call": {"name": "create_event", "params": {
+                "title": "Riunione progetto",
+                "start_datetime": "2026-06-18T15:00:00",
+                "end_datetime": "2026-06-18T16:00:00",
+            }}, "text": ""},
+            {"tool_call": None, "text": "Evento creato."},
+        ]
+
+        lines = _collect_ndjson_lines(engine.chat(
+            "crea una riunione domani alle 15 per il progetto Hestia", "test-create-event"))
+
+        # Verify the tool routed to chronos with POST
+        route_calls = engine._hub.route_to_service.call_args_list
+        create_calls = [c for c in route_calls if c.kwargs.get("service") == "chronos"
+                       and c.kwargs.get("method") == "POST"]
+        assert len(create_calls) >= 1, (
+            f"No POST to chronos! Route calls: {[(c.kwargs.get('service'), c.kwargs.get('method')) for c in route_calls]}"
+        )
+
+        finals = [l for l in lines if l.get("type") == "final"]
+        assert len(finals) == 1

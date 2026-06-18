@@ -1,8 +1,11 @@
-"""Typed HTTP client for Archive API routed through Hestia Hub.
+"""Typed HTTP client for Hestia Hub API and Archive routing.
 
-Single responsibility: all communication to Archive goes through this class.
-Oracle never calls Archive directly — every request is routed via Hub's
-POST /route/archive/{endpoint} envelope.
+Two call families:
+
+1. **Hub direct** — ``hub_get()`` calls Hub's own REST API (discovery, registry, …).
+2. **Archive routed** — ``get()`` / ``post()`` / ``delete()`` route through Hub's
+   ``POST /route/archive/{endpoint}`` envelope so Oracle never calls Archive
+   directly.
 """
 import logging
 from urllib.parse import urlparse, parse_qs
@@ -16,7 +19,7 @@ _ROUTE_PREFIX = "/route/archive/"
 
 
 class HubClient:
-    """Thin wrapper around the Hub routing envelope for Archive endpoints."""
+    """Thin wrapper around Hub — both direct API and Archive-routed calls."""
 
     def __init__(self, hub_api_url: str) -> None:
         self._base = hub_api_url.rstrip("/")
@@ -32,6 +35,31 @@ class HubClient:
         """Ensure endpoint starts with 'api/' regardless of how it was passed."""
         clean = endpoint.lstrip("/")
         return f"api/{clean}" if not clean.startswith("api/") else clean
+
+    # ── Hub direct API ────────────────────────────────────────────────────────
+
+    def hub_get(self, path: str, default=None, timeout: int = 6) -> Any:
+        """Call a Hub-native GET endpoint directly (NOT routed through Archive).
+
+        Use this for discovery endpoints like ``/api/domains``, ``/api/schemas``,
+        ``/api/discovery/commands`` that live on Hub itself.
+
+        Note: *path* may or may not include the ``/api`` prefix — this method
+        normalises it against ``self._base`` which already ends with ``/api``.
+        """
+        clean = path.lstrip("/")
+        # Strip leading api/ since self._base already ends with /api
+        if clean.startswith("api/"):
+            clean = clean[4:]
+        url = f"{self._base}/{clean}"
+        try:
+            resp = requests.get(url, timeout=timeout)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception as exc:
+            logger.trace(
+                "event=hubclient_hub_get_failed [HubClient] hub_get %s failed: %s", path, exc)
+        return default if default is not None else None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -59,7 +87,7 @@ class HubClient:
                 return routed.get("payload")
             return default if default is not None else []
         except Exception as exc:
-            logger.debug(
+            logger.trace(
                 "event=hubclient_get_failed_non_fatal [HubClient] GET %s failed (non-fatal): %s", endpoint, exc)
             return default if default is not None else []
 
@@ -100,7 +128,7 @@ class HubClient:
             if resp.status_code == 200:
                 return resp.json().get("commands") or []
         except Exception as exc:
-            logger.debug(
+            logger.trace(
                 "event=hubclient_get_commands_failed [HubClient] get_commands failed: %s", exc)
         return []
 
@@ -136,7 +164,7 @@ class HubClient:
                 return False, routed.get("payload")
             return True, routed.get("payload")
         except Exception as exc:
-            logger.debug(
+            logger.trace(
                 "event=hubclient_route_to_service_failed [HubClient] route_to_service %s/%s failed: %s", service, path, exc)
             return False, str(exc)
 
@@ -183,7 +211,7 @@ class HubClient:
             out = routed.get("payload")
             return out if isinstance(out, dict) else None
         except Exception as exc:
-            logger.debug(
+            logger.trace(
                 "event=hubclient_append_interaction_ledger_failed [HubClient] append_interaction_ledger failed: %s", exc)
             return None
 
@@ -202,7 +230,7 @@ class HubClient:
             out = routed.get("payload")
             return out if isinstance(out, dict) else None
         except Exception as exc:
-            logger.debug(
+            logger.trace(
                 "event=hubclient_create_feedback_record_failed [HubClient] create_feedback_record failed: %s", exc)
             return None
 

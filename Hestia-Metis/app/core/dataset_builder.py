@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -62,6 +63,11 @@ def build_dataset(
     Stores the dataset in the in-memory _datasets dict.
     """
     labels = quality_labels or _DEFAULT_QUALITY_LABELS
+    logger.info(
+        "event=dataset_build_start name=%s labels=%s",
+        name,
+        labels,
+    )
     all_records: list[dict[str, Any]] = []
     for label in labels:
         records = hub.fetch_feedback(

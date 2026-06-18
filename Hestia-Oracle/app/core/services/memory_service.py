@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 import requests
 from urllib.parse import urlparse, parse_qs
@@ -495,6 +496,11 @@ class MemoryService:
         list[dict]
             Emitted memory/subscription signals (e.g. ``{"event": "memory.preference.added", ...}``).
         """
+        t0 = time.perf_counter()
+        logger.info(
+            "event=memory_extract_start session_id=%s force_notification=%s",
+            session_id, bool(force_notification_compiler),
+        )
         signals: list[dict] = []
         normalized_message = str(user_message or "").strip().lower()
         trivial_turns = {"ok", "okay", "grazie",
@@ -558,6 +564,11 @@ class MemoryService:
         )
 
         if not subscriptions:
+            total_ms = int((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "event=memory_extract_done session_id=%s total_ms=%s signals=%s",
+                session_id, total_ms, len(signals),
+            )
             return signals
 
         existing_subs = self._api_get(
@@ -575,4 +586,9 @@ class MemoryService:
             logger.warning(
                 "event=memoryservice_save_subscriptions_failed [MemoryService] save subscriptions failed: %s", exc)
 
+        total_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "event=memory_extract_done session_id=%s total_ms=%s signals=%s",
+            session_id, total_ms, len(signals),
+        )
         return signals

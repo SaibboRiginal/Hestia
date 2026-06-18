@@ -12,13 +12,15 @@ from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router
 
 logger, log_buffer = setup_service_logging("hestia_oracle")
 
@@ -26,6 +28,67 @@ app = FastAPI(title="Hestia Oracle Microservice", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 engine = OracleEngine()
+
+# ── MCP tools — Oracle's own agent tools exposed via MCP standard ─────────
+
+_oracle_mcp_tools = [
+    MCPTool(
+        name="memory.save",
+        description="Save a durable fact or preference about the user for future reference. Use when the user expresses a preference, constraint, or personal detail.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "fact": {"type": "string", "description": "The fact or preference to remember"},
+                "domain": {"type": "string", "description": "Domain category (default 'general')"},
+            },
+            "required": ["fact"],
+        },
+        handler=lambda **kw: engine._memory_service.save_memory(
+            fact=str(kw.get("fact", "")),
+            domain=str(kw.get("domain", "general")),
+        ),
+        title="🧠 Ricorda preferenza", method="POST", path="/api/memory",
+        clients=["telegram", "ui"], response_mode="oracle_natural",
+        telegram_visible=False, telegram_group="preferenze",
+    ),
+    MCPTool(
+        name="memory.search",
+        description="Search saved memories and preferences about the user.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Keywords to search for in memories"},
+            },
+        },
+        handler=lambda **kw: engine._memory_service.search_memories(
+            query=str(kw.get("query", "")),
+        ),
+        title="🔍 Cerca ricordi", method="GET", path="/api/memory",
+        clients=["telegram", "ui"], response_mode="oracle_natural",
+        telegram_visible=False, telegram_group="preferenze",
+    ),
+    MCPTool(
+        name="documents.search",
+        description="Search through uploaded documents and files for relevant content.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+            },
+            "required": ["query"],
+        },
+        handler=lambda **kw: (True, engine._doc_rag.search_relevant_chunks(
+            str(kw.get("query", "")), None, None)),
+        title="📄 Cerca documenti", method="GET", path="/api/documents/search",
+        clients=["telegram", "ui"], response_mode="oracle_natural",
+        telegram_visible=False, telegram_group="documenti",
+    ),
+]
+try:
+    app.include_router(create_mcp_router(_oracle_mcp_tools, service_name="oracle"))
+    logger.info("event=mcp_router_mounted service=oracle tools=%d", len(_oracle_mcp_tools))
+except Exception as exc:
+    logger.warning("event=mcp_router_mount_failed service=oracle error=%s", exc)
 
 
 @app.on_event("startup")
@@ -44,6 +107,7 @@ def register_on_hub_startup():
         "topology_tags": ["layer:cognition", "domain:llm", "status:stable"],
         "capabilities": {
             "chat_endpoint": "/api/chat",
+            "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
         },
     }
     try:
@@ -179,6 +243,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "logs": rows,
     }
 
+app.include_router(create_log_control_router("hestia_oracle"))
 
 @app.get("/api/tasks")
 def list_background_tasks(
@@ -628,4 +693,21 @@ def clear_chat_endpoint(session_id: str):
     except Exception as e:
         logger.exception(
             "event=unhandled_error_clearing_chat_history Unhandled error clearing chat history | session_id=%s", session_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/context")
+def get_context_stats(session_id: str):
+    """Estimate context-window usage for *session_id*.
+
+    Returns approximate token counts and percentage of Gemma 4's 256K window.
+    Token estimate uses a conservative 3 chars/token heuristic for mixed
+    Italian/English + JSON.
+    """
+    try:
+        stats = engine.estimate_context_stats(session_id)
+        return {"session_id": session_id, **stats}
+    except Exception as e:
+        logger.exception(
+            "event=unhandled_error_context_stats Unhandled error in context stats | session_id=%s", session_id)
         raise HTTPException(status_code=500, detail=str(e))

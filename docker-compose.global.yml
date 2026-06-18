@@ -120,7 +120,7 @@ services:
       - ORACLE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
       - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API for memory, entities, history
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
-      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - LOG_LEVEL=TRACE                                      # Logging verbosity: TRACE | DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONPATH=/code                                     # Ensure shared package /code/hestia_common is importable
       - PYTHONUNBUFFERED=1
@@ -146,6 +146,8 @@ services:
       hub:
         condition: service_started
       archive:
+        condition: service_started
+      mcp:
         condition: service_started
     networks:
       - hestia_net
@@ -177,6 +179,8 @@ services:
       hub:
         condition: service_started
       archive:
+        condition: service_started
+      oracle:
         condition: service_started
     networks:
       - hestia_net
@@ -210,6 +214,8 @@ services:
         condition: service_started
       oracle:
         condition: service_started
+      mcp:
+        condition: service_started
     networks:
       - hestia_net
 
@@ -229,6 +235,30 @@ services:
       - TRY_IT_OUT_ENABLED=true
     volumes:
       - ./Hestia-Swagger:/usr/share/nginx/html/swagger:ro  # Mount spec directory read-only
+    networks:
+      - hestia_net
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Hestia-MCP/Dockerfile
+    container_name: hestia_mcp
+    restart: unless-stopped
+    ports:
+      - "19013:19013"  # MCP Gateway API port
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service discovery
+      - MCP_SERVICE_BASE_URL=http://hestia_mcp:19013         # This service's public URL as seen by Hub
+      - MCP_SERVICE_VERSION=1.0.0                            # Reported version in Hub registry
+      - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+      - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-MCP/app:/code
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
     networks:
       - hestia_net
 
@@ -366,6 +396,8 @@ services:
     depends_on:
       hub:
         condition: service_started
+      oracle:
+        condition: service_started
     networks:
       - hestia_net
 
@@ -409,6 +441,8 @@ services:
       hub:
         condition: service_started
       hermes:
+        condition: service_started
+      oracle:
         condition: service_started
     networks:
       - hestia_net

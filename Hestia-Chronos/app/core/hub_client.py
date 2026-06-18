@@ -40,6 +40,7 @@ def register_on_hub(
                 "calendar.agenda": f"{service_base_url}/api/calendar/agenda",
             },
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
+            "module_tool_domains": ["calendar"],
         },
     }
 

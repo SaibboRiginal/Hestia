@@ -15,14 +15,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 
@@ -165,6 +165,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Hestia-Dummy",
               version=runtime.service_version, lifespan=lifespan)
 
+app.include_router(create_log_control_router("hestia_dummy"))
 
 @app.get("/health")
 def health() -> dict[str, str]:

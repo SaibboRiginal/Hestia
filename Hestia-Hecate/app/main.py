@@ -18,13 +18,13 @@ from core.state_manager import StateManager
 load_dotenv()
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 logger, log_buffer = setup_service_logging("hestia_hecate")
 
@@ -126,7 +126,9 @@ try:
 except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=hecate reason=hestia_common_not_available")
 
-vault = ArchiveClient(api_url="")
+app.include_router(create_log_control_router("hestia_hecate"))
+
+vault = ArchiveClient()
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
 _calendar_registry = CalendarProviderRegistry()
 
@@ -309,6 +311,7 @@ def register_on_hub_startup():
             "ingest_trigger": "/api/ingest/trigger",
             "calendar_sync": "/api/ingest/calendar/trigger",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
+            "module_tool_domains": ["calendar"],
         },
     }
     try:

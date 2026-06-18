@@ -12,13 +12,13 @@ from .fetcher import fetch_html
 from .schemas import FetchHtmlRequest, FetchHtmlResponse
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 
 class FetchService(HestiaServiceBase):
@@ -45,7 +45,7 @@ load_dotenv()
 
 SERVICE_NAME = os.getenv("SERVICE_NAME", "atlas")
 SERVICE_BASE_URL = os.getenv(
-    "SERVICE_BASE_URL", "http://host.docker.internal:19009")
+    "SERVICE_BASE_URL", "http://host.docker.internal:19014")
 SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
 SERVICE_TYPE = os.getenv("SERVICE_TYPE", "integration")
 SERVICE_TAGS = [
@@ -109,6 +109,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "logs": rows,
     }
 
+app.include_router(create_log_control_router("hestia_atlas"))
 
 @app.post("/api/fetch/html", response_model=FetchHtmlResponse)
 def fetch_html_endpoint(req: FetchHtmlRequest):

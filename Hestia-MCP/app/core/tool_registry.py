@@ -30,6 +30,7 @@ class ToolRegistry:
         self._cache: dict[str, list[dict]] = {}       # domain → [tools]
         self._cache_ts: dict[str, float] = {}
         self._service_mcp_map: dict[str, str] = {}     # service_name → mcp_endpoint
+        self._service_domains: dict[str, list[str]] = {}  # service_name → [domains]
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -63,9 +64,25 @@ class ToolRegistry:
         return unique
 
     def list_all_tools(self) -> list[dict]:
-        """Return all known tools across all services (for Telegram command catalog)."""
-        all_domains = self._discover_domains()
-        return self.get_tools_for_domains(all_domains)
+        """Return all known tools across ALL MCP services (for Telegram command catalog)."""
+        self.refresh()
+        tools: list[dict] = []
+        tools.extend(self._get_always_tools())
+        for svc_name, mcp_ep in self._service_mcp_map.items():
+            mcp_tools = self._discover_mcp_tools(svc_name, mcp_ep)
+            for t in mcp_tools:
+                t["service"] = svc_name
+            tools.extend(mcp_tools)
+        # Deduplicate by name
+        seen: set[str] = set()
+        unique: list[dict] = []
+        for t in tools:
+            name = t.get("name", "")
+            if name and name not in seen:
+                seen.add(name)
+                unique.append(t)
+        logger.info("event=tools_list_all count=%d", len(unique))
+        return unique
 
     def call_tool(self, tool_name: str, params: dict, service: str = "") -> tuple[bool, Any]:
         """Execute a tool by routing to its service via Hub."""
@@ -88,16 +105,18 @@ class ToolRegistry:
             return (False, str(exc))
 
     def refresh(self) -> None:
-        """Force-refresh the service → MCP endpoint mapping from Hub registry."""
+        """Force-refresh the service → MCP endpoint mapping and domain mapping from Hub registry."""
         try:
             resp = requests.get(
                 f"{self._hub_url}/registry/services",
                 timeout=_HUB_DISCOVERY_TIMEOUT,
             )
             resp.raise_for_status()
-            services = resp.json() or []
-            if isinstance(services, dict):
-                services = list(services.values())
+            data = resp.json() or {}
+            if isinstance(data, dict):
+                services = data.get("services") or []
+            else:
+                services = data if isinstance(data, list) else []
             if isinstance(services, list):
                 for svc in services:
                     if not isinstance(svc, dict):
@@ -107,6 +126,9 @@ class ToolRegistry:
                     mcp_ep = caps.get("mcp_endpoint", "")
                     if name and mcp_ep:
                         self._service_mcp_map[name] = str(mcp_ep)
+                        domains = caps.get("module_tool_domains") or []
+                        if isinstance(domains, list) and domains:
+                            self._service_domains[name] = [str(d).strip().lower() for d in domains]
         except Exception as exc:
             logger.warning("event=registry_refresh_failed error=%s", exc)
 
@@ -178,34 +200,19 @@ class ToolRegistry:
         return tools
 
     def _get_service_tools_for_domains(self, domains: list[str]) -> list[dict]:
-        """Discover tools from services in the given domains.
-
-        Attempts MCP discovery first, falls back to Hub command discovery
-        for services that haven't been migrated yet.
-        """
+        """Discover tools from MCP services whose declared domains match the request."""
         tools: list[dict] = []
-        self.refresh()  # ensure service→MCP mapping is fresh
+        self.refresh()
+        domain_set = set(str(d).strip().lower() for d in domains)
 
-        # ── Path A: MCP-native services ──────────────────────────────────
         for svc_name, mcp_ep in self._service_mcp_map.items():
-            if svc_name not in domains:
+            svc_domains = self._service_domains.get(svc_name, [])
+            if domain_set and not domain_set.intersection(svc_domains):
                 continue
             mcp_tools = self._discover_mcp_tools(svc_name, mcp_ep)
             for t in mcp_tools:
                 t["service"] = svc_name
             tools.extend(mcp_tools)
-
-        # ── Path B: Hub command discovery (fallback for non-migrated) ────
-        hub_commands = self._discover_hub_commands()
-        for cmd in hub_commands:
-            cmd_service = cmd.get("service", "")
-            if cmd_service in domains:
-                tools.append({
-                    "name": cmd.get("command", ""),
-                    "description": cmd.get("description", ""),
-                    "parameters": self._hub_cmd_to_json_schema(cmd),
-                    "service": cmd_service,
-                })
 
         return tools
 
@@ -225,45 +232,3 @@ class ToolRegistry:
             logger.debug("event=mcp_discover_failed service=%s error=%s", service_name, exc)
             return []
 
-    def _discover_hub_commands(self) -> list[dict]:
-        """Fallback: discover commands from Hub's /discovery/commands."""
-        try:
-            resp = requests.get(
-                f"{self._hub_url}/discovery/commands",
-                timeout=_HUB_DISCOVERY_TIMEOUT,
-            )
-            if resp.status_code != 200:
-                return []
-            return resp.json().get("commands", [])
-        except Exception as exc:
-            logger.warning("event=hub_discover_failed error=%s", exc)
-            return []
-
-    def _discover_domains(self) -> list[str]:
-        """Get all known domains from Hub."""
-        try:
-            resp = requests.get(
-                f"{self._hub_url}/domains",
-                timeout=_HUB_DISCOVERY_TIMEOUT,
-            )
-            if resp.status_code == 200:
-                return resp.json() or ["general"]
-        except Exception:
-            pass
-        return ["general"]
-
-    @staticmethod
-    def _hub_cmd_to_json_schema(cmd: dict) -> dict:
-        """Convert a Hub command descriptor to a JSON Schema parameters object."""
-        schema: dict = {"type": "object", "properties": {}, "required": []}
-        args_schema = cmd.get("arguments_schema") or {}
-        if args_schema:
-            for key, val in args_schema.items():
-                if isinstance(val, dict):
-                    schema["properties"][key] = {
-                        "type": val.get("type", "string"),
-                        "description": val.get("description", key),
-                    }
-                    if val.get("required"):
-                        schema["required"].append(key)
-        return schema

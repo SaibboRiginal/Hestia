@@ -19,12 +19,35 @@ import requests
 
 logger = logging.getLogger("hestia_chronos.archive_client")
 
-_ARCHIVE_URL = os.getenv("ARCHIVE_URL", "http://hestia_archive:19002")
+_HUB_API_URL = os.getenv(
+    "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 _TIMEOUT = 8
 
 
-def _base() -> str:
-    return _ARCHIVE_URL.rstrip("/")
+def _route_archive(method: str, endpoint: str, body=None, query=None, timeout: int = 8):
+    """Route a request to Archive through Hub."""
+    try:
+        resp = requests.post(
+            f"{_HUB_API_URL}/route/archive/{endpoint.lstrip('/')}",
+            json={
+                "method": method.upper(),
+                "headers": {},
+                "query": query or {},
+                "body": body,
+                "timeout_seconds": timeout,
+            },
+            timeout=timeout + 1,
+        )
+        if resp.status_code != 200:
+            return None
+        routed = resp.json() or {}
+        if int(routed.get("status_code", 500)) >= 400:
+            return None
+        return routed.get("payload")
+    except Exception as exc:
+        logger.warning(
+            "event=archive_route_error endpoint=%s error=%s", endpoint, exc)
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -72,15 +95,12 @@ def upsert_calendar_item(
         "nag_enabled": nag_enabled,
     }
     try:
-        resp = requests.post(
-            f"{_base()}/api/calendar/items", json=payload, timeout=_TIMEOUT
-        )
-        if resp.status_code < 300:
-            return resp.json()
+        result = _route_archive(
+            "POST", "api/calendar/items", body=payload, timeout=_TIMEOUT)
+        if result is not None:
+            return result if isinstance(result, dict) else None
         logger.warning(
-            "event=archive_upsert_calendar_item_failed_status_body [ARCHIVE] upsert_calendar_item failed status=%s body=%s",
-            resp.status_code,
-            resp.text[:200],
+            "event=archive_upsert_calendar_item_failed [ARCHIVE] upsert_calendar_item failed"
         )
     except Exception as exc:
         logger.warning("event=archive_upsert_calendar_item_error [ARCHIVE] upsert_calendar_item error: %s", exc)
@@ -90,11 +110,12 @@ def upsert_calendar_item(
 def delete_calendar_item_by_external(source: str, external_id: str) -> bool:
     """Remove a calendar item from Archive after it has been deleted from its provider."""
     try:
-        resp = requests.delete(
-            f"{_base()}/api/calendar/items/by-external/{source}/{external_id}",
+        result = _route_archive(
+            "DELETE",
+            f"api/calendar/items/by-external/{source}/{external_id}",
             timeout=_TIMEOUT,
         )
-        return resp.status_code < 300
+        return result is not None
     except Exception as exc:
         logger.warning("event=archive_delete_calendar_item_error [ARCHIVE] delete_calendar_item error: %s", exc)
         return False
@@ -103,12 +124,13 @@ def delete_calendar_item_by_external(source: str, external_id: str) -> bool:
 def mark_notified(item_id: int, bucket: str) -> bool:
     """Update last_notified_bucket for a CalendarItem (called by notification worker)."""
     try:
-        resp = requests.patch(
-            f"{_base()}/api/calendar/items/{item_id}/notified",
-            json={"last_notified_bucket": bucket},
+        result = _route_archive(
+            "PATCH",
+            f"api/calendar/items/{item_id}/notified",
+            body={"last_notified_bucket": bucket},
             timeout=_TIMEOUT,
         )
-        return resp.status_code < 300
+        return result is not None
     except Exception as exc:
         logger.warning("event=archive_mark_notified_error [ARCHIVE] mark_notified error: %s", exc)
         return False
@@ -117,12 +139,13 @@ def mark_notified(item_id: int, bucket: str) -> bool:
 def set_nag(item_id: int, enabled: bool) -> bool:
     """Toggle nag for a specific calendar item."""
     try:
-        resp = requests.patch(
-            f"{_base()}/api/calendar/items/{item_id}/nag",
-            json={"nag_enabled": enabled},
+        result = _route_archive(
+            "PATCH",
+            f"api/calendar/items/{item_id}/nag",
+            body={"nag_enabled": enabled},
             timeout=_TIMEOUT,
         )
-        return resp.status_code < 300
+        return result is not None
     except Exception as exc:
         logger.warning("event=archive_set_nag_error [ARCHIVE] set_nag error: %s", exc)
         return False
@@ -143,22 +166,21 @@ def list_upcoming(
 
     Used by the notification worker to discover events that need reminders.
     """
-    params: dict[str, Any] = {
+    query: dict[str, Any] = {
         "from_time": from_time,
         "to_time": to_time,
         "status_filter": "confirmed",
         "limit": limit,
     }
     if nag_enabled is not None:
-        params["nag_enabled"] = str(nag_enabled).lower()
+        query["nag_enabled"] = str(nag_enabled).lower()
     try:
-        resp = requests.get(
-            f"{_base()}/api/calendar/items", params=params, timeout=_TIMEOUT
-        )
-        if resp.status_code < 300:
-            return resp.json()
+        result = _route_archive(
+            "GET", "api/calendar/items", query=query, timeout=_TIMEOUT)
+        if isinstance(result, list):
+            return result
         logger.warning(
-            "event=archive_list_upcoming_failed_status [ARCHIVE] list_upcoming failed status=%s", resp.status_code
+            "event=archive_list_upcoming_failed [ARCHIVE] list_upcoming failed"
         )
     except Exception as exc:
         logger.warning("event=archive_list_upcoming_error [ARCHIVE] list_upcoming error: %s", exc)
@@ -173,23 +195,22 @@ def list_items(
     limit: int = 100,
 ) -> list[dict]:
     """General calendar item listing used by the agenda endpoint."""
-    params: dict[str, Any] = {"limit": limit}
+    query: dict[str, Any] = {"limit": limit}
     if from_time:
-        params["from_time"] = from_time
+        query["from_time"] = from_time
     if to_time:
-        params["to_time"] = to_time
+        query["to_time"] = to_time
     if source:
-        params["source"] = source
+        query["source"] = source
     if kind:
-        params["kind"] = kind
+        query["kind"] = kind
     try:
-        resp = requests.get(
-            f"{_base()}/api/calendar/items", params=params, timeout=_TIMEOUT
-        )
-        if resp.status_code < 300:
-            return resp.json()
+        result = _route_archive(
+            "GET", "api/calendar/items", query=query, timeout=_TIMEOUT)
+        if isinstance(result, list):
+            return result
         logger.warning(
-            "event=archive_list_items_failed_status [ARCHIVE] list_items failed status=%s", resp.status_code)
+            "event=archive_list_items_failed [ARCHIVE] list_items failed")
     except Exception as exc:
         logger.warning("event=archive_list_items_error [ARCHIVE] list_items error: %s", exc)
     return []

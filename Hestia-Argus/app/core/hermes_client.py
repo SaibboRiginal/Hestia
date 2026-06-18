@@ -15,8 +15,8 @@ import requests
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
-HERMES_URL = os.getenv(
-    "HERMES_API_URL", "http://hestia_hermes:19005"
+HUB_API_URL = os.getenv(
+    "HUB_API_URL", "http://hestia_hub:19001/api"
 ).rstrip("/")
 NOTIFY_TARGET = os.getenv("ARGUS_NOTIFY_TARGET", "")
 
@@ -35,14 +35,29 @@ def publish_event(domain: str, event_type: str, entity_id: str, payload: dict[st
     }
     try:
         resp = requests.post(
-            f"{HERMES_URL}/api/events/ingest", json=body, timeout=10)
-        if resp.status_code < 300:
-            result = (resp.json() if resp.content else {}).get("result", {})
-            logger.info("event=hermes_event_published_domain_event [HERMES] Event published domain=%s event=%s deliveries=%s",
-                        domain, event_type, result.get("deliveries", 0))
-            return True
-        logger.warning("event=hermes_publish_event_status_body [HERMES] publish_event status=%s body=%s",
-                       resp.status_code, resp.text[:200])
+            f"{HUB_API_URL}/route/hermes/api/events/ingest",
+            json={
+                "method": "POST",
+                "headers": {},
+                "query": {},
+                "body": body,
+                "timeout_seconds": 10,
+            },
+            timeout=11,
+        )
+        if resp.status_code != 200:
+            logger.warning("event=hermes_publish_event_status_body [HERMES] publish_event status=%s body=%s",
+                           resp.status_code, resp.text[:200])
+            return False
+        routed = resp.json() if resp.content else {}
+        if int(routed.get("status_code", 500)) >= 400:
+            logger.warning("event=hermes_publish_event_status_code [HERMES] publish_event status_code=%s",
+                           routed.get("status_code"))
+            return False
+        result = (routed.get("payload") or {}).get("result", {}) if isinstance(routed.get("payload"), dict) else {}
+        logger.info("event=hermes_event_published_domain_event [HERMES] Event published domain=%s event=%s deliveries=%s",
+                    domain, event_type, result.get("deliveries", 0))
+        return True
     except Exception as exc:
         logger.warning("event=hermes_publish_event_failed [HERMES] publish_event failed: %s", exc)
     return False
@@ -57,7 +72,7 @@ def send_message(text: str, chat_id: str | None = None) -> bool:
         )
         return False
 
-    payload = {
+    dispatch_body = {
         "channel": "telegram",
         "target": str(target),
         "message": text,
@@ -65,16 +80,25 @@ def send_message(text: str, chat_id: str | None = None) -> bool:
     }
     try:
         resp = requests.post(
-            f"{HERMES_URL}/api/dispatch/send",
-            json=payload,
-            timeout=10,
+            f"{HUB_API_URL}/route/hermes/api/dispatch/send",
+            json={
+                "method": "POST",
+                "headers": {},
+                "query": {},
+                "body": dispatch_body,
+                "timeout_seconds": 10,
+            },
+            timeout=11,
         )
-        resp.raise_for_status()
-        data = resp.json()
-        if not data.get("success", False):
-            logger.warning("event=hermes_dispatch_returned_success_false Hermes dispatch returned success=false: %s", data)
+        if resp.status_code != 200:
+            logger.warning("event=hermes_dispatch_status [HERMES] dispatch status=%s", resp.status_code)
             return False
-        return True
+        routed = resp.json() if resp.content else {}
+        routed_payload = routed.get("payload") if isinstance(routed, dict) else {}
+        if isinstance(routed_payload, dict) and routed_payload.get("success", False):
+            return True
+        logger.warning("event=hermes_dispatch_returned_success_false Hermes dispatch returned success=false: %s", routed_payload)
+        return False
     except Exception as exc:
         logger.warning("event=hermes_dispatch_failed Hermes dispatch failed: %s", exc)
         return False
