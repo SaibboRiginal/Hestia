@@ -12,6 +12,9 @@ from .core.shared_imports import import_shared_symbol
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils", "setup_service_logging"
 )
+create_log_control_router = import_shared_symbol(
+    "hestia_common.logging_utils", "create_log_control_router"
+)
 logger, log_buffer = setup_service_logging("hestia_athena")
 
 
@@ -342,3 +345,5 @@ except ModuleNotFoundError:
         "event=mcp_router_skipped service=athena "
         "reason=hestia_common_not_available"
     )
+
+app.include_router(create_log_control_router("hestia_athena"))

@@ -36,12 +36,6 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
-MCP_API_URL = os.getenv(
-    "MCP_API_URL", "http://hestia_mcp:19013").rstrip("/")
-ORACLE_API_URL = os.getenv(
-    "ORACLE_API_URL", "http://hestia_oracle:19004/api/chat")
-ORACLE_FORMAT_API_URL = os.getenv(
-    "ORACLE_FORMAT_API_URL", "http://hestia_oracle:19004/api/format")
 
 STATE_FILE = "data/telegram_state.json"
 SESSION_SETTINGS_FILE = "data/session_settings.json"
@@ -59,7 +53,7 @@ TELEGRAM_LOCALE = os.getenv("TELEGRAM_LOCALE", "it")
 
 TELEGRAM_HIDDEN_COMMAND_SERVICES = {
     item.strip().lower()
-    for item in os.getenv("TELEGRAM_HIDDEN_COMMAND_SERVICES", "scout").split(",")
+    for item in os.getenv("TELEGRAM_HIDDEN_COMMAND_SERVICES", "").split(",")
     if item.strip()
 }
 TELEGRAM_HIDDEN_DYNAMIC_COMMANDS = {
@@ -250,36 +244,63 @@ def snooze_feedback(chat_id: str, days: int = FEEDBACK_SNOOZE_DEFAULT_DAYS) -> s
     return ""
 
 
-def resolve_oracle_chat_url() -> str:
+_oracle_base_url: str | None = None
+
+
+def _discover_oracle_base() -> str:
+    """Discover Oracle's base_url from Hub registry. Cached after first lookup."""
+    global _oracle_base_url
+    if _oracle_base_url:
+        return _oracle_base_url
     try:
-        response = requests.get(f"{HUB_API_URL}/registry/services", timeout=4)
-        if response.status_code == 200:
-            services = response.json().get("services", []) or []
-            for service in services:
-                if str(service.get("name", "")).strip().lower() == "oracle":
-                    base_url = str(service.get("base_url", "")).rstrip("/")
-                    if base_url:
-                        return f"{base_url}/api/chat"
+        resp = requests.get(f"{HUB_API_URL}/status", timeout=3)
+        if resp.ok:
+            services = resp.json().get("services", [])
+            for svc in services:
+                if svc.get("name") == "oracle":
+                    _oracle_base_url = svc["base_url"].rstrip("/")
+                    return _oracle_base_url
     except Exception:
         pass
-    return ORACLE_API_URL
+    _oracle_base_url = "http://hestia_oracle:19004"
+    return _oracle_base_url
+
+
+def resolve_oracle_chat_url() -> str:
+    """Chat uses Hub-discovered Oracle URL directly (NDJSON streaming)."""
+    return f"{_discover_oracle_base()}/api/chat"
 
 
 def resolve_oracle_document_url() -> str:
-    """Return the Oracle document analysis endpoint URL via Hub service registry."""
+    """Document upload uses Hub-discovered Oracle URL directly (NDJSON streaming)."""
+    return f"{_discover_oracle_base()}/api/chat/document"
+
+
+def resolve_oracle_format_url() -> str:
+    """Format calls use Hub-discovered Oracle URL directly."""
+    return f"{_discover_oracle_base()}/api/format"
+
+
+_mcp_base_url: str | None = None
+
+
+def resolve_mcp_url() -> str:
+    """Discover MCP base_url from Hub registry. Cached after first lookup."""
+    global _mcp_base_url
+    if _mcp_base_url:
+        return _mcp_base_url
     try:
-        response = requests.get(f"{HUB_API_URL}/registry/services", timeout=4)
-        if response.status_code == 200:
-            services = response.json().get("services", []) or []
-            for service in services:
-                if str(service.get("name", "")).strip().lower() == "oracle":
-                    base_url = str(service.get("base_url", "")).rstrip("/")
-                    if base_url:
-                        return f"{base_url}/api/chat/document"
+        resp = requests.get(f"{HUB_API_URL}/status", timeout=3)
+        if resp.ok:
+            services = resp.json().get("services", [])
+            for svc in services:
+                if svc.get("name") == "mcp":
+                    _mcp_base_url = svc["base_url"].rstrip("/")
+                    return _mcp_base_url
     except Exception:
         pass
-    base = ORACLE_API_URL.rsplit("/api/chat", 1)[0]
-    return f"{base}/api/chat/document"
+    _mcp_base_url = "http://hestia_mcp:19013"
+    return _mcp_base_url
 
 
 def get_session(chat_id: str) -> str:

@@ -55,6 +55,7 @@ def register(*, quiet_success: bool = False) -> bool:
                 "method": "POST",
             },
             "mcp_endpoint": f"{ARGUS_SERVICE_BASE_URL.rstrip('/')}/mcp",
+            "module_tool_domains": ["system"],
         },
     }
     try:

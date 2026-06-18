@@ -282,6 +282,17 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "Do not invent tool names or parameters that are not present in the manifest.\n\n"
         "Available tools:\n{tools_json}"
     ),
+    # Compact variant used when native tool-calling (Ollama `tools` parameter)
+    # already carries the full JSON schemas.  The text prompt only needs tool
+    # names + short descriptions so the LLM can pick the right one.
+    "agent_loop_system_preamble_compact": (
+        "You are Hestia's reasoning engine. You have access to native function "
+        "calling — use it to call tools when needed. Call a tool immediately if "
+        "it can help answer the user's request. After receiving a tool result, "
+        "format it naturally for the user. When no tool is needed, respond "
+        "directly. Never respond with just a greeting — always be helpful.\n\n"
+        "Available tools:\n{tools_list}"
+    ),
     "memory_compactor_template": (
         "You are Hestia's memory compactor. Produce a compact, factual bullet-point summary of the following conversation segment. "
         "Capture: key user requests, decisions made, information shared, and any commitments or open questions. Use 5-10 bullets maximum. "

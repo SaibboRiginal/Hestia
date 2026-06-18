@@ -768,7 +768,7 @@ class OracleEngine:
                 payload=payload or {},
             )
         except Exception as exc:
-            logger.debug(
+            logger.trace(
                 "event=interaction_ledger_append_failed_non Interaction ledger append failed (non-fatal): %s", exc)
 
     def chat(
@@ -796,6 +796,9 @@ class OracleEngine:
         """
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex[:12]
+        logger.trace("event=chat_entry trace_id=%s session_id=%s mode=%s model=%s msg=%s",
+                     trace_id, session_id, mode, model,
+                     json.dumps(user_message[:120], ensure_ascii=False))
         logger.info(
             "event=chat_turn_start trace_id=%s session_id=%s msg_len=%s save_history=%s force_notification_compiler=%s",
             trace_id,
@@ -804,9 +807,26 @@ class OracleEngine:
             bool(save_history),
             bool(force_notification_compiler),
         )
+        logger.trace(
+            "event=chat_user_message trace_id=%s session_id=%s message=%s",
+            trace_id,
+            session_id,
+            json.dumps(user_message, ensure_ascii=False),
+        )
 
         # ── Resolve agent by use case ──────────────────────────────────────────
         agent = self._resolve_agent(model)
+        logger.trace("event=chat_agent_resolved trace_id=%s agent_type=%s model=%s provider=%s thinking=%s",
+                     trace_id, type(agent).__name__, agent.model_name, agent.provider, agent.thinking)
+        logger.info(
+            "event=chat_model_selected trace_id=%s session_id=%s mode=%s model=%s provider=%s thinking=%s",
+            trace_id,
+            session_id,
+            mode,
+            agent.model_name,
+            agent.provider,
+            agent.thinking,
+        )
 
         # ── Phase 1: INIT ─────────────────────────────────────────────────────
         yield stream_emitter.emit_status("📂 Recupero cronologia e routing...")
@@ -824,15 +844,31 @@ class OracleEngine:
                 user_message, history_text, client_instructions,
                 extra_context=None, current_datetime_context=temporal_context,
             )
+            logger.trace(
+                "event=chat_quick_answer trace_id=%s session_id=%s answer=%s",
+                trace_id,
+                session_id,
+                json.dumps(answer, ensure_ascii=False),
+            )
             if save_history:
                 self._save_history(session_id, user_message, answer, trace_id=trace_id)
             yield stream_emitter.emit_final(answer, "general")
+            logger.info(
+                "event=chat_done_summary session_id=%s total_ms=%s mode=quick model=%s provider=%s thinking=%s tools=0 answer_len=%s trace_id=%s",
+                session_id,
+                int((time.perf_counter() - t0) * 1000),
+                agent.model_name,
+                agent.provider,
+                agent.thinking,
+                len(answer or ""),
+                trace_id,
+            )
             self._phase_background_memory(
                 user_message, session_id, notify_target,
                 force_notification_compiler, trace_id=trace_id,
             )
             return
-        logger.debug(
+        logger.trace(
             "event=chat_phase_timing_ms Chat phase timing | session=%s phase=init ms=%s domains=%s",
             session_id,
             int((time.perf_counter() - t_init) * 1000),
@@ -850,14 +886,26 @@ class OracleEngine:
             current_datetime_context=temporal_context,
         )
         logger.info(
-            "event=chat_classify_result trace_id=%s session_id=%s mode=%s domain=%s conf=%.2f action_intent=%s",
+            "event=chat_classify_result trace_id=%s session_id=%s mode=%s domain=%s conf=%.2f valid_domains=%s action_intent=%s",
             trace_id,
             session_id,
             intent.mode,
             intent.explicit_domain,
             intent.confidence,
+            intent.valid_domains,
             intent.action_intent,
         )
+        if intent.confidence < 0.3:
+            logger.warning(
+                "event=chat_classify_low_confidence trace_id=%s session_id=%s mode=%s domain=%s conf=%.2f available_domains=%s msg_preview=%s",
+                trace_id,
+                session_id,
+                intent.mode,
+                intent.explicit_domain,
+                intent.confidence,
+                available_domains,
+                (user_message or "")[:120],
+            )
 
         # ── Phase 3: QUICK CHAT shortcut ──────────────────────────────────────
         if intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD:
@@ -893,8 +941,23 @@ class OracleEngine:
                             signal.get("data"), dict) else {},
                     )
 
-            logger.info("event=quick_chat_done_ms Quick chat done in %ims", int(
-                (time.perf_counter() - t0) * 1000))
+            quick_total_ms = int((time.perf_counter() - t0) * 1000)
+            logger.trace(
+                "event=chat_quick_chat_answer trace_id=%s session_id=%s answer=%s",
+                trace_id,
+                session_id,
+                json.dumps(answer, ensure_ascii=False),
+            )
+            logger.info(
+                "event=chat_done_summary session_id=%s total_ms=%s mode=quick_chat model=%s provider=%s thinking=%s tools=0 answer_len=%s trace_id=%s",
+                session_id,
+                quick_total_ms,
+                agent.model_name,
+                agent.provider,
+                agent.thinking,
+                len(answer or ""),
+                trace_id,
+            )
             yield stream_emitter.emit_final(answer, "general")
             self._phase_background_memory(
                 user_message, session_id, notify_target,
@@ -930,18 +993,26 @@ class OracleEngine:
             seed=session_id,
         )
 
-        # Build the SINGLE tool manifest: domain tools + ALL Hub commands + memory tools
+        build_domains = [d for d in available_domains if d != "general"]
+        if not build_domains:
+            logger.warning(
+                "event=chat_no_domain_tools_available session_id=%s available_domains=%s",
+                session_id, available_domains,
+            )
         domain_tools = self._build_domain_tools(
             intent,
             session_id,
             notify_target,
             trace_id=trace_id,
+            fallback_domains=build_domains,
         )
         logger.info(
-            "event=chat_tools_built trace_id=%s session_id=%s tools=%s action_intent=%s",
+            "event=chat_tools_built trace_id=%s session_id=%s tools=%s domains=%s available=%s action_intent=%s",
             trace_id,
             session_id,
             len(domain_tools),
+            build_domains,
+            available_domains,
             intent.action_intent,
         )
 
@@ -999,14 +1070,28 @@ class OracleEngine:
             on_thinking=_on_thinking,
             action_intent=intent.action_intent,
         )
+        agent_loop_ms = int((time.perf_counter() - t_agent_loop) * 1000)
         logger.info(
-            "event=chat_agent_loop_done trace_id=%s session_id=%s turns_tools=%s tokens=%s answer_len=%s ms=%s",
+            "event=chat_agent_loop_done trace_id=%s session_id=%s turns=%s tools_called=%s tools_available=%s tokens=%s answer_len=%s agent_loop_ms=%s model=%s provider=%s thinking=%s max_turns=%s domains=%s",
             trace_id,
             session_id,
+            len(tool_log) + (1 if answer else 0),  # turns ≈ tool calls + final answer
             len(tool_log),
+            len(domain_tools),
             len(tokens),
             len(answer or ""),
-            int((time.perf_counter() - t_agent_loop) * 1000),
+            agent_loop_ms,
+            agent.model_name,
+            agent.provider,
+            agent.thinking,
+            resolved_max_turns,
+            build_domains,
+        )
+        logger.trace(
+            "event=chat_answer trace_id=%s session_id=%s answer=%s",
+            trace_id,
+            session_id,
+            json.dumps(answer, ensure_ascii=False),
         )
 
         # Emit thinking events BEFORE the answer (shows tool activity)
@@ -1049,8 +1134,20 @@ class OracleEngine:
         if tool_log:
             yield stream_emitter.emit_tool_summary(tool_log)
 
-        logger.info("event=chat_done_session_total_ms Chat done | session=%s total=%ims tools=%s",
-                    session_id, int((time.perf_counter() - t0) * 1000), len(tool_log))
+        total_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "event=chat_done_summary session_id=%s total_ms=%s mode=%s model=%s provider=%s thinking=%s tools=%s answer_len=%s tokens=%s trace_id=%s",
+            session_id,
+            total_ms,
+            mode,
+            agent.model_name,
+            agent.provider,
+            agent.thinking,
+            len(tool_log),
+            len(answer or ""),
+            len(tokens),
+            trace_id,
+        )
 
         # Background memory extraction (always async, never blocks the user)
         self._phase_background_memory(
@@ -1096,6 +1193,7 @@ class OracleEngine:
         variant_seed: str | None = None,
     ) -> str:
         """Ask the analyst to format a structured service payload as human text."""
+        t0 = time.perf_counter()
         payload_text = json.dumps(payload, ensure_ascii=False, indent=2)
         is_alert = str(command or "").startswith("alert:")
         is_multi_alert = bool(isinstance(payload, dict)
@@ -1158,7 +1256,14 @@ class OracleEngine:
             static_sections=static_sections,
             dynamic_sections=dynamic_sections,
         )
-        return self._ask_analyst(prompt)
+        result = self._ask_analyst(prompt)
+        logger.info(
+            "event=format_payload_done command=%s output_chars=%s ms=%s",
+            command,
+            len(result or ""),
+            int((time.perf_counter() - t0) * 1000),
+        )
+        return result
 
     def compile_notification_shortcut(
         self, user_message: str, session_id: str, notify_target: str | None = None
@@ -1181,6 +1286,48 @@ class OracleEngine:
     def delete_chat_history(self, session_id: str):
         """Delete chat history for *session_id* via Hub/Archive."""
         return self._hub.delete(f"/chat/history/{session_id}")
+
+    def estimate_context_stats(self, session_id: str) -> dict:
+        """Return context-window usage estimates for *session_id*."""
+        _est = lambda s: int(len(s or "") / 3)
+        CONTEXT_WINDOW = 256_000  # Gemma 4
+
+        # History
+        history_data = self._hub.get_history(session_id, limit=200) or []
+        history_chars = sum(len(str(m.get("content", ""))) for m in history_data if isinstance(m, dict))
+        history_tokens = _est("x" * history_chars)
+
+        # Tools from Hub
+        all_commands = self._hub.get_commands() or []
+        tool_count = len(all_commands)
+        tool_chars_est = tool_count * 120  # compact name+desc average
+
+        # Preferences
+        prefs = self._load_preferences(["general"]) or []
+        pref_count = len(prefs)
+        pref_chars = sum(len(str(p.get("fact", ""))) for p in prefs[:10])
+
+        # System overhead (preamble, style, boundary markers)
+        system_overhead = 3_500
+
+        total_chars = history_chars + tool_chars_est + pref_chars + system_overhead
+        total_tokens = _est("x" * total_chars)
+        pct = (total_tokens / CONTEXT_WINDOW) * 100
+
+        return {
+            "context_window": CONTEXT_WINDOW,
+            "history_messages": len(history_data) if isinstance(history_data, list) else 0,
+            "history_chars": history_chars,
+            "history_tokens_est": history_tokens,
+            "tool_count": tool_count,
+            "tool_chars_est": tool_chars_est,
+            "preference_count": pref_count,
+            "preference_chars": pref_chars,
+            "total_chars_est": total_chars,
+            "total_tokens_est": total_tokens,
+            "context_used_pct": round(pct, 1),
+            "context_remaining_est": CONTEXT_WINDOW - total_tokens,
+        }
 
     def get_user_controls(self) -> dict:
         """Return current durable user controls."""
@@ -1335,6 +1482,7 @@ class OracleEngine:
 
     def _phase_init(self, session_id: str, trace_id: str | None = None) -> tuple:
         """Load history and domain manifest from Hub. Returns (history_text, domains, schemas)."""
+        logger.trace("event=phase_init_entry session_id=%s trace_id=%s", session_id, trace_id)
         t0 = time.perf_counter()
         history_data = self._hub.get(
             f"/chat/history/{session_id}?limit={self._context_builder.max_history_messages}",
@@ -1346,21 +1494,12 @@ class OracleEngine:
         now = time.time()
         history_text = self._context_builder.compact_history(history_data)
 
-        domains_from_cache = False
-        if now - self._domains_cache_ts <= self._domains_cache_ttl_seconds and self._domains_cache_value:
-            available_domains = list(self._domains_cache_value)
-            domains_from_cache = True
-            t_domains_ms = 0
-        else:
-            t_domains = time.perf_counter()
-            available_domains = self._hub.get(
-                "/domains",
-                timeout=self._policy_timeout("foreground_chat"),
-                headers=self._trace_headers(session_id, trace_id),
-            ) or ["general"]
-            t_domains_ms = int((time.perf_counter() - t_domains) * 1000)
-            self._domains_cache_value = list(available_domains)
-            self._domains_cache_ts = now
+        t_domains = time.perf_counter()
+        available_domains = self._hub.hub_get(
+            "/api/domains",
+            timeout=self._policy_timeout("foreground_chat"),
+        ) or ["general"]
+        t_domains_ms = int((time.perf_counter() - t_domains) * 1000)
 
         schemas_from_cache = False
         if now - self._schemas_cache_ts <= self._schemas_cache_ttl_seconds and isinstance(self._schemas_cache_value, dict):
@@ -1369,25 +1508,26 @@ class OracleEngine:
             t_schemas_ms = 0
         else:
             t_schemas = time.perf_counter()
-            schemas = self._hub.get(
-                "/schemas",
+            schemas = self._hub.hub_get(
+                "/api/schemas",
                 timeout=self._policy_timeout("foreground_chat"),
-                headers=self._trace_headers(session_id, trace_id),
             ) or {}
             t_schemas_ms = int((time.perf_counter() - t_schemas) * 1000)
             self._schemas_cache_value = dict(
                 schemas) if isinstance(schemas, dict) else {}
             self._schemas_cache_ts = now
 
-        logger.debug(
-            "event=chat_init_breakdown_ms Chat init breakdown | session=%s history_ms=%s domains_ms=%s schemas_ms=%s domains_cache_hit=%s schemas_cache_hit=%s",
+        logger.trace(
+            "event=chat_init_breakdown_ms Chat init breakdown | session=%s history_ms=%s domains_ms=%s schemas_ms=%s schemas_cache_hit=%s",
             session_id,
             t_history_ms,
             t_domains_ms,
             t_schemas_ms,
-            domains_from_cache,
             schemas_from_cache,
         )
+        logger.trace("event=phase_init_exit session_id=%s domains=%s history_len=%d schemas_keys=%s",
+                     session_id, available_domains, len(history_text or ""),
+                     list((schemas or {}).keys()))
         return history_text, available_domains, schemas
 
     def _phase_classify(
@@ -1399,6 +1539,8 @@ class OracleEngine:
         current_datetime_context: str | None = None,
     ) -> SessionIntent:
         """Run router LLM to classify intent. Returns a SessionIntent."""
+        logger.trace("event=phase_classify_entry msg=%s domains=%s",
+                     json.dumps(user_message[:100], ensure_ascii=False), available_domains)
         (
             mode, explicit_domain, confidence, valid_domains,
             filters, filters_gt, filters_lt, sort_by, sort_order, action_intent,
@@ -1413,6 +1555,8 @@ class OracleEngine:
         if explicit_domain and explicit_domain not in valid_domains:
             valid_domains = [explicit_domain] + \
                 [d for d in valid_domains if d != explicit_domain]
+        logger.trace("event=phase_classify_exit mode=%s domain=%s conf=%.2f valid_domains=%s action_intent=%s",
+                     mode, explicit_domain, confidence, valid_domains, action_intent)
         return SessionIntent(
             mode=mode,
             explicit_domain=explicit_domain,
@@ -1519,8 +1663,20 @@ class OracleEngine:
         trace_id: str | None = None,
     ) -> None:
         """Fire-and-forget memory extraction + compaction check in a daemon thread."""
+        logger.info(
+            "event=background_memory_start session_id=%s trace_id=%s skip_memory_extract=%s",
+            session_id,
+            trace_id,
+            bool(skip_memory_extract),
+        )
+
         def _run():
             t0 = time.perf_counter()
+            mem_ms = 0
+            ctrl_ms = 0
+            compaction_ms = 0
+            compacted = False
+
             # ── Memory extraction ──────────────────────────────────────────────
             if not skip_memory_extract:
                 try:
@@ -1530,16 +1686,16 @@ class OracleEngine:
                         notify_target=notify_target,
                         force_notification_compiler=force_notification_compiler,
                     )
-                    logger.debug(
+                    mem_ms = int((time.perf_counter() - t_mem) * 1000)
+                    logger.info(
                         "event=background_phase_timing_ms Background phase timing | session=%s phase=memory_extract ms=%s",
-                        session_id,
-                        int((time.perf_counter() - t_mem) * 1000),
+                        session_id, mem_ms,
                     )
                 except Exception as exc:
                     logger.warning(
                         "event=background_memory_sync_failed Background memory sync failed: %s", exc)
             else:
-                logger.debug(
+                logger.trace(
                     "event=background_memory_extract_skipped Background memory extraction skipped because sync persistence already ran | session=%s",
                     session_id,
                 )
@@ -1548,10 +1704,10 @@ class OracleEngine:
             try:
                 t_ctrl = time.perf_counter()
                 self._control_service.extract_and_save_controls(user_message)
-                logger.debug(
+                ctrl_ms = int((time.perf_counter() - t_ctrl) * 1000)
+                logger.info(
                     "event=background_phase_timing_ms Background phase timing | session=%s phase=controls_extract ms=%s",
-                    session_id,
-                    int((time.perf_counter() - t_ctrl) * 1000),
+                    session_id, ctrl_ms,
                 )
             except Exception as exc:
                 logger.warning(
@@ -1588,6 +1744,7 @@ class OracleEngine:
                 )
                 should_compact = self._context_builder.needs_compaction(
                     history_data)
+                compacted = bool(should_compact)
                 if should_compact:
                     self._task_store.mark_running(
                         compaction_task_id,
@@ -1608,12 +1765,10 @@ class OracleEngine:
                         "history_messages": history_size,
                     },
                 )
-                logger.debug(
+                compaction_ms = int((time.perf_counter() - t_compaction) * 1000)
+                logger.info(
                     "event=background_phase_timing_ms Background phase timing | session=%s phase=compaction_check ms=%s task_id=%s compacted=%s",
-                    session_id,
-                    int((time.perf_counter() - t_compaction) * 1000),
-                    compaction_task_id,
-                    bool(should_compact),
+                    session_id, compaction_ms, compaction_task_id, bool(should_compact),
                 )
             except Exception as exc:
                 self._task_store.mark_failed(
@@ -1623,10 +1778,10 @@ class OracleEngine:
                 logger.warning(
                     "event=background_compaction_check_failed Background compaction check failed: %s", exc)
 
-            logger.debug(
-                "event=background_phase_timing_ms Background phase timing | session=%s phase=total ms=%s",
-                session_id,
-                int((time.perf_counter() - t0) * 1000),
+            total_ms = int((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "event=background_memory_done session_id=%s total_ms=%s extract_ms=%s controls_ms=%s compaction_ms=%s compacted=%s",
+                session_id, total_ms, mem_ms, ctrl_ms, compaction_ms, compacted,
             )
 
         threading.Thread(target=_run, daemon=True).start()
@@ -1676,19 +1831,49 @@ class OracleEngine:
         session_id: str,
         notify_target: str | None,
         trace_id: str | None = None,
+        fallback_domains: list[str] | None = None,
     ) -> list[ToolDefinition]:
         """Build ToolDefinitions for the agentic loop from registered module tools.
 
-        Each domain in the intent gets a '{domain}.search' tool that calls the
-        retrieval service. Document chunk search is added when relevant.
-        Returns an empty list if no module tools are registered (falls back to
-        the pre-fetch approach in the caller).
+        Domain filtering (rulebook 1.2 — organ model):
+        - Only domains with a ``layer:domain`` owner get a ``{domain}.search`` tool.
+        - Hub command tools are filtered to domain-owning services only.
+        - Domains with no canonical owner log a warning and are skipped —
+          the LLM still has ``memory.*`` + ``documents.search`` tools.
         """
         tools: list[ToolDefinition] = []
         rs = self._retrieval_service
 
-        for domain in intent.valid_domains:
-            # Capture domain in closure
+        # ── Resolve domain-owning services ──────────────────────────────────
+        if self._module_registry._needs_refresh():
+            self._module_registry.refresh()
+
+        domains = fallback_domains if fallback_domains else intent.valid_domains
+
+        # _relevant_services = all services with layer:domain that own at
+        # least one of the intent's domains.  Used to filter command tools.
+        _relevant_services: set[str] = set()
+        _owned_domains: list[str] = []
+        _unowned_domains: list[str] = []
+
+        for domain in domains:
+            owners = self._module_registry.get_domain_owners(domain)
+            if owners:
+                _relevant_services.update(owners)
+                _owned_domains.append(domain)
+            else:
+                _unowned_domains.append(domain)
+
+        if _unowned_domains:
+            logger.warning(
+                "event=domain_tool_no_owner session_id=%s unowned_domains=%s "
+                "all_domains=%s — no layer:domain service owns these domains; "
+                "only memory.* + documents.search tools will be available",
+                session_id, _unowned_domains, domains,
+            )
+
+        # ── Build {domain}.search tools for OWNED domains only ──────────────
+        for domain in _owned_domains:
             _domain = domain
 
             def _domain_search_handler(
@@ -1760,16 +1945,19 @@ class OracleEngine:
             handler=_doc_search_handler,
         ))
 
-        # Only return tools if domain module tools are actually registered
-        if self._module_registry._needs_refresh():
-            self._module_registry.refresh()
-
-        # Add all Hub Action Commands to domain tools
-        # This replaces _try_action_call, empowering the Agent Loop to fetch/delete/add seamlessly.
+        # ── Hub Action Commands — filtered to domain-owning services ────────
         all_commands = self._hub.get_commands() or []
+        _filtered_cmds = 0
         for cmd in all_commands:
             cmd_name = cmd.get("command")
             if not cmd_name:
+                continue
+
+            # Domain-gate: only include commands from domain-owning services.
+            # memory.* / documents.* tools are added separately below.
+            cmd_service = str(cmd.get("service", "") or "").strip()
+            if _relevant_services and cmd_service not in _relevant_services:
+                _filtered_cmds += 1
                 continue
 
             # Build schema for Agent
@@ -1819,6 +2007,13 @@ class OracleEngine:
                         session_id,
                         notify_target,
                     )
+                    # Auto-map remaining kwargs as query params for GET/HEAD
+                    # requests when no explicit query_template was provided.
+                    if method in ("GET", "HEAD", "DELETE") and not command_def.get("query_template"):
+                        for k, v in kwargs.items():
+                            if k not in query and v is not None:
+                                query[k] = v
+
                     path = _resolve_template(
                         path_tpl,
                         kwargs,
@@ -1860,6 +2055,15 @@ class OracleEngine:
                 parameters=schema,
                 handler=make_handler(cmd)
             ))
+
+        if _filtered_cmds:
+            logger.debug(
+                "event=domain_tool_commands_filtered session_id=%s "
+                "filtered_out=%s kept=%s relevant_services=%s",
+                session_id, _filtered_cmds,
+                sum(1 for _ in all_commands) - _filtered_cmds,
+                sorted(_relevant_services),
+            )
 
         # ── Memory tools (first-class agent loop tools) ──────────────────────
         _mem_svc = self._memory_service
@@ -2123,6 +2327,9 @@ class OracleEngine:
 
     def _ask_analyst_with_tools(self, prompt: str, tools_manifest: list[dict]) -> dict:
         """Ask analyst with provider-native tool-calling when available."""
+        logger.trace("event=ask_analyst_with_tools_entry prompt_len=%d tool_count=%d tool_names=%s",
+                     len(prompt), len(tools_manifest),
+                     [t.get("name", "?") for t in (tools_manifest or [])[:10]])
         try:
             return self._agents.generic.ask_with_tools(prompt, tools_manifest)
         except Exception as exc:
@@ -2210,11 +2417,14 @@ class OracleEngine:
                 f"MESSAGGIO UTENTE:\n{user_message}",
             ],
         )
-        # For quick chat, prefer the fast fallback analyst (Gemini Flash) over the heavy local model
+        # Use primary agent first; fall back only on failure
         try:
-            return self._agents.generic_fallback.ask(prompt)
+            return self._agents.generic.ask(prompt)
         except Exception:
-            return self._ask_analyst(prompt)
+            try:
+                return self._agents.generic_fallback.ask(prompt)
+            except Exception:
+                return self._ask_analyst(prompt)
 
     def _now_in_oracle_timezone(self) -> datetime:
         """Return timezone-aware current datetime using ORACLE_TIMEZONE when valid."""

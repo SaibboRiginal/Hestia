@@ -389,6 +389,7 @@ class ScoutWorker:
         logger.info(
             "event=hestia_scout_activating_parser_extractor === Hestia-Scout: Activating Parser & Extractor ===")
         self._cycle_counter += 1
+        t_cycle = time.perf_counter()
 
         if self.reconcile_every_cycles > 0 and self._cycle_counter % self.reconcile_every_cycles == 0:
             self.reconcile_entities()
@@ -431,6 +432,7 @@ class ScoutWorker:
         )
 
         # ── 2. Pre-parse: extract URLs from all emails without LLM ───
+        t_pre = time.perf_counter()
         logger.info(
             "event=pre_parse_extracting_listing_urls [PRE-PARSE] Extracting listing URLs from all emails (no LLM)...")
         parsed = pre_parse_records(pending_records)
@@ -441,6 +443,12 @@ class ScoutWorker:
             total_unique_urls,
             len(pending_records),
             len(parsed.unclassified_record_ids),
+        )
+        logger.info(
+            "event=pre_parse_done ms=%d urls=%s emails=%s",
+            int((time.perf_counter() - t_pre) * 1000),
+            total_unique_urls,
+            len(pending_records),
         )
 
         # ── 3. Load all known entity IDs from Archive ────────────────
@@ -562,7 +570,10 @@ class ScoutWorker:
             else:
                 self.vault.save_evaluation(record_id, {"status": "parsed"})
 
-        logger.info("event=cycle_complete \n[✓] Cycle complete.")
+        logger.info(
+            "event=cycle_complete ms=%d \n[✓] Cycle complete.",
+            int((time.perf_counter() - t_cycle) * 1000),
+        )
 
     # ─────────────────────────────────────────────────────────────────
     #  Private helpers
@@ -578,6 +589,7 @@ class ScoutWorker:
 
         Returns ``True`` if the quota was exhausted (caller should stop).
         """
+        t_batch = time.perf_counter()
         combined_text_to_read = ""
         for item_index, record in enumerate(batch):
             record_id = record["id"]
@@ -592,6 +604,11 @@ class ScoutWorker:
         if not combined_text_to_read.strip():
             logger.info(
                 "event=all_emails_this_batch_were [!] All emails in this batch were empty. Skipping.")
+            logger.info(
+                "event=llm_batch_done ms=%d batch=%s entities=0",
+                int((time.perf_counter() - t_batch) * 1000),
+                batch_index + 1,
+            )
             return False
 
         ai_response = self.brain.evaluate(combined_text_to_read)
@@ -605,7 +622,17 @@ class ScoutWorker:
             if "All models exhausted" in ai_response["error"]:
                 logger.info(
                     "event=global_quota_hit_shutting_down [🛑] Global Quota hit. Shutting down for the day.")
+                logger.info(
+                    "event=llm_batch_done ms=%d batch=%s quota_exhausted=true",
+                    int((time.perf_counter() - t_batch) * 1000),
+                    batch_index + 1,
+                )
                 return True
+            logger.info(
+                "event=llm_batch_done ms=%d batch=%s error=true",
+                int((time.perf_counter() - t_batch) * 1000),
+                batch_index + 1,
+            )
             return False
 
         try:
@@ -656,7 +683,13 @@ class ScoutWorker:
                 else:
                     payload["url"] = normalized_entity_id
 
+                t_geo = time.perf_counter()
                 payload = enrich_payload_geolocation(payload, self.geocoder)
+                logger.info(
+                    "event=geo_enrich_done ms=%d entity_id=%s",
+                    int((time.perf_counter() - t_geo) * 1000),
+                    normalized_entity_id,
+                )
                 if self.enable_listing_enrichment:
                     payload = enrich_payload_from_listing(payload)
 
@@ -724,6 +757,12 @@ class ScoutWorker:
                 found_entities,
                 ai_response.get("model_used"),
             )
+            logger.info(
+                "event=llm_batch_done ms=%d batch=%s entities=%s",
+                int((time.perf_counter() - t_batch) * 1000),
+                batch_index + 1,
+                found_entities,
+            )
 
         except Exception as error:
             logger.warning(
@@ -732,5 +771,10 @@ class ScoutWorker:
             )
             with open(f"debug_broken_batch_{batch_index}.txt", "w", encoding="utf-8") as handle:
                 handle.write(raw_text)
+            logger.info(
+                "event=llm_batch_done ms=%d batch=%s error=true",
+                int((time.perf_counter() - t_batch) * 1000),
+                batch_index + 1,
+            )
 
         return False

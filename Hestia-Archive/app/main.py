@@ -18,13 +18,13 @@ from .database import engine, SessionLocal
 from .routers import archive, chat, calendar, documents, entities, memory
 
 try:
-    from hestia_common.logging_utils import log_event, setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import log_event, setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
 
 logger, log_buffer = setup_service_logging("hestia_archive")
 
@@ -150,6 +150,7 @@ try:
 except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=archive reason=hestia_common_not_available")
 
+app.include_router(create_log_control_router("hestia_archive"))
 
 @app.get("/health")
 def health():

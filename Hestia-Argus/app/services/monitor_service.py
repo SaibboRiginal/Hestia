@@ -82,6 +82,8 @@ def _monitor_loop() -> None:
 
 
 def _run_once() -> None:
+    t0 = time.perf_counter()
+    logger.info("event=monitor_cycle_start")
     services = hub_client.discover_services()
     health = health_poller.poll_all(services)
 
@@ -146,6 +148,12 @@ def _run_once() -> None:
                     message=event.message,
                 )
             )
+
+    logger.info(
+        "event=monitor_cycle_done ms=%d services_polled=%d",
+        int((time.perf_counter() - t0) * 1000),
+        len(services),
+    )
 
 
 def start() -> None:

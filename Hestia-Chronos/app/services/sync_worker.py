@@ -92,6 +92,9 @@ def _is_future_event(record: dict) -> bool:
 def _tick() -> None:
     global _first_tick_done
 
+    t0 = time.perf_counter()
+    logger.info("event=sync_tick_start")
+
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(days=_LOOK_BACK_DAYS)
     window_end = now + timedelta(days=_LOOK_AHEAD_DAYS)
@@ -99,6 +102,7 @@ def _tick() -> None:
     active = ["google", "outlook"]
 
     newly_seen: list = []
+    events_upserted = 0
 
     for provider in active:
         envelope = {
@@ -143,6 +147,7 @@ def _tick() -> None:
                 _known_external_ids.add(composite_key)
 
             # Upsert into Archive (idempotent)
+            events_upserted += 1
             archive_client.upsert_calendar_item(
                 external_id=ext_id or None,
                 source=provider,
@@ -172,6 +177,12 @@ def _tick() -> None:
                 "event=sync_first_tick_complete_event [SYNC] First tick complete — %d event(s) pre-loaded into known set",
                 len(_known_external_ids),
             )
+            logger.info(
+                "event=sync_tick_done ms=%d events_upserted=%d new_events=%d",
+                int((time.perf_counter() - t0) * 1000),
+                events_upserted,
+                len(newly_seen),
+            )
             return
 
     # Dispatch notifications for new events
@@ -193,6 +204,13 @@ def _tick() -> None:
             (record or {}).get("provider"),
             (record or {}).get("title"),
         )
+
+    logger.info(
+        "event=sync_tick_done ms=%d events_upserted=%d new_events=%d",
+        int((time.perf_counter() - t0) * 1000),
+        events_upserted,
+        len(newly_seen),
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

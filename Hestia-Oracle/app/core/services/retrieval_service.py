@@ -51,8 +51,8 @@ class RetrievalService:
                 "filters_gt": filters_gt or {},
                 "filters_lt": filters_lt or {},
                 "sort_by": sort_by,
-                "sort_order": sort_order,
-                "preferences": preference_facts,
+                "sort_order": sort_order or "desc",
+                "preferences": preference_facts or [],
             }
             entities = self.module_registry.query(domain, module_payload)
             source = "module_tool"

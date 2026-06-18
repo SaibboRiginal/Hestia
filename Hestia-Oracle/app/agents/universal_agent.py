@@ -99,7 +99,7 @@ class UniversalAgent:
                 except Exception as exc:
                     if self.ollama_tool_call_mode == "native":
                         raise
-                    logger.debug(
+                    logger.trace(
                         "event=ollama_native_tool_call_fallback Ollama native tool calling unavailable, falling back to prompt mode: %s", exc)
             # prompt fallback for models without native tool calling
             return {
@@ -204,18 +204,35 @@ class UniversalAgent:
             }
             for t in tools
         ]
+        # Use a dedicated tool-calling system prompt — the general Hestia persona
+        # is too chatty and dilutes tool-use instructions when 40+ tools are
+        # available.  The full agent-loop preamble (with tool manifest) is
+        # already inside *user_message*.
+        _TOOL_CALLING_SYSTEM = (
+            "You are Hestia's tool-calling engine. "
+            "When the user asks for something you can do with a tool, call it immediately. "
+            "If no tool matches the request, respond in plain text. "
+            "Never respond with just 'Ciao' or a greeting when the user asked a substantive question — "
+            "use a tool or give a real answer."
+        )
         payload = {
             "model": self.model_name,
             "messages": [
-                {"role": "system", "content": self.role_prompt or ""},
+                {"role": "system", "content": _TOOL_CALLING_SYSTEM},
                 {"role": "user", "content": user_message},
             ],
             "tools": ollama_tools,
             "stream": False,
+            "think": False,  # Gemma 4: thinking tokens (<unused50>) break tool-call parsing
         }
-        if not self.thinking:
-            payload["think"] = False
 
+        logger.trace(
+            "event=ollama_native_tool_call_request model=%s tool_count=%d "
+            "prompt_len=%d system_len=%d",
+            self.model_name, len(ollama_tools), len(user_message),
+            len(_TOOL_CALLING_SYSTEM))
+
+        t_req = time.time()
         response = requests.post(
             chat_url,
             json=payload,
@@ -223,11 +240,21 @@ class UniversalAgent:
         )
         response.raise_for_status()
         data = response.json() or {}
+        elapsed_ms = int((time.time() - t_req) * 1000)
+
         message = data.get("message") if isinstance(
             data.get("message"), dict) else {}
 
         tool_calls = message.get("tool_calls") if isinstance(
             message.get("tool_calls"), list) else []
+        content_text = str(message.get("content", "") or "").strip()
+
+        logger.trace(
+            "event=ollama_native_tool_call_response elapsed_ms=%d "
+            "tool_calls_count=%d content_len=%d content_preview=%s",
+            elapsed_ms, len(tool_calls), len(content_text),
+            json.dumps(content_text[:150], ensure_ascii=False))
+
         if tool_calls:
             first = tool_calls[0] if isinstance(tool_calls[0], dict) else {}
             fn = first.get("function") if isinstance(
@@ -238,17 +265,26 @@ class UniversalAgent:
                     args = json.loads(args)
                 except Exception:
                     args = {}
-            return {
+            result = {
                 "tool_call": {
                     "name": str(fn.get("name", "") or ""),
                     "params": dict(args or {}),
                 },
                 "text": "",
             }
+            logger.info(
+                "event=ollama_native_tool_call_selected tool=%s params=%s elapsed_ms=%d",
+                result["tool_call"]["name"],
+                json.dumps(result["tool_call"]["params"], ensure_ascii=False)[:200],
+                elapsed_ms)
+            return result
 
+        logger.info(
+            "event=ollama_native_no_tool_call content=%s elapsed_ms=%d",
+            json.dumps(content_text[:120], ensure_ascii=False), elapsed_ms)
         return {
             "tool_call": None,
-            "text": str(message.get("content", "") or "").strip(),
+            "text": content_text,
         }
 
     # ─────────────────────────────────────────────────────────────────

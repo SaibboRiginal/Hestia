@@ -21,14 +21,14 @@ from schemas.reports import SystemReport
 from services import analysis_service, monitor_service
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
 logger, log_buffer = setup_service_logging("hestia_argus")
@@ -178,7 +178,7 @@ try:
                 "required": ["service", "issue"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "system_remediate", "params": kw},
-            title="Avvia remediation sistema", method="POST", path="/api/argus/remediate",
+            title="\U0001f528 Ripara servizio", method="POST", path="/api/argus/remediate",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -188,6 +188,7 @@ try:
 except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=argus reason=hestia_common_not_available")
 
+app.include_router(create_log_control_router("hestia_argus"))
 
 # ---------------------------------------------------------------------------
 # Health

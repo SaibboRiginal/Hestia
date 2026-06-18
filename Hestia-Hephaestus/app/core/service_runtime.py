@@ -13,7 +13,6 @@ class RuntimeConfig:
     service_tags: list[str]
     service_topology_tags: list[str]
     hub_api_url: str
-    hermes_api_url: str
     hephaestus_notify_target: str
     hephaestus_baseline_ref: str
     hephaestus_execution_timeout_seconds: float
@@ -57,8 +56,6 @@ def load_runtime_config() -> RuntimeConfig:
         ],
         hub_api_url=os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/"),
-        hermes_api_url=os.getenv(
-            "HERMES_API_URL", "http://hestia_hermes:19005").rstrip("/"),
         hephaestus_notify_target=os.getenv(
             "HEPHAESTUS_NOTIFY_TARGET", "").strip(),
         hephaestus_baseline_ref=os.getenv("HEPHAESTUS_BASELINE_REF", "HEAD"),

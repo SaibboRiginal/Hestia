@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -16,7 +17,6 @@ class RemediationService:
         *,
         logger,
         hub_api_url: str,
-        hermes_api_url: str,
         notify_target: str,
         baseline_ref: str,
         execution_timeout_seconds: float,
@@ -26,7 +26,6 @@ class RemediationService:
     ) -> None:
         self._logger = logger
         self._hub_api_url = hub_api_url.rstrip("/")
-        self._hermes_api_url = hermes_api_url
         self._notify_target = notify_target
         self._baseline_ref = baseline_ref
         self._execution_timeout_seconds = max(
@@ -62,7 +61,16 @@ class RemediationService:
         }
         try:
             requests.post(
-                f"{self._hermes_api_url}/api/events/ingest", json=payload, timeout=8)
+                f"{self._hub_api_url}/route/hermes/api/events/ingest",
+                json={
+                    "method": "POST",
+                    "headers": {},
+                    "query": {},
+                    "body": payload,
+                    "timeout_seconds": 8,
+                },
+                timeout=9,
+            )
         except Exception as error:
             self._logger.warning(
                 "event=hephaestus_notify_failed_non_fatal Notification dispatch failed (non-fatal): %s",
@@ -175,9 +183,16 @@ class RemediationService:
         return self._require_approval_for_mutation
 
     def _execute_task(self, task: dict[str, Any], approved_by: str, note: str | None = None) -> dict[str, Any]:
+        t_task = time.perf_counter()
         task["state"] = "running"
         task["updated_at"] = datetime.now(timezone.utc).isoformat()
         self._append_task_note(task, f"Execution started by {approved_by}")
+        self._logger.info(
+            "event=remediation_execution_start task_id=%s runbook=%s approved_by=%s",
+            task.get("task_id"),
+            task.get("runbook_id"),
+            approved_by,
+        )
 
         succeeded, execution_result = self._execute_maintenance(task)
 
@@ -189,6 +204,12 @@ class RemediationService:
             task, "Execution completed" if succeeded else "Execution failed")
         if note:
             self._append_task_note(task, f"Approval note: {note}")
+        self._logger.info(
+            "event=remediation_execution_done ms=%d task_id=%s success=%s",
+            int((time.perf_counter() - t_task) * 1000),
+            task.get("task_id"),
+            str(succeeded).lower(),
+        )
         return task
 
     def create_task(self, request: RemediationRequest, runbook: RunbookDefinition) -> dict[str, Any]:
@@ -217,6 +238,14 @@ class RemediationService:
             "notifications": [],
             "metadata": request.metadata,
         }
+
+        self._logger.info(
+            "event=remediation_task_created task_id=%s service=%s issue=%s state=%s",
+            task_id,
+            request.service,
+            request.issue,
+            task["state"],
+        )
 
         if self._approval_required(request):
             task["state"] = "pending_approval"
@@ -284,6 +313,7 @@ class RemediationService:
         return task
 
     def rollback_task(self, task_id: str, request: RemediationRollbackRequest) -> dict[str, Any] | None:
+        t_rollback = time.perf_counter()
         with self._tasks_lock:
             task = self._tasks.get(task_id)
             if not task:
@@ -301,5 +331,10 @@ class RemediationService:
                 f"Hephaestus rollback executed for task={task_id} "
                 f"to rollback_ref={task.get('rollback_ref')}"
             ),
+        )
+        self._logger.info(
+            "event=remediation_rollback_done ms=%d task_id=%s",
+            int((time.perf_counter() - t_rollback) * 1000),
+            task_id,
         )
         return task

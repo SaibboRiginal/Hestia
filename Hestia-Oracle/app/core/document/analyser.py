@@ -13,6 +13,7 @@ This module composes:
 import logging
 import os
 import threading
+import time
 import uuid
 from typing import Generator, Callable
 
@@ -59,6 +60,11 @@ class DocumentAnalyser:
         analyst_model_name: str = "",
     ) -> Generator[str, None, None]:
         """Yield NDJSON lines: status updates, a final answer, and a signal event."""
+        t0 = time.perf_counter()
+        logger.info(
+            "event=analyser_start session_id=%s mime=%s filename=%s size=%s model=%s",
+            session_id, mime_type, filename, len(file_bytes), analyst_model_name,
+        )
         is_audio = mime_type.startswith("audio/")
         is_video = mime_type.startswith("video/")
         model_has_audio = capabilities.model_supports_audio(analyst_model_name)
@@ -116,6 +122,11 @@ class DocumentAnalyser:
                 len(file_bytes), _MAX_DOC_ARCHIVE_BYTES,
             )
 
+        total_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "event=analyser_done session_id=%s total_ms=%s answer_len=%s mime=%s",
+            session_id, total_ms, len(final_answer or ""), mime_type,
+        )
         yield stream_emitter.emit_final(final_answer, "document")
 
     # ── Private helpers ───────────────────────────────────────────────────────

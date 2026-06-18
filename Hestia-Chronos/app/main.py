@@ -35,7 +35,7 @@ from schemas.events import (
 from services import notification_worker, sync_worker
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import (
         hub_health_url,
         wait_for_http_ready,
@@ -46,7 +46,7 @@ except ModuleNotFoundError:
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import (
         hub_health_url,
         wait_for_http_ready,
@@ -362,6 +362,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "logs": rows,
     }
 
+app.include_router(create_log_control_router("hestia_chronos"))
 
 # ─────────────────────────────────────────────────────────────────────
 #  Calendar endpoints

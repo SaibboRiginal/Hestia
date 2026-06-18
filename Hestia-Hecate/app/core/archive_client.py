@@ -13,12 +13,9 @@ _CALENDAR_TIMEOUT = int(os.getenv("HECATE_CALENDAR_WRITE_TIMEOUT", "10"))
 
 
 class ArchiveClient:
-    def __init__(self, api_url: str):
-        self.api_url = api_url
+    def __init__(self):
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
-        self.archive_base_url = os.getenv(
-            "ARCHIVE_URL", "http://hestia_archive:19002")
 
     def _route_archive(self, payload: dict) -> bool:
         try:
@@ -59,14 +56,8 @@ class ArchiveClient:
                 logger.debug(
                     "event=record_shipped_hub_domain_source Record shipped via Hub | domain=%s source=%s", domain, source)
                 return True
-
-            response = requests.post(self.api_url, json=data)
-            if response.status_code == 200:
-                logger.debug(
-                    "event=record_shipped_direct_url_domain Record shipped via direct URL | domain=%s source=%s", domain, source)
-                return True
-            logger.warning("event=archive_rejected_record_domain_source Archive rejected record | domain=%s source=%s status=%s",
-                           domain, source, response.text[:200])
+            logger.warning("event=archive_rejected_record_domain_source Archive rejected record via Hub | domain=%s source=%s",
+                           domain, source)
             return False
         except Exception as e:
             logger.error(
@@ -83,17 +74,28 @@ class ArchiveClient:
         """
         try:
             resp = requests.post(
-                f"{self.archive_base_url.rstrip('/')}/api/calendar/items",
-                json=item,
-                timeout=_CALENDAR_TIMEOUT,
+                f"{self.hub_api_url}/route/archive/api/calendar/items",
+                json={
+                    "method": "POST",
+                    "headers": {},
+                    "query": {},
+                    "body": item,
+                    "timeout_seconds": _CALENDAR_TIMEOUT,
+                },
+                timeout=_CALENDAR_TIMEOUT + 2,
             )
-            if resp.status_code < 300:
-                logger.debug("event=calendar_item_archived_title Calendar item archived | title=%s",
-                             item.get('title', '?'))
-                return True
-            logger.warning("event=archive_rejected_calendar_item_title Archive rejected calendar item | title=%s status=%s body=%s",
-                           item.get('title', '?'), resp.status_code, resp.text[:200])
-            return False
+            if resp.status_code != 200:
+                logger.warning("event=archive_rejected_calendar_item_title Archive rejected calendar item | title=%s status=%s body=%s",
+                               item.get('title', '?'), resp.status_code, resp.text[:200])
+                return False
+            routed = resp.json() if resp.content else {}
+            if int(routed.get("status_code", 500)) >= 400:
+                logger.warning("event=archive_rejected_calendar_item_title Archive rejected calendar item | title=%s routed_status=%s",
+                               item.get('title', '?'), routed.get("status_code"))
+                return False
+            logger.debug("event=calendar_item_archived_title Calendar item archived | title=%s",
+                         item.get('title', '?'))
+            return True
         except Exception as exc:
             logger.error("event=failed_archive_calendar_item_title Failed to archive calendar item | title=%s error=%s", item.get(
                 'title', '?'), exc)

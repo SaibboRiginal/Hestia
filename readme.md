@@ -305,11 +305,13 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 
 ## Logging Contract (Global Observability)
 
-1. All services must log key decision points with tagged prefixes (e.g., `[ENRICH]`, `[CMD]`, `[DISPATCH]`, `[SEND]`).
-2. Scout must log: fetch method used, pre/post enrichment summary state, truncation warnings, geocoding results.
-3. Telegram must log: command execution, output rendering mode, message part count, dispatch buffering.
-4. Logs must be actionable — include the data that helps diagnose issues (lengths, truncation status, entity IDs).
-5. Routine keepalive success logs must be `DEBUG`; `INFO` is reserved for state changes (created/updated registration, forced refreshes, startup milestones).
+1. All services must use `hestia_common.logging_utils.setup_service_logging(service_name)` for uniform setup.
+2. Endpoint access logs (`uvicorn.access`) are downgraded to `TRACE` level (5) and reformatted to `event=http_access client=X method=X path=X status=X` — they never appear at `INFO` or `DEBUG`. Set `LOG_LEVEL=TRACE` to see them.
+3. `LOG_HEALTH_ACCESS_MODE=off` by default — health-check probes do not produce access logs.
+4. Every service exposes `GET /api/logs/level` and `POST /api/logs/level` for runtime log-level control (no restart needed). `POST` body: `{"level": "DEBUG"}`.
+5. Logs must be actionable — include the data that helps diagnose issues (lengths, truncation status, entity IDs).
+6. Routine keepalive success logs must be `DEBUG`; `INFO` is reserved for state changes (created/updated registration, forced refreshes, startup milestones).
+7. Oracle: `INFO` = per-call stats (model, provider, thinking, turns, tools, tokens, answer_len, total_ms). `DEBUG` = full chat transcripts + tool call params/results.
 
 ## Startup Readiness Contract
 
@@ -324,16 +326,19 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 2. Polling is fallback-only (hybrid/poll modes), never the primary update path when push webhook support exists.
 3. Telegram command refresh should be webhook-driven by default (`TELEGRAM_REGISTRY_UPDATE_MODE=push`).
 
-## Communication Policy (Hot Swap)
+## Communication Policy (Hub Gateway — Mandatory)
 
-To support hot swapping core instances across Raspberry and Main PC:
+Hub is THE single gateway for all inter-service communication. Every service knows exactly one address: `HUB_API_URL`.
 
-1. Service addressing is logical (`archive`, `oracle`, `ingest`, `hermes`, modules) and resolved by Hub.
-2. Cross-service HTTP calls use Hub route API or Hub discovery before direct call.
-3. Hardcoded peer container URLs are fallback-only, never primary routing.
+1. **All inter-service HTTP calls go through Hub routing**: `{HUB_API_URL}/route/{service_name}/{path}`.
+2. **No peer service URLs allowed** — env vars like `ARCHIVE_URL`, `HERMES_URL`, `ORACLE_URL`, `MCP_API_URL` are forbidden. Remove them.
+3. **Hub routing modes**:
+   - Unicast: `/api/route/oracle/api/chat` → one service
+   - Multicast: `/api/route/oracle,argus/api/logs/level` → listed services
+   - Broadcast: `/api/route/*/api/logs/level` → all registered services
 4. Services register on startup and are health-checked by Hub.
 5. If one instance goes offline, callers continue through Hub to next healthy instance.
-6. External host-only helpers (like `fetch`) must still be consumed via Hub route API when possible.
+6. External host-only helpers (like Atlas) must still be consumed via Hub route API.
    - Atlas route example: `/api/route/atlas/api/fetch/html`
 
 ## Service Template Generator

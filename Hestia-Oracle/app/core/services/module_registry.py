@@ -15,6 +15,8 @@ class ModuleToolRegistry:
         self._last_refresh = 0.0
         self._domain_to_urls: dict[str, list[str]] = {}
         self._domain_to_services: dict[str, list[str]] = {}
+        # Per-service topology tags from Hub registry (name → set of tags)
+        self._service_topology: dict[str, set[str]] = {}
 
     def _needs_refresh(self) -> bool:
         return (time.time() - self._last_refresh) > self.ttl_seconds or not self._domain_to_urls
@@ -49,17 +51,22 @@ class ModuleToolRegistry:
                     f"{self.hub_api_url}/registry/services", timeout=4)
                 if services_response.status_code == 200:
                     services = services_response.json().get("services", []) or []
+                    topo_cache: dict[str, set[str]] = {}
                     for service in services:
                         service_name = str(service.get(
                             "name", "")).strip().lower()
                         capabilities = service.get("capabilities") if isinstance(
                             service.get("capabilities"), dict) else {}
+                        # Cache topology tags for dynamic domain-owner resolution
+                        raw_tags = service.get("topology_tags") or []
+                        topo_cache[service_name] = {str(t).strip().lower() for t in raw_tags if str(t).strip()}
                         for domain in capabilities.get("module_tool_domains", []) or []:
                             normalized_domain = str(domain).strip().lower()
                             if not normalized_domain or not service_name:
                                 continue
                             service_mapping.setdefault(
                                 normalized_domain, []).append(service_name)
+                    self._service_topology = topo_cache
             except Exception as error:
                 logger.warning(
                     "event=hub_services_registry_lookup_failed Hub services registry lookup failed: %s", error)
@@ -102,6 +109,23 @@ class ModuleToolRegistry:
         if self._needs_refresh():
             self.refresh()
         return self._domain_to_services.get(str(domain).strip().lower(), [])
+
+    def get_domain_owners(self, domain: str) -> list[str]:
+        """Return only the domain-OWNING services for *domain*.
+
+        A service is considered a domain owner when it declares
+        ``layer:domain`` in its Hub topology_tags.  Gateways (layer:gateway),
+        foundations (layer:foundation), and cognition services may share a
+        domain tag but are NOT domain owners — their tools are filtered out
+        so the LLM sees only the primary domain service's tools.
+        """
+        if self._needs_refresh():
+            self.refresh()
+        candidates = self._domain_to_services.get(str(domain).strip().lower(), [])
+        return [
+            svc for svc in candidates
+            if "layer:domain" in self._service_topology.get(svc, set())
+        ]
 
     def get_urls_for_domain(self, domain: str) -> list[str]:
         if self._needs_refresh():

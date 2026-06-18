@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import json
 import logging
+import time
 from uuid import uuid4
 
 from .archive_client import ArchiveClient
@@ -21,10 +22,18 @@ class HermesService:
         self.dispatch = DispatchService()
 
     def process_event(self, event_type: str, domain: str, entity_id: str, payload: dict):
+        t0 = time.perf_counter()
         event_trace_id = ""
         if isinstance(payload, dict):
             event_trace_id = str(payload.get("trace_id")
                                  or payload.get("x_trace_id") or "").strip()
+        logger.info(
+            "event=event_ingestion_start domain=%s event_type=%s entity_id=%s trace_id=%s",
+            domain,
+            event_type,
+            entity_id,
+            event_trace_id,
+        )
         subscriptions = self.archive.get_active_subscriptions(
             domain=domain, event_type=event_type)
         logger.debug(
@@ -211,6 +220,16 @@ class HermesService:
                     }
                 )
 
+        logger.info(
+            "event=event_processed ms=%d domain=%s event_type=%s entity_id=%s subscriptions=%d matched=%d deliveries=%d",
+            int((time.perf_counter() - t0) * 1000),
+            domain,
+            event_type,
+            entity_id,
+            len(subscriptions),
+            matched,
+            delivered,
+        )
         return {
             "subscriptions_checked": len(subscriptions),
             "subscriptions_matched": matched,

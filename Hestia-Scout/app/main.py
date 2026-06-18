@@ -21,7 +21,7 @@ from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
 from worker.runner import ScoutWorker
 
 try:
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import (
         hub_health_url,
         wait_for_http_ready,
@@ -32,7 +32,7 @@ except ModuleNotFoundError:
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
-    from hestia_common.logging_utils import setup_service_logging
+    from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import (
         hub_health_url,
         wait_for_http_ready,
@@ -138,6 +138,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "logs": rows,
     }
 
+api_app.include_router(create_log_control_router("hestia_scout"))
 
 @api_app.get("/api/module-tools/domains")
 def list_module_domains():
@@ -269,7 +270,7 @@ if _HAS_MCP:
                         "limit": {"type": "integer", "description": "Max results (default 30)"},
                     },
                 }, handler=_mcp_scout_search,
-                title="scout.search", method="POST", path="/api/tools/real_estate/search",
+                title="\U0001f50d Cerca immobili", method="POST", path="/api/tools/real_estate/search",
                 clients=["*"], response_mode="oracle_natural", response_prompt="",
                 telegram_visible=True, telegram_group="immobiliare"),
         MCPTool(name="scout_listings",

@@ -16,6 +16,7 @@ import hashlib
 import json
 import logging
 import os
+import time
 from typing import Callable
 
 from core.services.hub_client import HubClient
@@ -78,7 +79,12 @@ class DocumentArchiver:
 
         Intended to run in a daemon thread — logs failures but never raises.
         """
+        t0 = time.perf_counter()
         file_hash = hashlib.sha256(file_bytes).hexdigest()
+        logger.info(
+            "event=archiver_start doc_id=%s mime=%s filename=%s size=%s model=%s",
+            document_id, mime_type, filename, len(file_bytes), analyst_model_name,
+        )
         model_has_vision = capabilities.model_supports_vision(
             analyst_model_name)
         model_has_audio = capabilities.model_supports_audio(analyst_model_name)
@@ -168,9 +174,10 @@ class DocumentArchiver:
         }
         try:
             self._hub.post("/documents", body, timeout=60)
+            total_ms = int((time.perf_counter() - t0) * 1000)
             logger.info(
-                "event=archiver_saved_id_chunks_title [ARCHIVER] Saved | id=%s chunks=%s title=%r domain=%s tags=%s",
-                document_id, len(embedded_chunks), title, domain, tags,
+                "event=archiver_saved doc_id=%s chunks=%s title=%r domain=%s tags=%s ms=%s",
+                document_id, len(embedded_chunks), title, domain, tags, total_ms,
             )
         except Exception as exc:
             logger.warning("event=archiver_save_failed [ARCHIVER] Save failed: %s", exc)

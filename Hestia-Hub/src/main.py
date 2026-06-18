@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 try:
     from hestia_common.logging_utils import (
+        create_log_control_router,
         log_event,
         redact_sensitive_text,
         setup_service_logging,
@@ -24,12 +25,17 @@ except ModuleNotFoundError:
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import (
+        create_log_control_router,
         log_event,
         redact_sensitive_text,
         setup_service_logging,
     )
 
-from .modules.discovery import discover_module_tools
+from .modules.discovery import (
+    _mcp_commands_cache_invalidate,
+    discover_commands,
+    discover_module_tools,
+)
 from .modules.events import RegistryEvents
 from .modules.registry import ServiceRegistry
 from .modules.router import proxy_request
@@ -71,6 +77,8 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "logs": rows,
     }
 
+app.include_router(create_log_control_router("hestia_hub"))
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 
@@ -80,6 +88,7 @@ def register_service(req: RegisterServiceRequest):
     register_status = registry.register(service)
     if register_status != "refreshed":
         events.bump(registry.all_services(), reason="register")
+        _mcp_commands_cache_invalidate(req.name)
     log_event(
         logger,
         logging.DEBUG if register_status == "refreshed" else logging.INFO,
@@ -96,6 +105,7 @@ def register_service(req: RegisterServiceRequest):
 def deregister_service(req: DeregisterServiceRequest):
     registry.deregister(req.name, req.base_url)
     events.bump(registry.all_services(), reason="deregister")
+    _mcp_commands_cache_invalidate(req.name)
     log_event(
         logger,
         logging.INFO,
@@ -140,6 +150,23 @@ def list_services():
 @app.get("/api/discovery/module-tools")
 def module_tools_discovery():
     return {"mapping": discover_module_tools(registry)}
+
+
+@app.get("/api/discovery/commands")
+def discovery_commands(client: str = ""):
+    """Aggregate all executable commands from registered services.
+
+    Commands are sourced from two places:
+
+    1. **Inline commands** declared in each service's ``capabilities.commands``
+       registration block.
+    2. **MCP tools** fetched live from services that expose an ``mcp_endpoint``
+       in their capabilities.  Results are cached for a short TTL.
+
+    The optional ``client`` query parameter filters commands by client
+    compatibility (e.g. ``?client=telegram``).
+    """
+    return {"commands": discover_commands(registry, client_key=client)}
 
 
 # ── Standards ─────────────────────────────────────────────────────────────────
@@ -196,43 +223,128 @@ def registration_standard():
 # ── Routing ───────────────────────────────────────────────────────────────────
 
 
-@app.post("/api/route/{service_name}/{path:path}")
+@app.api_route("/api/route/{service_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 def route_request(service_name: str, path: str, req: RouteRequest):
-    candidates = registry.get(service_name)
-    if not candidates:
-        raise HTTPException(
-            status_code=404, detail=f"Service not registered: {service_name}")
+    # ── Resolve targets: unicast | multicast (a,b) | broadcast (*) ─────────
+    if service_name == "*":
+        # Deduplicate by name (multiple instances → keep first)
+        seen: set[str] = set()
+        target_names: list[str] = []
+        for svc in registry.all_services():
+            name = svc.get("name", "")
+            if name and name not in seen:
+                seen.add(name)
+                target_names.append(name)
+        if not target_names:
+            raise HTTPException(status_code=404, detail="No services registered")
+    elif "," in service_name:
+        target_names = [n.strip() for n in service_name.split(",") if n.strip()]
+        if not target_names:
+            raise HTTPException(status_code=400, detail="Empty service list")
+    else:
+        target_names = [service_name]
 
-    last_error = None
-    for service in candidates:
-        try:
-            status_code, payload = proxy_request(
-                base_url=service["base_url"],
-                path=path,
-                method=req.method,
-                query=req.query,
-                body=req.body,
-                headers=req.headers,
-                timeout_seconds=req.timeout_seconds,
-            )
-            return {
-                "status_code": status_code,
-                "service": service_name,
-                "target": service["base_url"],
-                "payload": payload,
-            }
-        except requests.RequestException as error:
-            last_error = error
+    # ── Fan out ────────────────────────────────────────────────────────────
+    per_target_timeout = max(2.0, req.timeout_seconds / max(1, len(target_names)))
+    results: list[dict[str, Any]] = []
+
+    for name in target_names:
+        candidates = registry.get(name)
+        if not candidates:
+            results.append({
+                "service": name,
+                "status": "unavailable",
+                "status_code": None,
+                "payload": {"detail": f"Service not registered: {name}"},
+            })
             continue
 
-    raise HTTPException(
-        status_code=503,
-        detail={
+        last_error = None
+        responded = False
+        for service in candidates:
+            try:
+                status_code, payload = proxy_request(
+                    base_url=service["base_url"],
+                    path=path,
+                    method=req.method,
+                    query=req.query,
+                    body=req.body,
+                    headers=req.headers,
+                    timeout_seconds=per_target_timeout,
+                )
+                results.append({
+                    "service": name,
+                    "status": "ok" if status_code < 400 else "error",
+                    "status_code": status_code,
+                    "target": service["base_url"],
+                    "payload": payload,
+                })
+                responded = True
+                break
+            except requests.RequestException as error:
+                last_error = error
+                continue
+
+        if not responded:
+            results.append({
+                "service": name,
+                "status": "unavailable",
+                "status_code": None,
+                "payload": {
+                    "detail": "No available instance responded",
+                    "error": str(last_error) if last_error else "unknown",
+                },
+            })
+
+    # ── Return ─────────────────────────────────────────────────────────────
+    if len(target_names) == 1:
+        # Backward-compatible unicast: return the same envelope as before
+        result = results[0]
+        if result["status"] == "unavailable":
+            raise HTTPException(status_code=503, detail=result["payload"])
+        return {
+            "status_code": result["status_code"],
             "service": service_name,
-            "message": "No available instance responded",
-            "error": str(last_error) if last_error else "unknown",
-        },
-    )
+            "target": result.get("target", ""),
+            "payload": result["payload"],
+        }
+
+    # Multicast / broadcast: return aggregated envelope
+    return {
+        "service": "*" if service_name == "*" else service_name,
+        "count": len(results),
+        "ok": sum(1 for r in results if r["status"] == "ok"),
+        "results": results,
+    }
+
+
+@app.get("/api/domains")
+def get_domains():
+    """Aggregate all unique module_tool_domains from registered services."""
+    all_services = registry.all_services()
+    domains: set[str] = set()
+    for svc in all_services:
+        caps = svc.get("capabilities") or {}
+        svc_domains = caps.get("module_tool_domains") or []
+        if isinstance(svc_domains, list):
+            domains.update(str(d).strip().lower() for d in svc_domains if str(d).strip())
+    result = sorted(domains) if domains else ["general"]
+    return result
+
+
+@app.get("/api/schemas")
+def get_schemas():
+    """Return domain schemas aggregated from registered service capabilities."""
+    all_services = registry.all_services()
+    schemas: dict[str, dict] = {}
+    for svc in all_services:
+        caps = svc.get("capabilities") or {}
+        svc_schemas = caps.get("domain_schemas")
+        if isinstance(svc_schemas, dict):
+            for domain, schema in svc_schemas.items():
+                if isinstance(schema, dict):
+                    schemas.setdefault(str(domain).strip().lower(), {}).update(schema)
+    return schemas
 
 
 @app.get("/api/monitor/logs/{service_name}")

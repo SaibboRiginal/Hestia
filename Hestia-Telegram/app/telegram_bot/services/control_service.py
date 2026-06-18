@@ -177,7 +177,7 @@ def _format_single_alert_with_oracle(
             "client_instructions": effective_instructions,
         }
         response = requests.post(
-            core.ORACLE_FORMAT_API_URL,
+            core.resolve_oracle_format_url(),
             json=request_payload,
             headers={"X-Trace-Id": str(trace_id or "").strip()
                      } if str(trace_id or "").strip() else None,
@@ -284,7 +284,7 @@ def format_multiple_alerts_with_oracle(
             "client_instructions": effective_instructions,
         }
         response = requests.post(
-            core.ORACLE_FORMAT_API_URL,
+            core.resolve_oracle_format_url(),
             json=request_payload,
             headers={"X-Trace-Id": str(trace_id or "").strip()
                      } if str(trace_id or "").strip() else None,

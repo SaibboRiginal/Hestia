@@ -20,6 +20,11 @@ setup_service_logging = import_shared_symbol(
     "setup_service_logging",
 )
 
+create_log_control_router = import_shared_symbol(
+    "hestia_common.logging_utils",
+    "create_log_control_router",
+)
+
 hub_health_url = import_shared_symbol(
     "hestia_common.startup_utils",
     "hub_health_url",
@@ -47,7 +52,6 @@ service = HephaestusService(
 remediation_service = RemediationService(
     logger=logger,
     hub_api_url=config.hub_api_url,
-    hermes_api_url=config.hermes_api_url,
     notify_target=config.hephaestus_notify_target,
     baseline_ref=config.hephaestus_baseline_ref,
     execution_timeout_seconds=config.hephaestus_execution_timeout_seconds,
@@ -119,7 +123,7 @@ try:
             description="Mostra lo stato del motore di remediation",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_status", "params": kw},
-            title="Hephaestus stato", method="GET", path="/api/hephaestus/status",
+            title="\U0001f6e0️ Stato remediation", method="GET", path="/api/hephaestus/status",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -128,7 +132,7 @@ try:
             description="Lista task remediation recenti",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_tasks", "params": kw},
-            title="Hephaestus task remediation", method="GET", path="/api/hephaestus/tasks",
+            title="\U0001f4cb Task remediation", method="GET", path="/api/hephaestus/tasks",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -150,7 +154,7 @@ try:
                 "required": ["service", "issue"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_remediate", "params": kw},
-            title="Avvia remediation", method="POST", path="/api/hephaestus/remediate",
+            title="\U0001f528 Avvia riparazione", method="POST", path="/api/hephaestus/remediate",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -167,7 +171,7 @@ try:
                 "required": ["task_id"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_approve", "params": kw},
-            title="Approva remediation", method="POST", path="/api/hephaestus/remediate/$task_id/approve",
+            title="✅ Approva riparazione", method="POST", path="/api/hephaestus/remediate/$task_id/approve",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -184,7 +188,7 @@ try:
                 "required": ["task_id"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_rollback", "params": kw},
-            title="Rollback remediation", method="POST", path="/api/hephaestus/remediate/$task_id/rollback",
+            title="\U0001f504 Annulla riparazione", method="POST", path="/api/hephaestus/remediate/$task_id/rollback",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -194,6 +198,7 @@ try:
 except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=hephaestus reason=hestia_common_not_available")
 
+app.include_router(create_log_control_router("hestia_hephaestus"))
 
 @app.get("/health")
 def health() -> dict[str, Any]:

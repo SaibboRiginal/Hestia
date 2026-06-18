@@ -68,6 +68,8 @@ tags:
     description: Deterministic generic testing module
   - name: Athena
     description: Retrospective focus-brief cognition runtime
+  - name: Meta
+    description: Runtime log-level control (available on every FastAPI service)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Shared components
@@ -1289,6 +1291,104 @@ paths:
         "200":
           description: "{service, count, logs[]}"
 
+  /api/logs/level:
+    get:
+      tags: [Meta]
+      summary: Get current runtime log level (per-service)
+      description: |
+        Returns the effective log level for this service instance.
+        Available on every FastAPI-based Hestia service.
+        Levels: TRACE (5), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50).
+      servers:
+        - url: http://localhost:19001
+          description: Hub
+        - url: http://localhost:19002
+          description: Archive
+        - url: http://localhost:19003
+          description: Hecate
+        - url: http://localhost:19004
+          description: Oracle
+        - url: http://localhost:19005
+          description: Hermes
+        - url: http://localhost:19006
+          description: Scout
+        - url: http://localhost:19007
+          description: Chronos
+        - url: http://localhost:19008
+          description: Argus
+        - url: http://localhost:19009
+          description: Athena
+        - url: http://localhost:19010
+          description: Hephaestus
+        - url: http://localhost:19012
+          description: Iris
+        - url: http://localhost:19013
+          description: MCP
+        - url: http://localhost:19014
+          description: Metis
+      responses:
+        "200":
+          description: |
+            {
+              "service": "hestia_oracle",
+              "level": "INFO"
+            }
+    post:
+      tags: [Meta]
+      summary: Set runtime log level (per-service, no restart)
+      description: |
+        Change the log level for this service instance at runtime.
+        No container restart required.  Takes effect immediately.
+        Request body: {"level": "DEBUG"}
+      servers:
+        - url: http://localhost:19001
+          description: Hub
+        - url: http://localhost:19002
+          description: Archive
+        - url: http://localhost:19003
+          description: Hecate
+        - url: http://localhost:19004
+          description: Oracle
+        - url: http://localhost:19005
+          description: Hermes
+        - url: http://localhost:19006
+          description: Scout
+        - url: http://localhost:19007
+          description: Chronos
+        - url: http://localhost:19008
+          description: Argus
+        - url: http://localhost:19009
+          description: Athena
+        - url: http://localhost:19010
+          description: Hephaestus
+        - url: http://localhost:19012
+          description: Iris
+        - url: http://localhost:19013
+          description: MCP
+        - url: http://localhost:19014
+          description: Metis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level]
+              properties:
+                level:
+                  type: string
+                  enum: [TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL]
+                  example: DEBUG
+      responses:
+        "200":
+          description: |
+            {
+              "service": "hestia_oracle",
+              "level": "DEBUG"
+            }
+        "400":
+          description: Unknown log level
+
   /api/monitor/logs/{service_name}:
     get:
       tags: [Hub]
@@ -1349,9 +1449,58 @@ paths:
           description: "Mode-dependent payload. Raw: {status_code, service, target, payload}; Text/AI: {status_code, service, target, mode, text, line_count[, payload]}"
 
   /api/route/{service_name}/{path}:
+    parameters:
+      - name: service_name
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          Service name, comma-separated list, or ``*`` wildcard.
+
+          | Value | Mode | Example |
+          |-------|------|---------|
+          | ``oracle`` | Unicast | Route to oracle only |
+          | ``oracle,argus`` | Multicast | Route to oracle AND argus |
+          | ``*`` | Broadcast | Route to ALL registered services |
+
+          Broadcast/multicast returns an aggregated envelope:
+          ``{"service": "*", "count": N, "ok": N, "results": [...]}``.
+          Unicast returns the target's payload directly (backward-compatible).
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+        example: api/logs/level
+    get:
+      tags: [Hub]
+      summary: Route a GET request (unicast, multicast, or broadcast)
+      description: |
+        Use ``service_name=*`` to broadcast to all services.
+        Use ``service_name=oracle,argus`` for multicast.
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: service_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aggregated results (multicast/broadcast) or direct payload (unicast)
     post:
       tags: [Hub]
-      summary: Route a request to a registered service
+      summary: Route a request to a registered service (unicast, multicast, or broadcast)
+      description: |
+        Use ``service_name=*`` to broadcast to all services (e.g. set all log levels at once).
+        Use ``service_name=oracle,argus`` for multicast to specific services.
       servers:
         - url: http://localhost:19001
       parameters:
@@ -1375,7 +1524,27 @@ paths:
               $ref: "#/components/schemas/RouteRequest"
       responses:
         "200":
-          description: Proxied response from the target service
+          description: Proxied response from the target service, or aggregated envelope for broadcast/multicast
+
+  /api/domains:
+    get:
+      tags: [Hub]
+      summary: List all known module tool domains (aggregated from registered services)
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: '["calendar", "email", "real_estate", "system", ...]'
+
+  /api/schemas:
+    get:
+      tags: [Hub]
+      summary: Entity field schemas per domain (aggregated from registered services)
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200":
+          description: '{"real_estate": {"fields": {...}}, ...}'
 
   # ══════════════════════════════════════════════════════════════════════════
   #  ARCHIVE — 19002
@@ -1447,26 +1616,6 @@ paths:
       responses:
         "200":
           description: Updated record
-
-  /api/domains:
-    get:
-      tags: [Archive — Entities]
-      summary: List all known entity domains
-      servers:
-        - url: http://localhost:19002
-      responses:
-        "200":
-          description: List of domain strings
-
-  /api/schemas:
-    get:
-      tags: [Archive — Entities]
-      summary: Entity field schemas per domain
-      servers:
-        - url: http://localhost:19002
-      responses:
-        "200":
-          description: Map of domain to field list
 
   /api/entities:
     post:
