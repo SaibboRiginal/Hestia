@@ -307,6 +307,95 @@ class ScoutWorker:
                 cleanup_result.get("deleted", 0),
             )
 
+        # ── Pruning: archive sold / investment_occupied listings ─────────────
+        prune_statuses = {"sold", "investment_occupied"}
+        pruned = 0
+        for record in (records or []):
+            entity_id = record.get("entity_id")
+            payload = record.get("payload") if isinstance(
+                record.get("payload"), dict) else {}
+            if not entity_id or not payload:
+                continue
+            listing_status = str(
+                payload.get("listing_status", "") or ""
+            ).strip().lower()
+            if listing_status not in prune_statuses:
+                continue
+            self.vault.upsert_entity({
+                "entity_id": str(entity_id),
+                "domain": record.get("domain", self.target_domain),
+                "status": "inactive",
+                "payload": payload,
+            })
+            pruned += 1
+            logger.info(
+                "event=entity_pruned_inactive entity_id=%s listing_status=%s",
+                entity_id, listing_status,
+            )
+
+        if pruned:
+            logger.info(
+                "event=pruning_complete Pruning complete | pruned=%s statuses=%s",
+                pruned, sorted(prune_statuses),
+            )
+
+        # ── URL availability recheck for active listings ───────────────────
+        # Periodically re-fetch listing pages to detect sold/removed listings
+        # that weren't caught by keyword scanning at ingestion time.
+        url_recheck_count = 0
+        url_sold_count = 0
+        for record in (records or []):
+            entity_id = record.get("entity_id")
+            payload = record.get("payload") if isinstance(
+                record.get("payload"), dict) else {}
+            if not entity_id or not payload:
+                continue
+            # Only recheck listings that are still active and available
+            _status = str(payload.get("listing_status", "") or "").strip().lower()
+            if _status in prune_statuses:
+                continue  # already handled above
+            _url = str(payload.get("url", "")).strip()
+            if not _url:
+                continue
+            # Skip if we already have pending enrichment (will be retried above)
+            if self._is_step_pending(payload, "listing_content_enrichment"):
+                continue
+            # Only recheck listings not checked in the last 24h
+            _last_check = payload.get("_last_url_check_ts") or 0
+            if isinstance(_last_check, (int, float)) and _last_check > (time.time() - 86400):
+                continue
+
+            enriched = enrich_payload_from_listing(payload, timeout_seconds=15)
+            url_recheck_count += 1
+            new_status = str(enriched.get("listing_status", "") or "").strip().lower()
+            if new_status in prune_statuses and _status not in prune_statuses:
+                self.vault.upsert_entity({
+                    "entity_id": str(entity_id),
+                    "domain": record.get("domain", self.target_domain),
+                    "status": "inactive",
+                    "payload": enriched,
+                })
+                url_sold_count += 1
+                logger.info(
+                    "event=url_recheck_found_sold entity_id=%s old_status=%s url=%s",
+                    entity_id, _status, _url[:100],
+                )
+            elif enriched != payload:
+                # URL still valid but content changed — update payload
+                enriched["_last_url_check_ts"] = time.time()
+                self.vault.upsert_entity({
+                    "entity_id": str(entity_id),
+                    "domain": record.get("domain", self.target_domain),
+                    "status": record.get("status", "active"),
+                    "payload": enriched,
+                })
+
+        if url_recheck_count:
+            logger.info(
+                "event=url_recheck_complete URL recheck complete | checked=%s sold=%s",
+                url_recheck_count, url_sold_count,
+            )
+
     def _trigger_fetch_for_filter(self, filter_query: str) -> int:
         command = {
             "domain": self.target_domain,

@@ -170,7 +170,9 @@ def list_tools():
 
 @api_app.post("/api/tools/real_estate/search")
 def search_real_estate(req: RealEstateSearchRequest):
-    return retrieval_service.search(req)
+    items = retrieval_service.search(req)
+    text = retrieval_service.search_formatted(req)
+    return {"text": text, "domain": TARGET_DOMAIN, "count": len(items)}
 
 
 @api_app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
@@ -246,11 +248,11 @@ if _HAS_MCP:
             filters_lt=filters_lt or {}, sort_by=sort_by,
             sort_order=sort_order, limit=limit,
         )
-        return {"domain": TARGET_DOMAIN, "items": retrieval_service.search_and_format(req)}
+        return {"domain": TARGET_DOMAIN, "items": retrieval_service.search(req)}
 
     def _mcp_scout_listings(query: str = "", limit: int = 50) -> dict:
         req = RealEstateSearchRequest(domain=TARGET_DOMAIN, query=query, limit=limit)
-        return {"domain": TARGET_DOMAIN, "items": retrieval_service.search_and_format(req)}
+        return {"text": retrieval_service.search_formatted(req)}
 
     def _mcp_scout_reconcile(dry_run: bool = True) -> dict:
         return retrieval_service.reconcile_entities(dry_run=dry_run)

@@ -26,8 +26,11 @@ import logging
 import os
 import re
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Callable, Iterator
+
+import requests
 
 from core.services import prompt_config
 from core.services import stream_emitter as _stream_emitter
@@ -35,6 +38,7 @@ from core.services import stream_emitter as _stream_emitter
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 MAX_AGENT_TURNS: int = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "25"))
+MAX_AGENT_TOKENS: int = int(os.getenv("ORACLE_MAX_AGENT_TOKENS", "0"))  # 0 = unlimited
 TOOL_RESULT_MAX_CHARS: int = int(
     os.getenv("ORACLE_TOOL_RESULT_MAX_CHARS", "2000")
 )
@@ -43,6 +47,83 @@ TOOL_RESULT_MAX_CHARS: int = int(
 _EARLY_EXIT_NO_TOOL_TURNS: int = int(
     os.getenv("ORACLE_AGENT_EARLY_EXIT_NO_TOOL_TURNS", "2")
 )
+
+# ── Token counting ───────────────────────────────────────────────────────────────
+# Realistic default: 8 K fits comfortably in 16 GB VRAM (RTX 4080 Ti).
+# Set ORACLE_CONTEXT_LENGTH higher (16 K, 32 K) if you're OK with RAM spill.
+_CONTEXT_WINDOW: int = int(os.getenv("ORACLE_CONTEXT_LENGTH", "8192"))
+# Compaction triggers when estimated tokens exceed this fraction of the window.
+_COMPACT_THRESHOLD: float = float(os.getenv("ORACLE_COMPACT_THRESHOLD", "0.80"))
+_MAX_PARALLEL_TOOLS: int = int(os.getenv("ORACLE_MAX_PARALLEL_TOOLS", "8"))
+
+# Cached chars-per-token ratio per model name.  Populated lazily via
+# Ollama /api/tokenize on first use; falls back to 3.0 if unreachable.
+_token_ratio_cache: dict[str, float] = {}
+_BENCHMARK_TEXT = (
+    "The quick brown fox jumps over the lazy dog. "
+    "La volpe marrone veloce salta sopra il cane pigro. "
+    "1234567890 " * 10
+)
+
+
+class TokenCounter:
+    """Accurate token estimator backed by Ollama /api/tokenize with fallback."""
+
+    def __init__(self, model: str = ""):
+        self._model = model
+        self._ratio = self._resolve_ratio(model)
+
+    @staticmethod
+    def _resolve_ratio(model: str) -> float:
+        if model in _token_ratio_cache:
+            return _token_ratio_cache[model]
+        ollama_url = os.getenv("OLLAMA_API_URL", "http://localhost:11434").rstrip("/")
+        try:
+            resp = requests.post(
+                f"{ollama_url}/api/tokenize",
+                json={"model": model, "prompt": _BENCHMARK_TEXT},
+                timeout=5,
+            )
+            resp.raise_for_status()
+            tokens = len((resp.json() or {}).get("tokens") or [])
+            if tokens > 0:
+                ratio = len(_BENCHMARK_TEXT) / tokens
+                _token_ratio_cache[model] = ratio
+                logger.debug(
+                    "event=token_counter_calibrated model=%s chars=%d tokens=%d ratio=%.2f",
+                    model, len(_BENCHMARK_TEXT), tokens, ratio,
+                )
+                return ratio
+        except Exception as exc:
+            logger.debug(
+                "event=token_counter_calibration_failed model=%s error=%s — using heuristic",
+                model, exc,
+            )
+        _token_ratio_cache[model] = 3.0
+        return 3.0
+
+    def estimate(self, text: str | None) -> int:
+        if not text:
+            return 0
+        return max(1, int(len(text) / self._ratio))
+
+    @property
+    def context_window(self) -> int:
+        return _CONTEXT_WINDOW
+
+    @property
+    def compact_threshold(self) -> float:
+        return _COMPACT_THRESHOLD
+
+    def context_pct(self, token_count: int) -> float:
+        if _CONTEXT_WINDOW <= 0:
+            return 0.0
+        return (token_count / _CONTEXT_WINDOW) * 100
+
+    @property
+    def model(self) -> str:
+        return self._model
+
 
 # ── Tool definition ────────────────────────────────────────────────────────────
 
@@ -165,20 +246,30 @@ def run_agent_loop(
     max_turns: int | None = None,
     on_thinking: Callable[[str], None] | None = None,
     action_intent: bool = False,
+    compact_fn: Callable[[], str | None] | None = None,
 ) -> tuple[str, list[str], list[dict]]:
+    """Run the ReAct agent loop.
+
+    OpenClaw pattern: *compact_fn* is called before each turn when the
+    estimated token count exceeds the compaction threshold.  It should
+    return the new compacted history text, or None if no change.
+    """
     resolved_max_turns = max_turns if max_turns is not None else MAX_AGENT_TURNS
     tool_map = {t.name: t for t in tools}
     tool_names = sorted(tool_map.keys())
 
+    # ── Token counter (model-aware, Ollama-calibrated) ───────────────────────
+    _counter = TokenCounter()
+
     # ── TRACE: entry ──────────────────────────────────────────────────────────
-    # Rough token estimate: ~3 chars per token for mixed IT/EN + JSON
-    _est_tokens = lambda s: int(len(s or "") / 3)
+    _est_tokens = _counter.estimate
     logger.trace("event=agent_loop_entry user_msg_len=%d history_len=%d pref_count=%d "
                  "tool_count=%d tools=%s action_intent=%s max_turns=%d has_stream=%s "
-                 "has_native_tools=%s",
+                 "has_native_tools=%s context_window=%d",
                  len(user_message or ""), len(history_text or ""), len(preference_facts),
                  len(tools), tool_names, action_intent, resolved_max_turns,
-                 stream_fn is not None, ask_tools_fn is not None)
+                 stream_fn is not None, ask_tools_fn is not None,
+                 _counter.context_window)
 
     # Build tool manifest JSON for LLM
     tools_manifest = [
@@ -263,42 +354,123 @@ def run_agent_loop(
 
     final_answer = ""
     final_tokens: list[str] = []
+    _cumulative_tokens: int = 0  # Claude Agent SDK pattern: budget tracking
 
     for turn in range(resolved_max_turns):
         is_last_turn = (turn == resolved_max_turns - 1)
+
+        # ── OpenClaw pattern: auto-trigger compaction when threshold exceeded
+        if compact_fn is not None and turn > 0:
+            _est_prompt = _counter.estimate(
+                system_prompt + (history_text or "") + (user_message or ""))
+            if _counter.context_pct(_est_prompt) >= (_counter.compact_threshold * 100):
+                logger.debug(
+                    "event=compaction_auto_trigger turn=%d est_tokens=%d threshold_pct=%.0f",
+                    turn, _est_prompt, _counter.compact_threshold * 100,
+                )
+                _compacted = compact_fn()
+                if _compacted is not None:
+                    history_text = _compacted
+
         prompt = _build_prompt(is_final=is_last_turn)
 
         _prompt_chars = len(prompt)
         _prompt_tokens_est = _est_tokens(prompt)
-        _ctx_pct = (_prompt_tokens_est / 256000) * 100  # Gemma 4 256K context
+        _cumulative_tokens += _prompt_tokens_est
+
+        # ── Claude Agent SDK pattern: budget check ─────────────────────────
+        if MAX_AGENT_TOKENS > 0 and _cumulative_tokens > MAX_AGENT_TOKENS:
+            logger.warning(
+                "event=agent_loop_budget_exceeded turn=%d cumulative_tokens=%d "
+                "budget=%d — exiting loop",
+                turn, _cumulative_tokens, MAX_AGENT_TOKENS,
+            )
+            final_answer = (
+                "⚠️ Ho raggiunto il limite di contesto per questa richiesta. "
+                "Prova a riformulare la domanda in modo più specifico."
+            )
+            break
+        _ctx_pct = _counter.context_pct(_prompt_tokens_est)
+        _ctx_window = _counter.context_window
+
+        # ── TRACE: prompt breakdown (Plan 4d) ──────────────────────────────
+        _sys_chars = len(system_prompt)
+        _hist_chars = len(history_text or "")
+        _user_chars = len(user_message or "")
+        _scratch_chars = sum(len(msg.content) for msg in scratchpad)
+        _tools_chars = len(tools_json)
+        logger.trace(
+            "event=prompt_breakdown turn=%d "
+            "system_preamble=%d history_chars=%d user_chars=%d "
+            "scratchpad_chars=%d tools_chars=%d "
+            "total_chars=%d total_tokens=%d context_pct=%.1f%%",
+            turn,
+            _sys_chars, _hist_chars, _user_chars,
+            _scratch_chars, _tools_chars,
+            _prompt_chars, _prompt_tokens_est, _ctx_pct,
+        )
         logger.trace("event=agent_loop_turn_start turn=%d is_last=%s prompt_chars=%d "
                      "prompt_tokens_est=%d context_pct=%.1f%% ctx_remaining_est=%d "
                      "scratchpad_msgs=%d tools_avail=%d",
                      turn, is_last_turn, _prompt_chars, _prompt_tokens_est, _ctx_pct,
-                     256000 - _prompt_tokens_est, len(scratchpad), len(tools_manifest))
+                     _ctx_window - _prompt_tokens_est, len(scratchpad), len(tools_manifest))
 
         t_turn_start = time.perf_counter()
 
         raw_response = ""
         tool_call = None
+        tool_calls_list: list[dict] = []
         try:
             if ask_tools_fn is not None and not is_last_turn:
                 logger.trace("event=agent_loop_calling_native_tools turn=%d tools_count=%d",
                             turn, len(tools_manifest))
                 decision = ask_tools_fn(prompt, tools_manifest) or {}
                 logger.trace("event=agent_loop_native_tools_response turn=%d "
-                            "has_tool_call=%s text_len=%d",
+                            "has_tool_call=%s text_len=%d reasoning_len=%d",
                             turn,
                             bool((decision or {}).get("tool_call")),
-                            len(str((decision or {}).get("text") or "")))
+                            len(str((decision or {}).get("text") or "")),
+                            len(str((decision or {}).get("reasoning_content") or "")))
 
-                maybe_tool = decision.get("tool_call") if isinstance(
-                    decision, dict) else None
-                if isinstance(maybe_tool, dict) and maybe_tool.get("name"):
-                    tool_call = {
-                        "name": str(maybe_tool.get("name") or "").strip(),
-                        "params": maybe_tool.get("params") or {},
-                    }
+                # ── Emit reasoning_content as thinking event ───────────────
+                _reasoning = str(
+                    (decision or {}).get("reasoning_content") or "").strip()
+                if _reasoning and on_thinking:
+                    on_thinking(_stream_emitter.emit_thinking(
+                        action="reasoning",
+                        content=_reasoning,
+                        turn=turn,
+                    ))
+
+                # ── Multi-tool support: check tool_calls list first ──────────
+                tool_calls_list: list[dict] = []
+                if isinstance(decision, dict):
+                    _tcl = decision.get("tool_calls")
+                    if isinstance(_tcl, list) and _tcl:
+                        tool_calls_list = [
+                            {"name": str(t.get("name", "")).strip(),
+                             "params": t.get("params") or {}}
+                            for t in _tcl
+                            if isinstance(t, dict) and t.get("name")
+                        ]
+                        if tool_calls_list:
+                            logger.trace(
+                                "event=agent_loop_multi_tool_calls turn=%d count=%d tools=%s",
+                                turn, len(tool_calls_list),
+                                [t["name"] for t in tool_calls_list])
+
+                # Single-tool fallback (backward compat)
+                if not tool_calls_list:
+                    maybe_tool = decision.get("tool_call") if isinstance(
+                        decision, dict) else None
+                    if isinstance(maybe_tool, dict) and maybe_tool.get("name"):
+                        tool_calls_list = [{
+                            "name": str(maybe_tool.get("name") or "").strip(),
+                            "params": maybe_tool.get("params") or {},
+                        }]
+
+                if tool_calls_list:
+                    tool_call = tool_calls_list[0]  # for logging compat
                     raw_response = ""
                     logger.trace("event=agent_loop_native_tool_call turn=%d tool=%s params=%s",
                                 turn, tool_call["name"],
@@ -311,10 +483,12 @@ def run_agent_loop(
                     # Some providers return tool intents as plain text blocks.
                     # Parse XML fallback here before falling through to final answer.
                     if raw_response:
-                        tool_call = _extract_tool_call(raw_response)
-                        if tool_call:
+                        _fallback_tc = _extract_tool_call(raw_response)
+                        if _fallback_tc:
+                            tool_calls_list = [_fallback_tc]
+                            tool_call = _fallback_tc
                             logger.trace("event=agent_loop_fallback_parse_tool turn=%d tool=%s",
-                                        turn, tool_call["name"])
+                                        turn, _fallback_tc["name"])
 
                 if tool_call is None:
                     logger.info(
@@ -334,9 +508,11 @@ def run_agent_loop(
                 raw_response = ask_fn(prompt)
                 logger.trace("event=agent_loop_fallback_ask_response turn=%d len=%d",
                             turn, len(raw_response or ""))
-                tool_call = _extract_tool_call(
+                _fallback_tc = _extract_tool_call(
                     raw_response) if not is_last_turn else None
-                if tool_call:
+                if _fallback_tc:
+                    tool_call = _fallback_tc
+                    tool_calls_list = [_fallback_tc]
                     logger.trace("event=agent_loop_fallback_parse_tool turn=%d tool=%s",
                                 turn, tool_call["name"])
                 else:
@@ -349,114 +525,124 @@ def run_agent_loop(
             final_answer = "⚠️ Il modello non è disponibile. Riprova tra poco."
             break
 
-        if tool_call:
-            # ── Tool call turn ─────────────────────────────────────────────
-            tool_name = tool_call.get("name", "")
-            tool_params = tool_call.get("params") or {}
+        if tool_calls_list:
+            # ── Parallel tool execution ─────────────────────────────────────
+            # LangChain RunnableParallel pattern: each branch receives the same
+            # input, errors are isolated per-branch, results collected in a
+            # dict keyed by tool name for clear LLM association.
+            import concurrent.futures
 
-            logger.trace("event=agent_loop_executing_tool turn=%d tool=%s params_keys=%s",
-                        turn, tool_name, list(tool_params.keys()))
+            def _exec_one(tc: dict) -> dict:
+                _tn = tc.get("name", "")
+                _tp = tc.get("params") or {}
+                _td = tool_map.get(_tn)
+                if _td is None:
+                    return {"name": _tn, "ok": False,
+                            "result": f"Unknown tool: {_tn}",
+                            "duration_ms": 0, "error": True}
+                _t0 = time.perf_counter()
+                try:
+                    _ok, _result = _td.handler(**_tp)
+                except Exception as _exc:
+                    _ok, _result = False, str(_exc)
+                _dur = int((time.perf_counter() - _t0) * 1000)
+                return {"name": _tn, "ok": _ok, "result": _result,
+                        "duration_ms": _dur}
 
-            # Emit thinking: reasoning before tool call
-            if on_thinking and raw_response:
-                reasoning_preview = str(raw_response).strip()[:400]
-                on_thinking(_stream_emitter.emit_thinking(
-                    action="reasoning",
-                    content=reasoning_preview,
-                    turn=turn,
-                    tool_name=tool_name,
-                ))
-
-            if raw_response:
-                scratchpad.append(ScratchMessage("assistant", raw_response))
-
-            # Emit thinking: tool call about to execute
+            # Emit thinking: tool_call for each tool about to execute
             if on_thinking:
-                on_thinking(_stream_emitter.emit_thinking(
-                    action="tool_call",
-                    content=f"Calling {tool_name}...",
-                    turn=turn,
-                    tool_name=tool_name,
-                    metadata={"params_keys": list(tool_params.keys())},
-                ))
+                for tc in tool_calls_list:
+                    on_thinking(_stream_emitter.emit_thinking(
+                        action="tool_call",
+                        content=f"Calling {tc.get('name', '?')}...",
+                        turn=turn,
+                        tool_name=tc.get("name", ""),
+                    ))
 
-            t_tool_start = time.perf_counter()
-            tool_def = tool_map.get(tool_name)
-            if not tool_def:
-                tool_result = f"ERROR: Tool '{tool_name}' not found in manifest."
-                logger.warning(
-                    "event=agent_loop_llm_called_unknown Agent loop: LLM called unknown tool '%s' "
-                    "available=%s", tool_name, tool_names)
-                tool_ok = False
-                tool_raw_result = tool_result
+            if len(tool_calls_list) == 1:
+                _results_list = [_exec_one(tool_calls_list[0])]
             else:
-                try:
-                    ok, result = tool_def.handler(**tool_params)
-                    raw_result = json.dumps(result, ensure_ascii=False) if not isinstance(
-                        result, str) else result
-                    tool_result = _truncate_tool_result(
-                        raw_result) if ok else f"TOOL_ERROR: {result}"
-                    tool_ok = ok
-                    tool_raw_result = raw_result
-                    logger.info("event=agent_loop_turn_tool_ok Agent loop | turn=%d tool=%s ok=%s",
-                                turn, tool_name, ok)
-                    logger.trace(
-                        "event=agent_loop_tool_call_detail turn=%d tool=%s params=%s result=%s",
-                        turn, tool_name,
-                        json.dumps(tool_params, ensure_ascii=False),
-                        (raw_result if len(raw_result) <= 2000 else raw_result[:2000] + "..."),
-                    )
-                except Exception as exc:
-                    tool_result = f"TOOL_ERROR: {exc}"
-                    tool_ok = False
-                    tool_raw_result = str(exc)
-                    logger.warning(
-                        "event=agent_loop_tool_execution_failed Agent loop tool execution failed | "
-                        "tool=%s error=%s", tool_name, exc, exc_info=True)
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(len(tool_calls_list), _MAX_PARALLEL_TOOLS)
+                ) as executor:
+                    _futures = {
+                        executor.submit(_exec_one, tc): tc["name"]
+                        for tc in tool_calls_list
+                    }
+                    _results_list = []
+                    for f in concurrent.futures.as_completed(_futures):
+                        _results_list.append(f.result())
 
-            tool_duration_ms = int((time.perf_counter() - t_tool_start) * 1000)
+            # ── LangChain pattern: collect results in dict keyed by tool name
+            _results_dict: dict[str, dict] = {}
+            for r in _results_list:
+                _results_dict[r["name"]] = r
 
-            # Build compact tool log entry
-            result_preview = str(tool_raw_result)[:300]
-            result_count = None
-            if tool_ok:
-                try:
-                    parsed = json.loads(tool_raw_result) if isinstance(tool_raw_result, str) else tool_raw_result
-                    if isinstance(parsed, list):
-                        result_count = len(parsed)
-                    elif isinstance(parsed, dict) and isinstance(parsed.get("items"), list):
-                        result_count = len(parsed["items"])
-                except Exception:
-                    pass
+            # Emit thinking + scratchpad for each result
+            for r in _results_list:
+                tn = r["name"]
+                ok = r["ok"]
+                result_raw = r["result"]
+                dur = r.get("duration_ms", 0)
+                result_str = str(result_raw) if result_raw is not None else ""
+                chars = len(result_str)
 
-            tool_log.append({
-                "tool": tool_name,
-                "params": {k: str(v)[:100] for k, v in tool_params.items()},
-                "ok": tool_ok,
-                "result_count": result_count,
-                "result_preview": result_preview,
-                "duration_ms": tool_duration_ms,
-            })
+                # Truncate for scratchpad
+                result_trunc = _truncate_tool_result(result_str)
+                result_count = 1
+                if isinstance(result_raw, list):
+                    result_count = len(result_raw)
 
-            # Emit thinking: tool result
-            if on_thinking:
-                on_thinking(_stream_emitter.emit_thinking(
-                    action="tool_result",
-                    content=result_preview,
-                    turn=turn,
-                    tool_name=tool_name,
-                    metadata={
-                        "ok": tool_ok,
-                        "duration_ms": tool_duration_ms,
-                        "result_count": result_count,
-                    },
-                ))
+                logger.info(
+                    "event=agent_loop_turn_tool_ok turn=%d tool=%s ok=%s "
+                    "duration_ms=%d result_chars=%d result_count=%d",
+                    turn, tn, ok, dur, chars, result_count,
+                )
 
-            scratchpad.append(ScratchMessage(
-                "tool", f"[{tool_name}] {tool_result}"))
+                # ── Emit thinking: tool result ────────────────────────────
+                if on_thinking:
+                    result_preview = result_trunc if len(
+                        result_trunc) <= 300 else result_trunc[:300] + "..."
+                    on_thinking(_stream_emitter.emit_thinking(
+                        action="tool_result",
+                        content=result_preview,
+                        turn=turn,
+                        tool_name=tn,
+                        metadata={
+                            "ok": ok,
+                            "duration_ms": dur,
+                            "result_count": result_count,
+                        },
+                    ))
+
+                # Format scratchpad entry
+                _tool_scratch = f"[{tn}] → {'✅' if ok else '❌'} {result_trunc}"
+                scratchpad.append(ScratchMessage("tool", _tool_scratch))
+
+                # Log for post-answer summary
+                tool_log.append({
+                    "tool": tn,
+                    "ok": ok,
+                    "result_preview": result_trunc[:300],
+                    "turn": turn,
+                })
+
+            # ── LangChain pattern: also inject results as dict for LLM ─────
+            # The scratchpad has individual [tool] lines.  Add a compact
+            # dict summary so the LLM can reference results by tool name.
+            if len(_results_dict) > 1:
+                _compact_dict = json.dumps(
+                    {name: f"{'✅' if d['ok'] else '❌'} {_truncate_tool_result(str(d['result']))[:200]}"
+                     for name, d in _results_dict.items()},
+                    ensure_ascii=False, indent=2,
+                )
+                scratchpad.append(ScratchMessage(
+                    "tool", f"[RESULTS_DICT]\n{_compact_dict}"))
+
             _consecutive_no_tool = 0
-            logger.trace("event=agent_loop_tool_done_continuing turn=%d scratchpad_size=%d",
-                        turn, len(scratchpad))
+            logger.trace("event=agent_loop_tool_done_continuing turn=%d "
+                         "parallel_count=%d scratchpad_size=%d",
+                         turn, len(_results_list), len(scratchpad))
             continue
 
         else:
@@ -500,25 +686,31 @@ def run_agent_loop(
                 )
 
             # ── Streaming final answer ────────────────────────────────────
+            # Only regenerate via streaming when tools were called (the LLM
+            # needs to format tool results) or when multiple turns happened.
+            # On turn 0 with no tools, the text response IS the final answer.
             if stream_fn is not None and turn < resolved_max_turns - 1:
-                # Re-issue the final prompt through the streaming path so the
-                # client can receive tokens progressively.
-                final_prompt = _build_prompt(is_final=True)
-                logger.trace("event=agent_loop_streaming_final turn=%d final_prompt_len=%d "
-                            "scratchpad_msgs=%d tool_log_count=%d",
-                            turn, len(final_prompt), len(scratchpad), len(tool_log))
-                try:
-                    for token in stream_fn(final_prompt):
-                        final_tokens.append(token)
-                    final_answer = "".join(final_tokens)
-                    logger.trace("event=agent_loop_streaming_done turn=%d token_count=%d "
-                                "final_len=%d answer_preview=%s",
-                                turn, len(final_tokens), len(final_answer),
-                                json.dumps(final_answer[:120], ensure_ascii=False))
-                except Exception as exc:
-                    logger.error("event=agent_loop_streaming_failed turn=%d error=%s",
-                                turn, exc, exc_info=True)
+                if tool_log:
+                    final_prompt = _build_prompt(is_final=True)
+                    logger.trace("event=agent_loop_streaming_final turn=%d final_prompt_len=%d "
+                                "scratchpad_msgs=%d tool_log_count=%d",
+                                turn, len(final_prompt), len(scratchpad), len(tool_log))
+                    try:
+                        for token in stream_fn(final_prompt):
+                            final_tokens.append(token)
+                        final_answer = "".join(final_tokens)
+                        logger.trace("event=agent_loop_streaming_done turn=%d token_count=%d "
+                                    "final_len=%d answer_preview=%s",
+                                    turn, len(final_tokens), len(final_answer),
+                                    json.dumps(final_answer[:120], ensure_ascii=False))
+                    except Exception as exc:
+                        logger.error("event=agent_loop_streaming_failed turn=%d error=%s",
+                                    turn, exc, exc_info=True)
+                        final_answer = clean
+                else:
                     final_answer = clean
+                    logger.trace("event=agent_loop_final_answer_no_stream turn=%d len=%d",
+                                turn, len(final_answer or ""))
                 break
 
             final_answer = clean
@@ -526,12 +718,19 @@ def run_agent_loop(
                         json.dumps(final_answer[:120], ensure_ascii=False))
             break
 
+    # ── Per-tool call count summary ─────────────────────────────────────────
+    _tool_counts = Counter(t["tool"] for t in tool_log)
+    _tool_breakdown = ", ".join(
+        f"{name}={count}" for name, count in _tool_counts.items()
+    ) if _tool_counts else "(none)"
+
     logger.info(
         "event=agent_loop_completed_turns_final_len Agent loop completed | "
-        "turns=%s final_len=%s tools_called=%s",
+        "turns=%s final_len=%s tools_called=%s tool_breakdown=[%s]",
         len(tool_log) + (1 if final_answer else 0),
         len(final_answer),
         len(tool_log),
+        _tool_breakdown,
     )
     logger.trace("event=agent_loop_exit final_answer=%s tool_log_count=%d token_count=%d",
                 json.dumps(final_answer[:300], ensure_ascii=False),

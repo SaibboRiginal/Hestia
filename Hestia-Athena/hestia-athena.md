@@ -143,10 +143,35 @@ Weighted score:
 - Persistent working memory across restarts
 - Static rule-based fallbacks (by design — Oracle is core, no hardcoded substitutes)
 
+## Skill Curator (Plan P3b-10)
+
+Athena now manages the procedural memory lifecycle — creating, evaluating,
+and curating skills from Oracle session summaries.
+
+**Daily cycle addition (alongside memory consolidation):**
+1. Read session summaries from Archive (`entity_type=session_summary`, last 24h)
+2. Cluster by domain + embedding similarity
+3. For clusters with ≥3 similar sessions: extract most common tool_sequence, create/update skill in Archive
+4. Lifecycle management: deprecate stale (30d unused), hard-delete dead (90d, <3 uses), merge near-duplicates (sim >0.95), promote core (50+ uses, >95% success)
+
+**Configuration (all env vars, Rulebook 1.4):**
+- `ATHENA_SKILL_MIN_SESSIONS` (default 3)
+- `ATHENA_SKILL_SIM_THRESHOLD` (default 0.90)
+- `ATHENA_SKILL_DEDUP_THRESHOLD` (default 0.95)
+- `ATHENA_SKILL_STALE_DAYS` (default 30)
+- `ATHENA_SKILL_HARD_DELETE_DAYS` (default 90)
+- `ATHENA_SKILL_CORE_USE_COUNT` (default 50)
+- `ATHENA_OLLAMA_EMBED_URL` / `ATHENA_OLLAMA_EMBED_MODEL` — embedding configuration
+
+**Files:** `app/core/skill_curator.py` (new), `app/core/runtime.py` (wired into daily cycle)
+
 ## Oracle alignment
 - Athena remains a separate service with its own runtime loop.
 - Athena outputs are advisory cognition events, not direct Oracle action execution.
 - Oracle can ingest Athena hints as context while preserving execution truth contracts.
+- Skills are created by Athena (not Oracle) — the app improves day by day without user prompts.
+- Oracle writes session summaries; Athena reads them, creates skills, and manages lifecycle.
+- Oracle discovers skills at session start via Archive similarity search and injects them into the agent loop prompt.
 - Shared priorities with Oracle:
     - trace propagation across Oracle/Hub/Hermes/Athena
     - typed task lifecycle for background jobs

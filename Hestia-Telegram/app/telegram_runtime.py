@@ -28,6 +28,9 @@ from telegram_bot.services.control_service import run_control_api
 
 logger = logging.getLogger("hestia_telegram")
 
+# Last user message per chat_id for /retry (Plan 8a)
+_last_user_message: dict[int, object] = {}
+
 
 @bot.message_handler(commands=["start", "help"])
 def on_welcome(message):
@@ -37,6 +40,23 @@ def on_welcome(message):
 @bot.message_handler(commands=["clear"])
 def on_clear(message):
     clear_memory(message)
+
+
+@bot.message_handler(commands=["retry"])
+def on_retry(message):
+    """Re-process the last user message (Plan 8a)."""
+    chat_id = message.chat.id
+    last_msg = _last_user_message.get(chat_id)
+    if last_msg is None:
+        bot.reply_to(message, "⚠️ Nessun messaggio precedente da riprocessare.")
+        return
+    # Re-dispatch through the same handler that processed the original
+    if hasattr(last_msg, 'content_type') and getattr(last_msg, 'content_type') in (
+        "document", "photo", "audio", "voice", "video", "video_note",
+    ):
+        handle_file_message(last_msg)
+    else:
+        handle_chat_message(last_msg)
 
 
 @bot.message_handler(commands=["feedback"])
@@ -96,11 +116,13 @@ def on_doc_callback(call):
 
 @bot.message_handler(content_types=["document", "photo", "audio", "voice", "video", "video_note"])
 def on_file(message):
+    _last_user_message[message.chat.id] = message
     handle_file_message(message)
 
 
 @bot.message_handler(func=lambda message: True)
 def on_chat(message):
+    _last_user_message[message.chat.id] = message
     handle_chat_message(message)
 
 

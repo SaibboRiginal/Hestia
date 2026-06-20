@@ -43,6 +43,7 @@ Telegram must:
 - Minimal emojis: one per section header, none on detail lines.
 - HTML parse mode is the default render mode for user-facing rich content.
 - No markdown bold (`**`) inside HTML output — use `<b>` tags only.
+- Leaked markdown patterns (`**bold**`, `-`/`*` bullets) in HTML text are converted to HTML equivalents **without** escaping existing HTML tags (markdown conversion uses targeted regex, never the full `format_for_telegram()` path that would turn `<a href>` into `&lt;a href&gt;`).
 - Outbound HTML is normalized to Telegram-supported tags before send (for example `<em>` → `<i>`, `<strong>` → `<b>`) to avoid parse errors.
 - If Telegram rejects an HTML fragment (`can't parse entities`), delivery retries automatically as plain text for that message part.
 - If output contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram native link preview).
@@ -80,6 +81,7 @@ Environment knobs:
 - Inline 👍/👎 buttons appear after eligible chat responses (configurable rate, default ~15%).
 - Never on greetings, trivial messages, or during snooze periods.
 - Feedback is submitted to Archive's `feedback_submit` MCP tool via Hub routing.
+- On button press, the feedback prompt message is **deleted from chat** immediately — no lingering acknowledgment text.
 - Snooze via `/snooze_feedback` — writes a durable preference to Archive; auto-expires after 7 days.
 
 ---

@@ -15,10 +15,20 @@ from __future__ import annotations
 import json
 import os
 import sys
+import logging
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch, call
 import pytest
+
+# ── Register TRACE log level (hestia_common.logging_utils does this at runtime) ─
+if not hasattr(logging, 'TRACE'):
+    logging.TRACE = 5
+    logging.addLevelName(logging.TRACE, 'TRACE')
+    def _trace(self, msg, *args, **kwargs):
+        if self.isEnabledFor(logging.TRACE):
+            self._log(logging.TRACE, msg, args, **kwargs)
+    logging.Logger.trace = _trace
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 _ORACLE_ROOT = Path(__file__).parents[1]
@@ -40,6 +50,10 @@ os.environ.setdefault("ARCHIVE_URL", "http://fake-archive:19002/api")
 os.environ.setdefault("ORACLE_MAX_AGENT_TURNS", "6")
 os.environ.setdefault("ORACLE_TOOL_RESULT_MAX_CHARS", "2000")
 os.environ.setdefault("LOG_LEVEL", "WARNING")     # quiet during tests
+# Model env vars required by AgentFactory validation (Rulebook 1.4)
+for _uc in ("GENERIC", "REASONING", "CODE", "EMBEDDING"):
+    os.environ.setdefault(f"MODEL_USECASE_{_uc}_MODEL", "mock-model")
+    os.environ.setdefault(f"MODEL_USECASE_{_uc}_FALLBACK_MODEL", "mock-fallback")
 
 
 @pytest.fixture(scope="session")

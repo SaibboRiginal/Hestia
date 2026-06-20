@@ -132,6 +132,10 @@ class PreferenceCreate(BaseModel):
     fact: str
     domain: str = "general"
     weight: float = 1.0
+    memory_class: Optional[str] = None
+    embedding: Optional[list[float]] = None
+    domains: Optional[list[str]] = None
+    extra_data: Optional[dict] = None
 
 
 class PreferenceUpdate(BaseModel):
@@ -147,6 +151,10 @@ class PreferenceResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime]
+    memory_class: Optional[str] = None
+    embedding: Optional[list[float]] = None
+    domains: Optional[list[str]] = None
+    extra_data: Optional[dict] = None
 
     class Config:
         from_attributes = True

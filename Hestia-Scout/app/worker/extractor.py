@@ -280,10 +280,37 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
         logger.warning("event=html_from_atlas_url No HTML from Atlas | url=%s", normalized_url)
         return _set_pending_step(enriched, "listing_content_enrichment", True)
 
-    logger.info("event=atlas_fetch_succeeded_url_content_length Atlas fetch succeeded | url=%s content_length=%s site=%s",
-                normalized_url, result.content_length, handler.site_name)
+    logger.info("event=atlas_fetch_succeeded_url_content_length Atlas fetch succeeded | url=%s content_length=%s site=%s http_status=%s",
+                normalized_url, result.content_length, handler.site_name, result.http_status)
+
+    # ── Availability check from HTTP status ──────────────────────────
+    _http = result.http_status
+    if _http in (404, 410, 451):
+        logger.info("event=listing_unavailable_http_status Listing HTTP %s — marking inactive | url=%s",
+                    _http, normalized_url)
+        enriched["listing_status"] = "sold"
+        enriched["_unavailable_http_status"] = _http
+        return _set_pending_step(enriched, "listing_content_enrichment", False)
+    if _http >= 500:
+        logger.warning("event=listing_server_error HTTP %s — will retry later | url=%s",
+                       _http, normalized_url)
+        return _set_pending_step(enriched, "listing_content_enrichment", True)
+
     soup = BeautifulSoup(result.html, "html.parser")
     result_payload = handler.enrich(soup, enriched)
+
+    # ── Content-based availability check ─────────────────────────────
+    _html_lower = result.html.lower()
+    _sold_signals = [
+        "non più disponibile", "annuncio rimosso", "immobile venduto",
+        "property sold", "no longer available", "listing removed",
+        "this property is no longer", "venduta", "venduto",
+    ]
+    if any(s in _html_lower for s in _sold_signals):
+        logger.info("event=listing_sold_detected_in_content Marking as sold from page content | url=%s",
+                    normalized_url)
+        result_payload["listing_status"] = "sold"
+
     result_payload = _set_pending_step(
         result_payload, "listing_content_enrichment", False)
     # Backward-compatible cleanup of legacy marker when present.

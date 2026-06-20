@@ -22,6 +22,7 @@ import requests
 
 from .consolidator import MemoryConsolidator
 from .observer import Observer
+from .skill_curator import SkillCurator
 from .schemas import (
     ActionCandidate,
     CommitmentResolveRequest,
@@ -117,6 +118,14 @@ class AthenaRuntime:
         self.consolidator = MemoryConsolidator(hub_api_url=self.hub_api_url)
         self._consolidation_ran_today: str = ""  # date iso
 
+        # Skill curator (Plan P3b-10 — Hermes Agent pattern)
+        self.skill_curator = SkillCurator(
+            hub_api_url=self.hub_api_url,
+            embed_fn=self._embed_text,
+            oracle_route=self.oracle_hint_route if self.oracle_hint_enabled else "",
+        )
+        self._skill_curation_ran_today: str = ""
+
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -132,6 +141,29 @@ class AthenaRuntime:
             max_tasks=_parse_int_env("ATHENA_TASK_STORE_MAX", 500)
         )
         self._thinking_records: list[dict[str, Any]] = []
+
+    # ── Embedding helper ────────────────────────────────────────────────────
+
+    def _embed_text(self, text: str) -> list[float]:
+        """Embed *text* via Oracle's embedding endpoint (Hub routing).
+
+        Rulebook 1.2 organ model: ONLY Oracle owns model calls.
+        Athena routes all LLM/embedding through Oracle via Hub.
+        """
+        try:
+            resp = requests.post(
+                f"{self.hub_api_url}/route/oracle/api/embed",
+                json={"text": text},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json() or {}
+            embedding = data.get("embedding")
+            if isinstance(embedding, list):
+                return list(embedding)
+        except Exception as exc:
+            logger.warning("event=athena_embed_via_oracle_failed error=%s", exc)
+        return []
 
     # ── Commitment lifecycle ────────────────────────────────────────────────
 
@@ -647,6 +679,25 @@ class AthenaRuntime:
                 self._consolidation_ran_today = today
             except Exception as exc:
                 logger.warning("event=consolidation_failed error=%s", exc)
+
+        # ── Daily skill curation (Plan P3b-10 — Hermes Agent pattern) ──────
+        if self._skill_curation_ran_today != today:
+            try:
+                summary = self.skill_curator.run_cycle()
+                if any(v > 0 for v in summary.values()):
+                    logger.info(
+                        "event=skill_curation_complete created=%d updated=%d "
+                        "deprecated=%d merged=%d deleted=%d promoted=%d",
+                        summary.get("created", 0),
+                        summary.get("updated", 0),
+                        summary.get("deprecated", 0),
+                        summary.get("merged", 0),
+                        summary.get("deleted", 0),
+                        summary.get("promoted", 0),
+                    )
+                self._skill_curation_ran_today = today
+            except Exception as exc:
+                logger.warning("event=skill_curation_failed error=%s", exc)
 
         retrospective = self._retrospective_snapshot()
 

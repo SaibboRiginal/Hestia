@@ -58,6 +58,83 @@ def deprecate_preference(
     return db_pref
 
 
+# ── Similarity search ────────────────────────────────────────────────────────
+
+@router.post("/api/memory/search/similar")
+def search_similar_memories(
+    body: dict, db: Session = Depends(database.get_db)
+):
+    """Return active memories ranked by cosine similarity to *embedding*.
+
+    Body: {"embedding": [...], "memory_class": "skill", "domain": "calendar", "limit": 5}
+    """
+    query_embedding = body.get("embedding")
+    if not isinstance(query_embedding, list) or not query_embedding:
+        raise HTTPException(status_code=400, detail="embedding vector required")
+
+    memory_class = body.get("memory_class")
+    domain = body.get("domain")
+    limit = min(int(body.get("limit", 5)), 20)
+
+    q = db.query(models.UserPreference).filter(
+        models.UserPreference.is_active == True,  # noqa: E712
+        models.UserPreference.embedding.isnot(None),
+    )
+    if memory_class:
+        q = q.filter(models.UserPreference.memory_class == memory_class)
+    if domain:
+        q = q.filter(
+            models.UserPreference.domain.in_([domain, "general"]))
+
+    candidates = q.all()
+    if not candidates:
+        return []
+
+    # Cosine similarity ranking
+    from math import sqrt
+
+    def dot(a, b):
+        return sum(x * y for x, y in zip(a, b))
+
+    def norm(v):
+        return sqrt(sum(x * x for x in v))
+
+    qn = norm(query_embedding)
+    scored = []
+    for row in candidates:
+        emb = row.embedding
+        if not isinstance(emb, list) or not emb:
+            continue
+        rn = norm(emb)
+        if qn == 0.0 or rn == 0.0:
+            continue
+        sim = dot(query_embedding, emb) / (qn * rn)
+        scored.append((sim, row))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:limit]
+
+    # Serialize top matches
+    results = []
+    for sim, row in top:
+        d = {
+            "id": row.id,
+            "fact": row.fact,
+            "domain": row.domain,
+            "weight": row.weight,
+            "is_active": row.is_active,
+            "memory_class": row.memory_class,
+            "embedding": row.embedding,
+            "domains": row.domains,
+            "extra_data": row.extra_data,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "_similarity": round(sim, 4),
+        }
+        results.append(d)
+    return results
+
+
 # ── Alert subscriptions ───────────────────────────────────────────────────────
 
 @router.post("/api/subscriptions", response_model=schemas.SubscriptionResponse)

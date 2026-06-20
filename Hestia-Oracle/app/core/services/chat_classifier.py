@@ -51,10 +51,10 @@ class ChatClassifier:
         defaults = self._defaults()
 
         try:
-            raw = self._router.ask(prompt).strip()
+            raw = self._router.ask(prompt, thinking=False).strip()
         except Exception:
             try:
-                raw = self._fallback.ask(prompt).strip()
+                raw = self._fallback.ask(prompt, thinking=False).strip()
             except Exception:
                 return defaults
 
@@ -103,11 +103,25 @@ class ChatClassifier:
             "action (create, update, delete, enable, disable, set, remove, execute), "
             "false for informational queries, chat, or read-only requests\n\n"
             "Rules:\n"
-            '- Use "quick_chat" for normal conversation, generic Q&A, short personal exchanges, '
-            "or messages that do not need structured retrieval or actions.\n"
+            '- Use "quick_chat" ONLY for pure conversation: greetings, small talk, '
+            "jokes, philosophical musings, or casual exchanges that require zero "
+            "data retrieval or tool usage. When in doubt, use domain_query.\n"
             '- Use "domain_query" when the user asks for domain records, '
             "filters, listings, alerts/subscriptions, data-driven operations, "
             "OR explicitly requests a state-changing action.\n"
+            '- CRITICAL — SELF-AWARENESS RULE: questions about the assistant\'s '
+            "internal state, system health, service status, operational capacity, "
+            "or how the assistant works/functions MUST be classified as "
+            "\"domain_query\" with domain=\"system\". These are NOT casual chat — "
+            "they require tool calls to answer factually. Examples: 'come stai messa', "
+            "'stato dei servizi', 'come funzioni', 'sei operativa', 'dimmi il tuo stato'.\n"
+            '- CRITICAL — "system" domain ALWAYS implies "domain_query". '
+            "Never return mode=quick_chat when domain=system. System queries "
+            "inherently need live data from tools.\n"
+            '- CRITICAL — if the user challenges or questions the assistant\'s '
+            "knowledge (e.g. 'come fai a saperlo', 'da dove hai preso questa info', "
+            "'non hai i dati per rispondere'), ALWAYS use domain_query so tools "
+            "can be invoked to provide evidence. Never answer defensively in quick_chat.\n"
             "- Set \"domain\" only if it is explicit/high-confidence from AVAILABLE_DOMAINS; otherwise null.\n\n"
             "- Resolve relative time references (oggi, domani, next week) using CURRENT_DATETIME_CONTEXT when available.\n"
             '- Set "action_intent": true for imperative action requests (commands like /xxx, '

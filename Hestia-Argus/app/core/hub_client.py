@@ -27,7 +27,7 @@ def register(*, quiet_success: bool = False) -> bool:
         "service_type": "core",
         "service_version": "1.0.0",
         "tags": ["core", "monitoring"],
-        "topology_tags": ["layer:foundation", "domain:observability", "status:stable"],
+        "topology_tags": ["layer:foundation", "layer:domain", "domain:observability", "domain:system", "status:stable"],
         "capabilities": {
             "argus_status": {
                 "description": "Live health snapshot of all Hestia services",

@@ -41,6 +41,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Oracle discovers module tools via Hub discovery endpoint.
 - Oracle queries module tools via generic contract, then falls back to Archive generic search.
 - Oracle contains no domain-specific branches.
+- **System domain structural invariant:** `domain=system` always implies `domain_query` mode regardless of classifier confidence — system introspection requires live tool calls to answer factually.
 
 ### Proactive Subscription Compiler
 - Oracle infers notification intent/preferences from natural language.
@@ -86,6 +87,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
   - `action: "tool_result"` — tool execution completed (with result count, duration)
 - A **tool summary** signal (`event: "tool.summary"`) is emitted after the final answer, carrying a compact log of every tool invocation with parameters, results, and timing.
 - Clients (e.g. Telegram) render tool activity as status updates during the loop and a compact summary card after the answer.
+- **Ollama models**: To enable reasoning content in the stream, the `think` parameter must be set to `true` in the API payload. This is automatically handled by the UniversalAgent when `thinking=True`.
 
 ### Memory as First-Class Tools
 - `memory.save` — agent loop tool to persist a durable user fact immediately.
@@ -118,7 +120,35 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
 | `GET` | `/api/athena/hints` | List non-expired Athena hints (optional `session_id`) |
 | `DELETE` | `/api/chat/{session_id}` | Clear a session |
+| `GET` | `/api/chat/context?session_id=` | Context-window stats (token breakdown, compaction availability) |
+| `POST` | `/api/chat/compact?session_id=` | Force-compact conversation history via LLM summarisation |
+| `GET` | `/api/sessions` | Global Oracle state (models, uptime, Hub URL) |
 | `GET` | `/health` | Service health |
+
+### MCP Tools (Plan P3c)
+
+Exposed via `/mcp` endpoint, registered with Hestia-MCP:
+
+| Tool | Description |
+|------|-------------|
+| `memory.save` | Save a durable user preference |
+| `memory.search` | Search saved preferences |
+| `documents.search` | Search uploaded documents |
+| `oracle.context_stats` | Session context breakdown |
+| `oracle.compact` | Force context compaction |
+| `oracle.session_info` | Global Oracle state |
+| `oracle.logs_query` | Query in-memory log buffer (default level: WARNING) |
+
+### Execution Modes (Plan P1-3)
+
+| Mode | think | Classify | Description |
+|------|-------|----------|-------------|
+| `quick` | False | No | Single ask, no tools. <2s latency |
+| `auto` | True (agent loop) | Yes | Classify → quick_chat (no think) or agent loop (with think). Default |
+| `thinking` | True | Yes | Full agent loop with visible chain-of-thought |
+
+Mode and model are independent — any mode works with any model (`generic`/`reasoning`/`code`).
+Model names come from env vars (`MODEL_USECASE_GENERIC_MODEL`, etc.) — no hardcoded models.
 
 ### `POST /chat` payload
 ```json

@@ -83,6 +83,68 @@ _oracle_mcp_tools = [
         clients=["telegram", "ui"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="documenti",
     ),
+    # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
+    MCPTool(
+        name="oracle.context_stats",
+        description="Return token breakdown and context-window usage for a session.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "session_id": {"type": "string", "description": "Session ID"},
+            },
+            "required": ["session_id"],
+        },
+        handler=lambda **kw: engine.estimate_context_stats(
+            session_id=str(kw.get("session_id", ""))),
+        title="📊 Contesto sessione", method="GET", path="/api/chat/context",
+        clients=["telegram", "ui"], response_mode="raw_json",
+        telegram_visible=False, telegram_group="sistema",
+    ),
+    MCPTool(
+        name="oracle.compact",
+        description="Force-compact conversation history for a session via LLM summarisation.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "session_id": {"type": "string", "description": "Session ID"},
+            },
+            "required": ["session_id"],
+        },
+        handler=lambda **kw: engine.compact_context(
+            session_id=str(kw.get("session_id", ""))),
+        title="🗜️ Compatta contesto", method="POST", path="/api/chat/compact",
+        clients=["telegram", "ui"], response_mode="raw_json",
+        telegram_visible=False, telegram_group="sistema",
+    ),
+    MCPTool(
+        name="oracle.session_info",
+        description="Return global Oracle state: active sessions, uptime, model in use, Hub connection.",
+        parameters={"type": "object", "properties": {}, "required": []},
+        handler=lambda **kw: engine.get_session_info(),
+        title="ℹ️ Stato Oracle", method="GET", path="/api/sessions",
+        clients=["telegram", "ui"], response_mode="raw_json",
+        telegram_visible=False, telegram_group="sistema",
+    ),
+    MCPTool(
+        name="oracle.logs_query",
+        description="Query Oracle's in-memory log buffer by level and text filter.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "level": {"type": "string", "description": "Log level filter (DEBUG, INFO, WARNING, ERROR, TRACE)"},
+                "contains": {"type": "string", "description": "Text to search for in log messages"},
+                "limit": {"type": "integer", "description": "Max log lines (default 50, max 500)"},
+            },
+        },
+        handler=lambda **kw: engine.query_logs(
+            level=str(kw.get("level", "") or "").strip() or None,
+            contains=str(kw.get("contains", "") or "").strip() or None,
+            limit=int(kw.get("limit", 50)),
+        ),
+        title="📋 Log Oracle", method="GET", path="/api/logs",
+        clients=["telegram", "ui"], response_mode="raw_json",
+        telegram_visible=False, telegram_group="sistema",
+    ),
 ]
 try:
     app.include_router(create_mcp_router(_oracle_mcp_tools, service_name="oracle"))
@@ -636,7 +698,7 @@ def llm_generate_endpoint(req: dict):
             os.getenv("ANALYST_PROVIDER", os.getenv("LLM_PROVIDER", "ollama")))
         default_model = os.getenv(
             "MODEL_USECASE_GENERIC_MODEL",
-            os.getenv("ANALYST_MODEL", os.getenv("LLM_MODEL", "gemma4:e4b")))
+            os.getenv("ANALYST_MODEL", os.getenv("LLM_MODEL", "")))
 
         model = req.get("model") or default_model
         provider = req.get("provider") or default_provider
@@ -655,7 +717,7 @@ def llm_generate_endpoint(req: dict):
             fallback_provider = "ollama"
             fallback_model = os.getenv(
                 "ANALYST_FALLBACK_MODEL",
-                os.getenv("LLM_FALLBACK_MODEL", "gemma4:e4b"))
+                os.getenv("LLM_FALLBACK_MODEL", ""))
             try:
                 fallback_agent = UniversalAgent(
                     role_prompt="", provider=fallback_provider,
@@ -698,11 +760,10 @@ def clear_chat_endpoint(session_id: str):
 
 @app.get("/api/chat/context")
 def get_context_stats(session_id: str):
-    """Estimate context-window usage for *session_id*.
+    """Return context-window usage stats for *session_id*.
 
-    Returns approximate token counts and percentage of Gemma 4's 256K window.
-    Token estimate uses a conservative 3 chars/token heuristic for mixed
-    Italian/English + JSON.
+    Token counts via Ollama /api/tokenize (cached) with heuristic fallback.
+    Context window size is configurable via ORACLE_CONTEXT_LENGTH (default 8K).
     """
     try:
         stats = engine.estimate_context_stats(session_id)
@@ -710,4 +771,51 @@ def get_context_stats(session_id: str):
     except Exception as e:
         logger.exception(
             "event=unhandled_error_context_stats Unhandled error in context stats | session_id=%s", session_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat/compact")
+def compact_chat_context(session_id: str):
+    """Force-compact conversation history for *session_id*.
+
+    Summarises older messages via the generic model, preserves recent messages
+    and protected content ([PREFERENCE], [SUBSCRIPTION], etc.), writes compacted
+    history back to Archive.
+    """
+    try:
+        result = engine.compact_context(session_id)
+        return {"session_id": session_id, **result}
+    except Exception as e:
+        logger.exception(
+            "event=unhandled_error_context_compact Unhandled error in context compaction | session_id=%s", session_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions")
+def get_session_info():
+    """Return global Oracle state — active models, uptime, Hub connection."""
+    try:
+        info = engine.get_session_info()
+        return info
+    except Exception as e:
+        logger.exception(
+            "event=unhandled_error_session_info Unhandled error in session info")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class EmbedRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/embed")
+def embed_endpoint(req: EmbedRequest):
+    """Return embedding vector for *text* via Oracle's embedding model.
+
+    The ONLY embedding endpoint in Hestia. All services route through here.
+    """
+    try:
+        vector = engine._embed(req.text)
+        return {"embedding": vector, "dimensions": len(vector)}
+    except Exception as e:
+        logger.exception("event=unhandled_error_embed")
         raise HTTPException(status_code=500, detail=str(e))
