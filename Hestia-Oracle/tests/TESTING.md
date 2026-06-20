@@ -331,9 +331,50 @@
 
 ---
 
+## §12 Unit Tests — test_plan_features.py (20 cases, NEW)
+
+Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
+
+### §12.1 Domain Tool Filtering (4 cases)
+- `test_owned_domain_gets_search_tool` — Domain with layer:domain owner gets {domain}.search
+- `test_unowned_domain_skipped_with_warning` — Unowned domain logs WARNING, gets only memory+docs
+- `test_multi_domain_owners` — Multiple domains each get search tools
+- `test_commands_filtered_by_relevant_services` — Hub commands filtered to domain-owning services
+
+### §12.2 Mode Routing (2 cases)
+- `test_quick_mode_no_classify` — Quick mode skips classify phase entirely
+- `test_thinking_mode_uses_resolved_agent` — Thinking mode respects model param (mode × model independence)
+
+### §12.3 Token Counting (3 cases)
+- `test_fallback_heuristic` — Falls back to ~3 chars/token when Ollama unreachable
+- `test_context_window_from_env` — ORACLE_CONTEXT_LENGTH env var controls window
+- `test_context_pct` — Percentage calculation correct
+
+### §12.4 Preference Domains (5 cases)
+- `test_domain_list_from_env` — ORACLE_PREFERENCE_DOMAINS overrides defaults
+- `test_cosine_identical` — Identical vectors = 1.0
+- `test_cosine_orthogonal` — Orthogonal vectors = 0.0
+- `test_cosine_empty` — Empty vectors = 0.0
+- `test_classifier_returns_general_when_embed_fails` — Graceful fallback
+
+### §12.5 Multi-Domain Preferences (3 cases)
+- `test_multi_domain_match` — Preference with domains=['calendar','work'] matches calendar query
+- `test_multi_domain_no_match` — Preference with domains=['food'] filtered out for calendar
+- `test_general_always_included` — general domain always matches regardless of query
+
+### §12.6 Thinking Events (2 cases)
+- `test_reasoning_content_in_decision` — reasoning_content extracted from decision dict
+- `test_empty_reasoning_not_emitted` — Empty reasoning skipped
+
+### §12.7 Compaction (1 case)
+- `test_compaction_skips_short_history` — Short history (≤6 msgs) not compacted
+
+---
+
 ## Governance Notes
 
 - All new API endpoints and command catalog entries have corresponding tests.
 - Live Ollama tests are auto-skipped when Ollama is not reachable (conftest.py).
 - Old/legacy files (oracle_engine_old.py, memory_service_old.py, memory_service_new.py) are excluded from coverage targets.
 - Document pipeline modules (analyser, archiver, extractor, rag, local_models) have lower coverage — tests for these require file fixtures and are lower priority than core chat/agent functionality.
+- **2026-06-18**: Oracle Enhancement Plan P1-P3 features added with 20 new unit tests (test_plan_features.py). AgentFactory now validates required MODEL_USECASE_* env vars at startup. TRACE log level registered in conftest for all tests.

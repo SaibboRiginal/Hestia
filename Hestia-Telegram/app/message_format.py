@@ -330,10 +330,12 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
     if not text:
         return []
 
-    # If the LLM already output HTML (analyst prompt now instructs HTML output),
-    # use the HTML-aware splitter directly — do NOT run format_for_telegram which
-    # would escape the angle brackets and destroy the markup.
-    if re.search(r'<(?:b|i|a[\s>]|code|pre|br)[\s/>]', text, re.IGNORECASE):
+    # If the LLM already output HTML, use the HTML-aware splitter.
+    # Also convert any leaked markdown (*italic*, **bold**, _italic_)
+    # that may be mixed with HTML tags — the LLM doesn't always follow
+    # the "no mixed formats" rule.
+    if re.search(r'<(?:b|i|code|pre|br)[\s/>]|<a[\s>]', text, re.IGNORECASE):
+        text = _convert_markdown_in_html(text)
         parts = _split_html_link_bullets(text)
         return parts if parts else split_long_message(text)
 
@@ -365,6 +367,20 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
 
         links = link_pattern.findall(paragraph)
         if not links:
+            # Split bullet lists into individual messages
+            _lines = [l.strip() for l in paragraph.splitlines() if l.strip()]
+            _bullet_lines = [l for l in _lines if re.match(r"^[-*•]\s+", l)]
+            if _bullet_lines and len(_bullet_lines) >= 2:
+                _non_bullets = [l for l in _lines if l not in _bullet_lines]
+                if _non_bullets:
+                    intro = format_for_telegram("\n".join(_non_bullets)).strip()
+                    if intro:
+                        messages.extend(split_long_message(intro))
+                for bl in _bullet_lines:
+                    rendered = format_for_telegram(bl).strip()
+                    if rendered:
+                        messages.extend(split_long_message(rendered))
+                continue
             rendered = format_for_telegram(paragraph).strip()
             if rendered:
                 messages.extend(split_long_message(rendered))
@@ -404,12 +420,12 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
                         messages.extend(split_long_message(rendered_bullet))
                 else:
                     current_non_link_group.append(bullet_line)
-            # Flush any remaining non-link bullets
-            if current_non_link_group:
-                rendered_non_link = format_for_telegram(
-                    "\n".join(current_non_link_group)).strip()
-                if rendered_non_link:
-                    messages.extend(split_long_message(rendered_non_link))
+            # Flush non-link bullets individually
+            for non_link_bullet in current_non_link_group:
+                rendered = format_for_telegram(non_link_bullet).strip()
+                if rendered:
+                    messages.extend(split_long_message(rendered))
+            current_non_link_group.clear()
             continue
 
         paragraph_without_links = link_pattern.sub(
@@ -433,6 +449,24 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
     return messages
 
 
+def _convert_markdown_in_html(text: str) -> str:
+    """Convert Markdown patterns inside HTML text WITHOUT escaping existing HTML tags.
+
+    format_for_telegram() calls replace('<', '&lt;') which destroys valid
+    <a href>, <b>, <i> tags. This function only applies markdown-to-HTML
+    conversions while preserving existing HTML markup.
+    """
+    # Convert **bold** to <b>bold</b> (before single-* to avoid conflict)
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    # Convert _italic_ to <i>italic</i>
+    text = re.sub(r'(?<!\w)_(.+?)_(?!\w)', r'<i>\1</i>', text)
+    # Convert *italic* to <i>italic</i> (single *, not at line start, not inside **)
+    text = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<i>\1</i>', text)
+    # Convert line-start - or * bullets to • symbol
+    text = re.sub(r'^[ \t]*[-*][ \t]+', '• ', text, flags=re.MULTILINE)
+    return text
+
+
 def build_delivery_messages(raw_text: str, parse_mode: str = "HTML") -> tuple[list[str], str | None]:
     """Build Telegram-ready messages and normalized parse mode for all outbound flows."""
     text = str(raw_text or "").strip()
@@ -450,9 +484,10 @@ def build_delivery_messages(raw_text: str, parse_mode: str = "HTML") -> tuple[li
     if mode == "html":
         # Sanitize invalid HTML (LLM mistakes like <b/>, style="", <br/>)
         text = sanitize_telegram_html(text)
-        # Detect leaked Markdown and convert to HTML before splitting
-        if re.search(r'\*\*|\n\s*[-*]\s', text):
-            text = format_for_telegram(text)
+        # Always convert leaked markdown in HTML text — the LLM often mixes
+        # *italic*, **bold**, _italic_ with HTML tags despite the contract.
+        # _convert_markdown_in_html is safe: it never escapes existing HTML.
+        text = _convert_markdown_in_html(text)
         return _split_html_link_bullets(text), "HTML"
 
     return split_long_message(text), None

@@ -26,6 +26,17 @@ services:
       # ORACLE_TOOL_RESULT_MAX_CHARS=2000  max chars retained from each tool result in agent loop (int)
       # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  cache TTL for module-tool registry (int)
       # ORACLE_FORCE_TELEGRAM_TARGET=1  force all subscription channels to use the user's Telegram chat_id (0|1)
+      # ── Enhancement Plan tuning (2026-06-18) ────────────────────────
+      # ORACLE_CONTEXT_LENGTH=8192        context window size in tokens (int, default 8K)
+      # ORACLE_COMPACT_THRESHOLD=0.80     compaction trigger at this fraction of window (float)
+      # ORACLE_MAX_PARALLEL_TOOLS=8       max concurrent tool executions (int)
+      # ORACLE_MAX_AGENT_TOKENS=0         max cumulative tokens per agent loop, 0=unlimited (int)
+      # ORACLE_PREFERENCE_DOMAINS=        JSON override for preference domain definitions
+      # ORACLE_PREF_DOMAIN_SIM_THRESHOLD=0.55  cosine similarity for domain assignment
+      # ORACLE_THINKING_FAMILIES=gemma4,gemma3,qwen3,deepseek-r1,llama4,phi4  model families supporting think
+      # MODEL_USECASE_GENERIC_THINKING=auto   "true"/"false"/"auto" — per-model think flag
+      # MODEL_USECASE_REASONING_THINKING=true
+      # MODEL_USECASE_CODE_THINKING=auto
     env_file:
       - ./app/.env
     networks:

@@ -15,7 +15,7 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class UniversalAgent:
-    def __init__(self, role_prompt: str = "", provider: str = "gemini", model_name: str = "gemini-2.5-flash", thinking: bool = True):
+    def __init__(self, role_prompt: str = "", provider: str = "", model_name: str = "", thinking: bool = True):
         self.role_prompt = role_prompt
         self.provider = provider.lower()
         self.model_name = model_name
@@ -36,7 +36,8 @@ class UniversalAgent:
                 self.provider = "ollama"
                 # Preserve explicit model when it already targets local Ollama.
                 if "gemini" in (self.model_name or "").lower() or "models/" in (self.model_name or "").lower():
-                    self.model_name = "qwen2.5:7b"
+                    self.model_name = os.getenv(
+                        "ORACLE_GEMINI_KEY_MISSING_FALLBACK_MODEL", "")
                 self._init_ollama_defaults()
             else:
                 self.client = genai.Client(api_key=api_key)
@@ -72,20 +73,23 @@ class UniversalAgent:
     #  Core ask
     # ─────────────────────────────────────────────────────────────────
 
-    def ask(self, user_message: str) -> str:
-        return self._with_retry(self._ask_once, user_message)
+    def ask(self, user_message: str, thinking: bool | None = None) -> str:
+        return self._with_retry(self._ask_once, user_message, thinking=thinking)
 
-    def ask_with_tools(self, user_message: str, tools: list[dict]) -> dict:
+    def ask_with_tools(self, user_message: str, tools: list[dict], thinking: bool | None = None) -> dict:
         """Ask model with native tool-calling when provider/model supports it.
+
+        When *thinking* is not None, it overrides ``self.thinking`` for this
+        call only — safe for concurrent sessions sharing the same agent instance.
 
         Returns:
           {"tool_call": {"name": str, "params": dict}, "text": str}
           or
           {"tool_call": None, "text": str}
         """
-        return self._with_retry(self._ask_with_tools_once, user_message, tools)
+        return self._with_retry(self._ask_with_tools_once, user_message, tools, thinking=thinking)
 
-    def _ask_with_tools_once(self, user_message: str, tools: list[dict]) -> dict:
+    def _ask_with_tools_once(self, user_message: str, tools: list[dict], thinking: bool | None = None) -> dict:
         if not tools:
             return {"tool_call": None, "text": self._ask_once(user_message)}
 
@@ -95,7 +99,7 @@ class UniversalAgent:
         if self.provider == "ollama":
             if self.ollama_tool_call_mode in {"native", "auto"}:
                 try:
-                    return self._ask_with_tools_ollama_native(user_message, tools)
+                    return self._ask_with_tools_ollama_native(user_message, tools, thinking=thinking)
                 except Exception as exc:
                     if self.ollama_tool_call_mode == "native":
                         raise
@@ -109,7 +113,7 @@ class UniversalAgent:
 
         return {"tool_call": None, "text": self._ask_once(user_message)}
 
-    def _ask_once(self, user_message: str) -> str:
+    def _ask_once(self, user_message: str, thinking: bool | None = None) -> str:
         if self.provider == "gemini":
             response = self.client.models.generate_content(
                 model=self.model_name,
@@ -126,7 +130,10 @@ class UniversalAgent:
                 "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
                 "stream": False,
             }
-            if not self.thinking:
+            _think = thinking if thinking is not None else self.thinking
+            if _think:
+                payload["think"] = True
+            else:
                 payload["think"] = False
             response = requests.post(
                 self.ollama_url,
@@ -134,7 +141,15 @@ class UniversalAgent:
                 timeout=self.ollama_timeout_sec
             )
             response.raise_for_status()
-            return response.json().get("response", "").strip()
+            data = response.json() or {}
+            raw = str(data.get("response", "") or "").strip()
+            reasoning_raw = str(data.get("reasoning_content") or data.get("thinking") or "").strip()
+            logger.info(
+                "event=ollama_ask_thinking_response model=%s think=%s "
+                "reasoning_len=%d response_len=%d response_keys=%s",
+                self.model_name, _think, len(reasoning_raw), len(raw),
+                sorted(data.keys()) if data else [])
+            return raw
 
         raise RuntimeError(f"Unknown provider: {self.provider}")
 
@@ -191,7 +206,7 @@ class UniversalAgent:
 
         return {"tool_call": None, "text": (response.text or "").strip()}
 
-    def _ask_with_tools_ollama_native(self, user_message: str, tools: list[dict]) -> dict:
+    def _ask_with_tools_ollama_native(self, user_message: str, tools: list[dict], thinking: bool | None = None) -> dict:
         chat_url = self.ollama_url.replace("/api/generate", "/api/chat")
         ollama_tools = [
             {
@@ -210,10 +225,13 @@ class UniversalAgent:
         # already inside *user_message*.
         _TOOL_CALLING_SYSTEM = (
             "You are Hestia's tool-calling engine. "
-            "When the user asks for something you can do with a tool, call it immediately. "
-            "If no tool matches the request, respond in plain text. "
-            "Never respond with just 'Ciao' or a greeting when the user asked a substantive question — "
-            "use a tool or give a real answer."
+            "DOMAIN QUERY MODE: The classifier has already determined this message "
+            "requires data retrieval. Domain search tools matching the query are "
+            "available — call the most relevant one BEFORE producing text. "
+            "Never respond with conversation text when a matching tool exists. "
+            "If you are unsure which tool to call, call the domain search tool "
+            "that best matches the user's topic. Tool-less responses in domain "
+            "query mode are a critical error."
         )
         payload = {
             "model": self.model_name,
@@ -223,9 +241,16 @@ class UniversalAgent:
             ],
             "tools": ollama_tools,
             "stream": False,
-            "think": False,  # Gemma 4: thinking tokens (<unused50>) break tool-call parsing
         }
+        _think = thinking if thinking is not None else self.thinking
+        if _think:
+            payload["think"] = True
+        else:
+            payload["think"] = False
 
+        logger.info(
+            "event=ollama_tool_call_thinking model=%s think=%s tool_count=%d",
+            self.model_name, _think, len(ollama_tools))
         logger.trace(
             "event=ollama_native_tool_call_request model=%s tool_count=%d "
             "prompt_len=%d system_len=%d",
@@ -248,43 +273,68 @@ class UniversalAgent:
         tool_calls = message.get("tool_calls") if isinstance(
             message.get("tool_calls"), list) else []
         content_text = str(message.get("content", "") or "").strip()
+        reasoning_text = str(message.get("reasoning_content") or message.get("thinking") or "").strip()
+        # Some models embed thinking in content with <｜end▁of▁thinking｜>/ thinking markers
+        if not reasoning_text and " thinking" in (message.get("content", "") or "").lower():
+            parts = (message.get("content", "") or "").split("<｜end▁of▁thinking｜>")
+            if len(parts) > 1:
+                reasoning_text = parts[0].replace(" thinking", "").strip()
+                content_text = parts[1].strip()
 
+        logger.info(
+            "event=ollama_tool_call_thinking_response think=%s "
+            "reasoning_len=%d content_len=%d tool_calls=%d msg_keys=%s",
+            _think, len(reasoning_text), len(content_text),
+            len(tool_calls), sorted(message.keys()) if message else [])
         logger.trace(
             "event=ollama_native_tool_call_response elapsed_ms=%d "
-            "tool_calls_count=%d content_len=%d content_preview=%s",
+            "tool_calls_count=%d content_len=%d reasoning_len=%d content_preview=%s",
             elapsed_ms, len(tool_calls), len(content_text),
+            len(reasoning_text),
             json.dumps(content_text[:150], ensure_ascii=False))
 
         if tool_calls:
-            first = tool_calls[0] if isinstance(tool_calls[0], dict) else {}
-            fn = first.get("function") if isinstance(
-                first.get("function"), dict) else {}
-            args = fn.get("arguments")
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except Exception:
-                    args = {}
-            result = {
-                "tool_call": {
-                    "name": str(fn.get("name", "") or ""),
-                    "params": dict(args or {}),
-                },
-                "text": "",
-            }
-            logger.info(
-                "event=ollama_native_tool_call_selected tool=%s params=%s elapsed_ms=%d",
-                result["tool_call"]["name"],
-                json.dumps(result["tool_call"]["params"], ensure_ascii=False)[:200],
-                elapsed_ms)
-            return result
+            parsed: list[dict] = []
+            for tc in tool_calls:
+                tc_dict = tc if isinstance(tc, dict) else {}
+                fn = tc_dict.get("function") if isinstance(
+                    tc_dict.get("function"), dict) else {}
+                args = fn.get("arguments")
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        args = {}
+                name = str(fn.get("name", "") or "")
+                if name:
+                    parsed.append({
+                        "name": name,
+                        "params": dict(args or {}),
+                    })
+
+            if parsed:
+                logger.info(
+                    "event=ollama_native_tool_calls_selected count=%d tools=%s "
+                    "reasoning_len=%d elapsed_ms=%d",
+                    len(parsed),
+                    [t["name"] for t in parsed],
+                    len(reasoning_text), elapsed_ms)
+                return {
+                    "tool_calls": parsed,
+                    "tool_call": parsed[0],  # Backward-compat: first tool
+                    "text": "",
+                    "reasoning_content": reasoning_text,
+                }
 
         logger.info(
-            "event=ollama_native_no_tool_call content=%s elapsed_ms=%d",
-            json.dumps(content_text[:120], ensure_ascii=False), elapsed_ms)
+            "event=ollama_native_no_tool_call content=%s reasoning_len=%d elapsed_ms=%d",
+            json.dumps(content_text[:120], ensure_ascii=False),
+            len(reasoning_text), elapsed_ms)
         return {
+            "tool_calls": [],
             "tool_call": None,
             "text": content_text,
+            "reasoning_content": reasoning_text,
         }
 
     # ─────────────────────────────────────────────────────────────────
@@ -325,7 +375,9 @@ class UniversalAgent:
             "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
             "stream": True,
         }
-        if not self.thinking:
+        if self.thinking:
+            payload["think"] = True
+        else:
             payload["think"] = False
         try:
             with requests.post(
@@ -422,6 +474,10 @@ class UniversalAgent:
                 "images": [image_b64],
                 "stream": False,
             }
+            if self.thinking:
+                payload["think"] = True
+            else:
+                payload["think"] = False
             try:
                 response = requests.post(
                     self.ollama_url,

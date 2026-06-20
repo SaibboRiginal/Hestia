@@ -141,7 +141,15 @@ def engine():
             return []
 
         eng._hub.get = MagicMock(side_effect=_hub_get)
-        eng._hub.hub_get = MagicMock(return_value=_SAMPLE_DOMAINS)
+
+        # hub_get — path-aware (domains vs schemas)
+        def _hub_get(path, **kwargs):
+            path_str = str(path or "")
+            if "/schemas" in path_str:
+                return _SAMPLE_SCHEMAS
+            return _SAMPLE_DOMAINS
+        eng._hub.hub_get = MagicMock(side_effect=_hub_get)
+
         eng._hub.post = MagicMock(return_value={"ok": True})
         eng._hub.delete = MagicMock(return_value={"ok": True})
         eng._hub.get_commands = MagicMock(return_value=[])
@@ -374,7 +382,7 @@ class TestChatActionIntent:
                 return _action_domain_query_json()  # classifier call
             captured_prompts.append(prompt)
             return "Azione completata."
-        def _capture_ask_tools(prompt, manifest):
+        def _capture_ask_tools(prompt, manifest, **kwargs):
             captured_prompts.append(prompt)
             return {"tool_call": None, "text": "Azione completata."}
 
@@ -408,8 +416,11 @@ class TestChatActionIntent:
 @pytest.mark.unit
 class TestBuildDomainTools:
     def test_builds_domain_search_tools(self, engine):
-        """Domain tools should include {domain}.search for each valid domain."""
+        """Domain tools should include {domain}.search for each OWNED domain."""
         from core.oracle_engine import SessionIntent
+        engine._module_registry.get_domain_owners = lambda d: (
+            ["scout"] if d == "scout" else ["chronos"] if d == "chronos" else []
+        )
         intent = SessionIntent(
             mode="domain_query", explicit_domain="scout",
             confidence=0.9, valid_domains=["scout", "chronos"],
@@ -419,6 +430,7 @@ class TestBuildDomainTools:
 
         tool_names = {t.name for t in tools}
         assert "scout.search" in tool_names
+        assert "chronos.search" in tool_names
 
     def test_builds_document_search_tool(self, engine):
         """Document search tool should always be included."""
@@ -1117,11 +1129,20 @@ class TestEndToEndTelegramCalendarFlow:
                 return []
             return []
         engine._hub.get = MagicMock(side_effect=_hub_get_side_effect)
-        engine._hub.hub_get = MagicMock(return_value=["calendar", "scout", "general"])
+        def _hub_get_side_effect_e2e(path, **kw):
+            path_str = str(path or "")
+            if "/schemas" in path_str:
+                return {}
+            return ["calendar", "scout", "general"]
+        engine._hub.hub_get = MagicMock(side_effect=_hub_get_side_effect_e2e)
         engine._hub.get_history = MagicMock(return_value=[])
         engine._hub.get_commands = MagicMock(return_value=_CALENDAR_COMMANDS)
         engine._hub.route_to_service = MagicMock(return_value=(True, _CALENDAR_AGENDA_RESPONSE))
         engine._hub.post = MagicMock(return_value={"ok": True})
+        # Domain owners for calendar domain (Plan P1 filtering)
+        engine._module_registry.get_domain_owners = lambda d: (
+            ["chronos"] if d == "calendar" else []
+        )
 
     def test_calendar_query_discovers_agenda_tool(self, engine):
         """When user asks about calendar, the agenda tool MUST be among built tools."""

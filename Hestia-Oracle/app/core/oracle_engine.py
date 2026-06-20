@@ -64,6 +64,7 @@ def _resolve_task_lifecycle_store() -> type:
 TaskLifecycleStore = _resolve_task_lifecycle_store()
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
+_STARTUP_TS = time.time()
 
 _NUMERIC_SHORTHAND_PATTERN = re.compile(
     r"^\s*([0-9]+(?:[\.,][0-9]+)?)\s*([kKmM])\s*$")
@@ -303,12 +304,17 @@ class OracleEngine:
             embedder=self._embed,
         )
 
+        # ── Preference domain classifier (embedding-based, no LLM) ──────────
+        from core.services.preference_domains import PreferenceDomainClassifier
+        _pref_classifier = PreferenceDomainClassifier(embed_fn=self._embed)
+
         self._memory_service = MemoryService(
             archive_url=self._archive_url,
             hub_api_url=self._hub_url,
             scribe_agent=self._agents.generic,
             fallback_scribe_agent=self._agents.generic_fallback,
             context_builder=self._context_builder,
+            pref_domain_classifier=_pref_classifier,
         )
 
         self._control_service = UserControlService(
@@ -789,10 +795,10 @@ class OracleEngine:
           auto     → classify → agent loop if domain_query. Default.
           thinking → full agent loop, visible chain-of-thought, higher max_turns.
 
-        Model (controls which BRAIN):
-          generic   → daily driver (gemma4:e4b)
-          reasoning → deep thinking (26B, loaded on demand)
-          code      → code generation
+        Model (controls which BRAIN — names from env vars):
+          generic   → daily driver (MODEL_USECASE_GENERIC_MODEL)
+          reasoning → deep thinking (MODEL_USECASE_REASONING_MODEL, loaded on demand)
+          code      → code generation (MODEL_USECASE_CODE_MODEL)
         """
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex[:12]
@@ -907,6 +913,32 @@ class OracleEngine:
                 (user_message or "")[:120],
             )
 
+        # ── Structural invariant: system domain → domain_query ──────────────
+        # "system" domain means operational queries that need live tool data.
+        # If the classifier returned domain=system but mode=quick_chat, that
+        # is an internal contradiction — correct it.
+        if (
+            intent.mode == "quick_chat"
+            and (
+                intent.explicit_domain == "system"
+                or "system" in intent.valid_domains
+            )
+        ):
+            logger.info(
+                "event=chat_classify_override_system route=%s domain=%s "
+                "conf=%.2f — forcing domain_query (system domain requires tools)",
+                intent.mode,
+                intent.explicit_domain,
+                intent.confidence,
+            )
+            intent.mode = "domain_query"
+            if not intent.explicit_domain:
+                intent.explicit_domain = "system"
+            if "system" not in intent.valid_domains:
+                intent.valid_domains = ["system"] + [
+                    d for d in intent.valid_domains if d != "system"
+                ]
+
         # ── Phase 3: QUICK CHAT shortcut ──────────────────────────────────────
         if intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD:
             yield stream_emitter.emit_status("💬 Conversazione rapida...")
@@ -977,6 +1009,37 @@ class OracleEngine:
         preference_facts = [str(p.get("fact", "")).strip()
                             for p in all_prefs if p.get("fact")]
 
+        # ── Skill discovery (once per session, embedding-based) ────────────
+        # Hermes Agent pattern: progressive disclosure — embed user message,
+        # search Archive for matching skills, inject top matches into prompt.
+        _primary_domain = intent.valid_domains[0] if intent.valid_domains else "general"
+        _matched_skills = self._discover_skills(
+            user_message, _primary_domain, session_id)
+        _skill_hint_block = ""
+        if _matched_skills:
+            _skill_lines: list[str] = []
+            for sk in _matched_skills:
+                _sn = sk.get("skill_name", sk.get("name", "unknown"))
+                _sd = sk.get("description", "")
+                _ss = sk.get("_similarity", 0)
+                _seq = sk.get("tool_sequence", [])
+                _seq_str = " → ".join(
+                    s.get("tool", str(s)) for s in _seq
+                ) if isinstance(_seq, list) else str(_seq)
+                _skill_lines.append(
+                    f"• {_sn} (match={_ss:.0%}): {_sd}\n"
+                    f"  Tool sequence: {_seq_str}"
+                )
+            _skill_hint_block = (
+                "SKILL MATCHES — these workflows were successful in similar past sessions. "
+                "You can execute the tool sequence directly instead of reasoning from scratch:\n"
+                + "\n".join(_skill_lines)
+            )
+            logger.info(
+                "event=skills_injected session_id=%s count=%d domain=%s",
+                session_id, len(_matched_skills), _primary_domain,
+            )
+
         # Select Athena hints
         athena_hints = self._select_relevant_athena_hints(
             session_id=session_id,
@@ -1026,9 +1089,19 @@ class OracleEngine:
         if athena_hint_prompt_block:
             agent_loop_client_instructions_parts.append(
                 f"ATHENA_ADVISORY_HINTS:\n{athena_hint_prompt_block}")
+        if _skill_hint_block:
+            agent_loop_client_instructions_parts.append(_skill_hint_block)
         if temporal_context:
             agent_loop_client_instructions_parts.append(
                 f"CURRENT_DATETIME_CONTEXT:\n{temporal_context}")
+        if "system" in intent.valid_domains:
+            agent_loop_client_instructions_parts.append(
+                "SYSTEM DOMAIN DIRECTIVE: The user is asking about your "
+                "state or the system's health. You MUST call the available "
+                "system introspection tool to gather real data before "
+                "answering. Never answer system questions from conversation "
+                "history or generic platitudes — use tools."
+            )
         if client_instructions and str(client_instructions).strip():
             agent_loop_client_instructions_parts.append(
                 str(client_instructions).strip())
@@ -1052,23 +1125,52 @@ class OracleEngine:
         # Resolve max turns: higher when action_intent is True (complex tasks)
         _default_max_turns = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "25"))
         resolved_max_turns = _default_max_turns
-        if mode == "thinking":
-            resolved_max_turns = max(resolved_max_turns, 50)
+        # auto mode: quick_chat → no thinking, domain_query → thinking
+        # thinking mode: always thinking
+        # quick mode: never reaches here (caught above)
+        _is_thinking_mode = mode in ("thinking", "auto")
+        if _is_thinking_mode:
+            resolved_max_turns = max(resolved_max_turns, 50) if mode == "thinking" else resolved_max_turns
             yield stream_emitter.emit_status("🧠 Modalità thinking attivata — ragionamento approfondito...")
+
+        # Mode controls the think flag; model (resolved above) controls the brain.
+        # Any mode × any model combination works — mode and model are independent.
+        _ask_tools_bound = lambda p, tm: self._ask_analyst_with_tools(
+            p, tm, agent_override=agent, thinking=_is_thinking_mode)
+
+        # ── OpenClaw pattern: auto-compaction callback ─────────────────────
+        # Called by agent_loop when token threshold exceeded.  Returns
+        # compacted history text (or None if compaction was skipped).
+        _session_id = session_id
+        def _auto_compact() -> str | None:
+            result = self.compact_context(_session_id)
+            if "error" in result:
+                return None
+            # Reload compacted history from Archive
+            try:
+                history_data = self._hub.get(
+                    f"/chat/history/{_session_id}?limit={self._context_builder.max_history_messages}",
+                    timeout=self._policy_timeout("foreground_chat"),
+                    headers=self._trace_headers(_session_id, trace_id),
+                )
+                return self._context_builder.compact_history(history_data)
+            except Exception:
+                return None
 
         answer, tokens, tool_log = run_agent_loop(
             user_message=user_message,
             history_text=history_text,
             preference_facts=preference_facts,
             tools=domain_tools,
-            ask_fn=self._ask_analyst,
-            ask_tools_fn=self._ask_analyst_with_tools,
+            ask_fn=lambda p: self._ask_analyst(p, thinking=_is_thinking_mode),
+            ask_tools_fn=_ask_tools_bound,
             stream_fn=_stream_final,
             client_instructions=agent_loop_client_instructions,
             conversation_style=conversation_style_contract(),
             max_turns=resolved_max_turns,
             on_thinking=_on_thinking,
             action_intent=intent.action_intent,
+            compact_fn=_auto_compact,
         )
         agent_loop_ms = int((time.perf_counter() - t_agent_loop) * 1000)
         logger.info(
@@ -1148,6 +1250,20 @@ class OracleEngine:
             len(tokens),
             trace_id,
         )
+
+        # ── Write session summary for Athena skill creation ─────────────────
+        # Only for domain_query paths where tools were called (Hermes Agent
+        # pattern: skills created from complex multi-step sessions).
+        if tool_log and len(tool_log) >= 2:
+            self._write_session_summary(
+                session_id=session_id,
+                user_message=user_message,
+                tool_log=tool_log,
+                domain=intent.valid_domains[0] if intent.valid_domains else "general",
+                success=True,
+                turn_count=len(tool_log),
+                total_ms=total_ms,
+            )
 
         # Background memory extraction (always async, never blocks the user)
         self._phase_background_memory(
@@ -1288,9 +1404,15 @@ class OracleEngine:
         return self._hub.delete(f"/chat/history/{session_id}")
 
     def estimate_context_stats(self, session_id: str) -> dict:
-        """Return context-window usage estimates for *session_id*."""
-        _est = lambda s: int(len(s or "") / 3)
-        CONTEXT_WINDOW = 256_000  # Gemma 4
+        """Return context-window usage estimates for *session_id*.
+
+        Uses Ollama /api/tokenize when available; falls back to heuristic.
+        Context window size is configurable via ORACLE_CONTEXT_LENGTH (default 8K).
+        """
+        from core.agent_loop import TokenCounter
+        counter = TokenCounter()
+        _est = counter.estimate
+        _window = counter.context_window
 
         # History
         history_data = self._hub.get_history(session_id, limit=200) or []
@@ -1301,32 +1423,40 @@ class OracleEngine:
         all_commands = self._hub.get_commands() or []
         tool_count = len(all_commands)
         tool_chars_est = tool_count * 120  # compact name+desc average
+        tools_tokens = _est("x" * tool_chars_est)
 
         # Preferences
         prefs = self._load_preferences(["general"]) or []
         pref_count = len(prefs)
         pref_chars = sum(len(str(p.get("fact", ""))) for p in prefs[:10])
+        pref_tokens = _est("x" * pref_chars)
 
         # System overhead (preamble, style, boundary markers)
-        system_overhead = 3_500
+        system_overhead_chars = 3_500
+        system_tokens = _est("x" * system_overhead_chars)
 
-        total_chars = history_chars + tool_chars_est + pref_chars + system_overhead
-        total_tokens = _est("x" * total_chars)
-        pct = (total_tokens / CONTEXT_WINDOW) * 100
+        total_chars = history_chars + tool_chars_est + pref_chars + system_overhead_chars
+        total_tokens = history_tokens + tools_tokens + pref_tokens + system_tokens
+        pct = counter.context_pct(total_tokens)
 
         return {
-            "context_window": CONTEXT_WINDOW,
+            "context_window": _window,
             "history_messages": len(history_data) if isinstance(history_data, list) else 0,
             "history_chars": history_chars,
             "history_tokens_est": history_tokens,
             "tool_count": tool_count,
             "tool_chars_est": tool_chars_est,
+            "tool_tokens_est": tools_tokens,
             "preference_count": pref_count,
             "preference_chars": pref_chars,
+            "preference_tokens_est": pref_tokens,
+            "system_overhead_chars": system_overhead_chars,
+            "system_overhead_tokens_est": system_tokens,
             "total_chars_est": total_chars,
             "total_tokens_est": total_tokens,
             "context_used_pct": round(pct, 1),
-            "context_remaining_est": CONTEXT_WINDOW - total_tokens,
+            "context_remaining_est": max(0, _window - total_tokens),
+            "compaction_available": (len(history_data) if isinstance(history_data, list) else 0) > 10,
         }
 
     def get_user_controls(self) -> dict:
@@ -2007,12 +2137,17 @@ class OracleEngine:
                         session_id,
                         notify_target,
                     )
-                    # Auto-map remaining kwargs as query params for GET/HEAD
-                    # requests when no explicit query_template was provided.
+                    # Auto-map kwargs: query for GET/HEAD/DELETE, body for POST/PUT/PATCH
                     if method in ("GET", "HEAD", "DELETE") and not command_def.get("query_template"):
                         for k, v in kwargs.items():
                             if k not in query and v is not None:
                                 query[k] = v
+                    if method in ("POST", "PUT", "PATCH") and not command_def.get("body_template"):
+                        if body is None:
+                            body = {}
+                        for k, v in kwargs.items():
+                            if k not in body and v is not None:
+                                body[k] = v
 
                     path = _resolve_template(
                         path_tpl,
@@ -2107,7 +2242,322 @@ class OracleEngine:
             handler=_memory_search_handler,
         ))
 
+        # ── Oracle self-introspection tools (always available) ─────────────
+        # These let the LLM answer "come stai?", "stato servizi?", system
+        # health questions with real data instead of platitudes.
+
+        def _oracle_session_info_handler() -> tuple[bool, dict]:
+            info = self.get_session_info()
+            return (True, info)
+
+        tools.append(ToolDefinition(
+            name="oracle.session_info",
+            description="Get full Hestia system state: Oracle's models, uptime, "
+                        "AND health status of all registered services from Hub. "
+                        "Use this for ANY question about your state, system health, "
+                        "service status, or 'come stai'. One call gives everything.",
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+            handler=_oracle_session_info_handler,
+        ))
+
+        def _oracle_logs_query_handler(
+            level: str = "WARNING",
+            contains: str = "",
+            limit: int = 10,
+        ) -> tuple[bool, list[str]]:
+            lines = self.query_logs(level=level or None,
+                                    contains=contains or None,
+                                    limit=int(limit or 10))
+            return (True, lines)
+
+        tools.append(ToolDefinition(
+            name="oracle.logs_query",
+            description="Query Oracle's recent in-memory log buffer. "
+                        "Use to check for errors, warnings, or recent events "
+                        "when the user asks about system health or operational issues. "
+                        "Filterable by log level and text content.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "level": {"type": "string", "description": "Log level filter (TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL). Default: INFO"},
+                    "contains": {"type": "string", "description": "Filter logs containing this text"},
+                    "limit": {"type": "integer", "description": "Max lines to return (default 10, max 500)"},
+                },
+                "required": [],
+            },
+            handler=_oracle_logs_query_handler,
+        ))
+
         return tools
+
+    # ── Context compaction (REST + MCP) ──────────────────────────────────────
+
+    def compact_context(self, session_id: str) -> dict:
+        """Force-compact *session_id* conversation history.
+
+        Sends older messages through the memory compactor LLM (generic model),
+        preserves recent messages and protected content, writes back to Archive.
+        """
+        from core.agent_loop import TokenCounter
+        counter = TokenCounter()
+
+        # Load full history
+        history_raw: list[dict] = []
+        try:
+            history_raw = self._hub.get(
+                f"/chat/history/{session_id}?limit=200",
+                timeout=self._policy_timeout("foreground_chat"),
+                headers=self._trace_headers(session_id, None),
+            ) or []
+        except Exception as exc:
+            logger.warning("event=compact_history_load_failed session_id=%s error=%s",
+                          session_id, exc)
+            return {"error": str(exc), "before_tokens": 0, "after_tokens": 0}
+
+        before_history = self._context_builder.compact_history(history_raw)
+        before_tokens = counter.estimate(before_history)
+        before_count = len(history_raw)
+
+        if before_count <= 6:
+            return {
+                "before_tokens": before_tokens,
+                "after_tokens": before_tokens,
+                "messages_before": before_count,
+                "messages_after": before_count,
+                "summary_chars": 0,
+                "note": "History too short to compact (≤6 messages).",
+            }
+
+        # Separate: keep last 6 messages, compact the rest
+        keep_count = int(os.getenv("ORACLE_COMPACT_KEEP_RECENT", "6"))
+        to_compact = history_raw[:-keep_count] if len(history_raw) > keep_count else []
+        to_keep = history_raw[-keep_count:] if len(history_raw) > keep_count else history_raw
+
+        if not to_compact:
+            return {
+                "before_tokens": before_tokens,
+                "after_tokens": before_tokens,
+                "messages_before": before_count,
+                "messages_after": before_count,
+                "summary_chars": 0,
+                "note": "No messages to compact after keeping recent N.",
+            }
+
+        # Build compactable text
+        compactable_text = "\n".join(
+            f"{'User' if m.get('role') == 'user' else 'Hestia'}: {str(m.get('content', ''))}"
+            for m in to_compact
+        )
+
+        # Compaction prompt
+        compact_prompt = prompt_config.prompt(
+            "memory_compactor",
+            history_block=compactable_text,
+        )
+
+        try:
+            summary = self._agents.generic.ask(compact_prompt)
+            summary = (summary or "").strip()
+        except Exception as exc:
+            logger.warning("event=compact_llm_failed session_id=%s error=%s", session_id, exc)
+            summary = f"[Compaction skipped — LLM unavailable: {exc}]"
+
+        # Write compacted history: summary block + kept messages
+        compacted_messages = [
+            {"role": "system",
+             "content": f"[CONVERSATION SUMMARY — older messages compacted]\n{summary}"}
+        ] + to_keep
+
+        try:
+            self._hub.put(
+                f"/chat/history/{session_id}",
+                json={"messages": compacted_messages},
+                timeout=self._policy_timeout("foreground_chat"),
+                headers=self._trace_headers(session_id, None),
+            )
+        except Exception as exc:
+            logger.warning("event=compact_write_failed session_id=%s error=%s", session_id, exc)
+            return {"error": f"Write failed: {exc}", "before_tokens": before_tokens,
+                    "after_tokens": before_tokens}
+
+        after_history = self._context_builder.compact_history(compacted_messages)
+        after_tokens = counter.estimate(after_history)
+
+        logger.info(
+            "event=context_compacted session_id=%s before_tokens=%d after_tokens=%d "
+            "messages_before=%d messages_after=%d summary_chars=%d",
+            session_id, before_tokens, after_tokens,
+            before_count, len(compacted_messages), len(summary),
+        )
+
+        return {
+            "before_tokens": before_tokens,
+            "after_tokens": after_tokens,
+            "messages_before": before_count,
+            "messages_after": len(compacted_messages),
+            "summary_chars": len(summary),
+        }
+
+    # ── Oracle self-tools (MCP + REST) ──────────────────────────────────────
+
+    def get_session_info(self) -> dict:
+        """Return full Hestia state: Oracle + all registered services."""
+        services_health: list[dict] = []
+        try:
+            status = self._hub.hub_get("/status", timeout=5)
+            raw = status.get("services", []) if isinstance(status, dict) else []
+            for svc in (raw or []):
+                if not isinstance(svc, dict):
+                    continue
+                services_health.append({
+                    "name": svc.get("name", "?"),
+                    "status": svc.get("status", "unknown"),
+                })
+        except Exception:
+            services_health = [{"name": "hub", "status": "unreachable"}]
+
+        return {
+            "oracle": {
+                "models": {
+                    "generic": self._agents.generic_model_name,
+                    "reasoning": self._agents.reasoning.model_name,
+                    "code": self._agents.code.model_name,
+                },
+                "hub_url": self._hub_url,
+                "uptime_seconds": int(time.time() - _STARTUP_TS),
+            },
+            "services": services_health,
+            "total_services": len(services_health),
+        }
+
+    def query_logs(self, level: str | None = None, contains: str | None = None, limit: int = 50) -> list[str]:
+        """Query Oracle's in-memory log buffer for the ``oracle.logs_query`` MCP tool.
+
+        Returns matching log lines, newest first, capped at *limit* (max 500).
+        """
+        from main import log_buffer
+        limit = max(1, min(int(limit), 500))
+        lines: list[str] = []
+        try:
+            records = log_buffer.get_all() if hasattr(log_buffer, 'get_all') else []
+        except Exception:
+            return []
+        for record in reversed(records):
+            if len(lines) >= limit:
+                break
+            msg = str(record) if not hasattr(record, 'getMessage') else record.getMessage()
+            if level:
+                lvl = getattr(record, 'levelname', '') if hasattr(record, 'levelname') else ''
+                if lvl.upper() != level.upper():
+                    continue
+            if contains and contains.lower() not in msg.lower():
+                continue
+            lines.append(msg)
+        return lines
+
+    # ── Skill system: session summaries + discovery ─────────────────────────
+
+    def _write_session_summary(
+        self,
+        session_id: str,
+        user_message: str,
+        tool_log: list[dict],
+        domain: str,
+        success: bool,
+        turn_count: int,
+        total_ms: int,
+    ) -> None:
+        """Write a compact session summary to Archive for Athena skill mining.
+
+        Hermes Agent pattern: skills are created from multi-step sessions
+        (≥2 tool calls).  Athena reads these summaries during its daily
+        cycle, clusters by embedding similarity, and creates/updates skills.
+        """
+        try:
+            # Embed the user message for clustering
+            embedding = self._embed(user_message)
+
+            payload = {
+                "entity_type": "session_summary",
+                "domain": domain,
+                "user_message": user_message[:500],
+                "embedding": embedding,
+                "tool_sequence": [
+                    {"tool": t.get("tool", ""), "ok": t.get("ok", False)}
+                    for t in tool_log
+                ],
+                "success": success,
+                "turn_count": turn_count,
+                "total_ms": total_ms,
+            }
+            self._hub.post(
+                f"/entity/{session_id}",
+                body=payload,
+                timeout=self._policy_timeout("foreground_chat"),
+                headers=self._trace_headers(session_id, None),
+            )
+            logger.debug(
+                "event=session_summary_written session_id=%s domain=%s "
+                "tools=%d success=%s",
+                session_id, domain, turn_count, success,
+            )
+        except Exception as exc:
+            logger.warning(
+                "event=session_summary_write_failed session_id=%s error=%s",
+                session_id, exc,
+            )
+
+    def _discover_skills(
+        self, user_message: str, domain: str, session_id: str,
+    ) -> list[dict]:
+        """Search Archive for skills matching *user_message* + *domain*.
+
+        Uses Archive's ``POST /api/memory/search/similar`` (pgvector cosine
+        similarity).  Returns top 3 matches with similarity ≥ 0.85.
+        Called ONCE per session, not per turn.
+        """
+        try:
+            embedding = self._embed(user_message)
+            results = self._hub.route_to_service(
+                service="archive",
+                path="/api/memory/search/similar",
+                method="POST",
+                body={
+                    "embedding": embedding,
+                    "memory_class": "skill",
+                    "domain": domain,
+                    "limit": 5,
+                },
+                timeout=self._policy_timeout("foreground_chat"),
+                headers=self._trace_headers(session_id, None),
+            )
+            # route_to_service returns (ok, result)
+            if isinstance(results, tuple):
+                _, results = results
+            if not isinstance(results, list):
+                return []
+
+            # Archive already ranks by similarity; filter by threshold
+            matched: list[dict] = [
+                r for r in results
+                if isinstance(r, dict) and r.get("_similarity", 0) >= 0.85
+            ]
+            logger.debug(
+                "event=skills_discovered session_id=%s domain=%s "
+                "candidates=%d matched=%d",
+                session_id, domain, len(results), len(matched),
+            )
+            return matched[:3]
+        except Exception as exc:
+            logger.warning(
+                "event=skills_discovery_failed session_id=%s error=%s",
+                session_id, exc,
+            )
+            return []
 
     def _cleanup_expired_action_approvals(self) -> None:
         now = time.time()
@@ -2292,14 +2742,13 @@ class OracleEngine:
         }
 
     def _embed(self, text: str) -> list[float]:
-        """Embed *text*, falling back to the secondary embedder on failure."""
-        for agent in (self._agents.embedding, self._agents.embedding_fallback):
-            try:
-                vector = agent.embed(text)
-                if vector:
-                    return vector
-            except Exception:
-                pass
+        """Embed *text* via the primary embedding agent.  Rulebook 1.6: WORKS or LOG AND FAIL."""
+        try:
+            vector = self._agents.embedding.embed(text)
+            if vector:
+                return vector
+        except Exception:
+            logger.error("event=embed_failed text_len=%d", len(text or ""), exc_info=True)
         return []
 
     def _resolve_agent(self, model: str):
@@ -2311,48 +2760,51 @@ class OracleEngine:
             return self._agents.code
         return self._agents.generic
 
-    def _ask_analyst(self, prompt: str) -> str:
-        """Ask the primary analyst, falling back to secondary on error."""
+    def _ask_analyst(self, prompt: str, thinking: bool = False) -> str:
+        """Ask the primary analyst.  Rulebook 1.6: WORKS or LOG AND FAIL."""
         try:
-            return self._agents.generic.ask(prompt)
-        except Exception as exc:
-            logger.warning(
-                "event=primary_analyst_failed_using_fallback Primary analyst failed, using fallback: %s", exc)
-        try:
-            return self._agents.generic_fallback.ask(prompt)
-        except Exception as exc:
+            return self._agents.generic.ask(prompt, thinking=thinking)
+        except Exception:
             logger.error(
-                "event=fallback_analyst_also_failed Fallback analyst also failed: %s", exc)
-            return "⚠️ In questo momento i modelli sono temporaneamente non disponibili. Riprova tra poco."
+                "event=primary_analyst_failed prompt_len=%d", len(prompt), exc_info=True)
+            raise
 
-    def _ask_analyst_with_tools(self, prompt: str, tools_manifest: list[dict]) -> dict:
-        """Ask analyst with provider-native tool-calling when available."""
-        logger.trace("event=ask_analyst_with_tools_entry prompt_len=%d tool_count=%d tool_names=%s",
+    def _ask_analyst_with_tools(
+        self, prompt: str, tools_manifest: list[dict],
+        agent_override: "UniversalAgent | None" = None,
+        thinking: bool = False,
+    ) -> dict:
+        """Ask analyst with provider-native tool-calling.
+
+        *agent_override* selects the brain (from _resolve_agent(model)).
+        *thinking* controls the Ollama ``think`` flag (derived from mode).
+        Both are independent — any mode × any model combination works.
+
+        Rulebook 1.6: WORKS or LOG AND FAIL — no silent fallback chain.
+        """
+        primary = agent_override if agent_override is not None else self._agents.generic
+
+        logger.trace("event=ask_analyst_with_tools_entry prompt_len=%d tool_count=%d tool_names=%s agent=%s thinking=%s",
                      len(prompt), len(tools_manifest),
-                     [t.get("name", "?") for t in (tools_manifest or [])[:10]])
+                     [t.get("name", "?") for t in (tools_manifest or [])[:10]],
+                     getattr(primary, 'model_name', 'unknown'),
+                     thinking)
         try:
-            return self._agents.generic.ask_with_tools(prompt, tools_manifest)
-        except Exception as exc:
-            logger.warning(
-                "event=primary_analyst_tool_call_failed_using_fallback Primary analyst tool call failed, using fallback: %s", exc)
-        try:
-            return self._agents.generic_fallback.ask_with_tools(prompt, tools_manifest)
-        except Exception as exc:
+            return primary.ask_with_tools(prompt, tools_manifest, thinking=thinking)
+        except Exception:
             logger.error(
-                "event=fallback_analyst_tool_call_also_failed Fallback analyst tool call also failed: %s", exc)
-            return {"tool_call": None, "text": self._ask_analyst(prompt)}
+                "event=ask_analyst_with_tools_failed agent=%s prompt_len=%d tool_count=%d",
+                getattr(primary, 'model_name', 'unknown'),
+                len(prompt), len(tools_manifest),
+                exc_info=True,
+            )
+            raise
 
     def _stream_analyst(self, prompt: str):
-        """Stream tokens from primary analyst, falling back to secondary on error.
+        """Stream tokens from primary analyst.  Rulebook 1.6: WORKS or LOG AND FAIL.
 
-        Yields NDJSON token frames as they arrive from the provider.
-        Returns (via StopIteration.value / ``yield from``) the full joined text.
-
-        Fallback strategy:
-        - If primary fails BEFORE any tokens are yielded → try fallback streaming.
-        - If primary fails AFTER tokens have been yielded → stop mid-stream and
-          return whatever was collected (avoids duplicate content to client).
-        - If fallback also fails → return generic error message.
+        If the stream fails after partial output, returns collected tokens.
+        If it fails before any output, LOG AND RAISE — no silent fallback.
         """
         tokens: list[str] = []
         try:
@@ -2360,26 +2812,14 @@ class OracleEngine:
                 tokens.append(token)
                 yield stream_emitter.emit_token(token)
             return "".join(tokens)
-        except Exception as exc:
+        except Exception:
             if tokens:
-                # Mid-stream failure after partial output — don't retry (client
-                # has already received partial tokens; retrying would duplicate).
                 logger.warning(
-                    "event=primary_analyst_failed_mid_stream Primary analyst failed mid-stream (%d tokens): %s", len(tokens), exc)
+                    "event=primary_analyst_failed_mid_stream tokens=%d", len(tokens), exc_info=True)
                 return "".join(tokens)
-            logger.warning(
-                "event=primary_analyst_stream_failed_tokens Primary analyst stream failed (0 tokens), trying fallback: %s", exc)
-
-        # Fallback — primary yielded nothing
-        try:
-            for token in self._agents.generic_fallback.ask_stream(prompt):
-                tokens.append(token)
-                yield stream_emitter.emit_token(token)
-            return "".join(tokens)
-        except Exception as exc:
             logger.error(
-                "event=fallback_analyst_stream_also_failed Fallback analyst stream also failed: %s", exc)
-            return "⚠️ In questo momento i modelli sono temporaneamente non disponibili. Riprova tra poco."
+                "event=primary_analyst_stream_failed_zero_tokens prompt_len=%d", len(prompt), exc_info=True)
+            raise
 
     def _quick_answer(
         self,
@@ -2522,18 +2962,36 @@ class OracleEngine:
                 "event=failed_persist_chat_history Failed to persist chat history: %s", exc)
 
     def _load_preferences(self, valid_domains: list[str]) -> list[dict]:
+        """Load preferences relevant to *valid_domains* (multi-domain aware).
+
+        Preferences with a ``domains`` list (from embedding-based assignment)
+        are included if ANY of their domains match *valid_domains*.
+        Legacy single-``domain`` preferences match directly.
+        ``general`` domain preferences are always included.
+        """
         all_prefs: list[dict] = []
-        seen: set = set()
-        for domain in valid_domains:
-            # P1-8 taxonomy: prefer durable preference class.
+        seen: set[str] = set()
+        search_domains = set(valid_domains) | {"general"}
+
+        for domain in search_domains:
             rows = self._hub.get(
                 f"/memory/active?domain={domain}&memory_class=durable_user_preference") or []
-            # Backward compatibility with legacy untyped preference rows.
             if not rows:
                 rows = self._hub.get(f"/memory/active?domain={domain}") or []
             for pref in rows:
-                pid = pref.get("id")
-                if pid and pid not in seen:
-                    all_prefs.append(pref)
-                    seen.add(pid)
+                pid = str(pref.get("id") or "")
+                if pid and pid in seen:
+                    continue
+                seen.add(pid)
+                # Check multi-domain compatibility
+                pref_domains = pref.get("domains")
+                if isinstance(pref_domains, list) and pref_domains:
+                    if not search_domains.intersection(pref_domains):
+                        continue  # no domain overlap — skip
+                all_prefs.append(pref)
+
+        logger.trace(
+            "event=preferences_loaded valid_domains=%s total=%d",
+            valid_domains, len(all_prefs),
+        )
         return all_prefs

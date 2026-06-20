@@ -199,4 +199,17 @@ def telegram_local_commands() -> list[dict[str, Any]]:
             "telegram_help_visible": True,
             "group": "documenti",
         },
+        {
+            "command": "retry",
+            "title": "🔄 Riprova ultimo messaggio",
+            "description": "Re-invia l'ultimo messaggio all'Oracle per rielaborarlo",
+            "method": "POST",
+            "path": "/local/retry",
+            "clients": ["telegram", "ui"],
+            "response_mode": "telegram_local",
+            "telegram_visible": True,
+            "telegram_menu_visible": True,
+            "telegram_help_visible": True,
+            "group": "chat",
+        },
     ]

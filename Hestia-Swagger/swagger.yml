@@ -1843,6 +1843,40 @@ paths:
         "200":
           description: Updated preference
 
+  /api/memory/search/similar:
+    post:
+      tags: [Archive — Memory]
+      summary: Search active memories by embedding cosine similarity (Plan P3b-10)
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [embedding]
+              properties:
+                embedding:
+                  type: array
+                  items:
+                    type: number
+                  description: 768-dim query embedding vector
+                memory_class:
+                  type: string
+                  description: Filter by memory class (e.g. "skill")
+                domain:
+                  type: string
+                  description: Filter by domain
+                limit:
+                  type: integer
+                  description: Max results (default 5, max 20)
+      responses:
+        "200":
+          description: >
+            [{id, fact, domain, memory_class, embedding, domains,
+              extra_data, _similarity}, ...] ranked by cosine distance
+
   /api/subscriptions:
     post:
       tags: [Archive — Subscriptions]
@@ -3185,6 +3219,55 @@ paths:
       responses:
         "200":
           description: "{status, session_id}"
+
+  /api/chat/context:
+    get:
+      tags: [Oracle]
+      summary: Return context-window usage stats for a session (Plan P2-4c)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: >
+            {session_id, context_window, history_messages, history_chars,
+             history_tokens_est, tool_count, preference_count,
+             total_tokens_est, context_used_pct, compaction_available}
+
+  /api/chat/compact:
+    post:
+      tags: [Oracle]
+      summary: Force-compact conversation history via LLM summarisation (Plan P2-6)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: >
+            {session_id, before_tokens, after_tokens, messages_before,
+             messages_after, summary_chars}
+
+  /api/sessions:
+    get:
+      tags: [Oracle]
+      summary: Return global Oracle state (Plan P3c-11)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200":
+          description: >
+            {service, models: {generic, reasoning, code},
+             hub_url, uptime_seconds}
 
   /api/tasks:
     get:

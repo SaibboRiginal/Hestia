@@ -52,6 +52,10 @@ class MemoryService:
     context_builder:
         Object exposing ``max_history_messages``, ``max_history_chars``, and
         ``truncate(text, max_chars) -> str``.
+    pref_domain_classifier:
+        Optional PreferenceDomainClassifier for embedding-based domain assignment.
+        When provided, ``save_memory`` auto-assigns domains via cosine similarity
+        instead of trusting the LLM-supplied domain.
     """
 
     def __init__(
@@ -61,12 +65,14 @@ class MemoryService:
         scribe_agent,
         fallback_scribe_agent,
         context_builder,
+        pref_domain_classifier=None,
     ) -> None:
         self.archive_url = archive_url
         self.hub_api_url = hub_api_url.rstrip("/")
         self.scribe = scribe_agent
         self.fallback_scribe = fallback_scribe_agent
         self.context_builder = context_builder
+        self.pref_domain_classifier = pref_domain_classifier
 
     # ── Private HTTP helpers ──────────────────────────────────────────────────
 
@@ -137,7 +143,7 @@ class MemoryService:
                 return typed
         return rows
 
-    def _save_memory_fact(self, fact: str, domain: str, memory_class: str) -> bool:
+    def _save_memory_fact(self, fact: str, domain: str, memory_class: str, extra_fields: dict | None = None) -> bool:
         """Persist a typed memory fact row."""
         payload = {
             "fact": fact,
@@ -145,6 +151,8 @@ class MemoryService:
             "weight": 1.0,
             "memory_class": memory_class,
         }
+        if extra_fields:
+            payload.update(extra_fields)
         created = self._route_archive("POST", "/memory", body=payload)
         return created is not None
 
@@ -402,25 +410,46 @@ class MemoryService:
     def save_memory(self, fact: str, domain: str = "general") -> tuple[bool, str]:
         """Save a durable memory fact. Usable as an agent loop tool handler.
 
+        When *pref_domain_classifier* is configured, the LLM-supplied *domain*
+        is ignored — domains are assigned via embedding cosine similarity
+        against fixed domain descriptions (multi-domain, 0→N matches).
+
         Returns (ok, message).
         """
         clean_fact = str(fact or "").strip()
         if not clean_fact:
             return (False, "Cannot save empty memory fact.")
-        clean_domain = str(domain or "general").strip() or "general"
+
+        # ── Auto-classify domains via embedding (bypass LLM) ──────────────
+        if self.pref_domain_classifier is not None:
+            try:
+                assigned_domains = self.pref_domain_classifier.classify(
+                    clean_fact)
+            except Exception as exc:
+                logger.warning(
+                    "event=pref_domain_classify_failed fact_preview=%s error=%s",
+                    clean_fact[:100], exc,
+                )
+                assigned_domains = ["general"]
+            primary_domain = assigned_domains[0] if assigned_domains else "general"
+        else:
+            clean_domain = str(domain or "general").strip() or "general"
+            assigned_domains = [clean_domain]
+            primary_domain = clean_domain
+
         try:
             saved = self._save_memory_fact(
                 fact=clean_fact,
-                domain=clean_domain,
+                domain=primary_domain,
                 memory_class=MEMORY_CLASS_PREFERENCE,
+                extra_fields={"domains": assigned_domains},
             )
             if saved:
                 logger.info(
-                    "event=memory_tool_saved domain=%s fact_preview=%s",
-                    clean_domain,
-                    clean_fact[:120],
+                    "event=memory_tool_saved primary_domain=%s domains=%s fact_preview=%s",
+                    primary_domain, assigned_domains, clean_fact[:120],
                 )
-                return (True, f"Memory saved: {clean_fact}")
+                return (True, f"Memory saved [{', '.join(assigned_domains)}]: {clean_fact}")
             return (False, "Failed to persist memory fact.")
         except Exception as exc:
             logger.warning(

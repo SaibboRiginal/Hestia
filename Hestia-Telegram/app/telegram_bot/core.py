@@ -42,7 +42,14 @@ SESSION_SETTINGS_FILE = "data/session_settings.json"
 
 TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS = os.getenv(
     "TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS",
-    "Rispondi in modo conciso (massimo 6-8 righe), personale e caldo. Parla in prima persona femminile e usa il nome Mark quando naturale.",
+    "Rispondi in modo conciso (massimo 6-8 righe), personale e caldo. "
+    "Parla in prima persona femminile e usa il nome Mark quando naturale.\n\n"
+    "FORMATO RICHIESTO DAL CLIENT: Markdown. "
+    "Usa **grassetto**, _corsivo_, [testo descrittivo](url) per link. "
+    "Per elenchi usa • (bullet) su ogni riga. "
+    "NON usare tag HTML (<b>, <i>, <a>, <code>, <pre>, <br>). "
+    "NON mostrare URL in chiaro. "
+    "NON usare ## headings o */- per liste.",
 )
 
 TELEGRAM_CONTROL_PORT = int(os.getenv("TELEGRAM_CONTROL_PORT", "8010"))

@@ -216,6 +216,37 @@ class ScoutRetrievalService:
             surface_min=surface_min,
         )
 
+    @staticmethod
+    def _fmt_price(value) -> str:
+        if value is None:
+            return ""
+        try:
+            n = float(value)
+            if n >= 1000000:
+                return f"{n/1000000:.1f}M €"
+            return f"{int(n):,} €".replace(",", ".")
+        except (ValueError, TypeError):
+            return str(value)
+
+    @staticmethod
+    def _fmt_surface(value) -> str:
+        if value is None:
+            return ""
+        try:
+            return f"{int(float(value))} m²"
+        except (ValueError, TypeError):
+            return ""
+
+    @staticmethod
+    def _fmt_rooms(value) -> str:
+        if value is None:
+            return ""
+        try:
+            n = int(float(value))
+            return f"{n} locali" if n > 1 else "1 locale"
+        except (ValueError, TypeError):
+            return ""
+
     def search(self, req: RealEstateSearchRequest) -> list[dict]:
         entities = self._fetch_archive_entities(req)
 
@@ -232,3 +263,32 @@ class ScoutRetrievalService:
             reverse=True,
         )
         return [self._compact_entity(entity) for entity in ranked[: req.limit]]
+
+    def search_formatted(self, req: RealEstateSearchRequest) -> str:
+        """Return pre-formatted markdown with one [title](url) bullet per listing.
+        The LLM can pass this through directly without needing to format links."""
+        items = self.search(req)
+        if not items:
+            return "Nessuna casa trovata."
+        lines = []
+        for item in items:
+            title = str(item.get("title") or "Casa").strip()
+            url = str(item.get("url") or "").strip()
+            price = self._fmt_price(item.get("price"))
+            address = str(item.get("address") or "").strip()
+            specs = item.get("specs") if isinstance(item.get("specs"), dict) else {}
+            surface = self._fmt_surface(specs.get("surface_m2"))
+            rooms = self._fmt_rooms(specs.get("rooms"))
+
+            detail_parts = [p for p in [price, surface, rooms, address] if p]
+            detail = " · ".join(detail_parts) if detail_parts else ""
+
+            if url:
+                label = f"{title}"
+                if detail:
+                    label += f" — {detail}"
+                lines.append(f"• [{label}]({url})")
+            else:
+                lines.append(f"• {title} — {detail}" if detail else f"• {title}")
+
+        return f"🏠 **Case disponibili** ({len(items)})\n\n" + "\n\n".join(lines)

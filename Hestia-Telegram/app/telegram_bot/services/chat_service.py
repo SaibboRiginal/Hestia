@@ -534,7 +534,7 @@ def handle_chat_message(message):
     session_id = core.get_session(chat_id)
 
     status_msg = core.bot.reply_to(
-        message, "⏳ *Inizializzazione richiesta...*", parse_mode="Markdown")
+        message, "⏳ <b>Inizializzazione richiesta...</b>", parse_mode="HTML")
 
     stop_typing = threading.Event()
 
@@ -581,34 +581,53 @@ def handle_chat_message(message):
                 data = json.loads(line)
                 if data.get("type") == "status":
                     core.bot.edit_message_text(
-                        f"⏳ *{data['content']}*",
+                        f"⏳ <i>{escape(data['content'])}</i>",
                         chat_id=chat_id,
                         message_id=status_msg.message_id,
-                        parse_mode="Markdown",
+                        parse_mode="HTML",
                     )
                 elif data.get("type") == "thinking":
-                    # Update status message with thinking context
+                    # Send thinking events as separate messages for visibility
+                    # Standard format: type=thinking, action=(reasoning|tool_call|tool_result)
                     action = data.get("action", "")
                     tool = data.get("tool", "")
+                    content = data.get("content", "")
                     turn = data.get("turn", 0)
-                    if action == "tool_call" and tool:
-                        core.bot.edit_message_text(
-                            f"⏳ *Chiamata strumento: `{tool}` (turno {turn})*",
-                            chat_id=chat_id,
-                            message_id=status_msg.message_id,
-                            parse_mode="Markdown",
-                        )
+                    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                    
+                    if action == "reasoning" and content:
+                        # Send reasoning as separate message (first 200 chars)
+                        first_line = str(content).strip().split("\n")[0][:200]
+                        try:
+                            core.bot.send_message(
+                                chat_id=chat_id,
+                                text=f"💭 <i>{escape(first_line)}</i>",
+                                parse_mode="HTML",
+                            )
+                        except Exception:
+                            pass  # Silently fail if message sending fails
+                    elif action == "tool_call" and tool:
+                        try:
+                            core.bot.send_message(
+                                chat_id=chat_id,
+                                text=f"🛠️ <i>Chiamata strumento: <b>{escape(tool)}</b> (turno {turn})</i>",
+                                parse_mode="HTML",
+                            )
+                        except Exception:
+                            pass
                     elif action == "tool_result" and tool:
-                        meta = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
-                        ok = "✅" if meta.get("ok") else "❌"
-                        count = meta.get("result_count")
+                        ok_icon = "✅" if metadata.get("ok") else "❌"
+                        count = metadata.get("result_count")
                         suffix = f": {count} risultati" if count else ""
-                        core.bot.edit_message_text(
-                            f"⏳ *{ok} `{tool}`{suffix} ({meta.get('duration_ms', '?')}ms)*",
-                            chat_id=chat_id,
-                            message_id=status_msg.message_id,
-                            parse_mode="Markdown",
-                        )
+                        duration = metadata.get('duration_ms', '?')
+                        try:
+                            core.bot.send_message(
+                                chat_id=chat_id,
+                                text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
+                                parse_mode="HTML",
+                            )
+                        except Exception:
+                            pass
                 elif data.get("type") == "final":
                     final_answer = data.get("reply")
                 elif data.get("type") == "signal":
@@ -697,12 +716,12 @@ def handle_chat_message(message):
             )
 
     except Exception as error:
-        error_msg = f"⚠️ **Connessione all'Oracle fallita**\n`{error}`"
+        error_msg = f"⚠️ <b>Connessione all'Oracle fallita</b>\n<code>{escape(str(error))}</code>"
         core.bot.edit_message_text(
             error_msg,
             chat_id=chat_id,
             message_id=status_msg.message_id,
-            parse_mode="Markdown",
+            parse_mode="HTML",
         )
     finally:
         stop_typing.set()
@@ -828,7 +847,7 @@ def handle_file_message(message):
     )
 
     status_msg = core.bot.reply_to(
-        message, "⏳ *Download e analisi documento...*", parse_mode="Markdown"
+        message, "⏳ <b>Download e analisi documento...</b>", parse_mode="HTML"
     )
 
     stop_typing = threading.Event()
@@ -873,10 +892,10 @@ def handle_file_message(message):
                 if data.get("type") == "status":
                     try:
                         core.bot.edit_message_text(
-                            f"⏳ *{data['content']}*",
+                            f"⏳ <i>{escape(data['content'])}</i>",
                             chat_id=chat_id,
                             message_id=status_msg.message_id,
-                            parse_mode="Markdown",
+                            parse_mode="HTML",
                         )
                     except Exception:
                         pass
@@ -884,12 +903,31 @@ def handle_file_message(message):
                     try:
                         action = data.get("action", "")
                         tool = data.get("tool", "")
-                        if action == "tool_call" and tool:
-                            core.bot.edit_message_text(
-                                f"⏳ *Chiamata strumento: `{tool}`*",
+                        content = data.get("content", "")
+                        turn = data.get("turn", 0)
+                        metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                        if action == "reasoning" and content:
+                            first_line = str(content).strip().split("\n")[0][:200]
+                            core.bot.send_message(
                                 chat_id=chat_id,
-                                message_id=status_msg.message_id,
-                                parse_mode="Markdown",
+                                text=f"💭 <i>{escape(first_line)}</i>",
+                                parse_mode="HTML",
+                            )
+                        elif action == "tool_call" and tool:
+                            core.bot.send_message(
+                                chat_id=chat_id,
+                                text=f"🛠️ <i>Chiamata strumento: <b>{escape(tool)}</b> (turno {turn})</i>",
+                                parse_mode="HTML",
+                            )
+                        elif action == "tool_result" and tool:
+                            ok_icon = "✅" if metadata.get("ok") else "❌"
+                            count = metadata.get("result_count")
+                            suffix = f": {count} risultati" if count else ""
+                            duration = metadata.get('duration_ms', '?')
+                            core.bot.send_message(
+                                chat_id=chat_id,
+                                text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
+                                parse_mode="HTML",
                             )
                     except Exception:
                         pass
@@ -928,10 +966,10 @@ def handle_file_message(message):
 
     except Exception as error:
         core.bot.edit_message_text(
-            f"⚠️ **Analisi documento fallita**\n`{error}`",
+            f"⚠️ <b>Analisi documento fallita</b>\n<code>{escape(str(error))}</code>",
             chat_id=chat_id,
             message_id=status_msg.message_id,
-            parse_mode="Markdown",
+            parse_mode="HTML",
         )
     finally:
         stop_typing.set()
@@ -979,11 +1017,9 @@ def handle_feedback_callback(call):
         if label == "good":
             quality_label = "good"
             quality_score = 4
-            emoji = "👍"
         elif label == "bad":
             quality_label = "poor"
             quality_score = 2
-            emoji = "👎"
         else:
             core.bot.answer_callback_query(call.id, "Non riconosciuto")
             return
@@ -997,21 +1033,17 @@ def handle_feedback_callback(call):
             quality_score=quality_score,
             tags=["telegram_inline"],
         )
+        if not ok:
+            logger.warning(
+                "event=feedback_submit_failed session_id=%s label=%s",
+                session_id,
+                quality_label,
+            )
 
-        if ok:
-            core.bot.edit_message_text(
-                f"{emoji} <i>Grazie per il feedback</i>",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                parse_mode="HTML",
-            )
-        else:
-            core.bot.edit_message_text(
-                f"{emoji} <i>Feedback registrato</i>",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                parse_mode="HTML",
-            )
+        core.bot.delete_message(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+        )
         core.bot.answer_callback_query(call.id, "Registrato")
     except Exception as exc:
         logger.warning("event=feedback_callback_error error=%s", exc)

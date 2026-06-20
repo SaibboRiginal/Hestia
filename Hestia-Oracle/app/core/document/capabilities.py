@@ -1,27 +1,30 @@
 """Model capability detection for Oracle's analyst agents.
 
 Single responsibility: determine what media types a given LLM model can
-process natively, based on well-known model name prefixes.
+process natively, based on model name prefixes configured via env vars.
 
-Open/Closed: extend *_PREFIXES tuples to add new capable models without
-touching any other module.
+Open/Closed: set ORACLE_VISION_MODEL_PREFIXES / ORACLE_AUDIO_MODEL_PREFIXES
+to add new capable models without touching any other module.
 """
+import os
 
 # ── Known multimodal-capable model prefixes ───────────────────────────────────
 
-# Models that support image and/or PDF vision input
-VISION_MODEL_PREFIXES: tuple[str, ...] = (
-    "gemma-3", "gemma4", "gemma3", "gemma 3", "gemma 4",
-    "gemini", "gpt-4o", "gpt-4-vision", "claude-3",
-    "llava", "bakllava", "moondream", "minicpm-v",
-    "phi-3-vision", "phi3v",
-    "qwen2-vl", "qwen-vl", "internvl",
+_DEFAULT_VISION = (
+    "gemma-3,gemma4,gemma3,gemini,gpt-4o,gpt-4-vision,claude-3,"
+    "llava,bakllava,moondream,minicpm-v,phi-3-vision,phi3v,"
+    "qwen2-vl,qwen-vl,internvl"
+)
+_DEFAULT_AUDIO = "gemini-1.5,gemini-2"
+
+VISION_MODEL_PREFIXES: tuple[str, ...] = tuple(
+    p.strip().lower() for p in os.getenv(
+        "ORACLE_VISION_MODEL_PREFIXES", _DEFAULT_VISION).split(",") if p.strip()
 )
 
-# Models that can process raw audio data natively (very few)
-AUDIO_NATIVE_MODEL_PREFIXES: tuple[str, ...] = (
-    "gemini-1.5",
-    "gemini-2",
+AUDIO_NATIVE_MODEL_PREFIXES: tuple[str, ...] = tuple(
+    p.strip().lower() for p in os.getenv(
+        "ORACLE_AUDIO_MODEL_PREFIXES", _DEFAULT_AUDIO).split(",") if p.strip()
 )
 
 

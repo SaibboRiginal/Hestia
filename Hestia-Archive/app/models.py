@@ -56,7 +56,7 @@ class ChatHistory(Base):
 
 
 class UserPreference(Base):
-    """Memoria a lungo termine: fatti e regole sull'utente."""
+    """Memoria a lungo termine: fatti, preferenze, e skill procedurali."""
     __tablename__ = "user_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -64,6 +64,10 @@ class UserPreference(Base):
     domain = Column(String, index=True)
     weight = Column(Float, default=1.0)
     is_active = Column(Boolean, default=True)
+    memory_class = Column(String, index=True, nullable=True)
+    embedding = Column(Vector(768), nullable=True)
+    domains = Column(JSONB, nullable=True)
+    extra_data = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
