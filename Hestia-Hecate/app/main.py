@@ -1,6 +1,8 @@
 import logging
 import os
+import requests
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
@@ -10,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from providers.registry import CalendarProviderRegistry
+from providers.mail import mail_gateway, MailUnavailable
 from schemas.calendar_events import CalendarEvent
 
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
@@ -21,12 +24,14 @@ load_dotenv()
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
+    from hestia_common.startup_utils import wait_for_hub_services
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
+    from hestia_common.startup_utils import wait_for_hub_services
 
 logger, log_buffer = setup_service_logging("hestia_hecate")
 
@@ -76,6 +81,30 @@ try:
             telegram_visible=True, telegram_group="pianificazione",
         ),
         MCPTool(
+            name="gateway_auth_verify",
+            description=(
+                "Verifica lo stato di autenticazione di tutti i provider "
+                "(Google, Outlook) e INVIA notifiche Telegram per quelli "
+                "che richiedono riautenticazione. Usa questo comando quando "
+                "l'utente chiede di controllare se i provider funzionano."
+            ),
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_verify", "params": kw},
+            title="🩺 Verifica autenticazione provider",
+            method="POST",
+            path="/api/gateway/auth/verify",
+            clients=["telegram", "ui"],
+            response_mode="oracle_natural",
+            response_prompt=(
+                "Elenca lo stato di ogni provider e indica chiaramente "
+                "se sono state inviate notifiche per quelli non funzionanti. "
+                "Se il provider Google non è autenticato, ricorda all'utente "
+                "di usare il pulsante 'Riautentica Google' nel messaggio "
+                "di notifica che ha ricevuto."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
             name="gateway_auth_initiate_google",
             description="Avvia il flusso OAuth per Google Calendar",
             parameters={"type": "object", "properties": {}},
@@ -83,9 +112,12 @@ try:
             title="\U0001f511 Connetti Google Calendar", method="POST", path="/api/gateway/auth/initiate/google",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Dai all'utente il link auth_url (cliccabile). Spiega in 2 righe: "
-                "apri link, concedi accesso; se la pagina finale localhost non si carica è normale, "
-                "copia l'URL intero dalla barra e incollalo qui in chat."
+                "Mostra il link auth_url (cliccabile). Se mode=device_code mostra invece "
+                "verification_url e user_code. Se public_redirect=true: basta aprire il link da "
+                "qualsiasi dispositivo e concedere Calendar+Gmail, si completa da solo. "
+                "Se public_redirect=false: dal PC di Hestia si completa da solo; da telefono la "
+                "pagina finale localhost non si carica (normale): copiare l'URL intero dalla "
+                "barra e incollarlo qui in chat."
             ),
             telegram_visible=True, telegram_group="pianificazione",
         ),
@@ -126,6 +158,36 @@ try:
             telegram_visible=True, telegram_group="pianificazione",
         ),
         MCPTool(
+            name="gateway_auth_complete",
+            description=(
+                "Completa l'autenticazione Google inviando il codice "
+                "di autorizzazione copiato dal browser. "
+                "Usa questo comando DOPO aver aperto il link di auth "
+                "SUL TELEFONO e aver copiato il codice 'code=' "
+                "dalla barra degli indirizzi del browser."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "provider": {"type": "string", "description": "Provider: google"},
+                    "code": {"type": "string", "description": "Codice di autorizzazione dalla barra degli indirizzi del browser"},
+                },
+                "required": ["provider", "code"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_complete", "params": kw},
+            title="✅ Completa autenticazione Google",
+            method="POST",
+            path="/api/gateway/auth/complete/{provider}",
+            clients=["telegram", "ui"],
+            response_mode="oracle_natural",
+            response_prompt=(
+                "Conferma se l'autenticazione è riuscita o se il codice "
+                "non è valido. Se riuscita, indica che Calendar e Gmail "
+                "sono ora operativi."
+            ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
             name="gateway_auth_poll",
             description="Controlla se l'utente ha completato il flusso OAuth",
             parameters={
@@ -139,8 +201,9 @@ try:
             title="⏳ Verifica completamento autenticazione", method="GET", path="/api/gateway/auth/poll/{provider}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Comunica all'utente se l'autenticazione è stata completata con successo "
-                "o se è ancora in attesa. Sii diretto."
+                "Comunica all'utente se l'autenticazione Google/Microsoft "
+                "è stata completata con successo o se è ancora in attesa. "
+                "Se completata, informa che Calendar e Gmail sono ora operativi."
             ),
             telegram_visible=True, telegram_group="pianificazione",
         ),
@@ -157,6 +220,126 @@ memory = StateManager("data/state.json")  # Move this to a mounted volume!
 _calendar_registry = CalendarProviderRegistry()
 
 _CALENDAR_SOURCES = {"gcal", "outlook_calendar"}
+
+HUB_API_URL = os.getenv(
+    "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+
+
+# Cooldown tracker for action notifications — prevents spamming duplicate
+# events when multiple code paths detect the same auth failure.
+_action_notify_cooldown: dict[str, float] = {}
+_ACTION_NOTIFY_COOLDOWN_SECONDS = float(
+    os.getenv("HECATE_ACTION_NOTIFY_COOLDOWN", "300"))
+
+
+def _notify_action_required(
+    action: str,
+    message: str,
+    actions: list[dict[str, str]] | None = None,
+) -> None:
+    """Push a service action-required notification via Hermes.
+
+    ``actions`` is an optional list of button definitions, each with:
+        text: str    — button label
+        command: str — Telegram command name (routed via ``run:`` callback)
+
+    Notifications for the same ``action`` are throttled to once every
+    ``HECATE_ACTION_NOTIFY_COOLDOWN`` seconds (default 300).
+    """
+    now = time.monotonic()
+    last = _action_notify_cooldown.get(action)
+    if last is not None and (now - last) < _ACTION_NOTIFY_COOLDOWN_SECONDS:
+        logger.debug(
+            "event=action_notify_cooldown_skipped action=%s age=%.1fs",
+            action,
+            now - last,
+        )
+        return
+    _action_notify_cooldown[action] = now
+
+    # Scope entity_id by hour so the notification fires on each restart
+    # instead of being permanently deduped against a past delivery.
+    # The process-level cooldown (above) still prevents intra-run spam.
+    _ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H")
+    _payload: dict = {
+        "action": action,
+        "_message": message,
+        "service": "hecate",
+    }
+    if actions:
+        _payload["_actions"] = actions
+    try:
+        requests.post(
+            f"{HUB_API_URL}/route/hermes/api/events/ingest",
+            json={
+                "method": "POST",
+                "headers": {},
+                "query": {},
+                "body": {
+                    "event_type": "service.action_required",
+                    "domain": "system",
+                    "entity_id": f"hecate-{action}-{_ts}",
+                    "payload": _payload,
+                },
+                "timeout_seconds": 8,
+            },
+            timeout=10,
+        )
+        logger.info(
+            "event=action_required_notified action=%s actions=%d",
+            action,
+            len(actions) if actions else 0,
+        )
+    except Exception as exc:
+        logger.warning(
+            "event=action_required_notify_failed action=%s error=%s", action, exc)
+
+
+def _check_auth_and_notify() -> None:
+    """Check configured providers for auth failures and notify the user.
+
+    Called once at startup after Hub registration succeeds.  Idempotent —
+    Hermes deduplicates duplicate notifications.
+    """
+    _reauth_actions = [
+        {"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"},
+    ]
+
+    # 1) Calendar provider check
+    registry_status = _calendar_registry.status_report()
+    unavailable = registry_status.get("unavailable", {})
+    if "google" in unavailable and _provider_env_is_configured("google"):
+        reason = unavailable["google"]
+        _notify_action_required(
+            "reauth_google_calendar",
+            (
+                f"⚠️ <b>Google Calendar</b> non è autenticato.\n\n"
+                f"{reason}\n\n"
+                "Usa il pulsante qui sotto per riautenticarti."
+            ),
+            actions=_reauth_actions,
+        )
+
+    # 2) Mail provider check (lazy-init — force init to detect auth state)
+    # Gmail unavailable is a problem only without the IMAP fallback.
+    mail = _get_mail_provider()
+    if (not mail.is_available() and _provider_env_is_configured("google")
+            and not mail_gateway.imap().configured):
+        mail_error = mail._init_error or "Gmail provider not available"
+        _notify_action_required(
+            "reauth_google_gmail",
+            (
+                f"⚠️ <b>Gmail</b> non è accessibile.\n\n"
+                f"{mail_error}\n\n"
+                "Usa il pulsante qui sotto per riautenticarti con lo scope gmail.readonly."
+            ),
+            actions=_reauth_actions,
+        )
+
+
+def _get_mail_provider():
+    """Gmail API provider (lazy, rebuilt after re-auth)."""
+    return mail_gateway.gmail()
 
 
 def _parse_bool(value: str | None, default: bool = False) -> bool:
@@ -349,6 +532,41 @@ def register_on_hub_startup():
         if resp.status_code < 400:
             logger.info("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
                         hub_api_url, service_base_url)
+            # Wait for required dispatch-path services to appear in Hub registry
+            # before sending notifications.  Uses Hub service discovery — no sleeps.
+            def _deferred_auth_check():
+                ready = wait_for_hub_services(
+                    hub_api_url,
+                    ["telegram", "hermes"],
+                    timeout_seconds=30,
+                    interval_seconds=1.5,
+                    logger=logger,
+                )
+                if ready:
+                    _check_auth_and_notify()
+                else:
+                    logger.warning(
+                        "event=auth_check_skipped "
+                        "reason=required_services_not_registered "
+                        "required=telegram,hermes")
+
+                # ── Periodic auth re-check ──────────────────────────────────
+                # Re-check provider auth every N seconds and re-notify about
+                # persistent failures.  Hermes dedup uses time-based expiry
+                # for service.action_required events, so repeated failures
+                # result in a fresh notification after the expiry window.
+                _reauth_check_interval = float(
+                    os.getenv("HECATE_AUTH_RECHECK_INTERVAL_SECONDS", "3600"))
+                if _reauth_check_interval > 0:
+                    while True:
+                        time.sleep(_reauth_check_interval)
+                        try:
+                            _check_auth_and_notify()
+                        except Exception as _exc:
+                            logger.warning(
+                                "event=auth_recheck_error error=%s", _exc)
+            threading.Thread(target=_deferred_auth_check, daemon=True,
+                             name="auth-check").start()
         else:
             logger.warning("event=hub_registration_non_success_status Hub registration non-success | status=%s body=%s",
                            resp.status_code, resp.text[:200])
@@ -695,62 +913,7 @@ def gateway_calendar_delete(event_id: str, provider: str, calendar_id: str = "pr
     return {"success": bool(deleted)}
 
 
-@app.get("/api/gateway/email/messages")
-def gateway_email_messages(q: str = "", limit: int = 20):
-    status_code, payload = _route_via_hub(
-        "iris",
-        "/api/email/messages",
-        method="GET",
-        query={"q": q, "limit": max(1, min(limit, 200))},
-        timeout_seconds=15,
-    )
-    if status_code >= 400:
-        raise HTTPException(status_code=status_code, detail=payload)
-    return payload
-
-
-@app.get("/api/gateway/email/messages/{message_id}")
-def gateway_email_message(message_id: str):
-    status_code, payload = _route_via_hub(
-        "iris",
-        "/api/email/messages",
-        method="GET",
-        query={"q": message_id, "limit": 50},
-        timeout_seconds=15,
-    )
-    if status_code >= 400:
-        raise HTTPException(status_code=status_code, detail=payload)
-
-    rows = payload.get("messages") if isinstance(payload, dict) else None
-    if not isinstance(rows, list):
-        raise HTTPException(
-            status_code=502, detail="Invalid iris response payload")
-    for row in rows:
-        if str((row or {}).get("id", "")) == message_id:
-            return {"status": "ok", "message": row}
-    raise HTTPException(
-        status_code=404, detail=f"message '{message_id}' not found")
-
-
-@app.post("/api/gateway/email/send")
-def gateway_email_send(body: dict):
-    status_code, payload = _route_via_hub(
-        "iris",
-        "/api/email/send",
-        method="POST",
-        body=body,
-        timeout_seconds=15,
-    )
-    if status_code >= 400:
-        raise HTTPException(status_code=status_code, detail=payload)
-    return payload
-
-
-# ---------------------------------------------------------------------------
-# Mail provider (IMAP/SMTP) — consumed by Iris via Hub
-# ---------------------------------------------------------------------------
-
-from providers.mail_imap import ImapMailProvider, MailProviderError
+_REAUTH_ACTIONS = [{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}]
 
 
 class MailSendRequest(BaseModel):
@@ -759,34 +922,66 @@ class MailSendRequest(BaseModel):
     body: str
 
 
+def _parse_since(since: str | None) -> datetime | None:
+    if not since:
+        return None
+    try:
+        return datetime.fromisoformat(since.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="since must be ISO date/datetime")
+
+
+def _mail_unavailable(exc: MailUnavailable, q: str = "") -> dict:
+    if exc.auth_required:
+        _notify_action_required(
+            "reauth_google_gmail", f"⚠️ <b>Gmail</b> non accessibile: {exc}.", actions=_REAUTH_ACTIONS)
+    return {"status": "error", "query": q, "count": 0, "messages": [], "error": str(exc),
+            "action_required": "reauth_google" if exc.auth_required else None}
+
+
 @app.get("/api/gateway/mail/status")
 def gateway_mail_status():
-    return {"status": "ok", **ImapMailProvider().status()}
+    """Which mail backend serves Iris/Scout (gmail_api | imap) and why."""
+    return {"status": "ok", **mail_gateway.status()}
 
 
+@app.get("/api/gateway/email/messages")
 @app.get("/api/gateway/mail/messages")
-def gateway_mail_messages(q: str = "", since: str | None = None, limit: int = 50):
-    """Search mailbox. ``q``: raw IMAP criteria ('FROM "x"') or free text. ``since``: ISO date."""
-    since_dt = None
-    if since:
-        try:
-            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="since must be ISO date/datetime")
+def gateway_email_messages(q: str = "", since: str | None = None, limit: int = 20):
+    """Search mail. ``q``: Gmail syntax, raw IMAP criteria ('FROM "x"') or free text.
+
+    Gmail API when authorized, IMAP fallback; a Gmail auth failure without
+    fallback notifies the user with a re-auth button.
+    """
+    since_dt = _parse_since(since)
     try:
-        rows = ImapMailProvider().search(query=q, since=since_dt, limit=limit)
-    except MailProviderError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
-    return {"status": "ok", "count": len(rows), "messages": rows}
+        rows, backend = mail_gateway.search(q=q, since=since_dt, limit=max(1, min(limit, 200)))
+    except MailUnavailable as exc:
+        logger.warning("[🔄] event=gateway_email_unavailable error=%s", exc)
+        return _mail_unavailable(exc, q)
+    return {"status": "ok", "query": q, "backend": backend, "count": len(rows), "messages": rows}
 
 
+@app.get("/api/gateway/email/messages/{message_id}")
+def gateway_email_message(message_id: str):
+    try:
+        row = mail_gateway.get(message_id)
+    except MailUnavailable as exc:
+        raise HTTPException(status_code=503, detail=_mail_unavailable(exc))
+    if not row:
+        raise HTTPException(status_code=404, detail=f"message '{message_id}' not found")
+    return {"status": "ok", "message": row}
+
+
+@app.post("/api/gateway/email/send")
 @app.post("/api/gateway/mail/send")
-def gateway_mail_send(req: MailSendRequest):
+def gateway_email_send(req: MailSendRequest):
+    """Send mail: SMTP (app password) or Gmail API when gmail.send is granted."""
     try:
-        sent = ImapMailProvider().send(req.to, req.subject, req.body)
-    except MailProviderError as exc:
+        sent, backend = mail_gateway.send(req.to, req.subject, req.body)
+    except MailUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc))
-    return {"status": "ok", "sent": sent}
+    return {"status": "ok", "backend": backend, "sent": sent}
 
 
 # ---------------------------------------------------------------------------
@@ -801,11 +996,12 @@ _pending_auth: dict[str, dict] = {}
 def gateway_auth_initiate(provider: str):
     """Start an OAuth flow for the given provider.
 
-    • Google  → returns an ``auth_url`` the user must open in a browser.
-      After granting access, the browser shows a code; pass it to
-      ``POST /api/gateway/auth/complete/google`` with ``{"code": "<code>"}``.
+    • Google  → device_code flow (default): returns ``user_code`` +
+      ``verification_url``.  Open the URL on ANY device (phone, tablet, PC),
+      enter the code, then poll ``GET /api/gateway/auth/poll/google``.
+      Set ``GOOGLE_OAUTH_FLOW_MODE=redirect`` for the legacy localhost flow.
 
-    • Microsoft → uses MSAL device-code flow: returns a ``verification_url``
+    • Microsoft → MSAL device-code flow: returns ``verification_url``
       and ``user_code``.  Poll ``GET /api/gateway/auth/poll/microsoft`` until
       the user finishes.
     """
@@ -819,9 +1015,98 @@ def gateway_auth_initiate(provider: str):
     return _initiate_microsoft_oauth()
 
 
+@app.post("/api/gateway/auth/verify")
+def gateway_auth_verify() -> dict:
+    """Check all provider auth status and notify for broken ones.
+
+    Returns the same status report as ``/api/gateway/auth/status`` but also
+    triggers ``_check_auth_and_notify()`` so the user receives a Telegram
+    message with the re-auth button for any broken provider.
+    """
+    _check_auth_and_notify()
+    providers = detect_gateway_providers()
+    runtime = _calendar_registry.status_report()
+    # Include mail provider status
+    mail = _get_mail_provider()
+    mail_ok = mail.is_available()
+    return {
+        "status": "ok",
+        "providers": providers,
+        "runtime": runtime,
+        "mail_available": mail_ok,
+        "mail_error": mail._init_error if not mail_ok else None,
+        "notifications_sent": True,
+    }
+
+
+@app.get("/api/gateway/auth/callback/google", response_class=HTMLResponse)
+def gateway_auth_callback_google(code: str = "", state: str = "", error: str = ""):
+    """Google OAuth redirect target — completes the flow automatically.
+
+    Reached directly from the Docker host (localhost) or from any device via the
+    Cloudflare tunnel.  Verifies ``state``, exchanges the code with the PKCE
+    verifier, persists the token and reloads Calendar + Gmail.
+    """
+    import html as _html
+
+    raw = f"?error={error}" if error else f"?code={code}&state={state}"
+    try:
+        result = _finish_google_oauth(raw, state=state or None)
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, dict) else {"error": str(exc.detail)}
+        msg = _html.escape(str(detail.get("error", "")))
+        hint = _html.escape(str(detail.get("hint", "")))
+        return HTMLResponse(
+            _OAUTH_CALLBACK_HTML.format(icon="❌", title="Autorizzazione non riuscita",
+                                        detail=f"{msg}<br><br>{hint}"),
+            status_code=exc.status_code)
+    if result["status"] == "authorized":
+        scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "nessuno"
+        return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
+            icon="✅", title="Autorizzazione completata!",
+            detail=f"Google è connesso a Hestia (scope: {_html.escape(scopes)}). "
+                   "Puoi chiudere questa pagina e tornare su Telegram."))
+    return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
+        icon="⚠️", title="Token salvato, provider non attivo",
+        detail=_html.escape(str(result.get("unavailable")))))
+
+
+# ── HTML template for the OAuth callback page ──────────────────────────
+_OAUTH_CALLBACK_HTML = """\
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hestia — {title}</title>
+<style>
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; margin: 0; background: #0f0f0f; color: #e0e0e0;
+  }}
+  .card {{
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px;
+    padding: 40px 48px; max-width: 480px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }}
+  .icon {{ font-size: 48px; margin-bottom: 16px; }}
+  h1 {{ font-size: 20px; font-weight: 600; margin: 0 0 12px 0; color: #fff; }}
+  p {{ font-size: 14px; line-height: 1.6; color: #999; margin: 0; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">{icon}</div>
+  <h1>{title}</h1>
+  <p>{detail}</p>
+</div>
+</body>
+</html>"""
+
+
 @app.get("/api/gateway/auth/poll/{provider}")
 def gateway_auth_poll(provider: str):
-    """Poll whether the user has completed the device-code OAuth flow.
+    """Poll whether the user has completed the device-code / redirect OAuth flow.
 
     Returns ``{"status": "authorized"}`` once the token has been acquired and
     the provider registry refreshed.  Returns ``{"status": "pending"}`` while
@@ -829,6 +1114,8 @@ def gateway_auth_poll(provider: str):
     """
     normalized = provider.strip().lower()
     if normalized == "google":
+        if (_pending_auth.get("google") or {}).get("mode") == "device_code":
+            return _poll_google_device_flow()
         if "google" in _calendar_registry.active_names:
             return {"status": "authorized", "provider": "google"}
         session = google_oauth.pending()
@@ -839,7 +1126,9 @@ def gateway_auth_poll(provider: str):
 
     if normalized not in _pending_auth:
         return {"status": "no_pending_flow", "provider": normalized}
-    return _poll_microsoft_oauth()
+    if normalized == "microsoft":
+        return _poll_microsoft_oauth()
+    return {"status": "unknown_provider", "provider": normalized}
 
 
 @app.delete("/api/gateway/auth/initiate/{provider}")
@@ -887,95 +1176,275 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Google OAuth helpers
 # ---------------------------------------------------------------------------
+# Two flow modes, controlled by GOOGLE_OAUTH_FLOW_MODE:
+#
+#   "redirect" (default) — authorization code + PKCE (core/google_oauth.py).
+#       Redirect URI: GOOGLE_OAUTH_REDIRECT_URI → Cloudflare tunnel URL
+#       (/code/data/tunnel-url.txt, written by cloudflare-tunnel.bat) →
+#       localhost.  With the tunnel the callback completes from ANY device;
+#       with localhost it completes only from the Docker host, elsewhere the
+#       user pastes the final URL (or the code) in chat →
+#       POST /api/gateway/auth/complete/google.  The pending session (state +
+#       PKCE verifier) is persisted on disk, so a restart in between is safe.
+#
+#   "device_code" — RFC 8628 device authorization.  ONLY works if the Google
+#       Cloud OAuth client is "Desktop" or "TV / Limited Input".  Web
+#       application clients receive "invalid_client".
+
+_GOOGLE_OAUTH_FLOW_MODE = os.getenv(
+    "GOOGLE_OAUTH_FLOW_MODE", "redirect").strip().lower()
+_GOOGLE_DEVICE_CODE_ENDPOINT = "https://oauth2.googleapis.com/device/code"
+_GOOGLE_TOKEN_ENDPOINT = google_oauth.TOKEN_ENDPOINT
+
+
+def _build_google_redirect_uri() -> str:
+    """Redirect URI for the redirect flow (env → tunnel → localhost)."""
+    return google_oauth.redirect_uri()
+
 
 def _initiate_google_oauth() -> dict:
+    """Start a Google OAuth flow (redirect by default, device_code on request)."""
+    if _GOOGLE_OAUTH_FLOW_MODE == "device_code":
+        result = _initiate_google_device_flow()
+        _start_google_device_auto_poll()
+        return result
+    return _initiate_google_redirect_flow()
+
+
+def _initiate_google_redirect_flow() -> dict:
     try:
         started = google_oauth.start()
     except google_oauth.GoogleOAuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.to_detail())
-    _pending_auth["google"] = {"auth_url": started["auth_url"], "mode": "loopback"}
+    redirect = started["redirect_uri"]
+    public = google_oauth.is_public_redirect(redirect)
+    _pending_auth["google"] = {"auth_url": started["auth_url"], "mode": "redirect",
+                               "redirect_uri": redirect}
+    if public:
+        instructions = (
+            "Apri il link da qualsiasi dispositivo (telefono, PC) e concedi l'accesso a "
+            "Calendar e Gmail: il ritorno passa dal tunnel pubblico e l'autenticazione "
+            "si completa da sola (riceverai conferma su Telegram).")
+    else:
+        instructions = (
+            "DA PC (dove gira Hestia): apri il link, concedi l'accesso — si completa da solo.\n"
+            "DA TELEFONO: apri il link, concedi l'accesso; la pagina finale (localhost) NON "
+            "si carica: è normale. Copia l'URL intero dalla barra degli indirizzi (o solo il "
+            "valore di code=) e incollalo qui in chat.\n"
+            "Per completare da telefono senza copia-incolla avvia cloudflare-tunnel.bat.")
+    logger.info("event=google_oauth_redirect_initiated redirect_uri=%s public=%s", redirect, public)
     return {
         "status": "initiated",
         "provider": "google",
-        "mode": "loopback",
+        "mode": "redirect",
         "auth_url": started["auth_url"],
-        "redirect_uri": started["redirect_uri"],
+        "redirect_uri": redirect,
+        "public_redirect": public,
         "expires_in": started["expires_in"],
+        "instructions": instructions,
+    }
+
+
+def _initiate_google_device_flow() -> dict:
+    """Start Google's OAuth 2.0 Device Authorization Grant (RFC 8628).
+
+    No redirect URI is needed — the user visits a standard URL on any
+    device and enters a short code.  Hecate polls until completion.
+    """
+    client_id, client_secret = google_oauth.client_credentials()
+    if not client_id or not client_secret:
+        raise HTTPException(
+            status_code=400,
+            detail="GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set to start OAuth flow",
+        )
+    try:
+        resp = requests.post(
+            _GOOGLE_DEVICE_CODE_ENDPOINT,
+            data={"client_id": client_id, "scope": " ".join(google_oauth.scopes())},
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Google device endpoint unreachable: {exc}")
+    if resp.status_code != 200:
+        detail = resp.text[:400]
+        logger.error("event=google_device_code_error status=%s detail=%s", resp.status_code, detail)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Google device code endpoint returned {resp.status_code}: {detail}",
+        )
+
+    data = resp.json()
+    user_code = data.get("user_code", "")
+    verification_url = data.get("verification_url", "https://www.google.com/device")
+    expires_in = int(data.get("expires_in", 1800))
+    interval = int(data.get("interval", 5))
+    _pending_auth["google"] = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "device_code": data.get("device_code", ""),
+        "user_code": user_code,
+        "verification_url": verification_url,
+        "expires_in": expires_in,
+        "interval": interval,
+        "mode": "device_code",
+        "started_at": time.monotonic(),
+    }
+    logger.info("event=google_device_flow_initiated verification_url=%s expires_in=%s",
+                verification_url, expires_in)
+    return {
+        "status": "initiated",
+        "provider": "google",
+        "mode": "device_code",
+        "user_code": user_code,
+        "verification_url": verification_url,
+        "expires_in": expires_in,
         "instructions": (
-            "1) Apri auth_url e concedi l'accesso. "
-            "2) Se il browser è sul PC dove gira Hestia, l'autorizzazione si completa da sola. "
-            "3) Altrimenti la pagina finale (localhost) NON si carica: è normale. "
-            "Copia l'URL completo dalla barra degli indirizzi e invialo "
-            "(POST /api/gateway/auth/complete/google {\"code\": \"<url o codice>\"} "
-            "oppure incollalo in chat)."
+            f"1. Apri {verification_url} sul tuo telefono o computer\n"
+            f"2. Inserisci questo codice: {user_code}\n"
+            "3. Concedi l'accesso a Calendar e Gmail\n"
+            "4. Hestia completa da sola (o usa 'Verifica completamento')."
         ),
     }
 
 
-def _finish_google_oauth(raw_code: str, state: str | None = None) -> dict:
-    """Exchange the code, persist the token, reload providers."""
+def _poll_google_device_flow() -> dict:
+    """Poll Google's token endpoint for a pending device-code flow."""
+    session = _pending_auth.get("google")
+    if not session or session.get("mode") != "device_code":
+        return {"status": "no_pending_flow", "provider": "google"}
+    device_code = session.get("device_code", "")
+    if not device_code:
+        _pending_auth.pop("google", None)
+        return {"status": "error", "provider": "google", "error": "No device_code in session"}
     try:
-        token_data = google_oauth.complete(raw_code, state=state)
-    except google_oauth.GoogleOAuthError as exc:
-        logger.warning("event=google_oauth_complete_error error=%s", exc)
-        raise HTTPException(status_code=exc.status_code, detail=exc.to_detail())
+        resp = requests.post(
+            _GOOGLE_TOKEN_ENDPOINT,
+            data={
+                "client_id": session.get("client_id", ""),
+                "client_secret": session.get("client_secret", ""),
+                "device_code": device_code,
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            },
+            timeout=15,
+        )
+        data = resp.json() if resp.content else {}
+    except Exception as exc:
+        logger.error("event=google_device_flow_poll_error error=%s", exc)
+        return {"status": "pending", "provider": "google", "mode": "device_code", "error": str(exc)}
 
+    if resp.status_code == 200 and "access_token" in data:
+        expires_in = int(data.get("expires_in") or 3600)
+        expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=expires_in - 60)
+        _pending_auth.pop("google", None)
+        return _apply_google_token({
+            "token": data.get("access_token", ""),
+            "refresh_token": data.get("refresh_token", ""),
+            "token_uri": _GOOGLE_TOKEN_ENDPOINT,
+            "client_id": session.get("client_id", ""),
+            "client_secret": session.get("client_secret", ""),
+            "scopes": (data.get("scope", "") or "").split() or google_oauth.scopes(),
+            "expiry": expiry.isoformat() + "Z",
+        })
+
+    error = data.get("error", "")
+    if error == "authorization_pending":
+        return {"status": "pending", "provider": "google", "mode": "device_code"}
+    if error == "slow_down":
+        return {"status": "pending", "provider": "google", "mode": "device_code", "error": "slow_down"}
+    _pending_auth.pop("google", None)
+    logger.warning("event=google_device_flow_terminal_error error=%s", error)
+    return {"status": "error", "provider": "google", "error": data.get("error_description", error)}
+
+
+def _start_google_device_auto_poll() -> None:
+    """Background poller for the device flow; notifies the outcome via Hermes."""
+    def _auto_poller():
+        deadline = time.monotonic() + 1200  # 20 min max (Google default is 30 min)
+        poll_interval = 5.0
+        while time.monotonic() < deadline:
+            session = _pending_auth.get("google")
+            if not session or session.get("mode") != "device_code":
+                return  # cancelled or completed elsewhere
+            time.sleep(poll_interval)
+            result = _poll_google_device_flow()
+            status = result.get("status", "")
+            if status == "authorized":
+                return  # _apply_google_token already notified
+            if status == "error":
+                _notify_action_required(
+                    "google_reauth_failed",
+                    f"❌ <b>Autenticazione Google fallita:</b> {result.get('error', 'unknown')}\n\n"
+                    "Riprova con il pulsante qui sotto.",
+                    actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
+                )
+                return
+            if result.get("error") == "slow_down":
+                poll_interval = min(poll_interval + 5, 60)
+            else:
+                poll_interval = float(session.get("interval") or 5)
+        _pending_auth.pop("google", None)
+        logger.warning("event=google_auto_poll_timeout")
+        _notify_action_required(
+            "google_reauth_timeout",
+            "⏰ <b>Autenticazione Google scaduta.</b>\n\nRiavviala con il pulsante qui sotto.",
+            actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
+        )
+
+    threading.Thread(target=_auto_poller, daemon=True, name="google-auto-poll").start()
+
+
+def _apply_google_token(token_data: dict) -> dict:
+    """Persist a Google token (any flow), reload calendar + mail providers, notify."""
     from providers.google import GoogleCalendarProvider
+
     GoogleCalendarProvider.persist_token(token_data)
     _pending_auth.pop("google", None)
     refreshed = _refresh_calendar_registry()
+    mail_gateway.reset()  # rebuild Gmail with the new scopes
     active = refreshed.get("active", [])
-    logger.info("event=google_oauth_complete active_providers=%s", active)
+    granted = list(token_data.get("scopes") or [])
+    ok = "google" in active
+    logger.info("event=google_oauth_complete active_providers=%s granted_scopes=%s", active, granted)
+    if ok:
+        gmail_ok = "https://www.googleapis.com/auth/gmail.readonly" in granted
+        _notify_action_required(
+            "google_reauth_complete",
+            "✅ <b>Google</b> è connesso a Hestia.\n\n"
+            + ("Calendar e Gmail operativi." if gmail_ok
+               else "Calendar operativo. Gmail NON autorizzato: riautentica concedendo la lettura email."),
+        )
     return {
-        "status": "authorized" if "google" in active else "token_saved_provider_unavailable",
+        "status": "authorized" if ok else "token_saved_provider_unavailable",
         "provider": "google",
+        "granted_scopes": granted,
         "active_providers": active,
         "unavailable": refreshed.get("unavailable", {}),
         "note": "Token salvato in data/google_token.json: sopravvive ai riavvii del container.",
     }
 
 
+def _finish_google_oauth(raw_code: str, state: str | None = None) -> dict:
+    """Exchange the code (redirect flow), persist the token, reload providers."""
+    try:
+        token_data = google_oauth.complete(raw_code, state=state)
+    except google_oauth.GoogleOAuthError as exc:
+        logger.warning("event=google_oauth_complete_error error=%s", exc)
+        raise HTTPException(status_code=exc.status_code, detail=exc.to_detail())
+    return _apply_google_token(token_data)
+
+
 def _complete_google_oauth(body: dict) -> dict:
+    """Manual completion: accepts the bare code, the full redirect URL or the query string."""
     body = body or {}
+    session = _pending_auth.get("google") or {}
+    if session.get("mode") == "device_code":
+        return _poll_google_device_flow()
     raw = str(body.get("code") or body.get("redirect_url") or body.get("url") or "").strip()
     if not raw:
         raise HTTPException(
             status_code=400,
             detail="Missing 'code' in request body (authorization code or full redirect URL)")
     return _finish_google_oauth(raw, state=body.get("state"))
-
-
-_CALLBACK_HTML = """<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Hestia · Google</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem}}</style>
-</head><body><h2>{title}</h2><p>{body}</p></body></html>"""
-
-
-@app.get("/api/gateway/auth/callback/google", response_class=HTMLResponse)
-def gateway_auth_callback_google(code: str = "", state: str = "", error: str = ""):
-    """Loopback redirect target: completes the Google flow automatically when
-    the browser runs on the Docker host."""
-    import html as _html
-
-    if error:
-        raw = f"?error={error}"
-    else:
-        raw = f"?code={code}&state={state}"
-    try:
-        result = _finish_google_oauth(raw, state=state or None)
-    except HTTPException as exc:
-        detail = exc.detail if isinstance(exc.detail, dict) else {"error": str(exc.detail)}
-        msg = _html.escape(str(detail.get("error", "")))
-        hint = _html.escape(str(detail.get("hint", "")))
-        return HTMLResponse(
-            _CALLBACK_HTML.format(title="❌ Autorizzazione non riuscita",
-                                  body=f"{msg}<br><br>{hint}"),
-            status_code=exc.status_code)
-    ok = result["status"] == "authorized"
-    return HTMLResponse(_CALLBACK_HTML.format(
-        title="✅ Google Calendar collegato" if ok else "⚠️ Token salvato, provider non attivo",
-        body="Puoi chiudere questa pagina." if ok else _html.escape(str(result.get("unavailable")))))
-
 
 # ---------------------------------------------------------------------------
 # Microsoft device-code helpers

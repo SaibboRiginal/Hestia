@@ -41,7 +41,7 @@ Adding a new data source = implementing this interface and registering the conne
 
 | Connector | Type Key | Description |
 |---|---|---|
-| `EmailFetcher` | `iris_email` | Reads Hecate's IMAP provider in-process (IMAP filter + since). Used by Scout |
+| `EmailFetcher` | `iris_email` | Reads Hecate's mail gateway in-process (Gmail API, IMAP fallback; IMAP filter + since). Used by Scout |
 | `GCalFetcher` | `gcal` | Fetches Google calendar events via Hub-routed Hecate gateway APIs |
 | `OutlookFetcher` | `outlook_calendar` | Fetches Outlook calendar events via Hub-routed Hecate gateway APIs |
 
@@ -58,19 +58,18 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
 | `POST` | `/api/gateway/auth/initiate/{provider}` | Start OAuth flow: Google redirect URL or Microsoft device-code |
 | `GET` | `/api/gateway/auth/poll/{provider}` | Poll completion of pending OAuth device-code flow |
-| `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code (or full pasted redirect URL) for token |
-| `GET` | `/api/gateway/auth/callback/google` | Loopback redirect target — completes Google flow, returns HTML |
+| `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code (or full pasted redirect URL) for token; returns `granted_scopes`, reloads Calendar + Gmail |
+| `GET` | `/api/gateway/auth/callback/google` | Redirect target (localhost or Cloudflare tunnel) — verifies state, completes Google flow, returns HTML, notifies Telegram |
+| `POST` | `/api/gateway/auth/verify` | Check every provider and push re-auth notifications (with button) for broken ones |
 | `DELETE` | `/api/gateway/auth/initiate/{provider}` | Cancel pending OAuth flow |
 | `GET` | `/api/gateway/calendar/events` | List events for a provider/calendar |
 | `POST` | `/api/gateway/calendar/events` | Create event on target providers |
 | `PUT` | `/api/gateway/calendar/events/{id}` | Update event on target provider |
 | `DELETE` | `/api/gateway/calendar/events/{id}` | Delete event on target provider |
-| `GET` | `/api/gateway/mail/status` | Mail provider configuration state |
-| `GET` | `/api/gateway/mail/messages` | IMAP search: `q` = raw IMAP criteria (`FROM "x"`) or free text, `since` = ISO date, `limit` |
-| `POST` | `/api/gateway/mail/send` | SMTP send `{to, subject, body}` |
-| `GET` | `/api/gateway/email/messages` | Proxy email search to Iris via Hub |
-| `GET` | `/api/gateway/email/messages/{id}` | Proxy single email lookup to Iris via Hub |
-| `POST` | `/api/gateway/email/send` | Proxy email send to Iris via Hub |
+| `GET` | `/api/gateway/mail/status` | Mail backend in use (`gmail_api` / `imap`) + state of both |
+| `GET` | `/api/gateway/email/messages` (alias `/api/gateway/mail/messages`) | Mail search: `q` = Gmail syntax, raw IMAP criteria (`FROM "x"`, translated for Gmail) or free text; `since` = ISO date; `limit`. Gmail API first, IMAP fallback. Auth failure without fallback → `status=error`, `action_required=reauth_google` + Telegram notification |
+| `GET` | `/api/gateway/email/messages/{id}` | Single message (Gmail id or Message-ID) |
+| `POST` | `/api/gateway/email/send` (alias `/api/gateway/mail/send`) | Send `{to, subject, body}`: SMTP (app password) or Gmail API if `gmail.send` granted |
 | `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy) |
 | `POST` | `/api/ingest/calendar/trigger` | Sync calendar events from providers into Archive |
 
@@ -116,21 +115,36 @@ Adding a new data source = implementing this interface and registering the conne
 
 ### OAuth Flow (API)
 
-1. **Initiate**: `POST /api/gateway/auth/initiate/{provider}`
-   - Google: returns `auth_url` + `redirect_uri` (loopback, PKCE S256, `access_type=offline`, `prompt=consent`).
-     The pending session (state + PKCE verifier) is persisted to `data/google_oauth_pending.json`
-     (TTL 15 min), so a restart between initiate and complete does not break the flow.
-   - Microsoft: returns `user_code` + `verification_url` (device-code flow).
-2. **Complete (Google)**, any of:
-   - `GET /api/gateway/auth/callback/google?code=&state=` — loopback redirect target, returns an HTML page.
-   - `POST /api/gateway/auth/complete/google` with `{"code": "<code OR full redirect URL>"}`.
-     `state` is validated when present in the URL. Errors return `{"detail": {"error", "hint"}}`.
-3. **Poll**: `GET /api/gateway/auth/poll/{provider}` → `authorized | pending | no_pending_flow`.
-4. Google token is written to `GOOGLE_TOKEN_FILE` (volume-mounted, survives restarts) and the provider
-   registry is reloaded in place. Microsoft refresh token lives in `OUTLOOK_REFRESH_TOKEN` for the process lifetime.
+**Google (redirect flow — default):** authorization code + PKCE (`core/google_oauth.py`).
+1. **Initiate**: `POST /api/gateway/auth/initiate/google` → `auth_url`, `redirect_uri`, `public_redirect`.
+   Redirect URI: `GOOGLE_OAUTH_REDIRECT_URI` → Cloudflare tunnel URL (`GOOGLE_TUNNEL_URL_FILE`,
+   default `/code/data/tunnel-url.txt`, written by `cloudflare-tunnel.bat`) → `localhost:19003`.
+   The pending session (state + PKCE verifier) is persisted to `data/google_oauth_pending.json`
+   (TTL 15 min): a restart between initiate and complete does not break the flow.
+2. **Complete**, any of:
+   - tunnel running → open the link from ANY device (phone too), grant Calendar + Gmail:
+     the browser returns through the tunnel to `/api/gateway/auth/callback/google`, done. **Zero manual steps.**
+   - no tunnel, browser on the Docker host → same callback via localhost, done.
+   - no tunnel, phone → final localhost page does not load (expected): paste the full URL
+     (or the `code=` value) in Telegram, or `POST /api/gateway/auth/complete/google {"code": "<url|code>"}`.
+   `state` is validated when present. Errors return `{"detail": {"error", "hint"}}`.
+3. Token → `GOOGLE_TOKEN_FILE` (volume, survives restarts); Calendar registry and Gmail reloaded;
+   confirmation pushed to Telegram (warns if Gmail scope was not granted).
 
-MCP/Hub tools: `gateway_auth_status`, `gateway_auth_initiate_google`, `gateway_auth_complete_google`,
-`gateway_auth_initiate_microsoft`, `gateway_auth_poll`.
+> Quick-tunnel URLs change at every restart: with a *Web application* client add the current
+> `…/api/gateway/auth/callback/google` to the authorized redirect URIs (or use a fixed named tunnel
+> and `GOOGLE_OAUTH_REDIRECT_URI`). *Desktop app* clients accept any localhost redirect but not the tunnel.
+
+**Google (device_code flow — requires Desktop/TV client type):**
+Set `GOOGLE_OAUTH_FLOW_MODE=device_code`. Returns `user_code` + `verification_url`; Hecate auto-polls
+in background and notifies success/failure/timeout on Telegram. Google rejects it for "Web application" clients.
+
+**Microsoft (device_code flow):** `user_code` + `verification_url`, poll for completion.
+
+**Poll**: `GET /api/gateway/auth/poll/{provider}` → `authorized | pending | no_pending_flow | error`.
+
+MCP/Hub tools: `gateway_auth_status`, `gateway_auth_verify`, `gateway_auth_initiate_google`,
+`gateway_auth_complete`, `gateway_auth_initiate_microsoft`, `gateway_auth_poll`.
 
 ### Token Refresh
 
@@ -140,16 +154,25 @@ MCP/Hub tools: `gateway_auth_status`, `gateway_auth_initiate_google`, `gateway_a
 
 Falls back to full registry reinit if no providers are active.
 
-**Token persistence (Google):** After every successful credential refresh, the refreshed token
-(access + refresh) is automatically serialized to:
+### Periodic Auth Re-Check
+
+Hecate re-checks provider auth status every `HECATE_AUTH_RECHECK_INTERVAL_SECONDS` (default 3600 s = 1 hour). If a provider is still unavailable, a fresh `service.action_required` notification is pushed via Hermes. Hermes dedup for recurring events is time-limited so persistent failures are re-notified instead of being permanently silenced.
+
+### Token Persistence & Recovery
+
+**Token persistence (Google):** After every successful credential refresh or OAuth completion, the refreshed token (access + refresh) is automatically serialized to:
 1. The volume-mounted file at `GOOGLE_TOKEN_FILE` (default `/code/data/google_token.json`)
 2. The `GOOGLE_TOKEN_JSON` environment variable (process lifetime)
 
 On startup Hecate tries refresh-token candidates in order: persistent file →
-`GOOGLE_REFRESH_TOKEN` → `GOOGLE_TOKEN_JSON` (duplicates skipped). A cached access token is
-reused only when its stored `expiry` is in the future. If a candidate fails (`invalid_grant`),
-the next one is tried, so a revoked token in the file never hides a valid `.env` token.
-Client id/secret from env always win over values stored in the token file.
+`GOOGLE_REFRESH_TOKEN` → `GOOGLE_TOKEN_JSON` (duplicates skipped). The token's own granted scopes
+are used (asking for scopes it never had → `invalid_scope`). A cached access token is reused only
+when its stored `expiry` is in the future. Client id/secret from env win over the token file.
+
+**`invalid_grant` recovery:** a revoked/expired refresh token is dropped (file deleted, or the env
+var cleared for the process) and the next candidate is tried, so a dead file never hides a valid
+`.env` token. With no valid candidate a `service.action_required` notification with the
+"🔑 Riautentica Google" button is pushed (startup + every `HECATE_AUTH_RECHECK_INTERVAL_SECONDS`).
 
 `POST /api/gateway/auth/refresh/{provider}` refreshes active providers and fully reloads the
 registry when any provider is still unavailable (e.g. token file just written by the host script).
@@ -170,7 +193,7 @@ registry when any provider is still unavailable (e.g. token file just written by
 | `GOOGLE_TOKEN_JSON` | — | Bundled alternative — refresh_token extracted from here if `GOOGLE_REFRESH_TOKEN` not set |
 | `GOOGLE_TOKEN_FILE` | `/code/data/google_token.json` | Persistent token cache (volume-mounted `data/` dir) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Loopback redirect used by the OAuth flow |
-| `GOOGLE_OAUTH_SCOPES` | `https://www.googleapis.com/auth/calendar` | Space/comma separated scopes |
+| `GOOGLE_OAUTH_SCOPES` | `calendar gmail.readonly` (full URLs) | Space/comma separated scopes; add `https://www.googleapis.com/auth/gmail.send` to send via Gmail API |
 | `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
 | `OUTLOOK_CLIENT_ID` | — | Microsoft OAuth app client ID |
@@ -179,6 +202,11 @@ registry when any provider is still unavailable (e.g. token file just written by
 | `OUTLOOK_REFRESH_TOKEN` | — | Outlook OAuth refresh token |
 | `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials |
 | `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
+| `GOOGLE_OAUTH_FLOW_MODE` | `redirect` | `redirect` (PKCE; any device with the Cloudflare tunnel, paste-URL fallback otherwise) or `device_code` (Desktop/TV clients only) |
+| `GOOGLE_TUNNEL_URL_FILE` | `/code/data/tunnel-url.txt` | Public tunnel URL written by `cloudflare-tunnel.bat`, used as redirect base |
+| `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Redirect URI for `redirect` flow mode |
+| `HECATE_AUTH_RECHECK_INTERVAL_SECONDS` | `3600` | Seconds between periodic auth re-check (0 to disable) |
+| `HECATE_ACTION_NOTIFY_COOLDOWN` | `300` | Seconds between repeated action-required notifications per action key |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
 
 **Canonical Google OAuth setup (no expiring values):**
@@ -193,7 +221,18 @@ new access token, and caches the result to the persistent file. No access token
 or expiry timestamp is stored in `.env` — the 1‑hour access token is always
 obtained live.
 
-### Mail provider (IMAP/SMTP)
+### Mail backends (`providers/mail.py`)
+
+| Backend | Read | Send | Config |
+|---|---|---|---|
+| `gmail_api` (primary) | scope `gmail.readonly` | only with `gmail.send` in `GOOGLE_OAUTH_SCOPES` | Google OAuth (above) |
+| `imap` (fallback read, primary send) | IMAP read-only | SMTP STARTTLS | `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` or `HECATE_IMAP_*` |
+
+Gmail auth failure → IMAP fallback if configured (no nag), else error + re-auth notification.
+IMAP-style criteria from connectors (`FROM "x"`, `SUBJECT "y"`, `SINCE 01-Jan-2026`, `UNSEEN`) are
+translated to Gmail search (`from:(x)`, …, `after:2026/01/01`, `is:unread`).
+
+### IMAP/SMTP provider
 
 `providers/mail_imap.py`. Gmail: `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` (Google account → Security →
 2-Step Verification → App passwords). Any other server: `HECATE_IMAP_HOST/_PORT/_USER/_PASSWORD`,

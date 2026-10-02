@@ -121,3 +121,12 @@ AI_RULEBOOK.md
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #poetry
+# .NET / Visual Studio (Hestia-WebUI)
+.vs/
+**/obj/
+*.suo
+*.user
+
+# Angular / Node (Hestia-WebUI/frontend)
+node_modules/
+.angular/

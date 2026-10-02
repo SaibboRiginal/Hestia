@@ -22,9 +22,10 @@ docker compose -f docker-compose.global.yml up -d --build %2 %3 %4 %5
 goto :end
 
 :start
-echo [Hestia] Starting stack (code mounts are live - restart is instant) ...
-echo [Hestia] Use up-all --build only when requirements.txt or Dockerfile changed
+echo [Hestia] Bringing up any stopped containers...
 docker compose -f docker-compose.global.yml up -d
+echo [Hestia] Restarting ALL services to pick up code changes...
+docker compose -f docker-compose.global.yml restart
 goto :end
 
 :restart

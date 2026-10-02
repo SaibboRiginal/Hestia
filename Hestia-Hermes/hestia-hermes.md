@@ -22,6 +22,19 @@ Hermes is core and generic: no domain-specific rules are implemented in Hermes.
 4. Hermes dispatches alert via channel adapter.
 5. Hermes writes delivery outcome to Archive dispatch log.
 
+### Deduplication
+
+Hermes deduplicates outbound events by `dedupe_key` (compound of event type, domain,
+entity ID, and subscription ID). Only events in an "active" lifecycle state
+(`created`, `queued`, `delivered`, `seen`, `answered`) block re-delivery.
+
+**Time-based expiry for recurring events:** For event types listed in
+`HERMES_RECURRING_EVENT_TYPES` (default: `service.action_required,service.health`),
+delivered events older than `HERMES_RECURRING_EVENT_MAX_AGE_SECONDS` (default 3600 s)
+are treated as stale and do NOT block re-delivery. This prevents persistent issues
+like auth failures from being permanently silenced while still suppressing spam
+within the cooldown window.
+
 ---
 
 ## API (MVP)

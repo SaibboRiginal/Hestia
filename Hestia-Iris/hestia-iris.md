@@ -29,9 +29,12 @@ Iris owns email-domain business logic (search/send/thread abstractions). Provide
 ## Mail backend (via Hecate)
 
 Iris holds no mail and no credentials. Every endpoint calls Hecate through Hub:
-`/api/email/inbox` and `/api/email/messages` → `GET /api/gateway/mail/messages` (`q` free text or IMAP criteria,
-`since` ISO date); `/api/email/send` → `POST /api/gateway/mail/send` (adds `Re:` when `thread_id` is given);
-`/api/email/threads/{thread_id}` → messages sharing the normalized subject. Hecate unreachable → 503, provider
-not configured → Hecate's 503 detail.
+`/api/email/inbox` and `/api/email/messages` → `GET /api/gateway/email/messages` (`q` free text, Gmail
+syntax or IMAP criteria, `since` ISO date; Hecate uses Gmail API, IMAP fallback); `/api/email/send` →
+`POST /api/gateway/email/send` (adds `Re:` when `thread_id` is given); `/api/email/threads/{thread_id}` →
+messages sharing the normalized subject; `/api/email/ingest` → Hecate `/api/ingest/trigger` (domain
+modules such as Scout ask Iris, which owns the email domain). Search errors are soft
+(`status=error`, `error`, `action_required=reauth_google` when Google must be re-authorized: Hecate
+also pushes the Telegram re-auth button); send errors propagate Hecate's 503.
 
 Previously Iris kept an in-memory list (lost on restart): nothing was read from or sent to a real mailbox.

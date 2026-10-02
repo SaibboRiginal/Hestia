@@ -79,6 +79,7 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
 
                 chat_id = str(payload.get("target", "")).strip()
                 message = str(payload.get("message", "")).strip()
+                actions_raw = payload.get("actions")
                 entity_payload = payload.get("payload")
                 domain = str(payload.get("domain", "")).strip()
                 entity_id = str(payload.get("entity_id", "")).strip()
@@ -112,11 +113,32 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                         400, {"status": "error", "detail": "message or payload required"})
                     return
 
+                # Build inline keyboard from actions if present
+                reply_markup = None
+                if isinstance(actions_raw, list) and actions_raw:
+                    from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+                    buttons: list[InlineKeyboardButton] = []
+                    for act in actions_raw:
+                        if not isinstance(act, dict):
+                            continue
+                        btn_text = str(act.get("text", "")).strip()
+                        command = str(act.get("command", "")).strip()
+                        if not btn_text or not command:
+                            continue
+                        buttons.append(InlineKeyboardButton(
+                            text=btn_text,
+                            callback_data=f"run:{command}",
+                        ))
+                    if buttons:
+                        reply_markup = InlineKeyboardMarkup(
+                            keyboard=[buttons])
+
                 try:
                     core.send_user_message(
                         chat_id,
                         message,
                         parse_mode="HTML",
+                        reply_markup=reply_markup,
                     )
                     self._send_json(200, {"status": "ok", "sent": True})
                 except Exception as e:

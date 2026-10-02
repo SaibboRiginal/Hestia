@@ -6,7 +6,7 @@ import logging
 import requests
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 
 from .core.service_contract import HestiaServiceBase, ServiceDescriptor
 from .fetcher import fetch_html
@@ -145,7 +145,14 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 app.include_router(create_log_control_router("hestia_atlas"))
 
 @app.post("/api/fetch/html", response_model=FetchHtmlResponse)
-def fetch_html_endpoint(req: FetchHtmlRequest):
+def fetch_html_endpoint(request: Request, req: FetchHtmlRequest):
+    client = request.client.host if request.client else "unknown"
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    caller = forwarded_for or client
+    
+    logger.debug("event=fetch_request_received caller=%s url=%s strategy=%s timeout=%s wait_ms=%s",
+                caller, req.url, req.strategy, req.timeout_seconds, req.wait_ms)
+    
     try:
         result = fetch_html(
             url=req.url,
@@ -154,8 +161,23 @@ def fetch_html_endpoint(req: FetchHtmlRequest):
             strategy=req.strategy,
             cdp_endpoint=req.cdp_endpoint,
         )
+        
+        is_blocked = result.get("blocked", False)
+        content_length = result.get("content_length", 0)
+        http_status = result.get("http_status", 0)
+        final_url = result.get("final_url", req.url)
+        
+        if is_blocked:
+            logger.warning("event=fetch_blocked caller=%s url=%s final_url=%s content_length=%s",
+                           caller, req.url, final_url, content_length)
+        else:
+            logger.debug("event=fetch_success caller=%s url=%s final_url=%s status=%s content_length=%s blocked=%s",
+                        caller, req.url, final_url, http_status, content_length, is_blocked)
+        
         return FetchHtmlResponse(status="ok", **result)
     except Exception as error:
+        logger.warning("event=fetch_failed caller=%s url=%s error=%s",
+                       caller, req.url, str(error))
         raise HTTPException(
             status_code=502,
             detail=FetchHtmlResponse(
@@ -167,8 +189,14 @@ def fetch_html_endpoint(req: FetchHtmlRequest):
 
 
 @app.get("/api/web/search")
-def web_search_endpoint(q: str = Query(..., description="Search query")):
+def web_search_endpoint(request: Request, q: str = Query(..., description="Search query")):
     """Search via DuckDuckGo Instant Answer API (Plan 9). Free, no key required."""
+    client = request.client.host if request.client else "unknown"
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    caller = forwarded_for or client
+    
+    logger.debug("event=web_search_request caller=%s query=%s", caller, q)
+    
     try:
         resp = requests.get(
             "https://api.duckduckgo.com/",
@@ -193,8 +221,13 @@ def web_search_endpoint(q: str = Query(..., description="Search query")):
                     "url": topic.get("FirstURL", ""),
                 })
 
+        result_count = len(results)
+        logger.debug("event=web_search_success caller=%s query=%s results=%s",
+                    caller, q, result_count)
         return {"query": q, "results": results[:10]}
     except Exception as exc:
+        logger.warning("event=web_search_failed caller=%s query=%s error=%s",
+                       caller, q, str(exc))
         raise HTTPException(status_code=502, detail={"error": str(exc)})
 
 

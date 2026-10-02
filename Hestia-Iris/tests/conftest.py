@@ -20,7 +20,7 @@ import pytest
 
 
 class FakeHecateMailbox:
-    """Stands in for Hecate's /api/gateway/mail/* (Iris now delegates mail to Hecate)."""
+    """Stands in for Hecate's /api/gateway/email/* + mail/status (Iris now delegates mail to Hecate)."""
 
     def __init__(self) -> None:
         self.messages: list[dict] = []
@@ -29,7 +29,7 @@ class FakeHecateMailbox:
     def __call__(self, method, path, *, query=None, body=None, timeout=30):
         self.calls.append((method, path, query, body))
         query = query or {}
-        if path.endswith("mail/send"):
+        if path.endswith("/send"):
             row = {"id": f"m{len(self.messages)}", "to": body["to"], "subject": body["subject"],
                    "body": body["body"], "from": "me@example.com",
                    "thread_id": body["subject"].lower().removeprefix("re: ").strip(),

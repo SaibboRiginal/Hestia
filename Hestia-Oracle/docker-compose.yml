@@ -6,6 +6,8 @@ services:
     restart: always
     ports:
       - "19004:19004"  # Oracle API port
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Ollama on host (required by rulebook §8)
     environment:
       - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API base URL for memory, entities, history
       # Module tools are discovered dynamically via Hub (/api/discovery/module-tools

@@ -25,6 +25,7 @@ GROUP_ORDER: list[tuple[str, str, str]] = [
     ("immobiliare",    "🏠 Immobiliare",    "Cerca e monitora annunci"),
     ("pianificazione", "📅 Pianificazione", "Crea eventi, task e promemoria"),
     ("documenti",      "📎 Documenti",      "Documenti caricati e archiviati"),
+    ("🌐 webui",       "🌐 WebUI",          "Accesso e gestione interfaccia web"),
     ("sistema",        "⚙️ Sistema",        "Stato e diagnostica del sistema"),
     ("impostazioni",   "⚙️ Impostazioni",   "Sessione, tono e preferenze"),
     ("altro",          "🔧 Altro",          "Altri comandi disponibili"),
