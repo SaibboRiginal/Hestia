@@ -22,8 +22,13 @@ def upsert_calendar_item(
             models.CalendarItem.source == item.source,
         ).first()
         if existing:
-            for field, value in item.model_dump(exclude={"external_id", "source"}).items():
+            # nag_enabled is the user's choice (PATCH /nag): provider syncs must not
+            # re-enable it every few minutes. A moved event gets reminded again.
+            old_start = existing.start_at
+            for field, value in item.model_dump(exclude={"external_id", "source", "nag_enabled"}).items():
                 setattr(existing, field, value)
+            if old_start is not None and item.start_at is not None and old_start != item.start_at:
+                existing.last_notified_bucket = None
             db.commit()
             db.refresh(existing)
             return existing

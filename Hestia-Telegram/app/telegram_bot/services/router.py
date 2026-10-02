@@ -6,6 +6,7 @@ and the command executor, plus argument parsing and template resolution.
 from __future__ import annotations
 
 import re
+from urllib.parse import quote
 import logging
 from typing import Any
 
@@ -177,6 +178,19 @@ def route_command_from_metadata(
 
     path_value = resolve_template(str(command_meta.get(
         "path", "")).strip(), session_id, chat_id, parsed_args)
+    # Path variables declared as $name or {name} (MCP tools: "$task_id",
+    # "{provider}") were sent literally; fill them from args and drop them
+    # from the query string.
+    consumed: set[str] = set()
+
+    def _fill(match: re.Match) -> str:
+        key = (match.group(1) or match.group(2) or "").lower()
+        consumed.add(key)
+        return quote(str(parsed_args.get(key, "")), safe="")
+
+    path_value = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}", _fill, str(path_value or ""))
+    for key in consumed:
+        query.pop(key, None)
     return route_service_command(
         service=str(command_meta.get("service", "")).strip(),
         path=str(path_value or "").strip(),

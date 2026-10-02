@@ -160,3 +160,11 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## Reminder & agenda behaviour (fixes)
+
+- Reminder times shown in `CHRONOS_DISPLAY_TZ` / `TZ` (default Europe/Rome) with Italian month names; titles,
+  locations and descriptions are HTML-escaped. All-day events (date-only) are flagged `all_day`.
+- `GET /api/calendar/agenda` window starts at local midnight (today's past and all-day events included).
+- Provider syncs no longer overwrite the user's `nag_enabled` choice; a rescheduled event (new `start_at`) resets
+  `last_notified_bucket` so it is reminded again.
