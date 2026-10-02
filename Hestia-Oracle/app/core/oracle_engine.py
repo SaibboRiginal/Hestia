@@ -373,7 +373,7 @@ class OracleEngine:
             os.getenv("ORACLE_TIMEZONE", "Europe/Rome")).strip() or "Europe/Rome"
         self._agent_action_tool_policy = os.getenv(
             "ORACLE_AGENT_ACTION_TOOL_POLICY",
-            "If the user asks for an operational change (create, update, delete, enable, disable), you must call at least one relevant tool before final answer when matching tools exist.",
+            "Richiesta di modifica (crea, aggiorna, elimina, attiva, disattiva) + tool compatibile -> chiama almeno un tool prima della risposta.",
         ).strip()
 
         # ── High-impact action approval gate ────────────────────────────────
@@ -1096,11 +1096,9 @@ class OracleEngine:
                 f"CURRENT_DATETIME_CONTEXT:\n{temporal_context}")
         if "system" in intent.valid_domains:
             agent_loop_client_instructions_parts.append(
-                "SYSTEM DOMAIN DIRECTIVE: The user is asking about your "
-                "state or the system's health. You MUST call the available "
-                "system introspection tool to gather real data before "
-                "answering. Never answer system questions from conversation "
-                "history or generic platitudes — use tools."
+                "SYSTEM: domanda su stato/salute di Hestia o richiesta di "
+                "svilupparla. CHIAMA i tool system prima di rispondere. "
+                "Mai rispondere da history o a memoria."
             )
         if client_instructions and str(client_instructions).strip():
             agent_loop_client_instructions_parts.append(

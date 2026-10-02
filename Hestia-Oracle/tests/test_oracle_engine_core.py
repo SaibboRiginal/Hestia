@@ -393,7 +393,7 @@ class TestChatActionIntent:
 
         assert len(captured_prompts) > 0, f"No prompts captured. call_count={call_count[0]}"
         assert any(
-            "ACTION INTENT" in p or "operational change" in p.lower()
+            "ACTION INTENT" in p or "richiesta di modifica" in p.lower()
             for p in captured_prompts
         ), f"No action intent found in {len(captured_prompts)} captured prompts"
 

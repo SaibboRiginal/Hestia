@@ -210,3 +210,14 @@ Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-c
 `local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model `MODEL_USECASE_CODE_MODEL` or `qwen2.5-coder:14b`).
 Example cloud: `ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1`, `_MODEL=qwen/qwen3-coder`, `_API_KEY=sk-or-…`.
 Timeout per call: `ORACLE_LLM_CHAT_TIMEOUT_SEC` (600). Used by Hephaestus Forge engines `local`/`cloud`.
+
+## Prompts (caveman style, single source)
+
+- All prompts live in `app/core/services/prompt_config.py` (`_DEFAULT_PROMPTS`). Style: short imperative lines,
+  zero filler — every token is paid on every turn (small local context, billed cloud). ~40% fewer chars than before.
+- `app/prompts/oracle_prompts.json` (or `ORACLE_PROMPTS_FILE`) is for **runtime overrides only** and ships empty `{}`.
+  It used to duplicate the defaults with drifted content (two sources of truth); the live persona (female voice,
+  premium tone) and Telegram-HTML rules were merged into the defaults.
+- Removed dead prompts never referenced by code: `router_system`, `scribe_system`, `quick_chat_template`,
+  `action_selector_template`, `action_intent_detector_template`, `arg_picker_scope_selector_template`.
+- Classifier routes self-development requests ("aggiungi una funzione", "approva sviluppo", "usa il cloud") to `domain=system`.
