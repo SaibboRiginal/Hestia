@@ -5,4 +5,5 @@ python-dotenv==1.0.1
 google-api-python-client>=2.126.0
 google-auth>=2.29.0
 google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
 msal>=1.28.0

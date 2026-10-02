@@ -1,0 +1,39 @@
+services:
+  webui:
+    build:
+      context: ..
+      dockerfile: Hestia-WebUI/Dockerfile
+    container_name: hestia_webui
+    restart: unless-stopped
+    ports:
+      - "19015:19015"
+    environment:
+      # Core Hestia
+      - Hestia__HubApiUrl=http://hestia_hub:19001/api
+      - Hestia__ServiceBaseUrl=http://hestia_webui:19015
+      - Hestia__ServiceName=webui
+      - Hestia__ServiceVersion=1.0.0
+      - Hestia__ServiceType=integration
+      - Hestia__ServiceTags=integration,messaging,chat
+      - Hestia__ServiceTopologyTags=layer:client,domain:ui,status:stable
+      # WebUI specific
+      - WebUI__Port=19015
+      - WebUI__SecretKey=${WEBUI_SECRET_KEY:-}
+      - WebUI__TokenLifetimeHours=72
+      - WebUI__RateLimitPerMinute=60
+      - WebUI__MaxUploadSizeMB=50
+      - WebUI__CorsOrigin=*
+      # Logging
+      - Logging__LogLevel__Default=Information
+      - Logging__LogLevel__Hestia.WebUI=Information
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+    volumes:
+      - webui_data:/app/data
+    networks:
+      - hestia_net
+
+networks:
+  hestia_net:
+    external: true
+volumes:
+  webui_data:

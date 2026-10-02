@@ -29,12 +29,18 @@ class ScoutRetrievalService:
             entity.get("specs"), dict) else {}
         location = entity.get("location") if isinstance(
             entity.get("location"), dict) else {}
+        listing_status = entity.get("listing_status") or (
+            entity.get("payload", {}).get("listing_status") if isinstance(entity.get("payload"), dict) else None
+        )
         return {
             "url": entity.get("url") or entity.get("entity_id"),
             "title": entity.get("title"),
             "price": entity.get("price"),
             "address": entity.get("address"),
             "summary": entity.get("summary"),
+            "listing_status": listing_status or "unknown",
+            "created_at": entity.get("created_at"),
+            "updated_at": entity.get("updated_at"),
             "location": {
                 "lat": location.get("lat"),
                 "lon": location.get("lon"),

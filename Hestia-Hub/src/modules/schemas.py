@@ -180,3 +180,4 @@ class RouteRequest(BaseModel):
     query: dict[str, Any] = Field(default_factory=dict)
     body: Any | None = None
     timeout_seconds: float = 8.0
+    stream: bool = False

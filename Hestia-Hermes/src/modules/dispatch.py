@@ -14,7 +14,18 @@ class DispatchService:
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
-    def send(self, channel: str, target: str, payload: dict[str, Any] | None = None, message: str | None = None, domain: str = "", entity_id: str = "", subscription_id: int | None = None, metadata: dict[str, Any] | None = None) -> tuple[bool, str]:
+    def send(
+        self,
+        channel: str,
+        target: str,
+        payload: dict[str, Any] | None = None,
+        message: str | None = None,
+        actions: list[dict[str, str]] | None = None,
+        domain: str = "",
+        entity_id: str = "",
+        subscription_id: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> tuple[bool, str]:
         normalized = (channel or "").strip().lower()
         trace_id = ""
         if isinstance(metadata, dict):
@@ -28,6 +39,7 @@ class DispatchService:
                 target,
                 payload=payload,
                 message=message,
+                actions=actions,
                 domain=domain,
                 entity_id=entity_id,
                 subscription_id=subscription_id,
@@ -36,11 +48,21 @@ class DispatchService:
 
         return False, f"unsupported channel: {channel}"
 
-    def _send_telegram_via_service(self, chat_id: str, payload: dict[str, Any] | None = None, message: str | None = None, domain: str = "", entity_id: str = "", subscription_id: int | None = None, trace_id: str | None = None) -> tuple[bool, str]:
+    def _send_telegram_via_service(
+        self,
+        chat_id: str,
+        payload: dict[str, Any] | None = None,
+        message: str | None = None,
+        actions: list[dict[str, str]] | None = None,
+        domain: str = "",
+        entity_id: str = "",
+        subscription_id: int | None = None,
+        trace_id: str | None = None,
+    ) -> tuple[bool, str]:
         """Route to Telegram service's control API for message dispatch via Hub"""
         endpoint = f"{self.hub_api_url}/route/telegram/api/dispatch/send"
         effective_trace_id = str(trace_id or "").strip() or str(uuid4())
-        dispatch_body = {
+        dispatch_body: dict[str, Any] = {
             "target": str(chat_id),
             "trace_id": effective_trace_id,
         }
@@ -51,6 +73,8 @@ class DispatchService:
             dispatch_body["subscription_id"] = subscription_id
         elif message:
             dispatch_body["message"] = message
+            if actions:
+                dispatch_body["actions"] = actions
 
         try:
             response = requests.post(

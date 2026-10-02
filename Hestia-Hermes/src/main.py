@@ -11,14 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 try:
     from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
-    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
+    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready, wait_for_hub_services
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
-    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
+    from hestia_common.startup_utils import hub_health_url, wait_for_http_ready, wait_for_hub_services
 
 from .modules.schemas import DispatchSendRequest, EventIngestRequest, OutboundEventStateUpdateRequest
 from .modules.service import HermesService
@@ -29,6 +29,46 @@ app = FastAPI(title="Hestia Hermes", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 service = HermesService()
+
+
+def _bootstrap_system_subscription(hub_api_url: str) -> None:
+    """Ensure a permanent subscription exists for service.action_required events.
+    Idempotent — if it already exists, Archive handles the duplicate gracefully."""
+    notify_target = os.getenv("NOTIFY_TARGET", "").strip()
+    if not notify_target:
+        logger.warning("event=system_subscription_skipped reason=NOTIFY_TARGET_not_set")
+        return
+    try:
+        resp = requests.post(
+            f"{hub_api_url}/route/archive/api/subscriptions",
+            json={
+                "method": "POST",
+                "headers": {},
+                "query": {},
+                "body": {
+                    "subscription_id": f"sys-action-required-{notify_target}",
+                    "domain": "system",
+                    "event_type": "service.action_required",
+                    "filters": {},
+                    "channels": [{"type": "telegram", "target": notify_target}],
+                    "owner": str(notify_target),
+                    "is_active": True,
+                },
+                "timeout_seconds": 8,
+            },
+            timeout=10,
+        )
+        if resp.status_code < 400:
+            logger.info("event=system_subscription_bootstrapped")
+        else:
+            logger.warning(
+                "event=system_subscription_bootstrap_failed "
+                "status=%s body=%s",
+                resp.status_code,
+                resp.text[:300],
+            )
+    except Exception as exc:
+        logger.warning("event=system_subscription_bootstrap_failed error=%s", exc)
 
 
 @app.on_event("startup")
@@ -76,6 +116,16 @@ def register_on_hub_startup():
                     base_url=service_base_url,
                     status_code=response.status_code,
                 )
+                # Wait for Archive before bootstrapping subscriptions.
+                # Without Archive, event processing silently returns 0 matches.
+                wait_for_hub_services(
+                    hub_api_url,
+                    ["archive"],
+                    timeout_seconds=30,
+                    interval_seconds=1.5,
+                    logger=logger,
+                )
+                _bootstrap_system_subscription(hub_api_url)
                 return
 
             log_event(

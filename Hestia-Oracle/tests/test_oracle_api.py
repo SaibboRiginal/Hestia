@@ -227,3 +227,99 @@ class TestOracleTasksEndpoint:
         mock_engine.get_background_task.return_value = None
         resp = client.get("/api/tasks/nonexistent-task-id")
         assert resp.status_code == 404
+
+
+@pytest.mark.api
+class TestOracleLlmGenerateEndpoint:
+    """/api/llm/generate — primary/fallback chain resolves MODEL_USECASE_GENERIC_* env."""
+
+    def _mock_agent_chain(self, monkeypatch, primary_exc):
+        """Patch agents.universal_agent.UniversalAgent so the FIRST instance
+        (primary) fails and the second (fallback) succeeds — recording the
+        provider/model each instance was constructed with."""
+        created = []
+
+        class FakeAgent:
+            def __init__(self, role_prompt="", provider="", model_name=""):
+                self.provider = provider
+                self.model_name = model_name
+                created.append(self)
+
+            def ask(self, prompt):
+                if len(created) == 1:
+                    raise primary_exc
+                return "fallback reply"
+
+        monkeypatch.setattr(
+            "agents.universal_agent.UniversalAgent", FakeAgent)
+        return created
+
+    def test_fallback_uses_model_usecase_generic_fallback_env(
+            self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+        monkeypatch.setenv("MODEL_USECASE_GENERIC_PROVIDER", "ollama")
+        monkeypatch.setenv("MODEL_USECASE_GENERIC_MODEL", "gemma4:e4b")
+        monkeypatch.setenv(
+            "MODEL_USECASE_GENERIC_FALLBACK_PROVIDER", "gemini")
+        monkeypatch.setenv(
+            "MODEL_USECASE_GENERIC_FALLBACK_MODEL", "gemini-2.0-flash-lite")
+        # Legacy vars must NOT shadow the MODEL_USECASE_* ones
+        monkeypatch.setenv("ANALYST_FALLBACK_MODEL", "legacy-model")
+        monkeypatch.setenv("LLM_FALLBACK_MODEL", "legacy-model")
+
+        created = self._mock_agent_chain(
+            monkeypatch, primary_exc=RuntimeError("ollama down"))
+
+        resp = client.post("/api/llm/generate", json={"prompt": "test"})
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["response"] == "fallback reply"
+        assert data["provider"] == "gemini"
+        assert data["model"] == "gemini-2.0-flash-lite"
+        assert len(created) == 2
+        assert created[1].provider == "gemini"
+        assert created[1].model_name == "gemini-2.0-flash-lite"
+
+    def test_fallback_uses_legacy_vars_when_usecase_unset(
+            self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+        monkeypatch.delenv("MODEL_USECASE_GENERIC_FALLBACK_PROVIDER", raising=False)
+        monkeypatch.delenv("MODEL_USECASE_GENERIC_FALLBACK_MODEL", raising=False)
+        monkeypatch.setenv("ANALYST_FALLBACK_PROVIDER", "ollama")
+        monkeypatch.setenv("ANALYST_FALLBACK_MODEL", "mistral:7b")
+
+        created = self._mock_agent_chain(
+            monkeypatch, primary_exc=RuntimeError("ollama down"))
+
+        resp = client.post("/api/llm/generate", json={"prompt": "test"})
+
+        assert resp.status_code == 200
+        assert resp.json()["provider"] == "ollama"
+        assert resp.json()["model"] == "mistral:7b"
+        assert created[1].provider == "ollama"
+        assert created[1].model_name == "mistral:7b"
+
+    def test_both_fail_returns_500_with_context(
+            self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+
+        class AlwaysFails:
+            def __init__(self, role_prompt="", provider="", model_name=""):
+                pass
+
+            def ask(self, prompt):
+                raise RuntimeError("nope")
+
+        monkeypatch.setattr(
+            "agents.universal_agent.UniversalAgent", AlwaysFails)
+
+        resp = client.post("/api/llm/generate", json={"prompt": "test"})
+
+        assert resp.status_code == 500
+        assert "Fallback" in resp.json()["detail"]
+
+    def test_missing_prompt_returns_400(self, oracle_client):
+        client, _ = oracle_client
+        resp = client.post("/api/llm/generate", json={"prompt": "  "})
+        assert resp.status_code == 400

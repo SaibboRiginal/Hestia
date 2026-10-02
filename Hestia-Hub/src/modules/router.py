@@ -1,9 +1,18 @@
-from typing import Any
+from typing import Any, Iterator
 
 import requests
 
 
-def proxy_request(base_url: str, path: str, method: str, query: dict[str, Any], body: Any, headers: dict[str, str], timeout_seconds: float) -> tuple[int, Any]:
+def proxy_request(
+    base_url: str,
+    path: str,
+    method: str,
+    query: dict[str, Any],
+    body: Any,
+    headers: dict[str, str],
+    timeout_seconds: float,
+    stream: bool = False,
+) -> tuple[int, Any] | Iterator[bytes]:
     normalized_path = path.lstrip("/")
     target = f"{base_url.rstrip('/')}/{normalized_path}" if normalized_path else base_url.rstrip("/")
 
@@ -14,7 +23,11 @@ def proxy_request(base_url: str, path: str, method: str, query: dict[str, Any], 
         json=body,
         headers=headers,
         timeout=max(1.0, float(timeout_seconds)),
+        stream=stream,
     )
+
+    if stream:
+        return response.iter_lines()
 
     content_type = response.headers.get("content-type", "")
     if "application/json" in content_type:

@@ -244,6 +244,35 @@ def route_request(service_name: str, path: str, req: RouteRequest):
     else:
         target_names = [service_name]
 
+    # ── Stream mode — forward NDJSON/SSE directly (no envelope) ───────────
+    if req.stream and len(target_names) == 1:
+        from fastapi.responses import StreamingResponse
+        candidates = registry.get(target_names[0])
+        if not candidates:
+            raise HTTPException(status_code=404, detail=f"Service not registered: {target_names[0]}")
+        svc = candidates[0]
+        import requests as req_lib
+        target_url = f"{svc['base_url'].rstrip('/')}/{path.lstrip('/')}"
+        upstream = req_lib.request(
+            method=req.method.upper(),
+            url=target_url,
+            params=req.query,
+            json=req.body,
+            headers=req.headers,
+            timeout=max(1.0, req.timeout_seconds),
+            stream=True,
+        )
+        upstream.raise_for_status()
+
+        # iter_lines() strips \n — we must add it back so the client can
+        # parse NDJSON line-by-line with ReadLineAsync / readline().
+        def _ndjson_lines():
+            for line in upstream.iter_lines():
+                if line:
+                    yield line + b"\n"
+
+        return StreamingResponse(_ndjson_lines(), media_type="application/x-ndjson")
+
     # ── Fan out ────────────────────────────────────────────────────────────
     per_target_timeout = max(2.0, req.timeout_seconds / max(1, len(target_names)))
     results: list[dict[str, Any]] = []

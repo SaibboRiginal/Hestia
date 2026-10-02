@@ -296,35 +296,34 @@ def _split_html_link_bullets(html_text: str) -> list[str]:
         return [m for m in messages if m.strip()]
 
     # Fallback: check for bullet-per-line splitting
+    # Check for bullet lists - split each bullet into its own message
     lines = [line.rstrip() for line in text.splitlines()]
 
     def is_bullet_line(line: str) -> bool:
-        stripped = line.strip().lower()
+        stripped = line.strip()
+        stripped_lower = stripped.lower()
+        # Check for various bullet indicators
         return bool(
-            stripped.startswith(("•", "-", "*", "<li"))
-            or stripped.startswith("&bull;")
+            stripped.startswith(("•", "- ", "* ", "*", "-"))
+            or stripped_lower.startswith(("<li", "&bull;"))
+            or stripped.startswith("•")
         )
 
-    bullet_link_lines = [
-        line for line in lines if is_bullet_line(line) and has_link(line)]
-    if not bullet_link_lines:
-        return split_long_message(text)
-
-    messages = []
-    intro_lines = [line for line in lines if line not in bullet_link_lines]
-    intro_text = "\n".join(
-        [line for line in intro_lines if line.strip()]).strip()
-    if intro_text:
-        messages.extend(split_long_message(intro_text))
-
-    for line in bullet_link_lines:
-        rendered = line.strip()
-        if rendered:
-            messages.extend(split_long_message(rendered))
-
-    return [m for m in messages if m.strip()]
-
-
+    bullet_lines = [line for line in lines if is_bullet_line(line)]
+    
+    if bullet_lines:
+        messages = []
+        intro_lines = [line for line in lines if line not in bullet_lines and line.strip()]
+        intro_text = "\n".join(intro_lines).strip()
+        if intro_text:
+            messages.extend(split_long_message(intro_text))
+        for bullet_line in bullet_lines:
+            rendered = bullet_line.strip()
+            if rendered:
+                messages.extend(split_long_message(rendered))
+        return [m for m in messages if m.strip()]
+    
+    return split_long_message(text)
 def build_chat_messages(raw_markdown: str) -> list[str]:
     text = (raw_markdown or "").strip()
     if not text:
@@ -369,8 +368,8 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
         if not links:
             # Split bullet lists into individual messages
             _lines = [l.strip() for l in paragraph.splitlines() if l.strip()]
-            _bullet_lines = [l for l in _lines if re.match(r"^[-*•]\s+", l)]
-            if _bullet_lines and len(_bullet_lines) >= 2:
+            _bullet_lines = [l for l in _lines if re.match(r"^[-*•]\s*", l)]
+            if _bullet_lines:
                 _non_bullets = [l for l in _lines if l not in _bullet_lines]
                 if _non_bullets:
                     intro = format_for_telegram("\n".join(_non_bullets)).strip()
@@ -388,7 +387,7 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
 
         lines = [line.strip()
                  for line in paragraph.splitlines() if line.strip()]
-        bullet_lines = [line for line in lines if re.match(r"^[-*•]\s+", line)]
+        bullet_lines = [line for line in lines if re.match(r"^[-*•]\s*", line)]
         bullet_lines_with_links = [
             line for line in bullet_lines if link_pattern.search(line)
         ]

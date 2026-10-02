@@ -116,7 +116,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
-| `POST` | `/api/llm/generate` | Raw LLM call for internal service use |
+| `POST` | `/api/llm/generate` | Raw LLM call for internal service use — primary/fallback chain follows `MODEL_USECASE_GENERIC_{PROVIDER,MODEL}` + `MODEL_USECASE_GENERIC_FALLBACK_{PROVIDER,MODEL}` env vars (same source of truth as AgentFactory) |
 | `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
 | `GET` | `/api/athena/hints` | List non-expired Athena hints (optional `session_id`) |
 | `DELETE` | `/api/chat/{session_id}` | Clear a session |

@@ -71,6 +71,7 @@ def on_snooze_feedback(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("grp:"))
 def on_group_nav(call):
+    logger.info("event=callback_group_nav data=%s chat_id=%s", call.data, call.message.chat.id)
     handle_group_callback(call)
 
 
@@ -86,11 +87,13 @@ def on_arg_picker(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("run:"))
 def on_run_command(call):
+    logger.info("event=callback_run_command data=%s chat_id=%s", call.data, call.message.chat.id)
     handle_run_command(call)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("set:"))
 def on_set_picker(call):
+    logger.info("event=callback_set_picker data=%s chat_id=%s", call.data, call.message.chat.id)
     handle_set_picker(call)
 
 

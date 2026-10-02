@@ -13,7 +13,7 @@ class ArchiveClient:
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
-    def _route_archive(self, method: str, endpoint: str, body=None, query=None, timeout: int = 8):
+    def _route_archive(self, method: str, endpoint: str, body=None, query=None, timeout: int = 8, _attempt: int = 0):
         normalized = endpoint.lstrip("/")
         response = requests.post(
             f"{self.hub_api_url}/route/archive/{normalized}",
@@ -26,6 +26,17 @@ class ArchiveClient:
             },
             timeout=timeout + 1,
         )
+        # 503 = Hub couldn't route (target service not registered yet).
+        # Retry a few times — the service may be starting up.
+        if response.status_code == 503 and _attempt < 3:
+            logger.info(
+                "event=archive_route_retry_attempt endpoint=%s attempt=%d",
+                endpoint, _attempt + 1)
+            import time as _time
+            _time.sleep(1.0 * (_attempt + 1))
+            return self._route_archive(
+                method, endpoint, body, query, timeout, _attempt=_attempt + 1)
+
         if response.status_code != 200:
             logger.warning(
                 "event=archive_route_call_failed_endpoint Archive route call failed | endpoint=%s status=%s body=%s",
@@ -138,12 +149,52 @@ class ArchiveClient:
                 "event=archive_route_exception_outbound_state Archive route exception for outbound state update | error=%s", error)
         return False
 
-    def find_active_outbound_event(self, dedupe_key: str) -> dict[str, Any] | None:
+    def find_active_outbound_event(
+        self,
+        dedupe_key: str,
+        max_age_seconds: float | None = None,
+    ) -> dict[str, Any] | None:
+        """Return the active outbound event for *dedupe_key*, or None.
+
+        When *max_age_seconds* is provided, events whose ``updated_at`` is
+        older than that threshold are treated as stale — they no longer block
+        re-delivery.  This prevents permanent deduplication for recurring
+        events like ``service.action_required`` while still suppressing spam
+        within the cooldown window.
+        """
         rows = self.get_outbound_events(
             {"dedupe_key": dedupe_key, "limit": 20})
         active_states = {"created", "queued", "delivered", "seen", "answered"}
+
+        if max_age_seconds is not None and max_age_seconds > 0:
+            from datetime import datetime, timezone, timedelta
+            cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)
+
         for row in rows:
             state = str(row.get("lifecycle_state", "")).strip().lower()
-            if state in active_states:
-                return row
+            if state not in active_states:
+                continue
+
+            # Time-based expiry: treat old delivered/seen/answered events as
+            # stale so recurring notifications (e.g. auth failures) are not
+            # permanently silenced.
+            if max_age_seconds is not None and max_age_seconds > 0:
+                updated_raw = row.get("updated_at")
+                if updated_raw:
+                    try:
+                        updated_at = datetime.fromisoformat(str(updated_raw).replace("Z", "+00:00"))
+                        if updated_at < cutoff:
+                            logger.info(
+                                "event=outbound_event_stale "
+                                "dedupe_key=%s state=%s age_seconds=%d "
+                                "max_age_seconds=%d",
+                                dedupe_key, state,
+                                int((datetime.now(timezone.utc) - updated_at).total_seconds()),
+                                int(max_age_seconds),
+                            )
+                            continue  # stale — don't block re-delivery
+                    except (ValueError, TypeError):
+                        pass  # unparseable timestamp — err on the side of allowing
+
+            return row
         return None
