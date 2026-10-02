@@ -149,6 +149,10 @@ class ToolRegistry:
             else:
                 services = data if isinstance(data, list) else []
             if isinstance(services, list):
+                # Rebuild from scratch: deregistered services must disappear
+                # (stale entries used to linger and time out on every listing).
+                self._service_mcp_map = {}
+                self._service_domains = {}
                 for svc in services:
                     if not isinstance(svc, dict):
                         continue
