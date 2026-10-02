@@ -6,9 +6,15 @@ result to ``data/google_token.json`` (volume-mounted, survives Docker restarts).
 Requirements (host only, one-time):
     pip install google-auth-oauthlib google-api-python-client
 
+The OAuth client in Google Cloud Console must be of type **Desktop app**
+(loopback redirect on a random localhost port is allowed only for that type).
+
 Usage:
-    python scripts/google_auth.py
-    :: or just double-click: google-oauth.bat
+    python tools/google_auth.py            # Windows: double-click google-oauth.bat
+    python tools/google_auth.py --force    # ignore existing token, re-consent
+
+Alternative without host Python: ask Hestia "collega Google Calendar" in
+Telegram (Hecate runs the same flow server-side).
 """
 import json
 import os
@@ -42,10 +48,12 @@ def _load_env_vars(env_path: Path) -> dict:
 
 
 def main():
-    # 1) Load client_id / client_secret from .env
+    force = "--force" in sys.argv
+
+    # 1) Load client_id / client_secret from .env (process env wins)
     env = _load_env_vars(ENV_FILE)
-    client_id = env.get("GOOGLE_CLIENT_ID", "").strip()
-    client_secret = env.get("GOOGLE_CLIENT_SECRET", "").strip()
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip() or env.get("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip() or env.get("GOOGLE_CLIENT_SECRET", "").strip()
 
     if not client_id or not client_secret:
         print("ERROR: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in:")
@@ -57,7 +65,7 @@ def main():
     from google.auth.transport.requests import Request
 
     creds = None
-    if TOKEN_FILE.exists():
+    if TOKEN_FILE.exists() and not force:
         try:
             creds = Credentials.from_authorized_user_file(
                 str(TOKEN_FILE), SCOPES)
@@ -65,8 +73,9 @@ def main():
             pass
 
     if creds and creds.valid:
-        print("Existing token is still valid — no re-auth needed.")
+        print("Existing token is still valid — no re-auth needed (use --force to redo).")
         _print_summary(creds)
+        _notify_hecate()
         return
 
     if creds and creds.expired and creds.refresh_token:
@@ -76,6 +85,7 @@ def main():
             _persist(creds)
             print("Token refreshed successfully.")
             _print_summary(creds)
+            _notify_hecate()
             return
         except Exception as exc:
             print(f"Refresh failed ({exc}) — starting full OAuth flow...\n")
@@ -87,8 +97,8 @@ def main():
         "installed": {
             "client_id": client_id,
             "client_secret": client_secret,
-            "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob",
-                               "http://localhost"],
+            # Loopback only: the OOB redirect was blocked by Google in 2023.
+            "redirect_uris": ["http://localhost"],
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
         }
@@ -105,11 +115,18 @@ def main():
         authorization_prompt_message="",
         success_message="Authorization complete! You may close this tab.",
         open_browser=True,
+        access_type="offline",
+        prompt="consent",  # without this Google omits refresh_token on re-consent
     )
+    if not creds.refresh_token:
+        print("ERROR: Google returned no refresh_token. Remove the app at")
+        print("       https://myaccount.google.com/permissions and run again with --force.")
+        sys.exit(1)
 
     _persist(creds)
     print("Token saved.")
     _print_summary(creds)
+    _notify_hecate()
 
 
 def _persist(creds):
@@ -123,14 +140,31 @@ def _persist(creds):
         "client_id": creds.client_id,
         "client_secret": creds.client_secret,
         "scopes": list(creds.scopes or SCOPES),
+        "expiry": (creds.expiry.isoformat() + "Z") if getattr(creds, "expiry", None) else None,
     }
     TOKEN_FILE.write_text(json.dumps(token_data, indent=2), encoding="utf-8")
     print(f"\nToken persisted to: {TOKEN_FILE}")
 
 
+def _notify_hecate():
+    """Ask a running Hecate to reload the token (no container restart needed)."""
+    import urllib.request
+
+    url = os.getenv("HECATE_URL", "http://localhost:19003").rstrip("/") + "/api/gateway/auth/refresh/google"
+    try:
+        req = urllib.request.Request(url, method="POST", data=b"")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            body = json.loads(resp.read() or b"{}")
+        state = "ACTIVE" if body.get("refreshed") else f"not active: {body}"
+        print(f"\n  Hecate reloaded the token -> Google provider {state}")
+    except Exception as exc:
+        print(f"\n  Hecate not reachable at {url} ({exc}).")
+        print("  It will pick up the token on next start.")
+
+
 def _print_summary(creds):
     print(f"\n  refresh_token: {creds.refresh_token}")
-    print(f"  access_token:  {creds.token[:30]}...")
+    print(f"  access_token:  {(creds.token or '')[:30]}...")
     print(f"  expiry:        {getattr(creds, 'expiry', '?')}")
     print(f"\n  Copy this line into {ENV_FILE} if you want a bootstrap fallback:")
     print(f"  GOOGLE_REFRESH_TOKEN={creds.refresh_token}")

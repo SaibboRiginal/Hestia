@@ -58,7 +58,8 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
 | `POST` | `/api/gateway/auth/initiate/{provider}` | Start OAuth flow: Google redirect URL or Microsoft device-code |
 | `GET` | `/api/gateway/auth/poll/{provider}` | Poll completion of pending OAuth device-code flow |
-| `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code for token (Google redirect flow) |
+| `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code (or full pasted redirect URL) for token |
+| `GET` | `/api/gateway/auth/callback/google` | Loopback redirect target — completes Google flow, returns HTML |
 | `DELETE` | `/api/gateway/auth/initiate/{provider}` | Cancel pending OAuth flow |
 | `GET` | `/api/gateway/calendar/events` | List events for a provider/calendar |
 | `POST` | `/api/gateway/calendar/events` | Create event on target providers |
@@ -70,18 +71,63 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy) |
 | `POST` | `/api/ingest/calendar/trigger` | Sync calendar events from providers into Archive |
 
-### OAuth Flow (Interactive Authentication)
+### Google setup (one-time, ~5 min)
 
-Hecate supports interactive OAuth for users who have not yet granted access:
+> History: the old flow used the "out-of-band" redirect (`urn:ietf:wg:oauth:2.0:oob`).
+> Google blocked OOB in January 2023, so the consent page always failed with
+> `Error 400: invalid_request`. The current flow uses a **loopback redirect + PKCE**.
+
+1. Google Cloud Console → *APIs & Services* → enable **Google Calendar API**.
+2. *OAuth consent screen* → User type **External** → add your Google account to *Test users*.
+   Then press **Publish app → In production**. In *Testing* mode Google kills refresh tokens
+   after **7 days** (`invalid_grant`). Unverified "In production" is fine for personal use:
+   you just click *Advanced → Go to app (unsafe)* on the consent page.
+3. *Credentials* → *Create credentials* → *OAuth client ID* → type **Desktop app**.
+   (Desktop clients accept any `http://localhost:<port>` redirect; no redirect URI to register.)
+   Using a *Web application* client instead? Add the exact `GOOGLE_OAUTH_REDIRECT_URI`
+   (default `http://localhost:19003/api/gateway/auth/callback/google`) to its authorized redirect URIs.
+4. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `Hestia-Hecate/app/.env`, restart Hecate.
+5. Authorize — pick one:
+   - **From Telegram (works from the phone):** ask "collega Google Calendar". Open the link,
+     grant access. The final `localhost` page will not load on the phone — that's expected.
+     Copy the full URL from the address bar and paste it in the chat. Telegram forwards it to
+     Hecate automatically and replies "✅ Google collegato".
+   - **From a browser on the Docker host:** call `POST /api/gateway/auth/initiate/google`, open
+     `auth_url`. Google redirects to `localhost:19003/.../callback/google` and Hecate completes
+     the flow by itself.
+   - **Host script:** `google-oauth.bat` (Windows) or `./google-oauth.sh` (Linux/RPi with browser).
+     Writes `data/google_token.json` and hot-reloads Hecate via `POST /api/gateway/auth/refresh/google`.
+6. Check: `GET /api/gateway/auth/status` → `runtime.active` contains `google`.
+
+**Troubleshooting**
+
+| Symptom | Cause / fix |
+|---|---|
+| `Error 400: invalid_request` (OOB) | Old code. Update Hecate. |
+| `redirect_uri_mismatch` | Client is *Web application* without the redirect URI → use *Desktop app*. |
+| `access_denied` | Consent refused, or account not in *Test users*. |
+| `invalid_grant` after ~7 days | Consent screen in *Testing* → publish *In production*, re-authorize. |
+| `invalid_grant` on complete | Code already used/expired (~10 min) → initiate again. |
+| No `refresh_token` returned | Remove the app at myaccount.google.com/permissions, re-authorize. |
+| `state mismatch` | URL from an older attempt → use the latest link. |
+
+### OAuth Flow (API)
 
 1. **Initiate**: `POST /api/gateway/auth/initiate/{provider}`
-   - Google: returns `auth_url` → user opens in browser, copies code
-   - Microsoft: returns `user_code` + `verification_url` → user visits URL and enters code
-2. **Complete (Google)**: `POST /api/gateway/auth/complete/google` with `{"code": "<code>"}`
-3. **Poll (Microsoft)**: `GET /api/gateway/auth/poll/microsoft` until `{"status": "authorized"}`
-4. Token is stored in `GOOGLE_TOKEN_JSON` / `OUTLOOK_REFRESH_TOKEN` env for the process lifetime.
+   - Google: returns `auth_url` + `redirect_uri` (loopback, PKCE S256, `access_type=offline`, `prompt=consent`).
+     The pending session (state + PKCE verifier) is persisted to `data/google_oauth_pending.json`
+     (TTL 15 min), so a restart between initiate and complete does not break the flow.
+   - Microsoft: returns `user_code` + `verification_url` (device-code flow).
+2. **Complete (Google)**, any of:
+   - `GET /api/gateway/auth/callback/google?code=&state=` — loopback redirect target, returns an HTML page.
+   - `POST /api/gateway/auth/complete/google` with `{"code": "<code OR full redirect URL>"}`.
+     `state` is validated when present in the URL. Errors return `{"detail": {"error", "hint"}}`.
+3. **Poll**: `GET /api/gateway/auth/poll/{provider}` → `authorized | pending | no_pending_flow`.
+4. Google token is written to `GOOGLE_TOKEN_FILE` (volume-mounted, survives restarts) and the provider
+   registry is reloaded in place. Microsoft refresh token lives in `OUTLOOK_REFRESH_TOKEN` for the process lifetime.
 
-These endpoints are registered in the Hub command catalog so Oracle and Telegram can guide users through auth.
+MCP/Hub tools: `gateway_auth_status`, `gateway_auth_initiate_google`, `gateway_auth_complete_google`,
+`gateway_auth_initiate_microsoft`, `gateway_auth_poll`.
 
 ### Token Refresh
 
@@ -96,13 +142,14 @@ Falls back to full registry reinit if no providers are active.
 1. The volume-mounted file at `GOOGLE_TOKEN_FILE` (default `/code/data/google_token.json`)
 2. The `GOOGLE_TOKEN_JSON` environment variable (process lifetime)
 
-On startup, Hecate loads from the persistent file first (it holds the most recent token
-from a prior container run), then falls back to `GOOGLE_TOKEN_JSON`.  This prevents the
-`invalid_grant` error that occurs when a stale refresh token from a static `.env` file is
-resent to Google after Google has rotated the token.
+On startup Hecate tries refresh-token candidates in order: persistent file →
+`GOOGLE_REFRESH_TOKEN` → `GOOGLE_TOKEN_JSON` (duplicates skipped). A cached access token is
+reused only when its stored `expiry` is in the future. If a candidate fails (`invalid_grant`),
+the next one is tried, so a revoked token in the file never hides a valid `.env` token.
+Client id/secret from env always win over values stored in the token file.
 
-If the persistent file exists and contains a valid refresh token, the `.env` value is
-effectively ignored — the volume-mounted copy is always more current.
+`POST /api/gateway/auth/refresh/{provider}` refreshes active providers and fully reloads the
+registry when any provider is still unavailable (e.g. token file just written by the host script).
 
 ### Environment Variables
 
@@ -119,6 +166,8 @@ effectively ignored — the volume-mounted copy is always more current.
 | `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (never expires — the only secret needed for API access) |
 | `GOOGLE_TOKEN_JSON` | — | Bundled alternative — refresh_token extracted from here if `GOOGLE_REFRESH_TOKEN` not set |
 | `GOOGLE_TOKEN_FILE` | `/code/data/google_token.json` | Persistent token cache (volume-mounted `data/` dir) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Loopback redirect used by the OAuth flow |
+| `GOOGLE_OAUTH_SCOPES` | `https://www.googleapis.com/auth/calendar` | Space/comma separated scopes |
 | `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
 | `OUTLOOK_CLIENT_ID` | — | Microsoft OAuth app client ID |

@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from providers.registry import CalendarProviderRegistry
@@ -14,6 +15,7 @@ from schemas.calendar_events import CalendarEvent
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
 from core.archive_client import ArchiveClient
 from core.state_manager import StateManager
+from core import google_oauth
 
 load_dotenv()
 
@@ -81,11 +83,33 @@ try:
             title="\U0001f511 Connetti Google Calendar", method="POST", path="/api/gateway/auth/initiate/google",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Presenta il link di autorizzazione Google all'utente. "
-                "Invita l'utente ad aprire il link, concedere l'accesso e poi "
-                "inviare il codice via POST /api/gateway/auth/complete/google."
+                "Dai all'utente il link auth_url (cliccabile). Spiega in 2 righe: "
+                "apri link, concedi accesso; se la pagina finale localhost non si carica è normale, "
+                "copia l'URL intero dalla barra e incollalo qui in chat."
             ),
             telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="gateway_auth_complete_google",
+            description=(
+                "Completa il collegamento Google Calendar. Usa quando l'utente incolla un URL "
+                "che contiene 'code=' (es. http://localhost.../callback/google?code=...) o un codice OAuth."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "URL completo incollato dall'utente, oppure il solo codice"},
+                },
+                "required": ["code"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_complete_google", "params": kw},
+            title="\u2705 Completa collegamento Google", method="POST", path="/api/gateway/auth/complete/google",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Se status=authorized conferma che Google Calendar è collegato. "
+                "Altrimenti riporta errore e hint in breve."
+            ),
+            telegram_visible=False, telegram_group="pianificazione",
         ),
         MCPTool(
             name="gateway_auth_initiate_microsoft",
@@ -143,8 +167,10 @@ def _parse_bool(value: str | None, default: bool = False) -> bool:
 
 def _provider_env_is_configured(provider: str) -> bool:
     if provider == "google":
+        from providers.google import has_stored_token
         return bool(
-            os.getenv("GOOGLE_TOKEN_JSON")
+            has_stored_token()
+            or os.getenv("GOOGLE_TOKEN_JSON")
             or os.getenv("GOOGLE_CREDENTIALS_JSON")
             or (
                 os.getenv("GOOGLE_CLIENT_ID")
@@ -227,12 +253,14 @@ def _refresh_calendar_registry() -> dict:
                 "event=provider_refresh_error provider=%s error=%s", provider.name, exc
             )
 
-    if not refreshed_any:
-        # Fallback: full registry reinit (covers the case where no providers
-        # were active and a new token may have been injected via env)
+    if not refreshed_any or _calendar_registry.unavailable:
+        # Full reinit: no provider survived the refresh, or a provider that was
+        # unavailable at boot may now have credentials (OAuth just completed,
+        # token file written by the host helper, env injected).
         _calendar_registry = CalendarProviderRegistry()
         logger.info(
-            "event=calendar_registry_reinitialized No active providers; reinitialised registry")
+            "event=calendar_registry_reinitialized active=%s unavailable=%s",
+            _calendar_registry.active_names, list(_calendar_registry.unavailable))
 
     return _calendar_registry.status_report()
 
@@ -749,14 +777,18 @@ def gateway_auth_poll(provider: str):
     still waiting.
     """
     normalized = provider.strip().lower()
+    if normalized == "google":
+        if "google" in _calendar_registry.active_names:
+            return {"status": "authorized", "provider": "google"}
+        session = google_oauth.pending()
+        if session:
+            return {"status": "pending", "provider": "google", "auth_url": session.get("auth_url")}
+        return {"status": "no_pending_flow", "provider": "google",
+                "error": _calendar_registry.unavailable.get("google")}
+
     if normalized not in _pending_auth:
         return {"status": "no_pending_flow", "provider": normalized}
-
-    if normalized == "microsoft":
-        return _poll_microsoft_oauth()
-    # Google uses the redirect/code path; use poll to check session presence
-    session = _pending_auth.get("google", {})
-    return {"status": "pending", "provider": "google", "auth_url": session.get("auth_url")}
+    return _poll_microsoft_oauth()
 
 
 @app.delete("/api/gateway/auth/initiate/{provider}")
@@ -764,6 +796,8 @@ def gateway_auth_cancel(provider: str):
     """Cancel a pending OAuth device-code flow."""
     normalized = provider.strip().lower()
     _pending_auth.pop(normalized, None)
+    if normalized == "google":
+        google_oauth.cancel()
     return {"status": "cancelled", "provider": normalized}
 
 
@@ -804,111 +838,92 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 def _initiate_google_oauth() -> dict:
-    if not _GOOGLE_LIBS_AVAILABLE:
-        raise HTTPException(
-            status_code=501, detail="Google auth libraries not installed")
-
-    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-    if not client_id or not client_secret:
-        raise HTTPException(
-            status_code=400,
-            detail="GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set to start OAuth flow",
-        )
-
     try:
-        from google_auth_oauthlib.flow import Flow  # type: ignore
+        started = google_oauth.start()
+    except google_oauth.GoogleOAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.to_detail())
+    _pending_auth["google"] = {"auth_url": started["auth_url"], "mode": "loopback"}
+    return {
+        "status": "initiated",
+        "provider": "google",
+        "mode": "loopback",
+        "auth_url": started["auth_url"],
+        "redirect_uri": started["redirect_uri"],
+        "expires_in": started["expires_in"],
+        "instructions": (
+            "1) Apri auth_url e concedi l'accesso. "
+            "2) Se il browser è sul PC dove gira Hestia, l'autorizzazione si completa da sola. "
+            "3) Altrimenti la pagina finale (localhost) NON si carica: è normale. "
+            "Copia l'URL completo dalla barra degli indirizzi e invialo "
+            "(POST /api/gateway/auth/complete/google {\"code\": \"<url o codice>\"} "
+            "oppure incollalo in chat)."
+        ),
+    }
 
-        flow = Flow.from_client_config(
-            {
-                "installed": {
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob"],
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                }
-            },
-            scopes=["https://www.googleapis.com/auth/calendar"],
-        )
-        flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
-        auth_url, _ = flow.authorization_url(
-            access_type="offline", prompt="consent", include_granted_scopes="true"
-        )
-        _pending_auth["google"] = {"flow": flow,
-                                   "auth_url": auth_url, "mode": "redirect"}
-        logger.info("event=google_oauth_initiated auth_url=%s", auth_url)
-        return {
-            "status": "initiated",
-            "provider": "google",
-            "mode": "redirect",
-            "auth_url": auth_url,
-            "instructions": (
-                "Open the auth_url in a browser, grant access, then call "
-                "POST /api/gateway/auth/complete/google with {\"code\": \"<code>\"}"
-            ),
-        }
-    except ImportError:
-        raise HTTPException(
-            status_code=501, detail="google-auth-oauthlib not installed")
-    except Exception as exc:
-        logger.error("event=google_oauth_initiate_error error=%s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+
+def _finish_google_oauth(raw_code: str, state: str | None = None) -> dict:
+    """Exchange the code, persist the token, reload providers."""
+    try:
+        token_data = google_oauth.complete(raw_code, state=state)
+    except google_oauth.GoogleOAuthError as exc:
+        logger.warning("event=google_oauth_complete_error error=%s", exc)
+        raise HTTPException(status_code=exc.status_code, detail=exc.to_detail())
+
+    from providers.google import GoogleCalendarProvider
+    GoogleCalendarProvider.persist_token(token_data)
+    _pending_auth.pop("google", None)
+    refreshed = _refresh_calendar_registry()
+    active = refreshed.get("active", [])
+    logger.info("event=google_oauth_complete active_providers=%s", active)
+    return {
+        "status": "authorized" if "google" in active else "token_saved_provider_unavailable",
+        "provider": "google",
+        "active_providers": active,
+        "unavailable": refreshed.get("unavailable", {}),
+        "note": "Token salvato in data/google_token.json: sopravvive ai riavvii del container.",
+    }
 
 
 def _complete_google_oauth(body: dict) -> dict:
-    if "google" not in _pending_auth:
+    body = body or {}
+    raw = str(body.get("code") or body.get("redirect_url") or body.get("url") or "").strip()
+    if not raw:
         raise HTTPException(
-            status_code=404, detail="No pending Google OAuth flow. Call initiate first.")
-    code = (body or {}).get("code", "").strip()
-    if not code:
-        raise HTTPException(
-            status_code=400, detail="Missing 'code' in request body")
+            status_code=400,
+            detail="Missing 'code' in request body (authorization code or full redirect URL)")
+    return _finish_google_oauth(raw, state=body.get("state"))
 
-    session = _pending_auth["google"]
-    flow = session.get("flow")
-    if flow is None:
-        raise HTTPException(
-            status_code=500, detail="Corrupt auth session — please re-initiate")
 
+_CALLBACK_HTML = """<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Hestia · Google</title>
+<style>body{{font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem}}</style>
+</head><body><h2>{title}</h2><p>{body}</p></body></html>"""
+
+
+@app.get("/api/gateway/auth/callback/google", response_class=HTMLResponse)
+def gateway_auth_callback_google(code: str = "", state: str = "", error: str = ""):
+    """Loopback redirect target: completes the Google flow automatically when
+    the browser runs on the Docker host."""
+    import html as _html
+
+    if error:
+        raw = f"?error={error}"
+    else:
+        raw = f"?code={code}&state={state}"
     try:
-        flow.fetch_token(code=code)
-        creds = flow.credentials
-        import json as _json
-
-        token_data = {
-            "token": creds.token,
-            "refresh_token": creds.refresh_token,
-            "token_uri": creds.token_uri,
-            "client_id": creds.client_id,
-            "client_secret": creds.client_secret,
-            "scopes": list(creds.scopes or []),
-        }
-        # Persist to BOTH os.environ (process lifetime) AND the
-        # volume-mounted file (survives container restarts).
-        os.environ["GOOGLE_TOKEN_JSON"] = _json.dumps(token_data)
-        try:
-            from providers.google import GoogleCalendarProvider
-            GoogleCalendarProvider.persist_token(token_data)
-        except Exception as _persist_exc:
-            logger.warning(
-                "event=google_oauth_persist_warning error=%s", _persist_exc)
-        _pending_auth.pop("google", None)
-        refreshed = _refresh_calendar_registry()
-        logger.info("event=google_oauth_complete active_providers=%s",
-                    refreshed.get("active"))
-        return {
-            "status": "authorized",
-            "provider": "google",
-            "active_providers": refreshed.get("active", []),
-            "note": (
-                "Token stored in GOOGLE_TOKEN_JSON for this process lifetime. "
-                "Persist it to your env/secrets store to survive restarts."
-            ),
-        }
-    except Exception as exc:
-        logger.error("event=google_oauth_complete_error error=%s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+        result = _finish_google_oauth(raw, state=state or None)
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, dict) else {"error": str(exc.detail)}
+        msg = _html.escape(str(detail.get("error", "")))
+        hint = _html.escape(str(detail.get("hint", "")))
+        return HTMLResponse(
+            _CALLBACK_HTML.format(title="❌ Autorizzazione non riuscita",
+                                  body=f"{msg}<br><br>{hint}"),
+            status_code=exc.status_code)
+    ok = result["status"] == "authorized"
+    return HTMLResponse(_CALLBACK_HTML.format(
+        title="✅ Google Calendar collegato" if ok else "⚠️ Token salvato, provider non attivo",
+        body="Puoi chiudere questa pagina." if ok else _html.escape(str(result.get("unavailable")))))
 
 
 # ---------------------------------------------------------------------------

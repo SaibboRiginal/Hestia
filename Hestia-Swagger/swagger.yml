@@ -2739,7 +2739,7 @@ paths:
             enum: [google, microsoft]
       responses:
         "200":
-          description: "Google: {status, auth_url, instructions} | Microsoft: {status, user_code, verification_url, expires_in, instructions}"
+          description: "Google (loopback + PKCE): {status, mode: loopback, auth_url, redirect_uri, expires_in, instructions} | Microsoft: {status, user_code, verification_url, expires_in, instructions}"
         "400":
           description: Missing credentials or unsupported provider
         "501":
@@ -2778,7 +2778,7 @@ paths:
   /api/gateway/auth/complete/{provider}:
     post:
       tags: [Hecate]
-      summary: Exchange the authorization code for a token (Google redirect flow)
+      summary: Exchange the authorization code (or the full pasted redirect URL) for a token
       servers:
         - url: http://localhost:19003
       parameters:
@@ -2797,14 +2797,33 @@ paths:
               properties:
                 code:
                   type: string
-                  description: Authorization code returned by the Google OAuth consent screen
+                  description: Authorization code, or the full loopback URL shown after consent (code + state are parsed)
+                state:
+                  type: string
+                  description: Optional OAuth state (validated against the pending flow)
       responses:
         "200":
-          description: "{status: authorized, provider, active_providers[], note}"
+          description: "{status: authorized|token_saved_provider_unavailable, provider, active_providers[], unavailable, note}"
         "400":
-          description: Missing code or unsupported provider
+          description: "Missing code, state mismatch, Google error. Body: {detail: {error, hint}}"
         "404":
-          description: No pending flow — call initiate first
+          description: No pending flow (expired after 15 min or never started) — call initiate first
+
+  /api/gateway/auth/callback/google:
+    get:
+      tags: [Hecate]
+      summary: Loopback redirect target of the Google OAuth flow (completes it, returns HTML)
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: code, in: query, schema: {type: string}}
+        - {name: state, in: query, schema: {type: string}}
+        - {name: error, in: query, schema: {type: string}}
+      responses:
+        "200":
+          description: HTML success page
+        "400":
+          description: HTML error page with hint
 
   # ══════════════════════════════════════════════════════════════════════════
   #  IRIS — 19012

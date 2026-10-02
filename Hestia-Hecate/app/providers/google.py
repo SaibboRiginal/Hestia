@@ -24,12 +24,25 @@ except ImportError:
     _GOOGLE_LIBS_AVAILABLE = False
 
 
-_SCOPES = ["https://www.googleapis.com/auth/calendar"]
+_SCOPES = [
+    s for s in os.getenv("GOOGLE_OAUTH_SCOPES", "").replace(",", " ").split() if s
+] or ["https://www.googleapis.com/auth/calendar"]
 
 # Persistent token storage path — the ``data/`` directory is volume-mounted
 # in docker-compose.yml, so tokens written here survive container restarts.
 _TOKEN_FILE = Path(os.getenv("GOOGLE_TOKEN_FILE", "/code/data/google_token.json"))
 _TOKEN_FILE_LOCK = threading.Lock()
+
+
+def has_stored_token() -> bool:
+    """True when the persistent token file holds a refresh token."""
+    try:
+        if not _TOKEN_FILE.exists():
+            return False
+        data = json.loads(_TOKEN_FILE.read_text(encoding="utf-8") or "{}")
+        return bool(isinstance(data, dict) and data.get("refresh_token"))
+    except Exception:
+        return False
 
 
 class GoogleCalendarProvider(AbstractCalendarProvider):
@@ -150,42 +163,69 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
         if token_data.get("refresh_token"):
             os.environ["GOOGLE_REFRESH_TOKEN"] = token_data["refresh_token"]
 
-    @staticmethod
-    def _try_load_cached_token() -> dict | None:
-        """Return cached token data from the persistent file (if it exists
-        and has a still-valid access token).  This is an optimisation to
-        skip the refresh API call on restart when the cached access token
-        hasn't expired yet.
+    # ------------------------------------------------------------------
+    # Internal credential loading
+    # ------------------------------------------------------------------
 
-        Returns ``None`` when no usable cache is found — the caller should
-        fall through to building fresh credentials from the non-expiring
-        env vars.
-        """
+    @staticmethod
+    def _read_token_file() -> dict | None:
         if not _TOKEN_FILE.exists():
             return None
         try:
             raw = _TOKEN_FILE.read_text(encoding="utf-8").strip()
-            if not raw:
-                return None
-            data = json.loads(raw)
-            # If the cached access token is still valid, return it so the
-            # caller can skip the refresh round-trip.
-            creds = Credentials.from_authorized_user_info(data, _SCOPES)
-            if creds.valid:
-                logger.info(
-                    "event=google_token_cached_valid path=%s", _TOKEN_FILE)
-                return data
-            logger.info(
-                "event=google_token_cached_expired path=%s", _TOKEN_FILE)
+            data = json.loads(raw) if raw else None
+            return data if isinstance(data, dict) else None
         except Exception as exc:
             logger.warning(
                 "event=google_token_cache_read_error path=%s error=%s",
                 _TOKEN_FILE, exc)
-        return None
+            return None
 
-    # ------------------------------------------------------------------
-    # Internal credential loading
-    # ------------------------------------------------------------------
+    @staticmethod
+    def _candidate_tokens() -> list[tuple[str, dict]]:
+        """Authorized-user token candidates, most trusted first.
+
+        1. Persistent file (written by OAuth complete, host helper, or a
+           previous refresh) — always the most recent.
+        2. ``GOOGLE_REFRESH_TOKEN`` env var.
+        3. ``GOOGLE_TOKEN_JSON`` env var (bundled JSON).
+
+        Duplicates (same refresh token) are dropped.  Missing client id/secret
+        are filled from the canonical env vars.
+        """
+        env_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+        env_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+        raw: list[tuple[str, dict]] = []
+
+        file_data = GoogleCalendarProvider._read_token_file()
+        if file_data:
+            raw.append(("file", file_data))
+        env_rt = os.getenv("GOOGLE_REFRESH_TOKEN", "").strip()
+        if env_rt:
+            raw.append(("env_refresh_token", {"refresh_token": env_rt}))
+        token_json = os.getenv("GOOGLE_TOKEN_JSON", "").strip()
+        if token_json:
+            try:
+                bundled = json.loads(token_json)
+                if isinstance(bundled, dict):
+                    raw.append(("env_token_json", bundled))
+            except Exception as exc:
+                logger.warning("event=google_token_json_parse_failed error=%s", exc)
+
+        seen: set[str] = set()
+        out: list[tuple[str, dict]] = []
+        for source, data in raw:
+            rt = str(data.get("refresh_token") or "").strip()
+            if not rt or rt in seen:
+                continue
+            seen.add(rt)
+            merged = dict(data)
+            # Env client creds win: the token file may carry an old client.
+            merged["client_id"] = env_id or str(data.get("client_id") or "")
+            merged["client_secret"] = env_secret or str(data.get("client_secret") or "")
+            merged.setdefault("token_uri", "https://oauth2.googleapis.com/token")
+            out.append((source, merged))
+        return out
 
     def _load_credentials(self):
         # 1) Service account (JSON key file contents in env var)
@@ -203,112 +243,61 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
                     "event=google_service_account_parse_failed %s", self._init_error)
                 return None
 
-        # 2) Try the persistent cache first — if the cached access token
-        #    from a previous run is still valid we skip the refresh call.
-        cached = self._try_load_cached_token()
-        if cached is not None:
+        # 2) Authorized-user tokens (OAuth refresh token).
+        candidates = self._candidate_tokens()
+        if not candidates:
+            self._init_error = (
+                "Google not authorized yet: no refresh token found. Run the OAuth "
+                "flow (POST /api/gateway/auth/initiate/google, or google-oauth.bat on the host)")
+            logger.warning("event=google_missing_refresh_token %s", self._init_error)
+            return None
+
+        errors: list[str] = []
+        for source, data in candidates:
+            if not data.get("client_id") or not data.get("client_secret"):
+                errors.append(f"{source}: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET missing")
+                continue
             try:
-                creds = Credentials.from_authorized_user_info(cached, _SCOPES)
-                logger.info(
-                    "event=google_auth_mode mode=cached_token "
-                    "expiry=%s", getattr(creds, "expiry", None))
-                return creds
+                creds = Credentials.from_authorized_user_info(data, data.get("scopes") or _SCOPES)
             except Exception as exc:
-                logger.warning(
-                    "event=google_cached_token_parse_failed %s", exc)
-                # Fall through — build from canonical env vars
+                errors.append(f"{source}: unreadable token ({exc})")
+                continue
 
-        # 3) Build credentials from the canonical, non-expiring env vars.
-        #    These are the SOURCE OF TRUTH — no stale access token needed.
-        client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-        client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-        refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN", "").strip()
+            # A cached access token with a known future expiry is reusable.
+            if creds.valid and getattr(creds, "expiry", None) is not None:
+                logger.info("event=google_auth_mode mode=cached_token source=%s expiry=%s",
+                            source, creds.expiry)
+                return creds
 
-        # If the persistent cache file exists, prefer its refresh_token over
-        # the env var — the cache is always updated after every successful
-        # refresh, while the .env file may contain a stale/dead value.
-        if _TOKEN_FILE.exists():
             try:
-                cached_raw = _TOKEN_FILE.read_text(encoding="utf-8").strip()
-                if cached_raw:
-                    cached_data = json.loads(cached_raw)
-                    cached_rt = cached_data.get("refresh_token", "").strip()
-                    if cached_rt:
-                        refresh_token = cached_rt
-                        client_id = client_id or cached_data.get("client_id", "")
-                        client_secret = client_secret or cached_data.get("client_secret", "")
-                        logger.info(
-                            "event=google_using_cached_refresh_token")
-            except Exception:
-                pass
+                creds.refresh(Request())
+            except Exception as exc:
+                msg = str(exc)
+                if "invalid_grant" in msg:
+                    msg += (" — refresh token revoked or expired. If the OAuth consent screen is in "
+                            "'Testing' mode Google expires tokens after 7 days: set it to "
+                            "'In production', then re-run the OAuth flow.")
+                errors.append(f"{source}: {msg}")
+                logger.warning("event=google_oauth_refresh_failed source=%s error=%s", source, msg)
+                continue
 
-        # Also check GOOGLE_TOKEN_JSON as a bundled alternative.
-        token_json = os.getenv("GOOGLE_TOKEN_JSON", "").strip()
-        if token_json and not refresh_token:
-            try:
-                bundled = json.loads(token_json)
-                client_id = client_id or bundled.get("client_id", "")
-                client_secret = client_secret or bundled.get("client_secret", "")
-                refresh_token = refresh_token or bundled.get("refresh_token", "")
-            except Exception:
-                pass
+            logger.info("event=google_token_refreshed source=%s new_expiry=%s",
+                        source, getattr(creds, "expiry", None))
+            self.persist_token(_credentials_to_json_dict(creds))
+            return creds
 
-        if not client_id or not client_secret:
-            self._init_error = (
-                "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set")
-            logger.warning(
-                "event=google_missing_client_creds %s", self._init_error)
-            return None
-
-        if not refresh_token:
-            self._init_error = (
-                "GOOGLE_REFRESH_TOKEN must be set "
-                "(run OAuth initiate/complete flow to obtain one)")
-            logger.warning(
-                "event=google_missing_refresh_token %s", self._init_error)
-            return None
-
-        # Build credentials with NO access token — the refresh_token is
-        # the only long-lived secret needed.  creds.expired will be True,
-        # triggering a refresh below.
-        creds = Credentials(
-            token=None,
-            refresh_token=refresh_token,
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=client_id,
-            client_secret=client_secret,
-            scopes=_SCOPES,
-        )
-
-        logger.info(
-            "event=google_auth_mode mode=refresh_token "
-            "client_id=%s container_utc=%s",
-            client_id,
-            datetime.now(timezone.utc).isoformat())
-
-        try:
-            creds.refresh(Request())
-            logger.info(
-                "event=google_token_refreshed "
-                "new_expiry=%s",
-                getattr(creds, "expiry", None),
-            )
-            # Persist the fresh access token + refresh token so the next
-            # cold start can hit the cache and skip this refresh call.
-            refreshed_data = _credentials_to_json_dict(creds)
-            self.persist_token(refreshed_data)
-        except Exception as exc:
-            self._init_error = f"OAuth token refresh error: {exc}"
-            logger.warning(
-                "event=google_oauth_refresh_failed %s", self._init_error)
-            return None
-
-        return creds
+        self._init_error = "OAuth token refresh error: " + " | ".join(errors)
+        return None
 
 
 def _credentials_to_json_dict(creds) -> dict:
     """Serialize a :class:`google.oauth2.credentials.Credentials` object to the
-    canonical ``GOOGLE_TOKEN_JSON`` dict shape for persistence."""
+    canonical ``GOOGLE_TOKEN_JSON`` dict shape for persistence.
+
+    ``expiry`` must be stored: without it google-auth treats any cached access
+    token as valid forever and the first call after a restart gets a 401.
+    """
+    expiry = getattr(creds, "expiry", None)
     return {
         "token": creds.token,
         "refresh_token": creds.refresh_token,
@@ -317,6 +306,7 @@ def _credentials_to_json_dict(creds) -> dict:
         "client_id": creds.client_id,
         "client_secret": creds.client_secret,
         "scopes": list(creds.scopes or _SCOPES),
+        "expiry": (expiry.isoformat() + "Z") if expiry else None,
     }
 
 

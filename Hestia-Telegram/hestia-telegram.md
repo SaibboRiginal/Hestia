@@ -31,6 +31,12 @@ Telegram must:
 - Supports `oracle_natural` response mode: command payloads must be formatted by Oracle for user display.
 - `/avvisi_recenti` must always be user-formatted text, never raw JSON in chat output.
 
+### OAuth Paste Shortcut
+- If a message contains a URL with `/api/gateway/auth/callback/<provider>?code=...` (the page a phone
+  cannot open at the end of Google consent), Telegram forwards it straight to Hecate
+  (`POST /api/gateway/auth/complete/<provider>` via Hub) and replies with the outcome.
+- No LLM in the loop: deterministic even with small local models. Module: `telegram_bot/services/oauth_paste.py`.
+
 ### Session Clear Command
 - The user can send `/clear` to reset active Oracle session.
 - Telegram confirms with inline buttons and supports cancel.
