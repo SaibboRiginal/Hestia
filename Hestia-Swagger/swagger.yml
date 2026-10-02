@@ -4040,6 +4040,38 @@ paths:
         "200": {description: Updated settings}
         "400": {description: Unknown mode or group}
 
+  /api/hephaestus/forge/claude-budget:
+    get:
+      tags: [Hephaestus]
+      summary: Claude Pro budget window status (phase, next reset, used tonight)
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{status, phase, allowed, reason, next_reset, hours_to_reset, used_tonight, schedule, blocked_until}"}
+
+  /api/hephaestus/forge/settings/claude-schedule:
+    post:
+      tags: [Hephaestus]
+      summary: Configure the Claude Pro budget window (persisted)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reset_day: {type: string, description: mon..sun / lun..dom}
+                reset_time: {type: string, description: "HH:MM"}
+                tz: {type: string}
+                window_hours: {type: integer}
+                night: {type: string, description: "HH:MM-HH:MM"}
+                night_max_tasks: {type: integer}
+                final_hours: {type: integer}
+      responses:
+        "200": {description: Updated budget status}
+        "400": {description: Invalid schedule}
+
   /api/hephaestus/forge/tasks:
     get:
       tags: [Hephaestus]

@@ -116,6 +116,25 @@ Groups: `local` = local engine (default `auto`); `cloud` = cloud profile + claud
 
 Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia architecture constraints, docs/tests duty, no secrets.
 
+### Claude Pro budget window (autonomous work on the weekly leftover)
+
+The Pro plan has a weekly limit. Forge spends on autonomous work only what would otherwise be lost:
+
+| Who asks | When a `claude` task starts |
+|---|---|
+| You (Telegram/UI) | immediately (on demand) |
+| Athena / Argus | state `scheduled` → starts only **at night** (`night`, default 00:00-07:00) in the **last `window_hours`** (48) before the weekly reset, max `night_max_tasks` (3) per night, one at a time |
+| Athena / Argus, last `final_hours` (6) before reset | any time, no cap: the remaining quota is used up |
+
+- Approving a proposed/scheduled claude task keeps it in the window; "approva sviluppo <id> **subito**" (`now=true`) runs it now.
+- If Claude answers with a usage-limit error, Forge pauses all budgeted work until the reset (`phase=exhausted`) and
+  re-schedules the task.
+- The remaining % is not readable by programs: the policy is time-based + Claude's own limit signal.
+- Configure from Telegram ("il reset di Claude è lunedì alle 10") → tool `forge_set_claude_schedule`, or
+  `POST /api/hephaestus/forge/settings/claude-schedule {reset_day, reset_time, tz, window_hours, night,
+  night_max_tasks, final_hours}`. Status: `GET /api/hephaestus/forge/claude-budget`. Persisted in `settings.json`.
+  Check the real reset moment in claude.ai → Settings → Usage.
+
 ### Forge endpoints
 
 | Method | Path | Description |
@@ -129,11 +148,13 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
 | GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |
-| POST | `/api/hephaestus/forge/tasks/{id}/approve` | proposed → start · awaiting_review → merge/deploy (async) |
+| POST | `/api/hephaestus/forge/tasks/{id}/approve` | proposed/scheduled → start (claude: waits for window unless `{"now": true}`) · awaiting_review → merge/deploy (async) |
+| GET | `/api/hephaestus/forge/claude-budget` | Claude window status: phase (night/final/closed/exhausted), next reset, used tonight |
+| POST | `/api/hephaestus/forge/settings/claude-schedule` | Set reset day/time, window, night interval, caps |
 | POST | `/api/hephaestus/forge/tasks/{id}/reject` | Discard + delete branch |
 | POST | `/api/hephaestus/forge/tasks/{id}/rollback` | Revert merged change |
 
-MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_mode`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
+MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_mode`, `forge_set_claude_schedule`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
 ### Deployment notes
 - Compose mounts the repo at `/repo` and `data/` for state. Uncomment the docker socket only if the deploy command restarts containers.
