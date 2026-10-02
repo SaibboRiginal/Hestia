@@ -16,14 +16,20 @@ import pytest
 
 @pytest.mark.unit
 class TestIsAuthorized:
-    def test_no_allowed_user_id_allows_everyone(self, fake_message, monkeypatch):
-        monkeypatch.setenv("ALLOWED_USER_ID", "")
-        # Re-import core so env var is picked up
+    def test_no_allowed_user_id_denies_everyone(self, fake_message, monkeypatch):
+        """Fail closed: the bot can command Forge, so no id configured = nobody."""
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""
+        monkeypatch.setattr(core_module, "ALLOWED_USER_ID", "")
+        monkeypatch.setattr(core_module, "bot", MagicMock())
         from telegram_bot.services.chat_service import is_authorized
         msg = fake_message(text="/start")
-        assert is_authorized(msg) is True
+        assert is_authorized(msg) is False
+
+    def test_multiple_allowed_ids(self, fake_message, monkeypatch):
+        import telegram_bot.core as core_module
+        monkeypatch.setattr(core_module, "ALLOWED_USER_ID", "11111, 99999")
+        from telegram_bot.services.chat_service import is_authorized
+        assert is_authorized(fake_message(text="/start", user_id=99999)) is True
 
     def test_authorized_user_id_allowed(self, fake_message, monkeypatch):
         import telegram_bot.core as core_module
@@ -52,7 +58,7 @@ class TestIsAuthorized:
 class TestSendWelcome:
     def test_send_welcome_replies_to_message(self, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""  # allow all
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
         monkeypatch.setattr("telegram_bot.services.registry.requests.get",
@@ -64,7 +70,7 @@ class TestSendWelcome:
 
     def test_send_welcome_uses_html_parse_mode(self, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
         monkeypatch.setattr("telegram_bot.services.registry.requests.get",
@@ -102,7 +108,7 @@ class TestHandleChatMessage:
         import telegram_bot.core as core_module
         import json
 
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
 
@@ -160,7 +166,7 @@ class TestHandleChatMessage:
 class TestHandleConfirmation:
     def test_confirm_token_triggers_command_execution(self, fake_callback, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
         token = "abc123"
@@ -194,7 +200,7 @@ class TestHandleConfirmation:
 
     def test_cancel_token_removes_pending_confirmation(self, fake_callback, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
         token = "xyz789"

@@ -160,7 +160,7 @@ class TestControlApiRegistryChanged:
 class TestControlApiDispatchSend:
     def test_send_message_with_valid_target(self, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
         core_module.LOG_BUFFER = MagicMock()

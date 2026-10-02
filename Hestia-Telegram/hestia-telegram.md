@@ -31,6 +31,12 @@ Telegram must:
 - Supports `oracle_natural` response mode: command payloads must be formatted by Oracle for user display.
 - `/avvisi_recenti` must always be user-formatted text, never raw JSON in chat output.
 
+### Access control (fail closed)
+- `ALLOWED_USER_ID` (one id or comma-separated list) is **required**: when unset the bot answers nobody and tells
+  the sender their numeric id. Previously an unset value let anyone use the bot — unacceptable now that it can
+  command Forge to change Hestia's code.
+- Checked on every message handler and, centrally, on every button callback (`telegram_runtime._allowed`).
+
 ### OAuth Paste Shortcut
 - If a message contains a URL with `/api/gateway/auth/callback/<provider>?code=...` (the page a phone
   cannot open at the end of Google consent), Telegram forwards it straight to Hecate

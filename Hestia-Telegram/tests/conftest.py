@@ -38,7 +38,7 @@ os.environ.setdefault("HUB_API_URL", "http://fake-hub:19001/api")
 os.environ.setdefault("ORACLE_API_URL", "http://fake-oracle:19004/api/chat")
 os.environ.setdefault("ORACLE_FORMAT_API_URL",
                       "http://fake-oracle:19004/api/format")
-os.environ.setdefault("ALLOWED_USER_ID", "")
+os.environ.setdefault("ALLOWED_USER_ID", "99999")  # default test user (bot fails closed when unset)
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 

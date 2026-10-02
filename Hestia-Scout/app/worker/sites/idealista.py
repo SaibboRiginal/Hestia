@@ -601,7 +601,15 @@ class IdealistaSiteHandler(BaseSiteHandler):
     def _to_number(value) -> Optional[float | int]:
         if value is None:
             return None
-        raw = str(value).strip().replace(".", "").replace(",", ".")
+        if isinstance(value, (int, float)):
+            return int(value) if float(value).is_integer() else value
+        raw = str(value).strip()
+        # "1.200" = thousands, "85.5" / "175.42" = decimals (dot was always
+        # stripped: 85.5 m² became 855, 175.42 kWh became 17542).
+        if "," in raw:
+            raw = raw.replace(".", "").replace(",", ".")
+        elif re.fullmatch(r"\d{1,3}(\.\d{3})+", raw):
+            raw = raw.replace(".", "")
         try:
             num = float(raw)
             return int(num) if num.is_integer() else num

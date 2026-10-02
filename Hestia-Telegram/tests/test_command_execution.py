@@ -195,7 +195,7 @@ class TestRouteServiceCommand:
 class TestExecuteDirectCommand:
     def test_direct_command_formats_with_oracle_for_oracle_natural(self, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
 
@@ -286,7 +286,7 @@ class TestCommandDeliverySafetyCoverage:
         import telegram_bot.core as core_module
         from telegram_bot.services import executor
 
-        core_module.ALLOWED_USER_ID = ""
+        core_module.ALLOWED_USER_ID = "99999"
         core_module.LOCAL_COMMANDS = {}
 
         with core_module.COMMAND_REGISTRY_LOCK:

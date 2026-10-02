@@ -28,6 +28,17 @@ from telegram_bot.services.control_service import run_control_api
 
 logger = logging.getLogger("hestia_telegram")
 
+
+def _allowed(update) -> bool:
+    """Central guard for button callbacks (messages are checked in handlers
+    so unknown users get an explanatory reply)."""
+    from telegram_bot import core as _core
+
+    ok = _core.is_allowed_user(getattr(update.from_user, "id", ""))
+    if not ok:
+        logger.warning("event=unauthorized_callback user_id=%s", getattr(update.from_user, "id", ""))
+    return ok
+
 # Last user message per chat_id for /retry (Plan 8a)
 _last_user_message: dict[int, object] = {}
 
@@ -69,47 +80,47 @@ def on_snooze_feedback(message):
     handle_snooze_feedback_command(message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("grp:"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("grp:")))
 def on_group_nav(call):
     handle_group_callback(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm:") or call.data.startswith("cancel:") or call.data.startswith("confirm_cmd:") or call.data.startswith("cancel_cmd:"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("confirm:") or call.data.startswith("cancel:") or call.data.startswith("confirm_cmd:") or call.data.startswith("cancel_cmd:")))
 def on_confirmation(call):
     handle_confirmation(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("pickarg:"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("pickarg:")))
 def on_arg_picker(call):
     handle_arg_picker(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("run:"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("run:")))
 def on_run_command(call):
     handle_run_command(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("set:"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("set:")))
 def on_set_picker(call):
     handle_set_picker(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("cancel_flow"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("cancel_flow")))
 def on_cancel_flow(call):
     handle_cancel_flow(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("cal_"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("cal_")))
 def on_calendar_step(call):
     handle_calendar_step(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("fb:"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("fb:")))
 def on_feedback_callback(call):
     handle_feedback_callback(call)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("doc_"))
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("doc_")))
 def on_doc_callback(call):
     handle_doc_callback(call)
 
