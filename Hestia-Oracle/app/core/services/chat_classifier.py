@@ -87,50 +87,27 @@ class ChatClassifier:
             if str(current_datetime_context or "").strip()
             else ""
         )
+        # Caveman style: runs on EVERY message, keep it tight.
         return (
-            "You classify and route user intent for a chat orchestrator.\n\n"
-            "Return ONLY valid JSON with:\n"
-            '1) "mode": "quick_chat" or "domain_query"\n'
-            '2) "domain": one domain from AVAILABLE_DOMAINS or null\n'
-            '3) "confidence": float 0..1\n'
-            '4) "domains": array of routed domains (or ["general"]) for domain_query\n'
-            '5) "filters": exact-match filters object\n'
-            '6) "filters_gt": numeric greater-than filters object\n'
-            '7) "filters_lt": numeric less-than filters object\n'
-            '8) "sort_by": field name or null\n'
-            '9) "sort_order": "asc" or "desc"\n'
-            '10) "action_intent": true if the message explicitly requests a state-changing '
-            "action (create, update, delete, enable, disable, set, remove, execute), "
-            "false for informational queries, chat, or read-only requests\n\n"
-            "Rules:\n"
-            '- Use "quick_chat" ONLY for pure conversation: greetings, small talk, '
-            "jokes, philosophical musings, or casual exchanges that require zero "
-            "data retrieval or tool usage. When in doubt, use domain_query.\n"
-            '- Use "domain_query" when the user asks for domain records, '
-            "filters, listings, alerts/subscriptions, data-driven operations, "
-            "OR explicitly requests a state-changing action.\n"
-            '- CRITICAL — SELF-AWARENESS RULE: questions about the assistant\'s '
-            "internal state, system health, service status, operational capacity, "
-            "or how the assistant works/functions MUST be classified as "
-            "\"domain_query\" with domain=\"system\". These are NOT casual chat — "
-            "they require tool calls to answer factually. Examples: 'come stai messa', "
-            "'stato dei servizi', 'come funzioni', 'sei operativa', 'dimmi il tuo stato'.\n"
-            '- CRITICAL — "system" domain ALWAYS implies "domain_query". '
-            "Never return mode=quick_chat when domain=system. System queries "
-            "inherently need live data from tools.\n"
-            '- CRITICAL — if the user challenges or questions the assistant\'s '
-            "knowledge (e.g. 'come fai a saperlo', 'da dove hai preso questa info', "
-            "'non hai i dati per rispondere'), ALWAYS use domain_query so tools "
-            "can be invoked to provide evidence. Never answer defensively in quick_chat.\n"
-            "- Set \"domain\" only if it is explicit/high-confidence from AVAILABLE_DOMAINS; otherwise null.\n\n"
-            "- Resolve relative time references (oggi, domani, next week) using CURRENT_DATETIME_CONTEXT when available.\n"
-            '- Set "action_intent": true for imperative action requests (commands like /xxx, '
-            "or natural language like 'crea', 'aggiungi', 'modifica', 'elimina', 'imposta', "
-            "'esegui', 'disattiva'). Use semantic intent, not keyword spotting.\n\n"
+            "Classifica intento utente. Output SOLO JSON:\n"
+            '{"mode":"quick_chat|domain_query","domain":<uno di AVAILABLE_DOMAINS o null>,'
+            '"confidence":0-1,"domains":[...] o ["general"],"filters":{},"filters_gt":{},'
+            '"filters_lt":{},"sort_by":null,"sort_order":"asc|desc","action_intent":true|false}\n\n'
+            "Regole:\n"
+            "- quick_chat SOLO chiacchiera pura (saluti, battute, small talk). Dubbio -> domain_query.\n"
+            "- domain_query: dati, filtri, liste, avvisi/sottoscrizioni, azioni.\n"
+            "- domain=system (sempre domain_query) per: stato/salute/servizi/come funzioni ('come stai messa', "
+            "'sei operativa', 'stato dei servizi') E richieste di sviluppare/correggere/migliorare Hestia stessa "
+            "('aggiungi una funzione', 'correggi il bug', 'approva sviluppo', 'usa il cloud').\n"
+            "- Utente mette in dubbio le tue fonti ('come lo sai') -> domain_query.\n"
+            "- domain solo se esplicito/alta confidenza, altrimenti null.\n"
+            "- Date relative (oggi, domani) -> usa CURRENT_DATETIME_CONTEXT.\n"
+            "- action_intent=true per richieste imperative che cambiano stato (crea, aggiungi, modifica, "
+            "elimina, imposta, esegui, disattiva, /comando). Semantica, non keyword. Domande/lettura -> false.\n\n"
             f"AVAILABLE_DOMAINS: {', '.join(domain_candidates) or 'none'}\n\n"
             f"{datetime_block}"
-            f"CONTEXT DATA STRUCTURES:\n{json.dumps(schemas or {}, ensure_ascii=False, indent=2)}\n\n"
-            f"CONTEXT:\n{history_text}\n\n"
+            f"SCHEMI DATI:\n{json.dumps(schemas or {}, ensure_ascii=False, separators=(',', ':'))}\n\n"
+            f"CONTESTO:\n{history_text}\n\n"
             f"USER_MESSAGE: {user_message}\n"
         )
 
