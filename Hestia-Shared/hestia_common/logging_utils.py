@@ -145,6 +145,9 @@ class _UvicornAccessLogFilter(logging.Filter):
         return True
 
 
+_MARKED_EVENT = re.compile(r"^\[[^\]]{1,8}\]\s*event=")
+
+
 class _HestiaMessageStyleFilter(logging.Filter):
     """Normalize internal logs to key/value style.
 
@@ -175,7 +178,9 @@ class _HestiaMessageStyleFilter(logging.Filter):
         except Exception:
             return True
 
-        if not message or message.startswith("event="):
+        # Allow a short marker before event= (e.g. "[🔄] event=..." required by
+        # the resilience rule) instead of rewrapping it as legacy_log.
+        if not message or message.startswith("event=") or _MARKED_EVENT.match(message):
             return True
 
         compact = message.replace("\r", " ").replace("\n", " ").strip()

@@ -15,6 +15,8 @@ def build_capabilities() -> dict[str, Any]:
         "rollback_checkpoints": True,
         "production_execution_allowed": False,
         "module_tool_domains": ["system"],
+        # Forge/remediation tools must reach Oracle for domain=system requests.
+        "owns_tool_domains": ["system"],
         "endpoints": {
             "runbooks": "/api/hephaestus/runbooks",
             "diagnose": "/api/hephaestus/diagnose",
