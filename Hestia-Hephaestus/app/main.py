@@ -14,6 +14,9 @@ from .core.service import HephaestusService
 from .core.service_contract import ServiceDescriptor
 from .core.service_runtime import load_runtime_config
 from .core.shared_imports import import_shared_symbol
+from .forge.config import load_forge_config
+from .forge.router import create_forge_router
+from .forge.service import Forge
 
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils",
@@ -60,6 +63,8 @@ remediation_service = RemediationService(
     maintenance_paths=config.hephaestus_maintenance_paths,
 )
 
+forge = Forge(load_forge_config())
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -103,12 +108,15 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
+    if forge.cfg.enabled:
+        forge.start()
     yield
 
 
 app = FastAPI(title="Hestia Hephaestus",
               version=config.service_version, lifespan=lifespan)
 app.include_router(create_hephaestus_router(remediation_service))
+app.include_router(create_forge_router(forge))
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools
@@ -191,6 +199,83 @@ try:
             title="\U0001f504 Annulla riparazione", method="POST", path="/api/hephaestus/remediate/$task_id/rollback",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_develop",
+            description=(
+                "Hestia sviluppa se stessa: crea/modifica/corregge codice di Hestia. Usa quando l'utente chiede "
+                "di aggiungere una funzione, correggere un bug, migliorare un servizio o un prompt di Hestia. "
+                "Lavora su branch isolato, poi chiede approvazione."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "request": {"type": "string", "description": "Cosa sviluppare, dettagliato, in parole dell'utente"},
+                    "services": {"type": "array", "items": {"type": "string"}, "description": "Servizi coinvolti se noti (es. hecate, oracle)"},
+                    "engine": {"type": "string", "description": "auto | claude_code | builtin | aider (default auto)"},
+                },
+                "required": ["request"],
+            },
+            handler=lambda **kw: {"status": "ok", "tool": "forge_develop", "params": kw},
+            title="\U0001f9e9 Sviluppa Hestia", method="POST", path="/api/hephaestus/forge/tasks",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Conferma in 1-2 righe: task creato (id corto), motore, avviserai quando pronto.",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_tasks",
+            description="Elenca i task di auto-sviluppo (Forge) e il loro stato",
+            parameters={"type": "object", "properties": {
+                "state": {"type": "string", "description": "Filtro stato: proposed, running, awaiting_review, deployed..."}}},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_tasks", "params": kw},
+            title="\U0001f9f0 Task sviluppo", method="GET", path="/api/hephaestus/forge/tasks",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Lista compatta: id corto, stato, richiesta in 1 riga. Niente JSON.",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_status",
+            description="Stato del motore Forge: repo, motori disponibili (Claude Code, Ollama), coda",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_status", "params": kw},
+            title="\u2699\ufe0f Stato Forge", method="GET", path="/api/hephaestus/forge/status",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_approve",
+            description=(
+                "Approva un task Forge: se 'proposed' lo avvia, se 'awaiting_review' applica la modifica (merge/deploy). "
+                "Usa quando l'utente dice 'approva sviluppo <id>'."
+            ),
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task (anche i primi 6 caratteri)"}}, "required": ["task_id"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_approve", "params": kw},
+            title="\u2705 Approva sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/approve",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_reject",
+            description="Scarta un task Forge proposto o in revisione ('rifiuta <id>')",
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task"},
+                "reason": {"type": "string", "description": "Motivo"}}, "required": ["task_id"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_reject", "params": kw},
+            title="\u274c Rifiuta sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/reject",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_rollback",
+            description="Annulla (git revert) una modifica Forge già applicata ('rollback sviluppo <id>')",
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task"},
+                "reason": {"type": "string", "description": "Motivo"}}, "required": ["task_id"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_rollback", "params": kw},
+            title="\u21a9\ufe0f Rollback sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/rollback",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="sistema",
         ),
     ]
     app.include_router(create_mcp_router(_hephaestus_mcp_tools, service_name="hephaestus"))

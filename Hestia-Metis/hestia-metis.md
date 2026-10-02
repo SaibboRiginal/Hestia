@@ -51,6 +51,7 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `GET` | `/health` | Service health |
 | `GET` | `/api/logs` | Filterable log buffer |
 | `POST` | `/mcp` | MCP JSON-RPC endpoint (tools/list, tools/call) |
+| `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: `METIS_GOOD_QUALITY_LABELS` (default `excellent,good`) |
 
 ## Constraints
 

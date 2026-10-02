@@ -17,7 +17,7 @@ import threading
 import time
 from collections import deque
 
-from core import docker_client, health_poller, hub_client
+from core import docker_client, forge_proposer, health_poller, hub_client
 from schemas.reports import LogEvent
 from schemas.reports import ServiceAlert
 from worker.alert_worker import send_alert, send_recovery
@@ -45,7 +45,10 @@ _seen_log_lock = threading.Lock()
 
 
 def _is_new_log_event(event: LogEvent) -> bool:
-    fingerprint = f"{event.service}|{event.level}|{event.message}"
+    # Timestamp included: each occurrence is seen exactly once (repeat counting for
+    # Forge proposals), while the Hub re-serving the same row is still deduped.
+    # Alert spam is prevented separately by the alert_worker cooldown.
+    fingerprint = f"{event.timestamp}|{event.service}|{event.level}|{event.message}"
     with _seen_log_lock:
         if fingerprint in _seen_log_fingerprints:
             return False
@@ -140,6 +143,9 @@ def _run_once() -> None:
         new_events = _collect_new_log_events(name)
 
         for event in new_events:
+            due = forge_proposer.observe(event.service, event.level, event.message)
+            if due:
+                forge_proposer.propose(hub_client.HUB_API_URL, event.service, due)
             send_alert(
                 ServiceAlert(
                     service=event.service,

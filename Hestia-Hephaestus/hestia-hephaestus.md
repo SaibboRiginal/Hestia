@@ -59,6 +59,59 @@ Execution endpoints above are implemented as policy-gated remediation flows (tas
 - Hephaestus must not depend on opening an interactive personal IDE Copilot session.
 - Automation is performed through service/workflow APIs, repository operations, and deterministic runbooks.
 
+## Forge — self-development (Hestia develops itself)
+
+You ask Hestia on Telegram "aggiungi X / correggi Y". Oracle calls `forge_develop`;
+Forge codes it on an isolated branch, tests it, and asks you to approve.
+
+```
+user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queued ─► running (engine in git worktree)
+                                                                     │ Forge commits + runs tests itself
+                                                                     ▼
+                                    rejected ◄─reject── awaiting_review ──approve──► merged ──► deployed
+                                                                                      └─rollback─► rolled_back
+```
+
+- **Isolation:** each task = `git worktree` + branch `auto/forge/<id>` from the base branch. Live checkout untouched until merge.
+- **Verification:** Forge runs `HEPHAESTUS_FORGE_TEST_CMD` on the touched services' `tests/` (never trusts the agent).
+- **Merge:** `git merge --no-ff` into base branch (repo must be on base branch and clean). **Rollback:** `git revert -m 1`.
+- **Deploy (optional):** `HEPHAESTUS_FORGE_DEPLOY_CMD` (`{services}` placeholder), then health check via Hub; unhealthy + `HEPHAESTUS_FORGE_AUTO_ROLLBACK=1` → revert + redeploy.
+- **Notifications:** start, review request (summary + diff stat + test result), merge/deploy, rollback → Telegram via Hermes (`HEPHAESTUS_NOTIFY_TARGET`) + `system/hephaestus.forge` event.
+- **Resilience:** task state persisted in `data/forge/tasks.json`; queued/running/approved tasks resume after restart.
+- **Human gate:** default nothing merges without "approva sviluppo <id>". `HEPHAESTUS_FORGE_AUTO_MERGE=1` merges only when engine ok AND tests green.
+
+### Engines (`HEPHAESTUS_FORGE_ENGINE`)
+
+| Engine | Where it runs | Setup |
+|---|---|---|
+| `builtin` | any OpenAI-compatible API: **Ollama local** (default `http://host.docker.internal:11434/v1`), OpenRouter, Gemini OpenAI-compat, LM Studio | `HEPHAESTUS_FORGE_LLM_BASE_URL/_MODEL/_API_KEY`. Use a coder model with tool calling (qwen2.5-coder:14b+, qwen3-coder, devstral). Sandboxed tools: list/read/search/write/edit files, run tests only. |
+| `claude_code` | Claude Code CLI headless (`claude -p`) | Build with `--build-arg INSTALL_CLAUDE_CODE=1`. **Claude Pro/Max subscription:** run `claude setup-token` on your PC → `CLAUDE_CODE_OAUTH_TOKEN`. Usage counts against your plan limits. Or pay-per-use `ANTHROPIC_API_KEY`. |
+| `aider` | Aider CLI (optional, install yourself) | `HEPHAESTUS_FORGE_AIDER_MODEL` e.g. `ollama_chat/qwen2.5-coder:14b` |
+| `auto` | `claude_code` if installed+authenticated, else `builtin` | default |
+
+Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia architecture constraints, docs/tests duty, no secrets.
+
+### Forge endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/hephaestus/forge/status` | Repo, base branch, engines availability, queue |
+| POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target}` |
+| GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
+| GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
+| GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |
+| POST | `/api/hephaestus/forge/tasks/{id}/approve` | proposed → start · awaiting_review → merge/deploy (async) |
+| POST | `/api/hephaestus/forge/tasks/{id}/reject` | Discard + delete branch |
+| POST | `/api/hephaestus/forge/tasks/{id}/rollback` | Revert merged change |
+
+MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
+
+### Deployment notes
+- Compose mounts the repo at `/repo` and `data/` for state. Uncomment the docker socket only if the deploy command restarts containers.
+- Global compose live-mounts service code, so a container restart applies merged code.
+- If Forge changes Hephaestus itself, the deploy restarts Forge: the task stays `merged` (state is persisted).
+- The container has pytest but not every service dependency; heavy services may need their deps installed or a custom `HEPHAESTUS_FORGE_TEST_CMD`.
+
 ## Command Discovery
 
 Hephaestus publishes assistant-executable command metadata through Hub discovery for:

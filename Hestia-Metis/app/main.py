@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.hub_client import HubClient
 from .core import dataset_builder
+from .core.insights import build_insights
 
 # ── Shared imports ────────────────────────────────────────────────────────────
 try:
@@ -70,6 +71,15 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_metis"}
+
+
+@app.get("/api/metis/insights")
+def metis_insights(limit: int = 500, since: str | None = None):
+    """Weak spots from graded feedback (consumed by Athena → Forge proposals)."""
+    records = hub.fetch_feedback(limit=limit, since=since)
+    if isinstance(records, dict):
+        records = records.get("records") or records.get("items") or []
+    return {"status": "ok", **build_insights(records if isinstance(records, list) else [])}
 
 
 @app.get("/api/logs")

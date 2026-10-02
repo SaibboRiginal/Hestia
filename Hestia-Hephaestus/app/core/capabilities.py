@@ -24,5 +24,9 @@ def build_capabilities() -> dict[str, Any]:
             "remediate": "/api/hephaestus/remediate",
             "remediate_approve": "/api/hephaestus/remediate/{task_id}/approve",
             "remediate_rollback": "/api/hephaestus/remediate/{task_id}/rollback",
+            "forge_status": "/api/hephaestus/forge/status",
+            "forge_tasks": "/api/hephaestus/forge/tasks",
+            "forge_approve": "/api/hephaestus/forge/tasks/{task_id}/approve",
         },
+        "self_development": True,
     }

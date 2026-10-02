@@ -161,6 +161,7 @@ Guarded remediation and coding executor.
 - Must keep full audit trail and user-visible notifications for each mutation.
 - Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
 - May execute local build/deploy workflows according to policy tiers.
+- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (Ollama local, any OpenAI-compatible cloud, or Claude Code with a Pro/Max subscription token) → tests → approval → merge/deploy/rollback. Argus turns recurring errors into fix proposals. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
 
 ### Hestia-Athena 🧭
 Proactive cognition and advisory strategy engine.
