@@ -25,3 +25,13 @@ Iris owns email-domain business logic (search/send/thread abstractions). Provide
 - service_type: module
 - topology_tags: layer:domain, domain:email, status:experimental
 - commands: email_search, email_send, email_thread, iris_reconcile
+
+## Mail backend (via Hecate)
+
+Iris holds no mail and no credentials. Every endpoint calls Hecate through Hub:
+`/api/email/inbox` and `/api/email/messages` → `GET /api/gateway/mail/messages` (`q` free text or IMAP criteria,
+`since` ISO date); `/api/email/send` → `POST /api/gateway/mail/send` (adds `Re:` when `thread_id` is given);
+`/api/email/threads/{thread_id}` → messages sharing the normalized subject. Hecate unreachable → 503, provider
+not configured → Hecate's 503 detail.
+
+Previously Iris kept an in-memory list (lost on restart): nothing was read from or sent to a real mailbox.

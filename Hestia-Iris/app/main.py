@@ -111,7 +111,28 @@ except ModuleNotFoundError:
 
 app.include_router(create_log_control_router("hestia_iris"))
 
-_MESSAGES: list[dict[str, Any]] = []
+def _hecate(method: str, path: str, *, query: dict | None = None, body: dict | None = None,
+            timeout: float = 30) -> dict[str, Any]:
+    """Provider mail lives in Hecate (single provider gateway): call it via Hub.
+    (Iris used to keep an in-memory list: nothing was ever read or sent.)"""
+    hub = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    try:
+        resp = requests.post(
+            f"{hub}/route/hecate/{path.lstrip('/')}",
+            json={"method": method, "headers": {}, "query": query or {}, "body": body,
+                  "timeout_seconds": timeout},
+            timeout=timeout + 5)
+        resp.raise_for_status()
+        routed = resp.json() or {}
+    except Exception as exc:
+        logger.warning("[🔄] event=iris_hecate_unreachable path=%s error=%s", path, exc)
+        raise HTTPException(status_code=503, detail=f"Hecate unreachable: {exc}")
+    status = int(routed.get("status_code", 500))
+    payload = routed.get("payload") or {}
+    if status >= 400:
+        detail = payload.get("detail") if isinstance(payload, dict) else payload
+        raise HTTPException(status_code=status, detail=detail or "mail provider error")
+    return payload if isinstance(payload, dict) else {}
 
 
 class EmailSendRequest(BaseModel):
@@ -220,31 +241,23 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 
 @app.get("/api/email/inbox")
 def email_inbox(limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
-    messages = sorted(
-        _MESSAGES, key=lambda row: row["created_at"], reverse=True)[:limit]
+    data = _hecate("GET", "api/gateway/mail/messages", query={"limit": limit})
+    messages = data.get("messages") or []
     return {"status": "ok", "count": len(messages), "messages": messages}
 
 
 @app.get("/api/email/messages")
-def email_messages(q: str = "", limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
+def email_messages(q: str = "", since: str | None = None,
+                   limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
+    """Search mail. ``q`` = free text or raw IMAP criteria ('FROM "x"'); ``since`` = ISO date."""
     t0 = time.perf_counter()
-    needle = q.strip().lower()
-    rows = _MESSAGES
-    if needle:
-        rows = [
-            row
-            for row in _MESSAGES
-            if needle in row.get("subject", "").lower()
-            or needle in row.get("body", "").lower()
-            or needle in row.get("to", "").lower()
-        ]
-    rows = sorted(rows, key=lambda row: row["created_at"], reverse=True)[
-        :limit]
+    query: dict[str, Any] = {"q": q, "limit": limit}
+    if since:
+        query["since"] = since
+    rows = _hecate("GET", "api/gateway/mail/messages", query=query).get("messages") or []
     logger.info(
         "event=email_search_done ms=%d query_len=%d results=%d",
-        int((time.perf_counter() - t0) * 1000),
-        len(q),
-        len(rows),
+        int((time.perf_counter() - t0) * 1000), len(q), len(rows),
     )
     return {"status": "ok", "query": q, "count": len(rows), "messages": rows}
 
@@ -252,40 +265,25 @@ def email_messages(q: str = "", limit: int = Query(default=20, ge=1, le=200)) ->
 @app.post("/api/email/send")
 def email_send(req: EmailSendRequest) -> dict[str, Any]:
     t0 = time.perf_counter()
-    message_id = f"iris-{int(time.time() * 1000)}"
-    thread_id = req.thread_id or message_id
-    row = {
-        "id": message_id,
-        "thread_id": thread_id,
-        "to": req.to,
-        "subject": req.subject,
-        "body": req.body,
-        "created_at": _now_iso(),
-        "direction": "outbound",
-    }
-    _MESSAGES.append(row)
-    logger.info(
-        "event=email_send_done ms=%d thread_id=%s",
-        int((time.perf_counter() - t0) * 1000),
-        thread_id,
-    )
-    return {"status": "ok", "sent": row}
+    subject = req.subject
+    if req.thread_id and not subject.lower().startswith("re:"):
+        subject = f"Re: {subject}"
+    sent = _hecate("POST", "api/gateway/mail/send",
+                   body={"to": req.to, "subject": subject, "body": req.body}).get("sent") or {}
+    sent["thread_id"] = req.thread_id or subject.lower()
+    logger.info("event=email_send_done ms=%d", int((time.perf_counter() - t0) * 1000))
+    return {"status": "ok", "sent": sent}
 
 
 @app.get("/api/email/threads/{thread_id}")
 def email_thread(thread_id: str) -> dict[str, Any]:
-    t0 = time.perf_counter()
-    rows = [row for row in _MESSAGES if row.get("thread_id") == thread_id]
+    """Thread = messages sharing the normalized subject (provider-agnostic)."""
+    rows = _hecate("GET", "api/gateway/mail/messages",
+                   query={"q": f'SUBJECT "{thread_id}"', "limit": 100}).get("messages") or []
+    rows = [r for r in rows if r.get("thread_id") == thread_id] or rows
     if not rows:
-        raise HTTPException(
-            status_code=404, detail=f"thread '{thread_id}' not found")
-    rows = sorted(rows, key=lambda row: row["created_at"])
-    logger.info(
-        "event=email_thread_done ms=%d thread_id=%s message_count=%d",
-        int((time.perf_counter() - t0) * 1000),
-        thread_id,
-        len(rows),
-    )
+        raise HTTPException(status_code=404, detail=f"thread '{thread_id}' not found")
+    rows = sorted(rows, key=lambda row: row.get("created_at") or "")
     return {"status": "ok", "thread_id": thread_id, "count": len(rows), "messages": rows}
 
 
@@ -294,7 +292,10 @@ def module_maintenance_reconcile(req: ModuleMaintenanceRequest) -> ModuleMainten
     task_id = str(req.task_id or uuid4())
     action = str(req.requested_action or "reconcile_email").strip().lower()
 
-    message_count = len(_MESSAGES)
+    try:
+        provider = _hecate("GET", "api/gateway/mail/status", timeout=10)
+    except HTTPException as exc:
+        provider = {"configured": False, "error": str(exc.detail)}
 
     if req.dry_run:
         return ModuleMaintenanceResponse(
@@ -308,7 +309,7 @@ def module_maintenance_reconcile(req: ModuleMaintenanceRequest) -> ModuleMainten
             mutation_count=0,
             details={
                 "requested_action": action,
-                "in_memory_message_count": message_count,
+                "mail_provider": provider,
                 "note": "Set dry_run=false to execute reconcile pass.",
             },
         )
@@ -320,11 +321,11 @@ def module_maintenance_reconcile(req: ModuleMaintenanceRequest) -> ModuleMainten
         task_id=task_id,
         executed_at=datetime.now(timezone.utc),
         retriable=True,
-        summary="Iris maintenance reconcile executed: in-memory state validated.",
+        summary="Iris maintenance reconcile executed: mail provider checked via Hecate.",
         mutation_count=0,
         details={
             "requested_action": action,
-            "in_memory_message_count": message_count,
+            "mail_provider": provider,
         },
     )
 

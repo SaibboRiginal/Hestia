@@ -2809,6 +2809,50 @@ paths:
         "404":
           description: No pending flow (expired after 15 min or never started) — call initiate first
 
+  /api/gateway/mail/status:
+    get:
+      tags: [Hecate]
+      summary: Mail provider configuration state
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, configured, user, imap_host, smtp_host}"}
+
+  /api/gateway/mail/messages:
+    get:
+      tags: [Hecate]
+      summary: Search the mailbox (IMAP)
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: "free text or raw IMAP criteria, e.g. FROM \"x\""}
+        - {name: since, in: query, schema: {type: string}, description: ISO date}
+        - {name: limit, in: query, schema: {type: integer, default: 50}}
+      responses:
+        "200": {description: "{status, count, messages[{id, thread_id, from, to, subject, body, created_at}]}"}
+        "503": {description: Provider not configured or IMAP error}
+
+  /api/gateway/mail/send:
+    post:
+      tags: [Hecate]
+      summary: Send an email (SMTP)
+      servers:
+        - url: http://localhost:19003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, subject, body]
+              properties:
+                to: {type: string}
+                subject: {type: string}
+                body: {type: string}
+      responses:
+        "200": {description: "{status, sent}"}
+        "503": {description: Provider not configured or SMTP error}
+
   /api/gateway/auth/callback/google:
     get:
       tags: [Hecate]

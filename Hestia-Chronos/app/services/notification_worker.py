@@ -67,24 +67,37 @@ def _determine_bucket(minutes_until: float) -> str | None:
     return None
 
 
+_IT_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
+              "agosto", "settembre", "ottobre", "novembre", "dicembre"]
+
+
 def _format_datetime(iso_str: str) -> str:
-    """Return a human-readable Italian date/time string."""
+    """Italian date/time in the user's timezone (CHRONOS_DISPLAY_TZ / TZ, default
+    Europe/Rome).  Stored values are often UTC: showing them raw was 1-2h off."""
     try:
-        dt = datetime.fromisoformat(iso_str)
-        # Express in Europe/Rome local time (UTC+1/+2 depending on DST).
-        # We keep it simple: just display as-is from the stored tz-aware string.
-        return dt.strftime("%-d %B %Y, %H:%M")
+        from zoneinfo import ZoneInfo
+
+        dt = datetime.fromisoformat(str(iso_str).replace("Z", "+00:00"))
+        if len(str(iso_str)) == 10:            # all-day: date only
+            return f"{dt.day} {_IT_MONTHS[dt.month - 1]} {dt.year} (tutto il giorno)"
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        tz_name = os.getenv("CHRONOS_DISPLAY_TZ") or os.getenv("TZ") or "Europe/Rome"
+        local = dt.astimezone(ZoneInfo(tz_name))
+        return f"{local.day} {_IT_MONTHS[local.month - 1]} {local.year}, {local:%H:%M}"
     except Exception:
-        return iso_str
+        return str(iso_str)
 
 
 def _build_notification(item: dict, bucket: str) -> str:
     """Build an HTML notification message for a calendar event."""
+    from html import escape   # user content in Telegram HTML must be escaped
+
     label = _BUCKET_LABELS.get(bucket, bucket)
-    title = item.get("title", "Evento")
+    title = escape(str(item.get("title") or "Evento"))
     start = item.get("start_at", "")
-    location = item.get("location") or ""
-    description = item.get("description") or ""
+    location = escape(str(item.get("location") or ""))
+    description = escape(str(item.get("description") or ""))
     kind_icons = {"event": "🗓️", "task": "✅", "reminder": "⏰"}
     icon = kind_icons.get(item.get("kind", "event"), "🗓️")
 

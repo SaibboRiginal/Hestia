@@ -555,3 +555,12 @@ def register_on_hub_startup():
     threading.Thread(
         target=_hub_keepalive, daemon=True, name="metis-hub-keepalive",
     ).start()
+
+
+# Serve declared REST paths of MCP-only tools (Hub/Telegram/MCP gateway call
+# tools by path; without this they got 404). Must stay at the end of the file.
+try:
+    from hestia_common.mcp_helpers import mount_missing_rest_routes
+    mount_missing_rest_routes(app, _metis_mcp_tools, service_name="metis")
+except (ModuleNotFoundError, NameError):
+    pass

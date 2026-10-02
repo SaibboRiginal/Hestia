@@ -41,7 +41,7 @@ Adding a new data source = implementing this interface and registering the conne
 
 | Connector | Type Key | Description |
 |---|---|---|
-| `IrisEmailFetcher` | `iris_email` | Fetches email-domain items via Hub-routed Iris APIs |
+| `EmailFetcher` | `iris_email` | Reads Hecate's IMAP provider in-process (IMAP filter + since). Used by Scout |
 | `GCalFetcher` | `gcal` | Fetches Google calendar events via Hub-routed Hecate gateway APIs |
 | `OutlookFetcher` | `outlook_calendar` | Fetches Outlook calendar events via Hub-routed Hecate gateway APIs |
 
@@ -65,6 +65,9 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/calendar/events` | Create event on target providers |
 | `PUT` | `/api/gateway/calendar/events/{id}` | Update event on target provider |
 | `DELETE` | `/api/gateway/calendar/events/{id}` | Delete event on target provider |
+| `GET` | `/api/gateway/mail/status` | Mail provider configuration state |
+| `GET` | `/api/gateway/mail/messages` | IMAP search: `q` = raw IMAP criteria (`FROM "x"`) or free text, `since` = ISO date, `limit` |
+| `POST` | `/api/gateway/mail/send` | SMTP send `{to, subject, body}` |
 | `GET` | `/api/gateway/email/messages` | Proxy email search to Iris via Hub |
 | `GET` | `/api/gateway/email/messages/{id}` | Proxy single email lookup to Iris via Hub |
 | `POST` | `/api/gateway/email/send` | Proxy email send to Iris via Hub |
@@ -189,6 +192,15 @@ credentials using only the refresh token, calls Google's token endpoint to get a
 new access token, and caches the result to the persistent file. No access token
 or expiry timestamp is stored in `.env` — the 1‑hour access token is always
 obtained live.
+
+### Mail provider (IMAP/SMTP)
+
+`providers/mail_imap.py`. Gmail: `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` (Google account → Security →
+2-Step Verification → App passwords). Any other server: `HECATE_IMAP_HOST/_PORT/_USER/_PASSWORD`,
+`HECATE_SMTP_HOST/_PORT`, `HECATE_IMAP_FOLDER`. Mailbox opened read-only (mail never marked as read).
+
+> Regression fixed: the Gmail IMAP fetcher was deleted in the Ingest → Hecate refactor and Iris was left as an
+> in-memory stub, so Scout's `iris_email` connector always returned 0 mails.
 
 ## Provider Credential Ownership
 
