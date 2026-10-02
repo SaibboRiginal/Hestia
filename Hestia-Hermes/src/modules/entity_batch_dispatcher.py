@@ -43,6 +43,10 @@ class _BatchEntry:
     filters: dict
     entities: list[dict] = field(default_factory=list)
     timer: threading.Timer | None = None
+    attempts: int = 0
+
+
+MAX_BATCH_ATTEMPTS = int(os.getenv("ENTITY_BATCH_MAX_ATTEMPTS", "6"))
 
 
 # Key: (subscription_id, channel_type, channel_target)
@@ -103,11 +107,35 @@ def _flush(key: tuple) -> None:
         )
     else:
         logger.warning(
-            "event=batch_dispatch_failed_subscription_target [BATCH] Dispatch failed | subscription=%s target=%s detail=%s",
+            "[🔄] event=batch_dispatch_failed_subscription_target [BATCH] Dispatch failed | subscription=%s target=%s attempt=%d detail=%s",
             entry.subscription_id,
             entry.channel_target,
+            entry.attempts + 1,
             detail,
         )
+        _requeue_failed(key, entry)
+
+
+def _requeue_failed(key: tuple, entry: _BatchEntry) -> None:
+    """Resilience: a failed batch is re-queued (merged with anything new) and
+    retried with backoff instead of being dropped."""
+    entry.attempts += 1
+    if entry.attempts >= MAX_BATCH_ATTEMPTS:
+        logger.error("event=batch_dispatch_gave_up subscription=%s entities=%d attempts=%d",
+                     entry.subscription_id, len(entry.entities), entry.attempts)
+        return
+    with _queues_lock:
+        pending = _queues.get(key)
+        if pending is not None:
+            if pending.timer is not None:
+                pending.timer.cancel()
+            entry.entities.extend(pending.entities)
+        _queues[key] = entry
+        delay = min(1800.0, BATCH_WINDOW_SECONDS * (2 ** entry.attempts))
+        timer = threading.Timer(delay, _flush, args=[key])
+        timer.daemon = True
+        timer.start()
+        entry.timer = timer
 
 
 def _narrate_entities(entry: _BatchEntry) -> str:

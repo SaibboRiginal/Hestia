@@ -17,7 +17,7 @@ logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
-ORACLE_ROUTE_PATH = os.getenv("ORACLE_ROUTE_PATH", "api/chat").strip("/")
+ORACLE_ROUTE_PATH = os.getenv("ORACLE_ROUTE_PATH", "api/llm/generate").strip("/")
 ORACLE_SESSION_ID = "argus-analysis"
 
 
@@ -40,20 +40,14 @@ def analyze(prompt: str, context: str = "") -> str:
             + instructions
         )
 
-    payload: dict = {
-        "message": prompt,
-        "session_id": ORACLE_SESSION_ID,
-        "save_history": False,
-    }
-    if instructions:
-        payload["client_instructions"] = instructions
-
+    # Plain generation: alert narration needs no classifier/tools/history.
+    full_prompt = f"{instructions}\n\n{prompt}" if instructions else prompt
     try:
         envelope = {
             "method": "POST",
             "headers": {},
             "query": {},
-            "body": payload,
+            "body": {"prompt": full_prompt},
             "timeout_seconds": 60,
         }
         resp = requests.post(
@@ -70,26 +64,10 @@ def analyze(prompt: str, context: str = "") -> str:
                 status_code,
             )
             return ""
-
         inner_payload = (routed or {}).get("payload") or {}
-        raw = ""
         if isinstance(inner_payload, dict):
-            raw = str(inner_payload.get("raw") or "")
-        if not raw:
-            raw = json.dumps(inner_payload)
-
-        # Oracle streams NDJSON — iterate lines to find the "final" event.
-        for line in raw.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                if obj.get("type") == "final":
-                    return str(obj.get("reply", "")).strip()
-            except json.JSONDecodeError:
-                continue
-        return ""
+            return str(inner_payload.get("response") or "").strip()
+        return str(inner_payload).strip()
     except Exception as exc:
         logger.warning(
             "event=oracle_analysis_call_failed Oracle analysis call failed: %s", exc)

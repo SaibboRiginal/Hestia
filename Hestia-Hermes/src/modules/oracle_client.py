@@ -15,24 +15,16 @@ _SESSION_ID = "hermes-narration"
 
 
 def narrate(prompt: str) -> str:
-    """Send a prompt to Oracle and return the reply text.
+    """Ask Oracle to write a message from *prompt*; "" if Oracle fails.
 
-    Returns an empty string if Oracle is unreachable or returns an error.
+    Uses the plain generation endpoint: narration needs no classifier, tools
+    or chat history (the full /api/chat pipeline was slow and burned context).
     """
     try:
         resp = requests.post(
-            f"{_HUB_API_URL}/route/oracle/api/chat",
-            json={
-                "method": "POST",
-                "headers": {},
-                "query": {},
-                "body": {
-                    "message": prompt,
-                    "session_id": _SESSION_ID,
-                    "save_history": False,
-                },
-                "timeout_seconds": 60,
-            },
+            f"{_HUB_API_URL}/route/oracle/api/llm/generate",
+            json={"method": "POST", "headers": {}, "query": {},
+                  "body": {"prompt": prompt}, "timeout_seconds": 60},
             timeout=62,
         )
         if resp.status_code >= 400:
@@ -40,25 +32,13 @@ def narrate(prompt: str) -> str:
                 "event=oracle_narration_returned_status Oracle narration returned status %s", resp.status_code)
             return ""
         routed = resp.json() if resp.content else {}
+        if int((routed or {}).get("status_code", 500)) >= 400:
+            logger.warning("event=oracle_narration_non_success status=%s", routed.get("status_code"))
+            return ""
         payload = routed.get("payload") if isinstance(routed, dict) else {}
-        # Payload may be raw text (NDJSON wrapped in {"raw": "..."})
-        raw_text = ""
-        if isinstance(payload, dict) and "raw" in payload:
-            raw_text = payload["raw"]
-        elif isinstance(payload, str):
-            raw_text = payload
-        # Oracle streams NDJSON — iterate lines to find the "final" event
-        for line in raw_text.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-                if obj.get("type") == "final":
-                    return str(obj.get("reply", "")).strip()
-            except json.JSONDecodeError:
-                continue
-        return ""
+        if isinstance(payload, dict):
+            return str(payload.get("response") or "").strip()
+        return str(payload or "").strip()
     except Exception as exc:
         logger.warning("event=oracle_narration_failed Oracle narration failed: %s", exc)
         return ""

@@ -131,6 +131,22 @@ def register_on_hub_startup():
                      name="hub-keepalive").start()
 
 
+@app.on_event("startup")
+def start_delivery_retry_loop():
+    """Background pass retrying failed deliveries (resilience rule 7)."""
+    interval = float(os.getenv("HERMES_RETRY_INTERVAL_SECONDS", "120"))
+
+    def _loop():
+        while True:
+            time.sleep(max(15.0, interval))
+            try:
+                service.retry_failed_deliveries()
+            except Exception as exc:
+                logger.warning("[🔄] event=hermes_retry_loop_error error=%s", exc)
+
+    threading.Thread(target=_loop, daemon=True, name="hermes-retry").start()
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_hermes"}
