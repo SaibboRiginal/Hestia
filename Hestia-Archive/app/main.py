@@ -43,6 +43,11 @@ def _bootstrap_database() -> None:
                 conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
                 conn.commit()
             models.Base.metadata.create_all(bind=engine)
+            # create_all never adds columns to existing tables: tiny idempotent
+            # migrations for columns introduced after first deploy.
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE calendar_items ADD COLUMN IF NOT EXISTS meta JSONB"))
+                conn.commit()
             return
         except Exception as exc:
             if limit and _time.monotonic() - started > limit:

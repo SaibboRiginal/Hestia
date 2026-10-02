@@ -130,6 +130,10 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 - If Claude answers with a usage-limit error, Forge pauses all budgeted work until the reset (`phase=exhausted`) and
   re-schedules the task.
 - The remaining % is not readable by programs: the policy is time-based + Claude's own limit signal.
+- **Assistant agenda:** the two windows live in Chronos' assistant agenda as `forge.claude_nights` and
+  `forge.claude_final` (registered at start, updated when the schedule changes). Forge asks the agenda first, so
+  moving, pausing or **skipping** a night there ("salta stanotte") is respected; Chronos down → built-in schedule.
+  Each scheduled Claude task also appears as an agenda `event` (`forge.task.<id>`).
 - Configure from Telegram ("il reset di Claude è lunedì alle 10") → tool `forge_set_claude_schedule`, or
   `POST /api/hephaestus/forge/settings/claude-schedule {reset_day, reset_time, tz, window_hours, night,
   night_max_tasks, final_hours}`. Status: `GET /api/hephaestus/forge/claude-budget`. Persisted in `settings.json`.

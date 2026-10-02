@@ -3400,6 +3400,128 @@ paths:
       responses:
         "200": {description: "{sessions: [string]}"}
 
+  /api/agenda:
+    get:
+      tags: [Chronos]
+      summary: Assistant agenda occurrences
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: days, in: query, schema: {type: integer, default: 7}}
+        - {name: owner, in: query, schema: {type: string}}
+        - {name: type, in: query, schema: {type: string, enum: [event, task, job, window]}}
+        - {name: past_hours, in: query, schema: {type: integer, default: 0}}
+      responses:
+        "200": {description: "{from, days, count, occurrences[{item_id, key, type, owner, title, start, end, occurrence, skipped}]}"}
+
+  /api/agenda/items:
+    get:
+      tags: [Chronos]
+      summary: Assistant agenda raw items
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{count, items[]}"}
+    post:
+      tags: [Chronos]
+      summary: Create an assistant agenda item (on demand)
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, start_at]
+              properties:
+                title: {type: string}
+                type: {type: string, enum: [event, task, job, window]}
+                owner: {type: string}
+                start_at: {type: string}
+                end_at: {type: string}
+                recurrence: {type: string, description: RRULE}
+                description: {type: string}
+                action: {type: object, description: "{service, method, path, body, query, timeout_seconds}"}
+                key: {type: string}
+                params: {type: object}
+                tz: {type: string}
+      responses:
+        "200": {description: "{status, item}"}
+
+  /api/agenda/register:
+    post:
+      tags: [Chronos]
+      summary: Module default rules (idempotent by key, user edits preserved)
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{status, count, items}"}
+
+  /api/agenda/items/{ref}:
+    patch:
+      tags: [Chronos]
+      summary: Move/change/pause an agenda item
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      responses:
+        "200": {description: "{status, item}"}
+    delete:
+      tags: [Chronos]
+      summary: Cancel an agenda item
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      responses:
+        "200": {description: "{status, item}"}
+
+  /api/agenda/items/{ref}/skip:
+    post:
+      tags: [Chronos]
+      summary: Skip (dismiss) one occurrence
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      responses:
+        "200": {description: "{status, item}"}
+
+  /api/agenda/items/{ref}/unskip:
+    post:
+      tags: [Chronos]
+      summary: Restore a skipped occurrence
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      responses:
+        "200": {description: "{status, item}"}
+
+  /api/agenda/items/{ref}/run:
+    post:
+      tags: [Chronos]
+      summary: Execute the item's action now
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      responses:
+        "200": {description: "{status, ok, detail}"}
+
+  /api/agenda/windows/{key}:
+    get:
+      tags: [Chronos]
+      summary: Is a window open now?
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, key, exists, active, until, skipped_now, next_open, params}"}
+
   /api/activity:
     get:
       tags: [Oracle]

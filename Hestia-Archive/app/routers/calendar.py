@@ -26,6 +26,8 @@ def upsert_calendar_item(
             # re-enable it every few minutes. A moved event gets reminded again.
             old_start = existing.start_at
             for field, value in item.model_dump(exclude={"external_id", "source", "nag_enabled"}).items():
+                if field == "meta" and value is None:
+                    continue          # provider syncs don't carry meta: keep it
                 setattr(existing, field, value)
             if old_start is not None and item.start_at is not None and old_start != item.start_at:
                 existing.last_notified_bucket = None

@@ -356,6 +356,8 @@ class CalendarItemCreate(BaseModel):
     html_link: Optional[str] = None
     nag_enabled: bool = Field(
         True, description="Whether the notification worker should nag about this item")
+    meta: Optional[Dict[str, Any]] = Field(
+        None, description="Free-form metadata (assistant agenda: type, owner, action, skips, rules)")
 
 
 class CalendarItemRead(CalendarItemCreate):
