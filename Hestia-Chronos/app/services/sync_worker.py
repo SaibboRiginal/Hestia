@@ -219,21 +219,83 @@ def _tick() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+AGENDA_JOB_KEY = "chronos.calendar_sync"
+_tick_lock = threading.Lock()
+_last_run_ts = 0.0
+
+
+def run_sync(trigger: str = "api") -> dict:
+    """One sync at a time (agenda job, fallback loop, maintenance, user)."""
+    global _last_run_ts
+    if not _tick_lock.acquire(blocking=False):
+        return {"status": "busy"}
+    try:
+        _last_run_ts = time.time()
+        _tick()
+        return {"status": "ok", "trigger": trigger}
+    except Exception as exc:
+        logger.error("[🔄] event=sync_tick_failed trigger=%s error=%s", trigger, exc)
+        return {"status": "error", "trigger": trigger, "error": str(exc)[:300]}
+    finally:
+        _tick_lock.release()
+
+
+def agenda_rules() -> list[dict]:
+    """Calendar sync as a recurring job of the assistant agenda (fired via Hub)."""
+    minutes = max(1, _POLL_SECONDS // 60)
+    return [{
+        "key": AGENDA_JOB_KEY, "type": "job", "title": "Chronos: sincronizza calendari",
+        "description": "Importa gli eventi da Google/Outlook (via Hecate) e avvisa dei nuovi.",
+        "start_at": "2026-01-01T00:00:00", "recurrence": f"FREQ=MINUTELY;INTERVAL={minutes}",
+        "action": {"service": "chronos", "path": "/api/calendar/sync", "method": "POST",
+                   "body": {"trigger": "agenda"}, "timeout_seconds": 20},
+        "params": {"interval_seconds": _POLL_SECONDS},
+    }]
+
+
+def _agenda_driving() -> bool:
+    """True when the agenda job exists and is handled (or paused by the user)."""
+    from services import agenda as assistant_agenda
+    try:
+        item = assistant_agenda.get(AGENDA_JOB_KEY)
+    except Exception:
+        return False                      # missing or Archive down → fallback
+    if item["status"] in {"paused", "cancelled", "completed"}:
+        return True                       # user decision: do not self-run
+    last = item.get("last_fired")
+    if not last:
+        return True
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(str(last).replace("Z", "+00:00"))
+           ).total_seconds()
+    return age <= 3 * _POLL_SECONDS
+
+
 def _run_loop() -> None:
+    """Boot sync + agenda registration; then fallback only if the agenda is not driving."""
+    from services import agenda as assistant_agenda
     logger.info(
-        "event=sync_worker_started_poll_every [SYNC] Worker started — poll every %ds | window -%dd to +%dd | notify_new=%s",
+        "event=sync_worker_started_poll_every [SYNC] Worker started — agenda job every %ds | window -%dd to +%dd | notify_new=%s",
         _POLL_SECONDS,
         _LOOK_BACK_DAYS,
         _LOOK_AHEAD_DAYS,
         _NOTIFY_NEW,
     )
+    registered = False
+    run_sync("startup")
     while True:
+        time.sleep(60)
+        if not registered:
+            try:
+                assistant_agenda.register_rules("chronos", agenda_rules())
+                registered = True
+            except Exception as exc:
+                logger.warning("[🔄] event=sync_agenda_register_failed error=%s", exc)
         try:
-            _tick()
+            if time.time() - _last_run_ts >= _POLL_SECONDS and not _agenda_driving():
+                logger.info("[🔄] event=sync_fallback_run reason=agenda_not_driving")
+                run_sync("fallback")
         except Exception as exc:
-            logger.error(
-                "event=sync_unhandled_error_tick [SYNC] Unhandled error in tick: %s", exc)
-        time.sleep(_POLL_SECONDS)
+            logger.error("[🔄] event=sync_fallback_loop_error error=%s", exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -175,6 +175,14 @@ def create_hephaestus_router(remediation_service: RemediationService) -> APIRout
             "task": task,
         }
 
+    @router.post("/api/hephaestus/remediate/{task_id}/retry")
+    def retry_remediation(task_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Retry a failed remediation (fired by the assistant agenda)."""
+        task = remediation_service.retry_task(task_id, str((body or {}).get("requested_by") or "agenda"))
+        if not task:
+            return {"status": "error", "error": f"Unknown task_id: {task_id}"}
+        return {"status": "ok", "task": task}
+
     @router.post("/api/hephaestus/remediate/{task_id}/rollback")
     def rollback_remediation(task_id: str, request: RemediationRollbackRequest) -> dict[str, Any]:
         task = remediation_service.rollback_task(task_id, request)

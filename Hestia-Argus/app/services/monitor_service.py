@@ -21,6 +21,11 @@ from collections import deque
 from datetime import datetime, timezone
 
 from core import docker_client, forge_proposer, health_poller, hub_client
+
+try:
+    from hestia_common.agenda_client import AgendaClient
+except ModuleNotFoundError:  # local run without the shared package on sys.path
+    AgendaClient = None  # type: ignore[assignment]
 from schemas.reports import LogEvent
 from schemas.reports import ServiceAlert
 from worker.alert_worker import send_alert, send_recovery
@@ -52,6 +57,73 @@ _seen_log_fingerprints: set[str] = set()
 _seen_log_order: deque[str] = deque()
 _seen_log_lock = threading.Lock()
 _monitor_cycle_count: int = 0
+
+# ── Repair follow-up in the assistant agenda ────────────────────────────────
+# A service that stays down is not forgotten: Argus plans "argus.repair.<svc>"
+# rechecks in Hestia's agenda (fired by Chronos → POST /api/argus/recheck/<svc>)
+# with exponential backoff; each recheck re-requests the Hephaestus repair.
+# The user sees them and can move/cancel. Recovery closes the entry.
+REPAIR_RECHECK_MINUTES = max(1, int(os.getenv("ARGUS_REPAIR_RECHECK_MINUTES", "10")))
+REPAIR_RECHECK_MAX_MINUTES = max(REPAIR_RECHECK_MINUTES, int(os.getenv("ARGUS_REPAIR_RECHECK_MAX_MINUTES", "360")))
+_repair_attempts: dict[str, int] = {}
+_agenda = AgendaClient("argus", hub_client.HUB_API_URL) if AgendaClient else None
+
+
+def _repair_key(service: str) -> str:
+    return f"argus.repair.{service}"
+
+
+def _plan_recheck(service: str, status: str, error: str | None) -> None:
+    if _agenda is None:
+        return
+    attempt = _repair_attempts.get(service, 0) + 1
+    _repair_attempts[service] = attempt
+    minutes = min(REPAIR_RECHECK_MAX_MINUTES, REPAIR_RECHECK_MINUTES * 2 ** (attempt - 1))
+    when = datetime.now(timezone.utc).timestamp() + minutes * 60
+    _agenda.plan(
+        _repair_key(service), f"🩺 Ricontrollo {service} ({status}) — tentativo {attempt}",
+        datetime.fromtimestamp(when, tz=timezone.utc),
+        action={"service": "argus", "path": f"/api/argus/recheck/{service}", "method": "POST",
+                "body": {"trigger": "agenda"}, "timeout_seconds": 30},
+        description=f"Servizio {service} non sano: {str(error or 'unknown')[:200]}. "
+                    "Argus ricontrolla e richiede di nuovo la riparazione a Hephaestus.",
+        params={"service": service, "attempt": attempt})
+
+
+def _close_repair(service: str) -> None:
+    if _repair_attempts.pop(service, None) is not None and _agenda is not None:
+        _agenda.done(_repair_key(service))
+
+
+def recheck(service: str) -> dict:
+    """Agenda follow-up for an unhealthy service: still down → repair again + next recheck."""
+    target = next((s for s in hub_client.discover_services() if s.get("name") == service), None)
+    if target is None:
+        report_status, error = "down", "not registered on Hub"
+    else:
+        report = health_poller.poll_service(target)
+        report_status, error = report.status, report.error
+    if report_status == "up":
+        _close_repair(service)
+        with _unhealthy_lock:
+            was = _unhealthy.pop(service, None)
+        if was:
+            send_recovery(service)
+        return {"status": "ok", "service": service, "health": "up"}
+    ok, response = (False, {"skipped": "auto_remediate_disabled"})
+    if AUTO_REMEDIATE_ENABLED:
+        ok, response = hub_client.request_hephaestus_remediation(
+            source="argus.recheck", service=service, issue=f"service_{report_status}",
+            severity="critical" if report_status == "down" else "warning",
+            requested_action="auto_health_recovery", environment=AUTO_REMEDIATE_ENVIRONMENT,
+            dry_run=AUTO_REMEDIATE_DRY_RUN, auto_approve=False,
+            metadata={"status": report_status, "error": error, "recheck_attempt": _repair_attempts.get(service, 0)})
+    _plan_recheck(service, report_status, error)
+    logger.info("[🔄] event=argus_recheck_still_unhealthy service=%s status=%s remediation_ok=%s next_attempt=%d",
+                service, report_status, ok, _repair_attempts.get(service, 0))
+    return {"status": "ok", "service": service, "health": report_status,
+            "remediation_requested": ok, "remediation": response,
+            "next_attempt": _repair_attempts.get(service, 0)}
 
 
 def _is_new_log_event(event: LogEvent) -> bool:
@@ -273,9 +345,11 @@ def _run_once() -> None:
                     AUTO_REMEDIATE_DRY_RUN,
                     str(response)[:250],
                 )
+                _plan_recheck(name, report.status, report.error)
         elif was_unhealthy:
             with _unhealthy_lock:
                 _unhealthy.pop(name, None)
+            _close_repair(name)
             send_recovery(name)
 
     # --- Incremental log polling + log alerts ---

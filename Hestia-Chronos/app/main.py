@@ -580,6 +580,19 @@ def get_agenda(
 # ─────────────────────────────────────────────────────────────────────
 
 
+class CalendarSyncRequest(BaseModel):
+    trigger: str = "api"
+
+
+@app.post("/api/calendar/sync")
+def calendar_sync(req: CalendarSyncRequest | None = None) -> dict:
+    """Run a calendar sync now in background (agenda job ``chronos.calendar_sync``)."""
+    trigger = (req or CalendarSyncRequest()).trigger
+    threading.Thread(target=sync_worker.run_sync, args=(trigger,), daemon=True,
+                     name="chronos-sync-run").start()
+    return {"status": "started", "trigger": trigger, "agenda_job": sync_worker.AGENDA_JOB_KEY}
+
+
 class AgendaAction(BaseModel):
     service: str
     path: str
@@ -729,8 +742,8 @@ def module_maintenance_reconcile(req: ModuleMaintenanceRequest) -> ModuleMainten
 
     if action in {"reconcile_calendar", "sync", "sync_tick", "full"}:
         try:
-            sync_worker._tick()  # pylint: disable=protected-access
-            tick_results["sync"] = "ok"
+            result = sync_worker.run_sync("maintenance")
+            tick_results["sync"] = result["status"] if result["status"] != "error" else f"error:{result.get('error')}"
             mutation_count += 1
         except Exception as error:
             tick_results["sync"] = f"error:{error}"

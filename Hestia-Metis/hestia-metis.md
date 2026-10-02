@@ -31,8 +31,11 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 
 ### Training Orchestration
 - Triggers external Unsloth/QLoRA training script
-- Tracks job status via job ID
+- Tracks job status via job ID (`GET /api/metis/lora/jobs`, persisted in `METIS_DATA_DIR/lora_jobs.json`)
 - Dataset exported as JSONL before training kickoff
+- **Planned in the assistant agenda**: window `metis.training` (default daily 01–06). `schedule=auto` (default):
+  user request → starts now; module request (e.g. Athena) → agenda task `metis.train.<job>` at the next window
+  opening, fired via Hub with `schedule=now`. `schedule=window|now` forces it. Move/cancel it from the agenda.
 
 ## MCP Tools
 
@@ -53,6 +56,7 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `POST` | `/mcp` | MCP JSON-RPC endpoint (tools/list, tools/call) |
 | `POST` | `/api/metis/dataset/build` · `/benchmark/run` · `/lora/train` | REST mirrors of the MCP tools (auto-mounted by `mount_missing_rest_routes`; were 404 via Hub/Telegram) |
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
+| `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: `METIS_GOOD_QUALITY_LABELS` (default `excellent,good`) |
 
 Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archive in the Hub envelope query
@@ -60,7 +64,7 @@ Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archiv
 
 `metis_benchmark_run` returns `status: not_implemented` (honest placeholder, no LLM call).
 `metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
-(dataset + log in `METIS_DATA_DIR`, default `/app/data`); it used to report "triggered" without starting anything.
+(dataset + log in `METIS_DATA_DIR`, default `/code/data` = `Hestia-Metis/data` volume); it used to report "triggered" without starting anything.
 
 ## Constraints
 
@@ -79,6 +83,14 @@ Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archiv
 | `METIS_MAX_DATASET_EXAMPLES` | `5000` | Max examples per dataset |
 | `METIS_DEDUPLICATE_ENABLED` | `true` | Enable near-duplicate removal |
 | `METIS_DEFAULT_QUALITY_LABELS` | `excellent,good` | Quality labels to include |
-| `METIS_TRAINING_SCRIPT` | `/app/train_lora.py` | Path to external training script |
+| `METIS_TRAINING_SCRIPT` | `/code/data/train_lora.py` | Path to external training script (put it in `Hestia-Metis/data/`) |
+| `METIS_DATA_DIR` | `/code/data` | Exported datasets, training logs, `lora_jobs.json` |
+| `METIS_TRAINING_WINDOW_START` / `_END` | `1` / `6` | Default hours of agenda window `metis.training` |
 | `METIS_BENCHMARK_MODEL` | (empty) | Model for benchmark evaluation |
 | `METIS_BENCHMARK_PROVIDER` | (empty) | Provider for benchmark evaluation |
+
+## Docker
+
+Part of the global stack (`docker-compose.global.yml`, service `metis`, port 19014). Built from the repo root
+(like every service) so the shared `hestia_common` package is copied in — the old per-folder build crashed at
+import. Volume `./Hestia-Metis/data:/code/data`.

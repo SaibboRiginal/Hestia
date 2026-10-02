@@ -31,6 +31,7 @@ except ModuleNotFoundError:
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
+from hestia_common.agenda_client import AgendaClient, daily_window
 
 logger, log_buffer = setup_service_logging("hestia_metis")
 
@@ -58,6 +59,53 @@ _HUB_API_URL = os.getenv(
 
 hub = HubClient(_HUB_API_URL)
 
+# ── Assistant agenda (Chronos) ────────────────────────────────────────────────
+# Training is heavy (GPU/CPU for hours): non-user requests are planned as agenda
+# tasks inside the "metis.training" window (default night). The user sees them
+# in Hestia's agenda and can move/skip/cancel; user requests start immediately.
+WINDOW_TRAINING = "metis.training"
+agenda = AgendaClient("metis", _HUB_API_URL)
+_DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
+_JOBS_FILE = _DATA_DIR / "lora_jobs.json"
+_jobs_lock = threading.Lock()
+
+
+def _agenda_rules() -> list[dict]:
+    return [daily_window(
+        WINDOW_TRAINING, "Metis: finestra training modelli",
+        int(os.getenv("METIS_TRAINING_WINDOW_START", "1")),
+        int(os.getenv("METIS_TRAINING_WINDOW_END", "6")),
+        description="Training LoRA pianificati (non richiesti da te) partono qui. "
+                    "Sposta/salta la finestra per rimandarli.")]
+
+
+def _load_jobs() -> dict:
+    try:
+        return json.loads(_JOBS_FILE.read_text(encoding="utf-8")) if _JOBS_FILE.exists() else {}
+    except Exception:
+        return {}
+
+
+def _save_job(job: dict) -> None:
+    with _jobs_lock:
+        jobs = _load_jobs()
+        jobs[job["job_id"]] = {**jobs.get(job["job_id"], {}), **job}
+        for old in sorted(jobs, key=lambda k: jobs[k].get("updated_at", ""))[:-200]:
+            jobs.pop(old, None)
+        try:
+            _DATA_DIR.mkdir(parents=True, exist_ok=True)
+            _JOBS_FILE.write_text(json.dumps(jobs, indent=2), encoding="utf-8")
+        except Exception as exc:
+            logger.warning("event=metis_jobs_save_failed error=%s", exc)
+
+
+def _pid_alive(pid) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except Exception:
+        return False
+
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Hestia-Metis", version=SERVICE_VERSION)
 app.add_middleware(
@@ -80,6 +128,17 @@ def metis_insights(limit: int = 500, since: str | None = None):
     if isinstance(records, dict):
         records = records.get("records") or records.get("items") or []
     return {"status": "ok", **build_insights(records if isinstance(records, list) else [])}
+
+
+@app.get("/api/metis/lora/jobs")
+def metis_lora_jobs():
+    """Training jobs (scheduled in the agenda, running, finished)."""
+    jobs = _load_jobs()
+    for job in jobs.values():
+        if job.get("status") == "running" and job.get("pid") and not _pid_alive(job["pid"]):
+            job["status"] = "finished"
+    return {"status": "ok", "window": WINDOW_TRAINING, "count": len(jobs),
+            "jobs": sorted(jobs.values(), key=lambda j: j.get("updated_at", ""), reverse=True)}
 
 
 @app.get("/api/logs")
@@ -224,12 +283,47 @@ try:
         dataset_name: str = "",
         base_model: str = "",
         adapter_name: str = "",
+        schedule: str = "auto",
+        requested_by: str = "user",
+        job_id: str = "",
     ) -> dict:
-        """Orchestrate a LoRA fine-tuning run (triggers external script)."""
+        """Orchestrate a LoRA fine-tuning run (triggers external script).
+
+        ``schedule``: ``now`` | ``window`` | ``auto`` (user → now, modules → window).
+        A deferred run becomes an agenda task in the ``metis.training`` window.
+        """
         import uuid
 
-        job_id = f"lora-{uuid.uuid4().hex[:12]}"
+        job_id = str(job_id or "").strip() or f"lora-{uuid.uuid4().hex[:12]}"
         ds_name = str(dataset_name or "").strip()
+        mode = str(schedule or "auto").strip().lower()
+        if mode == "auto":
+            mode = "now" if str(requested_by or "user").lower() == "user" else "window"
+        if mode == "window":
+            win = agenda.window(WINDOW_TRAINING)
+            if not (win and win.get("active")):
+                start_at = (win or {}).get("next_open")
+                if not start_at:
+                    # Window missing/cancelled: plan in one hour (user can move it).
+                    from datetime import datetime, timedelta, timezone
+                    start_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+                planned = agenda.plan(
+                    f"metis.train.{job_id}", f"Metis: training LoRA {ds_name or '?'}", start_at,
+                    action={"service": "metis", "path": "/api/metis/lora/train", "method": "POST",
+                            "body": {"dataset_name": ds_name, "base_model": base_model,
+                                     "adapter_name": adapter_name, "schedule": "now",
+                                     "requested_by": requested_by, "job_id": job_id},
+                            "timeout_seconds": 60},
+                    description=f"Richiesto da {requested_by}. Annulla o sposta dall'agenda di Hestia.",
+                    params={"dataset_name": ds_name, "job_id": job_id})
+                _save_job({"job_id": job_id, "status": "scheduled", "dataset_name": ds_name,
+                           "requested_by": requested_by, "start_at": start_at,
+                           "agenda_key": f"metis.train.{job_id}" if planned else None,
+                           "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
+                return {"status": "scheduled" if planned else "schedule_failed", "job_id": job_id,
+                        "start_at": start_at, "agenda_key": f"metis.train.{job_id}",
+                        "message": "Training pianificato nella finestra notturna dell'agenda di Hestia."
+                        if planned else "Agenda non raggiungibile: riprova o usa schedule=now."}
         examples = dataset_builder.get_dataset_examples(ds_name)
 
         if not examples:
@@ -252,7 +346,7 @@ try:
 
         training_script = os.getenv(
             "METIS_TRAINING_SCRIPT",
-            "/app/train_lora.py",
+            str(_DATA_DIR / "train_lora.py"),
         )
         script_exists = os.path.exists(training_script) if training_script else False
         pid = None
@@ -261,7 +355,7 @@ try:
             # Actually launch the external trainer (it used to report
             # "triggered" without starting anything).
             import subprocess
-            data_dir = Path(os.getenv("METIS_DATA_DIR", "/app/data"))
+            data_dir = _DATA_DIR
             data_dir.mkdir(parents=True, exist_ok=True)
             dataset_path = str(data_dir / f"{job_id}.jsonl")
             Path(dataset_path).write_text(jsonl_content, encoding="utf-8")
@@ -277,6 +371,11 @@ try:
             job_id, ds_name, resolved_base, resolved_adapter,
             len(examples), script_exists, pid,
         )
+        _save_job({"job_id": job_id, "status": "running" if pid else "no_training_script",
+                   "pid": pid, "dataset_name": ds_name, "adapter_name": resolved_adapter,
+                   "base_model": resolved_base, "requested_by": requested_by,
+                   "log": str(_DATA_DIR / f"{job_id}.log") if pid else None,
+                   "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
         return {
             "status": "started" if pid else "no_training_script",
             "job_id": job_id,
@@ -288,7 +387,7 @@ try:
             "examples": len(examples),
             "training_script": training_script,
             "note": (
-                f"Training running; log: {os.getenv('METIS_DATA_DIR', '/app/data')}/{job_id}.log" if pid
+                f"Training running; log: {_DATA_DIR}/{job_id}.log" if pid
                 else f"Training script not found at {training_script}. "
                 "Set METIS_TRAINING_SCRIPT to your Unsloth/QLoRA script."
             ),
@@ -444,6 +543,12 @@ try:
                         "type": "string",
                         "description": "Name for the output LoRA adapter",
                     },
+                    "schedule": {
+                        "type": "string", "enum": ["auto", "now", "window"],
+                        "description": "now = subito; window = nella finestra notturna dell'agenda; "
+                                       "auto = subito se lo chiede l'utente",
+                    },
+                    "requested_by": {"type": "string", "description": "user | athena | ..."},
                 },
                 "required": ["dataset_name", "adapter_name"],
             },
@@ -493,6 +598,8 @@ _HUB_REGISTRATION_PAYLOAD = {
         "dataset_status": "/api/metis/dataset/status",
         "benchmark_run": "/api/metis/benchmark/run",
         "loRA_train": "/api/metis/lora/train",
+        "lora_jobs": "/api/metis/lora/jobs",
+        "agenda_windows": [WINDOW_TRAINING],
     },
 }
 
@@ -538,6 +645,7 @@ def register_on_hub_startup():
     threading.Thread(
         target=_hub_keepalive, daemon=True, name="metis-hub-keepalive",
     ).start()
+    agenda.register_async(_agenda_rules)
 
 
 # Serve declared REST paths of MCP-only tools (Hub/Telegram/MCP gateway call

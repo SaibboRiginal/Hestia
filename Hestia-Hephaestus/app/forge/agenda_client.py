@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any
 
-import requests
-
+from ..core.shared_imports import import_shared_symbol
 from .claude_budget import ClaudeSchedule, _DAYS, _parse_hhmm
+
+_SharedAgendaClient = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")
 
 logger = logging.getLogger("hestia_hephaestus.forge.agenda")
 
@@ -22,19 +22,11 @@ KEY_FINAL = "forge.claude_final"
 _RRULE_DAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
 
 
-class AgendaClient:
-    def __init__(self, hub_api_url: str):
-        self.hub = hub_api_url.rstrip("/")
+class AgendaClient(_SharedAgendaClient):
+    """Shared assistant-agenda client + Forge specifics (Claude windows, task mirror)."""
 
-    def _call(self, method: str, path: str, body: dict | None = None, query: dict | None = None,
-              timeout: float = 10) -> tuple[int, Any]:
-        resp = requests.post(
-            f"{self.hub}/route/chronos/{path.lstrip('/')}",
-            json={"method": method, "headers": {}, "query": query or {}, "body": body, "timeout_seconds": timeout},
-            timeout=timeout + 3)
-        resp.raise_for_status()
-        routed = resp.json() or {}
-        return int(routed.get("status_code", 500)), routed.get("payload")
+    def __init__(self, hub_api_url: str):
+        super().__init__(OWNER, hub_api_url)
 
     # ── Claude windows ──────────────────────────────────────────────────────
     @staticmethod
@@ -98,25 +90,14 @@ class AgendaClient:
             logger.warning("[🔄] event=forge_agenda_register_failed error=%s", exc)
             return False
 
-    def window(self, key: str) -> dict | None:
-        """Window status, or None when Chronos is unreachable."""
-        try:
-            status, payload = self._call("GET", f"api/agenda/windows/{key}", timeout=6)
-            return payload if status < 400 and isinstance(payload, dict) else None
-        except Exception:
-            return None
+    # ── Forge tasks mirrored in the agenda (key forge.task.<id>) ────────────
+    @staticmethod
+    def task_key(task_id: str) -> str:
+        return f"forge.task.{task_id}"
 
-    # ── visibility of scheduled Forge tasks ─────────────────────────────────
     def show_task(self, task_id: str, title: str, start_at: str, description: str = "") -> None:
-        try:
-            self._call("POST", "api/agenda/items", body={
-                "key": f"forge.task.{task_id}", "type": "event", "owner": OWNER, "created_by": OWNER,
-                "title": f"Forge: {title[:80]}", "description": description[:500], "start_at": start_at})
-        except Exception as exc:
-            logger.debug("event=forge_agenda_show_task_failed task=%s error=%s", task_id, exc)
+        self.show(self.task_key(task_id), f"Forge: {title[:80]}", start_at, description=description[:500],
+                  params={"task_id": task_id})
 
     def hide_task(self, task_id: str) -> None:
-        try:
-            self._call("DELETE", f"api/agenda/items/forge.task.{task_id}", query={"by": OWNER})
-        except Exception:
-            pass
+        self.done(self.task_key(task_id))

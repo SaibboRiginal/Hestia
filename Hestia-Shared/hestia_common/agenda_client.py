@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -105,6 +106,51 @@ class AgendaClient:
             logger.info("event=agenda_registered owner=%s rules=%d", self.owner, len(rules))
             return True
         return False
+
+    def register_async(self, rules: list[dict] | Callable[[], list[dict]], *, retry_seconds: float = 60,
+                       refresh_seconds: float = 3600) -> threading.Thread:
+        """Register in background: retry until Chronos answers, then re-assert hourly
+        (idempotent; user edits are preserved by Chronos)."""
+        def _loop():
+            import time
+            while True:
+                ok = self.register(rules() if callable(rules) else rules)
+                time.sleep(refresh_seconds if ok else retry_seconds)
+
+        thread = threading.Thread(target=_loop, daemon=True, name=f"agenda-register-{self.owner}")
+        thread.start()
+        return thread
+
+    def lookup(self, key: str) -> tuple[bool, dict | None]:
+        """``(reachable, item)`` — distinguishes 'Chronos down' from 'item missing'."""
+        status, payload = self._safe("agenda_lookup_failed", "GET", "api/agenda/items",
+                                     query={"include_cancelled": True, "owner": self.owner}, timeout=6)
+        if not status or status >= 400 or not isinstance(payload, dict):
+            return False, None
+        return True, next((i for i in payload.get("items", []) if i.get("key") == key), None)
+
+    def should_self_run(self, key: str, interval_seconds: float, stale_factor: float = 3) -> bool:
+        """Fallback guard for a recurring ``job`` the agenda should fire.
+
+        True (run it yourself) when Chronos is unreachable, the job is missing,
+        or it is active but has not fired for ``stale_factor`` × interval.
+        False when the agenda is handling it — or the user paused/cancelled it
+        (a decision, not a failure).
+        """
+        reachable, item = self.lookup(key)
+        if not reachable or item is None:
+            return True
+        if item.get("status") in {"paused", "cancelled", "completed"}:
+            return False
+        last = item.get("last_fired")
+        if not last:
+            return False  # just registered: the agenda fires it at the next occurrence
+        try:
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(str(last).replace("Z", "+00:00"))
+                   ).total_seconds()
+        except ValueError:
+            return True
+        return age > stale_factor * interval_seconds
 
     def window(self, key: str) -> dict | None:
         """Window status ``{exists, active, until, next_open, params}``; None if Chronos is down."""

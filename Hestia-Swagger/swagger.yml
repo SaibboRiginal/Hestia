@@ -3797,6 +3797,39 @@ paths:
         "200":
           description: "{tools: [{name, path, description}]}"
 
+  /api/scout/cycle:
+    post:
+      tags: [Scout]
+      summary: Run the email to listings cycle (agenda job scout.email_cycle)
+      servers:
+        - url: http://localhost:19006
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger:
+                  type: string
+                  description: "agenda | user | api"
+                wait:
+                  type: boolean
+                  description: "run synchronously"
+      responses:
+        "200":
+          description: "{status: started|busy|ok|error, trigger}"
+
+  /api/scout/stats:
+    get:
+      tags: [Scout]
+      summary: Real-estate domain summary (counts by status, date range)
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200":
+          description: "{domain, total_entities, by_status, oldest_created, newest_created}"
+
   /api/tools/real_estate/search:
     post:
       tags: [Scout]
@@ -3918,6 +3951,26 @@ paths:
         "200":
           description: "{success: true}"
 
+  /api/calendar/sync:
+    post:
+      tags: [Chronos]
+      summary: Run a Hecate to Archive calendar sync now (agenda job chronos.calendar_sync)
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger:
+                  type: string
+                  description: "agenda | user | api"
+      responses:
+        "200":
+          description: "{status: started, trigger, agenda_job}"
+
   /api/calendar/providers:
     get:
       tags: [Chronos]
@@ -4014,6 +4067,22 @@ paths:
       responses:
         "200":
           description: "SystemReport: {status, summary (LLM text), events[], ...}"
+
+  /api/argus/recheck/{service}:
+    post:
+      tags: [Argus]
+      summary: Repair follow-up for an unhealthy service (agenda task argus.repair.<service>)
+      servers:
+        - url: http://localhost:19008
+      parameters:
+        - name: service
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "{status, service, health, remediation_requested, next_attempt}"
 
   /api/argus/remediate:
     post:
@@ -4291,6 +4360,16 @@ paths:
       responses:
         "200": {description: "{status, task}"}
 
+  /api/metis/lora/jobs:
+    get:
+      tags: [Metis]
+      summary: LoRA training jobs (scheduled in the agenda window metis.training, running, finished)
+      servers:
+        - url: http://localhost:19014
+      responses:
+        "200":
+          description: "{status, window, count, jobs[{job_id, status, dataset_name, start_at, agenda_key, pid, log}]}"
+
   /api/metis/insights:
     get:
       tags: [Metis]
@@ -4365,6 +4444,32 @@ paths:
       responses:
         "200":
           description: "{status, task}"
+
+  /api/hephaestus/remediate/{task_id}/retry:
+    post:
+      tags: [Hephaestus]
+      summary: Retry a failed remediation (fired by the assistant agenda); last failure escalates to Forge
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requested_by:
+                  type: string
+                  description: "agenda | user"
+      responses:
+        "200":
+          description: "{status, task}; task.state escalated + forge_task_id after the last attempt"
 
   /api/hephaestus/remediate/{task_id}/rollback:
     post:

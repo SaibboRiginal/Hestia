@@ -86,6 +86,7 @@ Chronos no longer owns provider credentials/OAuth flows and no longer calls Goog
 | `DELETE` | `/api/calendar/events/{event_id}` | Delete an event |
 | `PATCH` | `/api/calendar/events/{event_id}` | Update an event |
 | `GET` | `/api/calendar/providers` | List available (configured) providers |
+| `POST` | `/api/calendar/sync` | Run a Hecate → Archive calendar sync now (background; agenda job `chronos.calendar_sync`) |
 | `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
 | `GET` | `/health` | Service health |
@@ -217,8 +218,22 @@ Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`
 `ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi`,
 `agenda_assistente_sposta`, `agenda_assistente_salta`, `agenda_assistente_annulla`, `agenda_assistente_esegui`.
 
-### Current users
+### Who plans what (registered rules)
 
-- **Hephaestus Forge**: `forge.claude_nights` and `forge.claude_final` windows (Claude Pro budget) and an `event`
-  per scheduled Claude task (`forge.task.<id>`), removed when it starts or is rejected.
-- Next to migrate: Scout polling, Athena consolidation/skill curation, Metis training, Hecate calendar sync.
+Every module registers its defaults at boot (and re-asserts them hourly, idempotent) with the shared client
+`hestia_common/agenda_client.py`. Missing rule or Chronos down → the module falls back to its env schedule, so
+nothing stops; a rule the user **paused/cancelled** is a decision and is respected (no fallback).
+
+| Key | Type | Owner | Default | What happens |
+|---|---|---|---|---|
+| `scout.email_cycle` | job | scout | every `SCOUT_POLL_INTERVAL_SECONDS` (30 min) | `POST scout /api/scout/cycle` — email → listings cycle |
+| `chronos.calendar_sync` | job | chronos | every `CHRONOS_SYNC_POLL_SECONDS` (15 min) | `POST chronos /api/calendar/sync` — Hecate → Archive sync |
+| `athena.consolidation` | window | athena | daily 03–05 | memory consolidation, once a day inside the window |
+| `athena.skill_curation` | window | athena | daily 05–07 | skill curation, once a day inside the window |
+| `athena.thinking` | window | athena | all day | idle thinking cycles; skip/pause to silence Athena |
+| `metis.training` | window | metis | daily 01–06 | non-user LoRA trainings start here |
+| `metis.train.<job>` | task | metis | next `metis.training` opening | `POST metis /api/metis/lora/train` (schedule=now) |
+| `forge.claude_nights` / `forge.claude_final` | window | hephaestus | nights before the Claude Pro reset / final hours | autonomous Claude Code tasks |
+| `forge.task.<id>` | event | hephaestus | live | Forge task mirror: ⏳ da approvare, 🌙 programmato, 🔨 in lavorazione, 👀 da rivedere; completed when the task ends. Cancel a scheduled one → task rejected; move it later → Forge waits |
+| `hephaestus.repair.<id>` | event/task | hephaestus | now / +15 min × attempt | repair awaiting approval, or retry of a failed repair (`POST /api/hephaestus/remediate/{id}/retry`); last failure → Forge code-fix task |
+| `argus.repair.<service>` | task | argus | +10 min, doubling (max 6 h) | `POST argus /api/argus/recheck/{service}`: still down → new repair request + next recheck; recovery closes it |

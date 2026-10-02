@@ -106,6 +106,19 @@ Weighted score:
 | GET | `/api/athena/thinking` | Recent thinking records (new in Phase 3) |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
 
+### When Athena works = assistant agenda windows
+
+Registered at boot in Hestia's agenda (Chronos), editable by you (move, skip a day, pause):
+
+| Window | Default | Effect |
+|---|---|---|
+| `athena.consolidation` | daily 03–05 | memory consolidation, once per day inside the window |
+| `athena.skill_curation` | daily 05–07 | skill curation, once per day inside the window |
+| `athena.thinking` | all day | idle thinking cycles (observe → think → propose); skip/pause = Athena silent |
+
+Missing window or Chronos down → env hours (consolidation) / always (skills, thinking). Skipped or paused
+window = closed (your decision). Thinking still requires the idle gate (`ATHENA_IDLE_SECONDS`).
+
 ## Environment
 
 | Variable | Default | Description |
@@ -131,6 +144,9 @@ Weighted score:
 | `ATHENA_ORACLE_HINT_ENABLED` | `1` | Publish advisory hints to Oracle |
 | `ATHENA_ORACLE_HINT_TIMEOUT_SECONDS` | `8` | Timeout for Oracle hint calls |
 | `ATHENA_TASK_STORE_MAX` | `500` | Max task lifecycle records |
+| `ATHENA_CONSOLIDATION_WINDOW_START` / `_END` | `3` / `5` | Default hours of agenda window `athena.consolidation` (and fallback) |
+| `ATHENA_SKILL_CURATION_WINDOW_START` / `_END` | `5` / `7` | Default hours of agenda window `athena.skill_curation` |
+| `ATHENA_THINKING_WINDOW_START` / `_END` | `0` / `0` | Default hours of agenda window `athena.thinking` (0–0 = all day) |
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)

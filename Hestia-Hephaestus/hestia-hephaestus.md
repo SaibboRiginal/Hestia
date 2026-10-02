@@ -24,11 +24,20 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - POST /api/hephaestus/execute-preview
 - POST /api/hephaestus/remediate
 - POST /api/hephaestus/remediate/{task_id}/approve
+- POST /api/hephaestus/remediate/{task_id}/retry (agenda retry of a failed repair)
 - POST /api/hephaestus/remediate/{task_id}/rollback
 - GET /api/hephaestus/tasks
 - GET /api/hephaestus/tasks/{task_id}
 
 Execution endpoints above are implemented as policy-gated remediation flows (task creation, approval, rollback metadata) with real Hub-routed maintenance execution against target services.
+
+### Repairs in the assistant agenda
+
+- Repair waiting for approval → event `hephaestus.repair.<id>` ("🛠️ Riparazione da approvare").
+- Failed (non dry-run) repair → agenda task retry after `HEPHAESTUS_REPAIR_RETRY_MINUTES` × attempt (default 15),
+  up to `HEPHAESTUS_REPAIR_MAX_ATTEMPTS` (3); fired via Hub → `/remediate/{id}/retry`.
+- Last failure → **escalated to Forge** as a code-fix task (state `escalated`, `forge_task_id`); Forge applies
+  your permission mode. Success/rollback completes the agenda entry.
 
 ## Safety contract (Current)
 - Production mutation requires explicit approval.
@@ -133,7 +142,9 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 - **Assistant agenda:** the two windows live in Chronos' assistant agenda as `forge.claude_nights` and
   `forge.claude_final` (registered at start, updated when the schedule changes). Forge asks the agenda first, so
   moving, pausing or **skipping** a night there ("salta stanotte") is respected; Chronos down → built-in schedule.
-  Each scheduled Claude task also appears as an agenda `event` (`forge.task.<id>`).
+  Every Forge task is mirrored in the agenda as `forge.task.<id>`: ⏳ da approvare, 🌙 programmato (at the
+  next Claude window), 🔨 in coda/lavorazione, 👀 diff da rivedere, 🔀 merge; completed when the task ends.
+  A **scheduled** task follows its entry: cancel it in the agenda → task rejected; move it later → Forge waits.
 - Configure from Telegram ("il reset di Claude è lunedì alle 10") → tool `forge_set_claude_schedule`, or
   `POST /api/hephaestus/forge/settings/claude-schedule {reset_day, reset_time, tz, window_hours, night,
   night_max_tasks, final_hours}`. Status: `GET /api/hephaestus/forge/claude-budget`. Persisted in `settings.json`.

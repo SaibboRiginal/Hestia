@@ -118,8 +118,16 @@ owner of LLM provider keys. Scout picks the model explicitly so batch extraction
 | `POST` | `/api/tools/real_estate/search` | Optional direct domain endpoint (internal/debug use) |
 | `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
+| `POST` | `/api/scout/cycle` | Run the email → listings cycle `{trigger, wait}` (default async; one cycle at a time, `busy` otherwise) |
+| `GET` | `/api/scout/cycle` | Cycle state: running, last start/finish/trigger/error, agenda job, interval |
 
-Scout also runs on an internal schedule (configurable interval via env).
+### Schedule = assistant agenda job
+
+The cycle is the agenda job **`scout.email_cycle`** (every `SCOUT_POLL_INTERVAL_SECONDS`, default 30 min),
+registered at boot in Hestia's agenda (Chronos) and fired through Hub → `POST /api/scout/cycle`. You see it in
+"agenda di Hestia" and can move it, pause it, skip one run or run it now. One cycle runs at boot.
+Fallback: Scout checks every minute; if Chronos is unreachable, the job is missing or it has not fired for
+3× the interval, Scout runs the cycle itself (`[🔄] event=scout_cycle_fallback`). A job you paused is respected.
 
 ### Worker batching policy
 - `min_batch_size=1` (no hard wait for 5 items)
@@ -189,7 +197,7 @@ Truncation warnings are always logged when a summary still ends with "..." after
 | `SCOUT_FETCH_VIA_HUB` | `true` to send route-envelope payload to Hub, `false` for direct fetch service call |
 | `LLM_PROVIDER` | `ollama` or `cloud` |
 | `LLM_MODEL` | Model name (e.g. `llama3`, `gpt-4o`) |
-| `FETCH_INTERVAL_MINUTES` | How often to run the pipeline |
+| `SCOUT_POLL_INTERVAL_SECONDS` | Cycle interval (default 1800): default recurrence of the agenda job `scout.email_cycle` and fallback period |
 
 ---
 

@@ -138,6 +138,10 @@ flowchart LR
 3. Jobs/tasks: the Chronos agenda worker fires their action via Hub at the due time.
 4. The user reads and edits the agenda from Telegram (move, pause, skip, cancel, run now); edits win over defaults.
 5. The agenda (`source=hestia`) is separate from the user's calendars and never sent as user reminders.
+6. Registered today: `scout.email_cycle`, `chronos.calendar_sync` (jobs); `athena.consolidation`,
+   `athena.skill_curation`, `athena.thinking`, `metis.training`, `forge.claude_nights`, `forge.claude_final`
+   (windows); `metis.train.<job>`, `hephaestus.repair.<id>`, `argus.repair.<service>` (tasks); `forge.task.<id>`
+   (events). Jobs keep a module-side fallback (Chronos down / job missing / stale) that never overrides a pause.
 
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Metis use `/api/llm/generate`, Forge uses `/api/llm/chat` — always via Hub.
