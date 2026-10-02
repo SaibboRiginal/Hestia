@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from core.docker_client import get_events
 from core.health_poller import poll_all
@@ -36,7 +36,7 @@ def get_filtered_logs(
     level: str = "WARNING",
 ) -> list[LogEvent]:
     """Return log events filtered by service, time window, and log level."""
-    cutoff = datetime.utcnow() - _since_to_timedelta(since)
+    cutoff = datetime.now(timezone.utc) - _since_to_timedelta(since)
     if LOG_SOURCE == "docker":
         container_filter = f"hestia_{service_name}" if service_name else None
         all_events = get_events(
@@ -60,9 +60,11 @@ def get_filtered_logs(
     filtered: list[LogEvent] = []
     for event in all_events:
         try:
-            event_time = datetime.fromisoformat(str(event.timestamp))
+            event_time = datetime.fromisoformat(str(event.timestamp).replace("Z", "+00:00"))
         except ValueError:
             continue
+        if event_time.tzinfo is None:      # legacy naive timestamps = UTC
+            event_time = event_time.replace(tzinfo=timezone.utc)
         if event_time >= cutoff:
             filtered.append(event)
     return filtered

@@ -122,7 +122,7 @@ class UniversalAgent:
                     system_instruction=self.role_prompt
                 )
             )
-            return response.text.strip()
+            return (response.text or "").strip()  # None when Gemini blocks/empty
 
         elif self.provider == "ollama":
             payload = {
@@ -449,7 +449,7 @@ class UniversalAgent:
                     system_instruction=self.role_prompt
                 ),
             )
-            return response.text.strip()
+            return (response.text or "").strip()  # None when Gemini blocks/empty
         except Exception as exc:
             raise RuntimeError(
                 f"Gemini attachment error ({self.model_name}): {exc}") from exc

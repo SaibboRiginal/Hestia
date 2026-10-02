@@ -58,6 +58,10 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archive in the Hub envelope query
 (they were appended to the URL and dropped).
 
+`metis_benchmark_run` returns `status: not_implemented` (honest placeholder, no LLM call).
+`metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
+(dataset + log in `METIS_DATA_DIR`, default `/app/data`); it used to report "triggered" without starting anything.
+
 ## Constraints
 
 - Does NOT execute model inference → Oracle

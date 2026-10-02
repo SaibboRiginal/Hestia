@@ -11,6 +11,20 @@ from .. import models, schemas, database
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
+def _fit_vector(vec, column):
+    """Keep a vector only if it matches the pgvector column size: a mismatched
+    embedding model used to make the whole document insert fail."""
+    if not vec:
+        return None
+    dims = column.type.dim
+    if len(vec) != dims:
+        import logging
+        logging.getLogger("hestia_archive").warning(
+            "[🔄] event=document_vector_dim_mismatch got=%d expected=%d (stored without vector)", len(vec), dims)
+        return None
+    return vec
+
+
 @router.post("", response_model=schemas.DocumentRead)
 def store_document(
     doc: schemas.DocumentIngest, db: Session = Depends(database.get_db)
@@ -33,7 +47,7 @@ def store_document(
         title=doc.title,
         summary=doc.summary,
         extracted_text=doc.extracted_text,
-        embedding=doc.embedding if doc.embedding else None,
+        embedding=_fit_vector(doc.embedding, models.DocumentRecord.embedding),
         is_permanent=doc.is_permanent,
         domain=doc.domain or "documents",
         tags=doc.tags,
@@ -45,7 +59,7 @@ def store_document(
             document_id=doc.document_id,
             chunk_index=chunk.chunk_index,
             chunk_text=chunk.chunk_text,
-            embedding=chunk.embedding if chunk.embedding else None,
+            embedding=_fit_vector(chunk.embedding, models.DocumentChunk.embedding),
         ))
     db.commit()
     db.refresh(db_doc)
@@ -128,7 +142,7 @@ def search_document_chunks(
     Returns at most 2 chunks per document to avoid flooding context.
     Optionally tracks access stats when *track_access* is True.
     """
-    if not req.query_vector:
+    if not _fit_vector(req.query_vector, models.DocumentChunk.embedding):
         return []
 
     dist_col = models.DocumentChunk.embedding.l2_distance(

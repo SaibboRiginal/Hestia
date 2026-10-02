@@ -92,14 +92,19 @@ class MemoryService:
                 timeout=timeout + 2,
             )
             if resp.status_code != 200:
+                logger.warning("[🔄] event=memoryservice_hub_non200 method=%s endpoint=%s status=%s",
+                               method, endpoint, resp.status_code)
                 return None
             payload = resp.json() or {}
             if int(payload.get("status_code", 500)) < 400:
                 return payload.get("payload")
+            # Silent failure is forbidden (rule 7): memory writes were dropped unseen.
+            logger.warning("[🔄] event=memoryservice_archive_rejected method=%s endpoint=%s status=%s detail=%s",
+                           method, endpoint, payload.get("status_code"), str(payload.get("payload"))[:200])
             return None
         except Exception as exc:
-            logger.debug(
-                "event=memoryservice_failed [MemoryService] _route_archive %s %s failed: %s", method, endpoint, exc)
+            logger.warning(
+                "[🔄] event=memoryservice_failed method=%s endpoint=%s error=%s", method, endpoint, exc)
             return None
 
     def _api_get(self, endpoint: str, default_val=None):

@@ -362,7 +362,8 @@ This creates:
 
 - Hephaestus *remediation* (`/api/hephaestus/remediate*`): rollback is metadata-only (no real revert); real code
   changes go through **Forge**, which has true git branches, merge and revert.
-- Metis `benchmark_run` is a placeholder and LoRA training needs an external script (`Hestia-Metis/TODO.md`).
+- Metis `benchmark_run` returns `not_implemented`; LoRA training launches your external script (`Hestia-Metis/TODO.md`).
+- Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
 - Iris threads are grouped by normalized subject (IMAP has no universal thread id).
 - Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
 - Hub registry is in memory: services re-register every `HUB_KEEPALIVE_SECONDS` (60s) after a Hub restart.

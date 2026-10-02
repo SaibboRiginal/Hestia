@@ -253,11 +253,11 @@ class ConversationAuditor:
             body = {
                 "session_id": session_id,
                 "quality_label": entry.get("overall", "mixed"),
-                "quality_score": max(
-                    entry.get("style", 3),
-                    entry.get("accuracy", 3),
-                    entry.get("usefulness", 3),
-                ),
+                # Mean, not max: max overstated quality (one good axis hid two bad ones).
+                "quality_score": round((
+                    float(entry.get("style", 3))
+                    + float(entry.get("accuracy", 3))
+                    + float(entry.get("usefulness", 3))) / 3),
                 "feedback_text": entry.get("notes", ""),
                 "tags": [
                     "athena_audit",
@@ -278,7 +278,10 @@ class ConversationAuditor:
                 json=envelope,
                 timeout=12,
             )
-            return resp.status_code < 400
+            if resp.status_code >= 400:
+                return False
+            routed = resp.json() if resp.content else {}
+            return int((routed or {}).get("status_code", 200)) < 400
         except Exception as exc:
             logger.warning(
                 "event=auditor_submit_score_failed error=%s", exc

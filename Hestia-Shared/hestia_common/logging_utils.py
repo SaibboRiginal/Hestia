@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 import logging
 import os
 import re
@@ -279,7 +280,9 @@ class InMemoryLogBufferHandler(logging.Handler):
             message = redact_sensitive_text(record.getMessage())
             formatted = redact_sensitive_text(self.format(record))
             entry = {
-                "ts": self.formatter.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+                # UTC with offset: local container time without offset made
+                # "since 30m" windows off by the TZ offset (1-2h in Italy).
+                "ts": datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec="seconds"),
                 "level": record.levelname,
                 "logger": record.name,
                 "message": message,
