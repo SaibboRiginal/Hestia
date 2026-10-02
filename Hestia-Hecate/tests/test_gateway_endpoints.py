@@ -149,6 +149,7 @@ def test_gateway_auth_refresh_calls_provider_refresh(monkeypatch):
 
     monkeypatch.setattr(hecate_main._calendar_registry,
                         "_active", {"google": mock_provider})
+    monkeypatch.setattr(hecate_main._calendar_registry, "_unavailable", {})
 
     result = hecate_main._refresh_calendar_registry()
 
@@ -462,68 +463,7 @@ def test_auth_complete_google_missing_code(client):
     assert resp.status_code == 400
 
 
-def test_auth_initiate_google_mocked(client, monkeypatch):
-    """Google OAuth initiate with mocked Flow."""
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
-    monkeypatch.setattr(hecate_main, "_GOOGLE_LIBS_AVAILABLE", True)
-
-    mock_flow = MagicMock()
-    mock_flow.authorization_url.return_value = (
-        "https://accounts.google.com/auth?...", {})
-
-    with patch("app.main.Flow", mock_flow) if False else patch.dict("sys.modules", {}):
-        # Directly test the helper to avoid import patching complexity
-        fake_flow_cls = MagicMock()
-        fake_flow_instance = MagicMock()
-        fake_flow_instance.authorization_url.return_value = (
-            "https://accounts.google.com/auth?x=y", {})
-        fake_flow_cls.from_client_config.return_value = fake_flow_instance
-
-        with patch("app.main._initiate_google_oauth") as mock_initiate:
-            mock_initiate.return_value = {
-                "status": "initiated",
-                "provider": "google",
-                "mode": "redirect",
-                "auth_url": "https://accounts.google.com/auth?x=y",
-                "instructions": "Open the auth_url...",
-            }
-            resp = client.post("/api/gateway/auth/initiate/google")
-
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "initiated"
-    assert data["provider"] == "google"
-
-
-def test_auth_complete_google_token_stored(monkeypatch):
-    """google_auth_complete should call flow.fetch_token and store GOOGLE_TOKEN_JSON."""
-    mock_creds = MagicMock()
-    mock_creds.token = "access-token"
-    mock_creds.refresh_token = "refresh-token"
-    mock_creds.token_uri = "https://oauth2.googleapis.com/token"
-    mock_creds.client_id = "gid"
-    mock_creds.client_secret = "gsecret"
-    mock_creds.scopes = ["https://www.googleapis.com/auth/calendar"]
-
-    mock_flow = MagicMock()
-    mock_flow.credentials = mock_creds
-
-    _pending_auth["google"] = {"flow": mock_flow,
-                               "auth_url": "http://example.com"}
-    monkeypatch.setattr(hecate_main, "_refresh_calendar_registry", lambda: {
-                        "active": ["google"], "unavailable": {}})
-
-    result = hecate_main._complete_google_oauth({"code": "auth-code-xyz"})
-
-    mock_flow.fetch_token.assert_called_once_with(code="auth-code-xyz")
-    assert result["status"] == "authorized"
-    assert result["provider"] == "google"
-    import json
-    import os
-    stored = json.loads(os.environ.get("GOOGLE_TOKEN_JSON", "{}"))
-    assert stored.get("refresh_token") == "refresh-token"
-    assert "google" not in _pending_auth
+# Google OAuth loopback flow: see tests/test_google_oauth.py
 
 
 # ---------------------------------------------------------------------------

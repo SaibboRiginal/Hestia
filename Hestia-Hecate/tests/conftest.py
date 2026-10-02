@@ -18,6 +18,10 @@ os.environ.setdefault("ARCHIVE_API_URL", "http://localhost:19002/api")
 os.environ.setdefault("HECATE_ENABLE_PROVIDER_GOOGLE", "0")
 os.environ.setdefault("HECATE_ENABLE_PROVIDER_MICROSOFT", "0")
 os.environ.setdefault("STARTUP_WAIT_TIMEOUT_SECONDS", "0")
+# Keep OAuth token/pending files out of /code/data during tests.
+import tempfile as _tempfile
+_TOKEN_DIR = _tempfile.mkdtemp(prefix="hecate-test-")
+os.environ["GOOGLE_TOKEN_FILE"] = os.path.join(_TOKEN_DIR, "google_token.json")
 # Blank out credential env vars BEFORE load_dotenv() runs so .env values
 # don't leak into the test environment (load_dotenv respects existing vars).
 for _key in (
@@ -29,3 +33,17 @@ for _key in (
 ):
     if _key not in os.environ:
         os.environ[_key] = ""
+
+
+import glob as _glob
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _clean_token_dir():
+    """Each test starts without a persisted token or pending OAuth flow."""
+    for f in _glob.glob(os.path.join(_TOKEN_DIR, "*")):
+        os.remove(f)
+    yield
+    for f in _glob.glob(os.path.join(_TOKEN_DIR, "*")):
+        os.remove(f)

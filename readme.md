@@ -110,6 +110,7 @@ Provider access model (single entry point):
 - Domain modules do not open direct provider SDK sessions in their own runtime.
 - Domain-level email business APIs are owned by Iris; Hecate can proxy/provider-orchestrate calls through Hub-routed contracts.
 - Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
+- Google OAuth uses loopback redirect + PKCE (the old OOB flow is blocked by Google since 2023). Setup and troubleshooting: `Hestia-Hecate/hestia-hecate.md` → *Google setup*. From the phone: ask Telegram "collega Google Calendar", open the link, paste back the final `localhost` URL.
 
 ### Hestia-Atlas 🌐
 Host-side shared web fetch gateway.
@@ -120,6 +121,7 @@ Host-side shared web fetch gateway.
 ### Hestia-Telegram 💬
 User interface relay for chat, file attachments, and clear session commands.
 - Forwards photos and documents (PDF, images) to Oracle's multimodal endpoint.
+- Pasted OAuth callback URLs (`.../api/gateway/auth/callback/<provider>?code=`) go straight to Hecate, no LLM involved.
 - Streams NDJSON status frames back as typing indicators while Oracle processes.
 
 ### Hestia-Chronos 📅

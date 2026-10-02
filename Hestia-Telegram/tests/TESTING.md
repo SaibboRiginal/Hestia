@@ -133,3 +133,14 @@
 | 2.6.3 | `test_format_command_output_emoji_count` | ⬜ |
 | 2.6.4 | `test_format_command_output_link_becomes_anchor` | ⬜ |
 | 2.6.5 | `test_proactive_alert_reads_natural` | ⬜ |
+
+### 2.7 OAuth paste shortcut (`oauth_paste.py`)
+
+**File:** `Hestia-Telegram/tests/test_oauth_paste.py` · **Markers:** `unit`
+
+| # | Test Case | Status |
+|---|-----------|--------|
+| 2.7.1 | `test_match_google_callback_url` | ✅ |
+| 2.7.2 | `test_no_match_for_normal_text` | ✅ |
+| 2.7.3 | `test_complete_success_reply` | ✅ |
+| 2.7.4 | `test_complete_error_reply_shows_hint` | ✅ |

@@ -9,6 +9,7 @@ import requests
 from telebot import types
 
 from telegram_bot import core
+from telegram_bot.services.oauth_paste import complete_oauth_from_paste, match_oauth_callback
 from telegram_bot.services.command_service import (
     _AFFIRMATIVE,
     _NEGATIVE,
@@ -424,6 +425,10 @@ def handle_chat_message(message):
         return
 
     message_text = str(message.text or "").strip()
+    oauth_paste = match_oauth_callback(message_text)
+    if oauth_paste:
+        core.bot.reply_to(message, complete_oauth_from_paste(*oauth_paste), parse_mode="HTML")
+        return
     if message_text.startswith("/"):
         command_token, _, command_args = message_text[1:].partition(" ")
         command_name = command_token.split("@")[0].strip().lower()
