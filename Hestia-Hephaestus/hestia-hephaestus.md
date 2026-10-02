@@ -78,7 +78,16 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 - **Deploy (optional):** `HEPHAESTUS_FORGE_DEPLOY_CMD` (`{services}` placeholder), then health check via Hub; unhealthy + `HEPHAESTUS_FORGE_AUTO_ROLLBACK=1` → revert + redeploy.
 - **Notifications:** start, review request (summary + diff stat + test result), merge/deploy, rollback → Telegram via Hermes (`HEPHAESTUS_NOTIFY_TARGET`) + `system/hephaestus.forge` event.
 - **Resilience:** task state persisted in `data/forge/tasks.json`; queued/running/approved tasks resume after restart.
-- **Human gate:** default nothing merges without "approva sviluppo <id>". `HEPHAESTUS_FORGE_AUTO_MERGE=1` merges only when engine ok AND tests green.
+- **Human gate on merge:** nothing merges without "approva sviluppo <id>". `HEPHAESTUS_FORGE_AUTO_MERGE=1` merges only when engine ok AND tests green.
+- **Autonomy policy (who may start coding alone):** user-typed requests always start. Tasks from Athena/Argus follow a
+  per-engine policy, changeable from the client (Telegram "in locale lascia fare ad Athena" → tool `forge_set_autonomy`,
+  or `POST /api/hephaestus/forge/settings/autonomy {"engine","mode"}`), persisted in `data/forge/settings.json`:
+
+  | Engine | Default mode | Meaning |
+  |---|---|---|
+  | `local` | `auto_start` | codes on its own branch right away; you approve the merge |
+  | `cloud`, `claude` | `propose` | waits for "approva sviluppo <id>" before spending tokens; then you approve the merge |
+  | `aider` | `auto_start` | as local |
 
 ### Engines — local and cloud side by side
 
@@ -109,6 +118,8 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 | GET | `/api/hephaestus/forge/status` | Repo, base branch, engines availability, queue |
 | GET | `/api/hephaestus/forge/engine` | Default engine, fallback chain, availability |
 | POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude|aider"}` — set default (persisted) |
+| GET | `/api/hephaestus/forge/settings` | Default engine, fallback, autonomy per engine, auto_merge |
+| POST | `/api/hephaestus/forge/settings/autonomy` | `{"engine": "...", "mode": "propose|auto_start"}` |
 | POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target}` |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
@@ -117,7 +128,7 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 | POST | `/api/hephaestus/forge/tasks/{id}/reject` | Discard + delete branch |
 | POST | `/api/hephaestus/forge/tasks/{id}/rollback` | Revert merged change |
 
-MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
+MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_autonomy`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
 ### Deployment notes
 - Compose mounts the repo at `/repo` and `data/` for state. Uncomment the docker socket only if the deploy command restarts containers.

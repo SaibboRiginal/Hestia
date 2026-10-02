@@ -3276,6 +3276,15 @@ paths:
             {session_id, before_tokens, after_tokens, messages_before,
              messages_after, summary_chars}
 
+  /api/activity:
+    get:
+      tags: [Oracle]
+      summary: Last real user chat activity (idle signal for Athena)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{last_user_activity_ts, idle_seconds}"}
+
   /api/sessions:
     get:
       tags: [Oracle]
@@ -3878,6 +3887,35 @@ paths:
         "200": {description: "{status, default_engine, available, detail}"}
         "400": {description: Unknown engine}
 
+  /api/hephaestus/forge/settings:
+    get:
+      tags: [Hephaestus]
+      summary: Forge settings (default engine, fallback, autonomy per engine, auto_merge)
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: OK}
+
+  /api/hephaestus/forge/settings/autonomy:
+    post:
+      tags: [Hephaestus]
+      summary: Set autonomy mode for Athena/Argus tasks per engine (persisted)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [engine, mode]
+              properties:
+                engine: {type: string, enum: [local, cloud, claude, aider]}
+                mode: {type: string, enum: [propose, auto_start]}
+      responses:
+        "200": {description: Updated settings}
+        "400": {description: Unknown engine or mode}
+
   /api/hephaestus/forge/tasks:
     get:
       tags: [Hephaestus]
@@ -3905,7 +3943,7 @@ paths:
                 request: {type: string}
                 services: {type: array, items: {type: string}}
                 engine: {type: string, enum: [auto, local, cloud, claude, aider], description: empty/auto = default + fallback}
-                auto_start: {type: boolean, default: true, description: false = proposal awaiting approval}
+                auto_start: {type: boolean, description: "omit = user source starts; athena/argus follow autonomy policy; false = proposal"}
                 auto_merge: {type: boolean}
                 context: {type: string}
                 source: {type: string}

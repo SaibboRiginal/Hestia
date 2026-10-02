@@ -142,6 +142,52 @@ class AthenaRuntime:
         )
         self._thinking_records: list[dict[str, Any]] = []
 
+        # Idle-only cognition: run cycles only when the user is not chatting.
+        self.idle_required_seconds = _parse_int_env("ATHENA_IDLE_SECONDS", 300)
+        # Improvement hand-off to Hephaestus Forge
+        self.forge_enabled = _parse_bool_env("ATHENA_FORGE_ENABLED", True)
+        self.forge_max_per_day = _parse_int_env("ATHENA_FORGE_MAX_PER_DAY", 2)
+        self._forge_day = ""
+        self._forge_titles: set[str] = set()
+
+    # ── Forge hand-off (improvement candidates) ─────────────────────────────
+
+    def _send_to_forge(self, candidate: Any, trace_id: str) -> bool:
+        """Hand an accepted ``improvement`` to Hephaestus Forge.  Forge's
+        per-engine autonomy policy (set by the user from the client) decides
+        whether it starts coding or waits for approval; merge always waits.
+        Capped per day and deduplicated by title."""
+        if not self.forge_enabled:
+            return False
+        today = datetime.now(timezone.utc).date().isoformat()
+        key = str(candidate.title or "").strip().lower()[:80]
+        with self._lock:
+            if self._forge_day != today:
+                self._forge_day, self._forge_titles = today, set()
+            if key in self._forge_titles or len(self._forge_titles) >= self.forge_max_per_day:
+                return False
+            self._forge_titles.add(key)
+        body = {
+            "request": f"{candidate.title}. {candidate.summary}".strip()[:1500],
+            "source": "athena",
+            "requested_by": "athena.strategist",
+            "context": f"reason: {candidate.reasoning}\ndomain: {candidate.domain}\ntrace_id: {trace_id}",
+        }
+        try:
+            resp = requests.post(
+                f"{self.hub_api_url}/route/hephaestus/api/hephaestus/forge/tasks",
+                json={"method": "POST", "headers": {}, "query": {}, "body": body, "timeout_seconds": 10},
+                timeout=12)
+            ok = resp.ok and int((resp.json() or {}).get("status_code", 500)) < 400
+        except Exception as exc:
+            logger.warning("[🔄] event=athena_forge_handoff_failed title=%s error=%s", key, exc)
+            ok = False
+        if not ok:
+            with self._lock:
+                self._forge_titles.discard(key)
+        logger.info("event=athena_forge_handoff title=%s ok=%s trace_id=%s", key, ok, trace_id)
+        return ok
+
     # ── Embedding helper ────────────────────────────────────────────────────
 
     def _embed_text(self, text: str) -> list[float]:
@@ -797,6 +843,8 @@ class AthenaRuntime:
                         score=candidate.score,
                         trace_id=run_trace_id,
                     )
+                    if candidate.kind == "improvement":
+                        self._send_to_forge(candidate, run_trace_id)
                     emitted_count += 1
                     hint_published = True
                     thinking_record.emitted_count = emitted_count
@@ -858,8 +906,30 @@ class AthenaRuntime:
             self.strategist.enabled,
         )
         while not self._stop_event.is_set():
+            idle = self._user_idle_seconds()
+            if idle is not None and idle < self.idle_required_seconds:
+                # User is chatting: leave the (local) model to Oracle, retry soon.
+                logger.debug("event=athena_cycle_deferred_user_active idle_seconds=%s", idle)
+                self._stop_event.wait(max(30, min(self.interval_seconds, self.idle_required_seconds - idle)))
+                continue
             self._run_once()
             self._stop_event.wait(max(1, self.interval_seconds))
+
+    def _user_idle_seconds(self) -> int | None:
+        """Seconds since the last real user chat (Oracle /api/activity).
+        None = unknown (no chat yet or Oracle unreachable) → treated as idle."""
+        if self.idle_required_seconds <= 0:
+            return None
+        try:
+            resp = requests.post(
+                f"{self.hub_api_url}/route/oracle/api/activity",
+                json={"method": "GET", "headers": {}, "query": {}, "body": None, "timeout_seconds": 5},
+                timeout=7)
+            payload = (resp.json() or {}).get("payload") if resp.ok else None
+            idle = (payload or {}).get("idle_seconds")
+            return int(idle) if idle is not None else None
+        except Exception:
+            return None
 
     def start(self) -> None:
         if not self.loop_enabled:

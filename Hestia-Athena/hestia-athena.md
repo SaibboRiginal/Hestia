@@ -68,11 +68,23 @@ Weighted score:
 - Oracle is a **core dependency** — if it is unreachable, Athena returns no candidates
   (the observation cycle still runs and is archived, but no static rules are substituted)
 
+### Idle retrospective (autonomous mode)
+- Cycles run **only when the user is idle**: Athena reads Oracle `GET /api/activity` and defers the cycle while the
+  last real chat is younger than `ATHENA_IDLE_SECONDS` (default 300; `0` = always run). The local model is never
+  contended with the user.
+- Retrospective inputs on top of health/domains: **Argus errors of the last hour** (`/api/argus/logs?level=ERROR&since=1h`)
+  and **Metis weak spots** (`/api/metis/insights`).
+- Candidate kind `improvement` (code/prompt change) is handed to **Hephaestus Forge**. Forge's per-engine autonomy
+  policy decides: local → starts coding on a branch; cloud/claude → waits for approval. Merge always needs the user.
+  Max `ATHENA_FORGE_MAX_PER_DAY` (2) hand-offs/day, deduplicated by title. Disable: `ATHENA_FORGE_ENABLED=0`.
+- Strategist prompt is caveman-style (short lines, exact output format) to save context on local models.
+
 ### Action candidate kinds
 - `advisory` — suggestion for user consideration
 - `remediation` — fix action for Hephaestus
 - `notification` — user-facing alert
 - `maintenance` — routine housekeeping
+- `improvement` — change to Hestia code/prompts → Hephaestus Forge
 
 ### Thinking archive
 - Every cycle is stored in-memory (ring buffer, configurable max) and pushed to Archive
@@ -138,7 +150,6 @@ Weighted score:
 
 ## Out of scope (future phases)
 - Multi-cycle planning (today: single cycle, single Oracle call)
-- Autonomous Hephaestus task queuing (contract defined, not wired)
 - Cross-domain prioritization ranking
 - Persistent working memory across restarts
 - Static rule-based fallbacks (by design — Oracle is core, no hardcoded substitutes)

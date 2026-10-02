@@ -42,6 +42,16 @@ ACTIVE_STATES = {"queued", "running", "approved", "merging"}
 TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "no_changes"}
 
 
+# Autonomy policy for tasks NOT typed by the user (Athena, Argus):
+#   "propose"    → task waits for "approva sviluppo <id>" before any coding
+#   "auto_start" → codes on its own branch immediately; merge still needs approval
+# User-requested tasks always start (the user asked).  Merge always needs the
+# user unless HEPHAESTUS_FORGE_AUTO_MERGE=1.
+AUTONOMY_MODES = {"propose", "auto_start"}
+DEFAULT_AUTONOMY = {"local": "auto_start", "cloud": "propose", "claude": "propose", "aider": "auto_start"}
+USER_SOURCES = {"user", "telegram", "ui", "oracle"}
+
+
 class ForgeError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         super().__init__(message)
@@ -73,6 +83,7 @@ class Forge:
         self._queue: "queue.Queue[str]" = queue.Queue()
         self._worker: threading.Thread | None = None
         self._default_engine = cfg.engine
+        self._autonomy = dict(DEFAULT_AUTONOMY)
         self._load()
         self._load_settings()
 
@@ -92,6 +103,9 @@ class Forge:
                 engine = normalize_engine(data.get("default_engine", ""))
                 if engine in self.engines:
                     self._default_engine = engine
+                for name, mode in (data.get("autonomy") or {}).items():
+                    if normalize_engine(name) in self.engines and mode in AUTONOMY_MODES:
+                        self._autonomy[normalize_engine(name)] = mode
         except Exception as exc:
             logger.warning("[🔄] event=forge_settings_load_failed error=%s", exc)
 
@@ -106,13 +120,43 @@ class Forge:
             raise ForgeError(f"Unknown engine '{engine}'. Use: {', '.join(self.engines)}")
         ok, reason = self.engines[name].available()
         self._default_engine = name
-        try:
-            self.cfg.settings_file.parent.mkdir(parents=True, exist_ok=True)
-            self.cfg.settings_file.write_text(json.dumps({"default_engine": name}), encoding="utf-8")
-        except Exception as exc:
-            logger.warning("[🔄] event=forge_settings_save_failed error=%s", exc)
+        self._save_settings()
         logger.info("event=forge_default_engine_set engine=%s available=%s", name, ok)
         return {"default_engine": name, "available": ok, "detail": reason}
+
+    def settings(self) -> dict[str, Any]:
+        return {"default_engine": self._default_engine, "fallback": self.cfg.fallback,
+                "autonomy": dict(self._autonomy), "auto_merge": self.cfg.auto_merge}
+
+    def set_autonomy(self, engine: str, mode: str) -> dict[str, Any]:
+        """Per-engine autonomy for Athena/Argus tasks (persisted)."""
+        name = normalize_engine(engine)
+        mode = str(mode or "").strip().lower()
+        if name not in self.engines:
+            raise ForgeError(f"Unknown engine '{engine}'. Use: {', '.join(self.engines)}")
+        if mode not in AUTONOMY_MODES:
+            raise ForgeError(f"Unknown mode '{mode}'. Use: propose | auto_start")
+        self._autonomy[name] = mode
+        self._save_settings()
+        logger.info("event=forge_autonomy_set engine=%s mode=%s", name, mode)
+        return self.settings()
+
+    def _save_settings(self) -> None:
+        try:
+            self.cfg.settings_file.parent.mkdir(parents=True, exist_ok=True)
+            self.cfg.settings_file.write_text(json.dumps({
+                "default_engine": self._default_engine, "autonomy": self._autonomy}), encoding="utf-8")
+        except Exception as exc:
+            logger.warning("[🔄] event=forge_settings_save_failed error=%s", exc)
+
+    def _autostart_for(self, source: str, engine_requested: str) -> tuple[bool, str]:
+        """Decide auto-start for autonomous sources from the engine that would run."""
+        if source in USER_SOURCES:
+            return True, "user request"
+        engine, _ = select_engine(self.engines, engine_requested, self._default_engine, self.cfg.fallback)
+        name = engine.name if engine else normalize_engine(engine_requested) or self._default_engine
+        mode = self._autonomy.get(name, "propose")
+        return mode == "auto_start", f"autonomy[{name}]={mode}"
 
     def _save(self) -> None:
         with self._lock:
@@ -207,7 +251,7 @@ class Forge:
         return matches[0] if len(matches) == 1 else None
 
     def submit(self, *, request: str, services: list[str] | None = None, engine: str = "",
-               source: str = "user", requested_by: str = "user", auto_start: bool = True,
+               source: str = "user", requested_by: str = "user", auto_start: bool | None = None,
                auto_merge: bool | None = None, context: str = "", notify_target: str = "") -> dict[str, Any]:
         if not self.cfg.enabled:
             raise ForgeError("Forge disabled (HEPHAESTUS_FORGE_ENABLED=0)", 503)
@@ -233,12 +277,17 @@ class Forge:
             "state": "new",
             "history": [],
         }
+        if auto_start is None:
+            auto_start, why = self._autostart_for(source, task["engine_requested"])
+        else:
+            why = "explicit"
+        task["start_policy"] = why
         with self._lock:
             self._tasks[task_id] = task
         if auto_start:
             self._enqueue(task, f"submitted by {requested_by} ({source})")
         else:
-            self._set_state(task, "proposed", f"proposed by {source}")
+            self._set_state(task, "proposed", f"proposed by {source} ({why})")
             self._notify(task, (
                 f"💡 <b>Proposta di sviluppo</b> <code>{task_id[:6]}</code>\n{_esc(request[:600])}\n\n"
                 f"Rispondi \"approva sviluppo {task_id[:6]}\" per avviarla, \"rifiuta {task_id[:6]}\" per scartarla."))

@@ -344,6 +344,37 @@ class Observer:
             "failure_streak": failure_streak,
         }
 
+    # ── Retrospective inputs: Argus errors + Metis quality ────────────────────
+
+    def observe_recent_errors(self) -> list[str]:
+        """Errors of the last hour grouped by service (from Argus)."""
+        data = self._route_get(self.argus_route, "api/argus/logs", {"level": "ERROR", "since": "1h"})
+        if isinstance(data, dict) and isinstance(data.get("payload"), dict):
+            data = data["payload"]
+        events = (data or {}).get("events") if isinstance(data, dict) else None
+        if not events:
+            return []
+        by_service: dict[str, list[str]] = {}
+        for ev in events:
+            if isinstance(ev, dict):
+                msg = str(ev.get("message", "")).strip().splitlines()
+                by_service.setdefault(str(ev.get("service", "?")), []).append(msg[-1][:100] if msg else "")
+        return [f"{svc}: {len(msgs)} errori (es. {msgs[-1]})" for svc, msgs in list(by_service.items())[:4]]
+
+    def observe_quality(self) -> list[str]:
+        """Weak spots from Metis feedback insights (best effort)."""
+        data = self._route_get(f"{self.hub_api_url}/route/metis", "api/metis/insights", {"limit": 300})
+        if isinstance(data, dict) and isinstance(data.get("payload"), dict):
+            data = data["payload"]
+        if not isinstance(data, dict) or not data.get("bad_feedback"):
+            return []
+        lines = [f"feedback negativi {data.get('bad_feedback')}/{data.get('total_feedback')}"]
+        for weak in (data.get("weak_domains") or [])[:3]:
+            sample = (weak.get("samples") or [{}])[0]
+            hint = f" (es. utente: \"{sample.get('user', '')[:80]}\")" if sample.get("user") else ""
+            lines.append(f"dominio {weak.get('domain')}: {weak.get('bad')} negativi{hint}")
+        return lines
+
     # ── Full snapshot ──────────────────────────────────────────────────────────
 
     def snapshot(
@@ -383,5 +414,7 @@ class Observer:
             unresolved_commitments=self_state["unresolved_commitments"],
             recent_failures=self_state["recent_failures"],
             failure_streak=self_state["failure_streak"],
+            recent_errors=self.observe_recent_errors(),
+            quality_issues=self.observe_quality(),
             raw_errors=errors,
         )

@@ -16,7 +16,7 @@ class ForgeTaskRequest(BaseModel):
     engine: str = ""
     source: str = "user"
     requested_by: str = "user"
-    auto_start: bool = True
+    auto_start: bool | None = Field(None, description="None = user→start, Athena/Argus→autonomy policy")
     auto_merge: bool | None = None
     context: str = ""
     notify_target: str = ""
@@ -24,6 +24,11 @@ class ForgeTaskRequest(BaseModel):
 
 class ForgeEngineChoice(BaseModel):
     engine: str = Field(..., description="local | cloud | claude | aider")
+
+
+class ForgeAutonomyChoice(BaseModel):
+    engine: str = Field(..., description="local | cloud | claude | aider")
+    mode: str = Field(..., description="propose | auto_start")
 
 
 class ForgeDecision(BaseModel):
@@ -53,6 +58,14 @@ def create_forge_router(forge: Forge) -> APIRouter:
     @router.post("/engine")
     def forge_engine_set(body: ForgeEngineChoice) -> dict[str, Any]:
         return {"status": "ok", **_guard(forge.set_default_engine, body.engine)}
+
+    @router.get("/settings")
+    def forge_settings_get() -> dict[str, Any]:
+        return {"status": "ok", **forge.settings()}
+
+    @router.post("/settings/autonomy")
+    def forge_autonomy_set(body: ForgeAutonomyChoice) -> dict[str, Any]:
+        return {"status": "ok", **_guard(forge.set_autonomy, body.engine, body.mode)}
 
     @router.post("/tasks")
     def forge_submit(req: ForgeTaskRequest) -> dict[str, Any]:
