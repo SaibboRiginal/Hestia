@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -37,6 +38,94 @@ class RemediationService:
             path.strip() for path in maintenance_paths if str(path).strip()]
         self._tasks_lock = threading.Lock()
         self._tasks: dict[str, dict[str, Any]] = {}
+        # Assistant agenda: pending repairs are visible, failed ones are retried as
+        # agenda tasks, the last failure escalates to Forge (never abandoned).
+        self.agenda = None
+        self.escalate = None  # callable(task) -> str | None (Forge task id)
+        self._retry_minutes = max(1, int(os.getenv("HEPHAESTUS_REPAIR_RETRY_MINUTES", "15")))
+        self._max_attempts = max(1, int(os.getenv("HEPHAESTUS_REPAIR_MAX_ATTEMPTS", "3")))
+
+    def attach_agenda(self, agenda, escalate=None) -> None:
+        self.agenda = agenda
+        self.escalate = escalate
+
+    def _agenda_key(self, task: dict[str, Any]) -> str:
+        return f"hephaestus.repair.{task['task_id']}"
+
+    def _agenda_sync(self, task: dict[str, Any]) -> None:
+        """Mirror a remediation task in Hestia's agenda (best-effort, async)."""
+        if self.agenda is None:
+            return
+        snapshot = dict(task)
+
+        def _run() -> None:
+            key = self._agenda_key(snapshot)
+            state = snapshot.get("state")
+            label = f"{snapshot.get('service')}: {snapshot.get('issue')}"
+            try:
+                if state == "pending_approval":
+                    self.agenda.show(key, f"🛠️ Riparazione da approvare — {label}",
+                                     datetime.now(timezone.utc),
+                                     description=f"Runbook {snapshot.get('runbook_id')}. "
+                                                 f"Approva: \"approva riparazione {snapshot['task_id'][:8]}\".",
+                                     params={"task_id": snapshot["task_id"]})
+                elif state == "failed" and not snapshot.get("dry_run"):
+                    attempts = int(snapshot.get("attempts") or 1)
+                    if attempts < self._max_attempts:
+                        when = datetime.now(timezone.utc) + timedelta(minutes=self._retry_minutes * attempts)
+                        self.agenda.plan(
+                            key, f"🔁 Ritenta riparazione ({attempts + 1}/{self._max_attempts}) — {label}", when,
+                            action={"service": "hephaestus",
+                                    "path": f"/api/hephaestus/remediate/{snapshot['task_id']}/retry",
+                                    "method": "POST", "body": {"requested_by": "agenda"},
+                                    "timeout_seconds": 60},
+                            description="Riparazione fallita: nuovo tentativo programmato. "
+                                        "Sposta/annulla dall'agenda di Hestia.",
+                            params={"task_id": snapshot["task_id"], "attempt": attempts + 1})
+                    else:
+                        self.agenda.done(key)
+                elif state in {"succeeded", "rolled_back", "escalated"}:
+                    self.agenda.done(key)
+            except Exception as exc:
+                self._logger.debug("event=remediation_agenda_sync_failed task_id=%s error=%s",
+                                   snapshot.get("task_id"), exc)
+
+        threading.Thread(target=_run, daemon=True, name="remediation-agenda").start()
+
+    def retry_task(self, task_id: str, requested_by: str = "agenda") -> dict[str, Any] | None:
+        """Re-run a failed remediation (agenda retry). After the last attempt the
+        problem goes to Forge as a code-fix task (permission modes apply)."""
+        with self._tasks_lock:
+            task = self._tasks.get(task_id)
+            if not task:
+                return None
+            if task.get("state") != "failed":
+                return task
+            task["attempts"] = int(task.get("attempts") or 1) + 1
+            task = self._execute_task(task, approved_by=f"retry:{requested_by}")
+            self._tasks[task_id] = task
+        if task.get("state") == "failed" and int(task.get("attempts") or 1) >= self._max_attempts:
+            forge_id = None
+            if self.escalate is not None:
+                try:
+                    forge_id = self.escalate(task)
+                except Exception as exc:
+                    self._logger.warning("[🔄] event=remediation_escalation_failed task_id=%s error=%s",
+                                         task_id, exc)
+            if forge_id:
+                with self._tasks_lock:
+                    task["state"] = "escalated"
+                    task["forge_task_id"] = forge_id
+                    self._append_task_note(task, f"Escalated to Forge task {forge_id}")
+        self._agenda_sync(task)
+        self._notify_change(
+            event_type="remediation.retried",
+            task=task,
+            message=(f"Hephaestus retry {task.get('attempts')}/{self._max_attempts} for task={task_id}: "
+                     f"state={task.get('state')}"
+                     + (f" → Forge {task.get('forge_task_id')}" if task.get("forge_task_id") else "")),
+        )
+        return task
 
     def _notify_change(self, event_type: str, task: dict[str, Any], message: str) -> None:
         self._logger.info(
@@ -236,6 +325,7 @@ class RemediationService:
             "commit_ref": None,
             "rollback_ref": self._baseline_ref,
             "notifications": [],
+            "attempts": 1,
             "metadata": request.metadata,
         }
 
@@ -263,6 +353,7 @@ class RemediationService:
 
         with self._tasks_lock:
             self._tasks[task_id] = task
+        self._agenda_sync(task)
 
         self._notify_change(
             event_type="remediation.created",
@@ -300,6 +391,7 @@ class RemediationService:
             task = self._execute_task(
                 task, approved_by=request.approved_by, note=request.note)
             self._tasks[task_id] = task
+        self._agenda_sync(task)
 
         self._notify_change(
             event_type="remediation.executed" if str(
@@ -323,6 +415,7 @@ class RemediationService:
             self._append_task_note(
                 task, f"Rollback requested by {request.requested_by}: {request.reason}")
             self._tasks[task_id] = task
+        self._agenda_sync(task)
 
         self._notify_change(
             event_type="remediation.rolled_back",

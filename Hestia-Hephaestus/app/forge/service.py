@@ -22,6 +22,7 @@ import logging
 import queue
 import subprocess
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 import uuid
 from datetime import datetime, timezone
@@ -96,6 +97,7 @@ class Forge:
         self._modes = dict(DEFAULT_MODES)
         self.claude_budget = ClaudeBudget(ClaudeSchedule())
         self.agenda = AgendaClient(cfg.hub_api_url)
+        self._agenda_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="forge-agenda")
         self._load()
         self._load_settings()
 
@@ -217,6 +219,55 @@ class Forge:
             task.setdefault("history", []).append({"ts": task["updated_at"], "state": state, "note": note[:500]})
         logger.info("event=forge_state task_id=%s state=%s note=%s", task["id"], state, note[:200])
         self._save()
+        # Serial executor: mirror updates must land in state order.
+        self._agenda_pool.submit(self._mirror_agenda, dict(task))
+
+    # ── assistant agenda mirror ─────────────────────────────────────────────
+    _AGENDA_LABELS = {
+        "proposed": "⏳ da approvare",
+        "queued": "🔨 in coda",
+        "running": "🔨 in lavorazione",
+        "awaiting_review": "👀 diff da rivedere",
+        "approved": "🔀 merge in corso",
+        "merging": "🔀 merge in corso",
+    }
+
+    def _mirror_agenda(self, task: dict) -> None:
+        """Every Forge task is visible in Hestia's agenda (key forge.task.<id>).
+
+        ``scheduled`` → event at the next Claude window (the user can move it:
+        the scheduler waits; cancel it: the task is rejected). Terminal states
+        complete the entry so the agenda keeps only live work."""
+        state = task.get("state")
+        try:
+            if state in TERMINAL_STATES:
+                self.agenda.hide_task(task["id"])
+                return
+            if state == "scheduled":
+                return  # handled by _schedule (needs the window time)
+            label = self._AGENDA_LABELS.get(state)
+            if label:
+                self.agenda.show_task(task["id"], f"{label}: {task.get('request', '')}", _now(),
+                                      f"Task Forge {task['id']} ({state}). Engine: "
+                                      f"{task.get('engine_requested') or self._default_engine}.")
+        except Exception as exc:
+            logger.debug("event=forge_agenda_mirror_failed task_id=%s error=%s", task.get("id"), exc)
+
+    def _agenda_gate(self, task: dict) -> tuple[bool, str]:
+        """Scheduled task vs its agenda entry: cancelled → reject; moved later → wait."""
+        reachable, item = self.agenda.lookup(self.agenda.task_key(task["id"]))
+        if not reachable or not item:
+            return True, ""
+        if item.get("status") == "cancelled":
+            self.reject(task["id"], reason="annullato dall'agenda di Hestia", rejected_by="user")
+            return False, "cancelled in agenda"
+        try:
+            start = datetime.fromisoformat(str(item.get("start_at")).replace("Z", "+00:00"))
+            if item.get("user_modified") and start > datetime.now(timezone.utc):
+                return False, f"moved in agenda to {start.isoformat()[:16]}"
+        except (TypeError, ValueError):
+            pass
+        return True, ""
 
     # ── lifecycle ───────────────────────────────────────────────────────────
     def start(self) -> None:
@@ -442,9 +493,18 @@ class Forge:
                 if not ok:
                     logger.debug("event=forge_claude_window_closed reason=%s waiting=%d", reason, len(waiting))
                     continue
+                candidate = None
+                for task in waiting:
+                    allowed, why = self._agenda_gate(task)
+                    if allowed:
+                        candidate = task
+                        break
+                    logger.debug("event=forge_task_held_by_agenda task_id=%s reason=%s", task["id"], why)
+                if candidate is None:
+                    continue
                 self.claude_budget.record_start()
                 self._save_settings()
-                self._enqueue(waiting[0], f"Claude budget window: {reason}")
+                self._enqueue(candidate, f"Claude budget window: {reason}")
             except Exception as exc:
                 logger.warning("[🔄] event=forge_scheduler_error error=%s", exc)
 

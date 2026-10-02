@@ -131,6 +131,9 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   register their rules as data — `event`, `task` (one-off action), `job` (recurring action), `window` (period when
   something is allowed). You can see, move, pause, skip (dismiss), cancel or run them from Telegram; user edits are
   never overwritten. Modules ask `GET /api/agenda/windows/{key}` instead of hardcoding schedules.
+  Planned there today: Scout email cycle and calendar sync (jobs), Athena consolidation / skill curation /
+  thinking and Metis training (windows), Claude Pro nights (windows), every Forge task, Hephaestus repair retries
+  and Argus rechecks of a service that stays down (tasks). Shared client: `hestia_common.agenda_client`.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -369,7 +372,7 @@ This creates:
   changes go through **Forge**, which has true git branches, merge and revert.
 - Metis `benchmark_run` returns `not_implemented`; LoRA training launches your external script (`Hestia-Metis/TODO.md`).
 - Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
-- Iris threads are grouped by normalized subject (IMAP has no universal thread id).
+- Iris threads are grouped by normalized subject (IMAP has no universal thread id; Gmail thread ids are matched when present).
 - Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
 - Hub registry is in memory: services re-register every `HUB_KEEPALIVE_SECONDS` (60s) after a Hub restart.
 

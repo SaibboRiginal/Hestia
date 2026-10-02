@@ -1,6 +1,9 @@
+# Standalone run (the global stack is docker-compose.global.yml at repo root).
 services:
   hestia_metis:
-    build: .
+    build:
+      context: ..
+      dockerfile: Hestia-Metis/Dockerfile
     container_name: hestia_metis
     ports:
       - "${METIS_PORT:-19014}:19014"
@@ -13,14 +16,12 @@ services:
       - SERVICE_TOPOLOGY_TAGS=layer:cognition,domain:improvement,status:alpha
       - HUB_API_URL=http://hestia_hub:19001/api
       - LOG_LEVEL=INFO
-      - LOG_FORMAT=%(asctime)s | %(levelname)s | %(name)s | %(message)s
-      - LOG_BUFFER_SIZE=2000
-      - LOG_FORCE_RECONFIGURE=true
-      - LOG_HEALTH_ACCESS_MODE=info
-      # Dataset builder config
       - METIS_MAX_DATASET_EXAMPLES=5000
       - METIS_DEDUPLICATE_ENABLED=true
       - METIS_DEFAULT_QUALITY_LABELS=excellent,good
+      - METIS_DATA_DIR=/code/data
+    volumes:
+      - ./data:/code/data
     networks:
       - hestia_net
     restart: unless-stopped

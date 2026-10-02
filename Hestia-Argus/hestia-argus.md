@@ -46,6 +46,7 @@ Hub Monitor Logs / Docker Tails │
 | GET | `/api/argus/logs` | Recent filtered log events (params: `service`, `level`, `since`) |
 | POST | `/api/argus/analyze` | Full system analysis report |
 | POST | `/api/argus/remediate` | Forward remediation intent to Hephaestus via Hub route |
+| POST | `/api/argus/recheck/{service}` | Repair follow-up (fired by the agenda): up → close + recovery notice; still down → new repair request + next recheck |
 
 ### Query parameters for `/api/argus/logs`
 
@@ -82,6 +83,8 @@ Hub Monitor Logs / Docker Tails │
 | `ARGUS_AUTO_REMEDIATE_DRY_RUN` | `1` | Send remediation intents in dry-run mode |
 | `ARGUS_AUTO_REMEDIATE_ENVIRONMENT` | `dev` | Target environment passed to Hephaestus remediation tasks |
 | `ARGUS_REMEDIATE_TIMEOUT_SECONDS` | `15` | Hub-routed timeout for Hephaestus remediation request |
+| `ARGUS_REPAIR_RECHECK_MINUTES` | `10` | First agenda recheck after a service goes down (doubles each attempt) |
+| `ARGUS_REPAIR_RECHECK_MAX_MINUTES` | `360` | Backoff cap for agenda rechecks |
 
 ## Docker
 
@@ -111,6 +114,13 @@ Recurring errors become fix *proposals* for Hephaestus Forge (`app/core/forge_pr
 - One proposal per signature per `ARGUS_FORGE_PROPOSE_COOLDOWN_SECONDS` (86400). Failed posts retry on next occurrence.
 - Disable with `ARGUS_FORGE_PROPOSALS_ENABLED=0`. Hephaestus/Argus own errors are excluded.
 - Log dedupe key now includes the row timestamp: each occurrence counts once (alert spam still bounded by alert cooldown).
+
+## Repair follow-up (assistant agenda)
+
+A service that stays unhealthy is never forgotten: when Argus requests the repair it also plans
+**`argus.repair.<service>`** in Hestia's agenda (+10 min, then 20, 40 … max 6 h). Chronos fires
+`POST /api/argus/recheck/{service}` through Hub; still down → new Hephaestus repair request and next recheck;
+recovered → entry completed and recovery notice. Visible/movable/cancellable from the agenda.
 
 ## Remediation Contract
 

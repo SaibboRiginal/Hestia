@@ -27,6 +27,7 @@ try:
         wait_for_http_ready,
         wait_for_hub_services,
     )
+    from hestia_common.agenda_client import AgendaClient, job_rule
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -38,6 +39,7 @@ except ModuleNotFoundError:
         wait_for_http_ready,
         wait_for_hub_services,
     )
+    from hestia_common.agenda_client import AgendaClient, job_rule
 
 logger, log_buffer = setup_service_logging("hestia_scout")
 
@@ -122,6 +124,71 @@ worker = ScoutWorker(
     target_source=TARGET_SOURCE,
     target_filters=TARGET_FILTERS,
 )
+
+
+# ── Email cycle: planned in the assistant agenda (Chronos) ─────────────────
+# The cycle is a recurring agenda job ("scout.email_cycle") fired by Chronos
+# through Hub → POST /api/scout/cycle. The user sees it in Hestia's agenda and
+# can move/pause/skip it. Chronos down or job missing → Scout runs it itself.
+AGENDA_JOB_KEY = "scout.email_cycle"
+POLL_INTERVAL_SECONDS = max(60, int(os.getenv("SCOUT_POLL_INTERVAL_SECONDS", "1800")))
+_cycle_lock = threading.Lock()
+_cycle_state: dict[str, Any] = {"running": False, "last_started": None, "last_finished": None,
+                                "last_trigger": None, "last_error": None, "last_ts": 0.0}
+agenda = AgendaClient("scout")
+
+
+def _agenda_rules() -> list[dict]:
+    minutes = max(1, POLL_INTERVAL_SECONDS // 60)
+    return [job_rule(
+        AGENDA_JOB_KEY, "Scout: controlla email immobiliari",
+        service="scout", path="/api/scout/cycle", body={"trigger": "agenda"},
+        recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
+        description="Legge le nuove email annunci, estrae e aggiorna gli immobili. "
+                    "Sposta/metti in pausa dall'agenda di Hestia.",
+        params={"interval_seconds": POLL_INTERVAL_SECONDS}, timeout_seconds=20)]
+
+
+def run_cycle_guarded(trigger: str) -> dict:
+    """One cycle at a time; concurrent triggers (agenda, fallback, user) are skipped."""
+    if not _cycle_lock.acquire(blocking=False):
+        return {"status": "busy", "started_at": _cycle_state["last_started"]}
+    try:
+        _cycle_state.update(running=True, last_trigger=trigger, last_error=None,
+                            last_started=datetime.now(timezone.utc).isoformat(), last_ts=time.time())
+        worker.run_cycle()
+        return {"status": "ok", "trigger": trigger}
+    except Exception as error:
+        _cycle_state["last_error"] = str(error)[:300]
+        logger.error("[🔄] event=scout_cycle_failed trigger=%s error=%s", trigger, error)
+        return {"status": "error", "trigger": trigger, "error": str(error)[:300]}
+    finally:
+        _cycle_state.update(running=False, last_finished=datetime.now(timezone.utc).isoformat())
+        _cycle_lock.release()
+
+
+class CycleRequest(BaseModel):
+    trigger: str = "api"
+    wait: bool = False
+
+
+@api_app.post("/api/scout/cycle")
+def scout_cycle(req: CycleRequest | None = None):
+    """Run the email→listing cycle. Default async (the agenda/Hub call returns at once)."""
+    req = req or CycleRequest()
+    if req.wait:
+        return run_cycle_guarded(req.trigger)
+    if _cycle_state["running"]:
+        return {"status": "busy", "started_at": _cycle_state["last_started"]}
+    threading.Thread(target=run_cycle_guarded, args=(req.trigger,), daemon=True,
+                     name="scout-cycle").start()
+    return {"status": "started", "trigger": req.trigger}
+
+
+@api_app.get("/api/scout/cycle")
+def scout_cycle_status():
+    return {"status": "ok", "agenda_job": AGENDA_JOB_KEY, "interval_seconds": POLL_INTERVAL_SECONDS,
+            **{k: v for k, v in _cycle_state.items() if k != "last_ts"}}
 
 
 @api_app.get("/health")
@@ -262,7 +329,11 @@ if _HAS_MCP:
 
     def _mcp_scout_fetch() -> dict:
         """Trigger a full email fetch + parse + extract cycle on demand."""
-        worker.run_cycle()
+        result = run_cycle_guarded("user")
+        if result["status"] == "busy":
+            return {"status": "busy", "message": "Un ciclo è già in corso: riprova tra poco."}
+        if result["status"] == "error":
+            return {"status": "error", "message": f"Ciclo fallito: {result['error']}"}
         return {"status": "ok", "message": "Fetch cycle completed. Check logs for details."}
 
     def _mcp_scout_stats() -> dict:
@@ -423,15 +494,19 @@ if __name__ == "__main__":
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 
-    # SCOUT_POLL_INTERVAL_SECONDS: seconds between email polling cycles (default 1800 = 30 min)
-    poll_interval = int(os.getenv("SCOUT_POLL_INTERVAL_SECONDS", "1800"))
-    while True:
-        try:
-            worker.run_cycle()
-        except Exception as error:
-            logger.error(
-                "event=critical_error_scout_polling_loop Critical error in Scout polling loop: %s", error)
+    agenda.register_async(_agenda_rules)
 
-        logger.info(
-            "event=scout_resting_seconds_before_next Scout resting for %d seconds before next cycle", poll_interval)
-        time.sleep(poll_interval)
+    # First cycle at boot, then the agenda drives. Fallback: every minute check
+    # whether the agenda is handling the job; if Chronos is down, the job is
+    # missing or stale, run the cycle locally at the configured interval.
+    run_cycle_guarded("startup")
+    while True:
+        time.sleep(60)
+        try:
+            due = time.time() - _cycle_state["last_ts"] >= POLL_INTERVAL_SECONDS
+            if due and agenda.should_self_run(AGENDA_JOB_KEY, POLL_INTERVAL_SECONDS):
+                logger.info("[🔄] event=scout_cycle_fallback reason=agenda_not_driving interval=%ds",
+                            POLL_INTERVAL_SECONDS)
+                run_cycle_guarded("fallback")
+        except Exception as error:
+            logger.error("[🔄] event=scout_fallback_loop_error error=%s", error)

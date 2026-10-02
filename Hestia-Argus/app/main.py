@@ -254,6 +254,12 @@ def analyze() -> dict:
     return report.model_dump(mode="json")
 
 
+@app.post("/api/argus/recheck/{service}", tags=["argus"])
+def recheck_service(service: str) -> dict:
+    """Repair follow-up fired by the assistant agenda (argus.repair.<service>)."""
+    return monitor_service.recheck(service)
+
+
 @app.post("/api/argus/remediate", tags=["argus"])
 def request_remediation(req: RemediationRequest) -> dict:
     ok, result = hub_client.request_hephaestus_remediation(

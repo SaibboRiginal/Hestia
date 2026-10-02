@@ -37,6 +37,14 @@ from .strategist import Strategist
 TaskLifecycleStore = import_shared_symbol(
     "hestia_common.task_lifecycle", "TaskLifecycleStore"
 )
+AgendaClient = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")
+daily_window = import_shared_symbol("hestia_common.agenda_client", "daily_window")
+
+# Assistant-agenda windows (Chronos). The user moves/skips/pauses them there;
+# missing window or Chronos down → env-hour fallback (old behaviour).
+WINDOW_CONSOLIDATION = "athena.consolidation"
+WINDOW_SKILL_CURATION = "athena.skill_curation"
+WINDOW_THINKING = "athena.thinking"
 
 logger = logging.getLogger("hestia_athena.runtime")
 
@@ -125,6 +133,10 @@ class AthenaRuntime:
             oracle_route=self.oracle_hint_route if self.oracle_hint_enabled else "",
         )
         self._skill_curation_ran_today: str = ""
+
+        # Assistant agenda: when Athena works is data the user can edit.
+        self.agenda = AgendaClient("athena", self.hub_api_url)
+        self._thinking_paused_logged = False
 
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
@@ -702,6 +714,35 @@ class AthenaRuntime:
             )
             return False
 
+    # ── Assistant agenda ─────────────────────────────────────────────────────
+
+    def _agenda_rules(self) -> list[dict]:
+        c_start = _parse_int_env("ATHENA_CONSOLIDATION_WINDOW_START", 3)
+        c_end = _parse_int_env("ATHENA_CONSOLIDATION_WINDOW_END", 5)
+        s_start = _parse_int_env("ATHENA_SKILL_CURATION_WINDOW_START", 5)
+        s_end = _parse_int_env("ATHENA_SKILL_CURATION_WINDOW_END", 7)
+        return [
+            daily_window(WINDOW_CONSOLIDATION, "Athena: consolidamento memoria",
+                         c_start, c_end,
+                         description="Estrae fatti dalle sessioni recenti e risolve conflitti di memoria "
+                                     "(una volta al giorno dentro la finestra)."),
+            daily_window(WINDOW_SKILL_CURATION, "Athena: cura delle skill",
+                         s_start, s_end,
+                         description="Crea/aggiorna/depreca skill dalle conversazioni (una volta al giorno)."),
+            daily_window(WINDOW_THINKING, "Athena: retrospettiva in idle",
+                         _parse_int_env("ATHENA_THINKING_WINDOW_START", 0),
+                         _parse_int_env("ATHENA_THINKING_WINDOW_END", 0),
+                         description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
+                                     "chattando. Salta/metti in pausa per fermare Athena."),
+        ]
+
+    def _window_open(self, key: str, fallback) -> bool:
+        try:
+            return self.agenda.is_open(key, fallback)
+        except Exception as exc:
+            logger.warning("[🔄] event=athena_window_check_failed key=%s error=%s", key, exc)
+            return bool(fallback())
+
     # ── Main loop ────────────────────────────────────────────────────────────
 
     def _run_once(self) -> None:
@@ -712,8 +753,8 @@ class AthenaRuntime:
 
         # ── Daily memory consolidation (runs once per day during window) ───
         today = datetime.now().strftime("%Y-%m-%d")
-        if (self.consolidator.should_run() and
-            self._consolidation_ran_today != today):
+        if (self._consolidation_ran_today != today and
+                self._window_open(WINDOW_CONSOLIDATION, self.consolidator.should_run)):
             try:
                 sessions = self.consolidator.get_active_sessions()
                 for session_id in sessions:
@@ -729,7 +770,8 @@ class AthenaRuntime:
                 logger.warning("event=consolidation_failed error=%s", exc)
 
         # ── Daily skill curation (Plan P3b-10 — Hermes Agent pattern) ──────
-        if self._skill_curation_ran_today != today:
+        if (self._skill_curation_ran_today != today and
+                self._window_open(WINDOW_SKILL_CURATION, lambda: True)):
             try:
                 summary = self.skill_curator.run_cycle()
                 if any(v > 0 for v in summary.values()):
@@ -746,6 +788,14 @@ class AthenaRuntime:
                 self._skill_curation_ran_today = today
             except Exception as exc:
                 logger.warning("event=skill_curation_failed error=%s", exc)
+
+        # ── Thinking cycles only inside the agenda window ───────────────────
+        if not self._window_open(WINDOW_THINKING, lambda: True):
+            if not self._thinking_paused_logged:
+                logger.info("event=athena_thinking_window_closed window=%s", WINDOW_THINKING)
+                self._thinking_paused_logged = True
+            return
+        self._thinking_paused_logged = False
 
         retrospective = self._retrospective_snapshot()
 
@@ -967,6 +1017,7 @@ class AthenaRuntime:
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()
+        self.agenda.register_async(self._agenda_rules)
         # Wait for Oracle inside the loop thread: blocking here would hold the
         # FastAPI startup (and /health) for up to 60 s.
         self._thread = threading.Thread(

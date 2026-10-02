@@ -66,6 +66,24 @@ remediation_service = RemediationService(
 forge = Forge(load_forge_config())
 
 
+def _escalate_to_forge(task: dict) -> str | None:
+    """Runtime repair failed every attempt → code-fix task in Forge
+    (Forge applies the user's permission mode: ask/auto/full_auto)."""
+    if not forge.cfg.enabled:
+        return None
+    created = forge.submit(
+        request=(f"Runtime remediation for service '{task.get('service')}' failed "
+                 f"{task.get('attempts')} times (issue: {task.get('issue')}). "
+                 "Find the root cause in the code, fix it, add a regression test."),
+        services=[str(task.get("service") or "")] if task.get("service") else None,
+        source="hephaestus.remediation", requested_by="hephaestus.remediation",
+        context=str(task.get("execution_result") or "")[:3000])
+    return created.get("id")
+
+
+remediation_service.attach_agenda(forge.agenda, _escalate_to_forge)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     startup_wait_timeout = 0.0
