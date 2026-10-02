@@ -34,6 +34,7 @@ Run critical only: `pytest -m "unit or api or format" --tb=short -v`
 | Scout | [Hestia-Scout/tests/TESTING.md](Hestia-Scout/tests/TESTING.md) | 🟢 NORMAL |
 | Atlas | [Hestia-Atlas/tests/TESTING.md](Hestia-Atlas/tests/TESTING.md) | 🟢 NORMAL |
 | Dummy | [Hestia-Dummy/tests/TESTING.md](Hestia-Dummy/tests/TESTING.md) | 🟢 NORMAL |
+| Metis | [Hestia-Metis/tests/TESTING.md](Hestia-Metis/tests/TESTING.md) | 🟢 NORMAL |
 
 ## Critical Regressions Log
 
@@ -41,6 +42,7 @@ Run critical only: `pytest -m "unit or api or format" --tb=short -v`
 
 | Date | Symptom | Test Added | Root Cause |
 |------|---------|-----------|------------|
+| 2026-10 | Google OAuth always failed (`Error 400 invalid_request`) | Hecate 7.13–7.25 | OOB redirect blocked by Google since 2023 |
 | _first entry TBD_ | LLM returns `**bold**` instead of `<b>bold</b>` | Telegram 2.1.1, Oracle 1.8.13 | Format contract not enforced on all paths |
 | _first entry TBD_ | Tool not called for calendar query | Oracle 1.8.1 | Agent loop pattern matching failed |
 | _first entry TBD_ | "non voglio notifiche" not persisted | Oracle 1.8.6, 1.4.2 | Control extraction not triggered |

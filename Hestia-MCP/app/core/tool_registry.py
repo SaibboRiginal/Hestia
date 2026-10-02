@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
@@ -85,24 +87,53 @@ class ToolRegistry:
         return unique
 
     def call_tool(self, tool_name: str, params: dict, service: str = "") -> tuple[bool, Any]:
-        """Execute a tool by routing to its service via Hub."""
-        if not service:
-            return (False, f"No service specified for tool '{tool_name}'")
+        """Execute a tool via Hub using the method/path the service declared.
 
+        Path variables (``$task_id`` or ``{task_id}``) are filled from params;
+        remaining params go to the query (GET/DELETE) or JSON body (POST/PUT/PATCH).
+        """
+        tool = self._find_tool(tool_name, service)
+        if tool is None:
+            return (False, f"Unknown tool '{tool_name}'")
+        service = service or str(tool.get("service") or "")
+        path = str(tool.get("path") or "").strip()
+        if not service or not path:
+            return (False, f"Tool '{tool_name}' has no service/path metadata")
+        method = str(tool.get("method") or "GET").upper()
+        remaining = dict(params or {})
+
+        def _fill(match: "re.Match") -> str:
+            key = match.group(1) or match.group(2)
+            return quote(str(remaining.pop(key, "")), safe="")
+
+        resolved = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}", _fill, path)
+        use_query = method in {"GET", "HEAD", "DELETE"}
+        envelope = {
+            "method": method, "headers": {},
+            "query": remaining if use_query else {},
+            "body": None if use_query else remaining,
+            "timeout_seconds": _MCP_SERVER_TIMEOUT,
+        }
         try:
-            resp = requests.post(
-                f"{self._hub_url}/route/{service}/api/module-tools/call",
-                json={"tool": tool_name, "params": params},
-                timeout=_MCP_SERVER_TIMEOUT,
-            )
-            if resp.status_code == 200:
-                payload = resp.json()
-                return (True, payload.get("payload", payload))
-            return (False, f"Service {service} returned {resp.status_code}")
+            resp = requests.post(f"{self._hub_url}/route/{service}/{resolved.lstrip('/')}",
+                                 json=envelope, timeout=_MCP_SERVER_TIMEOUT + 2)
+            if resp.status_code != 200:
+                return (False, f"Hub returned {resp.status_code}")
+            routed = resp.json() or {}
+            status = int(routed.get("status_code", 500))
+            if status >= 400:
+                return (False, routed.get("payload") or f"{service} returned {status}")
+            return (True, routed.get("payload"))
         except Exception as exc:
             logger.warning("event=tool_call_failed tool=%s service=%s error=%s",
                            tool_name, service, exc)
             return (False, str(exc))
+
+    def _find_tool(self, tool_name: str, service: str = "") -> dict | None:
+        for tool in self.list_all_tools():
+            if tool.get("name") == tool_name and (not service or tool.get("service") == service):
+                return tool
+        return None
 
     def refresh(self) -> None:
         """Force-refresh the service → MCP endpoint mapping and domain mapping from Hub registry."""

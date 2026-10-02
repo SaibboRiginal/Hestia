@@ -26,7 +26,9 @@ Replaces Hub's `/discovery/commands` as the canonical tool registry.
 - Registry refreshed on Hub service changes
 
 ### Tool Proxy
-- Proxies tool calls from Oracle to target services via Hub routing
+- Proxies tool calls to target services via Hub routing, using the `method` + `path` each tool declares
+  (path vars `$x`/`{x}` filled from params; rest → query for GET/DELETE, JSON body otherwise).
+  Previously it posted to a non-existent `/api/module-tools/call` endpoint, so every call failed.
 - Single entry point for all tool execution
 
 ## API Endpoints

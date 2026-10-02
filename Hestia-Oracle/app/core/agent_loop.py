@@ -77,7 +77,8 @@ class TokenCounter:
     def _resolve_ratio(model: str) -> float:
         if model in _token_ratio_cache:
             return _token_ratio_cache[model]
-        ollama_url = os.getenv("OLLAMA_API_URL", "http://localhost:11434").rstrip("/")
+        ollama_url = (os.getenv("OLLAMA_API_URL") or os.getenv("OLLAMA_URL", "http://localhost:11434")
+                      ).split("/api/")[0].rstrip("/")
         try:
             resp = requests.post(
                 f"{ollama_url}/api/tokenize",
