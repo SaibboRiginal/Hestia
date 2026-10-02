@@ -31,6 +31,7 @@ from typing import Any
 import requests
 
 from . import git_ops
+from .claude_budget import ClaudeBudget, ClaudeBudgetState, ClaudeSchedule
 from .agent_tools import run_test_command
 from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
 from .engines import build_engines, select_engine, wait_seconds
@@ -38,7 +39,7 @@ from .prompts import build_task_prompt
 
 logger = logging.getLogger("hestia_hephaestus.forge")
 
-ACTIVE_STATES = {"queued", "running", "approved", "merging"}
+ACTIVE_STATES = {"queued", "running", "approved", "merging"}  # "scheduled" = waiting for Claude window
 TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "no_changes"}
 
 
@@ -92,6 +93,7 @@ class Forge:
         self._worker: threading.Thread | None = None
         self._default_engine = cfg.engine
         self._modes = dict(DEFAULT_MODES)
+        self.claude_budget = ClaudeBudget(ClaudeSchedule())
         self._load()
         self._load_settings()
 
@@ -111,6 +113,14 @@ class Forge:
                 engine = normalize_engine(data.get("default_engine", ""))
                 if engine in self.engines:
                     self._default_engine = engine
+                sched = data.get("claude_schedule")
+                state = data.get("claude_state")
+                if isinstance(sched, dict) or isinstance(state, dict):
+                    self.claude_budget = ClaudeBudget(
+                        ClaudeSchedule(**{k: v for k, v in (sched or {}).items()
+                                          if k in ClaudeSchedule.__dataclass_fields__}),
+                        ClaudeBudgetState(**{k: v for k, v in (state or {}).items()
+                                             if k in ClaudeBudgetState.__dataclass_fields__}))
                 for group, mode in (data.get("modes") or {}).items():
                     if group in DEFAULT_MODES and normalize_mode(mode) in MODES:
                         self._modes[group] = normalize_mode(mode)
@@ -134,7 +144,22 @@ class Forge:
 
     def settings(self) -> dict[str, Any]:
         return {"default_engine": self._default_engine, "fallback": self.cfg.fallback,
-                "modes": dict(self._modes), "engine_groups": ENGINE_GROUP}
+                "modes": dict(self._modes), "engine_groups": ENGINE_GROUP,
+                "claude_budget": self.claude_budget.status()}
+
+    def set_claude_schedule(self, **changes: Any) -> dict[str, Any]:
+        """Update the Claude Pro budget window (reset day/time, window, night, caps)."""
+        from dataclasses import asdict, replace
+        clean = {k: v for k, v in changes.items()
+                 if k in ClaudeSchedule.__dataclass_fields__ and v not in (None, "")}
+        try:
+            schedule = replace(self.claude_budget.schedule, **clean).validate()
+        except (TypeError, ValueError) as exc:
+            raise ForgeError(f"Invalid Claude schedule: {exc}")
+        self.claude_budget = ClaudeBudget(schedule, self.claude_budget.state)
+        self._save_settings()
+        logger.info("event=forge_claude_schedule_set schedule=%s", asdict(schedule))
+        return self.claude_budget.status()
 
     def set_mode(self, mode: str, group: str = "") -> dict[str, Any]:
         """Set permission mode for a group (local|cloud), or both when group is empty."""
@@ -155,15 +180,20 @@ class Forge:
     def _save_settings(self) -> None:
         try:
             self.cfg.settings_file.parent.mkdir(parents=True, exist_ok=True)
+            from dataclasses import asdict
             self.cfg.settings_file.write_text(json.dumps({
-                "default_engine": self._default_engine, "modes": self._modes}), encoding="utf-8")
+                "default_engine": self._default_engine, "modes": self._modes,
+                "claude_schedule": asdict(self.claude_budget.schedule),
+                "claude_state": asdict(self.claude_budget.state)}), encoding="utf-8")
         except Exception as exc:
             logger.warning("[🔄] event=forge_settings_save_failed error=%s", exc)
 
-    def _mode_for(self, engine_requested: str) -> tuple[str, str]:
+    def _engine_name_for(self, engine_requested: str) -> str:
         engine, _ = select_engine(self.engines, engine_requested, self._default_engine, self.cfg.fallback)
-        name = engine.name if engine else normalize_engine(engine_requested) or self._default_engine
-        group = ENGINE_GROUP.get(name, "cloud")
+        return engine.name if engine else normalize_engine(engine_requested) or self._default_engine
+
+    def _mode_for(self, engine_requested: str) -> tuple[str, str]:
+        group = ENGINE_GROUP.get(self._engine_name_for(engine_requested), "cloud")
         return self._modes.get(group, "ask"), group
 
     def _save(self) -> None:
@@ -200,6 +230,7 @@ class Forge:
                     self._queue.put(task["id"])
         self._worker = threading.Thread(target=self._work_loop, daemon=True, name="forge-worker")
         self._worker.start()
+        threading.Thread(target=self._scheduler_loop, daemon=True, name="forge-scheduler").start()
         logger.info("event=forge_started repo=%s default_engine=%s", self.cfg.repo_path, self._default_engine)
 
     def _work_loop(self) -> None:
@@ -292,9 +323,13 @@ class Forge:
         if auto_merge is None and mode == "full_auto":
             task["auto_merge"] = True
         task["start_policy"] = why
+        # Claude Pro budget: autonomous claude work waits for the pre-reset nights.
+        task["budgeted"] = source not in USER_SOURCES and self._engine_name_for(task["engine_requested"]) == "claude"
         with self._lock:
             self._tasks[task_id] = task
-        if auto_start:
+        if auto_start and task["budgeted"]:
+            self._schedule(task, f"submitted by {source}")
+        elif auto_start:
             self._enqueue(task, f"submitted by {requested_by} ({source})")
         else:
             self._set_state(task, "proposed", f"proposed by {source} ({why})")
@@ -303,11 +338,14 @@ class Forge:
                 f"Rispondi \"approva sviluppo {task_id[:6]}\" per avviarla, \"rifiuta {task_id[:6]}\" per scartarla."))
         return task
 
-    def approve(self, task_id: str, approved_by: str = "user") -> dict[str, Any]:
+    def approve(self, task_id: str, approved_by: str = "user", now: bool = False) -> dict[str, Any]:
         task = self._require(task_id)
         state = task.get("state")
-        if state == "proposed":
-            self._enqueue(task, f"start approved by {approved_by}")
+        if state in {"proposed", "scheduled"}:
+            if task.get("budgeted") and not now:
+                self._schedule(task, f"approved by {approved_by}, waits for Claude budget window")
+            else:
+                self._enqueue(task, f"start approved by {approved_by}{' (now)' if now else ''}")
             return task
         if state == "awaiting_review":
             self._check_mergeable(task)   # fail fast, synchronously
@@ -320,7 +358,7 @@ class Forge:
 
     def reject(self, task_id: str, reason: str = "", rejected_by: str = "user") -> dict[str, Any]:
         task = self._require(task_id)
-        if task.get("state") not in {"proposed", "awaiting_review", "failed", "no_changes"}:
+        if task.get("state") not in {"proposed", "scheduled", "awaiting_review", "failed", "no_changes"}:
             raise ForgeError(f"Task in state '{task.get('state')}' cannot be rejected")
         self._cleanup(task, delete_branch=True)
         self._set_state(task, "rejected", f"by {rejected_by}: {reason}")
@@ -350,6 +388,37 @@ class Forge:
         if not task:
             raise ForgeError(f"Task '{task_id}' not found", 404)
         return task
+
+    def _schedule(self, task: dict, note: str) -> None:
+        st = self.claude_budget.status()
+        self._set_state(task, "scheduled", f"{note}; {st['reason']}")
+        self._notify(task, (
+            f"🌙 <b>Sviluppo programmato</b> <code>{task['id'][:6]}</code> (Claude Pro)\n"
+            f"{_esc(task['request'][:300])}\n"
+            f"Parte nella finestra notturna prima del reset ({_esc(st['next_reset'][:16])}). "
+            f"Per avviarlo ora: \"approva sviluppo {task['id'][:6]} subito\"."))
+
+    def _scheduler_loop(self) -> None:
+        """Start one budgeted claude task at a time when the window allows."""
+        interval = max(30, int(__import__("os").getenv("HEPHAESTUS_FORGE_SCHEDULER_SECONDS", "300")))
+        while True:
+            time.sleep(interval)
+            try:
+                with self._lock:
+                    busy = any(t.get("state") in ACTIVE_STATES for t in self._tasks.values())
+                    waiting = sorted((t for t in self._tasks.values() if t.get("state") == "scheduled"),
+                                     key=lambda t: t["created_at"])
+                if busy or not waiting:
+                    continue
+                ok, reason = self.claude_budget.can_start()
+                if not ok:
+                    logger.debug("event=forge_claude_window_closed reason=%s waiting=%d", reason, len(waiting))
+                    continue
+                self.claude_budget.record_start()
+                self._save_settings()
+                self._enqueue(waiting[0], f"Claude budget window: {reason}")
+            except Exception as exc:
+                logger.warning("[🔄] event=forge_scheduler_error error=%s", exc)
 
     def _enqueue(self, task: dict, note: str) -> None:
         self._set_state(task, "queued", note)
@@ -400,6 +469,18 @@ class Forge:
         prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""))
         t0 = time.perf_counter()
         result = engine.run(worktree, prompt, test_runner)
+        if engine.name == "claude" and not result.ok and self.claude_budget.looks_like_limit(
+                f"{result.summary} {result.log_tail}"):
+            until = self.claude_budget.mark_exhausted()
+            self._save_settings()
+            self._cleanup(task, delete_branch=True)
+            if task.get("budgeted"):
+                self._set_state(task, "scheduled", f"Claude usage limit: paused until {until}")
+            else:
+                task["error"] = "Claude usage limit reached"
+                self._set_state(task, "failed", f"Claude usage limit: paused until {until}")
+            self._notify(task, f"⛔ Quota Claude esaurita. Riprendo dopo il reset ({_esc(until[:16])}).")
+            return
         with self._lock:
             task.update({"summary": result.summary, "engine_log_tail": result.log_tail,
                          "turns": result.turns, "cost_usd": result.cost_usd,

@@ -271,6 +271,25 @@ try:
             telegram_visible=True, telegram_group="sistema",
         ),
         MCPTool(
+            name="forge_set_claude_schedule",
+            description=(
+                "Configura quando Hestia può usare Claude Pro in automatico: giorno/ora del reset settimanale, "
+                "ore finali prima del reset, fascia notturna, task massimi per notte."
+            ),
+            parameters={"type": "object", "properties": {
+                "reset_day": {"type": "string", "description": "giorno reset: lun..dom"},
+                "reset_time": {"type": "string", "description": "ora reset HH:MM"},
+                "window_hours": {"type": "integer", "description": "ore prima del reset in cui usare Claude di notte (default 48)"},
+                "night": {"type": "string", "description": "fascia notturna HH:MM-HH:MM (default 00:00-07:00)"},
+                "night_max_tasks": {"type": "integer", "description": "task massimi per notte (default 3)"},
+                "final_hours": {"type": "integer", "description": "ultime ore in cui usare tutto (default 6)"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_set_claude_schedule", "params": kw},
+            title="\U0001f319 Finestra Claude Pro", method="POST", path="/api/hephaestus/forge/settings/claude-schedule",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="2 righe: prossimo reset, finestra attuale (phase/reason).",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
             name="forge_settings",
             description="Mostra impostazioni sviluppo: motore default, fallback, modalità permessi local/cloud",
             parameters={"type": "object", "properties": {}},
@@ -286,7 +305,9 @@ try:
                 "Usa quando l'utente dice 'approva sviluppo <id>'."
             ),
             parameters={"type": "object", "properties": {
-                "task_id": {"type": "string", "description": "Id task (anche i primi 6 caratteri)"}}, "required": ["task_id"]},
+                "task_id": {"type": "string", "description": "Id task (anche i primi 6 caratteri)"},
+                "now": {"type": "boolean", "description": "true solo se l'utente dice 'subito'/'ora' (salta la finestra notturna Claude)"}},
+                "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_approve", "params": kw},
             title="\u2705 Approva sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/approve",
             clients=["telegram", "ui"], response_mode="oracle_natural",

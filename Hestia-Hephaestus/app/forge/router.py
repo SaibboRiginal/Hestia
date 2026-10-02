@@ -34,6 +34,17 @@ class ForgeModeChoice(BaseModel):
 class ForgeDecision(BaseModel):
     by: str = "user"
     reason: str = ""
+    now: bool = False   # approve: skip the Claude budget window (user asked "subito")
+
+
+class ClaudeScheduleChange(BaseModel):
+    reset_day: str | None = Field(None, description="mon..sun / lun..dom")
+    reset_time: str | None = Field(None, description="HH:MM local")
+    tz: str | None = None
+    window_hours: int | None = None
+    night: str | None = Field(None, description="HH:MM-HH:MM")
+    night_max_tasks: int | None = None
+    final_hours: int | None = None
 
 
 def create_forge_router(forge: Forge) -> APIRouter:
@@ -67,6 +78,14 @@ def create_forge_router(forge: Forge) -> APIRouter:
     def forge_mode_set(body: ForgeModeChoice) -> dict[str, Any]:
         return {"status": "ok", **_guard(forge.set_mode, body.mode, body.group)}
 
+    @router.get("/claude-budget")
+    def forge_claude_budget() -> dict[str, Any]:
+        return {"status": "ok", **forge.claude_budget.status()}
+
+    @router.post("/settings/claude-schedule")
+    def forge_claude_schedule(body: ClaudeScheduleChange) -> dict[str, Any]:
+        return {"status": "ok", **_guard(forge.set_claude_schedule, **body.model_dump())}
+
     @router.post("/tasks")
     def forge_submit(req: ForgeTaskRequest) -> dict[str, Any]:
         task = _guard(forge.submit, **req.model_dump())
@@ -90,7 +109,8 @@ def create_forge_router(forge: Forge) -> APIRouter:
 
     @router.post("/tasks/{task_id}/approve")
     def forge_approve(task_id: str, body: ForgeDecision | None = None) -> dict[str, Any]:
-        task = _guard(forge.approve, task_id, (body or ForgeDecision()).by)
+        b = body or ForgeDecision()
+        task = _guard(forge.approve, task_id, b.by, b.now)
         return {"status": "ok", "task": _public(task)}
 
     @router.post("/tasks/{task_id}/reject")
