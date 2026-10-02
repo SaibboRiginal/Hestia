@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional, List, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 # --- INGEST & ARCHIVE SCHEMAS ---
@@ -43,7 +43,22 @@ class EntityUpsert(BaseModel):
         None, description="The mathematical vector for RAG")
 
 
+def _vector_to_list(value):
+    """pgvector returns numpy arrays; pydantic list[float] needs a list."""
+    if value is None or isinstance(value, list):
+        return value
+    try:
+        return [float(x) for x in value]
+    except TypeError:
+        return value
+
+
 class EntityResponse(EntityUpsert):
+    @field_validator("embedding", mode="before")
+    @classmethod
+    def coerce_embedding(cls, value):
+        return _vector_to_list(value)
+
     id: int
     created_at: Any
     updated_at: Any
@@ -139,8 +154,10 @@ class PreferenceCreate(BaseModel):
 
 
 class PreferenceUpdate(BaseModel):
-    is_active: bool
+    # Optional: callers patch weight alone (Athena consolidator decay).
+    is_active: Optional[bool] = None
     weight: Optional[float] = None
+    extra_data: Optional[dict] = None
 
 
 class PreferenceResponse(BaseModel):
@@ -155,6 +172,11 @@ class PreferenceResponse(BaseModel):
     embedding: Optional[list[float]] = None
     domains: Optional[list[str]] = None
     extra_data: Optional[dict] = None
+
+    @field_validator("embedding", mode="before")
+    @classmethod
+    def coerce_embedding(cls, value):
+        return _vector_to_list(value)
 
     class Config:
         from_attributes = True

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
+import threading
 import time
-from typing import Iterable
+from typing import Callable, Iterable
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
@@ -150,3 +152,33 @@ def wait_for_hub_services(
                 )
             return False
         time.sleep(max(0.2, interval_seconds))
+
+
+def start_hub_keepalive(
+    register: "Callable[[], object]",
+    *,
+    interval_seconds: float | None = None,
+    logger: logging.Logger | None = None,
+    name: str = "hub-keepalive",
+) -> threading.Thread:
+    """Re-register on Hub periodically (daemon thread).
+
+    Hub keeps its registry in memory: after a Hub restart, a service that
+    registered only once at startup disappears and every Hub-routed call to it
+    fails.  Identical re-registrations are cheap "refreshes" on the Hub side
+    (no registry event).  Interval: ``HUB_KEEPALIVE_SECONDS`` (default 60).
+    """
+    interval = float(interval_seconds or os.getenv("HUB_KEEPALIVE_SECONDS", "60"))
+    log = logger or logging.getLogger("hestia_common.startup")
+
+    def _loop() -> None:
+        while True:
+            time.sleep(max(5.0, interval))
+            try:
+                register()
+            except Exception as exc:  # never kill the thread
+                log.warning("[🔄] event=hub_keepalive_failed error=%s", exc)
+
+    thread = threading.Thread(target=_loop, daemon=True, name=name)
+    thread.start()
+    return thread

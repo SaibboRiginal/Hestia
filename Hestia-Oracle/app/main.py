@@ -156,6 +156,16 @@ except Exception as exc:
 
 @app.on_event("startup")
 def register_on_hub_startup():
+    """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
+    _register_on_hub()
+    try:
+        from hestia_common.startup_utils import start_hub_keepalive
+        start_hub_keepalive(_register_on_hub, logger=logger)
+    except ImportError:
+        logger.warning("[🔄] event=hub_keepalive_unavailable reason=hestia_common_missing")
+
+
+def _register_on_hub():
     hub_api_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
@@ -177,8 +187,8 @@ def register_on_hub_startup():
         resp = requests.post(
             f"{hub_api_url}/registry/register", json=payload, timeout=4)
         if resp.status_code < 400:
-            logger.info("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
-                        hub_api_url, service_base_url)
+            logger.debug("event=registered_hub_hub_base_url Registered on Hub | hub=%s base_url=%s",
+                         hub_api_url, service_base_url)
         else:
             logger.warning("event=hub_registration_non_success_status Hub registration non-success | status=%s body=%s",
                            resp.status_code, resp.text[:200])

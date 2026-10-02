@@ -1,5 +1,6 @@
 """Chat history endpoints — short-term conversational memory."""
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -17,6 +18,18 @@ def get_all_chat_history(db: Session = Depends(database.get_db)):
         .order_by(models.ChatHistory.timestamp.desc())
         .all()
     )
+
+
+@router.get("/sessions")
+def list_chat_sessions(since: Optional[str] = None, db: Session = Depends(database.get_db)):
+    """Distinct session ids with messages since *since* (ISO datetime)."""
+    q = db.query(models.ChatHistory.session_id).distinct()
+    if since:
+        try:
+            q = q.filter(models.ChatHistory.timestamp >= datetime.fromisoformat(since.replace("Z", "+00:00")))
+        except ValueError:
+            pass
+    return {"sessions": [row[0] for row in q.all() if row[0]]}
 
 
 @router.delete("/history/all")

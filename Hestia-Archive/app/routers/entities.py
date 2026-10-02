@@ -36,6 +36,29 @@ def _find_nested_path(data: dict, target_path: str) -> Any:
     return current
 
 
+def _to_number(value: Any) -> float | None:
+    """Lenient numeric parse: 350000, "350000", "350.000 €", "1,5". None if not numeric.
+    (A single unparsable value used to raise and turn the whole search into a 500.)"""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    import re as _re
+    text = _re.sub(r"[^\d,.\-]", "", str(value))
+    if not text:
+        return None
+    if "," in text and "." in text:          # 1.234,56 -> 1234.56
+        text = text.replace(".", "").replace(",", ".")
+    elif text.count(".") > 1 or (text.count(".") == 1 and len(text.split(".")[1]) == 3):
+        text = text.replace(".", "")          # 350.000 -> 350000
+    else:
+        text = text.replace(",", ".")
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 # ── Domain / schema discovery ─────────────────────────────────────────────────
 
 @router.get("/api/domains")
@@ -170,19 +193,21 @@ def search_entities(req: schemas.AdvancedSearchRequest, db: Session = Depends(da
         else:
             q = q.order_by(desc(models.EntityRecord.id))
 
-        db_results = q.limit(100).all()
+        # Numeric filters run in Python, so fetch a wider window first: a fixed
+        # LIMIT 100 used to drop matches older than the 100 newest rows.
+        numeric = bool(req.filters_gt or req.filters_lt)
+        window = min(5000, max(req.limit * 20, 1000)) if numeric else max(100, req.limit)
+        db_results = q.limit(window).all()
         output = []
         for e in db_results:
             item = {"url": e.entity_id, **dict(e.payload)}
-            if req.filters_gt and any(
-                _find_nested_key(item, k) is None or float(
-                    _find_nested_key(item, k) or 0) <= float(v)
+            if req.filters_gt and not all(
+                (n := _to_number(_find_nested_key(item, k))) is not None and n > float(v)
                 for k, v in req.filters_gt.items()
             ):
                 continue
-            if req.filters_lt and any(
-                _find_nested_key(item, k) is None or float(
-                    _find_nested_key(item, k) or 0) >= float(v)
+            if req.filters_lt and not all(
+                (n := _to_number(_find_nested_key(item, k))) is not None and n < float(v)
                 for k, v in req.filters_lt.items()
             ):
                 continue
@@ -191,14 +216,10 @@ def search_entities(req: schemas.AdvancedSearchRequest, db: Session = Depends(da
         if req.sort_by and output:
             sample = _find_nested_key(output[0], req.sort_by)
             if sample is not None:
-                try:
-                    output.sort(
-                        key=lambda x: float(
-                            _find_nested_key(x, req.sort_by) or 0),
-                        reverse=(req.sort_order == "desc"),
-                    )
-                except (ValueError, TypeError):
-                    pass
+                output.sort(
+                    key=lambda x: _to_number(_find_nested_key(x, req.sort_by)) or 0.0,
+                    reverse=(req.sort_order == "desc"),
+                )
 
         return output[: req.limit]
 

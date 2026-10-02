@@ -29,13 +29,23 @@ def add_preference(
 
 @router.get("/api/memory/active", response_model=List[schemas.PreferenceResponse])
 def get_active_preferences(
-    domain: Optional[str] = None, db: Session = Depends(database.get_db)
+    domain: Optional[str] = None,
+    memory_class: Optional[str] = None,
+    limit: int = 1000,
+    db: Session = Depends(database.get_db),
 ):
-    """Return active preferences, optionally scoped to a domain (includes 'general')."""
+    """Return active memories, optionally scoped to a domain (includes 'general')
+    and to a memory_class (e.g. skill, durable_user_preference).
+
+    memory_class used to be ignored although every caller sent it: Athena's
+    skill lifecycle received user preferences as "skills" and could deactivate them.
+    """
     q = db.query(models.UserPreference).filter(models.UserPreference.is_active == True)  # noqa: E712
     if domain:
         q = q.filter(models.UserPreference.domain.in_([domain, "general"]))
-    return q.all()
+    if memory_class:
+        q = q.filter(models.UserPreference.memory_class == memory_class)
+    return q.order_by(models.UserPreference.id.desc()).limit(max(1, min(limit, 5000))).all()
 
 
 @router.patch("/api/memory/{pref_id}", response_model=schemas.PreferenceResponse)
@@ -50,9 +60,12 @@ def deprecate_preference(
     ).first()
     if not db_pref:
         raise HTTPException(status_code=404, detail="Preference not found")
-    db_pref.is_active = update_data.is_active
+    if update_data.is_active is not None:
+        db_pref.is_active = update_data.is_active
     if update_data.weight is not None:
         db_pref.weight = update_data.weight
+    if update_data.extra_data is not None:
+        db_pref.extra_data = {**(db_pref.extra_data or {}), **update_data.extra_data}
     db.commit()
     db.refresh(db_pref)
     return db_pref
@@ -102,8 +115,10 @@ def search_similar_memories(
     qn = norm(query_embedding)
     scored = []
     for row in candidates:
-        emb = row.embedding
-        if not isinstance(emb, list) or not emb:
+        # pgvector yields numpy arrays (not list): the old isinstance(list)
+        # check skipped every row, so similarity search always returned [].
+        emb = [float(x) for x in row.embedding] if row.embedding is not None else []
+        if not emb:
             continue
         rn = norm(emb)
         if qn == 0.0 or rn == 0.0:
@@ -124,7 +139,6 @@ def search_similar_memories(
             "weight": row.weight,
             "is_active": row.is_active,
             "memory_class": row.memory_class,
-            "embedding": row.embedding,
             "domains": row.domains,
             "extra_data": row.extra_data,
             "created_at": row.created_at.isoformat() if row.created_at else None,

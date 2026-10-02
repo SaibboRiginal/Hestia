@@ -3311,6 +3311,17 @@ paths:
         "404": {description: Profile not configured}
         "502": {description: Provider error/unreachable}
 
+  /api/chat/sessions:
+    get:
+      tags: [Archive]
+      summary: Distinct chat session ids with messages since a datetime
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+      responses:
+        "200": {description: "{sessions: [string]}"}
+
   /api/activity:
     get:
       tags: [Oracle]

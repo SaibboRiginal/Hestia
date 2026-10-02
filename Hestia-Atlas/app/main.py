@@ -98,10 +98,25 @@ app = FastAPI(title="Hestia Atlas", version=SERVICE_VERSION)
 
 @app.on_event("startup")
 def register_on_hub_startup():
+    _register_once()
+    # Keepalive: Hub keeps its registry in memory, a Hub restart would drop Atlas.
+    import threading
+    import time as _time
+
+    def _keepalive():
+        while True:
+            _time.sleep(max(5.0, float(os.getenv("HUB_KEEPALIVE_SECONDS", "60"))))
+            _register_once(quiet=True)
+
+    threading.Thread(target=_keepalive, daemon=True, name="hub-keepalive").start()
+
+
+def _register_once(quiet: bool = False) -> None:
     try:
         service.register_to_hub(timeout_seconds=4)
-        logger.info("event=registered_hub_name_base_url Registered on Hub | name=%s base_url=%s",
-                    SERVICE_NAME, SERVICE_BASE_URL)
+        if not quiet:
+            logger.info("event=registered_hub_name_base_url Registered on Hub | name=%s base_url=%s",
+                        SERVICE_NAME, SERVICE_BASE_URL)
     except Exception as error:
         logger.warning(
             "event=hub_registration_failed_non_fatal Hub registration failed (non-fatal): %s", error)

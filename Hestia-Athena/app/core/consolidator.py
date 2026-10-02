@@ -54,7 +54,7 @@ class MemoryConsolidator:
         try:
             since = (datetime.now() - timedelta(days=_CONSOLIDATION_ACTIVE_DAYS)).isoformat()
             resp = requests.get(
-                f"{self._archive_route}/chat/history/all",
+                f"{self._archive_route}/chat/sessions",
                 params={"since": since},
                 timeout=10,
             )

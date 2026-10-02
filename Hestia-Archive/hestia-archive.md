@@ -53,3 +53,16 @@ It stores and serves all persistent state through generic APIs.
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## Recent fixes / contract notes
+
+- `GET /api/memory/active` now honours `memory_class` and `limit` (were ignored: skill lifecycle saw user preferences).
+- `PATCH /api/memory/{id}`: every field optional (`is_active`, `weight`, `extra_data` merge).
+- `POST /api/memory/search/similar`: pgvector values are numpy arrays — they were skipped, so results were always empty.
+  Response no longer echoes the embedding.
+- `POST /api/entities/search`: numeric filters (`filters_gt/lt`) evaluated over a wider window (was LIMIT 100 before
+  filtering) and parsed leniently (`"350.000 €"`); unparsable values exclude the row instead of failing the search.
+- New `GET /api/chat/sessions?since=` → `{sessions: [...]}` distinct session ids (Athena consolidator).
+- Session summaries for Athena skills are stored as entities with `domain=session_summary`.
+- Startup waits for Postgres (`ARCHIVE_DB_WAIT_SECONDS`, 0 = forever) and re-registers on Hub every
+  `HUB_KEEPALIVE_SECONDS` (Hub restarts no longer drop Archive).

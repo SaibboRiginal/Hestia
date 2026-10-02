@@ -135,6 +135,13 @@ def run():
     else:
         logger.warning(
             "event=telegram_hub_registration_failed_will Telegram Hub registration failed (will retry on webhook)")
+    # Hub keeps its registry in memory: re-register periodically so a Hub
+    # restart doesn't make Telegram unreachable for Hermes dispatch.
+    try:
+        from hestia_common.startup_utils import start_hub_keepalive
+        start_hub_keepalive(register_telegram_service, logger=logger)
+    except ImportError:
+        logger.warning("[🔄] event=hub_keepalive_unavailable reason=hestia_common_missing")
     refresh_command_registry(force=True)
     logger.info(
         "event=command_registry_update_mode_push Command registry update mode=push (webhook-only after initial sync)"
