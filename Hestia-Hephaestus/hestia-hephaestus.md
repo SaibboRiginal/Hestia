@@ -78,36 +78,39 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 - **Deploy (optional):** `HEPHAESTUS_FORGE_DEPLOY_CMD` (`{services}` placeholder), then health check via Hub; unhealthy + `HEPHAESTUS_FORGE_AUTO_ROLLBACK=1` → revert + redeploy.
 - **Notifications:** start, review request (summary + diff stat + test result), merge/deploy, rollback → Telegram via Hermes (`HEPHAESTUS_NOTIFY_TARGET`) + `system/hephaestus.forge` event.
 - **Resilience:** task state persisted in `data/forge/tasks.json`; queued/running/approved tasks resume after restart.
-- **Human gate on merge:** nothing merges without "approva sviluppo <id>". `HEPHAESTUS_FORGE_AUTO_MERGE=1` merges only when engine ok AND tests green.
-- **Autonomy policy (who may start coding alone):** user-typed requests always start. Tasks from Athena/Argus follow a
-  per-engine policy, changeable from the client (Telegram "in locale lascia fare ad Athena" → tool `forge_set_autonomy`,
-  or `POST /api/hephaestus/forge/settings/autonomy {"engine","mode"}`), persisted in `data/forge/settings.json`:
-
-  | Engine | Default mode | Meaning |
-  |---|---|---|
-  | `local` | `auto_start` | codes on its own branch right away; you approve the merge |
-  | `cloud`, `claude` | `propose` | waits for "approva sviluppo <id>" before spending tokens; then you approve the merge |
-  | `aider` | `auto_start` | as local |
+- **Human gate on merge:** nothing merges without "approva sviluppo <id>" unless the group is in `full_auto`.
+- Who may start/merge alone: see *Permission modes* below.
 
 ### Engines — local and cloud side by side
 
-All engines can be configured together; one is the **default**, the others are a
-**fallback chain** and can be picked per task.
-
-| Engine | What | Config |
+| Engine | What | Where configured |
 |---|---|---|
-| `local` | Built-in agent on Ollama/LM Studio (your PC) | `HEPHAESTUS_FORGE_LOCAL_BASE_URL/_MODEL/_API_KEY` (default Ollama `qwen2.5-coder:14b`) |
-| `cloud` | Same built-in agent on any OpenAI-compatible API (OpenRouter, Gemini...) | `HEPHAESTUS_FORGE_CLOUD_BASE_URL/_MODEL/_API_KEY` |
-| `claude` | Claude Code CLI headless | build `--build-arg INSTALL_CLAUDE_CODE=1`; Pro/Max: `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` (uses plan limits); or `ANTHROPIC_API_KEY` |
-| `aider` | Aider CLI (optional) | `HEPHAESTUS_FORGE_AIDER_MODEL` |
+| `local` | Built-in agent; LLM = Oracle profile `local` (Ollama) | **Oracle**: `ORACLE_LLM_PROFILE_LOCAL_BASE_URL/_MODEL/_API_KEY` (default Ollama `qwen2.5-coder:14b`) |
+| `cloud` | Built-in agent; LLM = Oracle profile `cloud` (OpenRouter, Gemini...) | **Oracle**: `ORACLE_LLM_PROFILE_CLOUD_*` |
+| `claude` | Claude Code CLI headless, runs in Hephaestus | build `--build-arg INSTALL_CLAUDE_CODE=1`; Pro/Max: `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` (plan limits); or `ANTHROPIC_API_KEY` |
 
-- Default: `HEPHAESTUS_FORGE_ENGINE=local`. Fallback: `HEPHAESTUS_FORGE_FALLBACK=local,cloud,claude`
-  (used when the chosen default is unavailable: PC off, missing key, refused auth).
-- **Switch at runtime** without restart: Telegram "usa il cloud" / "passa a locale" (tool `forge_set_engine`)
-  or `POST /api/hephaestus/forge/engine {"engine": "cloud"}`. Persisted in `data/forge/settings.json`.
-- **Per task:** "sviluppa X con claude" → `engine` field on the task (no fallback when explicit).
-- `GET /api/hephaestus/forge/engine` shows default, fallback and availability of each engine.
-- Aliases accepted: `builtin`/`ollama` → `local`, `claude_code` → `claude`. Legacy `HEPHAESTUS_FORGE_LLM_*` vars feed `local`.
+**Microservice boundary:** Forge never holds LLM URLs or keys. The built-in agent sends each turn
+(messages + tools) to Oracle `POST /api/llm/chat {profile}` via Hub; Oracle owns providers.
+Claude Code is an external coding tool (like a compiler), so it runs where the repo is.
+All other calls also go through Hub: Hermes (notifications), service `/health` (deploy check).
+Requests reach Forge only via Hub: user → Telegram → Oracle → Hub → Hephaestus; Athena/Argus → Hub → Hephaestus.
+
+- Default: `HEPHAESTUS_FORGE_ENGINE=local`; fallback `HEPHAESTUS_FORGE_FALLBACK=local,cloud,claude`.
+- Switch default from Telegram ("usa il cloud") → tool `forge_set_engine`, persisted.
+- Per task: "sviluppa X con claude" → `engine` field (no fallback when explicit).
+
+### Permission modes (like Claude Code / Codex)
+
+One mode per group, set from Telegram ("modalità sviluppo auto", "cloud in ask") → tool `forge_set_mode`
+or `POST /api/hephaestus/forge/settings/mode {"mode", "group"}`. Persisted in `data/forge/settings.json`.
+
+| Mode | Athena/Argus tasks | Your tasks | Merge/deploy |
+|---|---|---|---|
+| `ask` | wait for "approva sviluppo <id>" | start | waits for you |
+| `auto` | start on their own branch | start | waits for you |
+| `full_auto` | start | start | automatic if engine ok + tests green (health check, auto rollback) |
+
+Groups: `local` = local engine (default `auto`); `cloud` = cloud profile + claude (default `ask`: no tokens spent without your ok).
 
 Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia architecture constraints, docs/tests duty, no secrets.
 
@@ -117,9 +120,9 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 |---|---|---|
 | GET | `/api/hephaestus/forge/status` | Repo, base branch, engines availability, queue |
 | GET | `/api/hephaestus/forge/engine` | Default engine, fallback chain, availability |
-| POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude|aider"}` — set default (persisted) |
-| GET | `/api/hephaestus/forge/settings` | Default engine, fallback, autonomy per engine, auto_merge |
-| POST | `/api/hephaestus/forge/settings/autonomy` | `{"engine": "...", "mode": "propose|auto_start"}` |
+| POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude"}` — set default (persisted) |
+| GET | `/api/hephaestus/forge/settings` | Default engine, fallback, permission modes |
+| POST | `/api/hephaestus/forge/settings/mode` | `{"mode": "ask|auto|full_auto", "group": "local|cloud|"}` |
 | POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target}` |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
@@ -128,7 +131,7 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 | POST | `/api/hephaestus/forge/tasks/{id}/reject` | Discard + delete branch |
 | POST | `/api/hephaestus/forge/tasks/{id}/rollback` | Revert merged change |
 
-MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_autonomy`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
+MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_mode`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
 ### Deployment notes
 - Compose mounts the repo at `/repo` and `data/` for state. Uncomment the docker socket only if the deploy command restarts containers.

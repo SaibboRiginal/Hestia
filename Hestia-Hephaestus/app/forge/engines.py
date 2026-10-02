@@ -3,10 +3,9 @@
 - ``claude``       — Claude Code CLI headless (``claude -p``).  Works with a Claude
   Pro/Max subscription via ``CLAUDE_CODE_OAUTH_TOKEN`` (``claude setup-token``) or
   pay-per-use ``ANTHROPIC_API_KEY``.
-- ``aider``        — Aider CLI, any model (Ollama, OpenRouter, ...).  Optional.
-- ``local`` / ``cloud`` — in-process tool-calling loop on an OpenAI-compatible
-  endpoint.  Two independent profiles, both active at once: ``local`` (Ollama
-  by default) and ``cloud`` (OpenRouter, Gemini, ...).  Zero extra install.
+- ``local`` / ``cloud`` — in-process tool-calling loop.  The LLM is reached via
+  Oracle's ``/api/llm/chat`` (Hub route) on the profile of the same name:
+  Oracle owns provider URLs and keys (microservice boundary).
 """
 from __future__ import annotations
 
@@ -18,12 +17,12 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 import requests
 
 from .agent_tools import AgentTools
-from .config import ForgeConfig, LLMProfile, normalize_engine
+from .config import ForgeConfig, normalize_engine
 from .prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger("hestia_hephaestus.forge.engines")
@@ -96,62 +95,39 @@ class ClaudeCodeEngine(Engine):
             cost_usd=data.get("total_cost_usd"), meta={"subtype": data.get("subtype")})
 
 
-# ── Aider CLI ───────────────────────────────────────────────────────────────
-
-
-class AiderEngine(Engine):
-    name = "aider"
-
-    def __init__(self, cfg: ForgeConfig):
-        self.cfg = cfg
-
-    def available(self) -> tuple[bool, str]:
-        if not shutil.which(self.cfg.aider_bin):
-            return False, f"'{self.cfg.aider_bin}' CLI not installed"
-        return True, "ok"
-
-    def run(self, workdir: Path, prompt: str, test_runner: Callable) -> EngineResult:
-        env = dict(os.environ)
-        env.setdefault("OLLAMA_API_BASE", self.cfg.local.base_url.removesuffix("/v1"))
-        cmd = [self.cfg.aider_bin, "--yes-always", "--no-auto-commits", "--no-check-update",
-               "--no-show-model-warnings", "--no-pretty", "--model", self.cfg.aider_model,
-               "--message", f"{SYSTEM_PROMPT}\n\n{prompt}"]
-        try:
-            proc = subprocess.run(cmd, cwd=str(workdir), capture_output=True, text=True,
-                                  timeout=self.cfg.engine_timeout_seconds, env=env)
-        except subprocess.TimeoutExpired:
-            return EngineResult(False, "aider timed out", self.name)
-        out = proc.stdout or ""
-        return EngineResult(proc.returncode == 0, out[-2000:], self.name, log_tail=(proc.stderr or "")[-2000:])
-
-
 # ── Built-in agent (OpenAI-compatible tool calling) ────────────────────────
 
 
 class BuiltinEngine(Engine):
-    """Same agent loop for ``local`` and ``cloud``: only the profile differs."""
+    """Agent loop for ``local`` and ``cloud``.  LLM access goes through Oracle
+    (``POST /api/llm/chat`` via Hub): Oracle owns provider URLs and keys,
+    Forge only names a profile."""
     _CONTEXT_CHAR_BUDGET = 90000   # ~25k tokens: fits 32k-context local models
 
-    def __init__(self, cfg: ForgeConfig, name: str, profile: LLMProfile):
+    def __init__(self, cfg: ForgeConfig, name: str):
         self.cfg = cfg
         self.name = name
-        self.profile = profile
 
-    def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.profile.api_key}", "Content-Type": "application/json"}
+    def _route(self, method: str, path: str, body: dict | None, timeout: int) -> tuple[int, Any]:
+        resp = requests.post(
+            f"{self.cfg.hub_api_url}/route/oracle/{path.lstrip('/')}",
+            json={"method": method, "headers": {}, "query": {}, "body": body, "timeout_seconds": timeout},
+            timeout=timeout + 5)
+        resp.raise_for_status()
+        routed = resp.json() or {}
+        return int(routed.get("status_code", 500)), routed.get("payload")
 
     def available(self) -> tuple[bool, str]:
-        if not self.profile.configured:
-            return False, f"not configured (HEPHAESTUS_FORGE_{self.name.upper()}_BASE_URL/_MODEL)"
         try:
-            resp = requests.get(f"{self.profile.base_url}/models", headers=self._headers(), timeout=5)
-            if resp.status_code in (401, 403):
-                return False, f"auth refused by {self.profile.base_url} (check API key)"
-            if resp.status_code < 500:
-                return True, f"ok ({self.profile.model} @ {self.profile.base_url})"
-            return False, f"LLM endpoint status {resp.status_code}"
+            status, payload = self._route("GET", "api/llm/profiles", None, 15)
         except Exception as exc:
-            return False, f"LLM endpoint unreachable: {exc}"
+            return False, f"Oracle unreachable via Hub: {exc}"
+        prof = ((payload or {}).get("profiles") or {}).get(self.name) if status < 400 else None
+        if not prof:
+            return False, f"Oracle has no '{self.name}' LLM profile (ORACLE_LLM_PROFILE_{self.name.upper()}_*)"
+        if prof.get("available") is False:
+            return False, f"{prof.get('model')}: {prof.get('detail')}"
+        return True, f"ok ({prof.get('model')} via Oracle)"
 
     def _trim(self, messages: list[dict]) -> None:
         """Shrink old tool outputs when over budget (keep system + task + recent)."""
@@ -175,13 +151,14 @@ class BuiltinEngine(Engine):
         for turn in range(1, self.cfg.max_turns + 1):
             self._trim(messages)
             try:
-                resp = requests.post(
-                    f"{self.profile.base_url}/chat/completions", headers=self._headers(),
-                    json={"model": self.profile.model, "messages": messages,
-                          "tools": AgentTools.schemas(), "temperature": 0.2},
-                    timeout=600)
-                resp.raise_for_status()
-                msg = resp.json()["choices"][0]["message"]
+                status, data = self._route(
+                    "POST", "api/llm/chat",
+                    {"profile": self.name, "messages": messages,
+                     "tools": AgentTools.schemas(), "temperature": 0.2},
+                    self.cfg.llm_route_timeout)
+                if status >= 400:
+                    raise RuntimeError(f"Oracle llm/chat {status}: {str(data)[:300]}")
+                msg = data["choices"][0]["message"]
             except Exception as exc:
                 return EngineResult(False, f"LLM call failed: {exc}", self.name, "\n".join(log[-30:]), turn)
 
@@ -217,10 +194,9 @@ class BuiltinEngine(Engine):
 
 def build_engines(cfg: ForgeConfig) -> dict[str, Engine]:
     engines: list[Engine] = [
-        BuiltinEngine(cfg, "local", cfg.local),
-        BuiltinEngine(cfg, "cloud", cfg.cloud),
+        BuiltinEngine(cfg, "local"),
+        BuiltinEngine(cfg, "cloud"),
         ClaudeCodeEngine(cfg),
-        AiderEngine(cfg),
     ]
     return {e.name: e for e in engines}
 

@@ -246,7 +246,7 @@ try:
             name="forge_set_engine",
             description="Cambia il motore di sviluppo predefinito (es. 'usa il cloud', 'passa a locale', 'usa claude')",
             parameters={"type": "object", "properties": {
-                "engine": {"type": "string", "description": "local | cloud | claude | aider"}}, "required": ["engine"]},
+                "engine": {"type": "string", "description": "local | cloud | claude"}}, "required": ["engine"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_set_engine", "params": kw},
             title="\U0001f501 Motore sviluppo", method="POST", path="/api/hephaestus/forge/engine",
             clients=["telegram", "ui"], response_mode="oracle_natural",
@@ -254,25 +254,25 @@ try:
             telegram_visible=True, telegram_group="sistema",
         ),
         MCPTool(
-            name="forge_set_autonomy",
+            name="forge_set_mode",
             description=(
-                "Imposta quanto Athena/Argus possono sviluppare da soli per motore. "
-                "mode=auto_start (parte da solo, merge chiede ok) o propose (chiede prima di iniziare). "
-                "Es. 'in locale lascia fare ad Athena' → engine=local mode=auto_start"
+                "Imposta la modalità permessi di sviluppo: ask (chiede sempre prima), auto (sviluppa da solo, "
+                "il merge chiede ok), full_auto (fa tutto da solo se i test passano). "
+                "group: local o cloud (vuoto = entrambi)."
             ),
             parameters={"type": "object", "properties": {
-                "engine": {"type": "string", "description": "local | cloud | claude | aider"},
-                "mode": {"type": "string", "description": "propose | auto_start"}},
-                "required": ["engine", "mode"]},
-            handler=lambda **kw: {"status": "ok", "tool": "forge_set_autonomy", "params": kw},
-            title="\U0001f39a\ufe0f Autonomia sviluppo", method="POST", path="/api/hephaestus/forge/settings/autonomy",
+                "mode": {"type": "string", "description": "ask | auto | full_auto"},
+                "group": {"type": "string", "description": "local | cloud | vuoto"}},
+                "required": ["mode"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_set_mode", "params": kw},
+            title="\U0001f39a\ufe0f Modalità sviluppo", method="POST", path="/api/hephaestus/forge/settings/mode",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="Riassumi in 2 righe: motore default e autonomia per motore.",
+            response_prompt="1 riga: modalità local e cloud attuali.",
             telegram_visible=True, telegram_group="sistema",
         ),
         MCPTool(
             name="forge_settings",
-            description="Mostra impostazioni Forge: motore default, fallback, autonomia per motore, auto-merge",
+            description="Mostra impostazioni sviluppo: motore default, fallback, modalità permessi local/cloud",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_settings", "params": kw},
             title="\U0001f527 Impostazioni sviluppo", method="GET", path="/api/hephaestus/forge/settings",

@@ -32,7 +32,7 @@ import requests
 
 from . import git_ops
 from .agent_tools import run_test_command
-from .config import ForgeConfig, normalize_engine
+from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
 from .engines import build_engines, select_engine, wait_seconds
 from .prompts import build_task_prompt
 
@@ -42,14 +42,22 @@ ACTIVE_STATES = {"queued", "running", "approved", "merging"}
 TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "no_changes"}
 
 
-# Autonomy policy for tasks NOT typed by the user (Athena, Argus):
-#   "propose"    → task waits for "approva sviluppo <id>" before any coding
-#   "auto_start" → codes on its own branch immediately; merge still needs approval
-# User-requested tasks always start (the user asked).  Merge always needs the
-# user unless HEPHAESTUS_FORGE_AUTO_MERGE=1.
-AUTONOMY_MODES = {"propose", "auto_start"}
-DEFAULT_AUTONOMY = {"local": "auto_start", "cloud": "propose", "claude": "propose", "aider": "auto_start"}
+# Permission modes (like Claude Code / Codex), one per group:
+#   ask       → Athena/Argus tasks wait for "approva sviluppo <id>" before coding;
+#               merge waits for you.  User-typed tasks start (you asked), merge waits.
+#   auto      → every task codes on its own branch; merge waits for you.
+#   full_auto → codes and, if engine ok + tests green, merges/deploys alone
+#               (health check + automatic rollback).
+# Groups: "local" (Ollama) and "cloud" (cloud profile + Claude: billed tokens).
+MODES = ("ask", "auto", "full_auto")
+_MODE_ALIASES = {"propose": "ask", "auto_start": "auto", "yolo": "full_auto", "full": "full_auto"}
+DEFAULT_MODES = {"local": "auto", "cloud": "ask"}
 USER_SOURCES = {"user", "telegram", "ui", "oracle"}
+
+
+def normalize_mode(mode: str) -> str:
+    mode = str(mode or "").strip().lower().replace("-", "_")
+    return _MODE_ALIASES.get(mode, mode)
 
 
 class ForgeError(Exception):
@@ -83,7 +91,7 @@ class Forge:
         self._queue: "queue.Queue[str]" = queue.Queue()
         self._worker: threading.Thread | None = None
         self._default_engine = cfg.engine
-        self._autonomy = dict(DEFAULT_AUTONOMY)
+        self._modes = dict(DEFAULT_MODES)
         self._load()
         self._load_settings()
 
@@ -103,9 +111,9 @@ class Forge:
                 engine = normalize_engine(data.get("default_engine", ""))
                 if engine in self.engines:
                     self._default_engine = engine
-                for name, mode in (data.get("autonomy") or {}).items():
-                    if normalize_engine(name) in self.engines and mode in AUTONOMY_MODES:
-                        self._autonomy[normalize_engine(name)] = mode
+                for group, mode in (data.get("modes") or {}).items():
+                    if group in DEFAULT_MODES and normalize_mode(mode) in MODES:
+                        self._modes[group] = normalize_mode(mode)
         except Exception as exc:
             logger.warning("[🔄] event=forge_settings_load_failed error=%s", exc)
 
@@ -126,37 +134,37 @@ class Forge:
 
     def settings(self) -> dict[str, Any]:
         return {"default_engine": self._default_engine, "fallback": self.cfg.fallback,
-                "autonomy": dict(self._autonomy), "auto_merge": self.cfg.auto_merge}
+                "modes": dict(self._modes), "engine_groups": ENGINE_GROUP}
 
-    def set_autonomy(self, engine: str, mode: str) -> dict[str, Any]:
-        """Per-engine autonomy for Athena/Argus tasks (persisted)."""
-        name = normalize_engine(engine)
-        mode = str(mode or "").strip().lower()
-        if name not in self.engines:
-            raise ForgeError(f"Unknown engine '{engine}'. Use: {', '.join(self.engines)}")
-        if mode not in AUTONOMY_MODES:
-            raise ForgeError(f"Unknown mode '{mode}'. Use: propose | auto_start")
-        self._autonomy[name] = mode
+    def set_mode(self, mode: str, group: str = "") -> dict[str, Any]:
+        """Set permission mode for a group (local|cloud), or both when group is empty."""
+        mode = normalize_mode(mode)
+        if mode not in MODES:
+            raise ForgeError(f"Unknown mode '{mode}'. Use: {' | '.join(MODES)}")
+        group = str(group or "").strip().lower()
+        group = ENGINE_GROUP.get(normalize_engine(group), group)
+        targets = [group] if group else list(DEFAULT_MODES)
+        for g in targets:
+            if g not in DEFAULT_MODES:
+                raise ForgeError(f"Unknown group '{g}'. Use: local | cloud")
+            self._modes[g] = mode
         self._save_settings()
-        logger.info("event=forge_autonomy_set engine=%s mode=%s", name, mode)
+        logger.info("event=forge_mode_set groups=%s mode=%s", targets, mode)
         return self.settings()
 
     def _save_settings(self) -> None:
         try:
             self.cfg.settings_file.parent.mkdir(parents=True, exist_ok=True)
             self.cfg.settings_file.write_text(json.dumps({
-                "default_engine": self._default_engine, "autonomy": self._autonomy}), encoding="utf-8")
+                "default_engine": self._default_engine, "modes": self._modes}), encoding="utf-8")
         except Exception as exc:
             logger.warning("[🔄] event=forge_settings_save_failed error=%s", exc)
 
-    def _autostart_for(self, source: str, engine_requested: str) -> tuple[bool, str]:
-        """Decide auto-start for autonomous sources from the engine that would run."""
-        if source in USER_SOURCES:
-            return True, "user request"
+    def _mode_for(self, engine_requested: str) -> tuple[str, str]:
         engine, _ = select_engine(self.engines, engine_requested, self._default_engine, self.cfg.fallback)
         name = engine.name if engine else normalize_engine(engine_requested) or self._default_engine
-        mode = self._autonomy.get(name, "propose")
-        return mode == "auto_start", f"autonomy[{name}]={mode}"
+        group = ENGINE_GROUP.get(name, "cloud")
+        return self._modes.get(group, "ask"), group
 
     def _save(self) -> None:
         with self._lock:
@@ -277,10 +285,12 @@ class Forge:
             "state": "new",
             "history": [],
         }
+        mode, group = self._mode_for(task["engine_requested"])
+        why = f"mode[{group}]={mode}"
         if auto_start is None:
-            auto_start, why = self._autostart_for(source, task["engine_requested"])
-        else:
-            why = "explicit"
+            auto_start = source in USER_SOURCES or mode in {"auto", "full_auto"}
+        if auto_merge is None and mode == "full_auto":
+            task["auto_merge"] = True
         task["start_policy"] = why
         with self._lock:
             self._tasks[task_id] = task

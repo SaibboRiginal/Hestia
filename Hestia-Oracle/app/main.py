@@ -697,6 +697,24 @@ def export_feedback_jsonl_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/llm/profiles")
+def llm_profiles_endpoint(check: bool = True):
+    """LLM profiles Oracle can serve (no secrets).  Used by Forge."""
+    from core.services.llm_gateway import list_profiles
+    return {"status": "ok", "profiles": list_profiles(check=check)}
+
+
+@app.post("/api/llm/chat")
+def llm_chat_endpoint(req: dict):
+    """OpenAI-compatible chat (messages + tools) on a named profile.
+    Body: {profile: local|cloud|..., messages, tools?, temperature?, model?}"""
+    from core.services.llm_gateway import LLMGatewayError, chat
+    try:
+        return chat(req or {})
+    except LLMGatewayError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """

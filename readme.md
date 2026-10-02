@@ -92,6 +92,7 @@ Conversational reasoning layer with unified agentic tool calling.
 - Compiles user intents into generic subscription requests written to Archive.
 - Injects timezone-aware current datetime context in each turn.
 - Accepts file attachments (images, PDFs) via `POST /api/chat/document` with multimodal reasoning.
+- **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools, profiles `local`/`cloud`) via Hub — never provider URLs/keys of their own.
 - LLM roles: primary via Ollama (`gemma4:e4b`), cloud fallback via Gemini (Flash Lite for router, Flash for scribe, 2.5 Flash for analyst). Fallback chain at every call site — if local model fails, cloud takes over transparently.
 
 ### Hestia-Hermes 📨
@@ -161,7 +162,7 @@ Guarded remediation and coding executor.
 - Must keep full audit trail and user-visible notifications for each mutation.
 - Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
 - May execute local build/deploy workflows according to policy tiers.
-- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (Ollama local, any OpenAI-compatible cloud, or Claude Code with a Pro/Max subscription token) → tests → approval → merge/deploy/rollback. Argus turns recurring errors into fix proposals. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
+- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`local`/`cloud` LLM profiles served by Oracle, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
 
 ### Hestia-Athena 🧭
 Proactive cognition and advisory strategy engine.
