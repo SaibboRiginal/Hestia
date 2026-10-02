@@ -27,8 +27,12 @@ def register(*, quiet_success: bool = False) -> bool:
         "service_type": "core",
         "service_version": "1.0.0",
         "tags": ["core", "monitoring"],
-        "topology_tags": ["layer:foundation", "layer:domain", "domain:observability", "domain:system", "status:stable"],
+        # One tag per dimension (Hub rejects duplicates: Argus used to be refused
+        # on every registration and was never reachable through Hub).
+        "topology_tags": ["layer:foundation", "domain:observability", "status:stable"],
         "capabilities": {
+            # Owns the "system" tool domain without being layer:domain.
+            "owns_tool_domains": ["system"],
             "argus_status": {
                 "description": "Live health snapshot of all Hestia services",
                 "endpoint": f"{ARGUS_SERVICE_BASE_URL}/api/argus/status",

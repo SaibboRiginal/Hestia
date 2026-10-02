@@ -43,8 +43,11 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "remediation",
         "mock",
         "mcp",
+        "system",
+        "improvement",
     },
     "status": {
+        "alpha",
         "stable",
         "beta",
         "experimental",

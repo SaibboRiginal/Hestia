@@ -62,3 +62,13 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## Registration validation (read this when a service "disappears")
+
+Hub **rejects** a registration (422) when topology tags repeat a dimension or use a value outside
+`ALLOWED_TOPOLOGY_DIMENSIONS`, or when `tags` miss the `service_type`. The service only logs a warning and is
+unreachable through Hub. Argus (duplicate `layer:`/`domain:` + `domain:system`) and Metis (`domain:improvement`,
+`status:alpha`) were rejected this way; fixed by tag cleanup and by adding `system`, `improvement`, `alpha`.
+
+`capabilities.owns_tool_domains: [...]` lets a non-`layer:domain` service own a tool domain in Oracle's tool
+filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).

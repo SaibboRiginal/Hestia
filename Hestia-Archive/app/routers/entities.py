@@ -187,7 +187,15 @@ def search_entities(req: schemas.AdvancedSearchRequest, db: Session = Depends(da
                     )
 
         # Vector ordering (semantic reranking)
-        if req.query_vector:
+        dims = models.EntityRecord.embedding.type.dim
+        if req.query_vector and len(req.query_vector) != dims:
+            # Embedding model mismatch (e.g. 1024-dim model vs Vector(768)) used to
+            # raise inside pgvector -> 500 -> callers got no results at all.
+            import logging
+            logging.getLogger("hestia_archive").warning(
+                "[🔄] event=search_vector_dim_mismatch got=%d expected=%d (vector ordering skipped)",
+                len(req.query_vector), dims)
+        if req.query_vector and len(req.query_vector) == dims:
             q = q.order_by(
                 models.EntityRecord.embedding.l2_distance(req.query_vector))
         else:
