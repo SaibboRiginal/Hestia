@@ -3843,6 +3843,122 @@ paths:
                     items:
                       $ref: "#/components/schemas/HephaestusTaskRecord"
 
+  /api/hephaestus/forge/status:
+    get:
+      tags: [Hephaestus]
+      summary: Forge status (repo, base branch, engines, queue)
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: OK}
+
+  /api/hephaestus/forge/tasks:
+    get:
+      tags: [Hephaestus]
+      summary: List Forge self-development tasks
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: state, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 20}}
+      responses:
+        "200": {description: "{status, count, tasks[]}"}
+    post:
+      tags: [Hephaestus]
+      summary: Submit a self-development task (isolated branch, tests, approval)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request]
+              properties:
+                request: {type: string}
+                services: {type: array, items: {type: string}}
+                engine: {type: string, enum: [auto, claude_code, builtin, aider]}
+                auto_start: {type: boolean, default: true, description: false = proposal awaiting approval}
+                auto_merge: {type: boolean}
+                context: {type: string}
+                source: {type: string}
+                requested_by: {type: string}
+                notify_target: {type: string}
+      responses:
+        "200": {description: "{status, task}"}
+        "400": {description: Invalid request}
+        "503": {description: Forge disabled or repo not mounted}
+
+  /api/hephaestus/forge/tasks/{task_id}:
+    get:
+      tags: [Hephaestus]
+      summary: Full Forge task record (short ids accepted)
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "404": {description: Not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/diff:
+    get:
+      tags: [Hephaestus]
+      summary: Unified diff of the task (text/plain)
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: diff text}
+
+  /api/hephaestus/forge/tasks/{task_id}/approve:
+    post:
+      tags: [Hephaestus]
+      summary: "proposed → start; awaiting_review → merge/deploy (async)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, task}"}
+        "409": {description: Repo not on base branch or dirty}
+
+  /api/hephaestus/forge/tasks/{task_id}/reject:
+    post:
+      tags: [Hephaestus]
+      summary: Discard a proposed/awaiting_review task
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, task}"}
+
+  /api/hephaestus/forge/tasks/{task_id}/rollback:
+    post:
+      tags: [Hephaestus]
+      summary: Revert a merged Forge change (git revert -m 1)
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, task}"}
+
+  /api/metis/insights:
+    get:
+      tags: [Metis]
+      summary: Weak spots from graded feedback
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 500}}
+        - {name: since, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{status, total_feedback, bad_feedback, bad_ratio, weak_domains[]}"}
+
   /api/hephaestus/tasks/{task_id}:
     get:
       tags: [Hephaestus]
