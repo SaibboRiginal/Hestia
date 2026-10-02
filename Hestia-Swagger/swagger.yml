@@ -3852,6 +3852,32 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hephaestus/forge/engine:
+    get:
+      tags: [Hephaestus]
+      summary: Default Forge engine, fallback chain, availability
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{status, default_engine, fallback[], engines{}}"}
+    post:
+      tags: [Hephaestus]
+      summary: Set default Forge engine (persisted)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [engine]
+              properties:
+                engine: {type: string, enum: [local, cloud, claude, aider]}
+      responses:
+        "200": {description: "{status, default_engine, available, detail}"}
+        "400": {description: Unknown engine}
+
   /api/hephaestus/forge/tasks:
     get:
       tags: [Hephaestus]
@@ -3878,7 +3904,7 @@ paths:
               properties:
                 request: {type: string}
                 services: {type: array, items: {type: string}}
-                engine: {type: string, enum: [auto, claude_code, builtin, aider]}
+                engine: {type: string, enum: [auto, local, cloud, claude, aider], description: empty/auto = default + fallback}
                 auto_start: {type: boolean, default: true, description: false = proposal awaiting approval}
                 auto_merge: {type: boolean}
                 context: {type: string}

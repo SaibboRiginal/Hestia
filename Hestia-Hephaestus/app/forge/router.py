@@ -22,6 +22,10 @@ class ForgeTaskRequest(BaseModel):
     notify_target: str = ""
 
 
+class ForgeEngineChoice(BaseModel):
+    engine: str = Field(..., description="local | cloud | claude | aider")
+
+
 class ForgeDecision(BaseModel):
     by: str = "user"
     reason: str = ""
@@ -39,6 +43,16 @@ def create_forge_router(forge: Forge) -> APIRouter:
     @router.get("/status")
     def forge_status() -> dict[str, Any]:
         return forge.status()
+
+    @router.get("/engine")
+    def forge_engine_get() -> dict[str, Any]:
+        st = forge.status()
+        return {"status": "ok", "default_engine": st["engine_default"],
+                "fallback": st["engine_fallback"], "engines": st["engines"]}
+
+    @router.post("/engine")
+    def forge_engine_set(body: ForgeEngineChoice) -> dict[str, Any]:
+        return {"status": "ok", **_guard(forge.set_default_engine, body.engine)}
 
     @router.post("/tasks")
     def forge_submit(req: ForgeTaskRequest) -> dict[str, Any]:

@@ -212,7 +212,7 @@ try:
                 "properties": {
                     "request": {"type": "string", "description": "Cosa sviluppare, dettagliato, in parole dell'utente"},
                     "services": {"type": "array", "items": {"type": "string"}, "description": "Servizi coinvolti se noti (es. hecate, oracle)"},
-                    "engine": {"type": "string", "description": "auto | claude_code | builtin | aider (default auto)"},
+                    "engine": {"type": "string", "description": "Solo se l'utente lo chiede: local | cloud | claude. Vuoto = default"},
                 },
                 "required": ["request"],
             },
@@ -240,6 +240,17 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "forge_status", "params": kw},
             title="\u2699\ufe0f Stato Forge", method="GET", path="/api/hephaestus/forge/status",
             clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_set_engine",
+            description="Cambia il motore di sviluppo predefinito (es. 'usa il cloud', 'passa a locale', 'usa claude')",
+            parameters={"type": "object", "properties": {
+                "engine": {"type": "string", "description": "local | cloud | claude | aider"}}, "required": ["engine"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_set_engine", "params": kw},
+            title="\U0001f501 Motore sviluppo", method="POST", path="/api/hephaestus/forge/engine",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Conferma in 1 riga il motore attivo; se available=false avvisa e riporta detail.",
             telegram_visible=True, telegram_group="sistema",
         ),
         MCPTool(

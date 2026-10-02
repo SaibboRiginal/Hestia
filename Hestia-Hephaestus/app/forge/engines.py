@@ -1,12 +1,12 @@
 """Coding engines.  Same contract: ``run(workdir, prompt) -> EngineResult``.
 
-- ``claude_code``  — Claude Code CLI headless (``claude -p``).  Works with a Claude
+- ``claude``       — Claude Code CLI headless (``claude -p``).  Works with a Claude
   Pro/Max subscription via ``CLAUDE_CODE_OAUTH_TOKEN`` (``claude setup-token``) or
   pay-per-use ``ANTHROPIC_API_KEY``.
 - ``aider``        — Aider CLI, any model (Ollama, OpenRouter, ...).  Optional.
-- ``builtin``      — in-process tool-calling loop on any OpenAI-compatible
-  endpoint: Ollama (``/v1``), OpenRouter, Gemini OpenAI-compat, LM Studio...
-  Zero extra install: the default local path.
+- ``local`` / ``cloud`` — in-process tool-calling loop on an OpenAI-compatible
+  endpoint.  Two independent profiles, both active at once: ``local`` (Ollama
+  by default) and ``cloud`` (OpenRouter, Gemini, ...).  Zero extra install.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from typing import Callable
 import requests
 
 from .agent_tools import AgentTools
-from .config import ForgeConfig
+from .config import ForgeConfig, LLMProfile, normalize_engine
 from .prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger("hestia_hephaestus.forge.engines")
@@ -54,7 +54,7 @@ class Engine:
 
 
 class ClaudeCodeEngine(Engine):
-    name = "claude_code"
+    name = "claude"
     _ALLOWED_TOOLS = ("Read,Edit,Write,Glob,Grep,"
                       "Bash(python -m pytest:*),Bash(pytest:*),Bash(git status:*),Bash(git diff:*)")
 
@@ -112,7 +112,7 @@ class AiderEngine(Engine):
 
     def run(self, workdir: Path, prompt: str, test_runner: Callable) -> EngineResult:
         env = dict(os.environ)
-        env.setdefault("OLLAMA_API_BASE", self.cfg.llm_base_url.removesuffix("/v1"))
+        env.setdefault("OLLAMA_API_BASE", self.cfg.local.base_url.removesuffix("/v1"))
         cmd = [self.cfg.aider_bin, "--yes-always", "--no-auto-commits", "--no-check-update",
                "--no-show-model-warnings", "--no-pretty", "--model", self.cfg.aider_model,
                "--message", f"{SYSTEM_PROMPT}\n\n{prompt}"]
@@ -129,20 +129,26 @@ class AiderEngine(Engine):
 
 
 class BuiltinEngine(Engine):
-    name = "builtin"
+    """Same agent loop for ``local`` and ``cloud``: only the profile differs."""
     _CONTEXT_CHAR_BUDGET = 90000   # ~25k tokens: fits 32k-context local models
 
-    def __init__(self, cfg: ForgeConfig):
+    def __init__(self, cfg: ForgeConfig, name: str, profile: LLMProfile):
         self.cfg = cfg
+        self.name = name
+        self.profile = profile
 
     def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.cfg.llm_api_key}", "Content-Type": "application/json"}
+        return {"Authorization": f"Bearer {self.profile.api_key}", "Content-Type": "application/json"}
 
     def available(self) -> tuple[bool, str]:
+        if not self.profile.configured:
+            return False, f"not configured (HEPHAESTUS_FORGE_{self.name.upper()}_BASE_URL/_MODEL)"
         try:
-            resp = requests.get(f"{self.cfg.llm_base_url}/models", headers=self._headers(), timeout=5)
+            resp = requests.get(f"{self.profile.base_url}/models", headers=self._headers(), timeout=5)
+            if resp.status_code in (401, 403):
+                return False, f"auth refused by {self.profile.base_url} (check API key)"
             if resp.status_code < 500:
-                return True, f"ok ({self.cfg.llm_model} @ {self.cfg.llm_base_url})"
+                return True, f"ok ({self.profile.model} @ {self.profile.base_url})"
             return False, f"LLM endpoint status {resp.status_code}"
         except Exception as exc:
             return False, f"LLM endpoint unreachable: {exc}"
@@ -170,8 +176,8 @@ class BuiltinEngine(Engine):
             self._trim(messages)
             try:
                 resp = requests.post(
-                    f"{self.cfg.llm_base_url}/chat/completions", headers=self._headers(),
-                    json={"model": self.cfg.llm_model, "messages": messages,
+                    f"{self.profile.base_url}/chat/completions", headers=self._headers(),
+                    json={"model": self.profile.model, "messages": messages,
                           "tools": AgentTools.schemas(), "temperature": 0.2},
                     timeout=600)
                 resp.raise_for_status()
@@ -210,23 +216,36 @@ class BuiltinEngine(Engine):
 
 
 def build_engines(cfg: ForgeConfig) -> dict[str, Engine]:
-    return {e.name: e for e in (ClaudeCodeEngine(cfg), AiderEngine(cfg), BuiltinEngine(cfg))}
+    engines: list[Engine] = [
+        BuiltinEngine(cfg, "local", cfg.local),
+        BuiltinEngine(cfg, "cloud", cfg.cloud),
+        ClaudeCodeEngine(cfg),
+        AiderEngine(cfg),
+    ]
+    return {e.name: e for e in engines}
 
 
-def select_engine(engines: dict[str, Engine], requested: str) -> tuple[Engine | None, str]:
-    """Explicit engine wins.  ``auto`` = claude_code if ready, else builtin."""
-    requested = (requested or "auto").lower()
-    if requested != "auto":
+def select_engine(engines: dict[str, Engine], requested: str, default: str,
+                  fallback: list[str]) -> tuple[Engine | None, str]:
+    """Explicit engine → that one only.  ``auto``/empty → default, then fallback chain."""
+    requested = normalize_engine(requested)
+    if requested and requested != "auto":
         engine = engines.get(requested)
         if not engine:
-            return None, f"unknown engine '{requested}'"
+            return None, f"unknown engine '{requested}' (use: {', '.join(engines)})"
         ok, reason = engine.available()
         return (engine, reason) if ok else (None, f"{requested}: {reason}")
-    for name in ("claude_code", "builtin"):
-        ok, reason = engines[name].available()
+    tried = []
+    for name in [default] + [f for f in fallback if f != default]:
+        engine = engines.get(name)
+        if not engine:
+            continue
+        ok, reason = engine.available()
         if ok:
-            return engines[name], reason
-    return None, "no engine available (install claude CLI or start Ollama)"
+            note = "" if name == default else f" (fallback: {default} unavailable)"
+            return engine, reason + note
+        tried.append(f"{name}: {reason}")
+    return None, "no engine available — " + " | ".join(tried)
 
 
 def wait_seconds(seconds: int) -> None:

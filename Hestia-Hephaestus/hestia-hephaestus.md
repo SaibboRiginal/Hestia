@@ -80,14 +80,25 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 - **Resilience:** task state persisted in `data/forge/tasks.json`; queued/running/approved tasks resume after restart.
 - **Human gate:** default nothing merges without "approva sviluppo <id>". `HEPHAESTUS_FORGE_AUTO_MERGE=1` merges only when engine ok AND tests green.
 
-### Engines (`HEPHAESTUS_FORGE_ENGINE`)
+### Engines — local and cloud side by side
 
-| Engine | Where it runs | Setup |
+All engines can be configured together; one is the **default**, the others are a
+**fallback chain** and can be picked per task.
+
+| Engine | What | Config |
 |---|---|---|
-| `builtin` | any OpenAI-compatible API: **Ollama local** (default `http://host.docker.internal:11434/v1`), OpenRouter, Gemini OpenAI-compat, LM Studio | `HEPHAESTUS_FORGE_LLM_BASE_URL/_MODEL/_API_KEY`. Use a coder model with tool calling (qwen2.5-coder:14b+, qwen3-coder, devstral). Sandboxed tools: list/read/search/write/edit files, run tests only. |
-| `claude_code` | Claude Code CLI headless (`claude -p`) | Build with `--build-arg INSTALL_CLAUDE_CODE=1`. **Claude Pro/Max subscription:** run `claude setup-token` on your PC → `CLAUDE_CODE_OAUTH_TOKEN`. Usage counts against your plan limits. Or pay-per-use `ANTHROPIC_API_KEY`. |
-| `aider` | Aider CLI (optional, install yourself) | `HEPHAESTUS_FORGE_AIDER_MODEL` e.g. `ollama_chat/qwen2.5-coder:14b` |
-| `auto` | `claude_code` if installed+authenticated, else `builtin` | default |
+| `local` | Built-in agent on Ollama/LM Studio (your PC) | `HEPHAESTUS_FORGE_LOCAL_BASE_URL/_MODEL/_API_KEY` (default Ollama `qwen2.5-coder:14b`) |
+| `cloud` | Same built-in agent on any OpenAI-compatible API (OpenRouter, Gemini...) | `HEPHAESTUS_FORGE_CLOUD_BASE_URL/_MODEL/_API_KEY` |
+| `claude` | Claude Code CLI headless | build `--build-arg INSTALL_CLAUDE_CODE=1`; Pro/Max: `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` (uses plan limits); or `ANTHROPIC_API_KEY` |
+| `aider` | Aider CLI (optional) | `HEPHAESTUS_FORGE_AIDER_MODEL` |
+
+- Default: `HEPHAESTUS_FORGE_ENGINE=local`. Fallback: `HEPHAESTUS_FORGE_FALLBACK=local,cloud,claude`
+  (used when the chosen default is unavailable: PC off, missing key, refused auth).
+- **Switch at runtime** without restart: Telegram "usa il cloud" / "passa a locale" (tool `forge_set_engine`)
+  or `POST /api/hephaestus/forge/engine {"engine": "cloud"}`. Persisted in `data/forge/settings.json`.
+- **Per task:** "sviluppa X con claude" → `engine` field on the task (no fallback when explicit).
+- `GET /api/hephaestus/forge/engine` shows default, fallback and availability of each engine.
+- Aliases accepted: `builtin`/`ollama` → `local`, `claude_code` → `claude`. Legacy `HEPHAESTUS_FORGE_LLM_*` vars feed `local`.
 
 Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia architecture constraints, docs/tests duty, no secrets.
 
@@ -96,6 +107,8 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/hephaestus/forge/status` | Repo, base branch, engines availability, queue |
+| GET | `/api/hephaestus/forge/engine` | Default engine, fallback chain, availability |
+| POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude|aider"}` — set default (persisted) |
 | POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target}` |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
@@ -104,7 +117,7 @@ Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia arch
 | POST | `/api/hephaestus/forge/tasks/{id}/reject` | Discard + delete branch |
 | POST | `/api/hephaestus/forge/tasks/{id}/rollback` | Revert merged change |
 
-MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
+MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
 ### Deployment notes
 - Compose mounts the repo at `/repo` and `data/` for state. Uncomment the docker socket only if the deploy command restarts containers.
