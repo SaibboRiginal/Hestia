@@ -405,8 +405,16 @@ class SkillCurator:
                 return None
             if resp.status_code >= 400:
                 return None
-            return resp.json()
-        except Exception:
+            data = resp.json()
+            # Hub route returns {status_code, payload}: callers expect the payload.
+            if isinstance(data, dict) and "status_code" in data and "payload" in data:
+                if int(data.get("status_code") or 500) >= 400:
+                    return None
+                return data.get("payload")
+            return data
+        except Exception as exc:
+            logger.warning("[🔄] event=skill_curator_archive_route_failed method=%s path=%s error=%s",
+                           method, path, exc)
             return None
 
     def _emit_hint(self, message: str) -> None:
@@ -414,10 +422,15 @@ class SkillCurator:
         if not self._oracle_route:
             return
         try:
+            # oracle_route is the hint path (e.g. "api/athena/hints"); it was
+            # previously glued as "/route" + route + "/api/athena/hints" (always 404)
+            # and sent without the required "summary" field.
             requests.post(
-                f"{self._hub}/route{self._oracle_route}/api/athena/hints",
-                json={"message": message, "source": "skill_curator"},
-                timeout=5,
+                f"{self._hub}/route/oracle/{self._oracle_route.lstrip('/')}",
+                json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 5,
+                      "body": {"source": "skill_curator", "hint_type": "skill_update",
+                               "summary": message[:500]}},
+                timeout=7,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("[🔄] event=skill_curator_hint_failed error=%s", exc)

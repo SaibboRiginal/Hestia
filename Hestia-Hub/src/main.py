@@ -3,13 +3,15 @@
 Single responsibility: wire the HTTP layer (routes, lifespan) to the service
 modules.  All business logic lives in the ``modules/`` package.
 """
+import json
 import logging
 import os
 from pathlib import Path
 import sys
+from typing import Any
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
@@ -223,8 +225,46 @@ def registration_standard():
 # ── Routing ───────────────────────────────────────────────────────────────────
 
 
+_ENVELOPE_KEYS = set(RouteRequest.model_fields)
+
+
+async def _parse_route_request(request: Request) -> RouteRequest:
+    """Accept both call styles.
+
+    1. Envelope (canonical): POST ``{method, headers, query, body, timeout_seconds}``.
+    2. Direct passthrough: any method, real query string, raw JSON body —
+       e.g. ``GET /api/route/argus/api/argus/status``.  Previously a missing
+       body caused 422, and a raw POST body was misread as an empty envelope
+       (silently turned into a GET without body).
+    """
+    raw = await request.body()
+    data: Any = None
+    if raw:
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Body must be JSON")
+    if isinstance(data, dict) and "method" in data and set(data) <= _ENVELOPE_KEYS:
+        return RouteRequest(**data)
+    timeout = request.headers.get("x-hub-timeout-seconds")
+    return RouteRequest(
+        method=request.method,
+        headers={},
+        query=dict(request.query_params),
+        body=data,
+        timeout_seconds=float(timeout) if timeout else RouteRequest.model_fields["timeout_seconds"].default,
+    )
+
+
 @app.api_route("/api/route/{service_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-def route_request(service_name: str, path: str, req: RouteRequest):
+async def route_request(service_name: str, path: str, request: Request):
+    req = await _parse_route_request(request)
+    # proxy_request is blocking (requests): run the fan-out in a worker thread.
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(_route_sync, service_name, path, req)
+
+
+def _route_sync(service_name: str, path: str, req: RouteRequest):
     # ── Resolve targets: unicast | multicast (a,b) | broadcast (*) ─────────
     if service_name == "*":
         # Deduplicate by name (multiple instances → keep first)
