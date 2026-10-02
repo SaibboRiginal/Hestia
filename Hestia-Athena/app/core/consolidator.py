@@ -36,7 +36,9 @@ class MemoryConsolidator:
 
     def __init__(self, hub_api_url: str):
         self._hub_url = hub_api_url.rstrip("/")
-        self._archive_route = f"{self._hub_url}/route/archive"
+        # Archive endpoints live under /api (chat history, memory); the old
+        # "/route/archive" base made every call 404.
+        self._archive_route = f"{self._hub_url}/route/archive/api"
         self._oracle_route = f"{self._hub_url}/route/oracle"
         self._last_consolidation: dict[str, float] = {}  # session_id → timestamp
 
@@ -226,8 +228,12 @@ class MemoryConsolidator:
                 },
                 timeout=8,
             )
-            return resp.status_code < 400
-        except Exception:
+            if resp.status_code >= 400:
+                return False
+            routed = resp.json() if resp.content else {}
+            return int((routed or {}).get("status_code", 200)) < 400
+        except Exception as exc:
+            logger.warning("[🔄] event=consolidator_save_memory_failed error=%s", exc)
             return False
 
     def _resolve_conflict(self, conflict: dict) -> None:

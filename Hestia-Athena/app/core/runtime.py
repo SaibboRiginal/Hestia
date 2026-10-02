@@ -204,6 +204,8 @@ class AthenaRuntime:
             )
             resp.raise_for_status()
             data = resp.json() or {}
+            if isinstance(data.get("payload"), dict):   # Hub route envelope
+                data = data["payload"]
             embedding = data.get("embedding")
             if isinstance(embedding, list):
                 return list(embedding)

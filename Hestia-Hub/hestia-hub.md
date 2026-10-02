@@ -44,7 +44,7 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 | `POST` | `/api/registry/deregister` | Deregister one service |
 | `GET` | `/api/registry/services` | List registered services |
 | `GET` | `/api/discovery/module-tools` | Domain to module-tool endpoint map |
-| `POST` | `/api/route/{service}/{path:path}` | Proxy request to named service/path |
+| `ANY` | `/api/route/{service}/{path:path}` | Proxy request to named service/path. Two styles: **envelope** (POST `{method, headers, query, body, timeout_seconds}`) or **direct passthrough** (real method + query string + raw JSON body; timeout via `X-Hub-Timeout-Seconds`, default 8s). Response is always `{status_code, service, target, payload}` |
 | `GET` | `/health` | Hub health |
 
 ---

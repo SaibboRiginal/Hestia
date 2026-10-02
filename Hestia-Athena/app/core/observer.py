@@ -73,7 +73,14 @@ class Observer:
                 url, params=params or {}, timeout=OBSERVE_TIMEOUT
             )
             if resp.status_code < 400:
-                return resp.json() if resp.content else {}
+                data = resp.json() if resp.content else {}
+                # Hub-routed calls come back as {status_code, payload}: unwrap.
+                if isinstance(data, dict) and "status_code" in data and "payload" in data:
+                    if int(data.get("status_code") or 500) >= 400:
+                        return None
+                    payload = data.get("payload")
+                    return payload if isinstance(payload, dict) else {"data": payload}
+                return data
             logger.debug(
                 "event=observer_route_get_non200 route=%s status=%s body=%s",
                 url,
@@ -158,8 +165,9 @@ class Observer:
         services: list[ServiceSnapshot] = []
         unhealthy: list[str] = []
 
+        # hub_api_url already ends with /api
         hub_services_data = self._route_get(
-            f"{self.hub_api_url}", "/api/registry/services"
+            f"{self.hub_api_url}", "/registry/services"
         )
         raw_services: list[dict[str, Any]] = []
         if hub_services_data:
