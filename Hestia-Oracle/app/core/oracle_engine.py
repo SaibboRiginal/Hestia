@@ -2492,9 +2492,20 @@ class OracleEngine:
                 "turn_count": turn_count,
                 "total_ms": total_ms,
             }
+            # Archive contract: POST /api/entities {entity_id, domain, payload}.
+            # (Was POST /entity/{session_id}: no such route, wrong body, and one
+            # id per session would overwrite earlier summaries.)
+            now = datetime.now(datetime_timezone.utc)
+            payload["created_at"] = now.isoformat()
+            payload["session_id"] = session_id
             self._hub.post(
-                f"/entity/{session_id}",
-                body=payload,
+                "entities",
+                body={
+                    "entity_id": f"session_summary:{session_id}:{int(now.timestamp() * 1000)}",
+                    "domain": "session_summary",
+                    "status": "active",
+                    "payload": payload,
+                },
                 timeout=self._policy_timeout("foreground_chat"),
                 headers=self._trace_headers(session_id, None),
             )

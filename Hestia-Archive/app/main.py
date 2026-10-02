@@ -29,11 +29,29 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_archive")
 
 # ── Database bootstrap ────────────────────────────────────────────────────────
-with engine.connect() as conn:
-    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    conn.commit()
+def _bootstrap_database() -> None:
+    """Wait for Postgres (boot ordering), then ensure pgvector + tables.
+    ARCHIVE_DB_WAIT_SECONDS=0 waits forever (Startup Readiness Contract)."""
+    import time as _time
+    limit = float(os.getenv("ARCHIVE_DB_WAIT_SECONDS", "0"))
+    started = _time.monotonic()
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                conn.commit()
+            models.Base.metadata.create_all(bind=engine)
+            return
+        except Exception as exc:
+            if limit and _time.monotonic() - started > limit:
+                raise
+            logger.warning("[🔄] event=archive_db_not_ready attempt=%d error=%s", attempt, str(exc)[:200])
+            _time.sleep(min(30, 2 * attempt))
 
-models.Base.metadata.create_all(bind=engine)
+
+_bootstrap_database()
 
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Hestia-Archive Vault",
@@ -349,7 +367,17 @@ _HUB_REGISTRATION_PAYLOAD = {
 
 @app.on_event("startup")
 def register_on_hub_startup():
-    """Register this service with the Hub on startup (best-effort)."""
+    """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
+    _register_on_hub()
+    try:
+        from hestia_common.startup_utils import start_hub_keepalive
+        start_hub_keepalive(_register_on_hub, logger=logger)
+    except ImportError:
+        logger.warning("[🔄] event=hub_keepalive_unavailable reason=hestia_common_missing")
+
+
+def _register_on_hub():
+    """Register this service with the Hub (best-effort)."""
     hub_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     try:
@@ -358,7 +386,7 @@ def register_on_hub_startup():
         if resp.status_code < 400:
             log_event(
                 logger,
-                logging.INFO,
+                logging.DEBUG,
                 "hub_register_success",
                 service="archive",
                 hub=hub_url,

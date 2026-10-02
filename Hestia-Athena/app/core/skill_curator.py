@@ -110,10 +110,7 @@ class SkillCurator:
         """Fetch recent session summaries from Archive (last 24h)."""
         try:
             result = self._route_archive(
-                "GET", "/api/entities", query={
-                    "entity_type": "session_summary",
-                    "limit": "500",
-                })
+                "GET", "/api/entities", query={"domain": "session_summary"})
             if not isinstance(result, list):
                 return []
             # Filter to last 24h client-side (Archive may not support time filter)

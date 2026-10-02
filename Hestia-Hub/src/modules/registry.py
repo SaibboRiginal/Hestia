@@ -59,5 +59,8 @@ class ServiceRegistry:
         return output
 
     def get(self, name: str) -> list[dict[str, Any]]:
+        """Instances for *name*, most recently refreshed first, so a dead
+        instance that stopped re-registering is tried last (failover latency)."""
         with self._lock:
-            return list(self._services.get(name.strip().lower(), []))
+            items = list(self._services.get(name.strip().lower(), []))
+        return sorted(items, key=lambda it: float(it.get("updated_at") or 0), reverse=True)
