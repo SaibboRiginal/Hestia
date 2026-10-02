@@ -176,16 +176,11 @@ def _format_single_alert_with_oracle(
             ),
             "client_instructions": effective_instructions,
         }
-        response = requests.post(
-            core.resolve_oracle_format_url(),
-            json=request_payload,
-            headers={"X-Trace-Id": str(trace_id or "").strip()
-                     } if str(trace_id or "").strip() else None,
-            timeout=12,
-        )
-        if response.status_code != 200:
+        status, data = core.oracle_post("api/format", request_payload,
+                                        timeout=12, trace_id=trace_id)
+        if status != 200:
             return None
-        text = str((response.json() or {}).get("text", "")).strip()
+        text = str((data or {}).get("text", "")).strip()
         if not text:
             return None
         lines = [line.rstrip() for line in text.splitlines()]
@@ -210,8 +205,11 @@ def build_alert_fallback_message(entity_payload: dict[str, Any], domain: str, en
     price = entity_payload.get("price")
 
     lines: list[str] = []
+    # Escape user/site content: a title like "Trilocale & box" broke Telegram HTML.
+    from html import escape as _esc
+    title, address = _esc(str(title)), _esc(str(address or ""))
     if url:
-        lines.append(f"🏠 <a href=\"{url}\"><b>{title}</b></a>")
+        lines.append(f"🏠 <a href=\"{_esc(str(url), quote=True)}\"><b>{title}</b></a>")
     else:
         lines.append(f"🏠 <b>{title}</b>")
 
@@ -283,16 +281,11 @@ def format_multiple_alerts_with_oracle(
             ),
             "client_instructions": effective_instructions,
         }
-        response = requests.post(
-            core.resolve_oracle_format_url(),
-            json=request_payload,
-            headers={"X-Trace-Id": str(trace_id or "").strip()
-                     } if str(trace_id or "").strip() else None,
-            timeout=15,
-        )
-        if response.status_code != 200:
+        status, data = core.oracle_post("api/format", request_payload,
+                                        timeout=15, trace_id=trace_id)
+        if status != 200:
             return None
-        text = str((response.json() or {}).get("text", "")).strip()
+        text = str((data or {}).get("text", "")).strip()
         if not text:
             return None
 

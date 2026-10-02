@@ -32,6 +32,11 @@ if not TELEGRAM_TOKEN:
     raise ValueError("Missing TELEGRAM_BOT_TOKEN. Check your .env file!")
 
 ALLOWED_USER_ID = os.getenv("ALLOWED_USER_ID")
+# Comma-separated list also accepted. Fail closed: with no allowed id the bot
+# answers nobody (it can command Forge to change Hestia's own code).
+def is_allowed_user(user_id) -> bool:
+    allowed = {x.strip() for x in str(ALLOWED_USER_ID or "").split(",") if x.strip()}
+    return bool(allowed) and str(user_id) in allowed
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 HUB_API_URL = os.getenv(
@@ -290,8 +295,29 @@ def resolve_oracle_document_url() -> str:
 
 
 def resolve_oracle_format_url() -> str:
-    """Format calls use Hub-discovered Oracle URL directly."""
+    """Deprecated: use oracle_post() (Hub-routed). Kept for compatibility."""
     return f"{_discover_oracle_base()}/api/format"
+
+
+def oracle_post(path: str, body: dict, timeout: float = 15, trace_id: str | None = None) -> tuple[int, dict]:
+    """Non-streaming Oracle call via Hub route (Communication Policy).
+    Returns (status_code, payload_dict); (0, {}) when Hub/Oracle unreachable."""
+    headers = {"X-Trace-Id": str(trace_id).strip()} if str(trace_id or "").strip() else {}
+    try:
+        resp = requests.post(
+            f"{HUB_API_URL}/route/oracle/{path.lstrip('/')}",
+            json={"method": "POST", "headers": headers, "query": {}, "body": body,
+                  "timeout_seconds": timeout},
+            timeout=timeout + 5,
+        )
+        if resp.status_code != 200:
+            return resp.status_code, {}
+        routed = resp.json() or {}
+        payload = routed.get("payload")
+        return int(routed.get("status_code", 500)), payload if isinstance(payload, dict) else {}
+    except Exception as exc:
+        logging.getLogger("hestia_telegram").warning("event=oracle_post_failed path=%s error=%s", path, exc)
+        return 0, {}
 
 
 _mcp_base_url: str | None = None

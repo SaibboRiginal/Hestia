@@ -362,11 +362,10 @@ def format_command_payload_with_oracle(
         "locale": core.TELEGRAM_LOCALE,
     }
     try:
-        response = requests.post(
-            core.resolve_oracle_format_url(), json=request_payload, timeout=30)
-        if response.status_code != 200:
+        status, data = core.oracle_post("api/format", request_payload, timeout=30)
+        if status != 200:
             return None
-        text = str((response.json() or {}).get("text", "")).strip()
+        text = str((data or {}).get("text", "")).strip()
         return strip_formatter_intro(text) if text else None
     except Exception:
         return None

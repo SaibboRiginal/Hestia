@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 import logging
 import time
@@ -73,11 +74,12 @@ def _respond_oracle_high_impact_approval(
 
 def is_authorized(message) -> bool:
     user_id = str(message.from_user.id)
-    if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
+    if not core.is_allowed_user(user_id):
         logger.warning(
-            "event=unauthorized_access_attempt_user_id Unauthorized access attempt | user_id=%s", user_id)
+            "event=unauthorized_access_attempt_user_id Unauthorized access attempt | user_id=%s allowed_configured=%s",
+            user_id, bool(core.ALLOWED_USER_ID))
         core.bot.reply_to(
-            message, "⛔ **Access Denied.** This Hestia instance is private.")
+            message, f"⛔ Accesso negato. Istanza privata. (Il tuo id è {user_id}: impostalo in ALLOWED_USER_ID)")
         return False
     return True
 
@@ -100,7 +102,7 @@ def clear_memory(message):
 def handle_confirmation(call):
     try:
         user_id = str(call.from_user.id)
-        if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
+        if not core.is_allowed_user(user_id):
             core.bot.answer_callback_query(call.id, "Azione non autorizzata")
             return
 
@@ -361,7 +363,7 @@ def handle_calendar_step(call):
     """Route inline button callbacks for the calendar creation wizard."""
     try:
         user_id = str(call.from_user.id)
-        if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
+        if not core.is_allowed_user(user_id):
             core.bot.answer_callback_query(call.id, "Azione non autorizzata")
             return
         handle_calendar_step_callback(call)
@@ -574,23 +576,37 @@ def handle_chat_message(message):
                 "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
             },
             stream=True,
+            # (connect, max silence between chunks): no timeout used to hang
+            # the chat forever when Oracle stalled.
+            timeout=(10, float(os.getenv("TELEGRAM_ORACLE_STREAM_TIMEOUT", "600"))),
         ) as res:
             res.raise_for_status()
 
             final_answer = ""
+            last_status = ""
             streamed_signals: list[dict[str, Any]] = []
             streamed_questions: list[dict[str, Any]] = []
             for line in res.iter_lines():
                 if not line:
                     continue
-                data = json.loads(line)
+                try:
+                    data = json.loads(line)
+                except ValueError:
+                    logger.warning("event=oracle_stream_bad_line len=%d", len(line))
+                    continue
                 if data.get("type") == "status":
-                    core.bot.edit_message_text(
-                        f"⏳ <i>{escape(data['content'])}</i>",
-                        chat_id=chat_id,
-                        message_id=status_msg.message_id,
-                        parse_mode="HTML",
-                    )
+                    status_text = f"⏳ <i>{escape(str(data.get('content') or ''))}</i>"
+                    if status_text != last_status:   # Telegram rejects identical edits
+                        last_status = status_text
+                        try:
+                            core.bot.edit_message_text(
+                                status_text,
+                                chat_id=chat_id,
+                                message_id=status_msg.message_id,
+                                parse_mode="HTML",
+                            )
+                        except Exception as exc:  # 429 / not modified must not kill the reply
+                            logger.debug("event=status_edit_failed error=%s", exc)
                 elif data.get("type") == "thinking":
                     # Send thinking events as separate messages for visibility
                     # Standard format: type=thinking, action=(reasoning|tool_call|tool_result)
@@ -634,12 +650,14 @@ def handle_chat_message(message):
                         except Exception:
                             pass
                 elif data.get("type") == "final":
-                    final_answer = data.get("reply")
+                    final_answer = str(data.get("reply") or "")
                 elif data.get("type") == "signal":
                     streamed_signals.append(data)
                 elif data.get("type") == "question":
                     streamed_questions.append(data)
 
+        if not final_answer.strip():
+            final_answer = "⚠️ Nessuna risposta ricevuta da Oracle. Riprova (/retry)."
         message_parts = core.build_chat_messages(final_answer)
         if not message_parts:
             message_parts = [core.format_for_telegram(final_answer)]
@@ -893,7 +911,11 @@ def handle_file_message(message):
             for line in res.iter_lines():
                 if not line:
                     continue
-                data = json.loads(line)
+                try:
+                    data = json.loads(line)
+                except ValueError:
+                    logger.warning("event=oracle_doc_stream_bad_line len=%d", len(line))
+                    continue
                 if data.get("type") == "status":
                     try:
                         core.bot.edit_message_text(
@@ -1007,7 +1029,7 @@ def handle_feedback_callback(call):
     """Handle 👍/👎 feedback button presses."""
     try:
         user_id = str(call.from_user.id)
-        if core.ALLOWED_USER_ID and user_id != str(core.ALLOWED_USER_ID):
+        if not core.is_allowed_user(user_id):
             core.bot.answer_callback_query(call.id, "Non autorizzato")
             return
 
