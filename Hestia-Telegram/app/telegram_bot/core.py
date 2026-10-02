@@ -255,12 +255,18 @@ _oracle_base_url: str | None = None
 
 
 def _discover_oracle_base() -> str:
-    """Discover Oracle's base_url from Hub registry. Cached after first lookup."""
+    """Discover Oracle's base_url from Hub registry. Cached after first lookup.
+
+    Documented exception to the Hub-only policy: chat responses are NDJSON
+    streams (typing frames, tokens) and the Hub route buffers whole responses,
+    so Telegram streams from Oracle directly after discovering it via Hub."""
     global _oracle_base_url
     if _oracle_base_url:
         return _oracle_base_url
     try:
-        resp = requests.get(f"{HUB_API_URL}/status", timeout=3)
+        # /registry/services: instant. (/status health-checks every service
+        # sequentially and could take tens of seconds.)
+        resp = requests.get(f"{HUB_API_URL}/registry/services", timeout=5)
         if resp.ok:
             services = resp.json().get("services", [])
             for svc in services:
@@ -297,7 +303,9 @@ def resolve_mcp_url() -> str:
     if _mcp_base_url:
         return _mcp_base_url
     try:
-        resp = requests.get(f"{HUB_API_URL}/status", timeout=3)
+        # /registry/services: instant. (/status health-checks every service
+        # sequentially and could take tens of seconds.)
+        resp = requests.get(f"{HUB_API_URL}/registry/services", timeout=5)
         if resp.ok:
             services = resp.json().get("services", [])
             for svc in services:
