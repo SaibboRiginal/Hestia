@@ -74,8 +74,8 @@ Weighted score:
   contended with the user.
 - Retrospective inputs on top of health/domains: **Argus errors of the last hour** (`/api/argus/logs?level=ERROR&since=1h`)
   and **Metis weak spots** (`/api/metis/insights`).
-- Candidate kind `improvement` (code/prompt change) is handed to **Hephaestus Forge**. Forge's per-engine autonomy
-  policy decides: local → starts coding on a branch; cloud/claude → waits for approval. Merge always needs the user.
+- Candidate kind `improvement` (code/prompt change) is handed to **Hephaestus Forge** via Hub. Forge's permission
+  mode decides (`ask` waits for you, `auto` codes on a branch, `full_auto` may also merge). Defaults: local=auto, cloud=ask.
   Max `ATHENA_FORGE_MAX_PER_DAY` (2) hand-offs/day, deduplicated by title. Disable: `ATHENA_FORGE_ENABLED=0`.
 - Strategist prompt is caveman-style (short lines, exact output format) to save context on local models.
 

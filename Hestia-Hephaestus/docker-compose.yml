@@ -24,12 +24,9 @@ services:
       - HEPHAESTUS_BASELINE_REF=HEAD                         # Baseline ref captured for rollback metadata
       - HEPHAESTUS_REPO_PATH=/repo                           # Hestia git checkout mounted for Forge (self-development)
       - HEPHAESTUS_FORGE_ENABLED=1                           # Enable Forge self-development engine (0|1)
-      - HEPHAESTUS_FORGE_AUTO_MERGE=0                        # Merge without human approval when tests pass (0|1)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/code/data
       - ../:/repo

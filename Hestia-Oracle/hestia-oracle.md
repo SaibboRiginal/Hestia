@@ -195,3 +195,18 @@ This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI 
 `GET /api/activity` → `{last_user_activity_ts, idle_seconds}`. Updated on `/api/chat` and `/api/chat/document`
 only when `notify_target` is present (real client chats; internal callers like Argus narration are ignored).
 Athena uses it to think only while the user is idle.
+
+## LLM gateway (single owner of provider access)
+
+Other services never hold LLM URLs/keys; they call Oracle via Hub.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/llm/profiles` | Profiles with model + availability (`check=false` skips probing). No secrets. |
+| POST | `/api/llm/chat` | OpenAI-compatible chat on a profile: `{profile, messages, tools?, temperature?, model?}` → provider JSON |
+| POST | `/api/llm/generate` | Plain prompt → `{response}` (Athena, Metis) |
+
+Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-compatible base, e.g. `…/v1`).
+`local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model `MODEL_USECASE_CODE_MODEL` or `qwen2.5-coder:14b`).
+Example cloud: `ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1`, `_MODEL=qwen/qwen3-coder`, `_API_KEY=sk-or-…`.
+Timeout per call: `ORACLE_LLM_CHAT_TIMEOUT_SEC` (600). Used by Hephaestus Forge engines `local`/`cloud`.

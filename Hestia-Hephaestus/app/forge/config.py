@@ -18,27 +18,10 @@ def _int(name: str, default: int) -> int:
         return default
 
 
-@dataclass(frozen=True)
-class LLMProfile:
-    """One OpenAI-compatible endpoint (Ollama, OpenRouter, Gemini, LM Studio...)."""
-    base_url: str
-    model: str
-    api_key: str
-
-    @property
-    def configured(self) -> bool:
-        return bool(self.base_url and self.model)
-
-
-def _profile(prefix: str, base_url: str, model: str, api_key: str) -> LLMProfile:
-    return LLMProfile(
-        base_url=os.getenv(f"{prefix}_BASE_URL", base_url).rstrip("/"),
-        model=os.getenv(f"{prefix}_MODEL", model),
-        api_key=os.getenv(f"{prefix}_API_KEY", api_key),
-    )
-
-
 ENGINE_ALIASES = {"builtin": "local", "ollama": "local", "claude_code": "claude"}
+
+# Engine → permission group. Cloud-billed engines share the "cloud" mode.
+ENGINE_GROUP = {"local": "local", "cloud": "cloud", "claude": "cloud"}
 
 
 def normalize_engine(name: str) -> str:
@@ -53,18 +36,15 @@ class ForgeConfig:
     worktrees_path: Path
     state_file: Path
     base_branch: str
-    engine: str                 # default engine: local | cloud | claude | aider
+    engine: str                 # default engine: local | cloud | claude
     fallback: list[str]         # tried in order when the chosen engine is unavailable
     settings_file: Path         # runtime default-engine override (set from Telegram)
-    local: LLMProfile
-    cloud: LLMProfile
+    llm_route_timeout: int      # Hub→Oracle /api/llm/chat timeout per turn
     max_turns: int
     engine_timeout_seconds: int
     test_cmd: str
     claude_bin: str
     claude_model: str
-    aider_bin: str
-    aider_model: str
     auto_merge: bool
     deploy_cmd: str
     verify_delay_seconds: int
@@ -88,12 +68,7 @@ def load_forge_config() -> ForgeConfig:
         fallback=[normalize_engine(e) for e in os.getenv(
             "HEPHAESTUS_FORGE_FALLBACK", "local,cloud,claude").split(",") if e.strip()],
         settings_file=Path(os.getenv("HEPHAESTUS_FORGE_SETTINGS_FILE", str(data_dir / "forge" / "settings.json"))),
-        # Legacy HEPHAESTUS_FORGE_LLM_* vars still feed the local profile.
-        local=_profile("HEPHAESTUS_FORGE_LOCAL",
-                       os.getenv("HEPHAESTUS_FORGE_LLM_BASE_URL", "http://host.docker.internal:11434/v1"),
-                       os.getenv("HEPHAESTUS_FORGE_LLM_MODEL", "qwen2.5-coder:14b"),
-                       os.getenv("HEPHAESTUS_FORGE_LLM_API_KEY", "ollama")),
-        cloud=_profile("HEPHAESTUS_FORGE_CLOUD", "", "", ""),
+        llm_route_timeout=max(60, _int("HEPHAESTUS_FORGE_LLM_TIMEOUT_SECONDS", 600)),
         max_turns=max(5, _int("HEPHAESTUS_FORGE_MAX_TURNS", 40)),
         engine_timeout_seconds=max(60, _int("HEPHAESTUS_FORGE_ENGINE_TIMEOUT_SECONDS", 1800)),
         test_cmd=os.getenv(
@@ -101,8 +76,6 @@ def load_forge_config() -> ForgeConfig:
             "python -m pytest -q -p no:cacheprovider -m \"unit or api or format\" {test_paths}"),
         claude_bin=os.getenv("HEPHAESTUS_FORGE_CLAUDE_BIN", "claude"),
         claude_model=os.getenv("HEPHAESTUS_FORGE_CLAUDE_MODEL", "").strip(),
-        aider_bin=os.getenv("HEPHAESTUS_FORGE_AIDER_BIN", "aider"),
-        aider_model=os.getenv("HEPHAESTUS_FORGE_AIDER_MODEL", "ollama_chat/qwen2.5-coder:14b"),
         auto_merge=_bool("HEPHAESTUS_FORGE_AUTO_MERGE", False),
         deploy_cmd=os.getenv("HEPHAESTUS_FORGE_DEPLOY_CMD", "").strip(),
         verify_delay_seconds=max(0, _int("HEPHAESTUS_FORGE_VERIFY_DELAY_SECONDS", 20)),

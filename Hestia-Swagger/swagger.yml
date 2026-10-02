@@ -3276,6 +3276,41 @@ paths:
             {session_id, before_tokens, after_tokens, messages_before,
              messages_after, summary_chars}
 
+  /api/llm/profiles:
+    get:
+      tags: [Oracle]
+      summary: LLM profiles served by Oracle (no secrets)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: check, in: query, schema: {type: boolean, default: true}}
+      responses:
+        "200": {description: "{status, profiles{name: {model, base_url, available, detail}}}"}
+
+  /api/llm/chat:
+    post:
+      tags: [Oracle]
+      summary: OpenAI-compatible chat completion on a named profile (tool calling supported)
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                profile: {type: string, default: local}
+                messages: {type: array, items: {type: object}}
+                tools: {type: array, items: {type: object}}
+                temperature: {type: number}
+                model: {type: string}
+      responses:
+        "200": {description: Provider chat completion JSON}
+        "404": {description: Profile not configured}
+        "502": {description: Provider error/unreachable}
+
   /api/activity:
     get:
       tags: [Oracle]
@@ -3882,7 +3917,7 @@ paths:
               type: object
               required: [engine]
               properties:
-                engine: {type: string, enum: [local, cloud, claude, aider]}
+                engine: {type: string, enum: [local, cloud, claude]}
       responses:
         "200": {description: "{status, default_engine, available, detail}"}
         "400": {description: Unknown engine}
@@ -3890,16 +3925,16 @@ paths:
   /api/hephaestus/forge/settings:
     get:
       tags: [Hephaestus]
-      summary: Forge settings (default engine, fallback, autonomy per engine, auto_merge)
+      summary: Forge settings (default engine, fallback, permission modes)
       servers:
         - url: http://localhost:19010
       responses:
         "200": {description: OK}
 
-  /api/hephaestus/forge/settings/autonomy:
+  /api/hephaestus/forge/settings/mode:
     post:
       tags: [Hephaestus]
-      summary: Set autonomy mode for Athena/Argus tasks per engine (persisted)
+      summary: Set Forge permission mode (ask | auto | full_auto) for local/cloud group (persisted)
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -3908,13 +3943,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [engine, mode]
+              required: [mode]
               properties:
-                engine: {type: string, enum: [local, cloud, claude, aider]}
-                mode: {type: string, enum: [propose, auto_start]}
+                mode: {type: string, enum: [ask, auto, full_auto]}
+                group: {type: string, enum: [local, cloud, ""], description: empty = both}
       responses:
         "200": {description: Updated settings}
-        "400": {description: Unknown engine or mode}
+        "400": {description: Unknown mode or group}
 
   /api/hephaestus/forge/tasks:
     get:
@@ -3942,8 +3977,8 @@ paths:
               properties:
                 request: {type: string}
                 services: {type: array, items: {type: string}}
-                engine: {type: string, enum: [auto, local, cloud, claude, aider], description: empty/auto = default + fallback}
-                auto_start: {type: boolean, description: "omit = user source starts; athena/argus follow autonomy policy; false = proposal"}
+                engine: {type: string, enum: [auto, local, cloud, claude], description: empty/auto = default + fallback}
+                auto_start: {type: boolean, description: "omit = user source starts; athena/argus follow permission mode; false = proposal"}
                 auto_merge: {type: boolean}
                 context: {type: string}
                 source: {type: string}
