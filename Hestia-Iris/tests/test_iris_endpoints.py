@@ -5,15 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, _MESSAGES
-
-
-@pytest.fixture(autouse=True)
-def clear_messages():
-    """Reset in-memory message store before each test."""
-    _MESSAGES.clear()
-    yield
-    _MESSAGES.clear()
+from app.main import app
 
 
 @pytest.fixture()
@@ -73,7 +65,7 @@ def test_inbox_respects_limit(client):
 # ---------------------------------------------------------------------------
 
 
-def test_send_stores_message(client):
+def test_send_stores_message(client, fake_hecate):
     resp = client.post(
         "/api/email/send",
         json={"to": "test@example.com",
@@ -83,8 +75,8 @@ def test_send_stores_message(client):
     data = resp.json()
     assert data["status"] == "ok"
     assert "id" in data["sent"]
-    assert len(_MESSAGES) == 1
-    assert _MESSAGES[0]["subject"] == "Unit Test"
+    assert len(fake_hecate.messages) == 1
+    assert fake_hecate.messages[0]["subject"] == "Unit Test"
 
 
 def test_send_assigns_new_thread_if_none_provided(client):
@@ -175,11 +167,11 @@ def test_thread_returns_matching_messages(client):
     client.post("/api/email/send",
                 json={"to": "c@d.com", "subject": "Other", "body": "Other"})
 
-    resp = client.get("/api/email/threads/t-001")
+    resp = client.get("/api/email/threads/topic")
     assert resp.status_code == 200
     data = resp.json()
     assert data["count"] == 1
-    assert data["messages"][0]["thread_id"] == "t-001"
+    assert data["messages"][0]["thread_id"] == "topic"
 
 
 def test_thread_not_found_returns_404(client):
@@ -191,13 +183,13 @@ def test_thread_collects_multiple_messages(client):
     for i in range(3):
         client.post(
             "/api/email/send",
-            json={"to": "a@b.com", "subject": f"Part {i}",
-                  "body": ".", "thread_id": "t-multi"},
+            json={"to": "a@b.com", "subject": "Multi",
+                  "body": f"part {i}", "thread_id": "multi"},
         )
     client.post("/api/email/send",
                 json={"to": "x@y.com", "subject": "Unrelated", "body": "."})
 
-    resp = client.get("/api/email/threads/t-multi")
+    resp = client.get("/api/email/threads/multi")
     assert resp.json()["count"] == 3
 
 

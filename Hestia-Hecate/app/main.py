@@ -739,6 +739,49 @@ def gateway_email_send(body: dict):
 
 
 # ---------------------------------------------------------------------------
+# Mail provider (IMAP/SMTP) — consumed by Iris via Hub
+# ---------------------------------------------------------------------------
+
+from providers.mail_imap import ImapMailProvider, MailProviderError
+
+
+class MailSendRequest(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+@app.get("/api/gateway/mail/status")
+def gateway_mail_status():
+    return {"status": "ok", **ImapMailProvider().status()}
+
+
+@app.get("/api/gateway/mail/messages")
+def gateway_mail_messages(q: str = "", since: str | None = None, limit: int = 50):
+    """Search mailbox. ``q``: raw IMAP criteria ('FROM "x"') or free text. ``since``: ISO date."""
+    since_dt = None
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="since must be ISO date/datetime")
+    try:
+        rows = ImapMailProvider().search(query=q, since=since_dt, limit=limit)
+    except MailProviderError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return {"status": "ok", "count": len(rows), "messages": rows}
+
+
+@app.post("/api/gateway/mail/send")
+def gateway_mail_send(req: MailSendRequest):
+    try:
+        sent = ImapMailProvider().send(req.to, req.subject, req.body)
+    except MailProviderError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return {"status": "ok", "sent": sent}
+
+
+# ---------------------------------------------------------------------------
 # OAuth Initiation Flow
 # ---------------------------------------------------------------------------
 # In-memory store for pending device-code auth sessions.  Each entry is keyed

@@ -157,7 +157,8 @@ def _tick() -> None:
                 start_at=(record or {}).get(
                     "start_datetime") or now.isoformat(),
                 end_at=(record or {}).get("end_datetime"),
-                all_day=False,
+                # Providers return a bare date (YYYY-MM-DD) for all-day events.
+                all_day=len(str((record or {}).get("start_datetime") or "")) == 10,
                 location=(record or {}).get("location"),
                 html_link=(record or {}).get("html_link"),
                 nag_enabled=True,

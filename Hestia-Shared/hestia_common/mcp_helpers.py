@@ -133,3 +133,65 @@ def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
         })
 
     return router
+
+
+def mount_missing_rest_routes(app, tools: list[MCPTool], service_name: str = "") -> list[str]:
+    """Serve each tool's declared ``method`` + ``path`` when the app lacks it.
+
+    Hub discovery, Telegram and the MCP gateway execute tools by calling the
+    declared REST path.  Tools implemented only as MCP handlers used to 404
+    there.  This mounts a thin route that calls ``tool.handler``:
+    path vars (``{x}`` / ``$x``) + query (GET/DELETE) or JSON body → kwargs.
+    Call it AFTER defining the app's own routes.  Returns mounted paths.
+    """
+    import re
+
+    from fastapi import HTTPException
+
+    existing = set()
+    for route in getattr(app, "routes", []):
+        for method in getattr(route, "methods", None) or []:
+            existing.add((method.upper(), re.sub(r"\{[^}]+\}", "{}", getattr(route, "path", ""))))
+
+    mounted: list[str] = []
+    for tool in tools:
+        if not tool.path:
+            continue
+        path = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*)", r"{\1}", tool.path)
+        method = (tool.method or "GET").upper()
+        if (method, re.sub(r"\{[^}]+\}", "{}", path)) in existing:
+            continue
+
+        def _make(t: MCPTool, m: str):
+            async def _endpoint(request: Request):
+                params: dict[str, Any] = dict(request.query_params)
+                params.update(request.path_params)
+                if m in {"POST", "PUT", "PATCH"}:
+                    try:
+                        body = await request.json()
+                    except Exception:
+                        body = {}
+                    if isinstance(body, dict):
+                        params.update(body)
+                try:
+                    result = t.handler(**params)
+                except TypeError as exc:
+                    raise HTTPException(status_code=400, detail=f"bad arguments: {exc}")
+                except Exception as exc:
+                    logger.warning("event=mcp_rest_tool_error service=%s tool=%s error=%s",
+                                   service_name, t.name, exc)
+                    raise HTTPException(status_code=500, detail=str(exc))
+                if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], bool):
+                    ok, payload = result
+                    if not ok:
+                        raise HTTPException(status_code=502, detail=str(payload))
+                    return payload
+                return result
+            return _endpoint
+
+        app.add_api_route(path, _make(tool, method), methods=[method], name=f"mcp_rest_{tool.name}")
+        existing.add((method, re.sub(r"\{[^}]+\}", "{}", path)))
+        mounted.append(f"{method} {path}")
+    if mounted:
+        logger.info("event=mcp_rest_routes_mounted service=%s routes=%s", service_name, mounted)
+    return mounted
