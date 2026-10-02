@@ -32,6 +32,7 @@ from schemas.events import (
     ListEventsResponse,
     UpdateEventRequest,
 )
+from services import agenda as assistant_agenda
 from services import notification_worker, sync_worker
 
 try:
@@ -244,6 +245,85 @@ try:
             response_prompt="Riassumi l'esito della riconciliazione Chronos, indicando quali tick sono stati eseguiti e se era dry-run.",
             telegram_visible=True, telegram_group="pianificazione",
         ),
+        MCPTool(
+            name="agenda_assistente",
+            description=(
+                "Agenda di Hestia stessa (NON il calendario dell'utente): cosa l'assistente e i suoi moduli "
+                "hanno pianificato — finestre (es. Claude Pro di notte), job periodici, task di riparazione, eventi."
+            ),
+            parameters={"type": "object", "properties": {
+                "days": {"type": "integer", "description": "giorni avanti (default 7)"},
+                "owner": {"type": "string", "description": "modulo: hephaestus, scout, athena..."}}},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente", "params": kw},
+            title="\U0001f916 Agenda di Hestia", method="GET", path="/api/agenda",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=("Elenco cronologico raggruppato per giorno: ora, titolo, modulo. "
+                             "Segna le occorrenze saltate. Niente JSON. Mostra l'id tra parentesi."),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_aggiungi",
+            description="Aggiunge alla agenda di Hestia un evento/task/finestra/job (on demand)",
+            parameters={"type": "object", "properties": {
+                "title": {"type": "string", "description": "titolo"},
+                "type": {"type": "string", "description": "event | task | job | window"},
+                "start_at": {"type": "string", "description": "inizio ISO 8601"},
+                "end_at": {"type": "string", "description": "fine ISO (obbligatoria per window)"},
+                "recurrence": {"type": "string", "description": "RRULE se periodico, es. FREQ=WEEKLY;BYDAY=SA"},
+                "description": {"type": "string", "description": "dettagli"}},
+                "required": ["title", "start_at"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_aggiungi", "params": kw},
+            title="\u2795 Pianifica per Hestia", method="POST", path="/api/agenda/items",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_sposta",
+            description="Sposta/modifica una voce dell'agenda di Hestia (nuovo orario, ricorrenza, pausa)",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce"},
+                "start_at": {"type": "string", "description": "nuovo inizio ISO"},
+                "end_at": {"type": "string", "description": "nuova fine ISO"},
+                "recurrence": {"type": "string", "description": "nuova RRULE"},
+                "status": {"type": "string", "description": "confirmed | paused"}},
+                "required": ["ref"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_sposta", "params": kw},
+            title="\U0001f501 Sposta voce agenda Hestia", method="PATCH", path="/api/agenda/items/{ref}",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_salta",
+            description="Salta (dismiss) la prossima occorrenza di una voce dell'agenda di Hestia, senza cancellare la regola",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce"},
+                "occurrence": {"type": "string", "description": "occorrenza ISO (vuoto = prossima)"}},
+                "required": ["ref"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_salta", "params": kw},
+            title="\u23ed\ufe0f Salta occorrenza", method="POST", path="/api/agenda/items/{ref}/skip",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_annulla",
+            description="Annulla definitivamente una voce dell'agenda di Hestia",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce"}}, "required": ["ref"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_annulla", "params": kw},
+            title="\U0001f5d1\ufe0f Annulla voce agenda Hestia", method="DELETE", path="/api/agenda/items/{ref}",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_esegui",
+            description="Esegue subito l'azione di un job/task dell'agenda di Hestia",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce"}}, "required": ["ref"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_esegui", "params": kw},
+            title="\u25b6\ufe0f Esegui ora", method="POST", path="/api/agenda/items/{ref}/run",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
     ]
     app.include_router(create_mcp_router(_chronos_mcp_tools, service_name="chronos"))
     logger.info("event=mcp_router_mounted service=chronos")
@@ -332,6 +412,7 @@ def on_startup() -> None:
     notification_worker.start()
     # Start the calendar sync worker (pulls events from Hecate into Archive).
     sync_worker.start()
+    assistant_agenda.start_worker()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -482,6 +563,9 @@ def get_agenda(
         kind=kind,
         limit=200,
     )
+    if not source:
+        # The assistant's own agenda (source=hestia) is not part of the user's calendar.
+        items = [i for i in items if i.get("source") != assistant_agenda.SOURCE]
     return {
         "from": now.isoformat(),
         "to": to_time.isoformat(),
@@ -489,6 +573,134 @@ def get_agenda(
         "count": len(items),
         "items": items,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Assistant agenda (Hestia's own calendar, source=hestia)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class AgendaAction(BaseModel):
+    service: str
+    path: str
+    method: str = "POST"
+    body: dict | None = None
+    query: dict | None = None
+    timeout_seconds: float = 30
+
+
+class AgendaItemCreate(BaseModel):
+    title: str
+    type: str = Field("event", description="event | task | job | window")
+    owner: str = "user"
+    start_at: str
+    end_at: str | None = None
+    recurrence: str | None = Field(None, description="RRULE, e.g. FREQ=DAILY;BYHOUR=3")
+    description: str | None = None
+    action: AgendaAction | None = None
+    key: str | None = None
+    params: dict = Field(default_factory=dict)
+    tz: str | None = None
+    created_by: str = "user"
+
+
+class AgendaItemChange(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    start_at: str | None = None
+    end_at: str | None = None
+    recurrence: str | None = None
+    status: str | None = Field(None, description="confirmed | paused | cancelled")
+    action: AgendaAction | None = None
+    params: dict | None = None
+    by: str = "user"
+
+
+class AgendaRegister(BaseModel):
+    owner: str
+    rules: list[dict]
+
+
+class AgendaSkip(BaseModel):
+    occurrence: str | None = None
+    by: str = "user"
+
+
+def _agenda_guard(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except assistant_agenda.AgendaError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+
+@app.get("/api/agenda")
+def agenda_view(days: int = Query(7, ge=1, le=90), owner: str | None = None, type: str | None = None,
+                past_hours: int = Query(0, ge=0, le=720)) -> dict:
+    """Assistant agenda occurrences (windows, jobs, tasks, events) for the next *days*."""
+    now = datetime.now(timezone.utc)
+    rows = assistant_agenda.agenda(now - timedelta(hours=past_hours), now + timedelta(days=days),
+                                   owner=owner, type_=type)
+    return {"from": (now - timedelta(hours=past_hours)).isoformat(), "days": days,
+            "count": len(rows), "occurrences": rows}
+
+
+@app.get("/api/agenda/items")
+def agenda_items(owner: str | None = None, type: str | None = None, include_cancelled: bool = False) -> dict:
+    items = assistant_agenda.list_items(owner=owner, type_=type, include_cancelled=include_cancelled)
+    return {"count": len(items), "items": items}
+
+
+@app.post("/api/agenda/items")
+def agenda_create(req: AgendaItemCreate) -> dict:
+    data = req.model_dump()
+    item = _agenda_guard(
+        assistant_agenda.create, title=data["title"], type_=data["type"], owner=data["owner"],
+        start_at=data["start_at"], end_at=data["end_at"], recurrence=data["recurrence"],
+        description=data["description"], action=data["action"], key=data["key"],
+        params=data["params"], tz=data["tz"], created_by=data["created_by"])
+    return {"status": "ok", "item": item}
+
+
+@app.post("/api/agenda/register")
+def agenda_register(req: AgendaRegister) -> dict:
+    """Modules declare their default rules (idempotent; user edits are preserved)."""
+    items = _agenda_guard(assistant_agenda.register_rules, req.owner, req.rules)
+    return {"status": "ok", "count": len(items), "items": items}
+
+
+@app.patch("/api/agenda/items/{ref}")
+def agenda_update(ref: str, req: AgendaItemChange) -> dict:
+    changes = req.model_dump(exclude={"by"}, exclude_none=True)
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.update, ref, changes, req.by)}
+
+
+@app.delete("/api/agenda/items/{ref}")
+def agenda_cancel(ref: str, by: str = "user") -> dict:
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.cancel, ref, by)}
+
+
+@app.post("/api/agenda/items/{ref}/skip")
+def agenda_skip(ref: str, req: AgendaSkip | None = None) -> dict:
+    r = req or AgendaSkip()
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.skip, ref, r.occurrence, r.by)}
+
+
+@app.post("/api/agenda/items/{ref}/unskip")
+def agenda_unskip(ref: str, req: AgendaSkip) -> dict:
+    if not req.occurrence:
+        raise HTTPException(status_code=400, detail="occurrence required")
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.unskip, ref, req.occurrence, req.by)}
+
+
+@app.post("/api/agenda/items/{ref}/run")
+def agenda_run(ref: str) -> dict:
+    return {"status": "ok", **_agenda_guard(assistant_agenda.run_now, ref)}
+
+
+@app.get("/api/agenda/windows/{key}")
+def agenda_window(key: str) -> dict:
+    """Modules ask: is my window open now? (closed if missing/cancelled/skipped)."""
+    return {"status": "ok", **assistant_agenda.window_status(key)}
 
 
 @app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)

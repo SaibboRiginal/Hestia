@@ -222,6 +222,8 @@ class CalendarItem(Base):
     nag_enabled = Column(Boolean, default=True, nullable=False)
     # Last notification bucket sent: "1d", "2h", "30m" — prevents duplicate nags
     last_notified_bucket = Column(String, nullable=True)
+    # Free-form metadata (assistant agenda: type, owner, action, skips, rules…)
+    meta = Column(JSONB, nullable=True, default=dict)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True),

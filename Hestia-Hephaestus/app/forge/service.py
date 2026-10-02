@@ -31,6 +31,7 @@ from typing import Any
 import requests
 
 from . import git_ops
+from .agenda_client import KEY_FINAL, KEY_NIGHTS, AgendaClient
 from .claude_budget import ClaudeBudget, ClaudeBudgetState, ClaudeSchedule
 from .agent_tools import run_test_command
 from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
@@ -94,6 +95,7 @@ class Forge:
         self._default_engine = cfg.engine
         self._modes = dict(DEFAULT_MODES)
         self.claude_budget = ClaudeBudget(ClaudeSchedule())
+        self.agenda = AgendaClient(cfg.hub_api_url)
         self._load()
         self._load_settings()
 
@@ -158,6 +160,7 @@ class Forge:
             raise ForgeError(f"Invalid Claude schedule: {exc}")
         self.claude_budget = ClaudeBudget(schedule, self.claude_budget.state)
         self._save_settings()
+        self.agenda.register_claude_windows(schedule, force=True)
         logger.info("event=forge_claude_schedule_set schedule=%s", asdict(schedule))
         return self.claude_budget.status()
 
@@ -231,6 +234,8 @@ class Forge:
         self._worker = threading.Thread(target=self._work_loop, daemon=True, name="forge-worker")
         self._worker.start()
         threading.Thread(target=self._scheduler_loop, daemon=True, name="forge-scheduler").start()
+        threading.Thread(target=self.agenda.register_claude_windows, args=(self.claude_budget.schedule,),
+                         daemon=True, name="forge-agenda-register").start()
         logger.info("event=forge_started repo=%s default_engine=%s", self.cfg.repo_path, self._default_engine)
 
     def _work_loop(self) -> None:
@@ -361,6 +366,7 @@ class Forge:
         if task.get("state") not in {"proposed", "scheduled", "awaiting_review", "failed", "no_changes"}:
             raise ForgeError(f"Task in state '{task.get('state')}' cannot be rejected")
         self._cleanup(task, delete_branch=True)
+        self.agenda.hide_task(task["id"])
         self._set_state(task, "rejected", f"by {rejected_by}: {reason}")
         return task
 
@@ -392,11 +398,33 @@ class Forge:
     def _schedule(self, task: dict, note: str) -> None:
         st = self.claude_budget.status()
         self._set_state(task, "scheduled", f"{note}; {st['reason']}")
+        nights = self.agenda.window(KEY_NIGHTS) or {}
+        self.agenda.show_task(task["id"], task["request"], nights.get("next_open") or st["next_reset"],
+                              f"Task Forge programmato (Claude Pro). id={task['id']}")
         self._notify(task, (
             f"🌙 <b>Sviluppo programmato</b> <code>{task['id'][:6]}</code> (Claude Pro)\n"
             f"{_esc(task['request'][:300])}\n"
             f"Parte nella finestra notturna prima del reset ({_esc(st['next_reset'][:16])}). "
             f"Per avviarlo ora: \"approva sviluppo {task['id'][:6]} subito\"."))
+
+    def claude_window(self) -> tuple[bool, str]:
+        """Agenda windows first (user can move/skip them), built-in schedule as fallback."""
+        st = self.claude_budget.status()
+        if st["phase"] == "exhausted":
+            return False, st["reason"]
+        final, nights = self.agenda.window(KEY_FINAL), self.agenda.window(KEY_NIGHTS)
+        if final is not None and nights is not None and (final.get("exists") or nights.get("exists")):
+            if final.get("active"):
+                return True, "agenda: ultime ore prima del reset"
+            if nights.get("active"):
+                cap = int((nights.get("params") or {}).get("night_max_tasks",
+                                                           self.claude_budget.schedule.night_max_tasks))
+                if st["used_tonight"] < cap:
+                    return True, "agenda: finestra notturna"
+                return False, f"agenda: tetto notturno raggiunto ({st['used_tonight']}/{cap})"
+            skipped = nights.get("skipped_now") or final.get("skipped_now")
+            return False, "agenda: finestra saltata dall'utente" if skipped else "agenda: finestra chiusa"
+        return self.claude_budget.can_start()
 
     def _scheduler_loop(self) -> None:
         """Start one budgeted claude task at a time when the window allows."""
@@ -410,7 +438,7 @@ class Forge:
                                      key=lambda t: t["created_at"])
                 if busy or not waiting:
                     continue
-                ok, reason = self.claude_budget.can_start()
+                ok, reason = self.claude_window()
                 if not ok:
                     logger.debug("event=forge_claude_window_closed reason=%s waiting=%d", reason, len(waiting))
                     continue
@@ -421,6 +449,8 @@ class Forge:
                 logger.warning("[🔄] event=forge_scheduler_error error=%s", exc)
 
     def _enqueue(self, task: dict, note: str) -> None:
+        if task.get("budgeted"):
+            self.agenda.hide_task(task["id"])
         self._set_state(task, "queued", note)
         self._queue.put(task["id"])
 

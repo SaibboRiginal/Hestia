@@ -74,6 +74,30 @@ _TEMPLATE_VAR_PATTERN = re.compile(
 
 # ── Tool-call helper functions ─────────────────────────────────────────────────
 
+_PATH_VAR_PATTERN = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _fill_path_vars(path: str, args: dict) -> tuple[str, set[str]]:
+    """Fill tool path variables declared as ``$name`` or ``{name}`` from *args*.
+
+    ``_resolve_template`` only knows session_id/chat_id/owner/arg.*, so paths like
+    ``/forge/tasks/$task_id/approve`` or ``/auth/poll/{provider}`` were called with
+    the literal placeholder. Returns the path and the consumed arg names.
+    """
+    from urllib.parse import quote
+
+    consumed: set[str] = set()
+
+    def _sub(match: re.Match) -> str:
+        name = match.group(1) or match.group(2)
+        if name not in args or args[name] is None:
+            return match.group(0)
+        consumed.add(name)
+        return quote(str(args[name]), safe="")
+
+    return _PATH_VAR_PATTERN.sub(_sub, path or ""), consumed
+
+
 def _collect_vars(obj, result: set) -> None:
     """Collect all $variable names from a nested template structure."""
     if isinstance(obj, dict):
@@ -2160,6 +2184,12 @@ class OracleEngine:
                         session_id,
                         notify_target,
                     )
+                    path, _consumed = _fill_path_vars(str(path or ""), kwargs)
+                    for _name in _consumed:
+                        if isinstance(body, dict):
+                            body.pop(_name, None)
+                        if isinstance(query, dict):
+                            query.pop(_name, None)
 
                     if body and isinstance(body, dict):
                         body = _strip_nones(body) or None
@@ -2679,6 +2709,7 @@ class OracleEngine:
                 session_id,
                 notify_target,
             )
+            path, _ = _fill_path_vars(str(path or ""), params)
 
             if body and isinstance(body, dict):
                 body = _strip_nones(body) or None

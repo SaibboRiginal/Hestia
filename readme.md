@@ -126,7 +126,11 @@ User interface relay for chat, file attachments, and clear session commands.
 - Streams NDJSON status frames back as typing indicators while Oracle processes.
 
 ### Hestia-Chronos 📅
-Bidirectional calendar integration gateway (port 8008).
+Bidirectional calendar integration gateway (port 8008) **and the assistant's own agenda**.
+- **Assistant agenda (core):** Hestia's own calendar (`source=hestia`, not synced to your calendars) where modules
+  register their rules as data — `event`, `task` (one-off action), `job` (recurring action), `window` (period when
+  something is allowed). You can see, move, pause, skip (dismiss), cancel or run them from Telegram; user edits are
+  never overwritten. Modules ask `GET /api/agenda/windows/{key}` instead of hardcoding schedules.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -162,6 +166,7 @@ Guarded remediation and coding executor.
 - Must keep full audit trail and user-visible notifications for each mutation.
 - Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
 - May execute local build/deploy workflows according to policy tiers.
+- Claude Pro budget windows are agenda windows (`forge.claude_nights`, `forge.claude_final`): skip a night to block autonomous Claude work.
 - **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`local`/`cloud` LLM profiles served by Oracle, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
 
 ### Hestia-Athena 🧭

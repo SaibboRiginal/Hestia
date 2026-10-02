@@ -168,3 +168,57 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 - `GET /api/calendar/agenda` window starts at local midnight (today's past and all-day events included).
 - Provider syncs no longer overwrite the user's `nag_enabled` choice; a rescheduled event (new `start_at`) resets
   `last_notified_bucket` so it is reminded again.
+
+## Assistant agenda (Hestia's own calendar)
+
+A second calendar, owned by Chronos, where **Hestia and its modules plan their own work**. Stored in Archive
+`calendar_items` with `source=hestia` (+ `meta` JSON). It is **not** synced to Google/Outlook, never shown in
+`/api/calendar/agenda` (your agenda) and never nagged as a reminder — but you and every module can read it.
+
+### Item types
+
+| Type | Meaning | Example |
+|---|---|---|
+| `event` | informational / planned | "Forge: sviluppo X" (scheduled Claude task) |
+| `task` | one-off action executed at `start_at` (retried up to `CHRONOS_AGENDA_MAX_ATTEMPTS`, then `failed`) | a repair Argus/Hephaestus planned for tonight |
+| `job` | recurring action (RRULE) | "Scout: controlla le email ogni 30 min" |
+| `window` | recurring period in which something is allowed (RRULE + duration) | "Claude Pro: notti prima del reset" |
+
+Actions are `{service, method, path, body, query, timeout_seconds}` executed **through Hub** by the agenda worker
+(`CHRONOS_AGENDA_TICK_SECONDS`, 60). Recurring jobs fire only their latest due occurrence (no storm after downtime).
+Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`TZ`/Europe/Rome), DST-safe.
+
+### Rules are data
+
+- Modules **register defaults** with `POST /api/agenda/register {owner, rules:[{key, type, title, start_at, end_at,
+  recurrence, action, params}]}` — idempotent by `key`.
+- Anything the **user** edits (`by=user`) becomes `user_modified` and is never overwritten by its module;
+  a rule the user cancelled stays cancelled.
+- Modules ask `GET /api/agenda/windows/{key}` → `{exists, active, until, skipped_now, next_open, params}` instead of
+  hardcoding times. Missing key or Chronos down → the module uses its built-in fallback.
+- You (Telegram): "cosa hai in programma?", "sposta la finestra Claude a sabato notte", "salta stanotte",
+  "annulla quel task", "eseguilo ora".
+
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/agenda?days=7&owner=&type=&past_hours=` | Expanded occurrences (with `skipped`) |
+| GET | `/api/agenda/items` | Raw items (`include_cancelled`) |
+| POST | `/api/agenda/items` | Create (on demand) `{title, type, owner, start_at, end_at, recurrence, description, action, key, params, tz}` |
+| POST | `/api/agenda/register` | Module defaults (idempotent, user edits preserved) |
+| PATCH | `/api/agenda/items/{ref}` | Move/change (`start_at` keeps duration), pause (`status=paused`), `by` |
+| DELETE | `/api/agenda/items/{ref}` | Cancel |
+| POST | `/api/agenda/items/{ref}/skip` | Dismiss one occurrence (default: current/next); a one-off is cancelled |
+| POST | `/api/agenda/items/{ref}/unskip` | Restore an occurrence |
+| POST | `/api/agenda/items/{ref}/run` | Execute the action now |
+| GET | `/api/agenda/windows/{key}` | Window open now? |
+
+`ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi`,
+`agenda_assistente_sposta`, `agenda_assistente_salta`, `agenda_assistente_annulla`, `agenda_assistente_esegui`.
+
+### Current users
+
+- **Hephaestus Forge**: `forge.claude_nights` and `forge.claude_final` windows (Claude Pro budget) and an `event`
+  per scheduled Claude task (`forge.task.<id>`), removed when it starts or is rejected.
+- Next to migrate: Scout polling, Athena consolidation/skill curation, Metis training, Hecate calendar sync.

@@ -12,7 +12,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hermes | Core | No | No | Dispatches events/notifications |
 | Telegram | Interface | No | No | User-facing chat/file relay to Oracle |
 | Hecate | Core Gateway | No domain logic | Yes (Google/Outlook provider runtime) | Provider-facing gateway + connector runtime |
-| Chronos | Domain (Calendar) | Yes (calendar workflows) | No | Routes provider calendar calls to Hecate |
+| Chronos | Domain (Calendar) | Yes (calendar workflows + assistant agenda) | No | Routes provider calendar calls to Hecate; owns the assistant agenda |
 | Iris | Domain (Email) | Yes (email workflows) | No (gateway-mediated when needed) | Exposes email-domain APIs and commands |
 | Scout | Domain (Real Estate) | Yes (listing extraction/ranking) | No | Pulls domain email feed via Hecate connector path |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
@@ -126,6 +126,13 @@ flowchart LR
    - `claude` → Claude Code CLI inside Hephaestus.
 4. Forge commits, runs the touched services' tests, notifies the user via Hub → Hermes → Telegram.
 5. "approva sviluppo <id>" → merge (+ optional deploy, health check via Hub, auto rollback).
+
+### Assistant agenda flow (rules as data)
+1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.
+2. Windows: modules ask Chronos `GET /api/agenda/windows/{key}` before doing scheduled work (fallback if down).
+3. Jobs/tasks: the Chronos agenda worker fires their action via Hub at the due time.
+4. The user reads and edits the agenda from Telegram (move, pause, skip, cancel, run now); edits win over defaults.
+5. The agenda (`source=hestia`) is separate from the user's calendars and never sent as user reminders.
 
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Metis use `/api/llm/generate`, Forge uses `/api/llm/chat` — always via Hub.

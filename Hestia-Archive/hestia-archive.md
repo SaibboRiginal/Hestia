@@ -62,6 +62,8 @@ It stores and serves all persistent state through generic APIs.
   Response no longer echoes the embedding.
 - `POST /api/entities/search`: numeric filters (`filters_gt/lt`) evaluated over a wider window (was LIMIT 100 before
   filtering) and parsed leniently (`"350.000 €"`); unparsable values exclude the row instead of failing the search.
+- `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda
+  metadata (type, owner, action, skips, rules). Upserts without `meta` keep the stored value.
 - New `GET /api/chat/sessions?since=` → `{sessions: [...]}` distinct session ids (Athena consolidator).
 - Session summaries for Athena skills are stored as entities with `domain=session_summary`.
 - Startup waits for Postgres (`ARCHIVE_DB_WAIT_SECONDS`, 0 = forever) and re-registers on Hub every
