@@ -1,8 +1,15 @@
 import math
 import re
+import threading
+import time
 from typing import Optional
 
 import requests
+
+# Nominatim usage policy: max 1 request/second per application (bans otherwise).
+_NOMINATIM_MIN_INTERVAL = 1.1
+_nominatim_lock = threading.Lock()
+_nominatim_last = [0.0]
 
 
 class GeocodingService:
@@ -20,6 +27,11 @@ class GeocodingService:
         if normalized in self._cache:
             return self._cache[normalized]
 
+        with _nominatim_lock:
+            wait = _NOMINATIM_MIN_INTERVAL - (time.monotonic() - _nominatim_last[0])
+            if wait > 0:
+                time.sleep(wait)
+            _nominatim_last[0] = time.monotonic()
         try:
             response = requests.get(
                 "https://nominatim.openstreetmap.org/search",
