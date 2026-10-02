@@ -32,7 +32,7 @@ import requests
 
 from . import git_ops
 from .agent_tools import run_test_command
-from .config import ForgeConfig
+from .config import ForgeConfig, normalize_engine
 from .engines import build_engines, select_engine, wait_seconds
 from .prompts import build_task_prompt
 
@@ -72,7 +72,9 @@ class Forge:
         self._tasks: dict[str, dict[str, Any]] = {}
         self._queue: "queue.Queue[str]" = queue.Queue()
         self._worker: threading.Thread | None = None
+        self._default_engine = cfg.engine
         self._load()
+        self._load_settings()
 
     # ── persistence ─────────────────────────────────────────────────────────
     def _load(self) -> None:
@@ -82,6 +84,35 @@ class Forge:
                 self._tasks = {t["id"]: t for t in data.get("tasks", []) if isinstance(t, dict) and t.get("id")}
         except Exception as exc:
             logger.warning("[🔄] event=forge_state_load_failed path=%s error=%s", self.cfg.state_file, exc)
+
+    def _load_settings(self) -> None:
+        try:
+            if self.cfg.settings_file.exists():
+                data = json.loads(self.cfg.settings_file.read_text(encoding="utf-8") or "{}")
+                engine = normalize_engine(data.get("default_engine", ""))
+                if engine in self.engines:
+                    self._default_engine = engine
+        except Exception as exc:
+            logger.warning("[🔄] event=forge_settings_load_failed error=%s", exc)
+
+    @property
+    def default_engine(self) -> str:
+        return self._default_engine
+
+    def set_default_engine(self, engine: str) -> dict[str, Any]:
+        """Switch the default engine at runtime (persisted, survives restarts)."""
+        name = normalize_engine(engine)
+        if name not in self.engines:
+            raise ForgeError(f"Unknown engine '{engine}'. Use: {', '.join(self.engines)}")
+        ok, reason = self.engines[name].available()
+        self._default_engine = name
+        try:
+            self.cfg.settings_file.parent.mkdir(parents=True, exist_ok=True)
+            self.cfg.settings_file.write_text(json.dumps({"default_engine": name}), encoding="utf-8")
+        except Exception as exc:
+            logger.warning("[🔄] event=forge_settings_save_failed error=%s", exc)
+        logger.info("event=forge_default_engine_set engine=%s available=%s", name, ok)
+        return {"default_engine": name, "available": ok, "detail": reason}
 
     def _save(self) -> None:
         with self._lock:
@@ -117,7 +148,7 @@ class Forge:
                     self._queue.put(task["id"])
         self._worker = threading.Thread(target=self._work_loop, daemon=True, name="forge-worker")
         self._worker.start()
-        logger.info("event=forge_started repo=%s engine=%s", self.cfg.repo_path, self.cfg.engine)
+        logger.info("event=forge_started repo=%s default_engine=%s", self.cfg.repo_path, self._default_engine)
 
     def _work_loop(self) -> None:
         while True:
@@ -148,7 +179,8 @@ class Forge:
             "repo_path": str(self.cfg.repo_path),
             "repo_ok": repo_ok,
             "base_branch": self._base_branch() if repo_ok else None,
-            "engine_default": self.cfg.engine,
+            "engine_default": self._default_engine,
+            "engine_fallback": self.cfg.fallback,
             "engines": engines,
             "auto_merge": self.cfg.auto_merge,
             "deploy_enabled": bool(self.cfg.deploy_cmd),
@@ -189,7 +221,7 @@ class Forge:
             "id": task_id,
             "request": request[:4000],
             "services": [s.strip().lower() for s in (services or []) if str(s).strip()],
-            "engine_requested": (engine or self.cfg.engine).lower(),
+            "engine_requested": normalize_engine(engine) or "auto",
             "source": source,
             "requested_by": requested_by,
             "context": str(context or "")[:4000],
@@ -279,7 +311,8 @@ class Forge:
 
     def _run_task(self, task: dict) -> None:
         repo = self.cfg.repo_path
-        engine, reason = select_engine(self.engines, task.get("engine_requested", "auto"))
+        engine, reason = select_engine(self.engines, task.get("engine_requested", "auto"),
+                                       self._default_engine, self.cfg.fallback)
         if engine is None:
             task["error"] = reason
             self._set_state(task, "failed", reason)

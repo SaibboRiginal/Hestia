@@ -19,16 +19,45 @@ def _int(name: str, default: int) -> int:
 
 
 @dataclass(frozen=True)
+class LLMProfile:
+    """One OpenAI-compatible endpoint (Ollama, OpenRouter, Gemini, LM Studio...)."""
+    base_url: str
+    model: str
+    api_key: str
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.base_url and self.model)
+
+
+def _profile(prefix: str, base_url: str, model: str, api_key: str) -> LLMProfile:
+    return LLMProfile(
+        base_url=os.getenv(f"{prefix}_BASE_URL", base_url).rstrip("/"),
+        model=os.getenv(f"{prefix}_MODEL", model),
+        api_key=os.getenv(f"{prefix}_API_KEY", api_key),
+    )
+
+
+ENGINE_ALIASES = {"builtin": "local", "ollama": "local", "claude_code": "claude"}
+
+
+def normalize_engine(name: str) -> str:
+    name = str(name or "").strip().lower()
+    return ENGINE_ALIASES.get(name, name)
+
+
+@dataclass(frozen=True)
 class ForgeConfig:
     enabled: bool
     repo_path: Path
     worktrees_path: Path
     state_file: Path
     base_branch: str
-    engine: str
-    llm_base_url: str
-    llm_model: str
-    llm_api_key: str
+    engine: str                 # default engine: local | cloud | claude | aider
+    fallback: list[str]         # tried in order when the chosen engine is unavailable
+    settings_file: Path         # runtime default-engine override (set from Telegram)
+    local: LLMProfile
+    cloud: LLMProfile
     max_turns: int
     engine_timeout_seconds: int
     test_cmd: str
@@ -55,10 +84,16 @@ def load_forge_config() -> ForgeConfig:
         worktrees_path=Path(os.getenv("HEPHAESTUS_WORKTREES_PATH", str(data_dir / "forge" / "worktrees"))),
         state_file=Path(os.getenv("HEPHAESTUS_FORGE_STATE_FILE", str(data_dir / "forge" / "tasks.json"))),
         base_branch=os.getenv("HEPHAESTUS_FORGE_BASE_BRANCH", "").strip(),
-        engine=os.getenv("HEPHAESTUS_FORGE_ENGINE", "auto").strip().lower() or "auto",
-        llm_base_url=os.getenv("HEPHAESTUS_FORGE_LLM_BASE_URL", "http://host.docker.internal:11434/v1").rstrip("/"),
-        llm_model=os.getenv("HEPHAESTUS_FORGE_LLM_MODEL", "qwen2.5-coder:14b"),
-        llm_api_key=os.getenv("HEPHAESTUS_FORGE_LLM_API_KEY", "ollama"),
+        engine=normalize_engine(os.getenv("HEPHAESTUS_FORGE_ENGINE", "local")) or "local",
+        fallback=[normalize_engine(e) for e in os.getenv(
+            "HEPHAESTUS_FORGE_FALLBACK", "local,cloud,claude").split(",") if e.strip()],
+        settings_file=Path(os.getenv("HEPHAESTUS_FORGE_SETTINGS_FILE", str(data_dir / "forge" / "settings.json"))),
+        # Legacy HEPHAESTUS_FORGE_LLM_* vars still feed the local profile.
+        local=_profile("HEPHAESTUS_FORGE_LOCAL",
+                       os.getenv("HEPHAESTUS_FORGE_LLM_BASE_URL", "http://host.docker.internal:11434/v1"),
+                       os.getenv("HEPHAESTUS_FORGE_LLM_MODEL", "qwen2.5-coder:14b"),
+                       os.getenv("HEPHAESTUS_FORGE_LLM_API_KEY", "ollama")),
+        cloud=_profile("HEPHAESTUS_FORGE_CLOUD", "", "", ""),
         max_turns=max(5, _int("HEPHAESTUS_FORGE_MAX_TURNS", 40)),
         engine_timeout_seconds=max(60, _int("HEPHAESTUS_FORGE_ENGINE_TIMEOUT_SECONDS", 1800)),
         test_cmd=os.getenv(
