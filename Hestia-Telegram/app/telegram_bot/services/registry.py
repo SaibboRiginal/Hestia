@@ -36,12 +36,19 @@ GROUP_ORDER: list[tuple[str, str, str]] = [
 def discover_commands_from_mcp() -> dict[str, dict[str, Any]]:
     """Fetch the full tool list from Hestia-MCP and convert to command format."""
     try:
-        response = requests.get(f"{core.resolve_mcp_url()}/tools/all", timeout=6)
+        # Via Hub route (Communication Policy): no direct MCP base URL.
+        response = requests.get(f"{core.HUB_API_URL}/route/mcp/tools/all",
+                                headers={"X-Hub-Timeout-Seconds": "10"}, timeout=12)
         if response.status_code != 200:
             logger.debug("event=mcp_command_discovery_non200 status=%s", response.status_code)
             return {}
+        routed = response.json() or {}
+        if int(routed.get("status_code", 500)) >= 400:
+            logger.debug("event=mcp_command_discovery_routed_error status=%s", routed.get("status_code"))
+            return {}
+        catalog = routed.get("payload") or {}
         discovered: dict[str, dict[str, Any]] = {}
-        for tool in response.json().get("tools", []) or []:
+        for tool in catalog.get("tools", []) or []:
             if not isinstance(tool, dict):
                 continue
             name = str(tool.get("name", "")).strip().lower()
