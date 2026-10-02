@@ -422,15 +422,23 @@ def trigger_fetch(command: FetchCommand):
         logger.info("event=fetched_items_task Fetched %d items | task=%s", len(
             raw_data), task_name)
 
+        failed = 0
         for item in raw_data:
-            vault.ship_record(
+            if not vault.ship_record(
                 payload=item,
                 domain=command.domain,
                 source=command.source,
                 reference_id=item.get("reference_id")
-            )
+            ):
+                failed += 1
 
-        # Only update memory if the whole batch shipped successfully
+        # Only advance the cursor if the whole batch shipped (Archive dedupes by
+        # reference_id, so the next run safely re-ships). The cursor used to
+        # advance even when ships failed: those mails were lost forever.
+        if failed:
+            logger.warning("[🔄] event=ingest_partial_ship task=%s failed=%d total=%d (cursor not advanced)",
+                           task_name, failed, len(raw_data))
+            return {"status": "partial", "fetched": len(raw_data), "failed": failed}
         memory.mark_as_run(task_name)
         return {"status": "success", "fetched": len(raw_data)}
 

@@ -16,7 +16,7 @@ from urllib.parse import urlparse, urlunparse
 from bs4 import BeautifulSoup
 
 from core.atlas_client import AtlasClient
-from evaluators.cloud_evaluator import CloudEvaluator
+from evaluators.oracle_evaluator import OracleEvaluator
 from tools.geocoding import GeocodingService
 from worker.sites.registry import SiteHandlerRegistry
 
@@ -104,11 +104,9 @@ DO NOT truncate or summarize. Include ALL details provided.
 """
 
 
-def get_extractor_brain() -> CloudEvaluator:
-    return CloudEvaluator(
-        system_prompt=_EXTRACTION_SYSTEM_PROMPT,
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
+def get_extractor_brain() -> OracleEvaluator:
+    # LLM access goes through Oracle (it owns provider keys); see oracle_evaluator.
+    return OracleEvaluator(system_prompt=_EXTRACTION_SYSTEM_PROMPT)
 
 
 # ─────────────────────────────────────────────────────────────────────

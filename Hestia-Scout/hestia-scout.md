@@ -54,14 +54,19 @@ Scout is also an event producer for proactive workflows: when entities are creat
 
 ---
 
-## Internal LLM Evaluator
+## LLM Extractor (via Oracle)
 
-Scout manages its own LLM connector independently from Oracle. This is intentional — batch entity extraction and conversational inference are separate concerns with different latency and cost profiles.
+Extraction calls Oracle `POST /api/llm/generate` through Hub (`evaluators/oracle_evaluator.py`): Oracle is the single
+owner of LLM provider keys. Scout picks the model explicitly so batch extraction keeps its own profile:
 
-- Switchable between cloud providers and local Ollama via env config.
-- Used only for structured extraction — not for conversation.
+| Variable | Default | Meaning |
+|---|---|---|
+| `SCOUT_LLM_PROVIDER` | `gemini` | Provider Oracle should use |
+| `SCOUT_LLM_MODELS` | `gemini-2.5-flash,gemini-2.5-flash-lite` | Tried in order; quota/429 → next model |
+| `SCOUT_LLM_TIMEOUT_SECONDS` | `120` | Per-call timeout |
 
----
+`GEMINI_API_KEY` now lives only in Oracle. (Previously Scout embedded its own Gemini client and key; the unused
+`OllamaEvaluator` was removed.)
 
 ## Data Model: `real_estate` Listing
 
