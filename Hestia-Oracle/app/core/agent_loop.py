@@ -566,18 +566,9 @@ def run_agent_loop(
                 with concurrent.futures.ThreadPoolExecutor(
                     max_workers=min(len(tool_calls_list), _MAX_PARALLEL_TOOLS)
                 ) as executor:
-                    _futures = {
-                        executor.submit(_exec_one, tc): tc["name"]
-                        for tc in tool_calls_list
-                    }
-                    _results_list = []
-                    for f in concurrent.futures.as_completed(_futures):
-                        _results_list.append(f.result())
-
-            # ── LangChain pattern: collect results in dict keyed by tool name
-            _results_dict: dict[str, dict] = {}
-            for r in _results_list:
-                _results_dict[r["name"]] = r
+                    # map() keeps call order, so the scratchpad lines match
+                    # the order the model asked for.
+                    _results_list = list(executor.map(_exec_one, tool_calls_list))
 
             # Emit thinking + scratchpad for each result
             for r in _results_list:
@@ -628,17 +619,9 @@ def run_agent_loop(
                     "turn": turn,
                 })
 
-            # ── LangChain pattern: also inject results as dict for LLM ─────
-            # The scratchpad has individual [tool] lines.  Add a compact
-            # dict summary so the LLM can reference results by tool name.
-            if len(_results_dict) > 1:
-                _compact_dict = json.dumps(
-                    {name: f"{'✅' if d['ok'] else '❌'} {_truncate_tool_result(str(d['result']))[:200]}"
-                     for name, d in _results_dict.items()},
-                    ensure_ascii=False, indent=2,
-                )
-                scratchpad.append(ScratchMessage(
-                    "tool", f"[RESULTS_DICT]\n{_compact_dict}"))
+            # (A RESULTS_DICT block used to repeat every result already in the
+            # scratchpad — pure context waste, and same-name calls overwrote
+            # each other. Removed.)
 
             _consecutive_no_tool = 0
             logger.trace("event=agent_loop_tool_done_continuing turn=%d "

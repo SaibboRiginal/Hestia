@@ -101,7 +101,13 @@ class HubClient:
             timeout=timeout + 1,
         )
         resp.raise_for_status()
-        return resp.json() or {}
+        routed = resp.json() or {}
+        # Hub answers 200 even when Archive rejects the write (422/500 inside
+        # the envelope): surface it so callers' except/log paths fire instead
+        # of silently believing history/memory was saved.
+        if int(routed.get("status_code", 200)) >= 400:
+            raise RuntimeError(f"Archive {endpoint} -> {routed.get('status_code')}: {str(routed.get('payload'))[:200]}")
+        return routed
 
     def delete(self, endpoint: str, timeout: int = 6, headers: dict | None = None):
         """Route a DELETE request to Archive via Hub. Raises on HTTP or Archive error."""
