@@ -1253,15 +1253,22 @@ class OracleEngine:
         # Only for domain_query paths where tools were called (Hermes Agent
         # pattern: skills created from complex multi-step sessions).
         if tool_log and len(tool_log) >= 2:
-            self._write_session_summary(
-                session_id=session_id,
-                user_message=user_message,
-                tool_log=tool_log,
-                domain=intent.valid_domains[0] if intent.valid_domains else "general",
-                success=True,
-                turn_count=len(tool_log),
-                total_ms=total_ms,
-            )
+            # Background: embedding + Archive write must not hold the stream open
+            # (and must not be lost if the client disconnects after "final").
+            threading.Thread(
+                target=self._write_session_summary,
+                kwargs={
+                    "session_id": session_id,
+                    "user_message": user_message,
+                    "tool_log": list(tool_log),
+                    "domain": intent.valid_domains[0] if intent.valid_domains else "general",
+                    "success": True,
+                    "turn_count": len(tool_log),
+                    "total_ms": total_ms,
+                },
+                daemon=True,
+                name="session-summary",
+            ).start()
 
         # Background memory extraction (always async, never blocks the user)
         self._phase_background_memory(

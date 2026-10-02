@@ -221,3 +221,12 @@ Timeout per call: `ORACLE_LLM_CHAT_TIMEOUT_SEC` (600). Used by Hephaestus Forge 
 - Removed dead prompts never referenced by code: `router_system`, `scribe_system`, `quick_chat_template`,
   `action_selector_template`, `action_intent_detector_template`, `arg_picker_scope_selector_template`.
 - Classifier routes self-development requests ("aggiungi una funzione", "approva sviluppo", "usa il cloud") to `domain=system`.
+
+## REST mirrors of MCP tools
+
+`POST /api/memory {fact, domain}`, `GET /api/memory?query=`, `GET /api/documents/search?query=` — the MCP tool
+descriptors declared these paths but Oracle did not serve them, so Hub/Telegram/MCP-gateway calls got 404.
+
+Other fixes: session summaries written in a background thread to `POST /api/entities` (domain `session_summary`);
+`HubClient.post` raises when Archive rejects a write inside the Hub envelope (was silently "successful");
+agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps parallel tool results in call order.

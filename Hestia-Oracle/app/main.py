@@ -707,6 +707,36 @@ def export_feedback_jsonl_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── REST mirrors of Oracle MCP tools (declared paths must exist: Hub
+#    discovery, Telegram and the MCP gateway call them via method/path) ──
+
+class MemorySaveRequest(BaseModel):
+    fact: str
+    domain: str = "general"
+
+
+@app.post("/api/memory")
+def memory_save_endpoint(req: MemorySaveRequest):
+    ok, detail = engine._memory_service.save_memory(fact=req.fact, domain=req.domain)
+    if not ok:
+        raise HTTPException(status_code=502, detail=str(detail))
+    return {"status": "saved", "detail": detail}
+
+
+@app.get("/api/memory")
+def memory_search_endpoint(query: str = ""):
+    ok, rows = engine._memory_service.search_memories(query=query)
+    if not ok:
+        raise HTTPException(status_code=502, detail="memory search failed")
+    return {"count": len(rows), "memories": rows}
+
+
+@app.get("/api/documents/search")
+def documents_search_endpoint(query: str):
+    chunks = engine._doc_rag.search_relevant_chunks(query, None, None) or []
+    return {"count": len(chunks), "chunks": chunks}
+
+
 @app.get("/api/llm/profiles")
 def llm_profiles_endpoint(check: bool = True):
     """LLM profiles Oracle can serve (no secrets).  Used by Forge."""
