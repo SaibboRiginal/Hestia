@@ -51,7 +51,12 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `GET` | `/health` | Service health |
 | `GET` | `/api/logs` | Filterable log buffer |
 | `POST` | `/mcp` | MCP JSON-RPC endpoint (tools/list, tools/call) |
+| `POST` | `/api/metis/dataset/build` · `/benchmark/run` · `/lora/train` | REST mirrors of the MCP tools (auto-mounted by `mount_missing_rest_routes`; were 404 via Hub/Telegram) |
+| `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: `METIS_GOOD_QUALITY_LABELS` (default `excellent,good`) |
+
+Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archive in the Hub envelope query
+(they were appended to the URL and dropped).
 
 ## Constraints
 

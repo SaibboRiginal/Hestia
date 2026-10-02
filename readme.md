@@ -358,6 +358,15 @@ This creates:
 - `Dockerfile`, `docker-compose.yml`, `requirements.txt`
 - `.env` prefilled with standardized `SERVICE_TYPE`, `SERVICE_TAGS`, and Hub URL
 
+## Known Gaps (honest status)
+
+- Hephaestus *remediation* (`/api/hephaestus/remediate*`): rollback is metadata-only (no real revert); real code
+  changes go through **Forge**, which has true git branches, merge and revert.
+- Metis `benchmark_run` is a placeholder and LoRA training needs an external script (`Hestia-Metis/TODO.md`).
+- Iris threads are grouped by normalized subject (IMAP has no universal thread id).
+- Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
+- Hub registry is in memory: services re-register every `HUB_KEEPALIVE_SECONDS` (60s) after a Hub restart.
+
 ## Dependency and Flow Map
 
 See `architecture-and-flow-map.md` for a concise dependency graph and end-to-end data flow map.

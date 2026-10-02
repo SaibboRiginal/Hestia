@@ -88,12 +88,20 @@ class HubClient:
     # ── Private helpers ────────────────────────────────────────────────────
 
     def _route_get(self, path: str) -> Any:
-        """GET via Hub routing envelope."""
-        route_url = f"{self._base}/route/{path.lstrip('/')}"
+        """GET via Hub routing envelope.
+
+        The query string must travel in the envelope's ``query``: Hub forwards
+        only that, so filters appended to the URL (limit, quality_label, since)
+        were silently dropped.
+        """
+        from urllib.parse import parse_qsl
+
+        clean, _, qs = path.lstrip("/").partition("?")
+        route_url = f"{self._base}/route/{clean}"
         envelope = {
             "method": "GET",
             "headers": {},
-            "query": {},
+            "query": dict(parse_qsl(qs)),
             "body": None,
             "timeout_seconds": _DEFAULT_TIMEOUT,
         }
