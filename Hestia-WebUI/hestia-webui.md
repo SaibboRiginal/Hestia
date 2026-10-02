@@ -60,15 +60,32 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/commands` | Discover commands |
 | POST | `/api/webui/commands/execute` | Execute command |
 | POST | `/api/webui/feedback` | Submit feedback |
-| POST | `/api/webui/chat/document` | Upload file (base64 inline via Hub → Oracle) |
+| POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
 | GET | `/api/webui/documents` | List documents |
 | DELETE | `/api/webui/documents/{id}` | Delete document |
 | GET | `/health` | Health check |
+| POST | `/api/webui/admin/generate-token` · `revoke-token` · GET `token-status` · GET/POST `public-url` | Admin (Telegram / tunnel script). **Guarded**: `X-WebUI-Admin-Secret` = `WEBUI_ADMIN_SECRET` when set, else only direct loopback/private-network calls not coming through Cloudflare/proxy |
+
+### Chat features
+
+- **Oracle questions**: `question` frames (free_text / single_choice / multi_choice / confirm, options as strings or
+  `{label, value}`) render as a card above the input; the answer goes back via SignalR `question_answer`.
+  `needs_input` frames show the missing fields.
+- **Stop / answers during a stream**: SignalR `MaximumParallelInvocationsPerClient = 4` (default 1 queued `cancel`
+  and question answers behind the running stream).
+- **Upload**: 📎 next to the input (text in the box = instructions for the file).
+- **Feedback** 👍/👎 sends `interaction_id` + the prompt/answer pair (`payload.instruction/output`, used by Metis);
+  🔄 regenerates the last answer.
+- **Command palette**: arguments from the command's `arguments_schema`; `oracle_natural` results are formatted by
+  Oracle `/api/format` (like Telegram) and appear in the chat.
+- **Settings**: tone / custom prompt become Oracle client instructions; *thinking display* is UI-only
+  (hidden = no reasoning box, compact = collapsed, detailed = expanded).
 
 ## Known Constraints
 
-- **Document uploads** are sent as base64 data URIs through Hub routing (not multipart). Hub's routing layer
-  does not support multipart streaming, so this is the same approach Telegram uses for file relay.
+- **Document uploads** travel as base64 JSON through Hub (Hub envelopes cannot carry multipart) to Oracle's
+  `/api/chat/document/json`, the JSON twin of `/api/chat/document` (a `document` field on `/api/chat` was ignored).
+- `HubClient` raises when the routed `status_code` ≥ 400 (target errors used to look like success).
 - **OracleStreamService** is transient (managed by `IHttpClientFactory`), not singleton. This means the
   `_oracleReady` flag resets per-resolution but `IsReady` is not critical for the streaming path.
 - **NDJSON streaming** depends on Hub correctly adding `\n` delimiters between lines. The `iter_lines()`
@@ -78,7 +95,10 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 
 All documented in `docker-compose.yml`. Key vars:
 - `Hestia__HubApiUrl` — Hub endpoint
-- `WebUI__SecretKey` — Token signing key (auto-generated)
+- `WebUI__SecretKey` — Token signing key (auto-generated; an empty value no longer replaces the random key)
+- `WEBUI_ADMIN_SECRET` — optional shared secret for the admin API (set the same value for `telegram`; the tunnel
+  script reads it from the environment)
+- `WEBUI_PUBLIC_HOST_SUFFIXES` — hosts accepted for public-URL auto-detection (default `.trycloudflare.com`)
 - `WebUI__TokenLifetimeHours` — Token expiry (default 72h)
 
 ## Local Development (Windows host, outside Docker)
@@ -101,5 +121,13 @@ Built Angular app served as static files from `wwwroot/`.
 - Single-user, single-active-token policy
 - Token: 256-bit random, validated constant-time
 - CSP, X-Frame-Options, XSS protection on all responses
+- Public URL: set explicitly by `cloudflare-tunnel.bat` (wins); Host-header auto-detection only for real
+  Cloudflare traffic (`Cf-Connecting-Ip`) on allowed suffixes — an arbitrary Host could redirect the login
+  link (and the token) to another domain
+- Admin API guarded (see Endpoints); Telegram mints tokens only through it (no local fallback, no token in Archive memory)
 - Rate limiting TBD
+- ⚠️ `Services/TokenManager.cs` and `Middleware/TokenAuthMiddleware.cs` were hidden by the old `token*` gitignore
+  rule: commit them (`git add Hestia-WebUI/app/Services/TokenManager.cs Hestia-WebUI/app/Middleware/TokenAuthMiddleware.cs`).
+  The middleware must let through `/`, static assets, `/health`, `/hubs/chat` (token in query), `/api/webui/auth/login`
+  and `/api/webui/admin/*` (guarded by `AdminGuard`). TokenManager should persist a hash, not the clear token
 - All requests proxied through backend gateway

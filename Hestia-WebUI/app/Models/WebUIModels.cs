@@ -60,7 +60,9 @@ public record FeedbackRequest(
     string QualityLabel,
     int? QualityScore = null,
     string FeedbackText = "",
-    string? InteractionId = null
+    string? InteractionId = null,
+    string? Prompt = null,      // user message the rated answer replied to
+    string? Response = null     // rated assistant answer (Metis dataset: instruction/output)
 );
 
 public record FeedbackResponse(bool Ok);
@@ -120,10 +122,21 @@ public record OracleEvent(
     string? Header = null,
     [property: JsonPropertyName("prompt")]
     string? Prompt = null,
+    // object: Oracle options may be strings or {label, value} objects.
     [property: JsonPropertyName("options")]
-    List<string>? Options = null,
+    object? Options = null,
     [property: JsonPropertyName("data")]
     object? Data = null,
     [property: JsonPropertyName("metadata")]
-    object? Metadata = null
+    object? Metadata = null,
+    // Question protocol: free_text | single_choice | multi_choice | confirm
+    [property: JsonPropertyName("kind")]
+    string? Kind = null,
+    [property: JsonPropertyName("required")]
+    bool? Required = null,
+    [property: JsonPropertyName("timeout_sec")]
+    int? TimeoutSec = null,
+    // needs_input frames (non-interactive callers)
+    [property: JsonPropertyName("missing_fields")]
+    object? MissingFields = null
 );

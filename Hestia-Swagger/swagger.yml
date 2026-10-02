@@ -3006,6 +3006,35 @@ paths:
             - `{"type":"signal","event":"memory.preference.*|subscription.*|action.*|tool.summary","content":"...","data":{...}}` — side-channel event
             - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive prompt
 
+  /api/chat/document/json:
+    post:
+      tags: [Oracle]
+      summary: Document analysis with a JSON (base64) body — Hub-friendly twin of /api/chat/document
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: {type: string}
+                session_id: {type: string}
+                notify_target: {type: string}
+                client_instructions: {type: string}
+                filename: {type: string}
+                mime_type: {type: string}
+                content_base64: {type: string, description: "file bytes, base64"}
+                data_uri: {type: string, description: "alternative: data:<mime>;base64,..."}
+      responses:
+        "200":
+          description: NDJSON stream (same frames as /api/chat/document)
+        "400":
+          description: invalid or empty base64
+        "415":
+          description: unsupported file type
+
   /api/chat/document:
     post:
       tags: [Oracle]

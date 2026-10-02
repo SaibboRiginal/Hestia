@@ -28,7 +28,8 @@ public class HestiaOptions
     public string ServiceName { get; set; } = "webui";
     public string ServiceBaseUrl { get; set; } = "http://hestia_webui:19015";
     public string ServiceVersion { get; set; } = "1.0.0";
-    public string ServiceType { get; set; } = "interface";
-    public string ServiceTags { get; set; } = "interface,web";
-    public string ServiceTopologyTags { get; set; } = "layer:client,domain:ui,status:new";
+    // Values must pass the Hub registry schema (same as docker-compose.global.yml).
+    public string ServiceType { get; set; } = "integration";
+    public string ServiceTags { get; set; } = "integration,messaging,chat";
+    public string ServiceTopologyTags { get; set; } = "layer:client,domain:ui,status:stable";
 }

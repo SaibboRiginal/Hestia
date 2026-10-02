@@ -61,7 +61,31 @@ public class CommandsController : ControllerBase
                 _ => throw new InvalidOperationException($"unsupported: {method}")
             };
 
-            return Ok(new { ok = true, result });
+            // oracle_natural commands: Oracle turns the raw payload into readable text
+            // (same /api/format path Telegram uses).
+            string? text = null;
+            var responseMode = cmd.Value.TryGetProperty("response_mode", out var rm) ? rm.GetString() : "";
+            if (responseMode == "oracle_natural")
+            {
+                try
+                {
+                    var prompt = cmd.Value.TryGetProperty("response_prompt", out var rp) ? rp.GetString() : null;
+                    var formatted = await _hubClient.RoutePostAsync("oracle", "/api/format", new
+                    {
+                        command = commandName,
+                        payload = result,
+                        response_prompt = prompt,
+                        client_instructions = _sessionManager.BuildClientInstructions(),
+                    }, timeoutSeconds: 60);
+                    if (formatted.TryGetProperty("text", out var t)) text = t.GetString();
+                }
+                catch (Exception fex)
+                {
+                    _logger.LogWarning(fex, "event=webui_command_format_failed cmd={Cmd}", commandName);
+                }
+            }
+
+            return Ok(new { ok = true, result, text });
         }
         catch (Exception ex)
         {
@@ -72,7 +96,12 @@ public class CommandsController : ControllerBase
 
     private static string ResolveTemplate(string t, Dictionary<string, object> args)
     {
-        foreach (var (k, v) in args) t = t.Replace($"$arg.{k}", v?.ToString() ?? "");
+        // Hub command paths use {name} or $name placeholders (legacy: $arg.name).
+        foreach (var (k, v) in args)
+        {
+            var val = Uri.EscapeDataString(v?.ToString() ?? "");
+            t = t.Replace($"$arg.{k}", val).Replace($"{{{k}}}", val).Replace($"${k}", val);
+        }
         return t;
     }
 }

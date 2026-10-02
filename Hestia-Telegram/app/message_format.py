@@ -93,6 +93,11 @@ class _TelegramHTMLSanitizer(HTMLParser):
         return "".join(self._parts)
 
 
+# "•item" is a bullet even without a space (prompts ask for • directly); "-"/"*"
+# need a space, otherwise "**Nota**" or "-5°C" were split off and reordered.
+_BULLET_RE = r"^(?:[-*]\s+|•\s*)"
+
+
 def normalize_telegram_html(text: str) -> str:
     """Return HTML that is safe for Telegram parse_mode=HTML."""
     raw = str(text or "")
@@ -368,7 +373,7 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
         if not links:
             # Split bullet lists into individual messages
             _lines = [l.strip() for l in paragraph.splitlines() if l.strip()]
-            _bullet_lines = [l for l in _lines if re.match(r"^[-*•]\s*", l)]
+            _bullet_lines = [l for l in _lines if re.match(_BULLET_RE, l)]
             if _bullet_lines:
                 _non_bullets = [l for l in _lines if l not in _bullet_lines]
                 if _non_bullets:
@@ -387,7 +392,7 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
 
         lines = [line.strip()
                  for line in paragraph.splitlines() if line.strip()]
-        bullet_lines = [line for line in lines if re.match(r"^[-*•]\s*", line)]
+        bullet_lines = [line for line in lines if re.match(_BULLET_RE, line)]
         bullet_lines_with_links = [
             line for line in bullet_lines if link_pattern.search(line)
         ]

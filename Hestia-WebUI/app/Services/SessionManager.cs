@@ -107,13 +107,21 @@ public class SessionManager
 
     public string BuildClientInstructions(string userId = WebUIUserId)
     {
+        // Only settings that change the answer go to Oracle (thinking_display is a
+        // pure UI choice, and raw "key: value" lines were noise in the prompt).
         var parts = new List<string> { _baseInstructions };
         var settings = GetSettings(userId);
-        foreach (var (key, value) in settings)
+        var tone = settings.GetValueOrDefault("tone", "neutral");
+        var toneLine = tone switch
         {
-            if (!string.IsNullOrWhiteSpace(value))
-                parts.Add($"{key}: {value}");
-        }
-        return string.Join("\n", parts);
+            "warm" => "Tono: caldo e amichevole.",
+            "direct" => "Tono: diretto, essenziale, niente preamboli.",
+            "formal" => "Tono: formale e professionale.",
+            _ => "",
+        };
+        if (toneLine.Length > 0) parts.Add(toneLine);
+        var custom = settings.GetValueOrDefault("custom_prompt", "");
+        if (!string.IsNullOrWhiteSpace(custom)) parts.Add($"Istruzioni dell'utente: {custom.Trim()}");
+        return string.Join("\n", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
     }
 }

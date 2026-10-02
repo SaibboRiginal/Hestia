@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SignalRService } from './signalr.service';
-import { ChatMessage, ThinkingStep, ServerEvent } from '../models/chat.models';
+import { ChatMessage, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
@@ -9,6 +9,7 @@ export class ChatService {
   messages = signal<ChatMessage[]>([]);
   isStreaming = signal(false);
   currentStreamingId = signal<string | null>(null);
+  pendingQuestion = signal<PendingQuestion | null>(null);
 
   private thinkingBuffer: ThinkingStep[] = [];
   private stepCounter = 0;
@@ -44,25 +45,98 @@ export class ChatService {
     };
     this.messages.update(msgs => [...msgs, assistantMsg]);
 
-    await this.signalR.send({
-      type: 'chat',
-      message: text,
-      session_id: sessionId,
-      mode,
-      model
-    });
+    try {
+      await this.signalR.send({
+        type: 'chat',
+        message: text,
+        session_id: sessionId,
+        mode,
+        model
+      });
+    } catch (err: any) {
+      // Do not leave the placeholder "streaming" forever.
+      this.messages.update(msgs => msgs.map(m => m.id === streamId
+        ? { ...m, isStreaming: false, content: `⚠️ ${err?.message || 'Invio non riuscito'}` } : m));
+      this.currentStreamingId.set(null);
+      this.isStreaming.set(false);
+    }
+  }
+
+  /** Upload a file for analysis: POST /api/webui/chat/document, NDJSON streamed back. */
+  async sendDocument(file: File, text: string, sessionId: string): Promise<void> {
+    if (this.isStreaming()) return;
+    this.isStreaming.set(true);
+    this.thinkingBuffer = [];
+    this.stepCounter = 0;
+    const streamId = crypto.randomUUID();
+    this.currentStreamingId.set(streamId);
+    this.messages.update(msgs => [...msgs,
+      { id: crypto.randomUUID(), role: 'user', content: `📎 ${file.name}${text ? ' — ' + text : ''}`, timestamp: new Date() },
+      { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
+
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (text) form.append('message', text);
+    if (sessionId) form.append('sessionId', sessionId);
+    try {
+      const resp = await fetch('/api/webui/chat/document', {
+        method: 'POST',
+        headers: { 'X-Access-Token': localStorage.getItem('hestia_token') || '' },
+        body: form,
+      });
+      if (!resp.ok || !resp.body) {
+        const detail = await resp.text().catch(() => '');
+        throw new Error(`Upload non riuscito (${resp.status}) ${detail.slice(0, 200)}`);
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          try { this.handleEvent(JSON.parse(line) as ServerEvent); } catch { /* skip bad line */ }
+        }
+      }
+      if (this.currentStreamingId() === streamId) this.finalizeStreaming(streamId, null);
+    } catch (err: any) {
+      this.finalizeStreaming(streamId, `⚠️ ${err?.message || 'Upload non riuscito'}`);
+    }
   }
 
   cancelStream(): void {
-    this.signalR.send({ type: 'cancel' });
+    this.signalR.send({ type: 'cancel' }).catch(() => {});
   }
 
   retry(): void {
-    this.signalR.send({ type: 'retry' });
+    if (this.isStreaming()) return;
+    // New placeholder for the regenerated answer (events need a streaming target).
+    this.isStreaming.set(true);
+    this.thinkingBuffer = [];
+    this.stepCounter = 0;
+    const streamId = crypto.randomUUID();
+    this.currentStreamingId.set(streamId);
+    this.messages.update(msgs => [...msgs,
+      { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
+    this.signalR.send({ type: 'retry' }).catch((err: any) =>
+      this.finalizeStreaming(streamId, `⚠️ ${err?.message || 'Invio non riuscito'}`));
   }
 
   answerQuestion(questionId: string, answer: string): void {
-    this.signalR.send({ type: 'question_answer', question_id: questionId, answer });
+    this.signalR.send({ type: 'question_answer', question_id: questionId, answer }).catch(() => {});
+    if (this.pendingQuestion()?.questionId === questionId) this.pendingQuestion.set(null);
+  }
+
+  /** Show the result of a command (palette) in the conversation. */
+  addSystemReply(title: string, html: string): void {
+    this.messages.update(msgs => [...msgs,
+      { id: crypto.randomUUID(), role: 'user', content: `⚡ ${title}`, timestamp: new Date() },
+      { id: crypto.randomUUID(), role: 'assistant', content: html, timestamp: new Date() }]);
   }
 
   clearMessages(): void {
@@ -111,7 +185,27 @@ export class ChatService {
         break;
 
       case 'question':
-        // Questions handled by parent component
+        if (event.question_id) {
+          const opts = (event.options || []).map(o => typeof o === 'string'
+            ? { label: o, value: o }
+            : { label: String(o.label ?? o.value ?? ''), value: String(o.value ?? o.label ?? '') });
+          this.pendingQuestion.set({
+            questionId: event.question_id,
+            header: event.header || 'Domanda',
+            prompt: event.prompt || '',
+            kind: event.kind || (opts.length ? 'single_choice' : 'free_text'),
+            options: event.kind === 'confirm' && !opts.length
+              ? [{ label: 'Sì', value: 'yes' }, { label: 'No', value: 'no' }] : opts,
+            required: event.required !== false,
+            expiresAt: event.timeout_sec ? Date.now() + event.timeout_sec * 1000 : undefined,
+          });
+        }
+        break;
+
+      case 'needs_input':
+        if (streamId && event.missing_fields?.length) {
+          this.appendToStreaming(streamId, `\n<i>Servono altri dati: ${event.missing_fields.join(', ')}</i>`);
+        }
         break;
     }
   }
@@ -165,6 +259,7 @@ export class ChatService {
     if (this.currentStreamingId() === streamId) {
       this.currentStreamingId.set(null);
       this.isStreaming.set(false);
+      this.pendingQuestion.set(null);
     }
   }
 }

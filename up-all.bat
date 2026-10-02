@@ -4,7 +4,7 @@ setlocal
 docker network inspect hestia_net >nul 2>&1
 if errorlevel 1 (
     echo [Hestia] Creating shared Docker network: hestia_net
-    docker network create hestia_net >/dev/null
+    docker network create hestia_net >nul
 )
 
 if "%~1"=="--build" goto :build

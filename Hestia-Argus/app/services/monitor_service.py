@@ -242,7 +242,10 @@ def _check_provider_auth() -> None:
         # 3) Emit action_required events for configured-but-inactive providers
         providers = data.get("providers") or []
         runtime = data.get("runtime") or {}
-        active = runtime.get("active") or []
+        # Provider names differ between the env list and the runtime registry
+        # ("microsoft" vs "outlook"): normalize, or Outlook is "broken" forever.
+        _aliases = {"microsoft": "outlook", "outlook": "outlook", "google": "google"}
+        active = {_aliases.get(str(a).lower(), str(a).lower()) for a in (runtime.get("active") or [])}
         for p in providers:
             if not isinstance(p, dict):
                 continue
@@ -250,41 +253,46 @@ def _check_provider_auth() -> None:
             configured = bool(p.get("configured", False))
             if not configured or not p_name:
                 continue
-            if p_name in active:
+            if _aliases.get(p_name.lower(), p_name.lower()) in active:
                 continue  # Already active
 
             _ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H")
-            _req.post(
-                f"{hub_client.HUB_API_URL}/route/hermes/api/events/ingest",
-                json={
-                    "method": "POST",
-                    "headers": {},
-                    "query": {},
-                    "body": {
-                        "event_type": "service.action_required",
-                        "domain": "system",
-                        "entity_id": f"argus-auth-{svc_name}-{p_name}-{_ts}",
-                        "payload": {
-                            "action": f"reauth_{p_name}",
-                            "_message": (
-                                f"⚠️ <b>{p_name.title()}</b> su "
-                                f"<b>{svc_name.title()}</b> richiede "
-                                "riautenticazione. Usa il pulsante qui sotto."
-                            ),
-                            "_actions": [
-                                {
-                                    "text": f"🔑 Riautentica {p_name.title()}",
-                                    "command": f"gateway_auth_initiate_{p_name}",
-                                }
-                            ],
-                            "service": svc_name,
-                            "source": "argus.provider_auth_check",
+            try:
+                _req.post(
+                    f"{hub_client.HUB_API_URL}/route/hermes/api/events/ingest",
+                    json={
+                        "method": "POST",
+                        "headers": {},
+                        "query": {},
+                        "body": {
+                            "event_type": "service.action_required",
+                            "domain": "system",
+                            "entity_id": f"argus-auth-{svc_name}-{p_name}-{_ts}",
+                            "payload": {
+                                "action": f"reauth_{p_name}",
+                                "_message": (
+                                    f"⚠️ <b>{p_name.title()}</b> su "
+                                    f"<b>{svc_name.title()}</b> richiede "
+                                    "riautenticazione. Usa il pulsante qui sotto."
+                                ),
+                                "_actions": [
+                                    {
+                                        "text": f"🔑 Riautentica {p_name.title()}",
+                                        "command": f"gateway_auth_initiate_{p_name}",
+                                    }
+                                ],
+                                "service": svc_name,
+                                "source": "argus.provider_auth_check",
+                            },
                         },
+                        "timeout_seconds": 8,
                     },
-                    "timeout_seconds": 8,
-                },
-                timeout=10,
-            )
+                    timeout=10,
+                )
+            except Exception as exc:  # Hermes/Hub down must not abort the monitor cycle
+                logger.warning("[🔄] event=argus_provider_auth_event_failed service=%s provider=%s error=%s",
+                               svc_name, p_name, exc)
+                continue
             logger.info(
                 "event=argus_provider_auth_event_sent service=%s provider=%s",
                 svc_name, p_name)

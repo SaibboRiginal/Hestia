@@ -410,7 +410,7 @@ if _HAS_MCP:
                             "Use when the user wants to check for new house listings NOW.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_fetch,
-                title="📥 Controlla email", method="POST", path="/api/fetch/trigger",
+                title="📥 Controlla email", method="POST", path="/api/scout/cycle",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Conferma che il ciclo fetch è stato avviato e di controllare i log.",
                 telegram_visible=True, telegram_group="immobiliare"),
@@ -420,12 +420,15 @@ if _HAS_MCP:
                             "and date range of when listings were added.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_stats,
-                title="📊 Statistiche case", method="GET", path="/api/stats",
+                title="📊 Statistiche case", method="GET", path="/api/scout/stats",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Mostra le statistiche del dominio immobiliare in formato leggibile.",
                 telegram_visible=True, telegram_group="immobiliare"),
     ]
     api_app.include_router(create_mcp_router(mcp_tools, service_name="scout"))
+    # REST paths of MCP-only tools (scout_stats → GET /api/scout/stats); Hub/Telegram call by path.
+    from hestia_common.mcp_helpers import mount_missing_rest_routes
+    mount_missing_rest_routes(api_app, mcp_tools, service_name="scout")
     logger.info("event=mcp_router_mounted service=scout tools=%d", len(mcp_tools))
 
 

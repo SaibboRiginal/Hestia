@@ -9,14 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="System.Net.Http.Json" Version="9.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Angular build output served as static files -->
-    <Content Include="wwwroot\**\*" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- SignalR server and wwwroot content are part of Microsoft.NET.Sdk.Web on net9
+       (the old 1.1.0 SignalR package targeted ASP.NET Core 2.x; an explicit wwwroot
+       Content item duplicated the SDK default → NETSDK1022). -->
 
 </Project>

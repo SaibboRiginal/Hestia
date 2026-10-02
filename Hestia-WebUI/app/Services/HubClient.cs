@@ -136,7 +136,18 @@ public class HubClient
         var result = await resp.Content.ReadFromJsonAsync<JsonElement>(
             cancellationToken: ct);
 
-        // Unwrap unicast response: {status_code, service, target, payload}
+        // Unwrap unicast response: {status_code, service, target, payload}.
+        // A target-side 4xx/5xx arrives as HTTP 200 from Hub: surface it as an error.
+        if (result.TryGetProperty("status_code", out var sc) && sc.ValueKind == JsonValueKind.Number
+            && sc.GetInt32() >= 400)
+        {
+            var detail = result.TryGetProperty("payload", out var errPayload) ? errPayload.ToString() : "";
+            _logger.LogWarning("event=hub_route_target_error service={Svc} path={Path} status={Status} detail={Detail}",
+                service, cleanPath, sc.GetInt32(), detail.Length > 300 ? detail[..300] : detail);
+            throw new HttpRequestException(
+                $"{service}/{cleanPath} returned {sc.GetInt32()}: {(detail.Length > 300 ? detail[..300] : detail)}",
+                null, (System.Net.HttpStatusCode)sc.GetInt32());
+        }
         if (result.TryGetProperty("payload", out var payload))
             return payload;
 

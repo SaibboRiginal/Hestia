@@ -1,14 +1,61 @@
 namespace Hestia.WebUI.Controllers;
 
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Hestia.WebUI.Services;
 
 /// <summary>
+/// Admin guard. Port 19015 is published and tunneled by Cloudflare, so "internal only"
+/// must be enforced: with <c>WEBUI_ADMIN_SECRET</c> set, the header
+/// <c>X-WebUI-Admin-Secret</c> must match; without it, only direct requests from
+/// loopback/private addresses (Docker network, LAN, the tunnel script on the host)
+/// that did not come through a proxy/tunnel are accepted.
+/// </summary>
+public sealed class AdminGuardAttribute : ActionFilterAttribute
+{
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        var req = context.HttpContext.Request;
+        var secret = Environment.GetEnvironmentVariable("WEBUI_ADMIN_SECRET") ?? "";
+        bool allowed;
+        if (secret.Length > 0)
+        {
+            var given = req.Headers["X-WebUI-Admin-Secret"].FirstOrDefault() ?? "";
+            allowed = CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(given), Encoding.UTF8.GetBytes(secret));
+        }
+        else
+        {
+            var proxied = req.Headers.ContainsKey("Cf-Connecting-Ip") || req.Headers.ContainsKey("Cf-Ray")
+                          || req.Headers.ContainsKey("X-Forwarded-For");
+            allowed = !proxied && IsPrivate(context.HttpContext.Connection.RemoteIpAddress);
+        }
+        if (!allowed)
+            context.Result = new ObjectResult(new { error = "admin endpoint: forbidden" }) { StatusCode = 403 };
+    }
+
+    private static bool IsPrivate(IPAddress? ip)
+    {
+        if (ip is null) return false;
+        if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+        if (IPAddress.IsLoopback(ip)) return true;
+        var b = ip.GetAddressBytes();
+        if (b.Length == 4)
+            return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168);
+        return ip.IsIPv6LinkLocal || ip.IsIPv6UniqueLocal;
+    }
+}
+
+/// <summary>
 /// Admin API for WebUI token lifecycle management + public URL.
-/// ONLY accessible within the internal Docker network — NOT routed through Hub.
+/// Guarded by <see cref="AdminGuardAttribute"/> (internal network or shared secret) — NOT routed through Hub.
 /// Called directly by Telegram at http://hestia_webui:19015.
 /// </summary>
 [ApiController]
+[AdminGuard]
 [Route("api/webui/admin")]
 public class AdminController : ControllerBase
 {

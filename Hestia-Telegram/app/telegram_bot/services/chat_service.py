@@ -728,8 +728,9 @@ def handle_chat_message(message):
         else:
             # compact or detailed mode: send thinking steps as separate messages
             if thinking_events:
-                # Send each thinking step as a separate message
-                for event in thinking_events:
+                # Send each thinking step as a separate message. "detailed" already
+                # streamed them live: replaying here showed every step twice.
+                for event in (thinking_events if thinking_display == "compact" else []):
                     action = event.get("action", "")
                     tool = event.get("tool", "")
                     content = event.get("content", "")
@@ -1148,8 +1149,9 @@ def handle_file_message(message):
         else:
             # compact or detailed mode: send thinking steps as separate messages
             if thinking_events:
-                # Send each thinking step as a separate message
-                for event in thinking_events:
+                # Send each thinking step as a separate message. "detailed" already
+                # streamed them live: replaying here showed every step twice.
+                for event in (thinking_events if thinking_display == "compact" else []):
                     action = event.get("action", "")
                     tool = event.get("tool", "")
                     content = event.get("content", "")

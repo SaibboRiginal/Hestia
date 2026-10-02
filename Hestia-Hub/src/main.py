@@ -290,26 +290,48 @@ def _route_sync(service_name: str, path: str, req: RouteRequest):
         candidates = registry.get(target_names[0])
         if not candidates:
             raise HTTPException(status_code=404, detail=f"Service not registered: {target_names[0]}")
-        svc = candidates[0]
         import requests as req_lib
-        target_url = f"{svc['base_url'].rstrip('/')}/{path.lstrip('/')}"
-        upstream = req_lib.request(
-            method=req.method.upper(),
-            url=target_url,
-            params=req.query,
-            json=req.body,
-            headers=req.headers,
-            timeout=max(1.0, req.timeout_seconds),
-            stream=True,
-        )
-        upstream.raise_for_status()
+        upstream = None
+        last_error = ""
+        # Failover across instances (freshest first), like the unicast path.
+        for svc in candidates:
+            target_url = f"{svc['base_url'].rstrip('/')}/{path.lstrip('/')}"
+            try:
+                resp = req_lib.request(
+                    method=req.method.upper(),
+                    url=target_url,
+                    params=req.query,
+                    json=req.body,
+                    headers=req.headers,
+                    timeout=max(1.0, req.timeout_seconds),
+                    stream=True,
+                )
+            except req_lib.RequestException as exc:
+                last_error = f"{target_url}: {exc}"
+                logger.warning("[🔄] event=hub_stream_upstream_unreachable target=%s error=%s", target_url, exc)
+                continue
+            if resp.status_code >= 400:
+                detail = resp.text[:500]
+                resp.close()
+                # Target answered: propagate its status (no failover for app errors).
+                raise HTTPException(status_code=resp.status_code, detail=detail or "upstream error")
+            upstream = resp
+            break
+        if upstream is None:
+            raise HTTPException(status_code=502, detail=f"Stream upstream unavailable: {last_error}")
 
         # iter_lines() strips \n — we must add it back so the client can
         # parse NDJSON line-by-line with ReadLineAsync / readline().
         def _ndjson_lines():
-            for line in upstream.iter_lines():
-                if line:
-                    yield line + b"\n"
+            try:
+                for line in upstream.iter_lines():
+                    if line:
+                        yield line + b"\n"
+            except req_lib.RequestException as exc:
+                logger.warning("[🔄] event=hub_stream_interrupted error=%s", exc)
+                yield (b'{"type":"error","message":"stream interrupted"}\n')
+            finally:
+                upstream.close()   # also runs when the client disconnects (generator closed)
 
         return StreamingResponse(_ndjson_lines(), media_type="application/x-ndjson")
 

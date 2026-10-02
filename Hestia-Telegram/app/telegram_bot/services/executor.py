@@ -131,7 +131,7 @@ def prompt_show_current_settings(chat_id: int):
     """Show all current session settings in a nicely formatted message."""
     settings = core.get_session_settings(str(chat_id))
     tone = settings.get("tone", "warm")
-    td = settings.get("thinking_display", "compact")
+    td = settings.get("thinking_display", "hidden")
     custom = settings.get("custom_prompt", "").strip()
 
     TONE_LABELS = {"warm": "Caldo", "neutral": "Neutro", "direct": "Diretto", "formal": "Formale"}
@@ -558,86 +558,78 @@ def _get_webui_api_url():
     return os.getenv("WEBUI_API_URL", "http://hestia_webui:19015").rstrip("/")
 
 
+def _webui_admin_headers() -> dict:
+    """WebUI admin API guard: shared secret when WEBUI_ADMIN_SECRET is set (same value
+    in the WebUI container); otherwise the WebUI accepts only internal-network calls."""
+    import os
+    secret = os.getenv("WEBUI_ADMIN_SECRET", "").strip()
+    return {"X-WebUI-Admin-Secret": secret} if secret else {}
+
+
 def _handle_webui_token(chat_id: int):
-    """Generate a new WebUI access token via the WebUI admin API."""
+    """Generate a new WebUI access token via the WebUI admin API.
+
+    No local fallback: a token minted here was never accepted by the WebUI and
+    was stored in clear text in Archive memory (readable by the LLM tools)."""
+    import html
     import os
     try:
         webui_api = _get_webui_api_url()
         resp = requests.post(
             f"{webui_api}/api/webui/admin/generate-token",
+            headers=_webui_admin_headers(),
             timeout=10,
         )
         resp.raise_for_status()
         data = resp.json()
         token = data.get("token", "")
         lifetime_hours = data.get("lifetime_hours", 72)
+        api_public_url = str(data.get("public_url") or "").rstrip("/")
     except Exception as exc:
         logger.warning("event=webui_token_generate_api_failed error=%s", exc)
-        # Fallback: generate locally
-        token = _generate_webui_token()
-        lifetime_hours = 72
-        try:
-            envelope = {
-                "method": "POST",
-                "body": {
-                    "domain": "webui_auth",
-                    "fact": f"webui_current_token={token}",
-                    "memory_class": "durable_user_preference",
-                    "owner": str(chat_id),
-                },
-                "timeout_seconds": 10.0,
-            }
-            resp2 = requests.post(
-                f"{core.HUB_API_URL}/route/archive/api/memory",
-                json=envelope,
-                timeout=15,
-            )
-            resp2.raise_for_status()
-        except Exception as exc2:
-            logger.warning("event=webui_token_archive_fallback_failed error=%s", exc2)
-            core.bot.send_message(
-                chat_id,
-                "⚠️ <b>Errore:</b> WebUI backend non raggiungibile.",
-                parse_mode="HTML",
-            )
-            return
+        core.bot.send_message(
+            chat_id,
+            "⚠️ <b>Errore:</b> WebUI non raggiungibile, token non generato. Riprova tra poco.",
+            parse_mode="HTML",
+        )
+        return
 
-    # Get public URL from WebUI backend (runtime Cloudflare detection) or env fallback
-    import os
-    webui_public_url = os.getenv("WEBUI_PUBLIC_URL", "").rstrip("/")
+    # Public URL: env override → WebUI (tunnel script / Cloudflare detection).
+    webui_public_url = os.getenv("WEBUI_PUBLIC_URL", "").rstrip("/") or api_public_url
     if not webui_public_url:
         try:
-            webui_api = _get_webui_api_url()
-            pr = requests.get(f"{webui_api}/api/webui/admin/public-url", timeout=5)
+            pr = requests.get(f"{_get_webui_api_url()}/api/webui/admin/public-url",
+                              headers=_webui_admin_headers(), timeout=5)
             if pr.status_code == 200:
-                pu = pr.json().get("public_url", "")
-                if pu:
-                    webui_public_url = pu.rstrip("/")
+                webui_public_url = str(pr.json().get("public_url") or "").rstrip("/")
         except Exception:
             pass
 
     login_url = f"{webui_public_url}?token={token}" if webui_public_url else ""
+    try:
+        hours = int(float(lifetime_hours))
+    except (TypeError, ValueError):
+        hours = 72
 
-    # Escape MarkdownV2 reserved chars in URL
-    safe_url = login_url.replace('=', '\\=').replace('?', '\\?').replace('-', '\\-')
-
-    msg = "🌐 *Accesso WebUI*\n\n"
+    msg = "🌐 <b>Accesso WebUI</b>\n\n"
     if login_url:
-        msg += f"[Apri WebUI]({safe_url})\n\n"
-    msg += f"*Token:* `{token}`\n\n"
-    msg += "⏰ Valido per *72 ore*\n"
-    msg += "🔒 Nuovo token \\= precedente invalidato\\."
+        msg += f'<a href="{html.escape(login_url, quote=True)}">Apri WebUI</a>\n\n'
+    else:
+        msg += "<i>URL pubblico non disponibile: avvia cloudflare-tunnel.bat o apri http://localhost:19015</i>\n\n"
+    msg += f"<b>Token:</b> <code>{html.escape(token)}</code>\n\n"
+    msg += f"⏰ Valido per <b>{hours} ore</b>\n"
+    msg += "🔒 Nuovo token = precedente invalidato."
 
-    core.bot.send_message(chat_id, msg, parse_mode="MarkdownV2")
+    core.bot.send_message(chat_id, msg, parse_mode="HTML", disable_web_page_preview=True)
     logger.info("event=webui_token_generated chat_id=%s", chat_id)
 
 
 def _handle_revoke_webui(chat_id: int):
     """Revoke the current WebUI token via the WebUI admin API."""
     try:
-        webui_api = _get_webui_api_url()
         resp = requests.post(
-            f"{webui_api}/api/webui/admin/revoke-token",
+            f"{_get_webui_api_url()}/api/webui/admin/revoke-token",
+            headers=_webui_admin_headers(),
             timeout=10,
         )
         resp.raise_for_status()
@@ -649,28 +641,9 @@ def _handle_revoke_webui(chat_id: int):
         logger.info("event=webui_token_revoked chat_id=%s", chat_id)
     except Exception as exc:
         logger.warning("event=webui_token_revoke_failed error=%s", exc)
-        # Fallback: revoke via Archive directly
-        try:
-            envelope = {
-                "method": "POST",
-                "body": {
-                    "domain": "webui_auth",
-                    "fact": "webui_current_token=REVOKED",
-                    "memory_class": "durable_user_preference",
-                    "owner": str(chat_id),
-                },
-                "timeout_seconds": 10.0,
-            }
-            requests.post(
-                f"{core.HUB_API_URL}/route/archive/api/memory",
-                json=envelope,
-                timeout=15,
-            )
-        except Exception:
-            pass
         core.bot.send_message(
             chat_id,
-            "⚠️ <b>Errore:</b> Impossibile revocare il token.",
+            "⚠️ <b>Errore:</b> WebUI non raggiungibile, impossibile revocare il token. Riprova tra poco.",
             parse_mode="HTML",
         )
 
@@ -680,7 +653,7 @@ def _handle_webui_status(chat_id: int):
     try:
         webui_api = _get_webui_api_url()
         resp = requests.get(
-            f"{webui_api}/api/webui/admin/token-status",
+            f"{webui_api}/api/webui/admin/token-status", headers=_webui_admin_headers(),
             timeout=10,
         )
         resp.raise_for_status()
