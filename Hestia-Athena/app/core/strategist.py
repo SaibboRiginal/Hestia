@@ -67,6 +67,12 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
         self_parts.append(f"{snapshot.failure_streak} fallimenti consecutivi")
     lines.append("Stato Athena: " + ", ".join(self_parts))
 
+    if snapshot.recent_errors:
+        lines.append("Errori ultima ora: " + "; ".join(snapshot.recent_errors[:4]))
+
+    if snapshot.quality_issues:
+        lines.append("Qualità risposte: " + "; ".join(snapshot.quality_issues[:4]))
+
     if snapshot.raw_errors:
         lines.append(f"Errori osservazione: {', '.join(snapshot.raw_errors[:3])}")
 
@@ -80,26 +86,24 @@ def _build_strategist_prompt(observation_text: str) -> str:
     structured key:value output for easier parsing from local models,
     and strictly limits output size.
     """
+    # Caveman style: short lines, zero filler. Local models = small context.
     return (
-        f"Sei Athena, il modulo di cognizione proattiva di Hestia. "
-        f"Ecco cosa osservi in questo momento:\n\n"
-        f"{observation_text}\n\n"
-        f"Basandoti su queste osservazioni, proponi al massimo "
-        f"{STRATEGIST_MAX_CANDIDATES} azioni concrete che potresti suggerire "
-        f"o eseguire. Per ogni azione, scrivi ESATTAMENTE in questo formato:\n\n"
-        f"AZIONE: <titolo breve>\n"
-        f"TIPO: advisory|remediation|notification|maintenance\n"
-        f"PRIORITA: low|normal|elevated|high\n"
-        f"DOMINIO: cognition|system|real_estate|calendar\n"
-        f"MOTIVO: <una frase che spiega perché>\n"
-        f"RIASSUNTO: <una frase di riassunto>\n\n"
-        f"IMPORTANTE:\n"
-        f"- Proponi solo azioni GIUSTIFICATE dai dati osservati.\n"
-        f"- Se non ci sono anomalie o novità, NON inventare azioni.\n"
-        f"- Se tutto è normale, rispondi solo con: NESSUNA_AZIONE\n"
-        f"- Massimo {STRATEGIST_MAX_CANDIDATES} azioni.\n"
-        f"- Sii conciso. Non aggiungere testo fuori dal formato.\n"
-        f"- Non usare markdown o HTML."
+        "Sei Athena, mente proattiva di Hestia. Retrospettiva: cosa va male, cosa migliorare.\n"
+        f"OSSERVAZIONI:\n{observation_text}\n\n"
+        f"Proponi max {STRATEGIST_MAX_CANDIDATES} azioni. Solo se dati lo giustificano.\n"
+        "Formato ESATTO per ogni azione:\n"
+        "AZIONE: <titolo breve>\n"
+        "TIPO: advisory|remediation|notification|maintenance|improvement\n"
+        "PRIORITA: low|normal|elevated|high\n"
+        "DOMINIO: cognition|system|<dominio osservato>\n"
+        "MOTIVO: <1 frase>\n"
+        "RIASSUNTO: <1 frase>\n\n"
+        "Regole:\n"
+        "- improvement = cambio a codice/prompt di Hestia (errori ricorrenti, dominio con feedback negativi). "
+        "RIASSUNTO = cosa cambiare, concreto, quale servizio.\n"
+        "- remediation = servizio giù/rotto ora.\n"
+        "- Tutto normale -> scrivi solo: NESSUNA_AZIONE\n"
+        "- No testo fuori formato. No markdown. No HTML."
     )
 
 

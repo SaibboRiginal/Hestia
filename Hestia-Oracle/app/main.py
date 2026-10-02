@@ -1,3 +1,4 @@
+import time
 import uuid
 import os
 import requests
@@ -364,8 +365,27 @@ def list_athena_hints_endpoint(session_id: str | None = None, limit: int = 20):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Last real user interaction (Telegram/UI chats carry notify_target; internal
+# callers like Argus narration do not). Athena runs its loop only when idle so
+# it never competes with the user for the local model.
+_LAST_USER_ACTIVITY = {"ts": 0.0}
+
+
+def _mark_user_activity(notify_target: Optional[str]) -> None:
+    if notify_target:
+        _LAST_USER_ACTIVITY["ts"] = time.time()
+
+
+@app.get("/api/activity")
+def user_activity():
+    ts = _LAST_USER_ACTIVITY["ts"]
+    return {"last_user_activity_ts": ts or None,
+            "idle_seconds": int(time.time() - ts) if ts else None}
+
+
 @app.post("/api/chat")
 def chat_endpoint(req: ChatRequest):
+    _mark_user_activity(req.notify_target)
     try:
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
@@ -405,6 +425,7 @@ async def chat_document_endpoint(
     falls back to local extraction (WhisperX, CLIP, YOLO, python-docx, etc.)
     otherwise.
     """
+    _mark_user_activity(notify_target)
     ACCEPTED_MIMES = {
         # Images
         "image/jpeg", "image/jpg", "image/png", "image/webp",

@@ -107,8 +107,9 @@ volumes:
 Recurring errors become fix *proposals* for Hephaestus Forge (`app/core/forge_proposer.py`):
 - Same error signature (exception line, numbers/ids/quoted values stripped) from one service
   ≥ `ARGUS_FORGE_PROPOSE_THRESHOLD` (3) times within `ARGUS_FORGE_PROPOSE_WINDOW_SECONDS` (3600).
-- Argus posts `auto_start=false` to `/api/hephaestus/forge/tasks` with the log sample as context.
-  Nothing is coded until the user approves on Telegram.
+- Argus posts to `/api/hephaestus/forge/tasks` (source `argus`) with the log sample as context.
+  Forge's autonomy policy decides: local engine → starts coding on a branch; cloud/claude → waits for approval.
+  Merge always waits for the user.
 - One proposal per signature per `ARGUS_FORGE_PROPOSE_COOLDOWN_SECONDS` (86400). Failed posts retry on next occurrence.
 - Disable with `ARGUS_FORGE_PROPOSALS_ENABLED=0`. Hephaestus/Argus own errors are excluded.
 - Log dedupe key now includes the row timestamp: each occurrence counts once (alert spam still bounded by alert cooldown).

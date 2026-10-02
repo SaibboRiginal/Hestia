@@ -189,3 +189,9 @@ This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI 
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## User activity (idle signal)
+
+`GET /api/activity` → `{last_user_activity_ts, idle_seconds}`. Updated on `/api/chat` and `/api/chat/document`
+only when `notify_target` is present (real client chats; internal callers like Argus narration are ignored).
+Athena uses it to think only while the user is idle.

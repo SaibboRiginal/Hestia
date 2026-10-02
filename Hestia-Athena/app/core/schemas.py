@@ -64,6 +64,8 @@ class ObservationSnapshot(BaseModel):
     unresolved_commitments: int = 0
     recent_failures: int = 0
     failure_streak: int = 0
+    recent_errors: list[str] = Field(default_factory=list)   # Argus error summary
+    quality_issues: list[str] = Field(default_factory=list)  # Metis feedback weak spots
     raw_errors: list[str] = Field(default_factory=list)
 
 
@@ -76,7 +78,7 @@ class ActionCandidate(BaseModel):
     domain: str = "cognition"
     title: str = ""
     summary: str = ""
-    kind: str = "advisory"  # advisory | remediation | notification | maintenance
+    kind: str = "advisory"  # advisory | remediation | notification | maintenance | improvement
     target_service: str | None = None
     target_path: str | None = None
     priority: str = "normal"  # low | normal | elevated | high

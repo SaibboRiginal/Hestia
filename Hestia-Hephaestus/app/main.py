@@ -254,6 +254,32 @@ try:
             telegram_visible=True, telegram_group="sistema",
         ),
         MCPTool(
+            name="forge_set_autonomy",
+            description=(
+                "Imposta quanto Athena/Argus possono sviluppare da soli per motore. "
+                "mode=auto_start (parte da solo, merge chiede ok) o propose (chiede prima di iniziare). "
+                "Es. 'in locale lascia fare ad Athena' → engine=local mode=auto_start"
+            ),
+            parameters={"type": "object", "properties": {
+                "engine": {"type": "string", "description": "local | cloud | claude | aider"},
+                "mode": {"type": "string", "description": "propose | auto_start"}},
+                "required": ["engine", "mode"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_set_autonomy", "params": kw},
+            title="\U0001f39a\ufe0f Autonomia sviluppo", method="POST", path="/api/hephaestus/forge/settings/autonomy",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Riassumi in 2 righe: motore default e autonomia per motore.",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_settings",
+            description="Mostra impostazioni Forge: motore default, fallback, autonomia per motore, auto-merge",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_settings", "params": kw},
+            title="\U0001f527 Impostazioni sviluppo", method="GET", path="/api/hephaestus/forge/settings",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
             name="forge_approve",
             description=(
                 "Approva un task Forge: se 'proposed' lo avvia, se 'awaiting_review' applica la modifica (merge/deploy). "

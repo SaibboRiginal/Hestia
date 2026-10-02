@@ -2,8 +2,9 @@
 
 Argus observes; Hephaestus/Forge executes.  When the same error signature from
 one service shows up ``ARGUS_FORGE_PROPOSE_THRESHOLD`` times inside the
-window, Argus asks Forge to *propose* a fix (``auto_start=false``): nothing is
-coded until the user approves on Telegram.  One proposal per signature per
+window, Argus hands the fix to Forge.  Forge's autonomy policy decides whether
+it starts coding right away (e.g. local engine) or waits for the user (cloud).
+Merge always waits for the user.  One proposal per signature per
 cooldown, so the user is never spammed.
 """
 from __future__ import annotations
@@ -67,7 +68,7 @@ def propose(hub_api_url: str, service: str, sig: str) -> bool:
         "services": [service],
         "source": "argus",
         "requested_by": "argus.monitor",
-        "auto_start": False,
+        # No auto_start: Forge applies the user's autonomy policy for the engine.
         "context": f"signature={sig}\nlog:\n{sample}",
     }
     try:
