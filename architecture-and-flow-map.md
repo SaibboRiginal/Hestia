@@ -16,8 +16,8 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Iris | Domain (Email) | Yes (email workflows) | No (gateway-mediated when needed) | Exposes email-domain APIs and commands |
 | Scout | Domain (Real Estate) | Yes (listing extraction/ranking) | No | Pulls domain email feed via Hecate connector path |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
-| Hephaestus | Core Organ | Yes (remediation execution policy) | No | Executes policy-gated remediation via Hub contracts |
-| Athena | Core Organ | Yes (proactive advisory cognition) | No | Produces bounded advisory hints for Oracle |
+| Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
+| Athena | Core Organ | Yes (proactive advisory cognition, idle retrospective) | No | Advisory hints for Oracle; improvement hand-off to Forge |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
 | Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
@@ -75,6 +75,10 @@ flowchart LR
 
     MT[Metis Improvement] --> AR
     MT --> OR
+    AT -->|improvement hand-off| HP
+    AG -->|recurring error fix| HP
+    HP -->|LLM turns /api/llm/chat| OR
+    AT -->|weak spots| MT
 
     SC --> HM
     CH --> HM
@@ -112,6 +116,25 @@ flowchart LR
 2. Iris handles email domain API semantics.
 3. If provider mediation/runtime is needed, flow is routed through Hecate.
 4. Scout reads domain email feed through Hecate connector path (`iris_email`) for extraction workflows.
+
+### Self-development flow (Forge)
+1. User on Telegram: "aggiungi X" → Oracle (classifier: domain `system`) → tool `forge_develop` → Hub → Hephaestus.
+2. Athena (idle retrospective) and Argus (recurring errors) also submit via Hub; the permission mode
+   (`ask | auto | full_auto`, per group local/cloud) decides if coding starts alone.
+3. Forge creates a git worktree + branch, runs the engine:
+   - `local` / `cloud` → LLM turns through **Oracle `/api/llm/chat`** (Oracle owns providers and keys);
+   - `claude` → Claude Code CLI inside Hephaestus.
+4. Forge commits, runs the touched services' tests, notifies the user via Hub → Hermes → Telegram.
+5. "approva sviluppo <id>" → merge (+ optional deploy, health check via Hub, auto rollback).
+
+### LLM access rule
+Only Oracle talks to LLM providers. Athena/Metis use `/api/llm/generate`, Forge uses `/api/llm/chat` — always via Hub.
+
+### Google OAuth flow
+1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).
+2. Phone: the final `localhost` page fails (expected); user pastes the URL in Telegram → Telegram forwards it
+   to Hecate `complete/google` via Hub (no LLM). Host browser: Hecate's callback completes it directly.
+3. Token saved to `Hestia-Hecate/data/google_token.json`, provider registry reloaded.
 
 ### Real-estate extraction flow
 1. Scout requests email-domain feed via Hecate connector runtime.

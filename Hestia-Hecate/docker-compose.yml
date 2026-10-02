@@ -8,7 +8,6 @@ services:
       - TZ=Europe/Rome                   # Timezone — must match OAuth token issuance context
       - HUB_API_URL=http://hestia_hub:19001/api          # Hub base URL for routing and service registration
       - HECATE_SERVICE_BASE_URL=http://hestia_hecate:19003  # Hecate service URL advertised to Hub
-      - ARCHIVE_URL=http://hestia_archive:19002             # Direct Archive base URL (used for calendar writes)
       - HECATE_SERVICE_VERSION=1.0.0                        # Reported version in Hub registry
       - LOG_LEVEL=INFO                                      # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - HECATE_CALENDAR_BACKFILL_DAYS=7                     # How many days back to fetch when syncing calendar (int, default 7)
