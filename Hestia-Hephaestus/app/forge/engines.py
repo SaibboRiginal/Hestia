@@ -1,8 +1,7 @@
 """Coding engines.  Same contract: ``run(workdir, prompt) -> EngineResult``.
 
-- ``claude``       — Claude Code CLI headless (``claude -p``).  Works with a Claude
-  Pro/Max subscription via ``CLAUDE_CODE_OAUTH_TOKEN`` (``claude setup-token``) or
-  pay-per-use ``ANTHROPIC_API_KEY``.
+- ``claude``       — Claude Code (Pro/Max subscription) run by Oracle in the task
+  worktree via ``POST /api/llm/code``; Oracle holds the token.
 - ``local`` / ``cloud`` — in-process tool-calling loop.  The LLM is reached via
   Oracle's ``/api/llm/chat`` (Hub route) on the profile of the same name:
   Oracle owns provider URLs and keys (microservice boundary).
@@ -11,9 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import shutil
-import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,50 +45,51 @@ class Engine:
         raise NotImplementedError
 
 
-# ── Claude Code CLI ─────────────────────────────────────────────────────────
+# ── Claude Code via Oracle ─────────────────────────────────────────────────
 
 
-class ClaudeCodeEngine(Engine):
+class OracleClaudeEngine(Engine):
+    """Claude Code runs inside Oracle (the LLM core, owner of the Pro token);
+    Forge passes the task worktree path, shared by both containers."""
     name = "claude"
-    _ALLOWED_TOOLS = ("Read,Edit,Write,Glob,Grep,"
-                      "Bash(python -m pytest:*),Bash(pytest:*),Bash(git status:*),Bash(git diff:*)")
 
     def __init__(self, cfg: ForgeConfig):
         self.cfg = cfg
 
+    def _route(self, method: str, path: str, body: dict | None, timeout: int) -> tuple[int, Any]:
+        resp = requests.post(
+            f"{self.cfg.hub_api_url}/route/oracle/{path.lstrip('/')}",
+            json={"method": method, "headers": {}, "query": {}, "body": body, "timeout_seconds": timeout},
+            timeout=timeout + 5)
+        resp.raise_for_status()
+        routed = resp.json() or {}
+        return int(routed.get("status_code", 500)), routed.get("payload")
+
     def available(self) -> tuple[bool, str]:
-        if not shutil.which(self.cfg.claude_bin):
-            return False, f"'{self.cfg.claude_bin}' CLI not installed"
-        creds = Path(os.path.expanduser("~/.claude/.credentials.json"))
-        if os.getenv("CLAUDE_CODE_OAUTH_TOKEN") or os.getenv("ANTHROPIC_API_KEY") or creds.exists():
-            return True, "ok"
-        return False, "no auth: set CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) or ANTHROPIC_API_KEY"
+        try:
+            status, payload = self._route("GET", "api/llm/code/status", None, 15)
+        except Exception as exc:
+            return False, f"Oracle unreachable via Hub: {exc}"
+        payload = payload or {}
+        if status >= 400 or not payload.get("available"):
+            return False, str(payload.get("detail") or f"Oracle code status {status}")
+        return True, "ok (Claude Code via Oracle)"
 
     def run(self, workdir: Path, prompt: str, test_runner: Callable) -> EngineResult:
-        cmd = [self.cfg.claude_bin, "-p", prompt,
-               "--output-format", "json",
-               "--max-turns", str(self.cfg.max_turns),
-               "--permission-mode", "acceptEdits",
-               "--allowedTools", self._ALLOWED_TOOLS,
-               "--append-system-prompt", SYSTEM_PROMPT]
-        if self.cfg.claude_model:
-            cmd += ["--model", self.cfg.claude_model]
         try:
-            proc = subprocess.run(cmd, cwd=str(workdir), capture_output=True, text=True,
-                                  timeout=self.cfg.engine_timeout_seconds)
-        except subprocess.TimeoutExpired:
-            return EngineResult(False, "claude timed out", self.name)
-        raw = (proc.stdout or "").strip()
-        try:
-            data = json.loads(raw.splitlines()[-1]) if raw else {}
-        except (ValueError, IndexError):
-            data = {}
-        is_error = bool(data.get("is_error")) or proc.returncode != 0
-        summary = str(data.get("result") or proc.stderr or raw)[:3000]
+            status, data = self._route("POST", "api/llm/code", {
+                "workdir": str(workdir), "prompt": prompt, "append_system_prompt": SYSTEM_PROMPT,
+                "max_turns": self.cfg.max_turns, "timeout_seconds": self.cfg.engine_timeout_seconds,
+            }, self.cfg.engine_timeout_seconds + 30)
+        except Exception as exc:
+            return EngineResult(False, f"Oracle code call failed: {exc}", self.name)
+        data = data if isinstance(data, dict) else {}
+        if status >= 400:
+            return EngineResult(False, f"Oracle code error {status}: {data.get('detail') or data}", self.name)
         return EngineResult(
-            ok=not is_error, summary=summary, engine=self.name,
-            log_tail=(proc.stderr or "")[-2000:], turns=int(data.get("num_turns") or 0),
-            cost_usd=data.get("total_cost_usd"), meta={"subtype": data.get("subtype")})
+            ok=bool(data.get("ok")), summary=str(data.get("summary") or ""), engine=self.name,
+            log_tail=str(data.get("log_tail") or ""), turns=int(data.get("turns") or 0),
+            cost_usd=data.get("cost_usd"), meta={"subtype": data.get("subtype")})
 
 
 # ── Built-in agent (OpenAI-compatible tool calling) ────────────────────────
@@ -196,7 +193,7 @@ def build_engines(cfg: ForgeConfig) -> dict[str, Engine]:
     engines: list[Engine] = [
         BuiltinEngine(cfg, "local"),
         BuiltinEngine(cfg, "cloud"),
-        ClaudeCodeEngine(cfg),
+        OracleClaudeEngine(cfg),
     ]
     return {e.name: e for e in engines}
 

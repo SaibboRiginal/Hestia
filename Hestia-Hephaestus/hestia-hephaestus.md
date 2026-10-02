@@ -87,11 +87,13 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 |---|---|---|
 | `local` | Built-in agent; LLM = Oracle profile `local` (Ollama) | **Oracle**: `ORACLE_LLM_PROFILE_LOCAL_BASE_URL/_MODEL/_API_KEY` (default Ollama `qwen2.5-coder:14b`) |
 | `cloud` | Built-in agent; LLM = Oracle profile `cloud` (OpenRouter, Gemini...) | **Oracle**: `ORACLE_LLM_PROFILE_CLOUD_*` |
-| `claude` | Claude Code CLI headless, runs in Hephaestus | build `--build-arg INSTALL_CLAUDE_CODE=1`; Pro/Max: `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` (plan limits); or `ANTHROPIC_API_KEY` |
+| `claude` | Claude Code (Pro/Max subscription) run **by Oracle** in the shared task worktree (`POST /api/llm/code`) | **Oracle**: build `--build-arg INSTALL_CLAUDE_CODE=1`, `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` in Oracle's `.env` (plan limits) |
 
 **Microservice boundary:** Forge never holds LLM URLs or keys. The built-in agent sends each turn
 (messages + tools) to Oracle `POST /api/llm/chat {profile}` via Hub; Oracle owns providers.
-Claude Code is an external coding tool (like a compiler), so it runs where the repo is.
+Claude Code also lives in Oracle (the LLM core holds every credential, including the Pro token). Task worktrees
+are mounted at the same absolute path `/forge/worktrees` in Hephaestus and Oracle, and the repo at `/repo` in both,
+so git worktree links resolve. Hephaestus keeps orchestration: branch, independent tests, merge, deploy, rollback.
 All other calls also go through Hub: Hermes (notifications), service `/health` (deploy check).
 Requests reach Forge only via Hub: user → Telegram → Oracle → Hub → Hephaestus; Athena/Argus → Hub → Hephaestus.
 

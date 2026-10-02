@@ -43,8 +43,6 @@ class ForgeConfig:
     max_turns: int
     engine_timeout_seconds: int
     test_cmd: str
-    claude_bin: str
-    claude_model: str
     auto_merge: bool
     deploy_cmd: str
     verify_delay_seconds: int
@@ -61,7 +59,8 @@ def load_forge_config() -> ForgeConfig:
     return ForgeConfig(
         enabled=_bool("HEPHAESTUS_FORGE_ENABLED", True),
         repo_path=Path(os.getenv("HEPHAESTUS_REPO_PATH", "/repo")),
-        worktrees_path=Path(os.getenv("HEPHAESTUS_WORKTREES_PATH", str(data_dir / "forge" / "worktrees"))),
+        # Shared with Oracle at the same absolute path (Claude Code runs there).
+        worktrees_path=Path(os.getenv("HEPHAESTUS_WORKTREES_PATH", "/forge/worktrees")),
         state_file=Path(os.getenv("HEPHAESTUS_FORGE_STATE_FILE", str(data_dir / "forge" / "tasks.json"))),
         base_branch=os.getenv("HEPHAESTUS_FORGE_BASE_BRANCH", "").strip(),
         engine=normalize_engine(os.getenv("HEPHAESTUS_FORGE_ENGINE", "local")) or "local",
@@ -74,8 +73,6 @@ def load_forge_config() -> ForgeConfig:
         test_cmd=os.getenv(
             "HEPHAESTUS_FORGE_TEST_CMD",
             "python -m pytest -q -p no:cacheprovider -m \"unit or api or format\" {test_paths}"),
-        claude_bin=os.getenv("HEPHAESTUS_FORGE_CLAUDE_BIN", "claude"),
-        claude_model=os.getenv("HEPHAESTUS_FORGE_CLAUDE_MODEL", "").strip(),
         auto_merge=_bool("HEPHAESTUS_FORGE_AUTO_MERGE", False),
         deploy_cmd=os.getenv("HEPHAESTUS_FORGE_DEPLOY_CMD", "").strip(),
         verify_delay_seconds=max(0, _int("HEPHAESTUS_FORGE_VERIFY_DELAY_SECONDS", 20)),

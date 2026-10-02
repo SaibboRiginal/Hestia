@@ -118,6 +118,9 @@ services:
       - ORACLE_SERVICE_VERSION=1.0.0                         # Reported version in Hub registry
       - ARCHIVE_API_URL=http://hestia_archive:19002/api      # Archive API for memory, entities, history
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
+      # Claude Code for Forge engine `claude` (Pro/Max): build with --build-arg INSTALL_CLAUDE_CODE=1,
+      # put CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) in Hestia-Oracle/app/.env
+      - ORACLE_CODE_WORKDIR_ROOT=/forge/worktrees
       # LLM gateway profiles (Forge engines local/cloud). local defaults to the Ollama host above.
       # - ORACLE_LLM_PROFILE_LOCAL_MODEL=qwen2.5-coder:14b
       # - ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1   # keys go in Hestia-Oracle/app/.env
@@ -144,6 +147,10 @@ services:
     volumes:
       - ./Hestia-Oracle/app:/code
       - ./Hestia-Shared/hestia_common:/code/hestia_common
+      # Claude Code ("code" use case, Forge engine `claude`) works in Forge task worktrees:
+      # same absolute paths as in Hephaestus so git worktree links resolve.
+      - ./:/repo
+      - ./Hestia-Hephaestus/data/forge/worktrees:/forge/worktrees
     depends_on:
       hub:
         condition: service_started
@@ -482,7 +489,8 @@ services:
     volumes:
       - ./Hestia-Hephaestus/app:/code/app
       - ./Hestia-Shared/hestia_common:/code/hestia_common
-      - ./Hestia-Hephaestus/data:/code/data   # Forge task state + worktrees (persistent)
+      - ./Hestia-Hephaestus/data:/code/data   # Forge task state (persistent)
+      - ./Hestia-Hephaestus/data/forge/worktrees:/forge/worktrees   # task worktrees, shared with Oracle
       - ./:/repo                              # Hestia repo: Forge branches/merges here
       # - /var/run/docker.sock:/var/run/docker.sock   # only if HEPHAESTUS_FORGE_DEPLOY_CMD restarts containers
     depends_on:
