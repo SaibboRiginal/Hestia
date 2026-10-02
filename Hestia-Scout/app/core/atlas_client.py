@@ -36,15 +36,8 @@ class AtlasClient:
         configured = str(hub_api_url or os.getenv("HUB_API_URL", "")).strip()
         if configured:
             candidates = [configured.rstrip("/")]
-            if "hestia_hub" in configured:
-                # Host-side debug often inherits Docker env values; retry localhost.
-                localhost_candidate = configured.replace(
-                    "hestia_hub", "localhost")
-                if localhost_candidate.rstrip("/") not in candidates:
-                    candidates.append(localhost_candidate.rstrip("/"))
         else:
-            candidates = ["http://hestia_hub:19001/api",
-                          "http://localhost:19001/api"]
+            candidates = ["http://hestia_hub:19001/api"]
 
         self._hub_api_candidates = candidates
 

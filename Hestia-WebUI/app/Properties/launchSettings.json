@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "Hestia-WebUI": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Hestia__HubApiUrl": "http://localhost:19001/api"
+      },
+      "applicationUrl": "https://localhost:60694;http://localhost:60695"
+    }
+  }
+}

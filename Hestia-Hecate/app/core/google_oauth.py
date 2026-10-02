@@ -44,7 +44,10 @@ logger = logging.getLogger("hestia_hecate.google_oauth")
 
 AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-DEFAULT_SCOPES = ["https://www.googleapis.com/auth/calendar"]
+DEFAULT_SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 DEFAULT_REDIRECT_URI = "http://localhost:19003/api/gateway/auth/callback/google"
 PENDING_TTL_SECONDS = 15 * 60
 
@@ -77,7 +80,55 @@ def scopes() -> list[str]:
 
 
 def redirect_uri() -> str:
-    return os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "").strip() or DEFAULT_REDIRECT_URI
+    """Redirect URI resolution:
+
+    1. ``GOOGLE_OAUTH_REDIRECT_URI`` when public (a localhost value yields to the tunnel);
+    2. public Cloudflare tunnel URL for Hecate, read from ``GOOGLE_TUNNEL_URL_FILE``
+       (default ``/code/data/tunnel-url.txt``, written by ``cloudflare-tunnel.bat``):
+       the callback then works from ANY device (phone included), no copy-paste;
+    3. localhost loopback (auto-completes only from the Docker host; elsewhere the
+       user pastes the final URL in chat).
+    """
+    explicit = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "").strip()
+    if explicit and is_public_redirect(explicit):
+        return explicit
+    # An explicit *localhost* value (old .env default) must not hide the tunnel.
+    tunnel_file = Path(os.getenv("GOOGLE_TUNNEL_URL_FILE", "/code/data/tunnel-url.txt"))
+    try:
+        if tunnel_file.exists():
+            # utf-8-sig: Windows PowerShell 5 ``Out-File -Encoding utf8`` writes a BOM.
+            tunnel = tunnel_file.read_text(encoding="utf-8-sig").strip().lstrip("\ufeff")
+            if tunnel.startswith("https://") and _tunnel_alive(tunnel):
+                return f"{tunnel.rstrip('/')}/api/gateway/auth/callback/google"
+    except Exception as exc:
+        logger.debug("event=google_tunnel_url_read_skipped reason=%s", exc)
+    return explicit or DEFAULT_REDIRECT_URI
+
+
+_TUNNEL_CHECK: dict[str, tuple[float, bool]] = {}
+
+
+def _tunnel_alive(url: str) -> bool:
+    """A stale tunnel-url.txt (tunnel stopped) must not become the redirect: Google
+    would send the user to a dead page.  Checks ``<tunnel>/health`` (cached 60 s)."""
+    now = time.time()
+    cached = _TUNNEL_CHECK.get(url)
+    if cached and now - cached[0] < 60:
+        return cached[1]
+    try:
+        alive = requests.get(f"{url.rstrip('/')}/health", timeout=4).status_code < 500
+    except requests.RequestException:
+        alive = False
+    if not alive:
+        logger.warning("[🔄] event=google_tunnel_unreachable url=%s fallback=localhost", url)
+    _TUNNEL_CHECK[url] = (now, alive)
+    return alive
+
+
+def is_public_redirect(uri: str) -> bool:
+    """True when the redirect reaches Hecate from any device (not loopback)."""
+    host = (urlparse(uri).hostname or "").lower()
+    return bool(host) and host not in {"localhost", "127.0.0.1", "::1"}
 
 
 def client_credentials() -> tuple[str, str]:
@@ -303,8 +354,10 @@ def _hint_for(error: str) -> str:
     hints = {
         "invalid_grant": "Code already used or expired (codes live ~10 min). Run initiate again.",
         "redirect_uri_mismatch": (
-            "Use an OAuth client of type 'Desktop app' (any localhost port is allowed), or add "
-            f"'{redirect_uri()}' to the authorized redirect URIs of your 'Web application' client."),
+            f"Add '{redirect_uri()}' to the authorized redirect URIs of your OAuth client "
+            "('Web application'), or use a 'Desktop app' client for the localhost redirect. "
+            "The Cloudflare quick-tunnel URL changes at every restart: re-add it, or set a "
+            "fixed GOOGLE_OAUTH_REDIRECT_URI."),
         "invalid_client": "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are wrong or the client was deleted.",
         "unauthorized_client": "This OAuth client type cannot use this flow — create a 'Desktop app' client.",
     }

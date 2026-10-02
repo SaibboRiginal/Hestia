@@ -13,7 +13,7 @@ def test_email_search_delegates_to_hecate(fake_hecate):
     subjects = [row["subject"] for row in response.json()["messages"]]
     assert subjects == ["Flight booking"]
     method, path, query, _ = fake_hecate.calls[-1]
-    assert (method, path) == ("GET", "api/gateway/mail/messages")
+    assert (method, path) == ("GET", "api/gateway/email/messages")
     assert query["q"] == "flight"
 
 

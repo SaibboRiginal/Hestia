@@ -164,14 +164,16 @@ class ModuleMaintenanceResponse(BaseModel):
     details: dict[str, Any]
 
 
+HUB_API_URL = os.getenv(
+    "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
 @app.on_event("startup")
 def register_on_hub_startup() -> None:
-    hub_api_url = os.getenv(
-        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
         "IRIS_SERVICE_BASE_URL", "http://hestia_iris:19012")
     startup_wait_timeout = float(
@@ -192,7 +194,7 @@ def register_on_hub_startup() -> None:
     }
 
     wait_for_http_ready(
-        hub_health_url(hub_api_url),
+        hub_health_url(HUB_API_URL),
         timeout_seconds=startup_wait_timeout,
         logger=logger,
         description="hub",
@@ -200,7 +202,7 @@ def register_on_hub_startup() -> None:
 
     def _register_once() -> None:
         response = requests.post(
-            f"{hub_api_url}/registry/register", json=payload, timeout=4)
+            f"{HUB_API_URL}/registry/register", json=payload, timeout=4)
         response.raise_for_status()
 
     try:
@@ -241,7 +243,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 
 @app.get("/api/email/inbox")
 def email_inbox(limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
-    data = _hecate("GET", "api/gateway/mail/messages", query={"limit": limit})
+    data = _hecate("GET", "api/gateway/email/messages", query={"limit": limit})
     messages = data.get("messages") or []
     return {"status": "ok", "count": len(messages), "messages": messages}
 
@@ -254,12 +256,34 @@ def email_messages(q: str = "", since: str | None = None,
     query: dict[str, Any] = {"q": q, "limit": limit}
     if since:
         query["since"] = since
-    rows = _hecate("GET", "api/gateway/mail/messages", query=query).get("messages") or []
+    try:
+        data = _hecate("GET", "api/gateway/email/messages", query=query)
+    except HTTPException as exc:
+        # Soft error: chat/tools get a readable reason instead of a 5xx.
+        logger.warning("[🔄] event=hecate_email_gateway_failed status=%s detail=%s",
+                       exc.status_code, str(exc.detail)[:300])
+        return {"status": "error", "query": q, "count": 0, "messages": [],
+                "error": f"Hecate: {str(exc.detail)[:300]}"}
+    rows = data.get("messages") or []
     logger.info(
-        "event=email_search_done ms=%d query_len=%d results=%d",
-        int((time.perf_counter() - t0) * 1000), len(q), len(rows),
+        "event=email_search_done ms=%d query_len=%d results=%d backend=%s",
+        int((time.perf_counter() - t0) * 1000), len(q), len(rows), data.get("backend"),
     )
-    return {"status": "ok", "query": q, "count": len(rows), "messages": rows}
+    if data.get("status") == "error":
+        return {"status": "error", "query": q, "count": 0, "messages": [],
+                "error": data.get("error"), "action_required": data.get("action_required")}
+    return {"status": "ok", "query": q, "backend": data.get("backend"), "count": len(rows), "messages": rows}
+
+
+@app.post("/api/email/ingest")
+def email_ingest(body: dict[str, Any]) -> dict[str, Any]:
+    """Trigger a provider mail fetch through Hecate (``/api/ingest/trigger``).
+    Domain modules (Scout) call Iris — Iris owns the email domain."""
+    try:
+        return _hecate("POST", "api/ingest/trigger", body=body, timeout=120) or {"status": "ok"}
+    except HTTPException as exc:
+        logger.warning("[🔄] event=iris_ingest_failed status=%s detail=%s", exc.status_code, exc.detail)
+        return {"status": "error", "detail": str(exc.detail)[:300]}
 
 
 @app.post("/api/email/send")
@@ -268,7 +292,7 @@ def email_send(req: EmailSendRequest) -> dict[str, Any]:
     subject = req.subject
     if req.thread_id and not subject.lower().startswith("re:"):
         subject = f"Re: {subject}"
-    sent = _hecate("POST", "api/gateway/mail/send",
+    sent = _hecate("POST", "api/gateway/email/send",
                    body={"to": req.to, "subject": subject, "body": req.body}).get("sent") or {}
     sent["thread_id"] = req.thread_id or subject.lower()
     logger.info("event=email_send_done ms=%d", int((time.perf_counter() - t0) * 1000))
@@ -278,7 +302,7 @@ def email_send(req: EmailSendRequest) -> dict[str, Any]:
 @app.get("/api/email/threads/{thread_id}")
 def email_thread(thread_id: str) -> dict[str, Any]:
     """Thread = messages sharing the normalized subject (provider-agnostic)."""
-    rows = _hecate("GET", "api/gateway/mail/messages",
+    rows = _hecate("GET", "api/gateway/email/messages",
                    query={"q": f'SUBJECT "{thread_id}"', "limit": 100}).get("messages") or []
     rows = [r for r in rows if r.get("thread_id") == thread_id] or rows
     if not rows:

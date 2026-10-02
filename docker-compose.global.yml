@@ -85,6 +85,9 @@ services:
       - HECATE_CALENDAR_BACKFILL_DAYS=7                       # Days back to include when syncing calendar (int, default 7)
       - HECATE_ARCHIVE_ROUTE_TIMEOUT=8                        # Seconds to wait for Hub-routed Archive writes (int, default 8)
       - HECATE_CALENDAR_WRITE_TIMEOUT=10                      # Seconds to wait for direct calendar item writes (int, default 10)
+      - HECATE_AUTH_RECHECK_INTERVAL_SECONDS=3600             # Seconds between periodic auth re-check (int, default 3600)
+      - HECATE_ACTION_NOTIFY_COOLDOWN=300                     # Seconds between repeated action-required notifications (float, default 300)
+      - GOOGLE_OAUTH_FLOW_MODE=redirect                       # OAuth flow: redirect (default, uses tunnel if available) or device_code
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
@@ -178,6 +181,9 @@ services:
       - ENTITY_BATCH_WINDOW_SECONDS=30                       # Settling window before dispatching a batch of entity alerts (float, default 30)
       - HERMES_HUB_REGISTER_RETRIES=8                        # Max Hub registration attempts on startup (int, default 8)
       - HERMES_HUB_REGISTER_RETRY_DELAY=2                    # Seconds between registration retry attempts (float, default 2)
+      - NOTIFY_TARGET=123456789                             # Telegram chat_id for system action notifications
+      - HERMES_RECURRING_EVENT_MAX_AGE_SECONDS=3600          # Seconds before a delivered notification is stale and re-deliverable (float, default 3600)
+      - HERMES_RECURRING_EVENT_TYPES=service.action_required,service.health  # Event types with time-limited dedup (CSV)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
@@ -213,6 +219,8 @@ services:
       - ALERT_BUFFER_WINDOW_SECONDS=0.8                      # Seconds to buffer consecutive alerts before grouping (float)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
+      - WEBUI_API_URL=http://hestia_webui:19015               # WebUI backend (direct — security exception, NOT via Hub)
+      - WEBUI_PUBLIC_URL=                                      # Set by cloudflare-tunnel.bat; leave empty for auto-detection
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Telegram/data:/code/data
@@ -224,6 +232,8 @@ services:
       oracle:
         condition: service_started
       mcp:
+        condition: service_started
+      webui:
         condition: service_started
     networks:
       - hestia_net
@@ -529,6 +539,42 @@ services:
     networks:
       - hestia_net
 
+  webui:
+    build:
+      context: .
+      dockerfile: Hestia-WebUI/Dockerfile
+    container_name: hestia_webui
+    restart: unless-stopped
+    ports:
+      - "19015:19015"  # WebUI API + static files + SignalR
+    environment:
+      - Hestia__HubApiUrl=http://hestia_hub:19001/api
+      - Hestia__ServiceBaseUrl=http://hestia_webui:19015
+      - Hestia__ServiceName=webui
+      - Hestia__ServiceVersion=1.0.0
+      - Hestia__ServiceType=integration
+      - Hestia__ServiceTags=integration,messaging,chat
+      - Hestia__ServiceTopologyTags=layer:client,domain:ui,status:stable
+      - WebUI__Port=19015
+      - WebUI__SecretKey=${WEBUI_SECRET_KEY:-}
+      - WebUI__TokenLifetimeHours=72
+      - WebUI__RateLimitPerMinute=60
+      - WebUI__MaxUploadSizeMB=50
+      - WebUI__CorsOrigin=*
+      - WebUI__StaticDir=wwwroot
+      - Logging__LogLevel__Default=Information
+      - Logging__LogLevel__Hestia.WebUI=Information
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+    volumes:
+      - hestia_webui_data:/app/data
+    depends_on:
+      hub:
+        condition: service_started
+      oracle:
+        condition: service_started
+    networks:
+      - hestia_net
+
 # ── Swagger UI note ──────────────────────────────────────────────────────────
 # After adding or changing any API endpoint, update Hestia-Swagger/swagger.yml.
 # Run: docker compose -f docker-compose.global.yml up -d swagger
@@ -541,3 +587,4 @@ networks:
 
 volumes:
   hestia_archive_pgdata:
+  hestia_webui_data:

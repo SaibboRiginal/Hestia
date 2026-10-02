@@ -205,6 +205,12 @@ class ScoutWorker:
                     legacy_key="atlas_enriched",
                 ):
                     enrichment_failed_again += 1
+                    if enrichment_failed_again >= 3:
+                        logger.warning(
+                            "event=atlas_circuit_breaker Atlas enrichment failed %s "
+                            "times consecutively — skipping remaining retries",
+                            enrichment_failed_again)
+                        break
                     continue
 
                 enriched_payload = self._set_step_pending(
@@ -404,7 +410,7 @@ class ScoutWorker:
         }
         try:
             response = requests.post(
-                f"{self.hub_api_url}/route/hecate/api/ingest/trigger",
+                f"{self.hub_api_url}/route/iris/api/email/ingest",
                 json={
                     "method": "POST",
                     "headers": {},

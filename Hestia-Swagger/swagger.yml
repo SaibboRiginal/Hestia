@@ -66,6 +66,8 @@ tags:
     description: Guarded self-healing remediation workflows
   - name: Dummy
     description: Deterministic generic testing module
+  - name: WebUI
+    description: Web-based chat interface — token management and health (direct :19015, not Hub-routed)
   - name: Athena
     description: Retrospective focus-brief cognition runtime
   - name: Meta
@@ -2803,7 +2805,7 @@ paths:
                   description: Optional OAuth state (validated against the pending flow)
       responses:
         "200":
-          description: "{status: authorized|token_saved_provider_unavailable, provider, active_providers[], unavailable, note}"
+          description: "{status: authorized|token_saved_provider_unavailable, provider, granted_scopes[], active_providers[], unavailable, note}"
         "400":
           description: "Missing code, state mismatch, Google error. Body: {detail: {error, hint}}"
         "404":
@@ -4732,3 +4734,54 @@ paths:
                     type: string
                   observation:
                     $ref: "#/components/schemas/ObservationSnapshot"
+
+  # ── WebUI ───────────────────────────────────────────────────────────────
+  /api/webui/admin/generate-token:
+    servers:
+      - url: http://localhost:19015
+    post:
+      tags: [WebUI]
+      summary: Generate WebUI access token
+      description: >
+        Generates a new 256-bit access token. Invalidates previous token.
+        NOT Hub-routed — called directly by Telegram on internal Docker network.
+      parameters:
+        - name: lifetimeHours
+          in: query
+          schema:
+            type: number
+            default: 72
+      responses:
+        "200":
+          description: "{token, public_url, expires_in_seconds, lifetime_hours}"
+
+  /api/webui/admin/revoke-token:
+    servers:
+      - url: http://localhost:19015
+    post:
+      tags: [WebUI]
+      summary: Revoke WebUI access token
+      description: Immediately invalidates the current active token.
+      responses:
+        "200":
+          description: "{status: revoked}"
+
+  /api/webui/admin/token-status:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Get WebUI token status
+      responses:
+        "200":
+          description: "{active, created_at, expires_at, remaining_seconds, remaining_hours}"
+
+  /api/webui/admin/public-url:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Get current public-facing Cloudflare URL
+      responses:
+        "200":
+          description: "{public_url, detected}"

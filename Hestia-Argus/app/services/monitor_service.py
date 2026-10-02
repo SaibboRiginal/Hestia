@@ -8,6 +8,8 @@ Each cycle (every ``ARGUS_POLL_INTERVAL`` seconds):
        - Health issues (down / degraded)
        - Log events at WARNING / ERROR / CRITICAL level
   5. Sends recovery notifications when a previously-alerted service comes back.
+  6. Checks Hecate provider auth status and emits service.action_required
+     events for any broken provider (Google / Outlook).
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import os
 import threading
 import time
 from collections import deque
+from datetime import datetime, timezone
 
 from core import docker_client, forge_proposer, health_poller, hub_client
 from schemas.reports import LogEvent
@@ -34,6 +37,12 @@ AUTO_REMEDIATE_DRY_RUN = os.getenv("ARGUS_AUTO_REMEDIATE_DRY_RUN", "1").strip(
 ).lower() not in {"0", "false", "off", "no"}
 AUTO_REMEDIATE_ENVIRONMENT = os.getenv(
     "ARGUS_AUTO_REMEDIATE_ENVIRONMENT", "dev").strip().lower() or "dev"
+ARGUS_PROVIDER_AUTH_CHECK_ENABLED = os.getenv(
+    "ARGUS_PROVIDER_AUTH_CHECK_ENABLED", "1").strip().lower() not in {
+        "0", "false", "off", "no"}
+# Check provider auth every N monitor cycles (default: every 5 cycles = every 5 min)
+ARGUS_PROVIDER_AUTH_CHECK_INTERVAL = int(
+    os.getenv("ARGUS_PROVIDER_AUTH_CHECK_INTERVAL", "5"))
 
 # Services currently known to be unhealthy — used to detect recovery.
 # Value is the last known bad status string.
@@ -42,6 +51,7 @@ _unhealthy_lock = threading.Lock()
 _seen_log_fingerprints: set[str] = set()
 _seen_log_order: deque[str] = deque()
 _seen_log_lock = threading.Lock()
+_monitor_cycle_count: int = 0
 
 
 def _is_new_log_event(event: LogEvent) -> bool:
@@ -84,11 +94,142 @@ def _monitor_loop() -> None:
         time.sleep(POLL_INTERVAL)
 
 
+def _check_provider_auth() -> None:
+    """Discover auth-capable gateway services from Hub and verify their
+    provider status.  Emits ``service.action_required`` events for any
+    provider that is configured but not currently active.
+
+    Service-agnostic — any service registered with the ``domain:auth_api``
+    topology tag and a ``/api/gateway/auth/status`` endpoint is checked.
+    """
+    import requests as _req
+
+    # 1) Discover auth-capable services via Hub topology tags
+    try:
+        registry_resp = _req.get(
+            f"{hub_client.HUB_API_URL}/registry/services", timeout=6)
+        if registry_resp.status_code != 200:
+            logger.warning(
+                "event=provider_auth_registry_fetch_failed status=%s",
+                registry_resp.status_code)
+            return
+        all_services = (registry_resp.json() or {}).get("services") or []
+    except Exception as exc:
+        logger.warning("event=provider_auth_registry_fetch_error error=%s", exc)
+        return
+
+    auth_services: list[dict] = []
+    for svc in all_services:
+        if not isinstance(svc, dict):
+            continue
+        topology = svc.get("topology_tags") or []
+        if not isinstance(topology, list):
+            continue
+        if "domain:auth_api" in topology:
+            auth_services.append(svc)
+
+    if not auth_services:
+        return  # No auth-capable services registered — nothing to check
+
+    # 2) Query each auth service's provider status
+    for svc in auth_services:
+        svc_name = str(svc.get("name", "")).strip()
+        if not svc_name:
+            continue
+        try:
+            resp = _req.post(
+                f"{hub_client.HUB_API_URL}/route/{svc_name}/api/gateway/auth/status",
+                json={
+                    "method": "GET",
+                    "headers": {},
+                    "query": {},
+                    "body": None,
+                    "timeout_seconds": 8,
+                },
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                logger.warning(
+                    "event=provider_auth_check_non200 service=%s status=%s",
+                    svc_name, resp.status_code)
+                continue
+            routed = resp.json() or {}
+            status_code = int(routed.get("status_code", 500))
+            if status_code >= 400:
+                logger.warning(
+                    "event=provider_auth_check_error service=%s status=%s",
+                    svc_name, status_code)
+                continue
+            data = routed.get("payload") or {}
+        except Exception as exc:
+            logger.warning(
+                "event=provider_auth_check_request_failed service=%s error=%s",
+                svc_name, exc)
+            continue
+
+        # 3) Emit action_required events for configured-but-inactive providers
+        providers = data.get("providers") or []
+        runtime = data.get("runtime") or {}
+        active = runtime.get("active") or []
+        for p in providers:
+            if not isinstance(p, dict):
+                continue
+            p_name = str(p.get("provider", "")).strip()
+            configured = bool(p.get("configured", False))
+            if not configured or not p_name:
+                continue
+            if p_name in active:
+                continue  # Already active
+
+            _ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H")
+            _req.post(
+                f"{hub_client.HUB_API_URL}/route/hermes/api/events/ingest",
+                json={
+                    "method": "POST",
+                    "headers": {},
+                    "query": {},
+                    "body": {
+                        "event_type": "service.action_required",
+                        "domain": "system",
+                        "entity_id": f"argus-auth-{svc_name}-{p_name}-{_ts}",
+                        "payload": {
+                            "action": f"reauth_{p_name}",
+                            "_message": (
+                                f"⚠️ <b>{p_name.title()}</b> su "
+                                f"<b>{svc_name.title()}</b> richiede "
+                                "riautenticazione. Usa il pulsante qui sotto."
+                            ),
+                            "_actions": [
+                                {
+                                    "text": f"🔑 Riautentica {p_name.title()}",
+                                    "command": f"gateway_auth_initiate_{p_name}",
+                                }
+                            ],
+                            "service": svc_name,
+                            "source": "argus.provider_auth_check",
+                        },
+                    },
+                    "timeout_seconds": 8,
+                },
+                timeout=10,
+            )
+            logger.info(
+                "event=argus_provider_auth_event_sent service=%s provider=%s",
+                svc_name, p_name)
+
+
 def _run_once() -> None:
+    global _monitor_cycle_count
     t0 = time.perf_counter()
     logger.info("event=monitor_cycle_start")
     services = hub_client.discover_services()
     health = health_poller.poll_all(services)
+
+    # --- Provider auth check (periodic) ---
+    if ARGUS_PROVIDER_AUTH_CHECK_ENABLED:
+        _monitor_cycle_count += 1
+        if _monitor_cycle_count % max(1, ARGUS_PROVIDER_AUTH_CHECK_INTERVAL) == 0:
+            _check_provider_auth()
 
     # --- Health alerts & recovery ---
     for name, report in health.items():

@@ -818,11 +818,15 @@ def llm_generate_endpoint(req: dict):
                 "event=llm_generate_primary_failed "
                 "provider=%s model=%s error=%s — trying fallback",
                 provider, model, primary_exc)
-            # Fallback: try Ollama (local, no external API dependency)
-            fallback_provider = "ollama"
+            # Fallback: same source of truth as AgentFactory —
+            # MODEL_USECASE_GENERIC_FALLBACK_* from .env (default: Gemini cloud).
+            fallback_provider = os.getenv(
+                "MODEL_USECASE_GENERIC_FALLBACK_PROVIDER",
+                os.getenv("ANALYST_FALLBACK_PROVIDER", "gemini"))
             fallback_model = os.getenv(
-                "ANALYST_FALLBACK_MODEL",
-                os.getenv("LLM_FALLBACK_MODEL", ""))
+                "MODEL_USECASE_GENERIC_FALLBACK_MODEL",
+                os.getenv("ANALYST_FALLBACK_MODEL",
+                          os.getenv("LLM_FALLBACK_MODEL", "")))
             try:
                 fallback_agent = UniversalAgent(
                     role_prompt="", provider=fallback_provider,
@@ -846,6 +850,8 @@ def llm_generate_endpoint(req: dict):
                     status_code=500,
                     detail=f"Primary ({provider}/{model}): {primary_exc} | "
                            f"Fallback ({fallback_provider}/{fallback_model}): {fallback_exc}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(
             "event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")

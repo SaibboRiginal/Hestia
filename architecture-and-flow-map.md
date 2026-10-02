@@ -11,6 +11,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Oracle | Core | No | No | Uses Hub discovery and routes commands |
 | Hermes | Core | No | No | Dispatches events/notifications |
 | Telegram | Interface | No | No | User-facing chat/file relay to Oracle |
+| WebUI | Interface | No | No | Web-based chat/file relay to Oracle, SignalR streaming |
 | Hecate | Core Gateway | No domain logic | Yes (Google/Outlook provider runtime) | Provider-facing gateway + connector runtime |
 | Chronos | Domain (Calendar) | Yes (calendar workflows + assistant agenda) | No | Routes provider calendar calls to Hecate; owns the assistant agenda |
 | Iris | Domain (Email) | Yes (email workflows) | No (gateway-mediated when needed) | Exposes email-domain APIs and commands |
@@ -21,6 +22,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
 | Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
+| MCP | Core Gateway | No tool-ownership (aggregates) | No | MCP tool registry — aggregates tools from all services and third-party servers |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |
 | Shared | Shared Library | No | No | Common runtime/logging/startup helpers for services |
 
@@ -38,6 +40,8 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 ```mermaid
 flowchart LR
     TG[Telegram UI] --> OR[Oracle]
+    WU[WebUI] --> OR[Oracle]
+    WU --> HUB[Hub]
     OR --> HUB[Hub]
 
     HUB --> HE[Hecate Gateway]
@@ -48,6 +52,7 @@ flowchart LR
     HUB --> AG[Argus Monitoring]
     HUB --> HP[Hephaestus Remediation]
     HUB --> MT[Metis Improvement]
+    HUB --> MCP[MCP Tool Gateway]
     HUB --> DU[Dummy Test Module]
     HUB --> AL[Atlas Fetch Gateway]
     HUB --> AR[Archive]
@@ -91,16 +96,16 @@ flowchart LR
 
 | Node | Services |
 |---|---|
-| Raspberry Pi (always-on) | Hub, Archive, Oracle, Telegram, Hecate, Hermes, Chronos, Iris |
+| Raspberry Pi (always-on) | Hub, Archive, Oracle, Telegram, WebUI, Hecate, Hermes, Chronos, Iris, MCP |
 | Main PC (best-effort) | Scout and other domain modules, Metis, local LLM/runtime helpers |
 | Host utility (outside Docker) | Atlas |
 
 ## Coverage Checklist
 
-- Core: Hub, Archive, Oracle, Hermes, Telegram, Hecate
+- Core: Hub, Archive, Oracle, Hermes, Telegram, WebUI, Hecate
 - Domain: Chronos, Iris, Scout
 - Organ services: Argus, Hephaestus, Athena, Metis
-- Utility/support: Atlas, Dummy, Swagger, Shared
+- Utility/support: Atlas, Dummy, Swagger, Shared, MCP
 
 ## Practical Flows
 

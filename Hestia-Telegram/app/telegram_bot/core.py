@@ -397,7 +397,13 @@ def build_delivery_messages(text: str, parse_mode: str = "HTML") -> tuple[list[s
     return message_format.build_delivery_messages(text, parse_mode)
 
 
-def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True):
+def send_user_message(
+    chat_id: str | int,
+    text: str,
+    parse_mode: str = "HTML",
+    disable_web_page_preview: bool = True,
+    reply_markup=None,
+):
     messages, normalized_parse_mode = build_delivery_messages(text, parse_mode)
     if not messages:
         return
@@ -408,9 +414,11 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
         len(messages),
         normalized_parse_mode,
     )
-    for part in messages:
+    for i, part in enumerate(messages):
         if not str(part).strip():
             continue
+        # Only attach reply_markup to the LAST message part
+        _markup = reply_markup if i == len(messages) - 1 else None
         try:
             if normalized_parse_mode:
                 bot.send_message(
@@ -418,12 +426,14 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
                     part,
                     parse_mode=normalized_parse_mode,
                     disable_web_page_preview=disable_web_page_preview,
+                    reply_markup=_markup,
                 )
             else:
                 bot.send_message(
                     chat_id,
                     part,
                     disable_web_page_preview=disable_web_page_preview,
+                    reply_markup=_markup,
                 )
         except Exception as exc:
             err_text = str(exc or "")
@@ -442,6 +452,7 @@ def send_user_message(chat_id: str | int, text: str, parse_mode: str = "HTML", d
                 chat_id,
                 fallback_text,
                 disable_web_page_preview=disable_web_page_preview,
+                reply_markup=_markup,
             )
 
 
