@@ -63,6 +63,8 @@ services:
     restart: unless-stopped
     ports:
       - "19004:19004"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Ollama on host (required by rulebook §8)
     env_file:
       - ./Hestia-Oracle/app/.env
     environment:

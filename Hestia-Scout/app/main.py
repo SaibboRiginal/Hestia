@@ -254,8 +254,41 @@ if _HAS_MCP:
         req = RealEstateSearchRequest(domain=TARGET_DOMAIN, query=query, limit=limit)
         return {"text": retrieval_service.search_formatted(req)}
 
-    def _mcp_scout_reconcile(dry_run: bool = True) -> dict:
-        return retrieval_service.reconcile_entities(dry_run=dry_run)
+    def _mcp_scout_reconcile(dry_run: bool = False) -> dict:
+        if dry_run:
+            return {"status": "dry_run", "message": "Dry run requested — no changes made."}
+        worker.reconcile_entities()
+        return {"status": "ok", "message": "Reconcile completed. Check logs for details."}
+
+    def _mcp_scout_fetch() -> dict:
+        """Trigger a full email fetch + parse + extract cycle on demand."""
+        worker.run_cycle()
+        return {"status": "ok", "message": "Fetch cycle completed. Check logs for details."}
+
+    def _mcp_scout_stats() -> dict:
+        """Return real_estate domain summary: counts, statuses, date ranges."""
+        entities = retrieval_service._fetch_archive_entities(
+            RealEstateSearchRequest(domain=TARGET_DOMAIN, limit=100))
+        total = len(entities)
+        status_counts: dict[str, int] = {}
+        newest = None
+        oldest = None
+        for e in entities:
+            st = str((e.get("listing_status") or e.get("payload", {}).get("listing_status") or "unknown")).strip().lower()
+            status_counts[st] = status_counts.get(st, 0) + 1
+            ct = e.get("created_at")
+            if ct:
+                if newest is None or ct > newest:
+                    newest = ct
+                if oldest is None or ct < oldest:
+                    oldest = ct
+        return {
+            "domain": TARGET_DOMAIN,
+            "total_entities": total,
+            "by_status": status_counts,
+            "oldest_created": str(oldest) if oldest else None,
+            "newest_created": str(newest) if newest else None,
+        }
 
     mcp_tools = [
         MCPTool(name="scout.search",
@@ -299,6 +332,26 @@ if _HAS_MCP:
                 title="\U0001f6e0️ Riconcilia Scout", method="POST", path="/api/module/maintenance/reconcile",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Riassumi esito della riconciliazione Scout, indicando se era dry-run e cosa e stato verificato.",
+                telegram_visible=True, telegram_group="immobiliare"),
+        MCPTool(name="scout_fetch",
+                description="Trigger Scout to fetch new emails from Hecate, parse listings, "
+                            "extract entities, and run the full pipeline immediately. "
+                            "Use when the user wants to check for new house listings NOW.",
+                parameters={"type": "object", "properties": {}, "required": []},
+                handler=_mcp_scout_fetch,
+                title="📥 Controlla email", method="POST", path="/api/fetch/trigger",
+                clients=["telegram", "ui"], response_mode="oracle_natural",
+                response_prompt="Conferma che il ciclo fetch è stato avviato e di controllare i log.",
+                telegram_visible=True, telegram_group="immobiliare"),
+        MCPTool(name="scout_stats",
+                description="Return real_estate domain statistics: total entities, "
+                            "breakdown by listing status (available/sold/etc), "
+                            "and date range of when listings were added.",
+                parameters={"type": "object", "properties": {}, "required": []},
+                handler=_mcp_scout_stats,
+                title="📊 Statistiche case", method="GET", path="/api/stats",
+                clients=["telegram", "ui"], response_mode="oracle_natural",
+                response_prompt="Mostra le statistiche del dominio immobiliare in formato leggibile.",
                 telegram_visible=True, telegram_group="immobiliare"),
     ]
     api_app.include_router(create_mcp_router(mcp_tools, service_name="scout"))

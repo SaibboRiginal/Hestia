@@ -861,6 +861,30 @@ class AthenaRuntime:
             self._run_once()
             self._stop_event.wait(max(1, self.interval_seconds))
 
+    def _wait_for_oracle(self, timeout: float = 60.0) -> bool:
+        """Poll Hub until Oracle is registered. Returns True if found."""
+        import time as _time
+        deadline = _time.time() + timeout
+        while _time.time() < deadline:
+            try:
+                resp = requests.get(
+                    f"{self.hub_api_url}/registry/services", timeout=5)
+                if resp.ok:
+                    services = resp.json().get("services", [])
+                    for svc in services:
+                        if svc.get("name") == "oracle":
+                            logger.info(
+                                "event=athena_oracle_found "
+                                "Oracle found in Hub registry")
+                            return True
+            except Exception:
+                pass
+            _time.sleep(2)
+        logger.warning(
+            "event=athena_oracle_not_found "
+            "Oracle not found in Hub registry after %.0fs", timeout)
+        return False
+
     def start(self) -> None:
         if not self.loop_enabled:
             logger.info(
@@ -870,6 +894,7 @@ class AthenaRuntime:
             return
         if self._thread and self._thread.is_alive():
             return
+        self._wait_for_oracle()
         self._stop_event.clear()
         self._thread = threading.Thread(
             target=self._loop,

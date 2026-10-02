@@ -35,6 +35,24 @@ with engine.connect() as conn:
 
 models.Base.metadata.create_all(bind=engine)
 
+# ── Schema migrations (additive only — never remove columns) ─────────────────
+with engine.connect() as conn:
+    _PREFERENCE_COLUMNS = [
+        ("memory_class", "VARCHAR"),
+        ("embedding", "vector(768)"),
+        ("domains", "JSONB"),
+        ("extra_data", "JSONB"),
+    ]
+    for col_name, col_type in _PREFERENCE_COLUMNS:
+        try:
+            conn.execute(text(
+                f"ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS "
+                f"{col_name} {col_type}"
+            ))
+            conn.commit()
+        except Exception:
+            pass  # Column already exists or table doesn't exist yet
+
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Hestia-Archive Vault",
               version="3.0.0 (Entity & Vector Ready)")

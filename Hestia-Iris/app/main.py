@@ -143,14 +143,16 @@ class ModuleMaintenanceResponse(BaseModel):
     details: dict[str, Any]
 
 
+HUB_API_URL = os.getenv(
+    "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
 @app.on_event("startup")
 def register_on_hub_startup() -> None:
-    hub_api_url = os.getenv(
-        "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
         "IRIS_SERVICE_BASE_URL", "http://hestia_iris:19012")
     startup_wait_timeout = float(
@@ -171,7 +173,7 @@ def register_on_hub_startup() -> None:
     }
 
     wait_for_http_ready(
-        hub_health_url(hub_api_url),
+        hub_health_url(HUB_API_URL),
         timeout_seconds=startup_wait_timeout,
         logger=logger,
         description="hub",
@@ -179,7 +181,7 @@ def register_on_hub_startup() -> None:
 
     def _register_once() -> None:
         response = requests.post(
-            f"{hub_api_url}/registry/register", json=payload, timeout=4)
+            f"{HUB_API_URL}/registry/register", json=payload, timeout=4)
         response.raise_for_status()
 
     try:
@@ -228,25 +230,72 @@ def email_inbox(limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
 @app.get("/api/email/messages")
 def email_messages(q: str = "", limit: int = Query(default=20, ge=1, le=200)) -> dict[str, Any]:
     t0 = time.perf_counter()
-    needle = q.strip().lower()
-    rows = _MESSAGES
-    if needle:
-        rows = [
-            row
-            for row in _MESSAGES
-            if needle in row.get("subject", "").lower()
-            or needle in row.get("body", "").lower()
-            or needle in row.get("to", "").lower()
-        ]
-    rows = sorted(rows, key=lambda row: row["created_at"], reverse=True)[
-        :limit]
-    logger.info(
-        "event=email_search_done ms=%d query_len=%d results=%d",
-        int((time.perf_counter() - t0) * 1000),
-        len(q),
-        len(rows),
-    )
-    return {"status": "ok", "query": q, "count": len(rows), "messages": rows}
+    try:
+        resp = requests.post(
+            f"{HUB_API_URL}/route/hecate/api/gateway/email/messages",
+            json={
+                "method": "GET",
+                "headers": {},
+                "query": {"q": q, "limit": max(1, min(limit, 200))},
+                "body": None,
+                "timeout_seconds": 15,
+            },
+            timeout=20,
+        )
+        if resp.status_code >= 400:
+            body_preview = (resp.text or "")[:300]
+            logger.warning(
+                "event=hecate_email_gateway_failed status=%s body=%s",
+                resp.status_code, body_preview)
+            return {"status": "error", "query": q, "count": 0, "messages": [],
+                    "error": f"Hecate gateway returned {resp.status_code}"}
+        routed = resp.json() or {}
+        status_code = int(routed.get("status_code", 500))
+        if status_code >= 400:
+            payload = routed.get("payload") or {}
+            detail = str(payload.get("detail", payload))[:300]
+            logger.warning(
+                "event=hecate_email_gateway_failed status=%s detail=%s",
+                status_code, detail)
+            return {"status": "error", "query": q, "count": 0, "messages": [],
+                    "error": f"Hecate: {detail}"}
+        data = routed.get("payload") or {}
+        logger.info(
+            "event=email_search_done ms=%d query_len=%d results=%d",
+            int((time.perf_counter() - t0) * 1000),
+            len(q),
+            data.get("count", 0),
+        )
+        return data
+    except Exception as exc:
+        logger.warning("event=hecate_email_gateway_error error=%s", exc)
+        return {"status": "error", "query": q, "count": 0, "messages": [],
+                "error": str(exc)}
+
+
+@app.post("/api/email/ingest")
+def email_ingest(body: dict[str, Any]) -> dict[str, Any]:
+    """Trigger email fetch through Hecate. Scout calls this instead of
+    calling Hecate directly — Iris owns the email domain."""
+    try:
+        resp = requests.post(
+            f"{HUB_API_URL}/route/hecate/api/ingest/trigger",
+            json={
+                "method": "POST",
+                "headers": {},
+                "query": {},
+                "body": body,
+                "timeout_seconds": 15,
+            },
+            timeout=20,
+        )
+        if resp.status_code >= 400:
+            return {"status": "error", "detail": f"Hecate returned {resp.status_code}"}
+        routed = resp.json() or {}
+        return routed.get("payload") or {"status": "ok"}
+    except Exception as exc:
+        logger.warning("event=iris_ingest_failed error=%s", exc)
+        return {"status": "error", "detail": str(exc)}
 
 
 @app.post("/api/email/send")

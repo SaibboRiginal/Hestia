@@ -71,6 +71,18 @@ TONE_PRESETS = [
     ("formal", "Formale"),
 ]
 
+THINKING_DISPLAY_PRESETS = [
+    ("hidden", "Nascosto"),
+    ("compact", "Compatto"),
+    ("detailed", "Dettagliato"),
+]
+
+THINKING_DISPLAY_LABELS = {
+    "hidden": "Nascosto",
+    "compact": "Compatto",
+    "detailed": "Dettagliato",
+}
+
 # ── UI prompt helpers ─────────────────────────────────────────────────────────
 
 
@@ -84,8 +96,13 @@ def prompt_set_parameter_picker(chat_id: int):
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
         InlineKeyboardButton("🎙️ Tone", callback_data="set:param:tone"),
-        InlineKeyboardButton(
-            "📝 Custom Prompt", callback_data="set:param:custom_prompt"),
+        InlineKeyboardButton("📝 Custom Prompt", callback_data="set:param:custom_prompt"),
+    )
+    kb.add(
+        InlineKeyboardButton("💭 Ragionamento", callback_data="set:param:thinking_display"),
+    )
+    kb.add(
+        InlineKeyboardButton("📋 Mostra impostazioni attuali", callback_data="set:show_current"),
     )
     core.bot.send_message(
         chat_id, "Scegli il parametro da impostare:", reply_markup=kb)
@@ -98,6 +115,42 @@ def prompt_tone_presets(chat_id: int):
             tone_label, callback_data=f"set:tone:{tone_value}"))
     core.bot.send_message(
         chat_id, "Seleziona un preset di tone:", reply_markup=kb)
+
+
+def prompt_thinking_display_presets(chat_id: int):
+    kb = InlineKeyboardMarkup(row_width=1)
+    for mode_value, mode_label in THINKING_DISPLAY_PRESETS:
+        emoji = {"hidden": "🚫", "compact": "📝", "detailed": "📋"}.get(mode_value, "")
+        kb.add(InlineKeyboardButton(
+            f"{emoji} {mode_label}", callback_data=f"set:thinking_display:{mode_value}"))
+    core.bot.send_message(
+        chat_id, "<b>💭 Seleziona modalità ragionamento:</b>", parse_mode="HTML", reply_markup=kb)
+
+
+def prompt_show_current_settings(chat_id: int):
+    """Show all current session settings in a nicely formatted message."""
+    settings = core.get_session_settings(str(chat_id))
+    tone = settings.get("tone", "warm")
+    td = settings.get("thinking_display", "compact")
+    custom = settings.get("custom_prompt", "").strip()
+
+    TONE_LABELS = {"warm": "Caldo", "neutral": "Neutro", "direct": "Diretto", "formal": "Formale"}
+    tone_label = TONE_LABELS.get(tone, tone)
+    td_label = THINKING_DISPLAY_LABELS.get(td, td)
+
+    lines = [
+        "<b>⚙️ Impostazioni attuali</b>",
+        "",
+        f"🎙️ <b>Tone:</b> {escape(tone_label)}",
+        f"💭 <b>Ragionamento:</b> {escape(td_label)}",
+    ]
+    if custom:
+        preview = custom[:120] + ("…" if len(custom) > 120 else "")
+        lines.append(f"📝 <b>Prompt personalizzato:</b> {escape(preview)}")
+    else:
+        lines.append("📝 <b>Prompt personalizzato:</b> <i>nessuno</i>")
+
+    core.bot.send_message(chat_id, "\n".join(lines), parse_mode="HTML")
 
 
 # ── Argument input flows ──────────────────────────────────────────────────────
@@ -355,6 +408,9 @@ def execute_local_command(command_name: str, chat_id: int, raw_args_text: str):
     """Execute a locally-handled command (no Hub routing)."""
     normalized = str(command_name or "").strip().lower()
     args_text = str(raw_args_text or "").strip()
+    logger.info(
+        "event=local_command_received command=%s chat_id=%s args_len=%d",
+        normalized, str(chat_id), len(args_text))
 
     if normalized == "start":
         refresh_command_registry(force=False)
@@ -412,15 +468,8 @@ def execute_local_command(command_name: str, chat_id: int, raw_args_text: str):
         return
 
     if normalized == "settings":
-        settings = core.get_session_settings(str(chat_id))
-        if not settings:
-            core.bot.send_message(
-                chat_id, "Nessuna impostazione sessione attiva.")
-            return
-        lines = ["<b>Impostazioni sessione</b>"]
-        for key, value in settings.items():
-            lines.append(f"• <b>{key}</b>: {value}")
-        core.bot.send_message(chat_id, "\n".join(lines), parse_mode="HTML")
+        prompt_show_current_settings(chat_id)
+        prompt_set_parameter_picker(chat_id)
         return
 
     if normalized == "reset_settings":
@@ -461,6 +510,201 @@ def execute_local_command(command_name: str, chat_id: int, raw_args_text: str):
     if normalized == "documents":
         _handle_documents_list(chat_id)
         return
+
+    if normalized == "thinking":
+        if not args_text:
+            prompt_show_current_settings(chat_id)
+            prompt_thinking_display_presets(chat_id)
+            return
+        mode = args_text.lower()
+        if mode not in ("hidden", "compact", "detailed"):
+            core.bot.send_message(
+                chat_id, 
+                "❌ <b>Errore:</b> Modalità non valida.\n"
+                "Usa: <code>hidden</code>, <code>compact</code> o <code>detailed</code>",
+                parse_mode="HTML")
+            return
+        core.set_session_setting(str(chat_id), "thinking_display", mode)
+        core.bot.send_message(
+            chat_id,
+            f"✅ <b>Modalità ragionamento:</b> {THINKING_DISPLAY_LABELS.get(mode, mode)}",
+            parse_mode="HTML")
+        return
+
+    if normalized == "webui_token":
+        _handle_webui_token(chat_id)
+        return
+
+    if normalized == "revoke_webui":
+        _handle_revoke_webui(chat_id)
+        return
+
+    if normalized == "webui_status":
+        _handle_webui_status(chat_id)
+        return
+
+
+# ── WebUI Token Commands ──────────────────────────────────────────────────────
+
+def _generate_webui_token() -> str:
+    """Generate a secure random token for WebUI access."""
+    import secrets
+    return secrets.token_hex(32)
+
+
+def _get_webui_api_url():
+    """Get the WebUI backend API URL (direct, NOT via Hub — security exception)."""
+    import os
+    return os.getenv("WEBUI_API_URL", "http://hestia_webui:19015").rstrip("/")
+
+
+def _handle_webui_token(chat_id: int):
+    """Generate a new WebUI access token via the WebUI admin API."""
+    import os
+    try:
+        webui_api = _get_webui_api_url()
+        resp = requests.post(
+            f"{webui_api}/api/webui/admin/generate-token",
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        token = data.get("token", "")
+        lifetime_hours = data.get("lifetime_hours", 72)
+    except Exception as exc:
+        logger.warning("event=webui_token_generate_api_failed error=%s", exc)
+        # Fallback: generate locally
+        token = _generate_webui_token()
+        lifetime_hours = 72
+        try:
+            envelope = {
+                "method": "POST",
+                "body": {
+                    "domain": "webui_auth",
+                    "fact": f"webui_current_token={token}",
+                    "memory_class": "durable_user_preference",
+                    "owner": str(chat_id),
+                },
+                "timeout_seconds": 10.0,
+            }
+            resp2 = requests.post(
+                f"{core.HUB_API_URL}/route/archive/api/memory",
+                json=envelope,
+                timeout=15,
+            )
+            resp2.raise_for_status()
+        except Exception as exc2:
+            logger.warning("event=webui_token_archive_fallback_failed error=%s", exc2)
+            core.bot.send_message(
+                chat_id,
+                "⚠️ <b>Errore:</b> WebUI backend non raggiungibile.",
+                parse_mode="HTML",
+            )
+            return
+
+    # Get public URL from WebUI backend (runtime Cloudflare detection) or env fallback
+    import os
+    webui_public_url = os.getenv("WEBUI_PUBLIC_URL", "").rstrip("/")
+    if not webui_public_url:
+        try:
+            webui_api = _get_webui_api_url()
+            pr = requests.get(f"{webui_api}/api/webui/admin/public-url", timeout=5)
+            if pr.status_code == 200:
+                pu = pr.json().get("public_url", "")
+                if pu:
+                    webui_public_url = pu.rstrip("/")
+        except Exception:
+            pass
+
+    login_url = f"{webui_public_url}?token={token}" if webui_public_url else ""
+
+    # Escape MarkdownV2 reserved chars in URL
+    safe_url = login_url.replace('=', '\\=').replace('?', '\\?').replace('-', '\\-')
+
+    msg = "🌐 *Accesso WebUI*\n\n"
+    if login_url:
+        msg += f"[Apri WebUI]({safe_url})\n\n"
+    msg += f"*Token:* `{token}`\n\n"
+    msg += "⏰ Valido per *72 ore*\n"
+    msg += "🔒 Nuovo token \\= precedente invalidato\\."
+
+    core.bot.send_message(chat_id, msg, parse_mode="MarkdownV2")
+    logger.info("event=webui_token_generated chat_id=%s", chat_id)
+
+
+def _handle_revoke_webui(chat_id: int):
+    """Revoke the current WebUI token via the WebUI admin API."""
+    try:
+        webui_api = _get_webui_api_url()
+        resp = requests.post(
+            f"{webui_api}/api/webui/admin/revoke-token",
+            timeout=10,
+        )
+        resp.raise_for_status()
+        core.bot.send_message(
+            chat_id,
+            "🚫 <b>Token WebUI revocato.</b>\nUsa /webui_token per generarne uno nuovo.",
+            parse_mode="HTML",
+        )
+        logger.info("event=webui_token_revoked chat_id=%s", chat_id)
+    except Exception as exc:
+        logger.warning("event=webui_token_revoke_failed error=%s", exc)
+        # Fallback: revoke via Archive directly
+        try:
+            envelope = {
+                "method": "POST",
+                "body": {
+                    "domain": "webui_auth",
+                    "fact": "webui_current_token=REVOKED",
+                    "memory_class": "durable_user_preference",
+                    "owner": str(chat_id),
+                },
+                "timeout_seconds": 10.0,
+            }
+            requests.post(
+                f"{core.HUB_API_URL}/route/archive/api/memory",
+                json=envelope,
+                timeout=15,
+            )
+        except Exception:
+            pass
+        core.bot.send_message(
+            chat_id,
+            "⚠️ <b>Errore:</b> Impossibile revocare il token.",
+            parse_mode="HTML",
+        )
+
+
+def _handle_webui_status(chat_id: int):
+    """Show current WebUI token status via the WebUI admin API."""
+    try:
+        webui_api = _get_webui_api_url()
+        resp = requests.get(
+            f"{webui_api}/api/webui/admin/token-status",
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        is_active = data.get("active", False)
+        created_at = data.get("created_at", "?")
+        remaining_h = data.get("remaining_hours", 0)
+        status_icon = "🟢" if is_active else "🔴"
+        status_text = "ATTIVO" if is_active else "INATTIVO"
+        core.bot.send_message(
+            chat_id,
+            f"📊 <b>Stato Token WebUI</b>\n"
+            f"{status_icon} <b>Stato:</b> {status_text}\n"
+            f"🕐 <b>Creato:</b> {created_at}\n"
+            f"⏰ <b>Rimangono:</b> {remaining_h} ore",
+            parse_mode="HTML",
+        )
+    except Exception as exc:
+        logger.warning("event=webui_status_failed error=%s", exc)
+        core.bot.send_message(
+            chat_id,
+            f"⚠️ <b>Errore:</b> Impossibile recuperare lo stato.\n<code>{escape(str(exc))}</code>",
+            parse_mode="HTML",
+        )
 
 
 # ── Dynamic command execution ─────────────────────────────────────────────────

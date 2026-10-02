@@ -59,10 +59,9 @@ Hub Monitor Logs / Docker Tails │
 
 - **Service name**: `argus`
 - **Tags**: `core`, `monitoring`
-- **Topology tags**: `layer:foundation`, `layer:domain`, `domain:observability`, `domain:system`, `status:stable`
+- **Topology tags**: `layer:foundation`, `domain:observability`, `status:stable`
 - **Capabilities**: `argus.status`, `argus.logs`, `argus.analyze`
 - **Telegram commands**: `system_status`, `system_log`, `system_analysis`, `system_remediate`
-- **Module tool domains**: `system` (owns the system domain for tool discovery)
 
 ## Environment Variables
 

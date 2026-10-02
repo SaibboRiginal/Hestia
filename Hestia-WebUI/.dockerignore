@@ -1,0 +1,10 @@
+**/node_modules
+**/.git
+**/bin
+**/obj
+**/.angular
+**/.vscode
+frontend/.angular
+frontend/dist
+*.md
+!hestia-webui.md

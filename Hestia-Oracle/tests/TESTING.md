@@ -15,13 +15,13 @@
 | `test_memory_intent.py` | 29 | 100% | ✅ PASSING |
 | `test_memory_service_unit.py` | 25 | 59% | ✅ PASSING |
 | `test_module_registry.py` | 12 | 50% | ✅ PASSING |
-| `test_oracle_api.py` | 17 | 54% (main.py) | ✅ PASSING |
+| `test_oracle_api.py` | 21 | 54% (main.py) | ✅ PASSING |
 | `test_oracle_engine_core.py` | 50 | 72% | ✅ PASSING |
 | `test_stream_emitter.py` | 19 | 100% | ✅ PASSING |
 | `test_user_control_service.py` | 21 | 80% | ✅ PASSING |
 | `test_live_all_tools.py` | 24 | llm_live | ✅ PASSING |
 | `test_live_tool_calling_comprehensive.py` | 10 | llm_live | ✅ PASSING |
-| **TOTAL** | **298** | **55% overall / 72%+ core** | ✅ |
+| **TOTAL** | **302** | **55% overall / 72%+ core** | ✅ |
 
 ---
 
@@ -368,6 +368,15 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ### §12.7 Compaction (1 case)
 - `test_compaction_skips_short_history` — Short history (≤6 msgs) not compacted
+
+---
+
+## §13 Unit Tests — /api/llm/generate endpoint (4 cases, NEW)
+
+- ✅ Fallback resolves `MODEL_USECASE_GENERIC_FALLBACK_{PROVIDER,MODEL}` from .env (Gemini cloud) — legacy `ANALYST_FALLBACK_MODEL`/`LLM_FALLBACK_MODEL` must not shadow it
+- ✅ Legacy fallback vars used when `MODEL_USECASE_GENERIC_FALLBACK_*` unset
+- ✅ Both primary and fallback fail → 500 with combined context in detail
+- ✅ Missing/blank prompt → 400 (HTTPException must not be swallowed by the generic handler)
 
 ---
 

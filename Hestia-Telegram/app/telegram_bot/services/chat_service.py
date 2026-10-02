@@ -316,18 +316,30 @@ def handle_set_picker(call):
     try:
         payload = str(call.data or "").strip()
         parts = payload.split(":")
-        if len(parts) < 3 or parts[0] != "set":
+        if len(parts) < 2 or parts[0] != "set":
             core.bot.answer_callback_query(call.id, "Azione non valida")
             return
 
         action = parts[1]
-        value = parts[2]
+        value = parts[2] if len(parts) >= 3 else ""
         chat_id = call.message.chat.id
+
+        if action == "show_current":
+            from telegram_bot.services.executor import prompt_show_current_settings
+            prompt_show_current_settings(chat_id)
+            core.bot.answer_callback_query(call.id, "Ecco le impostazioni attuali")
+            return
 
         if action == "param":
             if value == "tone":
+                from telegram_bot.services.executor import prompt_tone_presets
                 prompt_tone_presets(chat_id)
                 core.bot.answer_callback_query(call.id, "Scegli un tone")
+                return
+            if value == "thinking_display":
+                from telegram_bot.services.executor import prompt_thinking_display_presets
+                prompt_thinking_display_presets(chat_id)
+                core.bot.answer_callback_query(call.id, "Scegli modalità")
                 return
 
             core.PENDING_WORKFLOWS[str(chat_id)] = {
@@ -343,11 +355,24 @@ def handle_set_picker(call):
 
         if action == "tone":
             core.set_session_setting(str(chat_id), "tone", value)
+            TONE_LABELS = {"warm": "Caldo", "neutral": "Neutro", "direct": "Diretto", "formal": "Formale"}
             core.bot.send_message(
                 chat_id,
-                f"✅ Impostazione sessione aggiornata: tone={value}",
+                f"✅ <b>Tone:</b> {TONE_LABELS.get(value, value)}",
+                parse_mode="HTML",
             )
             core.bot.answer_callback_query(call.id, "Tone impostato")
+            return
+
+        if action == "thinking_display":
+            core.set_session_setting(str(chat_id), "thinking_display", value)
+            from telegram_bot.services.executor import THINKING_DISPLAY_LABELS
+            core.bot.send_message(
+                chat_id,
+                f"✅ <b>Modalità ragionamento:</b> {THINKING_DISPLAY_LABELS.get(value, value)}",
+                parse_mode="HTML",
+            )
+            core.bot.answer_callback_query(call.id, "✓")
             return
 
         core.bot.answer_callback_query(call.id, "Azione non valida")
@@ -445,11 +470,26 @@ def handle_chat_message(message):
         if not parameter_name:
             core.bot.reply_to(message, "⚠️ Parametro non valido.")
             return
-        core.set_session_setting(
-            str(chat_id), parameter_name, str(message.text or "").strip())
+        new_value = str(message.text or "").strip()
+        core.set_session_setting(str(chat_id), parameter_name, new_value)
+        # Nice label for known parameters
+        label_map = {
+            "tone": "Tone",
+            "thinking_display": "Ragionamento",
+            "custom_prompt": "Prompt personalizzato",
+        }
+        label = label_map.get(parameter_name, parameter_name.replace("_", " "))
+        if parameter_name == "thinking_display":
+            from telegram_bot.services.executor import THINKING_DISPLAY_LABELS
+            display = THINKING_DISPLAY_LABELS.get(new_value, new_value)
+        elif parameter_name == "custom_prompt":
+            display = new_value[:120] + ("…" if len(new_value) > 120 else "")
+        else:
+            display = new_value
         core.bot.reply_to(
             message,
-            f"✅ Impostazione sessione aggiornata: {parameter_name}={str(message.text or '').strip()}",
+            f"✅ <b>{label}:</b> {display}",
+            parse_mode="HTML",
         )
         return
 
@@ -558,6 +598,10 @@ def handle_chat_message(message):
             )
             return
 
+        # Get thinking display setting (default: hidden)
+        session_settings = core.get_session_settings(str(chat_id))
+        thinking_display = session_settings.get("thinking_display", "hidden")
+        
         oracle_chat_url = core.resolve_oracle_chat_url()
         with requests.post(
             oracle_chat_url,
@@ -575,6 +619,8 @@ def handle_chat_message(message):
             final_answer = ""
             streamed_signals: list[dict[str, Any]] = []
             streamed_questions: list[dict[str, Any]] = []
+            thinking_events: list[dict[str, Any]] = []  # Buffer for thinking events
+            
             for line in res.iter_lines():
                 if not line:
                     continue
@@ -587,47 +633,49 @@ def handle_chat_message(message):
                         parse_mode="HTML",
                     )
                 elif data.get("type") == "thinking":
-                    # Send thinking events as separate messages for visibility
-                    # Standard format: type=thinking, action=(reasoning|tool_call|tool_result)
-                    action = data.get("action", "")
-                    tool = data.get("tool", "")
-                    content = data.get("content", "")
-                    turn = data.get("turn", 0)
-                    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                    # Buffer thinking events for later processing
+                    thinking_events.append(data)
                     
-                    if action == "reasoning" and content:
-                        # Send reasoning as separate message (first 200 chars)
-                        first_line = str(content).strip().split("\n")[0][:200]
-                        try:
-                            core.bot.send_message(
-                                chat_id=chat_id,
-                                text=f"💭 <i>{escape(first_line)}</i>",
-                                parse_mode="HTML",
-                            )
-                        except Exception:
-                            pass  # Silently fail if message sending fails
-                    elif action == "tool_call" and tool:
-                        try:
-                            core.bot.send_message(
-                                chat_id=chat_id,
-                                text=f"🛠️ <i>Chiamata strumento: <b>{escape(tool)}</b> (turno {turn})</i>",
-                                parse_mode="HTML",
-                            )
-                        except Exception:
-                            pass
-                    elif action == "tool_result" and tool:
-                        ok_icon = "✅" if metadata.get("ok") else "❌"
-                        count = metadata.get("result_count")
-                        suffix = f": {count} risultati" if count else ""
-                        duration = metadata.get('duration_ms', '?')
-                        try:
-                            core.bot.send_message(
-                                chat_id=chat_id,
-                                text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
-                                parse_mode="HTML",
-                            )
-                        except Exception:
-                            pass
+                    # In detailed mode, send immediately (old behavior)
+                    if thinking_display == "detailed":
+                        action = data.get("action", "")
+                        tool = data.get("tool", "")
+                        content = data.get("content", "")
+                        turn = data.get("turn", 0)
+                        metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                        
+                        if action == "reasoning" and content:
+                            first_line = str(content).strip().split("\n")[0][:200]
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"💭 <i>{escape(first_line)}</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        elif action == "tool_call" and tool:
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>Chiamata strumento: <b>{escape(tool)}</b> (turno {turn})</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        elif action == "tool_result" and tool:
+                            ok_icon = "✅" if metadata.get("ok") else "❌"
+                            count = metadata.get("result_count")
+                            suffix = f": {count} risultati" if count else ""
+                            duration = metadata.get('duration_ms', '?')
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
                 elif data.get("type") == "final":
                     final_answer = data.get("reply")
                 elif data.get("type") == "signal":
@@ -639,22 +687,119 @@ def handle_chat_message(message):
         if not message_parts:
             message_parts = [core.format_for_telegram(final_answer)]
 
-        core.bot.edit_message_text(
-            message_parts[0],
-            chat_id=chat_id,
-            message_id=status_msg.message_id,
-            parse_mode="HTML",
-        )
-
-        for message_part in message_parts[1:]:
-            if not message_part.strip():
-                continue
-            try:
-                core.send_user_message(
-                    chat_id, message_part, parse_mode="HTML")
-            except Exception:
-                core.send_user_message(
-                    chat_id, core.strip_markdown(message_part), parse_mode="plain")
+        # Handle thinking display
+        if thinking_display == "hidden":
+            # hidden mode: just replace status message with answer
+            core.bot.edit_message_text(
+                message_parts[0],
+                chat_id=chat_id,
+                message_id=status_msg.message_id,
+                parse_mode="HTML",
+            )
+            for message_part in message_parts[1:]:
+                if message_part.strip():
+                    try:
+                        core.send_user_message(chat_id, message_part, parse_mode="HTML")
+                    except Exception:
+                        core.send_user_message(chat_id, core.strip_markdown(message_part), parse_mode="plain")
+        else:
+            # compact or detailed mode: send thinking steps as separate messages
+            if thinking_events:
+                # Send each thinking step as a separate message
+                for event in thinking_events:
+                    action = event.get("action", "")
+                    tool = event.get("tool", "")
+                    content = event.get("content", "")
+                    metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+                    turn = event.get("turn", 0)
+                    
+                    if action == "reasoning" and content:
+                        first_line = str(content).strip().split("\n")[0][:200]
+                        if thinking_display == "compact":
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"💭 {escape(first_line)}",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        else:  # detailed
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"💭 <i>{escape(first_line)}</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                    elif action == "tool_call" and tool:
+                        if thinking_display == "compact":
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ {escape(tool)}",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        else:  # detailed
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>Chiamata: <b>{escape(tool)}</b> (turno {turn})</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                    elif action == "tool_result" and tool:
+                        ok_icon = "✅" if metadata.get("ok") else "❌"
+                        count = metadata.get("result_count")
+                        suffix = f" ({count} risultati)" if count else ""
+                        duration = metadata.get('duration_ms', '?')
+                        if thinking_display == "compact":
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"{ok_icon} {escape(tool)}{suffix} ({duration}ms)",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        else:  # detailed
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                
+                # Format and send brief summary in status message
+                thinking_summary = _format_thinking_summary(thinking_events, thinking_display)
+                core.bot.edit_message_text(
+                    f"<i>💭 {thinking_summary}</i>" if thinking_summary else "⏳ Elaborazione...",
+                    chat_id=chat_id,
+                    message_id=status_msg.message_id,
+                    parse_mode="HTML",
+                )
+            else:
+                # No thinking events, just edit status message
+                core.bot.edit_message_text(
+                    message_parts[0] if message_parts else "⏳ Elaborazione...",
+                    chat_id=chat_id,
+                    message_id=status_msg.message_id,
+                    parse_mode="HTML",
+                )
+            
+            # Send actual answer as NEW message below
+            for message_part in message_parts:
+                if message_part.strip():
+                    try:
+                        core.send_user_message(chat_id, message_part, parse_mode="HTML")
+                    except Exception:
+                        core.send_user_message(chat_id, core.strip_markdown(message_part), parse_mode="plain")
 
         for card in core.build_signal_cards(streamed_signals):
             core.send_user_message(chat_id, card, parse_mode="HTML")
@@ -865,6 +1010,10 @@ def handle_file_message(message):
     try:
         file_bytes = _download_telegram_file(file_id)
 
+        # Get thinking display setting (default: hidden)
+        session_settings = core.get_session_settings(str(chat_id))
+        thinking_display = session_settings.get("thinking_display", "hidden")
+        
         oracle_doc_url = core.resolve_oracle_document_url()
         with requests.post(
             oracle_doc_url,
@@ -884,6 +1033,7 @@ def handle_file_message(message):
 
             final_answer = ""
             streamed_signals: list[dict] = []
+            thinking_events: list[dict[str, Any]] = []  # Buffer for thinking events
 
             for line in res.iter_lines():
                 if not line:
@@ -900,37 +1050,49 @@ def handle_file_message(message):
                     except Exception:
                         pass
                 elif data.get("type") == "thinking":
-                    try:
+                    # Buffer thinking events for later processing
+                    thinking_events.append(data)
+                    
+                    # In detailed mode, send immediately (old behavior)
+                    if thinking_display == "detailed":
                         action = data.get("action", "")
                         tool = data.get("tool", "")
                         content = data.get("content", "")
                         turn = data.get("turn", 0)
                         metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                        
                         if action == "reasoning" and content:
                             first_line = str(content).strip().split("\n")[0][:200]
-                            core.bot.send_message(
-                                chat_id=chat_id,
-                                text=f"💭 <i>{escape(first_line)}</i>",
-                                parse_mode="HTML",
-                            )
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"💭 <i>{escape(first_line)}</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
                         elif action == "tool_call" and tool:
-                            core.bot.send_message(
-                                chat_id=chat_id,
-                                text=f"🛠️ <i>Chiamata strumento: <b>{escape(tool)}</b> (turno {turn})</i>",
-                                parse_mode="HTML",
-                            )
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>Chiamata strumento: <b>{escape(tool)}</b> (turno {turn})</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
                         elif action == "tool_result" and tool:
                             ok_icon = "✅" if metadata.get("ok") else "❌"
                             count = metadata.get("result_count")
                             suffix = f": {count} risultati" if count else ""
                             duration = metadata.get('duration_ms', '?')
-                            core.bot.send_message(
-                                chat_id=chat_id,
-                                text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
-                                parse_mode="HTML",
-                            )
-                    except Exception:
-                        pass
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
                 elif data.get("type") == "signal":
                     streamed_signals.append(data)
                 elif data.get("type") == "final":
@@ -940,15 +1102,120 @@ def handle_file_message(message):
             final_answer = "⚠️ Nessuna risposta ricevuta."
 
         message_parts = core.build_chat_messages(final_answer)
-        core.bot.edit_message_text(
-            message_parts[0] if message_parts else final_answer,
-            chat_id=chat_id,
-            message_id=status_msg.message_id,
-            parse_mode="HTML",
-        )
-        for part in (message_parts[1:] if message_parts else []):
-            if part.strip():
-                core.send_user_message(chat_id, part, parse_mode="HTML")
+        
+        # Handle thinking display for documents
+        if thinking_display == "hidden":
+            # hidden mode: just replace status message with answer
+            core.bot.edit_message_text(
+                message_parts[0] if message_parts else final_answer,
+                chat_id=chat_id,
+                message_id=status_msg.message_id,
+                parse_mode="HTML",
+            )
+            for part in (message_parts[1:] if message_parts else []):
+                if part.strip():
+                    try:
+                        core.send_user_message(chat_id, part, parse_mode="HTML")
+                    except Exception:
+                        core.send_user_message(chat_id, core.strip_markdown(part), parse_mode="plain")
+        else:
+            # compact or detailed mode: send thinking steps as separate messages
+            if thinking_events:
+                # Send each thinking step as a separate message
+                for event in thinking_events:
+                    action = event.get("action", "")
+                    tool = event.get("tool", "")
+                    content = event.get("content", "")
+                    metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+                    turn = event.get("turn", 0)
+                    
+                    if action == "reasoning" and content:
+                        first_line = str(content).strip().split("\n")[0][:200]
+                        if thinking_display == "compact":
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"💭 {escape(first_line)}",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        else:  # detailed
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"💭 <i>{escape(first_line)}</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                    elif action == "tool_call" and tool:
+                        if thinking_display == "compact":
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ {escape(tool)}",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        else:  # detailed
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>Chiamata: <b>{escape(tool)}</b> (turno {turn})</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                    elif action == "tool_result" and tool:
+                        ok_icon = "✅" if metadata.get("ok") else "❌"
+                        count = metadata.get("result_count")
+                        suffix = f" ({count} risultati)" if count else ""
+                        duration = metadata.get('duration_ms', '?')
+                        if thinking_display == "compact":
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"{ok_icon} {escape(tool)}{suffix} ({duration}ms)",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                        else:  # detailed
+                            try:
+                                core.bot.send_message(
+                                    chat_id=chat_id,
+                                    text=f"🛠️ <i>{ok_icon} <b>{escape(tool)}</b>{suffix} ({duration}ms)</i>",
+                                    parse_mode="HTML",
+                                )
+                            except Exception:
+                                pass
+                
+                # Format and send brief summary in status message
+                thinking_summary = _format_thinking_summary(thinking_events, thinking_display)
+                core.bot.edit_message_text(
+                    f"<i>💭 {thinking_summary}</i>" if thinking_summary else "⏳ Elaborazione...",
+                    chat_id=chat_id,
+                    message_id=status_msg.message_id,
+                    parse_mode="HTML",
+                )
+            else:
+                # No thinking events, just edit status message
+                core.bot.edit_message_text(
+                    message_parts[0] if message_parts else final_answer,
+                    chat_id=chat_id,
+                    message_id=status_msg.message_id,
+                    parse_mode="HTML",
+                )
+            
+            # Send actual answer as NEW message below
+            for message_part in message_parts:
+                if message_part.strip():
+                    try:
+                        core.send_user_message(chat_id, message_part, parse_mode="HTML")
+                    except Exception:
+                        core.send_user_message(chat_id, core.strip_markdown(message_part), parse_mode="plain")
 
         # Show document-saved signal card (and any other signals)
         for sig in streamed_signals:
@@ -996,6 +1263,49 @@ def _maybe_prompt_feedback(
         )
     except Exception as exc:
         logger.debug("event=feedback_prompt_send_failed error=%s", exc)
+
+
+def _format_thinking_summary(thinking_events: list[dict], mode: str = "compact") -> str:
+    """Format thinking events into pure analytics data - NO content description."""
+    if not thinking_events:
+        return ""
+    
+    reasoning_count = 0
+    tool_call_count = 0
+    tool_success_count = 0
+    total_duration = 0
+    
+    for event in thinking_events:
+        action = event.get("action", "")
+        metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+        
+        if action == "reasoning":
+            reasoning_count += 1
+        elif action == "tool_call":
+            tool_call_count += 1
+        elif action == "tool_result":
+            if metadata.get("ok"):
+                tool_success_count += 1
+            duration = metadata.get('duration_ms', 0)
+            if isinstance(duration, (int, float)):
+                total_duration += duration
+    
+    # Pure analytics - just numbers, NO text description of content
+    parts = []
+    if reasoning_count > 0:
+        parts.append(f"R:{reasoning_count}")
+    if tool_call_count > 0:
+        parts.append(f"T:{tool_call_count}")
+    if tool_success_count > 0:
+        parts.append(f"OK:{tool_success_count}")
+    if total_duration > 0:
+        parts.append(f"{total_duration}ms")
+    
+    if not parts:
+        return ""
+    
+    return " ".join(parts)
+
 
 
 def handle_feedback_callback(call):

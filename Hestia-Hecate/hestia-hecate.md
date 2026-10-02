@@ -58,13 +58,13 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
 | `POST` | `/api/gateway/auth/initiate/{provider}` | Start OAuth flow: Google redirect URL or Microsoft device-code |
 | `GET` | `/api/gateway/auth/poll/{provider}` | Poll completion of pending OAuth device-code flow |
-| `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code for token (Google redirect flow) |
+| `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code for token; returns `granted_scopes` and invalidates cached mail provider |
 | `DELETE` | `/api/gateway/auth/initiate/{provider}` | Cancel pending OAuth flow |
 | `GET` | `/api/gateway/calendar/events` | List events for a provider/calendar |
 | `POST` | `/api/gateway/calendar/events` | Create event on target providers |
 | `PUT` | `/api/gateway/calendar/events/{id}` | Update event on target provider |
 | `DELETE` | `/api/gateway/calendar/events/{id}` | Delete event on target provider |
-| `GET` | `/api/gateway/email/messages` | Proxy email search to Iris via Hub |
+| `GET` | `/api/gateway/email/messages` | Proxy email search to Iris via Hub; returns 503 with re-auth instructions on scope/auth failures |
 | `GET` | `/api/gateway/email/messages/{id}` | Proxy single email lookup to Iris via Hub |
 | `POST` | `/api/gateway/email/send` | Proxy email send to Iris via Hub |
 | `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy) |
@@ -74,14 +74,23 @@ Adding a new data source = implementing this interface and registering the conne
 
 Hecate supports interactive OAuth for users who have not yet granted access:
 
-1. **Initiate**: `POST /api/gateway/auth/initiate/{provider}`
-   - Google: returns `auth_url` → user opens in browser, copies code
-   - Microsoft: returns `user_code` + `verification_url` → user visits URL and enters code
-2. **Complete (Google)**: `POST /api/gateway/auth/complete/google` with `{"code": "<code>"}`
-3. **Poll (Microsoft)**: `GET /api/gateway/auth/poll/microsoft` until `{"status": "authorized"}`
-4. Token is stored in `GOOGLE_TOKEN_JSON` / `OUTLOOK_REFRESH_TOKEN` env for the process lifetime.
+**Google (redirect flow — default, works from ANY device with tunnel):**
+1. **Initiate**: `POST /api/gateway/auth/initiate/google`
+   - Returns `auth_url` — the user opens it in a browser
+2. **Auto-detect public URL**: If `cloudflare-tunnel.bat` is running, Hecate
+   automatically uses the Cloudflare tunnel URL as the redirect target.  The
+   auth URL works from phones, tablets, and other PCs — not just localhost.
+3. User grants access to Calendar + Gmail
+4. Browser redirects through the tunnel → Hecate callback → token persisted
+5. Providers reload automatically; a confirmation appears in Telegram
+6. **Zero manual steps** — no code copying, no pasting.
 
-These endpoints are registered in the Hub command catalog so Oracle and Telegram can guide users through auth.
+**Google (device_code flow — requires Desktop/TV client type):**
+Set `GOOGLE_OAUTH_FLOW_MODE=device_code`.  Returns `user_code` + `verification_url`.
+Auto-polls in background.  NOTE: Google rejects this for "Web application" clients.
+
+**Microsoft (device_code flow):**
+Same as before — `user_code` + `verification_url`, poll for completion.
 
 ### Token Refresh
 
@@ -91,18 +100,21 @@ These endpoints are registered in the Hub command catalog so Oracle and Telegram
 
 Falls back to full registry reinit if no providers are active.
 
-**Token persistence (Google):** After every successful credential refresh, the refreshed token
-(access + refresh) is automatically serialized to:
+### Periodic Auth Re-Check
+
+Hecate re-checks provider auth status every `HECATE_AUTH_RECHECK_INTERVAL_SECONDS` (default 3600 s = 1 hour). If a provider is still unavailable, a fresh `service.action_required` notification is pushed via Hermes. Hermes dedup for recurring events is time-limited so persistent failures are re-notified instead of being permanently silenced.
+
+### Token Persistence & Recovery
+
+**Token persistence (Google):** After every successful credential refresh or OAuth completion, the refreshed token (access + refresh) is automatically serialized to:
 1. The volume-mounted file at `GOOGLE_TOKEN_FILE` (default `/code/data/google_token.json`)
 2. The `GOOGLE_TOKEN_JSON` environment variable (process lifetime)
 
-On startup, Hecate loads from the persistent file first (it holds the most recent token
-from a prior container run), then falls back to `GOOGLE_TOKEN_JSON`.  This prevents the
-`invalid_grant` error that occurs when a stale refresh token from a static `.env` file is
-resent to Google after Google has rotated the token.
+On startup, Hecate loads from the persistent file first (it holds the most recent token from a prior container run), then falls back to `GOOGLE_TOKEN_JSON`. This prevents the `invalid_grant` error that occurs when a stale refresh token from a static `.env` file is resent to Google after Google has rotated the token.
 
-If the persistent file exists and contains a valid refresh token, the `.env` value is
-effectively ignored — the volume-mounted copy is always more current.
+If the persistent file exists and contains a valid refresh token, the `.env` value is effectively ignored — the volume-mounted copy is always more current.
+
+**`invalid_grant` recovery:** When Google returns `invalid_grant` (refresh token revoked or expired), Hecate automatically deletes the cached token file and clears the `GOOGLE_TOKEN_JSON`/`GOOGLE_REFRESH_TOKEN` env vars. This ensures the next OAuth flow starts from a clean slate. A `service.action_required` notification is pushed so the user can re-authenticate.
 
 ### Environment Variables
 
@@ -127,6 +139,10 @@ effectively ignored — the volume-mounted copy is always more current.
 | `OUTLOOK_REFRESH_TOKEN` | — | Outlook OAuth refresh token |
 | `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials |
 | `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
+| `GOOGLE_OAUTH_FLOW_MODE` | `device_code` | OAuth mode: `device_code` (works from any device) or `redirect` (localhost only) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Redirect URI for `redirect` flow mode |
+| `HECATE_AUTH_RECHECK_INTERVAL_SECONDS` | `3600` | Seconds between periodic auth re-check (0 to disable) |
+| `HECATE_ACTION_NOTIFY_COOLDOWN` | `300` | Seconds between repeated action-required notifications per action key |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
 
 **Canonical Google OAuth setup (no expiring values):**
