@@ -78,7 +78,7 @@ Hub Monitor Logs / Docker Tails │
 | `ARGUS_LOG_BUFFER_SIZE` | `500` | Max log events kept per container |
 | `ARGUS_IGNORE_HEALTH_ACCESS` | `true` | Ignore container health-check access lines (e.g. `GET /health`) during log monitoring |
 | `ARGUS_NOTIFY_TARGET` | — | Telegram chat_id for proactive alerts (optional) |
-| `ORACLE_ROUTE_PATH` | `api/chat` | Hub-routed Oracle path used for analysis requests |
+| `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools) |
 | `ARGUS_AUTO_REMEDIATE_ENABLED` | `1` | Enable automatic remediation intent emission to Hephaestus on newly unhealthy service states |
 | `ARGUS_AUTO_REMEDIATE_DRY_RUN` | `1` | Send remediation intents in dry-run mode |
 | `ARGUS_AUTO_REMEDIATE_ENVIRONMENT` | `dev` | Target environment passed to Hephaestus remediation tasks |
@@ -96,7 +96,7 @@ volumes:
 ## Alert Flow
 
 1. Monitor loop detects a service is down or degraded.
-2. `alert_worker.send_alert()` routes a descriptive prompt through Hub to Oracle (`/route/oracle/api/chat`).
+2. `alert_worker.send_alert()` routes a descriptive prompt through Hub to Oracle (`/route/oracle/api/llm/generate`).
 3. Optional: Argus emits a structured remediation intent for Hephaestus (policy-gated).
 4. Oracle processes the prompt and dispatches a response via Hermes to Telegram.
 5. If Oracle is unreachable, a **TODO stub** logs the failure — direct Telegram Bot API

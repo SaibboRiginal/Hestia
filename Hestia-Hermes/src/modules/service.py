@@ -16,6 +16,32 @@ from .matcher import subscription_matches
 logger = logging.getLogger("hestia_hermes.service")
 
 
+def _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id) -> str:
+    """What makes two events "the same notification".
+
+    Explicit ``payload.dedupe_key`` wins, then question/brief ids.  For
+    pre-formatted messages (system alerts, Forge, recoveries) the text is part
+    of the key: a fixed entity_id like "argus-batch" used to dedupe EVERY later
+    alert against the first delivered one, so the user only ever got one.
+    Domain entities without a message keep entity-level dedupe (no repeat
+    notification for the same listing).
+    """
+    import hashlib
+
+    if isinstance(payload, dict) and str(payload.get("dedupe_key") or "").strip():
+        return str(payload["dedupe_key"]).strip()
+    if question_id or brief_id:
+        return str(question_id or brief_id)
+    base = f"{event_type}:{domain}:{entity_id}"
+    message = payload.get("_message") if isinstance(payload, dict) else None
+    if message:
+        return f"{base}:{hashlib.sha1(str(message).encode()).hexdigest()[:12]}"
+    return base
+
+
+MAX_DELIVERY_ATTEMPTS = int(__import__("os").getenv("HERMES_MAX_DELIVERY_ATTEMPTS", "6"))
+
+
 class HermesService:
     def __init__(self):
         self.archive = ArchiveClient()
@@ -81,7 +107,7 @@ class HermesService:
                 inbound_outbound_id = str(payload.get(
                     "outbound_event_id", "")).strip()
                 outbound_event_id = inbound_outbound_id or str(uuid4())
-                dedupe_anchor = question_id or brief_id or f"{event_type}:{domain}:{entity_id}"
+                dedupe_anchor = _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id)
                 dedupe_key = f"{dedupe_anchor}:{subscription_id}"
 
                 existing = self.archive.find_active_outbound_event(dedupe_key)
@@ -235,6 +261,47 @@ class HermesService:
             "subscriptions_matched": matched,
             "deliveries": delivered,
         }
+
+    def retry_failed_deliveries(self, limit: int = 50) -> dict:
+        """Resilience rule 7: a failed delivery is retried on every pass until it
+        succeeds or reaches HERMES_MAX_DELIVERY_ATTEMPTS (then marked "dead")."""
+        rows = self.archive.get_outbound_events({"lifecycle_state": "failed", "limit": limit})
+        retried = delivered = dead = 0
+        for row in rows:
+            channel, target = row.get("channel"), row.get("target")
+            stored = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+            event_payload = stored.get("event_payload") if isinstance(stored.get("event_payload"), dict) else {}
+            attempts = int(stored.get("attempts") or 1)
+            if not channel or not target:
+                continue
+            if attempts >= MAX_DELIVERY_ATTEMPTS:
+                self.archive.update_outbound_event_state(
+                    row["outbound_event_id"], "dead", detail=f"gave up after {attempts} attempts")
+                dead += 1
+                continue
+            message = event_payload.get("_message")
+            ok, detail = self.dispatch.send(
+                channel=channel, target=str(target),
+                message=message, payload=None if message else event_payload,
+                domain=row.get("domain", ""), entity_id=row.get("entity_id", ""),
+                subscription_id=row.get("subscription_id"),
+                metadata={"trace_id": row["outbound_event_id"]},
+            )
+            retried += 1
+            delivered += int(ok)
+            updated = {k: row.get(k) for k in (
+                "outbound_event_id", "dedupe_key", "event_type", "domain", "entity_id",
+                "subscription_id", "channel", "target", "question_id", "brief_id",
+                "source_service", "superseded_by")}
+            updated.update({
+                "lifecycle_state": "delivered" if ok else "failed",
+                "detail": f"retry {attempts + 1}: {detail}"[:500],
+                "payload": {**stored, "attempts": attempts + 1},
+            })
+            self.archive.upsert_outbound_event(updated)
+        if retried or dead:
+            logger.info("[🔄] event=hermes_retry_pass retried=%d delivered=%d dead=%d", retried, delivered, dead)
+        return {"retried": retried, "delivered": delivered, "dead": dead}
 
     def update_outbound_event_state(
         self,
