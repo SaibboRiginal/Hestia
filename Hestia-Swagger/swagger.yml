@@ -3331,6 +3331,40 @@ paths:
       responses:
         "200": {description: "{status, profiles{name: {model, base_url, available, detail}}}"}
 
+  /api/llm/code/status:
+    get:
+      tags: [Oracle]
+      summary: Claude Code (code use case) readiness
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, available, detail, model}"}
+
+  /api/llm/code:
+    post:
+      tags: [Oracle]
+      summary: Run a coding task with Claude Code inside a Forge worktree
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workdir, prompt]
+              properties:
+                workdir: {type: string}
+                prompt: {type: string}
+                append_system_prompt: {type: string}
+                max_turns: {type: integer, default: 40}
+                timeout_seconds: {type: integer, default: 1800}
+      responses:
+        "200": {description: "{ok, summary, turns, cost_usd, subtype, log_tail}"}
+        "400": {description: workdir outside the worktree root or empty prompt}
+        "503": {description: Claude Code not installed / no token / worktrees not mounted}
+        "504": {description: Timeout}
+
   /api/llm/chat:
     post:
       tags: [Oracle]

@@ -755,6 +755,32 @@ def llm_chat_endpoint(req: dict):
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
 
+class CodeTaskRequest(BaseModel):
+    workdir: str
+    prompt: str
+    append_system_prompt: str = ""
+    max_turns: int = 40
+    timeout_seconds: int = 1800
+
+
+@app.get("/api/llm/code/status")
+def llm_code_status_endpoint():
+    """Is the Claude Code "code" use case ready (installed, token, worktrees mounted)?"""
+    from core.services.claude_code_runner import status
+    return {"status": "ok", **status()}
+
+
+@app.post("/api/llm/code")
+def llm_code_endpoint(req: CodeTaskRequest):
+    """Run a coding task with Claude Code (Pro/Max subscription) inside a Forge
+    worktree. Used by Hephaestus Forge engine `claude`."""
+    from core.services.claude_code_runner import ClaudeCodeError, run
+    try:
+        return run(req.workdir, req.prompt, req.append_system_prompt, req.max_turns, req.timeout_seconds)
+    except ClaudeCodeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """

@@ -205,6 +205,8 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 | GET | `/api/llm/profiles` | Profiles with model + availability (`check=false` skips probing). No secrets. |
 | POST | `/api/llm/chat` | OpenAI-compatible chat on a profile: `{profile, messages, tools?, temperature?, model?}` → provider JSON |
 | POST | `/api/llm/generate` | Plain prompt → `{response}` (Athena, Metis) |
+| GET | `/api/llm/code/status` | Claude Code ready? (CLI installed, token, worktree root mounted) |
+| POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd}` |
 
 Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-compatible base, e.g. `…/v1`).
 `local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model `MODEL_USECASE_CODE_MODEL` or `qwen2.5-coder:14b`).
@@ -230,3 +232,10 @@ descriptors declared these paths but Oracle did not serve them, so Hub/Telegram/
 Other fixes: session summaries written in a background thread to `POST /api/entities` (domain `session_summary`);
 `HubClient.post` raises when Archive rejects a write inside the Hub envelope (was silently "successful");
 agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps parallel tool results in call order.
+
+### Claude Code ("code" use case on the Pro/Max subscription)
+
+- Build Oracle with `--build-arg INSTALL_CLAUDE_CODE=1`; put `CLAUDE_CODE_OAUTH_TOKEN` (run `claude setup-token` on
+  your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Optional `ORACLE_CLAUDE_MODEL`.
+- Only for code tasks inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus); never for
+  general chat (the subscription covers Claude Code for development, not an API backend).

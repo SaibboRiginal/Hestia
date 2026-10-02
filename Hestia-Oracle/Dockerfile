@@ -4,8 +4,17 @@ FROM python:3.12-slim
 # Set the working directory inside the container
 WORKDIR /code
 
-# Install system dependencies required for psycopg2 (Postgres client)
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# Install system dependencies required for psycopg2 (Postgres client).
+# Optional Claude Code CLI for the "code" use case (Forge engine `claude`,
+# Claude Pro/Max subscription): docker compose build --build-arg INSTALL_CLAUDE_CODE=1 oracle
+ARG INSTALL_CLAUDE_CODE=0
+RUN apt-get update && apt-get install -y libpq-dev gcc git curl ca-certificates \
+    && if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then \
+         curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+         && apt-get install -y --no-install-recommends nodejs \
+         && npm install -g @anthropic-ai/claude-code; \
+       fi \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (cached independently of code changes)
 COPY Hestia-Oracle/requirements.txt /code/requirements.txt

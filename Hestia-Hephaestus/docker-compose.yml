@@ -29,6 +29,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./data:/code/data
+      - ./data/forge/worktrees:/forge/worktrees   # shared with Oracle (Claude Code)
       - ../:/repo
     networks:
       - hestia_net
