@@ -39,6 +39,7 @@ export type ServerEventType =
   | 'question'
   | 'final'
   | 'error'
+  | 'needs_input'
   | 'stream_done';
 
 export interface ServerEvent {
@@ -55,9 +56,24 @@ export interface ServerEvent {
   question_id?: string;
   header?: string;
   prompt?: string;
-  options?: string[];
+  options?: Array<string | { label?: string; value?: string }>;
+  kind?: 'free_text' | 'single_choice' | 'multi_choice' | 'confirm';
+  required?: boolean;
+  timeout_sec?: number;
+  missing_fields?: string[];
   data?: any;
   metadata?: ThinkingMetadata;
+}
+
+/** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */
+export interface PendingQuestion {
+  questionId: string;
+  header: string;
+  prompt: string;
+  kind: 'free_text' | 'single_choice' | 'multi_choice' | 'confirm';
+  options: { label: string; value: string }[];
+  required: boolean;
+  expiresAt?: number;
 }
 
 // ── WebSocket messages (client → server) ──────────────────────────────────

@@ -5,8 +5,8 @@ import { SignalRService } from '../../services/signalr.service';
 import { ChatMessage } from '../../models/chat.models';
 import { ThinkingDisplayComponent } from './thinking-display/thinking-display.component';
 import { FeedbackService } from '../../services/feedback.service';
+import { SettingsService } from '../../services/settings.service';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-chat-view',
@@ -31,8 +31,9 @@ import { DatePipe } from '@angular/common';
               <div class="bubble user-bubble">{{ msg.content }}</div>
             } @else {
               <div class="bubble asst-bubble">
-                @if (msg.thinkingSteps?.length) {
-                  <app-thinking-display [steps]="msg.thinkingSteps!" />
+                @if (msg.thinkingSteps?.length && settings.settings().thinkingDisplay !== 'hidden') {
+                  <app-thinking-display [steps]="msg.thinkingSteps!"
+                                        [expandedByDefault]="settings.settings().thinkingDisplay === 'detailed'" />
                 }
                 @if (msg.content) {
                   <div class="msg-text" [innerHTML]="msg.content"></div>
@@ -46,8 +47,9 @@ import { DatePipe } from '@angular/common';
                 }
                 @if (!msg.isStreaming && msg.content) {
                   <div class="msg-foot">
-                    <button (click)="feedback('good', msg)" title="Good">👍</button>
-                    <button (click)="feedback('bad', msg)" title="Bad">👎</button>
+                    <button (click)="feedback('good', msg)" title="Good" [class.on]="rated()[msg.id] === 'good'">👍</button>
+                    <button (click)="feedback('bad', msg)" title="Bad" [class.on]="rated()[msg.id] === 'bad'">👎</button>
+                    <button (click)="chat.retry()" title="Rigenera" [disabled]="chat.isStreaming()">🔄</button>
                   </div>
                 }
               </div>
@@ -56,7 +58,34 @@ import { DatePipe } from '@angular/common';
         }
         <div #bottom></div>
       </div>
+      @if (chat.pendingQuestion(); as q) {
+        <div class="question-card">
+          <div class="q-header">❓ {{ q.header }}</div>
+          @if (q.prompt) { <div class="q-prompt">{{ q.prompt }}</div> }
+          @if (q.options.length) {
+            <div class="q-options">
+              @for (o of q.options; track o.value) {
+                <button class="q-opt" (click)="answer(q.questionId, o.value)">{{ o.label }}</button>
+              }
+            </div>
+          }
+          @if (q.kind === 'free_text' || !q.options.length) {
+            <div class="q-free">
+              <input [(ngModel)]="questionText" (keydown.enter)="answer(q.questionId, questionText())"
+                     placeholder="Rispondi..." />
+              <button class="q-opt" (click)="answer(q.questionId, questionText())"
+                      [disabled]="!questionText().trim()">Invia</button>
+            </div>
+          }
+          @if (!q.required) {
+            <button class="q-skip" (click)="answer(q.questionId, '')">Salta</button>
+          }
+        </div>
+      }
       <div class="input-bar">
+        <input #fileInput type="file" hidden (change)="onFile($event)" />
+        <button class="btn-attach" title="Allega file" (click)="fileInput.click()"
+                [disabled]="chat.isStreaming()">📎</button>
         <textarea
           #textArea
           [(ngModel)]="inputText"
@@ -94,8 +123,18 @@ import { DatePipe } from '@angular/common';
     .empty-msg { color:var(--text-muted); font-style:italic; }
     .msg-foot { display:flex; gap:4px; margin-top:8px; }
     .msg-foot button { background:none; border:none; font-size:15px; cursor:pointer; padding:2px 6px; border-radius:4px; opacity:0.5; }
-    .msg-foot button:hover { opacity:1; background:var(--bg-hover); }
+    .msg-foot button:hover, .msg-foot button.on { opacity:1; background:var(--bg-hover); }
 
+    .question-card { margin:0 16px 8px; padding:12px 14px; border:1px solid var(--accent); border-radius:12px; background:var(--bg-secondary); }
+    .q-header { font-weight:600; color:var(--text-primary); margin-bottom:4px; }
+    .q-prompt { color:var(--text-secondary); font-size:14px; margin-bottom:8px; }
+    .q-options, .q-free { display:flex; flex-wrap:wrap; gap:6px; }
+    .q-free input { flex:1; min-width:120px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:6px 10px; color:var(--text-primary); }
+    .q-opt { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; }
+    .q-opt:disabled { opacity:0.4; cursor:default; }
+    .q-skip { margin-top:6px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:12px; }
+    .btn-attach { width:40px; height:40px; border-radius:50%; border:1px solid var(--border); background:var(--bg-secondary); font-size:17px; cursor:pointer; flex-shrink:0; }
+    .btn-attach:disabled { opacity:0.3; cursor:default; }
     .input-bar { display:flex; gap:8px; padding:12px 16px 16px; border-top:1px solid var(--border); background:var(--bg-primary); }
     .input-bar textarea { flex:1; background:var(--bg-input); border:1px solid var(--border); border-radius:24px; padding:10px 18px; color:var(--text-primary); font-size:15px; font-family:Inter,sans-serif; resize:none; outline:none; max-height:160px; line-height:1.4; }
     .input-bar textarea:focus { border-color:var(--accent); }
@@ -111,7 +150,9 @@ export class ChatViewComponent implements AfterViewChecked {
   signalR = inject(SignalRService);
   private session = inject(SessionService);
   private fb = inject(FeedbackService);
+  settings = inject(SettingsService);
   inputText = signal('');
+  questionText = signal('');
   private bottomEl = viewChild<ElementRef>('bottom');
 
   ngAfterViewChecked() { this.bottomEl()?.nativeElement?.scrollIntoView({ behavior: 'smooth' }); }
@@ -123,11 +164,37 @@ export class ChatViewComponent implements AfterViewChecked {
     this.inputText.set('');
   }
 
+  answer(questionId: string, value: string) {
+    this.chat.answerQuestion(questionId, value);
+    this.questionText.set('');
+  }
+
+  onFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const text = this.inputText().trim();
+    this.inputText.set('');
+    void this.chat.sendDocument(file, text, this.session.sessionId() || '');
+  }
+
   autoGrow(e: Event) {
     const el = e.target as HTMLTextAreaElement;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }
 
-  feedback(label: 'good' | 'bad', msg: ChatMessage) { this.fb.submit(label); }
+  rated = signal<Record<string, 'good' | 'bad'>>({});
+
+  async feedback(label: 'good' | 'bad', msg: ChatMessage) {
+    // Pair the rated answer with the user message before it (Metis builds datasets from both).
+    const msgs = this.chat.messages();
+    const idx = msgs.findIndex(m => m.id === msg.id);
+    const prompt = [...msgs.slice(0, Math.max(0, idx))].reverse().find(m => m.role === 'user')?.content || '';
+    const plain = (msg.content || '').replace(/<[^>]+>/g, '');
+    if (await this.fb.submit(label, '', { interactionId: msg.id, prompt, response: plain })) {
+      this.rated.update(r => ({ ...r, [msg.id]: label }));
+    }
+  }
 }

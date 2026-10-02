@@ -39,7 +39,8 @@ public class FeedbackController : ControllerBase
                 quality_score = qualityScore,
                 feedback_text = req.FeedbackText,
                 source_client = "webui",
-                tags = new[] { "webui" }
+                tags = new[] { "webui" },
+                payload = new { instruction = req.Prompt ?? "", output = req.Response ?? "" }
             });
             _logger.LogInformation("event=webui_feedback_submitted label={Label} score={Score}",
                 label, qualityScore);

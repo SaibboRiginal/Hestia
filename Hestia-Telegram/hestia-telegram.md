@@ -123,3 +123,10 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## WebUI token commands
+
+`/webui_token`, `/webui_revoke`, `/webui_status` call the WebUI admin API directly (`WEBUI_API_URL`, security
+exception: not via Hub). When `WEBUI_ADMIN_SECRET` is set (same value as the webui container) it is sent as
+`X-WebUI-Admin-Secret`. No local fallback: if the WebUI is down the user gets an error (a locally minted token was
+never accepted and was stored in clear text in Archive memory). The message is HTML with the real lifetime.

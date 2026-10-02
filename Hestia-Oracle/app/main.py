@@ -507,6 +507,50 @@ async def chat_document_endpoint(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+class DocumentJsonRequest(BaseModel):
+    """Same as /api/chat/document but JSON (base64): the Hub envelope cannot carry
+    multipart, so Hub clients (WebUI) use this one."""
+    message: str = ""
+    session_id: Optional[str] = None
+    notify_target: Optional[str] = None
+    client_instructions: Optional[str] = None
+    filename: Optional[str] = None
+    mime_type: str = "application/octet-stream"
+    content_base64: Optional[str] = None
+    data_uri: Optional[str] = None
+
+
+@app.post("/api/chat/document/json")
+async def chat_document_json_endpoint(req: DocumentJsonRequest):
+    import base64
+    import binascii
+
+    raw = req.content_base64 or ""
+    mime = (req.mime_type or "").split(";")[0].strip().lower()
+    if not raw and req.data_uri and "," in req.data_uri:
+        header, raw = req.data_uri.split(",", 1)
+        if header.startswith("data:") and not req.mime_type:
+            mime = header[5:].split(";")[0].lower()
+    try:
+        file_bytes = base64.b64decode(raw, validate=False)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="content_base64/data_uri is not valid base64")
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="empty document")
+
+    class _Upload:  # minimal UploadFile stand-in for the multipart endpoint
+        def __init__(self):
+            self.content_type = mime
+            self.filename = req.filename
+
+        async def read(self):
+            return file_bytes
+
+    return await chat_document_endpoint(
+        message=req.message, session_id=req.session_id, notify_target=req.notify_target,
+        client_instructions=req.client_instructions, filename=req.filename, file=_Upload())
+
+
 @app.post("/api/format", response_model=FormatResponse)
 def format_endpoint(req: FormatRequest, request: Request):
     trace_id = str(request.headers.get("X-Trace-Id") or "").strip()

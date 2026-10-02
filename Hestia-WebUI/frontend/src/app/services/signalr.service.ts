@@ -41,9 +41,16 @@ export class SignalRService {
   }
 
   async send(message: ClientMessage): Promise<void> {
-    if (this.hub?.state === signalR.HubConnectionState.Connected) {
-      await this.hub.invoke('SendMessage', message);
+    if (this.hub?.state !== signalR.HubConnectionState.Connected) {
+      if (!this.hub || this.hub.state === signalR.HubConnectionState.Disconnected) {
+        await this.connect();
+      }
     }
+    if (this.hub?.state !== signalR.HubConnectionState.Connected) {
+      // Never drop silently: the caller marks the message as failed.
+      throw new Error('Connessione al server non disponibile');
+    }
+    await this.hub.invoke('SendMessage', message);
   }
 
   async disconnect(): Promise<void> {

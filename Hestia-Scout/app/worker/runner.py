@@ -416,15 +416,18 @@ class ScoutWorker:
                     "headers": {},
                     "query": {},
                     "body": command,
-                    "timeout_seconds": 8,
+                    # Iris waits up to 120 s on Hecate (IMAP/Gmail fetch + Archive ship).
+                    "timeout_seconds": 130,
                 },
-                timeout=9,
+                timeout=140,
             )
+            routed: dict = {}
             if response.status_code == 200:
                 routed = response.json() or {}
                 status_code = int(routed.get("status_code", 500))
                 payload = routed.get("payload") or {}
-                if status_code < 400:
+                # Iris reports provider failures as 200 {"status": "error"}: not a success.
+                if status_code < 400 and str(payload.get("status", "ok")).lower() != "error":
                     fetched = int(payload.get("fetched", 0) or 0)
                     logger.info(
                         "event=gateway_fetched_matching_items Gateway fetched matching items | fetched=%s",

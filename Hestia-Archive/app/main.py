@@ -29,6 +29,29 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_archive")
 
 # ── Database bootstrap ────────────────────────────────────────────────────────
+# ── Schema migrations (additive only — never remove columns) ─────────────────
+_ADDITIVE_COLUMNS = [
+    ("calendar_items", "meta", "JSONB"),
+    ("user_preferences", "memory_class", "VARCHAR"),
+    ("user_preferences", "embedding", "vector(768)"),
+    ("user_preferences", "domains", "JSONB"),
+    ("user_preferences", "extra_data", "JSONB"),
+]
+
+
+def _additive_migrations() -> None:
+    """create_all never adds columns to existing tables. Each ALTER runs in its
+    own transaction: a failure is rolled back instead of aborting every later
+    statement ("current transaction is aborted")."""
+    for table, col_name, col_type in _ADDITIVE_COLUMNS:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+        except Exception as exc:
+            logger.warning("[🔄] event=archive_migration_failed table=%s column=%s error=%s",
+                           table, col_name, str(exc)[:200])
+
+
 def _bootstrap_database() -> None:
     """Wait for Postgres (boot ordering), then ensure pgvector + tables.
     ARCHIVE_DB_WAIT_SECONDS=0 waits forever (Startup Readiness Contract)."""
@@ -45,9 +68,7 @@ def _bootstrap_database() -> None:
             models.Base.metadata.create_all(bind=engine)
             # create_all never adds columns to existing tables: tiny idempotent
             # migrations for columns introduced after first deploy.
-            with engine.connect() as conn:
-                conn.execute(text("ALTER TABLE calendar_items ADD COLUMN IF NOT EXISTS meta JSONB"))
-                conn.commit()
+            _additive_migrations()
             return
         except Exception as exc:
             if limit and _time.monotonic() - started > limit:
@@ -57,24 +78,6 @@ def _bootstrap_database() -> None:
 
 
 _bootstrap_database()
-
-# ── Schema migrations (additive only — never remove columns) ─────────────────
-with engine.connect() as conn:
-    _PREFERENCE_COLUMNS = [
-        ("memory_class", "VARCHAR"),
-        ("embedding", "vector(768)"),
-        ("domains", "JSONB"),
-        ("extra_data", "JSONB"),
-    ]
-    for col_name, col_type in _PREFERENCE_COLUMNS:
-        try:
-            conn.execute(text(
-                f"ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS "
-                f"{col_name} {col_type}"
-            ))
-            conn.commit()
-        except Exception:
-            pass  # Column already exists or table doesn't exist yet
 
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Hestia-Archive Vault",

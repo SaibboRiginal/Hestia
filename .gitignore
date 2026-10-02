@@ -3,8 +3,13 @@ Credentials/
 .env
 .venv/
 venv/
-credentials*
-token*
+# Secrets: data files only. A bare "token*" also hid source files on Windows
+# (case-insensitive): Hestia-WebUI/app/Services/TokenManager.cs was never committed.
+credentials*.json
+token*.json
+token*.pickle
+token*.txt
+*_token.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

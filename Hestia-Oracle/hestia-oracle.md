@@ -51,6 +51,8 @@ The conversational AI brain of Hestia. Receives messages from interface services
 
 ### Multimodal Document Understanding
 - Oracle accepts file attachments (images and PDFs) via `POST /api/chat/document` (multipart/form-data).
+- `POST /api/chat/document/json` — same, JSON body `{message, session_id, notify_target, client_instructions,
+  filename, mime_type, content_base64 | data_uri}` for Hub clients (Hub envelopes cannot carry multipart; used by the WebUI).
 - Supported types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/heic`, `image/heif`, `application/pdf`.
 - **Gemini path:** file bytes are sent natively as `types.Part.from_bytes()` in the contents list — Gemini handles images and PDFs without preprocessing.
 - **Ollama path:** images are base64-encoded and passed in the `images` field; PDFs are pre-converted to text with `pypdf` before the text prompt.

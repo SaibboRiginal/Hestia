@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, effect, untracked } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { SignalRService } from './services/signalr.service';
@@ -50,6 +50,25 @@ export class AppComponent implements OnInit {
   private settings = inject(SettingsService);
   private router = inject(Router);
   sidebarOpen = signal(localStorage.getItem('sidebar') === 'open');
+  private bootstrapped = false;
+
+  constructor() {
+    // Connect whenever the user becomes authenticated (URL token at boot OR the
+    // login form later): connecting only in ngOnInit left chat dead after a form login.
+    effect(() => {
+      const authed = this.auth.isAuthenticated();
+      untracked(() => {
+        if (authed && !this.bootstrapped) { this.bootstrapped = true; void this.bootstrap(); }
+        if (!authed) { this.bootstrapped = false; }
+      });
+    });
+  }
+
+  private async bootstrap() {
+    if (this.signalR.connectionState() !== 'connected') await this.signalR.connect();
+    await this.session.load();
+    await this.settings.load();
+  }
 
   toggleSidebar() {
     this.sidebarOpen.update(v => {
@@ -68,10 +87,7 @@ export class AppComponent implements OnInit {
     const p = new URLSearchParams(window.location.search);
     const t = p.get('token');
     if (t) { await this.auth.login(t); history.replaceState({}, '', '/'); }
-    if (!this.auth.isAuthenticated()) { this.router.navigate(['/login']); return; }
-    await this.signalR.connect();
-    await this.session.load();
-    await this.settings.load();
+    if (!this.auth.isAuthenticated()) { this.router.navigate(['/login']); }
   }
 
   logout() { this.auth.logout(); this.signalR.disconnect(); this.router.navigate(['/login']); }

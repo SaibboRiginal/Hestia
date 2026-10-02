@@ -1,4 +1,4 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, input, signal, OnInit } from '@angular/core';
 import { ThinkingStep } from '../../../models/chat.models';
 import { NgClass } from '@angular/common';
 
@@ -82,9 +82,13 @@ import { NgClass } from '@angular/common';
     .thinking-step.tool_result .step-number { background: rgba(39, 174, 96, 0.15); color: var(--success); }
   `]
 })
-export class ThinkingDisplayComponent {
+export class ThinkingDisplayComponent implements OnInit {
   steps = input.required<ThinkingStep[]>();
   expanded = signal(false);
+  /** Settings 'detailed' opens the reasoning by default; 'compact' keeps it collapsed. */
+  expandedByDefault = input(false);
+
+  ngOnInit() { this.expanded.set(this.expandedByDefault()); }
 
   // Track per-step expansion state
   private stepState = new Map<number, boolean>();

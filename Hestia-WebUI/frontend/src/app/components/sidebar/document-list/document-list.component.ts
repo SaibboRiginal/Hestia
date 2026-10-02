@@ -54,10 +54,10 @@ export class DocumentListComponent implements OnInit {
 
   async load(): Promise<void> {
     try {
-      const resp = await firstValueFrom(
-        this.http.get<{ documents: any[]; count: number }>('/api/webui/documents')
-      );
-      this.documents.set(resp.documents || []);
+      // Archive returns a bare list of {document_id, ...}; older shape {documents}.
+      const resp = await firstValueFrom(this.http.get<any>('/api/webui/documents'));
+      const rows: any[] = Array.isArray(resp) ? resp : (resp?.documents || []);
+      this.documents.set(rows.map(d => ({ ...d, id: d.id ?? d.document_id })));
     } catch { /* empty */ }
     this.loading.set(false);
   }

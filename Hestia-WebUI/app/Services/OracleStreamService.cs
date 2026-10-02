@@ -99,8 +99,7 @@ public class OracleStreamService
 
     /// <summary>
     /// Stream a document analysis request through Hub routing to Oracle.
-    /// Uses the same NDJSON path as chat — Oracle's /api/chat accepts
-    /// base64-encoded file content inline via the document field.
+    /// NDJSON like chat, via Oracle's /api/chat/document/json (base64 body).
     /// </summary>
     public IAsyncEnumerable<OracleEvent> StreamDocumentAsync(
         byte[] fileBytes, string filename, string mimeType,
@@ -109,22 +108,14 @@ public class OracleStreamService
         CancellationToken ct = default)
     {
         var base64Content = Convert.ToBase64String(fileBytes);
-        var dataUri = $"data:{mimeType};base64,{base64Content}";
 
         var body = new Dictionary<string, object>
         {
             ["message"] = message,
             ["session_id"] = sessionId,
-            ["mode"] = "auto",
-            ["model"] = "generic",
-            ["save_history"] = true,
-            ["force_notification_compiler"] = false,
-            ["document"] = new Dictionary<string, object>
-            {
-                ["filename"] = filename,
-                ["mime_type"] = mimeType,
-                ["data_uri"] = dataUri,
-            },
+            ["filename"] = filename,
+            ["mime_type"] = mimeType,
+            ["content_base64"] = base64Content,
         };
         if (!string.IsNullOrWhiteSpace(clientInstructions))
             body["client_instructions"] = clientInstructions;
@@ -140,7 +131,9 @@ public class OracleStreamService
             stream = true,
         };
 
-        return StreamViaHub("oracle", "/api/chat", envelope, ct);
+        // JSON twin of Oracle's multipart /api/chat/document (Hub envelopes carry JSON only;
+        // a "document" field on /api/chat was silently ignored).
+        return StreamViaHub("oracle", "/api/chat/document/json", envelope, ct);
     }
 
     private async IAsyncEnumerable<OracleEvent> StreamViaHub(

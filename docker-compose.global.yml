@@ -221,6 +221,7 @@ services:
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - WEBUI_API_URL=http://hestia_webui:19015               # WebUI backend (direct — security exception, NOT via Hub)
       - WEBUI_PUBLIC_URL=                                      # Set by cloudflare-tunnel.bat; leave empty for auto-detection
+      - WEBUI_ADMIN_SECRET=${WEBUI_ADMIN_SECRET:-}            # Must match the webui value when set
       - PYTHONUNBUFFERED=1
     volumes:
       - ./Hestia-Telegram/data:/code/data
@@ -593,6 +594,8 @@ services:
       - Hestia__ServiceTopologyTags=layer:client,domain:ui,status:stable
       - WebUI__Port=19015
       - WebUI__SecretKey=${WEBUI_SECRET_KEY:-}
+      - WEBUI_ADMIN_SECRET=${WEBUI_ADMIN_SECRET:-}            # Optional: shared secret for /api/webui/admin/* (also set for telegram)
+      - WEBUI_PUBLIC_HOST_SUFFIXES=.trycloudflare.com         # Hosts allowed for public-URL auto-detection
       - WebUI__TokenLifetimeHours=72
       - WebUI__RateLimitPerMinute=60
       - WebUI__MaxUploadSizeMB=50

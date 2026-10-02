@@ -10,6 +10,12 @@ builder.Services.Configure<WebUIOptions>(
     builder.Configuration.GetSection(WebUIOptions.Section));
 builder.Services.Configure<HestiaOptions>(
     builder.Configuration.GetSection(HestiaOptions.Section));
+// WebUI__SecretKey="" (compose default) must not replace the random key with an empty one.
+builder.Services.PostConfigure<WebUIOptions>(o =>
+{
+    if (string.IsNullOrWhiteSpace(o.SecretKey))
+        o.SecretKey = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+});
 
 var webuiOpts = builder.Configuration.GetSection(WebUIOptions.Section).Get<WebUIOptions>()!;
 var hestiaOpts = builder.Configuration.GetSection(HestiaOptions.Section).Get<HestiaOptions>()!;
@@ -38,7 +44,12 @@ builder.Services.AddControllers()
         opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
-builder.Services.AddSignalR()
+builder.Services.AddSignalR(opts =>
+    {
+        // Default is 1 invocation per client: a running chat stream blocked
+        // "cancel" and question answers until the stream ended.
+        opts.MaximumParallelInvocationsPerClient = 4;
+    })
     .AddJsonProtocol(opts =>
     {
         opts.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -88,7 +99,8 @@ app.Use(async (context, next) =>
     var host = context.Request.Host.Value ?? "";
     var scheme = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault()
                  ?? context.Request.Scheme;
-    publicUrl.TryDetectFromHost(host, scheme);
+    var viaCloudflare = context.Request.Headers.ContainsKey("Cf-Connecting-Ip");
+    publicUrl.TryDetectFromHost(host, scheme, viaCloudflare);
     await next();
 });
 
@@ -136,7 +148,6 @@ using (var scope = app.Services.CreateScope())
             {
                 interface_type = "web",
                 swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
-                hub_events_webhook = "/api/events/registry-changed",
             }
         };
 
