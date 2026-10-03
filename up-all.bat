@@ -1,6 +1,12 @@
 @echo off
 setlocal
 
+docker info >nul 2>&1
+if errorlevel 1 (
+    echo [Hestia] Docker non risponde: avvia Docker Desktop, aspetta che sia "running" e rilancia.
+    exit /b 1
+)
+
 docker network inspect hestia_net >nul 2>&1
 if errorlevel 1 (
     echo [Hestia] Creating shared Docker network: hestia_net
