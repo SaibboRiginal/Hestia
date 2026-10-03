@@ -493,13 +493,17 @@ class UniversalAgent:
         return self.ask(user_message)
 
     def embed(self, text: str) -> list[float]:
+        return _fit_embedding(self._embed_raw(text))
+
+    def _embed_raw(self, text: str) -> list[float]:
         if self.provider == "gemini":
             try:
                 response = self.client.models.embed_content(
                     model=self.model_name,
                     contents=text,
                     config=types.EmbedContentConfig(
-                        task_type="RETRIEVAL_QUERY"
+                        task_type="RETRIEVAL_QUERY",
+                        output_dimensionality=_EMBED_DIM,
                     )
                 )
                 return response.embeddings[0].values
@@ -524,6 +528,21 @@ class UniversalAgent:
 # ─────────────────────────────────────────────────────────────────────
 #  Module-level helpers
 # ─────────────────────────────────────────────────────────────────────
+
+# Archive stores Vector(768). qwen3-embedding (1024) and gemini-embedding-001
+# (3072) are Matryoshka models: truncating + L2-renormalizing to 768 keeps them
+# usable; before, every vector was dropped and semantic search was silently off.
+_EMBED_DIM = int(os.getenv("ORACLE_EMBED_DIM", "768"))
+
+
+def _fit_embedding(vec) -> list[float]:
+    vec = [float(x) for x in (vec or [])]
+    if not vec or len(vec) <= _EMBED_DIM:
+        return vec
+    vec = vec[:_EMBED_DIM]
+    norm = sum(x * x for x in vec) ** 0.5 or 1.0
+    return [x / norm for x in vec]
+
 
 def _extract_pdf_text(file_bytes: bytes) -> str:
     """Extract plain text from a PDF using pypdf.
