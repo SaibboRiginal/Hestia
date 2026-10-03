@@ -1,0 +1,26 @@
+# Union of the (light) runtime deps of every Python service, so Forge and
+# Claude Code can run ANY service's pytest suite from the Hephaestus / Oracle
+# containers. Keep it in sync when a service adds a dependency.
+pytest>=8.0
+httpx>=0.27
+fastapi
+uvicorn
+pydantic
+requests
+python-dotenv
+python-dateutil
+python-multipart
+sqlalchemy
+psycopg2-binary
+pgvector
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+google-genai
+msal
+pyTelegramBotAPI
+beautifulsoup4
+pypdf
+python-docx
+docker

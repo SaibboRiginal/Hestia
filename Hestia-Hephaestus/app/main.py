@@ -231,6 +231,7 @@ try:
                     "request": {"type": "string", "description": "Cosa sviluppare, dettagliato, in parole dell'utente"},
                     "services": {"type": "array", "items": {"type": "string"}, "description": "Servizi coinvolti se noti (es. hecate, oracle)"},
                     "engine": {"type": "string", "description": "Solo se l'utente lo chiede: local | cloud | claude. Vuoto = default"},
+                    "workdoc": {"type": "string", "description": "Per CONTINUARE un lavoro precedente: nome cartella docs/work/<...> (dal task precedente)"},
                 },
                 "required": ["request"],
             },

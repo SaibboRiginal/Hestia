@@ -21,6 +21,7 @@ import json
 import logging
 import queue
 import subprocess
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -32,12 +33,13 @@ from typing import Any
 import requests
 
 from . import git_ops
+from . import deployer
 from .agenda_client import KEY_FINAL, KEY_NIGHTS, AgendaClient
 from .claude_budget import ClaudeBudget, ClaudeBudgetState, ClaudeSchedule
 from .agent_tools import run_test_command
 from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
 from .engines import build_engines, select_engine, wait_seconds
-from .prompts import build_task_prompt
+from .prompts import build_task_prompt, workdoc_name
 
 logger = logging.getLogger("hestia_hephaestus.forge")
 
@@ -347,7 +349,9 @@ class Forge:
 
     def submit(self, *, request: str, services: list[str] | None = None, engine: str = "",
                source: str = "user", requested_by: str = "user", auto_start: bool | None = None,
-               auto_merge: bool | None = None, context: str = "", notify_target: str = "") -> dict[str, Any]:
+               auto_merge: bool | None = None, context: str = "", notify_target: str = "",
+               workdoc: str = "") -> dict[str, Any]:
+        """``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG)."""
         if not self.cfg.enabled:
             raise ForgeError("Forge disabled (HEPHAESTUS_FORGE_ENABLED=0)", 503)
         if not git_ops.is_repo(self.cfg.repo_path):
@@ -364,6 +368,7 @@ class Forge:
             "source": source,
             "requested_by": requested_by,
             "context": str(context or "")[:4000],
+            "workdoc": re.sub(r"[^A-Za-z0-9._-]", "", str(workdoc or ""))[:120],
             "auto_merge": self.cfg.auto_merge if auto_merge is None else bool(auto_merge),
             "notify_target": notify_target or self.cfg.notify_target,
             "branch": f"auto/forge/{task_id}",
@@ -556,7 +561,10 @@ class Forge:
             return run_test_command(worktree, self.cfg.test_cmd,
                                     paths or self._test_paths(worktree, files, task["services"]))
 
-        prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""))
+        workdoc = task.get("workdoc") or workdoc_name(task["id"], task["request"], task.get("created_at", ""))
+        with self._lock:
+            task["workdoc"] = workdoc
+        prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""), workdoc)
         t0 = time.perf_counter()
         result = engine.run(worktree, prompt, test_runner)
         if engine.name == "claude" and not result.ok and self.claude_budget.looks_like_limit(
@@ -652,21 +660,29 @@ class Forge:
         self._cleanup(task, delete_branch=False)
         self._set_state(task, "merged", f"merge {merge_sha[:8]}")
 
-        services = task.get("touched_services") or []
-        if not self.cfg.deploy_cmd or not services:
+        dplan = deployer.plan(self.cfg.repo_path, task.get("changed_files") or [])
+        task["deploy_plan"] = {"restart": dplan.restart, "rebuild": dplan.rebuild,
+                               "restart_self": dplan.restart_self}
+        services = dplan.restart
+        rebuild_note = (f"\n🔧 Da ricostruire a mano: <code>up-all.bat --build {' '.join(dplan.rebuild)}</code>"
+                        if dplan.rebuild else "")
+        if not self.cfg.deploy_cmd or not (services or dplan.restart_self):
             self._notify(task, (
                 f"✅ <b>Forge: applicata</b> <code>{task['id'][:6]}</code> (merge {merge_sha[:8]}).\n"
-                + ("Riavvia i servizi per attivarla." if services else "")))
+                + (f"Riavvia: {', '.join(services + (['hephaestus'] if dplan.restart_self else []))}."
+                   if (services or dplan.restart_self) else "") + rebuild_note))
             return
 
-        ok, out = self._deploy(services)
+        ok, out = self._deploy(services) if services else (True, "")
         task["deploy"] = {"ok": ok, "output_tail": out[-2000:]}
-        unhealthy = self._unhealthy(services) if ok else services
+        unhealthy = self._unhealthy(services) if ok and services else ([] if ok else services)
         if ok and not unhealthy:
-            self._set_state(task, "deployed", f"services={','.join(services)}")
+            self._set_state(task, "deployed", f"{dplan.summary()}")
             self._notify(task, (
-                f"🚀 <b>Forge: in produzione</b> <code>{task['id'][:6]}</code> → {', '.join(services)} ok.\n"
-                f"Rollback: \"rollback sviluppo {task['id'][:6]}\"."))
+                f"🚀 <b>Forge: in produzione</b> <code>{task['id'][:6]}</code> → {_esc(dplan.summary())}.\n"
+                f"Rollback: \"rollback sviluppo {task['id'][:6]}\"." + rebuild_note))
+            if dplan.restart_self:
+                self._restart_self()
             return
         why = f"deploy_ok={ok} unhealthy={unhealthy}"
         if self.cfg.auto_rollback:
@@ -674,18 +690,27 @@ class Forge:
         else:
             self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: deploy problematico ({_esc(why)}).")
 
+    def _restart_self(self) -> None:
+        """Hephaestus restarts itself last (state already saved; resumes on boot)."""
+        def _later():
+            time.sleep(3)
+            deployer.restart_containers(["hephaestus"]) if self.cfg.deploy_cmd == "builtin" else None
+        threading.Thread(target=_later, daemon=True, name="forge-self-restart").start()
+
     def _do_rollback(self, task: dict, note: str) -> None:
         revert_sha = git_ops.revert_merge(self.cfg.repo_path, task["merge_sha"],
                                           self.cfg.git_author_name, self.cfg.git_author_email)
         with self._lock:
             task["revert_sha"] = revert_sha
-        services = task.get("touched_services") or []
+        services = (task.get("deploy_plan") or {}).get("restart") or []
         if self.cfg.deploy_cmd and services:
             self._deploy(services)
         self._set_state(task, "rolled_back", f"revert {revert_sha[:8]} {note}")
         self._notify(task, f"↩️ <b>Forge: rollback</b> <code>{task['id'][:6]}</code> ({_esc(note[:200])}).")
 
     def _deploy(self, services: list[str]) -> tuple[bool, str]:
+        if self.cfg.deploy_cmd == "builtin":
+            return deployer.restart_containers(services)
         cmd = self.cfg.deploy_cmd.replace("{services}", " ".join(services))
         try:
             proc = subprocess.run(cmd, shell=True, cwd=str(self.cfg.repo_path),

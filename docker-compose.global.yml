@@ -532,6 +532,7 @@ services:
       - HEPHAESTUS_BASELINE_REF=HEAD                          # Baseline ref captured for rollback metadata
       - HEPHAESTUS_REPO_PATH=/repo                           # Hestia git checkout mounted for Forge (self-development)
       - HEPHAESTUS_FORGE_ENABLED=1                           # Enable Forge self-development engine (0|1)
+      - HEPHAESTUS_FORGE_DEPLOY_CMD=builtin                  # builtin = restart touched containers via Docker socket; empty = manual
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
@@ -541,7 +542,7 @@ services:
       - ./Hestia-Hephaestus/data:/code/data   # Forge task state (persistent)
       - ./Hestia-Hephaestus/data/forge/worktrees:/forge/worktrees   # task worktrees, shared with Oracle
       - ./:/repo                              # Hestia repo: Forge branches/merges here
-      # - /var/run/docker.sock:/var/run/docker.sock   # only if HEPHAESTUS_FORGE_DEPLOY_CMD restarts containers
+      - /var/run/docker.sock:/var/run/docker.sock   # Forge deploy: restarts hestia_<svc> after an approved merge
     depends_on:
       hub:
         condition: service_started
