@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 _SIGNAL_STYLE_ALLOWED = {"minimal", "compact", "rich"}
 
-_ALLOWED_TELEGRAM_HTML_TAGS = {"b", "i", "u", "s", "code", "pre", "a", "br"}
+_ALLOWED_TELEGRAM_HTML_TAGS = {"b", "i", "u", "s", "code", "pre", "a", "br", "blockquote"}
 _TELEGRAM_HTML_TAG_ALIASES = {
     "strong": "b",
     "em": "i",
@@ -329,6 +329,20 @@ def _split_html_link_bullets(html_text: str) -> list[str]:
         return [m for m in messages if m.strip()]
     
     return split_long_message(text)
+def render_answer_html(raw: str) -> str:
+    """One Telegram-safe HTML string for an assistant answer (HTML or Markdown input).
+
+    Unlike build_chat_messages it does NOT split paragraphs/bullets into separate
+    messages (Claude-like single reply); size splitting is done by the caller.
+    """
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    if re.search(r'<(?:b|i|u|s|code|pre|br|blockquote)[\s/>]|<a[\s>]', text, re.IGNORECASE):
+        return normalize_telegram_html(_convert_markdown_in_html(text))
+    return format_for_telegram(text)
+
+
 def build_chat_messages(raw_markdown: str) -> list[str]:
     text = (raw_markdown or "").strip()
     if not text:

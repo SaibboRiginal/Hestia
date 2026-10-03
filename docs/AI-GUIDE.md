@@ -29,7 +29,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 ## 2. Request flow (chat)
 
 Client (Telegram/WebUI) → Hub → Oracle `/api/chat` (NDJSON stream: `status`, `thinking`, `token`,
-`question`, `final`, `error`) → classifier picks domain → agent loop calls tools (MCP tools of
+`question`, `final`, `notice`, `error`) → classifier picks domain → agent loop calls tools (MCP tools of
 services, discovered via Hub) → answer formatted (HTML subset for Telegram) → memory extraction
 (selective) → session summary to Archive.
 
@@ -86,8 +86,10 @@ Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
 - WebUI: `Hestia-WebUI` — backend proxies everything via Hub; token from Telegram `/webui_token`;
   admin API guarded (`WEBUI_ADMIN_SECRET` or internal network only). Frontend rules:
   `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
-- Response packets: clients render standard packet kinds (chat, system notices, memory, actions,
-  errors, questions) — see `Hestia-Shared/hestia-shared.md` / Oracle doc when implemented.
+- Response packets: clients render the standard packets — spec in `Hestia-Shared/hestia-shared.md`
+  § Response packets. System messages = `notice` (never styled like chat). Telegram: `ReplyRenderer` +
+  `chat_settings.SETTINGS` (one schema → `/settings` panel). WebUI: `.hx-notice` + `NoticePrefsService`.
+- Never send the answer twice: `final` is rendered exactly once (Telegram edits the status message into it).
 
 ## 7. Gotchas learned the hard way
 

@@ -12,6 +12,10 @@ Event types:
   - final    : terminal event carrying the assistant's full reply
   - signal   : side-channel event (e.g. memory update, tool summary, document saved)
   - question : interactive question frame for cross-client approval flows
+  - notice   : STANDARD system packet for every client (memory saved, action done,
+               errors…): {type, kind, level, icon, emoji, title, detail, data}.
+               Clients render it distinctly from chat text (see NOTICE_KINDS and
+               Hestia-Shared/hestia-shared.md § Response packets).
 """
 import json
 
@@ -98,12 +102,70 @@ def emit_needs_input(missing_fields: list[str], context: str = "") -> str:
     }, ensure_ascii=False) + "\n"
 
 
+# kind → (level, icon name, emoji, default title). Clients may restyle by kind/level/icon.
+NOTICE_KINDS: dict[str, tuple[str, str, str, str]] = {
+    "memory.saved": ("success", "memory", "💾", "Ricordato"),
+    "memory.removed": ("info", "trash", "🗑️", "Dimenticato"),
+    "memory.updated": ("info", "memory", "💾", "Memoria aggiornata"),
+    "subscription.added": ("success", "bell", "🔔", "Avviso attivato"),
+    "subscription.changed": ("info", "bell", "🔔", "Avviso modificato"),
+    "subscription.removed": ("info", "bell-off", "🔕", "Avviso disattivato"),
+    "action.done": ("success", "check", "✅", "Fatto"),
+    "action.failed": ("error", "alert", "❌", "Non riuscito"),
+    "action.needs_approval": ("warning", "alert", "✋", "Serve la tua conferma"),
+    "agenda.planned": ("info", "calendar", "📅", "In agenda"),
+    "forge.task": ("info", "terminal", "🔨", "Sviluppo"),
+    "document.saved": ("success", "file", "📄", "Documento salvato"),
+    "info": ("info", "info", "ℹ️", "Info"),
+    "warning": ("warning", "alert", "⚠️", "Attenzione"),
+    "error": ("error", "alert", "❌", "Errore"),
+}
+
+# Legacy signal events → standard notice kinds (tool.summary is reasoning, not a notice).
+_SIGNAL_TO_NOTICE: dict[str, str] = {
+    "memory.preference.added": "memory.saved",
+    "memory.preference.removed": "memory.removed",
+    "memory.updated": "memory.updated",
+    "subscription.added": "subscription.added",
+    "subscription.changed": "subscription.changed",
+    "subscription.removed": "subscription.removed",
+    "action.executed": "action.done",
+    "action.failed": "action.failed",
+    "action.approval.required": "action.needs_approval",
+    "document.saved": "document.saved",
+    "document_saved": "document.saved",
+}
+
+
+def emit_notice(kind: str, title: str = "", detail: str = "", data: dict | None = None,
+                level: str | None = None) -> str:
+    """Return a standard notice packet (one NDJSON line)."""
+    lvl, icon, emoji, default_title = NOTICE_KINDS.get(kind, NOTICE_KINDS["info"])
+    return json.dumps({
+        "type": "notice", "kind": kind, "level": level or lvl, "icon": icon, "emoji": emoji,
+        "title": title or default_title, "detail": detail, "data": data or {},
+    }, ensure_ascii=False) + "\n"
+
+
+def notice_from_signal(event: str, message: str, data: dict | None = None) -> str:
+    """Notice line for a legacy signal event, or '' when the event is not user-facing."""
+    kind = _SIGNAL_TO_NOTICE.get(str(event or "").lower())
+    if not kind:
+        return ""
+    d = data or {}
+    detail = str(d.get("fact") or d.get("filename") or d.get("summary") or d.get("detail") or "").strip()
+    if not detail:
+        detail = str(message or "").split(":", 1)[-1].strip() if ":" in str(message or "") else str(message or "")
+    return emit_notice(kind, detail=detail[:300], data=d)
+
+
 def emit_signal(event: str, message: str, data: dict | None = None) -> str:
-    """Return a signal-type NDJSON line for side-channel events."""
-    return json.dumps(
+    """Return a signal-type NDJSON line (+ its standard notice line when user-facing)."""
+    line = json.dumps(
         {"type": "signal", "event": event, "content": message, "data": data or {}},
         ensure_ascii=False,
     ) + "\n"
+    return line + notice_from_signal(event, message, data)
 
 
 def emit_tool_summary(tool_log: list[dict]) -> str:

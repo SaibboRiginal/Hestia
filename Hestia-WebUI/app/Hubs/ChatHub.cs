@@ -20,6 +20,7 @@ using Hestia.WebUI.Services;
 ///   {"type":"status","content":"..."}
 ///   {"type":"thinking","action":"...","content":"...","turn":N,"tool":"..."}
 ///   {"type":"signal","event":"...","data":{...}}
+///   {"type":"notice","kind":"...","level":"...","icon":"...","emoji":"...","title":"...","detail":"..."}
 ///   {"type":"question","question_id":"...","header":"...","prompt":"..."}
 ///   {"type":"final","reply":"...","session_id":"...","domain":"..."}
 ///   {"type":"error","content":"..."}

@@ -49,6 +49,28 @@ agenda.agenda(days=7, owner=None)                    # see every module's plans
 Rules are idempotent by `key`; edits made by the user (`user_modified`) are never overwritten. A paused or
 cancelled rule is a user decision: `is_open` → closed, `should_self_run` → False. Every call fails soft.
 
+## Response packets (standard for every client)
+
+Oracle streams NDJSON; every client (Telegram, WebUI, future apps/voice) renders the same packets.
+Emitters: `Hestia-Oracle/app/core/services/stream_emitter.py`.
+
+| `type` | Fields | Client rendering |
+|---|---|---|
+| `status` | `content` | transient progress line (replaced, never kept) |
+| `thinking` | `action` (reasoning/tool_call/tool_result), `content`, `tool`, `turn`, `metadata` | collapsible reasoning box |
+| `token` | `text` | streamed answer |
+| `final` | `reply`, `session_id`, `domain` | the answer (exactly once) |
+| `notice` | `kind`, `level`, `icon`, `emoji`, `title`, `detail`, `data` | **system message**: visually distinct from chat (icon/pill), filtered by user settings |
+| `question` | `question_id`, `header`, `prompt`, `kind`, `options`, `required`, `timeout_sec` | interactive card |
+| `needs_input` | `missing_fields` | ask for missing data |
+| `signal` | `event`, `content`, `data` | legacy machine event (audit); clients show its `notice` twin instead |
+
+`notice.kind` → `memory.saved · memory.removed · memory.updated · subscription.added|changed|removed ·
+action.done · action.failed · action.needs_approval · agenda.planned · forge.task · document.saved · info ·
+warning · error`. `level` = `info|success|warning|error`; `icon` = WebUI `hx-icon` name; `emoji` for text
+clients. Notices may arrive **after** `final` (background memory) — attach them to the last answer.
+Add a kind: one line in `NOTICE_KINDS` (+ `_SIGNAL_TO_NOTICE` if it mirrors a signal); clients need no change.
+
 ## Constraints
 
 - No domain logic — pure library code.

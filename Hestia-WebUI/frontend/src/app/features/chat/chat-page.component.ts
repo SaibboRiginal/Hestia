@@ -10,6 +10,7 @@ import { SignalRService } from '../../services/signalr.service';
 import { ChatMessage } from '../../models/chat.models';
 import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, ToastService } from '../../ui';
 import { ThinkingStepsComponent } from './thinking-steps.component';
+import { NoticePrefsService } from '../../services/notice-prefs.service';
 
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
@@ -52,6 +53,17 @@ import { ThinkingStepsComponent } from './thinking-steps.component';
               @if (m.content) { <div class="hx-prose" [innerHTML]="m.content"></div> }
               @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
               @if (m.isStreaming && m.content) { <span class="caret"></span> }
+              @if (m.notices?.length && notices.inline()) {
+                <div class="hx-notices" [class.rich]="notices.prefs().style === 'rich'">
+                  @for (n of m.notices; track n.id) {
+                    <div class="hx-notice hx-fade-in" [attr.data-level]="n.level" [title]="n.kind">
+                      <hx-icon [name]="n.icon" [size]="14" />
+                      <span class="nt">{{ n.title }}</span>
+                      @if (n.detail) { <span class="nd">{{ n.detail }}</span> }
+                    </div>
+                  }
+                </div>
+              }
               @if (!m.isStreaming && m.content) {
                 <div class="foot">
                   <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)" title="Utile"><hx-icon name="thumb-up" [size]="15" /></button>
@@ -151,6 +163,7 @@ export class ChatPageComponent implements AfterViewChecked {
   signalR = inject(SignalRService);
   private session = inject(SessionService);
   private settings = inject(SettingsService);
+  notices = inject(NoticePrefsService);
   private fb = inject(FeedbackService);
   private toast = inject(ToastService);
   private dialogs = inject(DialogService);

@@ -114,8 +114,8 @@ export class PageHeaderComponent {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button type="button" role="switch" class="sw" [class.on]="checked()" [attr.aria-checked]="checked()"
-            [disabled]="disabled()" (click)="checked.set(!checked()); changed.emit(checked())"><span></span></button>
-    @if (label()) { <span class="lbl" (click)="!disabled() && checked.set(!checked())">{{ label() }}</span> }`,
+            [disabled]="disabled()" (click)="flip()"><span></span></button>
+    @if (label()) { <span class="lbl" (click)="flip()">{{ label() }}</span> }`,
   styles: [`
     :host { display: inline-flex; align-items: center; gap: 8px; }
     .sw { width: 34px; height: 20px; border-radius: 10px; background: var(--surface-3); position: relative; transition: background var(--dur) var(--ease); flex-shrink: 0; }
@@ -131,6 +131,7 @@ export class ToggleComponent {
   label = input('');
   disabled = input(false);
   changed = output<boolean>();
+  flip() { if (this.disabled()) return; this.checked.set(!this.checked()); this.changed.emit(this.checked()); }
 }
 
 export interface SegmentOption<T = string> { value: T; label?: string; icon?: string; title?: string; }

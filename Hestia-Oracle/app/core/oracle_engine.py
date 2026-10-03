@@ -38,6 +38,7 @@ from core.services.memory_intent import (
     has_deprecate_intent,
     has_notification_intent,
     has_preference_intent,
+    has_write_intent,
 )
 from core.services.memory_service import MemoryService
 from core.services.user_control_service import UserControlService
@@ -893,10 +894,12 @@ class OracleEngine:
                 len(answer or ""),
                 trace_id,
             )
-            self._phase_background_memory(
+            _mem_waiter = self._phase_background_memory(
                 user_message, session_id, notify_target,
                 force_notification_compiler, trace_id=trace_id,
             )
+
+            yield from self._memory_notice_frames(_mem_waiter)
             return
         logger.trace(
             "event=chat_phase_timing_ms Chat phase timing | session=%s phase=init ms=%s domains=%s",
@@ -1015,12 +1018,14 @@ class OracleEngine:
                 trace_id,
             )
             yield stream_emitter.emit_final(answer, "general")
-            self._phase_background_memory(
+            _mem_waiter = self._phase_background_memory(
                 user_message, session_id, notify_target,
                 force_notification_compiler,
                 skip_memory_extract=sync_attempted,
                 trace_id=trace_id,
             )
+
+            yield from self._memory_notice_frames(_mem_waiter)
             return
 
         # ── Phase 4: AGENT LOOP (unified — all tools, all commands) ───────────
@@ -1254,9 +1259,19 @@ class OracleEngine:
             intent.valid_domains[0] if intent.valid_domains else "general",
         )
 
-        # Emit tool-call summary as a post-answer signal (rendered as separate message)
+        # Tool trace (reasoning detail; clients fold it into the reasoning block)
         if tool_log:
             yield stream_emitter.emit_tool_summary(tool_log)
+            # Standard notices for real effects: one per mutating tool call.
+            for entry in tool_log:
+                if not entry.get("writes"):
+                    continue
+                kind = "memory.saved" if entry.get("tool") == "memory.save" else (
+                    "action.done" if entry.get("ok") else "action.failed")
+                detail = str(entry.get("title") or entry.get("tool") or "")
+                if not entry.get("ok"):
+                    detail = f"{detail}: {str(entry.get('result_preview') or '')[:160]}"
+                yield stream_emitter.emit_notice(kind, detail=detail, data={"tool": entry.get("tool")})
 
         total_ms = int((time.perf_counter() - t0) * 1000)
         logger.info(
@@ -1295,7 +1310,7 @@ class OracleEngine:
             ).start()
 
         # Background memory extraction (always async, never blocks the user)
-        self._phase_background_memory(
+        _mem_waiter = self._phase_background_memory(
             user_message,
             session_id,
             notify_target,
@@ -1303,6 +1318,8 @@ class OracleEngine:
             skip_memory_extract=sync_attempted,
             trace_id=trace_id,
         )
+
+        yield from self._memory_notice_frames(_mem_waiter)
 
     def analyze_document(
         self,
@@ -1820,8 +1837,14 @@ class OracleEngine:
         force_notification_compiler: bool,
         skip_memory_extract: bool = False,
         trace_id: str | None = None,
-    ) -> None:
-        """Fire-and-forget memory extraction + compaction check in a daemon thread."""
+    ) -> dict:
+        """Memory extraction + compaction check in a daemon thread.
+
+        Returns a waiter ``{"done": Event, "signals": [...]}``: the chat generator
+        waits a few seconds after the final answer to stream memory notices
+        (the user always sees what was remembered), then lets the rest run on.
+        """
+        waiter: dict = {"done": threading.Event(), "signals": []}
         logger.info(
             "event=background_memory_start session_id=%s trace_id=%s skip_memory_extract=%s",
             session_id,
@@ -1840,11 +1863,11 @@ class OracleEngine:
             if not skip_memory_extract:
                 try:
                     t_mem = time.perf_counter()
-                    self._memory_service.extract_and_save_preferences(
+                    waiter["signals"] = self._memory_service.extract_and_save_preferences(
                         user_message, session_id,
                         notify_target=notify_target,
                         force_notification_compiler=force_notification_compiler,
-                    )
+                    ) or []
                     mem_ms = int((time.perf_counter() - t_mem) * 1000)
                     logger.info(
                         "event=background_phase_timing_ms Background phase timing | session=%s phase=memory_extract ms=%s",
@@ -1853,7 +1876,10 @@ class OracleEngine:
                 except Exception as exc:
                     logger.warning(
                         "event=background_memory_sync_failed Background memory sync failed: %s", exc)
+                finally:
+                    waiter["done"].set()
             else:
+                waiter["done"].set()
                 logger.trace(
                     "event=background_memory_extract_skipped Background memory extraction skipped because sync persistence already ran | session=%s",
                     session_id,
@@ -1944,6 +1970,22 @@ class OracleEngine:
             )
 
         threading.Thread(target=_run, daemon=True).start()
+        return waiter
+
+    def _memory_notice_frames(self, waiter: dict | None):
+        """After the final answer: stream what background memory saved (notices), or nothing."""
+        if not waiter:
+            return
+        wait_s = float(os.getenv("ORACLE_MEMORY_NOTICE_WAIT_SECONDS", "8"))
+        if not waiter["done"].wait(max(0.0, wait_s)):
+            logger.info("event=memory_notice_wait_timeout wait_s=%s", wait_s)
+            return
+        for signal in waiter.get("signals") or []:
+            yield stream_emitter.emit_signal(
+                event=str(signal.get("event") or "memory.updated"),
+                message=str(signal.get("message") or "Memoria aggiornata."),
+                data=signal.get("data") if isinstance(signal.get("data"), dict) else {},
+            )
 
     def _sync_memory_if_needed(
         self,
@@ -2218,12 +2260,16 @@ class OracleEngine:
             if any(t.name == cmd_name for t in tools):
                 continue
 
+            _method = str(cmd.get("method") or "GET").upper()
             tools.append(ToolDefinition(
                 name=cmd_name,
                 description=cmd.get(
                     "description", f"Execute {cmd_name} command"),
                 parameters=schema,
-                handler=make_handler(cmd)
+                handler=make_handler(cmd),
+                writes=_method in {"POST", "PUT", "PATCH", "DELETE"} and not any(
+                    k in cmd_name for k in ("search", "list", "query", "status", "stats", "show")),
+                title=str(cmd.get("title") or cmd_name),
             ))
 
         if _filtered_cmds:
@@ -2256,6 +2302,8 @@ class OracleEngine:
                 "required": ["fact"],
             },
             handler=_memory_save_handler,
+            writes=True,
+            title="💾 Memoria",
         ))
 
         def _memory_search_handler(query: str = "") -> tuple[bool, list]:
@@ -2876,8 +2924,10 @@ class OracleEngine:
         extra_context: str | None,
         current_datetime_context: str | None = None,
     ) -> str:
+        # Only when the user asked for a change: otherwise small models repeat the
+        # contract to the user ("Non risulta eseguita alcuna azione di modifica").
         no_action_contract = prompt_config.prompt(
-            "no_action_execution_contract")
+            "no_action_execution_contract") if has_write_intent(user_message) else ""
         combined_client_instructions = "\n\n".join(
             part for part in [no_action_contract, client_instructions or ""] if str(part).strip()
         )

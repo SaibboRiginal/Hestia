@@ -138,5 +138,16 @@ public record OracleEvent(
     int? TimeoutSec = null,
     // needs_input frames (non-interactive callers)
     [property: JsonPropertyName("missing_fields")]
-    object? MissingFields = null
+    object? MissingFields = null,
+    // notice packets (standard system messages — see Hestia-Shared/hestia-shared.md § Response packets)
+    [property: JsonPropertyName("level")]
+    string? Level = null,
+    [property: JsonPropertyName("icon")]
+    string? Icon = null,
+    [property: JsonPropertyName("emoji")]
+    string? Emoji = null,
+    [property: JsonPropertyName("title")]
+    string? Title = null,
+    [property: JsonPropertyName("detail")]
+    string? Detail = null
 );

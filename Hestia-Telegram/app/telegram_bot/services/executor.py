@@ -17,6 +17,7 @@ import requests
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from telegram_bot import core
+from telegram_bot.services import chat_settings as _cs
 from telegram_bot.services.calendar_wizard import (
     _AFFIRMATIVE,  # re-exported for chat_service
     _NEGATIVE,      # re-exported for chat_service
@@ -71,17 +72,9 @@ TONE_PRESETS = [
     ("formal", "Formale"),
 ]
 
-THINKING_DISPLAY_PRESETS = [
-    ("hidden", "Nascosto"),
-    ("compact", "Compatto"),
-    ("detailed", "Dettagliato"),
-]
+THINKING_DISPLAY_PRESETS = list(_cs.BY_KEY["thinking_display"].options)
+THINKING_DISPLAY_LABELS = dict(THINKING_DISPLAY_PRESETS)
 
-THINKING_DISPLAY_LABELS = {
-    "hidden": "Nascosto",
-    "compact": "Compatto",
-    "detailed": "Dettagliato",
-}
 
 # ── UI prompt helpers ─────────────────────────────────────────────────────────
 
@@ -92,65 +85,64 @@ def _cancel_input_keyboard() -> InlineKeyboardMarkup:
     return kb
 
 
-def prompt_set_parameter_picker(chat_id: int):
+def settings_menu_text(settings: dict) -> str:
+    """One-message settings panel, grouped like chat_settings.SETTINGS."""
+    lines = ["<b>⚙️ Impostazioni</b>", "<i>Tocca un'opzione per cambiarla.</i>"]
+    group = None
+    for st in _cs.SETTINGS:
+        if st.group != group:
+            group = st.group
+            lines.append(f"\n<b>{escape(_cs.GROUP_LABELS.get(group, group))}</b>")
+        lines.append(f"{st.label}: <b>{escape(_cs.label_of(st.key, _cs.value(settings, st.key)))}</b>")
+    custom = str(settings.get("custom_prompt") or "").strip()
+    preview = escape(custom[:120] + ("…" if len(custom) > 120 else "")) if custom else "<i>nessuno</i>"
+    lines.append(f"\n📝 Istruzioni personali: {preview}")
+    return "\n".join(lines)
+
+
+def settings_menu_markup(settings: dict) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        InlineKeyboardButton("🎙️ Tone", callback_data="set:param:tone"),
-        InlineKeyboardButton("📝 Custom Prompt", callback_data="set:param:custom_prompt"),
-    )
-    kb.add(
-        InlineKeyboardButton("💭 Ragionamento", callback_data="set:param:thinking_display"),
-    )
-    kb.add(
-        InlineKeyboardButton("📋 Mostra impostazioni attuali", callback_data="set:show_current"),
-    )
-    core.bot.send_message(
-        chat_id, "Scegli il parametro da impostare:", reply_markup=kb)
+    buttons = [InlineKeyboardButton(st.label, callback_data=f"set:param:{st.key}") for st in _cs.SETTINGS]
+    for i in range(0, len(buttons), 2):
+        kb.row(*buttons[i:i + 2])
+    kb.row(InlineKeyboardButton("📝 Istruzioni personali", callback_data="set:param:custom_prompt"))
+    kb.row(InlineKeyboardButton("♻️ Ripristina predefinite", callback_data="set:reset"),
+           InlineKeyboardButton("✖️ Chiudi", callback_data="set:close"))
+    return kb
+
+
+def settings_option_view(settings: dict, key: str) -> tuple[str, InlineKeyboardMarkup]:
+    st = _cs.BY_KEY[key]
+    current = _cs.value(settings, key)
+    kb = InlineKeyboardMarkup(row_width=1)
+    for val, label in st.options:
+        mark = "✓ " if val == current else ""
+        default = " · predefinito" if val == st.default else ""
+        kb.add(InlineKeyboardButton(f"{mark}{label}{default}", callback_data=f"set:v:{key}:{val}"))
+    kb.add(InlineKeyboardButton("← Indietro", callback_data="set:menu"))
+    text = f"<b>{escape(st.label)}</b>" + (f"\n<i>{escape(st.help)}</i>" if st.help else "")
+    return text, kb
+
+
+def prompt_set_parameter_picker(chat_id: int):
+    settings = core.get_session_settings(str(chat_id))
+    core.bot.send_message(chat_id, settings_menu_text(settings), parse_mode="HTML",
+                          reply_markup=settings_menu_markup(settings))
 
 
 def prompt_tone_presets(chat_id: int):
-    kb = InlineKeyboardMarkup(row_width=2)
-    for tone_value, tone_label in TONE_PRESETS:
-        kb.add(InlineKeyboardButton(
-            tone_label, callback_data=f"set:tone:{tone_value}"))
-    core.bot.send_message(
-        chat_id, "Seleziona un preset di tone:", reply_markup=kb)
+    text, kb = settings_option_view(core.get_session_settings(str(chat_id)), "tone")
+    core.bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=kb)
 
 
 def prompt_thinking_display_presets(chat_id: int):
-    kb = InlineKeyboardMarkup(row_width=1)
-    for mode_value, mode_label in THINKING_DISPLAY_PRESETS:
-        emoji = {"hidden": "🚫", "compact": "📝", "detailed": "📋"}.get(mode_value, "")
-        kb.add(InlineKeyboardButton(
-            f"{emoji} {mode_label}", callback_data=f"set:thinking_display:{mode_value}"))
-    core.bot.send_message(
-        chat_id, "<b>💭 Seleziona modalità ragionamento:</b>", parse_mode="HTML", reply_markup=kb)
+    text, kb = settings_option_view(core.get_session_settings(str(chat_id)), "thinking_display")
+    core.bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=kb)
 
 
 def prompt_show_current_settings(chat_id: int):
-    """Show all current session settings in a nicely formatted message."""
-    settings = core.get_session_settings(str(chat_id))
-    tone = settings.get("tone", "warm")
-    td = settings.get("thinking_display", "hidden")
-    custom = settings.get("custom_prompt", "").strip()
-
-    TONE_LABELS = {"warm": "Caldo", "neutral": "Neutro", "direct": "Diretto", "formal": "Formale"}
-    tone_label = TONE_LABELS.get(tone, tone)
-    td_label = THINKING_DISPLAY_LABELS.get(td, td)
-
-    lines = [
-        "<b>⚙️ Impostazioni attuali</b>",
-        "",
-        f"🎙️ <b>Tone:</b> {escape(tone_label)}",
-        f"💭 <b>Ragionamento:</b> {escape(td_label)}",
-    ]
-    if custom:
-        preview = custom[:120] + ("…" if len(custom) > 120 else "")
-        lines.append(f"📝 <b>Prompt personalizzato:</b> {escape(preview)}")
-    else:
-        lines.append("📝 <b>Prompt personalizzato:</b> <i>nessuno</i>")
-
-    core.bot.send_message(chat_id, "\n".join(lines), parse_mode="HTML")
+    """Read-only summary of the current settings (same text as the panel)."""
+    core.bot.send_message(chat_id, settings_menu_text(core.get_session_settings(str(chat_id))), parse_mode="HTML")
 
 
 # ── Argument input flows ──────────────────────────────────────────────────────
@@ -468,7 +460,6 @@ def execute_local_command(command_name: str, chat_id: int, raw_args_text: str):
         return
 
     if normalized == "settings":
-        prompt_show_current_settings(chat_id)
         prompt_set_parameter_picker(chat_id)
         return
 
@@ -513,15 +504,14 @@ def execute_local_command(command_name: str, chat_id: int, raw_args_text: str):
 
     if normalized == "thinking":
         if not args_text:
-            prompt_show_current_settings(chat_id)
             prompt_thinking_display_presets(chat_id)
             return
         mode = args_text.lower()
-        if mode not in ("hidden", "compact", "detailed"):
+        if mode not in THINKING_DISPLAY_LABELS:
             core.bot.send_message(
-                chat_id, 
+                chat_id,
                 "❌ <b>Errore:</b> Modalità non valida.\n"
-                "Usa: <code>hidden</code>, <code>compact</code> o <code>detailed</code>",
+                "Usa: " + ", ".join(f"<code>{m}</code>" for m in THINKING_DISPLAY_LABELS),
                 parse_mode="HTML")
             return
         core.set_session_setting(str(chat_id), "thinking_display", mode)
