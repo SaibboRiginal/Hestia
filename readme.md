@@ -374,8 +374,6 @@ This creates:
 - Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
 - Iris threads are grouped by normalized subject (IMAP has no universal thread id; Gmail thread ids are matched when present).
 - Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
-- WebUI: `Hestia-WebUI/app/Services/TokenManager.cs` and `Middleware/TokenAuthMiddleware.cs` exist only on the
-  author's PC (hidden by an old `token*` gitignore rule, now fixed): commit them, or the Docker build of `webui` fails.
 - Hub registry is in memory: services re-register every `HUB_KEEPALIVE_SECONDS` (60s) after a Hub restart.
 
 ## Dependency and Flow Map

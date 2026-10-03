@@ -126,8 +126,9 @@ Built Angular app served as static files from `wwwroot/`.
   link (and the token) to another domain
 - Admin API guarded (see Endpoints); Telegram mints tokens only through it (no local fallback, no token in Archive memory)
 - Rate limiting TBD
-- ⚠️ `Services/TokenManager.cs` and `Middleware/TokenAuthMiddleware.cs` were hidden by the old `token*` gitignore
-  rule: commit them (`git add Hestia-WebUI/app/Services/TokenManager.cs Hestia-WebUI/app/Middleware/TokenAuthMiddleware.cs`).
-  The middleware must let through `/`, static assets, `/health`, `/hubs/chat` (token in query), `/api/webui/auth/login`
-  and `/api/webui/admin/*` (guarded by `AdminGuard`). TokenManager should persist a hash, not the clear token
-- All requests proxied through backend gateway
+- Token state = SHA-256(token + salt) with its own persisted salt in `/app/data/token_state.json`
+  (`hestia_webui_data` volume, `WEBUI_TOKEN_STATE_FILE`): survives restarts. The salt used to be
+  `WebUI:SecretKey`, random per start → every restart invalidated the token. Nothing is written to Archive
+  memory any more (the clear token was readable by Oracle's memory tools).
+- `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`); exempt: login,
+  command list, `/api/webui/admin/*` (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).

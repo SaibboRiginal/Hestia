@@ -122,16 +122,7 @@ using (var scope = app.Services.CreateScope())
     if (!oracleStream.IsReady)
         logger.LogWarning("event=oracle_discovery_timeout via=Hub");
 
-    // Restore token state from Archive (survives container restarts)
-    try
-    {
-        var tokenManager = scope.ServiceProvider.GetRequiredService<TokenManager>();
-        await tokenManager.RestoreFromArchiveAsync(hubClient);
-    }
-    catch (Exception ex)
-    {
-        logger.LogWarning(ex, "event=token_restore_startup_failed");
-    }
+    // Token state is restored by TokenManager from /app/data (volume), not from Archive.
 
     try
     {

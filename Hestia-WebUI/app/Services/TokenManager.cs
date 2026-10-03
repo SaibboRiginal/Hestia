@@ -12,19 +12,27 @@ using Hestia.WebUI.Models;
 public class TokenManager
 {
     private readonly ILogger<TokenManager> _logger;
-    private readonly string _secret;
+    // Hash salt persisted next to the token state. It used to be WebUI:SecretKey, which is
+    // random at every start unless configured: every restart silently invalidated the token.
+    private string _salt = "";
     private string? _activeTokenHash;
     private DateTime _tokenExpiresAt = DateTime.MinValue;
     private DateTime _tokenCreatedAt = DateTime.MinValue;
     private readonly object _lock = new();
 
-    private static readonly string StateFile = "/app/data/token_state.json";
+    private static readonly string StateFile =
+        Environment.GetEnvironmentVariable("WEBUI_TOKEN_STATE_FILE") ?? "/app/data/token_state.json";
 
     public TokenManager(IOptions<WebUIOptions> options, ILogger<TokenManager> logger)
     {
         _logger = logger;
-        _secret = options.Value.SecretKey;
         LoadState();
+        if (string.IsNullOrEmpty(_salt))
+        {
+            _salt = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+            _activeTokenHash = null;   // a hash made with an unknown salt can never validate
+            SaveState();
+        }
     }
 
     private void LoadState()
@@ -34,7 +42,8 @@ public class TokenManager
             if (!File.Exists(StateFile)) return;
             var json = File.ReadAllText(StateFile);
             var state = JsonSerializer.Deserialize<TokenState>(json);
-            if (state?.Hash is not null)
+            _salt = state?.Salt ?? "";
+            if (state?.Hash is not null && !string.IsNullOrEmpty(_salt))
             {
                 _activeTokenHash = state.Hash;
                 _tokenCreatedAt = state.CreatedAt;
@@ -53,6 +62,7 @@ public class TokenManager
             var state = new TokenState
             {
                 Hash = _activeTokenHash,
+                Salt = _salt,
                 CreatedAt = _tokenCreatedAt,
                 ExpiresAt = _tokenExpiresAt,
             };
@@ -64,6 +74,7 @@ public class TokenManager
     private record TokenState
     {
         public string? Hash { get; init; }
+        public string? Salt { get; init; }
         public DateTime CreatedAt { get; init; }
         public DateTime ExpiresAt { get; init; }
     }
@@ -78,7 +89,7 @@ public class TokenManager
     /// <summary>Constant-time comparable hash of a token.</summary>
     private string HashToken(string token)
     {
-        var input = System.Text.Encoding.UTF8.GetBytes(token + _secret);
+        var input = System.Text.Encoding.UTF8.GetBytes(token + _salt);
         var hash = SHA256.HashData(input);
         return Convert.ToHexStringLower(hash);
     }
@@ -135,76 +146,9 @@ public class TokenManager
         _logger.LogInformation("event=webui_token_revoked");
     }
 
-    /// <summary>
-    /// Persist token state to Archive via Hub routing (best-effort, fire-and-forget).
-    /// Used by AdminController to sync state so it survives restarts.
-    /// </summary>
-    public async Task PersistTokenAsync(string? token, HubClient hubClient, string action = "activate")
-    {
-        try
-        {
-            if (action == "revoke")
-            {
-                await hubClient.RoutePostAsync("archive", "/api/memory", new
-                {
-                    domain = "webui_auth",
-                    fact = "webui_current_token=REVOKED",
-                    memory_class = "durable_user_preference",
-                    owner = "webui",
-                });
-            }
-            else if (token is not null)
-            {
-                await hubClient.RoutePostAsync("archive", "/api/memory", new
-                {
-                    domain = "webui_auth",
-                    fact = $"webui_current_token={token}",
-                    memory_class = "durable_user_preference",
-                    owner = "webui",
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "event=webui_token_persist_failed action={Action}", action);
-        }
-    }
-
-    /// <summary>
-    /// Restore token state from Archive after restart. Called on startup.
-    /// </summary>
-    public async Task RestoreFromArchiveAsync(HubClient hubClient)
-    {
-        try
-        {
-            var result = await hubClient.RouteGetAsync("archive", "/api/memory/active",
-                query: new() { ["domain"] = "webui_auth", ["limit"] = "5" });
-            var memories = new List<JsonElement>();
-            if (result.TryGetProperty("memories", out var m))
-                memories = m.EnumerateArray().ToList();
-
-            foreach (var mem in memories)
-            {
-                var fact = mem.TryGetProperty("fact", out var f) ? f.GetString() : null;
-                if (string.IsNullOrEmpty(fact) || !fact.StartsWith("webui_current_token=")) continue;
-
-                var token = fact.Split('=', 2)[1];
-                if (string.IsNullOrEmpty(token) || token == "REVOKED") continue;
-
-                _activeTokenHash = HashToken(token);
-                _tokenCreatedAt = mem.TryGetProperty("created_at", out var ca) && ca.TryGetDouble(out var ts)
-                    ? DateTime.UnixEpoch.AddSeconds(ts) : DateTime.UtcNow;
-                _tokenExpiresAt = _tokenCreatedAt.AddHours(72);
-
-                _logger.LogInformation("event=webui_token_restored_from_archive");
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "event=webui_token_restore_failed");
-        }
-    }
+    // Token state (hash + salt + expiry) lives only in StateFile on the hestia_webui_data
+    // volume, so it survives restarts. It is never written to Archive memory: the clear
+    // token stored there was readable by Oracle's memory tools.
 
     /// <summary>Return current token status.</summary>
     public TokenStatusResponse GetTokenStatus()

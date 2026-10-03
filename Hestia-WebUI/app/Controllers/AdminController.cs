@@ -82,7 +82,6 @@ public class AdminController : ControllerBase
         var token = _tokenManager.GenerateToken();
         var hours = lifetimeHours ?? 72;
         _tokenManager.SetActiveToken(token, hours);
-        _ = _tokenManager.PersistTokenAsync(token, _hubClient);
 
         var status = _tokenManager.GetTokenStatus();
         var publicUrl = _publicUrl.GetPublicUrl();
@@ -103,7 +102,6 @@ public class AdminController : ControllerBase
     public IActionResult RevokeToken()
     {
         _tokenManager.RevokeToken();
-        _ = _tokenManager.PersistTokenAsync(null, _hubClient, action: "revoke");
         _logger.LogInformation("event=webui_admin_token_revoked");
         return Ok(new { status = "revoked" });
     }
