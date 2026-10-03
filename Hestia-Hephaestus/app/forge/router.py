@@ -20,6 +20,7 @@ class ForgeTaskRequest(BaseModel):
     auto_merge: bool | None = None
     context: str = ""
     notify_target: str = ""
+    workdoc: str = Field("", description="continue docs/work/<workdoc>/ of an earlier task")
 
 
 class ForgeEngineChoice(BaseModel):
@@ -128,7 +129,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
     return router
 
 
-_PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "source", "summary", "diff_stat",
+_PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "source", "summary", "diff_stat", "workdoc", "deploy_plan",
                 "changed_files", "touched_services", "tests", "merge_sha", "branch", "error",
                 "created_at", "updated_at", "cost_usd")
 

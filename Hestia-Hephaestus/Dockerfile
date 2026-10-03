@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 
 COPY Hestia-Hephaestus/requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+# Forge runs any service's tests: union of the services' light deps.
+COPY Hestia-Hephaestus/requirements-forge-tests.txt /code/requirements-forge-tests.txt
+RUN pip install --no-cache-dir -r /code/requirements-forge-tests.txt \
+    && git config --system --add safe.directory '*'
 
 COPY Hestia-Shared/hestia_common /code/hestia_common
 COPY Hestia-Hephaestus/app /code/app

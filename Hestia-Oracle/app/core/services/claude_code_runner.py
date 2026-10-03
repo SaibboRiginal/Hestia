@@ -21,8 +21,12 @@ from typing import Any
 
 logger = logging.getLogger("hestia_oracle.claude_code")
 
-_ALLOWED_TOOLS = ("Read,Edit,Write,Glob,Grep,"
-                  "Bash(python -m pytest:*),Bash(pytest:*),Bash(git status:*),Bash(git diff:*)")
+# Read/write + run tests + inspect git. No commit/push (Forge commits), no network
+# tools, no docker: the merge/deploy decision stays with Forge and the user.
+_ALLOWED_TOOLS = ("Read,Edit,Write,Glob,Grep,TodoWrite,"
+                  "Bash(python -m pytest:*),Bash(pytest:*),Bash(python -m py_compile:*),"
+                  "Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),"
+                  "Bash(ls:*),Bash(mkdir:*)")
 
 
 class ClaudeCodeError(Exception):

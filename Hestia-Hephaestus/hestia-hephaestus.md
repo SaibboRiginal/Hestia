@@ -172,10 +172,20 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_mode`, `forge_set_claude_schedule`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
 ### Deployment notes
-- Compose mounts the repo at `/repo` and `data/` for state. Uncomment the docker socket only if the deploy command restarts containers.
-- Global compose live-mounts service code, so a container restart applies merged code.
-- If Forge changes Hephaestus itself, the deploy restarts Forge: the task stays `merged` (state is persisted).
-- The container has pytest but not every service dependency; heavy services may need their deps installed or a custom `HEPHAESTUS_FORGE_TEST_CMD`.
+- Compose mounts the repo at `/repo`, worktrees at `/forge/worktrees` (same paths in Oracle, where Claude
+  Code runs) and the Docker socket (deploy). Images trust the mounted repo (`git safe.directory '*'`).
+- **Tests**: Hephaestus and Oracle images install `requirements-forge-tests.txt` (union of every Python
+  service's light deps), so any service's pytest suite runs. Add new service deps there too.
+- **Deploy** `HEPHAESTUS_FORGE_DEPLOY_CMD=builtin` (`forge/deployer.py`): restart `hestia_<svc>` of the touched
+  services via Docker socket (code is volume-mounted). `Hestia-Shared` change → all Python services.
+  Dockerfile / requirements / WebUI changes → notified as "da ricostruire a mano: `up-all.bat --build <svc>`".
+  Hephaestus restarts itself last (task state persisted). Custom shell command with `{services}` still works;
+  empty = manual restart.
+- **Work protocol** (prompt-enforced, see `CLAUDE.md`): every task writes `docs/work/<workdoc>/SPEC.md`,
+  `PROGRESS.md`, `CHANGELOG.md` + a line in root `CHANGELOG.md`. Task field `workdoc`; pass `workdoc` on a new
+  task to **continue** an interrupted one.
+- Claude Code tool allowlist (Oracle): read/edit/write, pytest, py_compile, git status/diff/log/show, ls, mkdir.
+  No commit/push/network/docker: Forge commits, the user approves the merge.
 
 ## Command Discovery
 

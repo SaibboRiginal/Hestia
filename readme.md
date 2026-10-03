@@ -10,6 +10,9 @@ Stack baseline: Python · FastAPI · PostgreSQL + pgvector · Docker · Ollama.
 
 ---
 
+> **AI developers start from `CLAUDE.md`** (rules + mandatory work protocol) and `docs/AI-GUIDE.md` (full context).
+> Hestia develops itself: ask "sviluppa …" on Telegram → Forge + Claude Code → approve → merge → restart.
+
 ## Core Topology
 
 Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Hecate`, `Hermes`, `Chronos`, `Iris`, `MCP`

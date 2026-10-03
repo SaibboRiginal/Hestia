@@ -6,8 +6,8 @@ WORKDIR /code
 
 # Install system dependencies required for psycopg2 (Postgres client).
 # Optional Claude Code CLI for the "code" use case (Forge engine `claude`,
-# Claude Pro/Max subscription): docker compose build --build-arg INSTALL_CLAUDE_CODE=1 oracle
-ARG INSTALL_CLAUDE_CODE=0
+# Claude Pro/Max subscription). Default on; ORACLE_INSTALL_CLAUDE_CODE=0 in the root .env to skip.
+ARG INSTALL_CLAUDE_CODE=1
 RUN apt-get update && apt-get install -y libpq-dev gcc git curl ca-certificates \
     && if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then \
          curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -21,6 +21,14 @@ COPY Hestia-Oracle/requirements.txt /code/requirements.txt
 
 # Install dependencies (cached independently of code changes)
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+
+# Claude Code (Forge engine `claude`) runs every service's pytest suite from here:
+# install the union of the services' light deps, and trust the repo mounted from
+# the host (otherwise git refuses it: "dubious ownership").
+COPY Hestia-Hephaestus/requirements-forge-tests.txt /code/requirements-forge-tests.txt
+RUN if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then \
+      pip install --no-cache-dir -r /code/requirements-forge-tests.txt; fi \
+    && git config --system --add safe.directory '*'
 
 # Copy all application code last (this layer changes frequently)
 COPY Hestia-Shared/hestia_common /code/hestia_common
