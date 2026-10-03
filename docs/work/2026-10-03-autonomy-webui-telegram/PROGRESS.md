@@ -7,17 +7,21 @@
 - [x] Claude Code CLI installed by default in Oracle; wider safe tool allowlist
 - [x] Work protocol in Forge prompt + `workdoc` continuation
 - [x] `CLAUDE.md`, `docs/AI-GUIDE.md`, root `CHANGELOG.md`
-- [ ] Hephaestus/Oracle md + readme updated for the above
+- [x] Hephaestus/Oracle md + readme updated for the above
 
 ## 2. WebUI
-- [ ] Design tokens + themes + theme switcher
-- [ ] Component library (button, input, select, modal, drawer, tabs, menu, toast, badge, card, empty state)
-- [ ] DESIGN-SYSTEM.md guide
-- [ ] Shell (sidebar nav, routing per module)
-- [ ] Chat module rebuilt on components
-- [ ] Commands/MCP module
-- [ ] Calendar module (month/week/day/list, sidebar, popups, drag&drop, recurrence, skip/pause/run/cancel)
-- [ ] Backend proxy for agenda API
+- [x] Design tokens + themes + theme switcher
+- [x] Component library (button, input, select, modal, drawer, tabs, menu, toast, badge, card, empty state)
+- [x] DESIGN-SYSTEM.md guide
+- [x] Shell (sidebar nav, routing per module)
+- [x] Chat module rebuilt on components
+- [x] Commands/MCP module
+- [x] Calendar module (month/week/day/list, sidebar, popups, drag&drop, recurrence, skip/pause/run/cancel)
+- [x] Backend proxy for agenda API
+
+- [x] Chronos: per-occurrence move (overrides), range query start/end, include_done
+- [x] Verified with `ng build` + Playwright screenshots (mocked API): week/month/list/details/editor/chat/settings, light/dark, mobile
+- [ ] .NET backend not compiled here (no dotnet in the sandbox): build locally
 
 ## 3. Telegram / packets
 - [ ] Root cause of double reply + "Non risulta eseguita…" message

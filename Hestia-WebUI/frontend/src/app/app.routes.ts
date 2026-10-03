@@ -1,12 +1,18 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './components/login/login.component';
 import { authGuard } from './guards/auth.guard';
+import { APP_MODULES } from './app.modules';
+import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
-  { path: 'login', component: LoginComponent },
+  { path: 'login', loadComponent: () => import('./features/login/login-page.component').then(m => m.LoginPageComponent) },
   {
     path: '',
+    component: ShellComponent,
     canActivate: [authGuard],
-    children: [],
+    children: [
+      ...APP_MODULES.map(m => ({ path: m.path, loadComponent: m.load, title: `${m.label} · Hestia` })),
+      { path: '', pathMatch: 'full' as const, redirectTo: 'chat' },
+    ],
   },
+  { path: '**', redirectTo: '' },
 ];

@@ -78,6 +78,7 @@ def _to_item(row: dict) -> dict:
         "action": meta.get("action"),
         "params": meta.get("params") or {},
         "skips": meta.get("skips") or [],
+        "overrides": meta.get("overrides") or {},
         "user_modified": bool(meta.get("user_modified")),
         "created_by": meta.get("created_by") or "user",
         "last_fired": meta.get("last_fired"),
@@ -87,7 +88,7 @@ def _to_item(row: dict) -> dict:
 
 
 def _save(item: dict) -> dict:
-    meta_keys = ("type", "owner", "tz", "action", "params", "skips", "user_modified",
+    meta_keys = ("type", "owner", "tz", "action", "params", "skips", "overrides", "user_modified",
                  "created_by", "last_fired", "last_result", "attempts")
     payload = {
         "external_id": item["key"],
@@ -159,30 +160,43 @@ def occurrences(item: dict, start: datetime, end: datetime) -> list[dict]:
     last_end = _parse(item["end_at"], item.get("tz") or _TZ_DEFAULT).astimezone(tz) if item.get("end_at") else None
     duration = (last_end - first) if last_end else timedelta(0)
     skips = set(item.get("skips") or [])
+    overrides = item.get("overrides") or {}
     out: list[dict] = []
+    # Moved occurrences ("only this one") may come from outside [start, end): widen the base scan.
+    pad = timedelta(days=8) if overrides else timedelta(0)
     if not item.get("recurrence"):
         starts = [first]
     else:
         rule = rrulestr(_norm_rrule(item["recurrence"]), dtstart=first.replace(tzinfo=None))
-        lo = (start.astimezone(tz) - duration).replace(tzinfo=None)
-        hi = end.astimezone(tz).replace(tzinfo=None)
+        lo = (start.astimezone(tz) - duration - pad).replace(tzinfo=None)
+        hi = (end.astimezone(tz) + pad).replace(tzinfo=None)
         starts = [s.replace(tzinfo=tz) for s in rule.between(lo, hi, inc=True)]
     for s in starts:
-        e = s + duration
-        if e < start or s >= end:
-            if not (duration == timedelta(0) and start <= s < end):
-                continue
         key = s.astimezone(timezone.utc).isoformat()
+        e = s + duration
+        moved = overrides.get(key)
+        if moved:
+            s = _parse(moved["start"], item.get("tz") or _TZ_DEFAULT).astimezone(tz)
+            e = _parse(moved["end"], item.get("tz") or _TZ_DEFAULT).astimezone(tz) if moved.get("end") else s + duration
+        has_len = e > s
+        if e < start or s >= end:
+            if not (not has_len and start <= s < end):
+                continue
+        if has_len and e == start:
+            continue
         out.append({"item_id": item["id"], "key": item["key"], "type": item["type"],
                     "owner": item["owner"], "title": item["title"],
-                    "start": s.isoformat(), "end": e.isoformat() if duration else None,
-                    "occurrence": key, "skipped": key in skips})
+                    "start": s.isoformat(), "end": e.isoformat() if has_len else None,
+                    "occurrence": key, "skipped": key in skips, "moved": bool(moved),
+                    "status": item.get("status"), "recurring": bool(item.get("recurrence"))})
     return out
 
 
-def agenda(start: datetime, end: datetime, owner: str | None = None, type_: str | None = None) -> list[dict]:
+def agenda(start: datetime, end: datetime, owner: str | None = None, type_: str | None = None,
+           include_done: bool = False) -> list[dict]:
+    """Occurrences in [start, end). ``include_done``: also completed/cancelled items (calendar history)."""
     rows: list[dict] = []
-    for item in list_items(owner=owner, type_=type_):
+    for item in list_items(owner=owner, type_=type_, include_cancelled=include_done):
         try:
             rows.extend(occurrences(item, start, end))
         except Exception as exc:
@@ -330,6 +344,45 @@ def unskip(ref: str | int, occurrence: str, by: str = "user") -> dict:
         item = get(ref)
         occ = _parse(occurrence, item["tz"]).astimezone(timezone.utc).isoformat()
         item["skips"] = [s for s in item["skips"] if s != occ]
+        if by == "user":
+            item["user_modified"] = True
+        return _save(item)
+
+
+def move_occurrence(ref: str | int, occurrence: str, start_at: str | None = None,
+                    end_at: str | None = None, reset: bool = False, by: str = "user") -> dict:
+    """Move ONE occurrence (exception, like Google Calendar "only this event").
+
+    Keeps the item key, so modules asking ``window_status(key)`` or jobs fired by
+    the worker follow the moved time. ``reset`` restores the original time.
+    """
+    with _lock:
+        item = get(ref)
+        occ = _parse(occurrence, item["tz"]).astimezone(timezone.utc).isoformat()
+        overrides = dict(item.get("overrides") or {})
+        if reset:
+            overrides.pop(occ, None)
+        else:
+            if not start_at:
+                raise AgendaError("start_at required")
+            new_start = _parse(start_at, item["tz"])
+            new_end = _parse(end_at, item["tz"]) if end_at else None
+            if new_end and new_end <= new_start:
+                raise AgendaError("end_at must be after start_at")
+            overrides[occ] = {"start": new_start.isoformat(), "end": new_end.isoformat() if new_end else None}
+        item["overrides"] = dict(sorted(overrides.items())[-200:])
+        if not item.get("recurrence") and not reset:
+            # one-off: just move the item itself
+            item.pop("overrides", None)
+            item["overrides"] = {}
+            duration = (_parse(item["end_at"], item["tz"]) - _parse(item["start_at"], item["tz"])) if item.get("end_at") else None
+            item["start_at"] = _parse(start_at, item["tz"]).isoformat()
+            if end_at:
+                item["end_at"] = _parse(end_at, item["tz"]).isoformat()
+            elif duration is not None:
+                item["end_at"] = (_parse(start_at, item["tz"]) + duration).isoformat()
+            item["attempts"] = 0
+            item["last_fired"] = None if item["type"] == "task" else item.get("last_fired")
         if by == "user":
             item["user_modified"] = True
         return _save(item)
