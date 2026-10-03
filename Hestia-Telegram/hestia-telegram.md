@@ -61,16 +61,35 @@ Telegram must:
 - If output contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram native link preview).
 - Raw JSON is allowed only as technical fallback when no formatter path exists.
 
-### Signal Rendering Policy (Client-Specific, Standardized)
-- Signal payloads remain canonical and information-rich in the backend for audit and cross-client reuse.
-- Telegram applies a client-side policy to choose what to display: `minimal`, `compact`, or `rich`.
-- Default behavior is minimal one-line outcome cards for operational events.
-- Optional per-family overrides are supported (`memory`, `subscription`, `action`, `other`) through env configuration.
-- Unknown/generic signal content is suppressed in minimal mode to avoid chat noise.
+### Reply rendering (Claude-like, `services/reply_renderer.py`)
+- One Oracle stream → **one answer message**: the status message is reused (live status → optional live steps →
+  streamed tokens → final). Never sent twice; split only above 4000 chars.
+- Reasoning = `<blockquote expandable>` above the answer (open when *Dettagliato*).
+- System notices (Oracle `notice` packets) are rendered **distinct from the answer** (emoji + italic, or bold
+  title + detail in *rich* style) under the answer, in a separate message, only important ones, or hidden.
+- Stream consumption: `chat_service.consume_oracle_stream()` (shared by text and file messages).
 
-Environment knobs:
-- `TELEGRAM_SIGNAL_STYLE=minimal|compact|rich`
-- `TELEGRAM_SIGNAL_STYLE_BY_FAMILY=action=compact,memory=minimal,subscription=minimal`
+### Settings (`services/chat_settings.py` — single schema)
+`/settings` opens one panel edited in place (menu ↔ options with ✓, Indietro, Ripristina, Chiudi). Adding a
+`Setting` to `SETTINGS` adds it to the panel automatically.
+
+| Key | Options (default **bold**) |
+|---|---|
+| `tone` | **warm** · neutral · direct · formal — the only one sent to Oracle (as a sentence) |
+| `thinking_display` | hidden · **compact** · detailed · live |
+| `stream_answer` | **on** · off |
+| `split_mode` | **single** · paragraphs |
+| `notice_mode` | **inline** · separate · important · hidden |
+| `notice_style` | **compact** · rich |
+| `notice_memory` / `notice_actions` / `notice_subscriptions` / `notice_other` | **on** · off (errors always shown unless hidden) |
+| `custom_prompt` | free text (sent to Oracle as "Istruzioni dell'utente"); `-` removes it |
+
+UI-only keys are never forwarded to Oracle (`session_store.build_client_instructions_for_chat` →
+`chat_settings.oracle_instructions`). `/thinking <mode>` is a shortcut; `/retry` regenerates the last answer.
+
+### Signal cards (legacy, non-stream paths only)
+The notification-compile path (`/api/subscriptions/compile` response `signals`) still uses signal cards:
+`TELEGRAM_SIGNAL_STYLE=minimal|compact|rich`, `TELEGRAM_SIGNAL_STYLE_BY_FAMILY=action=compact,...`.
 
 ### Input Collection Contract (Global)
 - Commands must not rely on technical `key=value` syntax as primary UX.

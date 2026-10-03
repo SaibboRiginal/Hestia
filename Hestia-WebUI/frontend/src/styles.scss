@@ -95,3 +95,19 @@ kbd { border: 1px solid var(--border-strong); border-bottom-width: 2px; border-r
 .hx-fade-in { animation: hx-fade-in var(--dur) var(--ease) both; }
 
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+
+/* ── System notices (Oracle `notice` packets): distinct from answers — pill + icon + semantic tint ── */
+.hx-notices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.hx-notice { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px; font-size: 12.5px;
+  border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-2);
+  .nt { font-weight: 600; white-space: nowrap; }
+  .nd { color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  &[data-level=info] hx-icon { color: var(--info); }
+  &[data-level=success] hx-icon { color: var(--success); }
+  &[data-level=warning] { background: var(--warning-soft); border-color: transparent; hx-icon { color: var(--warning); } }
+  &[data-level=error] { background: var(--danger-soft); border-color: transparent; hx-icon { color: var(--danger); } }
+}
+.hx-notices.rich { flex-direction: column; align-items: stretch;
+  .hx-notice { border-radius: var(--radius-md); align-items: flex-start; flex-wrap: wrap; padding: 7px 11px; }
+  .nd { white-space: normal; flex-basis: 100%; padding-left: 20px; }
+}

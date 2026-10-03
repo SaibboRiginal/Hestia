@@ -1,10 +1,16 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SignalRService } from './signalr.service';
-import { ChatMessage, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
+import { ChatMessage, ChatNotice, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
+import { NoticePrefsService } from './notice-prefs.service';
+import { ToastService } from '../ui';
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   private signalR = inject(SignalRService);
+  private noticePrefs = inject(NoticePrefsService);
+  private toast = inject(ToastService);
+  /** Last assistant message: notices (e.g. memory saved) can arrive after `final`. */
+  private lastAssistantId: string | null = null;
 
   messages = signal<ChatMessage[]>([]);
   isStreaming = signal(false);
@@ -26,6 +32,7 @@ export class ChatService {
     // Create placeholder for streaming assistant message
     const streamId = crypto.randomUUID();
     this.currentStreamingId.set(streamId);
+    this.lastAssistantId = streamId;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -70,6 +77,7 @@ export class ChatService {
     this.stepCounter = 0;
     const streamId = crypto.randomUUID();
     this.currentStreamingId.set(streamId);
+    this.lastAssistantId = streamId;
     this.messages.update(msgs => [...msgs,
       { id: crypto.randomUUID(), role: 'user', content: `📎 ${file.name}${text ? ' — ' + text : ''}`, timestamp: new Date() },
       { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
@@ -121,6 +129,7 @@ export class ChatService {
     this.stepCounter = 0;
     const streamId = crypto.randomUUID();
     this.currentStreamingId.set(streamId);
+    this.lastAssistantId = streamId;
     this.messages.update(msgs => [...msgs,
       { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
     this.signalR.send({ type: 'retry' }).catch((err: any) =>
@@ -142,6 +151,7 @@ export class ChatService {
   clearMessages(): void {
     this.messages.set([]);
     this.thinkingBuffer = [];
+    this.lastAssistantId = null;
   }
 
   private handleEvent(event: ServerEvent): void {
@@ -181,7 +191,11 @@ export class ChatService {
         break;
 
       case 'signal':
-        // Signals (tool.summary, memory.*) shown in dedicated components
+        // Legacy machine events; the user-facing version arrives as a `notice` packet.
+        break;
+
+      case 'notice':
+        this.handleNotice(event);
         break;
 
       case 'question':
@@ -193,7 +207,7 @@ export class ChatService {
             questionId: event.question_id,
             header: event.header || 'Domanda',
             prompt: event.prompt || '',
-            kind: event.kind || (opts.length ? 'single_choice' : 'free_text'),
+            kind: (event.kind || (opts.length ? 'single_choice' : 'free_text')) as PendingQuestion['kind'],
             options: event.kind === 'confirm' && !opts.length
               ? [{ label: 'Sì', value: 'yes' }, { label: 'No', value: 'no' }] : opts,
             required: event.required !== false,
@@ -207,6 +221,23 @@ export class ChatService {
           this.appendToStreaming(streamId, `\n<i>Servono altri dati: ${event.missing_fields.join(', ')}</i>`);
         }
         break;
+    }
+  }
+
+  private handleNotice(event: ServerEvent): void {
+    const n: ChatNotice = {
+      id: crypto.randomUUID(), kind: event.kind || 'info', level: event.level || 'info',
+      icon: event.icon || 'info', emoji: event.emoji, title: event.title || 'Info',
+      detail: event.detail || '', data: event.data,
+    };
+    if (!this.noticePrefs.allows(n)) return;
+    const target = this.currentStreamingId() ?? this.lastAssistantId;
+    if (target) {
+      this.messages.update(msgs => msgs.map(m => m.id === target ? { ...m, notices: [...(m.notices ?? []), n] } : m));
+    }
+    if (this.noticePrefs.toast()) {
+      const tone = n.level === 'error' ? 'danger' : n.level;
+      this.toast.show(n.detail ? `${n.title}: ${n.detail}` : n.title, tone);
     }
   }
 

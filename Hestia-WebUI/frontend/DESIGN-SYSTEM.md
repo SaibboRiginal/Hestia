@@ -54,6 +54,10 @@ Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 | `ToastService.show/success/error(text, tone, action?)` | snackbar (action = undo) |
 | `DialogService.confirm(title,msg,label,danger)` / `.choose(title,msg,options)` | awaitable dialogs |
 
+System notices: `<div class="hx-notices [rich]"><div class="hx-notice" data-level="info|success|warning|error"><hx-icon/>
+<span class="nt">title</span><span class="nd">detail</span></div></div>` — never style a system message like chat text.
+Visibility/style prefs: `NoticePrefsService` (`services/notice-prefs.service.ts`).
+
 Layout helpers: `.hx-row`, `.hx-col`, `.hx-grow`, `.hx-card`, `.hx-muted`, `.hx-small`, `.hx-truncate`,
 `.hx-prose` (rendered assistant HTML), `.hx-fade-in`.
 

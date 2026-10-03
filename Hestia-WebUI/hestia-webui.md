@@ -93,6 +93,11 @@ Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
   Oracle `/api/format` (like Telegram) and appear in the chat.
 - **Settings**: tone / custom prompt become Oracle client instructions; *thinking display* is UI-only
   (hidden = no reasoning box, compact = collapsed, detailed = expanded).
+- **System notices**: Oracle `notice` packets (memory saved, action done/failed, subscriptions…) render as
+  `.hx-notice` pills under the answer (icon + semantic tint, never like chat text) and/or as toasts.
+  Settings → *Messaggi di sistema*: where (sotto la risposta · popup · entrambi · solo importanti · nascosti),
+  style (compatto · dettagliato), per-group toggles (memoria, azioni, notifiche, altro). Stored per browser
+  (`NoticePrefsService`, localStorage). Notices arriving after `final` attach to the last answer.
 
 ## Known Constraints
 

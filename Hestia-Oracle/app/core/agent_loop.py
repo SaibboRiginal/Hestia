@@ -136,6 +136,9 @@ class ToolDefinition:
     parameters: dict        # JSON Schema for LLM to fill
     # async-friendly: called with **params, returns (ok, result)
     handler: Callable
+    # Mutating tool (POST/PUT/PATCH/DELETE, memory.save…): clients get an action notice.
+    writes: bool = False
+    title: str = ""         # human label for notices (e.g. "📅 Crea evento")
 
 
 # ── Scratchpad message ─────────────────────────────────────────────────────────
@@ -612,11 +615,14 @@ def run_agent_loop(
                 scratchpad.append(ScratchMessage("tool", _tool_scratch))
 
                 # Log for post-answer summary
+                _tdef = next((t for t in tools if t.name == tn), None)
                 tool_log.append({
                     "tool": tn,
                     "ok": ok,
                     "result_preview": result_trunc[:300],
                     "turn": turn,
+                    "writes": bool(getattr(_tdef, "writes", False)),
+                    "title": getattr(_tdef, "title", "") or tn,
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the

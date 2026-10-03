@@ -9,6 +9,20 @@ export interface ChatMessage {
   isStreaming?: boolean;
   domain?: string;
   sessionId?: string;
+  /** System notices (memory saved, action done…) attached to this answer. */
+  notices?: ChatNotice[];
+}
+
+/** Standard Oracle `notice` packet — see Hestia-Shared/hestia-shared.md § Response packets. */
+export interface ChatNotice {
+  id: string;
+  kind: string;                       // memory.saved · action.done · subscription.added · info · error …
+  level: 'info' | 'success' | 'warning' | 'error';
+  icon: string;                       // hx-icon name
+  emoji?: string;
+  title: string;
+  detail?: string;
+  data?: any;
 }
 
 // ── Thinking / Chain of Thought — Mistral-style ───────────────────────────
@@ -40,6 +54,7 @@ export type ServerEventType =
   | 'final'
   | 'error'
   | 'needs_input'
+  | 'notice'
   | 'stream_done';
 
 export interface ServerEvent {
@@ -57,7 +72,13 @@ export interface ServerEvent {
   header?: string;
   prompt?: string;
   options?: Array<string | { label?: string; value?: string }>;
-  kind?: 'free_text' | 'single_choice' | 'multi_choice' | 'confirm';
+  /** question: free_text | single_choice | multi_choice | confirm · notice: memory.saved, action.done… */
+  kind?: string;
+  level?: 'info' | 'success' | 'warning' | 'error';
+  icon?: string;
+  emoji?: string;
+  title?: string;
+  detail?: string;
   required?: boolean;
   timeout_sec?: number;
   missing_fields?: string[];

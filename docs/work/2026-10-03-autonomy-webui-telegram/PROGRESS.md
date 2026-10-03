@@ -24,9 +24,12 @@
 - [ ] .NET backend not compiled here (no dotnet in the sandbox): build locally
 
 ## 3. Telegram / packets
-- [ ] Root cause of double reply + "Non risulta eseguita…" message
-- [ ] Packet spec (shared) + Oracle emits packets
-- [ ] Telegram renderer with display-mode settings
-- [ ] WebUI renderer
-- [ ] Selective memory policy
-- [ ] Telegram UX overhaul
+- [x] Root cause of double reply (status edited with the answer + answer re-sent) and "Non risulta eseguita…" (no-action contract always injected in quick answers)
+- [x] Packet spec (`Hestia-Shared/hestia-shared.md` § Response packets) + Oracle `notice` packets (signals, write tools, background memory after `final`)
+- [x] Telegram `ReplyRenderer` (one message, expandable reasoning, streaming, notices inline/separate/important/hidden, compact/rich)
+- [x] Telegram settings schema (`chat_settings.py`) + generic in-place `/settings` panel
+- [x] WebUI notice rendering (`.hx-notice`, toasts) + Settings → Messaggi di sistema
+- [x] Selective memory policy (gate + Claude-like extractor prompt)
+- [x] Checks: py_compile + ruff (no new findings), `ng build` clean. Tests NOT run (user: no tests without permission)
+- [ ] .NET `OracleEvent` notice fields not compiled here: build locally
+- [ ] Next ideas: per-chat memory review command (`/memoria` list/forget), notice action buttons (e.g. "Annulla" on memory.saved)

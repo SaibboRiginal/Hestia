@@ -35,6 +35,12 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Oracle reads and writes user preferences from Archive (`user` domain).
 - Preferences are injected into the system prompt to personalize every response.
 - Preferences are updated by Oracle itself when the user expresses new preferences in conversation.
+- **Selective memory (Claude-like)**: `memory_intent.is_memory_worthy()` gates the background extractor — greetings,
+  tests, acknowledgements and plain questions never reach it; only "ricorda / d'ora in poi", removals, notification
+  requests and first-person durable facts/preferences do. The extractor prompt (`memory_preferences_template`)
+  keeps only durable, user-stated facts. Each save/removal is announced with a `notice`.
+- The "no action executed" contract is injected into quick answers only when the message has write intent
+  (`has_write_intent`), so "test" / "ciao" no longer get "Non risulta eseguita alcuna azione".
 
 ### Domain Routing
 - Oracle inspects context to determine relevant domains.
@@ -169,7 +175,8 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
 - `{"type":"final","reply":"...","domain":"..."}` — terminal answer event.
-- `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary.
+- `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
+- `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed`. Background-memory notices arrive after `final` (waits up to `ORACLE_MEMORY_NOTICE_WAIT_SECONDS`, default 8). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts.
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.

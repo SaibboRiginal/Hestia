@@ -3,12 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../core/theme/theme.service';
 import { SettingsService } from '../../services/settings.service';
 import { SessionService } from '../../services/session.service';
-import { ButtonComponent, DialogService, FieldComponent, IconComponent, PageHeaderComponent, SegmentedComponent, SegmentOption, ToastService } from '../../ui';
+import { ButtonComponent, DialogService, FieldComponent, IconComponent, PageHeaderComponent, SegmentedComponent, SegmentOption, ToastService, ToggleComponent } from '../../ui';
+import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../services/notice-prefs.service';
 
 /** Appearance (themes) + assistant behaviour for this client. */
 @Component({
   selector: 'app-settings-page',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, IconComponent, FieldComponent, SegmentedComponent],
+  imports: [FormsModule, PageHeaderComponent, ButtonComponent, IconComponent, FieldComponent, SegmentedComponent, ToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header title="Impostazioni" />
@@ -48,6 +49,23 @@ import { ButtonComponent, DialogService, FieldComponent, IconComponent, PageHead
       </section>
 
       <section>
+        <h3><hx-icon name="bell" [size]="17" /> Messaggi di sistema</h3>
+        <p class="hint">Avvisi separati dalla risposta: memoria salvata, azioni eseguite, notifiche attivate, errori. Valgono per questo browser.</p>
+        <hx-field label="Dove mostrarli">
+          <hx-segmented [options]="noticeModes" [value]="notices.prefs().mode" (changed)="notices.update({ mode: $any($event) })" />
+        </hx-field>
+        <hx-field label="Stile">
+          <hx-segmented [options]="noticeStyles" [value]="notices.prefs().style" (changed)="notices.update({ style: $any($event) })" />
+        </hx-field>
+        <div class="toggles">
+          @for (g of noticeGroups; track g.id) {
+            <hx-toggle [checked]="notices.prefs().groups[g.id]" [label]="g.label" (changed)="setGroup(g.id, $event)" />
+          }
+        </div>
+        <p class="hint">Gli errori vengono mostrati comunque, tranne con «Nascosti».</p>
+      </section>
+
+      <section>
         <h3><hx-icon name="refresh" [size]="17" /> Sessione</h3>
         <p class="hint">Nuova sessione: Hestia dimentica il contesto della conversazione (le memorie restano).</p>
         <div class="hx-row">
@@ -63,6 +81,7 @@ import { ButtonComponent, DialogService, FieldComponent, IconComponent, PageHead
     .body { flex: 1; overflow-y: auto; padding: 18px 24px 40px; }
     section { max-width: 760px; display: flex; flex-direction: column; gap: 14px; padding: 6px 0 26px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
     section:last-child { border-bottom: 0; }
+    .toggles { display: flex; flex-wrap: wrap; gap: 12px 22px; }
     h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
     .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
     .th { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: var(--radius-lg); border: 2px solid transparent; font-size: 13px; text-align: left; color: var(--text-2); }
@@ -92,6 +111,22 @@ export class SettingsPageComponent {
     { value: 'hidden', label: 'Nascosto' }, { value: 'compact', label: 'Compatto' }, { value: 'detailed', label: 'Dettagliato' },
   ];
 
+  notices = inject(NoticePrefsService);
+  readonly noticeModes: SegmentOption[] = [
+    { value: 'inline', label: 'Sotto la risposta' }, { value: 'toast', label: 'Popup' }, { value: 'both', label: 'Entrambi' },
+    { value: 'important', label: 'Solo importanti' }, { value: 'hidden', label: 'Nascosti' },
+  ] satisfies { value: NoticeMode; label: string }[];
+  readonly noticeStyles: SegmentOption[] = [
+    { value: 'compact', label: 'Compatto' }, { value: 'rich', label: 'Dettagliato' },
+  ] satisfies { value: NoticeStyle; label: string }[];
+  readonly noticeGroups: { id: NoticeGroup; label: string }[] = [
+    { id: 'memory', label: 'Memoria' }, { id: 'actions', label: 'Azioni' },
+    { id: 'subscriptions', label: 'Notifiche' }, { id: 'other', label: 'Altro (documenti, agenda, sviluppo)' },
+  ];
+  setGroup(id: NoticeGroup, on: boolean) {
+    this.notices.update({ groups: { ...this.notices.prefs().groups, [id]: on } });
+  }
+
   async save(p: Record<string, string>) {
     try { await this.settings.update(p); this.toast.success('Salvato'); } catch { this.toast.error('Salvataggio non riuscito'); }
   }
@@ -100,6 +135,7 @@ export class SettingsPageComponent {
   }
   async reset() {
     await this.settings.reset();
+    this.notices.reset();
     this.custom = this.settings.settings().customPrompt ?? '';
     this.toast.success('Impostazioni ripristinate');
   }

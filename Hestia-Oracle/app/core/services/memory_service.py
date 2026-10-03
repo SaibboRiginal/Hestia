@@ -18,6 +18,7 @@ from urllib.parse import urlparse, parse_qs
 from core.services.memory_intent import (
     has_notification_intent,
     has_deprecate_intent,
+    is_memory_worthy,
 )
 from core.services.memory_parsers import (
     parse_preference_actions,
@@ -536,12 +537,9 @@ class MemoryService:
             session_id, bool(force_notification_compiler),
         )
         signals: list[dict] = []
-        normalized_message = str(user_message or "").strip().lower()
-        trivial_turns = {"ok", "okay", "grazie",
-                         "thanks", "si", "sì", "no", "ciao"}
-        # Prefer semantic extraction over rigid keyword gating, but skip obvious short acknowledgements.
-        should_extract_prefs = bool(
-            normalized_message) and normalized_message not in trivial_turns
+        # Selective memory (like Claude): the LLM extractor runs only when the message
+        # can carry a durable fact; greetings/tests/questions never touch memory.
+        should_extract_prefs = is_memory_worthy(user_message)
         should_extract_subs = force_notification_compiler or has_notification_intent(
             user_message)
 

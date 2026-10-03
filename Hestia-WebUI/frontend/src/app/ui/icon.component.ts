@@ -6,6 +6,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  */
 const ICONS: Record<string, string> = {
   chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z',
+  bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0',
+  'bell-off': 'M6 16V11a6 6 0 0 1 .6-2.6M9 5.6A6 6 0 0 1 18 11v5l1.5 2H6M10 20a2 2 0 0 0 4 0M3 3l18 18',
   calendar: 'M8 3v4M16 3v4M3.5 9.5h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5z',
   terminal: 'M4 17l5-5-5-5M12 19h8',
   file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5',
