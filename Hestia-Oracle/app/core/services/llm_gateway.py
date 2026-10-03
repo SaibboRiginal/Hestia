@@ -9,7 +9,9 @@ Profiles (env, all optional except the built-in ``local`` default):
     ORACLE_LLM_PROFILE_<NAME>_MODEL
     ORACLE_LLM_PROFILE_<NAME>_API_KEY
 ``local`` defaults to Ollama's OpenAI endpoint (OLLAMA_API_URL or OLLAMA_URL host + /v1).
-Typical: ``local`` (Ollama) and ``cloud`` (OpenRouter / Gemini OpenAI-compat).
+Built-in: ``local`` = Ollama with MODEL_USECASE_CODE_MODEL; ``cloud`` = Gemini (OpenAI-compat)
+with MODEL_USECASE_CODE_FALLBACK_MODEL + GEMINI_API_KEY. No extra env needed; the
+ORACLE_LLM_PROFILE_* vars only override/add providers (e.g. OpenRouter).
 """
 from __future__ import annotations
 
@@ -37,6 +39,17 @@ def _profiles() -> dict[str, dict[str, str]]:
     local.setdefault("base_url", f"{ollama}/v1")
     local.setdefault("model", os.getenv("MODEL_USECASE_CODE_MODEL", "qwen2.5-coder:14b"))
     local.setdefault("api_key", "ollama")
+    # "cloud" needs no extra config: derived from the existing use-case vars
+    # (MODEL_USECASE_CODE_FALLBACK_* = gemini + GEMINI_API_KEY). Explicit
+    # ORACLE_LLM_PROFILE_CLOUD_* only to point Forge at another provider.
+    cloud = found.setdefault("cloud", {})
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    for usecase in ("CODE", "REASONING", "GENERIC"):
+        if os.getenv(f"MODEL_USECASE_{usecase}_FALLBACK_PROVIDER", "").strip().lower() == "gemini" and gemini_key:
+            cloud.setdefault("base_url", "https://generativelanguage.googleapis.com/v1beta/openai")
+            cloud.setdefault("model", os.getenv(f"MODEL_USECASE_{usecase}_FALLBACK_MODEL", "gemini-2.5-flash"))
+            cloud.setdefault("api_key", gemini_key)
+            break
     return {n: p for n, p in found.items() if p.get("base_url") and p.get("model")}
 
 

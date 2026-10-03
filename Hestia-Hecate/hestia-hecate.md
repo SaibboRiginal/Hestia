@@ -41,7 +41,7 @@ Adding a new data source = implementing this interface and registering the conne
 
 | Connector | Type Key | Description |
 |---|---|---|
-| `EmailFetcher` | `iris_email` | Reads Hecate's mail gateway in-process (Gmail API, IMAP fallback; IMAP filter + since). Used by Scout |
+| `EmailFetcher` | `iris_email` | Reads Hecate's mail gateway in-process (Gmail via OAuth; IMAP-style filter translated + since). Used by Scout |
 | `GCalFetcher` | `gcal` | Fetches Google calendar events via Hub-routed Hecate gateway APIs |
 | `OutlookFetcher` | `outlook_calendar` | Fetches Outlook calendar events via Hub-routed Hecate gateway APIs |
 
@@ -66,10 +66,10 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/calendar/events` | Create event on target providers |
 | `PUT` | `/api/gateway/calendar/events/{id}` | Update event on target provider |
 | `DELETE` | `/api/gateway/calendar/events/{id}` | Delete event on target provider |
-| `GET` | `/api/gateway/mail/status` | Mail backend in use (`gmail_api` / `imap`) + state of both |
-| `GET` | `/api/gateway/email/messages` (alias `/api/gateway/mail/messages`) | Mail search: `q` = Gmail syntax, raw IMAP criteria (`FROM "x"`, translated for Gmail) or free text; `since` = ISO date; `limit`. Gmail API first, IMAP fallback. Auth failure without fallback → `status=error`, `action_required=reauth_google` + Telegram notification |
+| `GET` | `/api/gateway/mail/status` | Gmail state (authorized, can_send, error) |
+| `GET` | `/api/gateway/email/messages` (alias `/api/gateway/mail/messages`) | Mail search: `q` = Gmail syntax, raw IMAP criteria (`FROM "x"`, translated for Gmail) or free text; `since` = ISO date; `limit`. Gmail API (OAuth). Auth failure → `status=error`, `action_required=reauth_google` + Telegram notification |
 | `GET` | `/api/gateway/email/messages/{id}` | Single message (Gmail id or Message-ID) |
-| `POST` | `/api/gateway/email/send` (alias `/api/gateway/mail/send`) | Send `{to, subject, body}`: SMTP (app password) or Gmail API if `gmail.send` granted |
+| `POST` | `/api/gateway/email/send` (alias `/api/gateway/mail/send`) | Send `{to, subject, body}` via Gmail API (`gmail.send`) |
 | `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy) |
 | `POST` | `/api/ingest/calendar/trigger` | Sync calendar events from providers into Archive |
 
@@ -193,7 +193,7 @@ registry when any provider is still unavailable (e.g. token file just written by
 | `GOOGLE_TOKEN_JSON` | — | Bundled alternative — refresh_token extracted from here if `GOOGLE_REFRESH_TOKEN` not set |
 | `GOOGLE_TOKEN_FILE` | `/code/data/google_token.json` | Persistent token cache (volume-mounted `data/` dir) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Loopback redirect used by the OAuth flow |
-| `GOOGLE_OAUTH_SCOPES` | `calendar gmail.readonly` (full URLs) | Space/comma separated scopes; add `https://www.googleapis.com/auth/gmail.send` to send via Gmail API |
+| `GOOGLE_OAUTH_SCOPES` | `calendar gmail.readonly gmail.send` (full URLs) | Space/comma separated scopes |
 | `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
 | `OUTLOOK_CLIENT_ID` | — | Microsoft OAuth app client ID |
@@ -221,25 +221,12 @@ new access token, and caches the result to the persistent file. No access token
 or expiry timestamp is stored in `.env` — the 1‑hour access token is always
 obtained live.
 
-### Mail backends (`providers/mail.py`)
+### Mail (`providers/mail.py`)
 
-| Backend | Read | Send | Config |
-|---|---|---|---|
-| `gmail_api` (primary) | scope `gmail.readonly` | only with `gmail.send` in `GOOGLE_OAUTH_SCOPES` | Google OAuth (above) |
-| `imap` (fallback read, primary send) | IMAP read-only | SMTP STARTTLS | `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` or `HECATE_IMAP_*` |
-
-Gmail auth failure → IMAP fallback if configured (no nag), else error + re-auth notification.
-IMAP-style criteria from connectors (`FROM "x"`, `SUBJECT "y"`, `SINCE 01-Jan-2026`, `UNSEEN`) are
-translated to Gmail search (`from:(x)`, …, `after:2026/01/01`, `is:unread`).
-
-### IMAP/SMTP provider
-
-`providers/mail_imap.py`. Gmail: `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD` (Google account → Security →
-2-Step Verification → App passwords). Any other server: `HECATE_IMAP_HOST/_PORT/_USER/_PASSWORD`,
-`HECATE_SMTP_HOST/_PORT`, `HECATE_IMAP_FOLDER`. Mailbox opened read-only (mail never marked as read).
-
-> Regression fixed: the Gmail IMAP fetcher was deleted in the Ingest → Hecate refactor and Iris was left as an
-> in-memory stub, so Scout's `iris_email` connector always returned 0 mails.
+Gmail only, via the Google OAuth token (no IMAP, no app passwords): read with `gmail.readonly`, send with
+`gmail.send` (both in the default scopes — re-authorize Google once if the token predates them).
+IMAP-style criteria from connectors (`FROM "x"`, `SUBJECT "y"`, `SINCE 01-Jan-2026`, `UNSEEN`) are translated to
+Gmail search. Auth failure → `status=error`, `action_required=reauth_google` + Telegram re-auth button.
 
 ## Provider Credential Ownership
 

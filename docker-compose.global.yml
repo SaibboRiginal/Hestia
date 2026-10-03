@@ -107,6 +107,8 @@ services:
     build:
       context: .
       dockerfile: Hestia-Oracle/Dockerfile
+      args:
+        INSTALL_CLAUDE_CODE: "${ORACLE_INSTALL_CLAUDE_CODE:-1}"   # Claude Code CLI (used only if CLAUDE_CODE_OAUTH_TOKEN is set); 0 = slimmer image
     container_name: hestia_oracle
     restart: unless-stopped
     ports:

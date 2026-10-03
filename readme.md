@@ -372,7 +372,7 @@ This creates:
   changes go through **Forge**, which has true git branches, merge and revert.
 - Metis `benchmark_run` returns `not_implemented`; LoRA training launches your external script (`Hestia-Metis/TODO.md`).
 - Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
-- Iris threads are grouped by normalized subject (IMAP has no universal thread id; Gmail thread ids are matched when present).
+- Iris threads are grouped by normalized subject (Gmail thread ids are matched when present).
 - Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
 - Hub registry is in memory: services re-register every `HUB_KEEPALIVE_SECONDS` (60s) after a Hub restart.
 

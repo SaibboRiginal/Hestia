@@ -241,3 +241,10 @@ agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps paralle
   your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Optional `ORACLE_CLAUDE_MODEL`.
 - Only for code tasks inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus); never for
   general chat (the subscription covers Claude Code for development, not an API backend).
+
+## LLM gateway profiles (Forge engines)
+
+Built-in profiles, no extra env: `local` = Ollama + `MODEL_USECASE_CODE_MODEL`; `cloud` = Gemini (OpenAI-compatible
+endpoint) + `MODEL_USECASE_CODE_FALLBACK_MODEL` + `GEMINI_API_KEY`. `ORACLE_LLM_PROFILE_<NAME>_BASE_URL/_MODEL/_API_KEY`
+only override them or add another provider. Claude Code CLI is installed by default
+(`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when `CLAUDE_CODE_OAUTH_TOKEN` is set.

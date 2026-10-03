@@ -30,7 +30,7 @@ Iris owns email-domain business logic (search/send/thread abstractions). Provide
 
 Iris holds no mail and no credentials. Every endpoint calls Hecate through Hub:
 `/api/email/inbox` and `/api/email/messages` → `GET /api/gateway/email/messages` (`q` free text, Gmail
-syntax or IMAP criteria, `since` ISO date; Hecate uses Gmail API, IMAP fallback); `/api/email/send` →
+syntax or IMAP criteria, `since` ISO date; Hecate uses the Gmail API with the OAuth token, no IMAP); `/api/email/send` →
 `POST /api/gateway/email/send` (adds `Re:` when `thread_id` is given); `/api/email/threads/{thread_id}` →
 messages sharing the normalized subject; `/api/email/ingest` → Hecate `/api/ingest/trigger` (domain
 modules such as Scout ask Iris, which owns the email domain). Search errors are soft

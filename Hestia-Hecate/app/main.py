@@ -321,10 +321,8 @@ def _check_auth_and_notify() -> None:
         )
 
     # 2) Mail provider check (lazy-init — force init to detect auth state)
-    # Gmail unavailable is a problem only without the IMAP fallback.
     mail = _get_mail_provider()
-    if (not mail.is_available() and _provider_env_is_configured("google")
-            and not mail_gateway.imap().configured):
+    if not mail.is_available() and _provider_env_is_configured("google"):
         mail_error = mail._init_error or "Gmail provider not available"
         _notify_action_required(
             "reauth_google_gmail",
@@ -941,7 +939,7 @@ def _mail_unavailable(exc: MailUnavailable, q: str = "") -> dict:
 
 @app.get("/api/gateway/mail/status")
 def gateway_mail_status():
-    """Which mail backend serves Iris/Scout (gmail_api | imap) and why."""
+    """Gmail state for Iris/Scout (authorized, can_send, error)."""
     return {"status": "ok", **mail_gateway.status()}
 
 
@@ -950,8 +948,7 @@ def gateway_mail_status():
 def gateway_email_messages(q: str = "", since: str | None = None, limit: int = 20):
     """Search mail. ``q``: Gmail syntax, raw IMAP criteria ('FROM "x"') or free text.
 
-    Gmail API when authorized, IMAP fallback; a Gmail auth failure without
-    fallback notifies the user with a re-auth button.
+    Gmail API (OAuth token); an auth failure notifies the user with a re-auth button.
     """
     since_dt = _parse_since(since)
     try:
@@ -976,7 +973,7 @@ def gateway_email_message(message_id: str):
 @app.post("/api/gateway/email/send")
 @app.post("/api/gateway/mail/send")
 def gateway_email_send(req: MailSendRequest):
-    """Send mail: SMTP (app password) or Gmail API when gmail.send is granted."""
+    """Send mail via Gmail API (scope gmail.send)."""
     try:
         sent, backend = mail_gateway.send(req.to, req.subject, req.body)
     except MailUnavailable as exc:
