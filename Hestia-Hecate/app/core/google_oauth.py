@@ -47,6 +47,7 @@ TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 DEFAULT_SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send",
 ]
 DEFAULT_REDIRECT_URI = "http://localhost:19003/api/gateway/auth/callback/google"
 PENDING_TTL_SECONDS = 15 * 60

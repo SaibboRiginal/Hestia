@@ -13,8 +13,7 @@ logger = logging.getLogger("hestia_hecate.email_fetcher")
 class EmailFetcher(BaseFetcher):
     """``iris_email`` connector: raw provider mail for domain modules (Scout).
 
-    Reads Hecate's mail gateway in-process (Gmail API when authorized, IMAP
-    fallback — Hecate owns provider runtime).
+    Reads Gmail in-process through Hecate's mail gateway (OAuth token).
     It used to call Iris, whose store was an in-memory stub, so Scout always
     received zero mails; it also ignored ``since_date`` and treated IMAP
     filters ('FROM "x"') as free text.
@@ -23,8 +22,8 @@ class EmailFetcher(BaseFetcher):
     def connect(self) -> bool:
         st = mail_gateway.status()
         if not st["backend"]:
-            logger.warning("[🔄] event=email_fetcher_not_configured No mail backend: authorize Google "
-                           "(Gmail) or set GMAIL_ADDRESS/GMAIL_APP_PASSWORD | gmail_error=%s",
+            logger.warning("[🔄] event=email_fetcher_not_configured Gmail not authorized: connect Google "
+                           "(Telegram: Connetti Google) | gmail_error=%s",
                            st["gmail_api"].get("error"))
             return False
         return True

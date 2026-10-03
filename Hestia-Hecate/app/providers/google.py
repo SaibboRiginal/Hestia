@@ -38,7 +38,7 @@ except ImportError:
 
 _SCOPES = [
     s for s in os.getenv("GOOGLE_OAUTH_SCOPES", "").replace(",", " ").split() if s
-] or ["https://www.googleapis.com/auth/calendar", GMAIL_READ_SCOPE]
+] or ["https://www.googleapis.com/auth/calendar", GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE]
 
 # Persistent token storage path — the ``data/`` directory is volume-mounted
 # in docker-compose.yml, so tokens written here survive container restarts.
