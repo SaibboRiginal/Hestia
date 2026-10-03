@@ -3980,6 +3980,33 @@ paths:
         "200":
           description: "{success: true}"
 
+  /api/agenda/items/{ref}/move:
+    post:
+      tags: [Chronos]
+      summary: Move one occurrence of an agenda item (exception) or reset it
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                occurrence: {type: string, description: "occurrence key (UTC ISO) from /api/agenda"}
+                start_at: {type: string}
+                end_at: {type: string}
+                reset: {type: boolean}
+                by: {type: string, default: user}
+      responses:
+        "200":
+          description: "{status, item}"
+
   /api/calendar/sync:
     post:
       tags: [Chronos]

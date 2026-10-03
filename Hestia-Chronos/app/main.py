@@ -647,13 +647,32 @@ def _agenda_guard(fn, *args, **kwargs):
 
 
 @app.get("/api/agenda")
-def agenda_view(days: int = Query(7, ge=1, le=90), owner: str | None = None, type: str | None = None,
-                past_hours: int = Query(0, ge=0, le=720)) -> dict:
-    """Assistant agenda occurrences (windows, jobs, tasks, events) for the next *days*."""
+def agenda_view(days: int = Query(7, ge=1, le=400), owner: str | None = None, type: str | None = None,
+                past_hours: int = Query(0, ge=0, le=24 * 400),
+                start: str | None = Query(None, description="ISO start (overrides days/past_hours)"),
+                end: str | None = Query(None, description="ISO end (with start)"),
+                include_done: bool = Query(False, description="also completed/cancelled items")) -> dict:
+    """Assistant agenda occurrences (windows, jobs, tasks, events).
+
+    Range: ``start``/``end`` (ISO, used by the WebUI calendar) or now-``past_hours`` → now+``days``.
+    """
     now = datetime.now(timezone.utc)
-    rows = assistant_agenda.agenda(now - timedelta(hours=past_hours), now + timedelta(days=days),
-                                   owner=owner, type_=type)
-    return {"from": (now - timedelta(hours=past_hours)).isoformat(), "days": days,
+    if start:
+        try:
+            lo = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            hi = datetime.fromisoformat(end.replace("Z", "+00:00")) if end else lo + timedelta(days=days)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="start/end must be ISO datetimes")
+        if lo.tzinfo is None:
+            lo = lo.replace(tzinfo=timezone.utc)
+        if hi.tzinfo is None:
+            hi = hi.replace(tzinfo=timezone.utc)
+        if hi <= lo or (hi - lo).days > 400:
+            raise HTTPException(status_code=400, detail="end must be after start, range <= 400 days")
+    else:
+        lo, hi = now - timedelta(hours=past_hours), now + timedelta(days=days)
+    rows = assistant_agenda.agenda(lo, hi, owner=owner, type_=type, include_done=include_done)
+    return {"from": lo.isoformat(), "to": hi.isoformat(), "days": days,
             "count": len(rows), "occurrences": rows}
 
 
@@ -703,6 +722,21 @@ def agenda_unskip(ref: str, req: AgendaSkip) -> dict:
     if not req.occurrence:
         raise HTTPException(status_code=400, detail="occurrence required")
     return {"status": "ok", "item": _agenda_guard(assistant_agenda.unskip, ref, req.occurrence, req.by)}
+
+
+class AgendaMove(BaseModel):
+    occurrence: str
+    start_at: str | None = None
+    end_at: str | None = None
+    reset: bool = False
+    by: str = "user"
+
+
+@app.post("/api/agenda/items/{ref}/move")
+def agenda_move(ref: str, req: AgendaMove) -> dict:
+    """Move one occurrence only (exception); ``reset`` restores it. One-off items move entirely."""
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.move_occurrence, ref, req.occurrence,
+                                                  req.start_at, req.end_at, req.reset, req.by)}
 
 
 @app.post("/api/agenda/items/{ref}/run")

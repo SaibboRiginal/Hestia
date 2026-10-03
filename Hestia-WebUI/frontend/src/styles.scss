@@ -1,85 +1,97 @@
-/* ── Hestia WebUI — Dark Theme (Gemini + Mistral inspired) ────────────── */
+/* ── Hestia WebUI — global base ───────────────────────────────────────────────
+   Colors/fonts/radii come ONLY from theme tokens (src/app/core/theme/themes.ts),
+   written on <html> by ThemeService. Never hardcode a color in a component:
+   use var(--token). Guide: DESIGN-SYSTEM.md.
+   The :root values below are the first-paint fallback (claude-light). */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Background layers */
-  --bg-primary: #121212;
-  --bg-secondary: #1a1a1c;
-  --bg-tertiary: #242428;
-  --bg-hover: #2e2e33;
-  --bg-input: #1e1e22;
-
-  /* Text */
-  --text-primary: #e3e3e3;
-  --text-secondary: #9aa0a6;
-  --text-muted: #6b7280;
-
-  /* Accent (blue — Gemini-inspired) */
-  --accent: #4a90d9;
-  --accent-hover: #5ba0e9;
-  --accent-light: rgba(74, 144, 217, 0.12);
-  --accent-glow: rgba(74, 144, 217, 0.25);
-
-  /* User bubble */
-  --user-bubble: #4a90d9;
-  --user-bubble-text: #ffffff;
-
-  /* System / status */
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --warning: #f39c12;
-
-  /* Code */
-  --code-bg: #1a1a2e;
-  --code-border: #2a2a3e;
-
-  /* Thinking / CoT (Mistral-style tinted section) */
-  --thinking-bg: rgba(74, 144, 217, 0.06);
-  --thinking-border: rgba(74, 144, 217, 0.18);
-  --thinking-step-bg: rgba(74, 144, 217, 0.04);
-
-  /* Borders */
-  --border: #2e2e33;
-  --border-light: #3a3a40;
-
-  /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
-
-  /* Sizing */
-  --sidebar-width: 320px;
-  --chat-max-width: 760px;
-  --input-max-height: 200px;
-
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --bg: #faf9f5; --bg-subtle: #f5f4ed; --surface: #ffffff; --surface-2: #f0eee6; --surface-3: #e8e6dc;
+  --border: #e5e3d8; --border-strong: #d1cfc5; --text: #141413; --text-2: #3d3d3a; --text-3: #73726c;
+  --accent: #c96442; --accent-hover: #b55a3b; --accent-contrast: #fff; --accent-soft: rgba(201,100,66,.12);
+  --focus-ring: rgba(201,100,66,.45);
+  --font-sans: 'Inter', system-ui, sans-serif; --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace; --font-chat: var(--font-serif);
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 20px; --radius-full: 9999px;
+  --ease: cubic-bezier(.2,0,0,1); --dur-fast: 120ms; --dur: 200ms;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body { height: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.5; color: var(--text-primary); background: var(--bg-primary); -webkit-font-smoothing: antialiased; overflow: hidden; }
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: var(--radius-full); }
-
-code, pre { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; }
-pre { background: var(--code-bg); border: 1px solid var(--code-border); border-radius: var(--radius-md); padding: 16px; overflow-x: auto; margin: 8px 0; position: relative; }
-pre code { background: none; border: none; padding: 0; }
-code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: none; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-.fade-in { animation: fadeIn 300ms cubic-bezier(0.4, 0, 0.2, 1) ease forwards; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-full); border: 2px solid var(--bg); }
+
+code, pre, kbd { font-family: var(--font-mono); font-size: 13px; }
+pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md);
+      padding: 12px 14px; overflow-x: auto; margin: 8px 0; }
+:not(pre) > code { background: var(--surface-2); padding: 1px 5px; border-radius: var(--radius-xs, 4px); }
+kbd { border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px;
+      font-size: 11px; color: var(--text-2); background: var(--surface); }
+
+/* ── Standard form controls (use these classes, not custom styles) ───────── */
+.hx-input, .hx-select, .hx-textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 11px;
+  font-size: 14px;
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  outline: none;
+}
+.hx-input::placeholder, .hx-textarea::placeholder { color: var(--text-3); }
+.hx-input:focus, .hx-select:focus, .hx-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.hx-input:disabled, .hx-select:disabled, .hx-textarea:disabled { opacity: .55; cursor: not-allowed; }
+.hx-textarea { resize: vertical; min-height: 72px; line-height: 1.45; }
+.hx-select { appearance: none; padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%), linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.hx-input.mono, .hx-textarea.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.hx-check { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+/* ── Layout helpers ───────────────────────────────────────────────────────── */
+.hx-row { display: flex; align-items: center; gap: 8px; }
+.hx-col { display: flex; flex-direction: column; gap: 8px; }
+.hx-grow { flex: 1; min-width: 0; }
+.hx-muted { color: var(--text-3); }
+.hx-small { font-size: 12.5px; }
+.hx-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-1); }
+.hx-divider { height: 1px; background: var(--border); border: 0; margin: 8px 0; }
+.hx-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hx-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Rendered assistant/HTML content */
+.hx-prose { font-family: var(--font-chat); font-size: 16px; line-height: 1.65; color: var(--text); word-wrap: break-word; }
+.hx-prose p { margin: 0 0 .7em; }
+.hx-prose p:last-child { margin-bottom: 0; }
+.hx-prose ul, .hx-prose ol { margin: .3em 0 .8em 1.4em; }
+.hx-prose li { margin: .15em 0; }
+.hx-prose blockquote { border-left: 3px solid var(--border-strong); padding-left: 12px; color: var(--text-2); margin: .5em 0; }
+.hx-prose b, .hx-prose strong { font-weight: 600; }
+
+@keyframes hx-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes hx-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes hx-spin { to { transform: rotate(360deg); } }
+.hx-fade-in { animation: hx-fade-in var(--dur) var(--ease) both; }
+
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }

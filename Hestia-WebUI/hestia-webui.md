@@ -63,8 +63,21 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
 | GET | `/api/webui/documents` | List documents |
 | DELETE | `/api/webui/documents/{id}` | Delete document |
+| GET | `/api/webui/agenda/occurrences?start&end` | Assistant agenda occurrences (→ Chronos `/api/agenda`) |
+| GET/POST | `/api/webui/agenda/items` | Items list / create (owner user) |
+| PATCH/DELETE | `/api/webui/agenda/items/{key}` | Change (by=user) / cancel |
+| POST | `/api/webui/agenda/items/{key}/skip` · `unskip` · `move` · `run` | Skip/restore occurrence, move one occurrence (exception), run now |
 | GET | `/health` | Health check |
 | POST | `/api/webui/admin/generate-token` · `revoke-token` · GET `token-status` · GET/POST `public-url` | Admin (Telegram / tunnel script). **Guarded**: `X-WebUI-Admin-Secret` = `WEBUI_ADMIN_SECRET` when set, else only direct loopback/private-network calls not coming through Cloudflare/proxy |
+
+### Frontend structure (rewritten 2026-10-03)
+
+Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/ui`), shell with module registry
+(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list,
+sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
+move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**,
+**Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
+Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
 ### Chat features
 

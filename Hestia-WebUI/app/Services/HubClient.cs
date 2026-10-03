@@ -103,6 +103,12 @@ public class HubClient
         => RouteAsync(service, path, HttpMethod.Delete,
             timeoutSeconds: timeoutSeconds, ct: ct);
 
+    /// <summary>Any method (PATCH, DELETE with query, ...) through Hub routing.</summary>
+    public Task<JsonElement> RouteAsyncPublic(
+        string service, string path, HttpMethod method, object? body = null,
+        Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default)
+        => RouteAsync(service, path, method, query: query, body: body, timeoutSeconds: timeoutSeconds, ct: ct);
+
     /// <summary>Core routing call through Hub's /api/route/{service}/{path}.</summary>
     private async Task<JsonElement> RouteAsync(
         string service, string path, HttpMethod method,
