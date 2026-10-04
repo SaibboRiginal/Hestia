@@ -104,6 +104,8 @@ Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
 - SignalR (WebUI): long-running hub methods block other invocations unless
   `MaximumParallelInvocationsPerClient > 1`.
 - Never block FastAPI startup (e.g. waiting for another service): do it in a background thread.
+- WebUI Docker build has no internet for Angular font inlining → fonts via `<link>` + `fonts.inline=false`.
+  The WebUI image bakes the frontend: after a pull, `docker compose ... up -d --build webui` (no volume mount).
 - Telegram HTML parse mode supports only a small tag subset (b, i, u, s, code, pre, a, blockquote).
 
 ## 8. Where to look

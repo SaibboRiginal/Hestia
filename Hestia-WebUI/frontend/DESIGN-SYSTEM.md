@@ -13,6 +13,8 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
 5. Italian UI copy, short and concrete. Icons from `<hx-icon>`.
 6. Must work at 390 px (phone) and in light + dark themes. Check both.
 7. `npx ng build` must pass with **no warnings** before committing.
+8. No build-time network: web fonts are a `<link>` in `index.html` and `fonts.inline=false` in
+   `angular.json` (the Docker build cannot reach Google Fonts). Never `@import url(https://…)` in SCSS.
 
 ## 2. Tokens (defined per theme in `src/app/core/theme/themes.ts`)
 

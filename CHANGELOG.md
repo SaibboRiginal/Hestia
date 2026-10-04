@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-04
+- WebUI Docker build fixed: Google Fonts no longer inlined at build time (failed without internet).
+
 ## 2026-10-03
 - Standard response packets: Oracle `notice` (system messages) rendered distinctly by Telegram and WebUI with many display settings; Telegram replies rebuilt Claude-like (one message, expandable reasoning, streaming, in-place `/settings` panel); selective Claude-like memory; fixed double "ciao" and spurious "Non risulta eseguita alcuna azione".
 - WebUI rewritten: Claude-like themable design system + UI kit + DESIGN-SYSTEM.md, module registry, Chat, Commands & MCP, Documents, Settings, and a Google-like calendar for Hestia's agenda (month/week/day/list, drag & drop, recurrences, exceptions).
