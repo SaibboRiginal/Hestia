@@ -22,7 +22,6 @@ services:
       - ARGUS_AUTO_REMEDIATE_DRY_RUN=1    # Default remediation intents in dry-run mode (0|1)
       - ARGUS_AUTO_REMEDIATE_ENVIRONMENT=dev  # Environment forwarded to Hephaestus remediation tasks
       - ARGUS_REMEDIATE_TIMEOUT_SECONDS=15 # Hub-routed timeout for Hephaestus remediation requests (seconds)
-      - ARGUS_NOTIFY_TARGET=              # Telegram chat_id that receives alert notifications (string, required for alerts)
       - ALERT_COOLDOWN_MINUTES=60         # Minimum minutes between repeated alerts for the same container (int, default 60)
       - STARTUP_WAIT_TIMEOUT_SECONDS=0    # Seconds to wait for Hub readiness before startup registration (0 = wait indefinitely)
       - HESTIA_DOCS_PATH=/hestia_root     # Path inside container where Hestia repo is mounted (for doc context)

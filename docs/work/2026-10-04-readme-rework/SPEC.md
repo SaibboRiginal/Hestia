@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat (project thread "README") | done |
+| 1.1 | user via external chat (project thread "README") | done |
 
 ## Goal
 The repository is public: `readme.md` must read as a serious open-source front page (intro with badges, quick start
@@ -31,4 +31,9 @@ The internal content (rules, contracts, per-service notes) must not be lost.
 - File name stays `readme.md` (renaming case on Windows checkouts is error-prone; GitHub renders it anyway).
 - The public README is no longer gated by the docs-sync check; the rules doc is.
 - Roadmap built from the old "Known Gaps", "Deployment Evolution Contract" and `Hestia-Metis/TODO.md`.
-- No LICENSE added (owner's decision); README states that none is published yet.
+- MIT LICENSE (owner's choice, v1.1).
+- v1.1: the owner's Telegram chat id lives only in `ALLOWED_USER_ID` (Telegram). services notify the user, not a chat:
+  Hermes/Chronos/Argus always send `target: "owner"` (`NOTIFY_TARGET` / `ARGUS_NOTIFY_TARGET` removed everywhere);
+  the client decides delivery (multi-recipient would be a client concern; single user for now);
+  Telegram `/api/dispatch/send` resolves `owner`/empty to the first `ALLOWED_USER_ID`. Hermes deactivates the old
+  `sys-action-required-<id>` subscription so alerts are not doubled. Doc examples use `123456789`.

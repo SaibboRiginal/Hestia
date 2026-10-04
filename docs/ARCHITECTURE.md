@@ -328,7 +328,9 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 6. **HTML resilience**: client renderers must normalize non-Telegram tags (for example `<em>/<strong>`) to Telegram-compatible tags before send; on Telegram parse-entity failure, retry the affected part as plain text.
 7. **Conversational alerts**: proactive multi-alert dispatches must read as natural chat, not disconnected notifications.
 8. **Message splitting logic is global** via `build_delivery_messages()` and reused by all send paths.
-9. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
+9. **Owner target**: services never hold the owner's chat id. They notify `target: "owner"`; Telegram resolves it
+   to its first `ALLOWED_USER_ID`.
+10. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
 
 ## Logging Contract (Global Observability)
 

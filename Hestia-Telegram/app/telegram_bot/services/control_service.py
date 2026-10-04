@@ -77,7 +77,7 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(content_length).decode('utf-8')
                 payload = json.loads(body) if body else {}
 
-                chat_id = str(payload.get("target", "")).strip()
+                chat_id = core.resolve_notify_target(payload.get("target"))
                 message = str(payload.get("message", "")).strip()
                 actions_raw = payload.get("actions")
                 entity_payload = payload.get("payload")
@@ -88,7 +88,7 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
 
                 if not chat_id:
                     self._send_json(
-                        400, {"status": "error", "detail": "target required"})
+                        400, {"status": "error", "detail": "target required (or ALLOWED_USER_ID for target 'owner')"})
                     return
 
                 if entity_payload and isinstance(entity_payload, dict):

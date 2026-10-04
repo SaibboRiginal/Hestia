@@ -13,6 +13,7 @@
 ![.NET](https://img.shields.io/badge/.NET-9-512BD4?logo=dotnet&logoColor=white)
 ![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Client-Telegram-26A5E4?logo=telegram&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 [Features](#-features) ·
 [Quick start](#-quick-start) ·
@@ -84,8 +85,7 @@ first created):
 HESTIA_DB_PASSWORD=<a long random password>
 ```
 
-In `docker-compose.global.yml`, set `NOTIFY_TARGET` (Hermes, Chronos) and `ARGUS_NOTIFY_TARGET` (Argus) to the
-same Telegram id, so notifications reach you.
+Reminders and alerts go to the first `ALLOWED_USER_ID`: your id is configured only there.
 
 ### 3. Pull the local models
 
@@ -121,8 +121,7 @@ Every `.env` is documented in its `.env.example`, and every compose variable has
 | Where | Variable | Purpose |
 |---|---|---|
 | `Hestia-Telegram/app/.env` | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather. |
-| `Hestia-Telegram/app/.env` | `ALLOWED_USER_ID` | Who may talk to the bot. Empty = nobody (fail closed). |
-| `docker-compose.global.yml` | `NOTIFY_TARGET`, `ARGUS_NOTIFY_TARGET` | Telegram chat id for reminders and alerts. |
+| `Hestia-Telegram/app/.env` | `ALLOWED_USER_ID` | Who may talk to the bot (empty = nobody, fail closed). The first id also receives reminders and alerts. |
 | root `.env` | `HESTIA_DB_PASSWORD` | Postgres password (the DB port is bound to `127.0.0.1` only). |
 
 ### Optional integrations
@@ -263,5 +262,4 @@ create-service.bat Markets module 8012
 
 ## 📄 License
 
-No license file has been published yet, so all rights are reserved by the author. Open an issue if you'd like to
-use or contribute to Hestia.
+Released under the [MIT License](LICENSE).

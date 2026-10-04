@@ -183,7 +183,6 @@ services:
       - ENTITY_BATCH_WINDOW_SECONDS=30                       # Settling window before dispatching a batch of entity alerts (float, default 30)
       - HERMES_HUB_REGISTER_RETRIES=8                        # Max Hub registration attempts on startup (int, default 8)
       - HERMES_HUB_REGISTER_RETRY_DELAY=2                    # Seconds between registration retry attempts (float, default 2)
-      - NOTIFY_TARGET=123456789                             # Telegram chat_id for system action notifications
       - HERMES_RECURRING_EVENT_MAX_AGE_SECONDS=3600          # Seconds before a delivered notification is stale and re-deliverable (float, default 3600)
       - HERMES_RECURRING_EVENT_TYPES=service.action_required,service.health  # Event types with time-limited dedup (CSV)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
@@ -337,7 +336,6 @@ services:
       - CALENDAR_PORT=19007                                  # Port this service listens on (int)
       - ARCHIVE_URL=http://hestia_archive:19002               # Archive base URL for calendar items
       - HERMES_URL=http://hestia_hermes:19005                 # Hermes URL for dispatching notifications
-      - NOTIFY_TARGET=123456789                             # Telegram chat_id for event reminders (string, required)
       - CHRONOS_NOTIFY_POLL_SECONDS=300                       # Seconds between notification polling cycles (int, default 300 = 5 min)
       - NOTIFY_LOOK_AHEAD_HOURS=26                            # Hours ahead to check for upcoming events (int, default 26)
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
@@ -404,7 +402,6 @@ services:
       - ARGUS_AUTO_REMEDIATE_ENVIRONMENT=dev  # Environment forwarded to Hephaestus remediation tasks
       - ARGUS_REMEDIATE_TIMEOUT_SECONDS=15 # Hub-routed timeout for Hephaestus remediation requests (seconds)
       - ALERT_BATCH_WINDOW_SECONDS=20     # Seconds to wait for burst to settle before sending a single batched notification (int, default 20)
-      - ARGUS_NOTIFY_TARGET=123456789  # Telegram chat_id for alert notifications (string, required for alerts)
       - ALERT_COOLDOWN_MINUTES=60         # Minimum minutes between repeated alerts per container (int, default 60)
       - HESTIA_DOCS_PATH=/hestia_root     # Mount path for the Hestia repo (for doc context)
       - LOG_LEVEL=INFO                    # Logging verbosity: DEBUG | INFO | WARNING | ERROR

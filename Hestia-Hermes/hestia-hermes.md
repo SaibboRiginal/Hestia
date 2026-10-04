@@ -43,6 +43,10 @@ within the cooldown window.
 |---|---|---|
 | `POST` | `/api/events/ingest` | Ingest one event and evaluate subscriptions |
 | `POST` | `/api/dispatch/send` | Direct dispatch command (internal use) |
+
+System subscription (`service.action_required`) is bootstrapped at startup for the user (`owner`;
+the client decides where to deliver: Telegram uses its `ALLOWED_USER_ID`); older `sys-action-required-<chat id>` subscriptions are
+deactivated so alerts are not sent twice.
 | `GET` | `/health` | Hermes health |
 
 ---

@@ -2,7 +2,7 @@
 
 Calls Hermes' ``POST /api/dispatch/send`` directly on the internal Docker
 network.  Hermes handles the final delivery to Telegram, so Argus does not
-need a bot token — it only needs the chat_id (``ARGUS_NOTIFY_TARGET``) and the
+need a bot token nor a chat id — it notifies the user (``owner``) and the
 Hermes base URL.
 """
 from __future__ import annotations
@@ -18,7 +18,8 @@ logger = logging.getLogger(f"hestia_argus.{__name__}")
 HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api"
 ).rstrip("/")
-NOTIFY_TARGET = os.getenv("ARGUS_NOTIFY_TARGET", "")
+# Notices go to the user ("owner"); the client (Telegram) decides which chat that is.
+NOTIFY_TARGET = "owner"
 
 
 def publish_event(domain: str, event_type: str, entity_id: str, payload: dict[str, Any]) -> bool:

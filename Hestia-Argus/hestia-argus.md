@@ -77,7 +77,6 @@ Hub Monitor Logs / Docker Tails │
 | `ARGUS_LOG_SEEN_CACHE_SIZE` | `5000` | In-memory dedupe window for hub-sourced log alerts |
 | `ARGUS_LOG_BUFFER_SIZE` | `500` | Max log events kept per container |
 | `ARGUS_IGNORE_HEALTH_ACCESS` | `true` | Ignore container health-check access lines (e.g. `GET /health`) during log monitoring |
-| `ARGUS_NOTIFY_TARGET` | — | Telegram chat_id for proactive alerts (optional) |
 | `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools) |
 | `ARGUS_AUTO_REMEDIATE_ENABLED` | `1` | Enable automatic remediation intent emission to Hephaestus on newly unhealthy service states |
 | `ARGUS_AUTO_REMEDIATE_DRY_RUN` | `1` | Send remediation intents in dry-run mode |

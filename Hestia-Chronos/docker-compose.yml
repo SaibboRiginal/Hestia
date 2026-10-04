@@ -13,7 +13,6 @@ services:
       - CALENDAR_PORT=19007                                  # Port this service listens on (int)
       - ARCHIVE_URL=http://hestia_archive:19002               # Archive base URL for reading/writing calendar items
       - HERMES_URL=http://hestia_hermes:19005                 # Hermes URL for dispatching calendar notifications
-      - NOTIFY_TARGET=                                        # Telegram chat_id to send event reminders (string, required for notifications)
       - CHRONOS_NOTIFY_POLL_SECONDS=300                       # Seconds between notification polling cycles (int, default 300 = 5 min)
       - NOTIFY_LOOK_AHEAD_HOURS=26                            # Hours ahead to look for upcoming events when sending reminders (int, default 26)
       - STARTUP_WAIT_TIMEOUT_SECONDS=0                        # Seconds to wait for Hub/dependency readiness on startup (0 = wait indefinitely)

@@ -7,4 +7,6 @@
 - [x] `.env.example` for root, Telegram, Scout
 - [x] New `readme.md` (all relative links checked)
 - [x] Root CHANGELOG line
-- [ ] Owner: decide a LICENSE; consider moving the hardcoded `NOTIFY_TARGET` chat id in compose to `.env`
+- [x] v1.1 MIT LICENSE + badge
+- [x] v1.1 chat id only in Telegram: `owner` alias (Telegram resolve, Hermes/Chronos/Argus defaults, compose, legacy subscription cleanup, docs, regression test — not run, user rule)
+- [ ] Owner: after deploy, check one reminder/alert still arrives (needs Telegram, Hermes, Chronos, Argus restart)

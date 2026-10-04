@@ -34,10 +34,8 @@ service = HermesService()
 def _bootstrap_system_subscription(hub_api_url: str) -> None:
     """Ensure a permanent subscription exists for service.action_required events.
     Idempotent — if it already exists, Archive handles the duplicate gracefully."""
-    notify_target = os.getenv("NOTIFY_TARGET", "").strip()
-    if not notify_target:
-        logger.warning("event=system_subscription_skipped reason=NOTIFY_TARGET_not_set")
-        return
+    # Notices go to the user ("owner"); the client (Telegram) decides which chat that is.
+    notify_target = "owner"
     try:
         resp = requests.post(
             f"{hub_api_url}/route/archive/api/subscriptions",
@@ -60,6 +58,8 @@ def _bootstrap_system_subscription(hub_api_url: str) -> None:
         )
         if resp.status_code < 400:
             logger.info("event=system_subscription_bootstrapped")
+            _deactivate_legacy_system_subscriptions(
+                hub_api_url, f"sys-action-required-{notify_target}")
         else:
             logger.warning(
                 "event=system_subscription_bootstrap_failed "
@@ -69,6 +69,30 @@ def _bootstrap_system_subscription(hub_api_url: str) -> None:
             )
     except Exception as exc:
         logger.warning("event=system_subscription_bootstrap_failed error=%s", exc)
+
+
+def _deactivate_legacy_system_subscriptions(hub_api_url: str, keep_id: str) -> None:
+    """Older installs keyed the system subscription by a hardcoded chat id
+    (sys-action-required-<id>). Turn those off so alerts are not sent twice."""
+    def _route(method: str, path: str, query: dict | None = None, body: dict | None = None):
+        return requests.post(
+            f"{hub_api_url}/route/archive/{path}",
+            json={"method": method, "headers": {}, "query": query or {},
+                  "body": body or {}, "timeout_seconds": 8},
+            timeout=10,
+        )
+    try:
+        resp = _route("GET", "api/subscriptions/active",
+                      query={"domain": "system", "event_type": "service.action_required"})
+        envelope = resp.json() if resp.status_code < 400 else {}
+        rows = envelope.get("payload") if isinstance(envelope, dict) else None
+        for row in rows if isinstance(rows, list) else []:
+            sub_id = str((row or {}).get("subscription_id") or "")
+            if sub_id.startswith("sys-action-required-") and sub_id != keep_id:
+                _route("PATCH", f"api/subscriptions/{sub_id}/active", body={"is_active": False})
+                logger.info("event=legacy_system_subscription_deactivated subscription_id=%s", sub_id)
+    except Exception as exc:
+        logger.warning("[🔄] event=legacy_system_subscription_cleanup_failed error=%s", exc)
 
 
 @app.on_event("startup")

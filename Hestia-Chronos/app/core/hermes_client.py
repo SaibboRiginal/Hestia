@@ -11,7 +11,8 @@ logger = logging.getLogger("hestia_chronos.hermes_client")
 
 _HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
-_NOTIFY_TARGET = os.getenv("NOTIFY_TARGET", "")
+# Notices go to the user ("owner"); the client (Telegram) decides which chat that is.
+_NOTIFY_TARGET = "owner"
 _TIMEOUT = 8
 
 

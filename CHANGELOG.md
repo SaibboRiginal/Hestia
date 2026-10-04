@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-04
+- MIT license. Owner's Telegram chat id now lives only in Telegram `ALLOWED_USER_ID`: Hermes/Chronos/Argus notify the `owner` alias that Telegram resolves (no id in compose or docs; old Hermes system subscription deactivated). [ext-chat]
 - Public README: badges, features, 5-step quick start (`tools/init_env.py` + new `.env.example` for Telegram/Scout, compose options added to the root one), configuration, architecture diagrams, roadmap, docs index. Old internal readme moved to `docs/ARCHITECTURE.md`, now the global-rules doc checked by the docs-sync gate. [ext-chat]
 - Public-repo secret scan (all branches, full history): no secrets found. Postgres password now from root `.env` (`HESTIA_DB_PASSWORD`, same default) and port 5432 bound to 127.0.0.1; new root `.env.example`. [ext-chat]
 - GitHub "Hestia Tests" workflow green again: CI installs the real test deps (httpx, pinned <0.28 for old-Starlette services), no fail-fast, test-less Swagger job dropped; stale tests fixed (Athena hardcoded date, Oracle two-line signal/notice output and ask(thinking=) mocks, Hecate OAuth wording and token-call lookup). [ext-chat]

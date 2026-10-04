@@ -37,6 +37,11 @@ Telegram must:
   command Forge to change Hestia's code.
 - Checked on every message handler and, centrally, on every button callback (`telegram_runtime._allowed`).
 
+### Owner notification alias
+- Services notify the user, not a chat: Hermes, Chronos and Argus send `target: "owner"` (no config). Telegram,
+  as the client, decides the chat: the first `ALLOWED_USER_ID` (`core.resolve_notify_target`). The chat id lives
+  only in `Hestia-Telegram/app/.env`. Single-user for now; more recipients would be the client's job.
+
 ### OAuth Paste Shortcut
 - If a message contains a URL with `/api/gateway/auth/callback/<provider>?code=...` (the page a phone
   cannot open at the end of Google consent), Telegram forwards it straight to Hecate
@@ -123,7 +128,7 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/dispatch/send` | Receive dispatch payloads from Hermes via Hub routing |
+| `POST` | `/api/dispatch/send` | Receive dispatch payloads from Hermes via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
 | `GET` | `/health` | Service health |
 
 ---

@@ -37,6 +37,20 @@ ALLOWED_USER_ID = os.getenv("ALLOWED_USER_ID")
 def is_allowed_user(user_id) -> bool:
     allowed = {x.strip() for x in str(ALLOWED_USER_ID or "").split(",") if x.strip()}
     return bool(allowed) and str(user_id) in allowed
+
+
+# Notification alias: other services send target "owner" (or nothing) and only
+# Telegram knows the real chat id (first ALLOWED_USER_ID). Keeps ids out of
+# compose files and other services' config.
+OWNER_TARGET_ALIAS = "owner"
+
+
+def resolve_notify_target(target) -> str:
+    value = str(target or "").strip()
+    if value and value.lower() != OWNER_TARGET_ALIAS:
+        return value
+    allowed = [x.strip() for x in str(ALLOWED_USER_ID or "").split(",") if x.strip()]
+    return allowed[0] if allowed else ""
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 HUB_API_URL = os.getenv(

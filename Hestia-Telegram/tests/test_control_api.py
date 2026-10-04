@@ -188,3 +188,29 @@ class TestControlApiDispatchSend:
         status, _ = handler.response()
         # Missing or empty target should return 400
         assert status in (400, 422)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notification target alias: only Telegram knows the owner's chat id
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+class TestOwnerTargetAlias:
+    def test_owner_and_empty_resolve_to_first_allowed_user(self, monkeypatch):
+        import telegram_bot.core as core_module
+        monkeypatch.setattr(core_module, "ALLOWED_USER_ID", "111, 222")
+        assert core_module.resolve_notify_target("owner") == "111"
+        assert core_module.resolve_notify_target("OWNER") == "111"
+        assert core_module.resolve_notify_target("") == "111"
+        assert core_module.resolve_notify_target(None) == "111"
+
+    def test_explicit_chat_id_is_kept(self, monkeypatch):
+        import telegram_bot.core as core_module
+        monkeypatch.setattr(core_module, "ALLOWED_USER_ID", "111")
+        assert core_module.resolve_notify_target("999") == "999"
+
+    def test_owner_without_allowed_users_is_unresolved(self, monkeypatch):
+        import telegram_bot.core as core_module
+        monkeypatch.setattr(core_module, "ALLOWED_USER_ID", "")
+        assert core_module.resolve_notify_target("owner") == ""
