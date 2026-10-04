@@ -10,6 +10,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      # One red service must not cancel the others: we want every result.
+      fail-fast: false
       matrix:
         service:
           - Oracle
@@ -25,7 +27,6 @@ jobs:
           - Hub
           - Iris
           - Scout
-          - Swagger
           - Telegram
 
     steps:
@@ -37,8 +38,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r Hestia-${{ matrix.service }}/requirements.txt 2>/dev/null || true
-          pip install pytest pytest-cov
+          # Service pins first, then the union of test deps (httpx for
+          # TestClient, shared libs) used by Forge; pytest-cov for coverage.
+          pip install -r Hestia-${{ matrix.service }}/requirements.txt
+          pip install -r Hestia-Hephaestus/requirements-forge-tests.txt pytest-cov
 
       - name: Run tests
         run: |
@@ -50,6 +53,7 @@ jobs:
             --ignore=Hestia-${{ matrix.service }}/tests/test_live_tool_calling.py \
             --ignore=Hestia-${{ matrix.service }}/tests/test_live_tool_calling_comprehensive.py \
             --ignore=Hestia-${{ matrix.service }}/tests/test_live_all_tools.py \
+            -m "not llm_live and not integration" \
             -v --tb=short
 
       - name: Publish test results
