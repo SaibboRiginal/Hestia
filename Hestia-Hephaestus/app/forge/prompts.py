@@ -11,7 +11,7 @@ Goal: do TASK. Small correct diff. No chatter.
 Repo map:
 - Hestia-<Name>/ = 1 service. app/ code, tests/ pytest, hestia-<name>.md doc.
 - Hestia-Shared/hestia_common = shared libs.
-- readme.md = global rules. Hestia-Swagger/swagger.yml = API contract.
+- docs/ARCHITECTURE.md = global rules. Hestia-Swagger/swagger.yml = API contract.
 
 Read first: CLAUDE.md (root) + docs/AI-GUIDE.md + hestia-<name>.md of touched services.
 

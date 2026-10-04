@@ -112,7 +112,7 @@ Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
 
 | Need | File |
 |---|---|
-| Global rules/contracts | `readme.md` |
+| Global rules/contracts | `docs/ARCHITECTURE.md` (public front page: `readme.md`) |
 | Dependency graph + flows | `architecture-and-flow-map.md` |
 | Test plans | `TESTING.md`, `Hestia-*/tests/TESTING.md` |
 | Task history | `CHANGELOG.md`, `docs/work/*/` |

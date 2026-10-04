@@ -3,7 +3,8 @@
 
 Rules enforced:
 1) If runtime behavior files change, documentation must also change.
-2) Root readme.md must be updated when behavior changes.
+2) Root rules doc docs/ARCHITECTURE.md must be updated when behavior changes
+   (readme.md is the public front page and is not gated).
 3) Each impacted service must update its service doc hestia-<service>.md.
 4) API-like changes should update Hestia-Swagger/swagger.yml.
 """
@@ -24,6 +25,7 @@ SERVICE_RE = re.compile(r"^(Hestia-[^/]+)/")
 DOC_ALWAYS = {
     ".github/copilot-instructions.md",
     "readme.md",
+    "docs/ARCHITECTURE.md",
     "Hestia-Swagger/swagger.yml",
     "architecture-and-flow-map.md",
 }
@@ -45,6 +47,9 @@ NON_BEHAVIOR_SUFFIXES = (
     ".webp",
     ".svg",
 )
+
+# Global rules/contracts live here (moved out of the public readme.md on 2026-10-04).
+RULES_DOC = "docs/ARCHITECTURE.md"
 
 TOPOLOGY_EXCLUDE = {
     "Hestia-Swagger",
@@ -139,9 +144,9 @@ def expected_service_folders() -> list[str]:
 
 
 def check_readme_topology_coverage() -> list[str]:
-    readme_path = ROOT / "readme.md"
+    readme_path = ROOT / RULES_DOC
     if not readme_path.exists():
-        return ["readme.md is missing."]
+        return [f"{RULES_DOC} is missing."]
 
     content = readme_path.read_text(encoding="utf-8", errors="ignore").lower()
     missing = [
@@ -150,7 +155,7 @@ def check_readme_topology_coverage() -> list[str]:
         if folder.lower() not in content
     ]
     return [
-        "readme.md topology is missing service references: "
+        f"{RULES_DOC} topology is missing service references: "
         + ", ".join(missing)
     ] if missing else []
 
@@ -176,9 +181,9 @@ def main() -> int:
 
     errors: list[str] = []
 
-    if "readme.md" not in changed_set:
+    if RULES_DOC not in changed_set:
         errors.append(
-            "Behavior changes detected but readme.md was not updated.")
+            f"Behavior changes detected but {RULES_DOC} was not updated.")
     else:
         errors.extend(check_readme_topology_coverage())
 

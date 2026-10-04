@@ -22,7 +22,7 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
 5. Root `CHANGELOG.md` — one line per finished task under the date, ending with the source tag
    `[ext-chat]` · `[forge:<task>]` · `[ai]`.
 6. Docs follow code: behaviour change → `Hestia-<Name>/hestia-<name>.md`; endpoint change →
-   `Hestia-Swagger/swagger.yml`; env change → `.env.example` + compose comments; global rule → `readme.md`.
+   `Hestia-Swagger/swagger.yml`; env change → `.env.example` + compose comments; global rule → `docs/ARCHITECTURE.md`.
 
 ## Non-negotiable rules
 
