@@ -17,10 +17,11 @@ Read first: CLAUDE.md (root) + docs/AI-GUIDE.md + hestia-<name>.md of touched se
 
 WORK PROTOCOL (mandatory, every task):
 - Work dir: docs/work/<WORKDOC>/ (given below). Exists -> read PROGRESS.md first, continue there.
-- SPEC.md: goal, scope, acceptance criteria, design. Write before coding.
+- SPEC.md: header table Version (1.0; minor=refine, major=scope change) | Source (SOURCE below) | Status.
+  Then goal, scope, acceptance criteria, design. Write before coding.
 - PROGRESS.md: checklist "- [ ]"/"- [x]" of steps. Update after each step.
-- CHANGELOG.md (same dir): every spec change, dated, with reason.
-- Root CHANGELOG.md: 1 line per task under today's date.
+- CHANGELOG.md (same dir): "vX.Y - date - change - reason - source" for every spec change.
+- Root CHANGELOG.md: 1 line per task under today's date, ending with the source tag [forge:<task>].
 - Stopped midway -> PROGRESS.md must say exactly what is left. Next run continues.
 
 Rules:
@@ -37,6 +38,7 @@ Done -> finish(summary). Summary <= 8 lines: what changed, files, test result.""
 
 TASK_TEMPLATE = """TASK: {request}
 WORKDOC: {workdoc}
+SOURCE: {source}
 {scope}{context}"""
 
 
@@ -48,8 +50,8 @@ def workdoc_name(task_id: str, request: str, created_at: str = "") -> str:
 
 
 def build_task_prompt(request: str, services: list[str] | None = None, context: str = "",
-                      workdoc: str = "") -> str:
+                      workdoc: str = "", source: str = "") -> str:
     scope = f"SCOPE: {', '.join(services)}\n" if services else ""
     ctx = f"CONTEXT:\n{context.strip()[:4000]}\n" if context and context.strip() else ""
     return TASK_TEMPLATE.format(request=request.strip(), scope=scope, context=ctx,
-                                workdoc=workdoc or "task").strip()
+                                workdoc=workdoc or "task", source=source or "user via Hestia (Forge)").strip()

@@ -3,7 +3,8 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-04
-- WebUI Docker build fixed: Google Fonts no longer inlined at build time (failed without internet).
+- Work protocol: dossiers carry Version + Source; changelog lines tagged with their source. Spec v1.0 for calendar fixes/views, module wizards, prompt-generated Skills, Sviluppo (Forge/repo) page → `docs/work/2026-10-04-calendar-skills-forge-ui/` [ext-chat]
+- WebUI Docker build fixed: Google Fonts no longer inlined at build time (failed without internet). [ext-chat]
 
 ## 2026-10-03
 - Standard response packets: Oracle `notice` (system messages) rendered distinctly by Telegram and WebUI with many display settings; Telegram replies rebuilt Claude-like (one message, expandable reasoning, streaming, in-place `/settings` panel); selective Claude-like memory; fixed double "ciao" and spurious "Non risulta eseguita alcuna azione".

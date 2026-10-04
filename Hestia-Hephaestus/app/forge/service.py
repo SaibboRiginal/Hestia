@@ -564,7 +564,9 @@ class Forge:
         workdoc = task.get("workdoc") or workdoc_name(task["id"], task["request"], task.get("created_at", ""))
         with self._lock:
             task["workdoc"] = workdoc
-        prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""), workdoc)
+        src = (f"{task.get('requested_by') or 'user'} via {task.get('source') or 'hestia'} "
+               f"-> Forge task {task['id']} [forge:{task['id']}]")
+        prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""), workdoc, src)
         t0 = time.perf_counter()
         result = engine.run(worktree, prompt, test_runner)
         if engine.name == "claude" and not result.ok and self.claude_budget.looks_like_limit(

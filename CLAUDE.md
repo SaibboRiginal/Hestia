@@ -12,11 +12,15 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
 
 1. `docs/work/<YYYY-MM-DD>-<slug>[-<taskid6>]/` (Forge gives you the name as `WORKDOC`).
    If it exists, **read `PROGRESS.md` first and continue from there**.
-2. `SPEC.md` — goal, scope, acceptance criteria, design decisions. Written **before** coding.
+2. `SPEC.md` — header table **Version** (1.0; minor = refinement, major = scope/design change) ·
+   **Source** (where the request came from: user via external chat · user via Telegram/WebUI → Forge task
+   `<id>` · Hestia AI proactive) · **Status**. Then goal, scope, acceptance criteria, design decisions.
+   Written **before** coding.
 3. `PROGRESS.md` — checklist `- [ ]` / `- [x]`; update after every step. If you stop midway it must
    say exactly what is left, so the next run (or another model) can resume.
-4. `CHANGELOG.md` in the same folder — every change of the spec, dated, with the reason.
-5. Root `CHANGELOG.md` — one line per finished task under the date.
+4. `CHANGELOG.md` in the same folder — every change of the spec: `vX.Y — date — change — reason — source`.
+5. Root `CHANGELOG.md` — one line per finished task under the date, ending with the source tag
+   `[ext-chat]` · `[forge:<task>]` · `[ai]`.
 6. Docs follow code: behaviour change → `Hestia-<Name>/hestia-<name>.md`; endpoint change →
    `Hestia-Swagger/swagger.yml`; env change → `.env.example` + compose comments; global rule → `readme.md`.
 
