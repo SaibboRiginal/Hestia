@@ -90,9 +90,11 @@ _SAMPLE_COMMANDS = [
 def _collect_ndjson_lines(generator) -> list[dict]:
     """Consume all NDJSON lines from a generator and parse each."""
     lines = []
-    for ndjson_line in generator:
-        if ndjson_line and ndjson_line.strip():
-            lines.append(json.loads(ndjson_line))
+    for chunk in generator:
+        # One chunk may carry several lines (emit_signal appends its notice line).
+        for ndjson_line in (chunk or "").splitlines():
+            if ndjson_line.strip():
+                lines.append(json.loads(ndjson_line))
     return lines
 
 
@@ -376,7 +378,9 @@ class TestChatActionIntent:
         captured_prompts = []
         # generic handles classify AND chat — first call returns JSON, rest are text
         call_count = [0]
-        def _smart_ask(prompt):
+        # Agents are called as ask(prompt, thinking=...): accept kwargs or the
+        # classifier call raises and silently falls back to defaults.
+        def _smart_ask(prompt, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 return _action_domain_query_json()  # classifier call
@@ -751,7 +755,7 @@ class TestTemporalContext:
 
         # Capture what gets sent to the analyst
         captured = []
-        def _capture(prompt):
+        def _capture(prompt, **kwargs):
             captured.append(prompt)
             return "Done."
         engine._agents.generic.ask.side_effect = _capture

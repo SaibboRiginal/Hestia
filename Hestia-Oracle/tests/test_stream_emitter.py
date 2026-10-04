@@ -176,7 +176,13 @@ class TestEmitSignal:
             message="Preferenza salvata!",
             data={"fact": "User likes Roma", "domain": "scout"},
         )
-        data = json.loads(line)
+        # User-facing signals are followed by their standard notice line.
+        signal_line, notice_line = line.splitlines()
+        data = json.loads(signal_line)
+        notice = json.loads(notice_line)
+        assert notice["type"] == "notice"
+        assert notice["kind"] == "memory.saved"
+        assert notice["detail"] == "User likes Roma"
         assert data["type"] == "signal"
         assert data["event"] == "memory.preference.added"
         assert data["content"] == "Preferenza salvata!"

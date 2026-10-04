@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-04
+- GitHub "Hestia Tests" workflow green again: CI installs the real test deps (httpx, pinned <0.28 for old-Starlette services), no fail-fast, test-less Swagger job dropped; stale tests fixed (Athena hardcoded date, Oracle two-line signal/notice output and ask(thinking=) mocks). [ext-chat]
 - "Crea con Hestia": assistant drawer from every page (Ctrl+J, calendar, Sviluppo, Comandi) with page context; more agenda tools, live refresh on agenda/Forge notices, generic agenda links with cascade cancel/error (used by Forge), Hestia proposes a Forge task when no tool can do it. Calendar extras: quick add in natural language, module logs per occurrence, ICS feed for phones, working-hours shading. [ext-chat]
 - WebUI "Sviluppo" page (Codex/Claude Code style): Forge tasks with the full engine conversation (live for Claude Code), files, diff, dossier, tests, logs, follow-up and retry; read-only repository browser (commit graph, commits, files, branches, compare, tags, dossiers). New Hephaestus `/forge/tasks/{id}/*` and `/repo/*` endpoints. [ext-chat]
 - Calendar "Da un modulo…" wizard: modules declare creatable items (templates) via the agenda client; Scout, Athena, Argus, Forge ship the first ones. [ext-chat]

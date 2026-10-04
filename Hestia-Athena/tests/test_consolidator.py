@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
@@ -175,9 +176,11 @@ class TestDecayPreferences:
 
     def test_decay_no_old_preferences(self, consolidator):
         """Recent preferences should not be decayed."""
+        # Relative date: a hardcoded one ages past the 90-day window and the test rots.
+        fresh = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S")
         recent = [
             {"id": 1, "fact": "Recent pref", "weight": 1.0,
-             "created_at": "2026-06-15T00:00:00", "updated_at": "2026-06-15T00:00:00"},
+             "created_at": fresh, "updated_at": fresh},
         ]
         with patch("core.consolidator.requests") as mock_req:
             mock_req.patch.return_value.status_code = 200
