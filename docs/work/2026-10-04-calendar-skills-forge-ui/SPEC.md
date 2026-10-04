@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, not Forge, not Hestia's own AI) · 2026-10-04 |
 | **Status** | A in progress |
 | **Order** | A → B (design + core) → C → D (process, done with this spec) |
@@ -29,7 +29,7 @@ diff, changes) + a new menu page like a git/repo browser (branches, changes…),
 
 ### A1. Navigation bugs
 - **Mini calendar**: clicking a day must move the main view to that day (day view → that day; week →
-  its week; month → its month) and highlight it. Reported: nothing happens. Root cause to be confirmed by
+  its week; month → **opens the day view**, v2.1) and highlight it. Reported: nothing happens. Root cause to be confirmed by
   reproduction (Playwright, mocked API); fix + keep mini month in sync with the anchor.
 - **Header arrows** step by the current view (day ±1 day, week ±7, month ±1 month, list ±30 days).
   Labels/tooltips say exactly what they do ("Giorno precedente", "Settimana successiva"…). The mini
@@ -84,7 +84,7 @@ distance. New **policy** (setting "Vista focalizzata", default on; off = show ev
 - Needs per-occurrence run results → Chronos keeps a capped run log (A8).
 
 ### A6. Calendar settings
-"Vista" popover in the calendar header (and mirrored in Impostazioni): windows mode, frequent mode,
+"Vista" popover in the calendar header (v2.1: only there — calendar-specific, one place): windows mode, frequent mode,
 focused view + thresholds, past policy, scroll-to hour / working hours highlight, week numbers,
 show weekends. Stored per browser (localStorage). Time format fixed 24h, week starts Monday.
 

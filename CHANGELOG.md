@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-04
+- Calendar: month-view navigation fix, 24h-only date/time fields, window lanes with visible time range, compact frequent rules, focused view (horizon/past rules), Vista popover; Chronos per-occurrence run log. [ext-chat]
 - Work protocol: dossiers carry Version + Source; changelog lines tagged with their source. Spec v1.0 for calendar fixes/views, module wizards, prompt-generated Skills, Sviluppo (Forge/repo) page → `docs/work/2026-10-04-calendar-skills-forge-ui/` [ext-chat]
 - WebUI Docker build fixed: Google Fonts no longer inlined at build time (failed without internet). [ext-chat]
 

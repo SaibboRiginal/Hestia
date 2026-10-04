@@ -30,7 +30,8 @@ export const fmt = {
   dayShort: (d: Date) => cap(d.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric' })),
   weekdayShort: (d: Date) => cap(d.toLocaleDateString(LOCALE, { weekday: 'short' })),
   dayMonth: (d: Date) => d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }),
-  time: (d: Date) => d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }),
+  /** Always 24h HH:mm, whatever the browser/OS locale (user rule). */
+  time: (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
   dateTime: (d: Date) => `${d.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })} ${fmt.time(d)}`,
   relative: (d: Date) => {
     const diff = Math.round((d.getTime() - Date.now()) / 60_000);

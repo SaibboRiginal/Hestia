@@ -3442,8 +3442,11 @@ paths:
         - {name: owner, in: query, schema: {type: string}}
         - {name: type, in: query, schema: {type: string, enum: [event, task, job, window]}}
         - {name: past_hours, in: query, schema: {type: integer, default: 0}}
+        - {name: start, in: query, schema: {type: string, format: date-time}, description: "Range start (with end, replaces days)"}
+        - {name: end, in: query, schema: {type: string, format: date-time}}
+        - {name: include_done, in: query, schema: {type: boolean, default: false}}
       responses:
-        "200": {description: "{from, days, count, occurrences[{item_id, key, type, owner, title, start, end, occurrence, skipped}]}"}
+        "200": {description: "{from, days, count, occurrences[{item_id, key, type, owner, title, start, end, occurrence, skipped, moved, status, recurring, created_by, run:{ok, detail, at, duration_ms}|null}]} — run = result of that occurrence (Chronos per-occurrence run log, last 50 per item)"}
 
   /api/agenda/items:
     get:

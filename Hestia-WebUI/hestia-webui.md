@@ -79,6 +79,23 @@ move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "wh
 **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
+### Calendar view rules (2026-10-04, `features/calendar/calendar.prefs.ts`)
+
+- **Navigation**: header arrows step by view (tooltip says "Giorno/Settimana/Mese precedente"); mini calendar →
+  focuses that day (highlighted in every view; from month view it opens the day view, otherwise nothing visible
+  would change); day headers / day numbers open the day.
+- **24h only**: `fmt.time` = `HH:mm` regardless of locale; the editor uses kit `hx-date`/`hx-time`/`hx-datetime`
+  (never native `datetime-local`, which shows AM/PM on en-US systems).
+- **Windows** (Vista → Finestre): *corsia* (default: striped strip at the column edge spanning exactly the hours,
+  label "01:00–07:00 …" that sticks to the top while scrolling, faint tint across the column, click = details with a
+  plain-language explanation), *banda* (full-width band), *nascoste*.
+- **Frequent rules** (≥ N runs/day from the RRULE, default 3): *compatte* (one "Ricorrenti" chip per rule per day,
+  popover lists every time with ok/failed), *complete*, *nascoste*. Failed runs are never compacted.
+- **Focused view** (default on, Vista popover; "N nascoste" bar with *Mostra tutto*): manual items always; the
+  focused day shows everything; frequent rules next 7 days; rare rules next 3 occurrences or 7 days (first
+  reached); one-off module items always; past module items only when failed, last 7 days, one per rule
+  ("fallito ×N"). All thresholds editable; stored per browser with the other calendar prefs.
+
 ### Chat features
 
 - **Oracle questions**: `question` frames (free_text / single_choice / multi_choice / confirm, options as strings or

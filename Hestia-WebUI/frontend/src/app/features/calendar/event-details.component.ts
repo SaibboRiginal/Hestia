@@ -6,6 +6,13 @@ import { BadgeComponent, ButtonComponent, IconComponent, MenuComponent, MenuItem
 
 export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resume' | 'cancel' | 'restore' | 'reset-move' | 'duplicate';
 
+/** Plain-language meaning of a window, by module (fallback: generic). */
+const WINDOW_TEXT: Record<string, string> = {
+  athena: 'Athena può lavorare (consolidare memoria, analisi) solo in questo intervallo, di solito quando sei inattivo. Fuori dalla finestra non parte.',
+  metis: 'Metis può addestrare i modelli solo in questo intervallo, per non rallentare il PC mentre lo usi.',
+  hephaestus: 'Forge può usare il motore indicato (es. Claude Pro) solo in questo intervallo.',
+};
+
 /** Content of the event popover: everything about one occurrence + its rule, with actions. */
 @Component({
   selector: 'cal-event-details',
@@ -26,6 +33,25 @@ export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resum
       <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi" (click)="close.emit()"></button>
     </div>
 
+    @if (e.group?.length) {
+      <div class="grp">
+        <div class="grp-h">{{ e.group!.length }} esecuzioni il {{ day() }} · {{ rule() }}</div>
+        <div class="grp-l">
+          @for (g of e.group!; track g.id) {
+            <button class="gi" [class.ko]="g.occ.run?.ok === false" [class.ok]="g.occ.run?.ok === true" [class.sk]="g.occ.skipped"
+                    (click)="pick.emit(g)" [attr.title]="g.occ.run ? (g.occ.run.ok ? 'ok' : 'fallita: ' + (g.occ.run.detail || '')) : 'non ancora eseguita'">
+              {{ t(g.start) }}
+            </button>
+          }
+        </div>
+        <div class="grp-n">Clic su un orario per aprire quella singola esecuzione.</div>
+      </div>
+    }
+
+    @if (e.occ.type === 'window') {
+      <p class="explain"><hx-icon name="window" [size]="14" /> <span><b>Finestra {{ t(e.start) }}–{{ e.end ? t(e.end) : '' }}.</b> {{ windowText() }}</span></p>
+    }
+
     <div class="badges">
       <hx-badge [color]="e.color" dot>{{ owner() }}</hx-badge>
       <hx-badge><hx-icon [name]="typeMeta().icon" [size]="11" /> {{ typeMeta().label }}</hx-badge>
@@ -42,10 +68,16 @@ export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resum
         <dt><hx-icon name="zap" [size]="14" /></dt>
         <dd><code>{{ a.method || 'POST' }} {{ a.service }}{{ a.path }}</code></dd>
       }
-      @if (e.item?.last_result; as r) {
+      @if (e.occ.run; as r) {
         <dt><hx-icon [name]="r.ok ? 'check' : 'alert'" [size]="14" /></dt>
-        <dd [class.err]="!r.ok">Ultima esecuzione {{ rel(r.at) }}: {{ r.ok ? 'ok' : 'fallita' }}
-          @if (!r.ok) { <span class="detail">{{ r.detail }}</span> }</dd>
+        <dd [class.err]="!r.ok">Questa esecuzione: {{ r.ok ? 'ok' : 'fallita' }}{{ r.duration_ms ? ' · ' + r.duration_ms + ' ms' : '' }}
+          @if ((e.failedCount ?? 0) > 1) { · fallita {{ e.failedCount }} volte negli ultimi giorni }
+          @if (!r.ok && r.detail) { <span class="detail">{{ r.detail }}</span> }</dd>
+      } @else if (e.item?.last_result) {
+        @let lr = e.item!.last_result!;
+        <dt><hx-icon [name]="lr.ok ? 'check' : 'alert'" [size]="14" /></dt>
+        <dd [class.err]="!lr.ok">Ultima esecuzione della regola {{ rel(lr.at) }}: {{ lr.ok ? 'ok' : 'fallita' }}
+          @if (!lr.ok) { <span class="detail">{{ lr.detail }}</span> }</dd>
       }
       <dt><hx-icon name="info" [size]="14" /></dt><dd class="key"><code>{{ e.occ.key }}</code></dd>
     </dl>
@@ -81,12 +113,23 @@ export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resum
     .err { color: var(--danger); }
     .detail { display: block; color: var(--text-3); font-size: 12px; }
     .key code { font-size: 11.5px; }
+    .grp { margin: 10px 0 4px 20px; }
+    .grp-h { font-size: 12.5px; color: var(--text-2); margin-bottom: 6px; }
+    .grp-l { display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow-y: auto; }
+    .gi { font-size: 11.5px; font-variant-numeric: tabular-nums; padding: 2px 7px; border-radius: var(--radius-full); background: var(--surface-2); color: var(--text-2); }
+    .gi:hover { background: var(--surface-3); color: var(--text); }
+    .gi.ok { box-shadow: inset 0 -2px 0 var(--success); } .gi.ko { background: var(--danger-soft); color: var(--danger); } .gi.sk { text-decoration: line-through; opacity: .6; }
+    .grp-n { font-size: 11.5px; color: var(--text-3); margin-top: 5px; }
+    .explain { display: flex; gap: 7px; margin: 10px 0 2px 20px; font-size: 13px; color: var(--text-2); line-height: 1.45; }
+    .explain hx-icon { color: var(--c, var(--accent)); margin-top: 2px; flex-shrink: 0; }
     .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-left: 20px; }
   `],
 })
 export class EventDetailsComponent {
   ev = input.required<CalEvent>();
   act = output<DetailAction>();
+  /** A single occurrence picked from a summary chip's list. */
+  pick = output<CalEvent>();
   close = output<void>();
 
   typeMeta = computed(() => TYPE_META[this.ev().occ.type] ?? TYPE_META.event);
@@ -118,4 +161,8 @@ export class EventDetailsComponent {
   });
 
   rel(iso: string) { return fmt.relative(new Date(iso)); }
+  t = (d: Date) => fmt.time(d);
+  day = computed(() => fmt.dayLong(this.ev().start));
+  windowText = computed(() => WINDOW_TEXT[this.ev().occ.owner]
+    ?? `${ownerLabel(this.ev().occ.owner)} può lavorare solo in questo intervallo; fuori dalla finestra le sue attività aspettano.`);
 }

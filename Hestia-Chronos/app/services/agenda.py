@@ -83,13 +83,14 @@ def _to_item(row: dict) -> dict:
         "created_by": meta.get("created_by") or "user",
         "last_fired": meta.get("last_fired"),
         "last_result": meta.get("last_result"),
+        "runs": meta.get("runs") or [],
         "attempts": int(meta.get("attempts") or 0),
     }
 
 
 def _save(item: dict) -> dict:
     meta_keys = ("type", "owner", "tz", "action", "params", "skips", "overrides", "user_modified",
-                 "created_by", "last_fired", "last_result", "attempts")
+                 "created_by", "last_fired", "last_result", "runs", "attempts")
     payload = {
         "external_id": item["key"],
         "source": SOURCE,
@@ -161,6 +162,7 @@ def occurrences(item: dict, start: datetime, end: datetime) -> list[dict]:
     duration = (last_end - first) if last_end else timedelta(0)
     skips = set(item.get("skips") or [])
     overrides = item.get("overrides") or {}
+    runs = {r.get("occurrence"): r for r in (item.get("runs") or []) if isinstance(r, dict)}
     out: list[dict] = []
     # Moved occurrences ("only this one") may come from outside [start, end): widen the base scan.
     pad = timedelta(days=8) if overrides else timedelta(0)
@@ -188,8 +190,28 @@ def occurrences(item: dict, start: datetime, end: datetime) -> list[dict]:
                     "owner": item["owner"], "title": item["title"],
                     "start": s.isoformat(), "end": e.isoformat() if has_len else None,
                     "occurrence": key, "skipped": key in skips, "moved": bool(moved),
-                    "status": item.get("status"), "recurring": bool(item.get("recurrence"))})
+                    "status": item.get("status"), "recurring": bool(item.get("recurrence")),
+                    "created_by": item.get("created_by") or "user",
+                    "run": _run_view(runs.get(key))})
     return out
+
+
+_RUNS_KEEP = 50
+
+
+def _run_view(run: dict | None) -> dict | None:
+    if not run:
+        return None
+    return {"ok": bool(run.get("ok")), "detail": run.get("detail"), "at": run.get("at"),
+            "duration_ms": run.get("duration_ms")}
+
+
+def _record_run(item: dict, occurrence: str | None, ok: bool, detail: str, at: str, by: str,
+                duration_ms: int | None = None) -> None:
+    """Per-occurrence run log (capped): the calendar shows ok/failed per occurrence."""
+    run = {"occurrence": occurrence or f"manual:{at}", "ok": ok, "detail": detail, "at": at, "by": by,
+           "duration_ms": duration_ms}
+    item["runs"] = ([r for r in (item.get("runs") or []) if isinstance(r, dict)] + [run])[-_RUNS_KEEP:]
 
 
 def agenda(start: datetime, end: datetime, owner: str | None = None, type_: str | None = None,
@@ -410,10 +432,14 @@ def run_now(ref: str | int, by: str = "user") -> dict:
     item = get(ref)
     if not item.get("action"):
         raise AgendaError("item has no action to run")
+    t0 = time.perf_counter()
     ok, detail = _fire(item["action"])
+    ms = int((time.perf_counter() - t0) * 1000)
     with _lock:
         item = get(ref)
-        item["last_result"] = {"ok": ok, "detail": detail, "at": datetime.now(timezone.utc).isoformat(), "by": by}
+        at = datetime.now(timezone.utc).isoformat()
+        item["last_result"] = {"ok": ok, "detail": detail, "at": at, "by": by}
+        _record_run(item, None, ok, detail, at, by, ms)
         _save(item)
     return {"ok": ok, "detail": detail}
 
@@ -432,13 +458,16 @@ def tick(now: datetime | None = None) -> dict:
                    if not o["skipped"] and since < _parse(o["start"], "UTC") <= now]
             if not item.get("recurrence"):
                 start = _parse(item["start_at"], item["tz"])
-                due = [] if start > now or item["last_fired"] else [{"occurrence": start.isoformat()}]
+                due = [] if start > now or item["last_fired"] else [{"occurrence": start.astimezone(timezone.utc).isoformat()}]
             if not due:
                 continue
+            t0 = time.perf_counter()
             ok, detail = _fire(item["action"])
+            ms = int((time.perf_counter() - t0) * 1000)
             with _lock:
                 fresh = get(item["id"])
                 fresh["last_result"] = {"ok": ok, "detail": detail, "at": now.isoformat()}
+                _record_run(fresh, str(due[-1].get("occurrence") or ""), ok, detail, now.isoformat(), "agenda", ms)
                 if ok or fresh.get("recurrence"):
                     fresh["last_fired"] = now.isoformat()
                     fresh["attempts"] = 0

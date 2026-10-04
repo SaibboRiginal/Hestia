@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { AgendaItem, AgendaType, TYPE_META } from './calendar.models';
 import { WEEKDAYS, WEEKDAY_LABELS, addMinutes, fromLocalInput, toLocalInput } from './date-utils';
 import { Freq, RepeatModel, buildRRule, describeRRule, emptyRepeat, parseRRule } from './rrule';
-import { ButtonComponent, FieldComponent, ModalComponent, SegmentedComponent, SegmentOption } from '../../ui';
+import { ButtonComponent, DateFieldComponent, DateTimeFieldComponent, FieldComponent, ModalComponent, SegmentedComponent, SegmentOption } from '../../ui';
 
 export interface EditorSeed { start: Date; end?: Date | null; type?: AgendaType; item?: AgendaItem; duplicate?: boolean; }
 export interface EditorResult { key?: string; body: Record<string, unknown>; }
@@ -11,7 +11,7 @@ export interface EditorResult { key?: string; body: Record<string, unknown>; }
 /** Create / edit an agenda item (title, type, time, recurrence, description, action). */
 @Component({
   selector: 'cal-event-editor',
-  imports: [FormsModule, ModalComponent, ButtonComponent, FieldComponent, SegmentedComponent],
+  imports: [FormsModule, ModalComponent, ButtonComponent, FieldComponent, SegmentedComponent, DateFieldComponent, DateTimeFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-modal [open]="!!seed()" [title]="editing() ? 'Modifica voce' : 'Nuova voce in agenda'" size="lg" (closed)="cancel.emit()">
@@ -26,11 +26,11 @@ export interface EditorResult { key?: string; body: Record<string, unknown>; }
 
         <div class="row2">
           <hx-field [label]="startLabel()" [required]="true" [error]="errors().start" [hint]="startHint()">
-            <input class="hx-input" type="datetime-local" name="start" [(ngModel)]="startStr" (ngModelChange)="onStart($event)" />
+            <hx-datetime [value]="startStr" (valueChange)="onStart($event); startStr = $event" />
           </hx-field>
           @if (needsEnd()) {
             <hx-field label="Fine" [required]="type() === 'window'" [error]="errors().end">
-              <input class="hx-input" type="datetime-local" name="end" [(ngModel)]="endStr" />
+              <hx-datetime [value]="endStr" (valueChange)="endStr = $event" />
             </hx-field>
           }
         </div>
@@ -68,7 +68,7 @@ export interface EditorResult { key?: string; body: Record<string, unknown>; }
           @if (rep().freq !== 'none' && rep().freq !== 'custom') {
             <div class="rep end">
               <label class="inl">Fine:
-                <input class="hx-input" type="date" name="until" [ngModel]="rep().until" (ngModelChange)="patchRep({ until: $event, count: null })" />
+                <hx-date [value]="rep().until || ''" (valueChange)="patchRep({ until: $event, count: null })" />
               </label>
               <label class="inl">oppure dopo
                 <input class="hx-input num" type="number" min="1" name="count" [ngModel]="rep().count"

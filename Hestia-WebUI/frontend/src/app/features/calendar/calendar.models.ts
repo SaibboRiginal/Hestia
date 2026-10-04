@@ -32,8 +32,12 @@ export interface AgendaItem {
   created_by: string;
   last_fired?: string | null;
   last_result?: { ok: boolean; detail: string; at: string; by?: string } | null;
+  runs?: { occurrence: string; ok: boolean; detail: string; at: string; by?: string; duration_ms?: number | null }[];
   attempts: number;
 }
+
+/** Result of the run of one occurrence (Chronos per-occurrence run log). */
+export interface OccurrenceRun { ok: boolean; detail?: string | null; at?: string | null; duration_ms?: number | null; }
 
 export interface AgendaOccurrence {
   item_id: number;
@@ -48,7 +52,12 @@ export interface AgendaOccurrence {
   moved?: boolean;
   status?: AgendaStatus;
   recurring?: boolean;
+  created_by?: string;
+  run?: OccurrenceRun | null;
 }
+
+/** How the visibility policy classifies an item (see calendar.prefs.ts). */
+export type EventClass = 'manual' | 'frequent' | 'rare' | 'oneoff';
 
 /** View model: one occurrence + its rule, ready to draw. */
 export interface CalEvent {
@@ -59,6 +68,11 @@ export interface CalEvent {
   end: Date | null;         // null = instant (job/task/event without duration)
   color: string;
   source: string;           // layer id ('hestia' now; external calendars later)
+  cls?: EventClass;
+  /** Past failures of the same rule collapsed into this one (dedupe), e.g. 3 → "fallito ×3". */
+  failedCount?: number;
+  /** Summary chip of a frequent rule on one day: every occurrence it stands for. */
+  group?: CalEvent[];
 }
 
 /**

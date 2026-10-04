@@ -10,7 +10,7 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
    already exist (`src/app/ui`). New generic widget → add it to the kit (+ this file), not inside a feature.
 3. One feature = one folder `src/app/features/<name>/` + one line in `src/app/app.modules.ts`.
 4. Data comes from the WebUI backend (`/api/webui/...`), which talks to services **only via Hub**.
-5. Italian UI copy, short and concrete. Icons from `<hx-icon>`.
+5. Italian UI copy, short and concrete. Icons from `<hx-icon>`. Times always 24h (`fmt.time`).
 6. Must work at 390 px (phone) and in light + dark themes. Check both.
 7. `npx ng build` must pass with **no warnings** before committing.
 8. No build-time network: web fonts are a `<link>` in `index.html` and `fonts.inline=false` in
@@ -46,6 +46,7 @@ Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 | `.hx-input`, `.hx-select`, `.hx-textarea`, `.hx-check` (+ `.mono`) | global form classes |
 | `<hx-field label hint error required>` | label/hint/error wrapper around a control |
 | `<hx-toggle [(checked)] label (changed)>` | switch |
+| `<hx-date [(value)]>` · `<hx-time [(value)]>` · `<hx-datetime [(value)]>` | Italian date `gg/mm/aaaa` (+ picker) and **24h** time; values `YYYY-MM-DD`, `HH:mm`, `YYYY-MM-DDTHH:mm`. Never use native `datetime-local` / `time` (AM/PM on en-US OS) |
 | `<hx-segmented [options] [(value)] (changed)>` | segmented control (`{value,label,icon,title}`) |
 | `<hx-badge tone dot color>` | tones `neutral · accent · success · danger · warning · info` |
 | `<hx-spinner size>` / `<hx-empty icon title>` | loading / empty state |

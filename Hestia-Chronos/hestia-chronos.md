@@ -204,7 +204,7 @@ Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/agenda?days=7&owner=&type=&past_hours=` or `?start=&end=&include_done=` | Expanded occurrences (`skipped`, `moved`, `status`, `recurring`) |
+| GET | `/api/agenda?days=7&owner=&type=&past_hours=` or `?start=&end=&include_done=` | Expanded occurrences (`skipped`, `moved`, `status`, `recurring`, `created_by`, `run`) |
 | GET | `/api/agenda/items` | Raw items (`include_cancelled`) |
 | POST | `/api/agenda/items` | Create (on demand) `{title, type, owner, start_at, end_at, recurrence, description, action, key, params, tz}` |
 | POST | `/api/agenda/register` | Module defaults (idempotent, user edits preserved) |
@@ -215,6 +215,10 @@ Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`
 | POST | `/api/agenda/items/{ref}/run` | Execute the action now |
 | GET | `/api/agenda/windows/{key}` | Window open now? |
 | POST | `/api/agenda/items/{ref}/move` | Move ONE occurrence `{occurrence, start_at, end_at?, reset?}` (exception kept in `meta.overrides`, same key → modules/jobs follow it); one-off items move entirely |
+
+**Run log**: every execution (tick or "run now") is appended to `meta.runs` (last 50:
+`{occurrence, ok, detail, at, by, duration_ms}`); occurrences expose `run` so the calendar shows ok/failed per
+occurrence and can keep past failures visible. `last_result` stays (last run of the rule).
 
 `ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi`,
 `agenda_assistente_sposta`, `agenda_assistente_salta`, `agenda_assistente_annulla`, `agenda_assistente_esegui`.

@@ -8,3 +8,7 @@
   agenda items. A2: window time range must stay visible in hour views. C2: Codex/Claude-like layout
   (chat + files/diff/branch/md panels). Manual items always visible (A5 confirmed). — reason: user
   feedback on v1.0 — source: user via external chat.
+- v2.1 — 2026-10-04 — A1: mini-calendar click from month view opens the day view (root cause: in month view a
+  click inside the same month changed nothing visible); A6: calendar settings live only in the calendar "Vista"
+  popover (not mirrored in Impostazioni) — reason: implementation, one place for calendar-specific options —
+  source: AI (implementation decision, ext-chat session).

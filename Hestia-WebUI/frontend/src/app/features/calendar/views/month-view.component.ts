@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CalEvent, TYPE_META } from '../calendar.models';
-import { DAY_MS, addDays, dayKey, fmt, isToday, monthGrid, startOfDay } from '../date-utils';
+import { DAY_MS, addDays, dayKey, fmt, isSameDay, isToday, monthGrid, startOfDay } from '../date-utils';
 
 import { MoveRequest, SelectRequest } from './time-grid.component';
 
@@ -17,16 +17,17 @@ const WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
     <div class="grid">
       @for (d of cells(); track d.getTime()) {
         <div class="cell" [class.out]="d.getMonth() !== anchor().getMonth()" [class.today]="isToday(d)"
+             [class.sel]="isSameDay(d, anchor())"
              [class.drop]="dropKey() === key(d)"
              (click)="createAt.emit(at9(d))"
              (dragover)="$event.preventDefault(); dropKey.set(key(d))" (dragleave)="dropKey.set(null)"
              (drop)="onDrop($event, d)">
-          <button class="num" (click)="$event.stopPropagation(); dayClick.emit(d)">{{ d.getDate() }}</button>
+          <button class="num" (click)="$event.stopPropagation(); dayClick.emit(d)" title="Apri il giorno">{{ d.getDate() }}</button>
           @if (windows(d).length) {
             <div class="wins">
               @for (w of windows(d); track w.id) {
                 <span class="win" [style.--c]="w.color" [class.skipped]="w.occ.skipped" [class.paused]="w.occ.status === 'paused'"
-                      [attr.title]="w.occ.title + ' · ' + time(w) + (w.end ? '–' + endTime(w) : '')"
+                      [attr.title]="'Finestra ' + time(w) + (w.end ? '–' + endTime(w) : '') + ' · ' + w.occ.title"
                       (click)="$event.stopPropagation(); selected.emit({ ev: w, rect: $any($event.currentTarget).getBoundingClientRect() })"></span>
               }
             </div>
@@ -34,7 +35,7 @@ const WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
           <div class="chips">
             @for (g of visible(d); track g.ev.id) {
               @let ev = g.ev;
-              <div class="chip" [class.skipped]="ev.occ.skipped"
+              <div class="chip" [class.skipped]="ev.occ.skipped" [class.failed]="ev.occ.run?.ok === false"
                    [class.done]="ev.occ.status === 'completed' || ev.occ.status === 'cancelled'"
                    [class.paused]="ev.occ.status === 'paused'" [style.--c]="ev.color"
                    draggable="true" (dragstart)="onDragStart($event, ev)" (dragend)="dropKey.set(null)"
@@ -44,6 +45,7 @@ const WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
                 <span class="t">{{ time(ev) }}</span>
                 <span class="hx-truncate">{{ ev.occ.title }}</span>
                 @if (g.count > 1) { <span class="x">×{{ g.count }}</span> }
+                @else if ((ev.failedCount ?? 0) > 1) { <span class="x">fallito ×{{ ev.failedCount }}</span> }
               </div>
             }
             @if (hidden(d) > 0) {
@@ -68,6 +70,8 @@ const WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
     .num { align-self: flex-start; width: 26px; height: 26px; border-radius: 50%; font-size: 12.5px; color: var(--text-2); }
     .num:hover { background: var(--surface-2); }
     .today .num { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+    .cell.sel { box-shadow: inset 0 0 0 2px var(--accent); }
+    .chip.failed { color: var(--danger); } .chip.failed .dot { background: var(--danger); }
     .chips { display: flex; flex-direction: column; gap: 2px; min-height: 0; }
     .chip { display: flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 1px 6px; border-radius: var(--radius-xs, 4px);
             cursor: pointer; color: var(--text); min-width: 0; }
@@ -143,6 +147,7 @@ export class MonthViewComponent {
   endTime = (ev: CalEvent) => ev.end ? fmt.time(ev.end) : '';
   key = dayKey;
   isToday = isToday;
+  isSameDay = isSameDay;
   time = (ev: CalEvent) => fmt.time(ev.start);
   icon = (ev: CalEvent) => TYPE_META[ev.occ.type]?.icon ?? 'event';
   at9 = (d: Date) => { const x = startOfDay(d); x.setHours(9); return x; };

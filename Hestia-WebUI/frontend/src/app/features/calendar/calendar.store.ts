@@ -1,7 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { AgendaApi } from './agenda.api';
-import { AgendaItem, AgendaOccurrence, AgendaType, CalEvent, CalView, CalendarSource } from './calendar.models';
-import { DAY_MS, addDays, addMonths, monthGrid, startOfDay, startOfWeek } from './date-utils';
+import { AgendaItem, AgendaOccurrence, AgendaType, CalEvent, CalView, CalendarSource, EventClass } from './calendar.models';
+import { DAY_MS, addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './date-utils';
+import { CalendarPrefs, DEFAULT_PREFS, perDayFromRRule } from './calendar.prefs';
 import { shiftByDay } from './rrule';
 import { ToastService } from '../../ui';
 
@@ -23,6 +24,8 @@ export class CalendarStore {
   readonly showSkipped = signal<boolean>(this.prefs().showSkipped ?? true);
   readonly showDone = signal<boolean>(this.prefs().showDone ?? false);
   readonly search = signal('');
+  /** View preferences (windows, frequent rules, focused view…), see calendar.prefs.ts. */
+  readonly vp = signal<CalendarPrefs>({ ...DEFAULT_PREFS, ...(this.prefs().vp ?? {}) });
   /** Layers: only the AI agenda today; external calendars will be added here. */
   readonly sources = signal<CalendarSource[]>([{ id: 'hestia', label: 'Agenda di Hestia', kind: 'ai', enabled: true }]);
 
@@ -50,22 +53,105 @@ export class CalendarStore {
     return [...set.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([owner, count]) => ({ owner, count, color: this.colorFor(owner) }));
   });
 
-  readonly events = computed<CalEvent[]>(() => {
+  /** Occurrences per day of each rule (frequent ≥ vp.frequentPerDay). */
+  private perDay = computed(() => {
+    const out = new Map<string, number>();
+    const counted = new Map<string, Map<string, number>>();
+    for (const o of this.occurrences()) {
+      const m = counted.get(o.key) ?? counted.set(o.key, new Map()).get(o.key)!;
+      const k = dayKey(new Date(o.start));
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    for (const [key, days] of counted) {
+      const fromRule = perDayFromRRule(this.items().get(key)?.recurrence);
+      out.set(key, fromRule ?? Math.max(...days.values()));
+    }
+    return out;
+  });
+
+  classOf(o: AgendaOccurrence, item?: AgendaItem): EventClass {
+    if ((o.created_by ?? item?.created_by) === 'user' || o.owner === 'user') return 'manual';
+    if (!o.recurring) return 'oneoff';
+    return (this.perDay().get(o.key) ?? 0) >= this.vp().frequentPerDay ? 'frequent' : 'rare';
+  }
+
+  /** All occurrences as view models, after filters (owner/type/search/skip/done) — no visibility policy. */
+  private allEvents = computed<CalEvent[]>(() => {
     const items = this.items();
     const hidO = this.hiddenOwners(), hidT = this.hiddenTypes();
     const q = this.search().trim().toLowerCase();
+    const vp = this.vp();
     if (!this.sources().find(s => s.id === 'hestia')?.enabled) return [];
     return this.occurrences()
       .filter(o => !hidO.has(o.owner) && !hidT.has(o.type))
       .filter(o => this.showSkipped() || !o.skipped)
       .filter(o => this.showDone() || !['completed', 'cancelled'].includes(o.status ?? ''))
       .filter(o => !q || o.title.toLowerCase().includes(q) || o.key.toLowerCase().includes(q) || o.owner.includes(q))
-      .map(o => ({
-        id: `${o.key}|${o.occurrence}`, occ: o, item: items.get(o.key),
-        start: new Date(o.start), end: o.end ? new Date(o.end) : null,
-        color: this.colorFor(o.owner), source: 'hestia',
-      }));
+      .filter(o => vp.windowsMode !== 'hidden' || o.type !== 'window')
+      .map(o => {
+        const item = items.get(o.key);
+        return {
+          id: `${o.key}|${o.occurrence}`, occ: o, item,
+          start: new Date(o.start), end: o.end ? new Date(o.end) : null,
+          color: this.colorFor(o.owner), source: 'hestia', cls: this.classOf(o, item),
+        } as CalEvent;
+      })
+      .filter(e => vp.frequentMode !== 'hidden' || e.cls !== 'frequent' || e.occ.run?.ok === false);
   });
+
+  /** Visibility policy (focused view) + clip to the visible range. */
+  private visibleState = computed(() => {
+    const all = this.allEvents();
+    const { start: rs, end: re } = this.range();
+    const inRange = (e: CalEvent) => e.start < re && (e.end ?? e.start) >= rs;
+    const vp = this.vp();
+    if (!vp.focused) return { events: all.filter(inRange), hidden: 0 };
+
+    const now = Date.now();
+    const fd0 = startOfDay(this.anchor()).getTime(), fd1 = fd0 + DAY_MS;
+    const onFocus = (e: CalEvent) => e.start.getTime() < fd1 && (e.end ?? e.start).getTime() >= fd0;
+    // rare rules: cutoff = min(now + rareDays, start of the N-th upcoming occurrence)
+    const upcoming = new Map<string, number[]>();
+    for (const e of all) {
+      if (e.cls !== 'rare' || (e.end ?? e.start).getTime() < now) continue;
+      (upcoming.get(e.occ.key) ?? upcoming.set(e.occ.key, []).get(e.occ.key)!).push(e.start.getTime());
+    }
+    const cutoff = new Map<string, number>();
+    for (const [k, starts] of upcoming) {
+      starts.sort((a, b) => a - b);
+      const nth = starts[Math.min(starts.length, vp.rareCount) - 1] ?? Infinity;
+      cutoff.set(k, Math.min(now + vp.rareDays * DAY_MS, nth));
+    }
+    const pastFailed = new Map<string, CalEvent>();
+    const out: CalEvent[] = [];
+    let hidden = 0;
+    for (const e of all) {
+      const visibleNow = inRange(e);
+      let keep: boolean;
+      if (e.cls === 'manual' || onFocus(e)) keep = true;
+      else if ((e.end ?? e.start).getTime() < now) {
+        const failed = e.occ.run?.ok === false || (!e.occ.recurring && e.occ.status === 'failed');
+        keep = false;
+        if (failed && (e.end ?? e.start).getTime() >= now - vp.pastDays * DAY_MS) {
+          const prev = pastFailed.get(e.occ.key);
+          if (!prev || prev.start < e.start) pastFailed.set(e.occ.key, { ...e, failedCount: (prev?.failedCount ?? 0) + 1 });
+          else prev.failedCount = (prev.failedCount ?? 1) + 1;
+          continue;
+        }
+      } else if (e.cls === 'oneoff') keep = true;
+      else if (e.cls === 'frequent') keep = e.start.getTime() <= now + vp.frequentDays * DAY_MS;
+      else keep = e.start.getTime() <= (cutoff.get(e.occ.key) ?? now + vp.rareDays * DAY_MS);
+      if (!visibleNow) continue;
+      if (keep) out.push(e);
+      else if ((e.end ?? e.start).getTime() >= now) hidden++;   // the hint counts upcoming items only
+    }
+    for (const e of pastFailed.values()) if (inRange(e)) out.push(e);
+    return { events: out, hidden };
+  });
+
+  readonly events = computed(() => this.visibleState().events);
+  /** Upcoming occurrences in the visible range hidden by the focused view ("N nascoste"). */
+  readonly hiddenByPolicy = computed(() => this.visibleState().hidden);
 
   readonly title = computed(() => {
     const a = this.anchor();
@@ -99,6 +185,19 @@ export class CalendarStore {
   toggleType(t: AgendaType) { this.hiddenTypes.update(s => toggled(s, t)); this.savePrefs(); }
   setShowSkipped(v: boolean) { this.showSkipped.set(v); this.savePrefs(); }
   setShowDone(v: boolean) { this.showDone.set(v); this.savePrefs(); }
+  setVp(p: Partial<CalendarPrefs>) {
+    const reload = p.focused !== undefined || p.pastDays !== undefined || p.frequentDays !== undefined || p.rareDays !== undefined;
+    this.vp.update(cur => ({ ...cur, ...p }));
+    this.savePrefs();
+    if (reload) void this.load();
+  }
+  resetVp() { this.vp.set({ ...DEFAULT_PREFS }); this.savePrefs(); void this.load(); }
+  /** Mini calendar / day number: focus a day. Month view jumps to that day (otherwise nothing visibly changes). */
+  focusDay(d: Date) {
+    this.anchor.set(startOfDay(d));
+    if (this.view() === 'month') { this.view.set('day'); this.savePrefs(); }
+    void this.load();
+  }
 
   colorFor(owner: string): string {
     const fixed = FIXED_COLORS[owner];
@@ -111,7 +210,13 @@ export class CalendarStore {
   // ── data loading ───────────────────────────────────────────────────────
   async load(): Promise<void> {
     const seq = ++this.loadSeq;
-    const { start, end } = this.range();
+    let { start, end } = this.range();
+    if (this.vp().focused) {
+      // the policy needs "now ± horizon" even when looking elsewhere (rare: N-th upcoming, past failures)
+      const vp = this.vp(), now = Date.now();
+      start = new Date(Math.min(start.getTime(), now - vp.pastDays * DAY_MS));
+      end = new Date(Math.max(end.getTime(), now + Math.max(vp.frequentDays, vp.rareDays) * DAY_MS));
+    }
     this.loading.set(true);
     this.error.set('');
     try {
@@ -183,14 +288,14 @@ export class CalendarStore {
   }
 
   // ── prefs ──────────────────────────────────────────────────────────────
-  private prefs(): { view?: CalView; hiddenOwners?: string[]; hiddenTypes?: AgendaType[]; showSkipped?: boolean; showDone?: boolean } {
+  private prefs(): { view?: CalView; hiddenOwners?: string[]; hiddenTypes?: AgendaType[]; showSkipped?: boolean; showDone?: boolean; vp?: Partial<CalendarPrefs> } {
     try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'); } catch { return {}; }
   }
   private savePrefs() {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({
         view: this.view(), hiddenOwners: [...this.hiddenOwners()], hiddenTypes: [...this.hiddenTypes()],
-        showSkipped: this.showSkipped(), showDone: this.showDone(),
+        showSkipped: this.showSkipped(), showDone: this.showDone(), vp: this.vp(),
       }));
     } catch { /* private mode */ }
   }

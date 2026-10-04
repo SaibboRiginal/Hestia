@@ -26,7 +26,8 @@ import { SelectRequest } from './time-grid.component';
               <span class="title"><hx-icon [name]="icon(ev)" [size]="14" /> {{ ev.occ.title }}</span>
               <span class="meta">{{ owner(ev) }} · {{ typeLabel(ev) }}@if (ev.occ.recurring) { · {{ rule(ev) }} }</span>
             </span>
-            @if (ev.occ.skipped) { <hx-badge>saltata</hx-badge> }
+            @if (ev.occ.run?.ok === false) { <hx-badge tone="danger">fallito{{ (ev.failedCount ?? 0) > 1 ? ' ×' + ev.failedCount : '' }}</hx-badge> }
+            @else if (ev.occ.skipped) { <hx-badge>saltata</hx-badge> }
             @else if (ev.occ.moved) { <hx-badge tone="info">spostata</hx-badge> }
             @else if (ev.occ.status && ev.occ.status !== 'confirmed') { <hx-badge [tone]="status(ev).tone">{{ status(ev).label }}</hx-badge> }
           </button>

@@ -2,12 +2,14 @@ import {
   AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, computed, input, output, signal, viewChild,
 } from '@angular/core';
 import { CalEvent, TYPE_META } from '../calendar.models';
-import { DAY_MS, addDays, addMinutes, fmt, isToday, minutesOfDay, snap, startOfDay } from '../date-utils';
+import { DAY_MS, addDays, addMinutes, fmt, isSameDay, isToday, minutesOfDay, snap, startOfDay } from '../date-utils';
+import { FrequentMode, WindowsMode } from '../calendar.prefs';
 import { IconComponent } from '../../../ui';
 
 const HOUR_PX = 48;
 const MIN_BLOCK_MIN = 22;            // instants and very short items still get a clickable block
 const SNAP_MIN = 15;
+const LANE_PX = 10;                  // window lane width (strip 7px + gap)
 
 interface Placed { ev: CalEvent; dayIdx: number; top: number; height: number; col: number; cols: number; instant: boolean; segStart: Date; segEnd: Date; }
 interface Band { ev: CalEvent; dayIdx: number; top: number; height: number; lane: number; segStart: Date; segEnd: Date; }
@@ -21,7 +23,10 @@ interface DragState {
 
 /**
  * Week (7 days) / day (1 day) time grid.
- * - windows (type=window) = translucent background bands, events/tasks/jobs = blocks on top
+ * - windows (type=window): 'lane' = clickable strip at the column's left edge spanning exactly the window
+ *   hours + "01:00–07:00" label + faint tint across the column; 'band' = full-width translucent band
+ * - frequent rules in 'compact' mode → one summary chip per rule per day in the top "Ricorrenti" row
+ *   (failed runs always stay as their own blocks)
  * - drag a block to move (15-min snap, across days), drag its bottom edge to resize
  * - click an empty slot → (createAt) ; click a block → (selected)
  */
@@ -33,12 +38,29 @@ interface DragState {
     <div class="head" [style.grid-template-columns]="cols()">
       <div class="gutter-h"></div>
       @for (d of days(); track d.getTime(); let i = $index) {
-        <button class="dh" [class.today]="isToday(d)" (click)="dayClick.emit(d)">
+        <button class="dh" [class.today]="isToday(d)" [class.sel]="days().length > 1 && isSameDay(d, focusDay())"
+                (click)="dayClick.emit(d)" [attr.title]="'Apri ' + longDay(d)">
           <span class="wd">{{ weekday(d) }}</span><span class="dn">{{ d.getDate() }}</span>
         </button>
       }
     </div>
-    <div class="scroll" #scroller>
+    @if (hasSummary()) {
+      <div class="sum" [style.grid-template-columns]="cols()">
+        <div class="sum-h" title="Attività che si ripetono spesso, raggruppate (Vista → Ricorrenze frequenti)">Ricorrenti</div>
+        @for (d of days(); track d.getTime(); let i = $index) {
+          <div class="sum-c">
+            @for (g of summaryFor(i); track g.id) {
+              <button class="schip" [style.--c]="g.color" [class.paused]="g.occ.status === 'paused'"
+                      (click)="selected.emit({ ev: g, rect: $any($event.currentTarget).getBoundingClientRect() })"
+                      [attr.title]="g.occ.title + ' · ' + g.group!.length + ' volte: ' + groupRange(g)">
+                <span class="dot"></span><span class="hx-truncate">{{ g.occ.title }}</span><span class="x">×{{ g.group!.length }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+    <div class="scroll" #scroller (scroll)="scrollTop.set($any($event.target).scrollTop)">
       <div class="grid" [style.grid-template-columns]="cols()" [style.height.px]="24 * HOUR">
         <div class="gutter">
           @for (h of hours; track h) { <div class="hl" [style.top.px]="h * HOUR"><span>{{ h ? pad(h) + ':00' : '' }}</span></div> }
@@ -55,14 +77,30 @@ interface DragState {
           @for (d of days(); track d.getTime(); let i = $index) {
             <div class="lcol">
               @for (b of bandsFor(i); track b.ev.id + b.segStart.getTime()) {
-                <div class="band" [style.top.px]="b.top" [style.height.px]="b.height" [style.left.px]="b.lane * 6"
-                     [style.--c]="b.ev.color" [class.skipped]="b.ev.occ.skipped" [class.paused]="b.ev.occ.status === 'paused'"
-                     [class.dragging]="drag()?.ev?.id === b.ev.id"
-                     (pointerdown)="startDrag($event, b.ev, 'move')" (click)="$event.stopPropagation()"
-                     [attr.title]="b.ev.occ.title + ' — ' + time(b.ev)">
-                  <div class="band-label"><hx-icon name="window" [size]="12" />{{ b.ev.occ.title }}</div>
-                  <div class="rz" (pointerdown)="startDrag($event, b.ev, 'resize')"></div>
-                </div>
+                @if (windowsMode() === 'lane') {
+                  <div class="tint" [style.top.px]="b.top" [style.height.px]="b.height" [style.--c]="b.ev.color"></div>
+                  <div class="lane" [style.top.px]="b.top" [style.height.px]="b.height" [style.left.px]="b.lane * LANE"
+                       [style.--c]="b.ev.color" [class.skipped]="b.ev.occ.skipped" [class.paused]="b.ev.occ.status === 'paused'"
+                       [class.dragging]="drag()?.ev?.id === b.ev.id"
+                       (pointerdown)="startDrag($event, b.ev, 'move')" (click)="$event.stopPropagation()"
+                       [attr.title]="'Finestra · ' + b.ev.occ.title + ' · ' + time(b.ev)">
+                    <div class="rz" (pointerdown)="startDrag($event, b.ev, 'resize')"></div>
+                  </div>
+                  <div class="lane-label" [style.top.px]="labelTop(b)" [style.left.px]="laneCount(i) * LANE + 2" [style.--c]="b.ev.color"
+                       [class.paused]="b.ev.occ.status === 'paused'"
+                       (pointerdown)="startDrag($event, b.ev, 'move')" (click)="$event.stopPropagation()">
+                    <b>{{ segTime(b) }}</b> {{ b.ev.occ.title }}
+                  </div>
+                } @else {
+                  <div class="band" [style.top.px]="b.top" [style.height.px]="b.height" [style.left.px]="b.lane * 6"
+                       [style.--c]="b.ev.color" [class.skipped]="b.ev.occ.skipped" [class.paused]="b.ev.occ.status === 'paused'"
+                       [class.dragging]="drag()?.ev?.id === b.ev.id"
+                       (pointerdown)="startDrag($event, b.ev, 'move')" (click)="$event.stopPropagation()"
+                       [attr.title]="b.ev.occ.title + ' — ' + time(b.ev)">
+                    <div class="band-label"><hx-icon name="window" [size]="12" /><b>{{ segTime(b) }}</b>&nbsp;{{ b.ev.occ.title }}</div>
+                    <div class="rz" (pointerdown)="startDrag($event, b.ev, 'resize')"></div>
+                  </div>
+                }
               }
             </div>
           }
@@ -76,12 +114,15 @@ interface DragState {
                 <div class="blk" [class.instant]="p.instant" [class.skipped]="p.ev.occ.skipped"
                      [class.done]="p.ev.occ.status === 'completed' || p.ev.occ.status === 'cancelled'"
                      [class.paused]="p.ev.occ.status === 'paused'" [class.moved]="p.ev.occ.moved"
+                     [class.failed]="p.ev.occ.run?.ok === false"
                      [class.dragging]="drag()?.ev?.id === p.ev.id"
                      [style.top.px]="p.top" [style.height.px]="p.height"
-                     [style.left]="'calc(' + (p.col / p.cols * 100) + '% + 2px)'"
-                     [style.width]="'calc(' + (100 / p.cols) + '% - 4px)'" [style.--c]="p.ev.color"
+                     [style.left]="'calc(' + off(i) + 'px + (100% - ' + off(i) + 'px) * ' + (p.col / p.cols) + ' + 2px)'"
+                     [style.width]="'calc((100% - ' + off(i) + 'px) / ' + p.cols + ' - 4px)'" [style.--c]="p.ev.color"
                      (pointerdown)="startDrag($event, p.ev, 'move')" (click)="$event.stopPropagation()">
-                  <div class="bt"><hx-icon [name]="icon(p.ev)" [size]="12" /><span class="hx-truncate">{{ p.ev.occ.title }}</span></div>
+                  <div class="bt"><hx-icon [name]="p.ev.occ.run?.ok === false ? 'alert' : icon(p.ev)" [size]="12" />
+                    <span class="hx-truncate">{{ p.ev.occ.title }}</span>
+                    @if ((p.ev.failedCount ?? 0) > 1) { <span class="fx">×{{ p.ev.failedCount }}</span> }</div>
                   @if (p.height > 34) { <div class="bm">{{ time(p.ev) }}</div> }
                   @if (!p.instant) { <div class="rz" (pointerdown)="startDrag($event, p.ev, 'resize')"></div> }
                 </div>
@@ -108,6 +149,28 @@ interface DragState {
     .dn { font-size: 20px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--text); }
     .dh.today .dn { background: var(--accent); color: var(--accent-contrast); }
     .dh.today .wd { color: var(--accent); }
+    .dh.sel { background: var(--accent-soft); }
+    .sum { display: grid; border-bottom: 1px solid var(--border); flex-shrink: 0; padding-right: 8px; max-height: 96px; overflow-y: auto; }
+    .sum-h { font-size: 10.5px; color: var(--text-3); text-align: right; padding: 6px 6px 0 0; line-height: 1.1; }
+    .sum-c { border-left: 1px solid var(--border); padding: 3px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .schip { display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 6px; border-radius: var(--radius-full);
+             background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--text-2); min-width: 0; text-align: left; }
+    .schip:hover { background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--text); }
+    .schip.paused { filter: grayscale(.8); opacity: .7; }
+    .schip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
+    .schip .x, .fx { margin-left: auto; font-size: 10px; color: var(--text-3); flex-shrink: 0; }
+    .tint { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--c) 5%, transparent); pointer-events: none; }
+    .lane { position: absolute; width: 7px; pointer-events: auto; cursor: pointer; border-radius: 4px; z-index: 1;
+            background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--c) 75%, transparent) 0 6px, color-mix(in srgb, var(--c) 45%, transparent) 6px 9px); }
+    .lane:hover { width: 9px; background: var(--c); }
+    .lane.skipped { opacity: .4; }
+    .lane.paused, .lane-label.paused { filter: grayscale(1); opacity: .5; }
+    .lane-label { position: absolute; pointer-events: auto; cursor: pointer; z-index: 1; max-width: calc(100% - 24px);
+                  font-size: 10.5px; line-height: 16px; padding: 0 6px; border-radius: 0 var(--radius-full) var(--radius-full) 0;
+                  background: color-mix(in srgb, var(--c) 16%, var(--surface)); color: color-mix(in srgb, var(--c) 70%, var(--text));
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lane-label:hover { background: color-mix(in srgb, var(--c) 28%, var(--surface)); }
+    .lane-label b, .band-label b { font-weight: 700; font-variant-numeric: tabular-nums; }
     .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
     .grid { display: grid; position: relative; }
     .gutter { position: relative; }
@@ -138,7 +201,9 @@ interface DragState {
     .blk.done { opacity: .55; }
     .blk.paused { filter: grayscale(.8); opacity: .7; }
     .blk.moved { border-style: dashed; }
-    .blk.dragging, .band.dragging { opacity: .35; }
+    .blk.failed { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+    .blk.failed hx-icon { color: var(--danger); }
+    .blk.dragging, .band.dragging, .lane.dragging { opacity: .35; }
     .rz { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
     .ghost { position: absolute; z-index: 10; pointer-events: none; border: 2px dashed var(--accent); border-radius: var(--radius-sm);
              background: var(--accent-soft); color: var(--accent); font-size: 11.5px; font-weight: 600; padding: 3px 6px; }
@@ -146,6 +211,7 @@ interface DragState {
 })
 export class TimeGridComponent implements AfterViewInit, OnDestroy {
   readonly HOUR = HOUR_PX;
+  readonly LANE = LANE_PX;
   readonly hours = Array.from({ length: 24 }, (_, i) => i);
   days = input.required<Date[]>();
   events = input.required<CalEvent[]>();
@@ -153,10 +219,17 @@ export class TimeGridComponent implements AfterViewInit, OnDestroy {
   createAt = output<Date>();
   moved = output<MoveRequest>();
   dayClick = output<Date>();
+  windowsMode = input<WindowsMode>('lane');
+  frequentMode = input<FrequentMode>('compact');
+  focusDay = input<Date>(new Date());
+  scrollHour = input(7);
   private scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   readonly drag = signal<DragState | null>(null);
   readonly nowTick = signal(Date.now());
+  /** Window labels stick to the top of the viewport while their window is on screen. */
+  readonly scrollTop = signal(0);
+  labelTop(b: Band) { return Math.min(Math.max(b.top, this.scrollTop() + 2), Math.max(b.top, b.top + b.height - 17)); }
   private timer: ReturnType<typeof setInterval> | null = null;
 
   cols = computed(() => `56px repeat(${this.days().length}, minmax(0, 1fr))`);
@@ -167,8 +240,15 @@ export class TimeGridComponent implements AfterViewInit, OnDestroy {
     const days = this.days();
     const bands: Band[][] = days.map(() => []);
     const blocks: Placed[][] = days.map(() => []);
+    const summary: CalEvent[][] = days.map(() => []);
+    const compact = this.frequentMode() === 'compact';
     for (const ev of this.events()) {
       const s = ev.start, e = ev.end ?? addMinutes(ev.start, MIN_BLOCK_MIN);
+      if (compact && ev.cls === 'frequent' && ev.occ.type !== 'window' && ev.occ.run?.ok !== false) {
+        const i = days.findIndex(d => isSameDay(d, s));
+        if (i >= 0) summary[i].push(ev);
+        continue;
+      }
       days.forEach((d, i) => {
         const ds = startOfDay(d), de = new Date(ds.getTime() + DAY_MS);
         if (e <= ds || s >= de) return;
@@ -185,11 +265,30 @@ export class TimeGridComponent implements AfterViewInit, OnDestroy {
     }
     bands.forEach(list => layoutLanes(list));
     blocks.forEach(list => layoutColumns(list));
-    return { bands, blocks };
+    const lanes = bands.map(list => this.windowsMode() === 'lane' && list.length ? Math.max(...list.map(b => b.lane)) + 1 : 0);
+    // one summary chip per rule per day
+    const groups = summary.map((list, i) => {
+      const byKey = new Map<string, CalEvent[]>();
+      for (const ev of list) (byKey.get(ev.occ.key) ?? byKey.set(ev.occ.key, []).get(ev.occ.key)!).push(ev);
+      return [...byKey.values()].map(g => {
+        g.sort((a, b) => a.start.getTime() - b.start.getTime());
+        return { ...g[0], id: `${g[0].occ.key}|sum|${i}`, group: g } as CalEvent;
+      });
+    });
+    return { bands, blocks, lanes, groups };
   });
 
   bandsFor(i: number) { return this.segments().bands[i]; }
   placedFor(i: number) { return this.segments().blocks[i]; }
+  summaryFor(i: number) { return this.segments().groups[i]; }
+  hasSummary = computed(() => this.segments().groups.some(g => g.length));
+  laneCount(i: number) { return this.segments().lanes[i]; }
+  /** Left offset of blocks so window lanes stay clickable. */
+  off(i: number) { return this.laneCount(i) * LANE_PX; }
+  segTime = (b: Band) => `${fmt.time(b.ev.start)}–${b.ev.end ? fmt.time(b.ev.end) : ''}`;
+  groupRange = (g: CalEvent) => { const l = g.group ?? [g]; return `${fmt.time(l[0].start)}–${fmt.time(l[l.length - 1].start)}`; };
+  longDay = (d: Date) => fmt.dayLong(d);
+  isSameDay = isSameDay;
 
   /** Drag preview. */
   ghost = computed(() => {
@@ -207,8 +306,9 @@ export class TimeGridComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit() {
     const el = this.scroller()?.nativeElement;
     if (el) {
-      const target = this.days().some(isToday) ? Math.max(0, this.nowTop() - 160) : 7 * HOUR_PX;
+      const target = this.days().some(isToday) ? Math.max(0, this.nowTop() - 160) : this.scrollHour() * HOUR_PX;
       el.scrollTop = target;
+      this.scrollTop.set(el.scrollTop);
     }
     this.timer = setInterval(() => this.nowTick.set(Date.now()), 60_000);
   }
