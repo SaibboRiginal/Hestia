@@ -96,7 +96,10 @@ def test_complete_with_pasted_url_persists_token(client, google_env, monkeypatch
 
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "authorized"
-    sent = post.call_args.kwargs["data"]
+    # Other requests.post calls may follow (e.g. notifications): pick the token exchange.
+    token_calls = [c for c in post.call_args_list if c.args and c.args[0] == google_oauth.TOKEN_ENDPOINT]
+    assert token_calls, post.call_args_list
+    sent = token_calls[-1].kwargs["data"]
     assert sent["code"] == "4/abc"
     assert sent["grant_type"] == "authorization_code"
     assert sent["redirect_uri"] == google_oauth.DEFAULT_REDIRECT_URI
@@ -154,7 +157,7 @@ def test_callback_endpoint_completes_flow(client, google_env, monkeypatch):
     monkeypatch.setattr(google_oauth.requests, "post", MagicMock(return_value=_token_response()))
     resp = client.get(f"/api/gateway/auth/callback/google?code=4/abc&state={state}")
     assert resp.status_code == 200
-    assert "collegato" in resp.text
+    assert "connesso" in resp.text
 
 
 @pytest.mark.unit
