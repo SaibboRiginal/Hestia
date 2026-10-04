@@ -69,6 +69,24 @@ def daily_window(key: str, title: str, start_hour: int, end_hour: int, *, descri
                        recurrence="FREQ=DAILY", description=description, params=params, tz=tz)
 
 
+def template(id: str, label: str, *, service: str, path: str, type: str = "task",
+             types: list[str] | None = None, description: str = "", icon: str = "",
+             fields: dict | None = None, required: list[str] | None = None, method: str = "POST",
+             body: dict | None = None, title: str = "", duration_minutes: int = 0,
+             recurrence: str = "", timeout_seconds: float = 60) -> dict:
+    """What the user can create for this module from the calendar wizard (WebUI "Da un modulo…").
+
+    ``fields``: JSON-schema-like ``{name: {type, label?, description, enum?, default?, format?, in?}}``
+    (``in: path`` fills ``{name}`` in ``path``; default ``body``). ``title`` may use ``{field}``.
+    ``types``: item types the user may choose (``task`` once / ``job`` recurring / ``window``).
+    """
+    return {"id": id, "label": label, "description": description, "icon": icon or "zap",
+            "type": type, "types": types or [type], "fields": fields or {}, "required": required or [],
+            "title": title or label, "duration_minutes": int(duration_minutes), "recurrence": recurrence,
+            "action": {"service": service, "path": path, "method": method.upper(), "body": body or {},
+                       "timeout_seconds": timeout_seconds}}
+
+
 class AgendaClient:
     """Thin Hub client for the assistant agenda, bound to one owner module."""
 
@@ -107,14 +125,24 @@ class AgendaClient:
             return True
         return False
 
+    def register_templates(self, templates: list[dict]) -> bool:
+        """Declare what the user can create for this module (wizard). Replaces this owner's set."""
+        status, _ = self._safe("agenda_templates_failed", "POST", "api/agenda/templates",
+                               body={"owner": self.owner, "templates": templates or []})
+        return bool(status and status < 400)
+
     def register_async(self, rules: list[dict] | Callable[[], list[dict]], *, retry_seconds: float = 60,
-                       refresh_seconds: float = 3600) -> threading.Thread:
+                       refresh_seconds: float = 3600,
+                       templates: list[dict] | Callable[[], list[dict]] | None = None) -> threading.Thread:
         """Register in background: retry until Chronos answers, then re-assert hourly
-        (idempotent; user edits are preserved by Chronos)."""
+        (idempotent; user edits are preserved by Chronos). ``templates`` (wizard) ride along:
+        Chronos keeps them in memory, so the hourly re-assert also restores them after a restart."""
         def _loop():
             import time
             while True:
                 ok = self.register(rules() if callable(rules) else rules)
+                if templates is not None:
+                    ok = self.register_templates(templates() if callable(templates) else templates) and ok
                 time.sleep(refresh_seconds if ok else retry_seconds)
 
         thread = threading.Thread(target=_loop, daemon=True, name=f"agenda-register-{self.owner}")

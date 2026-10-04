@@ -23,9 +23,10 @@ from datetime import datetime, timezone
 from core import docker_client, forge_proposer, health_poller, hub_client
 
 try:
-    from hestia_common.agenda_client import AgendaClient
+    from hestia_common.agenda_client import AgendaClient, template as agenda_template
 except ModuleNotFoundError:  # local run without the shared package on sys.path
     AgendaClient = None  # type: ignore[assignment]
+    agenda_template = None  # type: ignore[assignment]
 from schemas.reports import LogEvent
 from schemas.reports import ServiceAlert
 from worker.alert_worker import send_alert, send_recovery
@@ -387,6 +388,13 @@ def _run_once() -> None:
 
 def start() -> None:
     """Launch the monitoring loop in a daemon background thread."""
+    if _agenda is not None and agenda_template is not None:
+        _agenda.register_async([], templates=[agenda_template(
+            "recheck", "Ricontrolla un servizio", service="argus", path="/api/argus/recheck/{service}",
+            type="task", types=["task", "job"], icon="refresh",
+            fields={"service": {"type": "string", "label": "Servizio", "in": "path", "description": "Nome del servizio (es. hecate)"}},
+            required=["service"], title="Argus: ricontrolla {service}",
+            description="Argus verifica la salute del servizio all'orario scelto e avvia la riparazione se serve.")])
     thread = threading.Thread(
         target=_monitor_loop,
         daemon=True,

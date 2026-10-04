@@ -112,3 +112,20 @@ export const OWNER_LABELS: Record<string, string> = {
 export function ownerLabel(owner: string): string {
   return OWNER_LABELS[owner] ?? owner.charAt(0).toUpperCase() + owner.slice(1);
 }
+
+/** What a module lets the user create (registered by the module, served by Chronos /api/agenda/templates). */
+export interface TemplateField { type?: string; label?: string; description?: string; enum?: string[]; default?: unknown; format?: string; in?: string; }
+export interface AgendaTemplate {
+  id: string;
+  owner: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  type: AgendaType;
+  types: AgendaType[];
+  fields: Record<string, TemplateField>;
+  required: string[];
+  title?: string;
+  duration_minutes?: number;
+  recurrence?: string;
+}

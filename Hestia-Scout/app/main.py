@@ -27,7 +27,7 @@ try:
         wait_for_http_ready,
         wait_for_hub_services,
     )
-    from hestia_common.agenda_client import AgendaClient, job_rule
+    from hestia_common.agenda_client import AgendaClient, job_rule, template
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -39,7 +39,7 @@ except ModuleNotFoundError:
         wait_for_http_ready,
         wait_for_hub_services,
     )
-    from hestia_common.agenda_client import AgendaClient, job_rule
+    from hestia_common.agenda_client import AgendaClient, job_rule, template
 
 logger, log_buffer = setup_service_logging("hestia_scout")
 
@@ -147,6 +147,15 @@ def _agenda_rules() -> list[dict]:
         description="Legge le nuove email annunci, estrae e aggiorna gli immobili. "
                     "Sposta/metti in pausa dall'agenda di Hestia.",
         params={"interval_seconds": POLL_INTERVAL_SECONDS}, timeout_seconds=20)]
+
+
+def _agenda_templates() -> list[dict]:
+    """What the user can create for Scout from the calendar wizard."""
+    return [template(
+        "extra_check", "Controllo email annunci extra", service="scout", path="/api/scout/cycle",
+        body={"trigger": "agenda-template"}, type="task", types=["task", "job"], icon="search",
+        description="Legge subito (o ripetutamente) le email degli annunci, oltre al ciclo normale.",
+        title="Scout: controllo email extra", timeout_seconds=20)]
 
 
 def run_cycle_guarded(trigger: str) -> dict:
@@ -497,7 +506,7 @@ if __name__ == "__main__":
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 
-    agenda.register_async(_agenda_rules)
+    agenda.register_async(_agenda_rules, templates=_agenda_templates)
 
     # First cycle at boot, then the agenda drives. Fallback: every minute check
     # whether the agenda is handling the job; if Chronos is down, the job is

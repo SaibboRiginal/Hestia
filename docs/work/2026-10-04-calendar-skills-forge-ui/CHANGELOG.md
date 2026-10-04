@@ -12,3 +12,6 @@
   click inside the same month changed nothing visible); A6: calendar settings live only in the calendar "Vista"
   popover (not mirrored in Impostazioni) — reason: implementation, one place for calendar-specific options —
   source: AI (implementation decision, ext-chat session).
+- v2.2 — 2026-10-04 — A7: templates kept in Chronos memory and re-asserted with the rules (no DB); wizard has 3
+  steps with a simple repeat instead of the full RRULE builder; first templates Scout/Athena/Argus/Hephaestus —
+  reason: implementation (keep Archive the only DB, simpler UX) — source: AI (implementation, ext-chat session).

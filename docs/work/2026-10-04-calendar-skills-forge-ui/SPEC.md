@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, not Forge, not Hestia's own AI) · 2026-10-04 |
 | **Status** | A in progress |
 | **Order** | A → B (design + core) → C → D (process, done with this spec) |
@@ -93,13 +93,15 @@ show weekends. Stored per browser (localStorage). Time format fixed 24h, week st
 - **Templates declared by modules** (`AgendaTemplate`, in `hestia_common.agenda_client`): `id, owner,
   label, icon, description, type, fields` (JSON-schema like `arguments_schema`), `defaults` (duration,
   recurrence, window), `action` (Hub route/command the job calls), `max_per_user?`.
-  Modules register them to Chronos at startup (idempotent, like rules): `POST /api/agenda/templates`;
+  Modules register them to Chronos with their rules (`register_async(rules, templates=…)`, kept in memory by
+  Chronos and re-asserted hourly — v2.2, no DB needed): `POST /api/agenda/templates`;
   `GET /api/agenda/templates` lists them. Examples: Scout "Ricerca extra adesso / ogni giorno",
   Athena "Finestra di lavoro", Metis "Finestra di training", Hephaestus "Sviluppo programmato",
   Chronos "Promemoria", Hermes "Riepilogo notifiche".
-- "Nuovo" becomes a split button: **Evento libero** · **Da un modulo…** → wizard: 1) pick module/template
-  (cards) 2) fields (form generated from schema, same renderer as the Commands page) 3) when/recurrence
-  (existing RRULE builder, prefilled) 4) review → create. Telegram can reuse the same templates later.
+- "Nuovo" becomes a split button: **Evento libero** · **Da un modulo…** → wizard (v2.2: 3 steps): 1) pick
+  module/template (cards) 2) fields (small schema form, Italian `label` per field) + when + simple repeat
+  (every N hours/days/weeks/months) 3) review → create. Initial templates: Scout, Athena, Argus, Hephaestus
+  (Metis/Hermes have no suitable action endpoint yet). Telegram can reuse the same templates later.
 
 ### A8. Chronos support
 - Range query already exists; add `policy` params only if filtering server-side is cheaper (decided in

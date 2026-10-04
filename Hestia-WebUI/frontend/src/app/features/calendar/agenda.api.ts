@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { AgendaItem, AgendaOccurrence } from './calendar.models';
+import { AgendaItem, AgendaOccurrence, AgendaTemplate } from './calendar.models';
 
 /** WebUI backend → Hub → Chronos. Every write is marked by=user (user decision wins over modules). */
 @Injectable({ providedIn: 'root' })
@@ -38,6 +38,15 @@ export class AgendaApi {
   move(key: string, occurrence: string, start_at: string | null, end_at: string | null, reset = false) {
     return firstValueFrom(this.http.post<{ item: AgendaItem }>(`${this.base}/items/${encodeURIComponent(key)}/move`,
       { occurrence, start_at, end_at, reset }));
+  }
+  async templates(): Promise<AgendaTemplate[]> {
+    const r = await firstValueFrom(this.http.get<{ templates: AgendaTemplate[] }>(`${this.base}/templates`));
+    return r?.templates ?? [];
+  }
+  fromTemplate(owner: string, id: string, body: { values: Record<string, unknown>; start_at: string; end_at?: string | null;
+                                                  recurrence?: string | null; type?: string; description?: string }) {
+    return firstValueFrom(this.http.post<{ item: AgendaItem }>(
+      `${this.base}/templates/${encodeURIComponent(owner)}/${encodeURIComponent(id)}/create`, body));
   }
   run(key: string) {
     return firstValueFrom(this.http.post<{ ok: boolean; detail: string }>(`${this.base}/items/${encodeURIComponent(key)}/run`, {}));

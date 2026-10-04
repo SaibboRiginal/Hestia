@@ -95,6 +95,9 @@ Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
   focused day shows everything; frequent rules next 7 days; rare rules next 3 occurrences or 7 days (first
   reached); one-off module items always; past module items only when failed, last 7 days, one per rule
   ("fallito ×N"). All thresholds editable; stored per browser with the other calendar prefs.
+- **Create**: split "Nuovo" → *Evento libero* (generic editor) or *Da un modulo…* (wizard: pick a module template
+  → fields + when/repeat → review). Templates come from the modules (`GET /api/webui/agenda/templates` → Chronos);
+  created items are yours (`created_by=user`) and run the module action.
 
 ### Chat features
 

@@ -9,8 +9,9 @@ import { ListViewComponent } from './views/list-view.component';
 import { MiniCalendarComponent } from './mini-calendar.component';
 import { DetailAction, EventDetailsComponent } from './event-details.component';
 import { EditorResult, EditorSeed, EventEditorComponent } from './event-editor.component';
+import { TemplateCreate, TemplateWizardComponent } from './template-wizard.component';
 import {
-  ButtonComponent, DialogService, FieldComponent, IconComponent, PopoverComponent, SegmentedComponent, SegmentOption, SpinnerComponent,
+  ButtonComponent, DialogService, FieldComponent, IconComponent, MenuComponent, MenuItem, PopoverComponent, SegmentedComponent, SegmentOption, SpinnerComponent,
   ToggleComponent,
 } from '../../ui';
 
@@ -22,13 +23,18 @@ import {
   selector: 'app-calendar-page',
   imports: [
     FormsModule, ButtonComponent, IconComponent, SegmentedComponent, FieldComponent, SpinnerComponent, ToggleComponent, PopoverComponent,
-    TimeGridComponent, MonthViewComponent, ListViewComponent, MiniCalendarComponent, EventDetailsComponent, EventEditorComponent,
+    MenuComponent, TemplateWizardComponent, TimeGridComponent, MonthViewComponent, ListViewComponent, MiniCalendarComponent, EventDetailsComponent, EventEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
       <aside class="side" [class.open]="sideOpen()">
-        <button hx-btn variant="primary" icon="plus" class="new" (click)="newAt(defaultStart())">Nuovo</button>
+        <div class="new-wrap">
+          <button hx-btn variant="primary" icon="plus" class="new" (click)="newAt(defaultStart())" title="Nuovo evento libero (N)">Nuovo</button>
+          <hx-menu [items]="newMenu" (select)="onNew($event)">
+            <button hx-btn variant="primary" icon="chevron-down" iconOnly class="new-more" trigger aria-label="Altri modi di creare"></button>
+          </hx-menu>
+        </div>
         <cal-mini [selected]="store.anchor()" [marked]="markedDays()" (pick)="store.focusDay($event)" />
 
         <section>
@@ -149,13 +155,17 @@ import {
     </hx-popover>
 
     <cal-event-editor [seed]="editor()" (saved)="onSave($event)" (cancel)="editor.set(null)" />
+    <cal-template-wizard [seed]="wizard()" (done)="onTemplate($event)" (cancel)="wizard.set(null)" />
   `,
   styles: [`
     :host { display: flex; flex: 1; min-height: 0; }
     .page { display: flex; flex: 1; min-height: 0; }
     .side { width: 256px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 14px 12px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 16px; background: var(--bg); }
-    .new { align-self: flex-start; padding: 0 18px; height: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-1); }
+    .new-wrap { display: flex; align-self: flex-start; box-shadow: var(--shadow-1); border-radius: var(--radius-lg); }
+    .new { padding: 0 18px; height: 40px; border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
+    .new-more { height: 40px; width: 34px; border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+                border-left: 1px solid color-mix(in srgb, var(--accent-contrast) 25%, transparent); }
     section h4 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; margin: 0 0 6px 4px; }
     .flt { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--radius-sm); font-size: 13.5px; cursor: pointer; user-select: none; }
     .flt:hover { background: var(--surface-2); }
@@ -210,6 +220,19 @@ export class CalendarPageComponent implements OnInit {
   ];
 
   sideOpen = signal(false);
+  wizard = signal<Date | null>(null);
+  readonly newMenu: MenuItem[] = [
+    { id: 'free', label: 'Evento libero', icon: 'edit' },
+    { id: 'module', label: 'Da un modulo…', icon: 'zap' },
+  ];
+  onNew(id: string) {
+    if (id === 'module') { this.sel.set(null); this.wizard.set(this.defaultStart()); }
+    else this.newAt(this.defaultStart());
+  }
+  async onTemplate(r: TemplateCreate) {
+    this.wizard.set(null);
+    await this.store.createFromTemplate(r.tpl.owner, r.tpl.id, r.body);
+  }
   vistaOpen = signal(false);
   vistaRect = signal<DOMRect | null>(null);
   readonly windowOpts: SegmentOption[] = [{ value: 'lane', label: 'Corsia' }, { value: 'band', label: 'Banda' }, { value: 'hidden', label: 'Nascoste' }];

@@ -247,6 +247,9 @@ export class CalendarStore {
   create(body: Record<string, unknown>) {
     return this.act(() => this.api.create(body as never), 'Aggiunto all\'agenda');
   }
+  createFromTemplate(owner: string, id: string, body: Parameters<AgendaApi['fromTemplate']>[2]) {
+    return this.act(() => this.api.fromTemplate(owner, id, body), 'Creato dal modulo');
+  }
   update(key: string, changes: Record<string, unknown>, msg = 'Aggiornato') {
     return this.act(() => this.api.update(key, changes), msg);
   }

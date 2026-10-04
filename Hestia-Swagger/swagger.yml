@@ -3448,6 +3448,54 @@ paths:
       responses:
         "200": {description: "{from, days, count, occurrences[{item_id, key, type, owner, title, start, end, occurrence, skipped, moved, status, recurring, created_by, run:{ok, detail, at, duration_ms}|null}]} — run = result of that occurrence (Chronos per-occurrence run log, last 50 per item)"}
 
+  /api/agenda/templates:
+    get:
+      tags: [Chronos]
+      summary: What each module lets the user create (calendar wizard)
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{count, templates[{id, owner, label, description, icon, type, types[], fields{name:{type,label,description,enum,default,format,in}}, required[], title, duration_minutes, recurrence, action}]}"}
+    post:
+      tags: [Chronos]
+      summary: Module declares its templates (replaces the owner's set; kept in memory, re-asserted hourly)
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [owner], properties: {owner: {type: string}, templates: {type: array, items: {type: object}}}}
+      responses:
+        "200": {description: "{status, count}"}
+
+  /api/agenda/templates/{owner}/{template_id}/create:
+    post:
+      tags: [Chronos]
+      summary: Create an agenda item from a module template (created_by=user, owner=module)
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: owner, in: path, required: true, schema: {type: string}}
+        - {name: template_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start_at]
+              properties:
+                values: {type: object, description: "Field values (in:path fields fill the action path)"}
+                start_at: {type: string, format: date-time}
+                end_at: {type: string, format: date-time, nullable: true}
+                recurrence: {type: string, nullable: true, description: "RRULE for job/window"}
+                type: {type: string, enum: [task, job, window, event]}
+                description: {type: string}
+      responses:
+        "200": {description: "{status, item}"}
+        "404": {description: "Template unknown (module offline / not registered yet)"}
+
   /api/agenda/items:
     get:
       tags: [Chronos]

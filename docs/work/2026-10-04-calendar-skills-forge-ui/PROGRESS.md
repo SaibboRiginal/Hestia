@@ -15,11 +15,11 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
 - [x] A8 Chronos `meta.runs` (last 50) + `run`/`created_by` in occurrences; swagger + hestia-chronos.md (tests: not run, user rule)
 - [x] A5 focused-view policy + "N nascoste" bar (upcoming only) with Mostra tutto / Regole…
 - [x] A6 calendar "Vista" popover (v2.1: not mirrored in Impostazioni)
-- [ ] A7 `AgendaTemplate` in hestia_common + Chronos `/api/agenda/templates` + module registrations
-- [ ] A7 WebUI wizard (split "Nuovo" button, 4 steps, schema form reused from Commands)
+- [x] A7 `template()` in hestia_common + `register_async(templates=)`; Chronos `/api/agenda/templates` (+create); Scout, Athena, Argus, Hephaestus register templates
+- [x] A7 WebUI wizard (split "Nuovo", 3 steps: scegli · dettagli · conferma; own small schema form) + backend proxy
 - [ ] A9 extras (now line check, Log link, NL quick add, ICS) — pick after the core
-- [ ] Docs: hestia-webui.md, hestia-chronos.md, swagger, DESIGN-SYSTEM.md (new kit parts), root CHANGELOG
-- [ ] Checks: `ng build` clean, py_compile/ruff, Playwright screenshots; .NET builds locally (user)
+- [x] Docs: hestia-webui.md, hestia-chronos.md, hestia-shared.md, swagger, DESIGN-SYSTEM.md, root CHANGELOG
+- [x] Checks: `ng build` clean, py_compile/ruff, Playwright screenshots (mocked API). Pending on user side: .NET build + real run
 
 ## B. "Crea con Hestia"
 - [ ] Kit `<hx-assistant>` drawer (SignalR chat, packets, context packet → client instructions)

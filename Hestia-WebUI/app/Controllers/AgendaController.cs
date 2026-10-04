@@ -69,6 +69,17 @@ public class AgendaController : ControllerBase
     public Task<IActionResult> Run(string itemRef)
         => Wrap(() => _hub.RoutePostAsync("chronos", $"/api/agenda/items/{Uri.EscapeDataString(itemRef)}/run", new { }, 60));
 
+    /// <summary>What each module lets the user create (calendar wizard).</summary>
+    [HttpGet("templates")]
+    public Task<IActionResult> Templates()
+        => Wrap(() => _hub.RouteGetAsync("chronos", "/api/agenda/templates", new Dictionary<string, string>()));
+
+    /// <summary>Create from a module template ({values, start_at, end_at?, recurrence?, type?, description?}).</summary>
+    [HttpPost("templates/{owner}/{templateId}/create")]
+    public Task<IActionResult> CreateFromTemplate(string owner, string templateId, [FromBody] JsonElement body)
+        => Wrap(() => _hub.RoutePostAsync("chronos",
+            $"/api/agenda/templates/{Uri.EscapeDataString(owner)}/{Uri.EscapeDataString(templateId)}/create", ToDict(body)));
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     /// <summary>Edits from the WebUI are user decisions: Chronos marks them user_modified.</summary>

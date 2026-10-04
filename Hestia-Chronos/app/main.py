@@ -744,6 +744,40 @@ def agenda_run(ref: str) -> dict:
     return {"status": "ok", **_agenda_guard(assistant_agenda.run_now, ref)}
 
 
+class AgendaTemplates(BaseModel):
+    owner: str
+    templates: list[dict] = []
+
+
+class AgendaFromTemplate(BaseModel):
+    values: dict = {}
+    start_at: str
+    end_at: str | None = None
+    recurrence: str | None = None
+    type: str | None = None
+    description: str | None = None
+
+
+@app.post("/api/agenda/templates")
+def agenda_templates_register(req: AgendaTemplates) -> dict:
+    """Modules declare what the user can create for them (calendar wizard). Replaces the owner's set."""
+    return {"status": "ok", "count": assistant_agenda.register_templates(req.owner, req.templates)}
+
+
+@app.get("/api/agenda/templates")
+def agenda_templates() -> dict:
+    rows = assistant_agenda.list_templates()
+    return {"count": len(rows), "templates": rows}
+
+
+@app.post("/api/agenda/templates/{owner}/{template_id}/create")
+def agenda_from_template(owner: str, template_id: str, req: AgendaFromTemplate) -> dict:
+    item = _agenda_guard(assistant_agenda.create_from_template, owner, template_id, values=req.values,
+                         start_at=req.start_at, end_at=req.end_at, recurrence=req.recurrence,
+                         type_=req.type, description=req.description)
+    return {"status": "ok", "item": item}
+
+
 @app.get("/api/agenda/windows/{key}")
 def agenda_window(key: str) -> dict:
     """Modules ask: is my window open now? (closed if missing/cancelled/skipped)."""

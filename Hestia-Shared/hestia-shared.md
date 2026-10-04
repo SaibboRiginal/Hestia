@@ -46,6 +46,19 @@ agenda.show(key, title, start_at); agenda.done(key); agenda.cancel(key)     # in
 agenda.agenda(days=7, owner=None)                    # see every module's plans
 ```
 
+Wizard templates (what the user can create for your module from the WebUI calendar):
+
+```python
+from hestia_common.agenda_client import template
+agenda.register_async(rules, templates=lambda: [template(
+    "recheck", "Ricontrolla un servizio", service="argus", path="/api/argus/recheck/{service}",
+    type="task", types=["task", "job"], icon="refresh",
+    fields={"service": {"type": "string", "label": "Servizio", "in": "path"}}, required=["service"],
+    title="Argus: ricontrolla {service}")])
+```
+Registered today: Scout (controllo email extra), Athena (rifletti su un tema), Argus (ricontrolla un servizio),
+Hephaestus (sviluppo programmato).
+
 Rules are idempotent by `key`; edits made by the user (`user_modified`) are never overwritten. A paused or
 cancelled rule is a user decision: `is_open` → closed, `should_self_run` → False. Every call fails soft.
 

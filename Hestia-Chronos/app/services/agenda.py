@@ -500,3 +500,66 @@ def start_worker() -> None:
 
     threading.Thread(target=_loop, daemon=True, name="agenda-worker").start()
     logger.info("event=agenda_worker_started tick=%ds", _TICK)
+
+
+# ── Templates: what the user can create per module (WebUI wizard) ─────────────
+# In memory: modules re-assert them with their rules (hourly + at startup), so a restart heals itself.
+_TEMPLATES: dict[str, dict[str, dict]] = {}
+
+
+def register_templates(owner: str, templates: list[dict]) -> int:
+    clean: dict[str, dict] = {}
+    for t in templates or []:
+        if isinstance(t, dict) and t.get("id") and isinstance(t.get("action"), dict):
+            clean[str(t["id"])] = {**t, "owner": owner}
+    with _lock:
+        _TEMPLATES[owner] = clean
+    return len(clean)
+
+
+def list_templates() -> list[dict]:
+    with _lock:
+        return [t for owner in sorted(_TEMPLATES) for t in _TEMPLATES[owner].values()]
+
+
+def create_from_template(owner: str, template_id: str, *, values: dict, start_at: str,
+                         end_at: str | None = None, recurrence: str | None = None,
+                         type_: str | None = None, description: str | None = None) -> dict:
+    """User creates an item from a module template: created_by=user (manual → always visible), owner=module."""
+    with _lock:
+        tpl = (_TEMPLATES.get(owner) or {}).get(template_id)
+    if not tpl:
+        raise AgendaError(f"template {owner}/{template_id} not found (module offline?)", 404)
+    values = {k: v for k, v in (values or {}).items() if k in (tpl.get("fields") or {})}
+    for name in tpl.get("required") or []:
+        if values.get(name) in (None, ""):
+            raise AgendaError(f"field '{name}' required")
+    fields = tpl.get("fields") or {}
+    for name, spec in fields.items():
+        if name not in values and isinstance(spec, dict) and "default" in spec:
+            values[name] = spec["default"]
+        if isinstance(spec, dict) and spec.get("enum") and name in values and values[name] not in spec["enum"]:
+            raise AgendaError(f"field '{name}' must be one of {spec['enum']}")
+    kind = type_ if type_ in (tpl.get("types") or [tpl.get("type")]) else tpl.get("type", "task")
+    action = dict(tpl["action"])
+    path = str(action.get("path") or "")
+    body = dict(action.get("body") or {})
+    from urllib.parse import quote
+    for name, v in values.items():
+        if (fields.get(name) or {}).get("in") == "path":
+            path = path.replace("{" + name + "}", quote(str(v), safe=""))
+        else:
+            body[name] = v
+    action.update(path=path, body=body)
+    try:
+        title = str(tpl.get("title") or tpl.get("label")).format(**{k: v for k, v in values.items()})
+    except (KeyError, IndexError, ValueError):
+        title = str(tpl.get("label"))
+    if kind == "window" and not end_at and tpl.get("duration_minutes"):
+        end_at = (_parse(start_at, _TZ_DEFAULT) + timedelta(minutes=int(tpl["duration_minutes"]))).isoformat()
+    return create(title=title[:200], type_=kind, owner=owner, start_at=start_at, end_at=end_at,
+                  recurrence=(recurrence or None) if kind in ("job", "window", "event") else None,
+                  description=description or tpl.get("description"),
+                  action=action if kind in ("task", "job") else None,
+                  key=f"{owner}.tpl.{template_id}.{uuid.uuid4().hex[:6]}",
+                  params={"template": template_id, "values": values}, created_by="user")

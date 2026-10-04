@@ -103,6 +103,23 @@ class Forge:
         self._load()
         self._load_settings()
 
+    def _register_agenda_templates(self) -> None:
+        """Calendar wizard: the user can schedule a development task (fires POST /forge/tasks)."""
+        try:
+            from ..core.shared_imports import import_shared_symbol
+            template = import_shared_symbol("hestia_common.agenda_client", "template")
+            self.agenda.register_async([], templates=[template(
+                "develop", "Sviluppo programmato", service="hephaestus", path="/api/hephaestus/forge/tasks",
+                type="task", types=["task"], icon="terminal",
+                fields={"request": {"type": "string", "label": "Richiesta", "format": "textarea", "description": "Cosa sviluppare o correggere"},
+                        "engine": {"type": "string", "label": "Motore", "enum": ["", "local", "cloud", "claude"], "default": "",
+                                   "description": "Motore (vuoto = predefinito)"}},
+                required=["request"], body={"source": "agenda", "requested_by": "user"},
+                title="Forge: sviluppo programmato", timeout_seconds=30,
+                description="All'orario scelto Forge avvia il task di sviluppo (diff da approvare come sempre).")])
+        except Exception as exc:  # never block Forge start on the agenda
+            logger.warning("[🔄] event=forge_agenda_templates_failed error=%s", exc)
+
     # ── persistence ─────────────────────────────────────────────────────────
     def _load(self) -> None:
         try:
@@ -275,6 +292,7 @@ class Forge:
     def start(self) -> None:
         if self._worker and self._worker.is_alive():
             return
+        self._register_agenda_templates()
         # Resilience: resume anything interrupted by a restart.
         with self._lock:
             for task in self._tasks.values():

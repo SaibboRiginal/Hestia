@@ -38,6 +38,7 @@ TaskLifecycleStore = import_shared_symbol(
     "hestia_common.task_lifecycle", "TaskLifecycleStore"
 )
 AgendaClient = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")
+agenda_template = import_shared_symbol("hestia_common.agenda_client", "template")
 daily_window = import_shared_symbol("hestia_common.agenda_client", "daily_window")
 
 # Assistant-agenda windows (Chronos). The user moves/skips/pauses them there;
@@ -1017,7 +1018,13 @@ class AthenaRuntime:
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()
-        self.agenda.register_async(self._agenda_rules)
+        self.agenda.register_async(self._agenda_rules, templates=lambda: [agenda_template(
+            "reflect", "Fai riflettere Athena su un tema", service="athena", path="/api/athena/trigger",
+            type="task", types=["task", "job"], icon="brain",
+            fields={"title": {"type": "string", "label": "Tema", "description": "Tema (es. 'spese di casa')"},
+                    "summary": {"type": "string", "label": "Dettagli", "format": "textarea", "description": "Cosa deve considerare"}},
+            required=["title"], body={"domain": "cognition"}, title="Athena: {title}",
+            description="Athena analizza il tema all'orario scelto e ti propone idee o azioni.")])
         # Wait for Oracle inside the loop thread: blocking here would hold the
         # FastAPI startup (and /health) for up to 60 s.
         self._thread = threading.Thread(

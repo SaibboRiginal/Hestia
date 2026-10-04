@@ -214,6 +214,9 @@ Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`
 | POST | `/api/agenda/items/{ref}/unskip` | Restore an occurrence |
 | POST | `/api/agenda/items/{ref}/run` | Execute the action now |
 | GET | `/api/agenda/windows/{key}` | Window open now? |
+| GET | `/api/agenda/templates` | What each module lets the user create (calendar wizard "Da un modulo…") |
+| POST | `/api/agenda/templates` | Module declares its templates `{owner, templates}` (in memory; re-asserted hourly by `register_async`) |
+| POST | `/api/agenda/templates/{owner}/{id}/create` | Create from a template `{values, start_at, end_at?, recurrence?, type?}` → item `created_by=user`, owner = module, key `<owner>.tpl.<id>.<rand>` |
 | POST | `/api/agenda/items/{ref}/move` | Move ONE occurrence `{occurrence, start_at, end_at?, reset?}` (exception kept in `meta.overrides`, same key → modules/jobs follow it); one-off items move entirely |
 
 **Run log**: every execution (tick or "run now") is appended to `meta.runs` (last 50:
