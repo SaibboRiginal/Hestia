@@ -199,8 +199,9 @@ class AgendaClient:
     # ── one-off items ───────────────────────────────────────────────────────
     def plan(self, key: str, title: str, start_at: str | datetime, *, type_: str = "task",
              end_at: str | datetime | None = None, action: dict | None = None,
-             description: str = "", params: dict | None = None) -> dict | None:
-        """Create/refresh a one-off ``task`` (with action) or ``event`` (informational)."""
+             description: str = "", params: dict | None = None, parent: str | None = None) -> dict | None:
+        """Create/refresh a one-off ``task`` (with action) or ``event`` (informational).
+        ``parent``: key of a linked item (cancelling it cancels this one; failing this one marks it)."""
         def iso(v):
             if isinstance(v, datetime):
                 return (v if v.tzinfo else v.replace(tzinfo=timezone.utc)).isoformat()
@@ -209,16 +210,19 @@ class AgendaClient:
                 "title": title[:200], "description": (description or "")[:1000],
                 "start_at": iso(start_at), "end_at": iso(end_at), "action": action,
                 "params": params or {}}
+        if parent:
+            body["parent"] = parent
         status, payload = self._safe("agenda_plan_failed", "POST", "api/agenda/items", body=body)
         if status and status < 400 and isinstance(payload, dict):
             return payload.get("item")
         return None
 
     def show(self, key: str, title: str, start_at: str | datetime, description: str = "",
-             end_at: str | datetime | None = None, params: dict | None = None) -> dict | None:
+             end_at: str | datetime | None = None, params: dict | None = None,
+             parent: str | None = None) -> dict | None:
         """Informational event (what the module plans to do), visible to the user."""
         return self.plan(key, title, start_at, type_="event", end_at=end_at,
-                         description=description, params=params)
+                         description=description, params=params, parent=parent)
 
     def update(self, key: str, **changes) -> dict | None:
         status, payload = self._safe("agenda_update_failed", "PATCH", f"api/agenda/items/{key}",
@@ -228,6 +232,16 @@ class AgendaClient:
     def done(self, key: str) -> None:
         """Mark a one-off as completed (keeps history, hides it from the agenda)."""
         self.update(key, status="completed")
+
+    def fail(self, key: str, detail: str = "") -> None:
+        """The work behind ``key`` failed: item → failed, its linked parent is marked too."""
+        self._safe("agenda_fail_failed", "POST", f"api/agenda/items/{key}/fail",
+                   body={"detail": (detail or "")[:300], "by": self.owner})
+
+    def link(self, key: str, parent: str | None) -> None:
+        """Link ``key`` to ``parent`` (empty clears): cascade cancel / error propagation."""
+        self._safe("agenda_link_failed", "POST", f"api/agenda/items/{key}/link",
+                   body={"parent": parent or None, "by": self.owner})
 
     def cancel(self, key: str) -> None:
         self._safe("agenda_cancel_failed", "DELETE", f"api/agenda/items/{key}", query={"by": self.owner})

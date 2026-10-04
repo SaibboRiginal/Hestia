@@ -50,7 +50,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| WS | `/hubs/chat?access_token=...` | SignalR chat streaming (Oracle NDJSON bridge) |
+| WS | `/hubs/chat?access_token=...` | SignalR chat streaming (Oracle NDJSON bridge). Message `context` (drawer packet) is appended to that turn's client instructions |
 | POST | `/api/webui/auth/login` | Validate access token |
 | GET | `/api/webui/auth/status` | Token status |
 | GET | `/api/webui/sessions/current` | Current session ID |
@@ -67,6 +67,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET/POST | `/api/webui/agenda/items` | Items list / create (owner user) |
 | PATCH/DELETE | `/api/webui/agenda/items/{key}` | Change (by=user) / cancel |
 | POST | `/api/webui/agenda/items/{key}/skip` · `unskip` · `move` · `run` | Skip/restore occurrence, move one occurrence (exception), run now |
+| POST | `/api/webui/agenda/parse` | Natural-language quick add → draft (→ Chronos `/api/agenda/parse`) |
+| GET | `/api/webui/agenda/logs?service&at&minutes&contains` | Logs of a service around an occurrence: `{svc}/api/logs` (in-memory buffer) filtered to `at ± minutes` |
+| GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only) |
 | GET | `/api/webui/forge/status` · `tasks` · `tasks/{id}` · `tasks/{id}/transcript` · `files` · `workdoc` · `tests` · `logs` · `events` | Sviluppo page (→ Hephaestus `/api/hephaestus/forge/*`) |
 | POST | `/api/webui/forge/tasks` · `tasks/{id}/approve` · `reject` · `rollback` · `retry` | New task / follow-up (`source=ui`) and actions (`by=user`) |
 | GET | `/api/webui/forge/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only repository browser (→ Hephaestus `/api/hephaestus/repo/*`) |
@@ -101,6 +104,20 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
   (list → task with back button).
 
+### "Crea con Hestia" drawer (2026-10-04, `features/assistant/`, `services/assistant.service.ts`)
+
+- Right-side assistant panel (full screen ≤720 px), lazy (`@defer` in the shell). Open from anywhere: sidebar
+  **Crea con Hestia**, **Ctrl/⌘+J**, or a page with a context packet `AssistantService.open({page, intent, label,
+  hints, suggestions, prompt})` — calendar (*Nuovo → Crea con Hestia…*, editor *Chiedi a Hestia*, event details
+  *Chiedi a Hestia*), Sviluppo (header, with the selected task), Comandi (header, with the selected command).
+- Same Oracle stream (SignalR) and packets as the chat (reasoning, questions, notices), but its own `ChatService`
+  instance on channel `assistant` and its own session id. ChatHub runs one stream per connection: the chat that
+  sends last owns the events (`SignalRService.claim`), the other one stops its placeholder.
+- The packet goes as `context` (`page=calendar; intent=create; giorno=…; ora=…; tz=…`) → ChatHub appends it to
+  the client instructions with "act with the tools; if no tool can do it, propose a Forge task".
+- Live refresh: `AssistantService.changed$` fires on `agenda.planned` / `action.done` / `forge.task` /
+  subscription notices (from the drawer or the chat) → calendar and Sviluppo reload.
+
 ### Calendar view rules (2026-10-04, `features/calendar/calendar.prefs.ts`)
 
 - **Navigation**: header arrows step by view (tooltip says "Giorno/Settimana/Mese precedente"); mini calendar →
@@ -120,6 +137,14 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - **Create**: split "Nuovo" → *Evento libero* (generic editor) or *Da un modulo…* (wizard: pick a module template
   → fields + when/repeat → review). Templates come from the modules (`GET /api/webui/agenda/templates` → Chronos);
   created items are yours (`created_by=user`) and run the module action.
+- **Aggiungi rapido** (sidebar, under Nuovo): "domani alle 15 dentista" → Chronos/Oracle parse → editor prefilled
+  (you confirm). Failure → editor with the text as title.
+- **Log del modulo** (event ⋯ menu): module logs ± 2/5/15/60 min around the occurrence (or its last run); the
+  module keeps only its recent lines in memory, so old occurrences may show nothing.
+- **Feed ICS (telefono)** (Nuovo menu): subscription URL when `WEBUI_ICS_KEY` is set, else download.
+- **Working hours** (Vista: default 9–18 Mon–Fri): outside them the week/day grid is shaded; now line +
+  auto-scroll to the current hour.
+- Linked items (`parent`) show "Collegata a …" in the details.
 
 ### Chat features
 
@@ -160,6 +185,8 @@ All documented in `docker-compose.yml`. Key vars:
   script reads it from the environment)
 - `WEBUI_PUBLIC_HOST_SUFFIXES` — hosts accepted for public-URL auto-detection (default `.trycloudflare.com`)
 - `WebUI__TokenLifetimeHours` — Token expiry (default 72h)
+- `WEBUI_ICS_KEY` — optional (≥16 chars): key of the read-only agenda ICS feed for phone calendars
+  (`/api/webui/agenda/feed.ics?key=`); empty = feed only with the login token
 
 ## Local Development (Windows host, outside Docker)
 

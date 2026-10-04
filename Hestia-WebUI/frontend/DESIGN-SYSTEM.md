@@ -99,6 +99,13 @@ export class NotesPageComponent {}
 - **Destructive actions**: `DialogService.confirm(..., danger=true)` and, when possible, a toast with "Annulla".
 - **Loading**: `<hx-spinner>` inline; never block the whole page.
 - **Keyboard**: page-level shortcuts via `@HostListener('document:keydown')`, ignore when focus is in inputs.
+  Global: **Ctrl/⌘+J** = "Crea con Hestia" (shell).
+- **"Crea con Hestia" entry point**: any page that creates or changes things offers a ghost button with the
+  `sparkle` icon (accent color) labelled *Chiedi a Hestia* / *Crea con Hestia…* that calls
+  `AssistantService.open({page, intent, label, hints, suggestions, prompt})`. `label` is the chip the user sees
+  (short, human); `hints` are compact key/values for Oracle (ids, keys, dates — no prose, every token is paid).
+  Reload page data on `AssistantService.changed$` (agenda / Forge / action notices).
+- **Random ids**: `uid()` from `core/uid.ts` (`crypto.randomUUID` is missing on plain-http LAN addresses).
 
 ## 6. Calendar module (reference implementation)
 
@@ -107,6 +114,12 @@ export class NotesPageComponent {}
 drag/resize with 15-min snap), `month-view` (window bars, chips grouped ×N, HTML5 drag between days),
 `list-view`, `mini-calendar`, `event-details` (popover), `event-editor` (modal, RRULE builder).
 Sources/layers: `CalendarSource` (`kind: 'ai' | 'external'`) — external calendars plug in there.
+
+## 6b. Assistant drawer
+
+`features/assistant/assistant-drawer.component.ts` (`<hx-assistant>`, lazy via `@defer` in the shell) +
+`services/assistant.service.ts`. Own `ChatService` instance (`providers`, channel `assistant`): the chat code and
+packets are shared with the Chat page, the conversation and the Oracle session are not.
 
 ## 7. Sviluppo module
 

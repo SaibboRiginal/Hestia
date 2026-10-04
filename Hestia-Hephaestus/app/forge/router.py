@@ -24,6 +24,8 @@ class ForgeTaskRequest(BaseModel):
     notify_target: str = ""
     workdoc: str = Field("", description="continue docs/work/<workdoc>/ of an earlier task")
     parent_task: str = Field("", description="follow-up of this task: inherits workdoc + services + context")
+    agenda_parent: str = Field("", description="agenda key this task serves: cancelling it rejects the task; "
+                                               "a failed task marks it")
 
 
 class ForgeEngineChoice(BaseModel):
@@ -180,7 +182,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
 
 _PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "engine_requested", "source", "requested_by",
                 "summary", "diff_stat", "workdoc", "deploy_plan", "changed_files", "touched_services", "tests",
-                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task")
+                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task", "agenda_parent")
 
 
 def _public(task: dict) -> dict:

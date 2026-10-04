@@ -1,6 +1,6 @@
 # PROGRESS — calendar / skills / Sviluppo page
 
-Spec: `SPEC.md` v2.3 · resume from the first unchecked box.
+Spec: `SPEC.md` v2.4 · resume from the first unchecked box.
 
 ## D. Process
 - [x] Dossier created (SPEC v1.0, PROGRESS, CHANGELOG) with version + source
@@ -17,17 +17,19 @@ Spec: `SPEC.md` v2.3 · resume from the first unchecked box.
 - [x] A6 calendar "Vista" popover (v2.1: not mirrored in Impostazioni)
 - [x] A7 `template()` in hestia_common + `register_async(templates=)`; Chronos `/api/agenda/templates` (+create); Scout, Athena, Argus, Hephaestus register templates
 - [x] A7 WebUI wizard (split "Nuovo", 3 steps: scegli · dettagli · conferma; own small schema form) + backend proxy
-- [ ] A9 extras (now line check, Log link, NL quick add, ICS) — pick after the core
+- [x] A9 extras: now line (existed) + working-hours shading, occurrence "Log del modulo", "Aggiungi rapido" (Chronos `/api/agenda/parse` via Oracle → editor prefilled), ICS feed (`/api/agenda/ics`, WebUI `feed.ics` + `WEBUI_ICS_KEY`)
 - [x] Docs: hestia-webui.md, hestia-chronos.md, hestia-shared.md, swagger, DESIGN-SYSTEM.md, root CHANGELOG
 - [x] Checks: `ng build` clean, py_compile/ruff, Playwright screenshots (mocked API). Pending on user side: .NET build + real run
 
 ## B. "Crea con Hestia"
-- [ ] Kit `<hx-assistant>` drawer (SignalR chat, packets, context packet → client instructions)
-- [ ] Entry points: calendar (Nuovo split, empty slot, event details), Commands, Sviluppo, global shortcut
-- [ ] Oracle agenda tools coverage (create/update/skip/move/cancel) + `agenda.planned` notices; page refresh on notices
-- [ ] Agenda links + cascade (`meta.links`, cancel/error propagation) — used by Forge tasks
-- [ ] Assistant proposes a Forge task when no tool can do it (prompt rule in Oracle)
-- [ ] Docs
+- [x] Drawer `<hx-assistant>` (`features/assistant/`, lazy) + `AssistantService` (context packet, `changed$`); own ChatService channel/session; ChatHub `context` → client instructions
+- [x] Entry points: sidebar + Ctrl/⌘+J; calendar (Nuovo → Crea con Hestia…, editor "Chiedi a Hestia", details "Chiedi a Hestia"); Sviluppo; Comandi
+- [x] Oracle agenda tools coverage (+ ripristina, sposta_occorrenza, modelli, da_modello, collega) + `agenda.planned` / `forge.task` notices; calendar and Sviluppo reload on notices
+- [x] Agenda links + cascade (`meta.parent`, cancel cascade, child fail/cancel marks parent, `/link` `/fail` `/links`); Forge `agenda_parent` (mirror linked, failed task → `/fail`, cancelled link → proposed task rejected)
+- [x] Oracle analyst rule 8: no tool → propose Forge task, ask, `forge_develop` (+ `agenda_parent`)
+- [x] Docs: hestia-chronos/webui/hephaestus/oracle/shared.md, DESIGN-SYSTEM.md, swagger, compose (`WEBUI_ICS_KEY`), root CHANGELOG
+- [x] Checks: `ng build` clean (initial < budget), ruff (only pre-existing findings), ad-hoc check of cascade/cycle/fail with a fake Archive, parse/ICS helpers, Playwright screenshots (drawer wide/phone dark, details, logs, ICS)
+- [ ] Pending on user side: .NET build + real run (drawer with Oracle, agenda tools, quick add, ICS on a phone)
 
 ## C. Sviluppo page
 - [x] Oracle claude runner `stream-json` → live raw file on the shared mount, imported as normalized transcript per task; local/cloud engines emit the same events

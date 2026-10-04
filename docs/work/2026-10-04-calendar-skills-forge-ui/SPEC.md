@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, not Forge, not Hestia's own AI) · 2026-10-04 |
-| **Status** | A done (A9 extras open) · C done · B to do |
+| **Status** | A, B, C done (implemented; user test pending: .NET build + real run) |
 | **Order** | A → B (design + core) → C → D (process, done with this spec) |
 
 Versioning: bump **minor** (1.1, 1.2…) for refinements/clarifications, **major** (2.0) when scope or a design
@@ -147,6 +147,24 @@ per creare cose con lui invece di farlo manualmente".
   `meta.links` to the request; cancelling one marks the other (generic agenda links + cascade:
   `cancel_children`, `error_parent`), reusable by any module.
 
+### B4. Implementation decisions (v2.4)
+- Drawer lives in `features/assistant/` (+ `services/assistant.service.ts`), not in `ui/`: the kit stays free of
+  app services. Lazy (`@defer`) so the initial bundle stays under budget; Ctrl/⌘+J in the shell.
+- Own `ChatService` instance (channel `assistant`) and own Oracle session; SignalR events go to the chat that sent
+  last (ChatHub = one stream per connection). Drawer turns don't touch the Chat page's "Rigenera" message.
+- Context packet → `ChatHubMessage.context` → appended to the turn's client instructions (≤2000 chars).
+- Agenda tools added: `agenda_assistente_ripristina`, `_sposta_occorrenza`, `_modelli`, `_da_modello`, `_collega`;
+  Oracle maps successful agenda writes to `agenda.planned` and `forge_develop` to `forge.task`.
+- Links = one generic `meta.parent` key (children derived) instead of a `links` list: enough for cascade and error
+  propagation, no sync of two sides. Endpoints `/link`, `/fail`, `/links`; Forge `agenda_parent`.
+- Calendar entry points: Nuovo → *Crea con Hestia…*, editor *Chiedi a Hestia* (hands the time/title over),
+  details *Chiedi a Hestia* (modify/explain the item). The empty-slot click keeps opening the editor (one click
+  less); the editor button covers that case.
+- A9: quick add parses in Chronos (owner of agenda semantics) via Oracle `/api/llm/generate`, validated before
+  reaching the editor; Log = each service's `/api/logs` buffer filtered by time in the WebUI backend (no new
+  service endpoint); ICS from Chronos, served by the WebUI with a dedicated read-only key `WEBUI_ICS_KEY`
+  (login tokens expire after 72 h and grant everything); working-hours shading (now line already existed).
+
 ### B3. Out of scope for now
 - Naming/approval questions of v1 (user: "lasciamo perdere per ora"); approvals stay as today (Forge needs
   approval for code; cloud/Claude tokens need the user's OK).
@@ -195,7 +213,7 @@ Branch · Dossier (SPEC/PROGRESS/CHANGELOG + every referenced .md) · Test · Lo
 - `/logs` = engine log + deploy output + error (container logs are not reachable from Hephaestus: the panel shows
   the `docker logs` hint). `/events` = state timeline. Added `POST /tasks/{id}/retry`.
 - Live = polling (task + transcript 4 s, files ~12 s, list 15 s); SignalR push stays a later improvement.
-- The "Log" link on calendar items stays in A9 (needs a log viewer); "Apri in Sviluppo" is done.
+- The "Log" link on calendar items: done in v2.4 (A9, "Log del modulo"); "Apri in Sviluppo" is done.
 
 ---
 

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { APP_MODULES } from '../app.modules';
 import { AuthService } from '../services/auth.service';
@@ -7,11 +7,13 @@ import { SessionService } from '../services/session.service';
 import { SettingsService } from '../services/settings.service';
 import { ThemeService } from '../core/theme/theme.service';
 import { DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
+import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
+import { AssistantService } from '../services/assistant.service';
 
 /** App frame: collapsible sidebar (modules from APP_MODULES) + routed page + global overlays. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent, DialogHostComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
@@ -23,6 +25,9 @@ import { DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
             <hx-icon name="sidebar" [size]="17" />
           </button>
         </div>
+        <button class="item ask" (click)="assistant.toggle(); mobileOpen.set(false)" title="Crea con Hestia (Ctrl+J)">
+          <hx-icon name="sparkle" [size]="18" /><span>Crea con Hestia</span><kbd>Ctrl J</kbd>
+        </button>
         <nav>
           @for (m of top; track m.path) {
             <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
@@ -55,6 +60,7 @@ import { DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
         <router-outlet />
       </main>
     </div>
+    @defer (when assistant.isOpen()) { <hx-assistant /> }
     <hx-toast-host />
     <hx-dialog-host />
   `,
@@ -75,6 +81,10 @@ import { DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
     .item.active { background: var(--surface-3); color: var(--text); font-weight: 500; }
     .item hx-icon { color: var(--text-3); }
     .item.active hx-icon { color: var(--accent); }
+    .item.ask { margin-bottom: 6px; border: 1px solid var(--border); background: var(--surface); }
+    .item.ask hx-icon { color: var(--accent); }
+    .item.ask kbd { margin-left: auto; font: 10.5px var(--font-mono, monospace); color: var(--text-3); }
+    .collapsed .item.ask kbd { display: none; }
     .spacer { flex: 1; }
     .conn { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-3); padding: 8px 12px 2px; white-space: nowrap; }
     .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
@@ -102,6 +112,7 @@ export class ShellComponent {
   auth = inject(AuthService);
   signalR = inject(SignalRService);
   theme = inject(ThemeService);
+  assistant = inject(AssistantService);
   private session = inject(SessionService);
   private settings = inject(SettingsService);
   private router = inject(Router);
@@ -124,6 +135,15 @@ export class ShellComponent {
   private async bootstrap() {
     if (this.signalR.connectionState() !== 'connected') await this.signalR.connect();
     await Promise.all([this.session.load(), this.settings.load()]);
+  }
+
+  /** "Crea con Hestia" from anywhere. */
+  @HostListener('document:keydown', ['$event'])
+  onKey(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j') {
+      e.preventDefault();
+      this.assistant.toggle();
+    }
   }
 
   toggleCollapse() {

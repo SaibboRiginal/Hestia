@@ -43,6 +43,9 @@ agenda.is_open("athena.consolidation", fallback=lambda: 3 <= now.hour < 5)   # w
 agenda.should_self_run("scout.email_cycle", 1800)    # job fallback guard (Chronos down / missing / stale)
 agenda.plan("metis.train.42", "Training", start_at, action={...})            # one-off task
 agenda.show(key, title, start_at); agenda.done(key); agenda.cancel(key)     # informational events
+agenda.plan(key, title, start_at, parent="user:abc")  # linked: parent cancelled → this cancelled
+agenda.fail(key, "tests red")                         # work failed → item failed, parent marked
+agenda.link(key, parent)                              # (re)link later; parent=None unlinks
 agenda.agenda(days=7, owner=None)                    # see every module's plans
 ```
 

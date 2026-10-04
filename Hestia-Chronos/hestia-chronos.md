@@ -206,10 +206,10 @@ Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`
 |---|---|---|
 | GET | `/api/agenda?days=7&owner=&type=&past_hours=` or `?start=&end=&include_done=` | Expanded occurrences (`skipped`, `moved`, `status`, `recurring`, `created_by`, `run`) |
 | GET | `/api/agenda/items` | Raw items (`include_cancelled`) |
-| POST | `/api/agenda/items` | Create (on demand) `{title, type, owner, start_at, end_at, recurrence, description, action, key, params, tz}` |
+| POST | `/api/agenda/items` | Create (on demand) `{title, type, owner, start_at, end_at, recurrence, description, action, key, params, tz, parent?}` |
 | POST | `/api/agenda/register` | Module defaults (idempotent, user edits preserved) |
 | PATCH | `/api/agenda/items/{ref}` | Move/change (`start_at` keeps duration), pause (`status=paused`), `by` |
-| DELETE | `/api/agenda/items/{ref}` | Cancel |
+| DELETE | `/api/agenda/items/{ref}` | Cancel (cascades to linked children; `PATCH status=cancelled` does the same) |
 | POST | `/api/agenda/items/{ref}/skip` | Dismiss one occurrence (default: current/next); a one-off is cancelled |
 | POST | `/api/agenda/items/{ref}/unskip` | Restore an occurrence |
 | POST | `/api/agenda/items/{ref}/run` | Execute the action now |
@@ -218,13 +218,26 @@ Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`
 | POST | `/api/agenda/templates` | Module declares its templates `{owner, templates}` (in memory; re-asserted hourly by `register_async`) |
 | POST | `/api/agenda/templates/{owner}/{id}/create` | Create from a template `{values, start_at, end_at?, recurrence?, type?}` → item `created_by=user`, owner = module, key `<owner>.tpl.<id>.<rand>` |
 | POST | `/api/agenda/items/{ref}/move` | Move ONE occurrence `{occurrence, start_at, end_at?, reset?}` (exception kept in `meta.overrides`, same key → modules/jobs follow it); one-off items move entirely |
+| GET | `/api/agenda/items/{ref}/links` | Parent + children of an item |
+| POST | `/api/agenda/items/{ref}/link` | Link to a parent `{parent}` (empty = unlink; cycles refused) |
+| POST | `/api/agenda/items/{ref}/fail` | A module reports the work behind the item failed `{detail}` → `failed` + parent marked |
+| POST | `/api/agenda/parse` | Natural-language quick add `{text, tz?}` → `draft {title, type, start_at, end_at, recurrence, description}` (Oracle `/api/llm/generate` through Hub, Chronos validates; nothing created) |
+| GET | `/api/agenda/ics?days=60&past_days=7&owner=&types=event,task,window` | Read-only iCalendar feed (expanded occurrences, skips/moves applied; jobs excluded by default) |
 
 **Run log**: every execution (tick or "run now") is appended to `meta.runs` (last 50:
 `{occurrence, ok, detail, at, by, duration_ms}`); occurrences expose `run` so the calendar shows ok/failed per
 occurrence and can keep past failures visible. `last_result` stays (last run of the rule).
 
-`ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi`,
-`agenda_assistente_sposta`, `agenda_assistente_salta`, `agenda_assistente_annulla`, `agenda_assistente_esegui`.
+**Links (generic, `meta.parent`)**: an item may name a parent key. Cancelling the parent cancels its live
+children (`by=cascade:<key>`, recursive); a child that fails (tick after `max_attempts`, or `/fail`) or that the
+user cancels marks the parent (`last_result` + run log entry `by=link:<child>`; a one-off parent becomes
+`failed`, a recurring one keeps running). Forge links its task mirror `forge.task.<id>` to `agenda_parent`.
+
+`ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi` (`parent`),
+`agenda_assistente_sposta`, `agenda_assistente_sposta_occorrenza`, `agenda_assistente_salta`,
+`agenda_assistente_ripristina`, `agenda_assistente_annulla`, `agenda_assistente_esegui`,
+`agenda_assistente_modelli`, `agenda_assistente_da_modello`, `agenda_assistente_collega`. Oracle turns a
+successful write of these into an `agenda.planned` notice (calendar pages reload live).
 
 ### Who plans what (registered rules)
 

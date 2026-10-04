@@ -55,6 +55,20 @@ public class TokenAuthMiddleware
             return;
         }
 
+        // Read-only agenda ICS feed for phone calendars: dedicated key (WEBUI_ICS_KEY, >= 16 chars).
+        if (path == "/api/webui/agenda/feed.ics" && context.Request.Method == "GET")
+        {
+            var icsKey = Environment.GetEnvironmentVariable("WEBUI_ICS_KEY") ?? "";
+            var given = context.Request.Query["key"].FirstOrDefault() ?? "";
+            if (icsKey.Length >= 16 && given.Length == icsKey.Length &&
+                System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                    System.Text.Encoding.UTF8.GetBytes(given), System.Text.Encoding.UTF8.GetBytes(icsKey)))
+            {
+                await _next(context);
+                return;
+            }
+        }
+
         // Extract token from header or query string
         var token = context.Request.Headers["X-Access-Token"].FirstOrDefault()
                     ?? context.Request.Query["token"].FirstOrDefault()

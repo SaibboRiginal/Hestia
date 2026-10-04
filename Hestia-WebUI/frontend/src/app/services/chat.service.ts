@@ -1,11 +1,18 @@
+import { uid } from '../core/uid';
 import { Injectable, inject, signal } from '@angular/core';
 import { SignalRService } from './signalr.service';
 import { ChatMessage, ChatNotice, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
 import { NoticePrefsService } from './notice-prefs.service';
 import { ToastService } from '../ui';
 
+/**
+ * Chat state over the SignalR stream. Root instance = the Chat page ("main" channel);
+ * the "Crea con Hestia" drawer provides its own instance with channel "assistant".
+ */
 @Injectable({ providedIn: 'root' })
 export class ChatService {
+  /** Which chat this instance is: events are routed to the channel that sent last. */
+  channel = 'main';
   private signalR = inject(SignalRService);
   private noticePrefs = inject(NoticePrefsService);
   private toast = inject(ToastService);
@@ -21,21 +28,29 @@ export class ChatService {
   private stepCounter = 0;
 
   constructor() {
-    this.signalR.events$.subscribe(event => this.handleEvent(event));
+    this.signalR.events$.subscribe(event => {
+      if (this.signalR.activeChannel === this.channel) this.handleEvent(event);
+    });
+    // Another chat took the connection: the server cancelled our stream.
+    this.signalR.claims$.subscribe(ch => {
+      const id = this.currentStreamingId();
+      if (ch !== this.channel && id) this.finalizeStreaming(id, null);
+    });
   }
 
-  async sendMessage(text: string, sessionId: string, mode = 'auto', model = 'generic'): Promise<void> {
+  async sendMessage(text: string, sessionId: string, mode = 'auto', model = 'generic', context?: string): Promise<void> {
+    this.signalR.claim(this.channel);
     this.isStreaming.set(true);
     this.thinkingBuffer = [];
     this.stepCounter = 0;
 
     // Create placeholder for streaming assistant message
-    const streamId = crypto.randomUUID();
+    const streamId = uid();
     this.currentStreamingId.set(streamId);
     this.lastAssistantId = streamId;
 
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: uid(),
       role: 'user',
       content: text,
       timestamp: new Date()
@@ -58,7 +73,8 @@ export class ChatService {
         message: text,
         session_id: sessionId,
         mode,
-        model
+        model,
+        ...(context ? { context } : {}),
       });
     } catch (err: any) {
       // Do not leave the placeholder "streaming" forever.
@@ -75,11 +91,11 @@ export class ChatService {
     this.isStreaming.set(true);
     this.thinkingBuffer = [];
     this.stepCounter = 0;
-    const streamId = crypto.randomUUID();
+    const streamId = uid();
     this.currentStreamingId.set(streamId);
     this.lastAssistantId = streamId;
     this.messages.update(msgs => [...msgs,
-      { id: crypto.randomUUID(), role: 'user', content: `📎 ${file.name}${text ? ' — ' + text : ''}`, timestamp: new Date() },
+      { id: uid(), role: 'user', content: `📎 ${file.name}${text ? ' — ' + text : ''}`, timestamp: new Date() },
       { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
 
     const form = new FormData();
@@ -118,16 +134,18 @@ export class ChatService {
   }
 
   cancelStream(): void {
+    if (this.signalR.activeChannel !== this.channel) return;
     this.signalR.send({ type: 'cancel' }).catch(() => {});
   }
 
   retry(): void {
     if (this.isStreaming()) return;
     // New placeholder for the regenerated answer (events need a streaming target).
+    this.signalR.claim(this.channel);
     this.isStreaming.set(true);
     this.thinkingBuffer = [];
     this.stepCounter = 0;
-    const streamId = crypto.randomUUID();
+    const streamId = uid();
     this.currentStreamingId.set(streamId);
     this.lastAssistantId = streamId;
     this.messages.update(msgs => [...msgs,
@@ -137,6 +155,7 @@ export class ChatService {
   }
 
   answerQuestion(questionId: string, answer: string): void {
+    this.signalR.claim(this.channel);
     this.signalR.send({ type: 'question_answer', question_id: questionId, answer }).catch(() => {});
     if (this.pendingQuestion()?.questionId === questionId) this.pendingQuestion.set(null);
   }
@@ -144,8 +163,8 @@ export class ChatService {
   /** Show the result of a command (palette) in the conversation. */
   addSystemReply(title: string, html: string): void {
     this.messages.update(msgs => [...msgs,
-      { id: crypto.randomUUID(), role: 'user', content: `⚡ ${title}`, timestamp: new Date() },
-      { id: crypto.randomUUID(), role: 'assistant', content: html, timestamp: new Date() }]);
+      { id: uid(), role: 'user', content: `⚡ ${title}`, timestamp: new Date() },
+      { id: uid(), role: 'assistant', content: html, timestamp: new Date() }]);
   }
 
   clearMessages(): void {
@@ -226,7 +245,7 @@ export class ChatService {
 
   private handleNotice(event: ServerEvent): void {
     const n: ChatNotice = {
-      id: crypto.randomUUID(), kind: event.kind || 'info', level: event.level || 'info',
+      id: uid(), kind: event.kind || 'info', level: event.level || 'info',
       icon: event.icon || 'info', emoji: event.emoji, title: event.title || 'Info',
       detail: event.detail || '', data: event.data,
     };

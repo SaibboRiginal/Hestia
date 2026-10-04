@@ -1,18 +1,21 @@
-import { ChangeDetectionStrategy, Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AssistantService } from '../../services/assistant.service';
+import { AgendaApi, LogsResult } from './agenda.api';
 import { FormsModule } from '@angular/forms';
 import { CalendarStore } from './calendar.store';
 import { AgendaType, CalEvent, CalView, TYPE_META, ownerLabel } from './calendar.models';
-import { addDays, addMinutes, dayKey, startOfWeek } from './date-utils';
+import { addDays, addMinutes, dayKey, fmt, startOfWeek } from './date-utils';
 import { TimeGridComponent, MoveRequest, SelectRequest } from './views/time-grid.component';
 import { MonthViewComponent } from './views/month-view.component';
 import { ListViewComponent } from './views/list-view.component';
 import { MiniCalendarComponent } from './mini-calendar.component';
 import { DetailAction, EventDetailsComponent } from './event-details.component';
-import { EditorResult, EditorSeed, EventEditorComponent } from './event-editor.component';
+import { EditorAsk, EditorResult, EditorSeed, EventEditorComponent } from './event-editor.component';
 import { TemplateCreate, TemplateWizardComponent } from './template-wizard.component';
 import {
-  ButtonComponent, DialogService, FieldComponent, IconComponent, MenuComponent, MenuItem, PopoverComponent, SegmentedComponent, SegmentOption, SpinnerComponent,
-  ToggleComponent,
+  ButtonComponent, DialogService, FieldComponent, IconComponent, MenuComponent, MenuItem, ModalComponent, PopoverComponent, SegmentedComponent, SegmentOption, SpinnerComponent,
+  ToastService, ToggleComponent,
 } from '../../ui';
 
 /**
@@ -22,7 +25,7 @@ import {
 @Component({
   selector: 'app-calendar-page',
   imports: [
-    FormsModule, ButtonComponent, IconComponent, SegmentedComponent, FieldComponent, SpinnerComponent, ToggleComponent, PopoverComponent,
+    FormsModule, ButtonComponent, IconComponent, SegmentedComponent, FieldComponent, SpinnerComponent, ToggleComponent, PopoverComponent, ModalComponent,
     MenuComponent, TemplateWizardComponent, TimeGridComponent, MonthViewComponent, ListViewComponent, MiniCalendarComponent, EventDetailsComponent, EventEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +37,10 @@ import {
           <hx-menu [items]="newMenu" (select)="onNew($event)">
             <button hx-btn variant="primary" icon="chevron-down" iconOnly class="new-more" trigger aria-label="Altri modi di creare"></button>
           </hx-menu>
+        </div>
+        <div class="quick" [class.busy]="quickBusy()" title="Scrivi a parole, es. &quot;domani alle 15 dentista&quot; o &quot;ogni lunedì alle 9 controlla le case&quot;: si apre l'editor già compilato">
+          @if (quickBusy()) { <hx-spinner [size]="14" /> } @else { <hx-icon name="sparkle" [size]="15" /> }
+          <input class="hx-input" placeholder="Aggiungi rapido: domani alle 15…" [(ngModel)]="quickText" (keydown.enter)="quickAdd()" [disabled]="quickBusy()" />
         </div>
         <cal-mini [selected]="store.anchor()" [marked]="markedDays()" (pick)="store.focusDay($event)" />
 
@@ -118,7 +125,7 @@ import {
           @default {
             <cal-time-grid [days]="gridDays()" [events]="store.events()" (selected)="select($event)"
                            [windowsMode]="store.vp().windowsMode" [frequentMode]="store.vp().frequentMode"
-                           [focusDay]="store.anchor()" [scrollHour]="store.vp().scrollHour"
+                           [focusDay]="store.anchor()" [scrollHour]="store.vp().scrollHour" [workHours]="workHours()"
                            (createAt)="newAt($event)" (moved)="onMove($event)" (dayClick)="openDay($event)" />
           }
         }
@@ -150,11 +157,95 @@ import {
           </div>
         }
         <label class="num">Scorri all'apertura alle <input class="hx-input" type="number" min="0" max="23" [ngModel]="vp.scrollHour" (ngModelChange)="num('scrollHour', $event)" />:00</label>
+        <label class="num">Orario di lavoro (lun–ven) <input class="hx-input" type="number" min="0" max="24" [ngModel]="vp.workStart" (ngModelChange)="num('workStart', $event)" />–<input class="hx-input" type="number" min="0" max="24" [ngModel]="vp.workEnd" (ngModelChange)="num('workEnd', $event)" />: fuori è ombreggiato</label>
         <div class="hx-row"><div class="hx-grow"></div><button hx-btn size="sm" variant="ghost" (click)="store.resetVp()">Ripristina predefinite</button></div>
       </div>
     </hx-popover>
 
-    <cal-event-editor [seed]="editor()" (saved)="onSave($event)" (cancel)="editor.set(null)" />
+    <cal-event-editor [seed]="editor()" (saved)="onSave($event)" (ask)="askFromEditor($event)" (cancel)="editor.set(null)" />
+
+    <hx-modal [open]="!!logs()" [title]="'Log · ' + (logs()?.title || '')" size="lg" (closed)="logs.set(null)">
+
+      @if (logs(); as l) {
+
+        <div class="logs-bar">
+
+          <select class="hx-select" [ngModel]="l.service" (ngModelChange)="loadLogs({ service: $event })">
+
+            @for (s of l.services; track s) { <option [value]="s">{{ s }}</option> }
+
+          </select>
+
+          <span>±</span>
+
+          <select class="hx-select" [ngModel]="l.minutes" (ngModelChange)="loadLogs({ minutes: +$event })">
+
+            @for (m of [2, 5, 15, 60]; track m) { <option [value]="m">{{ m }} min</option> }
+
+          </select>
+
+          <span class="lt">attorno a {{ l.when }}</span>
+
+          <div class="hx-grow"></div>
+
+          @if (l.loading) { <hx-spinner [size]="15" /> }
+
+        </div>
+
+        @if (l.error) { <p class="logs-err">{{ l.error }}</p> }
+
+        @else if (l.result) {
+
+          @if (!l.result.logs.length) {
+
+            <p class="logs-empty">Nessuna riga in questo intervallo.
+
+              @if (l.result.oldest) { Il modulo tiene in memoria solo le ultime righe (dalle {{ rel(l.result.oldest) }}). }</p>
+
+          } @else {
+
+            <div class="logs">
+
+              @for (r of l.result.logs; track $index) {
+
+                <div class="lr" [attr.data-l]="r.level"><span class="lts">{{ logTime(r.ts) }}</span><span class="llv">{{ r.level }}</span><span class="lm">{{ r.message }}</span></div>
+
+              }
+
+            </div>
+
+          }
+
+        }
+
+      }
+
+    </hx-modal>
+
+
+    <hx-modal [open]="icsOpen()" title="Agenda sul telefono" size="md" (closed)="icsOpen.set(false)">
+
+      <p class="ics-p">Feed iCalendar di sola lettura dell'agenda di Hestia (eventi, task e finestre; i job periodici restano qui).</p>
+
+      @if (icsUrl()) {
+
+        <div class="ics-url"><code>{{ icsUrl() }}</code><button hx-btn size="sm" icon="copy" (click)="copyIcs()">Copia</button></div>
+
+        <p class="ics-p small">Aggiungilo come calendario "da URL" (Google Calendar, Apple Calendario). Chi ha il link vede l'agenda: non condividerlo.</p>
+
+      } @else {
+
+        <p class="ics-p small">Per l'abbonamento dal telefono imposta <code>WEBUI_ICS_KEY</code> (almeno 16 caratteri) nel servizio WebUI. Intanto puoi scaricare il file.</p>
+
+      }
+
+      <ng-container footer>
+
+        <button hx-btn variant="primary" icon="external" (click)="downloadIcs()">Scarica .ics</button>
+
+      </ng-container>
+
+    </hx-modal>
     <cal-template-wizard [seed]="wizard()" (done)="onTemplate($event)" (cancel)="wizard.set(null)" />
   `,
   styles: [`
@@ -204,6 +295,24 @@ import {
       .side-btn { display: inline-flex; }
       .search { width: 140px; }
     }
+    .quick { display: flex; align-items: center; position: relative; margin: -4px 0 12px; }
+    .quick hx-icon, .quick hx-spinner { position: absolute; left: 9px; color: var(--accent); pointer-events: none; }
+    .quick .hx-input { width: 100%; height: 32px; padding-left: 30px; font-size: 12.5px; }
+    .logs-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--text-2); }
+    .logs-bar .hx-select { width: auto; height: 30px; padding-top: 3px; padding-bottom: 3px; }
+    .logs-bar .lt { color: var(--text-3); }
+    .logs { font-family: var(--font-mono); font-size: 11.5px; max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .lr { display: grid; grid-template-columns: 62px 64px 1fr; gap: 8px; padding: 3px 8px; border-bottom: 1px solid var(--border); }
+    .lr:last-child { border-bottom: 0; }
+    .lr[data-l=WARNING] { background: var(--warning-soft, color-mix(in srgb, var(--warning) 10%, transparent)); }
+    .lr[data-l=ERROR], .lr[data-l=CRITICAL] { background: var(--danger-soft); }
+    .lts { color: var(--text-3); font-variant-numeric: tabular-nums; } .llv { color: var(--text-3); }
+    .lm { white-space: pre-wrap; word-break: break-word; color: var(--text); }
+    .logs-empty, .logs-err { font-size: 13px; color: var(--text-3); padding: 8px 0; } .logs-err { color: var(--danger); }
+    .ics-p { font-size: 13.5px; color: var(--text-2); margin-bottom: 10px; line-height: 1.5; } .ics-p.small { font-size: 12.5px; color: var(--text-3); }
+    .ics-url { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .ics-url code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px;
+                    background: var(--surface-2); padding: 6px 8px; border-radius: var(--radius-sm); }
     @media (max-width: 720px) { .bar { padding: 10px 10px 10px 50px; } .bar h2 { font-size: 16px; } .search { display: none; } }
   `],
 })
@@ -221,13 +330,124 @@ export class CalendarPageComponent implements OnInit {
 
   sideOpen = signal(false);
   wizard = signal<Date | null>(null);
+  private assistant = inject(AssistantService);
+  private api = inject(AgendaApi);
+  private toast = inject(ToastService);
+  private destroyRef = inject(DestroyRef);
   readonly newMenu: MenuItem[] = [
     { id: 'free', label: 'Evento libero', icon: 'edit' },
     { id: 'module', label: 'Da un modulo…', icon: 'zap' },
+    { id: 'ai', label: 'Crea con Hestia…', icon: 'sparkle' },
+    { id: 'd', label: '', divider: true },
+    { id: 'ics', label: 'Feed ICS (telefono)…', icon: 'external' },
   ];
   onNew(id: string) {
     if (id === 'module') { this.sel.set(null); this.wizard.set(this.defaultStart()); }
+    else if (id === 'ai') this.askCreate();
+    else if (id === 'ics') void this.openIcs();
     else this.newAt(this.defaultStart());
+  }
+  readonly workHours = computed<[number, number]>(() => [this.store.vp().workStart, this.store.vp().workEnd]);
+
+  // ── "Crea con Hestia" (B1) ─────────────────────────────────────────────
+  askCreate(at?: Date, prompt = '') {
+    const d = at ?? this.store.anchor();
+    this.sel.set(null);
+    this.assistant.open({
+      page: 'calendar', intent: 'create', prompt,
+      label: `Agenda · ${fmt.dayLong(d)}${at ? ', ' + fmt.time(at) : ''}`,
+      hints: { giorno: dayKey(d), ora: at ? fmt.time(at) : undefined, vista: this.store.view(), agenda: 'agenda di Hestia (strumenti agenda_assistente_*)' },
+    });
+  }
+  askFromEditor(a: EditorAsk) {
+    this.editor.set(null);
+    this.askCreate(a.start ?? undefined, a.title ? `${a.title} ` : '');
+  }
+  private askAbout(ev: CalEvent) {
+    const it = ev.item;
+    this.assistant.open({
+      page: 'calendar', intent: 'modify', label: `“${ev.occ.title}” · ${fmt.dayLong(ev.start)} ${fmt.time(ev.start)}`,
+      hints: { voce: ev.occ.key, titolo: ev.occ.title, modulo: ev.occ.owner, tipo: ev.occ.type, occorrenza: ev.occ.occurrence,
+               regola: it?.recurrence ?? undefined, stato: ev.occ.status, ultimo_esito: it?.last_result ? (it.last_result.ok ? 'ok' : 'fallito: ' + (it.last_result.detail || '')) : undefined },
+      suggestions: ev.occ.recurring
+        ? ['Spiegami cosa fa questa regola', 'Sposta solo questa occorrenza di un\'ora', 'Cambia la frequenza…', 'Perché è fallita?']
+        : ['Spiegami cosa fa', 'Spostala a domani alla stessa ora', 'Perché è fallita?'],
+    });
+  }
+
+  // ── A9 natural-language quick add ─────────────────────────────────────
+  quickText = '';
+  quickBusy = signal(false);
+  async quickAdd() {
+    const text = this.quickText.trim();
+    if (!text || this.quickBusy()) return;
+    this.quickBusy.set(true);
+    try {
+      const d = await this.api.parse(text);
+      const start = new Date(d.start_at);
+      this.sel.set(null);
+      this.editor.set({ start, end: d.end_at ? new Date(d.end_at) : null, type: d.type,
+                        prefill: { title: d.title, description: d.description ?? undefined, recurrence: d.recurrence } });
+      this.quickText = '';
+    } catch (e: any) {
+      this.toast.error(`Non ho capito la data (${e?.error?.detail || e?.message || 'errore'}): completa tu`);
+      this.editor.set({ start: this.defaultStart(), end: addMinutes(this.defaultStart(), 60), type: 'event', prefill: { title: text } });
+      this.quickText = '';
+    } finally {
+      this.quickBusy.set(false);
+    }
+  }
+
+  // ── A9 occurrence "Log" (module logs ± minutes) ───────────────────────
+  logs = signal<{ title: string; when: string; at: string; service: string; services: string[]; minutes: number;
+                  key: string; loading: boolean; result: LogsResult | null; error: string } | null>(null);
+  private logsSeq = 0;
+  openLogs(ev: CalEvent) {
+    const svc = (ev.item?.action?.service || ev.occ.owner || 'chronos').toLowerCase();
+    const services = [...new Set([svc, 'chronos', 'hub'].filter(s => s && s !== 'user'))];
+    const at = ev.occ.run?.at || ev.start.toISOString();
+    this.logs.set({ title: ev.occ.title, when: fmt.dateTime(new Date(at)), at, service: services[0], services, minutes: 5,
+                    key: ev.occ.key, loading: false, result: null, error: '' });
+    void this.loadLogs({});
+  }
+  async loadLogs(change: { service?: string; minutes?: number }) {
+    const cur = this.logs();
+    if (!cur) return;
+    const next = { ...cur, ...change, loading: true, error: '' };
+    const seq = ++this.logsSeq;
+    this.logs.set(next);
+    try {
+      const r = await this.api.logs(next.service, next.at, next.minutes);
+      if (seq === this.logsSeq && this.logs()) this.logs.set({ ...next, loading: false, result: r });
+    } catch (e: any) {
+      if (seq === this.logsSeq && this.logs()) this.logs.set({ ...next, loading: false, result: null, error: e?.error?.detail || e?.message || 'Log non disponibili' });
+    }
+  }
+  logTime(ts: string) { return fmt.time(new Date(ts)) + ':' + String(new Date(ts).getSeconds()).padStart(2, '0'); }
+  rel(iso: string) { return fmt.relative(new Date(iso)); }
+
+  // ── A9 ICS feed ───────────────────────────────────────────────────────
+  icsOpen = signal(false);
+  icsUrl = signal('');
+  async openIcs() {
+    this.icsOpen.set(true);
+    try {
+      const f = await this.api.feedInfo();
+      this.icsUrl.set(f.key ? `${location.origin}${f.path}?key=${encodeURIComponent(f.key)}` : '');
+    } catch { this.icsUrl.set(''); }
+  }
+  async copyIcs() {
+    try { await navigator.clipboard.writeText(this.icsUrl()); this.toast.success('Link copiato'); } catch { /* */ }
+  }
+  async downloadIcs() {
+    try {
+      const blob = await this.api.feedFile();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'hestia-agenda.ics';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch (e: any) { this.toast.error(e?.error?.detail || 'Download non riuscito'); }
   }
   async onTemplate(r: TemplateCreate) {
     this.wizard.set(null);
@@ -237,7 +457,7 @@ export class CalendarPageComponent implements OnInit {
   vistaRect = signal<DOMRect | null>(null);
   readonly windowOpts: SegmentOption[] = [{ value: 'lane', label: 'Corsia' }, { value: 'band', label: 'Banda' }, { value: 'hidden', label: 'Nascoste' }];
   readonly frequentOpts: SegmentOption[] = [{ value: 'compact', label: 'Compatte' }, { value: 'full', label: 'Complete' }, { value: 'hidden', label: 'Nascoste' }];
-  num(key: 'frequentPerDay' | 'frequentDays' | 'rareCount' | 'rareDays' | 'pastDays' | 'scrollHour', v: unknown) {
+  num(key: 'frequentPerDay' | 'frequentDays' | 'rareCount' | 'rareDays' | 'pastDays' | 'scrollHour' | 'workStart' | 'workEnd', v: unknown) {
     const n = Math.round(Number(v));
     if (Number.isFinite(n) && n >= 0) this.store.setVp({ [key]: n });
   }
@@ -258,7 +478,11 @@ export class CalendarPageComponent implements OnInit {
   });
   markedDays = computed(() => new Set(this.store.events().map(e => dayKey(e.start))));
 
-  ngOnInit() { void this.store.load(); }
+  ngOnInit() {
+    void this.store.load();
+    // The assistant (drawer or chat) planned/changed something: show it live.
+    this.assistant.changed$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => void this.store.load());
+  }
 
   label = ownerLabel;
   typeIcon = (t: AgendaType) => TYPE_META[t].icon;
@@ -305,6 +529,8 @@ export class CalendarPageComponent implements OnInit {
       case 'resume': await this.store.pause(ev, false); break;
       case 'restore': await this.store.update(ev.occ.key, { status: 'confirmed' }, 'Regola ripristinata'); break;
       case 'reset-move': await this.store.resetMove(ev); break;
+      case 'ask': this.askAbout(ev); break;
+      case 'logs': this.openLogs(ev); break;
       case 'cancel': {
         const ok = await this.dialogs.confirm(ev.occ.recurring ? 'Annullare tutta la regola?' : 'Annullare la voce?',
           ev.occ.recurring ? 'Nessuna occorrenza futura verrà eseguita. Per saltarne solo una usa "Salta questa".' : '',

@@ -13,6 +13,20 @@ export class SignalRService {
   connectionState = signal<'disconnected' | 'connecting' | 'connected'>('disconnected');
   events$: Observable<ServerEvent> = this.eventSubject.asObservable();
 
+  /**
+   * One stream per connection (ChatHub cancels the previous one): the chat that sent last
+   * ("main" page chat or the "assistant" drawer) owns the events. Others ignore them.
+   */
+  activeChannel = 'main';
+  private claimSubject = new Subject<string>();
+  claims$: Observable<string> = this.claimSubject.asObservable();
+
+  claim(channel: string): void {
+    const prev = this.activeChannel;
+    this.activeChannel = channel;
+    if (prev !== channel) this.claimSubject.next(channel);
+  }
+
   async connect(): Promise<void> {
     const token = this.auth.getToken();
     this.connectionState.set('connecting');

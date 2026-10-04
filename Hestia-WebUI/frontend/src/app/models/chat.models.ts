@@ -107,6 +107,8 @@ export interface ClientMessage {
   model?: string;
   question_id?: string;
   answer?: string;
+  /** "Crea con Hestia" drawer: page context packet, appended to this turn's client instructions. */
+  context?: string;
 }
 
 // ── Session ───────────────────────────────────────────────────────────────

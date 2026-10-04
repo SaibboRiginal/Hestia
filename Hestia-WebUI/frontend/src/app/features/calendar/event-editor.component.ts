@@ -5,7 +5,13 @@ import { WEEKDAYS, WEEKDAY_LABELS, addMinutes, fromLocalInput, toLocalInput } fr
 import { Freq, RepeatModel, buildRRule, describeRRule, emptyRepeat, parseRRule } from './rrule';
 import { ButtonComponent, DateFieldComponent, DateTimeFieldComponent, FieldComponent, ModalComponent, SegmentedComponent, SegmentOption } from '../../ui';
 
-export interface EditorSeed { start: Date; end?: Date | null; type?: AgendaType; item?: AgendaItem; duplicate?: boolean; }
+export interface EditorSeed {
+  start: Date; end?: Date | null; type?: AgendaType; item?: AgendaItem; duplicate?: boolean;
+  /** Natural-language quick add: fields Oracle understood (the user reviews them here). */
+  prefill?: { title?: string; description?: string; recurrence?: string | null };
+}
+/** "Chiedi a Hestia" from the editor: what the user typed so far. */
+export interface EditorAsk { title: string; start: Date | null; end: Date | null; type: AgendaType; }
 export interface EditorResult { key?: string; body: Record<string, unknown>; }
 
 /** Create / edit an agenda item (title, type, time, recurrence, description, action). */
@@ -104,6 +110,10 @@ export interface EditorResult { key?: string; body: Record<string, unknown>; }
         }
       </form>
       <ng-container footer>
+        @if (!editing()) {
+          <button hx-btn variant="ghost" type="button" icon="sparkle" class="ask" (click)="askHestia()"
+                  title="Descrivi a parole cosa vuoi: Hestia crea la voce con gli strumenti">Chiedi a Hestia</button>
+        }
         <button hx-btn variant="ghost" type="button" (click)="cancel.emit()">Annulla</button>
         <button hx-btn variant="primary" type="submit" form="cal-editor">{{ editing() ? 'Salva' : 'Crea' }}</button>
       </ng-container>
@@ -125,6 +135,7 @@ export interface EditorResult { key?: string; body: Record<string, unknown>; }
     .day.on { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
     .adv { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; }
     .adv summary { cursor: pointer; font-size: 13px; color: var(--text-2); font-weight: 500; padding: 2px 0 6px; }
+    .ask { margin-right: auto; color: var(--accent); }
     .note { font-size: 12.5px; color: var(--text-3); background: var(--surface-2); padding: 8px 10px; border-radius: var(--radius-md); }
     @media (max-width: 640px) { .row2, .row3 { grid-template-columns: 1fr; } }
   `],
@@ -133,6 +144,7 @@ export class EventEditorComponent {
   seed = input<EditorSeed | null>(null);
   saved = output<EditorResult>();
   cancel = output<void>();
+  ask = output<EditorAsk>();
 
   readonly weekdays = [...WEEKDAYS];
   readonly dayLabel = WEEKDAY_LABELS;
@@ -165,19 +177,23 @@ export class EventEditorComponent {
       if (!s) return;
       const it = s.item;
       this.errors.set({});
-      this.title = it ? (s.duplicate ? `${it.title} (copia)` : it.title) : '';
-      this.description = it?.description ?? '';
+      this.title = it ? (s.duplicate ? `${it.title} (copia)` : it.title) : (s.prefill?.title ?? '');
+      this.description = it?.description ?? s.prefill?.description ?? '';
       const start = it && !s.duplicate ? new Date(it.start_at) : s.start;
       const end = it && !s.duplicate ? (it.end_at ? new Date(it.end_at) : null) : (s.end ?? (it?.end_at ? new Date(s.start.getTime() + (new Date(it.end_at).getTime() - new Date(it.start_at).getTime())) : addMinutes(s.start, 60)));
       this.startStr = toLocalInput(start);
       this.endStr = end ? toLocalInput(end) : '';
       this.type.set(it?.type ?? s.type ?? 'event');
-      this.rep.set(parseRRule(it?.recurrence));
+      this.rep.set(parseRRule(it?.recurrence ?? s.prefill?.recurrence));
       this.actionService = it?.action?.service ?? '';
       this.actionMethod = it?.action?.method ?? 'POST';
       this.actionPath = it?.action?.path ?? '';
       this.actionBody = it?.action?.body ? JSON.stringify(it.action.body, null, 2) : '';
     }, { allowSignalWrites: true });
+  }
+
+  askHestia() {
+    this.ask.emit({ title: this.title.trim(), start: fromLocalInput(this.startStr), end: this.endStr ? fromLocalInput(this.endStr) : null, type: this.type() });
   }
 
   patchRep(p: Partial<RepeatModel>) {

@@ -91,6 +91,11 @@ public record ChatHubMessage
 
     [JsonPropertyName("answer")]
     public string? Answer { get; init; }
+
+    /// <summary>"Crea con Hestia" drawer: page context packet (where the user is, what is selected).
+    /// Appended to the client instructions of this turn only.</summary>
+    [JsonPropertyName("context")]
+    public string? Context { get; init; }
 }
 
 // ── Oracle NDJSON event (generic) ───────────────────────────────────────

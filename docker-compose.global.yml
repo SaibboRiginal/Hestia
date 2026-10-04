@@ -599,6 +599,7 @@ services:
       - WebUI__SecretKey=${WEBUI_SECRET_KEY:-}
       - WEBUI_ADMIN_SECRET=${WEBUI_ADMIN_SECRET:-}            # Optional: shared secret for /api/webui/admin/* (also set for telegram)
       - WEBUI_PUBLIC_HOST_SUFFIXES=.trycloudflare.com         # Hosts allowed for public-URL auto-detection
+      - WEBUI_ICS_KEY=${WEBUI_ICS_KEY:-}                      # Optional (>=16 chars): key of the read-only agenda ICS feed for phones; empty = feed only with the login token
       - WebUI__TokenLifetimeHours=72
       - WebUI__RateLimitPerMinute=60
       - WebUI__MaxUploadSizeMB=50

@@ -18,6 +18,11 @@ edited by the user (``user_modified``) is never overwritten by its module.
 
 Actions ``{service, method, path, body}`` are executed through Hub at the due
 time by the agenda worker (one-offs retried up to ``max_attempts``).
+
+Links: an item may name a ``parent`` (key). Cancelling the parent cancels its
+live children (``by=cascade:<key>``); a child that fails, or that the user
+cancels, marks the parent (``last_result`` + run log; a one-off parent fails
+too). Generic — Forge links its task mirror to the request that started it.
 """
 from __future__ import annotations
 
@@ -85,12 +90,13 @@ def _to_item(row: dict) -> dict:
         "last_result": meta.get("last_result"),
         "runs": meta.get("runs") or [],
         "attempts": int(meta.get("attempts") or 0),
+        "parent": meta.get("parent") or None,
     }
 
 
 def _save(item: dict) -> dict:
     meta_keys = ("type", "owner", "tz", "action", "params", "skips", "overrides", "user_modified",
-                 "created_by", "last_fired", "last_result", "runs", "attempts")
+                 "created_by", "last_fired", "last_result", "runs", "attempts", "parent")
     payload = {
         "external_id": item["key"],
         "source": SOURCE,
@@ -255,7 +261,7 @@ def window_status(key: str, now: datetime | None = None) -> dict:
 def create(*, title: str, type_: str = "event", owner: str = "user", start_at: str,
            end_at: str | None = None, recurrence: str | None = None, description: str | None = None,
            action: dict | None = None, key: str | None = None, params: dict | None = None,
-           tz: str | None = None, created_by: str = "user") -> dict:
+           tz: str | None = None, created_by: str = "user", parent: str | None = None) -> dict:
     if type_ not in TYPES:
         raise AgendaError(f"type must be one of {TYPES}")
     if type_ == "window" and not end_at:
@@ -271,6 +277,7 @@ def create(*, title: str, type_: str = "event", owner: str = "user", start_at: s
         "recurrence": _norm_rrule(recurrence), "tz": tz, "status": "confirmed",
         "action": action, "params": params or {}, "skips": [], "user_modified": False,
         "created_by": created_by, "last_fired": None, "last_result": None, "attempts": 0,
+        "parent": (parent or "").strip() or None,
     }
     if recurrence:
         rrulestr(item["recurrence"], dtstart=datetime(2026, 1, 1))  # validate early
@@ -334,8 +341,80 @@ def update(ref: str | int, changes: dict, by: str = "user") -> dict:
         return _save(item)
 
 
+_TERMINAL = {"cancelled", "completed", "failed"}
+
+
+def children(key: str) -> list[dict]:
+    return [i for i in (_to_item(r) for r in _raw_items()) if i.get("parent") == key]
+
+
 def cancel(ref: str | int, by: str = "user") -> dict:
-    return update(ref, {"status": "cancelled"}, by=by)
+    """Cancel an item; cascade to live children; a user cancel of a child marks its parent."""
+    with _lock:
+        item = update(ref, {"status": "cancelled"}, by=by)
+        for child in children(item["key"]):
+            if child["status"] not in _TERMINAL:
+                try:
+                    cancel(child["key"], by=f"cascade:{item['key']}")
+                except AgendaError as exc:
+                    logger.warning("[🔄] event=agenda_cascade_cancel_failed item=%s child=%s error=%s",
+                                   item["key"], child["key"], exc)
+        if item.get("parent") and not by.startswith("cascade:"):
+            _mark_parent(item, ok=False, detail=f"voce collegata annullata: {item['title']}", by=by)
+        if by.startswith("cascade:"):
+            logger.info("event=agenda_cascade_cancelled item=%s by=%s", item["key"], by)
+        return item
+
+
+def link(ref: str | int, parent: str | None, by: str = "user") -> dict:
+    """Set (or clear with empty) the parent of an item. No cycles."""
+    with _lock:
+        item = get(ref)
+        parent = (parent or "").strip() or None
+        if parent:
+            seen, cur = {item["key"]}, parent
+            while cur:
+                if cur in seen:
+                    raise AgendaError("link would create a cycle")
+                seen.add(cur)
+                cur = get(cur).get("parent")       # 404 if the parent does not exist
+        item["parent"] = parent
+        logger.info("event=agenda_linked item=%s parent=%s by=%s", item["key"], parent, by)
+        return _save(item)
+
+
+def fail(ref: str | int, detail: str = "", by: str = "module") -> dict:
+    """A module reports that the work behind an item failed (e.g. a Forge task). Propagates to the parent."""
+    with _lock:
+        item = get(ref)
+        at = datetime.now(timezone.utc).isoformat()
+        item["status"] = "failed"
+        item["last_result"] = {"ok": False, "detail": (detail or "fallito")[:300], "at": at, "by": by}
+        _record_run(item, None, False, (detail or "fallito")[:300], at, by)
+        item = _save(item)
+        if item.get("parent"):
+            _mark_parent(item, ok=False, detail=f"voce collegata fallita: {item['title']}", by=by)
+        return item
+
+
+def _mark_parent(child: dict, *, ok: bool, detail: str, by: str) -> None:
+    """Error/cancel of a child → visible on the parent (one-off parent fails; recurring keeps going)."""
+    try:
+        parent = get(child["parent"])
+    except AgendaError:
+        logger.info("[🔄] event=agenda_parent_missing item=%s parent=%s", child["key"], child.get("parent"))
+        return
+    if parent["status"] in _TERMINAL:
+        return
+    at = datetime.now(timezone.utc).isoformat()
+    parent["last_result"] = {"ok": ok, "detail": detail[:300], "at": at, "by": by}
+    _record_run(parent, None, ok, detail[:300], at, f"link:{child['key']}")
+    if not ok and not parent.get("recurrence") and parent["type"] in {"task", "event"}:
+        parent["status"] = "failed"
+    _save(parent)
+    logger.info("event=agenda_parent_marked parent=%s child=%s ok=%s", parent["key"], child["key"], ok)
+    if parent["status"] == "failed" and parent.get("parent"):
+        _mark_parent(parent, ok=False, detail=f"voce collegata fallita: {parent['title']}", by=by)
 
 
 def skip(ref: str | int, occurrence: str | None = None, by: str = "user") -> dict:
@@ -478,6 +557,8 @@ def tick(now: datetime | None = None) -> dict:
                     if fresh["attempts"] >= _MAX_ATTEMPTS:
                         fresh["status"] = "failed"
                 _save(fresh)
+                if fresh["status"] == "failed" and fresh.get("parent"):
+                    _mark_parent(fresh, ok=False, detail=f"voce collegata fallita: {fresh['title']}", by="agenda")
             fired += int(ok)
             failed += int(not ok)
             if not ok:

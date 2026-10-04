@@ -19,3 +19,7 @@
   Hephaestus; context panel merged with the task tabs, Repository as a mode of the Sviluppo page; follow-up via
   `parent_task`; retry endpoint; polling for live updates — reason: implementation (keep Oracle the only Claude
   Code owner, one place per piece of information, engines are headless) — source: AI (implementation, ext-chat session).
+- v2.4 — 2026-10-04 — B done (drawer outside the kit, own chat channel/session, generic `parent` link instead of a
+  links list, calendar entry points via editor/details) and A9 done (quick add parsed by Chronos via Oracle, logs
+  from service buffers, ICS with a dedicated key, working-hours shading) — reason: implementation — source: AI
+  (implementation, ext-chat session).

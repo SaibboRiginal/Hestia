@@ -233,6 +233,7 @@ try:
                     "services": {"type": "array", "items": {"type": "string"}, "description": "Servizi coinvolti se noti (es. hecate, oracle)"},
                     "engine": {"type": "string", "description": "Solo se l'utente lo chiede: local | cloud | claude. Vuoto = default"},
                     "workdoc": {"type": "string", "description": "Per CONTINUARE un lavoro precedente: nome cartella docs/work/<...> (dal task precedente)"},
+                    "agenda_parent": {"type": "string", "description": "Chiave voce agenda che questo sviluppo serve (annullarla annulla il task)"},
                 },
                 "required": ["request"],
             },

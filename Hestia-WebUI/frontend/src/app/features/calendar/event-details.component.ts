@@ -5,7 +5,7 @@ import { describeRRule } from './rrule';
 import { RouterLink } from '@angular/router';
 import { BadgeComponent, ButtonComponent, IconComponent, MenuComponent, MenuItem } from '../../ui';
 
-export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resume' | 'cancel' | 'restore' | 'reset-move' | 'duplicate';
+export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resume' | 'cancel' | 'restore' | 'reset-move' | 'duplicate' | 'ask' | 'logs';
 
 /** Plain-language meaning of a window, by module (fallback: generic). */
 const WINDOW_TEXT: Record<string, string> = {
@@ -80,6 +80,9 @@ const WINDOW_TEXT: Record<string, string> = {
         <dd [class.err]="!lr.ok">Ultima esecuzione della regola {{ rel(lr.at) }}: {{ lr.ok ? 'ok' : 'fallita' }}
           @if (!lr.ok) { <span class="detail">{{ lr.detail }}</span> }</dd>
       }
+      @if (e.item?.parent; as p) {
+        <dt><hx-icon name="branch" [size]="14" /></dt><dd>Collegata a <code>{{ p }}</code>: se annulli quella, si annulla anche questa</dd>
+      }
       <dt><hx-icon name="info" [size]="14" /></dt><dd class="key"><code>{{ e.occ.key }}</code></dd>
     </dl>
 
@@ -101,6 +104,7 @@ const WINDOW_TEXT: Record<string, string> = {
       @if (forgeTask(); as id) {
         <a hx-btn size="sm" icon="code" [routerLink]="['/forge']" [queryParams]="{ task: id }">Apri in Sviluppo</a>
       }
+      <button hx-btn size="sm" variant="ghost" icon="sparkle" class="ask" (click)="act.emit('ask')" title="Modifica o spiega questa voce a parole">Chiedi a Hestia</button>
     </div>
   `,
   styles: [`
@@ -126,6 +130,7 @@ const WINDOW_TEXT: Record<string, string> = {
     .grp-n { font-size: 11.5px; color: var(--text-3); margin-top: 5px; }
     .explain { display: flex; gap: 7px; margin: 10px 0 2px 20px; font-size: 13px; color: var(--text-2); line-height: 1.45; }
     .explain hx-icon { color: var(--c, var(--accent)); margin-top: 2px; flex-shrink: 0; }
+    .ask { color: var(--accent); }
     .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-left: 20px; }
   `],
 })
@@ -157,6 +162,8 @@ export class EventDetailsComponent {
     return [
       { id: 'edit', label: 'Modifica', icon: 'edit' },
       { id: 'duplicate', label: 'Duplica', icon: 'copy' },
+      { id: 'ask', label: 'Chiedi a Hestia…', icon: 'sparkle' },
+      ...(e.item?.action || e.occ.run ? [{ id: 'logs', label: 'Log del modulo', icon: 'terminal' }] : []),
       ...(e.occ.moved ? [{ id: 'reset-move', label: 'Ripristina orario originale', icon: 'undo' }] : []),
       ...(active && e.occ.status !== 'paused' && e.occ.recurring ? [{ id: 'pause', label: 'Metti in pausa la regola', icon: 'pause' }] : []),
       ...(e.occ.status === 'paused' ? [{ id: 'resume', label: 'Riattiva', icon: 'play' }] : []),

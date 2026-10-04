@@ -3528,6 +3528,7 @@ paths:
                 key: {type: string}
                 params: {type: object}
                 tz: {type: string}
+                parent: {type: string, description: "key of a linked parent item: cancelling the parent cancels this one; this one failing (or being cancelled by the user) marks the parent"}
       responses:
         "200": {description: "{status, item}"}
 
@@ -3592,6 +3593,97 @@ paths:
         - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
       responses:
         "200": {description: "{status, ok, detail}"}
+
+  /api/agenda/items/{ref}/links:
+    get:
+      tags: [Chronos]
+      summary: Linked items (parent + children)
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      responses:
+        "200": {description: "{status, key, parent (item|null), children[]}"}
+
+  /api/agenda/items/{ref}/link:
+    post:
+      tags: [Chronos]
+      summary: Link an item to a parent (cascade cancel / error propagation); empty parent unlinks
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                parent: {type: string, nullable: true}
+                by: {type: string, default: user}
+      responses:
+        "200": {description: "{status, item}"}
+        "400": {description: link would create a cycle}
+        "404": {description: item or parent not found}
+
+  /api/agenda/items/{ref}/fail:
+    post:
+      tags: [Chronos]
+      summary: A module reports that the work behind the item failed (status failed, parent marked)
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                detail: {type: string}
+                by: {type: string, default: module}
+      responses:
+        "200": {description: "{status, item}"}
+
+  /api/agenda/parse:
+    post:
+      tags: [Chronos]
+      summary: Natural-language quick add ("domani alle 15 dentista") → draft fields (nothing is created)
+      description: Oracle /api/llm/generate extracts the fields; Chronos validates dates and RRULE.
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: {type: string}
+                tz: {type: string, description: IANA zone of the user (default CHRONOS_DISPLAY_TZ)}
+      responses:
+        "200": {description: "{status, draft: {title, type, start_at, end_at, recurrence, description}}"}
+        "400": {description: text too short}
+        "502": {description: Oracle answer not usable}
+        "503": {description: Oracle unreachable}
+
+  /api/agenda/ics:
+    get:
+      tags: [Chronos]
+      summary: Read-only iCalendar feed of the assistant agenda (expanded occurrences)
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: days, in: query, schema: {type: integer, default: 60, maximum: 400}}
+        - {name: past_days, in: query, schema: {type: integer, default: 7, maximum: 90}}
+        - {name: owner, in: query, schema: {type: string}}
+        - {name: types, in: query, schema: {type: string, default: "event,task,window"}, description: comma list (add job for periodic jobs)}
+      responses:
+        "200":
+          description: "text/calendar (through Hub it arrives as {raw: ...})"
+          content:
+            text/calendar: {schema: {type: string}}
 
   /api/agenda/windows/{key}:
     get:
@@ -4407,6 +4499,7 @@ paths:
                 notify_target: {type: string}
                 workdoc: {type: string, description: "continue docs/work/<workdoc>/ of an earlier task"}
                 parent_task: {type: string, description: "follow-up of this task (Sviluppo page): inherits workdoc, services and its outcome as context"}
+                agenda_parent: {type: string, description: "agenda key this task serves: its mirror forge.task.<id> is linked to it (cancelling it rejects a proposed/scheduled task; a failed task marks it)"}
       responses:
         "200": {description: "{status, task}"}
         "400": {description: Invalid request}

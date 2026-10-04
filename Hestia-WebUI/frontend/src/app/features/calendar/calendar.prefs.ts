@@ -22,11 +22,15 @@ export interface CalendarPrefs {
   rareDays: number;
   pastDays: number;
   scrollHour: number;
+  /** Working hours (Mon–Fri): outside them the time grid is shaded. workEnd <= workStart = off. */
+  workStart: number;
+  workEnd: number;
 }
 
 export const DEFAULT_PREFS: CalendarPrefs = {
   windowsMode: 'lane', frequentMode: 'compact', frequentPerDay: 3,
   focused: true, frequentDays: 7, rareCount: 3, rareDays: 7, pastDays: 7, scrollHour: 7,
+  workStart: 9, workEnd: 18,
 };
 
 /** Occurrences per day implied by an RRULE (null = cannot tell → count the loaded occurrences). */

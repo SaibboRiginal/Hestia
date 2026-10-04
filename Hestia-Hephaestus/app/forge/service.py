@@ -262,6 +262,10 @@ class Forge:
         complete the entry so the agenda keeps only live work."""
         state = task.get("state")
         try:
+            if state in {"failed", "rolled_back"}:
+                last = (task.get("history") or [{}])[-1]
+                self.agenda.fail_task(task["id"], f"Forge {state}: {str(last.get('note') or '')[:200]}")
+                return
             if state in TERMINAL_STATES:
                 self.agenda.hide_task(task["id"])
                 return
@@ -271,7 +275,8 @@ class Forge:
             if label:
                 self.agenda.show_task(task["id"], f"{label}: {task.get('request', '')}", _now(),
                                       f"Task Forge {task['id']} ({state}). Engine: "
-                                      f"{task.get('engine_requested') or self._default_engine}.")
+                                      f"{task.get('engine_requested') or self._default_engine}.",
+                                      parent=task.get("agenda_parent"))
         except Exception as exc:
             logger.debug("event=forge_agenda_mirror_failed task_id=%s error=%s", task.get("id"), exc)
 
@@ -371,7 +376,7 @@ class Forge:
     def submit(self, *, request: str, services: list[str] | None = None, engine: str = "",
                source: str = "user", requested_by: str = "user", auto_start: bool | None = None,
                auto_merge: bool | None = None, context: str = "", notify_target: str = "",
-               workdoc: str = "", parent_task: str = "") -> dict[str, Any]:
+               workdoc: str = "", parent_task: str = "", agenda_parent: str = "") -> dict[str, Any]:
         """``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG).
         ``parent_task``: follow-up of an earlier task (Sviluppo page "Chiedi una modifica")."""
         if not self.cfg.enabled:
@@ -401,6 +406,7 @@ class Forge:
             "context": str(context or "")[:4000],
             "workdoc": re.sub(r"[^A-Za-z0-9._-]", "", str(workdoc or ""))[:120],
             "parent_task": parent["id"] if parent else None,
+            "agenda_parent": re.sub(r"[^A-Za-z0-9._:-]", "", str(agenda_parent or ""))[:160] or None,
             "auto_merge": self.cfg.auto_merge if auto_merge is None else bool(auto_merge),
             "notify_target": notify_target or self.cfg.notify_target,
             "branch": f"auto/forge/{task_id}",
@@ -499,7 +505,8 @@ class Forge:
         self._set_state(task, "scheduled", f"{note}; {st['reason']}")
         nights = self.agenda.window(KEY_NIGHTS) or {}
         self.agenda.show_task(task["id"], task["request"], nights.get("next_open") or st["next_reset"],
-                              f"Task Forge programmato (Claude Pro). id={task['id']}")
+                              f"Task Forge programmato (Claude Pro). id={task['id']}",
+                              parent=task.get("agenda_parent"))
         self._notify(task, (
             f"🌙 <b>Sviluppo programmato</b> <code>{task['id'][:6]}</code> (Claude Pro)\n"
             f"{_esc(task['request'][:300])}\n"
@@ -525,12 +532,26 @@ class Forge:
             return False, "agenda: finestra saltata dall'utente" if skipped else "agenda: finestra chiusa"
         return self.claude_budget.can_start()
 
+    def _reap_unlinked(self) -> None:
+        """Proposed tasks linked to an agenda item: the user cancelled it (or its parent) → reject."""
+        with self._lock:
+            linked = [t for t in self._tasks.values() if t.get("state") == "proposed" and t.get("agenda_parent")]
+        for task in linked:
+            reachable, item = self.agenda.lookup(self.agenda.task_key(task["id"]))
+            if reachable and item and item.get("status") == "cancelled":
+                try:
+                    self.reject(task["id"], reason="annullato dall'agenda di Hestia (voce collegata)",
+                                rejected_by="user")
+                except ForgeError as exc:
+                    logger.debug("event=forge_reap_unlinked_skip task_id=%s error=%s", task["id"], exc)
+
     def _scheduler_loop(self) -> None:
         """Start one budgeted claude task at a time when the window allows."""
         interval = max(30, int(__import__("os").getenv("HEPHAESTUS_FORGE_SCHEDULER_SECONDS", "300")))
         while True:
             time.sleep(interval)
             try:
+                self._reap_unlinked()
                 with self._lock:
                     busy = any(t.get("state") in ACTIVE_STATES for t in self._tasks.values())
                     waiting = sorted((t for t in self._tasks.values() if t.get("state") == "scheduled"),

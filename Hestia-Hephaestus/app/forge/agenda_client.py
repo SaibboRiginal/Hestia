@@ -95,9 +95,14 @@ class AgendaClient(_SharedAgendaClient):
     def task_key(task_id: str) -> str:
         return f"forge.task.{task_id}"
 
-    def show_task(self, task_id: str, title: str, start_at: str, description: str = "") -> None:
+    def show_task(self, task_id: str, title: str, start_at: str, description: str = "",
+                  parent: str | None = None) -> None:
         self.show(self.task_key(task_id), f"Forge: {title[:80]}", start_at, description=description[:500],
-                  params={"task_id": task_id})
+                  params={"task_id": task_id}, parent=parent or None)
 
     def hide_task(self, task_id: str) -> None:
         self.done(self.task_key(task_id))
+
+    def fail_task(self, task_id: str, detail: str = "") -> None:
+        """Failed / rolled back: the mirror shows it and its linked agenda parent is marked."""
+        self.fail(self.task_key(task_id), detail)

@@ -145,6 +145,10 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
   Every Forge task is mirrored in the agenda as `forge.task.<id>`: ⏳ da approvare, 🌙 programmato (at the
   next Claude window), 🔨 in coda/lavorazione, 👀 diff da rivedere, 🔀 merge; completed when the task ends.
   A **scheduled** task follows its entry: cancel it in the agenda → task rejected; move it later → Forge waits.
+  **Links**: `agenda_parent` (request field / `forge_develop` arg) links the mirror to the agenda item the task
+  serves (e.g. the rule the assistant could not create without a new tool). Cancelling that item cascades to the
+  mirror → a proposed or scheduled task is rejected (scheduler pass); a `failed` / `rolled_back` task reports
+  `POST /api/agenda/items/forge.task.<id>/fail` so the parent shows the failure.
 - Configure from Telegram ("il reset di Claude è lunedì alle 10") → tool `forge_set_claude_schedule`, or
   `POST /api/hephaestus/forge/settings/claude-schedule {reset_day, reset_time, tz, window_hours, night,
   night_max_tasks, final_hours}`. Status: `GET /api/hephaestus/forge/claude-budget`. Persisted in `settings.json`.
@@ -159,7 +163,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude"}` — set default (persisted) |
 | GET | `/api/hephaestus/forge/settings` | Default engine, fallback, permission modes |
 | POST | `/api/hephaestus/forge/settings/mode` | `{"mode": "ask|auto|full_auto", "group": "local|cloud|"}` |
-| POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target, workdoc, parent_task}` — `parent_task` = follow-up (inherits workdoc, services, outcome as context) |
+| POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target, workdoc, parent_task, agenda_parent}` — `parent_task` = follow-up (inherits workdoc, services, outcome as context); `agenda_parent` = linked agenda key |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
 | GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |

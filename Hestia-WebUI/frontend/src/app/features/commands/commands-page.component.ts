@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { BadgeComponent, ButtonComponent, EmptyStateComponent, FieldComponent, IconComponent, PageHeaderComponent, SpinnerComponent } from '../../ui';
+import { AssistantService } from '../../services/assistant.service';
 
 interface HubCommand {
   command: string; title: string; description: string; service: string; method: string; path: string;
@@ -20,6 +21,7 @@ interface HubCommand {
       <div class="search"><hx-icon name="search" [size]="15" />
         <input class="hx-input" placeholder="Cerca comando…" [ngModel]="q()" (ngModelChange)="q.set($event)" /></div>
       <button hx-btn variant="ghost" icon="refresh" iconOnly aria-label="Aggiorna" (click)="load()"></button>
+      <button hx-btn variant="ghost" icon="sparkle" (click)="askHestia()" title="Usa un comando a parole, o fatti proporre uno strumento nuovo">Chiedi a Hestia</button>
     </hx-page-header>
     <div class="body">
       <div class="list">
@@ -101,6 +103,7 @@ interface HubCommand {
 })
 export class CommandsPageComponent implements OnInit {
   private http = inject(HttpClient);
+  private assistant = inject(AssistantService);
   all = signal<HubCommand[]>([]);
   q = signal('');
   sel = signal<HubCommand | null>(null);
@@ -121,6 +124,19 @@ export class CommandsPageComponent implements OnInit {
   });
 
   ngOnInit() { void this.load(); }
+
+  /** "Crea con Hestia": with the selected command as context, or to ask for a tool that doesn't exist yet. */
+  askHestia() {
+    const c = this.sel();
+    this.assistant.open(c ? {
+      page: 'commands', intent: 'ask', label: `Comando · ${c.title || c.command}`,
+      hints: { comando: c.command, servizio: c.service, metodo: c.method, path: c.path },
+      suggestions: ['Eseguilo per me', 'Spiegami quando usarlo', 'Mi serve una variante che…'],
+    } : {
+      page: 'commands', intent: 'create', label: 'Comandi & MCP',
+      suggestions: ['Mi serve uno strumento che…', 'Quale comando uso per…?'],
+    });
+  }
 
   async load() {
     this.loading.set(true);

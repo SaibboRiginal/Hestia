@@ -11,6 +11,7 @@ import { TranscriptComponent } from './transcript.component';
 import { TaskPanelComponent } from './task-panel.component';
 import { RepoBrowserComponent, RepoNav } from './repo-browser.component';
 import { ago } from './forge-format';
+import { AssistantService } from '../../services/assistant.service';
 
 /**
  * Sviluppo — Forge tasks and the Hestia repository, Codex / Claude Code style:
@@ -25,6 +26,7 @@ import { ago } from './forge-format';
     <hx-page-header title="Sviluppo" [subtitle]="subtitle()">
       <hx-segmented [options]="modeOpts" [value]="mode()" (changed)="setMode($any($event))" />
       <button hx-btn variant="ghost" icon="refresh" iconOnly aria-label="Aggiorna" title="Aggiorna" (click)="store.refresh()"></button>
+      <button hx-btn variant="ghost" icon="sparkle" (click)="askHestia()" title="Descrivi a Hestia cosa serve: propone o crea lo sviluppo">Chiedi a Hestia</button>
       <button hx-btn variant="primary" icon="plus" (click)="openNew()">Nuovo sviluppo</button>
     </hx-page-header>
 
@@ -293,7 +295,24 @@ export class ForgePageComponent implements OnInit, OnDestroy {
     if (task) this.select(task);
     else if (this.store.selectedId() && this.size() !== 'phone') this.select(this.store.selectedId());
   }
-  ngOnDestroy() { this.store.stop(); }
+  ngOnDestroy() { this.store.stop(); this.changedSub?.unsubscribe(); }
+
+  private assistant = inject(AssistantService);
+  // The assistant created a Forge task (notice forge.task): show it in the list.
+  private changedSub = this.assistant.changed$.subscribe(k => { if (k === 'forge.task' || k === 'action.done') void this.store.loadList(true); });
+
+  /** "Crea con Hestia" with the selected task as context (explain it, or ask a follow-up). */
+  askHestia() {
+    const t = this.store.task();
+    this.assistant.open(t ? {
+      page: 'forge', intent: 'ask', label: `Sviluppo · ${t.request.slice(0, 60)}`,
+      hints: { task: t.id, stato: t.state, workdoc: t.workdoc, servizi: (t.services ?? []).join(','), richiesta: t.request.slice(0, 300) },
+      suggestions: ['Spiegami cosa ha cambiato questo task', 'Perché è fallito e cosa propongo?', 'Crea uno sviluppo di seguito che…'],
+    } : {
+      page: 'forge', intent: 'create', label: 'Sviluppo',
+      suggestions: ['Aggiungi a Hestia un comando che…', 'Correggi questo problema: …', 'Cosa sta sviluppando Forge adesso?'],
+    });
+  }
 
   @HostListener('window:resize') onResize() { this.width.set(window.innerWidth); }
 

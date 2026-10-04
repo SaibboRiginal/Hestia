@@ -1266,8 +1266,14 @@ class OracleEngine:
             for entry in tool_log:
                 if not entry.get("writes"):
                     continue
-                kind = "memory.saved" if entry.get("tool") == "memory.save" else (
+                tname = str(entry.get("tool") or "")
+                kind = "memory.saved" if tname == "memory.save" else (
                     "action.done" if entry.get("ok") else "action.failed")
+                # Agenda / Forge effects get their own kind so clients refresh calendar / Sviluppo.
+                if entry.get("ok") and "agenda_assistente" in tname:
+                    kind = "agenda.planned"
+                elif entry.get("ok") and "forge_develop" in tname:
+                    kind = "forge.task"
                 detail = str(entry.get("title") or entry.get("tool") or "")
                 if not entry.get("ok"):
                     detail = f"{detail}: {str(entry.get('result_preview') or '')[:160]}"

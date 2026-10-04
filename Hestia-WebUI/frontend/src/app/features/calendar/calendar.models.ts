@@ -34,6 +34,8 @@ export interface AgendaItem {
   last_result?: { ok: boolean; detail: string; at: string; by?: string } | null;
   runs?: { occurrence: string; ok: boolean; detail: string; at: string; by?: string; duration_ms?: number | null }[];
   attempts: number;
+  /** Linked parent item key: cancelling it cancels this one; this one failing marks it. */
+  parent?: string | null;
 }
 
 /** Result of the run of one occurrence (Chronos per-occurrence run log). */

@@ -19,7 +19,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from core import archive_client
@@ -33,6 +33,7 @@ from schemas.events import (
     UpdateEventRequest,
 )
 from services import agenda as assistant_agenda
+from services import agenda_parse
 from services import notification_worker, sync_worker
 
 try:
@@ -270,7 +271,8 @@ try:
                 "start_at": {"type": "string", "description": "inizio ISO 8601"},
                 "end_at": {"type": "string", "description": "fine ISO (obbligatoria per window)"},
                 "recurrence": {"type": "string", "description": "RRULE se periodico, es. FREQ=WEEKLY;BYDAY=SA"},
-                "description": {"type": "string", "description": "dettagli"}},
+                "description": {"type": "string", "description": "dettagli"},
+                "parent": {"type": "string", "description": "chiave voce collegata (annullo a cascata)"}},
                 "required": ["title", "start_at"]},
             handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_aggiungi", "params": kw},
             title="\u2795 Pianifica per Hestia", method="POST", path="/api/agenda/items",
@@ -302,6 +304,72 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_salta", "params": kw},
             title="\u23ed\ufe0f Salta occorrenza", method="POST", path="/api/agenda/items/{ref}/skip",
             clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_ripristina",
+            description="Ripristina un'occorrenza saltata di una voce dell'agenda di Hestia",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce"},
+                "occurrence": {"type": "string", "description": "occorrenza ISO saltata"}},
+                "required": ["ref", "occurrence"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_ripristina", "params": kw},
+            title="\u21a9\ufe0f Ripristina occorrenza", method="POST", path="/api/agenda/items/{ref}/unskip",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_sposta_occorrenza",
+            description=("Sposta SOLO un'occorrenza di una voce ricorrente (eccezione, come 'solo questo evento'); "
+                         "reset=true la riporta all'orario originale"),
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce"},
+                "occurrence": {"type": "string", "description": "occorrenza ISO originale"},
+                "start_at": {"type": "string", "description": "nuovo inizio ISO"},
+                "end_at": {"type": "string", "description": "nuova fine ISO"},
+                "reset": {"type": "boolean", "description": "ripristina orario originale"}},
+                "required": ["ref", "occurrence"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_sposta_occorrenza", "params": kw},
+            title="\U0001f4cd Sposta una occorrenza", method="POST", path="/api/agenda/items/{ref}/move",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_modelli",
+            description=("Modelli che i moduli offrono per creare voci (es. Scout: ricerca immobili periodica). "
+                         "Usalo prima di agenda_assistente_da_modello"),
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_modelli", "params": kw},
+            title="\U0001f9e9 Modelli agenda", method="GET", path="/api/agenda/templates",
+            clients=["ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_da_modello",
+            description="Crea una voce dell'agenda di Hestia da un modello di un modulo (campi in values)",
+            parameters={"type": "object", "properties": {
+                "owner": {"type": "string", "description": "modulo del modello"},
+                "template_id": {"type": "string", "description": "id modello"},
+                "values": {"type": "object", "description": "campi del modello"},
+                "start_at": {"type": "string", "description": "inizio ISO"},
+                "end_at": {"type": "string", "description": "fine ISO (finestre)"},
+                "recurrence": {"type": "string", "description": "RRULE se periodico"}},
+                "required": ["owner", "template_id", "start_at"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_da_modello", "params": kw},
+            title="\U0001f9e9 Crea da modello", method="POST", path="/api/agenda/templates/{owner}/{template_id}/create",
+            clients=["ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_assistente_collega",
+            description="Collega una voce a una voce padre: annullare il padre annulla la figlia, l'errore della figlia segna il padre",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "id o chiave della voce figlia"},
+                "parent": {"type": "string", "description": "chiave del padre (vuoto = scollega)"}},
+                "required": ["ref"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_collega", "params": kw},
+            title="\U0001f517 Collega voci agenda", method="POST", path="/api/agenda/items/{ref}/link",
+            clients=["ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="pianificazione",
         ),
         MCPTool(
@@ -615,6 +683,7 @@ class AgendaItemCreate(BaseModel):
     params: dict = Field(default_factory=dict)
     tz: str | None = None
     created_by: str = "user"
+    parent: str | None = Field(None, description="key of the linked parent item (cascade cancel / error)")
 
 
 class AgendaItemChange(BaseModel):
@@ -689,7 +758,7 @@ def agenda_create(req: AgendaItemCreate) -> dict:
         assistant_agenda.create, title=data["title"], type_=data["type"], owner=data["owner"],
         start_at=data["start_at"], end_at=data["end_at"], recurrence=data["recurrence"],
         description=data["description"], action=data["action"], key=data["key"],
-        params=data["params"], tz=data["tz"], created_by=data["created_by"])
+        params=data["params"], tz=data["tz"], created_by=data["created_by"], parent=data["parent"])
     return {"status": "ok", "item": item}
 
 
@@ -703,6 +772,11 @@ def agenda_register(req: AgendaRegister) -> dict:
 @app.patch("/api/agenda/items/{ref}")
 def agenda_update(ref: str, req: AgendaItemChange) -> dict:
     changes = req.model_dump(exclude={"by"}, exclude_none=True)
+    if changes.get("status") == "cancelled":
+        changes.pop("status")
+        if changes:
+            _agenda_guard(assistant_agenda.update, ref, changes, req.by)
+        return {"status": "ok", "item": _agenda_guard(assistant_agenda.cancel, ref, req.by)}  # cascade
     return {"status": "ok", "item": _agenda_guard(assistant_agenda.update, ref, changes, req.by)}
 
 
@@ -737,6 +811,41 @@ def agenda_move(ref: str, req: AgendaMove) -> dict:
     """Move one occurrence only (exception); ``reset`` restores it. One-off items move entirely."""
     return {"status": "ok", "item": _agenda_guard(assistant_agenda.move_occurrence, ref, req.occurrence,
                                                   req.start_at, req.end_at, req.reset, req.by)}
+
+
+class AgendaLink(BaseModel):
+    parent: str | None = Field(None, description="parent key; empty clears the link")
+    by: str = "user"
+
+
+class AgendaFail(BaseModel):
+    detail: str = ""
+    by: str = "module"
+
+
+@app.get("/api/agenda/items/{ref}/links")
+def agenda_links(ref: str) -> dict:
+    item = _agenda_guard(assistant_agenda.get, ref)
+    parent = None
+    if item.get("parent"):
+        try:
+            parent = assistant_agenda.get(item["parent"])
+        except assistant_agenda.AgendaError:
+            parent = None
+    return {"status": "ok", "key": item["key"], "parent": parent,
+            "children": assistant_agenda.children(item["key"])}
+
+
+@app.post("/api/agenda/items/{ref}/link")
+def agenda_link(ref: str, req: AgendaLink) -> dict:
+    """Link an item to a parent: cancelling the parent cancels it; its failure marks the parent."""
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.link, ref, req.parent, req.by)}
+
+
+@app.post("/api/agenda/items/{ref}/fail")
+def agenda_fail(ref: str, req: AgendaFail) -> dict:
+    """A module reports that the work behind the item failed (propagates to the parent)."""
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.fail, ref, req.detail, req.by)}
 
 
 @app.post("/api/agenda/items/{ref}/run")
@@ -776,6 +885,33 @@ def agenda_from_template(owner: str, template_id: str, req: AgendaFromTemplate) 
                          start_at=req.start_at, end_at=req.end_at, recurrence=req.recurrence,
                          type_=req.type, description=req.description)
     return {"status": "ok", "item": item}
+
+
+class AgendaParse(BaseModel):
+    text: str
+    tz: str | None = None
+
+
+@app.post("/api/agenda/parse")
+def agenda_parse_text(req: AgendaParse) -> dict:
+    """Natural-language quick add: draft fields for the editor (nothing is created)."""
+    try:
+        return {"status": "ok", "draft": agenda_parse.parse(req.text, tz_name=req.tz)}
+    except agenda_parse.ParseError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+
+@app.get("/api/agenda/ics")
+def agenda_ics(days: int = Query(60, ge=1, le=400), past_days: int = Query(7, ge=0, le=90),
+               owner: str | None = None,
+               types: str = Query("event,task,window", description="comma list; add job for periodic jobs")) -> Response:
+    """Read-only iCalendar feed of the assistant agenda (expanded occurrences, skips/moves applied)."""
+    now = datetime.now(timezone.utc)
+    wanted = {t.strip() for t in types.split(",") if t.strip()}
+    rows = [o for o in assistant_agenda.agenda(now - timedelta(days=past_days), now + timedelta(days=days), owner=owner)
+            if o.get("type") in wanted][:3000]
+    return Response(agenda_parse.to_ics(rows), media_type="text/calendar; charset=utf-8",
+                    headers={"Content-Disposition": 'inline; filename="hestia-agenda.ics"'})
 
 
 @app.get("/api/agenda/windows/{key}")

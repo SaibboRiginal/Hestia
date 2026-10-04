@@ -67,6 +67,13 @@ interface DragState {
         </div>
         @for (d of days(); track d.getTime(); let i = $index) {
           <div class="col" [class.today]="isToday(d)" (click)="slotClick($event, d)">
+            @if (offHours(d); as o) {
+              @if (o.all) { <div class="off" [style.top.px]="0" [style.height.px]="24 * HOUR"></div> }
+              @else {
+                <div class="off" [style.top.px]="0" [style.height.px]="o.start * HOUR"></div>
+                <div class="off" [style.top.px]="o.end * HOUR" [style.height.px]="(24 - o.end) * HOUR"></div>
+              }
+            }
             @for (h of hours; track h) { <div class="line" [style.top.px]="h * HOUR"></div><div class="half" [style.top.px]="h * HOUR + HOUR / 2"></div> }
             @if (isToday(d)) { <div class="now" [style.top.px]="nowTop()"><span></span></div> }
           </div>
@@ -177,6 +184,7 @@ interface DragState {
     .hl { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11px; color: var(--text-3); }
     .col { position: relative; border-left: 1px solid var(--border); cursor: cell; }
     .col.today { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+    .off { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--text) 3.5%, transparent); pointer-events: none; }
     .line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); }
     .half { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in srgb, var(--border) 60%, transparent); }
     .now { position: absolute; left: -1px; right: 0; border-top: 2px solid var(--danger); z-index: 6; pointer-events: none; }
@@ -223,6 +231,8 @@ export class TimeGridComponent implements AfterViewInit, OnDestroy {
   frequentMode = input<FrequentMode>('compact');
   focusDay = input<Date>(new Date());
   scrollHour = input(7);
+  /** Working hours [start, end) Mon–Fri; outside is shaded (weekends fully). end <= start = no shading. */
+  workHours = input<[number, number]>([9, 18]);
   private scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   readonly drag = signal<DragState | null>(null);
@@ -231,6 +241,13 @@ export class TimeGridComponent implements AfterViewInit, OnDestroy {
   readonly scrollTop = signal(0);
   labelTop(b: Band) { return Math.min(Math.max(b.top, this.scrollTop() + 2), Math.max(b.top, b.top + b.height - 17)); }
   private timer: ReturnType<typeof setInterval> | null = null;
+
+  offHours(d: Date): { all: boolean; start: number; end: number } | null {
+    const [s, e] = this.workHours();
+    if (!(e > s)) return null;
+    const wd = d.getDay();
+    return { all: wd === 0 || wd === 6, start: Math.max(0, s), end: Math.min(24, e) };
+  }
 
   cols = computed(() => `56px repeat(${this.days().length}, minmax(0, 1fr))`);
   nowTop = computed(() => { this.nowTick(); return minutesOfDay(new Date()) / 60 * HOUR_PX; });
