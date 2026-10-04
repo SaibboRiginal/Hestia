@@ -41,7 +41,9 @@ class Engine:
     def available(self) -> tuple[bool, str]:
         raise NotImplementedError
 
-    def run(self, workdir: Path, prompt: str, test_runner: Callable) -> EngineResult:
+    def run(self, workdir: Path, prompt: str, test_runner: Callable,
+            on_event: Callable[[dict], None] | None = None) -> EngineResult:
+        """``on_event`` receives normalized transcript events (see transcript.py)."""
         raise NotImplementedError
 
 
@@ -75,7 +77,9 @@ class OracleClaudeEngine(Engine):
             return False, str(payload.get("detail") or f"Oracle code status {status}")
         return True, "ok (Claude Code via Oracle)"
 
-    def run(self, workdir: Path, prompt: str, test_runner: Callable) -> EngineResult:
+    def run(self, workdir: Path, prompt: str, test_runner: Callable,
+            on_event: Callable[[dict], None] | None = None) -> EngineResult:
+        # The transcript is written live by Oracle (stream-json) on the shared mount.
         try:
             status, data = self._route("POST", "api/llm/code", {
                 "workdir": str(workdir), "prompt": prompt, "append_system_prompt": SYSTEM_PROMPT,
@@ -89,7 +93,8 @@ class OracleClaudeEngine(Engine):
         return EngineResult(
             ok=bool(data.get("ok")), summary=str(data.get("summary") or ""), engine=self.name,
             log_tail=str(data.get("log_tail") or ""), turns=int(data.get("turns") or 0),
-            cost_usd=data.get("cost_usd"), meta={"subtype": data.get("subtype")})
+            cost_usd=data.get("cost_usd"),
+            meta={"subtype": data.get("subtype"), "transcript_path": data.get("transcript_path")})
 
 
 # ── Built-in agent (OpenAI-compatible tool calling) ────────────────────────
@@ -136,7 +141,9 @@ class BuiltinEngine(Engine):
                 total -= len(msg["content"]) - 20
                 msg["content"] = "[old output trimmed]"
 
-    def run(self, workdir: Path, prompt: str, test_runner: Callable) -> EngineResult:
+    def run(self, workdir: Path, prompt: str, test_runner: Callable,
+            on_event: Callable[[dict], None] | None = None) -> EngineResult:
+        emit = on_event or (lambda _event: None)
         tools = AgentTools(workdir, test_runner)
         messages: list[dict] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -157,7 +164,12 @@ class BuiltinEngine(Engine):
                     raise RuntimeError(f"Oracle llm/chat {status}: {str(data)[:300]}")
                 msg = data["choices"][0]["message"]
             except Exception as exc:
+                emit({"kind": "error", "text": f"LLM call failed: {exc}", "is_error": True})
                 return EngineResult(False, f"LLM call failed: {exc}", self.name, "\n".join(log[-30:]), turn)
+            if str(msg.get("reasoning_content") or msg.get("reasoning") or "").strip():
+                emit({"kind": "thinking", "text": str(msg.get("reasoning_content") or msg.get("reasoning"))[:20000]})
+            if str(msg.get("content") or "").strip():
+                emit({"kind": "text", "text": str(msg.get("content"))[:20000], "meta": {"turn": turn}})
 
             calls = msg.get("tool_calls") or []
             messages.append({"role": "assistant", "content": msg.get("content") or "",
@@ -167,6 +179,7 @@ class BuiltinEngine(Engine):
                     break
                 nudged = True
                 messages.append({"role": "user", "content": "Use tools. Edit files. Call finish when done."})
+                emit({"kind": "user", "text": "Use tools. Edit files. Call finish when done.", "meta": {"role": "nudge"}})
                 continue
 
             for call in calls:
@@ -176,12 +189,19 @@ class BuiltinEngine(Engine):
                     args = json.loads(fn.get("arguments") or "{}")
                 except ValueError:
                     args = {}
+                emit({"kind": "tool_use", "tool": name, "id": call.get("id", name),
+                      "input": args if isinstance(args, dict) else {"raw": str(args)}})
                 result = tools.call(name, args if isinstance(args, dict) else {})
+                emit({"kind": "tool_result", "tool": name, "id": call.get("id", name), "text": result[:20000],
+                      "is_error": result.startswith("ERROR")})
                 log.append(f"[{turn}] {name}({', '.join(sorted(args)) if isinstance(args, dict) else ''}) -> {result[:120]!r}")
                 messages.append({"role": "tool", "tool_call_id": call.get("id", name), "content": result})
             if tools.finished_summary is not None:
+                emit({"kind": "result", "text": tools.finished_summary, "meta": {"turns": turn}})
                 return EngineResult(True, tools.finished_summary, self.name, "\n".join(log[-30:]), turn)
 
+        emit({"kind": "error", "text": "agent stopped without finish (turn limit or no tool use)",
+              "is_error": True, "meta": {"turns": turn}})
         return EngineResult(False, "agent stopped without finish (turn limit or no tool use)",
                             self.name, "\n".join(log[-30:]), turn)
 

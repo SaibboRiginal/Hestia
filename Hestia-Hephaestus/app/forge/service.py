@@ -40,6 +40,7 @@ from .agent_tools import run_test_command
 from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
 from .engines import build_engines, select_engine, wait_seconds
 from .prompts import build_task_prompt, workdoc_name
+from .transcript import TaskArtifacts
 
 logger = logging.getLogger("hestia_hephaestus.forge")
 
@@ -99,6 +100,8 @@ class Forge:
         self._modes = dict(DEFAULT_MODES)
         self.claude_budget = ClaudeBudget(ClaudeSchedule())
         self.agenda = AgendaClient(cfg.hub_api_url)
+        # Sviluppo page: transcript, full test output, engine/deploy logs per task.
+        self.artifacts = TaskArtifacts(cfg.state_file.parent / "tasks", cfg.worktrees_path)
         self._agenda_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="forge-agenda")
         self._load()
         self._load_settings()
@@ -368,8 +371,9 @@ class Forge:
     def submit(self, *, request: str, services: list[str] | None = None, engine: str = "",
                source: str = "user", requested_by: str = "user", auto_start: bool | None = None,
                auto_merge: bool | None = None, context: str = "", notify_target: str = "",
-               workdoc: str = "") -> dict[str, Any]:
-        """``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG)."""
+               workdoc: str = "", parent_task: str = "") -> dict[str, Any]:
+        """``workdoc``: continue an existing docs/work/<workdoc>/ (SPEC/PROGRESS/CHANGELOG).
+        ``parent_task``: follow-up of an earlier task (Sviluppo page "Chiedi una modifica")."""
         if not self.cfg.enabled:
             raise ForgeError("Forge disabled (HEPHAESTUS_FORGE_ENABLED=0)", 503)
         if not git_ops.is_repo(self.cfg.repo_path):
@@ -377,6 +381,15 @@ class Forge:
         request = str(request or "").strip()
         if len(request) < 8:
             raise ForgeError("Request too short: describe what to build or fix")
+        parent = self.get(parent_task) if parent_task else None
+        if parent_task and not parent:
+            raise ForgeError(f"Parent task '{parent_task}' not found", 404)
+        if parent:  # follow-up: same dossier and services, the engine knows what was done before
+            workdoc = workdoc or parent.get("workdoc") or ""
+            services = services or parent.get("services") or []
+            context = (f"Segue il task Forge {parent['id']} ({parent.get('state')}): "
+                       f"{str(parent.get('request') or '')[:600]}\nEsito: {str(parent.get('summary') or '')[:1200]}\n"
+                       + str(context or ""))
         task_id = uuid.uuid4().hex[:12]
         task = {
             "id": task_id,
@@ -387,6 +400,7 @@ class Forge:
             "requested_by": requested_by,
             "context": str(context or "")[:4000],
             "workdoc": re.sub(r"[^A-Za-z0-9._-]", "", str(workdoc or ""))[:120],
+            "parent_task": parent["id"] if parent else None,
             "auto_merge": self.cfg.auto_merge if auto_merge is None else bool(auto_merge),
             "notify_target": notify_target or self.cfg.notify_target,
             "branch": f"auto/forge/{task_id}",
@@ -450,6 +464,17 @@ class Forge:
             raise ForgeError(f"Task in state '{task.get('state')}' has nothing to roll back")
         self._do_rollback(task, f"by {requested_by}: {reason}")
         return task
+
+    def retry(self, task_id: str, requested_by: str = "user") -> dict[str, Any]:
+        """Same request again as a new task (failed / no changes / rejected / rolled back)."""
+        old = self._require(task_id)
+        if old.get("state") in ACTIVE_STATES or old.get("state") in {"proposed", "scheduled", "awaiting_review"}:
+            raise ForgeError(f"Task in state '{old.get('state')}' is still open: nothing to retry", 409)
+        return self.submit(request=old.get("request", ""), services=old.get("services") or [],
+                           engine="" if old.get("engine_requested") in (None, "auto") else old["engine_requested"],
+                           source="ui", requested_by=requested_by, context=f"Riprova del task {old['id']}. "
+                           f"Esito precedente: {str(old.get('error') or old.get('summary') or '')[:800]}",
+                           workdoc=old.get("workdoc") or "")
 
     def diff(self, task_id: str) -> str:
         task = self._require(task_id)
@@ -586,7 +611,12 @@ class Forge:
                f"-> Forge task {task['id']} [forge:{task['id']}]")
         prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""), workdoc, src)
         t0 = time.perf_counter()
-        result = engine.run(worktree, prompt, test_runner)
+        self.artifacts.start_transcript(task["id"], prompt, engine.name)
+        result = engine.run(worktree, prompt, test_runner,
+                            on_event=lambda ev: self.artifacts.append(task["id"], ev))
+        if engine.name == "claude":
+            self.artifacts.import_claude(task["id"])
+        self.artifacts.write_text(task["id"], "engine.log", result.log_tail)
         if engine.name == "claude" and not result.ok and self.claude_budget.looks_like_limit(
                 f"{result.summary} {result.log_tail}"):
             until = self.claude_budget.mark_exhausted()
@@ -619,6 +649,7 @@ class Forge:
         changed = git_ops.changed_files(worktree, base_sha)
         tests_ok, tests_out = run_test_command(
             worktree, self.cfg.test_cmd, self._test_paths(worktree, changed, task["services"]))
+        self.artifacts.write_text(task["id"], "tests.txt", tests_out)
         with self._lock:
             task.update({
                 "commit_sha": sha,
@@ -695,6 +726,7 @@ class Forge:
 
         ok, out = self._deploy(services) if services else (True, "")
         task["deploy"] = {"ok": ok, "output_tail": out[-2000:]}
+        self.artifacts.write_text(task["id"], "deploy.log", out)
         unhealthy = self._unhealthy(services) if ok and services else ([] if ok else services)
         if ok and not unhealthy:
             self._set_state(task, "deployed", f"{dplan.summary()}")

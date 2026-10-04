@@ -15,7 +15,7 @@ from .core.service_contract import ServiceDescriptor
 from .core.service_runtime import load_runtime_config
 from .core.shared_imports import import_shared_symbol
 from .forge.config import load_forge_config
-from .forge.router import create_forge_router
+from .forge.router import create_forge_router, create_repo_router
 from .forge.service import Forge
 
 setup_service_logging = import_shared_symbol(
@@ -135,6 +135,7 @@ app = FastAPI(title="Hestia Hephaestus",
               version=config.service_version, lifespan=lifespan)
 app.include_router(create_hephaestus_router(remediation_service))
 app.include_router(create_forge_router(forge))
+app.include_router(create_repo_router(forge))
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools

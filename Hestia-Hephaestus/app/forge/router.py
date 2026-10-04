@@ -7,6 +7,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
+from .inspector import TaskInspector
+from .repo_browser import RepoBrowser, RepoError
 from .service import Forge, ForgeError
 
 
@@ -21,6 +23,7 @@ class ForgeTaskRequest(BaseModel):
     context: str = ""
     notify_target: str = ""
     workdoc: str = Field("", description="continue docs/work/<workdoc>/ of an earlier task")
+    parent_task: str = Field("", description="follow-up of this task: inherits workdoc + services + context")
 
 
 class ForgeEngineChoice(BaseModel):
@@ -108,6 +111,52 @@ def create_forge_router(forge: Forge) -> APIRouter:
     def forge_diff(task_id: str) -> str:
         return _guard(forge.diff, task_id)
 
+    # ── Sviluppo page: task detail ─────────────────────────────────────────
+    inspector = TaskInspector(forge)
+
+    def _inspect(fn, task_id: str, *args) -> Any:
+        try:
+            return {"status": "ok", **fn(task_id, *args)}
+        except ForgeError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @router.get("/tasks/{task_id}/transcript")
+    def forge_transcript(task_id: str, offset: int = 0, limit: int = 500) -> dict[str, Any]:
+        task = _guard(forge._require, task_id)
+        try:
+            data = forge.artifacts.transcript(task["id"], offset, limit)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"status": "ok", "task_id": task["id"], "state": task.get("state"), **data}
+
+    @router.get("/tasks/{task_id}/files")
+    def forge_files(task_id: str, diff: bool = True) -> dict[str, Any]:
+        return _inspect(inspector.files, task_id, diff)
+
+    @router.get("/tasks/{task_id}/workdoc")
+    def forge_workdoc(task_id: str) -> dict[str, Any]:
+        return _inspect(inspector.workdoc, task_id)
+
+    @router.get("/tasks/{task_id}/tests")
+    def forge_tests(task_id: str) -> dict[str, Any]:
+        return _inspect(inspector.tests, task_id)
+
+    @router.get("/tasks/{task_id}/logs")
+    def forge_logs(task_id: str) -> dict[str, Any]:
+        return _inspect(inspector.logs, task_id)
+
+    @router.get("/tasks/{task_id}/events")
+    def forge_events(task_id: str) -> dict[str, Any]:
+        return _inspect(inspector.events, task_id)
+
+    @router.post("/tasks/{task_id}/retry")
+    def forge_retry(task_id: str, body: ForgeDecision | None = None) -> dict[str, Any]:
+        b = body or ForgeDecision()
+        task = _guard(forge.retry, task_id, b.by)
+        return {"status": "ok", "task": _public(task)}
+
     @router.post("/tasks/{task_id}/approve")
     def forge_approve(task_id: str, body: ForgeDecision | None = None) -> dict[str, Any]:
         b = body or ForgeDecision()
@@ -129,9 +178,9 @@ def create_forge_router(forge: Forge) -> APIRouter:
     return router
 
 
-_PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "source", "summary", "diff_stat", "workdoc", "deploy_plan",
-                "changed_files", "touched_services", "tests", "merge_sha", "branch", "error",
-                "created_at", "updated_at", "cost_usd")
+_PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "engine_requested", "source", "requested_by",
+                "summary", "diff_stat", "workdoc", "deploy_plan", "changed_files", "touched_services", "tests",
+                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task")
 
 
 def _public(task: dict) -> dict:
@@ -140,3 +189,49 @@ def _public(task: dict) -> dict:
     if isinstance(out.get("tests"), dict):
         out["tests"] = {"ok": out["tests"].get("ok"), "tail": str(out["tests"].get("output_tail", ""))[-500:]}
     return out
+
+
+def create_repo_router(forge: Forge) -> APIRouter:
+    """Read-only git browser of the Hestia checkout: /api/hephaestus/repo/*"""
+    router = APIRouter(prefix="/api/hephaestus/repo", tags=["repo"])
+    repo = RepoBrowser(forge.cfg.repo_path, forge._base_branch)
+
+    def _guard(fn, *args) -> dict[str, Any]:
+        try:
+            return {"status": "ok", **fn(*args)}
+        except RepoError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+    @router.get("/branches")
+    def repo_branches() -> dict[str, Any]:
+        return _guard(repo.branches)
+
+    @router.get("/tags")
+    def repo_tags() -> dict[str, Any]:
+        return _guard(repo.tags)
+
+    @router.get("/log")
+    def repo_log(ref: str = "", path: str = "", limit: int = 100, skip: int = 0, all: bool = False) -> dict[str, Any]:
+        return _guard(repo.log, ref, path, limit, skip, all)
+
+    @router.get("/commits/{sha}")
+    def repo_commit(sha: str) -> dict[str, Any]:
+        return _guard(repo.commit, sha)
+
+    @router.get("/compare")
+    def repo_compare(base: str = "", head: str = "HEAD") -> dict[str, Any]:
+        return _guard(repo.compare, base, head)
+
+    @router.get("/tree")
+    def repo_tree(ref: str = "", path: str = "") -> dict[str, Any]:
+        return _guard(repo.tree, ref, path)
+
+    @router.get("/file")
+    def repo_file(ref: str = "", path: str = "") -> dict[str, Any]:
+        return _guard(repo.file, ref, path)
+
+    @router.get("/dossiers")
+    def repo_dossiers(ref: str = "") -> dict[str, Any]:
+        return _guard(repo.dossiers, ref)
+
+    return router

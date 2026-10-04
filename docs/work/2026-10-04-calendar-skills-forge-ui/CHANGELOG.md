@@ -15,3 +15,7 @@
 - v2.2 — 2026-10-04 — A7: templates kept in Chronos memory and re-asserted with the rules (no DB); wizard has 3
   steps with a simple repeat instead of the full RRULE builder; first templates Scout/Athena/Argus/Hephaestus —
   reason: implementation (keep Archive the only DB, simpler UX) — source: AI (implementation, ext-chat session).
+- v2.3 — 2026-10-04 — C: raw Claude stream written live by Oracle on the shared worktree mount and normalized by
+  Hephaestus; context panel merged with the task tabs, Repository as a mode of the Sviluppo page; follow-up via
+  `parent_task`; retry endpoint; polling for live updates — reason: implementation (keep Oracle the only Claude
+  Code owner, one place per piece of information, engines are headless) — source: AI (implementation, ext-chat session).

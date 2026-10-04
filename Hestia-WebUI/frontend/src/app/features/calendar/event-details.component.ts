@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { CalEvent, STATUS_META, TYPE_META, ownerLabel } from './calendar.models';
 import { fmt } from './date-utils';
 import { describeRRule } from './rrule';
+import { RouterLink } from '@angular/router';
 import { BadgeComponent, ButtonComponent, IconComponent, MenuComponent, MenuItem } from '../../ui';
 
 export type DetailAction = 'edit' | 'skip' | 'unskip' | 'run' | 'pause' | 'resume' | 'cancel' | 'restore' | 'reset-move' | 'duplicate';
@@ -16,7 +17,7 @@ const WINDOW_TEXT: Record<string, string> = {
 /** Content of the event popover: everything about one occurrence + its rule, with actions. */
 @Component({
   selector: 'cal-event-details',
-  imports: [IconComponent, ButtonComponent, BadgeComponent, MenuComponent],
+  imports: [IconComponent, ButtonComponent, BadgeComponent, MenuComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let e = ev();
@@ -97,6 +98,9 @@ const WINDOW_TEXT: Record<string, string> = {
       @if (e.occ.status === 'cancelled') {
         <button hx-btn size="sm" variant="primary" icon="undo" (click)="act.emit('restore')">Ripristina regola</button>
       }
+      @if (forgeTask(); as id) {
+        <a hx-btn size="sm" icon="code" [routerLink]="['/forge']" [queryParams]="{ task: id }">Apri in Sviluppo</a>
+      }
     </div>
   `,
   styles: [`
@@ -132,6 +136,8 @@ export class EventDetailsComponent {
   pick = output<CalEvent>();
   close = output<void>();
 
+  /** Forge mirrors every task as `forge.task.<id>`: link to its page (conversation, diff, tests, logs). */
+  forgeTask = computed(() => /^forge\.task\.([0-9a-f]{6,})$/.exec(this.ev().occ.key)?.[1] ?? null);
   typeMeta = computed(() => TYPE_META[this.ev().occ.type] ?? TYPE_META.event);
   status = computed(() => STATUS_META[this.ev().occ.status ?? 'confirmed'] ?? STATUS_META.confirmed);
   owner = computed(() => ownerLabel(this.ev().occ.owner));

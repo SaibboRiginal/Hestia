@@ -1,6 +1,6 @@
 # PROGRESS — calendar / skills / Sviluppo page
 
-Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
+Spec: `SPEC.md` v2.3 · resume from the first unchecked box.
 
 ## D. Process
 - [x] Dossier created (SPEC v1.0, PROGRESS, CHANGELOG) with version + source
@@ -30,8 +30,12 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
 - [ ] Docs
 
 ## C. Sviluppo page
-- [ ] Oracle claude runner `stream-json` → transcript saved per task; local engines log turns
-- [ ] Hephaestus endpoints: transcript, tests, files, workdoc, events, logs, repo/* (swagger)
-- [ ] WebUI backend proxy controller
-- [ ] Frontend: tasks list, task detail tabs, diff viewer, transcript viewer, repo browser
-- [ ] Calendar links to Sviluppo/Log; docs
+- [x] Oracle claude runner `stream-json` → live raw file on the shared mount, imported as normalized transcript per task; local/cloud engines emit the same events
+- [x] Hephaestus endpoints: transcript, files, workdoc, tests, logs, events, retry, `parent_task`; repo branches/tags/log/commits/compare/tree/file/dossiers (swagger) — manual check on this repo's git (tests: not run, user rule)
+- [x] WebUI backend proxy `ForgeController` (`/api/webui/forge/*`) — .NET build pending on user side
+- [x] Frontend `features/forge/`: task list, conversation (transcript viewer), composer "Chiedi una modifica", context panel (Panoramica/File/Diff/Dossier/Test/Log/Ramo), new-task modal, repository mode (graph log, commit, files, branches, compare, tags, dossiers); kit `hx-diff` + `hx-markdown`
+- [x] Calendar: Forge items → "Apri in Sviluppo" (Log link → A9)
+- [x] Docs: hestia-hephaestus.md, hestia-oracle.md, hestia-webui.md, DESIGN-SYSTEM.md, swagger, root CHANGELOG
+- [x] Checks: `ng build` clean, ruff on changed Python, Playwright screenshots (mocked API with real repo data; wide/phone/dark)
+- [ ] Pending on user side: .NET build + real run with a Forge task (Claude and local engine)
+- [ ] Later: SignalR push instead of polling

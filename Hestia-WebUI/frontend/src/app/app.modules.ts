@@ -20,6 +20,8 @@ export const APP_MODULES: AppModule[] = [
     load: () => import('./features/calendar/calendar-page.component').then(m => m.CalendarPageComponent) },
   { path: 'commands', label: 'Comandi & MCP', icon: 'terminal',
     load: () => import('./features/commands/commands-page.component').then(m => m.CommandsPageComponent) },
+  { path: 'forge', label: 'Sviluppo', icon: 'code',
+    load: () => import('./features/forge/forge-page.component').then(m => m.ForgePageComponent) },
   { path: 'documents', label: 'Documenti', icon: 'file',
     load: () => import('./features/documents/documents-page.component').then(m => m.DocumentsPageComponent) },
   { path: 'settings', label: 'Impostazioni', icon: 'settings', bottom: true,

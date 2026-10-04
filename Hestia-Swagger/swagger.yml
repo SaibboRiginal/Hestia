@@ -3391,7 +3391,7 @@ paths:
                 max_turns: {type: integer, default: 40}
                 timeout_seconds: {type: integer, default: 1800}
       responses:
-        "200": {description: "{ok, summary, turns, cost_usd, subtype, log_tail}"}
+        "200": {description: "{ok, summary, turns, cost_usd, subtype, log_tail, transcript_path}. Runs claude with --output-format stream-json; every line is written live to <worktree root>/.transcripts/<task folder>.jsonl (read by Hephaestus for the Sviluppo page)"}
         "400": {description: workdir outside the worktree root or empty prompt}
         "503": {description: Claude Code not installed / no token / worktrees not mounted}
         "504": {description: Timeout}
@@ -4405,9 +4405,12 @@ paths:
                 source: {type: string}
                 requested_by: {type: string}
                 notify_target: {type: string}
+                workdoc: {type: string, description: "continue docs/work/<workdoc>/ of an earlier task"}
+                parent_task: {type: string, description: "follow-up of this task (Sviluppo page): inherits workdoc, services and its outcome as context"}
       responses:
         "200": {description: "{status, task}"}
         "400": {description: Invalid request}
+        "404": {description: parent_task not found}
         "503": {description: Forge disabled or repo not mounted}
 
   /api/hephaestus/forge/tasks/{task_id}:
@@ -4432,6 +4435,200 @@ paths:
         - {name: task_id, in: path, required: true, schema: {type: string}}
       responses:
         "200": {description: diff text}
+
+  /api/hephaestus/forge/tasks/{task_id}/transcript:
+    get:
+      tags: [Hephaestus]
+      summary: "Engine conversation, normalized (Sviluppo page). Live while a Claude run is going"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+        - {name: offset, in: query, schema: {type: integer, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, default: 500, maximum: 2000}}
+      responses:
+        "200": {description: "{status, task_id, state, total, offset, live, events[{i, ts, kind: user|text|thinking|tool_use|tool_result|system|result|error, text?, tool?, id?, input?, is_error?, meta?}]}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/files:
+    get:
+      tags: [Hephaestus]
+      summary: "Changed files + diff (live worktree incl. uncommitted, or base...commit)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+        - {name: diff, in: query, schema: {type: boolean, default: true}}
+      responses:
+        "200": {description: "{status, live, base, head, files[{path, old_path?, added, deleted, binary, status: A|M|D|R|C|?}], diff, truncated, totals}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/workdoc:
+    get:
+      tags: [Hephaestus]
+      summary: "Dossier docs/work/<workdoc>/*.md + every other .md the task changed"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, workdoc, ref, docs[{path, name, group: dossier|changed, content}]}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/tests:
+    get:
+      tags: [Hephaestus]
+      summary: "Full pytest output of Forge's own test run"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, ok, ran, output, summary{passed, failed, error, skipped, failed_tests[]}}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/logs:
+    get:
+      tags: [Hephaestus]
+      summary: "Engine log, deploy output, error"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, engine, deploy, error, hint}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/events:
+    get:
+      tags: [Hephaestus]
+      summary: "State timeline"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, state, events[{ts, state, note}]}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/retry:
+    post:
+      tags: [Hephaestus]
+      summary: "Same request again as a new task (failed / no_changes / rejected / rolled_back)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, task} (the new task)"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/repo/branches:
+    get:
+      tags: [Hephaestus]
+      summary: "Local branches with ahead/behind vs base; forge worktree branches flagged"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{status, base, current, branches[{name, sha, date, author, subject, upstream, current, base, forge_task, ahead, behind}]}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/tags:
+    get:
+      tags: [Hephaestus]
+      summary: "Tags"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{status, tags[{name, sha, date, subject}]}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/log:
+    get:
+      tags: [Hephaestus]
+      summary: "Commit log (parents included for the graph)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: ref, in: query, schema: {type: string, default: HEAD}}
+        - {name: path, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 500}}
+        - {name: skip, in: query, schema: {type: integer, default: 0}}
+        - {name: all, in: query, schema: {type: boolean, default: false}, description: all branches and tags}
+      responses:
+        "200": {description: "{status, commits[{sha, short, parents[], author, email, date, subject, refs[]}], has_more}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/commits/{sha}:
+    get:
+      tags: [Hephaestus]
+      summary: "Commit meta + changed files + diff (merge: vs first parent)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: sha, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, sha, parents, author, date, subject, body, refs, files[], diff, truncated}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/compare:
+    get:
+      tags: [Hephaestus]
+      summary: "base...head: commits, files, diff"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: base, in: query, schema: {type: string}, description: default = base branch}
+        - {name: head, in: query, schema: {type: string, default: HEAD}}
+      responses:
+        "200": {description: "{status, base, head, ahead, behind, commits[], files[], diff, truncated}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/tree:
+    get:
+      tags: [Hephaestus]
+      summary: "Directory listing at a ref"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: ref, in: query, schema: {type: string, default: HEAD}}
+        - {name: path, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{status, ref, path, entries[{name, path, type: blob|tree|commit, sha, size, secret}]}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/file:
+    get:
+      tags: [Hephaestus]
+      summary: "File content at a ref (secret files refused with 403, binary flagged, capped)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: ref, in: query, schema: {type: string, default: HEAD}}
+        - {name: path, in: query, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, ref, path, size, binary, content, truncated}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/dossiers:
+    get:
+      tags: [Hephaestus]
+      summary: "docs/work dossiers with SPEC header (title, version, status, source) and PROGRESS counts"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: ref, in: query, schema: {type: string, default: HEAD}}
+      responses:
+        "200": {description: "{status, ref, dossiers[{name, path, title, version, status, source, progress{done, total}}]}"}
+        "400": {description: Invalid ref or path}
+        "503": {description: Repo not mounted}
 
   /api/hephaestus/forge/tasks/{task_id}/approve:
     post:

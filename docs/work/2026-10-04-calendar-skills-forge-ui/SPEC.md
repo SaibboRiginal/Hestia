@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, not Forge, not Hestia's own AI) · 2026-10-04 |
-| **Status** | A in progress |
+| **Status** | A done (A9 extras open) · C done · B to do |
 | **Order** | A → B (design + core) → C → D (process, done with this spec) |
 
 Versioning: bump **minor** (1.1, 1.2…) for refinements/clarifications, **major** (2.0) when scope or a design
@@ -181,6 +181,21 @@ Branch · Dossier (SPEC/PROGRESS/CHANGELOG + every referenced .md) · Test · Lo
   browser.
 - Live updates while a task runs (polling first, SignalR push later).
 - Calendar: Forge items' details get "Apri in Sviluppo" + "Log" links.
+
+### C3. Implementation decisions (v2.3)
+- **Transcript path**: Oracle (owner of Claude Code) writes the raw `stream-json` live to
+  `/forge/worktrees/.transcripts/<id>.jsonl` (shared mount, outside the worktree so `git add -A` never commits it);
+  Hephaestus normalizes it on read while the run lasts (live view) and imports it into
+  `data/forge/tasks/<id>/transcript.jsonl` at the end. Built-in engines emit the same normalized events directly.
+- **Layout**: the task-detail tabs and the context panel are one panel — centre = Conversazione, right =
+  Panoramica · File · Diff · Dossier · Test · Log · Ramo. Repository is a second mode of the same page (Task |
+  Repository), not a separate menu item. Below 1280 px the panel becomes a *Dettagli* tab next to *Conversazione*.
+- **"Chiedi una modifica"** = new Forge task with `parent_task` (inherits dossier, services and the previous outcome
+  as context): engines run headless, there is no chat inside a running task.
+- `/logs` = engine log + deploy output + error (container logs are not reachable from Hephaestus: the panel shows
+  the `docker logs` hint). `/events` = state timeline. Added `POST /tasks/{id}/retry`.
+- Live = polling (task + transcript 4 s, files ~12 s, list 15 s); SignalR push stays a later improvement.
+- The "Log" link on calendar items stays in A9 (needs a log viewer); "Apri in Sviluppo" is done.
 
 ---
 

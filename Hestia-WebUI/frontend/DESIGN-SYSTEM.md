@@ -54,6 +54,8 @@ Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 | `<hx-modal [open] title size (closed)>` + `[footer]` slot | dialog (`sm·md·lg·xl`), ESC/backdrop close |
 | `<hx-popover [open] [anchor]=rect width (closed)>` | floating panel next to an element rect, auto-flip |
 | `<hx-menu [items] (select)>` + `[trigger]` slot | dropdown (`{id,label,icon,danger,divider}`) |
+| `<hx-diff [diff] [only] [truncated]>` | unified `git diff` viewer: per-file collapsible (big files start closed), *Unificato / Affiancato* (remembered), `parseDiff()` exported |
+| `<hx-markdown [text]>` | GitHub-flavoured markdown (tables, task lists) with theme styles, sanitized |
 | `ToastService.show/success/error(text, tone, action?)` | snackbar (action = undo) |
 | `DialogService.confirm(title,msg,label,danger)` / `.choose(title,msg,options)` | awaitable dialogs |
 
@@ -105,3 +107,10 @@ export class NotesPageComponent {}
 drag/resize with 15-min snap), `month-view` (window bars, chips grouped ×N, HTML5 drag between days),
 `list-view`, `mini-calendar`, `event-details` (popover), `event-editor` (modal, RRULE builder).
 Sources/layers: `CalendarSource` (`kind: 'ai' | 'external'`) — external calendars plug in there.
+
+## 7. Sviluppo module
+
+`features/forge/`: `forge.store.ts` (task list, selection, live polling, actions), `forge.api.ts`
+(`/api/webui/forge/*` → Hephaestus), `forge-page` (three-pane layout, composer, new-task modal),
+`transcript.component` (engine conversation), `task-panel.component` (Panoramica · File · Diff · Dossier · Test ·
+Log · Ramo), `repo-browser.component` + `graph.ts` (commit graph lanes, drawn per row in SVG with `--cal-*` colors).

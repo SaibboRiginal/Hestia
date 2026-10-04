@@ -67,6 +67,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET/POST | `/api/webui/agenda/items` | Items list / create (owner user) |
 | PATCH/DELETE | `/api/webui/agenda/items/{key}` | Change (by=user) / cancel |
 | POST | `/api/webui/agenda/items/{key}/skip` · `unskip` · `move` · `run` | Skip/restore occurrence, move one occurrence (exception), run now |
+| GET | `/api/webui/forge/status` · `tasks` · `tasks/{id}` · `tasks/{id}/transcript` · `files` · `workdoc` · `tests` · `logs` · `events` | Sviluppo page (→ Hephaestus `/api/hephaestus/forge/*`) |
+| POST | `/api/webui/forge/tasks` · `tasks/{id}/approve` · `reject` · `rollback` · `retry` | New task / follow-up (`source=ui`) and actions (`by=user`) |
+| GET | `/api/webui/forge/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only repository browser (→ Hephaestus `/api/hephaestus/repo/*`) |
 | GET | `/health` | Health check |
 | POST | `/api/webui/admin/generate-token` · `revoke-token` · GET `token-status` · GET/POST `public-url` | Admin (Telegram / tunnel script). **Guarded**: `X-WebUI-Admin-Secret` = `WEBUI_ADMIN_SECRET` when set, else only direct loopback/private-network calls not coming through Cloudflare/proxy |
 
@@ -76,8 +79,27 @@ Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/u
 (`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list,
 sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
 move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**,
-**Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
+**Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
+
+### Sviluppo page (2026-10-04, `features/forge/`)
+
+Codex / Claude Code style page for Forge, Hestia's self-development engine:
+- **Task** mode: left = task list (search, filters Tutti/Aperti/Applicati/Non riusciti, live state dot);
+  centre = the engine **conversation** (`forge-transcript`: messages, collapsible reasoning, every tool call with
+  input/output, Edit shown as a mini diff, Bash as a command, final result with turns/cost) + engine summary +
+  composer **"Chiedi una modifica"** (new task with `parent_task`: same dossier, outcome as context);
+  right = context panel **Panoramica · File · Diff · Dossier · Test · Log · Ramo** (timeline, deploy plan,
+  cost/turns, file list → diff, dossier markdown, full pytest output, engine/deploy logs, branch/compare).
+  Header actions follow the state: Avvia / Avvia ora / Approva e applica / Rifiuta / Rollback / Riprova.
+- **Repository** mode (`repo-browser`): commit log with branch graph (all branches toggle, file history),
+  commit detail (files + diff), file browser at any ref (markdown preview), branches with ahead/behind and Forge
+  task links, compare, tags, `docs/work` dossiers with version/status/progress, root CHANGELOG.
+- Live: while a task works the page polls every 4 s (task + new transcript events), files every ~12 s;
+  the list refreshes every 15 s. Deep link `/forge?task=<id>` (calendar Forge items: **Apri in Sviluppo**),
+  `/forge?view=repo`.
+- Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
+  (list → task with back button).
 
 ### Calendar view rules (2026-10-04, `features/calendar/calendar.prefs.ts`)
 

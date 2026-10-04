@@ -4,6 +4,8 @@ export * from './button.component';
 export * from './basics';
 export * from './overlays';
 export * from './datetime';
+export * from './diff';
+export * from './markdown';
 
 import { IconComponent } from './icon.component';
 import { ButtonComponent } from './button.component';

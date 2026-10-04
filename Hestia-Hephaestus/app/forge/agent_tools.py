@@ -138,7 +138,7 @@ class AgentTools:
                 self._path(p)
         ok, output = self._test_runner(paths)
         status = "PASS" if ok else ("NO TESTS" if ok is None else "FAIL")
-        return f"{status}\n{_clip(output, 4000)}"
+        return f"{status}\n{output[-4000:]}"  # tail: the pytest summary is at the end
 
     def t_finish(self, summary: str) -> str:
         self.finished_summary = str(summary or "").strip() or "done"
@@ -158,4 +158,4 @@ def run_test_command(root: Path, template: str, paths: list[str], timeout: int =
     # pytest exit 5 = no tests collected (e.g. marker filter) -> not a failure
     if proc.returncode == 5:
         return None, output[-3000:]
-    return proc.returncode == 0, output[-6000:]
+    return proc.returncode == 0, output[-60000:]  # full-ish: shown in the Sviluppo page

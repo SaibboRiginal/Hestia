@@ -215,7 +215,7 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 | POST | `/api/llm/chat` | OpenAI-compatible chat on a profile: `{profile, messages, tools?, temperature?, model?}` → provider JSON |
 | POST | `/api/llm/generate` | Plain prompt → `{response}` (Athena, Metis) |
 | GET | `/api/llm/code/status` | Claude Code ready? (CLI installed, token, worktree root mounted) |
-| POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd}` |
+| POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd, transcript_path}`. Runs `claude -p --output-format stream-json --verbose`; every line is written live to `<ORACLE_CODE_WORKDIR_ROOT>/.transcripts/<task>.jsonl` (outside the worktree) for the WebUI Sviluppo page |
 
 Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-compatible base, e.g. `…/v1`).
 `local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model `MODEL_USECASE_CODE_MODEL` or `qwen2.5-coder:14b`).

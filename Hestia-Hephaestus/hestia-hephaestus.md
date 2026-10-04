@@ -159,7 +159,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude"}` — set default (persisted) |
 | GET | `/api/hephaestus/forge/settings` | Default engine, fallback, permission modes |
 | POST | `/api/hephaestus/forge/settings/mode` | `{"mode": "ask|auto|full_auto", "group": "local|cloud|"}` |
-| POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target}` |
+| POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target, workdoc, parent_task}` — `parent_task` = follow-up (inherits workdoc, services, outcome as context) |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
 | GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |
@@ -168,6 +168,27 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | POST | `/api/hephaestus/forge/settings/claude-schedule` | Set reset day/time, window, night interval, caps |
 | POST | `/api/hephaestus/forge/tasks/{id}/reject` | Discard + delete branch |
 | POST | `/api/hephaestus/forge/tasks/{id}/rollback` | Revert merged change |
+| POST | `/api/hephaestus/forge/tasks/{id}/retry` | Same request again as a new task (failed, no_changes, rejected, rolled_back) |
+| GET | `/api/hephaestus/forge/tasks/{id}/transcript?offset&limit` | Engine conversation, normalized (see below); live while Claude runs |
+| GET | `/api/hephaestus/forge/tasks/{id}/files?diff` | Changed files (+/−, status) and diff; live worktree includes uncommitted/untracked files |
+| GET | `/api/hephaestus/forge/tasks/{id}/workdoc` | Dossier `docs/work/<workdoc>/*.md` + every other `.md` the task changed |
+| GET | `/api/hephaestus/forge/tasks/{id}/tests` · `logs` · `events` | Full pytest output + counts · engine/deploy logs · state timeline |
+| GET | `/api/hephaestus/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only git browser of the checkout (Sviluppo page) |
+
+### Task artifacts & transcript (Sviluppo page)
+
+- Per task: `data/forge/tasks/<id>/` → `transcript.jsonl`, `tests.txt` (full pytest output), `engine.log`, `deploy.log`.
+- **Transcript** = one normalized format for every engine: `{i, ts, kind, text, tool, id, input, is_error, meta}`
+  with `kind` = `user` (task prompt / nudges) · `text` · `thinking` · `tool_use` · `tool_result` · `system` · `result` · `error`.
+  - `claude`: Oracle runs `claude -p --output-format stream-json --verbose` and writes every line live to
+    `/forge/worktrees/.transcripts/<id>.jsonl` (shared mount, outside the worktree so it is never committed).
+    While the run lasts, `/transcript` normalizes it on read (live view); at the end Forge imports it into
+    `transcript.jsonl` and deletes the raw file.
+  - `local` / `cloud`: the built-in agent loop emits assistant text, reasoning (when the model returns it),
+    every tool call with its arguments and every tool result.
+- **Repo browser** (`forge/repo_browser.py`): only `git` plumbing, refs/paths validated (no `..`, no `.git`, no
+  leading `-`), secret files (`.env`, tokens, credentials) listed as secret and never served, diffs capped at 300 KB,
+  files at 400 KB.
 
 MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_mode`, `forge_set_claude_schedule`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
