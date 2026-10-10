@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user finishes central settings first |
+| 1.1 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user finishes central settings first |
 
 ## 1. Goal
 Let Oracle's normal chat run on Claude Haiku, alongside Gemini and Ollama (not replacing them), in two ways:
@@ -44,19 +44,18 @@ refactor and `load_llm_config()`.
 Out of scope: settings UI / Themis (central-settings thread), Ollama num_ctx/keep_alive and llama-server
 specifics (local-context thread), assistant presence (own thread), embeddings on Anthropic (no such API).
 
-## 3. Configuration (until Themis)
-```
-ORACLE_ANTHROPIC_API_KEY=            # enables provider "anthropic"
-MODEL_USECASE_GENERIC_PROVIDER=anthropic   MODEL_USECASE_GENERIC_MODEL=claude-haiku-5-5
-MODEL_USECASE_GENERIC_PROVIDER=claude_cli  MODEL_USECASE_GENERIC_MODEL=haiku   # subscription
-```
-Fallback provider/model per use case unchanged (`MODEL_USECASE_<X>_FALLBACK_*`).
+## 3. Configuration
+No legacy env compatibility (central-settings SPEC v1.2): provider instances and use-case mappings are Themis
+settings (`oracle.providers`, `oracle.usecases.*`). Only secrets stay in `.env`: `ORACLE_ANTHROPIC_API_KEY`
+(referenced by the `anthropic` instance's `api_key_env`) and the existing `CLAUDE_CODE_OAUTH_TOKEN` for
+`claude_cli`. `load_llm_config()` reads today's env only as the temporary bridge until Themis (removed in P2);
+this task adds no new tunable env vars. Only the provider types implemented here can be added from the UI.
 
 ## 4. Acceptance criteria
 - With no new env, Oracle behaves exactly as before (ollama/gemini paths moved, not changed).
-- `MODEL_USECASE_GENERIC_PROVIDER=anthropic` + key → chat quick/auto/thinking work, tools called natively,
+- Use case `generic` mapped to provider `anthropic` + key → chat quick/auto/thinking work, tools called natively,
   reasoning shown, cache read tokens logged (`event=anthropic_usage`).
-- `MODEL_USECASE_GENERIC_PROVIDER=claude_cli` → chat works through the CLI, tools via text tool calls.
+- Use case `generic` mapped to provider `claude_cli` → chat works through the CLI, tools via text tool calls.
 - Forge's `claude` never sees an Anthropic API key.
 - Provider classes never call `os.getenv`; `load_llm_config()` is the single env reader for LLM providers.
 - Docs: `hestia-oracle.md`, `.env.example`, compose comments.

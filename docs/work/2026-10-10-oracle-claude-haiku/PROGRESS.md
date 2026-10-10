@@ -1,6 +1,6 @@
 # PROGRESS — Claude Haiku in Oracle
 
-Spec: `SPEC.md` v1.0 · resume from the first unchecked box.
+Spec: `SPEC.md` v1.1 · resume from the first unchecked box.
 
 - [x] Options, costs and terms researched; user chose both API key and subscription (thread 2026-10-10)
 - [x] Dossier created (code reading done)
