@@ -1,18 +1,25 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { SystemSettingsComponent } from './system-settings.component';
 import { ThemeService } from '../../core/theme/theme.service';
 import { SettingsService } from '../../services/settings.service';
 import { SessionService } from '../../services/session.service';
 import { ButtonComponent, DialogService, FieldComponent, IconComponent, PageHeaderComponent, SegmentedComponent, SegmentOption, ToastService, ToggleComponent } from '../../ui';
 import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../services/notice-prefs.service';
 
-/** Appearance (themes) + assistant behaviour for this client. */
+/** Personali (appearance, assistant behaviour for this client) + Sistema (central settings, Themis). */
 @Component({
   selector: 'app-settings-page',
-  imports: [FormsModule, PageHeaderComponent, ButtonComponent, IconComponent, FieldComponent, SegmentedComponent, ToggleComponent],
+  imports: [FormsModule, SystemSettingsComponent, PageHeaderComponent, ButtonComponent, IconComponent, FieldComponent, SegmentedComponent, ToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header title="Impostazioni" />
+    <hx-page-header title="Impostazioni" [subtitle]="tab() === 'system' ? 'Tutti i moduli di Hestia: valori, stato, preset' : 'Questo client e il tuo modo di usare Hestia'">
+      <hx-segmented [options]="tabs" [value]="tab()" (changed)="setTab($event)" />
+    </hx-page-header>
+    @if (tab() === 'system') {
+      <app-system-settings [module]="module" />
+    } @else {
     <div class="body">
       <section>
         <h3><hx-icon name="palette" [size]="17" /> Aspetto</h3>
@@ -73,7 +80,8 @@ import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../
           <button hx-btn variant="ghost" (click)="reset()">Ripristina impostazioni</button>
         </div>
       </section>
-    </div>`,
+    </div>
+    }`,
   styles: [`
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     hx-page-header { padding-left: 56px; }
@@ -97,6 +105,17 @@ import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../
   `],
 })
 export class SettingsPageComponent {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  readonly tabs: SegmentOption[] = [{ value: 'personal', label: 'Personali' }, { value: 'system', label: 'Sistema' }];
+  /** Deep links: /settings?tab=system&module=oracle */
+  readonly tab = signal(this.route.snapshot.queryParamMap.get('tab') === 'system' ? 'system' : 'personal');
+  readonly module = this.route.snapshot.queryParamMap.get('module');
+  setTab(t: string) {
+    this.tab.set(t);
+    void this.router.navigate([], { queryParams: { tab: t === 'system' ? 'system' : null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
   theme = inject(ThemeService);
   settings = inject(SettingsService);
   private session = inject(SessionService);

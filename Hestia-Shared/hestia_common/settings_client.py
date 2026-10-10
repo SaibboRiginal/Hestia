@@ -57,13 +57,15 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
             options: list | None = None, min: float | None = None, max: float | None = None,
             unit: str = "", apply: str = "live", scope: str = "system", depends_on: dict | None = None,
             oracle: str = "propose", advanced: bool = False, order: int = 0,
-            options_source: str = "", fields: dict | None = None) -> dict:
+            options_source: str = "", fields: dict | None = None, row: str = "", column: str = "") -> dict:
     """Build one setting definition (validated by Themis against its type).
 
     ``options``: for ``enum`` a list of values or ``(value, label)`` pairs.
     ``options_source``: GET path on the owning module returning dynamic options
     (e.g. models of a provider) as ``{"options": [{"value", "label"}]}``.
     ``fields``: for ``object`` the sub-fields (each a ``setting``-like dict without key).
+    ``row``/``column``: optional table layout hint — settings of one group sharing rows and columns are
+    shown by clients as a grid (e.g. row "Codice", column "Modello"); ``label`` stays the full name.
     ``oracle``: what the assistant may do — ``propose`` (default, always confirmed by the user),
     ``read``, or ``none`` for safety switches.
     """
@@ -79,7 +81,7 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
            "apply": apply, "scope": scope, "oracle": oracle, "advanced": bool(advanced), "order": int(order)}
     for name, value in (("options", opts), ("min", min), ("max", max), ("unit", unit or None),
                         ("depends_on", depends_on), ("options_source", options_source or None),
-                        ("fields", fields)):
+                        ("fields", fields), ("row", row or None), ("column", column or None)):
         if value is not None:
             out[name] = value
     return out

@@ -112,6 +112,10 @@ settings.on_change(lambda changed: ...)      # live values changed (also fired o
 Themis down → defaults + `[🔄]` log, retried in background. `apply="restart"` values loaded at startup stay
 effective until restart (Themis shows "riavvio necessario"). `oracle="none"` for safety switches the
 assistant must not even propose.
+`options_source` (a GET path on the owning module, `{other.key}` placeholders) gives dynamic choices, resolved by
+Themis (`/api/settings/key/{key}/options`) so every client gets the same list. `row` + `column` are a table hint:
+clients show the settings of a group as a grid (Oracle: use case × fornitore / modello).
+`settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
 ## Constraints
 

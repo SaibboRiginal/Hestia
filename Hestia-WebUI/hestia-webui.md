@@ -57,6 +57,11 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/api/webui/sessions/clear` | Reset session |
 | GET | `/api/webui/settings` | Get session settings |
 | PUT | `/api/webui/settings` | Update settings |
+| GET | `/api/webui/central-settings/{modules,items,revision,proposals}` | Impostazioni → Sistema: proxy to Themis (`items?module=&q=`) |
+| GET | `/api/webui/central-settings/key/{key}/{options,history}` | choices for a setting · last changes |
+| PUT/DELETE | `/api/webui/central-settings/key/{key}` | change (`{value}`) / reset to default — actor `webui` |
+| POST | `/api/webui/central-settings/key/{key}/undo` · `presets/{module}/{id}/apply` | undo · apply a preset |
+| POST | `/api/webui/central-settings/proposals/{id}/{approve,reject}` | answer an assistant proposal (`by: webui`, first answer wins) |
 | GET | `/api/webui/commands` | Discover commands |
 | POST | `/api/webui/commands/execute` | Execute command |
 | POST | `/api/webui/feedback` | Submit feedback |
@@ -103,6 +108,26 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   `/forge?view=repo`.
 - Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
   (list → task with back button).
+
+### Impostazioni → Sistema (2026-10-10, `features/settings/`)
+
+- Tabs *Personali* (this client: theme, tone, notices, session) and *Sistema* (central settings, Themis).
+  Deep link `/settings?tab=system&module=oracle`.
+- Sistema: left = search (across all modules, done by Themis) + *Panoramica* + modules with a health dot and
+  pending proposals; *Panoramica* = module cards (health from Hub, version, settings count, proposals) and the
+  services without settings yet. A module = its groups; a group with presets shows *Economico / … /
+  Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table
+  (Oracle: use case × fornitore / modello / riserva). Filters *Solo modificate* and *Avanzate (N)*.
+- `<hx-setting>` (`setting-row.component.ts`): label, help, badges *modificato · riavvio necessario · modulo
+  offline · al riavvio · personale*, the control and a clock popover with the last changes, *Annulla ultima*,
+  *Ripristina predefinito*. Settings whose `depends_on` is not met are greyed out with "Attiva solo con …".
+- `<hx-setting-control>` (`setting-control.component.ts`) picks the input by type (toggle, segmented ≤4 short
+  options else dropdown, number + unit, model name with suggestions from `options`, 24h time, text, list one per
+  line, JSON). Emits only complete values; Themis validates and its Italian error goes to a toast.
+  Reusable outside the page (chat quick menu, P4).
+- `central-settings.store.ts`: reloads what Themis answers after every change (toast with *Annulla*) and polls
+  `revision` every 15 s while visible, so changes from Telegram, another browser or an approved proposal show up.
+  Pending proposals appear as a banner with *Approva / Rifiuta*.
 
 ### "Crea con Hestia" drawer (2026-10-04, `features/assistant/`, `services/assistant.service.ts`)
 

@@ -127,3 +127,10 @@ packets are shared with the Chat page, the conversation and the Oracle session a
 (`/api/webui/forge/*` → Hephaestus), `forge-page` (three-pane layout, composer, new-task modal),
 `transcript.component` (engine conversation), `task-panel.component` (Panoramica · File · Diff · Dossier · Test ·
 Log · Ramo), `repo-browser.component` + `graph.ts` (commit graph lanes, drawn per row in SVG with `--cal-*` colors).
+
+## 8. Central settings (`features/settings/`)
+
+Any page can show a Hestia setting (Themis) with `<hx-setting [item]>` (full row: label, help, state badges,
+history/undo) or just `<hx-setting-control [item] [compact] (commit)>` (the input), wired to
+`CentralSettingsStore.set(item, value)`. Never build a custom form for a module setting: declare it in the module
+(`hestia_common.settings_client.setting`, optional `row`/`column` for a table) and it appears in Impostazioni → Sistema.

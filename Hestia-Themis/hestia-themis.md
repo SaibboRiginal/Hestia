@@ -56,12 +56,13 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 | GET | `/api/settings` | `module, q, client, session, status` → items with value, source, status + preset state |
 | GET | `/api/settings/search` | compact search (assistant) |
 | GET/PUT/DELETE | `/api/settings/key/{key}` | read / change / reset |
+| GET | `/api/settings/key/{key}/options` | choices: static `options`, or the owner's `options_source` with `{other.key}` filled from current values (e.g. installed Ollama models) |
 | GET | `/api/settings/key/{key}/history` | last changes |
 | POST | `/api/settings/key/{key}/undo` | user undo |
 | POST | `/api/settings/key/{key}/undo-propose` | assistant undo (a proposal) |
 | POST | `/api/settings/presets/{module}/{preset}/apply` | apply a preset |
 | POST | `/api/settings/sessions/{session}/init` | new session from profile defaults |
-| GET/POST | `/api/settings/proposals` | list / propose |
+| GET/POST | `/api/settings/proposals` | list (with the setting `label`) / propose |
 | POST | `/api/settings/proposals/{id}/approve` · `/reject` | user's answer |
 
 MCP tools (Hestia-MCP, domains `system`, `settings`): `settings_search`, `settings_get`, `settings_propose`,

@@ -49,21 +49,23 @@ def _definitions() -> list[dict]:
         base = i * 10
         defs += [
             setting(key(uc, "provider"), f"{label} · fornitore", "enum", prov, group="Modelli", options=PROVIDERS,
-                    help=_HELP[uc], order=base, advanced=advanced),
+                    help=_HELP[uc], order=base, advanced=advanced, row=label, column="Fornitore"),
             setting(key(uc, "model"), f"{label} · modello", "model", model, group="Modelli",
                     options_source=f"/api/llm/models?provider={{{key(uc, 'provider')}}}",
-                    help="Nome del modello del fornitore scelto.", order=base + 1, advanced=advanced),
+                    help="Nome del modello del fornitore scelto.", order=base + 1, advanced=advanced,
+                    row=label, column="Modello"),
             setting(key(uc, "fallback_provider"), f"{label} · fornitore di riserva", "enum", fb_prov,
                     group="Modelli", options=PROVIDERS, order=base + 2, advanced=True,
-                    help="Usato se il principale non risponde."),
+                    help="Usato se il principale non risponde.", row=label, column="Riserva · fornitore"),
             setting(key(uc, "fallback_model"), f"{label} · modello di riserva", "model", fb_model, group="Modelli",
                     options_source=f"/api/llm/models?provider={{{key(uc, 'fallback_provider')}}}",
-                    order=base + 3, advanced=True),
+                    order=base + 3, advanced=True, row=label, column="Riserva · modello"),
         ]
         if thinking is not None:
             defs.append(setting(key(uc, "thinking"), f"{label} · ragionamento del modello", "enum", thinking,
                                 group="Modelli", options=THINKING, order=base + 4, advanced=True,
-                                help="Automatico = attivo se il modello lo supporta."))
+                                help="Automatico = attivo se il modello lo supporta.", row=label,
+                                column="Ragionamento"))
     return defs
 
 

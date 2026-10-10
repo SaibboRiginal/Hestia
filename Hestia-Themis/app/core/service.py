@@ -7,12 +7,14 @@ proposal by itself: only an answer from the user (any client) does.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import parse_qsl, quote
 
 from .hub import Hub, HubError
 from .registry import Registry
@@ -173,13 +175,42 @@ class Themis:
                             "presets": [{k: p.get(k) for k in ("id", "label", "help", "values")} for p in presets]})
         return out
 
-    def get(self, key: str, *, client: str = "", session: str = "") -> dict:
+    def get(self, key: str, *, client: str = "", session: str = "", include_status: bool = True) -> dict:
         d = self.registry.definition(key)
         if not d:
             raise ThemisError(f"impostazione {key} sconosciuta", 404)
-        found = [i for i in self.list(module=d["module"], client=client, session=session)["items"]
-                 if i["key"] == key]
+        found = [i for i in self.list(module=d["module"], client=client, session=session,
+                                      include_status=include_status)["items"] if i["key"] == key]
         return found[0] if found else dict(d, value=d.get("default"), source="default")
+
+    def options(self, key: str, *, client: str = "", session: str = "") -> dict:
+        """Choices for a setting: static ``options`` or the owning module's ``options_source``
+        (``{other.key}`` placeholders filled with current values), so every client gets the same list."""
+        d = self.registry.definition(key)
+        if not d:
+            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+        if d.get("options"):
+            return {"key": key, "options": d["options"], "source": "static"}
+        source = str(d.get("options_source") or "")
+        if not source:
+            return {"key": key, "options": [], "source": "none"}
+        values: dict[str, Any] = {}
+        for ref in re.findall(r"\{([^{}]+)\}", source):
+            if ref not in values:
+                values[ref] = self.get(ref, client=client, session=session, include_status=False).get("value") \
+                    if self.registry.definition(ref) else ""
+        path = re.sub(r"\{([^{}]+)\}", lambda m: quote(str(values.get(m.group(1), "")), safe=""), source)
+        path, _, qs = path.partition("?")
+        try:
+            status, payload = self.hub.call(d["module"], "GET", path, query=dict(parse_qsl(qs)), timeout=6)
+        except Exception as exc:
+            logger.warning("[🔄] event=themis_options_failed key=%s error=%s", key, exc)
+            return {"key": key, "options": [], "source": "offline"}
+        opts = (payload or {}).get("options") if isinstance(payload, dict) else payload
+        if status >= 400 or not isinstance(opts, list):
+            return {"key": key, "options": [], "source": "error"}
+        return {"key": key, "source": "module", "options": [
+            o if isinstance(o, dict) else {"value": o, "label": str(o)} for o in opts]}
 
     # ── writing ─────────────────────────────────────────────────────────────
     def _target(self, d: dict, scope: str | None, scope_id: str | None) -> tuple[str, str]:
@@ -310,7 +341,8 @@ class Themis:
                 except (ValueError, ThemisError, HubError):
                     pass
             if status is None or p.get("status") == status:
-                out.append(p)
+                d = self.registry.definition(str(p.get("key") or ""))
+                out.append(dict(p, label=d.get("label")) if d else p)
         return out
 
     def _close(self, proposal: dict, status: str, by: str, notify: bool) -> dict:

@@ -4919,6 +4919,19 @@ paths:
       responses:
         "200": {description: "{key, scope, value (default), revision}"}
 
+  /api/settings/key/{key}/options:
+    get:
+      tags: [Themis]
+      summary: Choices for a setting (static options, or fetched from the owning module's options_source)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+        - {name: client, in: query, schema: {type: string}}
+        - {name: session, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{key, source: static|module|none|offline|error, options: [{value, label}]}"}
+
   /api/settings/key/{key}/history:
     get:
       tags: [Themis]

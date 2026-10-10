@@ -14,7 +14,11 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
   schedule; MCP tools `forge_set_engine`/`forge_set_mode` removed: the assistant proposes via Themis);
   `<owner>.log.level` in Oracle + Hephaestus. Import-smoked (pytest not run). Note: old engine/mode choices in
   `settings.json` are not migrated (no legacy, user rule) → defaults local / auto / ask.
-- [ ] P3 WebUI Impostazioni: personal/system, search, module status cards, `hx-setting`
+- [x] P3 WebUI Impostazioni → Sistema (`features/settings/`: api, store, `hx-setting`, `hx-setting-control`,
+  system panel with cards, search, presets, row/column tables, history/undo, proposals banner) + .NET
+  `CentralSettingsController` (proxy to Themis via Hub) + Themis `GET /api/settings/key/{key}/options` and
+  proposal labels + `row`/`column` hints in the shared client. `ng build` clean; checked with Playwright on a
+  mocked API (desktop light, phone dark). .NET not built here (no SDK): Marko builds it.
 - [ ] P4 Unified chat settings (Telegram + WebUI), profile → session copy, chat quick menu
 - [ ] P5 Themis MCP tools (Hestia-MCP) + proposals confirmed via Hermes; Athena `setting` proposals
 - [ ] P6 Migrate remaining modules' tunable env vars (one module per step); includes Forge fallback/max_turns/

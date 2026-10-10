@@ -141,6 +141,12 @@ def settings_get(key: str, client: str = "", session: str = ""):
     return themis.get(key, client=client, session=session)
 
 
+@app.get("/api/settings/key/{key}/options")
+def settings_options(key: str, client: str = "", session: str = ""):
+    """Choices for a setting (static, or fetched from the owning module's options_source)."""
+    return themis.options(key, client=client, session=session)
+
+
 @app.put("/api/settings/key/{key}")
 def settings_set(key: str, body: dict):
     return themis.set(key, body.get("value"), scope=body.get("scope"), scope_id=body.get("scope_id"),
