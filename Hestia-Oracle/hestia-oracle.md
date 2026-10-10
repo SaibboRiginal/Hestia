@@ -20,6 +20,13 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - If primary (Ollama) is unavailable, falls back to the assigned Gemini model automatically at runtime.
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
+### Personal chat settings (Themis, scope user)
+- `oracle.chat.tone` (warm · neutral · direct · formal) and `oracle.chat.instructions` (text) are declared by
+  Oracle and shared by every client. Resolution: session → client → profile (your defaults) → default.
+- Clients send `"client": "<name>"` in `/api/chat`, `/api/chat/document[/json]` and `/api/format`; Oracle appends
+  the resolved sentences to the client instructions (`main._with_personal_settings`, values cached 20 s by
+  `SettingsClient.user_values`; Themis down → defaults). Clients no longer send tone lines themselves.
+
 ### Session Management
 - Each interface (e.g. Telegram) has one active session at a time.
 - Sessions store the full conversation history.

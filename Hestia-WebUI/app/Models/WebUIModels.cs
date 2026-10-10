@@ -25,7 +25,7 @@ public record SessionCleared(string Status, string NewSessionId);
 // ── Settings ────────────────────────────────────────────────────────────
 
 public record SessionSettings(
-    string Tone = "neutral",
+    string Tone = "warm",
     string CustomPrompt = "",
     string ThinkingDisplay = "hidden"
 );

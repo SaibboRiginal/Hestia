@@ -22,3 +22,13 @@
   use-case table with provider/model comboboxes — source: user via external chat.
 - v2.1 — 2026-10-10 — rule: Hermes is the only outbound messenger to clients (checked all modules); Hermes
   WebUI channel recorded as an external dependency — source: user via external chat.
+- v2.2 — 2026-10-10 — refinements during implementation: (1) Oracle models are flat keys
+  `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model,thinking}` instead of one
+  `oracle.usecases.<uc>` object, so every client gets plain comboboxes and the WebUI a use-case table
+  (`row`/`column` hints); (2) personal chat settings: tone and instructions are Oracle's (`oracle.chat.*`,
+  scope user) and Oracle applies them itself from the `client` + session of each request; presentation
+  options stay client-local; (3) a new session is not copied from the profile: session → client → profile is
+  resolved at every message, so a session only stores explicit overrides (same result, no stale copies);
+  (4) Forge permission modes are `oracle: read` — reason: simpler clients, one place that applies answer
+  settings, module boundaries — source: implementation (central settings thread).
+

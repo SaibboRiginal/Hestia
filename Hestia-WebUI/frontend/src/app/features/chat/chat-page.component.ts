@@ -10,12 +10,13 @@ import { SignalRService } from '../../services/signalr.service';
 import { ChatMessage } from '../../models/chat.models';
 import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, ToastService } from '../../ui';
 import { ThinkingStepsComponent } from './thinking-steps.component';
+import { ChatQuickSettingsComponent } from '../settings/chat-quick-settings.component';
 import { NoticePrefsService } from '../../services/notice-prefs.service';
 
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
   selector: 'app-chat-page',
-  imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent],
+  imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
@@ -24,6 +25,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
       <select class="hx-select mode" [(ngModel)]="mode" title="Modalità">
         <option value="auto">Auto</option><option value="quick">Veloce</option><option value="thinking">Ragionamento</option>
       </select>
+      <hx-chat-quick-settings />
       <hx-menu [items]="menu" (select)="onMenu($event)">
         <button hx-btn variant="ghost" size="sm" icon="more" iconOnly trigger aria-label="Altro"></button>
       </hx-menu>

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Approved 2026-10-10 — in progress (P1–P2 done) |
 

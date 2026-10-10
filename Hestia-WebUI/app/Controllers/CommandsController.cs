@@ -76,6 +76,7 @@ public class CommandsController : ControllerBase
                         payload = result,
                         response_prompt = prompt,
                         client_instructions = _sessionManager.BuildClientInstructions(),
+                        client = "webui",
                     }, timeoutSeconds: 60);
                     if (formatted.TryGetProperty("text", out var t)) text = t.GetString();
                 }

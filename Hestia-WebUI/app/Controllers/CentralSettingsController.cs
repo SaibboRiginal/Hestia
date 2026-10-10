@@ -54,14 +54,15 @@ public class CentralSettingsController : ControllerBase
         var dict = ToDict(body);
         dict["actor"] = Client;
         dict.Remove("reason");
+        ScopeTarget(dict);
         _logger.LogInformation("event=webui_central_setting_set key={Key}", key);
         return Wrap(() => _hub.RoutePutAsync(Svc, KeyPath(key), dict));
     }
 
     [HttpDelete("key/{key}")]
-    public Task<IActionResult> Reset(string key, [FromQuery] string? scope = null, [FromQuery] string? scope_id = null)
+    public Task<IActionResult> Reset(string key, [FromQuery] string? scope = null)
         => Wrap(() => _hub.RouteAsyncPublic(Svc, KeyPath(key), HttpMethod.Delete,
-            query: Query(("scope", scope), ("scope_id", scope_id), ("actor", Client))));
+            query: Query(("scope", scope), ("scope_id", ScopeId(scope)), ("actor", Client))));
 
     [HttpGet("key/{key}/history")]
     public Task<IActionResult> History(string key, [FromQuery] string? scope = null, [FromQuery] string? scope_id = null)
@@ -92,6 +93,23 @@ public class CentralSettingsController : ControllerBase
             new Dictionary<string, object?> { ["by"] = Client }));
 
     // ── helpers ────────────────────────────────────────────────────────
+
+    /// <summary>User settings layers this client may write: profile (defaults), client "webui",
+    /// session = the current WebUI conversation (chat quick menu). The id is decided here.</summary>
+    private string? ScopeId(string? scope) => scope switch
+    {
+        "session" => _sessions.GetSession(),
+        "client" => Client,
+        _ => null,
+    };
+
+    private void ScopeTarget(Dictionary<string, object?> dict)
+    {
+        var scope = dict.TryGetValue("scope", out var s) ? s?.ToString() : null;
+        if (string.IsNullOrWhiteSpace(scope)) { dict.Remove("scope"); dict.Remove("scope_id"); return; }
+        var id = ScopeId(scope);
+        if (id is null) dict.Remove("scope_id"); else dict["scope_id"] = id;
+    }
 
     private static string KeyPath(string key) => $"{Base}/key/{Uri.EscapeDataString(key)}";
 

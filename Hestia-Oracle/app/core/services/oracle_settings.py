@@ -88,7 +88,34 @@ def _presets() -> list[dict]:
     ]
 
 
-settings.declare(_definitions(), presets=_presets()).declare_log_level()
+TONES = [("warm", "Caldo"), ("neutral", "Neutro"), ("direct", "Diretto"), ("formal", "Formale")]
+_TONE_SENTENCE = {"warm": "Tono: caldo e amichevole.", "neutral": "",
+                  "direct": "Tono: diretto, essenziale, niente preamboli.", "formal": "Tono: formale."}
+TONE, INSTRUCTIONS = "oracle.chat.tone", "oracle.chat.instructions"
+
+# Personal chat settings (scope user): same values on every client; profile = default for new sessions,
+# a client or a single conversation can override (session → client → profile → default).
+_CHAT = [
+    setting(TONE, "Tono delle risposte", "enum", "warm", group="Chat", scope="user", options=TONES, order=0,
+            help="Come ti risponde Hestia, su ogni client."),
+    setting(INSTRUCTIONS, "Istruzioni personali", "text", "", group="Chat", scope="user", order=1,
+            help="Aggiunte a ogni conversazione (es. «rispondi sempre in breve»)."),
+]
+
+settings.declare(_definitions() + _CHAT, presets=_presets()).declare_log_level()
+
+
+def chat_instructions(*, client: str = "", session: str = "") -> list[str]:
+    """Answer-shaping personal settings of this conversation, as short sentences for the prompt."""
+    values = settings.user_values(client=client, session=session)
+    out = []
+    tone = _TONE_SENTENCE.get(str(values.get(TONE) or ""), "")
+    if tone:
+        out.append(tone)
+    custom = str(values.get(INSTRUCTIONS) or "").strip()
+    if custom:
+        out.append(f"Istruzioni dell'utente: {custom}")
+    return out
 
 
 def usecase(uc: str) -> dict[str, str]:

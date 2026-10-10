@@ -116,11 +116,14 @@ export class CentralSettingsApi {
     return (await this.get<{ proposals: Proposal[] }>('proposals'))?.proposals ?? [];
   }
 
-  set(key: string, value: unknown) {
-    return firstValueFrom(this.http.put<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`, { value }));
+  /** `scope` for personal settings: profile (default) · client · session (this conversation). */
+  set(key: string, value: unknown, scope?: 'profile' | 'client' | 'session') {
+    return firstValueFrom(this.http.put<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
+      scope ? { value, scope } : { value }));
   }
-  reset(key: string) {
-    return firstValueFrom(this.http.delete<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`));
+  reset(key: string, scope?: 'profile' | 'client' | 'session') {
+    return firstValueFrom(this.http.delete<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
+      scope ? { params: { scope } } : {}));
   }
   undo(key: string) {
     return firstValueFrom(this.http.post<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}/undo`, {}));

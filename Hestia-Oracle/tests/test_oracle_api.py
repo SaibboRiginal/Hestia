@@ -186,6 +186,26 @@ class TestOracleChatEndpoint:
         )
         assert mock_engine.chat.called
 
+    def test_chat_adds_personal_settings_of_the_client(self, oracle_client, monkeypatch):
+        """Tone/instructions are central settings (oracle.chat.*) applied by Oracle itself."""
+        client, mock_engine = oracle_client
+        from core.services import oracle_settings
+        seen = {}
+
+        def fake_user_values(*, client="", session="", ttl=20):
+            seen.update(client=client, session=session)
+            return {"oracle.chat.tone": "direct", "oracle.chat.instructions": "rispondi breve"}
+
+        monkeypatch.setattr(oracle_settings.settings, "user_values", fake_user_values)
+        mock_engine.chat.reset_mock()
+        mock_engine.chat.return_value = iter([json.dumps({"type": "done", "signals": []}).encode()])
+        client.post("/api/chat", json={"message": "Test", "session_id": "s1", "client": "webui",
+                                       "client_instructions": "HTML semplice"})
+        sent = mock_engine.chat.call_args.kwargs["client_instructions"]
+        assert sent.startswith("HTML semplice")
+        assert "Tono: diretto" in sent and "rispondi breve" in sent
+        assert seen == {"client": "webui", "session": "s1"}
+
 
 @pytest.mark.api
 class TestOracleAthenaHintsEndpoint:

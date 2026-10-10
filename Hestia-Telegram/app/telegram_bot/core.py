@@ -367,16 +367,24 @@ def reset_session(chat_id: str):
 
 
 def get_session_settings(chat_id: str) -> dict[str, Any]:
-    return session_store.get_session_settings(SESSION_SETTINGS_FILE, str(chat_id))
+    """Local presentation settings + shared personal ones (tone, instructions: Themis)."""
+    from telegram_bot.services import personal_settings
+    return personal_settings.overlay(session_store.get_session_settings(SESSION_SETTINGS_FILE, str(chat_id)))
 
 
 def set_session_setting(chat_id: str, key: str, value: str):
+    from telegram_bot.services import personal_settings
+    if key in personal_settings.KEYS:
+        personal_settings.set_value(key, value)
+        return
     session_store.set_session_setting(
         SESSION_SETTINGS_FILE, str(chat_id), key, value)
 
 
 def reset_session_settings(chat_id: str):
+    from telegram_bot.services import personal_settings
     session_store.reset_session_settings(SESSION_SETTINGS_FILE, str(chat_id))
+    personal_settings.reset()
 
 
 def build_client_instructions_for_chat(chat_id: str) -> str:

@@ -662,6 +662,7 @@ def handle_chat_message(message):
                 "notify_target": str(chat_id),
                 "force_notification_compiler": False,
                 "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
+                "client": "telegram",
             },
             stream=True,
             # (connect, max silence between chunks): no timeout used to hang
@@ -889,6 +890,7 @@ def handle_file_message(message):
                 "session_id": session_id,
                 "notify_target": str(chat_id),
                 "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
+                "client": "telegram",
                 **({"filename": filename} if filename else {}),
             },
             files={

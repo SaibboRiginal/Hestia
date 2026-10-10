@@ -78,10 +78,7 @@ def reset_session_settings(settings_file: str, chat_id: str):
 
 
 def build_client_instructions_for_chat(settings_file: str, base_instructions: str, chat_id: str) -> str:
-    """Base client instructions + only the settings that change the answer (tone, custom
-    prompt) as sentences. UI-only settings (reasoning display, notices…) are not sent:
-    raw "key: value" lines used to end up in the prompt and confuse the model."""
-    from telegram_bot.services.chat_settings import oracle_instructions
-    settings = get_session_settings(settings_file, str(chat_id))
-    instructions = [base_instructions, *oracle_instructions(settings)]
-    return "\n".join([part for part in instructions if str(part).strip()])
+    """Telegram's presentation contract only. Tone and personal instructions are central
+    settings (oracle.chat.*) that Oracle applies itself for client "telegram"; UI-only
+    settings (reasoning display, notices…) are never sent."""
+    return str(base_instructions or "").strip()

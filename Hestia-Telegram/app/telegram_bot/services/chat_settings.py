@@ -1,7 +1,9 @@
-"""Chat settings schema — ONE place that defines every per-chat option.
+"""Chat settings schema — ONE place that defines every per-chat option of the /settings menu.
 
-The /settings menu, the defaults used by the reply renderer and what is
-(not) sent to Oracle as client instructions all come from here. Add an option:
+``tone`` and ``custom_prompt`` are stored centrally (Themis ``oracle.chat.*``, shared with every
+client, see ``personal_settings.py``); the other options are Telegram presentation.
+
+The /settings menu and the defaults used by the reply renderer come from here. Add an option:
 append a Setting; the menu shows it automatically.
 """
 from __future__ import annotations
@@ -51,15 +53,9 @@ SETTINGS: tuple[Setting, ...] = (
 
 BY_KEY = {s.key: s for s in SETTINGS}
 GROUP_LABELS = {"risposta": "Risposta", "sistema": "Messaggi di sistema"}
-# Keys never sent to Oracle (pure client rendering). custom_prompt IS sent.
+# Rendering-only keys. tone and custom_prompt are central settings (oracle.chat.*, see
+# personal_settings.py): Oracle applies them itself, nothing is sent from here.
 UI_ONLY_KEYS = {s.key for s in SETTINGS if s.ui_only}
-
-_TONE_SENTENCE = {
-    "warm": "Tono: caldo e amichevole.",
-    "neutral": "",
-    "direct": "Tono: diretto, essenziale, niente preamboli.",
-    "formal": "Tono: formale.",
-}
 
 
 def value(settings: dict, key: str) -> str:
@@ -74,18 +70,6 @@ def value(settings: dict, key: str) -> str:
 def label_of(key: str, val: str) -> str:
     s = BY_KEY.get(key)
     return dict(s.options).get(val, val) if s else val
-
-
-def oracle_instructions(settings: dict) -> list[str]:
-    """Only answer-affecting settings, as natural sentences (no raw key: value noise)."""
-    out: list[str] = []
-    tone = _TONE_SENTENCE.get(value(settings, "tone"), "")
-    if tone:
-        out.append(tone)
-    custom = str((settings or {}).get("custom_prompt") or "").strip()
-    if custom:
-        out.append(f"Istruzioni dell'utente: {custom}")
-    return out
 
 
 @dataclass

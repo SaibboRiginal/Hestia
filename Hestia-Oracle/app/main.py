@@ -216,6 +216,8 @@ class ChatRequest(BaseModel):
     notify_target: Optional[str] = None
     force_notification_compiler: Optional[bool] = False
     client_instructions: Optional[str] = None
+    # Client name (telegram, webui…): personal chat settings resolve session → client → profile (Themis)
+    client: Optional[str] = None
     save_history: bool = True
     # Execution mode: quick (1 call, no tools), auto (classify+loop), thinking (full agent loop)
     mode: str = "auto"
@@ -234,6 +236,7 @@ class FormatRequest(BaseModel):
     payload: object
     response_prompt: Optional[str] = None
     client_instructions: Optional[str] = None
+    client: Optional[str] = None          # personal chat settings (tone…) of this client
     thinking: bool = False
     max_length: Optional[int] = None
     locale: str = "it"
@@ -406,6 +409,13 @@ def user_activity():
             "idle_seconds": int(time.time() - ts) if ts else None}
 
 
+def _with_personal_settings(client_instructions: Optional[str], client: Optional[str], session: str) -> str:
+    """Client presentation contract + the user's tone/instructions (oracle.chat.*, Themis)."""
+    parts = [str(client_instructions or "").strip(),
+             *_oracle_settings.chat_instructions(client=client or "", session=session)]
+    return "\n".join(p for p in parts if p)
+
+
 @app.post("/api/chat")
 def chat_endpoint(req: ChatRequest):
     _mark_user_activity(req.notify_target)
@@ -420,7 +430,8 @@ def chat_endpoint(req: ChatRequest):
                         notify_target=req.notify_target,
                         force_notification_compiler=bool(
                             req.force_notification_compiler),
-                        client_instructions=req.client_instructions,
+                        client_instructions=_with_personal_settings(
+                            req.client_instructions, req.client, current_session),
                         save_history=req.save_history,
                         mode=req.mode,
                         model=req.model),
@@ -440,6 +451,7 @@ async def chat_document_endpoint(
     client_instructions: Optional[str] = Form(default=None),
     filename: Optional[str] = Form(default=None),
     file: UploadFile = File(...),
+    client: Optional[str] = Form(default=None),
 ):
     """Accept any file type and stream an NDJSON analysis back to the caller.
 
@@ -509,7 +521,7 @@ async def chat_document_endpoint(
                 user_message=message.strip() or default_message,
                 session_id=current_session,
                 notify_target=notify_target,
-                client_instructions=client_instructions,
+                client_instructions=_with_personal_settings(client_instructions, client, current_session),
                 filename=resolved_filename,
             ),
             media_type="application/x-ndjson",
@@ -527,6 +539,7 @@ class DocumentJsonRequest(BaseModel):
     session_id: Optional[str] = None
     notify_target: Optional[str] = None
     client_instructions: Optional[str] = None
+    client: Optional[str] = None
     filename: Optional[str] = None
     mime_type: str = "application/octet-stream"
     content_base64: Optional[str] = None
@@ -561,7 +574,7 @@ async def chat_document_json_endpoint(req: DocumentJsonRequest):
 
     return await chat_document_endpoint(
         message=req.message, session_id=req.session_id, notify_target=req.notify_target,
-        client_instructions=req.client_instructions, filename=req.filename, file=_Upload())
+        client_instructions=req.client_instructions, filename=req.filename, file=_Upload(), client=req.client)
 
 
 @app.post("/api/format", response_model=FormatResponse)
@@ -579,7 +592,8 @@ def format_endpoint(req: FormatRequest, request: Request):
             command=req.command,
             payload=req.payload,
             response_prompt=req.response_prompt,
-            client_instructions=req.client_instructions,
+            client_instructions=_with_personal_settings(req.client_instructions, req.client, "")
+            if req.client else req.client_instructions,
             thinking=req.thinking,
             max_length=req.max_length,
             locale=req.locale,

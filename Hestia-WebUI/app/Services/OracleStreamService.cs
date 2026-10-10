@@ -79,6 +79,7 @@ public class OracleStreamService
             ["message"] = message, ["session_id"] = sessionId,
             ["mode"] = mode, ["model"] = model,
             ["save_history"] = true, ["force_notification_compiler"] = false,
+            ["client"] = "webui",   // Oracle applies the personal chat settings (tone…) of this client/session
         };
         if (!string.IsNullOrWhiteSpace(clientInstructions))
             body["client_instructions"] = clientInstructions;
@@ -116,6 +117,7 @@ public class OracleStreamService
             ["filename"] = filename,
             ["mime_type"] = mimeType,
             ["content_base64"] = base64Content,
+            ["client"] = "webui",
         };
         if (!string.IsNullOrWhiteSpace(clientInstructions))
             body["client_instructions"] = clientInstructions;

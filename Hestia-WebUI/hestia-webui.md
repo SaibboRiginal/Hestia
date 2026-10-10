@@ -141,6 +141,12 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   `revision` every 15 s while visible, so changes from Telegram, another browser or an approved proposal show up.
   Pending proposals appear as a banner with *Approva / Rifiuta*.
 
+### Personal chat settings (2026-10-10)
+- *Personali → Tono / Istruzioni personali* = your profile defaults in Themis (`oracle.chat.*`, every client);
+  `SettingsController` proxies them, only *Ragionamento nelle risposte* stays in the WebUI.
+- Chat header ⚙ (`<hx-chat-quick-settings>`): tone and instructions for **this conversation** (scope session,
+  id chosen by the backend); *Come predefinito* drops the override. Oracle applies them (`client: "webui"`).
+
 ### "Crea con Hestia" drawer (2026-10-04, `features/assistant/`, `services/assistant.service.ts`)
 
 - Right-side assistant panel (full screen ≤720 px), lazy (`@defer` in the shell). Open from anywhere: sidebar

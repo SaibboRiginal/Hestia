@@ -208,6 +208,7 @@ def _format_single_alert_with_oracle(
                 "NON usare saluti come 'Ciao' o 'Ecco'. Inizia direttamente con l'informazione importante."
             ),
             "client_instructions": effective_instructions,
+            "client": "telegram",
         }
         status, data = core.oracle_post("api/format", request_payload,
                                         timeout=12, trace_id=trace_id)
@@ -313,6 +314,7 @@ def format_multiple_alerts_with_oracle(
                 "NON usare saluti iniziali o frasi di apertura. Inizia DIRETTAMENTE con l'informazione."
             ),
             "client_instructions": effective_instructions,
+            "client": "telegram",
         }
         status, data = core.oracle_post("api/format", request_payload,
                                         timeout=15, trace_id=trace_id)

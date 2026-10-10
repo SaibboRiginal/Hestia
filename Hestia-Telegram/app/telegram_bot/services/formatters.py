@@ -358,6 +358,7 @@ def format_command_payload_with_oracle(
         "payload": payload,
         "response_prompt": response_prompt,
         "client_instructions": effective_instructions,
+        "client": "telegram",
         "thinking": False,
         "locale": core.TELEGRAM_LOCALE,
     }

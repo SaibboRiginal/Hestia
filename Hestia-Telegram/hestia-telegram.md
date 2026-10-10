@@ -80,17 +80,19 @@ Telegram must:
 
 | Key | Options (default **bold**) |
 |---|---|
-| `tone` | **warm** · neutral · direct · formal — the only one sent to Oracle (as a sentence) |
+| `tone` | **warm** · neutral · direct · formal — central setting `oracle.chat.tone` (Themis, layer client `telegram`); Oracle applies it |
 | `thinking_display` | hidden · **compact** · detailed · live |
 | `stream_answer` | **on** · off |
 | `split_mode` | **single** · paragraphs |
 | `notice_mode` | **inline** · separate · important · hidden |
 | `notice_style` | **compact** · rich |
 | `notice_memory` / `notice_actions` / `notice_subscriptions` / `notice_other` | **on** · off (errors always shown unless hidden) |
-| `custom_prompt` | free text (sent to Oracle as "Istruzioni dell'utente"); `-` removes it |
+| `custom_prompt` | free text, central setting `oracle.chat.instructions` (layer client `telegram`); `-` removes it |
 
-UI-only keys are never forwarded to Oracle (`session_store.build_client_instructions_for_chat` →
-`chat_settings.oracle_instructions`). `/thinking <mode>` is a shortcut; `/retry` regenerates the last answer.
+Nothing from this table is forwarded to Oracle: `build_client_instructions_for_chat` sends only the Telegram
+presentation contract, and Oracle requests carry `"client": "telegram"` so Oracle adds tone and instructions
+itself. `tone`/`custom_prompt` are read and written through `services/personal_settings.py` (Themis via Hub,
+20 s cache, local value if Themis is down); the other keys stay in the local settings file. `/thinking <mode>` is a shortcut; `/retry` regenerates the last answer.
 
 ### Signal cards (legacy, non-stream paths only)
 The notification-compile path (`/api/subscriptions/compile` response `signals`) still uses signal cards:

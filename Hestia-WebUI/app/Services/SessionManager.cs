@@ -107,21 +107,8 @@ public class SessionManager
 
     public string BuildClientInstructions(string userId = WebUIUserId)
     {
-        // Only settings that change the answer go to Oracle (thinking_display is a
-        // pure UI choice, and raw "key: value" lines were noise in the prompt).
-        var parts = new List<string> { _baseInstructions };
-        var settings = GetSettings(userId);
-        var tone = settings.GetValueOrDefault("tone", "neutral");
-        var toneLine = tone switch
-        {
-            "warm" => "Tono: caldo e amichevole.",
-            "direct" => "Tono: diretto, essenziale, niente preamboli.",
-            "formal" => "Tono: formale e professionale.",
-            _ => "",
-        };
-        if (toneLine.Length > 0) parts.Add(toneLine);
-        var custom = settings.GetValueOrDefault("custom_prompt", "");
-        if (!string.IsNullOrWhiteSpace(custom)) parts.Add($"Istruzioni dell'utente: {custom.Trim()}");
-        return string.Join("\n", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+        // Only the WebUI presentation contract: tone and personal instructions are central
+        // settings (Themis oracle.chat.*) that Oracle applies itself for client "webui".
+        return _baseInstructions;
     }
 }

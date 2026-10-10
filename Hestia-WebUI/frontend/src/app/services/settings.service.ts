@@ -9,7 +9,7 @@ export class SettingsService {
   private apiBase = '/api/webui/settings';
 
   settings = signal<SessionSettings>({
-    tone: 'neutral',
+    tone: 'warm',
     customPrompt: '',
     thinkingDisplay: 'hidden'
   });

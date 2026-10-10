@@ -381,6 +381,9 @@ components:
           default: false
         client_instructions:
           type: string
+        client:
+          type: string
+          description: "Client name (telegram, webui…): Oracle adds the personal chat settings oracle.chat.* (Themis, session → client → profile)"
 
     FormatRequest:
       type: object
@@ -395,6 +398,9 @@ components:
           type: string
         client_instructions:
           type: string
+        client:
+          type: string
+          description: "Client name (telegram, webui…): Oracle adds the personal chat settings oracle.chat.* (Themis, session → client → profile)"
         thinking:
           type: boolean
           default: false
@@ -3140,6 +3146,7 @@ paths:
                 session_id: {type: string}
                 notify_target: {type: string}
                 client_instructions: {type: string}
+                client: {type: string}
                 filename: {type: string}
                 mime_type: {type: string}
                 content_base64: {type: string, description: "file bytes, base64"}
@@ -3173,6 +3180,8 @@ paths:
                 notify_target:
                   type: string
                 client_instructions:
+                  type: string
+                client:
                   type: string
                 filename:
                   type: string

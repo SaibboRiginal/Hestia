@@ -106,6 +106,7 @@ class SettingsClient:
         self._lock = threading.Lock()
         self._loaded = False
         self._started = False
+        self._user_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
 
     # ── declaration ─────────────────────────────────────────────────────────
     def declare(self, definitions: list[dict], presets: list[dict] | None = None) -> "SettingsClient":
@@ -232,15 +233,51 @@ class SettingsClient:
         thread.start()
         return thread
 
-    def put(self, key: str, value: Any, *, actor: str = "user", reason: str = "") -> bool:
+    def user_values(self, *, client: str = "", session: str = "", ttl: float = 20) -> dict[str, Any]:
+        """This module's ``scope="user"`` settings resolved for a conversation (session → client →
+        profile → default). Short cache; Themis down → defaults with a ``[🔄]`` log."""
+        defaults = {k: d.get("default") for k, d in self._defs.items() if d.get("scope") == "user"}
+        if not defaults:
+            return {}
+        cache_key = (client or "", session or "")
+        hit = self._user_cache.get(cache_key)
+        if hit and time.monotonic() - hit[0] < ttl:
+            return dict(hit[1])
+        try:
+            status, payload = self._call("GET", "api/settings", query={
+                "module": self.owner, "client": client or "", "session": session or "", "status": "false"}, timeout=3)
+            if status >= 400 or not isinstance(payload, dict):
+                raise RuntimeError(f"status {status}")
+            values = dict(defaults)
+            values.update({i["key"]: i.get("value") for i in payload.get("items") or []
+                           if isinstance(i, dict) and i.get("key") in defaults})
+        except Exception as exc:
+            logger.warning("[🔄] event=settings_user_values_failed owner=%s error=%s fallback=defaults",
+                           self.owner, exc)
+            self._user_cache[cache_key] = (time.monotonic(), defaults)   # don't retry on every message
+            return dict(defaults)
+        if len(self._user_cache) > 500:
+            self._user_cache.clear()
+        self._user_cache[cache_key] = (time.monotonic(), values)
+        return dict(values)
+
+    def forget_user_values(self, *, client: str = "", session: str = "") -> None:
+        """Drop the cached values of a conversation (after the user changed them here)."""
+        self._user_cache.pop((client or "", session or ""), None)
+
+    def put(self, key: str, value: Any, *, actor: str = "user", reason: str = "",
+            scope: str | None = None, scope_id: str | None = None) -> bool:
         """Persist a change the USER made through this module's own UI/command (e.g. a Telegram
-        command): Themis validates, stores and pushes it back. Never for the module's own choices."""
+        command): Themis validates, stores and pushes it back. Never for the module's own choices.
+        ``scope``/``scope_id`` for user settings: ``profile`` · ``client``/<client> · ``session``/<id>."""
         try:
             status, payload = self._call("PUT", f"api/settings/key/{key}",
-                                         body={"value": value, "actor": actor, "reason": reason})
+                                         body={"value": value, "actor": actor, "reason": reason,
+                                               "scope": scope, "scope_id": scope_id})
         except Exception as exc:
             logger.warning("[🔄] event=settings_put_failed owner=%s key=%s error=%s", self.owner, key, exc)
             return False
+        self._user_cache.clear()
         if status >= 400:
             logger.warning("event=settings_put_rejected owner=%s key=%s status=%s detail=%s",
                            self.owner, key, status, str(payload)[:200])

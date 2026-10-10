@@ -43,13 +43,13 @@ import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../
 
       <section>
         <h3><hx-icon name="chat" [size]="17" /> Assistente</h3>
-        <hx-field label="Tono">
+        <hx-field label="Tono" hint="Il tuo predefinito su ogni client. Una singola chat può cambiarlo dall'icona ⚙ in alto nella chat.">
           <hx-segmented [options]="tones" [value]="settings.settings().tone" (changed)="save({ tone: $event })" />
         </hx-field>
         <hx-field label="Ragionamento nelle risposte" hint="Solo visualizzazione: nascosto, compatto (chiuso) o dettagliato (aperto).">
           <hx-segmented [options]="thinking" [value]="settings.settings().thinkingDisplay" (changed)="save({ thinkingDisplay: $event })" />
         </hx-field>
-        <hx-field label="Istruzioni personali" hint="Aggiunte a ogni messaggio verso Oracle da questo client.">
+        <hx-field label="Istruzioni personali" hint="Aggiunte a ogni conversazione, su ogni client (vuoto = nessuna).">
           <textarea class="hx-textarea" rows="4" [(ngModel)]="custom"></textarea>
         </hx-field>
         <button hx-btn variant="primary" (click)="save({ customPrompt: custom })">Salva istruzioni</button>

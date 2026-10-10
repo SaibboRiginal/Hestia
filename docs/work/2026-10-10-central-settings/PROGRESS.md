@@ -19,7 +19,12 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
   `CentralSettingsController` (proxy to Themis via Hub) + Themis `GET /api/settings/key/{key}/options` and
   proposal labels + `row`/`column` hints in the shared client. `ng build` clean; checked with Playwright on a
   mocked API (desktop light, phone dark). .NET not built here (no SDK): Marko builds it.
-- [ ] P4 Unified chat settings (Telegram + WebUI), profile → session copy, chat quick menu
+- [x] P4 Personal chat settings: Oracle declares `oracle.chat.tone` / `oracle.chat.instructions` (scope user) and
+  applies them itself (`client` field in chat/format requests, `SettingsClient.user_values`); WebUI Personali =
+  profile, chat ⚙ quick menu = session; Telegram /settings tone + instructions = client layer `telegram`
+  (`personal_settings.py`). Presentation options stay in each client. No copy on new session: resolution is
+  dynamic (see CHANGELOG v2.2). Regression test added in Oracle (pytest not run). ng build clean, quick menu
+  checked with Playwright on a mocked API.
 - [ ] P5 Themis MCP tools (Hestia-MCP) + proposals confirmed via Hermes; Athena `setting` proposals
 - [ ] P6 Migrate remaining modules' tunable env vars (one module per step); includes Forge fallback/max_turns/
   auto_rollback, `declare_log_level` in every module, Metis baseline label still reading env MODEL_USECASE_GENERIC_MODEL
