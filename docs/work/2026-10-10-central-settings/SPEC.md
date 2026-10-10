@@ -147,7 +147,7 @@ Three layers, so a new local tool or a new cloud vendor is "add an instance", no
     {"id":"llama_server","type":"openai","label":"llama-server","enabled":true,
      "config":{"base_url":"http://host.docker.internal:8080/v1","api_key_env":""}},
     {"id":"anthropic","type":"anthropic","label":"Anthropic","enabled":true,
-     "config":{"api_key_env":"ANTHROPIC_API_KEY","thinking_by_mode":{"fast":"off","normal":"low","deep":"high"},
+     "config":{"api_key_env":"ORACLE_ANTHROPIC_API_KEY","thinking_by_mode":{"fast":"off","normal":"low","deep":"high"},
                "prompt_cache":true}},
     {"id":"gemini","type":"gemini","label":"Gemini","enabled":true,"config":{"api_key_env":"GEMINI_API_KEY"}}]
    ```
@@ -164,9 +164,10 @@ UI: "Fornitori" list with Aggiungi (pick type → form from the type's `CONFIG_F
 cheap reachability check, model dropdown filled by `list_models()`.
 Env bridge until Themis exists (and as fallback): instances synthesized from today's env
 (`OLLAMA_URL`/`OLLAMA_API_URL`, `ORACLE_CONTEXT_LENGTH`, `ORACLE_OLLAMA_KEEP_ALIVE`, `GEMINI_API_KEY`,
-`ANTHROPIC_API_KEY`, `ORACLE_LLM_PROFILE_*`, `ORACLE_OPENAI_BASE_URL`) and mappings from `MODEL_USECASE_*`.
+`ORACLE_ANTHROPIC_API_KEY` (never `ANTHROPIC_API_KEY`: Forge's Claude Code inherits it and would switch from subscription to paid API billing), `ORACLE_LLM_PROFILE_*`, `ORACLE_OPENAI_BASE_URL`) and mappings from `MODEL_USECASE_*`.
 One loader (`load_llm_config()` → instances + mappings) is the only place that reads env; it switches to
-Themis in P2 without touching provider code.
+Themis in P2 without touching provider code. Owner of the `UniversalAgent` dispatch refactor and
+`load_llm_config()`: thread "Claude Haiku in Oracle".
 
 ## 4. Acceptance criteria
 - A module declaring a new setting makes it appear in the panel with no WebUI change.
