@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.1 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user finishes central settings first |
+| 1.2 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user finishes central settings first |
 
 ## 1. Goal
 Let Oracle's normal chat run on Claude Haiku, alongside Gemini and Ollama (not replacing them), in two ways:
@@ -23,11 +23,9 @@ refactor and `load_llm_config()`.
   `list_models()`, config dict in, never `os.getenv`) + types `ollama`, `gemini` (moved as-is from
   `UniversalAgent`), `openai` (basic OpenAI-compatible: chat, tools, stream, `/v1/models`; the
   local-context thread extends it), `anthropic`, `claude_cli`.
-- `agents/llm_config.py`: `load_llm_config()` = the only env reader → `{providers: {id: {type, label,
-  enabled, config}}, usecases: {...}}` synthesized from today's env. Switches to Themis later.
+- `agents/llm_config.py`: `load_llm_config()` = the only env reader → `{providers: {type: config}, usecases: {...}}`; provider configs from env (infra), mappings from Themis later.
 - `UniversalAgent` keeps its public API (`provider`, `model_name`, `thinking`, `ask`, `ask_with_tools`,
-  `ask_stream`, `ask_with_attachment`, `embed`, `complete`) and dispatches to the provider instance named by
-  `provider` (instance id; built-in ids = type names). Existing Gemini→Ollama auto-fallback kept.
+  `ask_stream`, `ask_with_attachment`, `embed`, `complete`) and dispatches to the provider type named by `provider`. Existing Gemini→Ollama auto-fallback kept.
 - Thinking per mode: `thinking` becomes a level, `False` | `True`/`"normal"` | `"deep"` (Oracle mode quick |
   auto | thinking). Ollama keeps the bool `think`. `anthropic` maps it with config `thinking_by_mode`
   (`{"fast":"off","normal":"low","deep":"high"}` → off = thinking disabled + effort low, else adaptive thinking
@@ -45,11 +43,14 @@ Out of scope: settings UI / Themis (central-settings thread), Ollama num_ctx/kee
 specifics (local-context thread), assistant presence (own thread), embeddings on Anthropic (no such API).
 
 ## 3. Configuration
-No legacy env compatibility (central-settings SPEC v1.2): provider instances and use-case mappings are Themis
-settings (`oracle.providers`, `oracle.usecases.*`). Only secrets stay in `.env`: `ORACLE_ANTHROPIC_API_KEY`
-(referenced by the `anthropic` instance's `api_key_env`) and the existing `CLAUDE_CODE_OAUTH_TOKEN` for
-`claude_cli`. `load_llm_config()` reads today's env only as the temporary bridge until Themis (removed in P2);
-this task adds no new tunable env vars. Only the provider types implemented here can be added from the UI.
+Aligned with central-settings SPEC v2.0: there is no provider-instance list. Endpoints and key names are
+infrastructure and stay in `.env` permanently (`OLLAMA_URL`, `ORACLE_OPENAI_BASE_URL`, `GEMINI_API_KEY`,
+`ORACLE_ANTHROPIC_API_KEY`; `claude_cli` uses the existing `CLAUDE_CODE_OAUTH_TOKEN`). A provider type is
+available when it is implemented and its endpoint/key is set. `load_llm_config()` is the single env reader:
+it builds one config per available type and the use-case mapping `{provider type, model, fallback, options}`
+(from Themis settings once they exist). Non-address tunables (e.g. `thinking_by_mode`, `prompt_cache`) are
+type `CONFIG_FIELDS` defaults, later settings `oracle.provider.<type>.*`. No new tunable env vars.
+Oracle contains no settings or approval logic (settings tools live in Themis via Hestia-MCP).
 
 ## 4. Acceptance criteria
 - With no new env, Oracle behaves exactly as before (ollama/gemini paths moved, not changed).
