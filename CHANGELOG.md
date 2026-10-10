@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-10
+- Spec v1.0 for Oracle on local models (send real `num_ctx`/`keep_alive` to Ollama, cache telemetry, cache-friendly prompts, optional llama-server/vLLM provider) → `docs/work/2026-10-10-oracle-local-context/` [ext-chat]
 - Spec v1.0 for central settings (module-declared registry, control panel with search and module status, Oracle/Athena proposals with user confirmation) → `docs/work/2026-10-10-central-settings/` [ext-chat]
 
 ## 2026-10-04
