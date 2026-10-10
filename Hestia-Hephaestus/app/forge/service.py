@@ -38,6 +38,9 @@ from .agenda_client import KEY_FINAL, KEY_NIGHTS, AgendaClient
 from .claude_budget import ClaudeBudget, ClaudeBudgetState, ClaudeSchedule
 from .agent_tools import run_test_command
 from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
+from ..core.shared_imports import import_shared_symbol
+
+PresenceClient = import_shared_symbol("hestia_common.presence_client", "PresenceClient")
 from .engines import build_engines, select_engine, wait_seconds
 from . import forge_settings
 from .prompts import build_task_prompt, workdoc_name
@@ -104,6 +107,9 @@ class Forge:
         forge_settings.settings.on_change(self._apply_settings)
         self.claude_budget = ClaudeBudget(ClaudeSchedule())
         self.agenda = AgendaClient(cfg.hub_api_url)
+        # Assistant presence (Chronos): autonomous work waits for the right state; tasks and
+        # deploys are reported as activities ("Occupato: Forge", "Sto mangiando").
+        self.presence = PresenceClient("hephaestus", cfg.hub_api_url)
         # Sviluppo page: transcript, full test output, engine/deploy logs per task.
         self.artifacts = TaskArtifacts(cfg.state_file.parent / "tasks", cfg.worktrees_path)
         self._agenda_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="forge-agenda")
@@ -334,9 +340,15 @@ class Forge:
                 continue
             try:
                 if task["state"] == "approved":
-                    self._merge_and_deploy(task, task.get("approved_by", "user"))
+                    with self.presence.activity("hephaestus.deploy", label="aggiornamento", load="heavy",
+                                                kind="maintenance", ttl_seconds=1800):
+                        self._merge_and_deploy(task, task.get("approved_by", "user"))
                 else:
-                    self._run_task(task)
+                    engine = self._engine_name_for(task.get("engine_requested", "auto"))
+                    with self.presence.activity("forge.task", label="Forge", load="heavy",
+                                                resource="claude_quota" if engine == "claude" else "gpu",
+                                                ttl_seconds=6 * 3600):
+                        self._run_task(task)
             except Exception as exc:
                 logger.exception("[🔄] event=forge_task_crashed task_id=%s", task_id)
                 task["error"] = str(exc)[:1000]
@@ -541,6 +553,19 @@ class Forge:
             return False, "agenda: finestra saltata dall'utente" if skipped else "agenda: finestra chiusa"
         return self.claude_budget.can_start()
 
+    def presence_allows_autonomous(self) -> tuple[bool, str]:
+        """Autonomous Claude work also needs the assistant presence: effects ``work.heavy`` and
+        ``llm.claude`` = allow (e.g. "Sonno profondo"; not while the user is "Sveglio" or it is
+        "Stanco"). Presence unknown (Chronos down) → the budget windows alone decide."""
+        state = self.presence.get()
+        if not state:
+            return True, "presence unknown: budget windows decide"
+        effects = state.get("effects") or {}
+        heavy, claude = effects.get("work.heavy", "allow"), effects.get("llm.claude", "allow")
+        if heavy != "allow" or claude != "allow":
+            return False, f"presence {state.get('base')}: work.heavy={heavy} llm.claude={claude}"
+        return True, f"presence {state.get('base')}"
+
     def _reap_unlinked(self) -> None:
         """Proposed tasks linked to an agenda item: the user cancelled it (or its parent) → reject."""
         with self._lock:
@@ -570,6 +595,10 @@ class Forge:
                 if not ok:
                     logger.debug("event=forge_claude_window_closed reason=%s waiting=%d", reason, len(waiting))
                     continue
+                ok, why = self.presence_allows_autonomous()
+                if not ok:
+                    logger.debug("event=forge_held_by_presence reason=%s waiting=%d", why, len(waiting))
+                    continue
                 candidate = None
                 for task in waiting:
                     allowed, why = self._agenda_gate(task)
@@ -584,6 +613,15 @@ class Forge:
                 self._enqueue(candidate, f"Claude budget window: {reason}")
             except Exception as exc:
                 logger.warning("[🔄] event=forge_scheduler_error error=%s", exc)
+
+    @staticmethod
+    def _seconds_until(iso: str) -> float:
+        try:
+            end = datetime.fromisoformat(str(iso))
+            end = end if end.tzinfo else end.replace(tzinfo=timezone.utc)
+            return max(60.0, (end - datetime.now(timezone.utc)).total_seconds())
+        except ValueError:
+            return 24 * 3600.0
 
     def _enqueue(self, task: dict, note: str) -> None:
         if task.get("budgeted"):
@@ -650,6 +688,9 @@ class Forge:
                 f"{result.summary} {result.log_tail}"):
             until = self.claude_budget.mark_exhausted()
             self._save_settings()
+            # A fact for the presence engine ("Stanco" overlay): no Claude quota left until the reset.
+            self.presence.signal("resource.claude_quota_left", 0, meta={"until": until},
+                                 ttl_seconds=self._seconds_until(until))
             self._cleanup(task, delete_branch=True)
             if task.get("budgeted"):
                 self._set_state(task, "scheduled", f"Claude usage limit: paused until {until}")

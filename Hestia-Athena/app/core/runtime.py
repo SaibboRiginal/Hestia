@@ -42,6 +42,7 @@ TaskLifecycleStore = import_shared_symbol(
 AgendaClient = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")
 agenda_template = import_shared_symbol("hestia_common.agenda_client", "template")
 daily_window = import_shared_symbol("hestia_common.agenda_client", "daily_window")
+PresenceClient = import_shared_symbol("hestia_common.presence_client", "PresenceClient")
 
 # Assistant-agenda windows (Chronos). The user moves/skips/pauses them there;
 # missing window or Chronos down → default-hour fallback. The hours below are only the
@@ -88,6 +89,8 @@ class AthenaRuntime:
 
         # Assistant agenda: when Athena works is data the user can edit.
         self.agenda = AgendaClient("athena", self.hub_api_url)
+        # Assistant presence (Chronos): when to think, plus the state in the observation.
+        self.presence = PresenceClient("athena", self.hub_api_url)
         self._thinking_paused_logged = False
 
         self._lock = threading.Lock()
@@ -800,7 +803,8 @@ class AthenaRuntime:
 
         # ── Daily memory consolidation (runs once per day during window) ───
         today = datetime.now().strftime("%Y-%m-%d")
-        if (self._consolidation_ran_today != today and
+        heavy_ok = self._heavy_allowed()
+        if (self._consolidation_ran_today != today and heavy_ok and
                 self._window_open(WINDOW_CONSOLIDATION, self.consolidator.should_run)):
             try:
                 sessions = self.consolidator.get_active_sessions()
@@ -817,7 +821,7 @@ class AthenaRuntime:
                 logger.warning("event=consolidation_failed error=%s", exc)
 
         # ── Daily skill curation (Plan P3b-10 — Hermes Agent pattern) ──────
-        if (self._skill_curation_ran_today != today and
+        if (self._skill_curation_ran_today != today and heavy_ok and
                 self._window_open(WINDOW_SKILL_CURATION, lambda: True)):
             try:
                 summary = self.skill_curator.run_cycle()
@@ -848,9 +852,12 @@ class AthenaRuntime:
 
         # Phase 1: Observe
         observation = self._observe()
+        observation.presence = self.presence.context_line()
 
-        # Phase 2: Think (LLM via Oracle)
-        candidates = self._think(observation, retrospective)
+        # Phase 2: Think (LLM via Oracle) — reported as a light activity of the assistant
+        with self.presence.activity("athena.thinking", label="Athena pensa", load="light", resource="gpu",
+                                    ttl_seconds=900):
+            candidates = self._think(observation, retrospective)
 
         # Track the cycle
         thinking_record = ThinkingRecord(
@@ -1017,14 +1024,34 @@ class AthenaRuntime:
             if self._loop_paused_logged:
                 logger.info("event=athena_loop_enabled setting=%s", S.LOOP_ENABLED)
                 self._loop_paused_logged = False
-            idle = self._user_idle_seconds()
-            if idle is not None and idle < self.idle_required_seconds:
-                # User is chatting: leave the (local) model to Oracle, retry soon.
-                logger.debug("event=athena_cycle_deferred_user_active idle_seconds=%s", idle)
-                self._stop_event.wait(max(30, min(self.interval_seconds, self.idle_required_seconds - idle)))
+            wait = self._light_work_wait()
+            if wait:
+                self._stop_event.wait(wait)
                 continue
             self._run_once()
             self._stop_event.wait(max(1, self.interval_seconds))
+
+    def _light_work_wait(self) -> int:
+        """Seconds to wait before thinking (0 = go). The assistant presence decides (effect
+        ``work.light``: the user is "Sveglio" → defer); Chronos down → old Oracle idle check."""
+        state = self.presence.get()
+        if state:
+            effect = (state.get("effects") or {}).get("work.light", "allow")
+            if effect == "defer":
+                logger.debug("event=athena_cycle_deferred_presence state=%s", state.get("base"))
+                return 60
+            return 0
+        idle = self._user_idle_seconds()
+        if idle is not None and idle < self.idle_required_seconds:
+            # [🔄] presence unknown: user is chatting, leave the (local) model to Oracle, retry soon.
+            logger.debug("[🔄] event=athena_cycle_deferred_user_active idle_seconds=%s", idle)
+            return max(30, min(self.interval_seconds, self.idle_required_seconds - idle))
+        return 0
+
+    def _heavy_allowed(self) -> bool:
+        """Memory consolidation / skill curation use the local model for a while: they need the
+        presence effect ``work.heavy`` allow or local (unknown presence → their windows decide)."""
+        return self.presence.effect("work.heavy") in ("allow", "local")
 
     def _user_idle_seconds(self) -> int | None:
         """Seconds since the last real user chat (Oracle /api/activity).

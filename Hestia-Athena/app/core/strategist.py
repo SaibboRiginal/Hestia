@@ -74,6 +74,8 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
 
     if snapshot.settings:
         lines.append("IMPOSTAZIONI (chiave=valore [scelte]): " + "; ".join(snapshot.settings))
+    if snapshot.presence:
+        lines.append(snapshot.presence)
 
     if snapshot.raw_errors:
         lines.append(f"Errori osservazione: {', '.join(snapshot.raw_errors[:3])}")

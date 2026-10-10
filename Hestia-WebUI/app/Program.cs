@@ -24,6 +24,7 @@ var hestiaOpts = builder.Configuration.GetSection(HestiaOptions.Section).Get<Hes
 builder.Services.AddSingleton<TokenManager>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<PublicUrlService>();
+builder.Services.AddSingleton<PresencePinger>();
 
 builder.Services.AddHttpClient<HubClient>(client =>
 {

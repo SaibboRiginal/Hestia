@@ -1,20 +1,22 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { DatePipe } from '@angular/common';
 import { APP_MODULES } from '../app.modules';
 import { AuthService } from '../services/auth.service';
 import { SignalRService } from '../services/signalr.service';
 import { SessionService } from '../services/session.service';
 import { SettingsService } from '../services/settings.service';
 import { ThemeService } from '../core/theme/theme.service';
-import { DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
+import { ButtonComponent, DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
 import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
 import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
+import { PresenceService, ago } from '../services/presence.service';
 
 /** App frame: collapsible sidebar (modules from APP_MODULES) + routed page + global overlays. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
@@ -57,6 +59,32 @@ import { NotificationsService } from '../services/notifications.service';
             <hx-icon name="logout" [size]="18" /><span>Esci</span>
           </button>
         </nav>
+        @if (presence.state(); as p) {
+          <div class="presence-wrap">
+            <button class="item presence" [attr.data-tone]="presence.tone()" (click)="presenceOpen.set(!presenceOpen())"
+                    [attr.title]="'Stato: ' + p.label + ' · ultima interazione ' + ago(p.idle_minutes)"
+                    [attr.aria-expanded]="presenceOpen()">
+              <span class="pdot"></span><span class="plabel">{{ p.label }}</span>
+            </button>
+            @if (presenceOpen()) {
+              <div class="presence-pop" role="dialog" aria-label="Stato dell'assistente">
+                <div class="ptitle">{{ p.emoji }} {{ p.label }}</div>
+                <div class="pline">Ultima interazione: {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
+                @if (p.dnd_until) { <div class="pline">Non disturbare fino alle {{ p.dnd_until | date:'HH:mm' }}</div> }
+                @for (a of p.activities; track a.key) { <div class="pline">• {{ a.label || a.key }}</div> }
+                @for (e of presence.effects(); track e) { <div class="pline dim">{{ e }}</div> }
+                <div class="pactions">
+                  @if (p.base === 'dnd') {
+                    <button hx-btn variant="secondary" size="sm" icon="bell" [loading]="presence.busy()" (click)="presence.dnd(false)">Disattiva</button>
+                  } @else {
+                    <button hx-btn variant="secondary" size="sm" icon="bell-off" [loading]="presence.busy()" (click)="presence.dnd(true)">Non disturbare</button>
+                  }
+                  <a hx-btn variant="ghost" size="sm" routerLink="/settings" (click)="presenceOpen.set(false)">Impostazioni</a>
+                </div>
+              </div>
+            }
+          </div>
+        }
         <div class="conn" [attr.data-state]="signalR.connectionState()">
           <span class="dot"></span><span>{{ connLabel() }}</span>
         </div>
@@ -101,6 +129,22 @@ import { NotificationsService } from '../services/notifications.service';
     .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
     .conn[data-state=connected] .dot { background: var(--success); }
     .conn[data-state=disconnected] .dot { background: var(--danger); }
+    .presence-wrap { position: relative; }
+    .presence { gap: 9px; font-size: 12.5px; height: 30px; }
+    .presence .pdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin: 0 4px; background: var(--text-3); }
+    .presence[data-tone=awake] .pdot { background: var(--success); }
+    .presence[data-tone=idle] .pdot { background: var(--warning); }
+    .presence[data-tone=sleep] .pdot { background: var(--accent); }
+    .presence[data-tone=dnd] .pdot { background: var(--danger); }
+    .presence .plabel { overflow: hidden; text-overflow: ellipsis; }
+    .presence-pop { position: absolute; bottom: calc(100% + 6px); left: 0; width: 250px; z-index: 50; padding: 12px;
+                    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 10px);
+                    box-shadow: var(--shadow-3); display: flex; flex-direction: column; gap: 4px; }
+    .ptitle { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
+    .pline { font-size: 12.5px; color: var(--text-2); }
+    .pline.dim { color: var(--text-3); }
+    .pactions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .collapsed .presence .plabel { display: none; }
     .collapsed .nav { width: var(--nav-width-collapsed); }
     .collapsed .name, .collapsed .item span, .collapsed .conn span:last-child { display: none; }
     .collapsed .brand { flex-direction: column; padding-left: 0; padding-right: 0; }
@@ -126,6 +170,9 @@ export class ShellComponent {
   theme = inject(ThemeService);
   assistant = inject(AssistantService);
   notifications = inject(NotificationsService);
+  presence = inject(PresenceService);
+  presenceOpen = signal(false);
+  readonly ago = ago;
   private session = inject(SessionService);
   private settings = inject(SettingsService);
   private router = inject(Router);
@@ -148,6 +195,7 @@ export class ShellComponent {
   private async bootstrap() {
     if (this.signalR.connectionState() !== 'connected') await this.signalR.connect();
     this.notifications.start();
+    this.presence.start();
     await Promise.all([this.session.load(), this.settings.load()]);
   }
 

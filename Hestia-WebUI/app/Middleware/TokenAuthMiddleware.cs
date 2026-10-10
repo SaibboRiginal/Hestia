@@ -16,7 +16,7 @@ public class TokenAuthMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, TokenManager tokenManager)
+    public async Task InvokeAsync(HttpContext context, TokenManager tokenManager, PresencePinger presence)
     {
         // Skip paths that don't require auth
         var path = context.Request.Path.Value ?? "";
@@ -82,6 +82,11 @@ public class TokenAuthMiddleware
                 """{"detail":"Invalid or missing access token"}""");
             return;
         }
+
+        // A user action (not a page view) counts as an interaction for the assistant presence.
+        if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method)
+            && !HttpMethods.IsOptions(context.Request.Method) && !path.StartsWith("/api/webui/presence"))
+            presence.Touch("ui");
 
         await _next(context);
     }

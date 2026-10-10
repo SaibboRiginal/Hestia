@@ -67,6 +67,7 @@ class ObservationSnapshot(BaseModel):
     recent_errors: list[str] = Field(default_factory=list)   # Argus error summary
     quality_issues: list[str] = Field(default_factory=list)  # Metis feedback weak spots
     settings: list[str] = Field(default_factory=list)        # proposable settings "key=value [options]" (Themis)
+    presence: str = ""                                        # assistant state line (Chronos presence)
     raw_errors: list[str] = Field(default_factory=list)
 
 

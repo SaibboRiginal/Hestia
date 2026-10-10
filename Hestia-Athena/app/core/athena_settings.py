@@ -90,8 +90,9 @@ settings.declare([
                  "usa di più il modello."),
     setting(LOOP_IDLE_SECONDS, "Pausa dalla chat richiesta", "int", 300, group=_G_LOOP, min=0, max=7200, unit="s",
             order=2, depends_on=_ON_LOOP,
-            help="Athena pensa solo se non chatti da almeno questo tempo, per non rubare il modello "
-                 "(0 = pensa anche mentre chatti)."),
+            help="Riserva: usata solo se lo stato dell'assistente (Chronos) non risponde. Athena pensa "
+                 "solo se non chatti da almeno questo tempo (0 = pensa anche mentre chatti). Di norma decide "
+                 "lo stato: pensa quando non sei «Sveglio»."),
     setting(GATE_THRESHOLD, "Soglia di rilevanza", "float", 0.55, group=_G_LOOP, min=0.0, max=1.0, order=3,
             depends_on=_ON_LOOP,
             help="Quanto deve essere rilevante un'idea perché Athena te la mandi. Più alta = meno messaggi, "
