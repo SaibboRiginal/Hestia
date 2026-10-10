@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.1 | user via external chat (project thread "Notifiche su tutti i client", 2026-10-10) | Proposed — waiting for user approval |
+| 1.2 | user via external chat (project thread "Notifiche su tutti i client", 2026-10-10) | Proposed — waiting for user approval |
 
 ## 1. Goal
 A notification from Hestia reaches **every client** the user has (Telegram, WebUI, future ones), not only
@@ -129,6 +129,20 @@ Handles `update` by editing the original message (needs `ref` = Telegram message
 ### 5.9 Module boundaries
 Hermes = delivery, answer claim, fan-out of updates. Clients = rendering + collecting the answer. The asking
 module (Themis, Forge, …) = acting on the answer. Archive = storage. Nobody else sends to the user.
+
+### 5.10 Global vs per-client (user, v1.2)
+- **Audience** of a notification: `global` (default: autonomous work, alerts, proposals) or `origin` — it
+  answers something the user asked in a client session (e.g. "avvisami quando Forge finisce" from Telegram):
+  then it carries `origin: {client, session_id}` and is **pushed only there**. Explicit "mandamelo su X"
+  → that client. The origin comes from the request: subscriptions/jobs created from a chat store
+  `origin_client` + `session_id` (clients already pass their session context to Oracle/commands).
+- Every notification is still stored once and listed in every client's inbox: other clients show
+  origin-only ones without toast/sound, under the filter "Anche da altri client" (WebUI) so nothing is lost.
+- **Read state is global** (one row in Archive): seen on one client → Hermes marks it `seen` and sends the
+  `update` to the others. WebUI: read live, badge drops. Telegram: the Bot API cannot mark a message read in
+  the app, so Hermes' update edits the message (small "✓ vista su WebUI" mark; answered → buttons removed
+  + outcome). When is it "seen"? WebUI: shown in a visible tab (toast/page) or marked read. Telegram: a button
+  press, or any user message in that chat after delivery (the user opened the chat).
 
 ## 6. Phases
 1. Hermes: notification model, Hub client discovery, multi-client fan-out with per-client retry, answer
