@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -121,8 +121,13 @@ Oracle. Responsibilities:
 - Approve → Themis applies (history actor = proposer), asks the owning module to reload, emits
   `settings.changed` (Hermes notice). Reject / TTL expiry → proposal closed. Same path whoever proposes.
 - Pending proposals also appear as a banner in the WebUI panel (approve/reject there = same Themis commands).
-  Gap to check in P5: Hermes today dispatches only to Telegram; WebUI delivery of Hermes notifications
-  belongs to Hermes/WebUI, not to Themis.
+- **Rule (user, v2.1): Hermes is the only outbound messenger to the user's clients** — decisions to confirm,
+  notifications, anything going *out* to the user, above all in autonomy. Checked 2026-10-10: Argus,
+  Athena, Chronos, Hecate, Hephaestus (Forge + remediation), Scout already send through Hermes via Hub;
+  Oracle sends nothing proactively (its `notice` packets are part of the answer to a request).
+- **Dependency (outside this spec):** Hermes' `DispatchService` has only the `telegram` channel, so the WebUI
+  never receives Hermes messages. A Hermes WebUI channel (client-agnostic delivery + action buttons) is
+  separate work for Hermes/WebUI; until then Themis proposals reach the WebUI through the panel banner.
 
 ### 3.7 WebUI (same style, reuse `hx-page-header`, `hx-field`, `hx-segmented`, `hx-toggle`, `hx-textarea`)
 - **Impostazioni** = two areas: *Personali* (aspect, assistant/chat defaults, notices, session) and

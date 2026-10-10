@@ -20,3 +20,5 @@
   Hestia-MCP), confirmation delivered by Hermes (message + Approva/Rifiuta actions), no approval logic in
   Oracle; provider endpoints/keys are infrastructure (env), no "Aggiungi"/instance list — UI is only the
   use-case table with provider/model comboboxes — source: user via external chat.
+- v2.1 — 2026-10-10 — rule: Hermes is the only outbound messenger to clients (checked all modules); Hermes
+  WebUI channel recorded as an external dependency — source: user via external chat.

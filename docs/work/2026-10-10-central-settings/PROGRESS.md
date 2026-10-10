@@ -1,11 +1,11 @@
 # PROGRESS — central settings
 
-Spec: `SPEC.md` v2.0 · resume from the first unchecked box.
+Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
 
 - [x] Brainstorming with the user (thread 2026-10-10), current state studied
 - [x] Dossier created (SPEC v1.0, PROGRESS, CHANGELOG)
 - [x] Store decided: new module Themis + Archive storage (v1.1)
-- [ ] User approves SPEC v2.0
+- [ ] User approves SPEC v2.1
 - [ ] P1 `hestia_common` setting definition + registration; standard `/api/settings/effective|reload`
 - [ ] P1 Hestia-Themis service (compose, Hub registration) + Archive tables; Themis `/api/settings/*` API + revision + history + proposals; swagger
 - [ ] P2 Oracle models + preset; Forge engine (migrate `settings.json`); `LOG_LEVEL`
