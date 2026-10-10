@@ -50,10 +50,7 @@ os.environ.setdefault("ARCHIVE_URL", "http://fake-archive:19002/api")
 os.environ.setdefault("ORACLE_MAX_AGENT_TURNS", "6")
 os.environ.setdefault("ORACLE_TOOL_RESULT_MAX_CHARS", "2000")
 os.environ.setdefault("LOG_LEVEL", "WARNING")     # quiet during tests
-# Model env vars required by AgentFactory validation (Rulebook 1.4)
-for _uc in ("GENERIC", "REASONING", "CODE", "EMBEDDING"):
-    os.environ.setdefault(f"MODEL_USECASE_{_uc}_MODEL", "mock-model")
-    os.environ.setdefault(f"MODEL_USECASE_{_uc}_FALLBACK_MODEL", "mock-fallback")
+# Models come from central settings (oracle_settings defaults; no Themis in tests)
 
 
 @pytest.fixture(scope="session")

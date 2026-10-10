@@ -283,6 +283,11 @@ class OracleEngine:
 
         # ── LLM agents ────────────────────────────────────────────────────────
         self._agents = AgentFactory.create()
+        # Model settings changed from any client (Themis) → switch agents in place, no restart.
+        from core.services import oracle_settings
+        oracle_settings.settings.on_change(
+            lambda changed: AgentFactory.reconfigure(self._agents)
+            if any(k.startswith("oracle.models.") for k in changed) else None)
 
         # ── Infrastructure services ───────────────────────────────────────────
         self._hub = HubClient(self._hub_url)
@@ -820,10 +825,10 @@ class OracleEngine:
           auto     → classify → agent loop if domain_query. Default.
           thinking → full agent loop, visible chain-of-thought, higher max_turns.
 
-        Model (controls which BRAIN — names from env vars):
-          generic   → daily driver (MODEL_USECASE_GENERIC_MODEL)
-          reasoning → deep thinking (MODEL_USECASE_REASONING_MODEL, loaded on demand)
-          code      → code generation (MODEL_USECASE_CODE_MODEL)
+        Model (controls which BRAIN — settings oracle.models.<use case>.*):
+          generic   → daily driver
+          reasoning → deep thinking (loaded on demand)
+          code      → code generation
         """
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex[:12]

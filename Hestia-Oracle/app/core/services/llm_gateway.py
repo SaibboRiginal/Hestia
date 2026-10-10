@@ -9,8 +9,8 @@ Profiles (env, all optional except the built-in ``local`` default):
     ORACLE_LLM_PROFILE_<NAME>_MODEL
     ORACLE_LLM_PROFILE_<NAME>_API_KEY
 ``local`` defaults to Ollama's OpenAI endpoint (OLLAMA_API_URL or OLLAMA_URL host + /v1).
-Built-in: ``local`` = Ollama with MODEL_USECASE_CODE_MODEL; ``cloud`` = Gemini (OpenAI-compat)
-with MODEL_USECASE_CODE_FALLBACK_MODEL + GEMINI_API_KEY. No extra env needed; the
+Built-in: ``local`` = Ollama with the code model setting (``oracle.models.code.*``); ``cloud`` =
+Gemini (OpenAI-compat) with the code fallback model setting + GEMINI_API_KEY. The
 ORACLE_LLM_PROFILE_* vars only override/add providers (e.g. OpenRouter).
 """
 from __future__ import annotations
@@ -37,17 +37,21 @@ def _profiles() -> dict[str, dict[str, str]]:
     ollama = (os.getenv("OLLAMA_API_URL") or os.getenv("OLLAMA_URL", "http://localhost:11434")
               ).split("/api/")[0].rstrip("/")
     local.setdefault("base_url", f"{ollama}/v1")
-    local.setdefault("model", os.getenv("MODEL_USECASE_CODE_MODEL", "qwen2.5-coder:14b"))
+    from core.services import oracle_settings
+    code = oracle_settings.usecase("code")
+    local.setdefault("model", code["mod"] if code["prov"] == "ollama" else oracle_settings.USECASES["code"][2])
     local.setdefault("api_key", "ollama")
-    # "cloud" needs no extra config: derived from the existing use-case vars
-    # (MODEL_USECASE_CODE_FALLBACK_* = gemini + GEMINI_API_KEY). Explicit
+    # "cloud" needs no extra config: the first Gemini model among the code / reasoning /
+    # generic settings (primary or fallback) + GEMINI_API_KEY. Explicit
     # ORACLE_LLM_PROFILE_CLOUD_* only to point Forge at another provider.
     cloud = found.setdefault("cloud", {})
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
-    for usecase in ("CODE", "REASONING", "GENERIC"):
-        if os.getenv(f"MODEL_USECASE_{usecase}_FALLBACK_PROVIDER", "").strip().lower() == "gemini" and gemini_key:
+    for usecase in ("code", "reasoning", "generic"):
+        uc = oracle_settings.usecase(usecase)
+        model = uc["mod"] if uc["prov"] == "gemini" else uc["fb_mod"] if uc["fb_prov"] == "gemini" else ""
+        if model and gemini_key:
             cloud.setdefault("base_url", "https://generativelanguage.googleapis.com/v1beta/openai")
-            cloud.setdefault("model", os.getenv(f"MODEL_USECASE_{usecase}_FALLBACK_MODEL", "gemini-2.5-flash"))
+            cloud.setdefault("model", model)
             cloud.setdefault("api_key", gemini_key)
             break
     return {n: p for n, p in found.items() if p.get("base_url") and p.get("model")}
@@ -68,6 +72,30 @@ def list_profiles(check: bool = True) -> dict[str, Any]:
                 row["available"], row["detail"] = False, f"unreachable: {exc}"
         out[name] = row
     return out
+
+
+# Curated Gemini choices (free text is accepted too).
+_GEMINI_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash",
+                  "gemini-2.0-flash-lite", "gemini-embedding-001"]
+
+
+def list_models(provider: str) -> list[dict[str, str]]:
+    """Model options for a provider type (settings panel). Ollama: installed models."""
+    provider = str(provider or "").strip().lower()
+    if provider == "ollama":
+        base = (os.getenv("OLLAMA_API_URL") or os.getenv("OLLAMA_URL", "http://localhost:11434")
+                ).split("/api/")[0].rstrip("/")
+        try:
+            resp = requests.get(f"{base}/api/tags", timeout=5)
+            resp.raise_for_status()
+            names = sorted(m.get("name", "") for m in (resp.json() or {}).get("models", []) if m.get("name"))
+            return [{"value": n, "label": n} for n in names]
+        except Exception as exc:
+            logger.warning("[🔄] event=llm_list_models_failed provider=ollama error=%s", exc)
+            return []
+    if provider == "gemini":
+        return [{"value": m, "label": m} for m in _GEMINI_MODELS]
+    return []
 
 
 class LLMGatewayError(Exception):

@@ -15,7 +15,7 @@ the assistant change values from any client, Archive stores them.
                 depends_on={"key": "argus.remediate.enabled", "equals": True}),
     ], presets=[preset("calmo", "Tranquillo", group="Controlli", values={"argus.poll.interval": 120})])
     app.include_router(settings.router())          # GET /api/settings/effective, POST /api/settings/reload
-    settings.start()                               # on startup: first load + background (re)registration
+    settings.start()                               # on startup: background load + hourly re-assert
     settings.get("argus.poll.interval")            # effective value (stored → default)
     settings.on_change(lambda changed: ...)        # live settings changed by the user
 
@@ -118,8 +118,12 @@ class SettingsClient:
     def declare_log_level(self) -> "SettingsClient":
         """Standard ``<owner>.log.level`` setting (live): replaces the LOG_LEVEL env var."""
         key = f"{self.owner}.log.level"
-        self.declare([setting(key, "Livello dei log", "enum", "INFO", group="Diagnostica", advanced=True,
-                              options=[("DEBUG", "Debug (tutto)"), ("INFO", "Normale"),
+        boot = str(os.getenv("LOG_LEVEL", "INFO")).upper()   # level the service starts with (default)
+        self.declare([setting(key, "Livello dei log", "enum", boot if boot in {"TRACE", "DEBUG", "INFO", "WARNING",
+                                                                                "ERROR"} else "INFO",
+                              group="Diagnostica", advanced=True,
+                              options=[("TRACE", "Traccia (massimo dettaglio)"), ("DEBUG", "Debug (tutto)"),
+                                       ("INFO", "Normale"),
                                        ("WARNING", "Solo avvisi"), ("ERROR", "Solo errori")],
                               help="Quanto dettaglio scrive il modulo nei log.", order=900)])
 
@@ -206,15 +210,18 @@ class SettingsClient:
         logger.info("event=settings_registered owner=%s definitions=%d", self.owner, len(self._defs))
         return True
 
-    def start(self, *, retry_seconds: float = 60, refresh_seconds: float = 3600) -> threading.Thread | None:
-        """First load (short, blocking) then background re-registration (Themis keeps the
-        schema in memory: re-asserting restores it after a Themis restart)."""
+    def start(self, *, retry_seconds: float = 60, refresh_seconds: float = 3600,
+              blocking: bool = False) -> threading.Thread | None:
+        """Register in background (first load, then hourly re-assert: Themis keeps the schema in
+        memory, so this also restores it after a Themis restart). ``blocking`` does the first
+        attempt inline (use it only when values are needed before serving)."""
         if self._started:
             return None
         self._started = True
-        ok = self.register()
+        first = self.register() if blocking else None
 
-        def _loop(ok: bool = ok):
+        def _loop():
+            ok = first if first is not None else self.register()
             while True:
                 time.sleep(refresh_seconds if ok else retry_seconds)
                 ok = self.register()
@@ -222,6 +229,21 @@ class SettingsClient:
         thread = threading.Thread(target=_loop, daemon=True, name=f"settings-register-{self.owner}")
         thread.start()
         return thread
+
+    def put(self, key: str, value: Any, *, actor: str = "user", reason: str = "") -> bool:
+        """Persist a change the USER made through this module's own UI/command (e.g. a Telegram
+        command): Themis validates, stores and pushes it back. Never for the module's own choices."""
+        try:
+            status, payload = self._call("PUT", f"api/settings/key/{key}",
+                                         body={"value": value, "actor": actor, "reason": reason})
+        except Exception as exc:
+            logger.warning("[🔄] event=settings_put_failed owner=%s key=%s error=%s", self.owner, key, exc)
+            return False
+        if status >= 400:
+            logger.warning("event=settings_put_rejected owner=%s key=%s status=%s detail=%s",
+                           self.owner, key, status, str(payload)[:200])
+            return False
+        return True
 
     # ── standard endpoints ──────────────────────────────────────────────────
     def router(self):

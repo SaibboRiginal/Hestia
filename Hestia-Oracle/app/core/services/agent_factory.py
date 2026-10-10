@@ -1,7 +1,7 @@
 """LLM agent factory — use-case model config and UniversalAgent wiring.
 
-Single responsibility: read USE-CASE environment variables, validate
-model/provider pairs, and construct UniversalAgent instances used by Oracle.
+Single responsibility: read the use-case model settings (Themis, ``oracle.models.*``),
+validate model/provider pairs, and construct UniversalAgent instances used by Oracle.
 
 Four use cases — each with primary + fallback:
   generic   → chat, classify, tool selection, memory extraction, formatting
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 import requests
 
 from agents.universal_agent import UniversalAgent
-from core.services import prompt_config
+from core.services import oracle_settings, prompt_config
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -58,12 +58,13 @@ class AgentBundle:
 
 
 class AgentFactory:
-    """Reads MODEL_USECASE_* environment variables and constructs an AgentBundle.
+    """Reads the ``oracle.models.*`` settings and constructs an AgentBundle.
 
-    Every model name comes from env vars — NO hardcoded models (Rulebook 1.4).
+    Models come from settings (defaults declared in ``oracle_settings``), changed live
+    from any client: ``reconfigure`` updates the existing agents in place.
     """
 
-    # Four architectural use cases.  The MODEL for each comes from env vars.
+    # Four architectural use cases.  The MODEL for each comes from settings.
     _USECASES: tuple[str, ...] = ("generic", "reasoning", "code", "embedding")
 
     # Thinking-auto-detection family set — configurable, not hardcoded.
@@ -78,35 +79,52 @@ class AgentFactory:
     _thinking_cache: dict[str, bool] = {}
 
     @staticmethod
-    def create() -> AgentBundle:
+    def _prepared_config() -> dict[str, dict[str, str]]:
         cfg = AgentFactory._read_config()
         AgentFactory._validate_config(cfg)
         AgentFactory._normalize_gemini_models(cfg)
         AgentFactory._remap_gemini_when_no_api_key(cfg)
         AgentFactory._resolve_thinking_flags(cfg)
         AgentFactory._log_config(cfg)
-        return AgentFactory._build_bundle(cfg)
+        return cfg
+
+    @staticmethod
+    def create() -> AgentBundle:
+        return AgentFactory._build_bundle(AgentFactory._prepared_config())
+
+    @staticmethod
+    def reconfigure(bundle: AgentBundle) -> None:
+        """Apply changed model settings to an existing bundle IN PLACE.
+
+        Every Oracle service holds references to these agent objects, so re-initialising
+        them (instead of replacing them) switches models everywhere without a restart.
+        """
+        try:
+            cfg = AgentFactory._prepared_config()
+        except Exception as exc:
+            logger.warning("[🔄] event=oracle_agents_reconfigure_failed error=%s keeping=previous", exc)
+            return
+        for slot, entry in cfg.items():
+            agent = getattr(bundle, slot, None)
+            if agent is None:
+                continue
+            agent.__init__(role_prompt=agent.role_prompt, provider=entry["prov"],
+                           model_name=entry["mod"], thinking=entry.get("thinking", False))
+        logger.info("event=oracle_agents_reconfigured generic=%s/%s reasoning=%s/%s code=%s/%s embedding=%s/%s",
+                    cfg["generic"]["prov"], cfg["generic"]["mod"], cfg["reasoning"]["prov"],
+                    cfg["reasoning"]["mod"], cfg["code"]["prov"], cfg["code"]["mod"],
+                    cfg["embedding"]["prov"], cfg["embedding"]["mod"])
 
     # ── Config reading ──────────────────────────────────────────────────────
 
     @staticmethod
     def _read_config() -> dict[str, dict[str, str]]:
-        """Read MODEL_USECASE_<USECASE>_{PROVIDER,MODEL,THINKING,FALLBACK_*}."""
+        """Read settings ``oracle.models.<usecase>.{provider,model,thinking,fallback_*}``."""
         result: dict[str, dict[str, str]] = {}
         for usecase in AgentFactory._USECASES:
-            prefix = f"MODEL_USECASE_{usecase.upper()}"
-            # THINKING: "true" / "false" / "auto" (default: auto)
-            thinking_default = "true" if usecase == "reasoning" else "auto"
-            result[usecase] = {
-                "prov": os.getenv(f"{prefix}_PROVIDER", "ollama"),
-                "mod":  os.getenv(f"{prefix}_MODEL", "").strip(),
-                "thinking_raw": os.getenv(
-                    f"{prefix}_THINKING", thinking_default).strip().lower(),
-            }
-            result[f"{usecase}_fallback"] = {
-                "prov": os.getenv(f"{prefix}_FALLBACK_PROVIDER", "gemini"),
-                "mod":  os.getenv(f"{prefix}_FALLBACK_MODEL", "").strip(),
-            }
+            uc = oracle_settings.usecase(usecase)
+            result[usecase] = {"prov": uc["prov"], "mod": uc["mod"], "thinking_raw": uc["thinking_raw"]}
+            result[f"{usecase}_fallback"] = {"prov": uc["fb_prov"], "mod": uc["fb_mod"]}
         return result
 
     # ── Validation ──────────────────────────────────────────────────────────
@@ -117,12 +135,12 @@ class AgentFactory:
         missing: list[str] = []
         for usecase in AgentFactory._USECASES:
             if not cfg[usecase]["mod"]:
-                missing.append(f"MODEL_USECASE_{usecase.upper()}_MODEL")
+                missing.append(oracle_settings.key(usecase, "model"))
         if missing:
             msg = (
                 "event=agent_factory_missing_models "
-                "Missing required env vars: %s. "
-                "Set them in .env or docker-compose.yml."
+                "Empty model settings: %s. "
+                "Set them in Impostazioni → Oracle → Modelli."
             ) % ", ".join(missing)
             logger.critical(msg)
             raise RuntimeError(msg)

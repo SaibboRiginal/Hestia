@@ -231,7 +231,7 @@ class TestOracleTasksEndpoint:
 
 @pytest.mark.api
 class TestOracleLlmGenerateEndpoint:
-    """/api/llm/generate — primary/fallback chain resolves MODEL_USECASE_GENERIC_* env."""
+    """/api/llm/generate — primary/fallback chain resolves the oracle.models.generic.* settings."""
 
     def _mock_agent_chain(self, monkeypatch, primary_exc):
         """Patch agents.universal_agent.UniversalAgent so the FIRST instance
@@ -254,18 +254,17 @@ class TestOracleLlmGenerateEndpoint:
             "agents.universal_agent.UniversalAgent", FakeAgent)
         return created
 
-    def test_fallback_uses_model_usecase_generic_fallback_env(
+    def test_fallback_uses_generic_fallback_settings(
             self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        monkeypatch.setenv("MODEL_USECASE_GENERIC_PROVIDER", "ollama")
-        monkeypatch.setenv("MODEL_USECASE_GENERIC_MODEL", "gemma4:e4b")
-        monkeypatch.setenv(
-            "MODEL_USECASE_GENERIC_FALLBACK_PROVIDER", "gemini")
-        monkeypatch.setenv(
-            "MODEL_USECASE_GENERIC_FALLBACK_MODEL", "gemini-2.0-flash-lite")
-        # Legacy vars must NOT shadow the MODEL_USECASE_* ones
-        monkeypatch.setenv("ANALYST_FALLBACK_MODEL", "legacy-model")
-        monkeypatch.setenv("LLM_FALLBACK_MODEL", "legacy-model")
+        from core.services import oracle_settings
+        eff = oracle_settings.settings._effective
+        monkeypatch.setitem(eff, "oracle.models.generic.provider", "ollama")
+        monkeypatch.setitem(eff, "oracle.models.generic.model", "gemma4:e4b")
+        monkeypatch.setitem(eff, "oracle.models.generic.fallback_provider", "gemini")
+        monkeypatch.setitem(eff, "oracle.models.generic.fallback_model", "gemini-2.0-flash-lite")
+        # Old env vars are ignored (settings are the only source)
+        monkeypatch.setenv("MODEL_USECASE_GENERIC_FALLBACK_MODEL", "legacy-model")
 
         created = self._mock_agent_chain(
             monkeypatch, primary_exc=RuntimeError("ollama down"))
@@ -281,13 +280,13 @@ class TestOracleLlmGenerateEndpoint:
         assert created[1].provider == "gemini"
         assert created[1].model_name == "gemini-2.0-flash-lite"
 
-    def test_fallback_uses_legacy_vars_when_usecase_unset(
+    def test_fallback_follows_changed_settings(
             self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        monkeypatch.delenv("MODEL_USECASE_GENERIC_FALLBACK_PROVIDER", raising=False)
-        monkeypatch.delenv("MODEL_USECASE_GENERIC_FALLBACK_MODEL", raising=False)
-        monkeypatch.setenv("ANALYST_FALLBACK_PROVIDER", "ollama")
-        monkeypatch.setenv("ANALYST_FALLBACK_MODEL", "mistral:7b")
+        from core.services import oracle_settings
+        eff = oracle_settings.settings._effective
+        monkeypatch.setitem(eff, "oracle.models.generic.fallback_provider", "ollama")
+        monkeypatch.setitem(eff, "oracle.models.generic.fallback_model", "mistral:7b")
 
         created = self._mock_agent_chain(
             monkeypatch, primary_exc=RuntimeError("ollama down"))

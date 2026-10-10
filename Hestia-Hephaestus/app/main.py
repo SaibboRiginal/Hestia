@@ -17,6 +17,7 @@ from .core.shared_imports import import_shared_symbol
 from .forge.config import load_forge_config
 from .forge.router import create_forge_router, create_repo_router
 from .forge.service import Forge
+from .forge import forge_settings
 
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils",
@@ -126,6 +127,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
+    forge_settings.settings.start()
     if forge.cfg.enabled:
         forge.start()
     yield
@@ -135,6 +137,7 @@ app = FastAPI(title="Hestia Hephaestus",
               version=config.service_version, lifespan=lifespan)
 app.include_router(create_hephaestus_router(remediation_service))
 app.include_router(create_forge_router(forge))
+app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
 
 # ─────────────────────────────────────────────────────────────────────
@@ -263,34 +266,8 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
-        MCPTool(
-            name="forge_set_engine",
-            description="Cambia il motore di sviluppo predefinito (es. 'usa il cloud', 'passa a locale', 'usa claude')",
-            parameters={"type": "object", "properties": {
-                "engine": {"type": "string", "description": "local | cloud | claude"}}, "required": ["engine"]},
-            handler=lambda **kw: {"status": "ok", "tool": "forge_set_engine", "params": kw},
-            title="\U0001f501 Motore sviluppo", method="POST", path="/api/hephaestus/forge/engine",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="Conferma in 1 riga il motore attivo; se available=false avvisa e riporta detail.",
-            telegram_visible=True, telegram_group="sistema",
-        ),
-        MCPTool(
-            name="forge_set_mode",
-            description=(
-                "Imposta la modalità permessi di sviluppo: ask (chiede sempre prima), auto (sviluppa da solo, "
-                "il merge chiede ok), full_auto (fa tutto da solo se i test passano). "
-                "group: local o cloud (vuoto = entrambi)."
-            ),
-            parameters={"type": "object", "properties": {
-                "mode": {"type": "string", "description": "ask | auto | full_auto"},
-                "group": {"type": "string", "description": "local | cloud | vuoto"}},
-                "required": ["mode"]},
-            handler=lambda **kw: {"status": "ok", "tool": "forge_set_mode", "params": kw},
-            title="\U0001f39a\ufe0f Modalità sviluppo", method="POST", path="/api/hephaestus/forge/settings/mode",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="1 riga: modalità local e cloud attuali.",
-            telegram_visible=True, telegram_group="sistema",
-        ),
+        # Default engine and permission modes are central settings (Themis): the assistant
+        # proposes a change with settings_propose, the user confirms; no direct tool here.
         MCPTool(
             name="forge_set_claude_schedule",
             description=(

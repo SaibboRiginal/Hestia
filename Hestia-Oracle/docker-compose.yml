@@ -36,9 +36,7 @@ services:
       # ORACLE_PREFERENCE_DOMAINS=        JSON override for preference domain definitions
       # ORACLE_PREF_DOMAIN_SIM_THRESHOLD=0.55  cosine similarity for domain assignment
       # ORACLE_THINKING_FAMILIES=gemma4,gemma3,qwen3,deepseek-r1,llama4,phi4  model families supporting think
-      # MODEL_USECASE_GENERIC_THINKING=auto   "true"/"false"/"auto" — per-model think flag
-      # MODEL_USECASE_REASONING_THINKING=true
-      # MODEL_USECASE_CODE_THINKING=auto
+      # Models per use case (provider, model, fallback, thinking) are settings: Impostazioni → Oracle → Modelli.
     env_file:
       - ./app/.env
     networks:

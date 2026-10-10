@@ -16,7 +16,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
 
 ### Universal LLM Connector
 - Abstracts cloud LLM providers (Gemini) and local Ollama behind a single `UniversalAgent` interface.
-- **Use-case model config** via `MODEL_USECASE_*` env vars: `generic` (chat, classify, tools, memory, format), `reasoning` (deep thinking, loaded on demand), `code` (code generation), `embedding` (vectors). Each use case has primary + fallback provider/model pair. Mode (quick/auto/thinking) controls orchestration process; use case controls which brain.
+- **Use-case model config** via central settings `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model,thinking}` (Themis; WebUI → Impostazioni → Oracle, presets Economico/Bilanciato/Qualità; declared in `app/core/services/oracle_settings.py`; live: `AgentFactory.reconfigure` updates the agents in place): `generic` (chat, classify, tools, memory, format), `reasoning` (deep thinking, loaded on demand), `code` (code generation), `embedding` (vectors). Each use case has primary + fallback provider/model pair. Mode (quick/auto/thinking) controls orchestration process; use case controls which brain.
 - If primary (Ollama) is unavailable, falls back to the assigned Gemini model automatically at runtime.
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
@@ -124,7 +124,9 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
-| `POST` | `/api/llm/generate` | Raw LLM call for internal service use — primary/fallback chain follows `MODEL_USECASE_GENERIC_{PROVIDER,MODEL}` + `MODEL_USECASE_GENERIC_FALLBACK_{PROVIDER,MODEL}` env vars (same source of truth as AgentFactory) |
+| `POST` | `/api/llm/generate` | Raw LLM call for internal service use — primary/fallback chain follows the settings `oracle.models.generic.*` (same source of truth as AgentFactory) |
+| `GET` | `/api/llm/models?provider=` | Model choices for a provider (`ollama` = installed models from `/api/tags`, `gemini` = curated list) → `{options:[{value,label}]}`; used by the settings panel |
+| `GET` | `/api/settings/effective` · `POST /api/settings/reload` | Central settings: effective values / reload (called by Themis) |
 | `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
 | `GET` | `/api/athena/hints` | List non-expired Athena hints (optional `session_id`) |
 | `DELETE` | `/api/chat/{session_id}` | Clear a session |
@@ -156,7 +158,7 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 | `thinking` | True | Yes | Full agent loop with visible chain-of-thought |
 
 Mode and model are independent — any mode works with any model (`generic`/`reasoning`/`code`).
-Model names come from env vars (`MODEL_USECASE_GENERIC_MODEL`, etc.) — no hardcoded models.
+Model names come from the settings `oracle.models.*` — no hardcoded models outside the declared defaults.
 
 ### `POST /chat` payload
 ```json
@@ -218,7 +220,7 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 | POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd, transcript_path}`. Runs `claude -p --output-format stream-json --verbose`; every line is written live to `<ORACLE_CODE_WORKDIR_ROOT>/.transcripts/<task>.jsonl` (outside the worktree) for the WebUI Sviluppo page |
 
 Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-compatible base, e.g. `…/v1`).
-`local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model `MODEL_USECASE_CODE_MODEL` or `qwen2.5-coder:14b`).
+`local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model = setting `oracle.models.code.model`).
 Example cloud: `ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1`, `_MODEL=qwen/qwen3-coder`, `_API_KEY=sk-or-…`.
 Timeout per call: `ORACLE_LLM_CHAT_TIMEOUT_SEC` (600). Used by Hephaestus Forge engines `local`/`cloud`.
 
@@ -251,7 +253,7 @@ agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps paralle
 
 ## LLM gateway profiles (Forge engines)
 
-Built-in profiles, no extra env: `local` = Ollama + `MODEL_USECASE_CODE_MODEL`; `cloud` = Gemini (OpenAI-compatible
-endpoint) + `MODEL_USECASE_CODE_FALLBACK_MODEL` + `GEMINI_API_KEY`. `ORACLE_LLM_PROFILE_<NAME>_BASE_URL/_MODEL/_API_KEY`
+Built-in profiles, no extra env: `local` = Ollama + setting `oracle.models.code.model`; `cloud` = Gemini (OpenAI-compatible
+endpoint) + the first Gemini model among the code/reasoning/generic settings (primary, then fallback) + `GEMINI_API_KEY`. `ORACLE_LLM_PROFILE_<NAME>_BASE_URL/_MODEL/_API_KEY`
 only override them or add another provider. Claude Code CLI is installed by default
 (`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when `CLAUDE_CODE_OAUTH_TOKEN` is set.

@@ -106,14 +106,18 @@ so git worktree links resolve. Hephaestus keeps orchestration: branch, independe
 All other calls also go through Hub: Hermes (notifications), service `/health` (deploy check).
 Requests reach Forge only via Hub: user → Telegram → Oracle → Hub → Hephaestus; Athena/Argus → Hub → Hephaestus.
 
-- Default: `HEPHAESTUS_FORGE_ENGINE=local`; fallback `HEPHAESTUS_FORGE_FALLBACK=local,cloud,claude`.
-- Switch default from Telegram ("usa il cloud") → tool `forge_set_engine`, persisted.
+- Default engine = central setting `hephaestus.forge.engine` (Themis, live, default `local`): WebUI →
+  Impostazioni → Hephaestus, or `POST /api/hephaestus/forge/engine` from a client (saved to Themis as a user
+  change). The assistant can only propose it (`settings_propose`), you confirm via Hermes.
+  Fallback order stays env `HEPHAESTUS_FORGE_FALLBACK=local,cloud,claude` (moves to settings in P6).
 - Per task: "sviluppa X con claude" → `engine` field (no fallback when explicit).
 
 ### Permission modes (like Claude Code / Codex)
 
-One mode per group, set from Telegram ("modalità sviluppo auto", "cloud in ask") → tool `forge_set_mode`
-or `POST /api/hephaestus/forge/settings/mode {"mode", "group"}`. Persisted in `data/forge/settings.json`.
+One mode per group = central settings `hephaestus.forge.mode.local` / `hephaestus.forge.mode.cloud` (live).
+Change them in WebUI → Impostazioni or `POST /api/hephaestus/forge/settings/mode {"mode", "group"}` (saved to
+Themis). Safety switches: the assistant may read them but never propose them (`oracle: read`).
+`data/forge/settings.json` keeps only the Claude Pro schedule and budget state.
 
 | Mode | Athena/Argus tasks | Your tasks | Merge/deploy |
 |---|---|---|---|
@@ -194,7 +198,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
   leading `-`), secret files (`.env`, tokens, credentials) listed as secret and never served, diffs capped at 300 KB,
   files at 400 KB.
 
-MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_engine`, `forge_set_mode`, `forge_set_claude_schedule`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
+MCP tools: `forge_develop`, `forge_tasks`, `forge_status`, `forge_set_claude_schedule`, `forge_settings`, `forge_approve`, `forge_reject`, `forge_rollback` (domain `system`).
 
 ### Deployment notes
 - Compose mounts the repo at `/repo`, worktrees at `/forge/worktrees` (same paths in Oracle, where Claude
@@ -229,3 +233,9 @@ Hephaestus publishes assistant-executable command metadata through Hub discovery
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## Central settings (Themis)
+
+Declared in `app/forge/forge_settings.py` (`SettingsClient("hephaestus")`): `hephaestus.forge.engine`,
+`hephaestus.forge.mode.local`, `hephaestus.forge.mode.cloud`, `hephaestus.log.level` — all live, applied by
+`Forge._apply_settings`. Endpoints `GET /api/settings/effective`, `POST /api/settings/reload` (used by Themis).

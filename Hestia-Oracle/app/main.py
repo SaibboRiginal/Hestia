@@ -154,9 +154,22 @@ except Exception as exc:
     logger.warning("event=mcp_router_mount_failed service=oracle error=%s", exc)
 
 
+from core.services import oracle_settings as _oracle_settings  # noqa: E402
+
+app.include_router(_oracle_settings.settings.router())
+
+
+@app.get("/api/llm/models")
+def llm_models_endpoint(provider: str = "ollama"):
+    """Model choices for the settings panel (options_source of oracle.models.*.model)."""
+    from core.services.llm_gateway import list_models
+    return {"provider": provider, "options": list_models(provider)}
+
+
 @app.on_event("startup")
 def register_on_hub_startup():
     """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
+    _oracle_settings.settings.start()
     _register_on_hub()
     try:
         from hestia_common.startup_utils import start_hub_keepalive
@@ -838,16 +851,10 @@ def llm_generate_endpoint(req: dict):
         if not prompt:
             raise HTTPException(status_code=400, detail="prompt required")
 
-        # Resolve defaults from env (same source as AgentFactory) so we never
-        # reference the non-existent engine.models dict.
-        # Read the SAME config as the rest of Oracle (AgentFactory).
-        # MODEL_USECASE_GENERIC is what the user actually sets in .env
-        default_provider = os.getenv(
-            "MODEL_USECASE_GENERIC_PROVIDER",
-            os.getenv("ANALYST_PROVIDER", os.getenv("LLM_PROVIDER", "ollama")))
-        default_model = os.getenv(
-            "MODEL_USECASE_GENERIC_MODEL",
-            os.getenv("ANALYST_MODEL", os.getenv("LLM_MODEL", "")))
+        # Same source as AgentFactory: settings oracle.models.generic.* (Themis).
+        from core.services import oracle_settings
+        generic = oracle_settings.usecase("generic")
+        default_provider, default_model = generic["prov"], generic["mod"]
 
         model = req.get("model") or default_model
         provider = req.get("provider") or default_provider
@@ -862,15 +869,8 @@ def llm_generate_endpoint(req: dict):
                 "event=llm_generate_primary_failed "
                 "provider=%s model=%s error=%s — trying fallback",
                 provider, model, primary_exc)
-            # Fallback: same source of truth as AgentFactory —
-            # MODEL_USECASE_GENERIC_FALLBACK_* from .env (default: Gemini cloud).
-            fallback_provider = os.getenv(
-                "MODEL_USECASE_GENERIC_FALLBACK_PROVIDER",
-                os.getenv("ANALYST_FALLBACK_PROVIDER", "gemini"))
-            fallback_model = os.getenv(
-                "MODEL_USECASE_GENERIC_FALLBACK_MODEL",
-                os.getenv("ANALYST_FALLBACK_MODEL",
-                          os.getenv("LLM_FALLBACK_MODEL", "")))
+            # Fallback: same source of truth as AgentFactory (generic fallback settings).
+            fallback_provider, fallback_model = generic["fb_prov"], generic["fb_mod"]
             try:
                 fallback_agent = UniversalAgent(
                     role_prompt="", provider=fallback_provider,

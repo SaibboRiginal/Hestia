@@ -373,8 +373,8 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ## §13 Unit Tests — /api/llm/generate endpoint (4 cases, NEW)
 
-- ✅ Fallback resolves `MODEL_USECASE_GENERIC_FALLBACK_{PROVIDER,MODEL}` from .env (Gemini cloud) — legacy `ANALYST_FALLBACK_MODEL`/`LLM_FALLBACK_MODEL` must not shadow it
-- ✅ Legacy fallback vars used when `MODEL_USECASE_GENERIC_FALLBACK_*` unset
+- ✅ Fallback follows the central settings `oracle.models.generic.fallback_{provider,model}`; old env vars are ignored
+- ✅ A changed fallback setting is used on the next call (live)
 - ✅ Both primary and fallback fail → 500 with combined context in detail
 - ✅ Missing/blank prompt → 400 (HTTPException must not be swallowed by the generic handler)
 

@@ -42,8 +42,8 @@ serves the declared REST path of handler-only tools — call it after the app's 
 
 ## 3. LLM access (Oracle only)
 
-- Use cases in Oracle `.env`: `MODEL_USECASE_<GENERIC|REASONING|CODE|EMBEDDING>_{PROVIDER,MODEL,
-  FALLBACK_PROVIDER,FALLBACK_MODEL}` (ollama | gemini).
+- Use cases = central settings (Themis) `oracle.models.<generic|reasoning|code|embedding>.{provider,model,
+  fallback_provider,fallback_model,thinking}` (ollama | gemini), live, with presets; never env.
 - `/api/llm/generate` plain prompt; `/api/llm/chat` OpenAI-compatible with profiles: `local` (Ollama +
   CODE model) and `cloud` (Gemini OpenAI-compat + CODE fallback model + `GEMINI_API_KEY`), both derived
   automatically; `ORACLE_LLM_PROFILE_<NAME>_*` only to add/override.

@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 2.1 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
-| **Status** | Draft — waiting for user approval; no code yet |
+| **Status** | Approved 2026-10-10 — in progress (P1–P2 done) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 

@@ -39,6 +39,7 @@ from .claude_budget import ClaudeBudget, ClaudeBudgetState, ClaudeSchedule
 from .agent_tools import run_test_command
 from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
 from .engines import build_engines, select_engine, wait_seconds
+from . import forge_settings
 from .prompts import build_task_prompt, workdoc_name
 from .transcript import TaskArtifacts
 
@@ -55,6 +56,7 @@ TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "n
 #   full_auto → codes and, if engine ok + tests green, merges/deploys alone
 #               (health check + automatic rollback).
 # Groups: "local" (Ollama) and "cloud" (cloud profile + Claude: billed tokens).
+# Default engine and modes are central settings (forge_settings → Themis), applied live.
 MODES = ("ask", "auto", "full_auto")
 _MODE_ALIASES = {"propose": "ask", "auto_start": "auto", "yolo": "full_auto", "full": "full_auto"}
 DEFAULT_MODES = {"local": "auto", "cloud": "ask"}
@@ -96,8 +98,10 @@ class Forge:
         self._tasks: dict[str, dict[str, Any]] = {}
         self._queue: "queue.Queue[str]" = queue.Queue()
         self._worker: threading.Thread | None = None
-        self._default_engine = cfg.engine
+        self._default_engine = "local"
         self._modes = dict(DEFAULT_MODES)
+        self._apply_settings(forge_settings.settings.values())
+        forge_settings.settings.on_change(self._apply_settings)
         self.claude_budget = ClaudeBudget(ClaudeSchedule())
         self.agenda = AgendaClient(cfg.hub_api_url)
         # Sviluppo page: transcript, full test output, engine/deploy logs per task.
@@ -136,9 +140,6 @@ class Forge:
         try:
             if self.cfg.settings_file.exists():
                 data = json.loads(self.cfg.settings_file.read_text(encoding="utf-8") or "{}")
-                engine = normalize_engine(data.get("default_engine", ""))
-                if engine in self.engines:
-                    self._default_engine = engine
                 sched = data.get("claude_schedule")
                 state = data.get("claude_state")
                 if isinstance(sched, dict) or isinstance(state, dict):
@@ -147,26 +148,35 @@ class Forge:
                                           if k in ClaudeSchedule.__dataclass_fields__}),
                         ClaudeBudgetState(**{k: v for k, v in (state or {}).items()
                                              if k in ClaudeBudgetState.__dataclass_fields__}))
-                for group, mode in (data.get("modes") or {}).items():
-                    if group in DEFAULT_MODES and normalize_mode(mode) in MODES:
-                        self._modes[group] = normalize_mode(mode)
         except Exception as exc:
             logger.warning("[🔄] event=forge_settings_load_failed error=%s", exc)
+
+    def _apply_settings(self, values: dict[str, Any]) -> None:
+        """Live settings from Themis (initial load and every change)."""
+        engine = normalize_engine(values.get(forge_settings.ENGINE, ""))
+        if engine in self.engines and engine != self._default_engine:
+            self._default_engine = engine
+            logger.info("event=forge_default_engine_applied engine=%s", engine)
+        for group, key in forge_settings.MODE.items():
+            mode = normalize_mode(values.get(key, ""))
+            if mode in MODES and self._modes.get(group) != mode:
+                self._modes[group] = mode
+                logger.info("event=forge_mode_applied group=%s mode=%s", group, mode)
 
     @property
     def default_engine(self) -> str:
         return self._default_engine
 
     def set_default_engine(self, engine: str) -> dict[str, Any]:
-        """Switch the default engine at runtime (persisted, survives restarts)."""
+        """User switch of the default engine: applied now, persisted as a central setting."""
         name = normalize_engine(engine)
         if name not in self.engines:
             raise ForgeError(f"Unknown engine '{engine}'. Use: {', '.join(self.engines)}")
         ok, reason = self.engines[name].available()
         self._default_engine = name
-        self._save_settings()
-        logger.info("event=forge_default_engine_set engine=%s available=%s", name, ok)
-        return {"default_engine": name, "available": ok, "detail": reason}
+        saved = forge_settings.settings.put(forge_settings.ENGINE, name, actor="user")
+        logger.info("event=forge_default_engine_set engine=%s available=%s saved=%s", name, ok, saved)
+        return {"default_engine": name, "available": ok, "detail": reason, "saved": saved}
 
     def settings(self) -> dict[str, Any]:
         return {"default_engine": self._default_engine, "fallback": self.cfg.fallback,
@@ -200,7 +210,7 @@ class Forge:
             if g not in DEFAULT_MODES:
                 raise ForgeError(f"Unknown group '{g}'. Use: local | cloud")
             self._modes[g] = mode
-        self._save_settings()
+            forge_settings.settings.put(forge_settings.MODE[g], mode, actor="user")
         logger.info("event=forge_mode_set groups=%s mode=%s", targets, mode)
         return self.settings()
 
@@ -209,7 +219,6 @@ class Forge:
             self.cfg.settings_file.parent.mkdir(parents=True, exist_ok=True)
             from dataclasses import asdict
             self.cfg.settings_file.write_text(json.dumps({
-                "default_engine": self._default_engine, "modes": self._modes,
                 "claude_schedule": asdict(self.claude_budget.schedule),
                 "claude_state": asdict(self.claude_budget.state)}), encoding="utf-8")
         except Exception as exc:

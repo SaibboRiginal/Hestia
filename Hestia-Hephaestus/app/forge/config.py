@@ -1,4 +1,5 @@
-"""Forge configuration — every knob is an env var (Rulebook 1.4)."""
+"""Forge configuration from env (infrastructure). Default engine and modes are central
+settings (forge_settings → Themis); the remaining tunables move there in settings P6."""
 from __future__ import annotations
 
 import os
@@ -36,9 +37,8 @@ class ForgeConfig:
     worktrees_path: Path
     state_file: Path
     base_branch: str
-    engine: str                 # default engine: local | cloud | claude
     fallback: list[str]         # tried in order when the chosen engine is unavailable
-    settings_file: Path         # runtime default-engine override (set from Telegram)
+    settings_file: Path         # Claude Pro schedule + budget state (runtime)
     llm_route_timeout: int      # Hub→Oracle /api/llm/chat timeout per turn
     max_turns: int
     engine_timeout_seconds: int
@@ -63,7 +63,6 @@ def load_forge_config() -> ForgeConfig:
         worktrees_path=Path(os.getenv("HEPHAESTUS_WORKTREES_PATH", "/forge/worktrees")),
         state_file=Path(os.getenv("HEPHAESTUS_FORGE_STATE_FILE", str(data_dir / "forge" / "tasks.json"))),
         base_branch=os.getenv("HEPHAESTUS_FORGE_BASE_BRANCH", "").strip(),
-        engine=normalize_engine(os.getenv("HEPHAESTUS_FORGE_ENGINE", "local")) or "local",
         fallback=[normalize_engine(e) for e in os.getenv(
             "HEPHAESTUS_FORGE_FALLBACK", "local,cloud,claude").split(",") if e.strip()],
         settings_file=Path(os.getenv("HEPHAESTUS_FORGE_SETTINGS_FILE", str(data_dir / "forge" / "settings.json"))),

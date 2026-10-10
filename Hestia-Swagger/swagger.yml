@@ -3279,6 +3279,22 @@ paths:
         "200":
           description: application/x-ndjson JSONL export
 
+  /api/llm/models:
+    get:
+      tags: [Oracle]
+      summary: Model choices for a provider (settings panel comboboxes)
+      parameters:
+        - in: query
+          name: provider
+          required: true
+          schema: { type: string, enum: [ollama, gemini] }
+      responses:
+        "200":
+          description: "{options: [{value, label}]} — ollama = installed models, gemini = curated list"
+          content:
+            application/json:
+              schema: { type: object }
+
   /api/llm/generate:
     post:
       tags: [Oracle]
