@@ -73,6 +73,9 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
     if snapshot.quality_issues:
         lines.append("Qualità risposte: " + "; ".join(snapshot.quality_issues[:4]))
 
+    if snapshot.settings:
+        lines.append("IMPOSTAZIONI (chiave=valore [scelte]): " + "; ".join(snapshot.settings))
+
     if snapshot.raw_errors:
         lines.append(f"Errori osservazione: {', '.join(snapshot.raw_errors[:3])}")
 
@@ -93,15 +96,18 @@ def _build_strategist_prompt(observation_text: str) -> str:
         f"Proponi max {STRATEGIST_MAX_CANDIDATES} azioni. Solo se dati lo giustificano.\n"
         "Formato ESATTO per ogni azione:\n"
         "AZIONE: <titolo breve>\n"
-        "TIPO: advisory|remediation|notification|maintenance|improvement\n"
+        "TIPO: advisory|remediation|notification|maintenance|improvement|setting\n"
         "PRIORITA: low|normal|elevated|high\n"
         "DOMINIO: cognition|system|<dominio osservato>\n"
         "MOTIVO: <1 frase>\n"
-        "RIASSUNTO: <1 frase>\n\n"
+        "RIASSUNTO: <1 frase>\n"
+        "Solo per setting (CHIAVE da IMPOSTAZIONI):\nCHIAVE: <chiave>\nVALORE: <nuovo valore>\n\n"
         "Regole:\n"
         "- improvement = cambio a codice/prompt di Hestia (errori ricorrenti, dominio con feedback negativi). "
         "RIASSUNTO = cosa cambiare, concreto, quale servizio.\n"
         "- remediation = servizio giù/rotto ora.\n"
+        "- setting = cambiare UNA impostazione elencata (es. errori/costi da modello o livello log). Solo chiavi "
+        "e scelte elencate; l'utente conferma.\n"
         "- Tutto normale -> scrivi solo: NESSUNA_AZIONE\n"
         "- No testo fuori formato. No markdown. No HTML."
     )
@@ -132,7 +138,7 @@ def _parse_candidates(raw: str) -> list[dict[str, str]]:
                 key, _, value = line.partition(":")
                 key_lower = key.strip().lower()
                 val = value.strip()[:200]
-                if key_lower in ("tipo", "priorita", "dominio", "motivo", "riassunto"):
+                if key_lower in ("tipo", "priorita", "dominio", "motivo", "riassunto", "chiave", "valore"):
                     candidate[key_lower] = val
 
         if candidate.get("title"):
@@ -178,6 +184,8 @@ def _map_to_action_candidates(
                 kind=kind,
                 priority=priority,
                 reasoning=item.get("motivo", ""),
+                setting_key=(item.get("chiave") or "").strip() or None,
+                setting_value=(item.get("valore") or "").strip() or None,
                 signals=signals,
                 score=0.0,  # Scored later by the runtime gate
             )

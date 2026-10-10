@@ -162,6 +162,8 @@ class AthenaRuntime:
         self.forge_max_per_day = _parse_int_env("ATHENA_FORGE_MAX_PER_DAY", 2)
         self._forge_day = ""
         self._forge_titles: set[str] = set()
+        self._setting_day = ""
+        self._setting_keys: set[str] = set()
 
     # ── Forge hand-off (improvement candidates) ─────────────────────────────
 
@@ -199,6 +201,41 @@ class AthenaRuntime:
             with self._lock:
                 self._forge_titles.discard(key)
         logger.info("event=athena_forge_handoff title=%s ok=%s trace_id=%s", key, ok, trace_id)
+        return ok
+
+    # ── Settings proposals (Themis → Hermes → the user decides) ─────────────
+
+    def _propose_setting(self, candidate: Any, trace_id: str) -> bool:
+        """Ask Themis to propose a setting change: never applied without the user's answer.
+        Themis validates the value and skips duplicates; capped per day (setting)."""
+        from .athena_settings import PROPOSALS_PER_DAY, settings as athena_settings
+        key = str(candidate.setting_key or "").strip()
+        if not key or candidate.setting_value is None:
+            return False
+        cap = int(athena_settings.get(PROPOSALS_PER_DAY) or 0)
+        today = datetime.now(timezone.utc).date().isoformat()
+        with self._lock:
+            if self._setting_day != today:
+                self._setting_day, self._setting_keys = today, set()
+            if key in self._setting_keys or len(self._setting_keys) >= cap:
+                return False
+            self._setting_keys.add(key)
+        body = {"key": key, "value": candidate.setting_value, "proposer": "athena",
+                "reason": (candidate.reasoning or candidate.summary or "")[:400]}
+        status = 0
+        try:
+            resp = requests.post(
+                f"{self.hub_api_url}/route/themis/api/settings/proposals",
+                json={"method": "POST", "headers": {}, "query": {}, "body": body, "timeout_seconds": 10},
+                timeout=12)
+            status = int((resp.json() or {}).get("status_code", 500)) if resp.ok else resp.status_code
+        except Exception as exc:
+            logger.warning("[🔄] event=athena_setting_proposal_failed key=%s error=%s", key, exc)
+        ok = 0 < status < 400
+        if not ok:
+            with self._lock:
+                self._setting_keys.discard(key)
+        logger.info("event=athena_setting_proposal key=%s status=%s trace_id=%s", key, status, trace_id)
         return ok
 
     # ── Embedding helper ────────────────────────────────────────────────────
@@ -898,6 +935,8 @@ class AthenaRuntime:
                     )
                     if candidate.kind == "improvement":
                         self._send_to_forge(candidate, run_trace_id)
+                    elif candidate.kind == "setting":
+                        self._propose_setting(candidate, run_trace_id)
                     emitted_count += 1
                     hint_published = True
                     thinking_record.emitted_count = emitted_count

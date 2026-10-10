@@ -25,7 +25,10 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
   (`personal_settings.py`). Presentation options stay in each client. No copy on new session: resolution is
   dynamic (see CHANGELOG v2.2). Regression test added in Oracle (pytest not run). ng build clean, quick menu
   checked with Playwright on a mocked API.
-- [ ] P5 Themis MCP tools (Hestia-MCP) + proposals confirmed via Hermes; Athena `setting` proposals
+- [x] P5 Themis MCP tools + proposals via Hermes (P1) — delivery works with the Hermes global notifications now on
+  main (event `service.action_required` with `kind: settings.proposal`, `closes` on decision); Athena candidate kind
+  `setting` (`CHIAVE`/`VALORE`, observer lists proposable settings) → Themis proposal, capped by the new setting
+  `athena.settings.proposals_per_day`. Parser regression test added (pytest not run).
 - [ ] P6 Migrate remaining modules' tunable env vars (one module per step); includes Forge fallback/max_turns/
   auto_rollback, `declare_log_level` in every module, Metis baseline label still reading env MODEL_USECASE_GENERIC_MODEL
 - [ ] Docs: hestia-<name>.md, swagger, .env.example notes, docs/ARCHITECTURE.md rule

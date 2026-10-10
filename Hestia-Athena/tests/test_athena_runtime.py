@@ -429,6 +429,17 @@ class TestDomainDiscovery:
 
 
 class TestStrategistParsing:
+    def test_parse_setting_candidate(self):
+        """kind=setting carries the Themis key and value (proposed to the user, never applied)."""
+        from core.strategist import _map_to_action_candidates, _parse_candidates
+
+        raw = ("AZIONE: Meno log\nTIPO: setting\nPRIORITA: normal\nDOMINIO: system\n"
+               "MOTIVO: troppi log\nRIASSUNTO: torna a INFO\nCHIAVE: oracle.log.level\nVALORE: INFO")
+        parsed = _parse_candidates(raw)
+        assert len(parsed) == 1
+        c = _map_to_action_candidates(parsed)[0]
+        assert (c.kind, c.setting_key, c.setting_value) == ("setting", "oracle.log.level", "INFO")
+
     def test_parse_empty_response(self):
         from core.strategist import _parse_candidates
 

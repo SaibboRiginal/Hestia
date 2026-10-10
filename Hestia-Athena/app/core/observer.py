@@ -383,6 +383,27 @@ class Observer:
             lines.append(f"dominio {weak.get('domain')}: {weak.get('bad')} negativi{hint}")
         return lines
 
+    def observe_settings(self, limit: int = 12) -> list[str]:
+        """Settings Athena may propose to change (Themis), compact: ``key=value [a|b]`` / ``(min-max)``."""
+        data = self._route_get(f"{self.hub_api_url}/route/themis", "api/settings", {"status": "false"})
+        items = (data or {}).get("items") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            return []
+        lines: list[str] = []
+        for it in items:
+            if not isinstance(it, dict) or it.get("oracle", "propose") != "propose" or it.get("scope") == "user" \
+                    or it.get("advanced"):
+                continue
+            line = f"{it.get('key')}={it.get('value')}"
+            if it.get("options"):
+                line += " [" + "|".join(str(o.get("value")) for o in it["options"][:6] if isinstance(o, dict)) + "]"
+            elif it.get("min") is not None or it.get("max") is not None:
+                line += f" ({it.get('min', '')}-{it.get('max', '')}{(' ' + it['unit']) if it.get('unit') else ''})"
+            lines.append(line[:120])
+            if len(lines) >= limit:
+                break
+        return lines
+
     # ── Full snapshot ──────────────────────────────────────────────────────────
 
     def snapshot(
@@ -424,5 +445,6 @@ class Observer:
             failure_streak=self_state["failure_streak"],
             recent_errors=self.observe_recent_errors(),
             quality_issues=self.observe_quality(),
+            settings=self.observe_settings(),
             raw_errors=errors,
         )

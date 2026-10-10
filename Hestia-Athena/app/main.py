@@ -8,6 +8,7 @@ from .core.runtime import AthenaRuntime
 from .core.schemas import CommitmentResolveRequest, TriggerRequest
 from .core.service_contract import HestiaServiceBase, ServiceDescriptor
 from .core.shared_imports import import_shared_symbol
+from .core.athena_settings import settings as athena_settings
 
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils", "setup_service_logging"
@@ -138,6 +139,7 @@ def startup() -> None:
     )
     _register_on_hub()
     _start_hub_keepalive()
+    athena_settings.start()
     runtime.start()
 
 
@@ -347,6 +349,7 @@ except ModuleNotFoundError:
     )
 
 app.include_router(create_log_control_router("hestia_athena"))
+app.include_router(athena_settings.router())
 
 
 # Serve declared REST paths of MCP-only tools (Hub/Telegram/MCP gateway call

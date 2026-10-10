@@ -66,6 +66,7 @@ class ObservationSnapshot(BaseModel):
     failure_streak: int = 0
     recent_errors: list[str] = Field(default_factory=list)   # Argus error summary
     quality_issues: list[str] = Field(default_factory=list)  # Metis feedback weak spots
+    settings: list[str] = Field(default_factory=list)        # proposable settings "key=value [options]" (Themis)
     raw_errors: list[str] = Field(default_factory=list)
 
 
@@ -78,8 +79,10 @@ class ActionCandidate(BaseModel):
     domain: str = "cognition"
     title: str = ""
     summary: str = ""
-    kind: str = "advisory"  # advisory | remediation | notification | maintenance | improvement
+    kind: str = "advisory"  # advisory | remediation | notification | maintenance | improvement | setting
     target_service: str | None = None
+    setting_key: str | None = None      # kind=setting: Themis key to change (always confirmed by the user)
+    setting_value: str | None = None
     target_path: str | None = None
     priority: str = "normal"  # low | normal | elevated | high
     reasoning: str = ""

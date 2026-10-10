@@ -59,6 +59,7 @@ Weighted score:
     (e.g. Scout with `domain:real_estate`) map to Archive domains
   - No hardcoded domain list — `ATHENA_OBSERVE_DOMAINS_FALLBACK` is used only when Hub is unreachable
 - **Self-state**: active commitments, unresolved commitments, failure streaks
+- **Settings (Themis)**: up to 12 proposable system settings as `key=value [scelte]` (not advanced, not personal)
 
 ### Strategist (LLM reasoning)
 - Single Oracle round-trip per cycle via Hub routing (`POST /route/oracle/api/llm/generate`)
@@ -85,6 +86,13 @@ Weighted score:
 - `notification` — user-facing alert
 - `maintenance` — routine housekeeping
 - `improvement` — change to Hestia code/prompts → Hephaestus Forge
+- `setting` — change one listed setting (`CHIAVE:` + `VALORE:` lines) → `POST /route/themis/api/settings/proposals`
+  with `proposer: athena`. Themis validates and dedupes, Hermes asks you on every client, nothing changes until you
+  approve. Max `athena.settings.proposals_per_day` (setting, default 2; 0 = off) per day, one per key.
+
+### Central settings
+`app/core/athena_settings.py` (`SettingsClient("athena")`): `athena.settings.proposals_per_day`, `athena.log.level`.
+The env tunables below move there in settings P6.
 
 ### Thinking archive
 - Every cycle is stored in-memory (ring buffer, configurable max) and pushed to Archive
