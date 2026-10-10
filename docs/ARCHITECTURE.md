@@ -151,6 +151,10 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   Planned there today: Scout email cycle and calendar sync (jobs), Athena consolidation / skill curation /
   thinking and Metis training (windows), Claude Pro nights (windows), every Forge task, Hephaestus repair retries
   and Argus rechecks of a service that stays down (tasks). Shared client: `hestia_common.agenda_client`.
+- **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
+  profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
+  `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
+  Night = agenda window `assistant.sleep`. Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -274,7 +278,10 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 8. **Settings are data (Themis):** a tunable knob is declared with `hestia_common.settings_client`, never a new
    env var. Env holds only secrets and infrastructure. The assistant never applies a setting: it proposes, the
    user confirms through Hermes.
-9. **Organ Model (No functional overlap):**
+9. **Presence is effects, not names:** modules report facts to Chronos (pings, activities, signals) and ask
+   effects through `hestia_common.presence_client`; they never test a state name, so new states are data only.
+   Chronos down → safe defaults, each module keeps following its own agenda windows.
+10. **Organ Model (No functional overlap):**
    - Argus = observe and decide incidents.
    - Hephaestus = execute remediation and controlled code changes.
    - Oracle = reason and orchestrate tool/command flow.

@@ -3838,10 +3838,145 @@ paths:
       responses:
         "200": {description: "{status, key, exists, active, until, skipped_now, next_open, params}"}
 
+  /api/presence:
+    get:
+      tags: [Chronos — Presence]
+      summary: Assistant state (base + overlays, label, effects, last interaction, activities)
+      description: "SPEC docs/work/2026-10-10-assistant-presence. Consumers read `effects` (work.light, work.heavy, llm.claude, notify.level, chat.style, chat.notice), never state names."
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{base, base_label, emoji, overlays[{key,label,emoji}], label, effects{}, decided_by{}, enabled, show_in_chat, since, changed_at, reason, last_interaction_at, last_interaction_client, last_interaction_kind, idle_minutes, dnd_until, activities[], evaluated_at}"}
+
+  /api/presence/ping:
+    post:
+      tags: [Chronos — Presence]
+      summary: The user interacted (chat | command | ui); clients debounce
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {client: {type: string}, kind: {type: string, enum: [chat, command, ui]}}}
+      responses:
+        "200": {description: current state}
+
+  /api/presence/activity:
+    post:
+      tags: [Chronos — Presence]
+      summary: A module starts an activity (busy/eating overlays); expires after ttl_seconds
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key: {type: string}
+                label: {type: string}
+                load: {type: string, enum: [light, heavy]}
+                resource: {type: string, description: "gpu | claude_quota | cpu"}
+                kind: {type: string, enum: [work, maintenance]}
+                module: {type: string}
+                ttl_seconds: {type: number, default: 3600}
+      responses:
+        "200": {description: current state}
+
+  /api/presence/activity/{key}:
+    delete:
+      tags: [Chronos — Presence]
+      summary: The activity ended
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: current state}
+
+  /api/presence/signals/{key}:
+    put:
+      tags: [Chronos — Presence]
+      summary: Report a fact (e.g. resource.claude_quota_left, health.degraded_services); derived signals are refused
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {value: {}, meta: {type: object}, ttl_seconds: {type: number}}}
+      responses:
+        "200": {description: current state}
+        "400": {description: derived or invalid signal}
+    delete:
+      tags: [Chronos — Presence]
+      summary: Remove a fact
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: current state}
+
+  /api/presence/dnd:
+    post:
+      tags: [Chronos — Presence]
+      summary: Non disturbare on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `nondisturbare`
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {minutes: {type: number}, until: {type: string, format: date-time}}}
+      responses:
+        "200": {description: current state}
+    delete:
+      tags: [Chronos — Presence]
+      summary: Non disturbare off. MCP tool `disturbami`
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: current state}
+
+  /api/presence/states:
+    get:
+      tags: [Chronos — Presence]
+      summary: Effective state definitions (built-in + module-declared + setting chronos.presence.states), core keys and effect orders
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{setting, core[], effects{}, states{key: {kind, priority, label, emoji, when, effects, notice?, core?}}}"}
+
+  /api/presence/states/register:
+    post:
+      tags: [Chronos — Presence]
+      summary: A module declares its own states (in memory, re-asserted by the module)
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [owner], properties: {owner: {type: string}, states: {type: object}}}
+      responses:
+        "200": {description: "{status, owner, count}"}
+
+  /api/presence/history:
+    get:
+      tags: [Chronos — Presence]
+      summary: Last state changes
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 50}}
+      responses:
+        "200": {description: "{count, items[{base, overlays, label, reason, from, from_label, at}]}"}
+
   /api/activity:
     get:
       tags: [Oracle]
-      summary: Last real user chat activity (idle signal for Athena)
+      summary: Last real user chat activity in this Oracle process (legacy alias; the shared state is Chronos /api/presence, Athena falls back here only when Chronos is down)
       servers:
         - url: http://localhost:19004
       responses:
@@ -4076,6 +4211,20 @@ paths:
       responses:
         "200":
           description: "{status, changed}"
+
+  /api/notifications/release-held:
+    post:
+      tags: [Hermes]
+      summary: Presence opened the notification level again — publish one digest of the held (inbox-only) notifications
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {level: {type: string, enum: [all, important, urgent]}}}
+      responses:
+        "200":
+          description: "{released, digest}"
 
   /api/notifications/retract-stale:
     post:
@@ -5407,6 +5556,63 @@ paths:
         "200": {description: updated proposal}
         "409": {description: already decided}
 
+  /api/presence-store:
+    get:
+      tags: [Archive — Presence store]
+      summary: Unexpired presence signals + last snapshot (Chronos at startup; expired rows are purged)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{signals[{key, value, meta, expires_at, updated_at}], snapshot}"}
+
+  /api/presence-store/signals/{key}:
+    put:
+      tags: [Archive — Presence store]
+      summary: Upsert one signal
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {value: {}, meta: {type: object}, expires_at: {type: string, format: date-time}}}
+      responses:
+        "200": {description: stored row}
+    delete:
+      tags: [Archive — Presence store]
+      summary: Delete one signal
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: deleted|absent, key}"}
+
+  /api/presence-store/snapshot:
+    put:
+      tags: [Archive — Presence store]
+      summary: Store the current state; `change` (when given) is appended to the history (trimmed to history_keep)
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [data], properties: {data: {type: object}, change: {type: object}, history_keep: {type: integer, default: 100}}}
+      responses:
+        "200": {description: "{status: ok}"}
+
+  /api/presence-store/history:
+    get:
+      tags: [Archive — Presence store]
+      summary: Last state changes, newest first
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 50}}
+      responses:
+        "200": {description: "[{base, overlays, label, reason, from, from_label, at}]"}
+
   /api/hephaestus/tasks/{task_id}:
     get:
       tags: [Hephaestus]
@@ -5866,6 +6072,32 @@ paths:
                     $ref: "#/components/schemas/ObservationSnapshot"
 
   # ── WebUI ───────────────────────────────────────────────────────────────
+  /api/webui/presence:
+    get:
+      tags: [WebUI]
+      summary: Assistant state for the sidebar badge (→ Chronos /api/presence)
+      responses:
+        "200": {description: presence state}
+
+  /api/webui/presence/history:
+    get:
+      tags: [WebUI]
+      summary: Last state changes (→ Chronos /api/presence/history)
+      responses:
+        "200": {description: "{count, items[]}"}
+
+  /api/webui/presence/dnd:
+    post:
+      tags: [WebUI]
+      summary: Non disturbare on (body {minutes?, until?}; → Chronos)
+      responses:
+        "200": {description: presence state}
+    delete:
+      tags: [WebUI]
+      summary: Non disturbare off (→ Chronos)
+      responses:
+        "200": {description: presence state}
+
   /api/webui/notifications:
     get:
       tags: [WebUI]

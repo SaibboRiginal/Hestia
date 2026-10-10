@@ -257,4 +257,45 @@ nothing stops; a rule the user **paused/cancelled** is a decision and is respect
 | `forge.claude_nights` / `forge.claude_final` | window | hephaestus | nights before the Claude Pro reset / final hours | autonomous Claude Code tasks |
 | `forge.task.<id>` | event | hephaestus | live | Forge task mirror: ⏳ da approvare, 🌙 programmato, 🔨 in lavorazione, 👀 da rivedere; completed when the task ends. Cancel a scheduled one → task rejected; move it later → Forge waits |
 | `hephaestus.repair.<id>` | event/task | hephaestus | now / +15 min × attempt | repair awaiting approval, or retry of a failed repair (`POST /api/hephaestus/remediate/{id}/retry`); last failure → Forge code-fix task |
+| `assistant.sleep` | window | chronos | daily 01–07 | the night: presence goes to «Sonno profondo» (if `chronos.presence.use_sleep_window`) |
 | `argus.repair.<service>` | task | argus | +10 min, doubling (max 6 h) | `POST argus /api/argus/recheck/{service}`: still down → new repair request + next recheck; recovery closes it |
+
+## Assistant presence (activity state)
+
+SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's general state, like a person:
+**facts (signals) → states (data) → effects**. Consumers never test a state name, they ask an *effect*
+(`hestia_common.presence_client`), so a new state needs no code change anywhere.
+
+- **Signals**: `user.last_interaction` (pings from Oracle chat, Telegram, WebUI actions), activities
+  (`activity.<key>`: label, load light/heavy/maintenance, resource, ttl), `manual.dnd`, facts such as
+  `resource.claude_quota_left` (Forge) and `health.degraded_services` (Argus). Derived: `user.idle_minutes`,
+  `activity.heavy_count`, `activity.maintenance_count`, `agenda.window.<key>`, `setting.<name>`, `clock.*`.
+- **States** = Themis setting `chronos.presence.states` (object keyed by state): `kind` base/overlay, `priority`,
+  `label`, `emoji`, `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
+  `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
+  Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
+  `eating`, `tired`. Modules may add their own with `POST /api/presence/states/register`.
+- **Effects**: `work.light`/`work.heavy` (allow < local < defer), `llm.claude` (allow < save < deny),
+  `notify.level` (all < important < urgent), `chat.style` (normal < brief), `chat.notice` (text). Overlays combine
+  "most restrictive wins".
+- **Night** = agenda window `assistant.sleep` (owner chronos, daily 01–07): move/skip it from the calendar.
+- **Evaluation** on every signal change, setting change and agenda tick. A change stores snapshot + history in
+  Archive (`/api/presence-store`), emits Hermes event `assistant.state_changed` (only to subscribers) and, when
+  `notify.level` relaxes, asks Hermes to release held notifications as one digest.
+- **Settings** (group Presenza): `enabled`, `idle_after` 5, `nap_after` 45, `sleep_after` 180 (0 = night only),
+  `use_sleep_window`, `dnd_default_duration` 120, `tired_quota` 25 %, `tired_degraded` 2, `count_ui_actions`,
+  `oracle_context_line`, `states` (advanced).
+- **MCP**: `stato`, `nondisturbare`, `disturbami` (Telegram group sistema).
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/presence` | Current state: base, overlays, label, effects, last interaction, activities |
+| `POST` | `/api/presence/ping` | User interaction `{client, kind}` |
+| `POST` | `/api/presence/activity` | Start an activity `{key, label, load, resource, kind, module, ttl_seconds}` |
+| `DELETE` | `/api/presence/activity/{key}` | Stop an activity |
+| `PUT`/`DELETE` | `/api/presence/signals/{key}` | Set/clear a fact `{value, meta, ttl_seconds}` |
+| `POST`/`DELETE` | `/api/presence/dnd` | Do not disturb on (`minutes`, default setting) / off |
+| `GET` | `/api/presence/states` | Effective state definitions (settings + module-declared) |
+| `POST` | `/api/presence/states/register` | Module-declared states `{owner, states}` |
+| `GET` | `/api/presence/history` | Last state changes |
+

@@ -107,3 +107,7 @@ Endpoints `GET /api/settings/effective`, `POST /api/settings/reload` (used by Th
 Part of the global stack (`docker-compose.global.yml`, service `metis`, port 19014). Built from the repo root
 (like every service) so the shared `hestia_common` package is copied in — the old per-folder build crashed at
 import. Volume `./Hestia-Metis/data:/code/data`.
+
+## Assistant presence
+
+Window-mode trainings also wait for presence `work.heavy` allow/local: held → re-planned +30 min (agenda key `metis.train.<job>.<ts>`). A running training is activity `metis.training.<job>` (heavy, gpu).

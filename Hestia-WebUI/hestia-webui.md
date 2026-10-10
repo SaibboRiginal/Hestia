@@ -262,3 +262,7 @@ Built Angular app served as static files from `wwwroot/`.
   memory any more (the clear token was readable by Oracle's memory tools).
 - `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`); exempt: login,
   command list, `/api/webui/admin/*` (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).
+
+## Assistant presence
+
+Backend: `PresencePinger` (60 s debounce) pings Chronos on authenticated non-GET `/api/webui/*` actions (setting `chronos.presence.count_ui_actions`); `PresenceController` exposes `GET /api/webui/presence`, `GET /api/webui/presence/history`, `POST`/`DELETE /api/webui/presence/dnd`. Frontend: presence badge in the shell sidebar (polled every 60 s and on tab focus) with a popover: state, last interaction, activities, effects, Non disturbare on/off, link to Impostazioni.

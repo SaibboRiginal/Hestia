@@ -12,10 +12,11 @@ Spec: `SPEC.md` v2.2 · resume from the first unchecked box.
 - [x] Wait for central settings foundation (P1–P5 on main, 2026-10-10)
 - [x] Archive `presence_signals` / `presence_snapshot` / `presence_changes` tables and `/api/presence-store` API
 - [x] Chronos presence engine (`services/presence.py`, settings `core/presence_settings.py`), `assistant.sleep` window, agenda tick hook, Hermes event, MCP tools `stato`/`nondisturbare`/`disturbami`, tests `tests/test_presence.py` (smoke-checked, pytest not run)
-- [ ] Swagger for Chronos `/api/presence*` + Archive `/api/presence-store*`
+- [x] Swagger for Chronos `/api/presence*`, Archive `/api/presence-store*`, Hermes `release-held`, WebUI `/api/webui/presence*`
 - [x] `hestia_common.presence_client` with fallback
-- [ ] Pings: Oracle chat, Telegram, WebUI (debounced)
-- [ ] Activity reporting + consumers via effects: Athena, Oracle (context line, style, notice, tool), Forge, Metis, Hermes
-- [ ] Clients: Telegram `/stato` `/nondisturbare`, WebUI badge + state editor
+- [x] Pings: Oracle chat, Telegram, WebUI (debounced)
+- [x] Activity reporting + consumers via effects: Athena, Oracle (context line, style, notice), Forge, Metis, Argus (degraded count), Hermes (hold + digest)
+- [x] Clients: Telegram `/stato` `/nondisturbare` `/disturbami` (MCP), WebUI badge + popover. State editor = advanced JSON object setting in Impostazioni (a friendlier editor is a possible follow-up)
 - [x] Settings registration (§4.7) — `SettingsClient("chronos")`
-- [ ] Docs: hestia-chronos.md ("Who plans what"), hestia-oracle/athena/hephaestus/metis.md, swagger, .env.example
+- [x] Docs: hestia-chronos/archive/shared/oracle/telegram/webui/athena/hephaestus/metis/argus/hermes.md, docs/ARCHITECTURE.md, swagger (no env change: everything is a Themis setting)
+- [ ] User test: .NET WebUI build + real run (`up-all.bat --build`); pytest suites not run here (smoke-checked only)

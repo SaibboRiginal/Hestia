@@ -133,3 +133,7 @@ Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router
 Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,
 `HERMES_SERVICE_VERSION`, `HERMES_HUB_REGISTER_RETRIES`, `HERMES_HUB_REGISTER_RETRY_DELAY`,
 `STARTUP_WAIT_TIMEOUT_SECONDS`, `LOG_LEVEL` (boot default only).
+
+## Assistant presence
+
+Notifications below the presence `notify.level` (all/important/urgent) are **held**: stored, delivered silently, marked `held`. When the level relaxes Chronos calls `POST /api/notifications/release-held` and Hermes sends one digest «Mentre riposavo». `important` holds info/success without actions; `urgent` lets through only errors and events flagged `_urgent`.

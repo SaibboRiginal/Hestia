@@ -117,6 +117,24 @@ Themis (`/api/settings/key/{key}/options`) so every client gets the same list. `
 clients show the settings of a group as a grid (Oracle: use case × fornitore / modello).
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
+## Presence client (`hestia_common.presence_client`)
+
+Assistant activity state kept by Chronos (see `Hestia-Chronos/hestia-chronos.md`). Report facts, ask effects —
+never test a state name.
+
+```python
+presence = PresenceClient("hephaestus")
+presence.ping("telegram", "command")                 # user interaction (debounced 60 s, background)
+presence.effect("work.heavy")                         # allow | local | defer
+presence.allows("work.heavy", "allow", "local")
+with presence.activity("forge.task", label="Forge", load="heavy", resource="claude_quota"): ...
+presence.signal("resource.claude_quota_left", 12, ttl_seconds=3600)
+presence.context_line()                               # one line for a model's context
+```
+
+State cached 15 s; Chronos down → `[🔄]` log and `FALLBACK_EFFECTS` (everything allowed, every notification
+delivered), so each module still follows only its own agenda windows.
+
 ## Constraints
 
 - No domain logic — pure library code.

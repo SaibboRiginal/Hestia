@@ -267,3 +267,7 @@ worktrees and Docker socket), `HEPHAESTUS_FORGE_BASE_BRANCH` and `_GIT_NAME/_GIT
 `HEPHAESTUS_FORGE_TEST_CMD`/`_DEPLOY_CMD` (shell commands run verbatim in the container: image-dependent and a
 code-execution surface, so not editable from clients), `HEPHAESTUS_NOTIFY_TARGET` (owner chat address),
 `HEPHAESTUS_BASELINE_REF`, `HEPHAESTUS_MAINTENANCE_PATHS` (endpoint templates).
+
+## Assistant presence
+
+Forge reports its work to Chronos presence: each task runs as activity `forge.task` (heavy, claude_quota/gpu), each deploy as `hephaestus.deploy` (maintenance → «Sto mangiando»). Autonomous scheduled tasks start only when presence allows `work.heavy` and `llm.claude` (unknown → allowed). Claude limit exhausted → signal `resource.claude_quota_left=0` until the reset.

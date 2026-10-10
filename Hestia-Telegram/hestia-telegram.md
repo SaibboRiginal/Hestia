@@ -165,3 +165,7 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 exception: not via Hub). When `WEBUI_ADMIN_SECRET` is set (same value as the webui container) it is sent as
 `X-WebUI-Admin-Secret`. No local fallback: if the WebUI is down the user gets an error (a locally minted token was
 never accepted and was stored in clear text in Archive memory). The message is HTML with the real lifetime.
+
+## Assistant presence
+
+Every allowed command, file and chat message pings Chronos presence (`telegram`, debounced 60 s) through `telegram_bot/services/presence.py`. `/stato`, `/nondisturbare`, `/disturbami` come from Chronos MCP tools (group sistema).

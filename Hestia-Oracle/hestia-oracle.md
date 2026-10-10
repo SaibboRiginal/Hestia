@@ -282,3 +282,7 @@ Built-in profiles, no extra env: `local` = Ollama + setting `oracle.models.code.
 endpoint) + the first Gemini model among the code/reasoning/generic settings (primary, then fallback) + `GEMINI_API_KEY`. `ORACLE_LLM_PROFILE_<NAME>_BASE_URL/_MODEL/_API_KEY`
 only override them or add another provider. Claude Code CLI is installed by default
 (`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when `CLAUDE_CODE_OAUTH_TOKEN` is set.
+
+## Assistant presence
+
+Every chat (text and document) pings Chronos presence (`oracle`, forced) and reads the state from before the ping: if `chronos.presence.oracle_context_line` is on, the system prompt gets one line (state, last interaction, notice) and «Rispondi breve.» when `chat.style=brief`. Code: `app/core/services/oracle_presence.py`.

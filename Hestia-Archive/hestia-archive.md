@@ -24,6 +24,8 @@ It stores and serves all persistent state through generic APIs.
 - **Settings store** (`/api/settings-store/*`): tables `setting_values`, `setting_history` (last 10 per key,
   trimmed on write), `setting_proposals`. Pure storage: meaning, validation and permissions live in Themis,
   its only caller.
+- **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
+  `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
 ---
 
@@ -42,6 +44,10 @@ It stores and serves all persistent state through generic APIs.
 | `GET`/`PUT`/`DELETE` | `/api/settings-store/values` | Setting values (Themis only) |
 | `GET` | `/api/settings-store/history` | Setting change log |
 | `GET`/`POST`/`PATCH` | `/api/settings-store/proposals[/{id}]` | Assistant proposals (first answer wins) |
+| `GET` | `/api/presence-store` | Presence signals (expired purged) + snapshot (Chronos only) |
+| `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
+| `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |
+| `GET` | `/api/presence-store/history` | Presence state changes |
 | `GET` | `/health` | Archive health |
 
 ---
