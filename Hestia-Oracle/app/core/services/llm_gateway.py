@@ -95,6 +95,9 @@ def list_models(provider: str) -> list[dict[str, str]]:
             return []
     if provider == "gemini":
         return [{"value": m, "label": m} for m in _GEMINI_MODELS]
+    from agents.providers import get_provider, is_provider_type
+    if is_provider_type(provider):
+        return [{"value": m, "label": m} for m in get_provider(provider).list_models()]
     return []
 
 

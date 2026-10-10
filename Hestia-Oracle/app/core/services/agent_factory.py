@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 import requests
 
+from agents.providers import is_provider_type
 from agents.universal_agent import UniversalAgent
 from core.services import oracle_settings, prompt_config
 
@@ -207,6 +208,9 @@ class AgentFactory:
         for key, entry in cfg.items():
             if key.endswith("_fallback"):
                 entry["thinking"] = False  # fallbacks never think
+            elif is_provider_type(entry.get("prov", "")):
+                # Claude providers always support thinking: only "false" (Mai) turns it off.
+                entry["thinking"] = entry.pop("thinking_raw", "auto") != "false"
             else:
                 entry["thinking"] = AgentFactory._resolve_thinking_flag(
                     key, entry["mod"], entry.pop("thinking_raw", "auto"),

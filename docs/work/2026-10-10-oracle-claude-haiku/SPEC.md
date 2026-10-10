@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.3 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user confirms plan |
+| 1.4 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | done (user test pending) |
 
 ## 1. Goal
 Let Oracle's normal chat run on Claude Haiku, alongside Gemini and Ollama (not replacing them), in two ways:
@@ -70,3 +70,11 @@ specifics (local-context thread), assistant presence (own thread), embeddings on
   domain tool filtering identical for every provider and needs no new server. (Thread reply mentioned MCP;
   changed because the loop already parses text tool calls.)
 - Tests: not run by Claude (user rule); syntax/import checks only.
+
+## 6. Implementation notes (v1.4)
+- `ollama`/`gemini` stay inline in `UniversalAgent` for now and the basic `openai` type is not built here: the
+  local-context thread is rewriting the Ollama calls and adds `openai`; both plug into `agents/providers`
+  (`PROVIDER_TYPES` registry, `LLMProvider` base) the same way `anthropic`/`claude_cli` do.
+- Forge's runner strips only `ORACLE_ANTHROPIC_API_KEY` (an explicit `ANTHROPIC_API_KEY` stays a valid Forge
+  auth choice); the chat `claude_cli` provider strips both.
+- No preset added (user choice). Claude types are offered in the provider enum only when configured (at startup).

@@ -7,6 +7,8 @@ import json
 from google import genai
 from google.genai import types
 
+from agents.providers import get_provider, is_provider_type
+
 # Retry configuration — overridable via env
 _MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
 _RETRY_BASE_DELAY = float(os.getenv("LLM_RETRY_BASE_DELAY_SEC", "1.0"))
@@ -25,8 +27,17 @@ class UniversalAgent:
             os.getenv("OLLAMA_EMBED_TIMEOUT_SEC", "60"))
         self.ollama_tool_call_mode = os.getenv(
             "OLLAMA_TOOL_CALL_MODE", "auto").strip().lower()
+        # Provider types in agents/providers (anthropic, claude_cli): every call is delegated.
+        self._impl = None
 
-        if self.provider == "gemini":
+        if is_provider_type(self.provider):
+            self._impl = get_provider(self.provider)
+            ok, detail = self._impl.available()
+            if not ok:
+                logger.warning("[🔄] event=llm_provider_unavailable provider=%s model=%s detail=%s "
+                               "— calls will fail until it is configured", self.provider, self.model_name, detail)
+
+        elif self.provider == "gemini":
             api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
             if not api_key:
                 logger.warning(
@@ -73,7 +84,15 @@ class UniversalAgent:
     #  Core ask
     # ─────────────────────────────────────────────────────────────────
 
-    def ask(self, user_message: str, thinking: bool | None = None) -> str:
+    def _level(self, thinking=None):
+        """Thinking level for a provider type: the use-case setting can switch it off."""
+        if not self.thinking:
+            return False
+        return True if thinking is None else thinking
+
+    def ask(self, user_message: str, thinking: bool | str | None = None) -> str:
+        if self._impl is not None:  # provider SDK/CLI handles its own retries
+            return self._impl.ask(self.model_name, self.role_prompt, user_message, self._level(thinking))
         return self._with_retry(self._ask_once, user_message, thinking=thinking)
 
     def ask_with_tools(self, user_message: str, tools: list[dict], thinking: bool | None = None) -> dict:
@@ -87,6 +106,9 @@ class UniversalAgent:
           or
           {"tool_call": None, "text": str}
         """
+        if self._impl is not None:
+            return self._impl.ask_with_tools(self.model_name, self.role_prompt, user_message, tools,
+                                             self._level(thinking))
         return self._with_retry(self._ask_with_tools_once, user_message, tools, thinking=thinking)
 
     def _ask_with_tools_once(self, user_message: str, tools: list[dict], thinking: bool | None = None) -> dict:
@@ -346,7 +368,9 @@ class UniversalAgent:
 
         Falls back to a single chunk if the provider does not support streaming.
         """
-        if self.provider == "gemini":
+        if self._impl is not None:
+            yield from self._impl.ask_stream(self.model_name, self.role_prompt, user_message, self._level())
+        elif self.provider == "gemini":
             yield from self._ask_stream_gemini(user_message)
         elif self.provider == "ollama":
             yield from self._ask_stream_ollama(user_message)
@@ -425,6 +449,9 @@ class UniversalAgent:
 
         Raises ``RuntimeError`` on provider error.
         """
+        if self._impl is not None:
+            return self._impl.ask_with_attachment(self.model_name, self.role_prompt, file_bytes, mime_type,
+                                                  user_message, self._level())
         if self.provider == "gemini":
             return self._ask_with_attachment_gemini(file_bytes, mime_type, user_message)
         elif self.provider == "ollama":
@@ -496,6 +523,8 @@ class UniversalAgent:
         return _fit_embedding(self._embed_raw(text))
 
     def _embed_raw(self, text: str) -> list[float]:
+        if self._impl is not None:
+            return self._impl.embed(self.model_name, text)
         if self.provider == "gemini":
             try:
                 response = self.client.models.embed_content(

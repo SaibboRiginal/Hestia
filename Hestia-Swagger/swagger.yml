@@ -3408,7 +3408,7 @@ paths:
         - in: query
           name: provider
           required: true
-          schema: { type: string, enum: [ollama, gemini] }
+          schema: { type: string, enum: [ollama, gemini, anthropic, claude_cli] }
       responses:
         "200":
           description: "{options: [{value, label}]} — ollama = installed models, gemini = curated list"

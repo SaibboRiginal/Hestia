@@ -3,6 +3,7 @@ uvicorn
 pydantic
 requests
 google-genai
+anthropic>=1.13,<2  # provider "anthropic" (Claude API, key ORACLE_ANTHROPIC_API_KEY)
 pypdf
 python-multipart
 

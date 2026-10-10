@@ -101,7 +101,9 @@ def run(workdir: str, prompt: str, append_system_prompt: str = "",
     killed = threading.Event()
     with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as err, \
             tpath.open("w", encoding="utf-8") as out:
-        proc = subprocess.Popen(cmd, cwd=str(target), stdout=subprocess.PIPE, stderr=err,
+        # Oracle's own Anthropic API key (chat provider) is never visible to the coding agent.
+        env = {k: v for k, v in os.environ.items() if k != "ORACLE_ANTHROPIC_API_KEY"}
+        proc = subprocess.Popen(cmd, cwd=str(target), stdout=subprocess.PIPE, stderr=err, env=env,
                                 text=True, encoding="utf-8", errors="replace", bufsize=1)
         def _kill() -> None:
             killed.set()

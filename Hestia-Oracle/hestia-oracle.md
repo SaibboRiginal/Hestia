@@ -15,7 +15,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
 ## Core Features
 
 ### Universal LLM Connector
-- Abstracts cloud LLM providers (Gemini) and local Ollama behind a single `UniversalAgent` interface.
+- Abstracts cloud LLM providers (Gemini, Claude) and local Ollama behind a single `UniversalAgent` interface. Provider types `anthropic` and `claude_cli` live in `app/agents/providers/` (one class per type, config dict in, no env reads); `app/agents/llm_config.py` `load_llm_config()` is the only place reading their infrastructure env.
 - **Use-case model config** via central settings `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model,thinking}` (Themis; WebUI → Impostazioni → Oracle, presets Economico/Bilanciato/Qualità; declared in `app/core/services/oracle_settings.py`; live: `AgentFactory.reconfigure` updates the agents in place): `generic` (chat, classify, tools, memory, format), `reasoning` (deep thinking, loaded on demand), `code` (code generation), `embedding` (vectors). Each use case has primary + fallback provider/model pair. Mode (quick/auto/thinking) controls orchestration process; use case controls which brain.
 - If primary (Ollama) is unavailable, falls back to the assigned Gemini model automatically at runtime.
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
@@ -132,7 +132,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
 | `POST` | `/api/llm/generate` | Raw LLM call for internal service use — primary/fallback chain follows the settings `oracle.models.generic.*` (same source of truth as AgentFactory) |
-| `GET` | `/api/llm/models?provider=` | Model choices for a provider (`ollama` = installed models from `/api/tags`, `gemini` = curated list) → `{options:[{value,label}]}`; used by the settings panel |
+| `GET` | `/api/llm/models?provider=` | Model choices for a provider (`ollama` = installed models from `/api/tags`, `gemini` = curated list, `anthropic` = Models API or built-in list, `claude_cli` = haiku/sonnet/opus) → `{options:[{value,label}]}`; used by the settings panel |
 | `GET` | `/api/settings/effective` · `POST /api/settings/reload` | Central settings: effective values / reload (called by Themis) |
 | `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
 | `GET` | `/api/athena/hints` | List non-expired Athena hints (optional `session_id`) |
@@ -255,8 +255,26 @@ agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps paralle
 
 - Build Oracle with `--build-arg INSTALL_CLAUDE_CODE=1`; put `CLAUDE_CODE_OAUTH_TOKEN` (run `claude setup-token` on
   your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Optional `ORACLE_CLAUDE_MODEL`.
-- Only for code tasks inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus); never for
-  general chat (the subscription covers Claude Code for development, not an API backend).
+- Code tasks run inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus). The CLI never sees
+  `ORACLE_ANTHROPIC_API_KEY`.
+
+### Claude for chat (provider types `anthropic` and `claude_cli`)
+
+Pick them per use case in Impostazioni → Modelli (`oracle.models.<uc>.provider`); offered only when configured.
+- **`anthropic` — "Claude (chiave API)"**: official `anthropic` SDK, key `ORACLE_ANTHROPIC_API_KEY` (never
+  `ANTHROPIC_API_KEY`, which would switch Forge's Claude Code to paid API billing). Default model `claude-haiku-5-5`.
+  Native tools (the domain-filtered list built by Oracle), prompt caching on system prompt, tool list and the static
+  part of the agent-loop prompt (`SYSTEM_PROMPT_DYNAMIC_BOUNDARY`), images/PDF natively. Log `event=anthropic_usage`
+  (input/output/cache_read/cache_write tokens).
+- **`claude_cli` — "Claude (abbonamento)"**: the subscription through `claude -p --output-format json` (same
+  `CLAUDE_CODE_OAUTH_TOKEN` as Forge; models `haiku`/`sonnet`/`opus`). One CLI start per call (slower), usage
+  limits shared with Forge; Anthropic's terms meant subscription login for ordinary Claude Code use, so this is a
+  personal-use grey area chosen knowingly. Claude Code's tools are off (`--tools ""`, `--strict-mcp-config`, empty
+  cwd); Oracle's loop stays in charge: the filtered tools are written in the prompt and Claude answers
+  `<tool_call>{"name","params"}</tool_call>` blocks, parsed into tool calls. API keys are stripped from its env.
+- **Thinking**: chat mode quick → off, auto → low (CLI: medium), thinking → high effort; the use-case setting
+  `thinking = Mai` keeps it off. No CoT prompt of our own: Claude's summarized reasoning is shown as
+  `reasoning_content`. No embeddings on these providers.
 
 ## LLM gateway profiles (Forge engines)
 

@@ -17,8 +17,11 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
         sys.path.insert(0, str(_shared))
     from hestia_common.settings_client import SettingsClient, preset, setting
 
-# Provider types implemented in UniversalAgent (new types add a value here).
-PROVIDERS = [("ollama", "Ollama (locale)"), ("gemini", "Gemini (cloud)")]
+# Provider types implemented in UniversalAgent (new types add a value here). Claude types
+# (agents/providers) are offered only when their key / login is configured.
+from agents.providers import available_types
+
+PROVIDERS = [("ollama", "Ollama (locale)"), ("gemini", "Gemini (cloud)")] + available_types()
 THINKING = [("auto", "Automatico"), ("true", "Sempre"), ("false", "Mai")]
 
 USECASES = {

@@ -1165,10 +1165,12 @@ class OracleEngine:
             resolved_max_turns = max(resolved_max_turns, 50) if mode == "thinking" else resolved_max_turns
             yield stream_emitter.emit_status("🧠 Modalità thinking attivata — ragionamento approfondito...")
 
-        # Mode controls the think flag; model (resolved above) controls the brain.
+        # Mode controls the think level; model (resolved above) controls the brain.
         # Any mode × any model combination works — mode and model are independent.
+        # Level: auto → True, thinking → "deep" (Ollama: both = think on; Claude: low/high effort).
+        _think_level = "deep" if mode == "thinking" else _is_thinking_mode
         _ask_tools_bound = lambda p, tm: self._ask_analyst_with_tools(
-            p, tm, agent_override=agent, thinking=_is_thinking_mode)
+            p, tm, agent_override=agent, thinking=_think_level)
 
         # ── OpenClaw pattern: auto-compaction callback ─────────────────────
         # Called by agent_loop when token threshold exceeded.  Returns
@@ -1194,7 +1196,7 @@ class OracleEngine:
             history_text=history_text,
             preference_facts=preference_facts,
             tools=domain_tools,
-            ask_fn=lambda p: self._ask_analyst(p, thinking=_is_thinking_mode),
+            ask_fn=lambda p: self._ask_analyst(p, thinking=_think_level),
             ask_tools_fn=_ask_tools_bound,
             stream_fn=_stream_final,
             client_instructions=agent_loop_client_instructions,
