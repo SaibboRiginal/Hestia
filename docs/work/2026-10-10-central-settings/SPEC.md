@@ -125,9 +125,13 @@ Oracle. Responsibilities:
   notifications, anything going *out* to the user, above all in autonomy. Checked 2026-10-10: Argus,
   Athena, Chronos, Hecate, Hephaestus (Forge + remediation), Scout already send through Hermes via Hub;
   Oracle sends nothing proactively (its `notice` packets are part of the answer to a request).
-- **Dependency (outside this spec):** Hermes' `DispatchService` has only the `telegram` channel, so the WebUI
-  never receives Hermes messages. A Hermes WebUI channel (client-agnostic delivery + action buttons) is
-  separate work for Hermes/WebUI; until then Themis proposals reach the WebUI through the panel banner.
+- **Dependency (outside this spec):** Hermes' `DispatchService` has only a hardcoded `telegram` channel, so
+  the WebUI never receives Hermes messages. Target design (user, v2.1): notifications are **global** — Hermes
+  delivers to every client registered in Hub (`layer:client` topology tag, a declared delivery endpoint);
+  each client renders it its own way (Telegram message + buttons, WebUI toast/inbox); only a message aimed at a
+  specific client goes to that one. Answers (e.g. Approva) go to the owning module (Themis), first answer wins,
+  the others show it as already handled. Separate work for Hermes + clients; until then Themis proposals
+  reach the WebUI through the panel banner.
 
 ### 3.7 WebUI (same style, reuse `hx-page-header`, `hx-field`, `hx-segmented`, `hx-toggle`, `hx-textarea`)
 - **Impostazioni** = two areas: *Personali* (aspect, assistant/chat defaults, notices, session) and
