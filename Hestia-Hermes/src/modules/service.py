@@ -1,18 +1,19 @@
-from datetime import datetime, timezone
-import json
 import logging
 import os
 import time
+from typing import Any
 from uuid import uuid4
 
 from .archive_client import ArchiveClient
-from .dispatch import DispatchService
 from .entity_batch_dispatcher import (
     BATCHED_DOMAINS,
     BATCHED_EVENT_TYPES,
     enqueue_entity,
+    set_publisher as set_batch_publisher,
 )
 from .matcher import subscription_matches
+from .notifications import NotificationCenter
+from .oracle_client import narrate
 
 logger = logging.getLogger("hestia_hermes.service")
 
@@ -54,290 +55,177 @@ def _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id
     return base
 
 
-MAX_DELIVERY_ATTEMPTS = int(__import__("os").getenv("HERMES_MAX_DELIVERY_ATTEMPTS", "6"))
+def subscription_audience(channels: list[dict[str, Any]]) -> tuple[str, dict | None]:
+    """Subscription channels → audience (SPEC §5.2/§5.6).
+
+    ``{"type": "all"}`` (and legacy ``{"type": "telegram"}``, which only meant
+    "the one channel that existed") → global. ``{"type": "client", "client": X,
+    "target": session}`` → only that client (the others keep it in the inbox).
+    """
+    origin = None
+    for ch in channels or [{"type": "all"}]:
+        if not isinstance(ch, dict):
+            continue
+        if str(ch.get("type") or "all").lower() == "client" and ch.get("client"):
+            origin = origin or {"client": str(ch["client"]), "session_id": str(ch.get("target") or "owner")}
+        else:
+            return "global", None
+    return ("origin", origin) if origin else ("global", None)
+
+
+def payload_origin(payload: dict[str, Any]) -> dict | None:
+    """``_origin: {client, session_id}`` set by a module answering a session request."""
+    raw = payload.get("_origin") if isinstance(payload, dict) else None
+    if isinstance(raw, dict) and raw.get("client"):
+        return {"client": str(raw["client"]), "session_id": str(raw.get("session_id") or "owner")}
+    return None
+
+
+def _entity_message(payload: dict[str, Any], domain: str) -> str:
+    """One narration for every client (SPEC §5.5): Oracle, else a plain fallback."""
+    from html import escape
+
+    title = str(payload.get("title") or payload.get("summary") or "").strip()
+    facts = "\n".join(f"{k}: {v}" for k, v in payload.items()
+                      if not str(k).startswith("_") and isinstance(v, (str, int, float)) and str(v).strip())[:1500]
+    text = narrate(
+        f"Scrivi una notifica breve in italiano per l'utente su questo elemento ({domain}). "
+        f"Solo HTML semplice (<b>, <a href>), niente saluti, inizia dall'informazione.\n\n{facts}")
+    if text:
+        return text
+    url = str(payload.get("url") or "").strip()
+    label = escape(title or domain or "Aggiornamento")
+    if url:
+        return f'🔔 <a href="{escape(url, quote=True)}"><b>{label}</b></a>'
+    return f"🔔 <b>{label}</b>"
 
 
 class HermesService:
     def __init__(self):
         self.archive = ArchiveClient()
-        self.dispatch = DispatchService()
+        self.notifications = NotificationCenter(self.archive)
+        set_batch_publisher(self._publish_batch)
+
+    def _publish_batch(self, subscription_id, audience_key: str, domain: str, text: str) -> bool:
+        audience, origin = ("global", None)
+        if audience_key.startswith("client:"):
+            _, client, session = (audience_key.split(":", 2) + ["owner"])[:3]
+            audience, origin = "origin", {"client": client, "session_id": session}
+        result = self.notifications.publish(
+            message=text, event_type="entity.upserted", domain=domain, source=domain,
+            audience=audience, origin=origin, subscription_id=subscription_id)
+        return bool(result.get("deliveries"))
 
     def process_event(self, event_type: str, domain: str, entity_id: str, payload: dict):
         t0 = time.perf_counter()
-        event_trace_id = ""
-        if isinstance(payload, dict):
-            event_trace_id = str(payload.get("trace_id")
-                                 or payload.get("x_trace_id") or "").strip()
+        payload = payload if isinstance(payload, dict) else {}
+        event_trace_id = str(payload.get("trace_id") or payload.get("x_trace_id") or "").strip()
         logger.info(
             "event=event_ingestion_start domain=%s event_type=%s entity_id=%s trace_id=%s",
-            domain,
-            event_type,
-            entity_id,
-            event_trace_id,
+            domain, event_type, entity_id, event_trace_id,
         )
-        subscriptions = self.archive.get_active_subscriptions(
-            domain=domain, event_type=event_type)
-        logger.debug(
-            "event=loaded_active_subscriptions_domain_event_type Loaded active subscriptions | domain=%s event_type=%s count=%s",
-            domain,
-            event_type,
-            len(subscriptions),
-        )
-        matched = 0
-        delivered = 0
 
-        for subscription in subscriptions:
-            subscription_id = subscription.get("id")
-            matches = subscription_matches(subscription, payload)
-            if not matches:
-                logger.debug(
-                    "event=subscription_matched_subscription_id_filters Subscription not matched | subscription_id=%s filters=%s",
-                    subscription_id,
-                    subscription.get("filters") or {},
-                )
-                continue
+        # A module closing its own notification (e.g. Themis proposal decided elsewhere).
+        closes = str(payload.get("closes") or "").strip()
+        if closes:
+            closed = self.notifications.close(
+                closes, str(payload.get("decision") or "closed"),
+                str(payload.get("outcome_text") or ""), by=str(payload.get("_source") or domain))
+            if not payload.get("_message"):
+                return {"subscriptions_checked": 0, "subscriptions_matched": 0, "deliveries": 0,
+                        "closed": closed}
 
-            matched += 1
-            channels = subscription.get("channels") or []
+        subscriptions = self.archive.get_active_subscriptions(domain=domain, event_type=event_type)
+        matched_subs = [s for s in subscriptions if subscription_matches(s, payload)]
+        if not matched_subs:
             logger.info(
-                "event=subscription_matched_subscription_id_channels Subscription matched | subscription_id=%s channels=%s trace_id=%s",
-                subscription_id,
-                channels,
-                event_trace_id,
-            )
+                "event=event_processed ms=%d domain=%s event_type=%s entity_id=%s subscriptions=%d matched=0 deliveries=0",
+                int((time.perf_counter() - t0) * 1000), domain, event_type, entity_id, len(subscriptions))
+            return {"subscriptions_checked": len(subscriptions), "subscriptions_matched": 0, "deliveries": 0}
 
-            # Route batched domains (e.g. real_estate) through the batch dispatcher
-            # so multiple entities arriving in a burst are narrated as one message.
-            use_batch = (
-                domain in BATCHED_DOMAINS
-                and event_type in BATCHED_EVENT_TYPES
-            )
+        question_id = str(payload.get("question_id", "")).strip() or None
+        brief_id = str(payload.get("brief_id", "")).strip() or None
+        anchor = _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id)
+        max_age = _RECURRING_EVENT_MAX_AGE_SECONDS if event_type in _RECURRING_EVENT_TYPES else None
 
-            for channel in channels:
-                channel_type = channel.get("type", "")
-                channel_target = channel.get("target", "")
-                question_id = str(payload.get(
-                    "question_id", "")).strip() or None
-                brief_id = str(payload.get("brief_id", "")).strip() or None
-                inbound_outbound_id = str(payload.get(
-                    "outbound_event_id", "")).strip()
-                outbound_event_id = inbound_outbound_id or str(uuid4())
-                dedupe_anchor = _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id)
-                dedupe_key = f"{dedupe_anchor}:{subscription_id}"
-
-                max_age = (
-                    _RECURRING_EVENT_MAX_AGE_SECONDS
-                    if event_type in _RECURRING_EVENT_TYPES
-                    else None
-                )
-                existing = self.archive.find_active_outbound_event(
-                    dedupe_key,
-                    max_age_seconds=max_age,
-                )
-                if existing and str(existing.get("outbound_event_id")) != outbound_event_id:
-                    existing_id = str(existing.get("outbound_event_id"))
-                    existing_state = str(existing.get("lifecycle_state", "")).strip().lower()
-                    logger.info(
-                        "event=dispatch_deduped_dedupe_key_existing_outbound_event_id_skipp Dispatch deduped | dedupe_key=%s existing_outbound_event_id=%s skipped_outbound_event_id=%s existing_state=%s question_id=%s brief_id=%s trace_id=%s",
-                        dedupe_key,
-                        existing_id,
-                        outbound_event_id,
-                        existing_state,
-                        question_id,
-                        brief_id,
-                        event_trace_id,
-                    )
-                    self.archive.upsert_outbound_event(
-                        {
-                            "outbound_event_id": outbound_event_id,
-                            "dedupe_key": dedupe_key,
-                            "lifecycle_state": "superseded",
-                            "event_type": event_type,
-                            "domain": domain,
-                            "entity_id": entity_id,
-                            "subscription_id": str(subscription_id),
-                            "channel": channel_type,
-                            "target": str(channel_target),
-                            "question_id": question_id,
-                            "brief_id": brief_id,
-                            "source_service": "hermes",
-                            "superseded_by": existing_id,
-                            "detail": "deduped against active outbound event",
-                            "payload": {"event_payload": payload or {}},
-                        }
-                    )
+        # Batched domains: one narrated message per subscription after a settling window.
+        if domain in BATCHED_DOMAINS and event_type in BATCHED_EVENT_TYPES:
+            queued = 0
+            for subscription in matched_subs:
+                sub_id = subscription.get("id")
+                dedupe_key = f"{anchor}:{sub_id}"
+                if self.archive.find_active_outbound_event(dedupe_key, max_age_seconds=max_age):
                     continue
+                self.archive.upsert_outbound_event({
+                    "outbound_event_id": str(uuid4()), "dedupe_key": dedupe_key,
+                    "lifecycle_state": "queued", "event_type": event_type, "domain": domain,
+                    "entity_id": entity_id, "subscription_id": str(sub_id), "channel": "batch",
+                    "target": "*", "source_service": "hermes", "detail": "queued in entity batch",
+                    "payload": {"event_payload": payload},
+                })
+                audience, origin = subscription_audience(subscription.get("channels") or [])
+                audience_key = (f"client:{origin['client']}:{origin['session_id']}"
+                                if audience == "origin" and origin else "all")
+                enqueue_entity(subscription_id=sub_id, channel_type=audience_key, channel_target="",
+                               domain=domain, entity_id=entity_id, payload=payload,
+                               filters=subscription.get("filters") or {})
+                queued += 1
+            return {"subscriptions_checked": len(subscriptions),
+                    "subscriptions_matched": len(matched_subs), "deliveries": queued}
 
-                self.archive.upsert_outbound_event(
-                    {
-                        "outbound_event_id": outbound_event_id,
-                        "dedupe_key": dedupe_key,
-                        "lifecycle_state": "created",
-                        "event_type": event_type,
-                        "domain": domain,
-                        "entity_id": entity_id,
-                        "subscription_id": str(subscription_id),
-                        "channel": channel_type,
-                        "target": str(channel_target),
-                        "question_id": question_id,
-                        "brief_id": brief_id,
-                        "source_service": "hermes",
-                        "payload": {"event_payload": payload or {}},
-                    }
-                )
+        # One notification per event, whatever the number of matching subscriptions.
+        origin = payload_origin(payload)
+        if origin:
+            audience = "origin"
+        else:
+            audiences = [subscription_audience(s.get("channels") or []) for s in matched_subs]
+            audience, origin = next((a for a in audiences if a[0] == "global"), audiences[0])
 
-                if use_batch:
-                    self.archive.update_outbound_event_state(
-                        outbound_event_id,
-                        "queued",
-                        detail="queued in entity batch dispatcher",
-                    )
-                    enqueue_entity(
-                        subscription_id=subscription.get("id"),
-                        channel_type=channel_type,
-                        channel_target=str(channel_target),
-                        domain=domain,
-                        entity_id=entity_id,
-                        payload=payload,
-                        filters=subscription.get("filters") or {},
-                    )
-                    delivered += 1
-                    continue
-
-                # If the payload carries a pre-formatted message, send it as
-                # direct text (skips Oracle narration on the Telegram side).
-                _preformatted = payload.get(
-                    "_message") if isinstance(payload, dict) else None
-                _actions = payload.get(
-                    "_actions") if isinstance(payload, dict) else None
-                self.archive.update_outbound_event_state(
-                    outbound_event_id,
-                    "queued",
-                    detail="dispatch queued",
-                )
-                trace_id = str(payload.get("trace_id") or payload.get(
-                    "x_trace_id") or outbound_event_id or "").strip()
-                ok, detail = self.dispatch.send(
-                    channel=channel_type,
-                    target=str(channel_target),
-                    message=_preformatted,
-                    actions=_actions
-                    if isinstance(_actions, list)
-                    else None,
-                    payload=None if _preformatted else payload,
-                    domain=domain,
-                    entity_id=entity_id,
-                    subscription_id=subscription.get("id"),
-                    metadata={"trace_id": trace_id},
-                )
-                if ok:
-                    self.archive.update_outbound_event_state(
-                        outbound_event_id,
-                        "delivered",
-                        detail=detail,
-                    )
-                else:
-                    updated = self.archive.update_outbound_event_state(
-                        outbound_event_id,
-                        "failed",
-                        detail=detail,
-                    )
-                    if not updated:
-                        logger.warning(
-                            "event=outbound_state_update_failed "
-                            "outbound_event_id=%s target_state=failed",
-                            outbound_event_id,
-                        )
-                logger.info(
-                    "event=dispatch_attempted_subscription_id_channel_target Dispatch attempted | subscription_id=%s channel=%s target=%s success=%s outbound_event_id=%s question_id=%s brief_id=%s trace_id=%s detail=%s",
-                    subscription_id,
-                    channel_type,
-                    channel_target,
-                    ok,
-                    outbound_event_id,
-                    question_id,
-                    brief_id,
-                    trace_id,
-                    detail,
-                )
-                if ok:
-                    delivered += 1
-
-                ref_detail = (
-                    f"outbound_event_id={outbound_event_id};question_id={question_id or ''};brief_id={brief_id or ''}"
-                )
-                detail_with_refs = f"{detail} | {ref_detail}" if detail else ref_detail
-
-                self.archive.write_dispatch_log(
-                    {
-                        "subscription_id": str(subscription.get("id")),
-                        "event_type": event_type,
-                        "domain": domain,
-                        "entity_id": entity_id,
-                        "channel": channel_type,
-                        "target": str(channel_target),
-                        "success": ok,
-                        "detail": detail_with_refs,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                )
-
+        message = payload.get("_message")
+        if not message:
+            message = _entity_message(payload, domain)
+        result = self.notifications.publish(
+            message=str(message),
+            title=str(payload.get("_title") or payload.get("title") or ""),
+            level=str(payload.get("_level") or payload.get("level") or ""),
+            source=str(payload.get("_source") or ""),
+            event_type=event_type, domain=domain, entity_id=entity_id,
+            actions=payload.get("_actions"), audience=audience, origin=origin,
+            dedupe_key=anchor, dedupe_max_age=max_age, event_payload=payload,
+            subscription_id=str(matched_subs[0].get("id")),
+        )
         logger.info(
             "event=event_processed ms=%d domain=%s event_type=%s entity_id=%s subscriptions=%d matched=%d deliveries=%d",
-            int((time.perf_counter() - t0) * 1000),
-            domain,
-            event_type,
-            entity_id,
-            len(subscriptions),
-            matched,
-            delivered,
-        )
+            int((time.perf_counter() - t0) * 1000), domain, event_type, entity_id,
+            len(subscriptions), len(matched_subs), result.get("deliveries", 0))
         return {
             "subscriptions_checked": len(subscriptions),
-            "subscriptions_matched": matched,
-            "deliveries": delivered,
+            "subscriptions_matched": len(matched_subs),
+            "deliveries": result.get("deliveries", 0),
+            "notification_id": result.get("notification_id"),
+            "deduped": result.get("deduped", False),
         }
 
+    def send_direct(self, channel: str, target: str, message: str, metadata: dict | None = None,
+                    actions: Any = None) -> tuple[bool, str]:
+        """Legacy ``/api/dispatch/send``: ``target`` owner (or empty) → every client;
+        a concrete target on a known client (e.g. Forge requester's chat) → that client only."""
+        target = str(target or "").strip()
+        channel = str(channel or "").strip().lower()
+        origin = None
+        if target and target != "owner" and channel and self.notifications.clients.get(channel):
+            origin = {"client": channel, "session_id": target}
+        meta = metadata if isinstance(metadata, dict) else {}
+        result = self.notifications.publish(
+            message=message, event_type=str(meta.get("type") or "direct.message"), domain="system",
+            source=str(meta.get("source") or ""), actions=actions,
+            audience="origin" if origin else "global", origin=origin)
+        ok = bool(result.get("deliveries"))
+        return ok, "sent" if ok else "no client reached"
+
     def retry_failed_deliveries(self, limit: int = 50) -> dict:
-        """Resilience rule 7: a failed delivery is retried on every pass until it
-        succeeds or reaches HERMES_MAX_DELIVERY_ATTEMPTS (then marked "dead")."""
-        rows = self.archive.get_outbound_events({"lifecycle_state": "failed", "limit": limit})
-        retried = delivered = dead = 0
-        for row in rows:
-            channel, target = row.get("channel"), row.get("target")
-            stored = row.get("payload") if isinstance(row.get("payload"), dict) else {}
-            event_payload = stored.get("event_payload") if isinstance(stored.get("event_payload"), dict) else {}
-            attempts = int(stored.get("attempts") or 1)
-            if not channel or not target:
-                continue
-            if attempts >= MAX_DELIVERY_ATTEMPTS:
-                self.archive.update_outbound_event_state(
-                    row["outbound_event_id"], "dead", detail=f"gave up after {attempts} attempts")
-                dead += 1
-                continue
-            message = event_payload.get("_message")
-            ok, detail = self.dispatch.send(
-                channel=channel, target=str(target),
-                message=message, payload=None if message else event_payload,
-                domain=row.get("domain", ""), entity_id=row.get("entity_id", ""),
-                subscription_id=row.get("subscription_id"),
-                metadata={"trace_id": row["outbound_event_id"]},
-            )
-            retried += 1
-            delivered += int(ok)
-            updated = {k: row.get(k) for k in (
-                "outbound_event_id", "dedupe_key", "event_type", "domain", "entity_id",
-                "subscription_id", "channel", "target", "question_id", "brief_id",
-                "source_service", "superseded_by")}
-            updated.update({
-                "lifecycle_state": "delivered" if ok else "failed",
-                "detail": f"retry {attempts + 1}: {detail}"[:500],
-                "payload": {**stored, "attempts": attempts + 1},
-            })
-            self.archive.upsert_outbound_event(updated)
-        if retried or dead:
-            logger.info("[🔄] event=hermes_retry_pass retried=%d delivered=%d dead=%d", retried, delivered, dead)
-        return {"retried": retried, "delivered": delivered, "dead": dead}
+        """Resilience rule 7: failed client deliveries are retried per client."""
+        return self.notifications.retry_failed()
 
     def update_outbound_event_state(
         self,

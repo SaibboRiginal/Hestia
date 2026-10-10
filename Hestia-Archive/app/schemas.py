@@ -251,6 +251,8 @@ OutboundLifecycleState = Literal[
     "dismissed",
     "superseded",
     "failed",
+    "dead",
+    "expired",
 ]
 
 
@@ -276,6 +278,11 @@ class OutboundEventStateUpdate(BaseModel):
     lifecycle_state: OutboundLifecycleState
     detail: Optional[str] = None
     superseded_by: Optional[str] = None
+    # Compare-and-set: change state only if the current one is in this list,
+    # else 409 (Hermes "first answer wins").
+    only_if_states: Optional[List[OutboundLifecycleState]] = None
+    # Shallow merge into payload (top-level keys) in the same transaction.
+    payload_merge: Optional[Dict[str, Any]] = None
 
 
 class OutboundEventResponse(OutboundEventUpsert):

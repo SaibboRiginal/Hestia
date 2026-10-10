@@ -2,7 +2,8 @@
 
 Collects ``entity.upserted`` events for configured domains and, after a
 settling window with no new arrivals, narrates all queued entities via Oracle
-and sends a single personalized Telegram message per subscription channel.
+and publishes ONE notification per subscription (delivered to every client by
+the notification center, or only to the origin client).
 
 Flow
 ----
@@ -22,7 +23,8 @@ import os
 import threading
 from dataclasses import dataclass, field
 
-from .dispatch import DispatchService
+from typing import Callable
+
 from .oracle_client import narrate
 
 logger = logging.getLogger("hestia_hermes.entity_batch")
@@ -53,7 +55,13 @@ MAX_BATCH_ATTEMPTS = int(os.getenv("ENTITY_BATCH_MAX_ATTEMPTS", "6"))
 _queues: dict[tuple, _BatchEntry] = {}
 _queues_lock = threading.Lock()
 
-_dispatch_service = DispatchService()
+# (subscription_id, audience_key, domain, text) -> published; set by HermesService.
+_publisher: Callable[..., bool] | None = None
+
+
+def set_publisher(publisher: Callable[..., bool]) -> None:
+    global _publisher
+    _publisher = publisher
 
 
 # ---------------------------------------------------------------------------
@@ -92,11 +100,14 @@ def _flush(key: tuple) -> None:
     )
 
     text = _narrate_entities(entry)
-    ok, detail = _dispatch_service.send(
-        channel=entry.channel_type,
-        target=entry.channel_target,
-        message=text,
-    )
+    detail = "no publisher"
+    ok = False
+    if _publisher is not None:
+        try:
+            ok = bool(_publisher(entry.subscription_id, entry.channel_type, entry.domain, text))
+            detail = "published" if ok else "no client reached"
+        except Exception as exc:
+            detail = str(exc)
     if ok:
         logger.info(
             "event=batch_dispatched_entit_subscription_target [BATCH] Dispatched %d entit%s | subscription=%s target=%s",

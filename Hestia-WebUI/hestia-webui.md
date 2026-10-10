@@ -78,8 +78,20 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/forge/status` · `tasks` · `tasks/{id}` · `tasks/{id}/transcript` · `files` · `workdoc` · `tests` · `logs` · `events` | Sviluppo page (→ Hephaestus `/api/hephaestus/forge/*`) |
 | POST | `/api/webui/forge/tasks` · `tasks/{id}/approve` · `reject` · `rollback` · `retry` | New task / follow-up (`source=ui`) and actions (`by=user`) |
 | GET | `/api/webui/forge/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only repository browser (→ Hephaestus `/api/hephaestus/repo/*`) |
+| GET | `/api/webui/notifications?filter&source&before&limit` · `counts` | Notifiche page (→ Hermes `/api/notifications`, `client=webui`) |
+| POST | `/api/webui/notifications/{id}/seen` · `seen-all` · `{id}/answer` | Global read state; answer (`{actionId}`, 409 = already handled elsewhere) |
+| POST | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`), **internal network only** (not proxied, private IP): pushes `ReceiveNotification` on SignalR to every open browser; `retract` ignored (the inbox keeps everything) |
 | GET | `/health` | Health check |
 | POST | `/api/webui/admin/generate-token` · `revoke-token` · GET `token-status` · GET/POST `public-url` | Admin (Telegram / tunnel script). **Guarded**: `X-WebUI-Admin-Secret` = `WEBUI_ADMIN_SECRET` when set, else only direct loopback/private-network calls not coming through Cloudflare/proxy |
+
+### Notifiche page (2026-10-10, `features/notifications/`, `services/notifications.service.ts`)
+
+Hermes inbox shared by every client (Archive through Hermes). Sidebar item with unread badge; filters
+*Da leggere · Da rispondere · Tutte*, module filter, toggle *Anche da altri client* (notifications that answer
+a request made on another client, hidden by default); grouped by day; action buttons or outcome
+("Approva · da Telegram · 10:42"). Live: SignalR `ReceiveNotification` (`notification` / `update`), refresh on
+reconnect. Seen = shown on the page in a visible tab, or a toast in a focused tab (global: also seen on Telegram).
+Toasts (*tutte / solo importanti / nessuno*) are a per-browser preference in the page's menu.
 
 ### Frontend structure (rewritten 2026-10-03)
 

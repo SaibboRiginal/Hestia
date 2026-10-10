@@ -37,7 +37,7 @@ public sealed class AdminGuardAttribute : ActionFilterAttribute
             context.Result = new ObjectResult(new { error = "admin endpoint: forbidden" }) { StatusCode = 403 };
     }
 
-    private static bool IsPrivate(IPAddress? ip)
+    internal static bool IsPrivate(IPAddress? ip)
     {
         if (ip is null) return false;
         if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
@@ -46,6 +46,23 @@ public sealed class AdminGuardAttribute : ActionFilterAttribute
         if (b.Length == 4)
             return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168);
         return ip.IsIPv6LinkLocal || ip.IsIPv6UniqueLocal;
+    }
+}
+
+/// <summary>
+/// Internal-network guard for service-to-service callbacks reached through Hub (e.g. Hermes
+/// → <c>/api/notify</c>): only direct requests from loopback/private addresses that did not
+/// come through a proxy/tunnel. No shared secret (Hub routes plain envelopes).
+/// </summary>
+public sealed class InternalNetworkGuardAttribute : ActionFilterAttribute
+{
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        var req = context.HttpContext.Request;
+        var proxied = req.Headers.ContainsKey("Cf-Connecting-Ip") || req.Headers.ContainsKey("Cf-Ray")
+                      || req.Headers.ContainsKey("X-Forwarded-For");
+        if (proxied || !AdminGuardAttribute.IsPrivate(context.HttpContext.Connection.RemoteIpAddress))
+            context.Result = new ObjectResult(new { error = "internal endpoint: forbidden" }) { StatusCode = 403 };
     }
 }
 

@@ -71,6 +71,17 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if self.path == "/api/notify":
+            # Hermes notification client contract (notification / update / retract).
+            from telegram_bot.services.notifications import handle_notify
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length).decode('utf-8')
+                status, result = handle_notify(json.loads(body) if body else {})
+                self._send_json(status, result)
+            except Exception as e:
+                self._send_json(400, {"status": "error", "detail": str(e)})
+            return
         if self.path == "/api/dispatch/send":
             try:
                 content_length = int(self.headers.get('Content-Length', 0))

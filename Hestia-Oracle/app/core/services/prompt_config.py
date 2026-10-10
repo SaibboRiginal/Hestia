@@ -170,7 +170,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "Output SOLO array JSON:\n"
         "{{\"action\":\"ADD\",\"domain\":\"<dominio>\",\"event_type\":\"entity.upserted\","
         "\"filters\":{{\"city\":\"...\",\"max_price\":350000}},"
-        "\"channels\":[{{\"type\":\"telegram\",\"target\":\"<id>\"}}]}}\n"
+        "\"channels\":[{{\"type\":\"all\",\"target\":\"<id>\"}}]}}\n"
         "Rimozione: {{\"action\":\"DEPRECATE\",\"subscription_id\":\"<id>\"}}\n"
         "Criteri cambiati -> ADD con filtri nuovi (upsert automatico).\n"
         "Non serve -> NONE."

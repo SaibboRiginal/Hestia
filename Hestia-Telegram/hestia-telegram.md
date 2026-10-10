@@ -128,10 +128,19 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/dispatch/send` | Receive dispatch payloads from Hermes via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
+| `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted |
+| `POST` | `/api/dispatch/send` | Legacy (no longer called by Hermes): dispatch payloads via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
 | `GET` | `/health` | Service health |
 
 ---
+
+### Notifications (Hermes global notifications, `services/notifications.py`)
+
+- Button `ntf:<notification_id>:<action_id>` → Hermes `/api/notifications/{id}/answer` (first answer wins;
+  409 → "Già gestita da WebUI" and the buttons are replaced). Legacy command actions are run here and the
+  outcome is reported to Hermes.
+- Any message of the allowed user in the chat marks the notifications shown here as seen
+  (`/api/notifications/seen-all` with `delivered_to=telegram`) — read state is global across clients.
 
 ## Constraints
 

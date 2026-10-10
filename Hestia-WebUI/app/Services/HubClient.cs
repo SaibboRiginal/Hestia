@@ -109,6 +109,38 @@ public class HubClient
         Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default)
         => RouteAsync(service, path, method, query: query, body: body, timeoutSeconds: timeoutSeconds, ct: ct);
 
+    /// <summary>
+    /// Routing call that never throws on a target 4xx/5xx: returns (status, payload) so a
+    /// caller can forward the module's answer (e.g. Hermes 409 "already_handled").
+    /// Status 502 = Hub unreachable.
+    /// </summary>
+    public async Task<(int Status, JsonElement Payload)> RouteRawAsync(
+        string service, string path, HttpMethod method, object? body = null,
+        Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default)
+    {
+        var envelope = new Dictionary<string, object?> { ["method"] = method.Method, ["timeout_seconds"] = timeoutSeconds };
+        if (query?.Count > 0) envelope["query"] = query;
+        if (body is not null) envelope["body"] = body;
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds + 5));
+            var resp = await _http.PostAsync($"{_hubUrl}/route/{service}/{path.TrimStart('/')}",
+                new StringContent(JsonSerializer.Serialize(envelope), Encoding.UTF8, "application/json"), cts.Token);
+            var result = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            if (!resp.IsSuccessStatusCode)
+                return ((int)resp.StatusCode, result);
+            var status = result.TryGetProperty("status_code", out var sc) && sc.ValueKind == JsonValueKind.Number
+                ? sc.GetInt32() : 200;
+            return (status, result.TryGetProperty("payload", out var payload) ? payload : result);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _logger.LogWarning(ex, "event=hub_route_raw_failed service={Svc} path={Path}", service, path);
+            return (502, JsonSerializer.SerializeToElement(new { detail = ex.Message }));
+        }
+    }
+
     /// <summary>Core routing call through Hub's /api/route/{service}/{path}.</summary>
     private async Task<JsonElement> RouteAsync(
         string service, string path, HttpMethod method,

@@ -20,7 +20,17 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready, wait_for_hub_services
 
-from .modules.schemas import DispatchSendRequest, EventIngestRequest, OutboundEventStateUpdateRequest
+from fastapi.responses import JSONResponse
+
+from .modules.schemas import (
+    DispatchSendRequest,
+    EventIngestRequest,
+    NotificationAnswerRequest,
+    NotificationClientRequest,
+    NotificationOutcomeRequest,
+    NotificationSeenAllRequest,
+    OutboundEventStateUpdateRequest,
+)
 from .modules.service import HermesService
 
 logger, log_buffer = setup_service_logging("hestia_hermes")
@@ -34,7 +44,7 @@ service = HermesService()
 def _bootstrap_system_subscription(hub_api_url: str) -> None:
     """Ensure a permanent subscription exists for service.action_required events.
     Idempotent — if it already exists, Archive handles the duplicate gracefully."""
-    # Notices go to the user ("owner"); the client (Telegram) decides which chat that is.
+    # Notices go to the user ("owner") on every client (SPEC hermes-global-notifications).
     notify_target = "owner"
     try:
         resp = requests.post(
@@ -48,7 +58,7 @@ def _bootstrap_system_subscription(hub_api_url: str) -> None:
                     "domain": "system",
                     "event_type": "service.action_required",
                     "filters": {},
-                    "channels": [{"type": "telegram", "target": notify_target}],
+                    "channels": [{"type": "all", "target": notify_target}],
                     "owner": str(notify_target),
                     "is_active": True,
                 },
@@ -95,6 +105,22 @@ def _deactivate_legacy_system_subscriptions(hub_api_url: str, keep_id: str) -> N
         logger.warning("[🔄] event=legacy_system_subscription_cleanup_failed error=%s", exc)
 
 
+def _register_agenda() -> None:
+    """Periodic work is an agenda job (Chronos), not a Hermes loop."""
+    try:
+        from hestia_common.agenda_client import AgendaClient, job_rule
+    except ModuleNotFoundError:
+        return
+    AgendaClient("hermes").register_async([job_rule(
+        "hermes.notifications.retract",
+        "Pulizia notifiche già gestite dai client",
+        service="hermes", path="/api/notifications/retract-stale",
+        recurrence="FREQ=HOURLY",
+        description="Toglie dalla chat Telegram le notifiche già viste o gestite (restano nell'elenco della WebUI).",
+        timeout_seconds=60,
+    )])
+
+
 @app.on_event("startup")
 def register_on_hub_startup():
     hub_api_url = os.getenv(
@@ -110,7 +136,8 @@ def register_on_hub_startup():
         "tags": ["core", "dispatch"],
         "topology_tags": ["layer:foundation", "domain:dispatch", "status:stable"],
         "capabilities": {
-            "event_ingest": "/api/events/ingest"
+            "event_ingest": "/api/events/ingest",
+            "notifications": "/api/notifications",
         },
     }
     max_attempts = int(os.getenv("HERMES_HUB_REGISTER_RETRIES", "8"))
@@ -150,6 +177,7 @@ def register_on_hub_startup():
                     logger=logger,
                 )
                 _bootstrap_system_subscription(hub_api_url)
+                _register_agenda()
                 return
 
             log_event(
@@ -278,13 +306,64 @@ def ingest_event(req: EventIngestRequest):
 
 @app.post("/api/dispatch/send")
 def send_dispatch(req: DispatchSendRequest):
-    ok, detail = service.dispatch.send(
+    ok, detail = service.send_direct(
         channel=req.channel,
         target=req.target,
         message=req.message,
         metadata=req.metadata,
+        actions=req.actions,
     )
     return {"success": ok, "detail": detail}
+
+
+# ── Notifications (global, every client) ─────────────────────────────────────
+
+@app.get("/api/notifications")
+def list_notifications(filter: str = "all", source: str = "", before: str = "",
+                       limit: int = 50, client: str = ""):
+    """Inbox: ``filter`` all | unread | pending (waiting for an answer)."""
+    return service.notifications.inbox(filter_=filter, source=source, before=before,
+                                       limit=limit, client=client)
+
+
+@app.get("/api/notifications/counts")
+def notification_counts(client: str = ""):
+    return service.notifications.counts(client)
+
+
+@app.get("/api/notifications/clients")
+def notification_clients():
+    return {"clients": [c.name for c in service.notifications.clients.clients(force=True)]}
+
+
+@app.post("/api/notifications/seen-all")
+def notifications_seen_all(req: NotificationSeenAllRequest):
+    return service.notifications.mark_all_seen(req.client, req.delivered_to)
+
+
+@app.post("/api/notifications/retract-stale")
+def notifications_retract_stale():
+    """Agenda job: drop handled messages from transient client surfaces (Telegram chat)."""
+    return service.notifications.retract_stale()
+
+
+@app.post("/api/notifications/{notification_id}/seen")
+def notification_seen(notification_id: str, req: NotificationClientRequest):
+    return service.notifications.mark_seen(notification_id, req.client)
+
+
+@app.post("/api/notifications/{notification_id}/answer")
+def notification_answer(notification_id: str, req: NotificationAnswerRequest):
+    """First answer wins (409 already_handled for the others); the action is
+    routed to the module that asked."""
+    status, body = service.notifications.answer(notification_id, req.action_id, req.client)
+    return JSONResponse(status_code=status, content=body)
+
+
+@app.post("/api/notifications/{notification_id}/answer/outcome")
+def notification_answer_outcome(notification_id: str, req: NotificationOutcomeRequest):
+    """Outcome of a legacy command action executed by the answering client."""
+    return service.notifications.report_outcome(notification_id, req.client, req.ok, req.text)
 
 
 @app.post("/api/outbound-events/state")

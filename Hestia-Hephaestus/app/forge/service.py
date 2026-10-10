@@ -824,9 +824,12 @@ class Forge:
             logger.warning("[🔄] event=forge_cleanup_failed task_id=%s error=%s", task["id"], exc)
 
     def _notify(self, task: dict, text: str) -> None:
-        """Hermes direct send to the requester + system event for subscriptions."""
+        """Hermes direct send to the requester + system event for subscriptions.
+
+        A concrete target (the Telegram chat that asked) → only that client;
+        otherwise ``owner`` → every client (Hermes global notifications)."""
         hub = self.cfg.hub_api_url
-        target = task.get("notify_target") or self.cfg.notify_target
+        target = task.get("notify_target") or self.cfg.notify_target or "owner"
 
         def _route(path: str, body: dict) -> None:
             requests.post(f"{hub}/route/hermes/{path}",
@@ -834,8 +837,9 @@ class Forge:
                                 "timeout_seconds": 8}, timeout=10)
 
         try:
-            if target:
-                _route("api/dispatch/send", {"channel": "telegram", "target": str(target), "message": text})
+            _route("api/dispatch/send", {"channel": "telegram" if target != "owner" else "",
+                                         "target": str(target), "message": text,
+                                         "metadata": {"source": "hephaestus", "type": "hephaestus.forge"}})
             _route("api/events/ingest", {
                 "domain": "system", "event_type": "hephaestus.forge", "entity_id": task["id"],
                 "payload": {"_message": text, "task_id": task["id"], "state": task.get("state")}})

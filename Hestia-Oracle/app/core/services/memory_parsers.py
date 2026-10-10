@@ -169,13 +169,14 @@ def parse_subscription_actions(
         raw_channels = item.get("channels") if isinstance(
             item.get("channels"), list) else []
         if not raw_channels:
-            raw_channels = [{"type": "telegram", "target": fallback_target}]
+            raw_channels = [{"type": "all", "target": fallback_target}]
 
         channels: list[dict] = []
         for ch in raw_channels:
             if not isinstance(ch, dict):
                 continue
-            ch_type = "telegram"
+            # Standing subscriptions are global: Hermes delivers to every client.
+            ch_type = "all"
             ch_target = str(ch.get("target", fallback_target)).strip()
             if force_telegram_target or not ch_target:
                 ch_target = fallback_target
@@ -187,9 +188,12 @@ def parse_subscription_actions(
 
         # Exclude owner (session_id, changes per conversation) from the hash so
         # the same logical subscription from the same chat_id never duplicates.
+        # Channel type hashed as "telegram" (the only type before global
+        # notifications) so existing subscriptions keep their id.
+        signature_channels = [{"type": "telegram", "target": c["target"]} for c in channels]
         signature_payload = json.dumps(
             {"domain": domain, "event_type": event_type,
-             "filters": filters, "channels": channels},
+             "filters": filters, "channels": signature_channels},
             sort_keys=True, ensure_ascii=False,
         )
         sub_id = hashlib.sha1(signature_payload.encode("utf-8")).hexdigest()

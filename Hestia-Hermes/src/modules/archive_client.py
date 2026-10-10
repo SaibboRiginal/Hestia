@@ -198,3 +198,46 @@ class ArchiveClient:
 
             return row
         return None
+
+    # ── Notification center (SPEC hermes-global-notifications §5.1) ─────────
+
+    def get_outbound_event(self, outbound_event_id: str) -> dict[str, Any] | None:
+        rows = self.get_outbound_events({"outbound_event_id": outbound_event_id, "limit": 1})
+        return rows[0] if rows else None
+
+    def patch_outbound_event(
+        self,
+        outbound_event_id: str,
+        lifecycle_state: str,
+        *,
+        only_if_states: list[str] | None = None,
+        payload_merge: dict[str, Any] | None = None,
+        detail: str | None = None,
+    ) -> tuple[int, Any]:
+        """Compare-and-set state change (+ payload merge). Returns (status, payload):
+        200 + row, 409 + {"lifecycle_state": current}, 404, or 0 on transport error."""
+        body: dict[str, Any] = {"lifecycle_state": lifecycle_state}
+        if only_if_states is not None:
+            body["only_if_states"] = only_if_states
+        if payload_merge:
+            body["payload_merge"] = payload_merge
+        if detail is not None:
+            body["detail"] = detail[:500]
+        try:
+            response = requests.post(
+                f"{self.hub_api_url}/route/archive/api/outbound-events/{outbound_event_id}/state",
+                json={"method": "PATCH", "headers": {}, "query": {}, "body": body, "timeout_seconds": 8},
+                timeout=9,
+            )
+            if response.status_code != 200:
+                return response.status_code, None
+            routed = response.json() or {}
+            status = int(routed.get("status_code", 500) or 500)
+            payload = routed.get("payload")
+            if status == 409 and isinstance(payload, dict):
+                payload = payload.get("detail", payload)
+            return status, payload
+        except Exception as error:
+            logger.warning("[🔄] event=archive_outbound_patch_failed outbound_event_id=%s error=%s",
+                           outbound_event_id, error)
+            return 0, None

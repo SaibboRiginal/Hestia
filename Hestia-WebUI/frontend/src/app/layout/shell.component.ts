@@ -9,6 +9,7 @@ import { ThemeService } from '../core/theme/theme.service';
 import { DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
 import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
 import { AssistantService } from '../services/assistant.service';
+import { NotificationsService } from '../services/notifications.service';
 
 /** App frame: collapsible sidebar (modules from APP_MODULES) + routed page + global overlays. */
 @Component({
@@ -32,6 +33,9 @@ import { AssistantService } from '../services/assistant.service';
           @for (m of top; track m.path) {
             <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
               <hx-icon [name]="m.icon" [size]="18" /><span>{{ m.label }}</span>
+              @if (m.badge === 'notifications' && notifications.badge()) {
+                <b class="count">{{ notifications.badge() > 99 ? '99+' : notifications.badge() }}</b>
+              }
             </a>
           }
         </nav>
@@ -40,6 +44,9 @@ import { AssistantService } from '../services/assistant.service';
           @for (m of bottom; track m.path) {
             <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
               <hx-icon [name]="m.icon" [size]="18" /><span>{{ m.label }}</span>
+              @if (m.badge === 'notifications' && notifications.badge()) {
+                <b class="count">{{ notifications.badge() > 99 ? '99+' : notifications.badge() }}</b>
+              }
             </a>
           }
           <button class="item" (click)="theme.toggleMode()" [attr.title]="'Tema: ' + theme.active().label">
@@ -85,6 +92,10 @@ import { AssistantService } from '../services/assistant.service';
     .item.ask hx-icon { color: var(--accent); }
     .item.ask kbd { margin-left: auto; font: 10.5px var(--font-mono, monospace); color: var(--text-3); }
     .collapsed .item.ask kbd { display: none; }
+    .item { position: relative; }
+    .count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--accent);
+             color: var(--accent-contrast); font: 600 11px/18px var(--font-sans); text-align: center; }
+    .collapsed .count { position: absolute; top: 3px; left: 22px; margin: 0; min-width: 15px; height: 15px; line-height: 15px; font-size: 9.5px; padding: 0 3px; }
     .spacer { flex: 1; }
     .conn { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-3); padding: 8px 12px 2px; white-space: nowrap; }
     .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
@@ -99,6 +110,7 @@ import { AssistantService } from '../services/assistant.service';
     @media (max-width: 860px) {
       .nav { position: fixed; inset: 0 auto 0 0; z-index: 800; transform: translateX(-100%); transition: transform var(--dur) var(--ease); width: var(--nav-width) !important; box-shadow: var(--shadow-3); }
       .collapsed .name, .collapsed .item span, .collapsed .conn span:last-child { display: initial; }
+      .collapsed .count { position: static; margin-left: auto; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
       .collapse { display: none; }
       .mobile-open .nav { transform: none; }
       .mobile-open .scrim { display: block; position: fixed; inset: 0; background: var(--overlay); z-index: 790; }
@@ -113,6 +125,7 @@ export class ShellComponent {
   signalR = inject(SignalRService);
   theme = inject(ThemeService);
   assistant = inject(AssistantService);
+  notifications = inject(NotificationsService);
   private session = inject(SessionService);
   private settings = inject(SettingsService);
   private router = inject(Router);
@@ -134,6 +147,7 @@ export class ShellComponent {
 
   private async bootstrap() {
     if (this.signalR.connectionState() !== 'connected') await this.signalR.connect();
+    this.notifications.start();
     await Promise.all([this.session.load(), this.settings.load()]);
   }
 

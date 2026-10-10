@@ -99,13 +99,12 @@ class TestSubscriptionMatcher:
 
 @pytest.fixture
 def hermes_service():
-    with patch("modules.archive_client.ArchiveClient.get_active_subscriptions", return_value=[]), \
-            patch("modules.dispatch.DispatchService.__init__", return_value=None):
-        from modules.service import HermesService
-        svc = HermesService.__new__(HermesService)
-        svc.archive = MagicMock()
-        svc.dispatch = MagicMock()
-        return svc
+    from modules.service import HermesService
+    svc = HermesService.__new__(HermesService)
+    svc.archive = MagicMock()
+    svc.notifications = MagicMock()
+    svc.notifications.publish.return_value = {"notification_id": "n1", "deliveries": 2}
+    return svc
 
 
 @pytest.mark.unit
@@ -113,24 +112,19 @@ class TestHermesService:
     def test_no_subscriptions_returns_zero_delivered(self, hermes_service):
         hermes_service.archive.get_active_subscriptions.return_value = []
         hermes_service.process_event("test.event", "real_estate", "eid1", {})
-        hermes_service.dispatch.send.assert_not_called()
+        hermes_service.notifications.publish.assert_not_called()
 
-    def test_matched_subscription_dispatched(self, hermes_service):
+    def test_matched_subscription_published_once(self, hermes_service):
         hermes_service.archive.get_active_subscriptions.return_value = [
-            {
-                "id": "sub1",
-                "filters": {"city": "Milano"},
-                "channels": [{"type": "telegram", "target": "99999"}],
-            }
+            {"id": "sub1", "filters": {}, "channels": [{"type": "telegram", "target": "owner"}]},
+            {"id": "sub2", "filters": {}, "channels": [{"type": "all", "target": "owner"}]},
         ]
-        hermes_service.archive.find_active_outbound_event.return_value = None
-        hermes_service.archive.create_outbound_event.return_value = {
-            "outbound_event_id": "oid1"}
-        hermes_service.dispatch.send.return_value = (True, "dispatched")
-        hermes_service.process_event(
-            "entity.created", "real_estate", "eid2", {"city": "Milano"})
-        # dispatch.send OR telegram dispatch should have been called
-        assert hermes_service.dispatch.send.called or True
+        result = hermes_service.process_event(
+            "service.action_required", "system", "e1", {"_message": "Ciao"})
+        assert hermes_service.notifications.publish.call_count == 1
+        kwargs = hermes_service.notifications.publish.call_args.kwargs
+        assert kwargs["audience"] == "global"  # legacy "telegram" channel = global
+        assert result["deliveries"] == 2
 
     def test_unmatched_subscription_not_dispatched(self, hermes_service):
         hermes_service.archive.get_active_subscriptions.return_value = [
@@ -142,7 +136,109 @@ class TestHermesService:
         ]
         hermes_service.process_event(
             "entity.created", "real_estate", "eid3", {"city": "Milano"})
-        hermes_service.dispatch.send.assert_not_called()
+        hermes_service.notifications.publish.assert_not_called()
+
+    def test_payload_origin_wins(self, hermes_service):
+        hermes_service.archive.get_active_subscriptions.return_value = [
+            {"id": "s", "filters": {}, "channels": [{"type": "all"}]}]
+        hermes_service.process_event("hephaestus.forge", "system", "t1", {
+            "_message": "Fatto", "_origin": {"client": "telegram", "session_id": "42"}})
+        kwargs = hermes_service.notifications.publish.call_args.kwargs
+        assert kwargs["audience"] == "origin"
+        assert kwargs["origin"] == {"client": "telegram", "session_id": "42"}
+
+    def test_closes_event_closes_without_new_notification(self, hermes_service):
+        hermes_service.notifications.close.return_value = 1
+        result = hermes_service.process_event("settings.proposal_closed", "settings", "p1", {
+            "closes": "settings.proposal:p1", "decision": "approved", "outcome_text": "Approvata"})
+        hermes_service.notifications.close.assert_called_once()
+        hermes_service.notifications.publish.assert_not_called()
+        assert result["closed"] == 1
+
+
+@pytest.mark.unit
+class TestAudience:
+    def test_client_channel_is_origin(self):
+        from modules.service import subscription_audience
+        assert subscription_audience([{"type": "client", "client": "webui", "target": "s1"}]) == (
+            "origin", {"client": "webui", "session_id": "s1"})
+
+    def test_any_global_channel_wins(self):
+        from modules.service import subscription_audience
+        assert subscription_audience([{"type": "client", "client": "webui"}, {"type": "all"}])[0] == "global"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NotificationCenter
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def center():
+    from modules.clients import NotifyClient
+    from modules.notifications import NotificationCenter
+    clients = MagicMock()
+    clients.clients.return_value = [NotifyClient("telegram", "/api/notify"), NotifyClient("webui", "/api/notify")]
+    c = NotificationCenter(MagicMock(), clients=clients, hub_api_url="http://hub/api")
+    c.archive.find_active_outbound_event.return_value = None
+    c.archive.patch_outbound_event.return_value = (200, {"outbound_event_id": "x", "payload": {}})
+    return c
+
+
+@pytest.mark.unit
+class TestNotificationCenter:
+    def test_normalize_actions_accepts_route_and_legacy(self):
+        from modules.notifications import normalize_actions
+        actions = normalize_actions([
+            {"id": "approve", "label": "Approva", "style": "primary", "service": "themis",
+             "method": "POST", "path": "/api/settings/proposals/1/approve", "body": {"by": "<client>"}},
+            {"text": "Riprova", "command": "forge_retry"},
+            {"label": "senza azione"},
+        ])
+        assert [a["id"] for a in actions] == ["approve", "a1"]
+        assert actions[0]["service"] == "themis" and actions[1]["command"] == "forge_retry"
+
+    def test_publish_fans_out_to_every_client(self, center):
+        with patch.object(center, "_route", return_value=(200, {"delivered": True, "ref": "7"})) as route:
+            result = center.publish(message="Ciao", event_type="x.y", domain="system")
+        assert result["deliveries"] == 2
+        assert {call.args[0] for call in route.call_args_list} == {"telegram", "webui"}
+
+    def test_origin_notification_is_silent_elsewhere(self, center):
+        bodies = {}
+
+        def fake_route(service, path, body, **kw):
+            bodies[service] = body
+            return 200, {"delivered": True}
+        with patch.object(center, "_route", side_effect=fake_route):
+            center.publish(message="Fatto", event_type="x.y", domain="system", audience="origin",
+                           origin={"client": "telegram", "session_id": "42"})
+        assert bodies["telegram"]["silent"] is False and bodies["telegram"]["target"] == "42"
+        assert bodies["webui"]["silent"] is True and bodies["webui"]["target"] == "owner"
+
+    def test_second_answer_is_refused(self, center):
+        center.archive.get_outbound_event.return_value = {
+            "outbound_event_id": "n1", "lifecycle_state": "answered",
+            "payload": {"notification": {"actions": [{"id": "approve", "label": "Approva",
+                                                      "service": "themis", "path": "/x"}]},
+                        "answer": {"by": "telegram", "action_id": "approve"}}}
+        center.archive.patch_outbound_event.return_value = (409, {"lifecycle_state": "answered"})
+        with patch.object(center, "_route") as route:
+            status, body = center.answer("n1", "approve", "webui")
+        assert status == 409 and body["status"] == "already_handled"
+        assert body["answer"]["by"] == "telegram"
+        route.assert_not_called()
+
+    def test_answer_routes_to_module_with_client_name(self, center):
+        center.archive.get_outbound_event.return_value = {
+            "outbound_event_id": "n1", "lifecycle_state": "delivered",
+            "payload": {"notification": {"actions": [{"id": "approve", "label": "Approva", "service": "themis",
+                                                      "method": "POST", "path": "/p", "body": {"by": "<client>"}}]}}}
+        with patch.object(center, "_route", return_value=(200, {"message": "Applicata"})) as route, \
+                patch.object(center, "_broadcast"):
+            status, body = center.answer("n1", "approve", "webui")
+        assert status == 200 and body["answer"]["outcome_text"] == "Applicata"
+        assert route.call_args.args[:3] == ("themis", "/p", {"by": "webui"})
 
 
 # ─────────────────────────────────────────────────────────────────────────────

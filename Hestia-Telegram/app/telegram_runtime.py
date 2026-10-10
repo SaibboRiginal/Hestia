@@ -19,6 +19,8 @@ from telegram_bot.services.chat_service import (
     send_welcome,
 )
 from telegram_bot.services.executor import handle_group_callback
+from telegram_bot.services.notifications import handle_callback as handle_notification_callback
+from telegram_bot.services.notifications import mark_seen_on_activity as mark_notifications_seen
 from telegram_bot.services.command_service import (
     refresh_command_registry,
     register_telegram_service,
@@ -118,6 +120,12 @@ def on_calendar_step(call):
     handle_calendar_step(call)
 
 
+@bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("ntf:")))
+def on_notification_callback(call):
+    logger.info("event=callback_notification data=%s chat_id=%s", call.data, call.message.chat.id)
+    handle_notification_callback(call)
+
+
 @bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("fb:")))
 def on_feedback_callback(call):
     handle_feedback_callback(call)
@@ -131,12 +139,14 @@ def on_doc_callback(call):
 @bot.message_handler(content_types=["document", "photo", "audio", "voice", "video", "video_note"])
 def on_file(message):
     _last_user_message[message.chat.id] = message
+    mark_notifications_seen(message)
     handle_file_message(message)
 
 
 @bot.message_handler(func=lambda message: True)
 def on_chat(message):
     _last_user_message[message.chat.id] = message
+    mark_notifications_seen(message)
     handle_chat_message(message)
 
 

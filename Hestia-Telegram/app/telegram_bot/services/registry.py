@@ -164,6 +164,8 @@ def register_telegram_service() -> bool:
         "capabilities": {
             "interface": "telegram",
             "hub_events_webhook": "/api/events/registry-changed",
+            # Hermes delivers every notification here (SPEC hermes-global-notifications).
+            "notify_endpoint": "/api/notify",
         },
     }
     try:

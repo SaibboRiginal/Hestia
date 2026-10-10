@@ -104,9 +104,11 @@ Conversational reasoning layer with unified agentic tool calling.
 - LLM roles: primary via Ollama (`gemma4:e4b`), cloud fallback via Gemini (Flash Lite for router, Flash for scribe, 2.5 Flash for analyst). Fallback chain at every call site — if local model fails, cloud takes over transparently.
 
 ### Hestia-Hermes 📨
-Proactive dispatch core (new).
+Proactive dispatch core — the only outbound messenger to the user's clients.
 - Consumes domain events and checks matching subscriptions.
-- Deduplicates alerts and dispatches via generic channels.
+- Deduplicates alerts and delivers each notification to **every client** (Hub `layer:client` +
+  `capabilities.notify_endpoint`), or only to the client a request came from (others keep it in the inbox).
+- Read state is global; answers go to the module that asked, first answer wins.
 - Writes delivery outcomes to Archive.
 
 ### Hestia-Hecate 📥
@@ -342,7 +344,10 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 8. **Message splitting logic is global** via `build_delivery_messages()` and reused by all send paths.
 9. **Owner target**: services never hold the owner's chat id. They notify `target: "owner"`; Telegram resolves it
    to its first `ALLOWED_USER_ID`.
-10. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
+10. **Notifications are global**: a client receives Hermes notifications by declaring
+   `capabilities.notify_endpoint` on Hub (contract `ClientNotifyRequest` in swagger). Hermes never hardcodes a
+   client; nobody else sends to the user's clients.
+11. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
 
 ## Logging Contract (Global Observability)
 

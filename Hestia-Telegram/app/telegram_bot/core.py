@@ -418,9 +418,11 @@ def send_user_message(
     disable_web_page_preview: bool = True,
     reply_markup=None,
 ):
+    """Send (split if long); returns the sent Message objects (last one carries reply_markup)."""
     messages, normalized_parse_mode = build_delivery_messages(text, parse_mode)
+    sent: list = []
     if not messages:
-        return
+        return sent
 
     LOGGER.debug(
         "event=send_user_message_chat_id_parts_parse_mode send_user_message | chat_id=%s parts=%d parse_mode=%s",
@@ -435,7 +437,7 @@ def send_user_message(
         _markup = reply_markup if i == len(messages) - 1 else None
         try:
             if normalized_parse_mode:
-                bot.send_message(
+                msg = bot.send_message(
                     chat_id,
                     part,
                     parse_mode=normalized_parse_mode,
@@ -443,7 +445,7 @@ def send_user_message(
                     reply_markup=_markup,
                 )
             else:
-                bot.send_message(
+                msg = bot.send_message(
                     chat_id,
                     part,
                     disable_web_page_preview=disable_web_page_preview,
@@ -462,12 +464,14 @@ def send_user_message(
             )
             fallback_text = message_format.html_to_plain_text(
                 part) or "[contenuto non visualizzabile]"
-            bot.send_message(
+            msg = bot.send_message(
                 chat_id,
                 fallback_text,
                 disable_web_page_preview=disable_web_page_preview,
                 reply_markup=_markup,
             )
+        sent.append(msg)
+    return sent
 
 
 def buffer_alert(

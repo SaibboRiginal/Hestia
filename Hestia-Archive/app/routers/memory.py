@@ -363,35 +363,64 @@ def upsert_outbound_event(
 
 @router.get("/api/outbound-events", response_model=List[schemas.OutboundEventResponse])
 def list_outbound_events(
+    outbound_event_id: Optional[str] = None,
     dedupe_key: Optional[str] = None,
     lifecycle_state: Optional[str] = None,
+    lifecycle_states: Optional[str] = None,
     subscription_id: Optional[str] = None,
     question_id: Optional[str] = None,
     brief_id: Optional[str] = None,
     channel: Optional[str] = None,
     target: Optional[str] = None,
+    domain: Optional[str] = None,
+    payload_source: Optional[str] = None,
+    created_before: Optional[datetime] = None,
+    created_after: Optional[datetime] = None,
+    updated_before: Optional[datetime] = None,
+    order_by: str = "updated",
     limit: int = 200,
     db: Session = Depends(database.get_db),
 ):
-    """Return outbound lifecycle records with optional filters."""
-    q = db.query(models.OutboundEventRecord)
+    """Return outbound lifecycle records with optional filters.
+
+    ``lifecycle_states`` = comma list; ``payload_source`` matches
+    ``payload.notification.source`` (Hermes notifications); ``order_by``
+    ``created`` (newest first, for inbox paging with ``created_before``) or ``updated``.
+    """
+    M = models.OutboundEventRecord
+    q = db.query(M)
+    if outbound_event_id:
+        q = q.filter(M.outbound_event_id == outbound_event_id)
     if dedupe_key:
-        q = q.filter(models.OutboundEventRecord.dedupe_key == dedupe_key)
+        q = q.filter(M.dedupe_key == dedupe_key)
     if lifecycle_state:
-        q = q.filter(models.OutboundEventRecord.lifecycle_state ==
-                     lifecycle_state)
+        q = q.filter(M.lifecycle_state == lifecycle_state)
+    if lifecycle_states:
+        states = [x.strip() for x in lifecycle_states.split(",") if x.strip()]
+        if states:
+            q = q.filter(M.lifecycle_state.in_(states))
     if subscription_id:
-        q = q.filter(models.OutboundEventRecord.subscription_id ==
-                     subscription_id)
+        q = q.filter(M.subscription_id == subscription_id)
     if question_id:
-        q = q.filter(models.OutboundEventRecord.question_id == question_id)
+        q = q.filter(M.question_id == question_id)
     if brief_id:
-        q = q.filter(models.OutboundEventRecord.brief_id == brief_id)
+        q = q.filter(M.brief_id == brief_id)
     if channel:
-        q = q.filter(models.OutboundEventRecord.channel == channel)
+        q = q.filter(M.channel == channel)
     if target:
-        q = q.filter(models.OutboundEventRecord.target == target)
-    return q.order_by(models.OutboundEventRecord.updated_at.desc()).limit(max(1, min(limit, 2000))).all()
+        q = q.filter(M.target == target)
+    if domain:
+        q = q.filter(M.domain == domain)
+    if payload_source:
+        q = q.filter(M.payload["notification"]["source"].astext == payload_source)
+    if created_before:
+        q = q.filter(M.created_at < created_before)
+    if created_after:
+        q = q.filter(M.created_at > created_after)
+    if updated_before:
+        q = q.filter(M.updated_at < updated_before)
+    order = M.created_at.desc() if order_by == "created" else M.updated_at.desc()
+    return q.order_by(order).limit(max(1, min(limit, 2000))).all()
 
 
 @router.patch("/api/outbound-events/{outbound_event_id}/state", response_model=schemas.OutboundEventResponse)
@@ -400,16 +429,33 @@ def update_outbound_event_state(
     req: schemas.OutboundEventStateUpdate,
     db: Session = Depends(database.get_db),
 ):
-    """Update lifecycle state of an existing outbound event record."""
+    """Update lifecycle state of an existing outbound event record.
+
+    ``only_if_states`` makes it a compare-and-set (row locked): 409 with the
+    current state when it does not match. ``payload_merge`` is merged into
+    the payload in the same transaction.
+    """
     row = db.query(models.OutboundEventRecord).filter(
         models.OutboundEventRecord.outbound_event_id == outbound_event_id
-    ).first()
+    ).with_for_update().first()
     if not row:
         raise HTTPException(status_code=404, detail="Outbound event not found")
 
+    if req.only_if_states is not None and row.lifecycle_state not in req.only_if_states:
+        current = row.lifecycle_state
+        db.rollback()
+        raise HTTPException(status_code=409, detail={
+            "status": "state_conflict", "lifecycle_state": current})
+
     row.lifecycle_state = req.lifecycle_state
-    row.detail = req.detail
-    row.superseded_by = req.superseded_by
+    if req.detail is not None or req.only_if_states is None:
+        row.detail = req.detail
+    if req.superseded_by is not None or req.only_if_states is None:
+        row.superseded_by = req.superseded_by
+    if req.payload_merge:
+        merged = dict(row.payload or {})
+        merged.update(req.payload_merge)
+        row.payload = merged
     db.commit()
     db.refresh(row)
     return row

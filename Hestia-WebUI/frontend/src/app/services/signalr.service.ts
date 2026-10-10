@@ -4,14 +4,20 @@ import { AuthService } from './auth.service';
 import { Subject, Observable } from 'rxjs';
 import { ServerEvent, ClientMessage } from '../models/chat.models';
 
+/** Raw Hermes push (snake_case, as Hermes sends it). */
+export interface HermesPush { kind: 'notification' | 'update' | string; notification_id: string; [k: string]: unknown; }
+
 @Injectable({ providedIn: 'root' })
 export class SignalRService {
   private auth = inject(AuthService);
   private hub: signalR.HubConnection | null = null;
   private eventSubject = new Subject<ServerEvent>();
+  private notificationSubject = new Subject<HermesPush>();
 
   connectionState = signal<'disconnected' | 'connecting' | 'connected'>('disconnected');
   events$: Observable<ServerEvent> = this.eventSubject.asObservable();
+  /** Hermes pushes (notification / update), broadcast to every open browser. */
+  notifications$: Observable<HermesPush> = this.notificationSubject.asObservable();
 
   /**
    * One stream per connection (ChatHub cancels the previous one): the chat that sent last
@@ -19,6 +25,9 @@ export class SignalRService {
    */
   activeChannel = 'main';
   private claimSubject = new Subject<string>();
+  private reconnectSubject = new Subject<void>();
+  /** Fired after an automatic reconnect (pushes may have been missed meanwhile). */
+  reconnected$: Observable<void> = this.reconnectSubject.asObservable();
   claims$: Observable<string> = this.claimSubject.asObservable();
 
   claim(channel: string): void {
@@ -41,8 +50,12 @@ export class SignalRService {
       this.eventSubject.next(event);
     });
 
+    this.hub.on('ReceiveNotification', (push: HermesPush) => {
+      this.notificationSubject.next(push);
+    });
+
     this.hub.onreconnecting(() => this.connectionState.set('connecting'));
-    this.hub.onreconnected(() => this.connectionState.set('connected'));
+    this.hub.onreconnected(() => { this.connectionState.set('connected'); this.reconnectSubject.next(); });
     this.hub.onclose(() => this.connectionState.set('disconnected'));
 
     try {

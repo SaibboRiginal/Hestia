@@ -139,6 +139,8 @@ using (var scope = app.Services.CreateScope())
             {
                 interface_type = "web",
                 swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
+                // Hermes delivers every notification here (SPEC hermes-global-notifications).
+                notify_endpoint = "/api/notify",
             }
         };
 

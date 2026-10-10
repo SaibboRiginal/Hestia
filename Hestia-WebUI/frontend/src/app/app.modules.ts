@@ -11,11 +11,14 @@ export interface AppModule {
   icon: string;                       // hx-icon name
   load: () => Promise<Type<unknown>>; // standalone page component
   bottom?: boolean;                   // pinned to the bottom of the sidebar
+  badge?: 'notifications';            // live counter shown next to the label
 }
 
 export const APP_MODULES: AppModule[] = [
   { path: 'chat', label: 'Chat', icon: 'chat',
     load: () => import('./features/chat/chat-page.component').then(m => m.ChatPageComponent) },
+  { path: 'notifications', label: 'Notifiche', icon: 'bell', badge: 'notifications',
+    load: () => import('./features/notifications/notifications-page.component').then(m => m.NotificationsPageComponent) },
   { path: 'calendar', label: 'Agenda di Hestia', icon: 'calendar',
     load: () => import('./features/calendar/calendar-page.component').then(m => m.CalendarPageComponent) },
   { path: 'commands', label: 'Comandi & MCP', icon: 'terminal',

@@ -827,19 +827,91 @@ components:
 
     DispatchSendRequest:
       type: object
-      required: [channel, target, message]
+      description: >
+        Legacy direct send. target "owner" (default) → every client; a concrete target on a
+        named client (channel = Hub client name, e.g. the Telegram chat that asked) → only that client.
+      required: [message]
       properties:
         channel:
           type: string
           example: telegram
         target:
           type: string
-          example: "123456789"
+          example: owner
         message:
           type: string
         metadata:
           type: object
           additionalProperties: true
+        actions:
+          type: array
+          items: { $ref: "#/components/schemas/NotificationAction" }
+
+    NotificationAction:
+      type: object
+      description: >
+        Button of a Hermes notification. Route action (service+path) → Hermes routes the answer to that
+        module via Hub ("<client>" in body = answering client); legacy {text, command} → the answering
+        client runs the Hub command.
+      properties:
+        id: { type: string, maxLength: 20 }
+        label: { type: string }
+        text: { type: string, description: alias of label }
+        style: { type: string, enum: [primary, danger, default] }
+        service: { type: string }
+        method: { type: string, default: POST }
+        path: { type: string }
+        body: { type: object, additionalProperties: true }
+        command: { type: string }
+
+    ClientNotifyRequest:
+      type: object
+      description: Hermes → client (POST capabilities.notify_endpoint via Hub)
+      required: [kind, notification_id]
+      properties:
+        kind: { type: string, enum: [notification, update, retract] }
+        notification_id: { type: string }
+        target: { type: string, description: "owner, or the origin session (e.g. Telegram chat id)" }
+        silent: { type: boolean, description: "Pushed to another client: keep it in the inbox only, no alert" }
+        title: { type: string }
+        message: { type: string, description: Telegram-style HTML }
+        level: { type: string, enum: [info, success, warning, error] }
+        source: { type: string }
+        created_at: { type: string, format: date-time }
+        actions:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string }, label: { type: string }, style: { type: string } }
+        origin: { type: object, nullable: true, properties: { client: { type: string }, session_id: { type: string } } }
+        payload: { type: object, additionalProperties: true }
+        state: { type: string, description: "update: seen | answered | expired" }
+        seen: { type: object, properties: { by: { type: string }, at: { type: string } } }
+        answer: { type: object, properties: { action_id: { type: string }, label: { type: string }, by: { type: string }, status: { type: string }, outcome_text: { type: string } } }
+        pending: { type: boolean }
+        ref: { type: string, description: "update/retract: the client's own message reference returned on delivery" }
+
+    HermesNotification:
+      type: object
+      properties:
+        id: { type: string }
+        created_at: { type: string, format: date-time }
+        state: { type: string }
+        read: { type: boolean }
+        pending: { type: boolean, description: has actions and is still answerable }
+        title: { type: string }
+        message: { type: string }
+        level: { type: string }
+        source: { type: string }
+        domain: { type: string }
+        event_type: { type: string }
+        actions: { type: array, items: { type: object } }
+        audience: { type: string, enum: [global, origin] }
+        origin: { type: object, nullable: true }
+        other_client: { type: boolean }
+        seen: { type: object, nullable: true }
+        answer: { type: object, nullable: true }
+        deliveries: { type: object, additionalProperties: { type: string } }
 
     OutboundEventUpsertRequest:
       type: object
@@ -904,11 +976,21 @@ components:
               dismissed,
               superseded,
               failed,
+              dead,
+              expired,
             ]
         detail:
           type: string
         superseded_by:
           type: string
+        only_if_states:
+          type: array
+          items: { type: string }
+          description: Compare-and-set — change only if the current state is in this list, else 409 {status=state_conflict, lifecycle_state}
+        payload_merge:
+          type: object
+          additionalProperties: true
+          description: Shallow merge into payload (top-level keys) in the same transaction
 
     # ── Chronos ───────────────────────────────────────────────────────────────
     CalendarEvent:
@@ -2240,6 +2322,10 @@ paths:
       servers:
         - url: http://localhost:19002
       parameters:
+        - name: outbound_event_id
+          in: query
+          schema:
+            type: string
         - name: dedupe_key
           in: query
           schema:
@@ -2248,6 +2334,32 @@ paths:
           in: query
           schema:
             type: string
+        - name: lifecycle_states
+          in: query
+          description: Comma list of states
+          schema:
+            type: string
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: payload_source
+          in: query
+          description: Matches payload.notification.source (Hermes notifications)
+          schema:
+            type: string
+        - name: created_before
+          in: query
+          schema: { type: string, format: date-time }
+        - name: created_after
+          in: query
+          schema: { type: string, format: date-time }
+        - name: updated_before
+          in: query
+          schema: { type: string, format: date-time }
+        - name: order_by
+          in: query
+          schema: { type: string, enum: [updated, created], default: updated }
         - name: subscription_id
           in: query
           schema:
@@ -3889,7 +4001,7 @@ paths:
   /api/dispatch/send:
     post:
       tags: [Hermes]
-      summary: Send a direct message to a channel target
+      summary: Direct notification (legacy) — owner → every client; concrete target on a named client → that client
       servers:
         - url: http://localhost:19005
       requestBody:
@@ -3901,6 +4013,149 @@ paths:
       responses:
         "200":
           description: "{success, detail}"
+
+  /api/notifications:
+    get:
+      tags: [Hermes]
+      summary: Notification inbox (global, every client)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, unread, pending], default: all } }
+        - { name: source, in: query, schema: { type: string } }
+        - { name: before, in: query, description: created_at cursor, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: client, in: query, description: asking client (computes other_client), schema: { type: string } }
+      responses:
+        "200":
+          description: "{items: HermesNotification[], counts: {unread, pending}}"
+
+  /api/notifications/counts:
+    get:
+      tags: [Hermes]
+      summary: Unread / pending counters
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200":
+          description: "{unread, pending}"
+
+  /api/notifications/clients:
+    get:
+      tags: [Hermes]
+      summary: Discovered delivery clients (Hub layer:client + capabilities.notify_endpoint)
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200":
+          description: "{clients: [name]}"
+
+  /api/notifications/seen-all:
+    post:
+      tags: [Hermes]
+      summary: Mark every unread notification seen (optionally only those delivered to one client)
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client]
+              properties: { client: { type: string }, delivered_to: { type: string } }
+      responses:
+        "200":
+          description: "{status, changed}"
+
+  /api/notifications/retract-stale:
+    post:
+      tags: [Hermes]
+      summary: Agenda job — ask clients to drop handled messages older than the retract delay (Telegram ≤ 47 h)
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200":
+          description: "{retracted}"
+
+  /api/notifications/{notification_id}/seen:
+    post:
+      tags: [Hermes]
+      summary: Mark seen (global read state; the other clients get an update)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [client], properties: { client: { type: string } } }
+      responses:
+        "200":
+          description: "{status, changed}"
+
+  /api/notifications/{notification_id}/answer:
+    post:
+      tags: [Hermes]
+      summary: Answer with one action — first answer wins; routed to the module that asked
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action_id, client]
+              properties: { action_id: { type: string }, client: { type: string } }
+      responses:
+        "200":
+          description: "{status: done, answer} or {status: claimed, execute: command, command} (legacy action)"
+        "409":
+          description: "{status: already_handled, answer}"
+        "502":
+          description: Module failed; the claim is released so the user can retry
+
+  /api/notifications/{notification_id}/answer/outcome:
+    post:
+      tags: [Hermes]
+      summary: Outcome of a legacy command action executed by the answering client
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client]
+              properties: { client: { type: string }, ok: { type: boolean }, text: { type: string } }
+      responses:
+        "200":
+          description: "{status}"
+
+  /api/notify:
+    post:
+      tags: [Clients]
+      summary: Client delivery endpoint (Telegram, WebUI) — Hermes via Hub only
+      description: Declared by each client as capabilities.notify_endpoint. WebUI accepts it from the internal network only.
+      servers:
+        - url: http://localhost:19006
+        - url: http://localhost:19015
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientNotifyRequest"
+      responses:
+        "200":
+          description: "{delivered, ref?} · {delivered: false, skipped: true} (silent on Telegram)"
 
   /api/outbound-events/state:
     post:
@@ -5602,6 +5857,62 @@ paths:
                     $ref: "#/components/schemas/ObservationSnapshot"
 
   # ── WebUI ───────────────────────────────────────────────────────────────
+  /api/webui/notifications:
+    get:
+      tags: [WebUI]
+      summary: Notifiche page inbox (→ Hermes /api/notifications, client=webui)
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, unread, pending] } }
+        - { name: source, in: query, schema: { type: string } }
+        - { name: before, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: "{items, counts}"
+
+  /api/webui/notifications/counts:
+    get:
+      tags: [WebUI]
+      summary: Sidebar badge counters
+      responses:
+        "200":
+          description: "{unread, pending}"
+
+  /api/webui/notifications/seen-all:
+    post:
+      tags: [WebUI]
+      summary: Mark all seen
+      responses:
+        "200":
+          description: "{status, changed}"
+
+  /api/webui/notifications/{id}/seen:
+    post:
+      tags: [WebUI]
+      summary: Mark one seen
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: "{status, changed}"
+
+  /api/webui/notifications/{id}/answer:
+    post:
+      tags: [WebUI]
+      summary: Answer a notification ({actionId}); 409 = already handled on another client
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [actionId], properties: { actionId: { type: string } } }
+      responses:
+        "200":
+          description: "{status, answer}"
+        "409":
+          description: "{status: already_handled, answer}"
+
   /api/webui/admin/generate-token:
     servers:
       - url: http://localhost:19015

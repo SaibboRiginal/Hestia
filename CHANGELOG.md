@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-10
+- Hermes global notifications: every notification reaches every client (Telegram + WebUI, any client declaring `notify_endpoint` on Hub), or only the client a request came from; read state global, first answer wins and goes to the module that asked; Telegram marks/deletes handled messages; WebUI Notifiche page with badge and toasts → `docs/work/2026-10-10-hermes-global-notifications/` [ext-chat]
 - Spec v1.0 for Oracle on local models (send real `num_ctx`/`keep_alive` to Ollama, cache telemetry, cache-friendly prompts, optional llama-server/vLLM provider) → `docs/work/2026-10-10-oracle-local-context/` [ext-chat]
 - Spec v1.0 for the assistant activity state (active / waiting / deep sleep / dnd in Chronos, persisted in Archive, visible to Oracle, Athena and every client; heavy work only in deep sleep) → `docs/work/2026-10-10-assistant-presence/` [ext-chat]
 - Spec v1.0 for central settings (module-declared registry, control panel with search and module status, Oracle/Athena proposals with user confirmation) → `docs/work/2026-10-10-central-settings/` [ext-chat]
