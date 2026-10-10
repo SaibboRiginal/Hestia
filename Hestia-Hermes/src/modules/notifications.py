@@ -28,6 +28,7 @@ import requests
 
 from .clients import ClientRegistry, NotifyClient
 from .hermes_settings import DELIVERY_MAX_ATTEMPTS, RETRACT_AFTER, settings
+from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
 
 logger = logging.getLogger("hestia_hermes.notifications")
 
@@ -41,6 +42,20 @@ CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
 RETRACT_WINDOW_SECONDS = 47 * 3600
 
 LEVELS = {"info", "success", "warning", "error"}
+# Assistant presence effect notify.level (SPEC assistant-presence §4.6): what still gets pushed.
+# Held notifications go only to the inbox (silent) and come back as one digest when the level opens.
+DIGEST_WINDOW_SECONDS = 48 * 3600
+
+
+def presence_holds(notify_level: str, level: str, actions: list, event_payload: dict | None) -> bool:
+    """``all`` → nothing held; ``important`` → info/success held unless they ask something;
+    ``urgent`` → only errors or events flagged ``_urgent`` pass."""
+    payload = event_payload if isinstance(event_payload, dict) else {}
+    if notify_level not in {"important", "urgent"} or payload.get("_urgent") or level == "error":
+        return False
+    if notify_level == "important":
+        return level not in {"warning"} and not actions and not payload.get("_important")
+    return True
 _DEFAULT_LEVELS = {"service.action_required": "warning", "service.health": "warning"}
 
 
@@ -129,6 +144,7 @@ class NotificationCenter:
         self.hub_api_url = (hub_api_url or os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api")).rstrip("/")
         self._pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="hermes-notify")
+        self.presence = PresenceClient("hermes", self.hub_api_url)
 
     # ── Hub calls ───────────────────────────────────────────────────────────
 
@@ -193,6 +209,8 @@ class NotificationCenter:
         normalized_actions = normalize_actions(actions)
         if audience != "origin" or not (origin or {}).get("client"):
             audience, origin = "global", None
+        notify_level = self.presence.effect("notify.level", "all")
+        held = presence_holds(notify_level, level, normalized_actions, event_payload)
         spec = {
             "title": str(title or "")[:200],
             "message": str(message or ""),
@@ -203,6 +221,8 @@ class NotificationCenter:
             "actions": normalized_actions,
             "created_at": _now(),
         }
+        if held:
+            spec["held"] = notify_level
         self.archive.upsert_outbound_event({
             "outbound_event_id": notification_id,
             "dedupe_key": dedupe_key or f"notification:{notification_id}",
@@ -218,6 +238,8 @@ class NotificationCenter:
         })
         deliveries = self._fan_out(notification_id, spec, event_payload)
         delivered = sum(1 for d in deliveries.values() if d.get("state") == "delivered")
+        if held:   # inbox only on every client: a skipped push is the expected outcome
+            delivered = sum(1 for d in deliveries.values() if d.get("state") in ("delivered", "skipped"))
         state = "delivered" if delivered else "failed"
         status, current = self.archive.patch_outbound_event(
             notification_id, state, only_if_states=["created"], payload_merge={"deliveries": deliveries},
@@ -226,8 +248,8 @@ class NotificationCenter:
             # Seen/answered while we were delivering: keep that state, store deliveries.
             self.archive.patch_outbound_event(
                 notification_id, str(current.get("lifecycle_state")), payload_merge={"deliveries": deliveries})
-        logger.info("event=notification_published notification_id=%s event_type=%s audience=%s "
-                    "clients=%s delivered=%d", notification_id, event_type, audience,
+        logger.info("event=notification_published notification_id=%s event_type=%s audience=%s held=%s "
+                    "clients=%s delivered=%d", notification_id, event_type, audience, spec.get("held") or "-",
                     ",".join(f"{k}:{v.get('state')}" for k, v in deliveries.items()) or "-", delivered)
         return {"notification_id": notification_id, "deduped": False, "deliveries": delivered}
 
@@ -239,7 +261,7 @@ class NotificationCenter:
             "kind": "notification",
             "notification_id": notification_id,
             "target": str(origin.get("session_id") or "owner") if is_origin else "owner",
-            "silent": spec.get("audience") == "origin" and not is_origin,
+            "silent": (spec.get("audience") == "origin" and not is_origin) or bool(spec.get("held")),
             "title": spec.get("title", ""),
             "message": spec.get("message", ""),
             "level": spec.get("level", "info"),
@@ -477,6 +499,48 @@ class NotificationCenter:
         if retried:
             logger.info("[🔄] event=notification_retry_pass retried=%d recovered=%d", retried, recovered)
         return {"retried": retried, "recovered": recovered}
+
+    def release_held(self, level: str = "") -> dict[str, int]:
+        """The assistant presence opened the notification level again (e.g. woke up): send the
+        notifications held meanwhile as ONE digest, still unread ones only (the inbox has them all)."""
+        level = level or self.presence.effect("notify.level", "all")
+        since = (datetime.now(timezone.utc) - timedelta(seconds=DIGEST_WINDOW_SECONDS)).isoformat()
+        rows = self.archive.get_outbound_events({
+            "channel": CHANNEL, "lifecycle_states": ",".join(UNREAD_STATES + ["seen"]),
+            "created_after": since, "limit": 200})
+        released = []
+        for row in rows:
+            stored = row.get("payload") or {}
+            spec = stored.get("notification") or {}
+            if not spec.get("held") or stored.get("held_released"):
+                continue
+            if presence_holds(level, spec.get("level", "info"), spec.get("actions") or [],
+                              stored.get("event_payload")):
+                continue   # still held under the new level
+            released.append(row)
+        if not released:
+            return {"released": 0}
+        for row in released:
+            self.archive.patch_outbound_event(str(row["outbound_event_id"]), str(row.get("lifecycle_state")),
+                                              payload_merge={"held_released": _now()})
+        unread = [r for r in released if r.get("lifecycle_state") in UNREAD_STATES]
+        if unread:
+            import html
+            lines = []
+            for row in unread[:10]:
+                spec = (row.get("payload") or {}).get("notification") or {}
+                title = spec.get("title") or str(spec.get("message") or "")[:80] or row.get("event_type") or ""
+                source = spec.get("source") or ""
+                lines.append(f"• {html.escape(str(title))}" + (f" <i>({html.escape(str(source))})</i>" if source else ""))
+            more = len(unread) - len(lines)
+            message = (f"<b>{len(unread)} notific{'a' if len(unread) == 1 else 'he'}</b> mentre riposavo:\n"
+                       + "\n".join(lines) + (f"\n…e altre {more} nella posta." if more > 0 else ""))
+            self.publish(message=message, event_type="assistant.digest", domain="assistant",
+                         title="Mentre riposavo", level="info", source="hermes",
+                         event_payload={"_urgent": True, "count": len(unread)})
+        logger.info("event=notification_held_released released=%d digest=%d level=%s",
+                    len(released), len(unread), level)
+        return {"released": len(released), "digest": len(unread)}
 
     def retract_stale(self) -> dict[str, int]:
         now = datetime.now(timezone.utc)

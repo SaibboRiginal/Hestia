@@ -21,6 +21,7 @@ except ModuleNotFoundError:
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready, wait_for_hub_services
 
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from .modules.schemas import (
     DispatchSendRequest,
@@ -345,6 +346,16 @@ def notification_clients():
 @app.post("/api/notifications/seen-all")
 def notifications_seen_all(req: NotificationSeenAllRequest):
     return service.notifications.mark_all_seen(req.client, req.delivered_to)
+
+
+class ReleaseHeldRequest(BaseModel):
+    level: str = ""
+
+
+@app.post("/api/notifications/release-held")
+def notifications_release_held(req: ReleaseHeldRequest | None = None):
+    """Chronos presence: the notification level opened again → one digest of what was held."""
+    return service.notifications.release_held((req or ReleaseHeldRequest()).level)
 
 
 @app.post("/api/notifications/retract-stale")

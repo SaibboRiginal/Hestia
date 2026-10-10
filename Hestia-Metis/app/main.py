@@ -33,6 +33,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 from hestia_common.agenda_client import AgendaClient, daily_window
+from hestia_common.presence_client import PresenceClient
 
 logger, log_buffer = setup_service_logging("hestia_metis")
 
@@ -66,6 +67,7 @@ hub = HubClient(_HUB_API_URL)
 # in Hestia's agenda and can move/skip/cancel; user requests start immediately.
 WINDOW_TRAINING = "metis.training"
 agenda = AgendaClient("metis", _HUB_API_URL)
+presence = PresenceClient("metis", _HUB_API_URL)
 _DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
 _JOBS_FILE = _DATA_DIR / "lora_jobs.json"
 _jobs_lock = threading.Lock()
@@ -315,27 +317,37 @@ try:
             mode = "now" if str(requested_by or "user").lower() == "user" else "window"
         if mode == "window":
             win = agenda.window(WINDOW_TRAINING)
-            if not (win and win.get("active")):
-                start_at = (win or {}).get("next_open")
+            window_open = bool(win and win.get("active"))
+            # Assistant presence: a training holds the GPU for a long time → only when heavy local
+            # work is allowed (e.g. "Sonno profondo", "Pisolino"); otherwise retry in 30 min.
+            held_by_presence = window_open and not presence.allows("work.heavy", "allow", "local")
+            if not window_open or held_by_presence:
+                from datetime import datetime, timedelta, timezone
+                start_at = (win or {}).get("next_open") if not window_open else None
+                if held_by_presence:
+                    start_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+                    logger.info("event=lora_train_held_by_presence job_id=%s retry_at=%s", job_id, start_at)
                 if not start_at:
                     # Window missing/cancelled: plan in one hour (user can move it).
-                    from datetime import datetime, timedelta, timezone
                     start_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+                # Each plan is a new one-off agenda task (a re-plan from a firing task must not reuse
+                # the key that is completing); it fires with schedule=window so the checks run again.
+                agenda_key = f"metis.train.{job_id}.{int(time.time())}"
                 planned = agenda.plan(
-                    f"metis.train.{job_id}", f"Metis: training LoRA {ds_name or '?'}", start_at,
+                    agenda_key, f"Metis: training LoRA {ds_name or '?'}", start_at,
                     action={"service": "metis", "path": "/api/metis/lora/train", "method": "POST",
                             "body": {"dataset_name": ds_name, "base_model": base_model,
-                                     "adapter_name": adapter_name, "schedule": "now",
+                                     "adapter_name": adapter_name, "schedule": "window",
                                      "requested_by": requested_by, "job_id": job_id},
                             "timeout_seconds": 60},
                     description=f"Richiesto da {requested_by}. Annulla o sposta dall'agenda di Hestia.",
                     params={"dataset_name": ds_name, "job_id": job_id})
                 _save_job({"job_id": job_id, "status": "scheduled", "dataset_name": ds_name,
                            "requested_by": requested_by, "start_at": start_at,
-                           "agenda_key": f"metis.train.{job_id}" if planned else None,
+                           "agenda_key": agenda_key if planned else None,
                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
                 return {"status": "scheduled" if planned else "schedule_failed", "job_id": job_id,
-                        "start_at": start_at, "agenda_key": f"metis.train.{job_id}",
+                        "start_at": start_at, "agenda_key": agenda_key,
                         "message": "Training pianificato nella finestra notturna dell'agenda di Hestia."
                         if planned else "Agenda non raggiungibile: riprova o usa schedule=now."}
         examples = dataset_builder.get_dataset_examples(ds_name)
@@ -378,6 +390,17 @@ try:
                  "--base_model", resolved_base, "--adapter_name", resolved_adapter],
                 stdout=log_file, stderr=subprocess.STDOUT)
             pid = proc.pid
+            # "Occupato: addestramento" while the trainer runs (GPU busy for the local model).
+            presence.activity_start(f"metis.training.{job_id}", label="addestramento", load="heavy",
+                                    resource="gpu", ttl_seconds=12 * 3600)
+
+            def _wait_trainer(p=proc, log=log_file, key=f"metis.training.{job_id}"):
+                try:
+                    p.wait()
+                finally:
+                    log.close()
+                    presence.activity_stop(key)
+            threading.Thread(target=_wait_trainer, daemon=True, name=f"metis-train-{job_id}").start()
         logger.info(
             "event=lora_train_triggered job_id=%s dataset=%s base=%s adapter=%s "
             "examples=%s script_exists=%s pid=%s",

@@ -27,6 +27,11 @@ try:
 except ModuleNotFoundError:  # local run without the shared package on sys.path
     AgendaClient = None  # type: ignore[assignment]
     agenda_template = None  # type: ignore[assignment]
+try:
+    from hestia_common.presence_client import PresenceClient
+    _presence = PresenceClient("argus", hub_client.HUB_API_URL)
+except ModuleNotFoundError:  # local run without the shared package on sys.path
+    _presence = None
 from schemas.reports import LogEvent
 from schemas.reports import ServiceAlert
 from worker.alert_worker import send_alert, send_recovery
@@ -108,6 +113,23 @@ def recheck(service: str) -> dict:
     return {"status": "ok", "service": service, "health": report_status,
             "remediation_requested": ok, "remediation": response,
             "next_attempt": _repair_attempts.get(service, 0)}
+
+
+_degraded_reported: dict[str, float] = {"count": -1.0, "at": 0.0}
+
+
+def _report_degraded() -> None:
+    """Fact for the assistant presence ("Stanco" with N modules in error): sent when the count
+    changes, refreshed every 10 min; expires after 30 min if Argus stops reporting."""
+    if _presence is None:
+        return
+    with _unhealthy_lock:
+        count = len(_unhealthy)
+    now = time.monotonic()
+    if count == _degraded_reported["count"] and now - _degraded_reported["at"] < 600:
+        return
+    _degraded_reported.update(count=float(count), at=now)
+    _presence.signal("health.degraded_services", count, meta={"module": "argus"}, ttl_seconds=1800)
 
 
 def _is_new_log_event(event: LogEvent) -> bool:
@@ -345,6 +367,8 @@ def _run_once() -> None:
                 _unhealthy.pop(name, None)
             _close_repair(name)
             send_recovery(name)
+
+    _report_degraded()
 
     # --- Incremental log polling + log alerts ---
     for svc in services:

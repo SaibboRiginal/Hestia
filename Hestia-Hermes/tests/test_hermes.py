@@ -267,3 +267,27 @@ class TestHermesHealth:
             client = TestClient(hermes_main.app, raise_server_exceptions=False)
         body = client.get("/health").json()
         assert "hermes" in body.get("service", "").lower()
+
+
+@pytest.mark.unit
+class TestPresenceHold:
+    """Assistant presence notify.level (SPEC assistant-presence): held = inbox only + digest later."""
+
+    def test_holds_by_level(self):
+        from modules.notifications import presence_holds
+        assert not presence_holds("all", "info", [], {})
+        assert presence_holds("important", "info", [], {})
+        assert not presence_holds("important", "warning", [], {})
+        assert not presence_holds("important", "info", [{"id": "a"}], {})
+        assert presence_holds("urgent", "warning", [], {})
+        assert not presence_holds("urgent", "error", [], {})
+        assert not presence_holds("urgent", "info", [], {"_urgent": True})
+
+    def test_held_notification_is_silent_everywhere(self, center):
+        center.presence = MagicMock()
+        center.presence.effect.return_value = "urgent"
+        sent = []
+        center._deliver = lambda client, body: sent.append(body) or {"state": "skipped"}
+        result = center.publish(message="ciao", event_type="x.y", domain="d", level="info")
+        assert sent and all(b["silent"] for b in sent)
+        assert result["deliveries"] == 2
