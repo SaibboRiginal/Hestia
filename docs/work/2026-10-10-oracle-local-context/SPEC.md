@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -57,17 +57,17 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
 ## 3. Scope — four phases, each shippable alone
 
 **A. Real context + warm model (bug fix, small)**
-- `num_ctx` and `keep_alive` are fields of the **`ollama` provider type's `CONFIG_FIELDS`**
-  (central-settings SPEC §3.9): instance config `{base_url, num_ctx, keep_alive}`. The `ollama` provider
-  class sends them as `options.num_ctx` / `keep_alive` on every call (generate, chat, tools, stream, vision).
-  It never reads env. **No new env var**: `num_ctx` and `keep_alive` are Themis settings declared by
-  Oracle with defaults in the declaration (`num_ctx` 8192, `keep_alive` `30m`). Until Themis exists the
-  temporary `load_llm_config()` bridge only reuses what is already in env today (`OLLAMA_URL`/`OLLAMA_API_URL`,
-  `ORACLE_CONTEXT_LENGTH`) and takes `keep_alive` from the declared default; the bridge and those env vars
-  disappear in settings P2 (no legacy compatibility). **Same `num_ctx` on every call to one instance** — a different value forces Ollama to reload.
-- `TokenCounter` / compaction thresholds read the window from the resolved provider instance instead of a
+- The `ollama` provider class (central-settings SPEC §3.9, v2.0) receives its config as a dict and sends
+  `options.num_ctx` / `keep_alive` on every call (generate, chat, tools, stream, vision); it never reads env.
+  - Endpoint = infrastructure, stays in env permanently: `OLLAMA_URL`/`OLLAMA_API_URL`.
+  - Tunables = Themis settings `oracle.provider.ollama.num_ctx` (default 8192) and
+    `oracle.provider.ollama.keep_alive` (default `30m`). **No new env var.** Until Themis ships, the
+    `load_llm_config()` bridge (owned by the Haiku thread) passes the declared defaults, reusing the existing
+    `ORACLE_CONTEXT_LENGTH` for `num_ctx` until settings P2 removes it.
+  - **Same `num_ctx` on every call** — a different value forces Ollama to reload the model.
+- `TokenCounter` / compaction thresholds read the window from the `ollama` provider config instead of a
   module-level `os.getenv`, so the estimate and the real window can't diverge again.
-- Startup log `event=ollama_context_config provider=<id> num_ctx=… keep_alive=…`; warn if Ollama `/api/ps`
+- Startup log `event=ollama_context_config num_ctx=… keep_alive=…`; warn if Ollama `/api/ps`
   reports a smaller loaded context.
 - Docs/`.env.example`: recommend host env `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`
   (≈ half KV memory → more context in the same VRAM), optional `OLLAMA_NUM_PARALLEL=2`.
@@ -93,32 +93,32 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
   they stop evicting the chat model's cache; document `OLLAMA_NUM_PARALLEL` trade-off (VRAM × slots).
 
 **D. Optional alternative runtime (larger, coordinated)**
-- Uses the **`openai` provider type** of central-settings §3.9 (any OpenAI-compatible server), instance
-  config `{base_url, api_key_env}`, e.g. `{"id":"llama_server","type":"openai","config":{"base_url":
-  "http://host.docker.internal:8080/v1","api_key_env":""}}`; a use case points at it via
-  `oracle.usecases.<name> = {"provider":"llama_server","model":…}`. No new code path of our own: the type
-  class (chat, tools, stream, `list_models()` from `/v1/models`) is built inside the provider layer owned by
-  the Haiku thread; this dossier only adds what local servers need on top:
+- Uses the **`openai` provider type** of central-settings §3.9 (any OpenAI-compatible server). Its endpoint
+  is infrastructure in env (`ORACLE_OPENAI_BASE_URL`, key name in env if needed); it becomes **available**
+  when that is set, and a use case picks it in `oracle.usecases.<name> = {"provider":"openai","model":…}`.
+  No new code path of our own: the type class (chat, tools, stream, `list_models()` from `/v1/models`) is
+  built inside the provider layer owned by the Haiku thread; this dossier only adds what local servers need on top:
   - **llama.cpp `llama-server`** (recommended first try): same GGUF files as Ollama, `--cache-reuse`,
     `-fa`, KV-cache quantisation, speculative decoding with a small draft model (often 1.5–2× faster),
     `/slots` save/restore of a warm prefix. Optional `cache_prompt: true` per request (llama-server extension)
-    as an `options` override.
+    as a use-case `options` override.
   - **vLLM** (Linux/WSL, model fully in VRAM): automatic prefix caching, paged attention, best with parallel calls.
   - **LM Studio**, and cloud OpenAI-compatible endpoints.
   - Stats of phase B mapped from the OpenAI `usage` block (`prompt_tokens_details.cached_tokens` when present,
     llama-server `timings`).
-- Ollama stays the default; the new runtime is an extra instance selectable per use case.
+- Ollama stays the default; the new runtime is an extra provider selectable per use case. (One OpenAI-compatible
+  endpoint at a time, per settings v2.0: llama-server **or** vLLM, switched in env.)
 
-## 4. Settings (consistency with `docs/work/2026-10-10-central-settings/` §3.9)
+## 4. Settings (consistency with `docs/work/2026-10-10-central-settings/` §3.9, v2.0)
 
-- Provider knobs live in the instance config of `oracle.providers`: `ollama` → `num_ctx`, `keep_alive`;
-  `openai` → `base_url`, `api_key_env`. Changing `num_ctx` reloads the model (state visible to all clients).
-- Per-call knobs go in the use-case `options` (e.g. `cache_prompt`, `temperature`).
-- Oracle-level knob of this dossier: `oracle.tool_result_stub_after_turns` (phase C, default 2), a Themis
-  setting declared by Oracle — **no env var**, the declared default applies until Themis exists.
-- llama-server/vLLM options (`cache_prompt`, …) are use-case `options` in Themis, never env.
-- Rule (central-settings v1.2): only secrets and infrastructure stay in `.env`; this dossier adds no tunable env var.
-- Host-side Ollama env (`OLLAMA_*`) is infrastructure → documented, not managed.
+- Endpoints and API keys = infrastructure, stay in env permanently (`OLLAMA_URL`, `ORACLE_OPENAI_BASE_URL`, …).
+- Non-address tunables = Themis settings: `oracle.provider.ollama.num_ctx`, `oracle.provider.ollama.keep_alive`;
+  llama-server per-request options (`cache_prompt`, …) as use-case `options` or `oracle.provider.openai.*`.
+  Changing `num_ctx` reloads the model (state visible to all clients).
+- Oracle-level knob of this dossier: `oracle.tool_result_stub_after_turns` (phase C, default 2), declared
+  default applies until Themis exists.
+- Providers receive config passed in; Oracle has no settings/approval logic of its own (Themis owns it).
+- This dossier adds **no tunable env var**. Host-side Ollama env (`OLLAMA_*`) is infrastructure → documented, not managed.
 
 ## 5. Acceptance criteria
 
