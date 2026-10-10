@@ -404,6 +404,7 @@ class Themis:
                     "event_type": "service.action_required" if kind == "settings.proposal" else kind,
                     "domain": "system", "entity_id": entity_id,
                     "payload": {"kind": kind, "service": "themis", "source": "themis", "domain": "settings",
+                                "_source": "themis", "_title": payload.get("title") or "Impostazioni",
                                 "target": "owner", "dedupe_key": entity_id, **payload}}, timeout=8)
             except Exception as exc:
                 logger.warning("[🔄] event=themis_hermes_emit_failed kind=%s error=%s "
