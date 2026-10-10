@@ -24,3 +24,4 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
 - [ ] P6 Migrate remaining modules' tunable env vars (one module per step); includes Forge fallback/max_turns/
   auto_rollback, `declare_log_level` in every module, Metis baseline label still reading env MODEL_USECASE_GENERIC_MODEL
 - [ ] Docs: hestia-<name>.md, swagger, .env.example notes, docs/ARCHITECTURE.md rule
+- [x] Out of scope fix: Archive `avvisi_recenti` response prompt no longer Scout-specific (generic, caveman style)

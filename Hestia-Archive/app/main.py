@@ -251,7 +251,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "query_template": {"limit": 15, "hours": 72},
                 "clients": ["telegram", "ui"],
                 "response_mode": "oracle_natural",
-                "response_prompt": "Mostra una timeline degli avvisi recenti con TITOLO COMPLETO della proprietà, indirizzo, prezzo e data/ora. Usa link leggibili con il titolo dell'immobile, NON 'Apri annuncio'. Per ogni avviso indica se è stato consegnato con successo. Sii conciso ma informativo.",
+                "response_prompt": "Timeline avvisi recenti: per ognuno titolo completo dell'elemento, dettagli chiave del payload, data/ora 24h, consegnato sì/no. Link col titolo, mai 'Apri'. Conciso.",
             },
             {
                 "command": "notifica_disattiva",
