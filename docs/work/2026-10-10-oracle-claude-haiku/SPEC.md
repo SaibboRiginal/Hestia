@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.2 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user finishes central settings first |
+| 1.3 | user via project thread "Usare Claude Haiku per la chat di Oracle" (2026-10-10) | waiting: user confirms plan |
 
 ## 1. Goal
 Let Oracle's normal chat run on Claude Haiku, alongside Gemini and Ollama (not replacing them), in two ways:
@@ -42,15 +42,18 @@ refactor and `load_llm_config()`.
 Out of scope: settings UI / Themis (central-settings thread), Ollama num_ctx/keep_alive and llama-server
 specifics (local-context thread), assistant presence (own thread), embeddings on Anthropic (no such API).
 
-## 3. Configuration
-Aligned with central-settings SPEC v2.0: there is no provider-instance list. Endpoints and key names are
-infrastructure and stay in `.env` permanently (`OLLAMA_URL`, `ORACLE_OPENAI_BASE_URL`, `GEMINI_API_KEY`,
-`ORACLE_ANTHROPIC_API_KEY`; `claude_cli` uses the existing `CLAUDE_CODE_OAUTH_TOKEN`). A provider type is
-available when it is implemented and its endpoint/key is set. `load_llm_config()` is the single env reader:
-it builds one config per available type and the use-case mapping `{provider type, model, fallback, options}`
-(from Themis settings once they exist). Non-address tunables (e.g. `thinking_by_mode`, `prompt_cache`) are
-type `CONFIG_FIELDS` defaults, later settings `oracle.provider.<type>.*`. No new tunable env vars.
-Oracle contains no settings or approval logic (settings tools live in Themis via Hestia-MCP).
+## 3. Configuration (rebased on settings P1-P5 on main)
+- Model choice per use case = existing live Themis keys `oracle.models.<uc>.{provider,model,fallback_provider,
+  fallback_model,thinking}` (`core/services/oracle_settings.py`). New provider types only add values to
+  `oracle_settings.PROVIDERS`: `anthropic` "Claude (chiave API)", `claude_cli` "Claude (abbonamento)", plus
+  their `list_models()` behind `GET /api/llm/models?provider=`.
+- Secrets/infra stay in env: `ORACLE_ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. A type is offered only when
+  its key is set. `load_llm_config()` (new, `agents/llm_config.py`) is the single place reading these
+  infra env vars and hands each provider its config dict.
+- Use-case `thinking` setting keeps its meaning: `false` = never think; `auto`/`true` = level from the chat mode
+  (quick/auto/thinking → off/low/high effort for Claude). No new env vars; any new tunable goes through
+  `settings_client.setting(...)` as `oracle.provider.<type>.*` (none planned in v1).
+- Optional preset "Claude" (all chat use cases on Haiku) — only if the user wants it.
 
 ## 4. Acceptance criteria
 - With no new env, Oracle behaves exactly as before (ollama/gemini paths moved, not changed).
