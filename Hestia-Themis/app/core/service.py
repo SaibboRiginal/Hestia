@@ -323,8 +323,11 @@ class Themis:
             raise
         self._bump(f"proposal_{status}:{proposal['proposal_id']}")
         if notify:
-            self._emit("settings.proposal_closed", f"settings-proposal-{proposal['proposal_id']}-closed",
-                       {"proposal_id": proposal["proposal_id"], "decision": status, "key": proposal.get("key")})
+            outcome = {"approved": "Approvata", "rejected": "Rifiutata", "expired": "Scaduta"}.get(status, status)
+            self._emit("settings.proposal_closed", f"settings.proposal_closed:{proposal['proposal_id']}",
+                       {"proposal_id": proposal["proposal_id"], "decision": status, "key": proposal.get("key"),
+                        "closes": f"settings.proposal:{proposal['proposal_id']}",
+                        "outcome_text": f"{outcome} ({by})" if by != "themis" else outcome})
         return row or {}
 
     def decide(self, proposal_id: str, approve: bool, *, by: str = "user") -> dict:
@@ -354,8 +357,9 @@ class Themis:
         if (proposal.get("scope") or "system") == "system" and d.get("module"):
             self._notify_reload(d["module"])
         self._bump(f"approved:{proposal['key']}")
-        self._emit("settings.changed", f"settings-changed-{proposal['proposal_id']}",
+        self._emit("settings.changed", f"settings.changed:{proposal['proposal_id']}",
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),
+                    "title": "Impostazione cambiata", "level": "success",
                     "_message": f"✅ Impostazione cambiata: {d.get('label') or proposal['key']} → "
                                 f"{_short(proposal.get('value'))}"})
         return {"key": proposal["key"], "value": proposal.get("value"), "revision": self.revision}
@@ -367,8 +371,8 @@ class Themis:
                 self.hub.call("hermes", "POST", "api/events/ingest", body={
                     "event_type": "service.action_required" if kind == "settings.proposal" else kind,
                     "domain": "system", "entity_id": entity_id,
-                    "payload": {"kind": kind, "service": "themis", "target": "owner",
-                                "dedupe_key": entity_id, **payload}}, timeout=8)
+                    "payload": {"kind": kind, "service": "themis", "source": "themis", "domain": "settings",
+                                "target": "owner", "dedupe_key": entity_id, **payload}}, timeout=8)
             except Exception as exc:
                 logger.warning("[🔄] event=themis_hermes_emit_failed kind=%s error=%s "
                                "fallback=panel_banner", kind, exc)
@@ -383,10 +387,11 @@ class Themis:
             text += f"\nMotivo: {row['reason']}"
         actions = [
             {"id": "approve", "label": "Approva", "text": "✅ Approva", "style": "primary", "service": "themis",
-             "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {}},
+             "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
             {"id": "reject", "label": "Rifiuta", "text": "❌ Rifiuta", "style": "danger", "service": "themis",
-             "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {}},
+             "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
         ]
-        self._emit("settings.proposal", f"settings-proposal-{pid}",
+        self._emit("settings.proposal", f"settings.proposal:{pid}",
                    {"proposal_id": pid, "key": d.get("key"), "title": "Proposta di modifica impostazione",
+                    "level": "warning",
                     "_message": text, "_actions": actions})

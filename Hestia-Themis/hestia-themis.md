@@ -40,9 +40,11 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
   apply at once, restart values flagged `restart_required` until the module restarts.
 - **Assistant proposal**: MCP tool `settings_propose` (or Athena `POST /api/settings/proposals`) → Archive
   (pending) → Hermes event `service.action_required` with payload `kind=settings.proposal`, `_message`,
-  `_actions` (`{id, label, service: themis, method: POST, path: /api/settings/proposals/{id}/approve|reject}`)
-  → user answers from any client → applied (history actor = proposer) → `settings.changed` notice.
-  Later answers get `409 {status: already_decided}`.
+  `_actions` (`{id, label, style, service: themis, method: POST, path: /api/settings/proposals/{id}/approve|reject,
+  body: {by: "<client>"}}`), dedupe key `settings.proposal:<id>` → user answers from any client
+  (contract shared with `docs/work/2026-10-10-hermes-global-notifications/`) → applied (history actor = proposer) → `settings.changed` notice.
+  Later answers get `409 {status: already_decided}`. Closing (approved/rejected/expired) emits
+  `settings.proposal_closed` with `closes: settings.proposal:<id>`, `decision`, `outcome_text`.
 
 ## API (via Hub `/route/themis/...`)
 
