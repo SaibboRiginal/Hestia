@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -61,7 +61,6 @@ type         enum | bool | int | float | string | text | model | time | duration
              | secret_ref (NAME of an env var; API shows only configured yes/no, never the value)
 options      for enum (value + label), min/max for numbers
 default      code default
-env          "MODEL_USECASE_GENERIC_MODEL" (optional legacy env name)
 scope        system | profile | client | session
 apply        live | restart
 depends_on   {"key": "argus.remediate.enabled", "equals": true}   (else shown grey/collapsed)
@@ -73,8 +72,10 @@ Declared in code next to the module's other knobs (like Telegram `chat_settings.
 with the same startup helper that registers MCP tools / agenda rules.
 
 ### 3.2 Value resolution
-`code default → env (.env/compose) → stored override`. The panel shows the source of the current value
-("predefinito", "da .env", "modificato"). "Ripristina" removes the override (falls back to env/default).
+`code default → stored value`. **No legacy env bridge** (v1.2, user: no backward compatibility needed): a
+setting that moves into the registry is removed from env, `.env.example` and compose; env keeps only
+secrets and infrastructure. Code defaults = today's defaults. The panel shows "predefinito" / "modificato";
+"Ripristina" removes the stored value.
 Scopes for user-facing options: `profile` (your defaults) → `client` (webui/telegram) → `session`.
 New session = copy of profile (+client) values; changes in a session stay in that session unless
 "Salva come predefinito". Pure device rendering (theme, diff mode, calendar view) stays local in the browser.
@@ -157,17 +158,34 @@ Three layers, so a new local tool or a new cloud vendor is "add an instance", no
    `{"provider":"<instance id>","model":"<from list_models()>","fallback":[{"provider":"gemini","model":"gemini-2.5-flash"}],
    "options":{ per-type overrides, e.g. "thinking":"low", "temperature":0.2 }}`. Forge's `local`/`cloud`
    profiles become two more use cases (`forge_local`, `forge_cloud`).
-4. **Presets** — `oracle.preset` (`economico` | `qualita` | `personalizzato`) + `oracle.presets` (named
-   bundles of use-case mappings). Picking a preset writes the mappings; editing any mapping → `personalizzato`.
+4. **Presets** — see §3.10; Oracle models: `economico` | `bilanciato` | `qualita` | `personalizzato`.
 
+Only **implemented** types can be added (the Aggiungi menu lists the types Oracle declares); a vendor that
+fits no type needs code (a Forge task). Defaults so nothing must be added by hand at first start: one
+`ollama` instance (local) and one `gemini` instance (used only if its key is configured).
 UI: "Fornitori" list with Aggiungi (pick type → form from the type's `CONFIG_FIELDS`), status dot from a
 cheap reachability check, model dropdown filled by `list_models()`.
-Env bridge until Themis exists (and as fallback): instances synthesized from today's env
+Temporary env bridge only until Themis ships (the Haiku/llama-server work lands before it); removed in P2,
+then instances come only from settings: instances synthesized from today's env
 (`OLLAMA_URL`/`OLLAMA_API_URL`, `ORACLE_CONTEXT_LENGTH`, `ORACLE_OLLAMA_KEEP_ALIVE`, `GEMINI_API_KEY`,
 `ORACLE_ANTHROPIC_API_KEY` (never `ANTHROPIC_API_KEY`: Forge's Claude Code inherits it and would switch from subscription to paid API billing), `ORACLE_LLM_PROFILE_*`, `ORACLE_OPENAI_BASE_URL`) and mappings from `MODEL_USECASE_*`.
 One loader (`load_llm_config()` → instances + mappings) is the only place that reads env; it switches to
 Themis in P2 without touching provider code. Owner of the `UniversalAgent` dispatch refactor and
 `load_llm_config()`: thread "Claude Haiku in Oracle".
+
+### 3.10 Presets (generic, per module or section)
+Any module can declare presets for one of its groups: `{id, label, help, values:{key: value…}}`. The group
+header shows a preset selector; picking one writes its values (one history entry), an expandable line shows
+what it sets underneath; editing any covered value turns the selector into **Personalizzato**, and the user
+can always change everything. Examples: Oracle models (Economico / Bilanciato / Qualità), Argus
+sensitivity (Tranquillo / Normale / Attento), Athena proactivity (Bassa / Normale / Alta).
+
+### 3.11 Who does what
+Modules **declare** settings (types, accepted values, ranges, options, model lists) — they know what is
+valid. Themis only stores, validates against the declaration, keeps state/history/proposals.
+Argus = self-diagnosis (detects problems, feeds Athena, never changes settings). Athena = retrospective
+assistant (thinks about the user, improvements, reminders, settings) → **proposes**. Oracle → proposes
+when asked in chat. Only the user confirms; nobody applies a change alone.
 
 ## 4. Acceptance criteria
 - A module declaring a new setting makes it appear in the panel with no WebUI change.
