@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat (project thread "Notifiche su tutti i client", 2026-10-10) | Proposed — waiting for user approval |
+| 1.1 | user via external chat (project thread "Notifiche su tutti i client", 2026-10-10) | Proposed — waiting for user approval |
 
 ## 1. Goal
 A notification from Hestia reaches **every client** the user has (Telegram, WebUI, future ones), not only
@@ -79,16 +79,23 @@ Update contract (same endpoint, `"kind": "update"`): `{notification_id, state: "
 action_id, outcome_text}` → clients mark it handled.
 
 ### 5.4 Answers: first wins, routed to the asking module
-- Action definition by the emitting module (in `_actions`): `{id, text, style?, command}` (command = Hub
-  command, e.g. `settings_approve 42`, compatible with central-settings §3.6) **or** `{id, text, route:
-  {service, method, path, body}}`.
+- Action definition by the emitting module (in `_actions`), agreed with the central-settings thread:
+  `{"id":"approve","label":"Approva","style":"primary|danger|default","service":"themis","method":"POST",
+  "path":"/api/settings/proposals/<id>/approve","body":{"by":"<client>"}}` (`text` accepted as alias of
+  `label`; legacy `{text, command}` = Hub command, still supported). Hermes stores the actions on the
+  notification; buttons carry only `<notification_id>:<action_id>` (Telegram 64-byte callback limit).
 - Client → Hermes `POST /api/notifications/{id}/answer {action_id, client}`. Hermes claims the answer
   atomically (Archive state `answered` only if not already answered/expired) — first wins; a late answer gets
   `409 {answered_by, action_id}`.
-- After the claim, the reply goes to the module that asked: `route` actions are routed by Hermes via Hub;
-  `command` actions are executed by the answering client exactly as today (it already resolves Hub
-  commands), then it reports the outcome to Hermes (`/answer/outcome`). Hermes then sends the `update` to
-  every other client. Hermes keeps no domain logic: it only claims, forwards and informs.
+- After the claim Hermes routes the action to the asking module through Hub (`<client>` in body replaced by
+  the answering client name) and returns the module's response to the client; a module 409 (e.g. Themis
+  `already_decided`) is passed through as "già gestita". Legacy `command` actions are executed by the
+  answering client as today, which then reports the outcome (`/answer/outcome`). Hermes then sends the
+  `update` to every other client. Hermes keeps no domain logic: it only claims, forwards and informs.
+- **Closing from the module side:** an event whose payload has `closes: "<dedupe_key>"` (+ `decision`,
+  `outcome_text`) — e.g. Themis `settings.proposal_closed` with `settings.proposal:<id>` — marks the matching
+  notification answered/expired and fans out the `update`; it is not shown as a new notification unless it
+  carries its own `_message`.
 
 ### 5.5 One narration for all clients
 Entity payloads without `_message` are narrated **once** in Hermes (Oracle `/api/llm/generate`, as batches
