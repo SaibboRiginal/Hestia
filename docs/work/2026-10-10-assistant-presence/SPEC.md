@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Stato di attività dell'assistente") · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; implementation starts only after the central-settings work is finished |
 
@@ -66,17 +66,26 @@ Activities have a TTL (auto-expire if a module dies without `stop`), so a crash 
 - **Base** (exactly one at a time, like awake/asleep): picked by priority among those whose conditions match.
 - **Overlay** (zero or more, combinable): added on top → hybrids such as *Sveglio · occupato in Forge*.
 
-Built-in set (each is just a definition row; Italian labels for clients):
-| Key | Kind | Label | When (default conditions) |
-|---|---|---|---|
-| `awake` | base | Sveglio | `user.idle_seconds < idle_after` (5 min) |
-| `waiting` | base | In attesa | idle ≥ 5 min |
-| `nap` | base | Pisolino | idle ≥ 30 min, daytime |
-| `deep_sleep` | base | Sonno profondo | `assistant.sleep` open **or** idle ≥ 3 h |
-| `dnd` | base | Non disturbare | `manual.dnd` set (highest priority) |
-| `busy` | overlay | Occupato in … | any heavy `activity.*` running (label names it: "in Forge", "in addestramento") |
-| `eating` | overlay | Sto mangiando | maintenance: `hephaestus.deploy`, restart, model loading/training holding the GPU |
-| `tired` | overlay | Stanco | `claude_quota_left` < 20 % or `health.degraded_services` > 0 or many errors in the last hour |
+Two tiers (user, v2.1: some states are "key", like activity and inactivity):
+- **Core** — always present, cannot be deleted or disabled; only thresholds, labels and effects are editable.
+  They guarantee the system always has a valid base state: `awake`, `idle`, `dnd` (manual command).
+- **Optional** — built-in or user-made; can be edited, disabled, deleted, or reset to the built-in definition.
+  With every optional state off, Hestia still works on `awake`/`idle` alone.
+
+Default definitions (proposal by Claude, v2.1; every number is a setting):
+| Key | Tier | Kind | Label | When | Effects (only what differs from `awake`) |
+|---|---|---|---|---|---|
+| `awake` | core | base | Sveglio | interaction in the last 5 min | light **defer**, heavy **defer**, Claude **save** (user chats only), notify **all**, style normal |
+| `idle` | core | base | In attesa | no interaction for 5 min | light **allow** |
+| `nap` | optional | base | Pisolino | no interaction for 45 min, outside the night window | light allow, heavy **allow** only local (Claude **save**), notify **important** |
+| `deep_sleep` | optional | base | Sonno profondo | `assistant.sleep` window open (01:00–07:00) **or** no interaction for 3 h | light allow, heavy allow, Claude **allow**, notify **urgent** (rest in a digest on wake) |
+| `dnd` | core | base | Non disturbare | `/nondisturbare` (default 2 h, or until a time) — highest priority | light allow, heavy allow only local, notify **urgent** |
+| `busy` | optional | overlay | Occupato in … | a heavy activity is running (label names it: Forge, addestramento) | other heavy work **defer** (one at a time); notice "sto lavorando in …, rispondo un po' più lento" |
+| `eating` | optional | overlay | Sto mangiando | maintenance: deploy/restart, model loading, training holding the GPU | heavy **defer**; notice "mi sto aggiornando, la risposta può tardare" |
+| `tired` | optional | overlay | Stanco | Claude quota < 25 % before the reset, or ≥ 2 services degraded | Claude **save**, Forge autonomous **defer**, style **brief** |
+Precedence among bases: `dnd` > `awake` > `deep_sleep` > `nap` > `idle` (a chat at 03:00 wakes it up; when the
+user stops, the window puts it back to deep sleep after `idle_after`). Overlays never change the base.
+Interaction = chat, Telegram command, WebUI action (send, click, save). Page views don't count.
 
 ### 4.3 Definition format (open for extension, closed for modification)
 ```
@@ -132,15 +141,16 @@ interim. Settings:
 `chronos.presence.sleep_after` (duration, 3 h; 0 = only the window) · `chronos.presence.use_sleep_window`
 (bool, true) · `chronos.presence.heavy_requires_sleep` (bool, true) · `chronos.presence.count_ui_actions`
 (bool, true) · `chronos.presence.oracle_context_line` (bool, true) · `chronos.presence.dnd_default_duration`
-(duration, 8 h); thresholds used by built-in states (`nap_after` 30 min, `sleep_after` 3 h,
-`tired_quota` 20 %) are settings too, and every state definition (conditions, effects, on/off) is editable in the
+(duration, 2 h); thresholds used by built-in states (`nap_after` 45 min, `sleep_after` 3 h,
+`tired_quota` 25 %, `tired_degraded` 2) are settings too, and every state definition (conditions, effects, on/off) is editable in the
 panel. The hours of the `assistant.sleep` window live in the agenda (default daily 01:00–07:00),
 editable from the calendar and linked from the settings panel. Per-consumer switches (Athena/Forge/Metis "aspetta
 il sonno profondo") are declared by each module in its own group.
 
 ## 5. Acceptance criteria
+- Core states `awake`/`idle`/`dnd` cannot be deleted or disabled; optional ones can, and the system keeps working.
 - Chat or command from Telegram/WebUI → base state `awake` everywhere within seconds; survives a Chronos/Oracle restart.
-- No interaction for 5 min → `waiting`; 30 min → `nap`; 3 h or sleep window opens → `deep_sleep`; event emitted.
+- No interaction for 5 min → `idle`; 45 min → `nap`; 3 h or sleep window opens → `deep_sleep`; event emitted.
 - A Forge task running while the user chats → `Sveglio · occupato in Forge`, and Oracle mentions it when relevant.
 - Athena thinks only with `work.light` allowed; Forge autonomous tasks and Metis trainings only with `work.heavy`.
 - A new state added from the panel (or declared by a module) changes behaviour through its effects with no change
@@ -150,7 +160,7 @@ il sonno profondo") are declared by each module in its own group.
 - Every threshold/switch in 4.5 is changeable from the settings panel and applies live.
 - Chronos down → modules log `[🔄]` and fall back as in 4.3; nothing stops.
 
-## 6. Open points (to confirm at approval)
-- Defaults: `nap_after` 30 min, `sleep_after` 3 h, sleep window 01–07, `tired` at 20 % Claude quota?
-- Hermes digest in v1, or effects on notifications later?
-- Should WebUI page views count as interaction, or only actions (send, click a command)? Proposal: actions only.
+## 6. Decisions
+- v2.1 (user: "fammi una proposta tu"): defaults in §4.2 chosen by Claude; core vs optional tiers; Hermes digest
+  of held notices is in v1; WebUI counts actions, not page views.
+- No open points left; approval of the spec pending.
