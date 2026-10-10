@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.2 | user via external chat (project thread "Notifiche su tutti i client", 2026-10-10) | Proposed — waiting for user approval |
+| 1.3 | user via external chat (project thread "Notifiche su tutti i client", 2026-10-10) | Proposed — waiting for user approval |
 
 ## 1. Goal
 A notification from Hestia reaches **every client** the user has (Telegram, WebUI, future ones), not only
@@ -143,6 +143,13 @@ module (Themis, Forge, …) = acting on the answer. Archive = storage. Nobody el
   the app, so Hermes' update edits the message (small "✓ vista su WebUI" mark; answered → buttons removed
   + outcome). When is it "seen"? WebUI: shown in a visible tab (toast/page) or marked read. Telegram: a button
   press, or any user message in that chat after delivery (the user opened the chat).
+
+- **Telegram cleanup (user, v1.3, hybrid):** seen elsewhere → the message is edited at once ("✓ vista su
+  WebUI"); after a delay it is deleted from the chat (still in the WebUI inbox). Delay = Hermes setting in
+  Themis `hermes.telegram_cleanup_after` (default 6 h, capped at 47 h because a bot can delete its own
+  messages only within 48 h; 0 = never delete). Never deleted while it still waits for an answer. The cleanup
+  runs as an agenda job (Chronos), not a Hermes loop: Hermes deletes through Telegram's notify endpoint
+  (`kind: "delete"`, `ref`).
 
 ## 6. Phases
 1. Hermes: notification model, Hub client discovery, multi-client fan-out with per-client retry, answer

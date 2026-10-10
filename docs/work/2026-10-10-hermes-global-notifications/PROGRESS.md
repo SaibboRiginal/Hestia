@@ -1,6 +1,6 @@
 # PROGRESS — Hermes global notifications
 
-Spec: `SPEC.md` v1.2 · resume from the first unchecked box.
+Spec: `SPEC.md` v1.3 · resume from the first unchecked box.
 
 - [x] Current state studied (Hermes dispatch, subscriptions, Telegram actions, WebUI notices)
 - [x] Dossier created (SPEC v1.0 proposed)
