@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-10
+- Spec v1.0 for central settings (module-declared registry, control panel with search and module status, Oracle/Athena proposals with user confirmation) → `docs/work/2026-10-10-central-settings/` [ext-chat]
+
 ## 2026-10-04
 - MIT license. Owner's Telegram chat id now lives only in Telegram `ALLOWED_USER_ID`: Hermes/Chronos/Argus notify the `owner` alias that Telegram resolves (no id in compose or docs; old Hermes system subscription deactivated). [ext-chat]
 - Public README: badges, features, 5-step quick start (`tools/init_env.py` + new `.env.example` for Telegram/Scout, compose options added to the root one), configuration, architecture diagrams, roadmap, docs index. Old internal readme moved to `docs/ARCHITECTURE.md`, now the global-rules doc checked by the docs-sync gate. [ext-chat]
