@@ -16,3 +16,7 @@
 - v1.3 — 2026-10-10 — chat proposal flow written out (search → get → propose → existing approval → apply);
   WebUI approval card added to P5 (missing today); providers UI: use-case comboboxes are the main control,
   instances under advanced "Connessioni" — source: user via external chat.
+- v2.0 — 2026-10-10 — design change: Oracle is only the brain → settings tools belong to Themis (exposed via
+  Hestia-MCP), confirmation delivered by Hermes (message + Approva/Rifiuta actions), no approval logic in
+  Oracle; provider endpoints/keys are infrastructure (env), no "Aggiungi"/instance list — UI is only the
+  use-case table with provider/model comboboxes — source: user via external chat.

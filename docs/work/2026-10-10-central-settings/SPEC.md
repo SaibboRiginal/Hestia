@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.3 |
+| **Version** | 2.0 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -38,7 +38,7 @@ One registry that every module declares its settings into, owned by a **new core
 - WebUI: new "Impostazioni" layout (personal + system per module), search, module status cards,
   inline settings reused in other pages (chat quick menu).
 - Unified chat settings (Telegram + WebUI share one schema) with profile defaults → session copy.
-- Oracle MCP tools: search / get / propose (never direct write); confirmation by the user.
+- Themis MCP tools (via Hestia-MCP): search / get / propose (never direct write); confirmation via Hermes.
 - Athena candidate kind `setting` → proposal → user notified (owner) → approve/reject.
 - Migration of existing runtime islands and, module by module, of the tunable env variables.
 
@@ -103,21 +103,26 @@ New session = copy of profile (+client) values; changes in a session stay in tha
 `GET|POST /api/settings/proposals` · `POST /api/settings/proposals/{id}/approve|reject` ·
 `GET /api/settings/revision`. Search covers label, help, key, env name, module.
 
-### 3.6 Oracle and Athena
-- MCP tools (on demand, nothing in the permanent prompt): `settings_search`, `settings_get`,
-  `settings_propose`, `settings_undo` (undo = a proposal too).
-- `settings_propose` creates a proposal and asks the user in the chat with the existing high-impact approval
-  flow (`/api/actions/approval/respond`); outside a chat the owner is notified (`owner` target) with
-  approve/reject. Only keys with `oracle=propose`.
-- Flow in chat: user asks ("usa un modello più forte per il codice") → Oracle `settings_search` →
-  `settings_get` → `settings_propose(key, value, reason)` → Themis stores a pending proposal → Oracle answers
-  with the existing high-impact approval (token, Conferma/Annulla) → confirm = Themis applies (history actor
-  `oracle`), reloads the module, notice "impostazione cambiata"; cancel/TTL expiry = rejected/expired.
-  Telegram already renders approval buttons; **WebUI has no approval UI yet → add Conferma/Annulla card in
-  chat (P5)**. Pending proposals also appear in the panel banner.
-- Athena (the retrospective: thinks about the user, improvements, reminders, settings; Argus is the
-  self-diagnosis and feeds it errors): new candidate kind `setting` → `settings_propose` with reason → owner notified. Deduplicated,
-  max per day like the Forge hand-off.
+### 3.6 Proposals and confirmation — each module does its own job (v2.0)
+Oracle is only the brain: it does what it is asked, inside its scope. Nothing about settings is built into
+Oracle. Responsibilities:
+- **Themis** owns the settings logic and **exposes its own MCP tools** (`settings_search`, `settings_get`,
+  `settings_propose`, `settings_undo`), aggregated by **Hestia-MCP** like every module's tools. A proposal is
+  stored as pending, never applied directly.
+- **Hermes** delivers the confirmation: on a new proposal Themis emits an event to Hermes (target `owner`)
+  with a message and actions (`Approva` / `Rifiuta`); Hermes dispatches it like any notification (dedupe,
+  retry, dispatch log). The buttons run Themis commands via Hub (`settings_approve <id>` /
+  `settings_reject <id>`). Clients render it as they render every Hermes notification.
+- **Oracle**: when the user asks in chat ("usa un modello più forte per il codice") it just calls Themis'
+  tools from the MCP catalogue (search → get → propose) and says that a confirmation was sent. No approval
+  logic in Oracle (its high-impact approval gate is not used for this).
+- **Athena**: candidate kind `setting` → calls `settings_propose` with its reason (dedup, max per day).
+- **Argus**: detects problems, feeds Athena; never proposes or changes settings itself.
+- Approve → Themis applies (history actor = proposer), asks the owning module to reload, emits
+  `settings.changed` (Hermes notice). Reject / TTL expiry → proposal closed. Same path whoever proposes.
+- Pending proposals also appear as a banner in the WebUI panel (approve/reject there = same Themis commands).
+  Gap to check in P5: Hermes today dispatches only to Telegram; WebUI delivery of Hermes notifications
+  belongs to Hermes/WebUI, not to Themis.
 
 ### 3.7 WebUI (same style, reuse `hx-page-header`, `hx-field`, `hx-segmented`, `hx-toggle`, `hx-textarea`)
 - **Impostazioni** = two areas: *Personali* (aspect, assistant/chat defaults, notices, session) and
@@ -147,40 +152,23 @@ Three layers, so a new local tool or a new cloud vendor is "add an instance", no
    that declares its typed config fields (`CONFIG_FIELDS`, same definition format as §3.1), its capabilities
    (`chat, tools, stream, vision, embed, thinking`) and `list_models()`; it receives its config as a dict and
    never reads `os.getenv` itself. `UniversalAgent` dispatches on the instance's type (no more if/elif chains).
-2. **Provider instances** — setting `oracle.providers` (`list<object>`, scope system), e.g.
-   ```
-   [{"id":"ollama_pc","type":"ollama","label":"Ollama (PC)","enabled":true,
-     "config":{"base_url":"http://host.docker.internal:11434","num_ctx":16384,"keep_alive":"30m"}},
-    {"id":"llama_server","type":"openai","label":"llama-server","enabled":true,
-     "config":{"base_url":"http://host.docker.internal:8080/v1","api_key_env":""}},
-    {"id":"anthropic","type":"anthropic","label":"Anthropic","enabled":true,
-     "config":{"api_key_env":"ORACLE_ANTHROPIC_API_KEY","thinking_by_mode":{"fast":"off","normal":"low","deep":"high"},
-               "prompt_cache":true}},
-    {"id":"gemini","type":"gemini","label":"Gemini","enabled":true,"config":{"api_key_env":"GEMINI_API_KEY"}}]
-   ```
-   Secrets are `secret_ref`: the instance stores the env var NAME, the key stays in `.env`.
-   Several instances of the same type are allowed (two Ollama hosts, two OpenAI-compatible servers).
+2. **Provider endpoints = infrastructure** (v2.0): URLs and API-key names stay in env/compose like every
+   other address (`OLLAMA_URL`, `ORACLE_OPENAI_BASE_URL`, `GEMINI_API_KEY`, `ORACLE_ANTHROPIC_API_KEY` —
+   never `ANTHROPIC_API_KEY`: Forge's Claude Code inherits it and would switch to paid API billing).
+   A provider is **available** when its type is implemented and its endpoint/key is configured. No "Aggiungi",
+   no instance list in the settings. Per-type tunables that are not addresses (Ollama `num_ctx`,
+   `keep_alive`; Anthropic thinking per mode, prompt cache) are normal settings `oracle.provider.<type>.*`.
 3. **Use-case mapping** — `oracle.usecases.<generic|reasoning|code|embedding>` (`object`):
    `{"provider":"<instance id>","model":"<from list_models()>","fallback":[{"provider":"gemini","model":"gemini-2.5-flash"}],
    "options":{ per-type overrides, e.g. "thinking":"low", "temperature":0.2 }}`. Forge's `local`/`cloud`
    profiles become two more use cases (`forge_local`, `forge_cloud`).
 4. **Presets** — see §3.10; Oracle models: `economico` | `bilanciato` | `qualita` | `personalizzato`.
 
-Only **implemented** types can be added (the Aggiungi menu lists the types Oracle declares); a vendor that
-fits no type needs code (a Forge task). Defaults so nothing must be added by hand at first start: one
-`ollama` instance (local) and one `gemini` instance (used only if its key is configured).
-UI: the everyday control is the **use-case table** (two comboboxes per row: provider, model).
-"Connessioni" (advanced) is where instances live; Aggiungi is only for a new endpoint (e.g. a second Ollama
-PC, a llama-server URL): pick the type from a combobox, fill URL/key-name.
-Original line: "Fornitori" list with Aggiungi (pick type → form from the type's `CONFIG_FIELDS`), status dot from a
-cheap reachability check, model dropdown filled by `list_models()`.
-Temporary env bridge only until Themis ships (the Haiku/llama-server work lands before it); removed in P2,
-then instances come only from settings: instances synthesized from today's env
-(`OLLAMA_URL`/`OLLAMA_API_URL`, `ORACLE_CONTEXT_LENGTH`, `ORACLE_OLLAMA_KEEP_ALIVE`, `GEMINI_API_KEY`,
-`ORACLE_ANTHROPIC_API_KEY` (never `ANTHROPIC_API_KEY`: Forge's Claude Code inherits it and would switch from subscription to paid API billing), `ORACLE_LLM_PROFILE_*`, `ORACLE_OPENAI_BASE_URL`) and mappings from `MODEL_USECASE_*`.
-One loader (`load_llm_config()` → instances + mappings) is the only place that reads env; it switches to
-Themis in P2 without touching provider code. Owner of the `UniversalAgent` dispatch refactor and
-`load_llm_config()`: thread "Claude Haiku in Oracle".
+UI: one **use-case table**, two comboboxes per row: provider (only available ones) and model (filled by
+`list_models()`), plus fallback. Preset selector on top (§3.10). Nothing to add by hand.
+`load_llm_config()` (owner: thread "Claude Haiku in Oracle") reads endpoints/keys from env (infrastructure,
+permanent) and, until Themis ships, the use-case mapping from `MODEL_USECASE_*`; in P2 the mapping and
+per-type tunables come from Themis and those env vars are removed.
 
 ### 3.10 Presets (generic, per module or section)
 Any module can declare presets for one of its groups: `{id, label, help, values:{key: value…}}`. The group
@@ -193,8 +181,8 @@ sensitivity (Tranquillo / Normale / Attento), Athena proactivity (Bassa / Normal
 Modules **declare** settings (types, accepted values, ranges, options, model lists) — they know what is
 valid. Themis only stores, validates against the declaration, keeps state/history/proposals.
 Argus = self-diagnosis (detects problems, feeds Athena, never changes settings). Athena = retrospective
-assistant (thinks about the user, improvements, reminders, settings) → **proposes**. Oracle → proposes
-when asked in chat. Only the user confirms; nobody applies a change alone.
+assistant (thinks about the user, improvements, reminders, settings) → **proposes**. Oracle → calls
+Themis' tools when asked in chat. Hermes → delivers the confirmation. Hestia-MCP → exposes the tools. Only the user confirms; nobody applies a change alone.
 
 ## 4. Acceptance criteria
 - A module declaring a new setting makes it appear in the panel with no WebUI change.
@@ -202,7 +190,8 @@ when asked in chat. Only the user confirms; nobody applies a change alone.
   new revision.
 - Change a `restart` setting → "riavvio necessario" everywhere until the module restarts with it.
 - Search finds a setting by Italian label, key or old env name.
-- Oracle can explain any setting via tools and can only change one after the user's confirmation;
+- Oracle can explain any setting via Themis' tools; a change happens only after the user's confirmation
+  delivered by Hermes;
   undo restores the previous value.
 - Athena proposal reaches the user and is applied only on approval.
 - New chat session starts from profile defaults; changing it does not change the defaults.
