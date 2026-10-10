@@ -5,3 +5,4 @@
   D optional OpenAI-compatible provider for llama-server/vLLM shared with the Haiku thread) — source: user
   via external chat (Claude Code cloud session).
 - v1.1 — 2026-10-10 — phases A and D aligned with central-settings §3.9 (num_ctx/keep_alive are `ollama` provider config fields; llama-server/vLLM = `openai` provider instances; env read only by `load_llm_config()`; provider layer owned by the Haiku thread) — refinement — source: channel session relay of the settings thread's schema.
+- v1.2 — 2026-10-10 — no new tunable env vars: keep_alive, tool-result stub threshold and llama-server options are Themis settings declared by Oracle (declared defaults until Themis exists); `load_llm_config()` env bridge only reuses existing vars and goes away in settings P2 — refinement — source: user decision relayed from the settings thread (central-settings SPEC v1.2).

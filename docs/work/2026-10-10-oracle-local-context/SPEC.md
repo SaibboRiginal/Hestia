@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -60,9 +60,11 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
 - `num_ctx` and `keep_alive` are fields of the **`ollama` provider type's `CONFIG_FIELDS`**
   (central-settings SPEC §3.9): instance config `{base_url, num_ctx, keep_alive}`. The `ollama` provider
   class sends them as `options.num_ctx` / `keep_alive` on every call (generate, chat, tools, stream, vision).
-  It never reads env: until Themis exists, `load_llm_config()` synthesizes the instance from
-  `OLLAMA_URL`/`OLLAMA_API_URL`, `ORACLE_CONTEXT_LENGTH` (default 8192) and `ORACLE_OLLAMA_KEEP_ALIVE`
-  (default `30m`). **Same `num_ctx` on every call to one instance** — a different value forces Ollama to reload.
+  It never reads env. **No new env var**: `num_ctx` and `keep_alive` are Themis settings declared by
+  Oracle with defaults in the declaration (`num_ctx` 8192, `keep_alive` `30m`). Until Themis exists the
+  temporary `load_llm_config()` bridge only reuses what is already in env today (`OLLAMA_URL`/`OLLAMA_API_URL`,
+  `ORACLE_CONTEXT_LENGTH`) and takes `keep_alive` from the declared default; the bridge and those env vars
+  disappear in settings P2 (no legacy compatibility). **Same `num_ctx` on every call to one instance** — a different value forces Ollama to reload.
 - `TokenCounter` / compaction thresholds read the window from the resolved provider instance instead of a
   module-level `os.getenv`, so the estimate and the real window can't diverge again.
 - Startup log `event=ollama_context_config provider=<id> num_ctx=… keep_alive=…`; warn if Ollama `/api/ps`
@@ -70,8 +72,7 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
 - Docs/`.env.example`: recommend host env `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`
   (≈ half KV memory → more context in the same VRAM), optional `OLLAMA_NUM_PARALLEL=2`.
 - **Depends on** the "Claude Haiku in Oracle" thread, which owns the `UniversalAgent` dispatch refactor and
-  `load_llm_config()`. This work builds on top of it; if A is wanted earlier, only the two env names above
-  are added to that loader (coordinated through the channel session).
+  `load_llm_config()`. This work builds on top of it (coordinated through the channel session).
 
 **B. Measure (small)**
 - Read `prompt_eval_count`, `prompt_eval_duration`, `load_duration`, `eval_count`, `eval_duration` from
@@ -113,8 +114,10 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
 - Provider knobs live in the instance config of `oracle.providers`: `ollama` → `num_ctx`, `keep_alive`;
   `openai` → `base_url`, `api_key_env`. Changing `num_ctx` reloads the model (state visible to all clients).
 - Per-call knobs go in the use-case `options` (e.g. `cache_prompt`, `temperature`).
-- Oracle-level knob of this dossier: `oracle.tool_result_stub_after_turns` (phase C), env bridge
-  `ORACLE_TOOL_RESULT_STUB_AFTER_TURNS` read only by `load_llm_config()`/the settings loader.
+- Oracle-level knob of this dossier: `oracle.tool_result_stub_after_turns` (phase C, default 2), a Themis
+  setting declared by Oracle — **no env var**, the declared default applies until Themis exists.
+- llama-server/vLLM options (`cache_prompt`, …) are use-case `options` in Themis, never env.
+- Rule (central-settings v1.2): only secrets and infrastructure stay in `.env`; this dossier adds no tunable env var.
 - Host-side Ollama env (`OLLAMA_*`) is infrastructure → documented, not managed.
 
 ## 5. Acceptance criteria
