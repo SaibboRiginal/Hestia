@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Stato di attività dell'assistente") · 2026-10-10 |
-| **Status** | Draft — waiting for user approval; implementation starts only after the central-settings work is finished |
+| **Status** | Draft — waiting for user approval; central-settings foundation (Themis, P1–P5) is on main, so the hold is lifted; code starts on approval |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -110,11 +110,10 @@ Combination: the base state gives the starting values, overlays override by prio
 restrictive wins. `presence_client.effect("work.heavy")` returns value + which states decided it (for logs/UI).
 
 ### 4.5 Record and API (Chronos via Hub; Archive tables; swagger updated)
-- Archive: `presence_signals` (live signals/activities), `presence_states` (definitions; built-ins re-asserted
-  idempotently, user edits win), `presence_snapshot` (current composite + effects) + last 100 changes.
+- Archive: `presence_signals` (live signals/activities), `presence_snapshot` (current composite + effects) + last 100 changes.
 - `POST /api/presence/ping {client, kind}` · `POST /api/presence/activity {key, load, resource, ttl}` ·
   `DELETE /api/presence/activity/{key}` · `GET /api/presence` → `{base, overlays[], label ("Sveglio · occupato in
-  Forge"), effects{}, since, last_interaction_at, idle_seconds}` · `GET|PUT|DELETE /api/presence/states[/{key}]` ·
+  Forge"), effects{}, since, last_interaction_at, idle_seconds}` · `GET /api/presence/states` (effective definitions; edits go through Themis) ·
   `POST|DELETE /api/presence/dnd` · `GET /api/presence/history`.
 - Re-evaluation on every ping/activity change and on Chronos' existing agenda worker tick (no new loop).
 - `hestia_common.presence_client`: `get()`, `ping()`, `activity()` (context manager), `effect(name, default)`.
@@ -129,23 +128,35 @@ restrictive wins. `presence_client.effect("work.heavy")` returns value + which s
 - **Forge**: autonomous tasks need `work.heavy` and `llm.claude` allowed, on top of the budget windows; reports
   `forge.task` and `hephaestus.deploy`. User-requested tasks unchanged.
 - **Metis**: trainings need `work.heavy`; reports `metis.training`.
-- **Hermes**: filters by `notify.level`; held notices go out as one digest when the level opens again.
+- **Hermes** (global notifications, `docs/work/2026-10-10-hermes-global-notifications/`, which leaves *when* to this
+  dossier): filters by `notify.level` mapped on its `level` field — `all` = every level, `important` = warning +
+  error, `urgent` = error or events flagged urgent; held notices go out as one digest when the level opens again.
 - **Clients**: Telegram `/stato` and `/nondisturbare`; WebUI badge in the header + presence card and state
   editor in the settings panel (central-settings §3.7).
 
-### 4.7 Settings (everything configurable — central registry, Chronos module, group "Presenza")
-User requirement: the whole behaviour must be configurable from the central settings, so this work **starts only
-after the central-settings implementation is finished** (`docs/work/2026-10-10-central-settings/`); no env-only
-interim. Settings:
-`chronos.presence.enabled` (bool, true) · `chronos.presence.idle_after` (duration, 5 min) ·
-`chronos.presence.sleep_after` (duration, 3 h; 0 = only the window) · `chronos.presence.use_sleep_window`
-(bool, true) · `chronos.presence.heavy_requires_sleep` (bool, true) · `chronos.presence.count_ui_actions`
-(bool, true) · `chronos.presence.oracle_context_line` (bool, true) · `chronos.presence.dnd_default_duration`
-(duration, 2 h); thresholds used by built-in states (`nap_after` 45 min, `sleep_after` 3 h,
-`tired_quota` 25 %, `tired_degraded` 2) are settings too, and every state definition (conditions, effects, on/off) is editable in the
-panel. The hours of the `assistant.sleep` window live in the agenda (default daily 01:00–07:00),
-editable from the calendar and linked from the settings panel. Per-consumer switches (Athena/Forge/Metis "aspetta
-il sonno profondo") are declared by each module in its own group.
+### 4.7 Settings (everything configurable — Themis, Chronos module, group "Presenza")
+Declared by Chronos with `hestia_common.settings_client.setting(...)` / `SettingsClient("chronos").declare(...)`,
+read with `.get()` and applied live through `on_change`; **no new env variables**. All `apply="live"`,
+`oracle="propose"` (always confirmed by the user) except `enabled` (`oracle="read"`).
+| Key | Type | Default |
+|---|---|---|
+| `chronos.presence.enabled` | bool | true |
+| `chronos.presence.idle_after` | duration | 5 min |
+| `chronos.presence.nap_after` | duration | 45 min |
+| `chronos.presence.sleep_after` | duration | 3 h (0 = only the window) |
+| `chronos.presence.use_sleep_window` | bool | true |
+| `chronos.presence.dnd_default_duration` | duration | 2 h |
+| `chronos.presence.tired_quota` | int (%) | 25 |
+| `chronos.presence.tired_degraded` | int | 2 |
+| `chronos.presence.count_ui_actions` | bool | true |
+| `chronos.presence.oracle_context_line` | bool | true |
+| `chronos.presence.states` | list of object (advanced) | built-in definitions of §4.2 |
+State definitions live in Themis too (`chronos.presence.states`), so they get history/undo and Oracle/Athena
+proposals for free; the presence editor in the panel is a friendlier view of that setting. Core states are always
+re-added by Chronos if missing (only their thresholds/labels/effects are taken from the stored value). Archive keeps
+only live data: signals, snapshot, change history. The `assistant.sleep` window hours stay in the agenda (default
+daily 01:00–07:00), linked from the panel. Per-consumer switches ("aspetta il sonno profondo") are declared by each
+module in its own group the same way.
 
 ## 5. Acceptance criteria
 - Core states `awake`/`idle`/`dnd` cannot be deleted or disabled; optional ones can, and the system keeps working.
@@ -163,4 +174,6 @@ il sonno profondo") are declared by each module in its own group.
 ## 6. Decisions
 - v2.1 (user: "fammi una proposta tu"): defaults in §4.2 chosen by Claude; core vs optional tiers; Hermes digest
   of held notices is in v1; WebUI counts actions, not page views.
+- v2.2: aligned with Themis (settings via `settings_client`, state definitions as a Themis setting) and Hermes
+  global notifications (level mapping).
 - No open points left; approval of the spec pending.
