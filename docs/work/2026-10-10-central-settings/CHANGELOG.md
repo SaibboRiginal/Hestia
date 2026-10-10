@@ -13,3 +13,6 @@
   provider types can be added, default instances pre-created; generic per-module/section presets (§3.10)
   with Personalizzato; roles of modules/Themis/Argus/Athena/Oracle (§3.11); Oracle Anthropic key env =
   ORACLE_ANTHROPIC_API_KEY — source: user via external chat + coordinator note.
+- v1.3 — 2026-10-10 — chat proposal flow written out (search → get → propose → existing approval → apply);
+  WebUI approval card added to P5 (missing today); providers UI: use-case comboboxes are the main control,
+  instances under advanced "Connessioni" — source: user via external chat.

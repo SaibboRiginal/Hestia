@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -109,6 +109,12 @@ New session = copy of profile (+client) values; changes in a session stay in tha
 - `settings_propose` creates a proposal and asks the user in the chat with the existing high-impact approval
   flow (`/api/actions/approval/respond`); outside a chat the owner is notified (`owner` target) with
   approve/reject. Only keys with `oracle=propose`.
+- Flow in chat: user asks ("usa un modello più forte per il codice") → Oracle `settings_search` →
+  `settings_get` → `settings_propose(key, value, reason)` → Themis stores a pending proposal → Oracle answers
+  with the existing high-impact approval (token, Conferma/Annulla) → confirm = Themis applies (history actor
+  `oracle`), reloads the module, notice "impostazione cambiata"; cancel/TTL expiry = rejected/expired.
+  Telegram already renders approval buttons; **WebUI has no approval UI yet → add Conferma/Annulla card in
+  chat (P5)**. Pending proposals also appear in the panel banner.
 - Athena (the retrospective: thinks about the user, improvements, reminders, settings; Argus is the
   self-diagnosis and feeds it errors): new candidate kind `setting` → `settings_propose` with reason → owner notified. Deduplicated,
   max per day like the Forge hand-off.
@@ -163,7 +169,10 @@ Three layers, so a new local tool or a new cloud vendor is "add an instance", no
 Only **implemented** types can be added (the Aggiungi menu lists the types Oracle declares); a vendor that
 fits no type needs code (a Forge task). Defaults so nothing must be added by hand at first start: one
 `ollama` instance (local) and one `gemini` instance (used only if its key is configured).
-UI: "Fornitori" list with Aggiungi (pick type → form from the type's `CONFIG_FIELDS`), status dot from a
+UI: the everyday control is the **use-case table** (two comboboxes per row: provider, model).
+"Connessioni" (advanced) is where instances live; Aggiungi is only for a new endpoint (e.g. a second Ollama
+PC, a llama-server URL): pick the type from a combobox, fill URL/key-name.
+Original line: "Fornitori" list with Aggiungi (pick type → form from the type's `CONFIG_FIELDS`), status dot from a
 cheap reachability check, model dropdown filled by `list_models()`.
 Temporary env bridge only until Themis ships (the Haiku/llama-server work lands before it); removed in P2,
 then instances come only from settings: instances synthesized from today's env
