@@ -11,6 +11,7 @@ import os
 
 import requests
 
+from core import scout_settings
 from core.base_evaluator import BaseEvaluator
 
 logger = logging.getLogger("hestia_scout.evaluator")
@@ -23,19 +24,24 @@ class OracleEvaluator(BaseEvaluator):
         self.provider = os.getenv("SCOUT_LLM_PROVIDER", "gemini").strip()
         self.models = [m.strip() for m in os.getenv(
             "SCOUT_LLM_MODELS", "gemini-2.5-flash,gemini-2.5-flash-lite").split(",") if m.strip()] or [""]
-        self.timeout = float(os.getenv("SCOUT_LLM_TIMEOUT_SECONDS", "120"))
+
+    @property
+    def timeout(self) -> float:
+        """Per-call timeout: central setting ``scout.llm.timeout`` (live)."""
+        return float(scout_settings.get_int(scout_settings.LLM_TIMEOUT, 1))
 
     def evaluate(self, text_to_evaluate: str) -> dict:
         prompt = (f"{self.system_prompt}\n\nINPUT:\n{text_to_evaluate}\n\n"
                   "Output SOLO JSON valido. Niente testo fuori dal JSON.")
         last_error = ""
+        timeout = self.timeout
         for model in self.models:
             try:
                 resp = requests.post(
                     f"{self.hub_api_url}/route/oracle/api/llm/generate",
-                    json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": self.timeout,
+                    json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": timeout,
                           "body": {"prompt": prompt, "provider": self.provider, "model": model}},
-                    timeout=self.timeout + 5)
+                    timeout=timeout + 5)
                 resp.raise_for_status()
                 routed = resp.json() or {}
                 status = int(routed.get("status_code", 500))

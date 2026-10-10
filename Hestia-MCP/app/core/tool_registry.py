@@ -9,7 +9,6 @@ returns only relevant tools. This keeps LLM manifests small (5-12 tools).
 from __future__ import annotations
 
 import logging
-import os
 import re
 import time
 from typing import Any
@@ -17,11 +16,15 @@ from urllib.parse import quote
 
 import requests
 
+from core.mcp_settings import HUB_DISCOVERY_TIMEOUT, SERVER_TIMEOUT, TOOLS_CACHE_TTL, settings
+
 logger = logging.getLogger("hestia_mcp.tool_registry")
 
-_MCP_TOOLS_CACHE_TTL = int(os.getenv("MCP_TOOLS_CACHE_TTL_SECONDS", "60"))
-_HUB_DISCOVERY_TIMEOUT = int(os.getenv("MCP_HUB_DISCOVERY_TIMEOUT_SEC", "8"))
-_MCP_SERVER_TIMEOUT = int(os.getenv("MCP_SERVER_TIMEOUT_SEC", "10"))
+
+
+def _setting(key: str) -> int:
+    """Central setting (Themis), read at use time so a change applies live."""
+    return int(settings.get(key))
 
 
 class ToolRegistry:
@@ -40,7 +43,7 @@ class ToolRegistry:
         """Return all tools relevant to the given domains, with caching."""
         key = ",".join(sorted(set(domains)))
         now = time.time()
-        if key in self._cache and (now - self._cache_ts.get(key, 0)) < _MCP_TOOLS_CACHE_TTL:
+        if key in self._cache and (now - self._cache_ts.get(key, 0)) < _setting(TOOLS_CACHE_TTL):
             return self._cache[key]
 
         tools: list[dict] = []
@@ -112,11 +115,11 @@ class ToolRegistry:
             "method": method, "headers": {},
             "query": remaining if use_query else {},
             "body": None if use_query else remaining,
-            "timeout_seconds": _MCP_SERVER_TIMEOUT,
+            "timeout_seconds": _setting(SERVER_TIMEOUT),
         }
         try:
             resp = requests.post(f"{self._hub_url}/route/{service}/{resolved.lstrip('/')}",
-                                 json=envelope, timeout=_MCP_SERVER_TIMEOUT + 2)
+                                 json=envelope, timeout=envelope["timeout_seconds"] + 2)
             if resp.status_code != 200:
                 return (False, f"Hub returned {resp.status_code}")
             routed = resp.json() or {}
@@ -140,7 +143,7 @@ class ToolRegistry:
         try:
             resp = requests.get(
                 f"{self._hub_url}/registry/services",
-                timeout=_HUB_DISCOVERY_TIMEOUT,
+                timeout=_setting(HUB_DISCOVERY_TIMEOUT),
             )
             resp.raise_for_status()
             data = resp.json() or {}
@@ -257,7 +260,7 @@ class ToolRegistry:
             resp = requests.post(
                 endpoint,
                 json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1},
-                timeout=_MCP_SERVER_TIMEOUT,
+                timeout=_setting(SERVER_TIMEOUT),
             )
             if resp.status_code != 200:
                 return []

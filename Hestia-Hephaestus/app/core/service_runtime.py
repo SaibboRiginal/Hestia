@@ -1,3 +1,6 @@
+"""Hephaestus runtime config from env — infrastructure only (service identity, Hub URL, notify
+target, baseline ref, maintenance endpoint templates). Remediation tunables (execution timeout,
+approval switches, retries) are central settings: ``app/forge/forge_settings.py`` (Themis)."""
 from __future__ import annotations
 
 import os
@@ -15,22 +18,7 @@ class RuntimeConfig:
     hub_api_url: str
     hephaestus_notify_target: str
     hephaestus_baseline_ref: str
-    hephaestus_execution_timeout_seconds: float
-    hephaestus_require_approval_for_mutation: bool
-    hephaestus_allow_auto_approve_non_prod: bool
     hephaestus_maintenance_paths: list[str]
-
-
-def _parse_bool_env(name: str, default: bool) -> bool:
-    raw = str(os.getenv(name, "1" if default else "0")).strip().lower()
-    return raw in {"1", "true", "yes", "on"}
-
-
-def _parse_float_env(name: str, default: float) -> float:
-    try:
-        return float(os.getenv(name, str(default)))
-    except Exception:
-        return default
 
 
 def load_runtime_config() -> RuntimeConfig:
@@ -59,12 +47,6 @@ def load_runtime_config() -> RuntimeConfig:
         hephaestus_notify_target=os.getenv(
             "HEPHAESTUS_NOTIFY_TARGET", "").strip(),
         hephaestus_baseline_ref=os.getenv("HEPHAESTUS_BASELINE_REF", "HEAD"),
-        hephaestus_execution_timeout_seconds=max(
-            5.0, _parse_float_env("HEPHAESTUS_EXECUTION_TIMEOUT_SECONDS", 25.0)),
-        hephaestus_require_approval_for_mutation=_parse_bool_env(
-            "HEPHAESTUS_REQUIRE_APPROVAL_FOR_MUTATION", True),
-        hephaestus_allow_auto_approve_non_prod=_parse_bool_env(
-            "HEPHAESTUS_ALLOW_AUTO_APPROVE_NON_PROD", False),
         hephaestus_maintenance_paths=[
             path.strip()
             for path in os.getenv(

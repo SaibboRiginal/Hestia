@@ -7,18 +7,12 @@ services:
       - "19009:19009"
     env_file:
       - ./app/.env
+    # Tunables are central settings athena.* (Themis); env = infrastructure only.
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
       - SERVICE_BASE_URL=http://hestia_athena:19009
       - SERVICE_TOPOLOGY_TAGS=layer:cognition,domain:strategy,status:beta
-      - ATHENA_ORACLE_HINT_ENABLED=1
       - ATHENA_ORACLE_HINT_ROUTE=api/athena/hints
-      - ATHENA_ORACLE_HINT_TIMEOUT_SECONDS=8
-      - ATHENA_RETROSPECTIVE_WINDOW=24
-      - ATHENA_RETRO_FAILURE_URGENCY_BOOST=0.07
-      - ATHENA_RETRO_UNRESOLVED_URGENCY_BOOST=0.04
-      - ATHENA_RETRO_UNRESOLVED_USEFULNESS_BOOST=0.03
-      - ATHENA_COMMITMENT_TTL_SECONDS=86400
       - PYTHONUNBUFFERED=1
     networks:
       - hestia_net

@@ -44,13 +44,13 @@ def consolidator():
 @pytest.mark.unit
 class TestScheduling:
     def test_should_run_during_window(self, monkeypatch):
-        """should_run() returns True during configured window (3-5 AM)."""
-        monkeypatch.setenv("ATHENA_CONSOLIDATION_WINDOW_START", "0")
-        monkeypatch.setenv("ATHENA_CONSOLIDATION_WINDOW_END", "23")
-        from core.consolidator import MemoryConsolidator
-        c = MemoryConsolidator(hub_api_url="http://x")
-        # We just test that the env vars are read — actual time check depends on clock
-        assert isinstance(c.should_run(), bool)
+        """should_run() (Chronos-down fallback) follows the default agenda window."""
+        import core.consolidator as consolidator_mod
+        monkeypatch.setattr(consolidator_mod, "CONSOLIDATION_WINDOW_DEFAULT", (0, 24))
+        c = consolidator_mod.MemoryConsolidator(hub_api_url="http://x")
+        assert c.should_run() is True
+        monkeypatch.setattr(consolidator_mod, "CONSOLIDATION_WINDOW_DEFAULT", (0, 0))
+        assert c.should_run() is False
 
     def test_needs_consolidation_first_time(self, consolidator):
         """First consolidation for a session should always return True."""

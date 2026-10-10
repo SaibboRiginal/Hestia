@@ -1,6 +1,6 @@
 """Athena Memory Consolidator — daily per-user memory analysis.
 
-Runs once per day (configurable window). For each active user:
+Runs once per day inside the agenda window "athena.consolidation" (Chronos). For each active user:
   1. Reads chat history since last consolidation from Archive
   2. Calls Oracle LLM to extract durable facts and detect patterns
   3. Cross-session consolidation: conflict detection, reinforcement, decay
@@ -18,18 +18,17 @@ from typing import Any
 
 import requests
 
+from . import athena_settings as S
+from .athena_settings import get_int
+
 logger = logging.getLogger("hestia_athena.consolidator")
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
-_CONSOLIDATION_WINDOW_START = int(os.getenv("ATHENA_CONSOLIDATION_WINDOW_START", "3"))   # 3 AM
-_CONSOLIDATION_WINDOW_END = int(os.getenv("ATHENA_CONSOLIDATION_WINDOW_END", "5"))       # 5 AM
-_CONSOLIDATION_ACTIVE_DAYS = int(os.getenv("ATHENA_CONSOLIDATION_ACTIVE_DAYS", "7"))     # Users active in last 7 days
-_CONSOLIDATION_LOOKBACK_HOURS = int(os.getenv("ATHENA_CONSOLIDATION_LOOKBACK_HOURS", "24"))
-_ORACLE_LLM_TIMEOUT = int(os.getenv("ATHENA_CONSOLIDATION_ORACLE_TIMEOUT_SEC", "30"))
-_PREFERENCE_DECAY_DAYS = int(os.getenv("ATHENA_PREFERENCE_DECAY_DAYS", "90"))
-_PREFERENCE_REINFORCE_THRESHOLD = int(os.getenv("ATHENA_PREFERENCE_REINFORCE_THRESHOLD", "3"))
-
+# Default agenda window (Chronos, key "athena.consolidation"): registered by the runtime,
+# the user moves/skips it there. Used here only as fallback when Chronos is unreachable.
+CONSOLIDATION_WINDOW_DEFAULT = (3, 5)   # 03:00–05:00
+# Tunables are central settings (Themis): athena_settings MEMORY_* keys, read at use time.
 
 class MemoryConsolidator:
     """Daily per-user memory analysis and consolidation."""
@@ -47,12 +46,13 @@ class MemoryConsolidator:
     def should_run(self) -> bool:
         """Return True if we're within the configured consolidation window."""
         now = datetime.now()
-        return _CONSOLIDATION_WINDOW_START <= now.hour < _CONSOLIDATION_WINDOW_END
+        start, end = CONSOLIDATION_WINDOW_DEFAULT
+        return start <= now.hour < end
 
     def get_active_sessions(self) -> list[str]:
         """Return session IDs with activity in the last N days."""
         try:
-            since = (datetime.now() - timedelta(days=_CONSOLIDATION_ACTIVE_DAYS)).isoformat()
+            since = (datetime.now() - timedelta(days=get_int(S.MEMORY_ACTIVE_DAYS))).isoformat()
             resp = requests.get(
                 f"{self._archive_route}/chat/sessions",
                 params={"since": since},
@@ -70,7 +70,7 @@ class MemoryConsolidator:
     def needs_consolidation(self, session_id: str) -> bool:
         """Check if enough time has passed since last consolidation for this session."""
         last = self._last_consolidation.get(session_id, 0)
-        return (time.time() - last) > (_CONSOLIDATION_LOOKBACK_HOURS * 3600)
+        return (time.time() - last) > (get_int(S.MEMORY_LOOKBACK_HOURS) * 3600)
 
     # ── Consolidation ───────────────────────────────────────────────────────
 
@@ -197,7 +197,7 @@ class MemoryConsolidator:
                 f"{self._oracle_route}/api/llm/generate",
                 json={"prompt": prompt, "model": os.getenv("ATHENA_STRATEGIST_MODEL", ""),
                       "provider": os.getenv("ATHENA_STRATEGIST_PROVIDER", "")},
-                timeout=_ORACLE_LLM_TIMEOUT,
+                timeout=get_int(S.MEMORY_ORACLE_TIMEOUT),
             )
             if resp.status_code == 200:
                 payload = resp.json()
@@ -251,7 +251,7 @@ class MemoryConsolidator:
 
     def _reinforce_pattern(self, pattern: dict) -> None:
         occurrences = int(pattern.get("occurrences", 0))
-        if occurrences < _PREFERENCE_REINFORCE_THRESHOLD:
+        if occurrences < get_int(S.MEMORY_REINFORCE_THRESHOLD):
             return
         try:
             requests.post(
@@ -270,7 +270,7 @@ class MemoryConsolidator:
     def _decay_old_preferences(self, existing_memories: list[dict]) -> int:
         """Reduce weight of preferences not mentioned in >90 days. Returns count decayed."""
         decayed = 0
-        cutoff = (datetime.now() - timedelta(days=_PREFERENCE_DECAY_DAYS)).isoformat()
+        cutoff = (datetime.now() - timedelta(days=get_int(S.MEMORY_PREFERENCE_DECAY_DAYS))).isoformat()
         for mem in existing_memories:
             updated_at = mem.get("updated_at", mem.get("created_at", ""))
             if updated_at and updated_at < cutoff:

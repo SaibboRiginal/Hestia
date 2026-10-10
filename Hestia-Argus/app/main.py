@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from core import context_loader, hub_client
+from core.argus_settings import settings as argus_settings
 from core.health_poller import poll_all
 from core.hub_client import discover_services
 from schemas.reports import SystemReport
@@ -82,6 +83,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                     "event=hub_keepalive_registration_failed Hub keepalive registration failed: %s", error)
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
+    # Central settings (Themis): background load + hourly re-assert; defaults until it answers.
+    argus_settings.start()
     # Start background monitoring loop.
     monitor_service.start()
     yield
@@ -189,6 +192,7 @@ except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=argus reason=hestia_common_not_available")
 
 app.include_router(create_log_control_router("hestia_argus"))
+app.include_router(argus_settings.router())
 
 # ---------------------------------------------------------------------------
 # Health

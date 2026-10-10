@@ -18,15 +18,14 @@ from uuid import uuid4
 
 import requests
 
+from . import athena_settings as S
+from .athena_settings import get_bool, get_float, get_int
 from .schemas import ActionCandidate, ObservationSnapshot, RelevanceSignals
 
 logger = logging.getLogger("hestia_athena.strategist")
 
-STRATEGIST_TIMEOUT = float(os.getenv("ATHENA_STRATEGIST_TIMEOUT_SECONDS", "20"))
-STRATEGIST_ENABLED = bool(
-    int(os.getenv("ATHENA_STRATEGIST_ENABLED", "1"))
-)
-STRATEGIST_MAX_CANDIDATES = int(os.getenv("ATHENA_STRATEGIST_MAX_CANDIDATES", "3"))
+# Enabled / timeout / max candidates: central settings athena.strategist.* (read at use time).
+# ATHENA_STRATEGIST_MODEL/PROVIDER stay env (model choice belongs to Oracle; see hestia-athena.md).
 
 
 def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
@@ -93,7 +92,7 @@ def _build_strategist_prompt(observation_text: str) -> str:
     return (
         "Sei Athena, mente proattiva di Hestia. Retrospettiva: cosa va male, cosa migliorare.\n"
         f"OSSERVAZIONI:\n{observation_text}\n\n"
-        f"Proponi max {STRATEGIST_MAX_CANDIDATES} azioni. Solo se dati lo giustificano.\n"
+        f"Proponi max {get_int(S.STRATEGIST_MAX_CANDIDATES)} azioni. Solo se dati lo giustificano.\n"
         "Formato ESATTO per ogni azione:\n"
         "AZIONE: <titolo breve>\n"
         "TIPO: advisory|remediation|notification|maintenance|improvement|setting\n"
@@ -144,7 +143,7 @@ def _parse_candidates(raw: str) -> list[dict[str, str]]:
         if candidate.get("title"):
             candidates.append(candidate)
 
-    return candidates[:STRATEGIST_MAX_CANDIDATES]
+    return candidates[:max(1, get_int(S.STRATEGIST_MAX_CANDIDATES))]
 
 
 def _map_to_action_candidates(
@@ -201,8 +200,11 @@ class Strategist:
 
     def __init__(self, hub_api_url: str) -> None:
         self.hub_api_url = hub_api_url.rstrip("/")
-        self.enabled = STRATEGIST_ENABLED
         self._session = requests.Session()
+
+    @property
+    def enabled(self) -> bool:
+        return get_bool(S.STRATEGIST_ENABLED)
 
     def reason(self, snapshot: ObservationSnapshot) -> list[ActionCandidate]:
         """Generate action candidates from an observation snapshot.
@@ -212,7 +214,7 @@ class Strategist:
         """
         if not self.enabled:
             logger.debug(
-                "event=strategist_disabled Strategist disabled via ATHENA_STRATEGIST_ENABLED=0"
+                "event=strategist_disabled setting=%s", S.STRATEGIST_ENABLED
             )
             return []
 
@@ -247,6 +249,7 @@ class Strategist:
 
     def _call_oracle(self, prompt: str) -> str | None:
         """Call Oracle's LLM generate endpoint through Hub routing."""
+        timeout = get_float(S.STRATEGIST_TIMEOUT)
         body = {
             "prompt": prompt,
             "model": os.getenv("ATHENA_STRATEGIST_MODEL", ""),
@@ -257,14 +260,14 @@ class Strategist:
             "headers": {},
             "query": {},
             "body": body,
-            "timeout_seconds": STRATEGIST_TIMEOUT,
+            "timeout_seconds": timeout,
         }
         route_url = f"{self.hub_api_url}/route/oracle/api/llm/generate"
         try:
             resp = self._session.post(
                 route_url,
                 json=envelope,
-                timeout=STRATEGIST_TIMEOUT + 4,
+                timeout=timeout + 4,
             )
             if resp.status_code != 200:
                 logger.warning(

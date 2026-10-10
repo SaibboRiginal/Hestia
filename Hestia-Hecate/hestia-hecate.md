@@ -156,7 +156,7 @@ Falls back to full registry reinit if no providers are active.
 
 ### Periodic Auth Re-Check
 
-Hecate re-checks provider auth status every `HECATE_AUTH_RECHECK_INTERVAL_SECONDS` (default 3600 s = 1 hour). If a provider is still unavailable, a fresh `service.action_required` notification is pushed via Hermes. Hermes dedup for recurring events is time-limited so persistent failures are re-notified instead of being permanently silenced.
+Hecate re-checks provider auth status every `hecate.auth.recheck_interval` seconds (central setting, default 3600 s = 1 hour, 0 = only at startup; live). If a provider is still unavailable, a fresh `service.action_required` notification is pushed via Hermes. Hermes dedup for recurring events is time-limited so persistent failures are re-notified instead of being permanently silenced.
 
 ### Token Persistence & Recovery
 
@@ -172,21 +172,38 @@ when its stored `expiry` is in the future. Client id/secret from env win over th
 **`invalid_grant` recovery:** a revoked/expired refresh token is dropped (file deleted, or the env
 var cleared for the process) and the next candidate is tried, so a dead file never hides a valid
 `.env` token. With no valid candidate a `service.action_required` notification with the
-"🔑 Riautentica Google" button is pushed (startup + every `HECATE_AUTH_RECHECK_INTERVAL_SECONDS`).
+"🔑 Riautentica Google" button is pushed (startup + every `hecate.auth.recheck_interval` seconds).
 
 `POST /api/gateway/auth/refresh/{provider}` refreshes active providers and fully reloads the
 registry when any provider is still unavailable (e.g. token file just written by the host script).
 
+### Central settings (Themis)
+
+Tunables are declared in `app/core/hecate_settings.py` (owner `hecate`) and changed from WebUI/Telegram;
+they are not env vars. All apply **live** (read at use time).
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `hecate.calendar.backfill_days` | int (giorni) | `7` | Days back fetched on each calendar sync |
+| `hecate.archive.route_timeout` | int (s, advanced) | `8` | Timeout for Hub-routed Archive writes |
+| `hecate.archive.calendar_write_timeout` | int (s, advanced) | `10` | Timeout for calendar item writes to Archive |
+| `hecate.auth.recheck_interval` | int (s) | `3600` | Periodic provider auth re-check + re-notify (0 = only at startup) |
+| `hecate.auth.notify_cooldown` | int (s, advanced) | `300` | Min gap between identical action-required notifications |
+| `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
+
+Endpoints: `GET /api/settings/effective`, `POST /api/settings/reload` (used by Themis).
+
 ### Environment Variables
+
+Env holds only secrets, infrastructure and credential-bound deployment choices
+(provider enable flags, OAuth flow mode/scopes, Outlook user id).
+
 
 | Variable | Default | Description |
 |---|---|---|
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub routing base URL |
 | `HECATE_SERVICE_BASE_URL` | `http://hestia_hecate:19003` | URL reported to Hub registry |
 | `HECATE_SERVICE_VERSION` | `1.0.0` | Version reported to Hub |
-| `HECATE_CALENDAR_BACKFILL_DAYS` | `7` | Days back to fetch on calendar sync |
-| `HECATE_ARCHIVE_ROUTE_TIMEOUT` | `8` | Timeout (s) for Hub-routed Archive writes |
-| `HECATE_CALENDAR_WRITE_TIMEOUT` | `10` | Timeout (s) for calendar item writes |
 | `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (never expires) |
 | `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret (never expires) |
 | `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (never expires — the only secret needed for API access) |
@@ -200,14 +217,12 @@ registry when any provider is still unavailable (e.g. token file just written by
 | `OUTLOOK_CLIENT_SECRET` | — | Microsoft OAuth client secret |
 | `OUTLOOK_TENANT_ID` | — | Microsoft Azure tenant ID |
 | `OUTLOOK_REFRESH_TOKEN` | — | Outlook OAuth refresh token |
-| `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials |
+| `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials (deployment choice tied to credentials → stays in env) |
 | `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
 | `GOOGLE_OAUTH_FLOW_MODE` | `redirect` | `redirect` (PKCE; any device with the Cloudflare tunnel, paste-URL fallback otherwise) or `device_code` (Desktop/TV clients only) |
 | `GOOGLE_TUNNEL_URL_FILE` | `/code/data/tunnel-url.txt` | Public tunnel URL written by `cloudflare-tunnel.bat`, used as redirect base |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Redirect URI for `redirect` flow mode |
-| `HECATE_AUTH_RECHECK_INTERVAL_SECONDS` | `3600` | Seconds between periodic auth re-check (0 to disable) |
-| `HECATE_ACTION_NOTIFY_COOLDOWN` | `300` | Seconds between repeated action-required notifications per action key |
-| `LOG_LEVEL` | `INFO` | Logging verbosity |
+| `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
 
 **Canonical Google OAuth setup (no expiring values):**
 ```

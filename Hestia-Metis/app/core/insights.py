@@ -6,14 +6,9 @@ into LLM prompts.
 """
 from __future__ import annotations
 
-import os
 from typing import Any
 
-_GOOD_LABELS = {
-    s.strip().lower()
-    for s in os.getenv("METIS_GOOD_QUALITY_LABELS", "excellent,good").split(",")
-    if s.strip()
-}
+from . import metis_settings as ms
 
 
 def _domain(record: dict) -> str:
@@ -24,6 +19,7 @@ def _domain(record: dict) -> str:
 
 
 def build_insights(records: list[dict[str, Any]], samples_per_domain: int = 2) -> dict[str, Any]:
+    good_labels = {s.lower() for s in ms.labels(ms.GOOD_LABELS)}   # central setting (live)
     total = 0
     bad_by_domain: dict[str, dict[str, Any]] = {}
     for record in records or []:
@@ -31,7 +27,7 @@ def build_insights(records: list[dict[str, Any]], samples_per_domain: int = 2) -
             continue
         total += 1
         label = str(record.get("quality_label", "")).strip().lower()
-        if not label or label in _GOOD_LABELS:
+        if not label or label in good_labels:
             continue
         domain = _domain(record)
         slot = bad_by_domain.setdefault(domain, {"domain": domain, "bad": 0, "labels": {}, "samples": []})

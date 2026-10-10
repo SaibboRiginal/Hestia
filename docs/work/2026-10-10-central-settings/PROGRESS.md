@@ -29,7 +29,20 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
   main (event `service.action_required` with `kind: settings.proposal`, `closes` on decision); Athena candidate kind
   `setting` (`CHIAVE`/`VALORE`, observer lists proposable settings) → Themis proposal, capped by the new setting
   `athena.settings.proposals_per_day`. Parser regression test added (pytest not run).
-- [ ] P6 Migrate remaining modules' tunable env vars (one module per step); includes Forge fallback/max_turns/
-  auto_rollback, `declare_log_level` in every module, Metis baseline label still reading env MODEL_USECASE_GENERIC_MODEL
+- [ ] P6 Migrate remaining modules' tunable env vars (one module per step):
+  - [x] Hecate (calendar backfill, Archive/calendar timeouts, auth re-check, notify cooldown)
+  - [x] Scout (cycle interval, mail senders/filters, batching, LLM timeout, reconcile, enrichment)
+  - [x] Hermes (delivery retries, recurring dedupe, batch window, Telegram retract delay) and MCP (tool cache, timeouts)
+  - [x] Argus (poll, auth check, log source/limits, alerts, remediation, Forge proposals); defaults keep the values
+    the global compose ran with (backfill 0, batch 20 s, Outlook ignore pattern)
+  - [x] Athena (loop, gate, retrospective, hints, observer, strategist, Forge, memory, skills, audit); agenda window
+    hours are code defaults of the Chronos windows (user edits there win), not settings
+  - [x] Hephaestus (Forge fallback/turns/timeouts/merge/rollback/push/verify/scheduler, remediation) and Metis
+    (dataset limits/labels; base model read from Oracle `oracle.models.generic.model`, training window = agenda)
+  - [ ] Oracle, Chronos, Telegram — after the threads working on them (local context, presence, Telegram settings)
+  - Left in env on purpose: per-module LLM choices (Scout `SCOUT_LLM_*`, Athena `ATHENA_*_MODEL/PROVIDER`) wait for
+    the Oracle step (they belong in Oracle settings); Hecate `GOOGLE_OAUTH_FLOW_MODE`; Forge test/deploy commands.
+  - Follow-ups: Argus monitor loop, Forge scheduler, Hermes retry loop, Hecate auth re-check are still sleep loops
+    (should become agenda jobs); swagger lacks the per-module `/api/settings/*` endpoints.
 - [ ] Docs: hestia-<name>.md, swagger, .env.example notes, docs/ARCHITECTURE.md rule
 - [x] Out of scope fix: Archive `avvisi_recenti` response prompt no longer Scout-specific (generic, caveman style)

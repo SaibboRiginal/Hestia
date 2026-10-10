@@ -10,7 +10,8 @@ services:
       - app/.env
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=INFO   # boot log level only; live setting mcp.log.level (Themis)
+      # Tunables (tool cache TTL, timeouts) are Themis settings mcp.* — see hestia-mcp.md
     networks:
       - hestia_net
 

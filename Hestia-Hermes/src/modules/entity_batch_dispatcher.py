@@ -19,17 +19,16 @@ Flow
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from dataclasses import dataclass, field
 
 from typing import Callable
 
 from .oracle_client import narrate
+from .hermes_settings import BATCH_MAX_ATTEMPTS, BATCH_WINDOW, settings
 
 logger = logging.getLogger("hestia_hermes.entity_batch")
 
-BATCH_WINDOW_SECONDS = float(os.getenv("ENTITY_BATCH_WINDOW_SECONDS", "30"))
 
 # Domains / event types that are routed through the batch dispatcher
 BATCHED_DOMAINS: frozenset[str] = frozenset({"real_estate"})
@@ -47,8 +46,6 @@ class _BatchEntry:
     timer: threading.Timer | None = None
     attempts: int = 0
 
-
-MAX_BATCH_ATTEMPTS = int(os.getenv("ENTITY_BATCH_MAX_ATTEMPTS", "6"))
 
 
 # Key: (subscription_id, channel_type, channel_target)
@@ -76,7 +73,7 @@ def _schedule_flush(key: tuple, entry: _BatchEntry) -> None:
     """(Re)start the flush timer. Must be called while holding ``_queues_lock``."""
     if entry.timer is not None:
         entry.timer.cancel()
-    timer = threading.Timer(BATCH_WINDOW_SECONDS, _flush, args=[key])
+    timer = threading.Timer(float(settings.get(BATCH_WINDOW)), _flush, args=[key])
     timer.daemon = True
     timer.start()
     entry.timer = timer
@@ -131,7 +128,7 @@ def _requeue_failed(key: tuple, entry: _BatchEntry) -> None:
     """Resilience: a failed batch is re-queued (merged with anything new) and
     retried with backoff instead of being dropped."""
     entry.attempts += 1
-    if entry.attempts >= MAX_BATCH_ATTEMPTS:
+    if entry.attempts >= int(settings.get(BATCH_MAX_ATTEMPTS)):
         logger.error("event=batch_dispatch_gave_up subscription=%s entities=%d attempts=%d",
                      entry.subscription_id, len(entry.entities), entry.attempts)
         return
@@ -142,7 +139,7 @@ def _requeue_failed(key: tuple, entry: _BatchEntry) -> None:
                 pending.timer.cancel()
             entry.entities.extend(pending.entities)
         _queues[key] = entry
-        delay = min(1800.0, BATCH_WINDOW_SECONDS * (2 ** entry.attempts))
+        delay = min(1800.0, float(settings.get(BATCH_WINDOW)) * (2 ** entry.attempts))
         timer = threading.Timer(delay, _flush, args=[key])
         timer.daemon = True
         timer.start()
@@ -264,7 +261,7 @@ def enqueue_entity(
     """Add an entity to the batch for the given subscription + channel.
 
     The flush timer is reset on every call so a burst of entities settles
-    into a single dispatch after ``ENTITY_BATCH_WINDOW_SECONDS`` of silence.
+    into a single dispatch after ``hermes.batch.window`` seconds of silence.
     """
     key = _queue_key(subscription_id, channel_type, channel_target)
     with _queues_lock:

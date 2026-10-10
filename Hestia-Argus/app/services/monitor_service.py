@@ -1,6 +1,6 @@
 """Monitor service — background polling loop.
 
-Each cycle (every ``ARGUS_POLL_INTERVAL`` seconds):
+Each cycle (every ``argus.poll.interval`` seconds, central setting):
   1. Queries Hub for the current service registry.
   2. Polls each service's /health endpoint.
   3. Fetches only NEW log lines from each container (incremental cursor).
@@ -14,12 +14,12 @@ Each cycle (every ``ARGUS_POLL_INTERVAL`` seconds):
 from __future__ import annotations
 
 import logging
-import os
 import threading
 import time
 from collections import deque
 from datetime import datetime, timezone
 
+from core import argus_settings as cfg
 from core import docker_client, forge_proposer, health_poller, hub_client
 
 try:
@@ -32,23 +32,6 @@ from schemas.reports import ServiceAlert
 from worker.alert_worker import send_alert, send_recovery
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
-
-POLL_INTERVAL = int(os.getenv("ARGUS_POLL_INTERVAL", "60"))
-LOG_SOURCE = os.getenv("ARGUS_LOG_SOURCE", "hub").strip().lower()
-HUB_LOG_LIMIT = int(os.getenv("ARGUS_HUB_LOG_LIMIT", "200"))
-SEEN_CACHE_SIZE = max(500, int(os.getenv("ARGUS_LOG_SEEN_CACHE_SIZE", "5000")))
-AUTO_REMEDIATE_ENABLED = os.getenv("ARGUS_AUTO_REMEDIATE_ENABLED", "1").strip(
-).lower() not in {"0", "false", "off", "no"}
-AUTO_REMEDIATE_DRY_RUN = os.getenv("ARGUS_AUTO_REMEDIATE_DRY_RUN", "1").strip(
-).lower() not in {"0", "false", "off", "no"}
-AUTO_REMEDIATE_ENVIRONMENT = os.getenv(
-    "ARGUS_AUTO_REMEDIATE_ENVIRONMENT", "dev").strip().lower() or "dev"
-ARGUS_PROVIDER_AUTH_CHECK_ENABLED = os.getenv(
-    "ARGUS_PROVIDER_AUTH_CHECK_ENABLED", "1").strip().lower() not in {
-        "0", "false", "off", "no"}
-# Check provider auth every N monitor cycles (default: every 5 cycles = every 5 min)
-ARGUS_PROVIDER_AUTH_CHECK_INTERVAL = int(
-    os.getenv("ARGUS_PROVIDER_AUTH_CHECK_INTERVAL", "5"))
 
 # Services currently known to be unhealthy — used to detect recovery.
 # Value is the last known bad status string.
@@ -64,8 +47,6 @@ _monitor_cycle_count: int = 0
 # rechecks in Hestia's agenda (fired by Chronos → POST /api/argus/recheck/<svc>)
 # with exponential backoff; each recheck re-requests the Hephaestus repair.
 # The user sees them and can move/cancel. Recovery closes the entry.
-REPAIR_RECHECK_MINUTES = max(1, int(os.getenv("ARGUS_REPAIR_RECHECK_MINUTES", "10")))
-REPAIR_RECHECK_MAX_MINUTES = max(REPAIR_RECHECK_MINUTES, int(os.getenv("ARGUS_REPAIR_RECHECK_MAX_MINUTES", "360")))
 _repair_attempts: dict[str, int] = {}
 _agenda = AgendaClient("argus", hub_client.HUB_API_URL) if AgendaClient else None
 
@@ -79,7 +60,9 @@ def _plan_recheck(service: str, status: str, error: str | None) -> None:
         return
     attempt = _repair_attempts.get(service, 0) + 1
     _repair_attempts[service] = attempt
-    minutes = min(REPAIR_RECHECK_MAX_MINUTES, REPAIR_RECHECK_MINUTES * 2 ** (attempt - 1))
+    first = cfg.get_int(cfg.REPAIR_RECHECK, 1)
+    cap = max(first, cfg.get_int(cfg.REPAIR_RECHECK_MAX, 1))
+    minutes = min(cap, first * 2 ** (attempt - 1))
     when = datetime.now(timezone.utc).timestamp() + minutes * 60
     _agenda.plan(
         _repair_key(service), f"🩺 Ricontrollo {service} ({status}) — tentativo {attempt}",
@@ -112,12 +95,12 @@ def recheck(service: str) -> dict:
             send_recovery(service)
         return {"status": "ok", "service": service, "health": "up"}
     ok, response = (False, {"skipped": "auto_remediate_disabled"})
-    if AUTO_REMEDIATE_ENABLED:
+    if cfg.get_bool(cfg.REMEDIATE_ENABLED):
         ok, response = hub_client.request_hephaestus_remediation(
             source="argus.recheck", service=service, issue=f"service_{report_status}",
             severity="critical" if report_status == "down" else "warning",
-            requested_action="auto_health_recovery", environment=AUTO_REMEDIATE_ENVIRONMENT,
-            dry_run=AUTO_REMEDIATE_DRY_RUN, auto_approve=False,
+            requested_action="auto_health_recovery", environment=cfg.get_str(cfg.REMEDIATE_ENVIRONMENT),
+            dry_run=cfg.get_bool(cfg.REMEDIATE_DRY_RUN), auto_approve=False,
             metadata={"status": report_status, "error": error, "recheck_attempt": _repair_attempts.get(service, 0)})
     _plan_recheck(service, report_status, error)
     logger.info("[🔄] event=argus_recheck_still_unhealthy service=%s status=%s remediation_ok=%s next_attempt=%d",
@@ -137,20 +120,21 @@ def _is_new_log_event(event: LogEvent) -> bool:
             return False
         _seen_log_fingerprints.add(fingerprint)
         _seen_log_order.append(fingerprint)
-        while len(_seen_log_order) > SEEN_CACHE_SIZE:
+        cache_size = cfg.get_int(cfg.SEEN_CACHE_SIZE, 500)
+        while len(_seen_log_order) > cache_size:
             dropped = _seen_log_order.popleft()
             _seen_log_fingerprints.discard(dropped)
     return True
 
 
 def _collect_new_log_events(service_name: str) -> list[LogEvent]:
-    if LOG_SOURCE == "docker":
+    if cfg.get_str(cfg.LOG_SOURCE) == "docker":
         container_name = f"hestia_{service_name}"
         return docker_client.poll_container_logs(container_name, service_name)
     events = hub_client.fetch_service_log_events(
         service_name,
         level="WARNING",
-        limit=HUB_LOG_LIMIT,
+        limit=cfg.get_int(cfg.HUB_LOG_LIMIT, 1),
     )
     return [event for event in events if _is_new_log_event(event)]
 
@@ -164,7 +148,7 @@ def _monitor_loop() -> None:
         except Exception as exc:
             logger.error(
                 "event=error_monitor_loop Error in monitor loop: %s", exc, exc_info=True)
-        time.sleep(POLL_INTERVAL)
+        time.sleep(cfg.get_int(cfg.POLL_INTERVAL, 10))
 
 
 def _check_provider_auth() -> None:
@@ -307,9 +291,9 @@ def _run_once() -> None:
     health = health_poller.poll_all(services)
 
     # --- Provider auth check (periodic) ---
-    if ARGUS_PROVIDER_AUTH_CHECK_ENABLED:
+    if cfg.get_bool(cfg.AUTH_CHECK_ENABLED):
         _monitor_cycle_count += 1
-        if _monitor_cycle_count % max(1, ARGUS_PROVIDER_AUTH_CHECK_INTERVAL) == 0:
+        if _monitor_cycle_count % cfg.get_int(cfg.AUTH_CHECK_EVERY, 1) == 0:
             _check_provider_auth()
 
     # --- Health alerts & recovery ---
@@ -331,15 +315,16 @@ def _run_once() -> None:
                     ),
                 )
             )
-            if AUTO_REMEDIATE_ENABLED and not was_unhealthy:
+            if cfg.get_bool(cfg.REMEDIATE_ENABLED) and not was_unhealthy:
+                dry_run = cfg.get_bool(cfg.REMEDIATE_DRY_RUN)
                 ok, response = hub_client.request_hephaestus_remediation(
                     source="argus.monitor",
                     service=name,
                     issue=f"service_{report.status}",
                     severity="critical" if report.status == "down" else "warning",
                     requested_action="auto_health_recovery",
-                    environment=AUTO_REMEDIATE_ENVIRONMENT,
-                    dry_run=AUTO_REMEDIATE_DRY_RUN,
+                    environment=cfg.get_str(cfg.REMEDIATE_ENVIRONMENT),
+                    dry_run=dry_run,
                     auto_approve=False,
                     metadata={
                         "status": report.status,
@@ -351,7 +336,7 @@ def _run_once() -> None:
                     "event=argus_autoremediate_requested service=%s ok=%s dry_run=%s response=%s",
                     name,
                     ok,
-                    AUTO_REMEDIATE_DRY_RUN,
+                    dry_run,
                     str(response)[:250],
                 )
                 _plan_recheck(name, report.status, report.error)
@@ -402,4 +387,4 @@ def start() -> None:
     )
     thread.start()
     logger.info(
-        "event=argus_monitor_loop_started_interval Argus monitor loop started (interval=%ss)", POLL_INTERVAL)
+        "event=argus_monitor_loop_started interval_s=%s", cfg.get_int(cfg.POLL_INTERVAL, 10))

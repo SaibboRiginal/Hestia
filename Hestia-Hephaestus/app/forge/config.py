@@ -1,5 +1,14 @@
-"""Forge configuration from env (infrastructure). Default engine and modes are central
-settings (forge_settings → Themis); the remaining tunables move there in settings P6."""
+"""Forge configuration from env — infrastructure only (paths, repo, git identity, commands).
+
+Tunables (engine, modes, fallback order, turn/timeout limits, auto merge/rollback/push, verify
+delay) are central settings (forge_settings → Themis), read at use time. Kept here and why:
+- enabled: the deployment can host Forge (repo + worktrees + docker socket mounted) — compose/infra.
+- repo/worktrees/state/settings paths: container volumes.
+- base_branch, git author: git identity of the checkout.
+- test_cmd / deploy_cmd: shell commands executed verbatim in the container; they depend on the
+  image tooling and are a code-execution surface, so they are not editable from clients.
+- notify_target: owner's chat address (routing identity), shared with remediation.
+"""
 from __future__ import annotations
 
 import os
@@ -10,13 +19,6 @@ from pathlib import Path
 def _bool(name: str, default: bool) -> bool:
     raw = str(os.getenv(name, "1" if default else "0")).strip().lower()
     return raw in {"1", "true", "yes", "on"}
-
-
-def _int(name: str, default: int) -> int:
-    try:
-        return int(os.getenv(name, str(default)))
-    except ValueError:
-        return default
 
 
 ENGINE_ALIASES = {"builtin": "local", "ollama": "local", "claude_code": "claude"}
@@ -37,17 +39,9 @@ class ForgeConfig:
     worktrees_path: Path
     state_file: Path
     base_branch: str
-    fallback: list[str]         # tried in order when the chosen engine is unavailable
     settings_file: Path         # Claude Pro schedule + budget state (runtime)
-    llm_route_timeout: int      # Hub→Oracle /api/llm/chat timeout per turn
-    max_turns: int
-    engine_timeout_seconds: int
     test_cmd: str
-    auto_merge: bool
     deploy_cmd: str
-    verify_delay_seconds: int
-    auto_rollback: bool
-    push_branch: bool
     notify_target: str
     hub_api_url: str
     git_author_name: str
@@ -63,20 +57,11 @@ def load_forge_config() -> ForgeConfig:
         worktrees_path=Path(os.getenv("HEPHAESTUS_WORKTREES_PATH", "/forge/worktrees")),
         state_file=Path(os.getenv("HEPHAESTUS_FORGE_STATE_FILE", str(data_dir / "forge" / "tasks.json"))),
         base_branch=os.getenv("HEPHAESTUS_FORGE_BASE_BRANCH", "").strip(),
-        fallback=[normalize_engine(e) for e in os.getenv(
-            "HEPHAESTUS_FORGE_FALLBACK", "local,cloud,claude").split(",") if e.strip()],
         settings_file=Path(os.getenv("HEPHAESTUS_FORGE_SETTINGS_FILE", str(data_dir / "forge" / "settings.json"))),
-        llm_route_timeout=max(60, _int("HEPHAESTUS_FORGE_LLM_TIMEOUT_SECONDS", 600)),
-        max_turns=max(5, _int("HEPHAESTUS_FORGE_MAX_TURNS", 40)),
-        engine_timeout_seconds=max(60, _int("HEPHAESTUS_FORGE_ENGINE_TIMEOUT_SECONDS", 1800)),
         test_cmd=os.getenv(
             "HEPHAESTUS_FORGE_TEST_CMD",
             "python -m pytest -q -p no:cacheprovider -m \"unit or api or format\" {test_paths}"),
-        auto_merge=_bool("HEPHAESTUS_FORGE_AUTO_MERGE", False),
         deploy_cmd=os.getenv("HEPHAESTUS_FORGE_DEPLOY_CMD", "").strip(),
-        verify_delay_seconds=max(0, _int("HEPHAESTUS_FORGE_VERIFY_DELAY_SECONDS", 20)),
-        auto_rollback=_bool("HEPHAESTUS_FORGE_AUTO_ROLLBACK", True),
-        push_branch=_bool("HEPHAESTUS_FORGE_PUSH_BRANCH", False),
         notify_target=os.getenv("HEPHAESTUS_NOTIFY_TARGET", "").strip(),
         hub_api_url=os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/"),
         git_author_name=os.getenv("HEPHAESTUS_FORGE_GIT_NAME", "Hestia Forge"),

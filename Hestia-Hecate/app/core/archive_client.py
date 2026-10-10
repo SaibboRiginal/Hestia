@@ -6,10 +6,7 @@ import requests
 
 logger = logging.getLogger("hestia_hecate.archive_client")
 
-# HECATE_ARCHIVE_ROUTE_TIMEOUT: seconds to wait for Hub-routed Archive writes (default 8)
-_ROUTE_TIMEOUT = int(os.getenv("HECATE_ARCHIVE_ROUTE_TIMEOUT", "8"))
-# HECATE_CALENDAR_WRITE_TIMEOUT: seconds to wait for calendar item writes to Archive (default 10)
-_CALENDAR_TIMEOUT = int(os.getenv("HECATE_CALENDAR_WRITE_TIMEOUT", "10"))
+from core.hecate_settings import ARCHIVE_ROUTE_TIMEOUT, CALENDAR_WRITE_TIMEOUT, settings
 
 
 class ArchiveClient:
@@ -18,6 +15,7 @@ class ArchiveClient:
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
     def _route_archive(self, payload: dict) -> bool:
+        route_timeout = int(settings.get(ARCHIVE_ROUTE_TIMEOUT))
         try:
             response = requests.post(
                 f"{self.hub_api_url}/route/archive/api/archive",
@@ -26,9 +24,9 @@ class ArchiveClient:
                     "headers": {},
                     "query": {},
                     "body": payload,
-                    "timeout_seconds": _ROUTE_TIMEOUT,
+                    "timeout_seconds": route_timeout,
                 },
-                timeout=_ROUTE_TIMEOUT + 2,
+                timeout=route_timeout + 2,
             )
         except Exception as exc:
             logger.warning(
@@ -72,6 +70,7 @@ class ArchiveClient:
         provided Archive will update an existing row instead of inserting a
         duplicate.
         """
+        calendar_timeout = int(settings.get(CALENDAR_WRITE_TIMEOUT))
         try:
             resp = requests.post(
                 f"{self.hub_api_url}/route/archive/api/calendar/items",
@@ -80,9 +79,9 @@ class ArchiveClient:
                     "headers": {},
                     "query": {},
                     "body": item,
-                    "timeout_seconds": _CALENDAR_TIMEOUT,
+                    "timeout_seconds": calendar_timeout,
                 },
-                timeout=_CALENDAR_TIMEOUT + 2,
+                timeout=calendar_timeout + 2,
             )
             if resp.status_code != 200:
                 logger.warning("event=archive_rejected_calendar_item_title Archive rejected calendar item | title=%s status=%s body=%s",

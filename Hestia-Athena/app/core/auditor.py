@@ -19,12 +19,15 @@ from typing import Any
 
 import requests
 
+from . import athena_settings as S
+from .athena_settings import get_float, get_int
+
 logger = logging.getLogger("hestia_athena.auditor")
 
-AUDITOR_TIMEOUT = float(os.getenv("ATHENA_AUDITOR_TIMEOUT_SECONDS", "40"))
+# Timeout / default turns: central settings athena.audit.* (read at use time).
+# Model/provider stay env (model choice belongs to Oracle; flagged in hestia-athena.md).
 AUDITOR_MODEL = os.getenv("ATHENA_AUDITOR_MODEL", "")
 AUDITOR_PROVIDER = os.getenv("ATHENA_AUDITOR_PROVIDER", "")
-AUDITOR_MAX_TURNS = int(os.getenv("ATHENA_AUDITOR_MAX_TURNS", "20"))
 
 _JUDGE_PROMPT = (
     "Sei un valutatore di qualità per un assistente AI chiamato Hestia.\n"
@@ -55,13 +58,13 @@ class ConversationAuditor:
     def audit_session(
         self,
         session_id: str,
-        limit: int = AUDITOR_MAX_TURNS,
+        limit: int | None = None,
     ) -> dict[str, Any]:
         """Score recent assistant turns for *session_id*.
 
         Returns a dict with ``turns_scored``, ``scores``, and ``submitted`` counts.
         """
-        limit = max(1, min(limit, 100))
+        limit = max(1, min(int(limit or get_int(S.AUDIT_MAX_TURNS)), 100))
         history = self._fetch_chat_history(session_id, limit)
         if not history:
             return {
@@ -175,6 +178,7 @@ class ConversationAuditor:
 
     def _call_oracle_llm(self, prompt: str) -> str | None:
         """Call Oracle's LLM generate endpoint via Hub routing."""
+        timeout = get_float(S.AUDIT_TIMEOUT)
         body = {
             "prompt": prompt,
             "model": AUDITOR_MODEL,
@@ -185,14 +189,14 @@ class ConversationAuditor:
             "headers": {},
             "query": {},
             "body": body,
-            "timeout_seconds": AUDITOR_TIMEOUT,
+            "timeout_seconds": timeout,
         }
         route_url = f"{self._hub_url}/route/oracle/api/llm/generate"
         try:
             resp = self._session.post(
                 route_url,
                 json=envelope,
-                timeout=AUDITOR_TIMEOUT + 4,
+                timeout=timeout + 4,
             )
             if resp.status_code != 200:
                 logger.warning(

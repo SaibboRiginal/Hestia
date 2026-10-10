@@ -30,9 +30,9 @@ Hermes deduplicates outbound events by `dedupe_key` (compound of event type, dom
 entity ID, and subscription ID). Only events in an "active" lifecycle state
 (`created`, `queued`, `delivered`, `seen`, `answered`) block re-delivery.
 
-**Time-based expiry for recurring events:** For event types listed in
-`HERMES_RECURRING_EVENT_TYPES` (default: `service.action_required,service.health`),
-delivered events older than `HERMES_RECURRING_EVENT_MAX_AGE_SECONDS` (default 3600 s)
+**Time-based expiry for recurring events:** For event types listed in the setting
+`hermes.dedupe.recurring_types` (default: `service.action_required`, `service.health`),
+delivered events older than `hermes.dedupe.recurring_max_age` (default 3600 s)
 are treated as stale and do NOT block re-delivery. This prevents persistent issues
 like auth failures from being permanently silenced while still suppressing spam
 within the cooldown window.
@@ -63,9 +63,9 @@ within the cooldown window.
 - **Read state is global**: `/seen` and `/seen-all` (Telegram: any user message in the chat) → `update` to the
   other clients (Telegram replaces the buttons with "✓ Vista su WebUI" / "✅ Approva · da WebUI").
 - **Retract**: agenda job `hermes.notifications.retract` (hourly) → `POST /api/notifications/retract-stale` asks
-  clients to drop messages seen/handled more than 6 h ago (window 47 h, Telegram deletes only < 48 h; never while
-  still waiting for an answer). The delay becomes a Themis setting when Hermes moves to central settings.
-- **Retry**: per client — only the clients that failed are retried (`HERMES_MAX_DELIVERY_ATTEMPTS`), then `dead`.
+  clients to drop messages seen/handled more than `hermes.retract.after` hours ago (default 6; window 47 h,
+  Telegram deletes only < 48 h; never while still waiting for an answer).
+- **Retry**: per client — only the clients that failed are retried (`hermes.delivery.max_attempts`), then `dead`.
 - Client contract (`kind: notification | update | retract`): see `Hestia-Swagger/swagger.yml` `ClientNotifyRequest`.
 
 ## API (MVP)
@@ -107,9 +107,29 @@ deactivated so alerts are not sent twice.
 - **Dedupe key:** `payload.dedupe_key` → `question_id`/`brief_id` → for pre-formatted messages (`_message`)
   `event_type:domain:entity_id:<hash of text>` → else `event_type:domain:entity_id`.
   Before, a fixed `entity_id` (e.g. Argus `argus-batch`) deduped every later alert against the first delivered one.
-- **Retry (rule 7):** failed client deliveries are retried every `HERMES_RETRY_INTERVAL_SECONDS` (120) up to
-  `HERMES_MAX_DELIVERY_ATTEMPTS` (6) per client, then that client is marked `dead` (the row is `dead` only if
+- **Retry (rule 7):** failed client deliveries are retried every `hermes.delivery.retry_interval` (120 s) up to
+  `hermes.delivery.max_attempts` (6) per client, then that client is marked `dead` (the row is `dead` only if
   no client got it). Attempts are stored in `payload.deliveries`.
-- **Batches (real_estate):** a failed batch is re-queued with exponential backoff (`ENTITY_BATCH_MAX_ATTEMPTS`, 6),
+- **Batches (real_estate):** a failed batch is re-queued with exponential backoff (`hermes.batch.max_attempts`, 6; settling window `hermes.batch.window`, 30 s),
   merged with entities that arrived meanwhile.
 - **Narration** uses Oracle `/api/llm/generate` (plain generation), not the full `/api/chat` pipeline.
+
+## Central settings (Themis)
+
+Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router `GET /api/settings/effective`,
+`POST /api/settings/reload`). All are `apply=live` (read at use time); Themis down → defaults with a `[🔄]` log.
+
+| Key | Type / default | Effect |
+|---|---|---|
+| `hermes.delivery.max_attempts` | int 6 | Delivery attempts per client before that client is `dead` |
+| `hermes.delivery.retry_interval` | int 120 s (min 15) | Pause between retry passes of failed deliveries |
+| `hermes.dedupe.recurring_max_age` | int 3600 s | After this age a delivered recurring alert no longer blocks a new one |
+| `hermes.dedupe.recurring_types` | list `service.action_required`, `service.health` | Event types with time-limited dedupe |
+| `hermes.batch.window` | int 30 s | Settling window for batched entity alerts (also backoff base) |
+| `hermes.batch.max_attempts` | int 6 | Attempts for a failed batch before giving up |
+| `hermes.retract.after` | int 6 h (1–46) | Handled notifications are retracted from Telegram after this delay |
+| `hermes.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
+
+Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,
+`HERMES_SERVICE_VERSION`, `HERMES_HUB_REGISTER_RETRIES`, `HERMES_HUB_REGISTER_RETRY_DELAY`,
+`STARTUP_WAIT_TIMEOUT_SECONDS`, `LOG_LEVEL` (boot default only).

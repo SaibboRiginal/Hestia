@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 from typing import Any
 from uuid import uuid4
@@ -14,22 +13,14 @@ from .entity_batch_dispatcher import (
 from .matcher import subscription_matches
 from .notifications import NotificationCenter
 from .oracle_client import narrate
+from .hermes_settings import DEDUPE_RECURRING_MAX_AGE, recurring_event_types, settings
 
 logger = logging.getLogger("hestia_hermes.service")
 
-# Event types whose dedup is time-limited.  Once the previous delivery
-# exceeds this age it is treated as stale, letting a fresh notification
-# through.  Default 3600 s (1 hour) — matches the Hecate entity_id
-# hourly scoping so a persistent auth failure gets at most one alert per
-# hour regardless of restarts.
-_RECURRING_EVENT_MAX_AGE_SECONDS = float(
-    os.getenv("HERMES_RECURRING_EVENT_MAX_AGE_SECONDS", "3600"))
-_RECURRING_EVENT_TYPES: frozenset[str] = frozenset(
-    e.strip() for e in os.getenv(
-        "HERMES_RECURRING_EVENT_TYPES",
-        "service.action_required,service.health",
-    ).split(",") if e.strip()
-)
+# Event types whose dedup is time-limited (settings hermes.dedupe.*): once the
+# previous delivery exceeds the max age it is treated as stale, letting a fresh
+# notification through. Default 3600 s — matches the Hecate entity_id hourly
+# scoping so a persistent auth failure gets at most one alert per hour.
 
 
 def _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id) -> str:
@@ -146,7 +137,7 @@ class HermesService:
         question_id = str(payload.get("question_id", "")).strip() or None
         brief_id = str(payload.get("brief_id", "")).strip() or None
         anchor = _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id)
-        max_age = _RECURRING_EVENT_MAX_AGE_SECONDS if event_type in _RECURRING_EVENT_TYPES else None
+        max_age = float(settings.get(DEDUPE_RECURRING_MAX_AGE)) if event_type in recurring_event_types() else None
 
         # Batched domains: one narrated message per subscription after a settling window.
         if domain in BATCHED_DOMAINS and event_type in BATCHED_EVENT_TYPES:

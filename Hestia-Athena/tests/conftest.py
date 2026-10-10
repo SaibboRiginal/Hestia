@@ -15,6 +15,9 @@ for _p in [_ATHENA_APP, _SHARED]:
 # ── env defaults ──────────────────────────────────────────────────────────────
 os.environ.setdefault("HUB_API_URL", "http://localhost:19001/api")
 os.environ.setdefault("HERMES_API_URL", "http://localhost:19005")
-# disable background loop in tests
-os.environ.setdefault("ATHENA_LOOP_ENABLED", "0")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
+
+# disable background loop in tests (central setting, no env var)
+from core.athena_settings import LOOP_ENABLED, settings as _athena_settings  # noqa: E402
+
+_athena_settings._effective[LOOP_ENABLED] = False

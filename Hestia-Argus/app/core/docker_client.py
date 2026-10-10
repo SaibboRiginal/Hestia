@@ -9,7 +9,7 @@ containers that have been running for months.
 Startup behaviour
 -----------------
 On the first poll for a container, the cursor is set to
-``startup_time - ARGUS_LOG_BACKFILL_MINUTES`` (default 5 minutes), giving a
+``startup_time - argus.logs.backfill_minutes`` (central setting, default 5 minutes), giving a
 small look-back window to catch issues that occurred just before Argus started,
 without reading the full log history.
 
@@ -21,7 +21,6 @@ safe to call from multiple threads.
 from __future__ import annotations
 
 import logging
-import os
 import re
 import struct
 import threading
@@ -30,28 +29,18 @@ from datetime import datetime, timedelta, timezone
 
 import docker  # type: ignore
 
+from core import argus_settings as cfg
 from schemas.reports import LogEvent
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
-BUFFER_SIZE = int(os.getenv("ARGUS_LOG_BUFFER_SIZE", "500"))
-BACKFILL_MINUTES = int(os.getenv("ARGUS_LOG_BACKFILL_MINUTES", "5"))
 LOG_LEVEL_PATTERN = re.compile(r"\b(WARNING|ERROR|CRITICAL)\b", re.IGNORECASE)
 HEALTH_ACCESS_PATTERN = re.compile(
     r'"(?:GET|HEAD|OPTIONS)\s+/(?:health|healthz|ready|live)\b',
     re.IGNORECASE,
 )
-IGNORE_HEALTH_ACCESS = os.getenv("ARGUS_IGNORE_HEALTH_ACCESS", "true").lower() in {
-    "1", "true", "yes", "on"
-}
-
-# Comma-separated substrings — log lines containing any of these are silently dropped.
-# Set via ARGUS_IGNORE_PATTERNS env var.
-_IGNORE_PATTERNS: list[str] = [
-    p.strip().lower()
-    for p in os.getenv("ARGUS_IGNORE_PATTERNS", "").split(",")
-    if p.strip()
-]
+# Health-access filtering and ignore substrings are central settings
+# (argus.logs.ignore_health_access / argus.logs.ignore_patterns), read per poll.
 
 # Time when this module was imported — used as the default cursor base.
 _MODULE_START: datetime = datetime.now(tz=timezone.utc)
@@ -139,11 +128,11 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
         if container_name not in _cursors:
             # First time we see this container — look back a few minutes.
             _cursors[container_name] = _MODULE_START - timedelta(
-                minutes=BACKFILL_MINUTES
+                minutes=cfg.get_int(cfg.BACKFILL_MINUTES, 0)
             )
         since = _cursors[container_name]
         if container_name not in _buffers:
-            _buffers[container_name] = deque(maxlen=BUFFER_SIZE)
+            _buffers[container_name] = deque(maxlen=cfg.get_int(cfg.BUFFER_SIZE, 1))
 
     # Record fetch time BEFORE the request so we don't skip lines produced
     # between the request and when we update the cursor.
@@ -170,14 +159,16 @@ def poll_container_logs(container_name: str, service_name: str) -> list[LogEvent
         logger.warning("event=log_fetch_failed log fetch failed for %s: %s", container_name, exc)
         return []
 
+    ignore_health = cfg.get_bool(cfg.IGNORE_HEALTH_ACCESS)
+    ignore_patterns = cfg.ignore_patterns()
     new_events: list[LogEvent] = []
     for raw_line in _demux_docker_logs(raw):
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line:
             continue
-        if IGNORE_HEALTH_ACCESS and HEALTH_ACCESS_PATTERN.search(line):
+        if ignore_health and HEALTH_ACCESS_PATTERN.search(line):
             continue
-        if _IGNORE_PATTERNS and any(p in line.lower() for p in _IGNORE_PATTERNS):
+        if ignore_patterns and any(p in line.lower() for p in ignore_patterns):
             continue
         level = _parse_level(line)
         if level is None:

@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from typing import Callable
 
 import requests
+
+from . import athena_settings as S
+from .athena_settings import get_bool, get_float, get_int
 
 logger = logging.getLogger("hestia_athena.skill_curator")
 
@@ -50,13 +52,30 @@ class SkillCurator:
         self._embed = embed_fn
         self._oracle_route = oracle_route.rstrip("/") if oracle_route else ""
 
-        # Thresholds — all env-var configurable (Rulebook 1.4)
-        self._min_sessions = int(os.getenv("ATHENA_SKILL_MIN_SESSIONS", "3"))
-        self._sim_threshold = float(os.getenv("ATHENA_SKILL_SIM_THRESHOLD", "0.90"))
-        self._dedup_threshold = float(os.getenv("ATHENA_SKILL_DEDUP_THRESHOLD", "0.95"))
-        self._stale_days = int(os.getenv("ATHENA_SKILL_STALE_DAYS", "30"))
-        self._hard_delete_days = int(os.getenv("ATHENA_SKILL_HARD_DELETE_DAYS", "90"))
-        self._core_use_count = int(os.getenv("ATHENA_SKILL_CORE_USE_COUNT", "50"))
+    # Thresholds — central settings athena.skills.* (Themis), read at use time.
+    @property
+    def _min_sessions(self) -> int:
+        return get_int(S.SKILLS_MIN_SESSIONS)
+
+    @property
+    def _sim_threshold(self) -> float:
+        return get_float(S.SKILLS_SIM_THRESHOLD)
+
+    @property
+    def _dedup_threshold(self) -> float:
+        return get_float(S.SKILLS_DEDUP_THRESHOLD)
+
+    @property
+    def _stale_days(self) -> int:
+        return get_int(S.SKILLS_STALE_DAYS)
+
+    @property
+    def _hard_delete_days(self) -> int:
+        return get_int(S.SKILLS_HARD_DELETE_DAYS)
+
+    @property
+    def _core_use_count(self) -> int:
+        return get_int(S.SKILLS_CORE_USE_COUNT)
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -416,7 +435,7 @@ class SkillCurator:
 
     def _emit_hint(self, message: str) -> None:
         """Emit a hint to Oracle via the existing Athena hints endpoint."""
-        if not self._oracle_route:
+        if not self._oracle_route or not get_bool(S.HINTS_ENABLED):
             return
         try:
             # oracle_route is the hint path (e.g. "api/athena/hints"); it was

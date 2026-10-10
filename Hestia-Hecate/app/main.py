@@ -19,6 +19,8 @@ from core.registry import get_fetcher_class, FETCHER_REGISTRY
 from core.archive_client import ArchiveClient
 from core.state_manager import StateManager
 from core import google_oauth
+from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
+                                  settings as hecate_settings)
 
 load_dotenv()
 
@@ -214,6 +216,7 @@ except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=hecate reason=hestia_common_not_available")
 
 app.include_router(create_log_control_router("hestia_hecate"))
+app.include_router(hecate_settings.router())
 
 vault = ArchiveClient()
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
@@ -228,8 +231,6 @@ HUB_API_URL = os.getenv(
 # Cooldown tracker for action notifications — prevents spamming duplicate
 # events when multiple code paths detect the same auth failure.
 _action_notify_cooldown: dict[str, float] = {}
-_ACTION_NOTIFY_COOLDOWN_SECONDS = float(
-    os.getenv("HECATE_ACTION_NOTIFY_COOLDOWN", "300"))
 
 
 def _notify_action_required(
@@ -244,11 +245,11 @@ def _notify_action_required(
         command: str — Telegram command name (routed via ``run:`` callback)
 
     Notifications for the same ``action`` are throttled to once every
-    ``HECATE_ACTION_NOTIFY_COOLDOWN`` seconds (default 300).
+    ``hecate.auth.notify_cooldown`` seconds (central setting, default 300).
     """
     now = time.monotonic()
     last = _action_notify_cooldown.get(action)
-    if last is not None and (now - last) < _ACTION_NOTIFY_COOLDOWN_SECONDS:
+    if last is not None and (now - last) < float(hecate_settings.get(ACTION_NOTIFY_COOLDOWN)):
         logger.debug(
             "event=action_notify_cooldown_skipped action=%s age=%.1fs",
             action,
@@ -503,6 +504,7 @@ def _route_via_hub(
 
 @app.on_event("startup")
 def register_on_hub_startup():
+    hecate_settings.start()
     hub_api_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
@@ -553,16 +555,22 @@ def register_on_hub_startup():
                 # persistent failures.  Hermes dedup uses time-based expiry
                 # for service.action_required events, so repeated failures
                 # result in a fresh notification after the expiry window.
-                _reauth_check_interval = float(
-                    os.getenv("HECATE_AUTH_RECHECK_INTERVAL_SECONDS", "3600"))
-                if _reauth_check_interval > 0:
-                    while True:
-                        time.sleep(_reauth_check_interval)
-                        try:
-                            _check_auth_and_notify()
-                        except Exception as _exc:
-                            logger.warning(
-                                "event=auth_recheck_error error=%s", _exc)
+                # N = hecate.auth.recheck_interval (live; 0 = disabled, the
+                # value is re-read every minute so re-enabling needs no restart).
+                while True:
+                    _reauth_check_interval = float(
+                        hecate_settings.get(AUTH_RECHECK_INTERVAL) or 0)
+                    if _reauth_check_interval <= 0:
+                        time.sleep(60)
+                        continue
+                    time.sleep(_reauth_check_interval)
+                    if float(hecate_settings.get(AUTH_RECHECK_INTERVAL) or 0) <= 0:
+                        continue
+                    try:
+                        _check_auth_and_notify()
+                    except Exception as _exc:
+                        logger.warning(
+                            "event=auth_recheck_error error=%s", _exc)
             threading.Thread(target=_deferred_auth_check, daemon=True,
                              name="auth-check").start()
         else:
@@ -707,8 +715,8 @@ def trigger_calendar_sync(command: CalendarSyncCommand):
         )
 
     results: dict[str, dict] = {}
-    # HECATE_CALENDAR_BACKFILL_DAYS: how many days back to include recent past events (default 7)
-    backfill_days = int(os.getenv("HECATE_CALENDAR_BACKFILL_DAYS", "7"))
+    # hecate.calendar.backfill_days: how many days back to include recent past events (default 7)
+    backfill_days = int(hecate_settings.get(CALENDAR_BACKFILL_DAYS))
     since = datetime.now(_tz.utc) - timedelta(days=backfill_days)
     logger.info("event=calendar_sync_sources_backfill_days_since Calendar sync | sources=%s backfill_days=%d since=%s",
                 sources, backfill_days, since.date())

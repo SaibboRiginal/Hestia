@@ -7,6 +7,8 @@ from datetime import datetime
 
 import requests
 
+from core import argus_settings as cfg
+
 from schemas.reports import LogEvent
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
@@ -175,7 +177,7 @@ def request_hephaestus_remediation(
         "headers": {},
         "query": {},
         "body": body,
-        "timeout_seconds": float(os.getenv("ARGUS_REMEDIATE_TIMEOUT_SECONDS", "15")),
+        "timeout_seconds": float(cfg.get_int(cfg.REMEDIATE_TIMEOUT, 1)),
     }
     try:
         response = requests.post(

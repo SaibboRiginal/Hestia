@@ -31,6 +31,7 @@ from .modules.schemas import (
     NotificationSeenAllRequest,
     OutboundEventStateUpdateRequest,
 )
+from .modules.hermes_settings import DELIVERY_RETRY_INTERVAL, settings as hermes_settings
 from .modules.service import HermesService
 
 logger, log_buffer = setup_service_logging("hestia_hermes")
@@ -38,6 +39,7 @@ logger, log_buffer = setup_service_logging("hestia_hermes")
 app = FastAPI(title="Hestia Hermes", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(hermes_settings.router())
 service = HermesService()
 
 
@@ -119,6 +121,11 @@ def _register_agenda() -> None:
         description="Toglie dalla chat Telegram le notifiche già viste o gestite (restano nell'elenco della WebUI).",
         timeout_seconds=60,
     )])
+
+
+@app.on_event("startup")
+def start_settings():
+    hermes_settings.start()
 
 
 @app.on_event("startup")
@@ -236,11 +243,10 @@ def register_on_hub_startup():
 @app.on_event("startup")
 def start_delivery_retry_loop():
     """Background pass retrying failed deliveries (resilience rule 7)."""
-    interval = float(os.getenv("HERMES_RETRY_INTERVAL_SECONDS", "120"))
-
     def _loop():
         while True:
-            time.sleep(max(15.0, interval))
+            # Read at every pass: a change of hermes.delivery.retry_interval applies live.
+            time.sleep(max(15.0, float(hermes_settings.get(DELIVERY_RETRY_INTERVAL))))
             try:
                 service.retry_failed_deliveries()
             except Exception as exc:

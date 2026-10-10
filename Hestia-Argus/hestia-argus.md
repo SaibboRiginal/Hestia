@@ -66,28 +66,53 @@ Hub Monitor Logs / Docker Tails │
 
 ## Environment Variables
 
+Env holds only infrastructure; every tunable is a central setting (below).
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub base URL |
 | `ARGUS_SERVICE_BASE_URL` | `http://hestia_argus:19008` | This service's externally reachable URL |
 | `ARGUS_PORT` | `19008` | Listening port |
-| `ARGUS_POLL_INTERVAL` | `60` | Seconds between health polls |
-| `ARGUS_LOG_SOURCE` | `hub` | Log source mode: `hub` (via Hub `/api/monitor/logs`) or `docker` |
-| `ARGUS_HUB_LOG_LIMIT` | `200` | Per-service max log rows fetched from Hub for each polling cycle |
-| `ARGUS_LOG_SEEN_CACHE_SIZE` | `5000` | In-memory dedupe window for hub-sourced log alerts |
-| `ARGUS_LOG_BUFFER_SIZE` | `500` | Max log events kept per container |
-| `ARGUS_IGNORE_HEALTH_ACCESS` | `true` | Ignore container health-check access lines (e.g. `GET /health`) during log monitoring |
 | `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools) |
-| `ARGUS_AUTO_REMEDIATE_ENABLED` | `1` | Enable automatic remediation intent emission to Hephaestus on newly unhealthy service states |
-| `ARGUS_AUTO_REMEDIATE_DRY_RUN` | `1` | Send remediation intents in dry-run mode |
-| `ARGUS_AUTO_REMEDIATE_ENVIRONMENT` | `dev` | Target environment passed to Hephaestus remediation tasks |
-| `ARGUS_REMEDIATE_TIMEOUT_SECONDS` | `15` | Hub-routed timeout for Hephaestus remediation request |
-| `ARGUS_REPAIR_RECHECK_MINUTES` | `10` | First agenda recheck after a service goes down (doubles each attempt) |
-| `ARGUS_REPAIR_RECHECK_MAX_MINUTES` | `360` | Backoff cap for agenda rechecks |
+| `HESTIA_DOCS_PATH` | `/hestia_root` | Repo mount used to load project docs as Oracle context |
+| `STARTUP_WAIT_TIMEOUT_SECONDS` | `0` | Wait for Hub readiness at startup (0 = indefinitely) |
+| `LOG_LEVEL` | `INFO` | Boot log level only (live: `argus.log.level`) |
+
+## Central settings
+
+Declared to Themis in `app/core/argus_settings.py` (`GET /api/settings/effective`, `POST /api/settings/reload`);
+read at use time, so changes apply live unless marked *restart*. Safety switches are `oracle=read`
+(the assistant can read them, never propose a change).
+
+| Key | Type | Default | Notes |
+|-----|------|---------|-------|
+| `argus.poll.interval` | int (s) | `60` | Seconds between monitor cycles |
+| `argus.auth_check.enabled` | bool | `true` | Periodic Google/Outlook provider auth check |
+| `argus.auth_check.every_cycles` | int | `5` | Auth check every N monitor cycles |
+| `argus.logs.source` | enum | `hub` | `hub` (Hub `/api/monitor/logs`) or `docker` (socket tail) |
+| `argus.logs.hub_limit` | int | `200` | Max log rows per service per poll/report (hub source) |
+| `argus.logs.seen_cache_size` | int | `5000` | Dedupe memory for hub-sourced log events (min 500) |
+| `argus.logs.ignore_health_access` | bool | `true` | Drop `/health` access lines (docker source) |
+| `argus.logs.ignore_patterns` | list | `["OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set"]` | Substrings whose lines are dropped (docker source) |
+| `argus.logs.buffer_size` | int | `500` | Log events kept per container (docker source) — *restart* |
+| `argus.logs.backfill_minutes` | int (min) | `0` | Past logs read on first poll of a container (docker source) |
+| `argus.alerts.cooldown` | int (min) | `60` | Minimum time between repeated alerts with the same fingerprint |
+| `argus.alerts.batch_window` | int (s) | `20` | Quiet time before a burst is sent as one notification |
+| `argus.remediate.enabled` | bool | `true` | Auto remediation intents to Hephaestus — `oracle=read` |
+| `argus.remediate.dry_run` | bool | `true` | Remediation intents in dry-run mode — `oracle=read` |
+| `argus.remediate.environment` | enum | `dev` | `dev`/`staging`/`prod` forwarded to Hephaestus — `oracle=read` |
+| `argus.remediate.timeout` | int (s) | `15` | Hub-routed timeout of the remediation request |
+| `argus.repair.recheck` | int (min) | `10` | First agenda recheck after a service goes down (doubles each attempt) |
+| `argus.repair.recheck_max` | int (min) | `360` | Backoff cap for agenda rechecks |
+| `argus.forge.enabled` | bool | `true` | Recurring errors become Forge fix proposals — `oracle=read` |
+| `argus.forge.threshold` | int | `3` | Occurrences of one signature inside the window |
+| `argus.forge.window` | int (s) | `3600` | Counting window |
+| `argus.forge.cooldown` | int (s) | `86400` | One proposal per signature per cooldown |
+| `argus.log.level` | enum | `LOG_LEVEL` | Live log level |
 
 ## Docker
 
-When `ARGUS_LOG_SOURCE=docker`, Argus requires access to the Docker socket for log streaming:
+When `argus.logs.source=docker`, Argus requires access to the Docker socket for log streaming:
 
 ```yaml
 volumes:
@@ -107,17 +132,17 @@ volumes:
 
 Recurring errors become fix *proposals* for Hephaestus Forge (`app/core/forge_proposer.py`):
 - Same error signature (exception line, numbers/ids/quoted values stripped) from one service
-  ≥ `ARGUS_FORGE_PROPOSE_THRESHOLD` (3) times within `ARGUS_FORGE_PROPOSE_WINDOW_SECONDS` (3600).
+  ≥ `argus.forge.threshold` (3) times within `argus.forge.window` (3600 s).
 - Argus posts to `/api/hephaestus/forge/tasks` (source `argus`) with the log sample as context.
   Forge's permission mode decides (`ask` / `auto` / `full_auto`, defaults local=auto, cloud=ask).
-- One proposal per signature per `ARGUS_FORGE_PROPOSE_COOLDOWN_SECONDS` (86400). Failed posts retry on next occurrence.
-- Disable with `ARGUS_FORGE_PROPOSALS_ENABLED=0`. Hephaestus/Argus own errors are excluded.
+- One proposal per signature per `argus.forge.cooldown` (86400 s). Failed posts retry on next occurrence.
+- Disable with setting `argus.forge.enabled=false`. Hephaestus/Argus own errors are excluded.
 - Log dedupe key now includes the row timestamp: each occurrence counts once (alert spam still bounded by alert cooldown).
 
 ## Repair follow-up (assistant agenda)
 
 A service that stays unhealthy is never forgotten: when Argus requests the repair it also plans
-**`argus.repair.<service>`** in Hestia's agenda (+10 min, then 20, 40 … max 6 h). Chronos fires
+**`argus.repair.<service>`** in Hestia's agenda (`argus.repair.recheck` = +10 min, then 20, 40 … max `argus.repair.recheck_max` = 6 h). Chronos fires
 `POST /api/argus/recheck/{service}` through Hub; still down → new Hephaestus repair request and next recheck;
 recovered → entry completed and recovery notice. Visible/movable/cancellable from the agenda.
 

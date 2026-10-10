@@ -10,26 +10,14 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import time
 from datetime import datetime, timezone
 from typing import Any
 
+from . import metis_settings as ms
 from .hub_client import HubClient
 
 logger = logging.getLogger("hestia_metis.dataset_builder")
-
-_DEFAULT_QUALITY_LABELS = [
-    lb.strip()
-    for lb in os.getenv(
-        "METIS_DEFAULT_QUALITY_LABELS", "excellent,good"
-    ).split(",")
-    if lb.strip()
-]
-_MAX_EXAMPLES = int(os.getenv("METIS_MAX_DATASET_EXAMPLES", "5000"))
-_DEDUP_ENABLED = os.getenv(
-    "METIS_DEDUPLICATE_ENABLED", "true"
-).strip().lower() not in {"0", "false", "no"}
 
 # In-memory dataset store: name → {metadata, examples}
 _datasets: dict[str, dict[str, Any]] = {}
@@ -54,15 +42,19 @@ def build_dataset(
     quality_labels: list[str] | None = None,
     min_score: int | None = None,
     since: str | None = None,
-    max_examples: int = _MAX_EXAMPLES,
-    deduplicate: bool = _DEDUP_ENABLED,
+    max_examples: int | None = None,
+    deduplicate: bool | None = None,
 ) -> dict[str, Any]:
     """Build a cleaned dataset from graded feedback records.
 
     Returns metadata dict with counts, domains, quality distribution.
     Stores the dataset in the in-memory _datasets dict.
     """
-    labels = quality_labels or _DEFAULT_QUALITY_LABELS
+    # Central settings (live): cap, dedup and labels apply when the caller gives none.
+    cap = ms.max_examples()
+    max_examples = min(int(max_examples), cap) if max_examples else cap
+    deduplicate = ms.deduplicate() if deduplicate is None else bool(deduplicate)
+    labels = quality_labels or ms.labels(ms.QUALITY_LABELS)
     logger.info(
         "event=dataset_build_start name=%s labels=%s",
         name,

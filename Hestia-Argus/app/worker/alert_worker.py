@@ -4,11 +4,11 @@ Flow
 ----
 1. ``send_alert()`` is called by the monitor loop for every new log/health event.
 2. The alert fingerprint is checked against the cooldown store — if already seen
-   within ``ALERT_COOLDOWN_MINUTES`` (default 60) it is silently dropped.
+   within ``argus.alerts.cooldown`` minutes (central setting, default 60) it is silently dropped.
 3. New alerts are recorded immediately (before any I/O) so they can never be
    re-queued even if the flush fails.
 4. Alerts are added to a pending queue and a flush timer is (re)started for
-   ``ALERT_BATCH_WINDOW_SECONDS`` (default 20 s).  Every new alert resets the
+   ``argus.alerts.batch_window`` seconds (central setting, default 60).  Every new alert resets the
    timer, so a burst settles into a single dispatch.
 5. When the timer fires, the whole batch is narrated by Oracle in one natural
    Italian message and sent via Hermes as a single Telegram notification.
@@ -18,17 +18,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import threading
 from datetime import datetime, timedelta, timezone
 
+from core import argus_settings as cfg
 from core import hermes_client, oracle_client
 from schemas.reports import ServiceAlert
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
-
-COOLDOWN_MINUTES = int(os.getenv("ALERT_COOLDOWN_MINUTES", "60"))
-BATCH_WINDOW_SECONDS = float(os.getenv("ALERT_BATCH_WINDOW_SECONDS", "60"))
 
 # fingerprint → last dispatched time
 _cooldown: dict[str, datetime] = {}
@@ -61,7 +58,7 @@ def _is_suppressed(fingerprint: str) -> bool:
         last = _cooldown.get(fingerprint)
     if last is None:
         return False
-    return datetime.now(tz=timezone.utc) - last < timedelta(minutes=COOLDOWN_MINUTES)
+    return datetime.now(tz=timezone.utc) - last < timedelta(minutes=cfg.get_int(cfg.ALERT_COOLDOWN, 0))
 
 
 def _record(fingerprint: str) -> None:
@@ -84,7 +81,7 @@ def _schedule_flush() -> None:
     with _flush_timer_lock:
         if _flush_timer is not None:
             _flush_timer.cancel()
-        _flush_timer = threading.Timer(BATCH_WINDOW_SECONDS, _flush_batch)
+        _flush_timer = threading.Timer(float(cfg.get_int(cfg.ALERT_BATCH_WINDOW, 0)), _flush_batch)
         _flush_timer.daemon = True
         _flush_timer.start()
 
@@ -193,7 +190,7 @@ def send_alert(alert: ServiceAlert) -> None:
         _pending.append(alert)
 
     logger.debug("event=alert_enqueued_batch_window Alert enqueued for batch (window=%.0fs): %s",
-                 BATCH_WINDOW_SECONDS, fp)
+                 float(cfg.get_int(cfg.ALERT_BATCH_WINDOW, 0)), fp)
     _schedule_flush()
 
 

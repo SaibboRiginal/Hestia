@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-10
+- Central settings P6: Hecate, Scout, Hermes, MCP, Argus, Athena, Hephaestus and Metis tunables moved from env to live Themis settings (env keeps secrets and infrastructure only) → `docs/work/2026-10-10-central-settings/` [ext-chat]
 - Central settings (P1–P5): new module Themis (schema, values in Archive, state, history/undo, presets, assistant proposals confirmed by the user via Hermes); Oracle models and chat tone/instructions, Forge engine/modes and log levels are live settings; WebUI Impostazioni → Sistema (module status, search, presets, use-case table) and chat ⚙ menu; Athena can propose setting changes → `docs/work/2026-10-10-central-settings/` [ext-chat]
 - Hermes global notifications: every notification reaches every client (Telegram + WebUI, any client declaring `notify_endpoint` on Hub), or only the client a request came from; read state global, first answer wins and goes to the module that asked; Telegram marks/deletes handled messages; WebUI Notifiche page with badge and toasts → `docs/work/2026-10-10-hermes-global-notifications/` [ext-chat]
 - Spec v1.0 for Oracle on local models (send real `num_ctx`/`keep_alive` to Ollama, cache telemetry, cache-friendly prompts, optional llama-server/vLLM provider) → `docs/work/2026-10-10-oracle-local-context/` [ext-chat]

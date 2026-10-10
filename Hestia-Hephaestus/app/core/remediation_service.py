@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -9,6 +8,7 @@ from uuid import uuid4
 
 import requests
 
+from ..forge import forge_settings as fs
 from .models import RemediationApproveRequest, RemediationRequest, RemediationRollbackRequest, RunbookDefinition
 
 
@@ -20,20 +20,12 @@ class RemediationService:
         hub_api_url: str,
         notify_target: str,
         baseline_ref: str,
-        execution_timeout_seconds: float,
-        require_approval_for_mutation: bool,
-        allow_auto_approve_non_prod: bool,
         maintenance_paths: list[str],
     ) -> None:
         self._logger = logger
         self._hub_api_url = hub_api_url.rstrip("/")
         self._notify_target = notify_target
         self._baseline_ref = baseline_ref
-        self._execution_timeout_seconds = max(
-            5.0, float(execution_timeout_seconds))
-        self._require_approval_for_mutation = bool(
-            require_approval_for_mutation)
-        self._allow_auto_approve_non_prod = bool(allow_auto_approve_non_prod)
         self._maintenance_paths = [
             path.strip() for path in maintenance_paths if str(path).strip()]
         self._tasks_lock = threading.Lock()
@@ -42,8 +34,27 @@ class RemediationService:
         # agenda tasks, the last failure escalates to Forge (never abandoned).
         self.agenda = None
         self.escalate = None  # callable(task) -> str | None (Forge task id)
-        self._retry_minutes = max(1, int(os.getenv("HEPHAESTUS_REPAIR_RETRY_MINUTES", "15")))
-        self._max_attempts = max(1, int(os.getenv("HEPHAESTUS_REPAIR_MAX_ATTEMPTS", "3")))
+
+    # Central settings (Themis), read at use time (live).
+    @property
+    def _execution_timeout_seconds(self) -> float:
+        return fs.get_float(fs.REMEDIATE_TIMEOUT, 5.0)
+
+    @property
+    def _require_approval_for_mutation(self) -> bool:
+        return fs.get_bool(fs.REMEDIATE_REQUIRE_APPROVAL)
+
+    @property
+    def _allow_auto_approve_non_prod(self) -> bool:
+        return fs.get_bool(fs.REMEDIATE_AUTO_APPROVE_NON_PROD)
+
+    @property
+    def _retry_minutes(self) -> int:
+        return fs.get_int(fs.REPAIR_RETRY_MINUTES, 1)
+
+    @property
+    def _max_attempts(self) -> int:
+        return fs.get_int(fs.REPAIR_MAX_ATTEMPTS, 1)
 
     def attach_agenda(self, agenda, escalate=None) -> None:
         self.agenda = agenda

@@ -57,7 +57,7 @@ Weighted score:
 - **Archive entities**: domain summaries (counts, recent activity, pending steps)
   - Domains are **discovered dynamically** from Hub: services with `layer:domain` tag
     (e.g. Scout with `domain:real_estate`) map to Archive domains
-  - No hardcoded domain list — `ATHENA_OBSERVE_DOMAINS_FALLBACK` is used only when Hub is unreachable
+  - No hardcoded domain list — if Hub is unreachable, domains are simply empty (logged)
 - **Self-state**: active commitments, unresolved commitments, failure streaks
 - **Settings (Themis)**: up to 12 proposable system settings as `key=value [scelte]` (not advanced, not personal)
 
@@ -71,13 +71,13 @@ Weighted score:
 
 ### Idle retrospective (autonomous mode)
 - Cycles run **only when the user is idle**: Athena reads Oracle `GET /api/activity` and defers the cycle while the
-  last real chat is younger than `ATHENA_IDLE_SECONDS` (default 300; `0` = always run). The local model is never
+  last real chat is younger than `athena.loop.idle_seconds` (default 300; `0` = always run). The local model is never
   contended with the user.
 - Retrospective inputs on top of health/domains: **Argus errors of the last hour** (`/api/argus/logs?level=ERROR&since=1h`)
   and **Metis weak spots** (`/api/metis/insights`).
 - Candidate kind `improvement` (code/prompt change) is handed to **Hephaestus Forge** via Hub. Forge's permission
   mode decides (`ask` waits for you, `auto` codes on a branch, `full_auto` may also merge). Defaults: local=auto, cloud=ask.
-  Max `ATHENA_FORGE_MAX_PER_DAY` (2) hand-offs/day, deduplicated by title. Disable: `ATHENA_FORGE_ENABLED=0`.
+  Max `athena.forge.max_per_day` (2) hand-offs/day, deduplicated by title. Disable: `athena.forge.enabled`.
 - Strategist prompt is caveman-style (short lines, exact output format) to save context on local models.
 
 ### Action candidate kinds
@@ -91,8 +91,47 @@ Weighted score:
   approve. Max `athena.settings.proposals_per_day` (setting, default 2; 0 = off) per day, one per key.
 
 ### Central settings
-`app/core/athena_settings.py` (`SettingsClient("athena")`): `athena.settings.proposals_per_day`, `athena.log.level`.
-The env tunables below move there in settings P6.
+All tunables live in Themis, declared in `app/core/athena_settings.py` (`SettingsClient("athena")`), editable
+from every client. All `live` (read at use time) except `athena.tasks.store_max` (`restart`).
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `athena.settings.proposals_per_day` | int | 2 | setting proposals/day (0 = off) |
+| `athena.loop.enabled` | bool | true | thinking loop on/off (thread always runs, checks every cycle) |
+| `athena.loop.interval` | int s | 300 | seconds between cycles |
+| `athena.loop.idle_seconds` | int s | 300 | idle gate (0 = always) |
+| `athena.gate.threshold` | float | 0.55 | minimum relevance score to emit |
+| `athena.retro.window` | int | 24 | outcome history for boosts (advanced) |
+| `athena.retro.failure_urgency_boost` | float | 0.07 | per consecutive failure (advanced) |
+| `athena.retro.unresolved_urgency_boost` | float | 0.04 | per unresolved commitment (advanced) |
+| `athena.retro.unresolved_usefulness_boost` | float | 0.03 | per unresolved commitment (advanced) |
+| `athena.commitments.ttl` | int s | 86400 | commitment / hint expiry (advanced) |
+| `athena.hints.enabled` | bool | true | publish hints to Oracle (also skill-curator hints) |
+| `athena.hints.timeout` | int s | 8 | Oracle hint call timeout (advanced) |
+| `athena.thinking.archive_enabled` | bool | true | push thinking records to Archive |
+| `athena.thinking.store_max` | int | 100 | in-memory thinking records (advanced) |
+| `athena.tasks.store_max` | int | 500 | task lifecycle records, `restart` (advanced) |
+| `athena.observe.timeout` | float s | 8 | observation call timeout (advanced) |
+| `athena.observe.entity_window_hours` | int h | 24 | "recent" entity window |
+| `athena.strategist.enabled` | bool | true | LLM reasoning via Oracle |
+| `athena.strategist.timeout` | float s | 20 | strategist Oracle timeout (advanced) |
+| `athena.strategist.max_candidates` | int | 3 | candidates per cycle |
+| `athena.forge.enabled` | bool | true | hand-off to Forge (`oracle=read`) |
+| `athena.forge.max_per_day` | int | 2 | Forge hand-offs/day (`oracle=read`) |
+| `athena.memory.active_days` | int giorni | 7 | sessions active in last N days are consolidated |
+| `athena.memory.lookback_hours` | int h | 24 | min time between consolidations of one session |
+| `athena.memory.oracle_timeout` | int s | 30 | consolidation LLM timeout |
+| `athena.memory.preference_decay_days` | int giorni | 90 | preference decay |
+| `athena.memory.reinforce_threshold` | int | 3 | occurrences to reinforce a pattern |
+| `athena.skills.min_sessions` | int | 3 | sessions per cluster to create a skill |
+| `athena.skills.sim_threshold` | float | 0.90 | clustering similarity |
+| `athena.skills.dedup_threshold` | float | 0.95 | duplicate-skill merge similarity |
+| `athena.skills.stale_days` | int giorni | 30 | deprecate unused skills |
+| `athena.skills.hard_delete_days` | int giorni | 90 | hard-delete dead skills (<3 uses) |
+| `athena.skills.core_use_count` | int | 50 | uses to promote to core |
+| `athena.audit.timeout` | float s | 40 | auditor LLM timeout |
+| `athena.audit.max_turns` | int | 20 | default turns per audit |
+| `athena.log.level` | enum | `LOG_LEVEL` env | log verbosity |
 
 ### Thinking archive
 - Every cycle is stored in-memory (ring buffer, configurable max) and pushed to Archive
@@ -116,7 +155,9 @@ The env tunables below move there in settings P6.
 
 ### When Athena works = assistant agenda windows
 
-Registered at boot in Hestia's agenda (Chronos), editable by you (move, skip a day, pause):
+Registered at boot in Hestia's agenda (Chronos), editable by you (move, skip a day, pause). The default
+hours are constants in code (`runtime.py`, `consolidator.py`), not env vars nor settings: the agenda already
+makes them user-editable and Chronos keeps your edits over the registered defaults.
 
 | Window | Default | Effect |
 |---|---|---|
@@ -124,44 +165,29 @@ Registered at boot in Hestia's agenda (Chronos), editable by you (move, skip a d
 | `athena.skill_curation` | daily 05–07 | skill curation, once per day inside the window |
 | `athena.thinking` | all day | idle thinking cycles (observe → think → propose); skip/pause = Athena silent |
 
-Missing window or Chronos down → env hours (consolidation) / always (skills, thinking). Skipped or paused
-window = closed (your decision). Thinking still requires the idle gate (`ATHENA_IDLE_SECONDS`).
+Missing window or Chronos down → default hours (consolidation 03–05) / always (skills, thinking). Skipped or paused
+window = closed (your decision). Thinking still requires the idle gate (`athena.loop.idle_seconds`).
 
 ## Environment
 
+Only infrastructure and model routing stay in env (tunables are central settings, see above).
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ATHENA_LOOP_ENABLED` | `1` | Enable the periodic thinking loop |
-| `ATHENA_BRIEF_INTERVAL_SECONDS` | `300` | Seconds between thinking cycles |
-| `ATHENA_RELEVANCE_THRESHOLD` | `0.55` | Minimum score to emit an action |
-| `ATHENA_OBSERVE_TIMEOUT_SECONDS` | `8` | Timeout for Hub-routed observation calls |
-| `ATHENA_OBSERVE_ENTITY_WINDOW_HOURS` | `24` | Window for "recent" entity detection |
-| `ATHENA_OBSERVE_DOMAINS_FALLBACK` | `real_estate,calendar` | Static fallback domains when Hub unreachable |
-| `ATHENA_STRATEGIST_ENABLED` | `1` | Enable LLM reasoning via Oracle |
-| `ATHENA_STRATEGIST_TIMEOUT_SECONDS` | `20` | Timeout for Oracle LLM calls |
-| `ATHENA_STRATEGIST_MAX_CANDIDATES` | `3` | Max action candidates per cycle |
-| `ATHENA_STRATEGIST_MODEL` | (Oracle default) | Override LLM model |
-| `ATHENA_STRATEGIST_PROVIDER` | (Oracle default) | Override LLM provider |
-| `ATHENA_THINKING_ARCHIVE_ENABLED` | `1` | Push thinking records to Archive |
-| `ATHENA_THINKING_STORE_MAX` | `100` | Max in-memory thinking records |
-| `ATHENA_COMMITMENT_TTL_SECONDS` | `86400` | Commitment expiry (24h) |
-| `ATHENA_RETROSPECTIVE_WINDOW` | `24` | Outcome history window for boosts |
-| `ATHENA_RETRO_FAILURE_URGENCY_BOOST` | `0.07` | Urgency boost per consecutive failure |
-| `ATHENA_RETRO_UNRESOLVED_URGENCY_BOOST` | `0.04` | Urgency boost per unresolved commitment |
-| `ATHENA_RETRO_UNRESOLVED_USEFULNESS_BOOST` | `0.03` | Usefulness boost per unresolved commitment |
-| `ATHENA_ORACLE_HINT_ENABLED` | `1` | Publish advisory hints to Oracle |
-| `ATHENA_ORACLE_HINT_TIMEOUT_SECONDS` | `8` | Timeout for Oracle hint calls |
-| `ATHENA_TASK_STORE_MAX` | `500` | Max task lifecycle records |
-| `ATHENA_CONSOLIDATION_WINDOW_START` / `_END` | `3` / `5` | Default hours of agenda window `athena.consolidation` (and fallback) |
-| `ATHENA_SKILL_CURATION_WINDOW_START` / `_END` | `5` / `7` | Default hours of agenda window `athena.skill_curation` |
-| `ATHENA_THINKING_WINDOW_START` / `_END` | `0` / `0` | Default hours of agenda window `athena.thinking` (0–0 = all day) |
+| `SERVICE_NAME` / `SERVICE_BASE_URL` / `SERVICE_VERSION` / `SERVICE_TYPE` / `SERVICE_TAGS` / `SERVICE_TOPOLOGY_TAGS` | see `.env.example` | Hub registration |
+| `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub base URL |
+| `HUB_KEEPALIVE_SECONDS` | `60` | Hub re-registration period |
+| `ATHENA_ORACLE_HINT_ROUTE` | `api/athena/hints` | Oracle path for hints (route) |
+| `ATHENA_STRATEGIST_MODEL` / `ATHENA_STRATEGIST_PROVIDER` | (Oracle default) | Model override for strategist + consolidation (to move to Oracle settings) |
+| `ATHENA_AUDITOR_MODEL` / `ATHENA_AUDITOR_PROVIDER` | (Oracle default) | Model override for the auditor (to move to Oracle settings) |
+| `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)
 - Compact prompts — never stuff full entity payloads
 - Observation timeout prevents hanging on unavailable services
 - Source-level failure isolation — one down service never blocks the full cycle
-- Strategist can be disabled (`ATHENA_STRATEGIST_ENABLED=0`) for debugging; returns empty
+- Strategist can be disabled (setting `athena.strategist.enabled`) for debugging; returns empty
 - Domains discovered dynamically from Hub topology tags, no hardcoded list
 
 ## Scope (Phase 3)
@@ -189,14 +215,8 @@ and curating skills from Oracle session summaries.
 3. For clusters with ≥3 similar sessions: extract most common tool_sequence, create/update skill in Archive
 4. Lifecycle management: deprecate stale (30d unused), hard-delete dead (90d, <3 uses), merge near-duplicates (sim >0.95), promote core (50+ uses, >95% success)
 
-**Configuration (all env vars, Rulebook 1.4):**
-- `ATHENA_SKILL_MIN_SESSIONS` (default 3)
-- `ATHENA_SKILL_SIM_THRESHOLD` (default 0.90)
-- `ATHENA_SKILL_DEDUP_THRESHOLD` (default 0.95)
-- `ATHENA_SKILL_STALE_DAYS` (default 30)
-- `ATHENA_SKILL_HARD_DELETE_DAYS` (default 90)
-- `ATHENA_SKILL_CORE_USE_COUNT` (default 50)
-- `ATHENA_OLLAMA_EMBED_URL` / `ATHENA_OLLAMA_EMBED_MODEL` — embedding configuration
+**Configuration:** central settings `athena.skills.*` (see "Central settings"). Embeddings go through
+Oracle `/api/embed` via Hub (no Athena embedding config).
 
 **Files:** `app/core/skill_curator.py` (new), `app/core/runtime.py` (wired into daily cycle)
 

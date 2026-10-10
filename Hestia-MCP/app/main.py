@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from core.service_contract import HestiaServiceBase, ServiceDescriptor
+from core.mcp_settings import settings as mcp_settings
 from core.tool_registry import ToolRegistry
 
 # ── Logging setup ────────────────────────────────────────────────────────────
@@ -71,10 +72,12 @@ registry = ToolRegistry(hub_api_url=HUB_API_URL)
 
 app = FastAPI(title="Hestia MCP Gateway", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(mcp_settings.router())
 
 
 @app.on_event("startup")
 def on_startup():
+    mcp_settings.start()
     try:
         service.register_to_hub()
         logger.info("event=registered_on_hub hub=%s base_url=%s", HUB_API_URL, SERVICE_BASE_URL)

@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import requests
 
-from .consolidator import MemoryConsolidator
+from .consolidator import CONSOLIDATION_WINDOW_DEFAULT, MemoryConsolidator
 from .observer import Observer
 from .skill_curator import SkillCurator
 from .schemas import (
@@ -31,6 +31,8 @@ from .schemas import (
     ThinkingRecord,
     TriggerRequest,
 )
+from . import athena_settings as S
+from .athena_settings import get_bool, get_float, get_int
 from .shared_imports import import_shared_symbol
 from .strategist import Strategist
 
@@ -42,31 +44,15 @@ agenda_template = import_shared_symbol("hestia_common.agenda_client", "template"
 daily_window = import_shared_symbol("hestia_common.agenda_client", "daily_window")
 
 # Assistant-agenda windows (Chronos). The user moves/skips/pauses them there;
-# missing window or Chronos down → env-hour fallback (old behaviour).
+# missing window or Chronos down → default-hour fallback. The hours below are only the
+# defaults registered once (idempotent by key, user edits win): not env, not settings.
 WINDOW_CONSOLIDATION = "athena.consolidation"
 WINDOW_SKILL_CURATION = "athena.skill_curation"
 WINDOW_THINKING = "athena.thinking"
+SKILL_CURATION_WINDOW_DEFAULT = (5, 7)
+THINKING_WINDOW_DEFAULT = (0, 0)
 
 logger = logging.getLogger("hestia_athena.runtime")
-
-
-def _parse_float_env(name: str, default: float) -> float:
-    try:
-        return float(os.getenv(name, str(default)))
-    except Exception:
-        return default
-
-
-def _parse_int_env(name: str, default: int) -> int:
-    try:
-        return int(os.getenv(name, str(default)))
-    except Exception:
-        return default
-
-
-def _parse_bool_env(name: str, default: bool = False) -> bool:
-    raw = str(os.getenv(name, "1" if default else "0")).strip().lower()
-    return raw in {"1", "true", "yes", "on"}
 
 
 def _normalize_01(value: float) -> float:
@@ -75,51 +61,16 @@ def _normalize_01(value: float) -> float:
 
 class AthenaRuntime:
     def __init__(self) -> None:
-        self.interval_seconds = _parse_int_env(
-            "ATHENA_BRIEF_INTERVAL_SECONDS", 300
-        )
-        self.emit_threshold = _parse_float_env(
-            "ATHENA_RELEVANCE_THRESHOLD", 0.55
-        )
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api"
         ).rstrip("/")
-        self.loop_enabled = _parse_bool_env("ATHENA_LOOP_ENABLED", True)
-
-        self.retrospective_window = _parse_int_env(
-            "ATHENA_RETROSPECTIVE_WINDOW", 24
-        )
-        self.retrospective_failure_urgency_boost = _parse_float_env(
-            "ATHENA_RETRO_FAILURE_URGENCY_BOOST", 0.07
-        )
-        self.retrospective_unresolved_urgency_boost = _parse_float_env(
-            "ATHENA_RETRO_UNRESOLVED_URGENCY_BOOST", 0.04
-        )
-        self.retrospective_unresolved_usefulness_boost = _parse_float_env(
-            "ATHENA_RETRO_UNRESOLVED_USEFULNESS_BOOST", 0.03
-        )
-        self.commitment_ttl_seconds = _parse_int_env(
-            "ATHENA_COMMITMENT_TTL_SECONDS", 86400
-        )
-
-        self.oracle_hint_enabled = _parse_bool_env(
-            "ATHENA_ORACLE_HINT_ENABLED", True
-        )
+        # Oracle route for hints: infrastructure (path), stays in env.
         self.oracle_hint_route = os.getenv(
             "ATHENA_ORACLE_HINT_ROUTE", "api/athena/hints"
         ).lstrip("/")
-        self.oracle_hint_timeout = _parse_int_env(
-            "ATHENA_ORACLE_HINT_TIMEOUT_SECONDS", 8
-        )
 
         # Archive routing — thinking records are persisted via Hub → Archive
         self.archive_route = f"{self.hub_api_url}/route/archive"
-        self.thinking_archive_enabled = _parse_bool_env(
-            "ATHENA_THINKING_ARCHIVE_ENABLED", True
-        )
-        self.thinking_store_max = _parse_int_env(
-            "ATHENA_THINKING_STORE_MAX", 100
-        )
 
         # Phase 3: Observer + Strategist + Consolidator
         self.observer = Observer(hub_api_url=self.hub_api_url)
@@ -131,7 +82,7 @@ class AthenaRuntime:
         self.skill_curator = SkillCurator(
             hub_api_url=self.hub_api_url,
             embed_fn=self._embed_text,
-            oracle_route=self.oracle_hint_route if self.oracle_hint_enabled else "",
+            oracle_route=self.oracle_hint_route,
         )
         self._skill_curation_ran_today: str = ""
 
@@ -151,19 +102,79 @@ class AthenaRuntime:
         self._open_commitments: dict[str, dict[str, Any]] = {}
         self._commitments_lock = threading.Lock()
         self._task_store = TaskLifecycleStore(
-            max_tasks=_parse_int_env("ATHENA_TASK_STORE_MAX", 500)
+            max_tasks=get_int(S.TASK_STORE_MAX)  # apply=restart
         )
         self._thinking_records: list[dict[str, Any]] = []
 
-        # Idle-only cognition: run cycles only when the user is not chatting.
-        self.idle_required_seconds = _parse_int_env("ATHENA_IDLE_SECONDS", 300)
-        # Improvement hand-off to Hephaestus Forge
-        self.forge_enabled = _parse_bool_env("ATHENA_FORGE_ENABLED", True)
-        self.forge_max_per_day = _parse_int_env("ATHENA_FORGE_MAX_PER_DAY", 2)
+        self._loop_paused_logged = False
         self._forge_day = ""
         self._forge_titles: set[str] = set()
         self._setting_day = ""
         self._setting_keys: set[str] = set()
+
+    # ── Central settings (Themis): read at use time, so changes apply live ──
+
+    @property
+    def loop_enabled(self) -> bool:
+        return get_bool(S.LOOP_ENABLED)
+
+    @property
+    def interval_seconds(self) -> int:
+        return get_int(S.LOOP_INTERVAL)
+
+    @property
+    def idle_required_seconds(self) -> int:
+        """Idle-only cognition: run cycles only when the user is not chatting."""
+        return get_int(S.LOOP_IDLE_SECONDS)
+
+    @property
+    def emit_threshold(self) -> float:
+        return get_float(S.GATE_THRESHOLD)
+
+    @property
+    def retrospective_window(self) -> int:
+        return max(1, get_int(S.RETRO_WINDOW))
+
+    @property
+    def retrospective_failure_urgency_boost(self) -> float:
+        return get_float(S.RETRO_FAILURE_URGENCY_BOOST)
+
+    @property
+    def retrospective_unresolved_urgency_boost(self) -> float:
+        return get_float(S.RETRO_UNRESOLVED_URGENCY_BOOST)
+
+    @property
+    def retrospective_unresolved_usefulness_boost(self) -> float:
+        return get_float(S.RETRO_UNRESOLVED_USEFULNESS_BOOST)
+
+    @property
+    def commitment_ttl_seconds(self) -> int:
+        return get_int(S.COMMITMENT_TTL)
+
+    @property
+    def oracle_hint_enabled(self) -> bool:
+        return get_bool(S.HINTS_ENABLED)
+
+    @property
+    def oracle_hint_timeout(self) -> int:
+        return get_int(S.HINTS_TIMEOUT)
+
+    @property
+    def thinking_archive_enabled(self) -> bool:
+        return get_bool(S.THINKING_ARCHIVE_ENABLED)
+
+    @property
+    def thinking_store_max(self) -> int:
+        return max(1, get_int(S.THINKING_STORE_MAX))
+
+    @property
+    def forge_enabled(self) -> bool:
+        """Improvement hand-off to Hephaestus Forge."""
+        return get_bool(S.FORGE_ENABLED)
+
+    @property
+    def forge_max_per_day(self) -> int:
+        return get_int(S.FORGE_MAX_PER_DAY)
 
     # ── Forge hand-off (improvement candidates) ─────────────────────────────
 
@@ -208,11 +219,10 @@ class AthenaRuntime:
     def _propose_setting(self, candidate: Any, trace_id: str) -> bool:
         """Ask Themis to propose a setting change: never applied without the user's answer.
         Themis validates the value and skips duplicates; capped per day (setting)."""
-        from .athena_settings import PROPOSALS_PER_DAY, settings as athena_settings
         key = str(candidate.setting_key or "").strip()
         if not key or candidate.setting_value is None:
             return False
-        cap = int(athena_settings.get(PROPOSALS_PER_DAY) or 0)
+        cap = int(S.settings.get(S.PROPOSALS_PER_DAY) or 0)
         today = datetime.now(timezone.utc).date().isoformat()
         with self._lock:
             if self._setting_day != today:
@@ -755,10 +765,10 @@ class AthenaRuntime:
     # ── Assistant agenda ─────────────────────────────────────────────────────
 
     def _agenda_rules(self) -> list[dict]:
-        c_start = _parse_int_env("ATHENA_CONSOLIDATION_WINDOW_START", 3)
-        c_end = _parse_int_env("ATHENA_CONSOLIDATION_WINDOW_END", 5)
-        s_start = _parse_int_env("ATHENA_SKILL_CURATION_WINDOW_START", 5)
-        s_end = _parse_int_env("ATHENA_SKILL_CURATION_WINDOW_END", 7)
+        # Default hours only: Chronos keeps the user's edits (move/skip/pause) over these.
+        c_start, c_end = CONSOLIDATION_WINDOW_DEFAULT
+        s_start, s_end = SKILL_CURATION_WINDOW_DEFAULT
+        t_start, t_end = THINKING_WINDOW_DEFAULT
         return [
             daily_window(WINDOW_CONSOLIDATION, "Athena: consolidamento memoria",
                          c_start, c_end,
@@ -768,8 +778,7 @@ class AthenaRuntime:
                          s_start, s_end,
                          description="Crea/aggiorna/depreca skill dalle conversazioni (una volta al giorno)."),
             daily_window(WINDOW_THINKING, "Athena: retrospettiva in idle",
-                         _parse_int_env("ATHENA_THINKING_WINDOW_START", 0),
-                         _parse_int_env("ATHENA_THINKING_WINDOW_END", 0),
+                         t_start, t_end,
                          description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
                                      "chattando. Salta/metti in pausa per fermare Athena."),
         ]
@@ -998,6 +1007,16 @@ class AthenaRuntime:
             self.strategist.enabled,
         )
         while not self._stop_event.is_set():
+            if not self.loop_enabled:
+                # Switched off by the user (setting athena.loop.enabled): idle, re-check soon.
+                if not self._loop_paused_logged:
+                    logger.info("event=athena_loop_disabled setting=%s", S.LOOP_ENABLED)
+                    self._loop_paused_logged = True
+                self._stop_event.wait(60)
+                continue
+            if self._loop_paused_logged:
+                logger.info("event=athena_loop_enabled setting=%s", S.LOOP_ENABLED)
+                self._loop_paused_logged = False
             idle = self._user_idle_seconds()
             if idle is not None and idle < self.idle_required_seconds:
                 # User is chatting: leave the (local) model to Oracle, retry soon.
@@ -1048,12 +1067,7 @@ class AthenaRuntime:
         return False
 
     def start(self) -> None:
-        if not self.loop_enabled:
-            logger.info(
-                "event=athena_loop_disabled "
-                "Athena loop disabled via ATHENA_LOOP_ENABLED=0"
-            )
-            return
+        # The thread always starts: athena.loop.enabled is live and checked every cycle.
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()

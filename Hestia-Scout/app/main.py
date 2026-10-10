@@ -19,6 +19,8 @@ from tools.geocoding import GeocodingService
 from tools.retrieval import ScoutRetrievalService
 from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
 from worker.runner import ScoutWorker
+from core import scout_settings
+from core.scout_settings import settings as scout_central_settings
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -47,28 +49,6 @@ TARGET_DOMAIN = "real_estate"
 TARGET_SOURCE = "iris_email"
 
 
-def _build_target_filters():
-    explicit_filters = [
-        item.strip()
-        for item in os.getenv("SCOUT_FILTER_QUERIES", "").split("||")
-        if item.strip()
-    ]
-    if explicit_filters:
-        return explicit_filters
-
-    sender_list_raw = os.getenv(
-        "SCOUT_EMAIL_SENDERS",
-        "nonrispondere@idealista.it,noreply@notifiche.immobiliare.it",
-    )
-    senders = [
-        sender.strip()
-        for sender in sender_list_raw.split(",")
-        if sender.strip()
-    ]
-    return [f'FROM "{sender}"' for sender in senders]
-
-
-TARGET_FILTERS = _build_target_filters()
 
 
 class ModuleMaintenanceRequest(BaseModel):
@@ -122,8 +102,7 @@ retrieval_service = _build_retrieval_service()
 worker = ScoutWorker(
     target_domain=TARGET_DOMAIN,
     target_source=TARGET_SOURCE,
-    target_filters=TARGET_FILTERS,
-)
+)  # mail filters come from the central settings (scout.mail.*), read every cycle
 
 
 # ── Email cycle: planned in the assistant agenda (Chronos) ─────────────────
@@ -131,7 +110,13 @@ worker = ScoutWorker(
 # through Hub → POST /api/scout/cycle. The user sees it in Hestia's agenda and
 # can move/pause/skip it. Chronos down or job missing → Scout runs it itself.
 AGENDA_JOB_KEY = "scout.email_cycle"
-POLL_INTERVAL_SECONDS = max(60, int(os.getenv("SCOUT_POLL_INTERVAL_SECONDS", "1800")))
+
+
+def poll_interval_seconds() -> int:
+    """Cycle interval: central setting ``scout.cycle.interval`` (live, min 60 s)."""
+    return scout_settings.get_int(scout_settings.CYCLE_INTERVAL, 60)
+
+
 _cycle_lock = threading.Lock()
 _cycle_state: dict[str, Any] = {"running": False, "last_started": None, "last_finished": None,
                                 "last_trigger": None, "last_error": None, "last_ts": 0.0}
@@ -139,14 +124,27 @@ agenda = AgendaClient("scout")
 
 
 def _agenda_rules() -> list[dict]:
-    minutes = max(1, POLL_INTERVAL_SECONDS // 60)
+    interval = poll_interval_seconds()
+    minutes = max(1, interval // 60)
     return [job_rule(
         AGENDA_JOB_KEY, "Scout: controlla email immobiliari",
         service="scout", path="/api/scout/cycle", body={"trigger": "agenda"},
         recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
         description="Legge le nuove email annunci, estrae e aggiorna gli immobili. "
                     "Sposta/metti in pausa dall'agenda di Hestia.",
-        params={"interval_seconds": POLL_INTERVAL_SECONDS}, timeout_seconds=20)]
+        params={"interval_seconds": interval}, timeout_seconds=20)]
+
+
+def _on_settings_change(changed: dict) -> None:
+    """New interval → re-declare the agenda default (Chronos keeps a user-edited job as is)."""
+    if scout_settings.CYCLE_INTERVAL not in changed:
+        return
+    logger.info("event=scout_cycle_interval_applied interval=%ss", poll_interval_seconds())
+    threading.Thread(target=lambda: agenda.register(_agenda_rules()), daemon=True,
+                     name="scout-agenda-reregister").start()
+
+
+scout_central_settings.on_change(_on_settings_change)
 
 
 def _agenda_templates() -> list[dict]:
@@ -196,7 +194,7 @@ def scout_cycle(req: CycleRequest | None = None):
 
 @api_app.get("/api/scout/cycle")
 def scout_cycle_status():
-    return {"status": "ok", "agenda_job": AGENDA_JOB_KEY, "interval_seconds": POLL_INTERVAL_SECONDS,
+    return {"status": "ok", "agenda_job": AGENDA_JOB_KEY, "interval_seconds": poll_interval_seconds(),
             **{k: v for k, v in _cycle_state.items() if k != "last_ts"}}
 
 
@@ -215,6 +213,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
     }
 
 api_app.include_router(create_log_control_router("hestia_scout"))
+api_app.include_router(scout_central_settings.router())  # Themis: /api/settings/effective|reload
 
 @api_app.get("/api/module-tools/domains")
 def list_module_domains():
@@ -492,6 +491,7 @@ if __name__ == "__main__":
     )
 
     _start_tools_api()
+    scout_central_settings.start()
     _register_with_hub(tools_port)
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
@@ -515,10 +515,11 @@ if __name__ == "__main__":
     while True:
         time.sleep(60)
         try:
-            due = time.time() - _cycle_state["last_ts"] >= POLL_INTERVAL_SECONDS
-            if due and agenda.should_self_run(AGENDA_JOB_KEY, POLL_INTERVAL_SECONDS):
+            interval = poll_interval_seconds()
+            due = time.time() - _cycle_state["last_ts"] >= interval
+            if due and agenda.should_self_run(AGENDA_JOB_KEY, interval):
                 logger.info("[🔄] event=scout_cycle_fallback reason=agenda_not_driving interval=%ds",
-                            POLL_INTERVAL_SECONDS)
+                            interval)
                 run_cycle_guarded("fallback")
         except Exception as error:
             logger.error("[🔄] event=scout_fallback_loop_error error=%s", error)

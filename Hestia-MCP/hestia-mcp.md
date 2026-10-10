@@ -22,7 +22,7 @@ Replaces Hub's `/discovery/commands` as the canonical tool registry.
 - Domain-aware filtering: Oracle requests tools for `["scout", "chronos"]`, gets only relevant tools
 
 ### Caching
-- Tool manifests cached with configurable TTL (default 60s)
+- Tool manifests cached with a configurable TTL (setting `mcp.tools.cache_ttl`, default 60 s)
 - Registry refreshed on Hub service changes
 
 ### Tool Proxy
@@ -45,3 +45,18 @@ Replaces Hub's `/discovery/commands` as the canonical tool registry.
 - Does not execute tools directly — always proxies via Hub routing
 - Caches aggressively; TTL controls freshness vs latency trade-off
 - MCP-native services take precedence over Hub-discovered commands
+
+## Central settings (Themis)
+
+Declared in `app/core/mcp_settings.py` (`SettingsClient("mcp")`, router `GET /api/settings/effective`,
+`POST /api/settings/reload`). All `apply=live` (read at use time).
+
+| Key | Type / default | Effect |
+|---|---|---|
+| `mcp.tools.cache_ttl` | int 60 s | How long tool manifests stay cached |
+| `mcp.discovery.hub_timeout` | int 8 s | Timeout of the Hub registry lookup |
+| `mcp.calls.timeout` | int 10 s | Timeout of MCP `tools/list` and of proxied tool calls |
+| `mcp.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
+
+Env keeps only infrastructure: `HUB_API_URL`, `MCP_SERVICE_BASE_URL`, `MCP_SERVICE_VERSION`,
+`LOG_LEVEL` (boot default only).

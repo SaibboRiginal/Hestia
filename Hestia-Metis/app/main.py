@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.hub_client import HubClient
 from .core import dataset_builder
 from .core.insights import build_insights
+from .core.metis_settings import settings as metis_settings
 
 # ── Shared imports ────────────────────────────────────────────────────────────
 try:
@@ -70,11 +71,24 @@ _JOBS_FILE = _DATA_DIR / "lora_jobs.json"
 _jobs_lock = threading.Lock()
 
 
+# Oracle's declared default for oracle.models.generic.model: used only when Oracle does not answer.
+_ORACLE_GENERIC_DEFAULT = "gemma4:e4b"
+
+
+def _oracle_generic_model() -> str:
+    """Model choice belongs to Oracle: ask it (via Hub) which generic model is in use."""
+    model = hub.oracle_model("generic")
+    if model:
+        return model
+    logger.warning("[🔄] event=metis_oracle_model_unknown fallback=%s", _ORACLE_GENERIC_DEFAULT)
+    return _ORACLE_GENERIC_DEFAULT
+
+
 def _agenda_rules() -> list[dict]:
+    # 01–06 is only the seed of the agenda window: the user moves/skips it in Hestia's agenda
+    # (Chronos owns scheduling; user edits win), so it is neither env nor a Themis setting.
     return [daily_window(
-        WINDOW_TRAINING, "Metis: finestra training modelli",
-        int(os.getenv("METIS_TRAINING_WINDOW_START", "1")),
-        int(os.getenv("METIS_TRAINING_WINDOW_END", "6")),
+        WINDOW_TRAINING, "Metis: finestra training modelli", 1, 6,
         description="Training LoRA pianificati (non richiesti da te) partono qui. "
                     "Sposta/salta la finestra per rimandarli.")]
 
@@ -162,7 +176,7 @@ try:
         min_score: int = None,
         since: str = "",
         max_examples: int = 500,
-        deduplicate: bool = True,
+        deduplicate: bool | None = None,
     ) -> dict:
         """Build a cleaned dataset from graded feedback records."""
         result = dataset_builder.build_dataset(
@@ -172,7 +186,7 @@ try:
             min_score=int(min_score) if min_score else None,
             since=str(since or "").strip() or None,
             max_examples=int(max_examples) if max_examples else 500,
-            deduplicate=bool(deduplicate),
+            deduplicate=None if deduplicate is None else bool(deduplicate),
         )
         return result
 
@@ -273,7 +287,7 @@ try:
         return {
             "status": "not_implemented",
             "candidate_model": candidate_model,
-            "baseline_model": baseline_model or os.getenv("MODEL_USECASE_GENERIC_MODEL", "gemma4:e4b"),
+            "baseline_model": baseline_model or _oracle_generic_model(),
             "dataset_name": dataset_name,
             "available_examples": len(examples),
             "message": "Benchmark runner needs live candidate inference (see Hestia-Metis/TODO.md).",
@@ -336,8 +350,7 @@ try:
                 ),
             }
 
-        resolved_base = str(base_model or "").strip() or os.getenv(
-            "MODEL_USECASE_GENERIC_MODEL", "gemma4:e4b")
+        resolved_base = str(base_model or "").strip() or _oracle_generic_model()
         resolved_adapter = str(adapter_name or "").strip() or f"metis-{ds_name}"
 
         # Export to JSONL for the training script
@@ -581,6 +594,7 @@ except ModuleNotFoundError:
     )
 
 app.include_router(create_log_control_router("hestia_metis"))
+app.include_router(metis_settings.router())   # GET /api/settings/effective, POST /api/settings/reload
 
 # ── Hub registration ──────────────────────────────────────────────────────────
 _HUB_REGISTRATION_PAYLOAD = {
@@ -646,6 +660,7 @@ def register_on_hub_startup():
         target=_hub_keepalive, daemon=True, name="metis-hub-keepalive",
     ).start()
     agenda.register_async(_agenda_rules)
+    metis_settings.start()
 
 
 # Serve declared REST paths of MCP-only tools (Hub/Telegram/MCP gateway call

@@ -1,8 +1,8 @@
 """Turn recurring errors into Forge fix proposals.
 
 Argus observes; Hephaestus/Forge executes.  When the same error signature from
-one service shows up ``ARGUS_FORGE_PROPOSE_THRESHOLD`` times inside the
-window, Argus hands the fix to Forge (via Hub).  Forge's permission mode
+one service shows up ``argus.forge.threshold`` times inside the
+``argus.forge.window`` (central settings), Argus hands the fix to Forge (via Hub).  Forge's permission mode
 (ask | auto | full_auto) decides whether it codes right away or waits for the user.  One proposal per signature per
 cooldown, so the user is never spammed.
 """
@@ -10,19 +10,16 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import re
 import threading
 import time
 
 import requests
 
+from core import argus_settings as cfg
+
 logger = logging.getLogger("hestia_argus.forge_proposer")
 
-ENABLED = os.getenv("ARGUS_FORGE_PROPOSALS_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-THRESHOLD = max(1, int(os.getenv("ARGUS_FORGE_PROPOSE_THRESHOLD", "3")))
-WINDOW_SECONDS = int(os.getenv("ARGUS_FORGE_PROPOSE_WINDOW_SECONDS", "3600"))
-COOLDOWN_SECONDS = int(os.getenv("ARGUS_FORGE_PROPOSE_COOLDOWN_SECONDS", "86400"))
 _LEVELS = {"ERROR", "CRITICAL"}
 _VOLATILE = re.compile(r"0x[0-9a-f]+|\b[0-9a-f]{8,}\b|\d+(\.\d+)?|'[^']*'|\"[^\"]*\"", re.IGNORECASE)
 
@@ -43,15 +40,18 @@ def signature(service: str, message: str) -> str:
 
 def observe(service: str, level: str, message: str) -> str | None:
     """Record an error event.  Returns the signature when a proposal is due."""
-    if not ENABLED or str(level).upper() not in _LEVELS or service in {"hephaestus", "argus"}:
+    if not cfg.get_bool(cfg.FORGE_ENABLED) or str(level).upper() not in _LEVELS or service in {"hephaestus", "argus"}:
         return None
     sig = signature(service, message)
     now = time.time()
+    window = cfg.get_int(cfg.FORGE_WINDOW, 1)
+    threshold = cfg.get_int(cfg.FORGE_THRESHOLD, 1)
+    cooldown = cfg.get_int(cfg.FORGE_COOLDOWN, 0)
     with _lock:
-        hits = [t for t in _hits.get(sig, []) if now - t < WINDOW_SECONDS] + [now]
+        hits = [t for t in _hits.get(sig, []) if now - t < window] + [now]
         _hits[sig] = hits
         _samples[sig] = str(message)[:3000]
-        if len(hits) < THRESHOLD or now - _proposed_at.get(sig, 0) < COOLDOWN_SECONDS:
+        if len(hits) < threshold or now - _proposed_at.get(sig, 0) < cooldown:
             return None
         _proposed_at[sig] = now
     return sig
@@ -63,7 +63,7 @@ def propose(hub_api_url: str, service: str, sig: str) -> bool:
         count = len(_hits.get(sig, []))
     body = {
         "request": (f"Fix recurring error in service '{service}' (seen {count}x in "
-                    f"{WINDOW_SECONDS // 60} min). Find root cause, fix, add regression test."),
+                    f"{cfg.get_int(cfg.FORGE_WINDOW, 1) // 60} min). Find root cause, fix, add regression test."),
         "services": [service],
         "source": "argus",
         "requested_by": "argus.monitor",

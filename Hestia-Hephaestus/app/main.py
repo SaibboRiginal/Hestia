@@ -58,9 +58,6 @@ remediation_service = RemediationService(
     hub_api_url=config.hub_api_url,
     notify_target=config.hephaestus_notify_target,
     baseline_ref=config.hephaestus_baseline_ref,
-    execution_timeout_seconds=config.hephaestus_execution_timeout_seconds,
-    require_approval_for_mutation=config.hephaestus_require_approval_for_mutation,
-    allow_auto_approve_non_prod=config.hephaestus_allow_auto_approve_non_prod,
     maintenance_paths=config.hephaestus_maintenance_paths,
 )
 

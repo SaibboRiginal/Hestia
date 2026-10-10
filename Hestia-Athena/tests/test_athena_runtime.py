@@ -26,29 +26,39 @@ import pytest
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _set(monkeypatch, key, value):
+    """Override a central setting (Themis) for one test."""
+    from core.athena_settings import settings
+
+    monkeypatch.setitem(settings._effective, key, value)
+
+
 @pytest.fixture
-def runtime():
+def runtime(monkeypatch):
     """Return an AthenaRuntime with loop and strategist disabled."""
+    from core import athena_settings as S
+
+    _set(monkeypatch, S.LOOP_ENABLED, False)
+    _set(monkeypatch, S.STRATEGIST_ENABLED, False)
+    _set(monkeypatch, S.THINKING_ARCHIVE_ENABLED, False)
     with patch("requests.post"), patch("requests.get"), patch("requests.Session"):
         from core.runtime import AthenaRuntime
 
-        rt = AthenaRuntime()
-        rt.loop_enabled = False
-        rt.strategist.enabled = False
-        rt.thinking_archive_enabled = False
-        return rt
+        return AthenaRuntime()
 
 
 @pytest.fixture
-def live_runtime():
+def live_runtime(monkeypatch):
     """Runtime with strategist enabled for thinking tests."""
+    from core import athena_settings as S
+
+    _set(monkeypatch, S.LOOP_ENABLED, False)
+    _set(monkeypatch, S.STRATEGIST_ENABLED, True)
+    _set(monkeypatch, S.THINKING_ARCHIVE_ENABLED, False)
     with patch("requests.post"), patch("requests.get"), patch("requests.Session"):
         from core.runtime import AthenaRuntime
 
-        rt = AthenaRuntime()
-        rt.loop_enabled = False
-        rt.thinking_archive_enabled = False
-        return rt
+        return AthenaRuntime()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -287,11 +297,12 @@ class TestObserver:
 
 @pytest.mark.unit
 class TestStrategistDisabled:
-    def test_think_returns_empty_when_strategist_disabled(self, runtime):
+    def test_think_returns_empty_when_strategist_disabled(self, runtime, monkeypatch):
         """When strategist is off, _think returns empty — no heuristic rules."""
+        from core import athena_settings as S
         from core.schemas import ObservationSnapshot
 
-        runtime.strategist.enabled = False
+        _set(monkeypatch, S.STRATEGIST_ENABLED, False)
         candidates = runtime._think(ObservationSnapshot(), {})
         assert candidates == []
 
@@ -303,9 +314,11 @@ class TestStrategistDisabled:
             candidates = live_runtime._think(ObservationSnapshot(), {})
             assert candidates == []
 
-    def test_run_once_no_candidates_when_strategist_disabled(self, runtime):
+    def test_run_once_no_candidates_when_strategist_disabled(self, runtime, monkeypatch):
         """Full cycle: strategist off → observe but no candidates emitted."""
-        runtime.strategist.enabled = False
+        from core import athena_settings as S
+
+        _set(monkeypatch, S.STRATEGIST_ENABLED, False)
         with patch.object(runtime.observer, "observe_services", return_value=([], [])), \
              patch.object(runtime.observer, "observe_domains", return_value=[]):
             runtime._run_once()
@@ -584,10 +597,11 @@ class TestThinkingRecords:
         # newest first = trace-new
         assert records[0]["trace_id"] == "trace-new"
 
-    def test_thinking_store_max_enforced(self, live_runtime):
+    def test_thinking_store_max_enforced(self, live_runtime, monkeypatch):
+        from core import athena_settings as S
         from core.schemas import ThinkingRecord
 
-        live_runtime.thinking_store_max = 5
+        _set(monkeypatch, S.THINKING_STORE_MAX, 5)
         for i in range(10):
             record = ThinkingRecord(
                 trace_id=f"trace-{i}", trigger="periodic"

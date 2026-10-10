@@ -285,13 +285,13 @@ try:
 
     def _athena_audit_handler(
         session_id: str = "",
-        limit: int = 20,
+        limit: int = 0,
     ) -> dict:
         """Run a quality audit on recent conversation turns."""
         auditor = ConversationAuditor(_ATHENA_HUB_URL)
         result = auditor.audit_session(
             session_id=str(session_id or "").strip(),
-            limit=int(limit) if limit else 20,
+            limit=int(limit) if limit else None,   # None → setting athena.audit.max_turns
         )
         return result
 
@@ -315,7 +315,7 @@ try:
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 100,
-                        "description": "Max conversation turns to pull (default 20)",
+                        "description": "Max conversation turns to pull (default: setting athena.audit.max_turns)",
                     },
                 },
                 "required": ["session_id"],

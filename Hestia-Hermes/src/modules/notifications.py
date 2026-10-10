@@ -27,6 +27,7 @@ from typing import Any, Callable
 import requests
 
 from .clients import ClientRegistry, NotifyClient
+from .hermes_settings import DELIVERY_MAX_ATTEMPTS, RETRACT_AFTER, settings
 
 logger = logging.getLogger("hestia_hermes.notifications")
 
@@ -34,12 +35,9 @@ CHANNEL = "notification"
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
 ANSWERABLE_STATES = ["created", "queued", "delivered", "seen", "failed"]
 CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
-MAX_CLIENT_ATTEMPTS = int(os.getenv("HERMES_MAX_DELIVERY_ATTEMPTS", "6"))
 # Messages already seen/handled are retracted from transient client surfaces
-# (Telegram chat) after this delay; the inbox keeps them. Telegram lets a bot
-# delete its own messages only within 48 h, hence the cap.
-# TODO(settings): becomes the Themis setting hermes.retract_after once Themis P1 lands.
-RETRACT_AFTER_SECONDS = 6 * 3600
+# (Telegram chat) after the setting hermes.retract.after (hours); the inbox keeps
+# them. Telegram lets a bot delete its own messages only within 48 h, hence the window.
 RETRACT_WINDOW_SECONDS = 47 * 3600
 
 LEVELS = {"info", "success", "warning", "error"}
@@ -441,6 +439,7 @@ class NotificationCenter:
 
     def retry_failed(self) -> dict[str, int]:
         since = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
+        max_attempts = int(settings.get(DELIVERY_MAX_ATTEMPTS))
         rows = self.archive.get_outbound_events({
             "channel": CHANNEL, "lifecycle_states": ",".join(UNREAD_STATES + ["seen"]),
             "created_after": since, "limit": 100})
@@ -452,7 +451,7 @@ class NotificationCenter:
                 # No client was known at publish time (Hub down): try every client now.
                 deliveries = {c.name: {"state": "failed", "attempts": 1} for c in self.clients.clients()}
             failing = [name for name, d in deliveries.items()
-                       if (d or {}).get("state") == "failed" and int((d or {}).get("attempts") or 1) < MAX_CLIENT_ATTEMPTS]
+                       if (d or {}).get("state") == "failed" and int((d or {}).get("attempts") or 1) < max_attempts]
             dead = [name for name, d in deliveries.items()
                     if (d or {}).get("state") == "failed" and name not in failing]
             if not failing and not dead:
@@ -481,10 +480,11 @@ class NotificationCenter:
 
     def retract_stale(self) -> dict[str, int]:
         now = datetime.now(timezone.utc)
+        retract_after = min(float(settings.get(RETRACT_AFTER)) * 3600, RETRACT_WINDOW_SECONDS - 3600)
         rows = self.archive.get_outbound_events({
             "channel": CHANNEL, "lifecycle_states": "seen,answered,expired,dismissed",
             "created_after": (now - timedelta(seconds=RETRACT_WINDOW_SECONDS)).isoformat(),
-            "updated_before": (now - timedelta(seconds=RETRACT_AFTER_SECONDS)).isoformat(),
+            "updated_before": (now - timedelta(seconds=retract_after)).isoformat(),
             "limit": 200})
         retracted = 0
         clients = {c.name: c for c in self.clients.clients()}

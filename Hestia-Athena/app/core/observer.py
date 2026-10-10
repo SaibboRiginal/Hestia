@@ -13,18 +13,18 @@ domains are simply empty and the error is logged.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
 from typing import Any
 
 import requests
 
+from . import athena_settings as S
+from .athena_settings import get_float, get_int
 from .schemas import DomainEntitySummary, ObservationSnapshot, ServiceSnapshot
 
 logger = logging.getLogger("hestia_athena.observer")
 
-OBSERVE_TIMEOUT = float(os.getenv("ATHENA_OBSERVE_TIMEOUT_SECONDS", "8"))
-OBSERVE_ENTITY_WINDOW_HOURS = int(os.getenv("ATHENA_OBSERVE_ENTITY_WINDOW_HOURS", "24"))
+# Timeout / entity window: central settings athena.observe.* (read at use time).
 
 
 def _extract_managed_domain(topology_tags: list[str]) -> str | None:
@@ -70,7 +70,7 @@ class Observer:
         url = f"{route_base}/{path.lstrip('/')}"
         try:
             resp = self._session.get(
-                url, params=params or {}, timeout=OBSERVE_TIMEOUT
+                url, params=params or {}, timeout=get_float(S.OBSERVE_TIMEOUT)
             )
             if resp.status_code < 400:
                 data = resp.json() if resp.content else {}
@@ -103,10 +103,10 @@ class Observer:
                 "headers": {},
                 "query": {},
                 "body": body,
-                "timeout_seconds": OBSERVE_TIMEOUT,
+                "timeout_seconds": get_float(S.OBSERVE_TIMEOUT),
             }
             resp = self._session.post(
-                url, json=envelope, timeout=OBSERVE_TIMEOUT + 2
+                url, json=envelope, timeout=get_float(S.OBSERVE_TIMEOUT) + 2
             )
             if resp.status_code < 400:
                 routed = resp.json() if resp.content else {}
@@ -322,7 +322,7 @@ class Observer:
                     age_hours = (
                         datetime.now(timezone.utc) - updated_dt
                     ).total_seconds() / 3600
-                    if age_hours <= OBSERVE_ENTITY_WINDOW_HOURS:
+                    if age_hours <= get_int(S.OBSERVE_ENTITY_WINDOW_HOURS):
                         recent_count += 1
                 except (ValueError, TypeError):
                     pass

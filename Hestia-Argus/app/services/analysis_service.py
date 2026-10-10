@@ -2,18 +2,14 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from datetime import datetime, timedelta, timezone
 
+from core import argus_settings as cfg
 from core.docker_client import get_events
 from core.health_poller import poll_all
 from core.hub_client import discover_services, fetch_service_log_events
 from schemas.reports import LogEvent, SystemReport
-
-
-LOG_SOURCE = os.getenv("ARGUS_LOG_SOURCE", "hub").strip().lower()
-HUB_LOG_LIMIT = int(os.getenv("ARGUS_HUB_LOG_LIMIT", "200"))
 
 
 def _since_to_timedelta(since: str) -> timedelta:
@@ -37,7 +33,7 @@ def get_filtered_logs(
 ) -> list[LogEvent]:
     """Return log events filtered by service, time window, and log level."""
     cutoff = datetime.now(timezone.utc) - _since_to_timedelta(since)
-    if LOG_SOURCE == "docker":
+    if cfg.get_str(cfg.LOG_SOURCE) == "docker":
         container_filter = f"hestia_{service_name}" if service_name else None
         all_events = get_events(
             container_name=container_filter, level_min=level)
@@ -53,7 +49,7 @@ def get_filtered_logs(
                 fetch_service_log_events(
                     target,
                     level=level,
-                    limit=HUB_LOG_LIMIT,
+                    limit=cfg.get_int(cfg.HUB_LOG_LIMIT, 1),
                 )
             )
 
@@ -78,7 +74,7 @@ def build_raw_report() -> SystemReport:
     healthy = sum(1 for r in health_snapshot.values() if r.status == "up")
     unhealthy = sum(1 for r in health_snapshot.values() if r.status != "up")
 
-    if LOG_SOURCE == "docker":
+    if cfg.get_str(cfg.LOG_SOURCE) == "docker":
         recent_events = get_events(level_min="WARNING")
     else:
         recent_events = get_filtered_logs(since="30m", level="WARNING")

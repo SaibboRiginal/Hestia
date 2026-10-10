@@ -63,7 +63,8 @@ owner of LLM provider keys. Scout picks the model explicitly so batch extraction
 |---|---|---|
 | `SCOUT_LLM_PROVIDER` | `gemini` | Provider Oracle should use |
 | `SCOUT_LLM_MODELS` | `gemini-2.5-flash,gemini-2.5-flash-lite` | Tried in order; quota/429 → next model |
-| `SCOUT_LLM_TIMEOUT_SECONDS` | `120` | Per-call timeout |
+
+Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 
 `GEMINI_API_KEY` now lives only in Oracle. (Previously Scout embedded its own Gemini client and key; the unused
 `OllamaEvaluator` was removed.)
@@ -123,17 +124,18 @@ owner of LLM provider keys. Scout picks the model explicitly so batch extraction
 
 ### Schedule = assistant agenda job
 
-The cycle is the agenda job **`scout.email_cycle`** (every `SCOUT_POLL_INTERVAL_SECONDS`, default 30 min),
+The cycle is the agenda job **`scout.email_cycle`** (every `scout.cycle.interval`, default 1800 s = 30 min;
+a change re-declares the agenda default, a job you edited in the agenda keeps your edit),
 registered at boot in Hestia's agenda (Chronos) and fired through Hub → `POST /api/scout/cycle`. You see it in
 "agenda di Hestia" and can move it, pause it, skip one run or run it now. One cycle runs at boot.
 Fallback: Scout checks every minute; if Chronos is unreachable, the job is missing or it has not fired for
 3× the interval, Scout runs the cycle itself (`[🔄] event=scout_cycle_fallback`). A job you paused is respected.
 
 ### Worker batching policy
-- `min_batch_size=1` (no hard wait for 5 items)
-- debounce window before processing to accumulate near-simultaneous mails
-- `max_batch_size=5` per model call
-- cooldown between batches for quota safety
+- `scout.batch.min_size=1` (no hard wait for 5 items)
+- debounce window (`scout.batch.debounce`, 45 s) before processing to accumulate near-simultaneous mails
+- `scout.batch.max_size=5` per model call
+- cooldown between batches (`scout.batch.cooldown`, 15 s) for quota safety
 
 ## Internal Architecture (SoC)
 
@@ -185,19 +187,35 @@ Truncation warnings are always logged when a summary still ends with "..." after
 
 ---
 
-## Configuration (env)
+## Central settings (Themis)
+
+Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read at the point of use);
+`GET /api/settings/effective` and `POST /api/settings/reload` are mounted for Themis.
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `scout.cycle.interval` | int (s, 60–86400) | `1800` | Default recurrence of agenda job `scout.email_cycle` + fallback period |
+| `scout.mail.senders` | list | `nonrispondere@idealista.it`, `noreply@notifiche.immobiliare.it` | Portal senders → `FROM "<sender>"` mail searches |
+| `scout.mail.filter_queries` | list | `[]` | Explicit mail search queries (advanced); non-empty → senders ignored |
+| `scout.batch.min_size` | int | `1` | Min new emails before extraction |
+| `scout.batch.max_size` | int | `5` | Emails per model call |
+| `scout.batch.debounce` | int (s) | `45` | Wait to gather near-simultaneous mails (0 = none) |
+| `scout.batch.cooldown` | int (s) | `15` | Pause between model batches (quota) |
+| `scout.llm.timeout` | int (s) | `120` | Per-call timeout of the Oracle extraction call |
+| `scout.reconcile.every_cycles` | int | `1` | Reconcile stored entities every N cycles (0 = never) |
+| `scout.enrichment.enabled` | bool | `true` | Listing-page enrichment + retry of pending enrichments |
+| `scout.log.level` | enum | boot `LOG_LEVEL` | Log verbosity (live) |
+
+## Configuration (env: infrastructure only)
 
 | Variable | Description |
 |---|---|
-| `SCOUT_EMAIL_SOURCE_CONNECTOR` | Hecate connector type for email source (default: `iris_email`) |
-| `SCOUT_HECATE_FETCH_ROUTE` | Hub-routed Hecate fetch endpoint used by Scout for domain email retrieval |
-| `SCOUT_EMAIL_SENDERS` | Comma-separated sender list used to build IMAP filters (e.g. `nonrispondere@idealista.it,noreply@notifiche.immobiliare.it`) |
-| `SCOUT_FILTER_QUERIES` | Optional advanced provider-domain filters separated by `\|\|` |
-| `SCOUT_FETCH_API_URL` | Hub route endpoint to shared fetch service (recommended: `http://hestia_hub:19001/api/route/atlas/api/fetch/html`) |
-| `SCOUT_FETCH_VIA_HUB` | `true` to send route-envelope payload to Hub, `false` for direct fetch service call |
-| `LLM_PROVIDER` | `ollama` or `cloud` |
-| `LLM_MODEL` | Model name (e.g. `llama3`, `gpt-4o`) |
-| `SCOUT_POLL_INTERVAL_SECONDS` | Cycle interval (default 1800): default recurrence of the agenda job `scout.email_cycle` and fallback period |
+| `HUB_API_URL` / `ARCHIVE_API_URL` | Hub / Archive base URLs |
+| `SCOUT_SERVICE_BASE_URL` / `SCOUT_TOOLS_PORT` / `SCOUT_SERVICE_VERSION` | Hub registration + listening port |
+| `STARTUP_WAIT_TIMEOUT_SECONDS` | Startup wait for Hub/dependencies (0 = forever) |
+| `SCOUT_LLM_PROVIDER` / `SCOUT_LLM_MODELS` | Extractor provider/models sent to Oracle (see above) |
+| `LOG_LEVEL` | Boot log level only (live value = `scout.log.level`) |
+| `SCOUT_DEBUG_*` | Only for the `scout_debug.py` developer CLI (output paths/print toggles), not the service |
 
 ---
 

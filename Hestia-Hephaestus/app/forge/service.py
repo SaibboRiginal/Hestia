@@ -179,7 +179,7 @@ class Forge:
         return {"default_engine": name, "available": ok, "detail": reason, "saved": saved}
 
     def settings(self) -> dict[str, Any]:
-        return {"default_engine": self._default_engine, "fallback": self.cfg.fallback,
+        return {"default_engine": self._default_engine, "fallback": forge_settings.fallback(),
                 "modes": dict(self._modes), "engine_groups": ENGINE_GROUP,
                 "claude_budget": self.claude_budget.status()}
 
@@ -225,7 +225,7 @@ class Forge:
             logger.warning("[🔄] event=forge_settings_save_failed error=%s", exc)
 
     def _engine_name_for(self, engine_requested: str) -> str:
-        engine, _ = select_engine(self.engines, engine_requested, self._default_engine, self.cfg.fallback)
+        engine, _ = select_engine(self.engines, engine_requested, self._default_engine, forge_settings.fallback())
         return engine.name if engine else normalize_engine(engine_requested) or self._default_engine
 
     def _mode_for(self, engine_requested: str) -> tuple[str, str]:
@@ -356,9 +356,9 @@ class Forge:
             "repo_ok": repo_ok,
             "base_branch": self._base_branch() if repo_ok else None,
             "engine_default": self._default_engine,
-            "engine_fallback": self.cfg.fallback,
+            "engine_fallback": forge_settings.fallback(),
             "engines": engines,
-            "auto_merge": self.cfg.auto_merge,
+            "auto_merge": forge_settings.get_bool(forge_settings.AUTO_MERGE),
             "deploy_enabled": bool(self.cfg.deploy_cmd),
             "queue": [t["id"] for t in self.list(state="queued")],
         }
@@ -416,7 +416,7 @@ class Forge:
             "workdoc": re.sub(r"[^A-Za-z0-9._-]", "", str(workdoc or ""))[:120],
             "parent_task": parent["id"] if parent else None,
             "agenda_parent": re.sub(r"[^A-Za-z0-9._:-]", "", str(agenda_parent or ""))[:160] or None,
-            "auto_merge": self.cfg.auto_merge if auto_merge is None else bool(auto_merge),
+            "auto_merge": forge_settings.get_bool(forge_settings.AUTO_MERGE) if auto_merge is None else bool(auto_merge),
             "notify_target": notify_target or self.cfg.notify_target,
             "branch": f"auto/forge/{task_id}",
             "created_at": _now(),
@@ -556,9 +556,8 @@ class Forge:
 
     def _scheduler_loop(self) -> None:
         """Start one budgeted claude task at a time when the window allows."""
-        interval = max(30, int(__import__("os").getenv("HEPHAESTUS_FORGE_SCHEDULER_SECONDS", "300")))
         while True:
-            time.sleep(interval)
+            time.sleep(forge_settings.get_int(forge_settings.SCHEDULER_INTERVAL, 30))
             try:
                 self._reap_unlinked()
                 with self._lock:
@@ -608,7 +607,7 @@ class Forge:
     def _run_task(self, task: dict) -> None:
         repo = self.cfg.repo_path
         engine, reason = select_engine(self.engines, task.get("engine_requested", "auto"),
-                                       self._default_engine, self.cfg.fallback)
+                                       self._default_engine, forge_settings.fallback())
         if engine is None:
             task["error"] = reason
             self._set_state(task, "failed", reason)
@@ -688,7 +687,7 @@ class Forge:
                 "diff_stat": git_ops.diff_stat(worktree, base_sha),
                 "tests": {"ok": tests_ok, "output_tail": tests_out[-3000:]},
             })
-        if self.cfg.push_branch:
+        if forge_settings.get_bool(forge_settings.PUSH_BRANCH):
             try:
                 git_ops.push(worktree, task["branch"])
             except Exception as exc:
@@ -767,7 +766,7 @@ class Forge:
                 self._restart_self()
             return
         why = f"deploy_ok={ok} unhealthy={unhealthy}"
-        if self.cfg.auto_rollback:
+        if forge_settings.get_bool(forge_settings.AUTO_ROLLBACK):
             self._do_rollback(task, f"auto: {why}")
         else:
             self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: deploy problematico ({_esc(why)}).")
@@ -802,7 +801,7 @@ class Forge:
         return proc.returncode == 0, (proc.stdout or "") + (proc.stderr or "")
 
     def _unhealthy(self, services: list[str]) -> list[str]:
-        wait_seconds(self.cfg.verify_delay_seconds)
+        wait_seconds(forge_settings.get_int(forge_settings.VERIFY_DELAY, 0))
         bad = []
         for name in services:
             try:

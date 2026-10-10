@@ -3,6 +3,7 @@ import time
 import logging
 import requests
 
+from core import scout_settings
 from core.archive_client import ArchiveClient
 from domain.house_entity import HouseEntity
 from tools.geocoding import GeocodingService
@@ -24,10 +25,11 @@ class ScoutWorker:
     def __init__(self, target_domain: str, target_source: str, target_filter: str | None = None, target_filters: list[str] | None = None):
         self.target_domain = target_domain
         self.target_source = target_source
+        # Explicit filters override the central settings (mail senders / queries, read each cycle).
         configured_filters = target_filters if target_filters else [
             target_filter] if target_filter else []
-        self.target_filters = [str(item).strip()
-                               for item in configured_filters if str(item).strip()]
+        self._explicit_filters = [str(item).strip()
+                                  for item in configured_filters if str(item).strip()]
 
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -41,17 +43,36 @@ class ScoutWorker:
         self.status_updater = StatusUpdater(
             vault=self.vault, target_domain=target_domain
         )
-        self.reconcile_every_cycles = int(
-            os.getenv("SCOUT_RECONCILE_EVERY_CYCLES", "1"))
-        self.min_batch_size = int(os.getenv("SCOUT_MIN_BATCH_SIZE", "1"))
-        self.max_batch_size = int(os.getenv("SCOUT_MAX_BATCH_SIZE", "5"))
-        self.batch_debounce_seconds = int(
-            os.getenv("SCOUT_BATCH_DEBOUNCE_SECONDS", "45"))
-        self.batch_cooldown_seconds = int(
-            os.getenv("SCOUT_BATCH_COOLDOWN_SECONDS", "15"))
-        self.enable_listing_enrichment = os.getenv(
-            "SCOUT_ENABLE_LISTING_ENRICHMENT", "1").strip().lower() not in {"0", "false", "no"}
         self._cycle_counter = 0
+
+    # ── central settings (Themis, live: read at use time) ─────────────────
+    @property
+    def target_filters(self) -> list[str]:
+        return self._explicit_filters or scout_settings.target_filters()
+
+    @property
+    def reconcile_every_cycles(self) -> int:
+        return scout_settings.get_int(scout_settings.RECONCILE_EVERY_CYCLES, 0)
+
+    @property
+    def min_batch_size(self) -> int:
+        return scout_settings.get_int(scout_settings.BATCH_MIN_SIZE, 1)
+
+    @property
+    def max_batch_size(self) -> int:
+        return scout_settings.get_int(scout_settings.BATCH_MAX_SIZE, 1)
+
+    @property
+    def batch_debounce_seconds(self) -> int:
+        return scout_settings.get_int(scout_settings.BATCH_DEBOUNCE, 0)
+
+    @property
+    def batch_cooldown_seconds(self) -> int:
+        return scout_settings.get_int(scout_settings.BATCH_COOLDOWN, 0)
+
+    @property
+    def enable_listing_enrichment(self) -> bool:
+        return bool(scout_settings.settings.get(scout_settings.ENRICHMENT_ENABLED))
 
     def _is_step_pending(self, payload: dict, step_name: str, legacy_key: str | None = None) -> bool:
         pending_steps = payload.get("pending_steps") if isinstance(

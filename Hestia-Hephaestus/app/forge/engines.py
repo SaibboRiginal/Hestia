@@ -18,6 +18,7 @@ from typing import Any, Callable
 import requests
 
 from .agent_tools import AgentTools
+from . import forge_settings as fs
 from .config import ForgeConfig, normalize_engine
 from .prompts import SYSTEM_PROMPT
 
@@ -80,11 +81,13 @@ class OracleClaudeEngine(Engine):
     def run(self, workdir: Path, prompt: str, test_runner: Callable,
             on_event: Callable[[dict], None] | None = None) -> EngineResult:
         # The transcript is written live by Oracle (stream-json) on the shared mount.
+        max_turns = fs.get_int(fs.MAX_TURNS, 5)
+        timeout = fs.get_int(fs.ENGINE_TIMEOUT, 60)
         try:
             status, data = self._route("POST", "api/llm/code", {
                 "workdir": str(workdir), "prompt": prompt, "append_system_prompt": SYSTEM_PROMPT,
-                "max_turns": self.cfg.max_turns, "timeout_seconds": self.cfg.engine_timeout_seconds,
-            }, self.cfg.engine_timeout_seconds + 30)
+                "max_turns": max_turns, "timeout_seconds": timeout,
+            }, timeout + 30)
         except Exception as exc:
             return EngineResult(False, f"Oracle code call failed: {exc}", self.name)
         data = data if isinstance(data, dict) else {}
@@ -152,14 +155,15 @@ class BuiltinEngine(Engine):
         nudged = False
         log: list[str] = []
         turn = 0
-        for turn in range(1, self.cfg.max_turns + 1):
+        max_turns = fs.get_int(fs.MAX_TURNS, 5)
+        for turn in range(1, max_turns + 1):
             self._trim(messages)
             try:
                 status, data = self._route(
                     "POST", "api/llm/chat",
                     {"profile": self.name, "messages": messages,
                      "tools": AgentTools.schemas(), "temperature": 0.2},
-                    self.cfg.llm_route_timeout)
+                    fs.get_int(fs.LLM_TIMEOUT, 60))
                 if status >= 400:
                     raise RuntimeError(f"Oracle llm/chat {status}: {str(data)[:300]}")
                 msg = data["choices"][0]["message"]

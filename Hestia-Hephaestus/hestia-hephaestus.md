@@ -34,15 +34,16 @@ Execution endpoints above are implemented as policy-gated remediation flows (tas
 ### Repairs in the assistant agenda
 
 - Repair waiting for approval → event `hephaestus.repair.<id>` ("🛠️ Riparazione da approvare").
-- Failed (non dry-run) repair → agenda task retry after `HEPHAESTUS_REPAIR_RETRY_MINUTES` × attempt (default 15),
-  up to `HEPHAESTUS_REPAIR_MAX_ATTEMPTS` (3); fired via Hub → `/remediate/{id}/retry`.
+- Failed (non dry-run) repair → agenda task retry after setting `hephaestus.remediate.retry_minutes` × attempt
+  (default 15), up to `hephaestus.remediate.max_attempts` (3); fired via Hub → `/remediate/{id}/retry`.
 - Last failure → **escalated to Forge** as a code-fix task (state `escalated`, `forge_task_id`); Forge applies
   your permission mode. Success/rollback completes the agenda entry.
 
 ## Safety contract (Current)
 - Production mutation requires explicit approval.
-- Non-production mutation can be policy-gated via `HEPHAESTUS_REQUIRE_APPROVAL_FOR_MUTATION`.
-- Auto-approval can be blocked/enabled via `HEPHAESTUS_ALLOW_AUTO_APPROVE_NON_PROD`.
+- Non-production mutation can be policy-gated via setting `hephaestus.remediate.require_approval` (default on).
+- Auto-approval can be blocked/enabled via setting `hephaestus.remediate.auto_approve_non_prod` (default off).
+  Both are safety switches: the assistant may read them, never propose them (`oracle: read`).
 - execute-preview remains a diagnostic gating endpoint.
 
 ## Autonomous Remediation Contract (Target)
@@ -84,7 +85,7 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 - **Isolation:** each task = `git worktree` + branch `auto/forge/<id>` from the base branch. Live checkout untouched until merge.
 - **Verification:** Forge runs `HEPHAESTUS_FORGE_TEST_CMD` on the touched services' `tests/` (never trusts the agent).
 - **Merge:** `git merge --no-ff` into base branch (repo must be on base branch and clean). **Rollback:** `git revert -m 1`.
-- **Deploy (optional):** `HEPHAESTUS_FORGE_DEPLOY_CMD` (`{services}` placeholder), then health check via Hub; unhealthy + `HEPHAESTUS_FORGE_AUTO_ROLLBACK=1` → revert + redeploy.
+- **Deploy (optional):** `HEPHAESTUS_FORGE_DEPLOY_CMD` (`{services}` placeholder), then health check via Hub; unhealthy (checked after `hephaestus.forge.verify_delay`) + setting `hephaestus.forge.auto_rollback` (default on) → revert + redeploy.
 - **Notifications:** start, review request (summary + diff stat + test result), merge/deploy, rollback → Telegram via Hermes (`HEPHAESTUS_NOTIFY_TARGET`) + `system/hephaestus.forge` event.
 - **Resilience:** task state persisted in `data/forge/tasks.json`; queued/running/approved tasks resume after restart.
 - **Human gate on merge:** nothing merges without "approva sviluppo <id>" unless the group is in `full_auto`.
@@ -109,7 +110,7 @@ Requests reach Forge only via Hub: user → Telegram → Oracle → Hub → Heph
 - Default engine = central setting `hephaestus.forge.engine` (Themis, live, default `local`): WebUI →
   Impostazioni → Hephaestus, or `POST /api/hephaestus/forge/engine` from a client (saved to Themis as a user
   change). The assistant can only propose it (`settings_propose`), you confirm via Hermes.
-  Fallback order stays env `HEPHAESTUS_FORGE_FALLBACK=local,cloud,claude` (moves to settings in P6).
+  Fallback order = setting `hephaestus.forge.fallback` (default `local, cloud, claude`).
 - Per task: "sviluppa X con claude" → `engine` field (no fallback when explicit).
 
 ### Permission modes (like Claude Code / Codex)
@@ -236,6 +237,33 @@ Hephaestus publishes assistant-executable command metadata through Hub discovery
 
 ## Central settings (Themis)
 
-Declared in `app/forge/forge_settings.py` (`SettingsClient("hephaestus")`): `hephaestus.forge.engine`,
-`hephaestus.forge.mode.local`, `hephaestus.forge.mode.cloud`, `hephaestus.log.level` — all live, applied by
-`Forge._apply_settings`. Endpoints `GET /api/settings/effective`, `POST /api/settings/reload` (used by Themis).
+Declared in `app/forge/forge_settings.py` (`SettingsClient("hephaestus")`), all **live** (read at use time;
+engine/modes also applied by `Forge._apply_settings`). Endpoints `GET /api/settings/effective`,
+`POST /api/settings/reload` (used by Themis). `oracle: read` = safety switch, the assistant never proposes it.
+
+| Key | Type · default | Effect |
+|---|---|---|
+| `hephaestus.forge.engine` | enum · `local` | default coding engine |
+| `hephaestus.forge.mode.local` / `.cloud` | enum · `auto` / `ask` (read) | permission mode per group |
+| `hephaestus.forge.fallback` | list · `[local, cloud, claude]` | engines tried when the default is unavailable |
+| `hephaestus.forge.max_turns` | int · 40 (5–300) | agent turn limit (built-in loop and Claude Code) |
+| `hephaestus.forge.llm_timeout` | int s · 600 | Oracle `/api/llm/chat` timeout per turn |
+| `hephaestus.forge.engine_timeout` | int s · 1800 | Claude Code session timeout |
+| `hephaestus.forge.auto_merge` | bool · off (read) | default `auto_merge` of new tasks |
+| `hephaestus.forge.auto_rollback` | bool · on (read) | revert + redeploy when post-deploy health fails |
+| `hephaestus.forge.push_branch` | bool · off (read) | `git push` the task branch after tests |
+| `hephaestus.forge.verify_delay` | int s · 20 | wait before the post-deploy health check |
+| `hephaestus.forge.scheduler_interval` | int s · 300 | how often waiting Claude-window tasks are checked |
+| `hephaestus.remediate.timeout` | float s · 25 | Hub-routed maintenance execution timeout |
+| `hephaestus.remediate.require_approval` | bool · on (read) | non-dry-run repairs wait for approval |
+| `hephaestus.remediate.auto_approve_non_prod` | bool · off (read) | allow auto-approve outside prod |
+| `hephaestus.remediate.retry_minutes` | int min · 15 | retry delay × attempt of a failed repair |
+| `hephaestus.remediate.max_attempts` | int · 3 | attempts before escalation to Forge |
+| `hephaestus.log.level` | enum · `LOG_LEVEL` boot value | log verbosity |
+
+Env keeps infrastructure only: service identity/Hub URL, `HEPHAESTUS_REPO_PATH`/`_WORKTREES_PATH`/`_DATA_DIR`/
+`_FORGE_STATE_FILE`/`_FORGE_SETTINGS_FILE` (volumes), `HEPHAESTUS_FORGE_ENABLED` (the deployment mounts repo,
+worktrees and Docker socket), `HEPHAESTUS_FORGE_BASE_BRANCH` and `_GIT_NAME/_GIT_EMAIL` (git identity),
+`HEPHAESTUS_FORGE_TEST_CMD`/`_DEPLOY_CMD` (shell commands run verbatim in the container: image-dependent and a
+code-execution surface, so not editable from clients), `HEPHAESTUS_NOTIFY_TARGET` (owner chat address),
+`HEPHAESTUS_BASELINE_REF`, `HEPHAESTUS_MAINTENANCE_PATHS` (endpoint templates).
