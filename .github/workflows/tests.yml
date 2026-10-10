@@ -28,6 +28,7 @@ jobs:
           - Iris
           - Scout
           - Telegram
+          - Themis
 
     steps:
       - uses: actions/checkout@v4

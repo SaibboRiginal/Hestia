@@ -22,6 +22,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | MCP | 19013 | hestia_mcp | MCP gateway exposing every service tool |
 | Metis | 19014 | hestia_metis | datasets from feedback, LoRA training (agenda window) |
 | WebUI | 19015 | hestia_webui | .NET 9 + Angular web client (chat, commands, calendar) |
+| Themis | 19016 | hestia_themis | **central settings**: modules declare, clients/assistant read-change, user confirms proposals |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |
 | Atlas | host | — | HTML fetch/scrape, runs on the host (`run_host.bat`) |
@@ -78,6 +79,15 @@ work is allowed). Actions `{service, method, path, body}` are fired through Hub 
 Modules register defaults (idempotent by key) with `hestia_common.agenda_client.AgendaClient`
 (`register_async`, `is_open(key, fallback)`, `should_self_run(key, interval)`, `plan`, `show`, `done`).
 Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
+
+## 5b. Settings (Themis) — tunables are data, not env
+
+A new tunable is a **setting**, not an env var: declare it with `hestia_common.settings_client`
+(`SettingsClient("<module>").declare([setting(...)])`, `app.include_router(settings.router())`,
+`settings.start()` at startup, `settings.get(key)` where you used `os.getenv`). `apply="live"` values change
+at runtime (`on_change`), `apply="restart"` ones are flagged until restart. Env keeps only secrets and
+infrastructure (URLs, ports, paths). The assistant only *proposes* changes (Themis → Hermes → user).
+Details: `Hestia-Themis/hestia-themis.md`.
 
 ## 6. Clients
 

@@ -19,6 +19,7 @@ info:
     | Iris      | 19012 |
     | Hephaestus| 19010 |
     | Dummy     | 19011 |
+    | Themis    | 19016 |
   version: 1.0.0
 
 servers:
@@ -70,6 +71,10 @@ tags:
     description: Web-based chat interface — token management and health (direct :19015, not Hub-routed)
   - name: Athena
     description: Retrospective focus-brief cognition runtime
+  - name: Themis
+    description: Central settings — modules declare, clients and assistant read/change, user confirms proposals
+  - name: Archive — Settings store
+    description: Generic storage of setting values, light history and proposals (only Themis calls it)
   - name: Meta
     description: Runtime log-level control (available on every FastAPI service)
 
@@ -4778,6 +4783,336 @@ paths:
         - {name: since, in: query, schema: {type: string}}
       responses:
         "200": {description: "{status, total_feedback, bad_feedback, bad_ratio, weak_domains[]}"}
+
+  /api/settings/register:
+    post:
+      tags: [Themis]
+      summary: A module declares its settings (hestia_common.settings_client); answer = its stored system values
+      servers:
+        - url: http://localhost:19016
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner, definitions]
+              properties:
+                owner: {type: string, example: argus}
+                definitions:
+                  type: array
+                  description: "setting(): {key, label, type: enum|bool|int|float|string|text|model|time|duration|list|object, default, group, help, options[{value,label}], min, max, unit, apply: live|restart, scope: system|user, depends_on, oracle: propose|read|none, advanced, order, options_source, fields}"
+                  items: {type: object}
+                presets:
+                  type: array
+                  items: {type: object, description: "{id, label, group, values{key: value}, help}"}
+                effective: {type: object, description: values the module is using now}
+      responses:
+        "200": {description: "{owner, values{key: value}, revision}"}
+        "503": {description: Archive unreachable (module keeps defaults and retries)}
+
+  /api/settings/revision:
+    get:
+      tags: [Themis]
+      summary: Change marker — clients refetch when it differs
+      servers:
+        - url: http://localhost:19016
+      responses:
+        "200": {description: "{revision}"}
+
+  /api/settings/modules:
+    get:
+      tags: [Themis]
+      summary: Modules with settings + live state from Hub (health, version, pending proposals) for the panel
+      servers:
+        - url: http://localhost:19016
+      responses:
+        "200": {description: "{revision, modules[{module, definitions, groups[], health, version, pending_proposals}], other_services[]}"}
+
+  /api/settings:
+    get:
+      tags: [Themis]
+      summary: Settings with value, source (default|stored|profile|client|session) and status (ok|restart_required|offline)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: module, in: query, schema: {type: string}}
+        - {name: q, in: query, schema: {type: string}, description: "search in label, help, key, group, module, option labels"}
+        - {name: client, in: query, schema: {type: string}, description: "webui | telegram (user-scope resolution)"}
+        - {name: session, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: boolean, default: true}, description: "ask modules their effective values"}
+      responses:
+        "200": {description: "{revision, items[definition + value, source, status, updated_by, updated_at], presets[{module, group, active (preset id | custom), presets[]}]}"}
+
+  /api/settings/search:
+    get:
+      tags: [Themis]
+      summary: Compact search (assistant tool settings_search)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: query, in: query, schema: {type: string}}
+        - {name: module, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 15}}
+      responses:
+        "200": {description: "{count, settings[{key, label, module, group, value, default, help, assistant}]}"}
+
+  /api/settings/key/{key}:
+    get:
+      tags: [Themis]
+      summary: One setting (assistant tool settings_get)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+        - {name: client, in: query, schema: {type: string}}
+        - {name: session, in: query, schema: {type: string}}
+      responses:
+        "200": {description: definition + value, source, status}
+        "404": {description: unknown setting}
+    put:
+      tags: [Themis]
+      summary: Change a setting (user/clients only — the assistant must propose)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value: {description: new value (validated against the definition)}
+                scope: {type: string, enum: [system, profile, client, session]}
+                scope_id: {type: string, description: "client name or session id"}
+                actor: {type: string, default: user}
+                reason: {type: string}
+      responses:
+        "200": {description: "{key, scope, scope_id, value, revision} — live settings applied at once, restart ones flagged"}
+        "403": {description: actor is the assistant}
+        "422": {description: invalid value (Italian message)}
+    delete:
+      tags: [Themis]
+      summary: Reset to default
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+        - {name: scope, in: query, schema: {type: string}}
+        - {name: scope_id, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{key, scope, value (default), revision}"}
+
+  /api/settings/key/{key}/history:
+    get:
+      tags: [Themis]
+      summary: Last changes (max 10)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{key, history[{old_value, new_value, actor, reason, created_at}]}"}
+
+  /api/settings/key/{key}/undo:
+    post:
+      tags: [Themis]
+      summary: Restore the value before the last change (user)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: like PUT}
+
+  /api/settings/key/{key}/undo-propose:
+    post:
+      tags: [Themis]
+      summary: Assistant undo — proposes the previous value (assistant tool settings_undo)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: like POST /api/settings/proposals}
+
+  /api/settings/presets/{module}/{preset_id}/apply:
+    post:
+      tags: [Themis]
+      summary: Apply a preset (writes its values; editing one later makes the group "custom")
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: preset_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{module, preset, applied{}, revision}"}
+
+  /api/settings/sessions/{session}/init:
+    post:
+      tags: [Themis]
+      summary: New chat session starts from the profile (+client) defaults
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: session, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {client: {type: string}}}
+      responses:
+        "200": {description: "{session, copied[], revision}"}
+
+  /api/settings/proposals:
+    get:
+      tags: [Themis]
+      summary: Proposals (default pending; expired ones closed lazily)
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: status, in: query, schema: {type: string, default: pending}}
+      responses:
+        "200": {description: "{proposals[]}"}
+    post:
+      tags: [Themis]
+      summary: Assistant proposes a change (assistant tool settings_propose; Athena in autonomy) — never applied without the user
+      description: Themis stores it as pending and sends it to the user through Hermes (service.action_required, payload kind settings.proposal, _message, _actions Approva/Rifiuta with service/method/path).
+      servers:
+        - url: http://localhost:19016
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, value]
+              properties:
+                key: {type: string}
+                value: {}
+                reason: {type: string}
+                proposer: {type: string, enum: [oracle, athena]}
+      responses:
+        "200": {description: "{status: pending|already_pending|unchanged, proposal_id, key, value, current, label}"}
+        "403": {description: setting reserved to the user}
+
+  /api/settings/proposals/{proposal_id}/approve:
+    post:
+      tags: [Themis]
+      summary: User approves (from any client) — first answer wins
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: proposal_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {by: {type: string, description: client}}}
+      responses:
+        "200": {description: "{status: approved, proposal_id, key, value, revision}"}
+        "409": {description: "{status: already_decided, decision}"}
+
+  /api/settings/proposals/{proposal_id}/reject:
+    post:
+      tags: [Themis]
+      summary: User rejects — first answer wins
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: proposal_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: rejected, proposal_id}"}
+        "409": {description: "{status: already_decided, decision}"}
+
+  /api/settings/effective:
+    get:
+      tags: [Meta]
+      summary: (every module with settings, hestia_common) values the module is really using
+      responses:
+        "200": {description: "{owner, loaded, values{}, pending_restart[]}"}
+
+  /api/settings/reload:
+    post:
+      tags: [Meta]
+      summary: (every module with settings) Themis pushes stored values; live ones apply at once
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {values: {type: object}}}
+      responses:
+        "200": {description: "{owner, applied[], pending_restart[]}"}
+
+  /api/settings-store/values:
+    get:
+      tags: [Archive — Settings store]
+      summary: Stored values (filters key, prefix, scope, scope_id)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "[{key, scope, scope_id, value, updated_by, updated_at}]"}
+    put:
+      tags: [Archive — Settings store]
+      summary: Upsert a value and log old → new (history trimmed to history_keep)
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key: {type: string}
+                scope: {type: string}
+                scope_id: {type: string}
+                value: {}
+                actor: {type: string}
+                reason: {type: string}
+                history_keep: {type: integer, default: 10}
+      responses:
+        "200": {description: stored row}
+    delete:
+      tags: [Archive — Settings store]
+      summary: Delete a value (logged as old → null)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{status: deleted|absent}"}
+
+  /api/settings-store/history:
+    get:
+      tags: [Archive — Settings store]
+      summary: Change log (filters key, scope, scope_id, actor, limit)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "[{id, key, scope, scope_id, old_value, new_value, actor, reason, created_at}]"}
+
+  /api/settings-store/proposals:
+    get:
+      tags: [Archive — Settings store]
+      summary: Proposals (filters status, key, proposal_id)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: list}
+    post:
+      tags: [Archive — Settings store]
+      summary: Store a pending proposal
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: stored proposal}
+        "409": {description: duplicate proposal_id}
+
+  /api/settings-store/proposals/{proposal_id}:
+    patch:
+      tags: [Archive — Settings store]
+      summary: Close a proposal (only_if_status makes the first answer win)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: proposal_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: updated proposal}
+        "409": {description: already decided}
 
   /api/hephaestus/tasks/{task_id}:
     get:

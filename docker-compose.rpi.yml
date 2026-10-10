@@ -126,6 +126,31 @@ services:
     networks:
       - hestia_net
 
+  themis:
+    build:
+      context: .
+      dockerfile: Hestia-Themis/Dockerfile
+    container_name: hestia_themis
+    restart: unless-stopped
+    ports:
+      - "19016:19016"
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - SERVICE_NAME=themis
+      - SERVICE_BASE_URL=http://hestia_themis:19016
+      - THEMIS_DATA_DIR=/code/data
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Themis/data:/code/data
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
   dummy:
     build:
       context: ./Hestia-Dummy

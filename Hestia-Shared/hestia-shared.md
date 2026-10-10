@@ -87,6 +87,32 @@ warning · error`. `level` = `info|success|warning|error`; `icon` = WebUI `hx-ic
 clients. Notices may arrive **after** `final` (background memory) — attach them to the last answer.
 Add a kind: one line in `NOTICE_KINDS` (+ `_SIGNAL_TO_NOTICE` if it mirrors a signal); clients need no change.
 
+## Settings client (`hestia_common.settings_client`)
+
+Every tunable knob is a setting declared to **Themis** (never a new env var; env = secrets + infrastructure):
+
+```python
+from hestia_common.settings_client import SettingsClient, setting, preset
+
+settings = SettingsClient("argus")
+settings.declare([
+    setting("argus.poll.interval", "Intervallo controlli", "int", 30, group="Controlli",
+            help="Ogni quanti secondi controllo i moduli.", min=5, max=600, unit="s"),   # apply="live" (default)
+    setting("argus.workers", "Worker", "int", 2, apply="restart", advanced=True),
+    setting("argus.remediate.dry_run", "Solo simulazione", "bool", True,
+            depends_on={"key": "argus.remediate.enabled", "equals": True}),
+], presets=[preset("calmo", "Tranquillo", group="Controlli", values={"argus.poll.interval": 120})])
+settings.declare_log_level()                 # standard <module>.log.level (live, replaces LOG_LEVEL)
+app.include_router(settings.router())        # GET /api/settings/effective · POST /api/settings/reload
+settings.start()                             # in the startup hook: first load + hourly re-assert
+settings.get("argus.poll.interval")          # where you used os.getenv
+settings.on_change(lambda changed: ...)      # live values changed (also fired on first load)
+```
+
+Themis down → defaults + `[🔄]` log, retried in background. `apply="restart"` values loaded at startup stay
+effective until restart (Themis shows "riavvio necessario"). `oracle="none"` for safety switches the
+assistant must not even propose.
+
 ## Constraints
 
 - No domain logic — pure library code.

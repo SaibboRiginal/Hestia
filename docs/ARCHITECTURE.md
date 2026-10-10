@@ -206,6 +206,14 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
 - Exposes five MCP tools: `metis_dataset_build`, `metis_dataset_export`, `metis_dataset_status`, `metis_benchmark_run`, `metis_loRA_train`.
 - In-memory dataset store with configurable deduplication and quality filtering. Exports ChatML, Alpaca, and ShareGPT formats.
 
+### Hestia-Themis ⚖️
+Central settings — one place for every module's settings.
+- **Owns:** the declared settings schema, validation, scopes (system; user = profile → client → session), presets,
+  state (`restart_required`/`offline`), revision, light history/undo, assistant proposals.
+- **Does NOT own:** storage (Archive `/api/settings-store/*`), delivery to the user (Hermes), reasoning (Oracle/Athena),
+  secrets and infrastructure (env).
+- MCP tools `settings_search`, `settings_get`, `settings_propose`, `settings_undo`; no approve tool (only the user answers).
+
 ### Hestia-Dummy 🧪
 Generic integration testing module.
 - Provides deterministic test endpoints for routing, execution, and policy validation.
@@ -261,11 +269,15 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    - The reconcile loop (or equivalent periodic recovery pass) of every module **must** check all pending flags and resume the failed step before considering a record complete.
    - Data in Archive is never considered partial or stale as long as pending flags remain; enrichment and notification retries run until they succeed or the data expires naturally (e.g. listing sold/removed).
    - Errors are logged with `[🔄]` prefix and enough context to diagnose the failure. Silent failure is forbidden.
-8. **Organ Model (No functional overlap):**
+8. **Settings are data (Themis):** a tunable knob is declared with `hestia_common.settings_client`, never a new
+   env var. Env holds only secrets and infrastructure. The assistant never applies a setting: it proposes, the
+   user confirms through Hermes.
+9. **Organ Model (No functional overlap):**
    - Argus = observe and decide incidents.
    - Hephaestus = execute remediation and controlled code changes.
    - Oracle = reason and orchestrate tool/command flow.
-   - Hermes = dispatch notifications.
+   - Hermes = dispatch notifications — the only outbound messenger to the user's clients.
+   - Themis = settings (declared by modules, stored by Archive, changed by the user; the assistant only proposes).
    Multiple services must not duplicate the same responsibility in parallel without an explicit contract reason.
 
 ## Autonomous Remediation Contract

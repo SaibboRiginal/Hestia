@@ -489,3 +489,70 @@ class DocumentPruneRequest(BaseModel):
     max_access_count: int = Field(0, ge=0)
     # Dry-run: return what would be deleted without actually deleting
     dry_run: bool = False
+
+
+# ── Settings storage ──────────────────────────────────────────────────────────
+
+class SettingValueWrite(BaseModel):
+    key: str
+    scope: str = "system"
+    scope_id: str = ""
+    value: Any = None
+    actor: Optional[str] = None
+    reason: Optional[str] = None
+    history_keep: int = 10
+
+
+class SettingValueResponse(BaseModel):
+    key: str
+    scope: str
+    scope_id: str
+    value: Any = None
+    updated_by: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SettingHistoryResponse(BaseModel):
+    id: int
+    key: str
+    scope: str
+    scope_id: str
+    old_value: Any = None
+    new_value: Any = None
+    actor: Optional[str] = None
+    reason: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SettingProposalCreate(BaseModel):
+    proposal_id: str
+    key: str
+    scope: str = "system"
+    scope_id: str = ""
+    value: Any = None
+    reason: Optional[str] = None
+    proposer: Optional[str] = None
+    expires_at: Optional[datetime] = None
+
+
+class SettingProposalUpdate(BaseModel):
+    status: str
+    decided_by: Optional[str] = None
+    only_if_status: Optional[str] = "pending"
+
+
+class SettingProposalResponse(SettingProposalCreate):
+    id: int
+    status: str
+    decided_by: Optional[str] = None
+    created_at: datetime
+    decided_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

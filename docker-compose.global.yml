@@ -502,6 +502,37 @@ services:
     networks:
       - hestia_net
 
+  themis:
+    build:
+      context: .
+      dockerfile: Hestia-Themis/Dockerfile
+    container_name: hestia_themis
+    restart: unless-stopped
+    ports:
+      - "19016:19016"  # Themis API port (central settings)
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - SERVICE_NAME=themis
+      - SERVICE_BASE_URL=http://hestia_themis:19016
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=core
+      - SERVICE_TAGS=core,settings
+      - SERVICE_TOPOLOGY_TAGS=layer:core,domain:settings,status:alpha
+      - THEMIS_DATA_DIR=/code/data                           # Schema cache (values live in Archive)
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Themis/app:/code/app
+      - ./Hestia-Themis/data:/code/data
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
   hephaestus:
     build:
       context: .

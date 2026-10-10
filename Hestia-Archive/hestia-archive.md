@@ -21,6 +21,9 @@ It stores and serves all persistent state through generic APIs.
 - User memory/preferences (`/api/memory`)
 - **Alert subscriptions** (`/api/subscriptions`) for proactive dispatch
 - **Dispatch delivery log** (`/api/dispatch/logs`) for auditing and dedupe
+- **Settings store** (`/api/settings-store/*`): tables `setting_values`, `setting_history` (last 10 per key,
+  trimmed on write), `setting_proposals`. Pure storage: meaning, validation and permissions live in Themis,
+  its only caller.
 
 ---
 
@@ -36,6 +39,9 @@ It stores and serves all persistent state through generic APIs.
 | `POST` | `/api/subscriptions` | Create/update subscription |
 | `GET` | `/api/subscriptions/active` | List active subscriptions |
 | `POST` | `/api/dispatch/logs` | Write delivery result |
+| `GET`/`PUT`/`DELETE` | `/api/settings-store/values` | Setting values (Themis only) |
+| `GET` | `/api/settings-store/history` | Setting change log |
+| `GET`/`POST`/`PATCH` | `/api/settings-store/proposals[/{id}]` | Assistant proposals (first answer wins) |
 | `GET` | `/health` | Archive health |
 
 ---

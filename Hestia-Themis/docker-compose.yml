@@ -1,0 +1,23 @@
+# Standalone run (the global stack is docker-compose.global.yml at repo root).
+services:
+  hestia_themis:
+    build:
+      context: ..
+      dockerfile: Hestia-Themis/Dockerfile
+    container_name: hestia_themis
+    ports:
+      - "${THEMIS_PORT:-19016}:19016"
+    environment:
+      - SERVICE_NAME=themis
+      - SERVICE_BASE_URL=http://hestia_themis:19016
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - THEMIS_DATA_DIR=/code/data
+    volumes:
+      - ./data:/code/data
+    networks:
+      - hestia_net
+    restart: unless-stopped
+
+networks:
+  hestia_net:
+    external: true

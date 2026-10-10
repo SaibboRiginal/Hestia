@@ -319,3 +319,54 @@ class DocumentChunk(Base):
     chunk_text = Column(String, nullable=False)
     # Contextualised chunk embedding (title+summary prepended before embedding)
     embedding = Column(Vector(768), nullable=True)
+
+
+# ── Settings storage (logic lives in Themis; Archive only stores) ─────────────
+
+class SettingValue(Base):
+    """One stored setting value. ``scope``: system | profile | client | session."""
+    __tablename__ = "setting_values"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, index=True, nullable=False)
+    scope = Column(String, nullable=False, default="system")
+    scope_id = Column(String, nullable=False, default="")
+    value = Column(JSONB, nullable=True)
+    updated_by = Column(String, nullable=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("key", "scope", "scope_id", name="uq_setting_values_key_scope"),)
+
+
+class SettingHistory(Base):
+    """Light change log (last N per key/scope, trimmed on write) used for undo."""
+    __tablename__ = "setting_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, index=True, nullable=False)
+    scope = Column(String, nullable=False, default="system")
+    scope_id = Column(String, nullable=False, default="")
+    old_value = Column(JSONB, nullable=True)
+    new_value = Column(JSONB, nullable=True)
+    actor = Column(String, nullable=True)
+    reason = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SettingProposal(Base):
+    """A change proposed by the assistant, applied only after the user's answer."""
+    __tablename__ = "setting_proposals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    proposal_id = Column(String, unique=True, index=True, nullable=False)
+    key = Column(String, index=True, nullable=False)
+    scope = Column(String, nullable=False, default="system")
+    scope_id = Column(String, nullable=False, default="")
+    value = Column(JSONB, nullable=True)
+    reason = Column(String, nullable=True)
+    proposer = Column(String, nullable=True)
+    status = Column(String, index=True, nullable=False, default="pending")
+    decided_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)

@@ -33,6 +33,8 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
   `/api/llm/chat` (OpenAI-compatible, profiles `local`/`cloud`), `/api/llm/code` (Claude Code).
 - **Archive is the only DB owner**. Hecate owns external providers (Google/Microsoft OAuth, Gmail).
 - Core services stay generic; domain logic lives in domain modules (Scout = real estate).
+- Settings = **Themis**: a tunable is declared with `hestia_common.settings_client`, never a new env var
+  (env = secrets + infrastructure only). The assistant only proposes changes; the user confirms via Hermes.
 - Scheduling = **assistant agenda** (Chronos): register rules with `hestia_common.agenda_client`,
   never hardcode hours/loops. User edits win; paused/cancelled = user decision (no fallback).
 - Never touch `.env`, tokens, `data/` folders; never commit secrets. Mail = Gmail via OAuth token only (no IMAP).

@@ -183,10 +183,11 @@ flowchart LR
 | [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | MCP gateway exposing every service's tools |
 | [Metis](Hestia-Metis/hestia-metis.md) | 19014 | Datasets from feedback, benchmarks, LoRA training |
 | [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web client |
+| [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings: modules declare, every client and the assistant read/change, you confirm |
 | [Swagger](Hestia-Swagger/swagger.yml) | 19000 | API contract of every service |
 | [Telegram](Hestia-Telegram/hestia-telegram.md) | — | Main chat client |
 | [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web fetch gateway running outside Docker |
-| [Shared](Hestia-Shared/hestia-shared.md) | — | `hestia_common`: logging, startup, MCP helpers, agenda client |
+| [Shared](Hestia-Shared/hestia-shared.md) | — | `hestia_common`: logging, startup, MCP helpers, agenda and settings clients |
 
 Deeper dive: [dependency and flow map](architecture-and-flow-map.md) ·
 [engineering rules and contracts](docs/ARCHITECTURE.md).
