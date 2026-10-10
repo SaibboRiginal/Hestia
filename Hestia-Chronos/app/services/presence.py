@@ -377,6 +377,7 @@ class PresenceEngine:
             snapshot = {
                 **decision,
                 "enabled": enabled,
+                "show_in_chat": bool(PS.settings.get(PS.ORACLE_LINE)),
                 "since": now_iso if prev.get("base") != decision["base"] else (prev.get("since") or now_iso),
                 "changed_at": now_iso if changed else (prev.get("changed_at") or now_iso),
                 "reason": reason if changed else prev.get("reason", reason),

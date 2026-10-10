@@ -392,14 +392,21 @@ def list_athena_hints_endpoint(session_id: str | None = None, limit: int = 20):
 
 
 # Last real user interaction (Telegram/UI chats carry notify_target; internal
-# callers like Argus narration do not). Athena runs its loop only when idle so
-# it never competes with the user for the local model.
+# callers like Argus narration do not). The shared state lives in Chronos (assistant
+# presence): each user chat pings it; /api/activity stays as a thin local alias.
 _LAST_USER_ACTIVITY = {"ts": 0.0}
+from core.services.oracle_presence import presence as _presence, presence_instructions  # noqa: E402
 
 
-def _mark_user_activity(notify_target: Optional[str]) -> None:
-    if notify_target:
-        _LAST_USER_ACTIVITY["ts"] = time.time()
+def _mark_user_activity(notify_target: Optional[str], client: Optional[str] = None) -> dict | None:
+    """Mark a real user chat. Returns the presence state read BEFORE the ping (so the
+    assistant sees how long the user was away, e.g. to say "bentornato")."""
+    if not notify_target:
+        return None
+    _LAST_USER_ACTIVITY["ts"] = time.time()
+    state = _presence.get()
+    _presence.ping(client or "chat", "chat", force=True)
+    return state
 
 
 @app.get("/api/activity")
@@ -409,16 +416,19 @@ def user_activity():
             "idle_seconds": int(time.time() - ts) if ts else None}
 
 
-def _with_personal_settings(client_instructions: Optional[str], client: Optional[str], session: str) -> str:
-    """Client presentation contract + the user's tone/instructions (oracle.chat.*, Themis)."""
+def _with_personal_settings(client_instructions: Optional[str], client: Optional[str], session: str,
+                            presence_state: dict | None = None) -> str:
+    """Client presentation contract + the user's tone/instructions (oracle.chat.*, Themis)
+    + one line of assistant presence (state, last interaction, style/notice effects)."""
     parts = [str(client_instructions or "").strip(),
-             *_oracle_settings.chat_instructions(client=client or "", session=session)]
+             *_oracle_settings.chat_instructions(client=client or "", session=session),
+             *presence_instructions(presence_state)]
     return "\n".join(p for p in parts if p)
 
 
 @app.post("/api/chat")
 def chat_endpoint(req: ChatRequest):
-    _mark_user_activity(req.notify_target)
+    presence_state = _mark_user_activity(req.notify_target, req.client)
     try:
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
@@ -431,7 +441,7 @@ def chat_endpoint(req: ChatRequest):
                         force_notification_compiler=bool(
                             req.force_notification_compiler),
                         client_instructions=_with_personal_settings(
-                            req.client_instructions, req.client, current_session),
+                            req.client_instructions, req.client, current_session, presence_state),
                         save_history=req.save_history,
                         mode=req.mode,
                         model=req.model),
@@ -460,7 +470,7 @@ async def chat_document_endpoint(
     falls back to local extraction (WhisperX, CLIP, YOLO, python-docx, etc.)
     otherwise.
     """
-    _mark_user_activity(notify_target)
+    presence_state = _mark_user_activity(notify_target, client)
     ACCEPTED_MIMES = {
         # Images
         "image/jpeg", "image/jpg", "image/png", "image/webp",
@@ -521,7 +531,8 @@ async def chat_document_endpoint(
                 user_message=message.strip() or default_message,
                 session_id=current_session,
                 notify_target=notify_target,
-                client_instructions=_with_personal_settings(client_instructions, client, current_session),
+                client_instructions=_with_personal_settings(client_instructions, client, current_session,
+                                                            presence_state),
                 filename=resolved_filename,
             ),
             media_type="application/x-ndjson",

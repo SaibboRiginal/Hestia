@@ -21,6 +21,7 @@ from telegram_bot.services.chat_service import (
 from telegram_bot.services.executor import handle_group_callback
 from telegram_bot.services.notifications import handle_callback as handle_notification_callback
 from telegram_bot.services.notifications import mark_seen_on_activity as mark_notifications_seen
+from telegram_bot.services.presence import touch as presence_touch
 from telegram_bot.services.command_service import (
     refresh_command_registry,
     register_telegram_service,
@@ -37,7 +38,9 @@ def _allowed(update) -> bool:
     from telegram_bot import core as _core
 
     ok = _core.is_allowed_user(getattr(update.from_user, "id", ""))
-    if not ok:
+    if ok:
+        presence_touch(update, "command")
+    else:
         logger.warning("event=unauthorized_callback user_id=%s", getattr(update.from_user, "id", ""))
     return ok
 
@@ -140,6 +143,7 @@ def on_doc_callback(call):
 def on_file(message):
     _last_user_message[message.chat.id] = message
     mark_notifications_seen(message)
+    presence_touch(message, "chat")
     handle_file_message(message)
 
 
@@ -147,6 +151,7 @@ def on_file(message):
 def on_chat(message):
     _last_user_message[message.chat.id] = message
     mark_notifications_seen(message)
+    presence_touch(message)
     handle_chat_message(message)
 
 
