@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; no code yet |
 
@@ -57,12 +57,21 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
 ## 3. Scope — four phases, each shippable alone
 
 **A. Real context + warm model (bug fix, small)**
-- Every Ollama call sends `options.num_ctx = ORACLE_CONTEXT_LENGTH` and `keep_alive = ORACLE_OLLAMA_KEEP_ALIVE`
-  (default `30m`). **Same `num_ctx` on every call** — a different value forces Ollama to reload the model.
-- Startup log `event=ollama_context_config num_ctx=… keep_alive=…`; warn if Ollama `/api/ps` reports a
-  smaller loaded context.
+- `num_ctx` and `keep_alive` are fields of the **`ollama` provider type's `CONFIG_FIELDS`**
+  (central-settings SPEC §3.9): instance config `{base_url, num_ctx, keep_alive}`. The `ollama` provider
+  class sends them as `options.num_ctx` / `keep_alive` on every call (generate, chat, tools, stream, vision).
+  It never reads env: until Themis exists, `load_llm_config()` synthesizes the instance from
+  `OLLAMA_URL`/`OLLAMA_API_URL`, `ORACLE_CONTEXT_LENGTH` (default 8192) and `ORACLE_OLLAMA_KEEP_ALIVE`
+  (default `30m`). **Same `num_ctx` on every call to one instance** — a different value forces Ollama to reload.
+- `TokenCounter` / compaction thresholds read the window from the resolved provider instance instead of a
+  module-level `os.getenv`, so the estimate and the real window can't diverge again.
+- Startup log `event=ollama_context_config provider=<id> num_ctx=… keep_alive=…`; warn if Ollama `/api/ps`
+  reports a smaller loaded context.
 - Docs/`.env.example`: recommend host env `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`
   (≈ half KV memory → more context in the same VRAM), optional `OLLAMA_NUM_PARALLEL=2`.
+- **Depends on** the "Claude Haiku in Oracle" thread, which owns the `UniversalAgent` dispatch refactor and
+  `load_llm_config()`. This work builds on top of it; if A is wanted earlier, only the two env names above
+  are added to that loader (coordinated through the channel session).
 
 **B. Measure (small)**
 - Read `prompt_eval_count`, `prompt_eval_duration`, `load_duration`, `eval_count`, `eval_duration` from
@@ -83,23 +92,30 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
   they stop evicting the chat model's cache; document `OLLAMA_NUM_PARALLEL` trade-off (VRAM × slots).
 
 **D. Optional alternative runtime (larger, coordinated)**
-- New `UniversalAgent` provider **`openai`** (OpenAI-compatible `/v1/chat/completions` with tools +
-  streaming), configured per use-case like Ollama/Gemini. One implementation serves:
+- Uses the **`openai` provider type** of central-settings §3.9 (any OpenAI-compatible server), instance
+  config `{base_url, api_key_env}`, e.g. `{"id":"llama_server","type":"openai","config":{"base_url":
+  "http://host.docker.internal:8080/v1","api_key_env":""}}`; a use case points at it via
+  `oracle.usecases.<name> = {"provider":"llama_server","model":…}`. No new code path of our own: the type
+  class (chat, tools, stream, `list_models()` from `/v1/models`) is built inside the provider layer owned by
+  the Haiku thread; this dossier only adds what local servers need on top:
   - **llama.cpp `llama-server`** (recommended first try): same GGUF files as Ollama, `--cache-reuse`,
     `-fa`, KV-cache quantisation, speculative decoding with a small draft model (often 1.5–2× faster),
-    `/slots` save/restore of a warm prefix.
+    `/slots` save/restore of a warm prefix. Optional `cache_prompt: true` per request (llama-server extension)
+    as an `options` override.
   - **vLLM** (Linux/WSL, model fully in VRAM): automatic prefix caching, paged attention, best with parallel calls.
   - **LM Studio**, and cloud OpenAI-compatible endpoints.
-- Ollama stays the default; the new runtime is an extra option selectable per use-case.
-- **Shared with the "Claude Haiku in Oracle" thread**: Haiku needs a new chat provider too. Build one
-  provider layer, not two. Owner of `universal_agent.py` changes to be agreed between the two threads.
+  - Stats of phase B mapped from the OpenAI `usage` block (`prompt_tokens_details.cached_tokens` when present,
+    llama-server `timings`).
+- Ollama stays the default; the new runtime is an extra instance selectable per use case.
 
-## 4. Settings (consistency with `docs/work/2026-10-10-central-settings/`)
+## 4. Settings (consistency with `docs/work/2026-10-10-central-settings/` §3.9)
 
-All new knobs are declared as Oracle settings in the central registry once it exists (until then: env):
-`ORACLE_CONTEXT_LENGTH`, `ORACLE_OLLAMA_KEEP_ALIVE`, `ORACLE_TOOL_RESULT_STUB_AFTER_TURNS`, per-use-case
-provider/model/base_url. Changing `num_ctx` is a "reload model" setting (state visible to all clients).
-Host-side Ollama env (`OLLAMA_*`) is infrastructure → documented, not managed.
+- Provider knobs live in the instance config of `oracle.providers`: `ollama` → `num_ctx`, `keep_alive`;
+  `openai` → `base_url`, `api_key_env`. Changing `num_ctx` reloads the model (state visible to all clients).
+- Per-call knobs go in the use-case `options` (e.g. `cache_prompt`, `temperature`).
+- Oracle-level knob of this dossier: `oracle.tool_result_stub_after_turns` (phase C), env bridge
+  `ORACLE_TOOL_RESULT_STUB_AFTER_TURNS` read only by `load_llm_config()`/the settings loader.
+- Host-side Ollama env (`OLLAMA_*`) is infrastructure → documented, not managed.
 
 ## 5. Acceptance criteria
 
@@ -117,7 +133,8 @@ Host-side Ollama env (`OLLAMA_*`) is infrastructure → documented, not managed.
 
 - Fix A before anything else: every later optimisation is meaningless if the real window is smaller than we think.
 - Measure (B) before optimising (C) or adding runtimes (D): numbers decide whether D is worth it.
-- No new LLM client outside Oracle; the new provider lives in `UniversalAgent` (CLAUDE.md rule).
+- No new LLM client outside Oracle; providers are the §3.9 type classes dispatched by `UniversalAgent` (CLAUDE.md rule).
+- Provider classes never read env; `load_llm_config()` (owned by the Haiku thread) is the single env reader.
 - No new service/container in compose for llama.cpp/vLLM: the user runs it on the host like Ollama; Oracle only needs a URL.
 
 ## 7. Open points for the user
