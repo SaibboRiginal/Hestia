@@ -563,3 +563,28 @@ class SettingProposalResponse(SettingProposalCreate):
 
     class Config:
         from_attributes = True
+
+
+# ── Assistant presence storage ────────────────────────────────────────────────
+
+class PresenceSignalWrite(BaseModel):
+    value: Any = None
+    meta: Optional[dict] = None
+    expires_at: Optional[datetime] = None
+
+
+class PresenceSignalResponse(BaseModel):
+    key: str
+    value: Any = None
+    meta: Optional[dict] = None
+    expires_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PresenceSnapshotWrite(BaseModel):
+    data: dict
+    change: Optional[dict] = None     # appended to the history when given
+    history_keep: int = 100

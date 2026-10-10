@@ -570,6 +570,14 @@ def tick(now: datetime | None = None) -> dict:
     return {"fired": fired, "failed": failed}
 
 
+_TICK_HOOKS: list = []
+
+
+def on_tick(fn) -> None:
+    """Run ``fn()`` after every agenda tick (e.g. presence re-evaluation): no extra loops."""
+    _TICK_HOOKS.append(fn)
+
+
 def start_worker() -> None:
     def _loop():
         while True:
@@ -578,6 +586,12 @@ def start_worker() -> None:
                 tick()
             except Exception as exc:
                 logger.warning("[🔄] event=agenda_worker_error error=%s", exc)
+            for hook in list(_TICK_HOOKS):
+                try:
+                    hook()
+                except Exception as exc:
+                    logger.warning("[🔄] event=agenda_tick_hook_error hook=%s error=%s",
+                                   getattr(hook, "__name__", hook), exc)
 
     threading.Thread(target=_loop, daemon=True, name="agenda-worker").start()
     logger.info("event=agenda_worker_started tick=%ds", _TICK)

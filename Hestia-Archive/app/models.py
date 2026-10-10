@@ -370,3 +370,35 @@ class SettingProposal(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     decided_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
+
+
+# ── Assistant presence (owner of the semantics: Chronos) ─────────────────────
+
+class PresenceSignal(Base):
+    """One live fact reported to the presence engine (last interaction, a running activity,
+    a manual switch, a resource level). ``expires_at`` lets a crashed reporter heal itself."""
+    __tablename__ = "presence_signals"
+
+    key = Column(String, primary_key=True)
+    value = Column(JSONB, nullable=True)
+    meta = Column(JSONB, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
+class PresenceSnapshot(Base):
+    """The current composite state (single row, id=1) so every client reads it after a restart."""
+    __tablename__ = "presence_snapshot"
+
+    id = Column(Integer, primary_key=True)
+    data = Column(JSONB, nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
+class PresenceChange(Base):
+    """Light history of state changes (trimmed on write)."""
+    __tablename__ = "presence_changes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(JSONB, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

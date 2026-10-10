@@ -35,6 +35,8 @@ from schemas.events import (
 from services import agenda as assistant_agenda
 from services import agenda_parse
 from services import notification_worker, sync_worker
+from services import presence as assistant_presence
+from core import presence_settings
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -392,6 +394,45 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="pianificazione",
         ),
+        MCPTool(
+            name="stato",
+            description=("Stato di attività dell'assistente: sveglio, in attesa, pisolino, sonno profondo, "
+                         "non disturbare (+ occupato/stanco…), ultima interazione, lavori in corso ed effetti "
+                         "(cosa è permesso ora). Usalo quando l'utente chiede come stai, cosa stai facendo, "
+                         "da quanto non vi sentite."),
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "stato", "params": kw},
+            title="\U0001f9ed Stato dell'assistente", method="GET", path="/api/presence",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "Descrivi in 2-4 righe lo stato dell'assistente in prima persona: label con emoji, da quando, "
+                "ultima interazione (client e quanto tempo fa), lavori in corso (activities) e, se rilevante, "
+                "cosa rimando (effects con defer/save). Niente JSON, niente chiavi tecniche."),
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="nondisturbare",
+            description=("Attiva «Non disturbare»: passano solo le notifiche urgenti. minutes = durata "
+                         "(vuoto = predefinita), until = fino a un orario ISO 8601."),
+            parameters={"type": "object", "properties": {
+                "minutes": {"type": "integer", "description": "Durata in minuti (vuoto = predefinita)"},
+                "until": {"type": "string", "description": "Fino a quando, ISO 8601"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "nondisturbare", "params": kw},
+            title="\U0001f515 Non disturbare", method="POST", path="/api/presence/dnd",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Conferma in una riga che «Non disturbare» è attivo e fino a che ora (dnd_until, ora locale).",
+            telegram_visible=True, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="disturbami",
+            description="Disattiva «Non disturbare».",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "disturbami", "params": kw},
+            title="\U0001f514 Disattiva non disturbare", method="DELETE", path="/api/presence/dnd",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Conferma in una riga che «Non disturbare» è spento e indica il nuovo stato (label).",
+            telegram_visible=True, telegram_group="sistema",
+        ),
     ]
     app.include_router(create_mcp_router(_chronos_mcp_tools, service_name="chronos"))
     logger.info("event=mcp_router_mounted service=chronos")
@@ -481,6 +522,33 @@ def on_startup() -> None:
     # Start the calendar sync worker (pulls events from Hecate into Archive).
     sync_worker.start()
     assistant_agenda.start_worker()
+    # Assistant presence (SPEC assistant-presence): settings from Themis, state from Archive,
+    # night window in the agenda, re-evaluated after every agenda tick.
+    presence_settings.settings.on_change(lambda changed: assistant_presence.get_engine().evaluate("settings"))
+    presence_settings.settings.start()
+    threading.Thread(target=_presence_boot, daemon=True, name="presence-boot").start()
+    assistant_agenda.on_tick(lambda: assistant_presence.get_engine().evaluate("tick"))
+
+
+def _presence_boot() -> None:
+    """Load signals/snapshot and register the night window (retry: never block startup)."""
+    from hestia_common.agenda_client import daily_window
+    engine, loaded, registered = assistant_presence.get_engine(), False, False
+    for attempt in range(30):
+        loaded = loaded or engine.load()
+        if not registered:
+            try:
+                assistant_agenda.register_rules("chronos", [daily_window(
+                    presence_settings.SLEEP_WINDOW, "Hestia: notte (sonno profondo)", 1, 7,
+                    description="Di notte l'assistente va in sonno profondo: lavori pesanti permessi, "
+                                "solo notifiche urgenti. Sposta o salta per cambiare la notte.")])
+                registered = True
+            except Exception as exc:
+                logger.warning("[🔄] event=presence_window_register_failed attempt=%d error=%s", attempt + 1, exc)
+        if loaded and registered:
+            break
+        time.sleep(min(60, 5 * (attempt + 1)))
+    engine.evaluate("boot")
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -512,6 +580,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
     }
 
 app.include_router(create_log_control_router("hestia_chronos"))
+app.include_router(presence_settings.settings.router())
 
 # ─────────────────────────────────────────────────────────────────────
 #  Calendar endpoints
@@ -918,6 +987,116 @@ def agenda_ics(days: int = Query(60, ge=1, le=400), past_days: int = Query(7, ge
 def agenda_window(key: str) -> dict:
     """Modules ask: is my window open now? (closed if missing/cancelled/skipped)."""
     return {"status": "ok", **assistant_agenda.window_status(key)}
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Assistant presence (SPEC docs/work/2026-10-10-assistant-presence)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class PresencePing(BaseModel):
+    client: str = "unknown"
+    kind: str = "chat"          # chat | command | ui
+
+
+class PresenceActivity(BaseModel):
+    key: str
+    label: str = ""
+    load: str = "light"         # light | heavy
+    resource: str = ""          # gpu | claude_quota | cpu …
+    kind: str = "work"          # work | maintenance
+    module: str = ""
+    ttl_seconds: float = 3600
+
+
+class PresenceSignalIn(BaseModel):
+    value: Any = True
+    meta: dict | None = None
+    ttl_seconds: float | None = None
+
+
+class PresenceDnd(BaseModel):
+    minutes: float | None = None
+    until: str | None = None
+
+
+class PresenceStates(BaseModel):
+    owner: str
+    states: dict[str, dict] = Field(default_factory=dict)
+
+
+def _presence_guard(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/presence")
+def presence_view() -> dict:
+    """Current state: base + overlays, label, effects, last interaction, activities."""
+    return assistant_presence.get_engine().view()
+
+
+@app.post("/api/presence/ping")
+def presence_ping(req: PresencePing | None = None) -> dict:
+    req = req or PresencePing()
+    return assistant_presence.get_engine().ping(req.client, req.kind)
+
+
+@app.post("/api/presence/activity")
+def presence_activity_start(req: PresenceActivity) -> dict:
+    return _presence_guard(assistant_presence.get_engine().activity_start, req.key, label=req.label,
+                           load=req.load, resource=req.resource, kind=req.kind, module=req.module,
+                           ttl=req.ttl_seconds)
+
+
+@app.delete("/api/presence/activity/{key}")
+def presence_activity_stop(key: str) -> dict:
+    return assistant_presence.get_engine().activity_stop(key)
+
+
+@app.put("/api/presence/signals/{key}")
+def presence_signal_set(key: str, req: PresenceSignalIn) -> dict:
+    """Generic fact (e.g. ``resource.claude_quota_left``, ``health.degraded_services``)."""
+    return _presence_guard(assistant_presence.get_engine().set_signal, key, req.value, meta=req.meta,
+                           ttl=req.ttl_seconds)
+
+
+@app.delete("/api/presence/signals/{key}")
+def presence_signal_clear(key: str) -> dict:
+    return assistant_presence.get_engine().clear_signal(key)
+
+
+@app.post("/api/presence/dnd")
+def presence_dnd_on(req: PresenceDnd | None = None) -> dict:
+    req = req or PresenceDnd()
+    return assistant_presence.get_engine().set_dnd(minutes=req.minutes, until=req.until)
+
+
+@app.delete("/api/presence/dnd")
+def presence_dnd_off() -> dict:
+    return assistant_presence.get_engine().clear_dnd()
+
+
+@app.get("/api/presence/states")
+def presence_states() -> dict:
+    """Effective definitions (built-in + modules + the user's setting); edits go through Themis."""
+    return {"setting": presence_settings.STATES, "core": list(presence_settings.CORE_STATES),
+            "effects": presence_settings.EFFECT_ORDER, "states": assistant_presence.get_engine().states()}
+
+
+@app.post("/api/presence/states/register")
+def presence_states_register(req: PresenceStates) -> dict:
+    """A module declares its own states (in memory, re-asserted by the module)."""
+    count = assistant_presence.get_engine().declare_states(req.owner, req.states)
+    return {"status": "ok", "owner": req.owner, "count": count}
+
+
+@app.get("/api/presence/history")
+def presence_history(limit: int = Query(50, ge=1, le=500)) -> dict:
+    rows = assistant_presence.get_engine().history(limit)
+    return {"count": len(rows), "items": rows}
 
 
 @app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
