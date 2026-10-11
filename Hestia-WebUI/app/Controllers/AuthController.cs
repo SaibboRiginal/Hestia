@@ -28,8 +28,10 @@ public class AuthController : ControllerBase
     {
         var reason = _localAccess.Reason(HttpContext);
         var local = reason == "local";
-        _logger.LogInformation("event=webui_access_checked local={Local} reason={Reason}", local, reason);
-        return Ok(new { local, tokenRequired = !local });
+        _logger.LogInformation("event=webui_access_checked local={Local} reason={Reason} peer={Peer} host={Host}",
+            local, reason, HttpContext.Connection.RemoteIpAddress, HttpContext.Request.Host.Host);
+        // reason = local | setting_off | proxied | public_host | public_address (diagnosis, no secrets)
+        return Ok(new { local, tokenRequired = !local, reason });
     }
 
     [HttpPost("login")]
