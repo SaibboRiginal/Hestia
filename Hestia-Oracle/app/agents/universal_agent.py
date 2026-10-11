@@ -17,8 +17,10 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class UniversalAgent:
-    def __init__(self, role_prompt: str = "", provider: str = "", model_name: str = "", thinking: bool = True):
+    def __init__(self, role_prompt: str = "", provider: str = "", model_name: str = "", thinking: bool = True,
+                 label: str = ""):
         self.role_prompt = role_prompt
+        self.label = label or "generic"  # use case, for runtime stats
         self.provider = provider.lower()
         self.model_name = model_name
         self.thinking = thinking
@@ -32,6 +34,7 @@ class UniversalAgent:
 
         if is_provider_type(self.provider):
             self._impl = get_provider(self.provider)
+            self._impl.label = self.label
             ok, detail = self._impl.available()
             if not ok:
                 logger.warning("[🔄] event=llm_provider_unavailable provider=%s model=%s detail=%s "
@@ -59,6 +62,19 @@ class UniversalAgent:
     def _init_ollama_defaults(self) -> None:
         self.ollama_url = os.getenv(
             "OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
+
+    @staticmethod
+    def _ollama_options() -> dict:
+        """num_ctx + keep_alive from settings, identical on every call (no model reload)."""
+        from core.services import oracle_settings
+        return oracle_settings.ollama_request_options()
+
+    def _ollama_stats(self, data: dict, prompt_chars: int) -> None:
+        try:
+            from core.services import llm_stats
+            llm_stats.record_ollama(self.label, self.model_name, data, prompt_chars)
+        except Exception as exc:  # stats never break a call
+            logger.debug("event=ollama_stats_failed error=%s", exc)
 
     # ─────────────────────────────────────────────────────────────────
     #  Internal retry helper
@@ -151,6 +167,7 @@ class UniversalAgent:
                 "model": self.model_name,
                 "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
                 "stream": False,
+                **self._ollama_options(),
             }
             _think = thinking if thinking is not None else self.thinking
             if _think:
@@ -164,6 +181,7 @@ class UniversalAgent:
             )
             response.raise_for_status()
             data = response.json() or {}
+            self._ollama_stats(data, len(payload["prompt"]))
             raw = str(data.get("response", "") or "").strip()
             reasoning_raw = str(data.get("reasoning_content") or data.get("thinking") or "").strip()
             logger.info(
@@ -263,6 +281,7 @@ class UniversalAgent:
             ],
             "tools": ollama_tools,
             "stream": False,
+            **self._ollama_options(),
         }
         _think = thinking if thinking is not None else self.thinking
         if _think:
@@ -288,6 +307,9 @@ class UniversalAgent:
         response.raise_for_status()
         data = response.json() or {}
         elapsed_ms = int((time.time() - t_req) * 1000)
+        # Tool schemas are part of the prompt too; their JSON length approximates their tokens.
+        self._ollama_stats(data, len(_TOOL_CALLING_SYSTEM) + len(user_message)
+                           + len(json.dumps(ollama_tools, ensure_ascii=False)))
 
         message = data.get("message") if isinstance(
             data.get("message"), dict) else {}
@@ -398,6 +420,7 @@ class UniversalAgent:
             "model": self.model_name,
             "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
             "stream": True,
+            **self._ollama_options(),
         }
         if self.thinking:
             payload["think"] = True
@@ -422,6 +445,7 @@ class UniversalAgent:
                     if token:
                         yield token
                     if data.get("done"):
+                        self._ollama_stats(data, len(payload["prompt"]))
                         break
         except Exception as exc:
             raise RuntimeError(f"Ollama stream error: {exc}") from exc
@@ -500,6 +524,7 @@ class UniversalAgent:
                 "prompt": f"{self.role_prompt}\n\nUser: {user_message}\nAnswer:",
                 "images": [image_b64],
                 "stream": False,
+                **self._ollama_options(),
             }
             if self.thinking:
                 payload["think"] = True
@@ -545,7 +570,8 @@ class UniversalAgent:
             try:
                 response = requests.post(embed_url, json={
                     "model": self.model_name,
-                    "prompt": text
+                    "prompt": text,
+                    "keep_alive": self._ollama_options()["keep_alive"],
                 }, timeout=self.ollama_embed_timeout_sec)
                 response.raise_for_status()
                 return response.json().get("embedding", [])

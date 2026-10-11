@@ -276,6 +276,37 @@ Pick them per use case in Impostazioni → Modelli (`oracle.models.<uc>.provider
   `thinking = Mai` keeps it off. No CoT prompt of our own: Claude's summarized reasoning is shown as
   `reasoning_content`. No embeddings on these providers.
 
+### Local models: real context window, prompt cache, OpenAI-compatible servers
+
+Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto** (Themis, no env):
+- `oracle.provider.ollama.num_ctx` (8192) and `oracle.provider.ollama.keep_alive` (`30m`, `always` = -1) are sent
+  on **every** Ollama call (generate, chat/tools, stream, vision; embeddings get keep_alive only). Before, Ollama ran
+  at its server default (often 4096) and silently cut the start of longer prompts. The same value drives
+  `TokenCounter`, `/api/chat/context` and auto-compaction (`oracle.context.compact_threshold`, 0.8). Startup logs
+  `event=ollama_context_config` and warns `ollama_context_smaller` when `/api/ps` shows a model loaded smaller.
+- **Telemetry**: every call logs `event=llm_call_stats agent=<use case> prompt_tokens cached_tokens cache_hit_pct
+  load_ms prompt_ms output_tokens tok_per_s`; `/api/chat/context` returns `runtime` = per-agent averages of the
+  last 50 calls. Ollama reports only the tokens it had to evaluate (`prompt_eval_count`), so its cache share is an
+  estimate (`cache_estimated: true`); OpenAI-compatible servers report it (`usage.prompt_tokens_details.cached_tokens`,
+  llama-server `timings.cache_n`).
+- **Cache-friendly prompts**: the model server reuses the KV cache only for a byte-identical prefix. Agent-loop tools
+  are sorted by name; the per-request ACTION INTENT hint moved after the user message (dynamic part); the history
+  window grows from a fixed first message up to N + N/2 messages and then jumps to the last N
+  (`ContextBuilder.stable_window`, per session, in memory) instead of sliding every turn.
+- **Context editing**: when a loop prompt passes 50 % of the window, tool results older than
+  `oracle.context.tool_result_stub_after_turns` (2, 0 = off) become a one-line stub (no LLM call).
+- **Provider `openai`** — "Server compatibile OpenAI (llama-server, vLLM)": endpoint `ORACLE_OPENAI_BASE_URL`
+  (…/v1, infrastructure) and optional `ORACLE_OPENAI_API_KEY`; offered in the use-case table when set. Static prompt
+  part goes in the system message; `cache_prompt` (setting `oracle.provider.openai.cache_prompt`) for llama-server;
+  quick mode sends `chat_template_kwargs.enable_thinking=false`; native tools, SSE stream, images, `/embeddings`.
+
+Host tips (Ollama env on the PC, infrastructure, not managed by Hestia): `OLLAMA_FLASH_ATTENTION=1` +
+`OLLAMA_KV_CACHE_TYPE=q8_0` (about half the KV memory → bigger context in the same VRAM); `OLLAMA_NUM_PARALLEL=2`
+gives the classifier/memory calls their own slot so they stop evicting the chat prefix (costs VRAM per slot);
+`OLLAMA_CONTEXT_LENGTH` = the same num_ctx for Forge's `local` profile, which uses Ollama's `/v1` endpoint (no
+per-request num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa --cache-reuse 256
+--port 8080` (+ `-md draft.gguf` for speculative decoding); vLLM: `vllm serve <model> --enable-prefix-caching`.
+
 ## LLM gateway profiles (Forge engines)
 
 Built-in profiles, no extra env: `local` = Ollama + setting `oracle.models.code.model`; `cloud` = Gemini (OpenAI-compatible

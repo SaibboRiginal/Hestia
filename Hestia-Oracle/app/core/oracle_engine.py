@@ -30,6 +30,7 @@ except Exception:  # pragma: no cover - Python without zoneinfo support
 
 from core.services.agent_factory import AgentFactory, conversation_style_contract
 from core.services.hub_client import HubClient
+from core.services import llm_stats
 from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_THRESHOLD
 from core.services import stream_emitter
 from core.services import prompt_config
@@ -1183,11 +1184,11 @@ class OracleEngine:
             # Reload compacted history from Archive
             try:
                 history_data = self._hub.get(
-                    f"/chat/history/{_session_id}?limit={self._context_builder.max_history_messages}",
+                    f"/chat/history/{_session_id}?limit={self._context_builder.history_fetch_limit}",
                     timeout=self._policy_timeout("foreground_chat"),
                     headers=self._trace_headers(_session_id, trace_id),
                 )
-                return self._context_builder.compact_history(history_data)
+                return self._context_builder.compact_history(history_data, _session_id)
             except Exception:
                 return None
 
@@ -1466,7 +1467,8 @@ class OracleEngine:
         """Return context-window usage estimates for *session_id*.
 
         Uses Ollama /api/tokenize when available; falls back to heuristic.
-        Context window size is configurable via ORACLE_CONTEXT_LENGTH (default 8K).
+        Context window = setting oracle.provider.ollama.num_ctx (sent to Ollama on every call);
+        ``runtime`` = measured per-agent stats of the last calls (prompt size, cache reuse, speed).
         """
         from core.agent_loop import TokenCounter
         counter = TokenCounter()
@@ -1516,6 +1518,7 @@ class OracleEngine:
             "context_used_pct": round(pct, 1),
             "context_remaining_est": max(0, _window - total_tokens),
             "compaction_available": (len(history_data) if isinstance(history_data, list) else 0) > 10,
+            "runtime": llm_stats.summary(),
         }
 
     def get_user_controls(self) -> dict:
@@ -1674,14 +1677,14 @@ class OracleEngine:
         logger.trace("event=phase_init_entry session_id=%s trace_id=%s", session_id, trace_id)
         t0 = time.perf_counter()
         history_data = self._hub.get(
-            f"/chat/history/{session_id}?limit={self._context_builder.max_history_messages}",
+            f"/chat/history/{session_id}?limit={self._context_builder.history_fetch_limit}",
             timeout=self._policy_timeout("foreground_chat"),
             headers=self._trace_headers(session_id, trace_id),
         )
         t_history_ms = int((time.perf_counter() - t0) * 1000)
 
         now = time.time()
-        history_text = self._context_builder.compact_history(history_data)
+        history_text = self._context_builder.compact_history(history_data, session_id)
 
         t_domains = time.perf_counter()
         available_domains = self._hub.hub_get(

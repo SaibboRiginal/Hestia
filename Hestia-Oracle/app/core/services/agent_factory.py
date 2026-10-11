@@ -110,7 +110,7 @@ class AgentFactory:
             if agent is None:
                 continue
             agent.__init__(role_prompt=agent.role_prompt, provider=entry["prov"],
-                           model_name=entry["mod"], thinking=entry.get("thinking", False))
+                           model_name=entry["mod"], thinking=entry.get("thinking", False), label=slot)
         logger.info("event=oracle_agents_reconfigured generic=%s/%s reasoning=%s/%s code=%s/%s embedding=%s/%s",
                     cfg["generic"]["prov"], cfg["generic"]["mod"], cfg["reasoning"]["prov"],
                     cfg["reasoning"]["mod"], cfg["code"]["prov"], cfg["code"]["mod"],
@@ -290,6 +290,7 @@ class AgentFactory:
                 provider=cfg[key]["prov"],
                 model_name=cfg[key]["mod"],
                 thinking=cfg[key].get("thinking", False),
+                label=key,
             )
 
         return AgentBundle(

@@ -121,6 +121,8 @@ services:
       # Claude Code for Forge engine `claude` (Pro/Max): build with --build-arg INSTALL_CLAUDE_CODE=1,
       # put CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) in Hestia-Oracle/app/.env
       - ORACLE_CODE_WORKDIR_ROOT=/forge/worktrees
+      # Optional OpenAI-compatible server (llama-server, vLLM, LM Studio) → provider `openai` in Impostazioni → Modelli.
+      # - ORACLE_OPENAI_BASE_URL=http://host.docker.internal:8080/v1   # key (if any): ORACLE_OPENAI_API_KEY in Hestia-Oracle/app/.env
       # LLM gateway profiles (Forge engines local/cloud). local defaults to the Ollama host above.
       # - ORACLE_LLM_PROFILE_LOCAL_MODEL=qwen2.5-coder:14b
       # - ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1   # keys go in Hestia-Oracle/app/.env

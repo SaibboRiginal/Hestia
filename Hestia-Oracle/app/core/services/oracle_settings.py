@@ -105,7 +105,70 @@ _CHAT = [
             help="Aggiunte a ogni conversazione (es. «rispondi sempre in breve»)."),
 ]
 
-settings.declare(_definitions() + _CHAT, presets=_presets()).declare_log_level()
+# Context & local runtimes (dossier docs/work/2026-10-10-oracle-local-context). Endpoints stay in env.
+NUM_CTX = "oracle.provider.ollama.num_ctx"
+KEEP_ALIVE = "oracle.provider.ollama.keep_alive"
+COMPACT_THRESHOLD = "oracle.context.compact_threshold"
+STUB_AFTER_TURNS = "oracle.context.tool_result_stub_after_turns"
+OPENAI_CACHE_PROMPT = "oracle.provider.openai.cache_prompt"
+_KEEP_ALIVE = [("5m", "5 minuti"), ("30m", "30 minuti"), ("2h", "2 ore"), ("always", "Sempre")]
+
+_CONTEXT = [
+    setting(NUM_CTX, "Ollama · finestra di contesto", "int", 8192, group="Contesto", min=2048, max=262144,
+            unit="token", order=0,
+            help="Token che il modello locale tiene in memoria per ogni richiesta. Più alto = ricorda di più "
+                 "ma usa più VRAM; cambiarlo ricarica il modello."),
+    setting(KEEP_ALIVE, "Ollama · modello in memoria", "enum", "30m", group="Contesto", options=_KEEP_ALIVE,
+            order=1, help="Quanto resta caricato il modello dopo l'ultima richiesta: evita la partenza a freddo."),
+    setting(COMPACT_THRESHOLD, "Compatta il contesto oltre", "float", 0.8, group="Contesto", min=0.3, max=0.95,
+            order=2, advanced=True, help="Frazione della finestra oltre la quale la conversazione viene riassunta."),
+    setting(STUB_AFTER_TURNS, "Accorcia i risultati degli strumenti dopo", "int", 2, group="Contesto", min=0,
+            max=20, unit="passi", order=3, advanced=True,
+            help="Nei ragionamenti lunghi i risultati più vecchi di N passi diventano una riga di riepilogo "
+                 "quando il contesto si riempie. 0 = mai."),
+    setting(OPENAI_CACHE_PROMPT, "Server compatibile OpenAI · riusa la cache del prompt", "bool", True,
+            group="Contesto", order=4, advanced=True,
+            help="Chiede a llama-server di riusare il prefisso già calcolato (cache_prompt). "
+                 "Disattivalo se il server rifiuta il campo."),
+]
+
+settings.declare(_definitions() + _CHAT + _CONTEXT, presets=_presets()).declare_log_level()
+
+
+def context_window() -> int:
+    """Real context window (tokens) sent to Ollama and used for budgeting/compaction."""
+    try:
+        return max(512, int(settings.get(NUM_CTX) or 8192))
+    except (TypeError, ValueError):
+        return 8192
+
+
+def compact_threshold() -> float:
+    try:
+        return float(settings.get(COMPACT_THRESHOLD) or 0.8)
+    except (TypeError, ValueError):
+        return 0.8
+
+
+def stub_after_turns() -> int:
+    try:
+        return max(0, int(settings.get(STUB_AFTER_TURNS) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def ollama_request_options() -> dict:
+    """Fields added to every Ollama request: same ``num_ctx`` on every call (a different
+    value makes Ollama reload the model) and ``keep_alive`` (avoid cold starts)."""
+    keep = str(settings.get(KEEP_ALIVE) or "30m")
+    return {"options": {"num_ctx": context_window()}, "keep_alive": -1 if keep == "always" else keep}
+
+
+def provider_settings(provider_type: str) -> dict:
+    """Tunables of one provider type (merged into its infrastructure config)."""
+    if provider_type == "openai":
+        return {"cache_prompt": bool(settings.get(OPENAI_CACHE_PROMPT, True))}
+    return {}
 
 
 def chat_instructions(*, client: str = "", session: str = "") -> list[str]:

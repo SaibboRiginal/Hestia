@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-11
+- Oracle on local models: real context window and keep-alive sent to Ollama on every call (settings Contesto), per-agent cache/speed stats in logs and `/api/chat/context`, cache-friendly prompts (stable tool order and history window, old tool results shortened), new `openai` provider for llama-server/vLLM → `docs/work/2026-10-10-oracle-local-context/` [ext-chat]
+
 ## 2026-10-10
 - Assistant presence: Chronos keeps the assistant's state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno profondo + Occupato, Sto mangiando, Stanco) from pings, activities and facts; states are data in Themis, modules ask effects (Athena, Forge, Metis wait for the right state, Hermes holds notifications and sends a digest on waking, Oracle sees its state); WebUI badge, Telegram `/stato` `/nondisturbare` → `docs/work/2026-10-10-assistant-presence/` [ext-chat]
 - Claude in Oracle: new provider types "Claude (chiave API)" (`anthropic`, key `ORACLE_ANTHROPIC_API_KEY`, prompt caching) and "Claude (abbonamento)" (`claude_cli`, subscription via the `claude` CLI) selectable per use case in Impostazioni → Modelli; chat modes map to Claude reasoning effort; Forge's Claude Code never sees Oracle's API key → `docs/work/2026-10-10-oracle-claude-haiku/` [ext-chat]

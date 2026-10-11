@@ -6,7 +6,6 @@ domain loading, parallel tool execution, thinking mode events.
 from __future__ import annotations
 
 import json
-import os
 from unittest.mock import MagicMock, patch, call
 import pytest
 
@@ -178,20 +177,19 @@ class TestTokenCounter:
         assert tokens > 0
         assert abs(tokens - 40) < 20  # ~3:1 ratio
 
-    def test_context_window_from_env(self, monkeypatch):
-        """ORACLE_CONTEXT_LENGTH env var controls window size."""
-        monkeypatch.setenv("ORACLE_CONTEXT_LENGTH", "16384")
+    def test_context_window_from_setting(self, monkeypatch):
+        """Window = setting oracle.provider.ollama.num_ctx (no env var)."""
         from core.agent_loop import TokenCounter
-        import core.agent_loop as al
-        al._CONTEXT_WINDOW = int(os.getenv("ORACLE_CONTEXT_LENGTH", "8192"))
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
         counter = TokenCounter()
         assert counter.context_window == 16384
 
-    def test_context_pct(self):
+    def test_context_pct(self, monkeypatch):
         """context_pct returns percentage of window used."""
         from core.agent_loop import TokenCounter
-        import core.agent_loop as al
-        al._CONTEXT_WINDOW = 8192
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 8192)
         counter = TokenCounter()
         pct = counter.context_pct(4096)
         assert pct == 50.0

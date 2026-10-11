@@ -29,8 +29,9 @@ services:
       # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  cache TTL for module-tool registry (int)
       # ORACLE_FORCE_TELEGRAM_TARGET=1  force all subscription channels to use the user's Telegram chat_id (0|1)
       # ── Enhancement Plan tuning (2026-06-18) ────────────────────────
-      # ORACLE_CONTEXT_LENGTH=8192        context window size in tokens (int, default 8K)
-      # ORACLE_COMPACT_THRESHOLD=0.80     compaction trigger at this fraction of window (float)
+      # Context window, Ollama keep-alive, compaction threshold: settings Impostazioni → Oracle → Contesto.
+      # ORACLE_OPENAI_BASE_URL=http://host.docker.internal:8080/v1  OpenAI-compatible server (llama-server, vLLM) → provider `openai`
+      # ORACLE_OPENAI_API_KEY=            only if that server wants a key (put it in app/.env)
       # ORACLE_MAX_PARALLEL_TOOLS=8       max concurrent tool executions (int)
       # ORACLE_MAX_AGENT_TOKENS=0         max cumulative tokens per agent loop, 0=unlimited (int)
       # ORACLE_PREFERENCE_DOMAINS=        JSON override for preference domain definitions

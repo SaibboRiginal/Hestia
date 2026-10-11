@@ -3473,7 +3473,10 @@ paths:
           description: >
             {session_id, context_window, history_messages, history_chars,
              history_tokens_est, tool_count, preference_count,
-             total_tokens_est, context_used_pct, compaction_available}
+             total_tokens_est, context_used_pct, compaction_available,
+             runtime: {<use case>: {calls, provider, model, avg_prompt_tokens, max_prompt_tokens,
+             cache_hit_pct, cache_estimated, avg_load_ms, avg_prompt_ms, tokens_per_second, last_at}}}.
+            context_window = setting oracle.provider.ollama.num_ctx (sent to Ollama on every call).
 
   /api/chat/compact:
     post:

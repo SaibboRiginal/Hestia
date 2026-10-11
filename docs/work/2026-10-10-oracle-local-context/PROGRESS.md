@@ -1,14 +1,17 @@
 # PROGRESS — Oracle local context
 
-Spec: `SPEC.md` v1.3 · resume from the first unchecked box.
+Spec: `SPEC.md` v1.4 · resume from the first unchecked box.
 
 - [x] Brainstorming with the user (thread 2026-10-10), current Oracle context handling studied
-- [x] Dossier created (SPEC v1.0, PROGRESS, CHANGELOG)
-- [ ] User approves SPEC (open points §7)
-- [x] Haiku thread's provider layer on main (0922927): `agents/providers/` (LLMProvider, PROVIDER_TYPES, get_provider), `agents/llm_config.py` load_llm_config(). Ollama/Gemini NOT moved yet, `openai` type not built → both are ours. Thinking is a level (False/True/"deep"). New tunables via `settings_client.setting(...)`, never env.
-- [ ] A move Ollama calls into an `ollama` provider class (register in PROVIDER_TYPES, endpoint in load_llm_config()); `ollama` provider `CONFIG_FIELDS` num_ctx/keep_alive sent on every Ollama call (generate, chat, tools, stream, vision); as `oracle.provider.ollama.*` Themis settings (no new env var); startup log; host Ollama env notes in docs
-- [ ] B `ollama_call_stats` parsing + log per agent; aggregates in `/api/chat/context`; swagger
-- [ ] C prompt audit (static prefix byte-stable, sorted tools); append-only history between compactions; tool-result stubs in agent loop; classifier/extractor model option documented
-- [ ] D `openai` provider (endpoint `ORACLE_OPENAI_BASE_URL`) for llama-server/vLLM (type class from the Haiku thread's layer), usage→stats mapping; docs for llama-server / vLLM
-- [ ] Settings declared in the central registry (when it exists)
-- [ ] Tests (unit/format, mocked HTTP) + docs `Hestia-Oracle/hestia-oracle.md`
+- [x] Dossier created (SPEC v1.0 → v1.3 aligned with central settings v2.0)
+- [x] Haiku thread's provider layer on main (0922927): `agents/providers/`, `agents/llm_config.py`
+- [x] User: "finish everything, then we test" (2026-10-11) → defaults chosen (SPEC §8)
+- [x] A `num_ctx` + `keep_alive` on every Ollama call from settings (`oracle_settings.ollama_request_options`); `TokenCounter` window/threshold from settings; startup `ollama_context_config` + `/api/ps` check
+- [x] B `core/services/llm_stats.py` (Ollama / OpenAI-compatible stats, per use-case label) + `runtime` in `/api/chat/context`; swagger
+- [x] C sorted tools, ACTION INTENT moved to dynamic part, stable history window (`ContextBuilder.stable_window`), tool-result stubs (`_stub_old_tool_results`)
+- [x] D `agents/providers/openai_compat.py` (chat, tools, stream, vision, embeddings, list_models), registered; `ORACLE_OPENAI_BASE_URL`/`ORACLE_OPENAI_API_KEY` in `load_llm_config()`
+- [x] Settings declared in Themis (group Contesto)
+- [x] Tests written: `Hestia-Oracle/tests/test_local_context.py`, TokenCounter tests moved to the setting (not run here, user rule; code smoke-checked with mocks)
+- [x] Docs: `Hestia-Oracle/hestia-oracle.md` (section "Local models"), compose comments, swagger
+- [ ] User test on the real stack: check `event=ollama_context_config`, `event=llm_call_stats` cache_hit_pct over a multi-turn chat, `/api/chat/context` → `runtime`; optionally llama-server via `ORACLE_OPENAI_BASE_URL`
+- [ ] Later (optional): move Ollama/Gemini into provider classes; Anthropic usage into `llm_stats`

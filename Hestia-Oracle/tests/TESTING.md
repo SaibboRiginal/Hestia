@@ -347,7 +347,7 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ### §12.3 Token Counting (3 cases)
 - `test_fallback_heuristic` — Falls back to ~3 chars/token when Ollama unreachable
-- `test_context_window_from_env` — ORACLE_CONTEXT_LENGTH env var controls window
+- `test_context_window_from_setting` — setting `oracle.provider.ollama.num_ctx` controls window
 - `test_context_pct` — Percentage calculation correct
 
 ### §12.4 Preference Domains (5 cases)

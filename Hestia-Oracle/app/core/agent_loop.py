@@ -49,11 +49,16 @@ _EARLY_EXIT_NO_TOOL_TURNS: int = int(
 )
 
 # ── Token counting ───────────────────────────────────────────────────────────────
-# Realistic default: 8 K fits comfortably in 16 GB VRAM (RTX 4080 Ti).
-# Set ORACLE_CONTEXT_LENGTH higher (16 K, 32 K) if you're OK with RAM spill.
-_CONTEXT_WINDOW: int = int(os.getenv("ORACLE_CONTEXT_LENGTH", "8192"))
-# Compaction triggers when estimated tokens exceed this fraction of the window.
-_COMPACT_THRESHOLD: float = float(os.getenv("ORACLE_COMPACT_THRESHOLD", "0.80"))
+# Window and compaction threshold are Themis settings (oracle.provider.ollama.num_ctx,
+# oracle.context.compact_threshold): the same num_ctx is sent to Ollama on every call, so the
+# budget below is the model's real window.
+
+
+def _settings():
+    from core.services import oracle_settings  # lazy: settings import the provider registry
+    return oracle_settings
+
+
 _MAX_PARALLEL_TOOLS: int = int(os.getenv("ORACLE_MAX_PARALLEL_TOOLS", "8"))
 
 # Cached chars-per-token ratio per model name.  Populated lazily via
@@ -110,16 +115,17 @@ class TokenCounter:
 
     @property
     def context_window(self) -> int:
-        return _CONTEXT_WINDOW
+        return _settings().context_window()
 
     @property
     def compact_threshold(self) -> float:
-        return _COMPACT_THRESHOLD
+        return _settings().compact_threshold()
 
     def context_pct(self, token_count: int) -> float:
-        if _CONTEXT_WINDOW <= 0:
+        window = self.context_window
+        if window <= 0:
             return 0.0
-        return (token_count / _CONTEXT_WINDOW) * 100
+        return (token_count / window) * 100
 
     @property
     def model(self) -> str:
@@ -147,6 +153,29 @@ class ToolDefinition:
 class ScratchMessage:
     role: str   # "assistant" | "tool"
     content: str
+    turn: int = -1        # loop turn that produced it
+    stubbed: bool = False
+
+
+# Context editing (Anthropic-style): once the prompt fills this share of the window, tool results
+# older than N turns (setting oracle.context.tool_result_stub_after_turns) become a one-line stub.
+_STUB_PRESSURE = 0.5
+
+
+def _stub_old_tool_results(scratchpad: list[ScratchMessage], turn: int, after_turns: int,
+                           context_pct: float) -> int:
+    """Shorten old tool results in place; returns how many were stubbed. No LLM call."""
+    if after_turns <= 0 or context_pct < _STUB_PRESSURE * 100:
+        return 0
+    count = 0
+    for i, msg in enumerate(scratchpad):
+        if msg.role != "tool" or msg.stubbed or msg.turn < 0 or turn - msg.turn <= after_turns:
+            continue
+        head = msg.content.split("\n", 1)[0][:160]
+        scratchpad[i] = ScratchMessage(
+            "tool", f"{head} […older result shortened; call the tool again if you need it]", msg.turn, True)
+        count += 1
+    return count
 
 
 # ── Agent loop ─────────────────────────────────────────────────────────────────
@@ -259,6 +288,8 @@ def run_agent_loop(
     return the new compacted history text, or None if no change.
     """
     resolved_max_turns = max_turns if max_turns is not None else MAX_AGENT_TURNS
+    # Deterministic order: the tool list is part of the cached prompt prefix.
+    tools = sorted(tools, key=lambda t: t.name)
     tool_map = {t.name: t for t in tools}
     tool_names = sorted(tool_map.keys())
 
@@ -319,8 +350,10 @@ def run_agent_loop(
         system_prompt += f"\n\n{conversation_style}"
         logger.trace("event=agent_loop_conversation_style_injected len=%d", len(conversation_style))
 
+    # Per-request hint: kept out of the static prefix so the cached part does not change with it.
+    action_hint = ""
     if action_intent:
-        system_prompt += prompt_config.optional_section(
+        action_hint = prompt_config.optional_section(
             "ACTION INTENT",
             "The user appears to want a state-changing action. Prioritise calling the "
             "appropriate tool over giving a text-only answer. If no matching tool "
@@ -345,6 +378,8 @@ def run_agent_loop(
         if history_text:
             dynamic_parts.append(f"CONVERSATION HISTORY:\n{history_text}")
         dynamic_parts.append(f"USER: {user_message}")
+        if action_hint:
+            dynamic_parts.append(action_hint.strip())
         for msg in scratchpad:
             dynamic_parts.append(f"[{msg.role.upper()}]: {msg.content}")
         if is_final:
@@ -377,6 +412,11 @@ def run_agent_loop(
                     history_text = _compacted
 
         prompt = _build_prompt(is_final=is_last_turn)
+        _stubbed = _stub_old_tool_results(scratchpad, turn, _settings().stub_after_turns(),
+                                          _counter.context_pct(_est_tokens(prompt)))
+        if _stubbed:
+            logger.info("event=agent_loop_tool_results_stubbed turn=%d count=%d", turn, _stubbed)
+            prompt = _build_prompt(is_final=is_last_turn)
 
         _prompt_chars = len(prompt)
         _prompt_tokens_est = _est_tokens(prompt)
@@ -612,7 +652,7 @@ def run_agent_loop(
 
                 # Format scratchpad entry
                 _tool_scratch = f"[{tn}] → {'✅' if ok else '❌'} {result_trunc}"
-                scratchpad.append(ScratchMessage("tool", _tool_scratch))
+                scratchpad.append(ScratchMessage("tool", _tool_scratch, turn))
 
                 # Log for post-answer summary
                 _tdef = next((t for t in tools if t.name == tn), None)

@@ -27,6 +27,10 @@ def load_llm_config() -> dict[str, dict[str, Any]]:
         "anthropic": {
             "api_key": os.getenv("ORACLE_ANTHROPIC_API_KEY", "").strip(),
         },
+        "openai": {  # llama-server / vLLM / LM Studio — one OpenAI-compatible endpoint
+            "base_url": os.getenv("ORACLE_OPENAI_BASE_URL", "").strip(),
+            "api_key": os.getenv("ORACLE_OPENAI_API_KEY", "").strip(),
+        },
         "claude_cli": {
             "bin": os.getenv("ORACLE_CLAUDE_BIN", "claude"),
             "authed": bool(os.getenv("CLAUDE_CODE_OAUTH_TOKEN", "").strip()) or creds.exists(),

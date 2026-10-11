@@ -39,6 +39,40 @@ class ContextBuilder:
         self.max_history_chars = max_history_chars
         self.max_entities_in_context = max_entities_in_context
         self.max_field_chars = max_field_chars
+        # session -> id of the first message of its history window (see stable_window)
+        self._window_start: dict[str, Any] = {}
+
+    @property
+    def history_step(self) -> int:
+        return max(1, self.max_history_messages // 2)
+
+    @property
+    def history_fetch_limit(self) -> int:
+        """Messages to load for the hot path: the window plus room to grow before it moves."""
+        return self.max_history_messages + self.history_step
+
+    def stable_window(self, history_data: list, session_id: str | None) -> list:
+        """History window that only grows between jumps, instead of sliding every turn.
+
+        A sliding "last N" window changes the start of the history block each turn, so the model
+        server can reuse nothing after the system prompt. Here the start stays on the same message
+        until the window reaches N + N/2 messages, then jumps to the last N (prompt-cache friendly).
+        """
+        limit = self.max_history_messages
+        if not session_id or not history_data or any(not isinstance(m, dict) or "id" not in m
+                                                     for m in history_data):
+            return history_data[-limit:] if limit else []
+        ids = [m["id"] for m in history_data]
+        start_id = self._window_start.get(session_id)
+        if start_id in ids:
+            idx = ids.index(start_id)
+            if len(ids) - idx <= limit + self.history_step:
+                return history_data[idx:]
+        idx = max(0, len(ids) - limit)
+        if len(self._window_start) > 500:  # bounded: forget the oldest sessions
+            self._window_start.pop(next(iter(self._window_start)))
+        self._window_start[session_id] = ids[idx]
+        return history_data[idx:]
 
     def truncate(self, value: Any, max_len: int) -> str:
         clean = str(value).strip()
@@ -46,11 +80,12 @@ class ContextBuilder:
             return clean
         return clean[: max_len - 1] + "…"
 
-    def compact_history(self, history_data: list) -> str:
+    def compact_history(self, history_data: list, session_id: str | None = None) -> str:
         if not history_data:
             return ""
 
-        trimmed = history_data[-self.max_history_messages:]
+        trimmed = (self.stable_window(history_data, session_id) if session_id
+                   else history_data[-self.max_history_messages:])
         lines = []
         for message in trimmed:
             role = "User" if message.get("role") == "user" else "Hestia"

@@ -59,6 +59,7 @@ class LLMProvider:
     LABEL: str = ""
     CONFIG_FIELDS: tuple[ConfigField, ...] = ()
     CAPABILITIES: frozenset[str] = frozenset()
+    label: str = ""  # use case of the agent using it (runtime stats)
 
     def __init__(self, config: dict[str, Any] | None = None):
         self.config: dict[str, Any] = dict(config or {})

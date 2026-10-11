@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.3 |
+| **Version** | 1.4 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
-| **Status** | Draft — waiting for user approval; no code yet |
+| **Status** | Implemented (A–D) on main 2026-10-11 — waiting for the user's real test |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -145,3 +145,24 @@ context and compact it. The user chose "dossier only" for now: plan first, code 
 1. Approve the phase order A → B → C → D (or pick a subset).
 2. Default `keep_alive`: `30m` (frees VRAM when idle) or `-1` (always loaded)?
 3. Host GPU/OS for D: is WSL/Linux available (vLLM) or only Windows (llama-server)?
+
+## 8. Implementation notes (v1.4, 2026-10-11)
+
+Open points decided by default (user: "finish everything, then we test"): order A → B → C → D; keep-alive `30m`;
+D built as one generic OpenAI-compatible provider (llama-server first, vLLM works the same).
+- **Ollama stays inline in `UniversalAgent`** (not moved into a provider class): the Haiku thread left it there and the
+  existing tests mock its requests; it reads `num_ctx`/`keep_alive` through `oracle_settings.ollama_request_options()`
+  (settings, no env). Moving it into `agents/providers/` is a later clean-up, not needed for any acceptance criterion.
+- Settings (group **Contesto**): `oracle.provider.ollama.num_ctx`, `oracle.provider.ollama.keep_alive`
+  (`5m|30m|2h|always`), `oracle.context.compact_threshold` (replaces env `ORACLE_COMPACT_THRESHOLD`),
+  `oracle.context.tool_result_stub_after_turns`, `oracle.provider.openai.cache_prompt`. Env `ORACLE_CONTEXT_LENGTH`
+  removed (no legacy compatibility). Provider tunables reach a provider type through `get_provider()`
+  (`oracle_settings.provider_settings`), infrastructure through `load_llm_config()`.
+- Tool-result stubs apply only when the loop prompt is ≥ 50 % of the window (stubbing changes the prefix, so it is
+  not done while there is room).
+- History window: per-session first-message id kept in memory; window grows to N + N/2 then jumps to the last N.
+- Stats: in memory, last 50 calls per use-case label (`generic`, `reasoning`, `code`, `embedding`, `*_fallback`,
+  `api_generate`); Anthropic usage is still only logged by its provider (not in `runtime`).
+- Not done (out of scope / decided against): a dedicated small model for the classifier (no new use case; the
+  `OLLAMA_NUM_PARALLEL` tip is documented instead).
+

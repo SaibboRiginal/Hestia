@@ -1,6 +1,7 @@
 import time
 import uuid
 import os
+import threading
 import requests
 import logging
 from pathlib import Path
@@ -170,12 +171,32 @@ def llm_models_endpoint(provider: str = "ollama"):
 def register_on_hub_startup():
     """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
     _oracle_settings.settings.start()
+    threading.Thread(target=_log_ollama_context, daemon=True, name="ollama-context-check").start()
     _register_on_hub()
     try:
         from hestia_common.startup_utils import start_hub_keepalive
         start_hub_keepalive(_register_on_hub, logger=logger)
     except ImportError:
         logger.warning("[🔄] event=hub_keepalive_unavailable reason=hestia_common_missing")
+
+
+def _log_ollama_context():
+    """Log the context/keep-alive Oracle sends and warn when a loaded model runs smaller."""
+    opts = _oracle_settings.ollama_request_options()
+    num_ctx = opts["options"]["num_ctx"]
+    logger.info("event=ollama_context_config num_ctx=%s keep_alive=%s", num_ctx, opts["keep_alive"])
+    base = (os.getenv("OLLAMA_API_URL") or os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+            ).split("/api/")[0].rstrip("/")
+    try:
+        models = (requests.get(f"{base}/api/ps", timeout=5).json() or {}).get("models") or []
+    except Exception as exc:
+        logger.debug("event=ollama_ps_unavailable error=%s", exc)
+        return
+    for m in models:
+        loaded = m.get("context_length")
+        if loaded and int(loaded) < int(num_ctx):
+            logger.warning("[🔄] event=ollama_context_smaller model=%s loaded_ctx=%s wanted=%s "
+                           "— reloads with the right size on the next Oracle call", m.get("name"), loaded, num_ctx)
 
 
 def _register_on_hub():
@@ -885,7 +906,7 @@ def llm_generate_endpoint(req: dict):
         provider = req.get("provider") or default_provider
 
         agent = UniversalAgent(
-            role_prompt="", provider=provider, model_name=model)
+            role_prompt="", provider=provider, model_name=model, label="api_generate")
         try:
             response_text = agent.ask(prompt)
             return {"response": response_text, "model": model, "provider": provider}
@@ -899,7 +920,7 @@ def llm_generate_endpoint(req: dict):
             try:
                 fallback_agent = UniversalAgent(
                     role_prompt="", provider=fallback_provider,
-                    model_name=fallback_model)
+                    model_name=fallback_model, label="api_generate")
                 response_text = fallback_agent.ask(prompt)
                 logger.info(
                     "event=llm_generate_fallback_success "
@@ -943,7 +964,8 @@ def get_context_stats(session_id: str):
     """Return context-window usage stats for *session_id*.
 
     Token counts via Ollama /api/tokenize (cached) with heuristic fallback.
-    Context window size is configurable via ORACLE_CONTEXT_LENGTH (default 8K).
+    Context window = setting oracle.provider.ollama.num_ctx (sent to Ollama on every call);
+    ``runtime`` = measured per-agent stats of the last calls (prompt size, cache reuse, speed).
     """
     try:
         stats = engine.estimate_context_stats(session_id)

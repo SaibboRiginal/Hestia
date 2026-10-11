@@ -1,7 +1,8 @@
 """Provider types dispatched by ``UniversalAgent`` (see ``base.py``).
 
 ``ollama`` and ``gemini`` are still implemented inline in ``UniversalAgent``; new types
-live here and register in ``PROVIDER_TYPES``.
+live here and register in ``PROVIDER_TYPES``.  A type's config = infrastructure from
+``load_llm_config()`` (env) + its tunables from Themis (``oracle_settings.provider_settings``).
 """
 from __future__ import annotations
 
@@ -9,10 +10,12 @@ from agents.llm_config import load_llm_config
 from agents.providers.anthropic_api import AnthropicProvider
 from agents.providers.base import LLMProvider
 from agents.providers.claude_cli import ClaudeCliProvider
+from agents.providers.openai_compat import OpenAICompatProvider
 
 PROVIDER_TYPES: dict[str, type[LLMProvider]] = {
     AnthropicProvider.TYPE: AnthropicProvider,
     ClaudeCliProvider.TYPE: ClaudeCliProvider,
+    OpenAICompatProvider.TYPE: OpenAICompatProvider,
 }
 
 
@@ -23,7 +26,13 @@ def is_provider_type(name: str) -> bool:
 def get_provider(name: str) -> LLMProvider:
     """A provider instance built from the current infrastructure config."""
     name = str(name or "").strip().lower()
-    return PROVIDER_TYPES[name](load_llm_config().get(name, {}))
+    config = dict(load_llm_config().get(name, {}))
+    try:
+        from core.services import oracle_settings  # lazy: oracle_settings imports this module
+        config.update(oracle_settings.provider_settings(name))
+    except Exception:  # settings not importable yet (module import time): type defaults apply
+        pass
+    return PROVIDER_TYPES[name](config)
 
 
 def available_types() -> list[tuple[str, str]]:
