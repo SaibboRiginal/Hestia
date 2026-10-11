@@ -20,4 +20,5 @@ Spec: `SPEC.md` v2.2 · resume from the first unchecked box.
 - [x] Settings registration (§4.7) — `SettingsClient("chronos")`
 - [x] Docs: hestia-chronos/archive/shared/oracle/telegram/webui/athena/hephaestus/metis/argus/hermes.md, docs/ARCHITECTURE.md, swagger (no env change: everything is a Themis setting)
 - [x] v2.3 feedback: popover explains state, effects, dnd; history tab (2026-10-11)
+- [x] Fix: state popover was clipped by the sidebar (overflow hidden) → fixed positioning (2026-10-11)
 - [ ] User test: .NET WebUI build + real run (`up-all.bat --build`); pytest suites not run here (smoke-checked only)

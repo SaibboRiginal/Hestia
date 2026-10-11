@@ -59,13 +59,15 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
         </nav>
         @if (presence.state(); as p) {
           <div class="presence-wrap">
-            <button class="item presence" [attr.data-tone]="presence.tone()" (click)="presenceOpen.set(!presenceOpen())"
+            <button class="item presence" [attr.data-tone]="presence.tone()" (click)="togglePresence($event)"
                     [attr.title]="'Stato: ' + p.label + ' · ultima interazione ' + ago(p.idle_minutes)"
                     [attr.aria-expanded]="presenceOpen()">
               <span class="pdot"></span><span class="plabel">{{ p.label }}</span>
             </button>
             @if (presenceOpen()) {
-              <div class="presence-pop" role="dialog" aria-label="Stato dell'assistente">
+              <div class="presence-pop" role="dialog" aria-label="Stato dell'assistente"
+                   [style.left.px]="presencePos().left" [style.bottom.px]="presencePos().bottom"
+                   [style.max-height.px]="presencePos().maxHeight">
                 <div class="ptitle">{{ p.emoji }} {{ p.label }}</div>
                 @if (p.help) { <div class="pline">{{ p.help }}</div> }
                 <div class="pline dim">Ultima interazione: {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
@@ -155,7 +157,8 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
     .presence[data-tone=sleep] .pdot { background: var(--accent); }
     .presence[data-tone=dnd] .pdot { background: var(--danger); }
     .presence .plabel { overflow: hidden; text-overflow: ellipsis; }
-    .presence-pop { position: absolute; bottom: calc(100% + 6px); left: 0; width: 300px; z-index: 50; padding: 12px;
+    /* fixed: the sidebar clips its overflow (resizable/collapsible width), so the popover lives in the viewport */
+    .presence-pop { position: fixed; width: min(300px, calc(100vw - 16px)); z-index: 900; padding: 12px; overflow-y: auto;
                     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 10px);
                     box-shadow: var(--shadow-3); display: flex; flex-direction: column; gap: 4px; }
     .ptitle { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
@@ -199,6 +202,23 @@ export class ShellComponent {
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
   presenceOpen = signal(false);
+  presencePos = signal({ left: 8, bottom: 8, maxHeight: 480 });
+
+  /** Opens the state popover above its button, in viewport coordinates (never clipped by the sidebar). */
+  togglePresence(ev: MouseEvent): void {
+    if (this.presenceOpen()) { this.presenceOpen.set(false); return; }
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const width = Math.min(300, window.innerWidth - 16);
+    this.presencePos.set({
+      left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
+      bottom: window.innerHeight - r.top + 6,
+      maxHeight: Math.max(160, r.top - 14),
+    });
+    this.presenceOpen.set(true);
+  }
+
+  @HostListener('window:resize')
+  closePresenceOnResize(): void { if (this.presenceOpen()) this.presenceOpen.set(false); }
   presenceTab = signal<'effects' | 'history'>('effects');
   reasonLabel = reasonLabel;
 
@@ -244,6 +264,7 @@ export class ShellComponent {
   /** "Crea con Hestia" from anywhere. */
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
+    if (e.key === 'Escape' && this.presenceOpen()) { this.presenceOpen.set(false); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j') {
       e.preventDefault();
       this.assistant.toggle();

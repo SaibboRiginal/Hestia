@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-11
+- Fix: WebUI assistant-state popover no longer cut off by the sidebar → `docs/work/2026-10-10-assistant-presence/` [ext-chat]
 - CI "Hestia Tests" green again (Hephaestus): `test_forge_context_fit` imported `forge.*` instead of `app.forge.*` (collection error), and `brief()` sized each request 1 char too long so with 8 tasks the last one was dropped → `docs/work/2026-10-11-forge-task-list-context/` [ext-chat]
 - WebUI Impostazioni like VS Code: one search over every personal and system setting, Personali in the same style, resizable sidebar (`<hx-resize>`) with match counts → `docs/work/2026-10-10-central-settings/` [ext-chat]
 - Forge manual pause: switch `hephaestus.forge.paused` (Themis, WebUI Sviluppo **Pausa/Riprendi**, Telegram `forge_pause`); while on nothing starts on its own (module tasks held as silent proposals, no Claude-window starts), your own requests and manual Avvia still run, resuming restarts nothing → `docs/work/2026-10-11-forge-manual-pause/` [ext-chat]
