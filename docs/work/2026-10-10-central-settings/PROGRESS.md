@@ -46,3 +46,6 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
     (should become agenda jobs); swagger lacks the per-module `/api/settings/*` endpoints.
 - [ ] Docs: hestia-<name>.md, swagger, .env.example notes, docs/ARCHITECTURE.md rule
 - [x] Out of scope fix: Archive `avvisi_recenti` response prompt no longer Scout-specific (generic, caveman style)
+- [x] v2.3 Impostazioni VS Code-like (2026-10-11): one search over everything (local, instant), sidebar
+  Personali + Sistema with match counts, resizable; Personali rows = `<hx-setting-shell>`; user-scope settings
+  only in Personali. "Themis non risponde" was the Hub registration 422 fixed in 9c8ebc8 (rebuild hub + themis).

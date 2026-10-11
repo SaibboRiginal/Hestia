@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
-import { BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SegmentOption, SpinnerComponent, Tone, ToggleComponent, ResizeHandleComponent, savedWidth } from '../../ui';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SegmentOption, SpinnerComponent, Tone, ToggleComponent } from '../../ui';
 import { ModuleInfo, PresetGroup, Proposal, SettingItem } from './central-settings.api';
 import { CentralSettingsStore, isModified, moduleLabel } from './central-settings.store';
 import { SettingControlComponent } from './setting-control.component';
 import { SettingRowComponent, showValue } from './setting-row.component';
 
-const HEALTH: Record<string, { tone: Tone; label: string }> = {
+export const HEALTH: Record<string, { tone: Tone; label: string }> = {
   healthy: { tone: 'success', label: 'attivo' },
   degraded: { tone: 'warning', label: 'con problemi' },
   unavailable: { tone: 'danger', label: 'non risponde' },
@@ -16,43 +16,23 @@ const HEALTH: Record<string, { tone: Tone; label: string }> = {
 interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingItem>; }
 
 /**
- * Impostazioni → Sistema: every module's settings (Themis). Overview = module status cards
- * ("mezza dashboard"); a module = its groups, presets, settings; search spans all modules.
+ * Impostazioni → Sistema content: every module's settings (Themis). Overview = module status cards
+ * ("mezza dashboard"); a module = its groups, presets, settings; a search shows every match.
+ * The sidebar and the search box live in the page (shared with Personali).
  */
 @Component({
   selector: 'app-system-settings',
   imports: [BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SpinnerComponent,
-            ToggleComponent, ResizeHandleComponent, SettingRowComponent, SettingControlComponent],
+            ToggleComponent, SettingRowComponent, SettingControlComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <aside class="side" [style.--side-w.px]="sideW()">
-      <label class="search">
-        <hx-icon name="search" [size]="15" />
-        <input class="hx-input" type="search" placeholder="Cerca un'impostazione…" [value]="store.query()"
-               (input)="store.search($any($event.target).value)" aria-label="Cerca impostazioni" />
-      </label>
-      <nav>
-        <button class="mod" [class.on]="!store.selected() && !store.query()" (click)="store.select(null)">
-          <hx-icon name="grid" [size]="15" /><span class="hx-grow">Panoramica</span>
-        </button>
-        @for (m of store.modules(); track m.module) {
-          <button class="mod" [class.on]="store.selected() === m.module && !store.query()" (click)="store.select(m.module)">
-            <span class="dot" [attr.data-tone]="health(m).tone" [title]="health(m).label"></span>
-            <span class="hx-grow">{{ name(m.module) }}</span>
-            @if (m.pending_proposals) { <hx-badge tone="accent" [title]="'Proposte in attesa'">{{ m.pending_proposals }}</hx-badge> }
-          </button>
-        }
-      </nav>
-    </aside>
-    <hx-resize [(width)]="sideW" [inline]="true" [min]="180" [max]="420" [def]="230" key="settings-side" />
-
     <section class="main">
       @if (store.offline()) {
         <div class="hx-notices"><div class="hx-notice" data-level="error"><hx-icon name="alert" [size]="15" />
           <span class="nt">Impostazioni non raggiungibili</span><span class="nd">Themis non risponde: riprovo da solo.</span></div></div>
       }
 
-      @for (p of store.proposals(); track p.proposal_id) {
+      @if (!store.query()) { @for (p of store.proposals(); track p.proposal_id) {
         <div class="proposal">
           <hx-icon name="sparkle" [size]="16" />
           <div class="hx-grow">
@@ -62,7 +42,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
           <button hx-btn size="sm" variant="primary" icon="check" (click)="store.decide(p, true)">Approva</button>
           <button hx-btn size="sm" variant="ghost" (click)="store.decide(p, false)">Rifiuta</button>
         </div>
-      }
+      } }
 
       @if (!store.selected() && !store.query()) {
         <div class="cards">
@@ -94,7 +74,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
       } @else {
         <div class="bar">
           <div class="hx-grow">
-            @if (store.query()) { <h3>Risultati per «{{ store.query() }}»</h3> }
+            @if (store.query()) { <h3>Sistema</h3> }
             @else { @if (current(); as m) {
               <h3>{{ name(m.module) }} <hx-badge [tone]="health(m).tone" dot>{{ health(m).label }}</hx-badge></h3>
             } }
@@ -112,7 +92,9 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
         @if (store.loading() && !store.items().length) { <div class="center"><hx-spinner /></div> }
         @else if (!store.sections().length) {
           <hx-empty icon="search" title="Niente da mostrare">
-            @if (store.onlyModified()) { Nessuna impostazione modificata qui. } @else { Nessuna impostazione trovata. }
+            @if (store.onlyModified()) { Nessuna impostazione modificata qui. }
+            @else if (store.hiddenAdvanced()) { Ci sono {{ store.hiddenAdvanced() }} impostazioni avanzate: attiva «Avanzate». }
+            @else { Nessuna impostazione di sistema trovata. }
           </hx-empty>
         }
 
@@ -167,22 +149,9 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
       }
     </section>`,
   styles: [`
-    :host { display: flex; flex: 1; min-height: 0; }
-    .side { width: var(--side-w, 230px); flex-shrink: 0; border-right: 1px solid var(--border); padding: 14px 10px; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 10px; }
-    .search { position: relative; display: block; }
-    .search hx-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
-    .search .hx-input { padding-left: 32px; }
-    nav { display: flex; flex-direction: column; gap: 1px; }
-    .mod { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--radius-md); font-size: 13.5px;
-           color: var(--text-2); text-align: left; }
-    .mod:hover { background: var(--surface-2); color: var(--text); }
-    .mod.on { background: var(--accent-soft); color: var(--accent); }
+    :host { display: block; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
-    .dot[data-tone=success] { background: var(--success); }
-    .dot[data-tone=warning] { background: var(--warning); }
-    .dot[data-tone=danger] { background: var(--danger); }
-    .main { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 24px 40px; display: flex; flex-direction: column; gap: 14px; }
+    .main { display: flex; flex-direction: column; gap: 14px; }
     .proposal { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-lg);
                 background: var(--accent-soft); color: var(--text); flex-wrap: wrap; }
     .proposal hx-icon { color: var(--accent); }
@@ -218,30 +187,13 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
     .cell { display: flex; align-items: flex-start; gap: 4px; min-width: 150px; }
     .cell hx-setting-control { flex: 1; }
     .rst { color: var(--accent); padding: 8px 2px; }
-    @media (max-width: 760px) {
-      :host { flex-direction: column; }
-      .side { width: auto; border-right: 0; border-bottom: 1px solid var(--border); max-height: none; }
-      nav { flex-direction: row; overflow-x: auto; }
-      .mod { white-space: nowrap; }
-      .main { padding: 14px 14px 40px; }
-    }
   `],
 })
-export class SystemSettingsComponent implements OnInit, OnDestroy {
+export class SystemSettingsComponent {
   readonly store = inject(CentralSettingsStore);
-  /** Module column, resizable (<hx-resize>), width kept per browser. */
-  readonly sideW = signal(savedWidth('settings-side', 230));
-  /** Deep link: ?tab=system&module=oracle */
-  module = input<string | null>(null);
 
   readonly current = computed(() => this.store.modulesById().get(this.store.selected() ?? '') ?? null);
   readonly advancedLabel = computed(() => this.store.hiddenAdvanced() ? `Avanzate (${this.store.hiddenAdvanced()})` : 'Avanzate');
-
-  ngOnInit() {
-    if (this.module()) this.store.selected.set(this.module());
-    void this.store.init();
-  }
-  ngOnDestroy() { this.store.stopPolling(); }
 
   name = moduleLabel;
   modified = isModified;

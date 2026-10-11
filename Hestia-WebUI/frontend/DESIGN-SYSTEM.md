@@ -138,3 +138,5 @@ Any page can show a Hestia setting (Themis) with `<hx-setting [item]>` (full row
 history/undo) or just `<hx-setting-control [item] [compact] (commit)>` (the input), wired to
 `CentralSettingsStore.set(item, value)`. Never build a custom form for a module setting: declare it in the module
 (`hestia_common.settings_client.setting`, optional `row`/`column` for a table) and it appears in Impostazioni → Sistema.
+A setting that lives only in this client uses `<hx-setting-shell label help [wide]>` around its control, so every
+row of Impostazioni looks the same and the page search finds it (add it to `personal-settings.component.ts`).

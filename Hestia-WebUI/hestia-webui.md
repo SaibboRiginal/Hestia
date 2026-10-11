@@ -127,12 +127,19 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
   (list → task with back button).
 
-### Impostazioni → Sistema (2026-10-10, `features/settings/`)
+### Impostazioni (2026-10-10, VS Code-like since 2026-10-11, `features/settings/`)
 
-- Tabs *Personali* (this client: theme, tone, notices, session) and *Sistema* (central settings, Themis).
-  Deep link `/settings?tab=system&module=oracle`.
-- Sistema: left = search (across all modules, done by Themis) + *Panoramica* + modules with a health dot and
-  pending proposals; *Panoramica* = module cards (health from Hub, version, settings count, proposals) and the
+- One page, no tabs: a search box in the header (Ctrl/⌘+F, Esc clears) over **every** setting, personal and
+  system, filtered locally and instantly (all words must appear in label, help, key, group or module); a
+  resizable sidebar (drag the edge, double-click resets, width kept per browser) with *Personali* (Aspetto,
+  Assistente, Messaggi di sistema, Sessione) and *Sistema* (Panoramica + modules with health dot and settings
+  count; while searching every entry shows its number of matches, the others are dimmed).
+  Deep links `/settings?section=assistente`, `/settings?tab=system`, `/settings?tab=system&module=oracle`.
+- Personali use the same rows as Sistema (`<hx-setting-shell>`); tone and instructions are the profile values in
+  Themis (WebUI settings API), any other `scope: user` setting a module declares appears under *Assistente*
+  as a normal `<hx-setting>`. User-scope settings are not repeated in the module pages.
+- Sistema: *Panoramica* +
+  modules with a health dot and pending proposals; *Panoramica* = module cards (health from Hub, version, settings count, proposals) and the
   services without settings yet. A module = its groups; a group with presets shows *Economico / … /
   Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table
   (Oracle: use case × fornitore / modello / riserva). Filters *Solo modificate* and *Avanzate (N)*.
@@ -143,7 +150,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   options else dropdown, number + unit, model name with suggestions from `options`, 24h time, text, list one per
   line, JSON). Emits only complete values; Themis validates and its Italian error goes to a toast.
   Reusable outside the page (chat quick menu, P4).
-- `central-settings.store.ts`: reloads what Themis answers after every change (toast with *Annulla*) and polls
+- `central-settings.store.ts`: loads every setting once (`items` without filters), reloads what Themis answers after every change (toast with *Annulla*) and polls
   `revision` every 15 s while visible, so changes from Telegram, another browser or an approved proposal show up.
   Pending proposals appear as a banner with *Approva / Rifiuta*.
 

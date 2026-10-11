@@ -9,15 +9,32 @@ export function moduleLabel(id: string): string {
   return id ? id.charAt(0).toUpperCase() + id.slice(1) : id;
 }
 
+/** Lowercase, accent-free text for search. */
+export function norm(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/** VS Code-like search: every word of the query must appear somewhere in the texts. */
+export function matches(query: string, ...texts: (string | null | undefined)[]): boolean {
+  const words = norm(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const hay = norm(texts.filter(Boolean).join(' '));
+  return words.every(w => hay.includes(w));
+}
+
+/** Personal settings that Personali edits with its own rows (profile values via the WebUI settings API). */
+const PERSONAL_COVERED = new Set(['oracle.chat.tone', 'oracle.chat.instructions']);
+
 /** True when the setting differs from its declared default. */
 export function isModified(i: SettingItem): boolean {
   return i.source !== 'default' && JSON.stringify(i.value) !== JSON.stringify(i.default);
 }
 
 /**
- * Impostazioni → Sistema state. Themis is the source of truth: after every change the store
- * reloads what Themis answers (validated value, status), and a cheap revision poll picks up
- * changes made elsewhere (Telegram, an approved proposal, another browser).
+ * Impostazioni state (system part). Themis is the source of truth: every setting is loaded once
+ * (a few hundred rows), search and module selection filter locally (instant, VS Code-like); after
+ * every change the store reloads what Themis answers (validated value, status), and a cheap
+ * revision poll picks up changes made elsewhere (Telegram, an approved proposal, another browser).
  */
 @Injectable({ providedIn: 'root' })
 export class CentralSettingsStore {
@@ -39,11 +56,32 @@ export class CentralSettingsStore {
   private revision = '';
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  /** Items after the "solo modificate" / "avanzate" filters (search is done by Themis). */
-  readonly visible = computed(() => this.items().filter(i =>
+  /** Personal (scope user) settings live in Impostazioni → Personali, not in a module page. */
+  readonly systemItems = computed(() => this.items().filter(i => i.scope !== 'user'));
+  /** Personal settings without a dedicated row in Personali (shown there as generic rows). */
+  readonly personalExtra = computed(() => this.items().filter(i => i.scope === 'user' && !PERSONAL_COVERED.has(i.key)
+    && matches(this.query(), i.label, i.help, i.key, i.group, moduleLabel(i.module))));
+
+  /** Settings matching the search (whole system), or the selected module's. */
+  readonly scoped = computed(() => {
+    const q = this.query().trim();
+    if (q) return this.systemItems().filter(i => matches(q, i.label, i.help, i.key, i.group, moduleLabel(i.module)));
+    const m = this.selected();
+    return m ? this.systemItems().filter(i => i.module === m) : [];
+  });
+
+  /** Items after the "solo modificate" / "avanzate" filters. */
+  readonly visible = computed(() => this.scoped().filter(i =>
     (this.showAdvanced() || !i.advanced || isModified(i)) && (!this.onlyModified() || isModified(i))));
 
-  readonly hiddenAdvanced = computed(() => this.showAdvanced() ? 0 : this.items().filter(i => i.advanced && !isModified(i)).length);
+  readonly hiddenAdvanced = computed(() => this.showAdvanced() ? 0 : this.scoped().filter(i => i.advanced && !isModified(i)).length);
+
+  /** Search hits per module (sidebar counters while searching). */
+  readonly hitsByModule = computed(() => {
+    const out = new Map<string, number>();
+    if (this.query().trim()) for (const i of this.visible()) out.set(i.module, (out.get(i.module) ?? 0) + 1);
+    return out;
+  });
 
   /** Visible items grouped by module, then by group (search across modules shows several). */
   readonly sections = computed(() => {
@@ -59,7 +97,7 @@ export class CentralSettingsStore {
     return out;
   });
 
-  readonly restartNeeded = computed(() => this.items().filter(i => i.status === 'restart_required'));
+  readonly restartNeeded = computed(() => this.scoped().filter(i => i.status === 'restart_required'));
   readonly modulesById = computed(() => new Map(this.modules().map(m => [m.module, m])));
 
   /** Value of any loaded setting (for depends_on). */
@@ -82,6 +120,7 @@ export class CentralSettingsStore {
 
   // ── loading ───────────────────────────────────────────────────────────
   async init(): Promise<void> {
+    if (this.timer) return;                            // already live (page re-opened)
     await Promise.all([this.loadModules(), this.loadItems(), this.loadProposals()]);
     this.startPolling();
   }
@@ -99,12 +138,9 @@ export class CentralSettingsStore {
   }
 
   async loadItems(): Promise<void> {
-    const q = this.query().trim();
-    const module = q ? null : this.selected();
-    if (!q && !module) { this.items.set([]); this.presets.set([]); return; }
     this.loading.set(true);
     try {
-      const page = await this.api.items(module, q || null);
+      const page = await this.api.items();
       this.items.set(page.items ?? []);
       this.presets.set(page.presets ?? []);
       this.revision = page.revision ?? this.revision;
@@ -127,13 +163,9 @@ export class CentralSettingsStore {
   select(module: string | null): void {
     this.selected.set(module);
     this.query.set('');
-    void this.loadItems();
   }
 
-  search(q: string): void {
-    this.query.set(q);
-    void this.loadItems();
-  }
+  search(q: string): void { this.query.set(q); }
 
   startPolling(): void {
     if (this.timer) return;

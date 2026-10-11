@@ -1,161 +1,160 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { SystemSettingsComponent } from './system-settings.component';
-import { ThemeService } from '../../core/theme/theme.service';
-import { SettingsService } from '../../services/settings.service';
-import { SessionService } from '../../services/session.service';
-import { ButtonComponent, DialogService, FieldComponent, IconComponent, PageHeaderComponent, SegmentedComponent, SegmentOption, ToastService, ToggleComponent } from '../../ui';
-import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../services/notice-prefs.service';
+import { BadgeComponent, IconComponent, ResizeHandleComponent, savedWidth } from '../../ui';
+import { ModuleInfo } from './central-settings.api';
+import { CentralSettingsStore, moduleLabel } from './central-settings.store';
+import { PERSONAL_SECTIONS, PersonalSettingsComponent, personalHits } from './personal-settings.component';
+import { HEALTH, SystemSettingsComponent } from './system-settings.component';
 
-/** Personali (appearance, assistant behaviour for this client) + Sistema (central settings, Themis). */
+/**
+ * Impostazioni, VS Code-like: one search box over every setting (personal and system), a
+ * resizable sidebar (Personali sections, then Sistema: overview + modules with their state and
+ * the number of matches while searching), and the content in the same rows everywhere.
+ * Deep links: /settings?tab=system&module=oracle · /settings?section=assistente
+ */
 @Component({
   selector: 'app-settings-page',
-  imports: [FormsModule, SystemSettingsComponent, PageHeaderComponent, ButtonComponent, IconComponent, FieldComponent, SegmentedComponent, ToggleComponent],
+  imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header title="Impostazioni" [subtitle]="tab() === 'system' ? 'Tutti i moduli di Hestia: valori, stato, preset' : 'Questo client e il tuo modo di usare Hestia'">
-      <hx-segmented [options]="tabs" [value]="tab()" (changed)="setTab($event)" />
-    </hx-page-header>
-    @if (tab() === 'system') {
-      <app-system-settings [module]="module" />
-    } @else {
-    <div class="body">
-      <section>
-        <h3><hx-icon name="palette" [size]="17" /> Aspetto</h3>
-        <div class="themes">
-          <button class="th" [class.on]="theme.selected() === 'auto'" (click)="theme.set('auto')">
-            <span class="pv auto"><i></i><i></i></span><span>Automatico (sistema)</span>
+    <header class="top">
+      <h1>Impostazioni</h1>
+      <label class="search">
+        <hx-icon name="search" [size]="16" />
+        <input #q class="hx-input" type="search" placeholder="Cerca in tutte le impostazioni (Ctrl+F)" [value]="store.query()"
+               (input)="store.search($any($event.target).value)" (keydown.escape)="store.search('')" aria-label="Cerca impostazioni" />
+        @if (store.query()) { <span class="count">{{ totalHits() === 1 ? '1 risultato' : totalHits() + ' risultati' }}</span> }
+      </label>
+    </header>
+
+    <div class="layout">
+      <aside class="side" [style.width.px]="width()">
+        <div class="head">Personali</div>
+        @for (s of personal; track s.id) {
+          <button class="item" [class.on]="!searching() && view() === 'p:' + s.id" [class.none]="searching() && !pHits().get(s.id)"
+                  (click)="open('p:' + s.id)">
+            <hx-icon [name]="s.icon" [size]="15" /><span class="hx-grow">{{ s.label }}</span>
+            @if (searching() && pHits().get(s.id)) { <span class="n">{{ pHits().get(s.id) }}</span> }
           </button>
-          @for (t of theme.themes; track t.id) {
-            <button class="th" [class.on]="theme.selected() === t.id" (click)="theme.set(t.id)">
-              <span class="pv" [style.background]="t.tokens['--bg']" [style.border-color]="t.tokens['--border']">
-                <i [style.background]="t.tokens['--bg-subtle']"></i>
-                <b [style.background]="t.tokens['--accent']"></b>
-                <u [style.background]="t.tokens['--surface-2']"></u>
-              </span>
-              <span>{{ t.label }}</span>
-            </button>
+        }
+        <div class="head">Sistema</div>
+        <button class="item" [class.on]="!searching() && view() === 'system'" (click)="open('system')">
+          <hx-icon name="grid" [size]="15" /><span class="hx-grow">Panoramica</span>
+          @if (store.proposals().length) { <hx-badge tone="accent" title="Proposte in attesa">{{ store.proposals().length }}</hx-badge> }
+        </button>
+        @for (m of store.modules(); track m.module) {
+          <button class="item" [class.on]="!searching() && view() === m.module" [class.none]="searching() && !store.hitsByModule().get(m.module)"
+                  (click)="open(m.module)">
+            <span class="dot" [attr.data-tone]="health(m).tone" [title]="health(m).label"></span>
+            <span class="hx-grow">{{ name(m.module) }}</span>
+            @if (searching()) { @if (store.hitsByModule().get(m.module); as n) { <span class="n">{{ n }}</span> } }
+            @else if (m.pending_proposals) { <hx-badge tone="accent" title="Proposte in attesa">{{ m.pending_proposals }}</hx-badge> }
+            @else { <span class="n">{{ m.definitions }}</span> }
+          </button>
+        }
+      </aside>
+      <hx-resize [(width)]="width" [inline]="true" [min]="180" [max]="420" [def]="240" key="settings-side" />
+
+      <main class="main">
+        @if (searching()) {
+          @if (pTotal()) {
+            <h3 class="sec">Personali</h3>
+            <app-personal-settings [query]="store.query()" />
           }
-        </div>
-        <p class="hint">Nuovo tema: aggiungi una voce in <code>src/app/core/theme/themes.ts</code> (vedi DESIGN-SYSTEM.md).</p>
-      </section>
-
-      <section>
-        <h3><hx-icon name="chat" [size]="17" /> Assistente</h3>
-        <hx-field label="Tono" hint="Il tuo predefinito su ogni client. Una singola chat può cambiarlo dall'icona ⚙ in alto nella chat.">
-          <hx-segmented [options]="tones" [value]="settings.settings().tone" (changed)="save({ tone: $event })" />
-        </hx-field>
-        <hx-field label="Ragionamento nelle risposte" hint="Solo visualizzazione: nascosto, compatto (chiuso) o dettagliato (aperto).">
-          <hx-segmented [options]="thinking" [value]="settings.settings().thinkingDisplay" (changed)="save({ thinkingDisplay: $event })" />
-        </hx-field>
-        <hx-field label="Istruzioni personali" hint="Aggiunte a ogni conversazione, su ogni client (vuoto = nessuna).">
-          <textarea class="hx-textarea" rows="4" [(ngModel)]="custom"></textarea>
-        </hx-field>
-        <button hx-btn variant="primary" (click)="save({ customPrompt: custom })">Salva istruzioni</button>
-      </section>
-
-      <section>
-        <h3><hx-icon name="bell" [size]="17" /> Messaggi di sistema</h3>
-        <p class="hint">Avvisi separati dalla risposta: memoria salvata, azioni eseguite, notifiche attivate, errori. Valgono per questo browser.</p>
-        <hx-field label="Dove mostrarli">
-          <hx-segmented [options]="noticeModes" [value]="notices.prefs().mode" (changed)="notices.update({ mode: $any($event) })" />
-        </hx-field>
-        <hx-field label="Stile">
-          <hx-segmented [options]="noticeStyles" [value]="notices.prefs().style" (changed)="notices.update({ style: $any($event) })" />
-        </hx-field>
-        <div class="toggles">
-          @for (g of noticeGroups; track g.id) {
-            <hx-toggle [checked]="notices.prefs().groups[g.id]" [label]="g.label" (changed)="setGroup(g.id, $event)" />
-          }
-        </div>
-        <p class="hint">Gli errori vengono mostrati comunque, tranne con «Nascosti».</p>
-      </section>
-
-      <section>
-        <h3><hx-icon name="refresh" [size]="17" /> Sessione</h3>
-        <p class="hint">Nuova sessione: Hestia dimentica il contesto della conversazione (le memorie restano).</p>
-        <div class="hx-row">
-          <button hx-btn (click)="newSession()">Nuova sessione</button>
-          <button hx-btn variant="ghost" (click)="reset()">Ripristina impostazioni</button>
-        </div>
-      </section>
-    </div>
-    }`,
+          @if (store.visible().length || store.hiddenAdvanced() || store.onlyModified() || !pTotal()) { <app-system-settings /> }
+        } @else if (view().startsWith('p:')) {
+          <app-personal-settings [section]="view().slice(2)" />
+        } @else {
+          <app-system-settings />
+        }
+      </main>
+    </div>`,
   styles: [`
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    hx-page-header { padding-left: 56px; }
-    @media (min-width: 861px) { hx-page-header { padding-left: 24px; } }
-    .body { flex: 1; overflow-y: auto; padding: 18px 24px 40px; }
-    section { max-width: 760px; display: flex; flex-direction: column; gap: 14px; padding: 6px 0 26px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-    section:last-child { border-bottom: 0; }
-    .toggles { display: flex; flex-wrap: wrap; gap: 12px 22px; }
-    h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-    .th { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: var(--radius-lg); border: 2px solid transparent; font-size: 13px; text-align: left; color: var(--text-2); }
-    .th:hover { background: var(--surface-2); }
-    .th.on { border-color: var(--accent); color: var(--text); }
-    .pv { height: 70px; border-radius: var(--radius-md); border: 1px solid var(--border); position: relative; overflow: hidden; display: block; }
-    .pv i { position: absolute; inset: 0 auto 0 0; width: 30%; }
-    .pv b { position: absolute; right: 10px; bottom: 10px; width: 26px; height: 12px; border-radius: 6px; }
-    .pv u { position: absolute; left: 38%; right: 10px; top: 12px; height: 10px; border-radius: 5px; }
-    .pv.auto { background: linear-gradient(135deg, #faf9f5 50%, #262624 50%); }
-    .hint { font-size: 12.5px; color: var(--text-3); }
-    button[hx-btn] { align-self: flex-start; }
+    .top { display: flex; align-items: center; gap: 18px; padding: 16px 24px 14px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+    @media (max-width: 860px) { .top { padding-left: 56px; } }
+    h1 { font-family: var(--font-serif); font-weight: 500; font-size: 22px; color: var(--text); }
+    .search { position: relative; flex: 1; min-width: 220px; max-width: 720px; display: block; }
+    .search hx-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
+    .search .hx-input { padding-left: 34px; padding-right: 96px; height: 38px; }
+    .count { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-3); }
+    .layout { flex: 1; display: flex; min-height: 0; }
+    .side { flex-shrink: 0; border-right: 1px solid var(--border); padding: 12px 10px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 1px; }
+    .head { font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); padding: 12px 10px 6px; }
+    .head:first-child { padding-top: 2px; }
+    .item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--radius-md); font-size: 13.5px;
+            color: var(--text-2); text-align: left; }
+    .item:hover { background: var(--surface-2); color: var(--text); }
+    .item.on { background: var(--accent-soft); color: var(--accent); }
+    .item.none { opacity: .45; }
+    .n { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; margin: 0 3px; }
+    .dot[data-tone=success] { background: var(--success); }
+    .dot[data-tone=warning] { background: var(--warning); }
+    .dot[data-tone=danger] { background: var(--danger); }
+    .main { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 24px 40px; display: flex; flex-direction: column; gap: 14px; }
+    .sec { font-family: var(--font-serif); font-size: 17px; font-weight: 500; }
+    @media (max-width: 760px) {
+      .layout { flex-direction: column; }
+      .side { width: auto !important; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: 8px; }
+      .head { display: none; }
+      .item { white-space: nowrap; }
+      .main { padding: 14px 14px 40px; }
+    }
   `],
 })
-export class SettingsPageComponent {
+export class SettingsPageComponent implements OnInit, OnDestroy {
+  readonly store = inject(CentralSettingsStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  readonly tabs: SegmentOption[] = [{ value: 'personal', label: 'Personali' }, { value: 'system', label: 'Sistema' }];
-  /** Deep links: /settings?tab=system&module=oracle */
-  readonly tab = signal(this.route.snapshot.queryParamMap.get('tab') === 'system' ? 'system' : 'personal');
-  readonly module = this.route.snapshot.queryParamMap.get('module');
-  setTab(t: string) {
-    this.tab.set(t);
-    void this.router.navigate([], { queryParams: { tab: t === 'system' ? 'system' : null }, queryParamsHandling: 'merge', replaceUrl: true });
+  private searchBox = viewChild<ElementRef<HTMLInputElement>>('q');
+
+  readonly personal = PERSONAL_SECTIONS;
+  /** 'p:<section>' (personal) · 'system' (overview) · module id */
+  readonly view = signal('p:aspetto');
+  readonly searching = computed(() => !!this.store.query().trim());
+  readonly pHits = computed(() => {
+    const hits = personalHits(this.store.query());
+    const extra = this.store.personalExtra().length;
+    if (extra) hits.set('assistente', (hits.get('assistente') ?? 0) + extra);
+    return hits;
+  });
+  readonly pTotal = computed(() => this.store.onlyModified() ? 0 : [...this.pHits().values()].reduce((a, b) => a + b, 0));
+  readonly totalHits = computed(() => this.pTotal() + this.store.visible().length);
+
+  ngOnInit() {
+    const p = this.route.snapshot.queryParamMap;
+    const module = p.get('module'), section = p.get('section');
+    if (module) this.open(module, false);
+    else if (p.get('tab') === 'system') this.open('system', false);
+    else if (section && PERSONAL_SECTIONS.some(s => s.id === section)) this.open('p:' + section, false);
+    void this.store.init();
+  }
+  ngOnDestroy() { this.store.stopPolling(); }
+
+  open(view: string, navigate = true) {
+    this.view.set(view);
+    this.store.select(view === 'system' || view.startsWith('p:') ? null : view);
+    if (!navigate) return;
+    const queryParams = view.startsWith('p:') ? { section: view.slice(2), tab: null, module: null }
+      : { tab: 'system', module: view === 'system' ? null : view, section: null };
+    void this.router.navigate([], { queryParams, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
-  theme = inject(ThemeService);
-  settings = inject(SettingsService);
-  private session = inject(SessionService);
-  private toast = inject(ToastService);
-  private dialogs = inject(DialogService);
-  custom = this.settings.settings().customPrompt ?? '';
+  name = moduleLabel;
+  health(m: ModuleInfo) { return HEALTH[m.health ?? 'unknown'] ?? HEALTH['unknown']; }
 
-  readonly tones: SegmentOption[] = [
-    { value: 'neutral', label: 'Neutro' }, { value: 'warm', label: 'Caldo' }, { value: 'direct', label: 'Diretto' }, { value: 'formal', label: 'Formale' },
-  ];
-  readonly thinking: SegmentOption[] = [
-    { value: 'hidden', label: 'Nascosto' }, { value: 'compact', label: 'Compatto' }, { value: 'detailed', label: 'Dettagliato' },
-  ];
-
-  notices = inject(NoticePrefsService);
-  readonly noticeModes: SegmentOption[] = [
-    { value: 'inline', label: 'Sotto la risposta' }, { value: 'toast', label: 'Popup' }, { value: 'both', label: 'Entrambi' },
-    { value: 'important', label: 'Solo importanti' }, { value: 'hidden', label: 'Nascosti' },
-  ] satisfies { value: NoticeMode; label: string }[];
-  readonly noticeStyles: SegmentOption[] = [
-    { value: 'compact', label: 'Compatto' }, { value: 'rich', label: 'Dettagliato' },
-  ] satisfies { value: NoticeStyle; label: string }[];
-  readonly noticeGroups: { id: NoticeGroup; label: string }[] = [
-    { id: 'memory', label: 'Memoria' }, { id: 'actions', label: 'Azioni' },
-    { id: 'subscriptions', label: 'Notifiche' }, { id: 'other', label: 'Altro (documenti, agenda, sviluppo)' },
-  ];
-  setGroup(id: NoticeGroup, on: boolean) {
-    this.notices.update({ groups: { ...this.notices.prefs().groups, [id]: on } });
+  /** Ctrl/⌘+F focuses the settings search (like VS Code). */
+  @HostListener('document:keydown', ['$event'])
+  onKey(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      this.searchBox()?.nativeElement.focus();
+      this.searchBox()?.nativeElement.select();
+    }
   }
 
-  async save(p: Record<string, string>) {
-    try { await this.settings.update(p); this.toast.success('Salvato'); } catch { this.toast.error('Salvataggio non riuscito'); }
-  }
-  async newSession() {
-    if (await this.dialogs.confirm('Nuova sessione?')) { await this.session.clear(); this.toast.success('Nuova sessione'); }
-  }
-  async reset() {
-    await this.settings.reset();
-    this.notices.reset();
-    this.custom = this.settings.settings().customPrompt ?? '';
-    this.toast.success('Impostazioni ripristinate');
-  }
+  /** Sidebar width (<hx-resize>), kept per browser. */
+  readonly width = signal(savedWidth('settings-side', 240));
 }
