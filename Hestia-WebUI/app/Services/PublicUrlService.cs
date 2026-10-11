@@ -51,6 +51,20 @@ public class PublicUrlService
         SetPublicUrl($"https://{cleanHost}", manual: false);
     }
 
+    /// <summary>
+    /// True when <paramref name="host"/> is a public (tunnel) hostname: under the allowed suffixes or the
+    /// host of the current public URL. Used by <see cref="LocalAccess"/> to require the token.
+    /// </summary>
+    public bool IsPublicHost(string host)
+    {
+        var cleanHost = (host ?? "").Split(':')[0].Trim().TrimEnd('.');
+        if (cleanHost.Length == 0) return false;
+        if (AllowedSuffixes.Any(sfx => cleanHost.EndsWith(sfx, StringComparison.OrdinalIgnoreCase))) return true;
+        var url = GetPublicUrl();
+        return url is not null && Uri.TryCreate(url, UriKind.Absolute, out var u)
+               && string.Equals(u.Host, cleanHost, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Manually set the public URL.</summary>
     public void SetPublicUrl(string url, bool manual = true)
     {

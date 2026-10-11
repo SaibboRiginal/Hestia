@@ -25,6 +25,9 @@ builder.Services.AddSingleton<TokenManager>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<PublicUrlService>();
 builder.Services.AddSingleton<PresencePinger>();
+builder.Services.AddSingleton<WebUISettings>();
+builder.Services.AddSingleton<LocalAccess>();
+builder.Services.AddHostedService<WebUISettingsRegistrar>();
 
 builder.Services.AddHttpClient<HubClient>(client =>
 {

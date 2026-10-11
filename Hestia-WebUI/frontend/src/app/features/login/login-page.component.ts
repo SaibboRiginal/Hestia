@@ -37,6 +37,11 @@ export class LoginPageComponent {
   loading = signal(false);
   error = signal('');
 
+  constructor() {
+    // From the home network no token is needed: go straight to the app.
+    void this.auth.checkAccess().then(local => { if (local) this.router.navigate(['/']); });
+  }
+
   async submit() {
     this.loading.set(true);
     this.error.set('');

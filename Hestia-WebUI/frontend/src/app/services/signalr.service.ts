@@ -41,7 +41,7 @@ export class SignalRService {
     this.connectionState.set('connecting');
 
     this.hub = new signalR.HubConnectionBuilder()
-      .withUrl(`/hubs/chat?access_token=${token}`)
+      .withUrl(`/hubs/chat?access_token=${encodeURIComponent(token ?? '')}`)   // home network: empty is fine
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(signalR.LogLevel.Warning)
       .build();

@@ -28,6 +28,7 @@ using Hestia.WebUI.Services;
 public class ChatHub : Hub
 {
     private readonly TokenManager _tokenManager;
+    private readonly LocalAccess _localAccess;
     private readonly SessionManager _sessionManager;
     private readonly OracleStreamService _oracleStream;
     private readonly HubClient _hubClient;
@@ -38,12 +39,14 @@ public class ChatHub : Hub
 
     public ChatHub(
         TokenManager tokenManager,
+        LocalAccess localAccess,
         SessionManager sessionManager,
         OracleStreamService oracleStream,
         HubClient hubClient,
         ILogger<ChatHub> logger)
     {
         _tokenManager = tokenManager;
+        _localAccess = localAccess;
         _sessionManager = sessionManager;
         _oracleStream = oracleStream;
         _hubClient = hubClient;
@@ -55,7 +58,7 @@ public class ChatHub : Hub
         var httpContext = Context.GetHttpContext();
         var token = httpContext?.Request.Query["access_token"].FirstOrDefault() ?? "";
 
-        if (!_tokenManager.ValidateToken(token))
+        if (!_localAccess.IsLocal(httpContext) && !_tokenManager.ValidateToken(token))
         {
             _logger.LogWarning("event=signalr_auth_failed connection={Conn}", Context.ConnectionId);
             Context.Abort();

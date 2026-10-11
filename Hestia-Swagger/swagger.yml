@@ -5470,7 +5470,7 @@ paths:
   /api/settings/effective:
     get:
       tags: [Meta]
-      summary: (every module with settings, hestia_common) values the module is really using
+      summary: (every module with settings, hestia_common; also WebUI, internal network only) values the module is really using
       responses:
         "200": {description: "{owner, loaded, values{}, pending_restart[]}"}
 
@@ -6075,6 +6075,20 @@ paths:
                     $ref: "#/components/schemas/ObservationSnapshot"
 
   # ── WebUI ───────────────────────────────────────────────────────────────
+  /api/webui/auth/access:
+    get:
+      tags: [WebUI]
+      summary: Does this browser need the access token? (no token required to call it)
+      description: >-
+        local=true only when the Themis switch webui.auth.local_without_token is on, the request carries no
+        Cloudflare/proxy header (Cf-Connecting-Ip, Cf-Ray, Cdn-Loop, X-Forwarded-*, Forwarded…), its Host is not
+        a public tunnel host and the TCP peer is loopback/private. Then /api/webui/* and /hubs/chat work
+        without token; through the Cloudflare tunnel the token is always required.
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: "{local, tokenRequired}"}
+
   /api/webui/presence:
     get:
       tags: [WebUI]

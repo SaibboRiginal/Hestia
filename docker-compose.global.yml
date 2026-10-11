@@ -591,7 +591,8 @@ services:
       - WebUI__Port=19015
       - WebUI__SecretKey=${WEBUI_SECRET_KEY:-}
       - WEBUI_ADMIN_SECRET=${WEBUI_ADMIN_SECRET:-}            # Optional: shared secret for /api/webui/admin/* (also set for telegram)
-      - WEBUI_PUBLIC_HOST_SUFFIXES=.trycloudflare.com         # Hosts allowed for public-URL auto-detection
+      - WEBUI_PUBLIC_HOST_SUFFIXES=.trycloudflare.com         # Hosts allowed for public-URL auto-detection; requests to them always need the token
+      # Port 19015: LAN/localhost opens without token (Themis webui.auth.local_without_token); never port-forward it on the router, outside access = Cloudflare tunnel only
       - WEBUI_ICS_KEY=${WEBUI_ICS_KEY:-}                      # Optional (>=16 chars): key of the read-only agenda ICS feed for phones; empty = feed only with the login token
       - WebUI__TokenLifetimeHours=72
       - WebUI__RateLimitPerMinute=60

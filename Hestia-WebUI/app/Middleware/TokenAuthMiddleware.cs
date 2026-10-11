@@ -6,6 +6,7 @@ using Hestia.WebUI.Services;
 /// Middleware that validates the WebUI access token on EVERY request.
 /// Token is extracted from X-Access-Token header or ?token= query param.
 /// Applied to all /api/webui/* paths. WebSocket auth is handled in the Hub.
+/// Home network requests (see <see cref="LocalAccess"/>) need no token; the Cloudflare tunnel always does.
 /// </summary>
 public class TokenAuthMiddleware
 {
@@ -16,10 +17,12 @@ public class TokenAuthMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, TokenManager tokenManager, PresencePinger presence)
+    public async Task InvokeAsync(HttpContext context, TokenManager tokenManager, PresencePinger presence,
+        LocalAccess localAccess)
     {
         // Skip paths that don't require auth
-        var path = context.Request.Path.Value ?? "";
+        // Routing is case-insensitive: compare lowercase, or "/API/webui/…" would skip the check.
+        var path = (context.Request.Path.Value ?? "").ToLowerInvariant();
 
         if (path == "/health" || path == "/api/logs/level" || path.StartsWith("/api/logs"))
         {
@@ -34,8 +37,9 @@ public class TokenAuthMiddleware
             return;
         }
 
-        // Allow login endpoint without token
-        if (path == "/api/webui/auth/login" && context.Request.Method == "POST")
+        // Allow login endpoint without token; /auth/access tells the browser whether it needs one
+        if ((path == "/api/webui/auth/login" && context.Request.Method == "POST")
+            || (path == "/api/webui/auth/access" && HttpMethods.IsGet(context.Request.Method)))
         {
             await _next(context);
             return;
@@ -74,7 +78,7 @@ public class TokenAuthMiddleware
                     ?? context.Request.Query["token"].FirstOrDefault()
                     ?? "";
 
-        if (!tokenManager.ValidateToken(token))
+        if (!localAccess.IsLocal(context) && !tokenManager.ValidateToken(token))
         {
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";

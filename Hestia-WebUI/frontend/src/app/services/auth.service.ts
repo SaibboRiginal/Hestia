@@ -6,9 +6,23 @@ import { firstValueFrom } from 'rxjs';
 export class AuthService {
   private http = inject(HttpClient);
   private apiBase = '/api/webui';
+  private accessCheck: Promise<boolean> | null = null;
 
   token = signal<string | null>(localStorage.getItem('hestia_token'));
-  isAuthenticated = computed(() => this.token() !== null && this.token()!.length >= 32);
+  /** Opened from the home network: the server needs no token (never through the Cloudflare tunnel). */
+  local = signal(false);
+  isAuthenticated = computed(() => this.local() || (this.token() !== null && this.token()!.length >= 32));
+
+  /** Asks the server once whether this browser needs the token. Error → token required. */
+  checkAccess(): Promise<boolean> {
+    this.accessCheck ??= firstValueFrom(
+      this.http.get<{ local: boolean; tokenRequired: boolean }>(`${this.apiBase}/auth/access`)
+    ).then(r => !!r?.local && !r.tokenRequired).catch(() => false).then(local => {
+      this.local.set(local);
+      return local;
+    });
+    return this.accessCheck;
+  }
 
   async login(token: string): Promise<boolean> {
     try {
@@ -30,6 +44,8 @@ export class AuthService {
 
   logout(): void {
     this.token.set(null);
+    this.local.set(false);
+    this.accessCheck = null;   // asked again on the next navigation (e.g. local access switched off)
     localStorage.removeItem('hestia_token');
   }
 

@@ -41,7 +41,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 
 1. **Backend as security gateway** — frontend NEVER talks directly to internal services
 2. **SignalR for real-time** — native reconnection, typed messages, cancellation support
-3. **Single-token auth** — generated via Telegram, URL-based, one active at a time
+3. **Single-token auth** — generated via Telegram, URL-based, one active at a time; **not asked on the home
+   network** (LAN/localhost), always asked through the Cloudflare tunnel (see Security → Local access)
 4. **Mistral-style CoT** — numbered reasoning steps, expand/collapse, tinted container
 5. **Same app/ structure** — mirrors all other Hestia services
 6. **OracleStreamService as typed HttpClient** — uses `AddHttpClient<T>` for managed HttpClient lifecycle (NOT singleton + manual HttpClient)
@@ -53,6 +54,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | WS | `/hubs/chat?access_token=...` | SignalR chat streaming (Oracle NDJSON bridge). Message `context` (drawer packet) is appended to that turn's client instructions |
 | POST | `/api/webui/auth/login` | Validate access token |
 | GET | `/api/webui/auth/status` | Token status |
+| GET | `/api/webui/auth/access` | `{local, tokenRequired}` — asked by the browser at start, no token needed |
+| GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
 | POST | `/api/webui/sessions/clear` | Reset session |
 | GET | `/api/webui/settings` | Get session settings |
@@ -260,8 +263,21 @@ Built Angular app served as static files from `wwwroot/`.
   (`hestia_webui_data` volume, `WEBUI_TOKEN_STATE_FILE`): survives restarts. The salt used to be
   `WebUI:SecretKey`, random per start → every restart invalidated the token. Nothing is written to Archive
   memory any more (the clear token was readable by Oracle's memory tools).
-- `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`); exempt: login,
-  command list, `/api/webui/admin/*` (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).
+- `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`; path compared
+  lowercase, routing is case-insensitive); exempt: login, `auth/access`, command list, `/api/webui/admin/*`
+  (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).
+- **Local access without token** (`Services/LocalAccess.cs`, SPEC `docs/work/2026-10-11-webui-local-access`):
+  the middleware and the hub skip the token only when ALL hold — Themis `webui.auth.local_without_token`
+  on (default; the assistant cannot propose it), no Cloudflare/proxy header (`Cf-Connecting-Ip`, `Cf-Ray`,
+  `Cdn-Loop`, `Cf-Warp-Tag-Id`, `X-Forwarded-*`, `X-Real-Ip`, `Forwarded`…), Host not under
+  `WEBUI_PUBLIC_HOST_SUFFIXES` nor the public URL host, TCP peer loopback/private. Cloudflare always adds its
+  headers and a client cannot remove them, so only their absence opens: a forged header only adds the token.
+  No forwarded-headers middleware runs, so the peer address is the real socket. **Never port-forward 19015
+  on the router** (Docker Desktop shows every published-port client as a private gateway address): outside
+  access goes through the tunnel only. The Angular app asks `GET /api/webui/auth/access` at start: local →
+  no login page and no "Esci" button.
+- WebUI declares its own Themis settings (`Services/WebUISettings.cs`, the .NET counterpart of
+  `hestia_common.settings_client`): register via Hub at start (retry 60 s, re-assert hourly), live reload.
 
 ## Assistant presence
 

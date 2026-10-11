@@ -55,9 +55,11 @@ import { PresenceService, ago } from '../services/presence.service';
             <hx-icon [name]="theme.active().mode === 'dark' ? 'sun' : 'moon'" [size]="18" />
             <span>{{ theme.active().mode === 'dark' ? 'Tema chiaro' : 'Tema scuro' }}</span>
           </button>
-          <button class="item" (click)="logout()" title="Esci">
-            <hx-icon name="logout" [size]="18" /><span>Esci</span>
-          </button>
+          @if (!auth.local()) {
+            <button class="item" (click)="logout()" title="Esci">
+              <hx-icon name="logout" [size]="18" /><span>Esci</span>
+            </button>
+          }
         </nav>
         @if (presence.state(); as p) {
           <div class="presence-wrap">

@@ -9,12 +9,27 @@ using Hestia.WebUI.Services;
 public class AuthController : ControllerBase
 {
     private readonly TokenManager _tokenManager;
+    private readonly LocalAccess _localAccess;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(TokenManager tokenManager, ILogger<AuthController> logger)
+    public AuthController(TokenManager tokenManager, LocalAccess localAccess, ILogger<AuthController> logger)
     {
         _tokenManager = tokenManager;
+        _localAccess = localAccess;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Asked by the browser at start (no token needed): home network → no login page;
+    /// through the Cloudflare tunnel (or with the switch off) → token required.
+    /// </summary>
+    [HttpGet("access")]
+    public IActionResult Access()
+    {
+        var reason = _localAccess.Reason(HttpContext);
+        var local = reason == "local";
+        _logger.LogInformation("event=webui_access_checked local={Local} reason={Reason}", local, reason);
+        return Ok(new { local, tokenRequired = !local });
     }
 
     [HttpPost("login")]
