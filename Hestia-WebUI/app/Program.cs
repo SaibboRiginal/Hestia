@@ -199,9 +199,19 @@ app.MapGet("/health", () => new
 var staticDir = Path.Combine(app.Environment.ContentRootPath, webuiOpts.StaticDir);
 if (Directory.Exists(staticDir))
 {
+    // index.html must never be cached: it names the hashed bundles, and a stale copy keeps running the
+    // old app after an update (e.g. the old login flow). Hashed .js/.css stay cacheable.
+    var staticOpts = new StaticFileOptions
+    {
+        OnPrepareResponse = ctx =>
+        {
+            if (ctx.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        },
+    };
     app.UseDefaultFiles();
-    app.UseStaticFiles();
-    app.MapFallbackToFile("index.html");
+    app.UseStaticFiles(staticOpts);
+    app.MapFallbackToFile("index.html", staticOpts);
 }
 
 app.MapGet("/api/logs/level", () => new { level = "Information" });
