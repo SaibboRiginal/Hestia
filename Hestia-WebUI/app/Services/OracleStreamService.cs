@@ -70,7 +70,7 @@ public class OracleStreamService
 
     public IAsyncEnumerable<OracleEvent> StreamChatAsync(
         string message, string sessionId,
-        string mode = "auto", string model = "generic",
+        string mode = "", string model = "generic",
         string? clientInstructions = null,
         CancellationToken ct = default)
     {

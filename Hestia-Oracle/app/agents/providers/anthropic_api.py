@@ -21,6 +21,8 @@ _EPHEMERAL = {"type": "ephemeral"}
 class AnthropicProvider(LLMProvider):
     TYPE = "anthropic"
     LABEL = "Claude (chiave API)"
+    CONTEXT_WINDOW = 200_000
+    BILLING = "API Anthropic · a consumo"
     CONFIG_FIELDS = (
         {"key": "api_key", "type": "secret_ref", "label": "Chiave API", "env": "ORACLE_ANTHROPIC_API_KEY"},
         {"key": "thinking_by_mode", "type": "object", "label": "Ragionamento per modalità",
@@ -125,9 +127,13 @@ class AnthropicProvider(LLMProvider):
         self._log_usage(params["model"], response)
         return response
 
-    @staticmethod
-    def _log_usage(model: str, response) -> None:
+    def _log_usage(self, model: str, response) -> None:
         usage = getattr(response, "usage", None)
+        try:
+            from core.services import llm_stats
+            llm_stats.record_anthropic(self.label, self.TYPE, model, usage)
+        except Exception as exc:  # stats never break a call
+            logger.debug("event=anthropic_stats_failed error=%s", exc)
         logger.info(
             "event=anthropic_usage model=%s stop=%s input=%s output=%s cache_read=%s cache_write=%s",
             model, getattr(response, "stop_reason", None), getattr(usage, "input_tokens", None),

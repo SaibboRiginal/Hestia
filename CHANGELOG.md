@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-11
 - WebUI Calendar list view: red «Adesso · HH:mm» divider at the current time with auto-scroll, past rows dimmed with their outcome (ok + duration / fallito + detail / nessun esito / concluso, «in corso» while running) → `docs/work/2026-10-04-calendar-skills-forge-ui/` [ext-chat]
+- Chat mode and context: conversation mode Auto · Rapida · Pensata · CoT as Themis setting `oracle.chat.mode` (WebUI selector in the composer, per conversation; Telegram `/settings` → Modalità; Pensata/CoT always reason, CoT deep + step recap); WebUI reasoning shown by default (compatto) with *Dettagliato* and *Dal vivo*, switchable from the chat ⚙; chat header gauge with context window % of the provider in use and this conversation's tokens/cache/cost (Oracle per-session usage, Gemini/Claude usage recorded) → `docs/work/2026-10-11-chat-modalita-contesto/` [ext-chat]
 - Fix: WebUI assistant-state popover no longer cut off by the sidebar → `docs/work/2026-10-10-assistant-presence/` [ext-chat]
 - CI "Hestia Tests" green again (Hephaestus): `test_forge_context_fit` imported `forge.*` instead of `app.forge.*` (collection error), and `brief()` sized each request 1 char too long so with 8 tasks the last one was dropped → `docs/work/2026-10-11-forge-task-list-context/` [ext-chat]
 - WebUI Impostazioni like VS Code: one search over every personal and system setting, Personali in the same style, resizable sidebar (`<hx-resize>`) with match counts → `docs/work/2026-10-10-central-settings/` [ext-chat]

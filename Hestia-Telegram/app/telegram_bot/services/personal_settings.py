@@ -1,7 +1,7 @@
 """Personal chat settings shared by every client (Themis, owner Oracle).
 
-Tone and personal instructions shape Oracle's answers, so they live in Themis as
-``oracle.chat.tone`` / ``oracle.chat.instructions`` (scope user) and Oracle applies them
+Tone, conversation mode and personal instructions shape Oracle's answers, so they live in
+Themis as ``oracle.chat.tone`` / ``oracle.chat.mode`` / ``oracle.chat.instructions`` (scope user) and Oracle applies them
 itself. Telegram reads and writes its own layer (scope ``client``/``telegram``): the
 /settings menu keeps working, the value is the same one the WebUI shows.
 Presentation options (reasoning display, notices, streaming…) stay local to Telegram.
@@ -20,7 +20,7 @@ logger = logging.getLogger("hestia_telegram.personal_settings")
 
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 CLIENT = "telegram"
-KEYS = {"tone": "oracle.chat.tone", "custom_prompt": "oracle.chat.instructions"}
+KEYS = {"tone": "oracle.chat.tone", "mode": "oracle.chat.mode", "custom_prompt": "oracle.chat.instructions"}
 _TTL = 20.0
 _cache: dict[str, tuple[float, Any]] = {}
 

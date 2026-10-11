@@ -384,6 +384,15 @@ components:
         client:
           type: string
           description: "Client name (telegram, webui…): Oracle adds the personal chat settings oracle.chat.* (Themis, session → client → profile)"
+        mode:
+          type: string
+          enum: [auto, quick, thinking, cot, ""]
+          default: ""
+          description: "quick = 1 call no tools · auto = classifier decides · thinking (Pensata) = always agent loop, reasoning on · cot = deep reasoning, ≥50 turns, step-by-step recap. Empty = setting oracle.chat.mode for this client/session."
+        model:
+          type: string
+          enum: [generic, reasoning, code]
+          default: generic
 
     FormatRequest:
       type: object
@@ -3474,9 +3483,15 @@ paths:
             {session_id, context_window, history_messages, history_chars,
              history_tokens_est, tool_count, preference_count,
              total_tokens_est, context_used_pct, compaction_available,
+             context_used_tokens, context_measured,
+             active: {use_case, provider, provider_label, model, billing, context_window},
+             session_usage: {calls, input_tokens, cached_tokens, output_tokens, cost_usd, estimated,
+             last_prompt_tokens, provider, model, last_at} ({} before the first counted call),
              runtime: {<use case>: {calls, provider, model, avg_prompt_tokens, max_prompt_tokens,
              cache_hit_pct, cache_estimated, avg_load_ms, avg_prompt_ms, tokens_per_second, last_at}}}.
-            context_window = setting oracle.provider.ollama.num_ctx (sent to Ollama on every call).
+            context_window = window of the chat provider in use (Ollama/OpenAI-compatible: setting
+            oracle.provider.ollama.num_ctx; Gemini 1,048,576; Claude 200,000). context_used_tokens = real
+            prompt size of this conversation's last call when measured, else the estimate.
 
   /api/chat/compact:
     post:
@@ -6135,6 +6150,20 @@ paths:
         - url: http://localhost:19015
       responses:
         "200": {description: "{local, tokenRequired}"}
+
+  /api/webui/chat/context:
+    get:
+      tags: [WebUI]
+      summary: Context gauge of the current conversation (→ Oracle /api/chat/context?session_id=<current>)
+      responses:
+        "200": {description: Oracle context stats (active provider, session_usage)}
+
+  /api/webui/chat/compact:
+    post:
+      tags: [WebUI]
+      summary: Compact the current conversation (→ Oracle /api/chat/compact)
+      responses:
+        "200": {description: "{session_id, before_tokens, after_tokens, …}"}
 
   /api/webui/presence:
     get:

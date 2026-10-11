@@ -17,7 +17,7 @@ public class SettingsController : ControllerBase
     private const string Tone = "oracle.chat.tone";
     private const string Instructions = "oracle.chat.instructions";
     private static readonly HashSet<string> ValidTones = new() { "warm", "neutral", "direct", "formal" };
-    private static readonly HashSet<string> ValidModes = new() { "hidden", "compact", "detailed" };
+    private static readonly HashSet<string> ValidModes = new() { "hidden", "compact", "detailed", "live" };
 
     private readonly SessionManager _sessionManager;
     private readonly HubClient _hub;
@@ -39,7 +39,7 @@ public class SettingsController : ControllerBase
             settings = new SessionSettings(
                 Tone: await ProfileValue(Tone, "warm"),
                 CustomPrompt: await ProfileValue(Instructions, ""),
-                ThinkingDisplay: s.GetValueOrDefault("thinking_display", "hidden")
+                ThinkingDisplay: s.GetValueOrDefault("thinking_display", "compact")
             )
         });
     }

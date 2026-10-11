@@ -81,6 +81,7 @@ Telegram must:
 | Key | Options (default **bold**) |
 |---|---|
 | `tone` | **warm** · neutral · direct · formal — central setting `oracle.chat.tone` (Themis, layer client `telegram`); Oracle applies it |
+| `mode` | **auto** · quick · thinking · cot (Rapida, Pensata, CoT) — central setting `oracle.chat.mode` (layer client `telegram`); Oracle uses it when no mode is sent |
 | `thinking_display` | hidden · **compact** · detailed · live |
 | `stream_answer` | **on** · off |
 | `split_mode` | **single** · paragraphs |

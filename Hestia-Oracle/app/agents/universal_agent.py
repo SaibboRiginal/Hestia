@@ -76,6 +76,13 @@ class UniversalAgent:
         except Exception as exc:  # stats never break a call
             logger.debug("event=ollama_stats_failed error=%s", exc)
 
+    def _gemini_stats(self, response) -> None:
+        try:
+            from core.services import llm_stats
+            llm_stats.record_gemini(self.label, self.model_name, response)
+        except Exception as exc:  # stats never break a call
+            logger.debug("event=gemini_stats_failed error=%s", exc)
+
     # ─────────────────────────────────────────────────────────────────
     #  Internal retry helper
     # ─────────────────────────────────────────────────────────────────
@@ -160,6 +167,7 @@ class UniversalAgent:
                     system_instruction=self.role_prompt
                 )
             )
+            self._gemini_stats(response)
             return (response.text or "").strip()  # None when Gemini blocks/empty
 
         elif self.provider == "ollama":
@@ -213,6 +221,7 @@ class UniversalAgent:
                 tools=[types.Tool(function_declarations=declarations)],
             ),
         )
+        self._gemini_stats(response)
 
         # Native function call path
         fn_calls = getattr(response, "function_calls", None) or []
@@ -401,6 +410,7 @@ class UniversalAgent:
 
     def _ask_stream_gemini(self, user_message: str):
         try:
+            last = None
             for chunk in self.client.models.generate_content_stream(
                 model=self.model_name,
                 contents=user_message,
@@ -408,8 +418,11 @@ class UniversalAgent:
                     system_instruction=self.role_prompt
                 ),
             ):
+                last = chunk
                 if chunk.text:
                     yield chunk.text
+            if last is not None:  # the last chunk carries the usage of the whole call
+                self._gemini_stats(last)
         except Exception as exc:
             raise RuntimeError(
                 f"Gemini stream error ({self.model_name}): {exc}") from exc

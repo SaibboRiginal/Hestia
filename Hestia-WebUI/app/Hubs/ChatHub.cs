@@ -10,7 +10,7 @@ using Hestia.WebUI.Services;
 /// to Oracle NDJSON stream and back as typed JSON events.
 ///
 /// Protocol (browser → server):
-///   {"type":"chat","message":"...","session_id":"...","mode":"auto","model":"generic"}
+///   {"type":"chat","message":"...","session_id":"...","mode":"auto|quick|thinking|cot|","model":"generic"}
 ///   {"type":"cancel"}
 ///   {"type":"retry"}
 ///   {"type":"question_answer","question_id":"...","answer":"..."}
@@ -120,11 +120,14 @@ public class ChatHub : Hub
         if (string.IsNullOrEmpty(sessionId))
             sessionId = _sessionManager.GetOrCreateSession();
 
+        // Rapida · Auto · Pensata · CoT; anything else = "" → Oracle uses oracle.chat.mode (Themis)
         var mode = (message.Mode?.Trim().ToLowerInvariant()) switch
         {
             "quick" => "quick",
+            "auto" => "auto",
             "thinking" => "thinking",
-            _ => "auto"
+            "cot" => "cot",
+            _ => ""
         };
         var model = (message.Model?.Trim().ToLowerInvariant()) switch
         {
@@ -199,7 +202,7 @@ public class ChatHub : Hub
         try
         {
             await foreach (var evt in _oracleStream.StreamChatAsync(
-                lastMessage, sessionId, "auto", "generic", clientInstructions, cts.Token))
+                lastMessage, sessionId, "", "generic", clientInstructions, cts.Token))   // mode: this chat's setting
             {
                 await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);
             }

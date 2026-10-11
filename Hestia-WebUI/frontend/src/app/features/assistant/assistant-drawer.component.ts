@@ -67,7 +67,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
             } @else {
               <div class="msg asst">
                 @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
-                  <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [expandedByDefault]="false" />
+                  <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
                 }
                 @if (m.content) { <div class="hx-prose" [innerHTML]="m.content"></div> }
                 @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }

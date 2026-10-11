@@ -1,6 +1,6 @@
 """Chat settings schema — ONE place that defines every per-chat option of the /settings menu.
 
-``tone`` and ``custom_prompt`` are stored centrally (Themis ``oracle.chat.*``, shared with every
+``tone``, ``mode`` and ``custom_prompt`` are stored centrally (Themis ``oracle.chat.*``, shared with every
 client, see ``personal_settings.py``); the other options are Telegram presentation.
 
 The /settings menu and the defaults used by the reply renderer come from here. Add an option:
@@ -28,6 +28,10 @@ SETTINGS: tuple[Setting, ...] = (
     # ── Answer ────────────────────────────────────────────────────────────
     Setting("tone", "🎙️ Tono", (("warm", "Caldo"), ("neutral", "Neutro"), ("direct", "Diretto"), ("formal", "Formale")),
             "warm", "Come ti risponde Hestia.", "risposta", ui_only=False),
+    Setting("mode", "🧭 Modalità",
+            (("auto", "Auto · decide Hestia"), ("quick", "Rapida · senza strumenti"),
+             ("thinking", "Pensata · ragiona e usa gli strumenti"), ("cot", "CoT · passo passo, più lenta")),
+            "auto", "Quanto ragiona Hestia prima di rispondere.", "risposta", ui_only=False),
     Setting("thinking_display", "💭 Ragionamento",
             (("hidden", "Nascosto"), ("compact", "Compatto · riquadro chiuso"),
              ("detailed", "Dettagliato · riquadro aperto"), ("live", "Dal vivo · passi mentre lavora")),
@@ -53,7 +57,7 @@ SETTINGS: tuple[Setting, ...] = (
 
 BY_KEY = {s.key: s for s in SETTINGS}
 GROUP_LABELS = {"risposta": "Risposta", "sistema": "Messaggi di sistema"}
-# Rendering-only keys. tone and custom_prompt are central settings (oracle.chat.*, see
+# Rendering-only keys. tone, mode and custom_prompt are central settings (oracle.chat.*, see
 # personal_settings.py): Oracle applies them itself, nothing is sent from here.
 UI_ONLY_KEYS = {s.key for s in SETTINGS if s.ui_only}
 

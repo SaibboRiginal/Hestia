@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../core/theme/theme.service';
 import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../services/notice-prefs.service';
 import { SessionService } from '../../services/session.service';
-import { SettingsService } from '../../services/settings.service';
+import { SettingsService, THINKING_DISPLAY_OPTIONS } from '../../services/settings.service';
 import { ButtonComponent, DialogService, IconComponent, SegmentedComponent, SegmentOption, ToastService, ToggleComponent } from '../../ui';
 import { CentralSettingsStore, matches } from './central-settings.store';
 import { SettingRowComponent } from './setting-row.component';
@@ -26,7 +26,7 @@ const ROWS: PersonalRow[] = [
   { id: 'tone', section: 'assistente', label: 'Tono', keywords: 'stile risposte caldo formale diretto',
     help: 'Il tuo predefinito su ogni client. Una singola chat può cambiarlo dall\'icona ⚙ in alto nella chat.' },
   { id: 'thinking', section: 'assistente', label: 'Ragionamento nelle risposte', keywords: 'thinking pensiero',
-    help: 'Solo visualizzazione: nascosto, compatto (chiuso) o dettagliato (aperto).' },
+    help: 'Solo visualizzazione: nascosto, compatto (chiuso), dettagliato (aperto, completo) o dal vivo (aperto mentre lavora). Si cambia anche dall\'icona ⚙ della chat.' },
   { id: 'instructions', section: 'assistente', label: 'Istruzioni personali', wide: true, keywords: 'prompt istruzioni',
     help: 'Aggiunte a ogni conversazione, su ogni client (vuoto = nessuna).' },
   { id: 'notice_mode', section: 'messaggi', label: 'Dove mostrarli', keywords: 'avvisi notice popup toast',
@@ -164,9 +164,7 @@ export class PersonalSettingsComponent {
   readonly tones: SegmentOption[] = [
     { value: 'neutral', label: 'Neutro' }, { value: 'warm', label: 'Caldo' }, { value: 'direct', label: 'Diretto' }, { value: 'formal', label: 'Formale' },
   ];
-  readonly thinking: SegmentOption[] = [
-    { value: 'hidden', label: 'Nascosto' }, { value: 'compact', label: 'Compatto' }, { value: 'detailed', label: 'Dettagliato' },
-  ];
+  readonly thinking: SegmentOption[] = THINKING_DISPLAY_OPTIONS;
   readonly noticeModes: SegmentOption[] = [
     { value: 'inline', label: 'Sotto la risposta' }, { value: 'toast', label: 'Popup' }, { value: 'both', label: 'Entrambi' },
     { value: 'important', label: 'Solo importanti' }, { value: 'hidden', label: 'Nascosti' },

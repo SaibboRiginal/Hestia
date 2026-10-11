@@ -821,10 +821,11 @@ class OracleEngine:
     ):
         """Main conversational loop. Yields NDJSON lines.
 
-        Modes (control PROCESS, same model for all):
+        Modes (control PROCESS, same model for all; main.py resolves "" from oracle.chat.mode):
           quick    → single ask(), no classify, no tools. <2s latency.
           auto     → classify → agent loop if domain_query. Default.
-          thinking → full agent loop, visible chain-of-thought, higher max_turns.
+          thinking → always agent loop (no quick-chat shortcut), model reasoning on.
+          cot      → always agent loop, deep reasoning, higher max_turns, step-by-step plan.
 
         Model (controls which BRAIN — settings oracle.models.<use case>.*):
           generic   → daily driver
@@ -973,7 +974,9 @@ class OracleEngine:
                 ]
 
         # ── Phase 3: QUICK CHAT shortcut ──────────────────────────────────────
-        if intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD:
+        # Pensata / CoT were chosen by the user: always reason with the agent loop.
+        if (intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD
+                and mode not in ("thinking", "cot")):
             yield stream_emitter.emit_status("💬 Conversazione rapida...")
             extra_context = ""
             if self._doc_rag.message_is_about_docs(user_message):
@@ -1135,6 +1138,12 @@ class OracleEngine:
                 "svilupparla. CHIAMA i tool system prima di rispondere. "
                 "Mai rispondere da history o a memoria."
             )
+        if mode == "cot":
+            agent_loop_client_instructions_parts.append(
+                "MODALITÀ CoT: scomponi la richiesta in passi, verifica ogni passo "
+                "(strumenti se servono), poi rispondi. In fondo alla risposta: "
+                "«Passi:» con 2-5 righe brevi del ragionamento seguito."
+            )
         if client_instructions and str(client_instructions).strip():
             agent_loop_client_instructions_parts.append(
                 str(client_instructions).strip())
@@ -1158,18 +1167,19 @@ class OracleEngine:
         # Resolve max turns: higher when action_intent is True (complex tasks)
         _default_max_turns = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "25"))
         resolved_max_turns = _default_max_turns
-        # auto mode: quick_chat → no thinking, domain_query → thinking
-        # thinking mode: always thinking
+        # auto / thinking: reasoning on · cot: deep reasoning + more turns
         # quick mode: never reaches here (caught above)
-        _is_thinking_mode = mode in ("thinking", "auto")
-        if _is_thinking_mode:
-            resolved_max_turns = max(resolved_max_turns, 50) if mode == "thinking" else resolved_max_turns
-            yield stream_emitter.emit_status("🧠 Modalità thinking attivata — ragionamento approfondito...")
+        _is_thinking_mode = mode in ("thinking", "cot", "auto")
+        if mode == "cot":
+            resolved_max_turns = max(resolved_max_turns, 50)
+            yield stream_emitter.emit_status("🧠 Modalità CoT — ragionamento passo passo...")
+        elif mode == "thinking":
+            yield stream_emitter.emit_status("🧠 Modalità pensata — ragiono prima di rispondere...")
 
         # Mode controls the think level; model (resolved above) controls the brain.
         # Any mode × any model combination works — mode and model are independent.
-        # Level: auto → True, thinking → "deep" (Ollama: both = think on; Claude: low/high effort).
-        _think_level = "deep" if mode == "thinking" else _is_thinking_mode
+        # Level: auto/thinking → True, cot → "deep" (Ollama: both = think on; Claude: medium/high effort).
+        _think_level = "deep" if mode == "cot" else _is_thinking_mode
         _ask_tools_bound = lambda p, tm: self._ask_analyst_with_tools(
             p, tm, agent_override=agent, thinking=_think_level)
 
@@ -1498,7 +1508,18 @@ class OracleEngine:
 
         total_chars = history_chars + tool_chars_est + pref_chars + system_overhead_chars
         total_tokens = history_tokens + tools_tokens + pref_tokens + system_tokens
-        pct = counter.context_pct(total_tokens)
+
+        # Provider in use for chat (use case generic): its own window, billing kind, and the real
+        # prompt size of this conversation's last call when a provider reported it.
+        from agents.providers import runtime_info
+        generic = self._agents.generic
+        active = {"use_case": "generic", "model": generic.model_name,
+                  **runtime_info(generic.provider, _window)}
+        _window = active["context_window"]
+        usage = llm_stats.session_usage(session_id)
+        measured = int(usage.get("last_prompt_tokens") or 0)
+        used_tokens = measured or total_tokens
+        pct = min(100.0, 100.0 * used_tokens / _window) if _window else 0.0
 
         return {
             "context_window": _window,
@@ -1516,8 +1537,12 @@ class OracleEngine:
             "total_chars_est": total_chars,
             "total_tokens_est": total_tokens,
             "context_used_pct": round(pct, 1),
-            "context_remaining_est": max(0, _window - total_tokens),
+            "context_remaining_est": max(0, _window - used_tokens),
             "compaction_available": (len(history_data) if isinstance(history_data, list) else 0) > 10,
+            "context_used_tokens": used_tokens,
+            "context_measured": bool(measured),
+            "active": active,
+            "session_usage": usage,
             "runtime": llm_stats.summary(),
         }
 

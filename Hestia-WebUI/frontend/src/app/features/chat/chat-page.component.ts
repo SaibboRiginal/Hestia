@@ -10,21 +10,22 @@ import { SignalRService } from '../../services/signalr.service';
 import { ChatMessage } from '../../models/chat.models';
 import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, ToastService } from '../../ui';
 import { ThinkingStepsComponent } from './thinking-steps.component';
+import { ChatModeComponent } from './chat-mode.component';
+import { ChatContextComponent } from './chat-context.component';
 import { ChatQuickSettingsComponent } from '../settings/chat-quick-settings.component';
 import { NoticePrefsService } from '../../services/notice-prefs.service';
 
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
   selector: 'app-chat-page',
-  imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent],
+  imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
+            ChatModeComponent, ChatContextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
       <span class="ttl">{{ chat.messages().length ? 'Conversazione' : '' }}</span>
       <div class="hx-grow"></div>
-      <select class="hx-select mode" [(ngModel)]="mode" title="Modalità">
-        <option value="auto">Auto</option><option value="quick">Veloce</option><option value="thinking">Ragionamento</option>
-      </select>
+      <hx-chat-context />
       <hx-chat-quick-settings />
       <hx-menu [items]="menu" (select)="onMenu($event)">
         <button hx-btn variant="ghost" size="sm" icon="more" iconOnly trigger aria-label="Altro"></button>
@@ -49,8 +50,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
           } @else {
             <div class="msg asst hx-fade-in">
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
-                <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content"
-                               [expandedByDefault]="thinkingMode() === 'detailed'" />
+                <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
               }
               @if (m.content) { <div class="hx-prose" [innerHTML]="m.content"></div> }
               @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
@@ -104,6 +104,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
         <div class="tools">
           <input #file type="file" hidden (change)="onFile($event)" />
           <button hx-btn variant="ghost" size="sm" icon="paperclip" iconOnly aria-label="Allega" (click)="file.click()" [disabled]="chat.isStreaming()"></button>
+          <hx-chat-mode [(mode)]="mode" />
           <div class="hx-grow"></div>
           @if (chat.isStreaming()) {
             <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly aria-label="Stop" (click)="chat.cancelStream()"></button>
@@ -119,7 +120,6 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .top { display: flex; align-items: center; gap: 8px; padding: 10px 16px 8px 56px; min-height: 52px; }
     .ttl { font-size: 14px; color: var(--text-2); }
-    .mode { width: auto; height: 30px; padding-top: 4px; padding-bottom: 4px; font-size: 13px; }
     .scroll { flex: 1; overflow-y: auto; }
     .thread { max-width: var(--chat-width); margin: 0 auto; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 22px; }
     .welcome { text-align: center; padding: 12vh 0 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -174,7 +174,7 @@ export class ChatPageComponent implements AfterViewChecked {
 
   text = '';
   questionText = '';
-  mode = 'auto';
+  mode = signal('auto');   // hx-chat-mode: this conversation's mode (Themis), sent with every message
   rated = signal<Record<string, 'good' | 'bad'>>({});
   private lastCount = 0;
   private lastLen = 0;
@@ -206,7 +206,7 @@ export class ChatPageComponent implements AfterViewChecked {
   send() {
     const t = this.text.trim();
     if (!t || this.chat.isStreaming()) return;
-    void this.chat.sendMessage(t, this.session.sessionId() || '', this.mode, 'generic');
+    void this.chat.sendMessage(t, this.session.sessionId() || '', this.mode(), 'generic');
     this.text = '';
     queueMicrotask(() => this.grow());
   }

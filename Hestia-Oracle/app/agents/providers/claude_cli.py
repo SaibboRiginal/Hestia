@@ -33,6 +33,8 @@ _TOOL_PROTOCOL = (
 class ClaudeCliProvider(LLMProvider):
     TYPE = "claude_cli"
     LABEL = "Claude (abbonamento)"
+    CONTEXT_WINDOW = 200_000
+    BILLING = "Abbonamento Claude · limiti condivisi con Forge"
     CONFIG_FIELDS = (
         {"key": "bin", "type": "string", "label": "Comando claude", "default": "claude"},
         {"key": "authed", "type": "bool", "label": "Login abbonamento presente", "default": False},
@@ -81,6 +83,13 @@ class ClaudeCliProvider(LLMProvider):
         logger.info("event=claude_cli_call model=%s effort=%s ms=%d input=%s output=%s cache_read=%s",
                     model, effort, elapsed, usage.get("input_tokens"), usage.get("output_tokens"),
                     usage.get("cache_read_input_tokens"))
+        try:
+            from core.services import llm_stats
+            # Subscription: total_cost_usd is what the same call would cost on the API.
+            llm_stats.record_anthropic(self.label, self.TYPE, model, usage,
+                                       cost_usd=float(data.get("total_cost_usd") or 0))
+        except Exception as exc:  # stats never break a call
+            logger.debug("event=claude_cli_stats_failed error=%s", exc)
         return str(data.get("result") or "").strip()
 
     def ask(self, model: str, system: str, prompt: str, thinking: Any = None) -> str:

@@ -23,6 +23,7 @@ logger = logging.getLogger("hestia_oracle.providers.openai")
 class OpenAICompatProvider(LLMProvider):
     TYPE = "openai"
     LABEL = "Server compatibile OpenAI (llama-server, vLLM)"
+    BILLING = "Server locale · gratis"
     CONFIG_FIELDS = (
         {"key": "base_url", "type": "string", "label": "Indirizzo (…/v1)", "env": "ORACLE_OPENAI_BASE_URL"},
         {"key": "api_key", "type": "secret_ref", "label": "Chiave API", "env": "ORACLE_OPENAI_API_KEY"},

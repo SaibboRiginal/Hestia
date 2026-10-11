@@ -68,6 +68,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/commands` | Discover commands |
 | POST | `/api/webui/commands/execute` | Execute command |
 | POST | `/api/webui/feedback` | Submit feedback |
+| GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
+| POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
 | GET | `/api/webui/documents` | List documents |
 | DELETE | `/api/webui/documents/{id}` | Delete document |
@@ -161,6 +163,20 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   `SettingsController` proxies them, only *Ragionamento nelle risposte* stays in the WebUI.
 - Chat header ⚙ (`<hx-chat-quick-settings>`): tone and instructions for **this conversation** (scope session,
   id chosen by the backend); *Come predefinito* drops the override. Oracle applies them (`client: "webui"`).
+
+### Mode, reasoning display, context gauge (2026-10-11, `docs/work/2026-10-11-chat-modalita-contesto/`)
+- Composer `<hx-chat-mode>`: Auto · Rapida · Pensata · CoT (Oracle `oracle.chat.mode`). Loads the value of this
+  conversation from Themis, a pick is saved with scope session and sent with every message; ChatHub passes
+  `auto|quick|thinking|cot`, anything else as "" (= Oracle uses the setting; retry uses it too). Default in
+  Personali → Assistente (generic Themis row). The drawer keeps `auto`.
+- Reasoning display (WebUI presentation, `thinking_display` in the WebUI session store): hidden · **compact** ·
+  detailed · live — default compact (was hidden, so nothing showed). `<chat-thinking [display]>`: compact closed,
+  detailed open with full reasoning and tool results, live open while working and closed when the answer comes;
+  a click wins. Editable from the chat ⚙ popover and Personali; the drawer follows it too.
+- Header `<hx-chat-context>`: ring with the % of the context window of the provider in use; popover with
+  provider/model and billing kind, context breakdown, this conversation's tokens (input / cache / output,
+  calls, API-equivalent cost for Claude CLI) and *Compatta*. Refreshed when an answer ends or the conversation
+  changes.
 
 ### "Crea con Hestia" drawer (2026-10-04, `features/assistant/`, `services/assistant.service.ts`)
 

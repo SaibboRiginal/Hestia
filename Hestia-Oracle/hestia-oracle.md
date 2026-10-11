@@ -26,6 +26,9 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Clients send `"client": "<name>"` in `/api/chat`, `/api/chat/document[/json]` and `/api/format`; Oracle appends
   the resolved sentences to the client instructions (`main._with_personal_settings`, values cached 20 s by
   `SettingsClient.user_values`; Themis down → defaults). Clients no longer send tone lines themselves.
+- `oracle.chat.mode` (auto · quick «Rapida» · thinking «Pensata» · cot «CoT») is the conversation mode, same
+  layers. `/api/chat` with an empty `mode` uses it (`oracle_settings.chat_mode`); an explicit mode wins
+  (WebUI composer sends it and saves it for the conversation; Telegram `/settings` → Modalità).
 
 ### Session Management
 - Each interface (e.g. Telegram) has one active session at a time.
@@ -162,7 +165,9 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 |------|-------|----------|-------------|
 | `quick` | False | No | Single ask, no tools. <2s latency |
 | `auto` | True (agent loop) | Yes | Classify → quick_chat (no think) or agent loop (with think). Default |
-| `thinking` | True | Yes | Full agent loop with visible chain-of-thought |
+| `thinking` (Pensata) | True | Yes, no quick-chat shortcut | Always agent loop, model reasoning on |
+| `cot` (CoT) | "deep" | Yes, no quick-chat shortcut | Deep reasoning, ≥50 turns, prompt line asking a step-by-step plan and a «Passi:» recap |
+| `""` | — | — | Use the setting `oracle.chat.mode` (session → client → profile) |
 
 Mode and model are independent — any mode works with any model (`generic`/`reasoning`/`code`).
 Model names come from the settings `oracle.models.*` — no hardcoded models outside the declared defaults.
@@ -276,9 +281,9 @@ Pick them per use case in Impostazioni → Modelli (`oracle.models.<uc>.provider
   personal-use grey area chosen knowingly. Claude Code's tools are off (`--tools ""`, `--strict-mcp-config`, empty
   cwd); Oracle's loop stays in charge: the filtered tools are written in the prompt and Claude answers
   `<tool_call>{"name","params"}</tool_call>` blocks, parsed into tool calls. API keys are stripped from its env.
-- **Thinking**: chat mode quick → off, auto → low (CLI: medium), thinking → high effort; the use-case setting
-  `thinking = Mai` keeps it off. No CoT prompt of our own: Claude's summarized reasoning is shown as
-  `reasoning_content`. No embeddings on these providers.
+- **Thinking**: chat mode quick → off, auto/thinking → low (CLI: medium), cot → high effort; the use-case setting
+  `thinking = Mai` keeps it off. Claude's summarized reasoning is shown as `reasoning_content` (CoT also adds
+  one prompt line asking a short «Passi:» recap). No embeddings on these providers.
 
 ### Local models: real context window, prompt cache, OpenAI-compatible servers
 
@@ -292,7 +297,15 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   load_ms prompt_ms output_tokens tok_per_s`; `/api/chat/context` returns `runtime` = per-agent averages of the
   last 50 calls. Ollama reports only the tokens it had to evaluate (`prompt_eval_count`), so its cache share is an
   estimate (`cache_estimated: true`); OpenAI-compatible servers report it (`usage.prompt_tokens_details.cached_tokens`,
-  llama-server `timings.cache_n`).
+  llama-server `timings.cache_n`). Gemini (`usage_metadata`), Anthropic API and Claude CLI (`usage`, CLI
+  `total_cost_usd` = API-equivalent cost) are recorded too.
+- **Per-conversation usage** (2026-10-11, dossier `docs/work/2026-10-11-chat-modalita-contesto/`): `/api/chat`
+  binds its session id around the stream (`llm_stats.bind_session`, a contextvar set at every `next()`), so each
+  LLM call of the turn adds to that session's totals (in memory, last 200 conversations, reset on restart).
+  `/api/chat/context` adds `active` (chat provider: label, model, billing kind, its context window —
+  `CONTEXT_WINDOW`/`BILLING` on provider classes, `agents.providers.runtime_info`) and `session_usage`; the
+  used % is the last real prompt of the conversation when measured, else the estimate. WebUI shows it in the
+  chat header gauge.
 - **Cache-friendly prompts**: the model server reuses the KV cache only for a byte-identical prefix. Agent-loop tools
   are sorted by name; the per-request ACTION INTENT hint moved after the user message (dynamic part); the history
   window grows from a fixed first message up to N + N/2 messages and then jumps to the last N

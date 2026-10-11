@@ -27,7 +27,7 @@ public record SessionCleared(string Status, string NewSessionId);
 public record SessionSettings(
     string Tone = "warm",
     string CustomPrompt = "",
-    string ThinkingDisplay = "hidden"
+    string ThinkingDisplay = "compact"
 );
 
 public record SettingsUpdateRequest(

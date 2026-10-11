@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ButtonComponent, PopoverComponent, SpinnerComponent, ToastService } from '../../ui';
+import { ButtonComponent, PopoverComponent, SegmentedComponent, SpinnerComponent, ToastService } from '../../ui';
+import { SettingsService, THINKING_DISPLAY_OPTIONS } from '../../services/settings.service';
 import { CentralSettingsApi, SettingItem, apiError } from './central-settings.api';
 import { SettingControlComponent } from './setting-control.component';
 
@@ -9,16 +10,17 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
 /**
  * <hx-chat-quick-settings /> — chat header button: personal settings for THIS conversation
  * (Themis scope session). Defaults stay in Impostazioni → Personali; "Come predefinito" drops
- * the override so the conversation follows the defaults again.
+ * the override so the conversation follows the defaults again. "Ragionamento" is how this browser
+ * shows the reasoning (WebUI presentation, same value as Personali).
  */
 @Component({
   selector: 'hx-chat-quick-settings',
-  imports: [RouterLink, ButtonComponent, PopoverComponent, SpinnerComponent, SettingControlComponent],
+  imports: [RouterLink, ButtonComponent, PopoverComponent, SegmentedComponent, SpinnerComponent, SettingControlComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button hx-btn variant="ghost" size="sm" icon="settings" iconOnly aria-label="Impostazioni di questa chat"
             title="Impostazioni di questa chat" (click)="toggle($event)"></button>
-    <hx-popover [open]="open()" [anchor]="anchor()" [width]="320" (closed)="open.set(false)">
+    <hx-popover [open]="open()" [anchor]="anchor()" [width]="370" (closed)="open.set(false)">
       <div class="pop">
         <div class="ph">Questa conversazione</div>
         @if (loading()) { <div class="c"><hx-spinner [size]="16" /></div> }
@@ -33,6 +35,10 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
             <hx-setting-control [item]="it" (commit)="set(it, $event)" />
           </div>
         }
+        <div class="row">
+          <div class="lbl"><span>Ragionamento</span><span class="src">su questo browser</span></div>
+          <hx-segmented [options]="thinking" [value]="prefs.settings().thinkingDisplay" (changed)="setThinking($event)" />
+        </div>
         <a class="more" routerLink="/settings" (click)="open.set(false)">Predefiniti e altre impostazioni…</a>
       </div>
     </hx-popover>`,
@@ -51,6 +57,8 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
 export class ChatQuickSettingsComponent {
   private api = inject(CentralSettingsApi);
   private toast = inject(ToastService);
+  readonly prefs = inject(SettingsService);
+  readonly thinking = THINKING_DISPLAY_OPTIONS;
   readonly open = signal(false);
   readonly anchor = signal<{ x: number; y: number; width: number; height: number } | null>(null);
   readonly items = signal<SettingItem[]>([]);
@@ -83,6 +91,11 @@ export class ChatQuickSettingsComponent {
       await this.load();
       this.toast.success(`${it.label}: vale per questa conversazione`);
     } catch (e) { this.toast.error(apiError(e, 'Salvataggio non riuscito')); }
+  }
+
+  async setThinking(v: string) {
+    try { await this.prefs.update({ thinkingDisplay: v }); }
+    catch (e) { this.toast.error(apiError(e, 'Salvataggio non riuscito')); }
   }
 
   async followDefault(it: SettingItem) {

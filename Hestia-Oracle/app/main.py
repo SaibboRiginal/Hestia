@@ -156,6 +156,7 @@ except Exception as exc:
 
 
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
+from core.services import llm_stats  # noqa: E402
 
 app.include_router(_oracle_settings.settings.router())
 
@@ -240,8 +241,9 @@ class ChatRequest(BaseModel):
     # Client name (telegram, webui…): personal chat settings resolve session → client → profile (Themis)
     client: Optional[str] = None
     save_history: bool = True
-    # Execution mode: quick (1 call, no tools), auto (classify+loop), thinking (full agent loop)
-    mode: str = "auto"
+    # Mode: quick (1 call, no tools) · auto (classify+loop) · thinking (always loop, reasoning) ·
+    # cot (deep reasoning, step by step). Empty = the user's setting oracle.chat.mode (Themis).
+    mode: str = ""
     # Which use-case model: generic (daily), reasoning (deep), code (coding)
     model: str = "generic"
 
@@ -454,18 +456,18 @@ def chat_endpoint(req: ChatRequest):
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
 
-        # Return the Engine's output as a continuous stream
-        # This streams the "yield" statements from oracle_engine.py directly to Telegram
+        mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
+        # Return the Engine's output as a continuous stream (LLM usage counted for this session)
         return StreamingResponse(
-            engine.chat(req.message, current_session,
-                        notify_target=req.notify_target,
-                        force_notification_compiler=bool(
-                            req.force_notification_compiler),
-                        client_instructions=_with_personal_settings(
-                            req.client_instructions, req.client, current_session, presence_state),
-                        save_history=req.save_history,
-                        mode=req.mode,
-                        model=req.model),
+            llm_stats.bind_session(current_session, engine.chat(
+                req.message, current_session,
+                notify_target=req.notify_target,
+                force_notification_compiler=bool(req.force_notification_compiler),
+                client_instructions=_with_personal_settings(
+                    req.client_instructions, req.client, current_session, presence_state),
+                save_history=req.save_history,
+                mode=mode,
+                model=req.model)),
             media_type="application/x-ndjson"
         )
     except Exception as e:

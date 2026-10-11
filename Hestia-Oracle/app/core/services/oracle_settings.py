@@ -95,6 +95,11 @@ TONES = [("warm", "Caldo"), ("neutral", "Neutro"), ("direct", "Diretto"), ("form
 _TONE_SENTENCE = {"warm": "Tono: caldo e amichevole.", "neutral": "",
                   "direct": "Tono: diretto, essenziale, niente preamboli.", "formal": "Tono: formale."}
 TONE, INSTRUCTIONS = "oracle.chat.tone", "oracle.chat.instructions"
+MODE = "oracle.chat.mode"
+# Conversation modes (process, not brain): quick = one call no tools · auto = classifier decides ·
+# thinking = always agent loop + model reasoning · cot = deep reasoning, more turns, step-by-step plan.
+MODES = [("auto", "Auto"), ("quick", "Rapida"), ("thinking", "Pensata"), ("cot", "CoT · passo passo")]
+_MODE_ALIASES = {"fast": "quick", "rapida": "quick", "pensata": "thinking", "deep": "cot"}
 
 # Personal chat settings (scope user): same values on every client; profile = default for new sessions,
 # a client or a single conversation can override (session → client → profile → default).
@@ -103,6 +108,9 @@ _CHAT = [
             help="Come ti risponde Hestia, su ogni client."),
     setting(INSTRUCTIONS, "Istruzioni personali", "text", "", group="Chat", scope="user", order=1,
             help="Aggiunte a ogni conversazione (es. «rispondi sempre in breve»)."),
+    setting(MODE, "Modalità di conversazione", "enum", "auto", group="Chat", scope="user", options=MODES, order=2,
+            help="Rapida: una risposta senza strumenti. Auto: decide Hestia. Pensata: ragiona e usa gli "
+                 "strumenti. CoT: ragionamento profondo passo passo (più lento)."),
 ]
 
 # Context & local runtimes (dossier docs/work/2026-10-10-oracle-local-context). Endpoints stay in env.
@@ -182,6 +190,22 @@ def chat_instructions(*, client: str = "", session: str = "") -> list[str]:
     if custom:
         out.append(f"Istruzioni dell'utente: {custom}")
     return out
+
+
+def normalize_mode(raw: str | None) -> str:
+    """A known mode name, or "" (= follow the setting)."""
+    value = str(raw or "").strip().lower()
+    value = _MODE_ALIASES.get(value, value)
+    return value if value in {m for m, _ in MODES} else ""
+
+
+def chat_mode(requested: str | None, *, client: str = "", session: str = "") -> str:
+    """Mode of this turn: explicit request wins, else the user's setting (session → client → profile)."""
+    explicit = normalize_mode(requested)
+    if explicit:
+        return explicit
+    # user_values never raises: Themis down → declared defaults ([🔄] logged there).
+    return normalize_mode(settings.user_values(client=client, session=session).get(MODE)) or "auto"
 
 
 def usecase(uc: str) -> dict[str, str]:

@@ -2,21 +2,69 @@
 
 Fed by every provider from what the server already returns (Ollama ``prompt_eval_count`` /
 ``load_duration``, OpenAI-compatible ``usage`` + llama-server ``timings``, Anthropic ``usage``).
-Kept in memory as a short rolling window per agent label; exposed by ``/api/chat/context``.
+Kept in memory as a short rolling window per agent label, plus running totals per
+conversation (the chat stream binds its session id, see ``bind_session``); exposed by
+``/api/chat/context``.
 """
 from __future__ import annotations
 
+import contextvars
 import logging
 import threading
 import time
-from collections import deque
-from typing import Any
+from collections import OrderedDict, deque
+from typing import Any, Iterator
 
 logger = logging.getLogger("hestia_oracle.llm_stats")
 
 _WINDOW = 50
+_MAX_SESSIONS = 200
 _lock = threading.Lock()
 _calls: dict[str, deque] = {}
+_sessions: "OrderedDict[str, dict]" = OrderedDict()
+_current_session: contextvars.ContextVar[str] = contextvars.ContextVar("llm_stats_session", default="")
+
+
+def bind_session(session_id: str, stream: Iterator[str]) -> Iterator[str]:
+    """Run each step of a chat stream with *session_id* bound, so every LLM call it makes is
+    also counted for that conversation. Set around every ``next()``: the web server may resume
+    the generator from a different thread/context each time."""
+    while True:
+        token = _current_session.set(session_id or "")
+        try:
+            item = next(stream)
+        except StopIteration:
+            return
+        finally:
+            _current_session.reset(token)
+        yield item
+
+
+def _add_to_session(row: dict) -> None:
+    sid = _current_session.get()
+    if not sid:
+        return
+    with _lock:
+        tot = _sessions.pop(sid, None) or {
+            "calls": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+            "estimated": False}
+        tot["calls"] += 1
+        tot["input_tokens"] += row["prompt_tokens"]
+        tot["cached_tokens"] += row["cached_tokens"]
+        tot["output_tokens"] += row["output_tokens"]
+        tot["cost_usd"] = round(tot["cost_usd"] + float(row.get("cost_usd") or 0), 6)
+        tot["estimated"] = tot["estimated"] or row["estimated"]
+        tot.update(last_prompt_tokens=row["prompt_tokens"], provider=row["provider"], model=row["model"],
+                   last_at=row["at"])
+        _sessions[sid] = tot
+        while len(_sessions) > _MAX_SESSIONS:
+            _sessions.popitem(last=False)
+
+
+def session_usage(session_id: str) -> dict:
+    """Running totals of one conversation ({} before its first counted call)."""
+    with _lock:
+        return dict(_sessions.get(session_id or "") or {})
 
 
 def _ms(ns: Any) -> int:
@@ -28,7 +76,7 @@ def _ms(ns: Any) -> int:
 
 def record(label: str, provider: str, model: str, *, prompt_tokens: int, cached_tokens: int = 0,
            load_ms: int = 0, prompt_ms: int = 0, output_tokens: int = 0, output_ms: int = 0,
-           estimated: bool = False) -> dict:
+           estimated: bool = False, cost_usd: float = 0.0) -> dict:
     """Store one call and log ``event=llm_call_stats``. Returns the row."""
     prompt_tokens = max(0, int(prompt_tokens or 0))
     cached_tokens = max(0, min(int(cached_tokens or 0), prompt_tokens))
@@ -37,11 +85,12 @@ def record(label: str, provider: str, model: str, *, prompt_tokens: int, cached_
         "prompt_tokens": prompt_tokens, "cached_tokens": cached_tokens,
         "load_ms": int(load_ms or 0), "prompt_ms": int(prompt_ms or 0),
         "output_tokens": int(output_tokens or 0), "output_ms": int(output_ms or 0),
-        "estimated": bool(estimated),
+        "estimated": bool(estimated), "cost_usd": float(cost_usd or 0),
     }
     label = label or "generic"
     with _lock:
         _calls.setdefault(label, deque(maxlen=_WINDOW)).append(row)
+    _add_to_session(row)
     cache_pct = round(100 * cached_tokens / prompt_tokens, 1) if prompt_tokens else 0.0
     tok_s = round(row["output_tokens"] / (row["output_ms"] / 1000), 1) if row["output_ms"] else 0.0
     logger.info(
@@ -87,6 +136,30 @@ def record_openai(label: str, model: str, data: dict) -> dict | None:
                   output_ms=int(float(timings.get("predicted_ms") or 0)))
 
 
+def record_anthropic(label: str, provider: str, model: str, usage: Any, cost_usd: float = 0.0) -> dict | None:
+    """From an Anthropic ``usage`` (API object or Claude CLI JSON dict). ``input_tokens`` excludes
+    cache reads/writes, so the prompt size is their sum."""
+    if usage is None:
+        return None
+    get = usage.get if isinstance(usage, dict) else (lambda k, d=None: getattr(usage, k, d))
+    fresh = int(get("input_tokens") or 0)
+    read = int(get("cache_read_input_tokens") or 0)
+    write = int(get("cache_creation_input_tokens") or 0)
+    return record(label, provider, model, prompt_tokens=fresh + read + write, cached_tokens=read,
+                  output_tokens=int(get("output_tokens") or 0), cost_usd=cost_usd)
+
+
+def record_gemini(label: str, model: str, response: Any) -> dict | None:
+    """From a google-genai response (``usage_metadata``)."""
+    meta = getattr(response, "usage_metadata", None)
+    if meta is None:
+        return None
+    return record(label, "gemini", model, prompt_tokens=int(getattr(meta, "prompt_token_count", 0) or 0),
+                  cached_tokens=int(getattr(meta, "cached_content_token_count", 0) or 0),
+                  output_tokens=int(getattr(meta, "candidates_token_count", 0) or 0)
+                  + int(getattr(meta, "thoughts_token_count", 0) or 0))
+
+
 def summary() -> dict[str, dict]:
     """Averages over the last calls of each agent label."""
     out: dict[str, dict] = {}
@@ -121,3 +194,4 @@ def summary() -> dict[str, dict]:
 def reset() -> None:
     with _lock:
         _calls.clear()
+        _sessions.clear()

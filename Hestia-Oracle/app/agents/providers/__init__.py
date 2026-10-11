@@ -42,3 +42,22 @@ def available_types() -> list[tuple[str, str]]:
         if get_provider(name).available()[0]:
             out.append((name, cls.LABEL))
     return out
+
+
+# Inline types (UniversalAgent): label, context window (0 = local num_ctx setting), billing.
+_INLINE = {
+    "ollama": ("Ollama (locale)", 0, "Locale · gratis"),
+    "gemini": ("Gemini (cloud)", 1_048_576, "API Gemini · a consumo"),
+}
+
+
+def runtime_info(name: str, local_window: int) -> dict:
+    """Label, context window and billing kind of a provider type (chat context gauge)."""
+    name = str(name or "").strip().lower()
+    if name in PROVIDER_TYPES:
+        cls = PROVIDER_TYPES[name]
+        label, window, billing = cls.LABEL, cls.CONTEXT_WINDOW, cls.BILLING
+    else:
+        label, window, billing = _INLINE.get(name, (name, 0, ""))
+    return {"provider": name, "provider_label": label, "context_window": int(window or local_window),
+            "billing": billing}
