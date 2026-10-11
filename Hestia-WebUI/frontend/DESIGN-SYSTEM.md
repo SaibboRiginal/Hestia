@@ -56,6 +56,7 @@ Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 | `<hx-menu [items] (select)>` + `[trigger]` slot | dropdown (`{id,label,icon,danger,divider}`) |
 | `<hx-diff [diff] [only] [truncated]>` | unified `git diff` viewer: per-file collapsible (big files start closed), *Unificato / Affiancato* (remembered), `parseDiff()` exported |
 | `<hx-markdown [text]>` | GitHub-flavoured markdown (tables, task lists) with theme styles, sanitized |
+| `<hx-resize [(width)] edge [min] [max] [def] key [inline]>` + `savedWidth(key, def)` | drag handle for a side panel: drag, ←/→, double-click = default, clamped to 90vw, width per browser; `inline` for panels that scroll (sits in the flex row) |
 | `ToastService.show/success/error(text, tone, action?)` | snackbar (action = undo) |
 | `DialogService.confirm(title,msg,label,danger)` / `.choose(title,msg,options)` | awaitable dialogs |
 
@@ -105,6 +106,8 @@ export class NotesPageComponent {}
   `AssistantService.open({page, intent, label, hints, suggestions, prompt})`. `label` is the chip the user sees
   (short, human); `hints` are compact key/values for Oracle (ids, keys, dates — no prose, every token is paid).
   Reload page data on `AssistantService.changed$` (agenda / Forge / action notices).
+- **Side panels are resizable** (the owner likes it): every side column/drawer gets `<hx-resize>` with a `key`
+  (shell sidebar, Crea con Hestia, Sviluppo list + context panel, Calendario filters, Impostazioni → Sistema modules).
 - **Random ids**: `uid()` from `core/uid.ts` (`crypto.randomUUID` is missing on plain-http LAN addresses).
 
 ## 6. Calendar module (reference implementation)
@@ -120,8 +123,7 @@ Sources/layers: `CalendarSource` (`kind: 'ai' | 'external'`) — external calend
 `features/assistant/assistant-drawer.component.ts` (`<hx-assistant>`, lazy via `@defer` in the shell) +
 `services/assistant.service.ts`. Own `ChatService` instance (`providers`, channel `assistant`): the chat code and
 packets are shared with the Chat page, the conversation and the Oracle session are not.
-Resizable from its left edge (`.grip`, drag / ←→ / double-click = 440px default), clamped 340px–90vw, width in
-`localStorage` `hestia_assistant_width`; full screen on phones.
+Resizable from its left edge (`<hx-resize key="assistant">`, 340px–90vw, default 440px); full screen on phones.
 
 ## 7. Sviluppo module
 

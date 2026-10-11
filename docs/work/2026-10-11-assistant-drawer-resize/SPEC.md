@@ -1,20 +1,26 @@
-# Drawer "Crea con Hestia" ridimensionabile
+# Pannelli ridimensionabili nella WebUI
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat (Claude project thread) | done |
+| 2.0 | user via external chat (Claude project thread) | done |
 
 ## Goal
-The "Crea con Hestia" side drawer (WebUI) can be resized instead of being fixed at 440px.
+Side panels of the WebUI can be resized (the owner likes resizable panels in general), starting from the
+"Crea con Hestia" drawer and the main sidebar. The theme toggle leaves the sidebar (themes stay in Impostazioni).
 
 ## Scope / design
-- Handle on the drawer's left edge (`role="separator"`, cursor ew-resize, accent line on hover/drag).
-- Drag with pointer events (pointer capture, works with touch pen/mouse); ←/→ on the focused handle (Shift = bigger step);
-  double-click = default width (440px).
-- Width clamped to [340px, 90% of the viewport], re-clamped on window resize.
-- Width kept per browser in `localStorage` (`hestia_assistant_width`): pure rendering preference, not a Themis setting.
-- Phones (≤720px): drawer stays full screen, handle hidden.
+- Kit widget `<hx-resize>` (`src/app/ui/resize.ts`): drag handle on a panel edge, pointer events with capture,
+  ←/→ on the focused handle (Shift = bigger step), double-click = default width, clamped to [min, max] and 90vw,
+  re-clamped on window resize, width per browser in `localStorage` `hestia_w_<key>` (rendering preference, not a
+  Themis setting). `inline` mode for scrolling panels (handle is a zero-width flex item next to the panel).
+  Hidden on phones (≤860px).
+- Applied to: shell sidebar (200–420, default 248; not when collapsed), Crea con Hestia (340+, default 440),
+  Sviluppo task list (220–520, 300) and context panel (320–1000, default 34% of the window),
+  Calendario filters column (200–460, 256; hidden ≤1100 where it becomes a drawer),
+  Impostazioni → Sistema module column (180–420, 230).
+- Shell: "Tema chiaro/scuro" button removed (theme choice is in Impostazioni).
 
 ## Acceptance
-- Dragging the left edge changes the width live; the width survives closing/reopening and page reload.
-- `ng build` green.
+- Each listed panel resizes by dragging its edge; width survives reload; phones unchanged.
+- No theme toggle in the sidebar.
+- `ng build` green, no warnings.

@@ -6,6 +6,7 @@ export * from './overlays';
 export * from './datetime';
 export * from './diff';
 export * from './markdown';
+export * from './resize';
 
 import { IconComponent } from './icon.component';
 import { ButtonComponent } from './button.component';

@@ -9,15 +9,8 @@ import { SignalRService } from '../../services/signalr.service';
 import { SettingsService } from '../../services/settings.service';
 import { NoticePrefsService } from '../../services/notice-prefs.service';
 import { AssistantService } from '../../services/assistant.service';
-import { ButtonComponent, IconComponent } from '../../ui';
+import { ButtonComponent, IconComponent, ResizeHandleComponent, savedWidth } from '../../ui';
 import { ThinkingStepsComponent } from '../chat/thinking-steps.component';
-
-/** Drawer width (px), per browser. Clamped to [MIN_W, 90vw]; double-click on the handle resets it. */
-const WIDTH_KEY = 'hestia_assistant_width';
-const DEFAULT_W = 440;
-const MIN_W = 340;
-const maxW = () => Math.max(MIN_W, Math.floor(window.innerWidth * 0.9));
-const clampW = (w: number) => Math.round(Math.min(Math.max(w, MIN_W), maxW()));
 
 const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   calendar: ['Ogni lunedì alle 9 controlla le nuove case', 'Sposta il job di stanotte a domani alle 3', 'Salta la prossima finestra Claude'],
@@ -29,22 +22,18 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
  * "Crea con Hestia": right-side assistant drawer (full screen on phones), opened from any page
  * through AssistantService.open(ctx). Own ChatService instance on channel "assistant" and its own
  * Oracle session; the context packet travels with every message as client instructions.
- * Lazy (@defer in the shell); shortcut Ctrl/⌘+J lives in the shell. Resizable from its left edge
- * (drag, ←/→ on the focused handle, double-click = default); the width is kept per browser.
+ * Lazy (@defer in the shell); shortcut Ctrl/⌘+J lives in the shell.
  */
 @Component({
   selector: 'hx-assistant',
-  imports: [FormsModule, ButtonComponent, IconComponent, ThinkingStepsComponent],
+  imports: [FormsModule, ButtonComponent, IconComponent, ResizeHandleComponent, ThinkingStepsComponent],
   providers: [{ provide: ChatService, useFactory: () => { const c = new ChatService(); c.channel = 'assistant'; return c; } }],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (assistant.isOpen()) {
       <div class="scrim hx-fade-in" (click)="assistant.close()"></div>
-      <aside class="drawer" role="dialog" aria-label="Crea con Hestia" [style.width.px]="width()" [class.resizing]="resizing()">
-        <div class="grip" role="separator" aria-orientation="vertical" aria-label="Ridimensiona" tabindex="0"
-             title="Trascina per ridimensionare · doppio clic per la larghezza predefinita"
-             [attr.aria-valuenow]="width()" [attr.aria-valuemin]="minW"
-             (pointerdown)="startResize($event)" (dblclick)="setWidth(defaultW)" (keydown)="onGripKey($event)"></div>
+      <aside class="drawer" role="dialog" aria-label="Crea con Hestia" [style.width.px]="width()">
+        <hx-resize [(width)]="width" edge="left" [min]="340" [def]="440" key="assistant" />
         <header>
           <hx-icon name="sparkle" [size]="17" class="spark" />
           <h2>Crea con Hestia</h2>
@@ -137,12 +126,6 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
     .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; max-width: 100vw; z-index: 890; background: var(--surface);
               border-left: 1px solid var(--border); box-shadow: var(--shadow-3); display: flex; flex-direction: column;
               animation: hx-drawer-in var(--dur) var(--ease); }
-    .drawer.resizing { user-select: none; }
-    .grip { position: absolute; top: 0; bottom: 0; left: -4px; width: 8px; cursor: ew-resize; z-index: 1; touch-action: none; }
-    .grip::after { content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent;
-                   transition: background var(--dur) var(--ease); }
-    .grip:hover::after, .grip:focus-visible::after, .drawer.resizing .grip::after { background: var(--accent); }
-    .grip:focus-visible { outline: none; }
     @keyframes hx-drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
     header { display: flex; align-items: center; gap: 8px; padding: 12px 10px 8px 16px; }
     header h2 { font-family: var(--font-serif); font-weight: 500; font-size: 18px; }
@@ -181,7 +164,6 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
     .qo .hx-input { flex: 1; min-width: 140px; }
     @media (max-width: 720px) {
       .drawer { width: 100vw !important; border-left: 0; }
-      .grip { display: none; }
       .scrim { display: none; }
     }
   `],
@@ -201,11 +183,8 @@ export class AssistantDrawerComponent implements AfterViewChecked {
   private sessionId = uid();
   private lastCount = 0;
   private lastLen = 0;
-
-  readonly minW = MIN_W;
-  readonly defaultW = DEFAULT_W;
-  readonly width = signal(clampW(AssistantDrawerComponent.loadWidth()));
-  readonly resizing = signal(false);
+  /** Resizable from the left edge (<hx-resize>), width kept per browser. */
+  readonly width = signal(savedWidth('assistant', 440));
 
   readonly ctx = this.assistant.context;
   readonly packet = computed(() => AssistantService.serialize(this.ctx()));
@@ -240,46 +219,6 @@ export class AssistantDrawerComponent implements AfterViewChecked {
       this.bottom()?.nativeElement.scrollIntoView({ block: 'end' });
     }
   }
-
-  private static loadWidth(): number {
-    try { return Number(localStorage.getItem(WIDTH_KEY)) || DEFAULT_W; } catch { return DEFAULT_W; }
-  }
-
-  setWidth(w: number) {
-    const v = clampW(w);
-    this.width.set(v);
-    try { localStorage.setItem(WIDTH_KEY, String(v)); } catch { /* private mode */ }
-  }
-
-  /** Drag from the left edge: the drawer is anchored right, so width = viewport width − pointer x. */
-  startResize(e: PointerEvent) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const grip = e.target as HTMLElement;
-    grip.setPointerCapture(e.pointerId);
-    this.resizing.set(true);
-    const move = (ev: PointerEvent) => this.width.set(clampW(window.innerWidth - ev.clientX));
-    const end = () => {
-      grip.removeEventListener('pointermove', move);
-      grip.removeEventListener('pointerup', end);
-      grip.removeEventListener('pointercancel', end);
-      this.resizing.set(false);
-      this.setWidth(this.width());
-    };
-    grip.addEventListener('pointermove', move);
-    grip.addEventListener('pointerup', end);
-    grip.addEventListener('pointercancel', end);
-  }
-
-  onGripKey(e: KeyboardEvent) {
-    const step = e.shiftKey ? 80 : 20;
-    if (e.key === 'ArrowLeft') { e.preventDefault(); this.setWidth(this.width() + step); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); this.setWidth(this.width() - step); }
-  }
-
-  /** Keep a remembered width inside the viewport when the window shrinks. */
-  @HostListener('window:resize')
-  onWindowResize() { if (this.width() > maxW()) this.width.set(clampW(this.width())); }
 
   @HostListener('document:keydown.escape')
   onEsc() {

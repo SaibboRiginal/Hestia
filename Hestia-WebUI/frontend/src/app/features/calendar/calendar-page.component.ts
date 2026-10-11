@@ -15,7 +15,7 @@ import { EditorAsk, EditorResult, EditorSeed, EventEditorComponent } from './eve
 import { TemplateCreate, TemplateWizardComponent } from './template-wizard.component';
 import {
   ButtonComponent, DialogService, FieldComponent, IconComponent, MenuComponent, MenuItem, ModalComponent, PopoverComponent, SegmentedComponent, SegmentOption, SpinnerComponent,
-  ToastService, ToggleComponent,
+  ResizeHandleComponent, ToastService, ToggleComponent, savedWidth,
 } from '../../ui';
 
 /**
@@ -26,12 +26,12 @@ import {
   selector: 'app-calendar-page',
   imports: [
     FormsModule, ButtonComponent, IconComponent, SegmentedComponent, FieldComponent, SpinnerComponent, ToggleComponent, PopoverComponent, ModalComponent,
-    MenuComponent, TemplateWizardComponent, TimeGridComponent, MonthViewComponent, ListViewComponent, MiniCalendarComponent, EventDetailsComponent, EventEditorComponent,
+    MenuComponent, ResizeHandleComponent, TemplateWizardComponent, TimeGridComponent, MonthViewComponent, ListViewComponent, MiniCalendarComponent, EventDetailsComponent, EventEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      <aside class="side" [class.open]="sideOpen()">
+      <aside class="side" [class.open]="sideOpen()" [style.--side-w.px]="sideW()">
         <div class="new-wrap">
           <button hx-btn variant="primary" icon="plus" class="new" (click)="newAt(defaultStart())" title="Nuovo evento libero (N)">Nuovo</button>
           <hx-menu [items]="newMenu" (select)="onNew($event)">
@@ -79,6 +79,7 @@ import {
           <hx-toggle label="Mostra completate/annullate" [checked]="store.showDone()" (changed)="store.setShowDone($event)" />
         </section>
       </aside>
+      <hx-resize class="side-grip" [(width)]="sideW" [inline]="true" [min]="200" [max]="460" [def]="256" key="calendar-side" />
       <div class="scrim" (click)="sideOpen.set(false)"></div>
 
       <section class="main">
@@ -251,7 +252,7 @@ import {
   styles: [`
     :host { display: flex; flex: 1; min-height: 0; }
     .page { display: flex; flex: 1; min-height: 0; }
-    .side { width: 256px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 14px 12px; overflow-y: auto;
+    .side { width: var(--side-w, 256px); flex-shrink: 0; border-right: 1px solid var(--border); padding: 14px 12px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 16px; background: var(--bg); }
     .new-wrap { display: flex; align-self: flex-start; box-shadow: var(--shadow-1); border-radius: var(--radius-lg); }
     .new { padding: 0 18px; height: 40px; border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
@@ -293,6 +294,7 @@ import {
       .side.open { transform: none; }
       .side.open + .scrim { display: block; position: fixed; inset: 0; background: var(--overlay); z-index: 690; }
       .side-btn { display: inline-flex; }
+      .side-grip { display: none; }
       .search { width: 140px; }
     }
     .quick { display: flex; align-items: center; position: relative; margin: -4px 0 12px; }
@@ -329,6 +331,8 @@ export class CalendarPageComponent implements OnInit {
   ];
 
   sideOpen = signal(false);
+  /** Filters column, resizable (<hx-resize>), width kept per browser. */
+  sideW = signal(savedWidth('calendar-side', 256));
   wizard = signal<Date | null>(null);
   private assistant = inject(AssistantService);
   private api = inject(AgendaApi);

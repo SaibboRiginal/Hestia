@@ -3,7 +3,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { DialogService, UI } from '../../ui';
+import { DialogService, ResizeHandleComponent, UI, savedWidth } from '../../ui';
 import { ForgeStore } from './forge.store';
 import { ForgeApi } from './forge.api';
 import { Dossier, ENGINE_LABEL, ForgeTask, STATE_META } from './forge.models';
@@ -20,7 +20,7 @@ import { AssistantService } from '../../services/assistant.service';
  */
 @Component({
   selector: 'app-forge-page',
-  imports: [...UI, FormsModule, TranscriptComponent, TaskPanelComponent, RepoBrowserComponent],
+  imports: [...UI, ResizeHandleComponent, FormsModule, TranscriptComponent, TaskPanelComponent, RepoBrowserComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header title="Sviluppo" [subtitle]="subtitle()">
@@ -33,9 +33,10 @@ import { AssistantService } from '../../services/assistant.service';
     @if (mode() === 'repo') {
       <forge-repo [nav]="repoNav()" (openTask)="openTaskFromRepo($event)" />
     } @else {
-      <div class="layout" [attr.data-size]="size()" [class.has-sel]="!!store.selectedId()">
+      <div class="layout" [attr.data-size]="size()" [class.has-sel]="!!store.selectedId()" [style.grid-template-columns]="cols()">
         <!-- ── tasks ── -->
         <aside class="list">
+          <hx-resize [(width)]="listW" [min]="220" [max]="520" [def]="300" key="forge-list" />
           <div class="lhead">
             <div class="search"><hx-icon name="search" [size]="15" />
               <input class="hx-input" placeholder="Cerca task…" [ngModel]="store.search()" (ngModelChange)="store.search.set($event)" /></div>
@@ -150,7 +151,7 @@ import { AssistantService } from '../../services/assistant.service';
 
         <!-- ── context panel ── -->
         @if (size() === 'wide' && store.task()) {
-          <aside class="side"><forge-task-panel (openRepo)="openRepo($event)" /></aside>
+          <aside class="side"><hx-resize [(width)]="sideW" edge="left" [min]="320" [max]="1000" [def]="sideDef" key="forge-side" /><forge-task-panel (openRepo)="openRepo($event)" /></aside>
         }
       </div>
     }
@@ -189,7 +190,7 @@ import { AssistantService } from '../../services/assistant.service';
     .layout[data-size=phone] { grid-template-columns: 1fr; }
     .layout[data-size=phone].has-sel .list { display: none; }
     .layout[data-size=phone]:not(.has-sel) .center-col { display: none; }
-    .list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: var(--bg-subtle); }
+    .list { position: relative; border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: var(--bg-subtle); }
     .lhead { padding: 10px 10px 6px; display: flex; flex-direction: column; gap: 8px; }
     .search { position: relative; } .search hx-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
     .search input { padding-left: 32px; height: 34px; width: 100%; }
@@ -233,7 +234,7 @@ import { AssistantService } from '../../services/assistant.service';
     .eng { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .eng .sdot { margin-top: 0; }
     .muted { color: var(--text-3); font-size: 12px; }
-    .side { border-left: 1px solid var(--border); min-height: 0; display: flex; flex-direction: column; }
+    .side { position: relative; border-left: 1px solid var(--border); min-height: 0; display: flex; flex-direction: column; }
     .form { display: flex; flex-direction: column; gap: 14px; padding-bottom: 6px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 860px) {
@@ -260,6 +261,12 @@ export class ForgePageComponent implements OnInit, OnDestroy {
   readonly mode = signal<'tasks' | 'repo'>('tasks');
   readonly width = signal(window.innerWidth);
   readonly size = computed<'wide' | 'mid' | 'phone'>(() => this.width() >= 1280 ? 'wide' : this.width() > 860 ? 'mid' : 'phone');
+  /** Task list and context panel are resizable (<hx-resize>), widths kept per browser. */
+  readonly sideDef = Math.max(360, Math.round(window.innerWidth * 0.34));
+  readonly listW = signal(savedWidth('forge-list', 300));
+  readonly sideW = signal(savedWidth('forge-side', this.sideDef));
+  readonly cols = computed(() => this.size() === 'wide' ? `${this.listW()}px minmax(0, 1fr) ${this.sideW()}px`
+    : this.size() === 'mid' ? `${this.listW()}px minmax(0, 1fr)` : null);
   readonly centerTab = signal<'chat' | 'details'>('chat');
   readonly repoNav = signal<RepoNav | null>(null);
   readonly newOpen = signal(false);

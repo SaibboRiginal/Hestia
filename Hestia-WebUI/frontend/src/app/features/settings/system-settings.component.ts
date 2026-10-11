@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, input } from '@angular/core';
-import { BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SegmentOption, SpinnerComponent, Tone, ToggleComponent } from '../../ui';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
+import { BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SegmentOption, SpinnerComponent, Tone, ToggleComponent, ResizeHandleComponent, savedWidth } from '../../ui';
 import { ModuleInfo, PresetGroup, Proposal, SettingItem } from './central-settings.api';
 import { CentralSettingsStore, isModified, moduleLabel } from './central-settings.store';
 import { SettingControlComponent } from './setting-control.component';
@@ -22,10 +22,10 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
 @Component({
   selector: 'app-system-settings',
   imports: [BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SpinnerComponent,
-            ToggleComponent, SettingRowComponent, SettingControlComponent],
+            ToggleComponent, ResizeHandleComponent, SettingRowComponent, SettingControlComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <aside class="side">
+    <aside class="side" [style.--side-w.px]="sideW()">
       <label class="search">
         <hx-icon name="search" [size]="15" />
         <input class="hx-input" type="search" placeholder="Cerca un'impostazione…" [value]="store.query()"
@@ -44,6 +44,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
         }
       </nav>
     </aside>
+    <hx-resize [(width)]="sideW" [inline]="true" [min]="180" [max]="420" [def]="230" key="settings-side" />
 
     <section class="main">
       @if (store.offline()) {
@@ -167,7 +168,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
     </section>`,
   styles: [`
     :host { display: flex; flex: 1; min-height: 0; }
-    .side { width: 230px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 14px 10px; overflow-y: auto;
+    .side { width: var(--side-w, 230px); flex-shrink: 0; border-right: 1px solid var(--border); padding: 14px 10px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 10px; }
     .search { position: relative; display: block; }
     .search hx-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
@@ -228,6 +229,8 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
 })
 export class SystemSettingsComponent implements OnInit, OnDestroy {
   readonly store = inject(CentralSettingsStore);
+  /** Module column, resizable (<hx-resize>), width kept per browser. */
+  readonly sideW = signal(savedWidth('settings-side', 230));
   /** Deep link: ?tab=system&module=oracle */
   module = input<string | null>(null);
 

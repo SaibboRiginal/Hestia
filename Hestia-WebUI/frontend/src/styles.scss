@@ -111,3 +111,7 @@ kbd { border: 1px solid var(--border-strong); border-bottom-width: 2px; border-r
   .hx-notice { border-radius: var(--radius-md); align-items: flex-start; flex-wrap: wrap; padding: 7px 11px; }
   .nd { white-space: normal; flex-basis: 100%; padding-left: 20px; }
 }
+
+/* While a panel is being resized (<hx-resize>): no text selection, no width transitions lagging behind the pointer. */
+body.hx-resizing { cursor: col-resize; user-select: none; }
+body.hx-resizing * { transition: none !important; }

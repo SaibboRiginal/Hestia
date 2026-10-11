@@ -6,21 +6,21 @@ import { AuthService } from '../services/auth.service';
 import { SignalRService } from '../services/signalr.service';
 import { SessionService } from '../services/session.service';
 import { SettingsService } from '../services/settings.service';
-import { ThemeService } from '../core/theme/theme.service';
-import { ButtonComponent, DialogHostComponent, IconComponent, ToastHostComponent } from '../ui';
+import { ButtonComponent, DialogHostComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, savedWidth } from '../ui';
 import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
 import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
 import { PresenceService, PresenceState, ago, reasonLabel } from '../services/presence.service';
 
-/** App frame: collapsible sidebar (modules from APP_MODULES) + routed page + global overlays. */
+/** App frame: collapsible, resizable sidebar (modules from APP_MODULES) + routed page + global overlays. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
-      <aside class="nav">
+      <aside class="nav" [style.width.px]="collapsed() ? null : navWidth()">
+        @if (!collapsed()) { <hx-resize [(width)]="navWidth" [min]="200" [max]="420" [def]="248" key="nav" /> }
         <div class="brand">
           <span class="logo">◈</span>
           <span class="name">Hestia</span>
@@ -51,10 +51,6 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
               }
             </a>
           }
-          <button class="item" (click)="theme.toggleMode()" [attr.title]="'Tema: ' + theme.active().label">
-            <hx-icon [name]="theme.active().mode === 'dark' ? 'sun' : 'moon'" [size]="18" />
-            <span>{{ theme.active().mode === 'dark' ? 'Tema chiaro' : 'Tema scuro' }}</span>
-          </button>
           @if (!auth.local()) {
             <button class="item" (click)="logout()" title="Esci">
               <hx-icon name="logout" [size]="18" /><span>Esci</span>
@@ -123,8 +119,9 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
   styles: [`
     :host { display: block; height: 100vh; }
     .shell { display: flex; height: 100%; }
-    .nav { width: var(--nav-width); flex-shrink: 0; background: var(--bg-subtle); border-right: 1px solid var(--border);
+    .nav { position: relative; width: var(--nav-width); flex-shrink: 0; background: var(--bg-subtle); border-right: 1px solid var(--border);
            display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; transition: width var(--dur) var(--ease); overflow: hidden; }
+    .nav hx-resize { right: 0; }
     .brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px 12px 8px; }
     .logo { color: var(--accent); font-size: 20px; line-height: 1; }
     .name { font-family: var(--font-serif); font-size: 19px; font-weight: 500; flex: 1; white-space: nowrap; }
@@ -198,7 +195,6 @@ export class ShellComponent {
   readonly bottom = APP_MODULES.filter(m => m.bottom);
   auth = inject(AuthService);
   signalR = inject(SignalRService);
-  theme = inject(ThemeService);
   assistant = inject(AssistantService);
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
@@ -221,6 +217,8 @@ export class ShellComponent {
   private settings = inject(SettingsService);
   private router = inject(Router);
   collapsed = signal(this.readCollapsed());
+  /** Expanded sidebar width, dragged from its right edge (<hx-resize>), kept per browser. */
+  navWidth = signal(savedWidth('nav', 248));
   mobileOpen = signal(false);
   connLabel = computed(() => ({ connected: 'Connesso', connecting: 'Connessione…', disconnected: 'Disconnesso' })[this.signalR.connectionState()]);
   private bootstrapped = false;
