@@ -69,6 +69,9 @@ Hub **rejects** a registration (422) when topology tags repeat a dimension or us
 `ALLOWED_TOPOLOGY_DIMENSIONS`, or when `tags` miss the `service_type`. The service only logs a warning and is
 unreachable through Hub. Argus (duplicate `layer:`/`domain:` + `domain:system`) and Metis (`domain:improvement`,
 `status:alpha`) were rejected this way; fixed by tag cleanup and by adding `system`, `improvement`, `alpha`.
+Themis (`settings` tag, `layer:core`, `domain:settings`) and Metis (`improvement` tag) had the same fate: `settings` and
+`improvement` added to `ALLOWED_TAGS`, `settings` to `domain:`, Themis moved to `layer:foundation`. The unit test
+`tests/test_compose_registration_tags.py` validates every compose service's tags against these lists.
 
 `capabilities.owns_tool_domains: [...]` lets a non-`layer:domain` service own a tool domain in Oracle's tool
 filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).

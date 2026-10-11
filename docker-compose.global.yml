@@ -485,7 +485,7 @@ services:
       - SERVICE_VERSION=1.0.0
       - SERVICE_TYPE=core
       - SERVICE_TAGS=core,settings
-      - SERVICE_TOPOLOGY_TAGS=layer:core,domain:settings,status:alpha
+      - SERVICE_TOPOLOGY_TAGS=layer:foundation,domain:settings,status:alpha
       - THEMIS_DATA_DIR=/code/data                           # Schema cache (values live in Archive)
       - LOG_HEALTH_ACCESS_MODE=off
       - PYTHONUNBUFFERED=1

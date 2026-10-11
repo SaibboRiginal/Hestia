@@ -16,6 +16,8 @@ ALLOWED_TAGS = {
     "monitoring",
     "mcp",
     "gateway",
+    "settings",
+    "improvement",
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -45,6 +47,7 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "mcp",
         "system",
         "improvement",
+        "settings",
     },
     "status": {
         "alpha",

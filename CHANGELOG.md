@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-11
 - WebUI "Crea con Hestia" drawer resizable from its left edge (drag, ←/→, double-click resets; 340px–90vw, width remembered per browser, full screen on phones as before) → `docs/work/2026-10-11-assistant-drawer-resize/` [ext-chat]
+- Fix 503 on WebUI settings (chat ⚙ menu, Impostazioni → Sistema): Hub rejected Themis's registration (tag `settings`, `layer:core` not in the vocabulary), so Themis was never reachable through Hub; vocabulary extended (`settings`, `improvement` also fixes Metis), Themis on `layer:foundation`, regression test on compose tags → `docs/work/2026-10-11-themis-hub-registration/` [ext-chat]
 - WebUI: no access token from the home network (LAN/localhost), always required through the Cloudflare tunnel; local = no Cloudflare/proxy header + non-public Host + private socket peer (forged headers can only add the token), switch `webui.auth.local_without_token` in Themis (WebUI now declares its own settings); token middleware path check made case-insensitive → `docs/work/2026-10-11-webui-local-access/` [ext-chat]
 - Oracle on local models: real context window and keep-alive sent to Ollama on every call (settings Contesto), per-agent cache/speed stats in logs and `/api/chat/context`, cache-friendly prompts (stable tool order and history window, old tool results shortened), new `openai` provider for llama-server/vLLM → `docs/work/2026-10-10-oracle-local-context/` [ext-chat]
 
