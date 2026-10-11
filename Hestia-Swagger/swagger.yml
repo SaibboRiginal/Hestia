@@ -4808,7 +4808,7 @@ paths:
   /api/hephaestus/forge/status:
     get:
       tags: [Hephaestus]
-      summary: Forge status (repo, base branch, engines, queue)
+      summary: Forge status (enabled, paused, repo, base branch, engines, queue)
       servers:
         - url: http://localhost:19010
       responses:
@@ -4848,6 +4848,30 @@ paths:
         - url: http://localhost:19010
       responses:
         "200": {description: OK}
+
+  /api/hephaestus/forge/pause:
+    post:
+      tags: [Hephaestus]
+      summary: Manual pause of autonomous development (saved as Themis hephaestus.forge.paused)
+      description: >
+        Paused = nothing starts on its own (module tasks are held as silent proposals, the Claude
+        window scheduler starts nothing); user requests and manual approvals still run.
+        Resuming restarts nothing held.
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paused]
+              properties:
+                paused: {type: boolean}
+                by: {type: string, default: user}
+      responses:
+        "200": {description: "{status, paused, held: [task ids held during the pause, still proposed]}"}
+        "503": {description: Themis did not save the setting}
 
   /api/hephaestus/forge/settings/mode:
     post:

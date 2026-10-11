@@ -82,6 +82,8 @@ export interface TaskLogs { engine: string; deploy: string; error?: string | nul
 
 export interface ForgeStatus {
   enabled: boolean;
+  /** Manual pause: nothing starts on its own (Themis hephaestus.forge.paused). */
+  paused?: boolean;
   repo_ok: boolean;
   base_branch: string | null;
   engine_default: string;

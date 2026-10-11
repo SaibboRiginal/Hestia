@@ -25,6 +25,11 @@ import { AssistantService } from '../../services/assistant.service';
   template: `
     <hx-page-header title="Sviluppo" [subtitle]="subtitle()">
       <hx-segmented [options]="modeOpts" [value]="mode()" (changed)="setMode($any($event))" />
+      @if (store.status(); as s) {
+        <button hx-btn [variant]="s.paused ? 'primary' : 'ghost'" [icon]="s.paused ? 'play' : 'pause'" [loading]="store.busy()"
+                (click)="togglePause(!s.paused)"
+                [title]="s.paused ? 'Riprendi lo sviluppo automatico' : 'Metti in pausa: nessun task parte da solo'">{{ s.paused ? 'Riprendi' : 'Pausa' }}</button>
+      }
       <button hx-btn variant="ghost" icon="refresh" iconOnly aria-label="Aggiorna" title="Aggiorna" (click)="store.refresh()"></button>
       <button hx-btn variant="ghost" icon="sparkle" (click)="askHestia()" title="Descrivi a Hestia cosa serve: propone o crea lo sviluppo">Chiedi a Hestia</button>
       <button hx-btn variant="primary" icon="plus" (click)="openNew()">Nuovo sviluppo</button>
@@ -47,6 +52,10 @@ import { AssistantService } from '../../services/assistant.service';
               }
             </div>
           </div>
+          @if (store.status()?.paused) {
+            <div class="paused"><hx-icon name="pause" [size]="14" />
+              <div><b>Sviluppo in pausa</b> Nessun task parte da solo: quelli proposti restano qui finché premi Avvia.</div></div>
+          }
           <div class="rows">
             @if (store.loading() && !store.tasks().length) { <div class="center"><hx-spinner /></div> }
             @if (store.error()) { <div class="lerr"><hx-icon name="alert" [size]="14" /> {{ store.error() }}</div> }
@@ -198,6 +207,8 @@ import { AssistantService } from '../../services/assistant.service';
     .chips button { font-size: 12px; padding: 3px 10px; border-radius: var(--radius-full); color: var(--text-2); background: var(--surface-2); display: inline-flex; gap: 5px; align-items: center; }
     .chips button.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
     .chips i { font-style: normal; font-size: 10.5px; background: var(--accent); color: var(--accent-contrast); border-radius: var(--radius-full); padding: 0 5px; }
+    .paused { display: flex; gap: 8px; margin: 0 10px 6px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--warning-soft); font-size: 12.5px; color: var(--text-2); line-height: 1.4; }
+    .paused hx-icon { color: var(--warning); margin-top: 2px; flex-shrink: 0; } .paused b { color: var(--text); margin-right: 4px; }
     .rows { flex: 1; overflow: auto; padding: 4px 6px 16px; display: flex; flex-direction: column; gap: 1px; }
     .center { display: grid; place-items: center; padding: 24px; }
     .lerr { display: flex; gap: 6px; font-size: 12.5px; color: var(--danger); padding: 8px; }
@@ -349,6 +360,11 @@ export class ForgePageComponent implements OnInit, OnDestroy {
     const tests = t.tests?.ok === false ? ' Attenzione: i test sono falliti.' : '';
     if (await this.dialogs.confirm('Applicare la modifica?', `Forge fa il merge del ramo e, se configurato, riavvia i servizi.${tests}`, 'Approva e applica')) {
       this.store.act('approve');
+    }
+  }
+  async togglePause(paused: boolean) {
+    if (paused || await this.dialogs.confirm('Riprendere lo sviluppo?', 'I moduli tornano ad avviare task da soli secondo i permessi. I task trattenuti durante la pausa restano da avviare a mano.', 'Riprendi')) {
+      await this.store.setPaused(paused);
     }
   }
   async reject() {

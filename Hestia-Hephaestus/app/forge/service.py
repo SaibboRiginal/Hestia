@@ -163,6 +163,8 @@ class Forge:
         if engine in self.engines and engine != self._default_engine:
             self._default_engine = engine
             logger.info("event=forge_default_engine_applied engine=%s", engine)
+        if forge_settings.PAUSED in values:
+            logger.info("event=forge_pause_applied paused=%s", values.get(forge_settings.PAUSED))
         for group, key in forge_settings.MODE.items():
             mode = normalize_mode(values.get(key, ""))
             if mode in MODES and self._modes.get(group) != mode:
@@ -172,6 +174,37 @@ class Forge:
     @property
     def default_engine(self) -> str:
         return self._default_engine
+
+    @property
+    def paused(self) -> bool:
+        """Manual brake (Themis ``hephaestus.forge.paused``): nothing starts on its own."""
+        return forge_settings.get_bool(forge_settings.PAUSED)
+
+    def set_paused(self, paused: bool, by: str = "user") -> dict[str, Any]:
+        """User switch (Sviluppo page, Telegram): persisted as a central setting. Resuming
+        restarts nothing: tasks held during the pause stay proposed until the user starts them."""
+        saved = forge_settings.settings.put(forge_settings.PAUSED, bool(paused), actor="user",
+                                            reason=f"Sviluppo {'in pausa' if paused else 'ripreso'} da {by}")
+        if not saved:
+            raise ForgeError("Themis non ha salvato l'impostazione: riprova tra poco", 503)
+        # Apply now (Themis also pushes it back): no autonomous start slips in meanwhile.
+        forge_settings.settings.apply({**forge_settings.settings._stored, forge_settings.PAUSED: bool(paused)})
+        with self._lock:
+            held = [t["id"] for t in self._tasks.values()
+                    if t.get("held_by_pause") and t.get("state") == "proposed"]
+        logger.info("event=forge_pause_set paused=%s by=%s held=%d", bool(paused), by, len(held))
+        return {"paused": self.paused, "held": held}
+
+    def _autonomous(self, task: dict) -> bool:
+        """Started by a module (Athena, Argus, remediation, Claude windows), not by the user."""
+        return task.get("source") not in USER_SOURCES and not task.get("manual_start")
+
+    def _hold(self, task: dict, note: str) -> None:
+        """Pause: keep the task as a silent proposal (no notification), the user starts it by hand."""
+        with self._lock:
+            task["held_by_pause"] = True
+        self._set_state(task, "proposed", f"sviluppo in pausa: {note}")
+        logger.info("event=forge_task_held_by_pause task_id=%s source=%s", task["id"], task.get("source"))
 
     def set_default_engine(self, engine: str) -> dict[str, Any]:
         """User switch of the default engine: applied now, persisted as a central setting."""
@@ -339,6 +372,9 @@ class Forge:
             if not task or task.get("state") not in {"queued", "approved"}:
                 continue
             try:
+                if task["state"] == "queued" and self.paused and self._autonomous(task):
+                    self._hold(task, "in coda")
+                    continue
                 if task["state"] == "approved":
                     with self.presence.activity("hephaestus.deploy", label="aggiornamento", load="heavy",
                                                 kind="maintenance", ttl_seconds=1800):
@@ -364,6 +400,7 @@ class Forge:
         repo_ok = git_ops.is_repo(self.cfg.repo_path)
         return {
             "enabled": self.cfg.enabled,
+            "paused": self.paused,
             "repo_path": str(self.cfg.repo_path),
             "repo_ok": repo_ok,
             "base_branch": self._base_branch() if repo_ok else None,
@@ -447,7 +484,9 @@ class Forge:
         task["budgeted"] = source not in USER_SOURCES and self._engine_name_for(task["engine_requested"]) == "claude"
         with self._lock:
             self._tasks[task_id] = task
-        if auto_start and task["budgeted"]:
+        if self.paused and self._autonomous(task):
+            self._hold(task, f"proposto da {source} ({why})")
+        elif auto_start and task["budgeted"]:
             self._schedule(task, f"submitted by {source}")
         elif auto_start:
             self._enqueue(task, f"submitted by {requested_by} ({source})")
@@ -462,6 +501,9 @@ class Forge:
         task = self._require(task_id)
         state = task.get("state")
         if state in {"proposed", "scheduled"}:
+            with self._lock:   # the user's own start: the pause no longer holds it
+                task["manual_start"] = True
+                task.pop("held_by_pause", None)
             if task.get("budgeted") and not now:
                 self._schedule(task, f"approved by {approved_by}, waits for Claude budget window")
             else:
@@ -587,7 +629,8 @@ class Forge:
                 self._reap_unlinked()
                 with self._lock:
                     busy = any(t.get("state") in ACTIVE_STATES for t in self._tasks.values())
-                    waiting = sorted((t for t in self._tasks.values() if t.get("state") == "scheduled"),
+                    waiting = sorted((t for t in self._tasks.values() if t.get("state") == "scheduled"
+                                      and not (self.paused and self._autonomous(t))),
                                      key=lambda t: t["created_at"])
                 if busy or not waiting:
                     continue

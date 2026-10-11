@@ -35,6 +35,15 @@ public class ForgeController : ControllerBase
     [HttpGet("settings")]
     public Task<IActionResult> Settings() => Wrap(() => _hub.RouteGetAsync(Svc, $"{Forge}/settings"));
 
+    /// <summary>Manual pause of autonomous development ({paused}); by is always "user".</summary>
+    [HttpPost("pause")]
+    public Task<IActionResult> Pause([FromBody] JsonElement body)
+    {
+        var dict = ToDict(body);
+        dict["by"] = "user";
+        return Wrap(() => _hub.RoutePostAsync(Svc, $"{Forge}/pause", dict, 30));
+    }
+
     [HttpGet("tasks")]
     public Task<IActionResult> Tasks([FromQuery] string? state = null, [FromQuery] int limit = 100)
     {

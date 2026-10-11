@@ -80,6 +80,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only) |
 | GET | `/api/webui/forge/status` · `tasks` · `tasks/{id}` · `tasks/{id}/transcript` · `files` · `workdoc` · `tests` · `logs` · `events` | Sviluppo page (→ Hephaestus `/api/hephaestus/forge/*`) |
 | POST | `/api/webui/forge/tasks` · `tasks/{id}/approve` · `reject` · `rollback` · `retry` | New task / follow-up (`source=ui`) and actions (`by=user`) |
+| POST | `/api/webui/forge/pause` | `{paused}` — manual pause of autonomous development (→ Hephaestus `/api/hephaestus/forge/pause`, `by=user`) |
 | GET | `/api/webui/forge/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only repository browser (→ Hephaestus `/api/hephaestus/repo/*`) |
 | GET | `/api/webui/notifications?filter&source&before&limit` · `counts` | Notifiche page (→ Hermes `/api/notifications`, `client=webui`) |
 | POST | `/api/webui/notifications/{id}/seen` · `seen-all` · `{id}/answer` | Global read state; answer (`{actionId}`, 409 = already handled elsewhere) |
@@ -115,6 +116,8 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   right = context panel **Panoramica · File · Diff · Dossier · Test · Log · Ramo** (timeline, deploy plan,
   cost/turns, file list → diff, dossier markdown, full pytest output, engine/deploy logs, branch/compare).
   Header actions follow the state: Avvia / Avvia ora / Approva e applica / Rifiuta / Rollback / Riprova.
+- Page header **Pausa / Riprendi** (2026-10-11): manual pause of Forge (`hephaestus.forge.paused`); while paused a
+  banner over the task list says nothing starts on its own; resuming asks confirmation and restarts nothing held.
 - **Repository** mode (`repo-browser`): commit log with branch graph (all branches toggle, file history),
   commit detail (files + diff), file browser at any ref (markdown preview), branches with ahead/behind and Forge
   task links, compare, tags, `docs/work` dossiers with version/status/progress, root CHANGELOG.

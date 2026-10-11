@@ -176,6 +176,23 @@ export class ForgeStore {
   }
 
   // ── actions ────────────────────────────────────────────────────────────
+  /** Manual brake: paused = nothing starts on its own; resuming restarts nothing held. */
+  async setPaused(paused: boolean) {
+    this.busy.set(true);
+    try {
+      const r = await this.api.pause(paused);
+      const s = this.status();
+      if (s) this.status.set({ ...s, paused: r.paused });
+      const held = r.held?.length ? ` ${r.held.length} task trattenuti restano da avviare a mano.` : '';
+      this.toast.success(r.paused ? 'Sviluppo in pausa: niente parte da solo' : `Sviluppo ripreso.${held}`);
+      await this.loadList(true);
+    } catch (e: any) {
+      this.toast.error(e?.error?.detail || 'Impostazione non salvata');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   async act(verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean } = {}) {
     const t = this.task();
     if (!t) return;

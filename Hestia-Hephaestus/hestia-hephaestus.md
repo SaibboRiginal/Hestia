@@ -128,6 +128,17 @@ Themis). Safety switches: the assistant may read them but never propose them (`o
 
 Groups: `local` = local engine (default `auto`); `cloud` = cloud profile + claude (default `ask`: no tokens spent without your ok).
 
+### Manual pause (brake)
+
+`hephaestus.forge.paused` (Themis, live, `oracle: read`) overrides the modes above: while it is on **nothing
+starts on its own**. Tasks from modules (Athena, Argus, remediation escalation, anything not in
+`USER_SOURCES`) become silent proposals (`held_by_pause`, no notification), queued autonomous tasks (also
+after a restart) are put back to `proposed`, and the scheduler starts no Claude-window task. Your own
+requests (WebUI, Telegram, chat) and your "Avvia"/`approve` (`manual_start`) still run; merges you approved
+still deploy. Resuming restarts nothing: held tasks stay proposed until you start or reject them.
+Switch: WebUI Sviluppo → **Pausa / Riprendi**, Impostazioni → Sistema, Telegram tool `forge_pause`,
+or `POST /api/hephaestus/forge/pause {"paused": true|false}`; `status.paused` shows it.
+
 Agent prompt is caveman-style (`app/forge/prompts.py`): short rules, Hestia architecture constraints, docs/tests duty, no secrets.
 
 ### Claude Pro budget window (autonomous work on the weekly leftover)
@@ -164,6 +175,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/hephaestus/forge/status` | Repo, base branch, engines availability, queue |
+| POST | `/api/hephaestus/forge/pause` | `{"paused": bool}` — manual pause of autonomous starts (saved to Themis); returns `{paused, held[]}` |
 | GET | `/api/hephaestus/forge/engine` | Default engine, fallback chain, availability |
 | POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude"}` — set default (persisted) |
 | GET | `/api/hephaestus/forge/settings` | Default engine, fallback, permission modes |
@@ -244,6 +256,7 @@ engine/modes also applied by `Forge._apply_settings`). Endpoints `GET /api/setti
 
 | Key | Type · default | Effect |
 |---|---|---|
+| `hephaestus.forge.paused` | bool · `false` (read) | manual pause: no task starts on its own (see *Manual pause*) |
 | `hephaestus.forge.engine` | enum · `local` | default coding engine |
 | `hephaestus.forge.mode.local` / `.cloud` | enum · `auto` / `ask` (read) | permission mode per group |
 | `hephaestus.forge.fallback` | list · `[local, cloud, claude]` | engines tried when the default is unavailable |

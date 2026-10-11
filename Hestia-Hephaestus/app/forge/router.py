@@ -37,6 +37,11 @@ class ForgeModeChoice(BaseModel):
     group: str = Field("", description="local | cloud (empty = both)")
 
 
+class ForgePause(BaseModel):
+    paused: bool = Field(..., description="true = nothing starts on its own, false = back to normal")
+    by: str = "user"
+
+
 class ForgeDecision(BaseModel):
     by: str = "user"
     reason: str = ""
@@ -65,6 +70,10 @@ def create_forge_router(forge: Forge) -> APIRouter:
     @router.get("/status")
     def forge_status() -> dict[str, Any]:
         return forge.status()
+
+    @router.post("/pause")
+    def forge_pause(body: ForgePause) -> dict[str, Any]:
+        return {"status": "ok", **_guard(forge.set_paused, body.paused, body.by)}
 
     @router.get("/engine")
     def forge_engine_get() -> dict[str, Any]:

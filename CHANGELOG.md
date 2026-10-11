@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-11
+- Forge manual pause: switch `hephaestus.forge.paused` (Themis, WebUI Sviluppo **Pausa/Riprendi**, Telegram `forge_pause`); while on nothing starts on its own (module tasks held as silent proposals, no Claude-window starts), your own requests and manual Avvia still run, resuming restarts nothing → `docs/work/2026-10-11-forge-manual-pause/` [ext-chat]
 - WebUI assistant state: the popover explains the state and what it changes in plain words, says what «Non disturbare» does, and has a «Storico» of state changes with their reason → `docs/work/2026-10-10-assistant-presence/` [ext-chat]
 - WebUI resizable side panels: new kit widget `<hx-resize>` (drag, ←/→, double-click resets, width remembered per browser, hidden on phones) on the sidebar, "Crea con Hestia", Sviluppo list and context panel, Calendario filters and Impostazioni → Sistema modules; theme toggle removed from the sidebar (themes stay in Impostazioni) → `docs/work/2026-10-11-assistant-drawer-resize/` [ext-chat]
 - Fix 503 on WebUI settings (chat ⚙ menu, Impostazioni → Sistema): Hub rejected Themis's registration (tag `settings`, `layer:core` not in the vocabulary), so Themis was never reachable through Hub; vocabulary extended (`settings`, `improvement` also fixes Metis), Themis on `layer:foundation`, regression test on compose tags → `docs/work/2026-10-11-themis-hub-registration/` [ext-chat]

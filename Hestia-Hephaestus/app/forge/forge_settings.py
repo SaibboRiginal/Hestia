@@ -1,6 +1,6 @@
 """Hephaestus settings declared to Themis (central settings) — one file for the module.
 
-Forge: default engine, permission modes, fallback order, turn/timeout limits, merge/rollback/push
+Forge: pause switch, default engine, permission modes, fallback order, turn/timeout limits, merge/rollback/push
 switches, verify delay, scheduler check interval. Remediation: execution timeout, approval
 switches, retry policy. All live: read with ``settings.get`` at use time (engine/modes also via
 ``Forge._apply_settings``). ``data/forge/settings.json`` keeps only the Claude Pro schedule/state.
@@ -14,6 +14,7 @@ from ..core.shared_imports import import_shared_symbol
 SettingsClient = import_shared_symbol("hestia_common.settings_client", "SettingsClient")
 setting = import_shared_symbol("hestia_common.settings_client", "setting")
 
+PAUSED = "hephaestus.forge.paused"
 ENGINE = "hephaestus.forge.engine"
 MODE = {"local": "hephaestus.forge.mode.local", "cloud": "hephaestus.forge.mode.cloud"}
 FALLBACK = "hephaestus.forge.fallback"
@@ -40,6 +41,11 @@ _REPAIR = "Riparazioni"
 
 settings = SettingsClient("hephaestus")
 settings.declare([
+    # Manual brake, user only: the assistant can read it but never propose a change.
+    setting(PAUSED, "Sviluppo in pausa", "bool", False, group=_FORGE, order=-1, oracle="read",
+            help="Se attivo nessun task di sviluppo parte da solo (Athena, Argus, riparazioni, "
+                 "finestre Claude): restano proposti in silenzio finché non premi Avvia. "
+                 "Le tue richieste dirette partono comunque."),
     setting(ENGINE, "Motore di sviluppo predefinito", "enum", "local", group=_FORGE,
             options=_ENGINES, order=0,
             help="Chi scrive il codice quando chiedi una modifica. Se non è disponibile si usa il successivo."),

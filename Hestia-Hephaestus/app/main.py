@@ -263,6 +263,23 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
         ),
+        # Manual brake: a direct user command (Telegram button / "metti in pausa lo sviluppo").
+        MCPTool(
+            name="forge_pause",
+            description=(
+                "Mette in pausa o riprende lo sviluppo automatico (Forge). In pausa nessun task parte da solo: "
+                "restano proposti finché l'utente non li avvia. Usa SOLO quando l'utente lo chiede "
+                "('pausa sviluppo', 'riprendi sviluppo')."
+            ),
+            parameters={"type": "object", "properties": {
+                "paused": {"type": "boolean", "description": "true = pausa, false = riprendi"}},
+                "required": ["paused"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_pause", "params": kw},
+            title="\u23f8\ufe0f Pausa sviluppo", method="POST", path="/api/hephaestus/forge/pause",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="1 riga: sviluppo in pausa o ripreso; se ripreso, i task trattenuti (held) restano da avviare a mano.",
+            telegram_visible=True, telegram_group="sistema",
+        ),
         # Default engine and permission modes are central settings (Themis): the assistant
         # proposes a change with settings_propose, the user confirms; no direct tool here.
         MCPTool(
