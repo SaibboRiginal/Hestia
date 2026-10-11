@@ -906,7 +906,8 @@ def llm_generate_endpoint(req: dict):
         provider = req.get("provider") or default_provider
 
         agent = UniversalAgent(
-            role_prompt="", provider=provider, model_name=model, label="api_generate")
+            role_prompt="", provider=provider, model_name=model)
+        agent.label = "api_generate"  # runtime stats
         try:
             response_text = agent.ask(prompt)
             return {"response": response_text, "model": model, "provider": provider}
@@ -920,7 +921,8 @@ def llm_generate_endpoint(req: dict):
             try:
                 fallback_agent = UniversalAgent(
                     role_prompt="", provider=fallback_provider,
-                    model_name=fallback_model, label="api_generate")
+                    model_name=fallback_model)
+                fallback_agent.label = "api_generate"
                 response_text = fallback_agent.ask(prompt)
                 logger.info(
                     "event=llm_generate_fallback_success "
