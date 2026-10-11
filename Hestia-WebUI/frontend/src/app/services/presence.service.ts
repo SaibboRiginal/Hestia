@@ -14,6 +14,8 @@ export interface PresenceState {
   base_label: string;
   emoji: string;
   label: string;
+  help?: string;
+  dnd_minutes?: number;
   overlays: { key: string; label: string; emoji: string }[];
   effects: Record<string, string>;
   enabled: boolean;
@@ -25,11 +27,48 @@ export interface PresenceState {
   activities: PresenceActivity[];
 }
 
+export interface PresenceChange { at?: string; base: string; label: string; from?: string | null; from_label?: string | null; reason?: string; }
+
+/** What the current state changes in the system, in plain words (one line per effect). */
 const EFFECT_LABELS: Record<string, Record<string, string>> = {
-  'work.heavy': { allow: 'lavori pesanti: sì', local: 'lavori pesanti: solo locali', defer: 'lavori pesanti: rimandati' },
-  'llm.claude': { allow: 'Claude: libero', save: 'Claude: solo per le tue chat', deny: 'Claude: no' },
-  'notify.level': { all: 'notifiche: tutte', important: 'notifiche: solo importanti', urgent: 'notifiche: solo urgenti' },
+  'work.heavy': {
+    allow: 'Forge e addestramenti possono partire',
+    local: 'Lavori pesanti solo con i modelli locali',
+    defer: 'Forge e addestramenti aspettano che tu sia via',
+  },
+  'llm.claude': {
+    allow: 'Claude usabile anche dai lavori automatici (es. Forge di notte)',
+    save: 'Claude solo per le tue richieste: niente consumi automatici',
+    deny: 'Claude non viene usato',
+  },
+  'notify.level': {
+    all: 'Ti arrivano tutte le notifiche',
+    important: 'Solo notifiche importanti, le altre in un riepilogo dopo',
+    urgent: 'Solo notifiche urgenti, le altre in un riepilogo dopo',
+  },
 };
+
+/** Why a state change happened, from the engine's reason ("interaction:webui:ui", "activity_start:forge.task"…). */
+export function reasonLabel(r?: string): string {
+  if (!r) return '';
+  const [kind, a] = r.split(':');
+  switch (kind) {
+    case 'interaction': return `hai interagito (${a})`;
+    case 'activity_start': return 'iniziato un lavoro';
+    case 'activity_stop': return 'finito un lavoro';
+    case 'dnd_on': return 'Non disturbare attivato';
+    case 'dnd_off': return 'Non disturbare spento';
+    case 'tick': case 'read': return 'tempo trascorso';
+    case 'settings': return 'impostazioni cambiate';
+    case 'boot': return 'riavvio';
+    case 'signal': case 'clear':
+      if (a?.startsWith('resource.claude')) return 'quota Claude';
+      if (a?.startsWith('health.')) return 'moduli in errore';
+      if (a?.startsWith('manual.dnd')) return 'Non disturbare scaduto';
+      return '';
+    default: return '';
+  }
+}
 
 export function ago(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return 'mai';
@@ -47,6 +86,7 @@ export class PresenceService {
   private timer: ReturnType<typeof setInterval> | null = null;
 
   readonly state = signal<PresenceState | null>(null);
+  readonly history = signal<PresenceChange[] | null>(null);
   readonly busy = signal(false);
   readonly tone = computed(() => {
     const s = this.state();
@@ -71,6 +111,13 @@ export class PresenceService {
   async refresh(): Promise<void> {
     try { this.state.set(await firstValueFrom(this.http.get<PresenceState>(this.base))); }
     catch { /* Chronos down: keep the last state */ }
+  }
+
+  async loadHistory(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.http.get<{ items: PresenceChange[] }>(`${this.base}/history`, { params: { limit: 15 } }));
+      this.history.set(res.items ?? []);
+    } catch { this.history.set([]); }
   }
 
   async dnd(on: boolean, minutes?: number): Promise<void> {

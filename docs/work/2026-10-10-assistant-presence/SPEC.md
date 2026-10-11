@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Stato di attività dell'assistente") · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; central-settings foundation (Themis, P1–P5) is on main, so the hold is lifted; code starts on approval |
 

@@ -11,7 +11,7 @@ import { ButtonComponent, DialogHostComponent, IconComponent, ToastHostComponent
 import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
 import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
-import { PresenceService, ago } from '../services/presence.service';
+import { PresenceService, PresenceState, ago, reasonLabel } from '../services/presence.service';
 
 /** App frame: collapsible sidebar (modules from APP_MODULES) + routed page + global overlays. */
 @Component({
@@ -71,18 +71,37 @@ import { PresenceService, ago } from '../services/presence.service';
             @if (presenceOpen()) {
               <div class="presence-pop" role="dialog" aria-label="Stato dell'assistente">
                 <div class="ptitle">{{ p.emoji }} {{ p.label }}</div>
-                <div class="pline">Ultima interazione: {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
+                @if (p.help) { <div class="pline">{{ p.help }}</div> }
+                <div class="pline dim">Ultima interazione: {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
                 @if (p.dnd_until) { <div class="pline">Non disturbare fino alle {{ p.dnd_until | date:'HH:mm' }}</div> }
                 @for (a of p.activities; track a.key) { <div class="pline">• {{ a.label || a.key }}</div> }
-                @for (e of presence.effects(); track e) { <div class="pline dim">{{ e }}</div> }
+                <div class="ptabs">
+                  <button type="button" [class.on]="presenceTab() === 'effects'" (click)="presenceTab.set('effects')">Cosa cambia</button>
+                  <button type="button" [class.on]="presenceTab() === 'history'" (click)="openPresenceHistory()">Storico</button>
+                </div>
+                @if (presenceTab() === 'effects') {
+                  <div class="pnote">Lo stato decide cosa può fare il sistema in quel momento:</div>
+                  @for (e of presence.effects(); track e) { <div class="pline">• {{ e }}</div> }
+                } @else {
+                  <div class="phist">
+                    @for (h of presence.history() ?? []; track $index) {
+                      <div class="hrow">
+                        <span class="ht">{{ h.at | date:'dd/MM HH:mm' }}</span>
+                        <span class="hl">{{ h.label }}@if (reasonLabel(h.reason)) {<span class="hr"> · {{ reasonLabel(h.reason) }}</span>}</span>
+                      </div>
+                    } @empty { <div class="pline dim">{{ presence.history() === null ? 'Carico…' : 'Nessun cambio registrato.' }}</div> }
+                  </div>
+                }
                 <div class="pactions">
                   @if (p.base === 'dnd') {
                     <button hx-btn variant="secondary" size="sm" icon="bell" [loading]="presence.busy()" (click)="presence.dnd(false)">Disattiva</button>
                   } @else {
-                    <button hx-btn variant="secondary" size="sm" icon="bell-off" [loading]="presence.busy()" (click)="presence.dnd(true)">Non disturbare</button>
+                    <button hx-btn variant="secondary" size="sm" icon="bell-off" [loading]="presence.busy()" (click)="presence.dnd(true)"
+                            [attr.title]="dndHint(p)">Non disturbare</button>
                   }
                   <a hx-btn variant="ghost" size="sm" routerLink="/settings" (click)="presenceOpen.set(false)">Impostazioni</a>
                 </div>
+                @if (p.base !== 'dnd') { <div class="pnote">{{ dndHint(p) }}</div> }
               </div>
             }
           </div>
@@ -139,13 +158,23 @@ import { PresenceService, ago } from '../services/presence.service';
     .presence[data-tone=sleep] .pdot { background: var(--accent); }
     .presence[data-tone=dnd] .pdot { background: var(--danger); }
     .presence .plabel { overflow: hidden; text-overflow: ellipsis; }
-    .presence-pop { position: absolute; bottom: calc(100% + 6px); left: 0; width: 250px; z-index: 50; padding: 12px;
+    .presence-pop { position: absolute; bottom: calc(100% + 6px); left: 0; width: 300px; z-index: 50; padding: 12px;
                     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 10px);
                     box-shadow: var(--shadow-3); display: flex; flex-direction: column; gap: 4px; }
     .ptitle { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
     .pline { font-size: 12.5px; color: var(--text-2); }
     .pline.dim { color: var(--text-3); }
     .pactions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .pnote { font-size: 11.5px; color: var(--text-3); line-height: 1.4; }
+    .ptabs { display: flex; gap: 4px; margin: 6px 0 2px; border-bottom: 1px solid var(--border); }
+    .ptabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 4px 6px; font: inherit;
+                    font-size: 12px; color: var(--text-2); cursor: pointer; margin-bottom: -1px; }
+    .ptabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+    .phist { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+    .hrow { display: flex; gap: 8px; font-size: 12px; }
+    .ht { color: var(--text-3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .hl { color: var(--text-2); }
+    .hr { color: var(--text-3); }
     .collapsed .presence .plabel { display: none; }
     .collapsed .nav { width: var(--nav-width-collapsed); }
     .collapsed .name, .collapsed .item span, .collapsed .conn span:last-child { display: none; }
@@ -174,6 +203,19 @@ export class ShellComponent {
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
   presenceOpen = signal(false);
+  presenceTab = signal<'effects' | 'history'>('effects');
+  reasonLabel = reasonLabel;
+
+  openPresenceHistory(): void {
+    this.presenceTab.set('history');
+    void this.presence.loadHistory();
+  }
+
+  dndHint(p: PresenceState): string {
+    const m = p.dnd_minutes ?? 120;
+    const d = m % 60 === 0 ? `${m / 60} ${m === 60 ? 'ora' : 'ore'}` : `${m} min`;
+    return `«Non disturbare»: per ${d} ti arrivano solo le notifiche urgenti; le altre le ricevi in un riepilogo quando finisce.`;
+  }
   readonly ago = ago;
   private session = inject(SessionService);
   private settings = inject(SettingsService);

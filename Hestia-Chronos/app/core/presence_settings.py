@@ -52,21 +52,24 @@ def _c(signal: str, op: str, value=None) -> dict:
 BUILTIN_STATES: dict[str, dict] = {
     "awake": {
         "kind": "base", "core": True, "priority": 90, "label": "Sveglio", "emoji": "🟢",
-        "help": "Stai interagendo: i lavori in background aspettano, Claude è per le tue chat.",
+        "help": "Mi stai usando: Forge e i lavori pesanti aspettano che tu vada via, così resto veloce "
+                "e Claude non si consuma in automatico.",
         "when": [[_c("user.idle_minutes", "<", "$idle_after")]],
         "effects": {"work.light": "defer", "work.heavy": "defer", "llm.claude": "save",
                     "notify.level": "all", "chat.style": "normal"},
     },
     "idle": {
         "kind": "base", "core": True, "priority": 10, "label": "In attesa", "emoji": "🟡",
-        "help": "Nessuna interazione da qualche minuto: partono i lavori leggeri (Athena pensa).",
+        "help": "Nessuna interazione da qualche minuto: partono i lavori leggeri (Athena riflette), "
+                "i pesanti aspettano ancora.",
         "when": [[_c("user.idle_minutes", ">=", "$idle_after")]],
         "effects": {"work.light": "allow", "work.heavy": "defer", "llm.claude": "save",
                     "notify.level": "all"},
     },
     "dnd": {
         "kind": "base", "core": True, "priority": 100, "label": "Non disturbare", "emoji": "🔕",
-        "help": "Attivato da te: passano solo le notifiche urgenti.",
+        "help": "L'hai attivato tu: ti arrivano solo le notifiche urgenti, le altre in un riepilogo quando "
+                "lo spegni o scade.",
         "when": [[_c("manual.dnd", "true")]],
         "effects": {"work.light": "allow", "work.heavy": "local", "llm.claude": "save",
                     "notify.level": "urgent"},

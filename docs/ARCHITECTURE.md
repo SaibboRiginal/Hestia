@@ -154,7 +154,7 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
 - **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
   profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
   `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
-  Night = agenda window `assistant.sleep`. Client: `hestia_common.presence_client`; storage in Archive.
+  Night = agenda window `assistant.sleep`. WebUI badge shows what the state changes and its history. Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.

@@ -164,6 +164,7 @@ def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[
         "base": base["key"] if base else "idle",
         "base_label": labels[0] if labels else "In attesa",
         "emoji": (base or {}).get("emoji") or "",
+        "help": (base or {}).get("help") or "",
         "overlays": [{"key": s["key"], "label": render(s.get("label") or s["key"], activities),
                       "emoji": s.get("emoji") or ""} for s in overlays],
         "label": " · ".join(labels),
@@ -363,7 +364,7 @@ class PresenceEngine:
             decision = decide(states, values, PS.threshold, activities)
         else:
             decision = {"base": "awake", "base_label": "Sveglio", "emoji": "", "overlays": [],
-                        "label": "Sveglio", "effects": dict(PS.DEFAULT_EFFECTS),
+                        "label": "Sveglio", "help": "Stato spento: nessun effetto sul sistema.", "effects": dict(PS.DEFAULT_EFFECTS),
                         "decided_by": {k: "disabled" for k in PS.DEFAULT_EFFECTS}}
         idle = values["user.idle_minutes"]
         now_iso = _iso(_now())
@@ -386,6 +387,7 @@ class PresenceEngine:
                 "last_interaction_kind": last_meta.get("kind"),
                 "idle_minutes": None if idle >= NEVER_MINUTES else round(idle, 1),
                 "dnd_until": (dnd or {}).get("value") if values.get("manual.dnd") else None,
+                "dnd_minutes": PS.settings.get(PS.DND_DEFAULT),
                 "activities": sorted(activities, key=lambda a: str(a.get("since") or "")),
                 "evaluated_at": now_iso,
             }

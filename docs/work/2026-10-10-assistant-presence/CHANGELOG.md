@@ -12,3 +12,4 @@
 - v2.2 — 2026-10-10 — aligned with central settings now on main: tunables declared with `settings_client.setting`
   (no env), state definitions stored as Themis setting `chronos.presence.states`; Hermes `notify.level` mapped on
   global notifications' `level` — source: coordinator relay (settings P1–P5 landed).
+- v2.3 — 2026-10-11 — WebUI state popover explains itself: base state `help` and `dnd_minutes` in the snapshot, effects in plain words under «Cosa cambia», «Storico» tab with reasons, «Non disturbare» explained — Marko found the effect lines and dnd unclear and asked for a history — source: user via WebUI feedback (coordinator relay)

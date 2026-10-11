@@ -281,4 +281,4 @@ Built Angular app served as static files from `wwwroot/`.
 
 ## Assistant presence
 
-Backend: `PresencePinger` (60 s debounce) pings Chronos on authenticated non-GET `/api/webui/*` actions (setting `chronos.presence.count_ui_actions`); `PresenceController` exposes `GET /api/webui/presence`, `GET /api/webui/presence/history`, `POST`/`DELETE /api/webui/presence/dnd`. Frontend: presence badge in the shell sidebar (polled every 60 s and on tab focus) with a popover: state, last interaction, activities, effects, Non disturbare on/off, link to Impostazioni.
+Backend: `PresencePinger` (60 s debounce) pings Chronos on authenticated non-GET `/api/webui/*` actions (setting `chronos.presence.count_ui_actions`); `PresenceController` exposes `GET /api/webui/presence`, `GET /api/webui/presence/history`, `POST`/`DELETE /api/webui/presence/dnd`. Frontend: presence badge in the shell sidebar (polled every 60 s and on tab focus) with a popover: state and its plain explanation, last interaction, activities, tab «Cosa cambia» (effects in plain words), tab «Storico» (last 15 state changes with the reason), Non disturbare on/off with what it does, link to Impostazioni.

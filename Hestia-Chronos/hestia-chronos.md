@@ -289,7 +289,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/presence` | Current state: base, overlays, label, effects, last interaction, activities |
+| `GET` | `/api/presence` | Current state: base, overlays, label, `help` (plain explanation of the base state), effects, last interaction, activities, `dnd_minutes` |
 | `POST` | `/api/presence/ping` | User interaction `{client, kind}` |
 | `POST` | `/api/presence/activity` | Start an activity `{key, label, load, resource, kind, module, ttl_seconds}` |
 | `DELETE` | `/api/presence/activity/{key}` | Stop an activity |

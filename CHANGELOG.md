@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-11
+- WebUI assistant state: the popover explains the state and what it changes in plain words, says what «Non disturbare» does, and has a «Storico» of state changes with their reason → `docs/work/2026-10-10-assistant-presence/` [ext-chat]
 - WebUI "Crea con Hestia" drawer resizable from its left edge (drag, ←/→, double-click resets; 340px–90vw, width remembered per browser, full screen on phones as before) → `docs/work/2026-10-11-assistant-drawer-resize/` [ext-chat]
 - Fix 503 on WebUI settings (chat ⚙ menu, Impostazioni → Sistema): Hub rejected Themis's registration (tag `settings`, `layer:core` not in the vocabulary), so Themis was never reachable through Hub; vocabulary extended (`settings`, `improvement` also fixes Metis), Themis on `layer:foundation`, regression test on compose tags → `docs/work/2026-10-11-themis-hub-registration/` [ext-chat]
 - WebUI: no access token from the home network (LAN/localhost), always required through the Cloudflare tunnel; local = no Cloudflare/proxy header + non-public Host + private socket peer (forged headers can only add the token), switch `webui.auth.local_without_token` in Themis (WebUI now declares its own settings); token middleware path check made case-insensitive → `docs/work/2026-10-11-webui-local-access/` [ext-chat]
