@@ -227,7 +227,11 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 | POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd, transcript_path}`. Runs `claude -p --output-format stream-json --verbose`; every line is written live to `<ORACLE_CODE_WORKDIR_ROOT>/.transcripts/<task>.jsonl` (outside the worktree) for the WebUI Sviluppo page |
 
 Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-compatible base, e.g. `…/v1`).
-`local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL` + `/v1`, model = setting `oracle.models.code.model`).
+`local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL`, model = setting `oracle.models.code.model`).
+The built-in `local` profile is served through Ollama's native `/api/chat` with the same `num_ctx` + `keep_alive`
+as every other Oracle call (Ollama's `/v1` ignores `num_ctx`: it reloaded the model with a tiny default window and
+long Forge prompts were cut silently). Request/response are translated to the OpenAI shape (`reasoning_content`,
+`tool_calls`, `finish_reason=length` when the window is full); `/api/llm/profiles` reports its `context_window`.
 Example cloud: `ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1`, `_MODEL=qwen/qwen3-coder`, `_API_KEY=sk-or-…`.
 Timeout per call: `ORACLE_LLM_CHAT_TIMEOUT_SEC` (600). Used by Hephaestus Forge engines `local`/`cloud`.
 

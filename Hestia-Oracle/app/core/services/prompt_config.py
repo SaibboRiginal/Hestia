@@ -26,6 +26,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "- No aiuto/consigli/opzioni non chiesti.\n"
         "- Domanda all'utente solo se richiesta davvero ambigua.\n"
         "- Saluto -> saluto di una parola.\n"
+        "- Apri col contenuto: no interiezioni ('Certo', 'Ecco', 'Allora'), no stato assistente.\n"
         "- Corto > lungo. No riempitivi.\n"
         "- No emoji in risposte tecniche/fattuali."
     ),

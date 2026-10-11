@@ -107,11 +107,14 @@ class BuiltinEngine(Engine):
     """Agent loop for ``local`` and ``cloud``.  LLM access goes through Oracle
     (``POST /api/llm/chat`` via Hub): Oracle owns provider URLs and keys,
     Forge only names a profile."""
-    _CONTEXT_CHAR_BUDGET = 90000   # ~25k tokens: fits 32k-context local models
+    _CONTEXT_CHAR_BUDGET = 90000   # ~25k tokens: used when Oracle reports no window (cloud)
+    _CHARS_PER_TOKEN = 3           # code/JSON is dense: ~3 chars per token
+    _MIN_BUDGET = 8000
 
     def __init__(self, cfg: ForgeConfig, name: str):
         self.cfg = cfg
         self.name = name
+        self.context_window = 0    # tokens, from Oracle's profile (local Ollama: num_ctx setting)
 
     def _route(self, method: str, path: str, body: dict | None, timeout: int) -> tuple[int, Any]:
         resp = requests.post(
@@ -132,17 +135,34 @@ class BuiltinEngine(Engine):
             return False, f"Oracle has no '{self.name}' LLM profile (ORACLE_LLM_PROFILE_{self.name.upper()}_*)"
         if prof.get("available") is False:
             return False, f"{prof.get('model')}: {prof.get('detail')}"
-        return True, f"ok ({prof.get('model')} via Oracle)"
+        self.context_window = int(prof.get("context_window") or 0)
+        window = f", {self.context_window} token" if self.context_window else ""
+        return True, f"ok ({prof.get('model')} via Oracle{window})"
+
+    def _budget(self) -> int:
+        """Prompt chars that fit the model window, leaving ~30% for tool schemas and the answer.
+        Over the window the model sees a cut prompt and its answer stops mid-sentence."""
+        if not self.context_window:
+            return self._CONTEXT_CHAR_BUDGET
+        return max(self._MIN_BUDGET, int(self.context_window * self._CHARS_PER_TOKEN * 0.7))
 
     def _trim(self, messages: list[dict]) -> None:
-        """Shrink old tool outputs when over budget (keep system + task + recent)."""
+        """Shrink tool outputs when over budget: oldest first, the latest one last (clipped)."""
+        budget = self._budget()
         total = sum(len(str(m.get("content") or "")) for m in messages)
-        for msg in messages[2:-6]:
-            if total <= self._CONTEXT_CHAR_BUDGET:
-                break
-            if msg.get("role") == "tool" and len(str(msg.get("content") or "")) > 200:
+        tool_msgs = [m for m in messages[2:] if m.get("role") == "tool"]
+        for msg in tool_msgs[:-1]:
+            if total <= budget:
+                return
+            if len(str(msg.get("content") or "")) > 200:
                 total -= len(msg["content"]) - 20
                 msg["content"] = "[old output trimmed]"
+        if total > budget and tool_msgs:
+            last = tool_msgs[-1]
+            keep = max(500, len(str(last.get("content") or "")) - (total - budget))
+            if len(last["content"]) > keep:
+                last["content"] = (last["content"][:keep]
+                                   + "\n...[cut to fit the context window: read a smaller range]")
 
     def run(self, workdir: Path, prompt: str, test_runner: Callable,
             on_event: Callable[[dict], None] | None = None) -> EngineResult:
@@ -155,6 +175,7 @@ class BuiltinEngine(Engine):
         nudged = False
         log: list[str] = []
         turn = 0
+        finish_reason = ""
         max_turns = fs.get_int(fs.MAX_TURNS, 5)
         for turn in range(1, max_turns + 1):
             self._trim(messages)
@@ -167,6 +188,7 @@ class BuiltinEngine(Engine):
                 if status >= 400:
                     raise RuntimeError(f"Oracle llm/chat {status}: {str(data)[:300]}")
                 msg = data["choices"][0]["message"]
+                finish_reason = str(data["choices"][0].get("finish_reason") or "")
             except Exception as exc:
                 emit({"kind": "error", "text": f"LLM call failed: {exc}", "is_error": True})
                 return EngineResult(False, f"LLM call failed: {exc}", self.name, "\n".join(log[-30:]), turn)
@@ -204,10 +226,19 @@ class BuiltinEngine(Engine):
                 emit({"kind": "result", "text": tools.finished_summary, "meta": {"turns": turn}})
                 return EngineResult(True, tools.finished_summary, self.name, "\n".join(log[-30:]), turn)
 
-        emit({"kind": "error", "text": "agent stopped without finish (turn limit or no tool use)",
-              "is_error": True, "meta": {"turns": turn}})
-        return EngineResult(False, "agent stopped without finish (turn limit or no tool use)",
-                            self.name, "\n".join(log[-30:]), turn)
+        reason = self._stop_reason(turn, max_turns, finish_reason)
+        emit({"kind": "error", "text": reason, "is_error": True,
+              "meta": {"turns": turn, "finish_reason": finish_reason}})
+        return EngineResult(False, reason, self.name, "\n".join(log[-30:]), turn)
+
+    def _stop_reason(self, turn: int, max_turns: int, finish_reason: str) -> str:
+        if finish_reason == "length":
+            window = f" ({self.context_window} token)" if self.context_window else ""
+            return (f"model context full{window}: the answer was cut before finish — raise "
+                    "oracle.provider.ollama.num_ctx or use engine claude")
+        if turn >= max_turns:
+            return f"turn limit reached ({max_turns}) without finish"
+        return "model stopped calling tools without finish"
 
 
 # ── Selection ───────────────────────────────────────────────────────────────

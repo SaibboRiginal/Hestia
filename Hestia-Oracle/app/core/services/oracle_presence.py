@@ -25,7 +25,9 @@ def presence_instructions(state: dict | None) -> list[str]:
     """Short prompt lines from a presence state (empty when unknown or switched off)."""
     if not state or state.get("enabled") is False or state.get("show_in_chat") is False:
         return []
-    lines = [presence.context_line(state)]
+    # Background only: a bare "Stato assistente: Sveglio" made local models open with "Sveglia.".
+    line = presence.context_line(state)
+    lines = [f"[Contesto interno, non citarlo se non chiesto] {line}" if line else ""]
     if (state.get("effects") or {}).get("chat.style") == "brief":
         lines.append("Rispondi breve.")
     return [line for line in lines if line]

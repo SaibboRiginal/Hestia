@@ -185,3 +185,46 @@ class TestOpenAIProvider:
         with patch("agents.providers.openai_compat.requests.get",
                    return_value=_resp({"data": [{"id": "qwen3-8b"}]})):
             assert _openai().list_models() == ["qwen3-8b"]
+
+
+# ── LLM gateway: local profile through Ollama /api/chat (num_ctx honoured) ──
+
+@pytest.mark.unit
+class TestGatewayOllamaNative:
+    def _body(self) -> dict:
+        return {"profile": "local", "temperature": 0.2, "tools": [{"type": "function", "function": {"name": "read_file"}}],
+                "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"},
+                             {"role": "assistant", "content": "", "tool_calls": [
+                                 {"id": "c1", "type": "function",
+                                  "function": {"name": "read_file", "arguments": "{\"path\": \"a.py\"}"}}]},
+                             {"role": "tool", "tool_call_id": "c1", "content": "1\tx"}]}
+
+    def test_native_request_and_openai_response(self, monkeypatch):
+        from core.services import llm_gateway
+        monkeypatch.delenv("ORACLE_LLM_PROFILE_LOCAL_BASE_URL", raising=False)
+        monkeypatch.setenv("OLLAMA_URL", "http://ollama:11434/api/generate")
+        reply = {"model": "m1", "done_reason": "stop", "prompt_eval_count": 100, "eval_count": 5,
+                 "message": {"role": "assistant", "content": "", "thinking": "hmm",
+                             "tool_calls": [{"function": {"name": "finish", "arguments": {"summary": "ok"}}}]}}
+        with patch("core.services.llm_gateway.requests.post", return_value=_resp(reply)) as post:
+            post.return_value.status_code = 200
+            out = llm_gateway.chat(self._body())
+        url, sent = post.call_args.args[0], post.call_args.kwargs["json"]
+        assert url == "http://ollama:11434/api/chat"
+        assert sent["options"]["num_ctx"] == oracle_settings.context_window()
+        assert sent["options"]["temperature"] == 0.2
+        assert sent["messages"][2]["tool_calls"][0]["function"]["arguments"] == {"path": "a.py"}
+        msg = out["choices"][0]["message"]
+        assert out["choices"][0]["finish_reason"] == "tool_calls"
+        assert msg["reasoning_content"] == "hmm"
+        assert json.loads(msg["tool_calls"][0]["function"]["arguments"]) == {"summary": "ok"}
+
+    def test_length_when_window_full(self):
+        from core.services.llm_gateway import _openai_response
+        out = _openai_response({"done_reason": "length", "message": {"content": "cut"}}, "m1")
+        assert out["choices"][0]["finish_reason"] == "length"
+
+    def test_profile_reports_window(self, monkeypatch):
+        from core.services import llm_gateway
+        monkeypatch.delenv("ORACLE_LLM_PROFILE_LOCAL_BASE_URL", raising=False)
+        assert llm_gateway.list_profiles(check=False)["local"]["context_window"] == oracle_settings.context_window()

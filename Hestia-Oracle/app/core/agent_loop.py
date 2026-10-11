@@ -263,7 +263,8 @@ def _extract_tool_call(text: str) -> dict | None:
 def _truncate_tool_result(result: str, max_chars: int = TOOL_RESULT_MAX_CHARS) -> str:
     if len(result) <= max_chars:
         return result
-    return result[:max_chars] + f"\n[…result truncated at {max_chars} chars. Ask for more details if needed.]"
+    return result[:max_chars] + (f"\n[…result truncated at {max_chars} of {len(result)} chars: "
+                                 "the rest is missing. Never present this as complete.]")
 
 
 def run_agent_loop(

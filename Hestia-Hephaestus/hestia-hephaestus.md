@@ -170,6 +170,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | POST | `/api/hephaestus/forge/settings/mode` | `{"mode": "ask|auto|full_auto", "group": "local|cloud|"}` |
 | POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target, workdoc, parent_task, agenda_parent}` — `parent_task` = follow-up (inherits workdoc, services, outcome as context); `agenda_parent` = linked agenda key |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
+| GET | `/api/hephaestus/forge/tasks/brief` | One line per task (`id6 · state · services · request`), sized to fit Oracle's tool-result cap — used by the chat tool `forge_tasks` |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
 | GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |
 | POST | `/api/hephaestus/forge/tasks/{id}/approve` | proposed/scheduled → start (claude: waits for window unless `{"now": true}`) · awaiting_review → merge/deploy (async) |
@@ -271,3 +272,12 @@ code-execution surface, so not editable from clients), `HEPHAESTUS_NOTIFY_TARGET
 ## Assistant presence
 
 Forge reports its work to Chronos presence: each task runs as activity `forge.task` (heavy, claude_quota/gpu), each deploy as `hephaestus.deploy` (maintenance → «Sto mangiando»). Autonomous scheduled tasks start only when presence allows `work.heavy` and `llm.claude` (unknown → allowed). Claude limit exhausted → signal `resource.claude_quota_left=0` until the reset.
+
+### Local/cloud engine and the context window
+
+The built-in engine (`local`, `cloud`) reads the model window from Oracle's `/api/llm/profiles`
+(`context_window`, = Themis `oracle.provider.ollama.num_ctx` for the Ollama profile) and keeps the
+prompt within ~70% of it (≈3 chars/token): old tool outputs become `[old output trimmed]`, the latest
+one is clipped with a hint to read a smaller range. A stop is reported precisely: `model context full`
+(answer cut, `finish_reason=length` → raise num_ctx or use `claude`), `turn limit reached`, or
+`model stopped calling tools`. Coding on a local model needs a large window (≥32k tokens).

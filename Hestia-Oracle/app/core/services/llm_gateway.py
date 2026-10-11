@@ -15,6 +15,7 @@ ORACLE_LLM_PROFILE_* vars only override/add providers (e.g. OpenRouter).
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -36,7 +37,10 @@ def _profiles() -> dict[str, dict[str, str]]:
     local = found.setdefault("local", {})
     ollama = (os.getenv("OLLAMA_API_URL") or os.getenv("OLLAMA_URL", "http://localhost:11434")
               ).split("/api/")[0].rstrip("/")
-    local.setdefault("base_url", f"{ollama}/v1")
+    if "base_url" not in local:
+        # Built-in Ollama profile: served through the native /api/chat (see _chat_ollama).
+        local["base_url"] = f"{ollama}/v1"
+        local["ollama_host"] = ollama
     from core.services import oracle_settings
     code = oracle_settings.usecase("code")
     local.setdefault("model", code["mod"] if code["prov"] == "ollama" else oracle_settings.USECASES["code"][2])
@@ -62,6 +66,9 @@ def list_profiles(check: bool = True) -> dict[str, Any]:
     out = {}
     for name, prof in _profiles().items():
         row = {"model": prof["model"], "base_url": prof["base_url"]}
+        if prof.get("ollama_host"):
+            from core.services import oracle_settings
+            row["context_window"] = oracle_settings.context_window()
         if check:
             try:
                 resp = requests.get(f"{prof['base_url'].rstrip('/')}/models",
@@ -119,6 +126,8 @@ def chat(body: dict[str, Any]) -> dict[str, Any]:
         raise LLMGatewayError(f"LLM profile '{name}' not configured ({_PREFIX}{name.upper()}_BASE_URL/_MODEL)", 404)
     if not isinstance(body.get("messages"), list) or not body["messages"]:
         raise LLMGatewayError("messages required")
+    if prof.get("ollama_host"):
+        return _chat_ollama(prof, body)
     payload = {k: body[k] for k in ("messages", "tools", "temperature", "max_tokens", "tool_choice") if k in body}
     payload["model"] = body.get("model") or prof["model"]
     try:
@@ -135,3 +144,85 @@ def chat(body: dict[str, Any]) -> dict[str, Any]:
     logger.info("event=llm_gateway_chat profile=%s model=%s prompt_tokens=%s completion_tokens=%s",
                 name, payload["model"], usage.get("prompt_tokens"), usage.get("completion_tokens"))
     return data
+
+
+# ── Ollama native ───────────────────────────────────────────────────────────
+# Ollama's OpenAI endpoint (/v1) ignores num_ctx: the model is reloaded with Ollama's
+# default window (a few k tokens), long agent prompts get cut silently and the answer
+# stops mid-sentence. /api/chat takes the same num_ctx + keep_alive as every other
+# Oracle call (no reload). Request and response are translated to the OpenAI shape.
+
+
+def _ollama_messages(messages: list[dict]) -> list[dict]:
+    out = []
+    for msg in messages:
+        row = {"role": msg.get("role") or "user", "content": msg.get("content") or ""}
+        calls = []
+        for call in msg.get("tool_calls") or []:
+            fn = dict(call.get("function") or {})
+            args = fn.get("arguments")
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args or "{}")
+                except ValueError:
+                    args = {"raw": args}
+            calls.append({"function": {"name": fn.get("name", ""), "arguments": args or {}}})
+        if calls:
+            row["tool_calls"] = calls
+        if msg.get("name"):
+            row["tool_name"] = msg["name"]
+        out.append(row)
+    return out
+
+
+def _openai_response(data: dict, model: str) -> dict[str, Any]:
+    message = data.get("message") if isinstance(data.get("message"), dict) else {}
+    calls = []
+    for i, call in enumerate(message.get("tool_calls") or []):
+        fn = call.get("function") or {}
+        args = fn.get("arguments")
+        calls.append({"id": f"call_{i}_{fn.get('name', '')}", "type": "function",
+                      "function": {"name": fn.get("name", ""),
+                                   "arguments": args if isinstance(args, str)
+                                   else json.dumps(args or {}, ensure_ascii=False)}})
+    out_msg: dict[str, Any] = {"role": "assistant", "content": message.get("content") or ""}
+    if message.get("thinking"):
+        out_msg["reasoning_content"] = message["thinking"]
+    if calls:
+        out_msg["tool_calls"] = calls
+    finish = "tool_calls" if calls else ("length" if data.get("done_reason") == "length" else "stop")
+    return {"object": "chat.completion", "model": data.get("model") or model,
+            "choices": [{"index": 0, "message": out_msg, "finish_reason": finish}],
+            "usage": {"prompt_tokens": data.get("prompt_eval_count"),
+                      "completion_tokens": data.get("eval_count")}}
+
+
+def _chat_ollama(prof: dict, body: dict[str, Any]) -> dict[str, Any]:
+    from core.services import oracle_settings
+    model = body.get("model") or prof["model"]
+    request = {"model": model, "messages": _ollama_messages(body["messages"]), "stream": False,
+               **oracle_settings.ollama_request_options()}
+    request["options"] = dict(request.get("options") or {})
+    if body.get("tools"):
+        request["tools"] = body["tools"]
+    if body.get("temperature") is not None:
+        request["options"]["temperature"] = body["temperature"]
+    if body.get("max_tokens"):
+        request["options"]["num_predict"] = body["max_tokens"]
+    try:
+        resp = requests.post(f"{prof['ollama_host']}/api/chat", json=request,
+                             timeout=float(os.getenv("ORACLE_LLM_CHAT_TIMEOUT_SEC", "600")))
+    except requests.RequestException as exc:
+        raise LLMGatewayError(f"profile 'local' unreachable: {exc}", 502)
+    if resp.status_code >= 400:
+        raise LLMGatewayError(f"profile 'local' error {resp.status_code}: {resp.text[:300]}", 502)
+    data = resp.json() or {}
+    num_ctx = request["options"].get("num_ctx")
+    prompt_tokens = int(data.get("prompt_eval_count") or 0)
+    logger.info("event=llm_gateway_chat profile=local model=%s backend=ollama_native num_ctx=%s "
+                "prompt_tokens=%s completion_tokens=%s done_reason=%s",
+                model, num_ctx, prompt_tokens, data.get("eval_count"), data.get("done_reason"))
+    if num_ctx and prompt_tokens >= int(num_ctx) * 0.95:
+        logger.warning("[🔄] event=llm_gateway_context_full profile=local num_ctx=%s prompt_tokens=%s "
+                       "hint=raise oracle.provider.ollama.num_ctx or send a shorter prompt", num_ctx, prompt_tokens)
+    return _openai_response(data, model)

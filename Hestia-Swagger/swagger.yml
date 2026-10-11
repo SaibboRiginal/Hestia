@@ -4943,6 +4943,19 @@ paths:
         "404": {description: parent_task not found}
         "503": {description: Forge disabled or repo not mounted}
 
+  /api/hephaestus/forge/tasks/brief:
+    get:
+      tags: [Hephaestus]
+      summary: Every Forge task in one short line (chat tool forge_tasks)
+      description: "Newest first: `<id6> · <state> · <services> · <request>`. The request is clipped so the whole list stays under ~1600 chars (Oracle's tool-result cap); with too many tasks the oldest closed ones are left out and counted in `omitted`."
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: state, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 50}}
+      responses:
+        "200": {description: "{status, total, by_state{}, tasks[] (strings), omitted?}"}
+
   /api/hephaestus/forge/tasks/{task_id}:
     get:
       tags: [Hephaestus]

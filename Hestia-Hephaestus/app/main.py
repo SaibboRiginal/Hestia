@@ -249,9 +249,9 @@ try:
             parameters={"type": "object", "properties": {
                 "state": {"type": "string", "description": "Filtro stato: proposed, running, awaiting_review, deployed..."}}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_tasks", "params": kw},
-            title="\U0001f9f0 Task sviluppo", method="GET", path="/api/hephaestus/forge/tasks",
+            title="\U0001f9f0 Task sviluppo", method="GET", path="/api/hephaestus/forge/tasks/brief",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="Lista compatta: id corto, stato, richiesta in 1 riga. Niente JSON.",
+            response_prompt="Mostra TUTTE le righe di tasks, una per task: id, stato, richiesta. Niente JSON.",
             telegram_visible=True, telegram_group="sistema",
         ),
         MCPTool(

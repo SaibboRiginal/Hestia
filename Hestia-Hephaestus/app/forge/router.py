@@ -102,6 +102,11 @@ def create_forge_router(forge: Forge) -> APIRouter:
         rows = forge.list(state=state, limit=limit)
         return {"status": "ok", "count": len(rows), "tasks": [_public(t) for t in rows]}
 
+    @router.get("/tasks/brief")
+    def forge_brief(state: str | None = None, limit: int = 50) -> dict[str, Any]:
+        """Every task in one short line each (chat tool forge_tasks): fits Oracle's tool-result cap."""
+        return {"status": "ok", **brief(forge.list(state=state, limit=limit))}
+
     @router.get("/tasks/{task_id}")
     def forge_get(task_id: str) -> dict[str, Any]:
         task = forge.get(task_id)
@@ -190,6 +195,41 @@ def _public(task: dict) -> dict:
     out = {k: task.get(k) for k in _PUBLIC_KEYS if task.get(k) not in (None, "", [])}
     if isinstance(out.get("tests"), dict):
         out["tests"] = {"ok": out["tests"].get("ok"), "tail": str(out["tests"].get("output_tail", ""))[-500:]}
+    return out
+
+
+_CLOSED_STATES = {"deployed", "merged", "rejected", "rolled_back", "no_changes"}
+BRIEF_CHARS = 1600   # Oracle cuts tool results at ~2000 chars: the whole list must fit below that
+
+
+def brief(rows: list[dict]) -> dict[str, Any]:
+    """One line per task (short id · state · services · request), newest first. The request is
+    clipped evenly so every task fits in BRIEF_CHARS instead of the list being cut after a few."""
+    by_state: dict[str, int] = {}
+    for t in rows:
+        by_state[str(t.get("state") or "?")] = by_state.get(str(t.get("state") or "?"), 0) + 1
+    heads = []
+    for t in rows:
+        services = ",".join(t.get("services") or t.get("touched_services") or [])
+        head = f"{str(t.get('id') or '')[:6]} · {t.get('state') or '?'}" + (f" · {services}" if services else "")
+        if t.get("state") == "failed" and t.get("error"):
+            head += f" · err: {' '.join(str(t['error']).split())[:60]}"
+        heads.append(head)
+    fixed = sum(len(h) + 6 for h in heads)
+    room = max(40, (BRIEF_CHARS - fixed) // max(1, len(rows)))
+    lines = []
+    for t, head in zip(rows, heads):
+        req = " ".join(str(t.get("request") or "").split())
+        lines.append((t.get("state"), f"{head} · {req[:room - 1] + '…' if len(req) > room else req}"))
+    # Too many tasks even at minimum width: drop the oldest closed ones first, then the oldest.
+    omitted = 0
+    while len(lines) > 1 and sum(len(line) + 4 for _, line in lines) > BRIEF_CHARS:
+        closed = [i for i, (st, _) in enumerate(lines) if st in _CLOSED_STATES]
+        lines.pop(closed[-1] if closed else -1)
+        omitted += 1
+    out: dict[str, Any] = {"total": len(rows), "by_state": by_state, "tasks": [line for _, line in lines]}
+    if omitted:
+        out["omitted"] = f"{omitted} task più vecchi non elencati (conteggio in by_state)"
     return out
 
 
