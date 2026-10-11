@@ -29,6 +29,7 @@ Spec: `SPEC.md` v2.4 · resume from the first unchecked box.
 - [x] Oracle analyst rule 8: no tool → propose Forge task, ask, `forge_develop` (+ `agenda_parent`)
 - [x] Docs: hestia-chronos/webui/hephaestus/oracle/shared.md, DESIGN-SYSTEM.md, swagger, compose (`WEBUI_ICS_KEY`), root CHANGELOG
 - [x] Checks: `ng build` clean (initial < budget), ruff (only pre-existing findings), ad-hoc check of cascade/cycle/fail with a fake Archive, parse/ICS helpers, Playwright screenshots (drawer wide/phone dark, details, logs, ICS)
+- [x] A10 list view: "Adesso" divider + scroll to it, outcome of past rows (2026-10-11, `ng build` clean)
 - [ ] Pending on user side: .NET build + real run (drawer with Oracle, agenda tools, quick add, ICS on a phone)
 
 ## C. Sviluppo page

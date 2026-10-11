@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.4 |
+| **Version** | 2.5 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, not Forge, not Hestia's own AI) · 2026-10-04 |
 | **Status** | A, B, C done (implemented; user test pending: .NET build + real run) |
 | **Order** | A → B (design + core) → C → D (process, done with this spec) |
@@ -115,6 +115,14 @@ show weekends. Stored per browser (localStorage). Time format fixed 24h, week st
 - Occurrence chip → "Log" link (Argus/Hub logs filtered by service + time ± few minutes).
 - Natural-language quick add ("domani alle 15 dentista") → Oracle parses → prefilled editor.
 - ICS export/feed of the AI agenda (read-only) for phones.
+
+### A10. List view: "now" and outcomes (v2.5, user via external chat 2026-10-11)
+- A red **Adesso · HH:mm** divider at the current time (before the first item not started yet; end of today if
+  nothing else today); the list scrolls to it so a few past rows stay visible above. No divider if the list starts in the future.
+- Past rows dimmed and show their outcome: run `ok` (+ duration) / `fallito ×N` with the run detail on a third line;
+  one-off item without per-occurrence run → its `last_result`; past item with an action and no result → `nessun esito`;
+  past item without action → `concluso`; started and not ended → `in corso`.
+- Items that began before the list start (e.g. a window from yesterday) are listed under the first day, with date in the time column.
 
 ---
 

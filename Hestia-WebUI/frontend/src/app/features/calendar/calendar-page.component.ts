@@ -122,7 +122,7 @@ import {
             <cal-month-view [anchor]="store.anchor()" [events]="store.events()" (selected)="select($event)"
                             (createAt)="newAt($event)" (moved)="onMove($event)" (dayClick)="openDay($event)" />
           }
-          @case ('list') { <cal-list-view [events]="store.events()" (selected)="select($event)" /> }
+          @case ('list') { <cal-list-view [events]="store.events()" [from]="store.range().start" (selected)="select($event)" /> }
           @default {
             <cal-time-grid [days]="gridDays()" [events]="store.events()" (selected)="select($event)"
                            [windowsMode]="store.vp().windowsMode" [frequentMode]="store.vp().frequentMode"

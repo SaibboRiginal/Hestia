@@ -100,7 +100,7 @@ Toasts (*tutte / solo importanti / nessuno*) are a per-browser preference in the
 ### Frontend structure (rewritten 2026-10-03)
 
 Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/ui`), shell with module registry
-(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list,
+(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
 sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
 move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**,
 **Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).

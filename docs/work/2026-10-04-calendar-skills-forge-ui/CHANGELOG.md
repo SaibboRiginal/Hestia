@@ -23,3 +23,5 @@
   links list, calendar entry points via editor/details) and A9 done (quick add parsed by Chronos via Oracle, logs
   from service buffers, ICS with a dedicated key, working-hours shading) — reason: implementation — source: AI
   (implementation, ext-chat session).
+- v2.5 — 2026-10-11 — A10: list view gets a "now" divider and shows the outcome of past items — reason: user saw past
+  items mixed with upcoming ones and no result — source: user via external chat.
