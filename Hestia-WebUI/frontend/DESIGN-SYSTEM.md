@@ -120,6 +120,8 @@ Sources/layers: `CalendarSource` (`kind: 'ai' | 'external'`) — external calend
 `features/assistant/assistant-drawer.component.ts` (`<hx-assistant>`, lazy via `@defer` in the shell) +
 `services/assistant.service.ts`. Own `ChatService` instance (`providers`, channel `assistant`): the chat code and
 packets are shared with the Chat page, the conversation and the Oracle session are not.
+Resizable from its left edge (`.grip`, drag / ←→ / double-click = 440px default), clamped 340px–90vw, width in
+`localStorage` `hestia_assistant_width`; full screen on phones.
 
 ## 7. Sviluppo module
 
