@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from forge.engines import BuiltinEngine
-from forge.router import BRIEF_CHARS, brief
+from app.forge.engines import BuiltinEngine
+from app.forge.router import BRIEF_CHARS, brief
 
 
 def _task(i: int, state: str = "awaiting_review", request: str = "Re-attivazione ciclo Athena " * 6) -> dict:

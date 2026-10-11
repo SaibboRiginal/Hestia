@@ -224,7 +224,7 @@ def brief(rows: list[dict]) -> dict[str, Any]:
         if t.get("state") == "failed" and t.get("error"):
             head += f" · err: {' '.join(str(t['error']).split())[:60]}"
         heads.append(head)
-    fixed = sum(len(h) + 6 for h in heads)
+    fixed = sum(len(h) + 7 for h in heads)  # " · " before the request + the 4 per line counted below
     room = max(40, (BRIEF_CHARS - fixed) // max(1, len(rows)))
     lines = []
     for t, head in zip(rows, heads):
