@@ -135,6 +135,16 @@ export const ENGINE_LABEL: Record<string, string> = {
   '': 'Predefinito', auto: 'Predefinito', local: 'Locale (Ollama)', cloud: 'Cloud', claude: 'Claude Code',
 };
 
+/** Who asked for a task (Forge ``source``): you, or a module that proposed it on its own. */
+export const USER_SOURCES = ['user', 'telegram', 'ui', 'oracle'];
+export const SOURCE_LABEL: Record<string, string> = {
+  user: 'Tu', telegram: 'Tu (Telegram)', ui: 'Tu (WebUI)', oracle: 'Tu (chat)',
+  athena: 'Athena', argus: 'Argus', 'hephaestus.remediation': 'Riparazioni', metis: 'Metis',
+};
+export function sourceLabel(source?: string): string {
+  return SOURCE_LABEL[source || 'user'] ?? (source || 'Tu');
+}
+
 export const FILE_STATUS: Record<string, { label: string; tone: string }> = {
   A: { label: 'aggiunto', tone: 'success' }, M: { label: 'modificato', tone: 'info' }, D: { label: 'eliminato', tone: 'danger' },
   R: { label: 'rinominato', tone: 'warning' }, C: { label: 'copiato', tone: 'warning' }, '?': { label: 'nuovo', tone: 'success' },

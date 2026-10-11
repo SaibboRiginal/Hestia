@@ -5205,8 +5205,18 @@ paths:
         - url: http://localhost:19010
       parameters:
         - {name: task_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                by: {type: string, default: user}
+                now: {type: boolean, description: skip the Claude budget window}
+                engine: {type: string, enum: [local, cloud, claude, ""], description: "proposed/scheduled: who develops it (explicit choice starts now); empty = as proposed"}
       responses:
         "200": {description: "{status, task}"}
+        "400": {description: Unknown engine}
         "409": {description: Repo not on base branch or dirty}
 
   /api/hephaestus/forge/tasks/{task_id}/reject:

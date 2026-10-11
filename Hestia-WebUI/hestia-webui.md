@@ -118,6 +118,8 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   Header actions follow the state: Avvia / Avvia ora / Approva e applica / Rifiuta / Rollback / Riprova.
 - Page header **Pausa / Riprendi** (2026-10-11): manual pause of Forge (`hephaestus.forge.paused`); while paused a
   banner over the task list says nothing starts on its own; resuming asks confirmation and restarts nothing held.
+- Who proposed each task: list rows show *Tu* or the module (Athena, Argus, Riparazioni) and the filter **Dai moduli**;
+  the task header says "proposto da …". Proposed/scheduled tasks have an engine picker next to **Avvia**.
 - **Repository** mode (`repo-browser`): commit log with branch graph (all branches toggle, file history),
   commit detail (files + diff), file browser at any ref (markdown preview), branches with ahead/behind and Forge
   task links, compare, tags, `docs/work` dossiers with version/status/progress, root CHANGELOG.

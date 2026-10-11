@@ -15,6 +15,7 @@ SettingsClient = import_shared_symbol("hestia_common.settings_client", "Settings
 setting = import_shared_symbol("hestia_common.settings_client", "setting")
 
 PAUSED = "hephaestus.forge.paused"
+DEDUP_DAYS = "hephaestus.forge.dedup_days"
 ENGINE = "hephaestus.forge.engine"
 MODE = {"local": "hephaestus.forge.mode.local", "cloud": "hephaestus.forge.mode.cloud"}
 FALLBACK = "hephaestus.forge.fallback"
@@ -46,6 +47,10 @@ settings.declare([
             help="Se attivo nessun task di sviluppo parte da solo (Athena, Argus, riparazioni, "
                  "finestre Claude): restano proposti in silenzio finché non premi Avvia. "
                  "Le tue richieste dirette partono comunque."),
+    setting(DEDUP_DAYS, "Niente proposte doppie per", "int", 7, group=_FORGE, min=0, max=90, unit="giorni",
+            order=-1,
+            help="Se un modulo propone un task uguale o molto simile a uno degli ultimi giorni (anche "
+                 "rifiutato) non ne creo un altro. 0 = controllo spento. Le tue richieste non sono filtrate."),
     setting(ENGINE, "Motore di sviluppo predefinito", "enum", "local", group=_FORGE,
             options=_ENGINES, order=0,
             help="Chi scrive il codice quando chiedi una modifica. Se non è disponibile si usa il successivo."),

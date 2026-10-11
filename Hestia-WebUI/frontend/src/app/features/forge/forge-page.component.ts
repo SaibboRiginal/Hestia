@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DialogService, ResizeHandleComponent, UI, savedWidth } from '../../ui';
 import { ForgeStore } from './forge.store';
 import { ForgeApi } from './forge.api';
-import { Dossier, ENGINE_LABEL, ForgeTask, STATE_META } from './forge.models';
+import { Dossier, ENGINE_LABEL, ForgeTask, STATE_META, USER_SOURCES, sourceLabel } from './forge.models';
 import { TranscriptComponent } from './transcript.component';
 import { TaskPanelComponent } from './task-panel.component';
 import { RepoBrowserComponent, RepoNav } from './repo-browser.component';
@@ -65,7 +65,7 @@ import { AssistantService } from '../../services/assistant.service';
                 <div class="tmain">
                   <div class="treq">{{ t.request }}</div>
                   <div class="tmeta">
-                    <span>{{ meta(t).label }}</span> · <span>{{ engineOf(t) }}</span> · <span>{{ ago(t.created_at) }}</span>
+                    <span>{{ meta(t).label }}</span> · <span [class.by]="byModule(t)">{{ sourceOf(t) }}</span> · <span>{{ engineOf(t) }}</span> · <span>{{ ago(t.created_at) }}</span>
                     @if (t.parent_task) { · <span title="Segue un task precedente">↳</span> }
                   </div>
                 </div>
@@ -89,17 +89,24 @@ import { AssistantService } from '../../services/assistant.service';
                 <div class="tsub">
                   <hx-badge [tone]="meta(t).tone">{{ meta(t).label }}</hx-badge>
                   <span class="mono">{{ t.id.slice(0, 6) }}</span> · {{ engineOf(t) }}
+                  · <span [title]="t.requested_by || ''">{{ byModule(t) ? 'proposto da ' + sourceOf(t) : 'chiesto da te' }}</span>
                   @if (t.workdoc) { · <span class="mono hx-truncate">{{ t.workdoc }}</span> }
                 </div>
               </div>
               <div class="acts">
                 @switch (t.state) {
                   @case ('proposed') {
-                    <button hx-btn size="sm" variant="primary" icon="play" [loading]="store.busy()" (click)="store.act('approve')">Avvia</button>
+                    <select class="hx-select eng-pick" [(ngModel)]="startEngine" title="Chi lo sviluppa">
+                      @for (e of engines; track e) { <option [value]="e">{{ e ? engineLabel(e) : 'Motore proposto' }}</option> }
+                    </select>
+                    <button hx-btn size="sm" variant="primary" icon="play" [loading]="store.busy()" (click)="start()">Avvia</button>
                     <button hx-btn size="sm" variant="ghost" icon="x" (click)="reject()">Rifiuta</button>
                   }
                   @case ('scheduled') {
-                    <button hx-btn size="sm" variant="primary" icon="play" [loading]="store.busy()" (click)="store.act('approve', { now: true })" title="Non aspettare la finestra Claude">Avvia ora</button>
+                    <select class="hx-select eng-pick" [(ngModel)]="startEngine" title="Chi lo sviluppa">
+                      @for (e of engines; track e) { <option [value]="e">{{ e ? engineLabel(e) : 'Motore proposto' }}</option> }
+                    </select>
+                    <button hx-btn size="sm" variant="primary" icon="play" [loading]="store.busy()" (click)="start(true)" title="Non aspettare la finestra Claude">Avvia ora</button>
                     <button hx-btn size="sm" variant="ghost" icon="x" (click)="reject()">Rifiuta</button>
                   }
                   @case ('awaiting_review') {
@@ -209,6 +216,8 @@ import { AssistantService } from '../../services/assistant.service';
     .chips i { font-style: normal; font-size: 10.5px; background: var(--accent); color: var(--accent-contrast); border-radius: var(--radius-full); padding: 0 5px; }
     .paused { display: flex; gap: 8px; margin: 0 10px 6px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--warning-soft); font-size: 12.5px; color: var(--text-2); line-height: 1.4; }
     .paused hx-icon { color: var(--warning); margin-top: 2px; flex-shrink: 0; } .paused b { color: var(--text); margin-right: 4px; }
+    .tmeta .by { color: var(--accent); }
+    .eng-pick { font-size: 12.5px; height: 30px; width: auto; max-width: 170px; }
     .rows { flex: 1; overflow: auto; padding: 4px 6px 16px; display: flex; flex-direction: column; gap: 1px; }
     .center { display: grid; place-items: center; padding: 24px; }
     .lerr { display: flex; gap: 6px; font-size: 12.5px; color: var(--danger); padding: 8px; }
@@ -264,8 +273,8 @@ export class ForgePageComponent implements OnInit, OnDestroy {
 
   readonly modeOpts = [{ value: 'tasks', label: 'Task', icon: 'terminal' }, { value: 'repo', label: 'Repository', icon: 'branch' }];
   readonly centerOpts = [{ value: 'chat', label: 'Conversazione', icon: 'chat' }, { value: 'details', label: 'Dettagli', icon: 'info' }];
-  readonly filters: { id: 'all' | 'open' | 'done' | 'failed'; label: string }[] = [
-    { id: 'all', label: 'Tutti' }, { id: 'open', label: 'Aperti' }, { id: 'done', label: 'Applicati' }, { id: 'failed', label: 'Non riusciti' },
+  readonly filters: { id: 'all' | 'open' | 'modules' | 'done' | 'failed'; label: string }[] = [
+    { id: 'all', label: 'Tutti' }, { id: 'open', label: 'Aperti' }, { id: 'modules', label: 'Dai moduli' }, { id: 'done', label: 'Applicati' }, { id: 'failed', label: 'Non riusciti' },
   ];
   readonly engines = ['', 'local', 'cloud', 'claude'];
 
@@ -289,6 +298,8 @@ export class ForgePageComponent implements OnInit, OnDestroy {
   readonly engineRows = computed(() => Object.entries(this.store.status()?.engines ?? {}).map(([name, e]) => ({ name, ...e })));
 
   followUp = '';
+  /** Engine chosen when starting a proposed/scheduled task ('' = as proposed). */
+  startEngine = '';
   followEngine = '';
   nReq = ''; nEngine = ''; nServices = ''; nWorkdoc = '';
 
@@ -362,6 +373,14 @@ export class ForgePageComponent implements OnInit, OnDestroy {
       this.store.act('approve');
     }
   }
+  byModule(t: ForgeTask) { return !USER_SOURCES.includes(t.source || 'user'); }
+  sourceOf(t: ForgeTask) { return sourceLabel(t.source); }
+  start(now = false) {
+    const engine = this.startEngine || undefined;
+    this.startEngine = '';
+    this.store.act('approve', { ...(now ? { now: true } : {}), ...(engine ? { engine } : {}) });
+  }
+
   async togglePause(paused: boolean) {
     if (paused || await this.dialogs.confirm('Riprendere lo sviluppo?', 'I moduli tornano ad avviare task da soli secondo i permessi. I task trattenuti durante la pausa restano da avviare a mano.', 'Riprendi')) {
       await this.store.setPaused(paused);

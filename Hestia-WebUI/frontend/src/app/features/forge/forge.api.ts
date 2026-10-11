@@ -35,7 +35,7 @@ export class ForgeApi {
   pause(paused: boolean) {
     return firstValueFrom(this.http.post<{ paused: boolean; held: string[] }>(`${this.base}/pause`, { paused }));
   }
-  act(id: string, verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean } = {}) {
+  act(id: string, verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean; engine?: string } = {}) {
     return firstValueFrom(this.http.post<{ task: ForgeTask }>(`${this.base}/tasks/${id}/${verb}`, body));
   }
 

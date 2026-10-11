@@ -318,7 +318,8 @@ try:
             ),
             parameters={"type": "object", "properties": {
                 "task_id": {"type": "string", "description": "Id task (anche i primi 6 caratteri)"},
-                "now": {"type": "boolean", "description": "true solo se l'utente dice 'subito'/'ora' (salta la finestra notturna Claude)"}},
+                "now": {"type": "boolean", "description": "true solo se l'utente dice 'subito'/'ora' (salta la finestra notturna Claude)"},
+                "engine": {"type": "string", "description": "Solo se l'utente sceglie chi lo sviluppa: local | cloud | claude"}},
                 "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_approve", "params": kw},
             title="\u2705 Approva sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/approve",

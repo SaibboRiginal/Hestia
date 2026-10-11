@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ToastService } from '../../ui';
 import { ForgeApi } from './forge.api';
 import {
-  ACTIVE, ForgeStatus, ForgeTask, TaskFiles, TaskLogs, TaskTests, TaskWorkdoc, TranscriptEvent,
+  ACTIVE, ForgeStatus, USER_SOURCES, ForgeTask, TaskFiles, TaskLogs, TaskTests, TaskWorkdoc, TranscriptEvent,
 } from './forge.models';
 
 export type SidePanel = 'overview' | 'files' | 'diff' | 'dossier' | 'tests' | 'logs' | 'branch';
@@ -17,7 +17,7 @@ export class ForgeStore {
   readonly status = signal<ForgeStatus | null>(null);
   readonly loading = signal(false);
   readonly error = signal('');
-  readonly filter = signal<'all' | 'open' | 'done' | 'failed'>('all');
+  readonly filter = signal<'all' | 'open' | 'modules' | 'done' | 'failed'>('all');
   readonly search = signal('');
 
   readonly selectedId = signal<string | null>(null);
@@ -38,6 +38,7 @@ export class ForgeStore {
     return this.tasks().filter(t => {
       if (q && !`${t.request} ${t.id} ${t.workdoc ?? ''} ${(t.services ?? []).join(' ')}`.toLowerCase().includes(q)) return false;
       if (f === 'open') return !['merged', 'deployed', 'failed', 'rejected', 'rolled_back', 'no_changes'].includes(t.state);
+      if (f === 'modules') return !USER_SOURCES.includes(t.source || 'user');
       if (f === 'done') return ['merged', 'deployed'].includes(t.state);
       if (f === 'failed') return ['failed', 'rolled_back', 'no_changes'].includes(t.state);
       return true;
@@ -193,7 +194,7 @@ export class ForgeStore {
     }
   }
 
-  async act(verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean } = {}) {
+  async act(verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean; engine?: string } = {}) {
     const t = this.task();
     if (!t) return;
     this.busy.set(true);

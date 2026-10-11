@@ -128,6 +128,24 @@ Themis). Safety switches: the assistant may read them but never propose them (`o
 
 Groups: `local` = local engine (default `auto`); `cloud` = cloud profile + claude (default `ask`: no tokens spent without your ok).
 
+### Who decides, duplicates, engine per task
+
+- **Who creates tasks**: you (WebUI, Telegram, chat → `source` user/ui/telegram/oracle), Athena (`athena`:
+  strategist "improvement" candidates, `athena.forge.enabled`, max `athena.forge.max_per_day`), Argus
+  (`argus`: same error signature `argus.forge.threshold` times in `argus.forge.window`, one per
+  `argus.forge.cooldown`), remediation escalation (`hephaestus.remediation`: repair failed every attempt).
+- **Who decides whether it starts**: Forge, with the permission mode of the engine group (table below) and
+  the manual pause. Merge always waits for you unless `full_auto`.
+- **Duplicates**: `hephaestus.forge.dedup_days` (default 7, 0 = off). A module proposal with the same
+  services and ≥ 60% word overlap (request + start of context, so templated Argus/remediation requests are
+  told apart by their error) with any task of those days, rejected included, is not created: the answer is
+  the existing task with `duplicate: true`. Your own requests are never filtered.
+- **Engine per task**: `approve {engine}` on a `proposed`/`scheduled` task sets who develops it
+  (an explicit choice starts now, outside the Claude windows); WebUI Sviluppo has the picker next to Avvia.
+  New tasks and follow-ups already take `engine`.
+- **Proposer visible**: task `source`/`requested_by`; WebUI list shows it and filters *Dai moduli*; the chat
+  brief marks module tasks `· da <source>`.
+
 ### Manual pause (brake)
 
 `hephaestus.forge.paused` (Themis, live, `oracle: read`) overrides the modes above: while it is on **nothing
@@ -257,6 +275,7 @@ engine/modes also applied by `Forge._apply_settings`). Endpoints `GET /api/setti
 | Key | Type · default | Effect |
 |---|---|---|
 | `hephaestus.forge.paused` | bool · `false` (read) | manual pause: no task starts on its own (see *Manual pause*) |
+| `hephaestus.forge.dedup_days` | int giorni · 7 (0–90) | module proposals similar to a task of these days are not created again |
 | `hephaestus.forge.engine` | enum · `local` | default coding engine |
 | `hephaestus.forge.mode.local` / `.cloud` | enum · `auto` / `ask` (read) | permission mode per group |
 | `hephaestus.forge.fallback` | list · `[local, cloud, claude]` | engines tried when the default is unavailable |

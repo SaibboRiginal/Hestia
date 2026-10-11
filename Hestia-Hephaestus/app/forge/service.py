@@ -199,6 +199,39 @@ class Forge:
         """Started by a module (Athena, Argus, remediation, Claude windows), not by the user."""
         return task.get("source") not in USER_SOURCES and not task.get("manual_start")
 
+    _WORD = re.compile(r"[a-zà-ù0-9]{3,}")
+
+    @classmethod
+    def _words(cls, text: str) -> set[str]:
+        return set(cls._WORD.findall(str(text or "").lower()))
+
+    def find_duplicate(self, request: str, source: str, services: list[str] | None = None,
+                       context: str = "") -> dict[str, Any] | None:
+        """A module's proposal equal or very similar to a task of the last ``hephaestus.forge.dedup_days``
+        days, in any state (rejected too: no re-proposing). Similar = same services and word overlap
+        ≥ 60% on request + start of context (templated Argus/remediation requests differ only there)."""
+        days = forge_settings.get_int(forge_settings.DEDUP_DAYS, 0)
+        services = sorted(str(x).strip().lower() for x in (services or []) if str(x).strip())
+        words = self._words(f"{request} {str(context or '')[:600]}")
+        if days <= 0 or source in USER_SOURCES or not words:
+            return None
+        since = datetime.now(timezone.utc).timestamp() - days * 86400
+        with self._lock:
+            tasks = list(self._tasks.values())
+        for task in sorted(tasks, key=lambda t: t.get("created_at", ""), reverse=True):
+            try:
+                created = datetime.fromisoformat(str(task.get("created_at"))).timestamp()
+            except ValueError:
+                continue
+            if created < since:
+                continue
+            if sorted(task.get("services") or []) != services:
+                continue
+            other = self._words(f"{task.get('request', '')} {str(task.get('context') or '')[:600]}")
+            if other and len(words & other) / len(words | other) >= 0.6:
+                return task
+        return None
+
     def _hold(self, task: dict, note: str) -> None:
         """Pause: keep the task as a silent proposal (no notification), the user starts it by hand."""
         with self._lock:
@@ -453,6 +486,11 @@ class Forge:
             context = (f"Segue il task Forge {parent['id']} ({parent.get('state')}): "
                        f"{str(parent.get('request') or '')[:600]}\nEsito: {str(parent.get('summary') or '')[:1200]}\n"
                        + str(context or ""))
+        duplicate = self.find_duplicate(request, source, services, context)
+        if duplicate:
+            logger.info("event=forge_duplicate_skipped source=%s duplicate_of=%s state=%s",
+                        source, duplicate["id"], duplicate.get("state"))
+            return {**duplicate, "duplicate": True}
         task_id = uuid.uuid4().hex[:12]
         task = {
             "id": task_id,
@@ -497,13 +535,22 @@ class Forge:
                 f"Rispondi \"approva sviluppo {task_id[:6]}\" per avviarla, \"rifiuta {task_id[:6]}\" per scartarla."))
         return task
 
-    def approve(self, task_id: str, approved_by: str = "user", now: bool = False) -> dict[str, Any]:
+    def approve(self, task_id: str, approved_by: str = "user", now: bool = False,
+                engine: str = "") -> dict[str, Any]:
+        """``engine``: the user picks who develops this task when starting it (local | cloud | claude);
+        an explicit choice starts now, outside the Claude budget windows."""
         task = self._require(task_id)
         state = task.get("state")
         if state in {"proposed", "scheduled"}:
+            chosen = normalize_engine(engine) if engine else ""
+            if engine and chosen not in self.engines:
+                raise ForgeError(f"Unknown engine '{engine}'. Use: {', '.join(self.engines)}")
             with self._lock:   # the user's own start: the pause no longer holds it
                 task["manual_start"] = True
                 task.pop("held_by_pause", None)
+                if chosen:
+                    task["engine_requested"] = chosen
+                    task["budgeted"] = False
             if task.get("budgeted") and not now:
                 self._schedule(task, f"approved by {approved_by}, waits for Claude budget window")
             else:

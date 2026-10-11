@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat ("troppi task di sviluppo… un modo manuale per disabilitare o mettere in pausa così non inizia niente in automatico a consumare token") | done |
+| 2.0 | user via external chat ("troppi task di sviluppo… un modo manuale per disabilitare o mettere in pausa così non inizia niente in automatico a consumare token"; poi: "chi decide… si ricorda di non creare duplicati entro x gg? si può cambiare per task il motore? mostrami i task che Argus e Athena hanno pensato") | done |
 
 ## Goal
 Un interruttore manuale che ferma lo sviluppo automatico: finché è attivo nessun task Forge parte da solo
@@ -32,3 +32,20 @@ e non si consumano token.
 - Pausa come impostazione Themis (non env, non file di Forge): visibile in Impostazioni, storico/undo di Themis.
 - Il cambio da UI/Telegram è un'azione dell'utente → `settings.put(actor="user")`, applicato subito in locale.
 - Trattenere invece di rifiutare: niente va perso, ma nessuna notifica per non riempire i client.
+
+## v2.0 — chi decide, duplicati, motore per task, chi ha proposto
+- Chi crea: tu, Athena (miglioramenti), Argus (errori ricorrenti), riparazioni fallite. Chi decide se parte:
+  Forge con i permessi del gruppo motore + pausa; il merge aspetta te salvo `full_auto`.
+- Duplicati: `hephaestus.forge.dedup_days` (7, 0 = spento). Proposta di un modulo con stessi servizi e
+  ≥ 60% parole in comune (richiesta + inizio contesto) con un task degli ultimi giorni, anche rifiutato →
+  non creata, risposta = task esistente con `duplicate: true`. Prima c'era solo un filtro in memoria
+  (Athena per giorno, Argus per firma) che si perdeva al riavvio.
+- Motore per task: `approve {engine}` su proposto/programmato; scelta esplicita = parte subito.
+  WebUI: selettore accanto ad Avvia; tool MCP `forge_approve` con `engine`.
+- Chi ha proposto: WebUI lista con autore + filtro *Dai moduli*, intestazione "proposto da …";
+  brief chat `· da <source>`.
+
+### Acceptance (v2.0)
+- Seconda proposta simile di Athena entro 7 giorni → nessun nuovo task.
+- Stesso testo Argus ma errore diverso → due task.
+- Avvia con motore Claude su un task proposto dal locale → `engine_requested=claude`, parte ora.

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from .inspector import TaskInspector
 from .repo_browser import RepoBrowser, RepoError
-from .service import Forge, ForgeError
+from .service import USER_SOURCES, Forge, ForgeError
 
 
 class ForgeTaskRequest(BaseModel):
@@ -46,6 +46,7 @@ class ForgeDecision(BaseModel):
     by: str = "user"
     reason: str = ""
     now: bool = False   # approve: skip the Claude budget window (user asked "subito")
+    engine: str = ""    # approve: who develops it (local | cloud | claude), empty = as proposed
 
 
 class ClaudeScheduleChange(BaseModel):
@@ -176,7 +177,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
     @router.post("/tasks/{task_id}/approve")
     def forge_approve(task_id: str, body: ForgeDecision | None = None) -> dict[str, Any]:
         b = body or ForgeDecision()
-        task = _guard(forge.approve, task_id, b.by, b.now)
+        task = _guard(forge.approve, task_id, b.by, b.now, b.engine)
         return {"status": "ok", "task": _public(task)}
 
     @router.post("/tasks/{task_id}/reject")
@@ -196,7 +197,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
 
 _PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "engine_requested", "source", "requested_by",
                 "summary", "diff_stat", "workdoc", "deploy_plan", "changed_files", "touched_services", "tests",
-                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task", "agenda_parent")
+                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task", "agenda_parent", "duplicate")
 
 
 def _public(task: dict) -> dict:
@@ -212,7 +213,7 @@ BRIEF_CHARS = 1600   # Oracle cuts tool results at ~2000 chars: the whole list m
 
 
 def brief(rows: list[dict]) -> dict[str, Any]:
-    """One line per task (short id · state · services · request), newest first. The request is
+    """One line per task (short id · state · services · proposer if a module · request), newest first. The request is
     clipped evenly so every task fits in BRIEF_CHARS instead of the list being cut after a few."""
     by_state: dict[str, int] = {}
     for t in rows:
@@ -221,6 +222,8 @@ def brief(rows: list[dict]) -> dict[str, Any]:
     for t in rows:
         services = ",".join(t.get("services") or t.get("touched_services") or [])
         head = f"{str(t.get('id') or '')[:6]} · {t.get('state') or '?'}" + (f" · {services}" if services else "")
+        if t.get("source") and t.get("source") not in USER_SOURCES:   # proposed by a module, not by you
+            head += f" · da {t['source']}"
         if t.get("state") == "failed" and t.get("error"):
             head += f" · err: {' '.join(str(t['error']).split())[:60]}"
         heads.append(head)
