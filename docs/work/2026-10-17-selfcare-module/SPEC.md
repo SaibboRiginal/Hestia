@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part waits for the module-plugin contract (thread "Plugin dei moduli nei client") to be on main |
 
@@ -134,7 +134,9 @@ Actions (called by Chronos jobs and Hermes buttons): `POST reminders/fire {routi
 `POST logs/quick {routine_id, status}`.
 Plugin: `GET /api/plugin/manifest` (shape from the plugin thread).
 Context: `GET /api/module/context` — the same short caveman summary as `selfcare_overview`, common contract of the
-three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its context.
+three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its context: `?budget=` →
+`{module, domain, updated_at, text}`, Hub tag `context`, built with `hestia_common.context_client.ModuleContext`
+(written by the Guardaroba thread, its SPEC §6.2). Photo uploads follow the plugin contract (base64 ≤ 8 MB, resized by the client).
 
 ## 6. Assistant (MCP tools, `hestia_common.mcp_helpers.MCPTool`)
 
