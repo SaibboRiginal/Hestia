@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
-| **Status** | Draft — waiting for user approval. UI part (§7) waits for the module plugin contract (thread "Plugin dei moduli nei client") to be on main |
+| **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -41,8 +41,9 @@ suggest outfits for an occasion, a season, the weather or a trip.
 - New domain module **`Hestia-Wardrobe`** (service `wardrobe`, container `hestia_wardrobe`, port **19017**
   [shared: Self care 19018, Coach 19019]), FastAPI, same skeleton as Scout/Dummy, registered on Hub, layer
   `domain`.
-- Data stored in **Archive** only, as generic entities with domain `wardrobe.<kind>` [shared convention
-  `<module>.<kind>`]; no wardrobe-specific table in Archive.
+- Data stored in **Archive** only, in typed tables behind a storage-only router `/api/wardrobe-store/*`
+  [shared pattern with Self care / Coach: `/api/<module>-store`, like `presence.py`; meaning and validation stay
+  in the module, Archive only stores and queries].
 - New **generic blob store in Archive** (`/api/blobs`) for photos [shared: owned by this thread, reusable by
   Self care / Coach].
 - REST API (consumed by WebUI through Hub), MCP tools (Oracle, Telegram, MCP gateway), assistant context
@@ -58,14 +59,18 @@ suggest outfits for an occasion, a season, the weather or a trip.
   weather passes it).
 - Multi-user wardrobes (single owner, like the rest of Hestia).
 
-## 4. Data model (Archive entities)
+## 4. Data model (Archive tables, storage router `/api/wardrobe-store`)
 
-`entity_id` = `wardrobe:<kind>:<uuid>`; `status` column mirrors the payload status (so Archive cleanup/search
-by status works); `embedding` = Oracle embedding of a short text description (name, colours, material,
-style) for semantic search ("la camicia azzurra di lino"). Every payload carries `created_at`, `updated_at`,
-`schema_version`.
+Tables `wardrobe_pieces`, `wardrobe_outfits`, `wardrobe_outfit_pieces` (outfit_id, piece_id, slot, order),
+`wardrobe_wears`, `wardrobe_wear_pieces` (wear_id, piece_id), `wardrobe_taxonomies`, `wardrobe_collections`.
+Ids are UUID strings; filterable fields are real columns (kind, category, status, seasons/styles/occasions as
+text arrays with GIN, favorite, purchase date/price, wear date), the rest in a `data` JSONB column; every row has
+`created_at`/`updated_at`. `wardrobe_pieces.embedding` = Vector(768) of a short text description (name, colours,
+material, style) made by Oracle, for semantic search ("la camicia azzurra di lino"). Join tables let stats ask
+"wears per piece in a period" in SQL instead of loading everything. Auto-migrated like the other Archive tables
+(`create_all` + `ADD COLUMN IF NOT EXISTS`).
 
-### 4.1 `wardrobe.piece` — one physical thing you own (garment, shoes or accessory)
+### 4.1 Piece (`wardrobe_pieces`) — one physical thing you own (garment, shoes or accessory)
 | Field | Type | Notes |
 |---|---|---|
 | `kind` | `garment` · `shoes` · `accessory` | pages split by kind; one model so search, stats, outfits work the same |
@@ -93,25 +98,25 @@ style) for semantic search ("la camicia azzurra di lino"). Every payload carries
 Accessories use the same model (`kind=accessory`) with categories bag, belt, watch, jewellery, glasses, hat,
 scarf, gloves, tie, wallet, other; they get their own page and filters.
 
-### 4.2 `wardrobe.outfit` — a combination of pieces
+### 4.2 Outfit (`wardrobe_outfits` + `wardrobe_outfit_pieces`) — a combination of pieces
 `name`, `slots: [{slot, piece_id}]` (slots: base layer, top, mid layer, outerwear, bottom, one-piece, shoes,
 accessories ×n — a slot can be empty), `styles`, `occasions`, `seasons` (default = intersection of the pieces'),
 `weather` range, `rating` 1–5, `favorite`, `photos` (pictures of it worn), `board` (future layout for W6),
 `source` (user · assistant), `status` (active · archived), `notes`. Derived: `wear_count`, `last_worn`,
 `complete` (false when a piece is donated/archived → shown as "da rivedere").
 
-### 4.3 `wardrobe.wear` — diary entry (what was worn on a day)
+### 4.3 Wear (`wardrobe_wears` + `wardrobe_wear_pieces`) — diary entry (what was worn on a day)
 `date`, `outfit_id?` or `piece_ids[]` (ad-hoc outfit), `occasion?`, `weather? {temp_c, condition}`,
 `rating?` (how it felt), `notes?`, `source` (webui · telegram · assistant). Writing/deleting a wear updates
 `wear_count`/`last_worn` on the pieces and the outfit.
 
-### 4.4 `wardrobe.taxonomy` — editable vocabularies
-One entity per vocabulary (`category`, `pattern`, `fit`, `style`, `occasion`, `location`, `color`): `{values:
+### 4.4 Vocabularies (`wardrobe_taxonomies`) — editable
+One row per vocabulary (`category`, `pattern`, `fit`, `style`, `occasion`, `location`, `color`): `{values:
 [{key, label, parent?, icon?, order, hidden}]}`. Seeded with Italian labels on first start (idempotent);
 the user adds/renames/hides values from the UI or chat. These are **data**, not Themis settings.
 
 ### 4.5 Collections (light, phase W5)
-`wardrobe.collection` — named groups: capsule wardrobe, packing list for a trip (`{trip dates, place,
+`wardrobe_collections` — named groups: capsule wardrobe, packing list for a trip (`{trip dates, place,
 items checked}`), "da comprare". Packing list = pieces + outfits + checkbox state.
 
 ### 4.6 Photos — Archive blob store [shared]
@@ -124,8 +129,10 @@ New generic Archive API, pure storage (no meaning):
   `ARCHIVE_BLOB_MAX_MB`, default 15).
 - Wardrobe stores the original (EXIF orientation fixed, GPS stripped) + thumbnails 256 px and 768 px (WebP,
   Pillow), all as blobs; the piece keeps `{original, thumb, medium}` ids.
-- Through Hub the upload is JSON with base64 (the envelope carries JSON only). The WebUI backend reads images
-  with `GET /api/wardrobe/photos/{blob_id}?size=thumb` via Hub, cached by the browser (immutable ids).
+- Upload follows the plugin contract §4.5: the client resizes on device (long side ≤ 2048 px) and sends
+  `{name, mime, data_b64}` (≤ 8 MB) in the JSON body; Telegram photos arrive the same way. Images are served
+  back by the module route `GET /api/ui/files/{blob_id}?size=thumb|medium|original` (plugin contract §4.11),
+  cached by the browser (immutable ids).
 
 ## 5. Module API (REST, via Hub `route/wardrobe/...`)
 
@@ -142,11 +149,12 @@ New generic Archive API, pure storage (no meaning):
 | GET/PUT | `/api/wardrobe/taxonomies[/{name}]` | vocabularies |
 | GET/POST, PATCH | `/api/wardrobe/collections[/{id}]` | capsules, packing lists |
 | POST | `/api/wardrobe/describe-photo` | photo → Oracle (vision) → proposed piece fields (never saved by itself) |
-| GET | `/api/wardrobe/photos/{blob_id}` | image bytes (size = original/medium/thumb) |
+| GET | `/api/ui/files/{blob_id}` | image bytes (`size` = original/medium/thumb) |
+| GET | `/api/ui/*` | plugin sources in the block shapes of the plugin contract §4.4 (cards, stat, chart, timeline…) |
 | GET | `/api/module/context` | assistant summary [shared contract, §6.2] |
 | GET | `/api/wardrobe/export` · POST `/api/wardrobe/import` | JSON export/import (backup, bulk entry from a spreadsheet later) |
 
-Validation lives in the module (pydantic); Archive stays generic.
+Validation lives in the module (pydantic); Archive only stores.
 
 ### Suggestion engine (deterministic, no LLM)
 Candidates = saved outfits + generated combinations from active pieces (top+bottom or one-piece, + shoes,
@@ -171,17 +179,25 @@ can explain. Oracle adds the reasoning/taste on top through the tools; the modul
 | `guardaroba_indossato` | log today's (or a date's) outfit/pieces | yes, direct |
 | `guardaroba_statistiche` | stats and forgotten pieces | no |
 | `guardaroba_valigia` | packing list for a trip (collection) | yes, direct |
+| `guardaroba_riepilogo` | same text as `/api/module/context` (on-demand summary) | no |
 | `guardaroba_elimina` | delete a piece/outfit | **confirm via Hermes** (button) before acting |
 
 Telegram: a photo sent with "aggiungi al guardaroba" → `describe-photo` → draft shown → user confirms.
 
-### 6.2 Context summary [shared contract with Self care / Coach, proposed to the plugin thread]
-`GET /api/module/context?budget=<chars>` → `{module, updated_at, text}`: caveman-style lines the assistant
-can include when the chat is about that domain, e.g. `guardaroba: 84 capi (41 top, 18 bottom…), 12 outfit;
-stile prevalente smart casual; in lavanderia 3; dimenticati >180g: 7; ultimo outfit 16/10 "ufficio blu"`.
-Who includes it and when (classifier domain `wardrobe`, budget) is Oracle's job, defined in the plugin/context
-contract; the module only serves the text. If no shared contract lands, Oracle reaches the same data through
-the tools above (works today).
+### 6.2 Assistant context contract [shared, defined here; Self care and Coach reuse it]
+The plugin contract leaves assistant context out (its §4.10), so this dossier defines it for every module:
+- Route `GET /api/module/context?budget=<chars, default 600>` → `{module, domain, updated_at, text}`. `text` =
+  caveman-style lines, already trimmed to `budget`, no secrets, e.g. `guardaroba: 84 capi (41 top, 18 bottom…),
+  12 outfit; stile prevalente smart casual; in lavanderia 3; dimenticati >180g: 7; ultimo outfit 16/10
+  "ufficio blu"`. Cheap (< 200 ms, computed from counters, cached 5 min).
+- The same text is offered as an on-demand MCP tool `<prefix>_riepilogo` (here `guardaroba_riepilogo`; Coach /
+  Self care may name theirs `coach_summary` / `selfcare_overview`), so the agent can pull it any time.
+- Discovery: the module's Hub registration carries the tag `context` (Hub vocabulary extended). Oracle (the only
+  consumer) may add the `text` of modules whose `domain` matches the classified chat domain as one context line,
+  within its own budget setting. That Oracle step is a small separate change owned by Oracle, done after the
+  first module ships; until then the tool alone gives the assistant the data.
+- A shared helper `hestia_common.context_client.ModuleContext(module, domain, build_fn)` mounts the route
+  and caching so the three modules don't copy code (written in W2 by this thread).
 
 ### 6.3 Settings (Themis, `SettingsClient("wardrobe")`)
 | Key | Default | Apply |
@@ -203,37 +219,42 @@ the tools above (works today).
 
 ## 7. UI (WebUI) — through the plugin contract
 
-Built only once the contract from thread "Plugin dei moduli nei client" is on main; the list below is what the
-module will declare. Rules: `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, every resizable side panel uses
+Declared with `hestia_common.plugin_client` (plugin contract §4.1) once it is on main: parent page
+`guardaroba` (no sections, opens the first child) with sub-pages via `parent`, sources under `/api/ui/*`,
+actions with `fields` (forms, image upload), widgets with `auto`/`configurable`. Visibility per client comes
+for free from the contract (Themis `wardrobe.ui.<surface>.visible`). Generic blocks where they fit; `native:`
+renderers (`Hestia-WebUI/frontend/src/app/plugins/wardrobe/`) only for the outfit builder, the diary calendar
+and the add-piece fast path. Rules: `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, every resizable side panel uses
 `<hx-resize>`, phone-first usable.
 
 **Pages** (always visible group "Guardaroba", hideable per client by the plugin settings):
-1. **Capi** — photo grid (cards: cover, name, colour dots, wear count) / list toggle; search bar; filter chips
+1. **Capi** (`cards` block + filters) — photo grid (cards: cover, name, colour dots, wear count) / list toggle; search bar; filter chips
    (kind, category, season, style, status) + side filter panel (`<hx-resize key="wardrobe-filters">`); quick
    actions on a card (in lavanderia, indossato oggi, preferito); "+" opens the add flow.
 2. **Accessori** — same view preset on `kind=accessory`.
 3. **Dettaglio capo** — side drawer (`<hx-resize key="wardrobe-piece">`) or full page on phone: photos
    carousel, all fields editable inline, outfits that use it, wear history, cost per wear.
-4. **Aggiungi capo** — fast path: take/choose photo → "Compila con l'AI" (describe-photo) → review → save;
+4. **Aggiungi capo** (`native:wardrobe.add_piece`) — fast path: take/choose photo → "Compila con l'AI" (describe-photo) → review → save;
    only name + category required, the rest optional; "aggiungi un altro" keeps category/brand.
-5. **Outfit** — cards with a mosaic of piece thumbnails by slot; **builder**: slots on the left, piece picker
+5. **Outfit** (`cards`; builder = `native:wardrobe.outfit_builder`) — cards with a mosaic of piece thumbnails by slot; **builder**: slots on the left, piece picker
    on the right filtered by slot (`<hx-resize key="wardrobe-builder">`); save, rate, mark worn.
-6. **Diario** — month calendar with the outfit thumbnail per day; tap a day to log/edit.
+6. **Diario** (`native:wardrobe.diary`, `timeline` fallback for other clients) — month calendar with the outfit thumbnail per day; tap a day to log/edit.
 7. **Suggerimenti** — "Cosa mi metto": occasion/weather inputs, ranked outfits with reasons, "indossa" / "salva".
-8. **Statistiche** — charts: category/colour/season distribution, most/least worn, cost per wear, forgotten
+8. **Statistiche** (`stat` + `chart` + `list` blocks) — charts: category/colour/season distribution, most/least worn, cost per wear, forgotten
    pieces with action buttons (archivia, da donare).
 9. **Wishlist e valigie** — wishlist pieces; packing lists with checkboxes.
 10. **Vocabolari** (in the module's settings page) — edit styles, categories, occasions, locations.
 
-**Widgets** (dashboard, also composable by Oracle): *Outfit di oggi* (suggestion + "indossato"), *In
-lavanderia*, *Capi dimenticati*, *Guardaroba in numeri*, *Ultimi outfit*.
+**Widgets** (dashboard, also composable by Oracle via the contract's `dashboard_*` tools): *Outfit di oggi*
+(`cards`, auto, `configurable`: occasion), *In lavanderia* (`list`), *Capi dimenticati* (`list`, auto),
+*Guardaroba in numeri* (`stat`, auto), *Ultimi outfit* (`timeline`).
 
 ## 8. Phases
 
 | Phase | Content | Depends on |
 |---|---|---|
-| **W1** | Archive blob store; module skeleton (service, Dockerfile, compose global, Hub registration, settings, startup); data model + validation; CRUD pieces/outfits/wears/taxonomies with seed; photos + thumbnails; swagger; docs; tests | — |
-| **W2** | MCP tools; `/api/module/context`; Telegram photo → draft piece; Hermes confirm for delete | W1 |
+| **W1** | Archive blob store + `wardrobe_*` tables and `/api/wardrobe-store`; module skeleton (service, Dockerfile, compose global, Hub registration, settings, startup); data model + validation; CRUD pieces/outfits/wears/taxonomies with seed; photos + thumbnails; swagger; docs; tests | — |
+| **W2** | MCP tools; `hestia_common.context_client` + `/api/module/context`; Telegram photo → draft piece; Hermes confirm for delete | W1 |
 | **W3** | Stats, suggestion engine, derived counters, forgotten/gaps, agenda jobs + Hermes review | W1 |
 | **W4** | WebUI pages + widgets via the plugin contract | W1–W3 + plugin contract on main |
 | **W5** | describe-photo (Oracle vision), collections (capsule, packing lists), export/import | W1 |
@@ -254,13 +275,13 @@ lavanderia*, *Capi dimenticati*, *Guardaroba in numeri*, *Ultimi outfit*.
 8. No direct service URLs (Hub only), no DB outside Archive, no LLM call outside Oracle, no new env tunables
    (only infra: port/URLs, `ARCHIVE_BLOB_MAX_MB`), no personal data in tracked files.
 9. Tests: unit (validation, derived counters, suggestion scoring, thumbnails), api (routes with mocked Hub),
-   format (tool declarations); Archive blob store tests.
+   format (tool declarations, plugin manifest); Archive blob store and wardrobe-store tests.
 
 ## 10. Design decisions
 
-- **Generic entities, not new tables**: Archive stays domain-free (its rule); entity volume is personal-scale
-  (hundreds of pieces, thousands of wears), JSONB GIN filters are enough. Relations are ids inside payloads,
-  consistency kept by the module.
+- **Typed tables behind a storage-only router** (v1.1, aligned with Self care and Coach): stats by period and
+  by piece are SQL queries, not scans of JSON in Python; Archive still holds no meaning (validation, derived
+  counters and rules stay in the module), same pattern as the settings and presence stores.
 - **One `piece` model for garments, shoes and accessories**: same search/stats/outfits code; the UI splits them.
 - **Blob store generic in Archive** (not files in a module `data/` volume): Archive is the only storage owner and
   backups stay in one place; the sibling modules reuse it.
