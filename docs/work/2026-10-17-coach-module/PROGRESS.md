@@ -1,6 +1,6 @@
 # PROGRESS — Hercules (gym coach) module
 
-Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
+Spec: `SPEC.md` v2.2 · resume from the first unchecked box.
 
 - [x] Request received (project chat 2026-10-17), existing modules studied (Scout, Archive stores, Themis, Chronos, Hermes)
 - [x] Dossier created (SPEC v1.0, PROGRESS, CHANGELOG)

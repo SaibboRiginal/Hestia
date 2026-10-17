@@ -13,3 +13,4 @@
   conversation with the assistant + feedback tool, no Hermes proposals; reminders off by default, one live max —
   reason: Marko's answers to §13 — source: user in project thread.
 - v2.1 — 2026-10-17 — §8.0 uses plugin contract v2.2 offline support (PWA cache, host.online, host.store) — reason: contract update — source: thread Plugin dei moduli nei client.
+- v2.2 — 2026-10-17 — §8.2b quick actions (start today, resume, log bodyweight, skip today) — reason: plugin contract v2.3 — source: thread Plugin dei moduli nei client.

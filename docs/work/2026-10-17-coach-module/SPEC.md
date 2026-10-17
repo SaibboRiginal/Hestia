@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | §13 answered by Marko 2026-10-17 → v2.0, waiting for his go to start P1 |
 
@@ -217,6 +217,11 @@ mobile-first live workout (bottom-anchored controls, big tap targets, works one-
 ### 8.2 Widgets (for dashboards, also composable by Oracle)
 Next workout · This week (sessions/target, streak, volume) · Recent PRs · Exercise progress chart
 (param: exercise) · Muscle volume map (param: period) · Bodyweight trend · Active workout (timer + current set).
+
+### 8.2b Quick actions (plugin contract v2.3 §4.2b, WebUI Home + Ctrl+K)
+"Inizia allenamento di oggi" (dynamic `source`: label from the next workout, hidden if one is active) ·
+"Riprendi allenamento" (active session) · "Registra peso corporeo" (`params`: weight, inline sheet, `undo`) ·
+"Salta oggi" (`undo`).
 
 ### 8.3 Telegram
 Commands from Hub discovery (6.1), natural-language logging through Oracle, the optional single reminder.
