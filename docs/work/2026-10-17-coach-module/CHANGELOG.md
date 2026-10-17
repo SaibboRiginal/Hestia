@@ -7,3 +7,4 @@
   reason: alignment with sibling threads Guardaroba / Self care — source: coordination between project threads.
 - v1.2 — 2026-10-17 — §8 aligned to the plugin contract (parent sub-pages, widget params, native live components) — reason: contract draft on main — source: thread Plugin dei moduli nei client.
 - v1.3 — 2026-10-17 — §9 context contract detailed (ModuleContext helper, response shape) — reason: Guardaroba SPEC v1.1 — source: thread Modulo Guardaroba.
+- v1.4 — 2026-10-17 — §8/§11 follow plugin contract v2.0 (UI bundle in Hestia-Coach/ui/, ui_manifest, host.notify) — reason: contract changed after Marko's feedback — source: thread Plugin dei moduli nei client.

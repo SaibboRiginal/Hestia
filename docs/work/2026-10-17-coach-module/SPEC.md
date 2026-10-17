@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.3 |
+| **Version** | 1.4 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code yet) |
 
@@ -180,10 +180,10 @@ Env: only `COACH_PORT` / Hub URL (infrastructure).
 
 ## 8. Clients (UI through the plugin contract — implemented after that contract is on main)
 
-Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4 — sub-pages via `parent`, widget `params`
-(configurable per dashboard instance), live parts (active workout, rest timer, browser notifications) as
-client-side components `renderer: "native:coach.<name>"` in `Hestia-WebUI/frontend/src/app/plugins/coach/`;
-Coach serves `started_at` / `rest_until`, the component ticks the time (no server push in v1).
+Contract v2.0: `docs/work/2026-10-17-client-plugins/SPEC.md` §4 — Coach ships its own UI as a Web Components
+bundle (Lit + TS) in `Hestia-Coach/ui/`, announced on Hub with `capabilities.ui_manifest`; the WebUI loads it
+from a link. Sub-pages via `parent`, widgets with `params`. Live parts (active workout, rest timer) live in the
+bundle and use `host.notify` for browser notifications; Coach serves `started_at` / `rest_until`, the bundle ticks.
 
 ### 8.1 WebUI pages (always visible, per-client show/hide from the contract)
 "Allenamento" with sub-pages: **Oggi** (next workout card, check-in, start; becomes the live workout),
@@ -222,7 +222,7 @@ wording) · nutrition link · 3D/heat muscle map.
 | **P1** | `Hestia-Coach` service (FastAPI, Dockerfile, compose global, Hub registration, port **19019** — agreed with Guardaroba 19017 / Self care 19018), Archive `coach-store` tables + API, catalog seed, CRUD for exercises/templates/programs/sessions/sets/measurements, swagger, `hestia-coach.md` |
 | **P2** | Records, e1RM, statistics endpoints, progression engine, stall detection, import/export |
 | **P3** | MCP tools, `fitness` domain in Oracle classifier, readiness + adaptation engine, proposals → Hermes, agenda jobs, Themis settings |
-| **P4** | WebUI pages + widgets on the plugin contract (needs the contract on main) |
+| **P4** | UI bundle `Hestia-Coach/ui/` (pages + widgets) on the plugin contract v2 (needs the WebUI runtime on main) |
 | **P5** | Telegram commands polish, natural logging parsing, weekly review |
 
 ## 12. Acceptance criteria
