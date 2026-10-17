@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part waits for the module-plugin contract (thread "Plugin dei moduli nei client") to be on main |
 
@@ -46,7 +46,7 @@ Out of scope: medical advice beyond common cosmetic knowledge; e-commerce; order
 | Delivering reminders / alerts, "Fatto / Salta / Dopo" buttons | **Hermes** | Hygieia emits events; button actions route back to Hygieia via Hub |
 | Tunables | **Themis** | `settings_client.setting(...)`, no new env var |
 | Reasoning, advice, natural-language edits | **Oracle** | only through Hygieia's MCP tools |
-| Photos | **Archive** media store | shared with Guardaroba (owner of that foundation); Hygieia only references ids |
+| Photos | **Archive** blob store `/api/blobs` | generic store designed by the Guardaroba thread (owner); Hygieia only references blob ids |
 | Pages / widgets on clients | **WebUI** (and future clients) | plugin manifest served by Hygieia, contract from the plugin thread |
 | Product lookup by barcode (phase 5) | **Atlas** (fetch) | Open Beauty Facts public data, through Hub |
 
@@ -133,6 +133,8 @@ Views: `GET today?date=`, `GET stats?from=&to=`, `GET timeline?from=&to=`, `GET 
 Actions (called by Chronos jobs and Hermes buttons): `POST reminders/fire {routine_id}`,
 `POST logs/quick {routine_id, status}`.
 Plugin: `GET /api/plugin/manifest` (shape from the plugin thread).
+Context: `GET /api/module/context` — the same short caveman summary as `selfcare_overview`, common contract of the
+three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its context.
 
 ## 6. Assistant (MCP tools, `hestia_common.mcp_helpers.MCPTool`)
 
@@ -212,7 +214,7 @@ Mobile-first, design system `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, side panel
    journal, shopping list, Hermes events.
 3. **Reminders**: agenda jobs per routine, Hermes buttons → quick log, snooze.
 4. **UI**: plugin manifest, WebUI page (6 tabs) and widgets — after the plugin contract is on main.
-5. **Extras**: photos (shared media store), barcode scan in WebUI + Open Beauty Facts lookup via Atlas, CSV
+5. **Extras**: photos (shared `/api/blobs` store), barcode scan in WebUI + Open Beauty Facts lookup via Atlas, CSV
    import/export, journal photo comparison side by side.
 
 ## 11. Acceptance criteria
