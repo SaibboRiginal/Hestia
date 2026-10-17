@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code yet) |
 
@@ -160,7 +160,7 @@ Telegram-visible commands (group "Allenamento"): oggi, inizia, log, fine, check-
 ### 6.2 Context for the assistant
 On demand, consistent with Themis ("Oracle knows itself on demand"): Oracle's classifier gets a `fitness`
 domain (`preference_domains.py`) so these tools load only when relevant; `coach_summary` is the compact
-context. Optional cross-module line (shared contract, §9): a ≤1-line summary ("Allenamento: Push A oggi ·
+context. Shared contract `GET /api/module/context` (agreed with the sibling threads, §9): a ≤1-line caveman summary ("Allenamento: Push A oggi ·
 3/4 sett. · PR panca 85 kg") a module may expose for the assistant's daily context.
 Memory facts stay in Oracle/Archive memory; Coach data stays in Coach (no duplication into memory).
 
@@ -195,9 +195,12 @@ Commands from Hub discovery (6.1), natural-language logging through Oracle, Herm
 No rest timer on Telegram (WebUI only).
 
 ## 9. Shared with Guardaroba and Self care (to align, not to duplicate)
-- Storage pattern: Archive `/api/<module>-store/*` typed tables, pure storage; the module owns logic.
+- Storage pattern: Archive `/api/<module>-store/*` typed tables, pure storage; the module owns logic (Coach needs
+  typed tables: stats query sets by date/exercise range; generic entities would mean loading everything).
 - Plugin contract for pages/widgets (sibling thread owns it).
-- Optional assistant context line + on-demand `<module>_summary` tool (same naming).
+- `GET /api/module/context` (short caveman summary Oracle may include) + on-demand `<module>_summary` tool.
+- Photos/media (later, §10): the shared Archive media/blob store designed by the Guardaroba thread.
+- Ports: Guardaroba 19017, Self care 19018, Coach 19019.
 - Proposals for permanent changes → Hermes, same `service.action_required` shape as Themis.
 - Health/safety tone: Coach never pushes through pain, no medical advice.
 
@@ -209,7 +212,7 @@ wording) · nutrition link · 3D/heat muscle map.
 ## 11. Phases (each shippable alone)
 | Phase | Content |
 |---|---|
-| **P1** | `Hestia-Coach` service (FastAPI, Dockerfile, compose global, Hub registration, port next free), Archive `coach-store` tables + API, catalog seed, CRUD for exercises/templates/programs/sessions/sets/measurements, swagger, `hestia-coach.md` |
+| **P1** | `Hestia-Coach` service (FastAPI, Dockerfile, compose global, Hub registration, port **19019** — agreed with Guardaroba 19017 / Self care 19018), Archive `coach-store` tables + API, catalog seed, CRUD for exercises/templates/programs/sessions/sets/measurements, swagger, `hestia-coach.md` |
 | **P2** | Records, e1RM, statistics endpoints, progression engine, stall detection, import/export |
 | **P3** | MCP tools, `fitness` domain in Oracle classifier, readiness + adaptation engine, proposals → Hermes, agenda jobs, Themis settings |
 | **P4** | WebUI pages + widgets on the plugin contract (needs the contract on main) |

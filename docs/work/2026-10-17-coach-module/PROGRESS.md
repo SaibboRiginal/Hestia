@@ -1,10 +1,10 @@
 # PROGRESS — Coach module
 
-Spec: `SPEC.md` v1.0 · resume from the first unchecked box.
+Spec: `SPEC.md` v1.1 · resume from the first unchecked box.
 
 - [x] Request received (project chat 2026-10-17), existing modules studied (Scout, Archive stores, Themis, Chronos, Hermes)
 - [x] Dossier created (SPEC v1.0, PROGRESS, CHANGELOG)
-- [ ] Align shared parts (§9) with threads Guardaroba, Self care, Plugin dei moduli nei client
+- [x] Align shared parts (§9) with threads Guardaroba, Self care, Plugin dei moduli nei client
 - [ ] Marko confirms SPEC (answers §13 open questions)
 - [ ] P1 service + Archive coach-store + catalog seed + CRUD + swagger + hestia-coach.md
 - [ ] P2 records / stats / progression / stall / import-export
