@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code before it) |
 
@@ -172,9 +172,20 @@ Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
 | `host.assistant({label, hints, prompt})` | opens "Crea con Hestia" with the page context |
 | `host.notify(title, body)` | browser notification (asks permission once) |
 | `host.config` | read/write of the plugin's **per-client** preferences (stored in WebUI settings, §4.6) |
+| `host.online` · `host.on('online' \| 'offline', cb)` | connection state (WebUI backend reachable) |
+| `host.store(name)` | IndexedDB database namespaced by module (`hestia.<module>.<name>`) for offline data and queues |
 | `host.on('refresh' \| 'theme' \| 'visible', cb)` | lifecycle |
 
 Rule: a plugin talks only to its own module. Data from other modules goes through its module (or Oracle via MCP).
+
+### 4.5b Offline (WebUI as an installable PWA)
+
+The WebUI becomes a PWA (web manifest + service worker; today it has none). The service worker caches the app
+shell, the catalog last seen and **every plugin bundle with its assets, by version**, so plugin pages open without
+network (e.g. Hercules in the gym). Offline: `host.api` rejects with `offline` (no silent queue); each plugin keeps
+its own offline data and sync queue in `host.store()` and syncs with its module when `online` fires (sync protocol =
+the module's job, e.g. `POST /api/hercules/sync`). The WebUI shows an offline badge; dashboards show last data
+where the plugin cached it. Login token stays valid offline (already stored in the browser).
 
 ### 4.6 Client configuration (each client owns its own)
 
@@ -236,7 +247,7 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 - **P1 Contract**: `plugin_client` (manifest, router, bundle files), Hub `/api/discovery/catalog` (+ cache,
   revision, existing endpoints untouched), WebUI SDK (types, host API, kit, build script), swagger, ARCHITECTURE rule.
 - **P2 WebUI runtime**: .NET `PluginsController` (catalog, bundle proxy, call proxy, image), WebUI settings
-  (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host), dashboard page +
+  (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host), PWA service worker (offline bundles), dashboard page +
   edit mode, Impostazioni → Plugin, MCP endpoint, DESIGN-SYSTEM § Plugins. `ng build` + Playwright on mocks.
 - **P3 Scout plugin**: endpoints, user flag, `ui/` bundle (Lit), Dockerfile build stage, `_link`, docs.
 - **P4 Oracle**: domain routing for `webui_widgets` / dashboards proposal, end-to-end check of criterion 5.
