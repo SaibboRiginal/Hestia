@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code before it) |
 
@@ -121,13 +121,34 @@ plus the new UI contributions):
 | `page` | webui | full page, always visible by default, sub-pages via `parent` | ✓ |
 | `widget` | webui (telegram later: text) | block for dashboards, with `params`, `sizes`, `auto` | ✓ |
 | `card` | webui | how the module's items look **inside the chat** (e.g. a Scout listing card when Oracle answers with houses) | later |
-| `quick_action` | webui | entry in a Ctrl+K palette ("Nuovo capo", "Inizia allenamento") | later |
+| `quick_action` | webui (telegram later: buttons) | **one-tap action** on the Home and in the Ctrl+K palette ("Routine viso fatta", "Outfit indossato", "Inizia allenamento") — §4.2b | ✓ |
 
 - Each item carries `id` (`<module>.<id>`), `module`, `label`, `icon`, `order` and its type's fields.
 - Modules declare everything in one place: `capabilities.ui_manifest` (UI) next to `mcp_endpoint` (tools);
   `plugin_client` builds the manifest, Hub fetches and caches it like MCP tools (TTL, refreshed on re-register).
 - Offline modules stay in the catalog with `online: false`, so the client can say "Scout non raggiungibile".
 - The WebUI Comandi & MCP page becomes the browser of this catalog (filters client · type · module).
+
+### 4.2b Quick actions (one tap from the Home) — v1
+
+Marko: everything must be **super fast from the WebUI Home** (routine done today, outfit worn, favourites).
+Quick actions are drawn **by the WebUI itself** (no bundle load → instant), as a strip of chips at the top of Home
+and in a Ctrl+K palette:
+
+```json
+{ "id": "routine_done", "label": "Routine fatta", "icon": "check", "group": "Self care",
+  "source": "/api/ui/quick/routines",
+  "method": "POST", "path": "/api/ui/routines/{id}/done", "confirm": null, "undo": {"method": "DELETE", "path": "/api/ui/routines/{id}/done/today"} }
+```
+
+- Static (one chip) or **dynamic** with `source` → the module returns the chips of the moment:
+  `[{id, label, icon?, state?: "todo" | "done" | "late", hint?: "2/2 oggi", favorite?: bool}]` (e.g. one chip per
+  routine due today, one per favourite outfit). Paths are under the module's `api_prefix`; `{id}` = chip id.
+- Tap → call → toast with **Annulla** (`undo`) → chip changes state (✓). No dialogs unless `confirm` is set.
+- Optional `params` → a tiny inline sheet (e.g. "peso", "note") instead of a page.
+- The user pins/unpins chips (★) and orders them: WebUI setting `webui.home.quick` (client-owned, §4.6). By default
+  Home shows the module's `favorite` / due-today chips.
+- Widgets can also act in one tap (they are full components), quick actions are the zero-load path.
 
 Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
 
@@ -196,6 +217,7 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 | `webui.plugins.hidden` | list | hidden pages/widgets (`scout.case`, `scout.*`); empty = everything visible |
 | `webui.plugins.order` | list | sidebar order of plugin pages |
 | `webui.dashboards` | object | `[{id, title, icon, auto, created_by, items:[{widget, x, y, w, h, params, title}]}]` |
+| `webui.home.quick` | list | pinned quick actions on Home, in order (`self_care.routine_done:viso-sera`) |
 | `webui.plugins.prefs` | object | per-plugin preferences written by `host.config` |
 
 - **No central module for this**: visibility is only Marko's customization of a client, so each client owns it.
@@ -240,14 +262,15 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 5. Chat "creami una dashboard con le case a Milano" → Oracle proposes it; after Approva it appears in the WebUI.
 6. Scout pages: filter, detail, status change, favourite/discard, "Controlla email" with toast and refresh.
 7. A plugin calling another module's path or outside `api_prefix` gets 403.
-8. Usable on the phone (360 px), light and dark themes.
+8. Home quick actions: a due routine chip → one tap → ✓ with Annulla, no page load; pin/unpin with ★.
+9. Usable on the phone (360 px), light and dark themes.
 
 ## 7. Phases
 
 - **P1 Contract**: `plugin_client` (manifest, router, bundle files), Hub `/api/discovery/catalog` (+ cache,
   revision, existing endpoints untouched), WebUI SDK (types, host API, kit, build script), swagger, ARCHITECTURE rule.
 - **P2 WebUI runtime**: .NET `PluginsController` (catalog, bundle proxy, call proxy, image), WebUI settings
-  (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host), PWA service worker (offline bundles), dashboard page +
+  (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host, Home quick-action strip + Ctrl+K palette), PWA service worker (offline bundles), dashboard page +
   edit mode, Impostazioni → Plugin, MCP endpoint, DESIGN-SYSTEM § Plugins. `ng build` + Playwright on mocks.
 - **P3 Scout plugin**: endpoints, user flag, `ui/` bundle (Lit), Dockerfile build stage, `_link`, docs.
 - **P4 Oracle**: domain routing for `webui_widgets` / dashboards proposal, end-to-end check of criterion 5.
