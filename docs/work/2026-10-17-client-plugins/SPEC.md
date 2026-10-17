@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code before it) |
 
@@ -51,7 +51,7 @@ Scout is the reference implementation.
 | Module | Job in this feature |
 |---|---|
 | **Each module** (Scout, …) | declares its manifest; serves its own data sources and actions (its own data only) |
-| **Agora** (new, core, port **19017**, Raspberry Pi like Themis) | **catalog** of every module's manifest (register, re-assert, online state via Hub); **dashboards** (CRUD, auto "Home" dashboard); MCP tools for dashboards. Owns no domain data, renders nothing |
+| **Agora** (new, core, port **19020**, Raspberry Pi like Themis) | **catalog** of every module's manifest (register, re-assert, online state via Hub); **dashboards** (CRUD, auto "Home" dashboard); MCP tools for dashboards. Owns no domain data, renders nothing |
 | **Archive** | stores dashboards (one generic table `ui_dashboards`), like the settings store |
 | **Themis** | visibility settings per surface (user scope → client layer); the user changes them like any setting |
 | **Hub** | routing only (client → module data/action, module → Agora). Unchanged |
@@ -132,7 +132,9 @@ reached only through Hub (`/route/<module>/<path>`); `{id}`-style placeholders a
 
 - **Page** — a full screen. Non-detail pages get a sidebar entry under the module's group, **always visible by
   default**. `detail: true` pages have no entry; they open from an item (`item_page`), route
-  `/p/<module>/<page>/<id>`. A page = header (label, page actions, "Chiedi a Hestia") + optional filter bar +
+  `/p/<module>/<page>/<id>`. **Sub-pages**: `parent: "<page id>"` → the parent's sidebar entry expands into its
+  children (e.g. Guardaroba → Capi · Outfit · Accessori · Statistiche); the parent may have no sections (opens the
+  first child). A page = header (label, page actions, "Chiedi a Hestia") + optional filter bar +
   optional `tabs` + sections; each section = title + grid of blocks (`span` 1–4 columns).
 - **Widget** — one block in a card, for dashboards. `size`: `s` (1×1), `m` (2×1), `l` (2×2), `xl` (4×2).
   `auto: true` → appears on the automatic **Home** dashboard. Clicking a widget title opens `open_page` if set.
@@ -161,7 +163,10 @@ Every block shows loading / empty / error states (module offline → "Scout non 
 ### 4.5 Actions
 
 `{label, method, path, icon?, tone?, confirm?: "text", fields?: [field…]}`. With `fields` the client opens a form
-(same controls as Themis settings: enum, bool, int, float, string, text, time, list, date, image-url). Answer of
+(same controls as Themis settings: enum, bool, int, float, string, text, time, list, date, image-url, **image**).
+**Image upload** (`image`, `images`): the client resizes on device (long side ≤ 2048 px, JPEG/WebP) and sends
+`{name, mime, data_b64}` (≤ 8 MB each) inside the JSON body — Hub envelopes stay JSON, no multipart. The module
+stores the file (its own data volume or Archive documents) and serves it back as a source route. Answer of
 an action: `{ok, message?, refresh?: ["listings"], open?: {page, id}}`. Clients show `message` as a toast and
 refresh the named sources. Destructive actions must set `confirm`.
 
@@ -184,6 +189,10 @@ A page or widget may set `renderer`:
   registered in `plugins/registry.ts`), for app-quality screens blocks can't do (live workout logger, outfit
   composer). Still declared, routed, made visible and permission-checked by the contract; data still only from
   the module's sources/actions. Shown only while the module is registered.
+- Live UI (running workout timer, rest countdown, browser notifications) is **client-side** inside a `native:`
+  component: the source gives `started_at`/`rest_until`, the component ticks and calls the Notification API
+  itself; nothing is pushed by the server in v1. Generic blocks refresh by polling (`refresh` ≥ 30 s; a native
+  component may poll faster while visible).
 - `"element:<url>"` → reserved for module-shipped web components (not in v1).
 
 ### 4.8 Dashboards (Agora)
@@ -220,7 +229,13 @@ WebUI backend (`/api/webui/plugins/*`, token-protected): `catalog`, `data/{modul
 path params + query), `action/{module}/{action}` (body), `dashboards*`. It checks the module/source/action exist in
 the catalog before calling Hub — no free proxy.
 
-### 4.10 Rules for plugin authors
+### 4.10 Not in this contract
+
+Assistant context from a module (e.g. a common `GET /api/module/context` summary for Oracle) is not a UI concern:
+the wardrobe thread defines it in its dossier and self care / coach reuse it. Data stays reachable to Oracle via
+MCP tools as today.
+
+### 4.11 Rules for plugin authors
 
 - Sources are **read-only** and fast (< 1 s); heavy work stays in the module's own jobs (agenda).
 - Return labels in Italian, already formatted for people (money, dates as ISO + client formats them).
