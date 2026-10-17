@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Approved by the user (v2.0 answers §13). Implementation starts after the module-plugin contract (thread "Plugin dei moduli nei client") is on main |
 
@@ -154,7 +154,10 @@ Views: `GET today?date=`, `GET stats?from=&to=`, `GET timeline?from=&to=`, `GET 
 `GET overview` (compact text+json summary for the assistant, see §6).
 Actions (called by Chronos jobs and Hermes buttons): `POST reminders/run` (planner job),
 `POST logs/quick {routine_id, status}`.
-Plugin: `GET /api/plugin/manifest` (shape from the plugin thread).
+Plugin (contract `docs/work/2026-10-17-client-plugins/SPEC.md` v2.3): `GET /api/ui/manifest` built by `plugin_client`,
+UI API under `/api/ui/`. Quick actions (§4.2b): dynamic `routine_done` with `source: /api/ui/quick/routines` (one chip
+per favourite / due-today routine, `state` todo|done|late, `hint` "1/2 sett."), `POST /api/ui/routines/{id}/done`,
+undo `DELETE /api/ui/routines/{id}/done/today`; `product_used` same shape for favourite products.
 Context: `GET /api/module/context` — the same short caveman summary as `selfcare_overview`, common contract of the
 three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its context: `?budget=` →
 `{module, domain, updated_at, text}`, Hub tag `context`, built with `hestia_common.context_client.ModuleContext`
@@ -240,7 +243,8 @@ Mobile-first, design system `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, side panel
    timeline, "periodo" picker.
 6. **Lista spesa** — wishlist + restock suggestions.
 
-**Home quick log (v2.1, top priority of the UI)**: widget "Self care" on the WebUI **Home**: favourite routines as
+**Home quick log (v2.1, top priority of the UI)** — implemented as plugin **quick actions** (chips drawn by the
+WebUI, zero load, pinned via ★) plus the widget "Self care" on the WebUI **Home**: favourite routines as
 big buttons, **one tap = "fatta oggi"** (toast with Annulla, no dialog), a badge with this week's progress
 (1/2), a second tap shows the steps to untick a skipped one; also favourite products for an ad-hoc use (mask).
 Everything else is optional detail.
