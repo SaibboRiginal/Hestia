@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
-| **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
+| **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -129,10 +129,10 @@ New generic Archive API, pure storage (no meaning):
   `ARCHIVE_BLOB_MAX_MB`, default 15).
 - Wardrobe stores the original (EXIF orientation fixed, GPS stripped) + thumbnails 256 px and 768 px (WebP,
   Pillow), all as blobs; the piece keeps `{original, thumb, medium}` ids.
-- Upload follows the plugin contract §4.5: the client resizes on device (long side ≤ 2048 px) and sends
+- Upload follows the plugin contract §4.5: the bundle calls `host.upload(file, {maxSide: 2048})` and sends
   `{name, mime, data_b64}` (≤ 8 MB) in the JSON body; Telegram photos arrive the same way. Images are served
-  back by the module route `GET /api/ui/files/{blob_id}?size=thumb|medium|original` (plugin contract §4.11),
-  cached by the browser (immutable ids).
+  back by the module route `GET /api/ui/files/{blob_id}?size=thumb|medium|original` → `{mime, data_b64}`,
+  shown through `host.image(path)` (the WebUI serves the bytes, cached by immutable id).
 
 ## 5. Module API (REST, via Hub `route/wardrobe/...`)
 
@@ -149,8 +149,9 @@ New generic Archive API, pure storage (no meaning):
 | GET/PUT | `/api/wardrobe/taxonomies[/{name}]` | vocabularies |
 | GET/POST, PATCH | `/api/wardrobe/collections[/{id}]` | capsules, packing lists |
 | POST | `/api/wardrobe/describe-photo` | photo → Oracle (vision) → proposed piece fields (never saved by itself) |
-| GET | `/api/ui/files/{blob_id}` | image bytes (`size` = original/medium/thumb) |
-| GET | `/api/ui/*` | plugin sources in the block shapes of the plugin contract §4.4 (cards, stat, chart, timeline…) |
+| GET | `/api/ui/files/{blob_id}` | image as `{mime, data_b64}` (`size` = original/medium/thumb) |
+| ANY | `/api/ui/*` | the routes the UI bundle calls (`api_prefix`); thin aliases of the routes above, shaped for the screens |
+| GET | `/api/ui/manifest` · `/ui/webui/{file}` | plugin manifest and bundle (served by `plugin_client`) |
 | GET | `/api/module/context` | assistant summary [shared contract, §6.2] |
 | GET | `/api/wardrobe/export` · POST `/api/wardrobe/import` | JSON export/import (backup, bulk entry from a spreadsheet later) |
 
@@ -219,35 +220,37 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
 
 ## 7. UI (WebUI) — through the plugin contract
 
-Declared with `hestia_common.plugin_client` (plugin contract §4.1) once it is on main: parent page
-`guardaroba` (no sections, opens the first child) with sub-pages via `parent`, sources under `/api/ui/*`,
-actions with `fields` (forms, image upload), widgets with `auto`/`configurable`. Visibility per client comes
-for free from the contract (Themis `wardrobe.ui.<surface>.visible`). Generic blocks where they fit; `native:`
-renderers (`Hestia-WebUI/frontend/src/app/plugins/wardrobe/`) only for the outfit builder, the diary calendar
-and the add-piece fast path. Rules: `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, every resizable side panel uses
-`<hx-resize>`, phone-first usable.
+Plugin contract v2: the module ships its own UI as a **Web Components bundle** (Lit + TS, kit from
+`@hestia/webui-sdk`) in `Hestia-Wardrobe/ui/` (`src/`, built into `ui/dist/`, not committed; Node build stage in
+the module Dockerfile). Pages/widgets declared with `PluginClient("wardrobe", ...).webui(entry="wardrobe.js",
+pages=[page(..., element="wardrobe-…", parent=...)], widgets=[...], api_prefix="/api/ui/")`, advertised in the
+Hub registration as `capabilities.ui_manifest`. The bundle talks only to this module (`host.api`), uploads
+with `host.upload`, shows photos with `host.image`, dialogs with `host.confirm`, "Chiedi a Hestia" with
+`host.assistant`. Visibility, order and dashboards belong to the WebUI (`webui.plugins.*` settings), nothing to
+declare here. Elements are prefixed `wardrobe-`; every screen works at 360 px; resizable side panels follow the
+WebUI rule (`<hx-resize>` behaviour, via the SDK kit equivalent).
 
 **Pages** (always visible group "Guardaroba", hideable per client by the plugin settings):
-1. **Capi** (`cards` block + filters) — photo grid (cards: cover, name, colour dots, wear count) / list toggle; search bar; filter chips
+1. **Capi** (`wardrobe-pieces`) — photo grid (cards: cover, name, colour dots, wear count) / list toggle; search bar; filter chips
    (kind, category, season, style, status) + side filter panel (`<hx-resize key="wardrobe-filters">`); quick
    actions on a card (in lavanderia, indossato oggi, preferito); "+" opens the add flow.
-2. **Accessori** — same view preset on `kind=accessory`.
-3. **Dettaglio capo** — side drawer (`<hx-resize key="wardrobe-piece">`) or full page on phone: photos
+2. **Accessori** (`wardrobe-pieces` with `kind=accessory`) — same view preset on `kind=accessory`.
+3. **Dettaglio capo** (`wardrobe-piece`, detail page `capi/:id`) — side drawer (`<hx-resize key="wardrobe-piece">`) or full page on phone: photos
    carousel, all fields editable inline, outfits that use it, wear history, cost per wear.
-4. **Aggiungi capo** (`native:wardrobe.add_piece`) — fast path: take/choose photo → "Compila con l'AI" (describe-photo) → review → save;
+4. **Aggiungi capo** (`wardrobe-add`) — fast path: take/choose photo → "Compila con l'AI" (describe-photo) → review → save;
    only name + category required, the rest optional; "aggiungi un altro" keeps category/brand.
-5. **Outfit** (`cards`; builder = `native:wardrobe.outfit_builder`) — cards with a mosaic of piece thumbnails by slot; **builder**: slots on the left, piece picker
+5. **Outfit** (`wardrobe-outfits`, builder `wardrobe-outfit-builder`) — cards with a mosaic of piece thumbnails by slot; **builder**: slots on the left, piece picker
    on the right filtered by slot (`<hx-resize key="wardrobe-builder">`); save, rate, mark worn.
-6. **Diario** (`native:wardrobe.diary`, `timeline` fallback for other clients) — month calendar with the outfit thumbnail per day; tap a day to log/edit.
-7. **Suggerimenti** — "Cosa mi metto": occasion/weather inputs, ranked outfits with reasons, "indossa" / "salva".
-8. **Statistiche** (`stat` + `chart` + `list` blocks) — charts: category/colour/season distribution, most/least worn, cost per wear, forgotten
+6. **Diario** (`wardrobe-diary`) — month calendar with the outfit thumbnail per day; tap a day to log/edit.
+7. **Suggerimenti** (`wardrobe-suggest`) — "Cosa mi metto": occasion/weather inputs, ranked outfits with reasons, "indossa" / "salva".
+8. **Statistiche** (`wardrobe-stats`) — charts: category/colour/season distribution, most/least worn, cost per wear, forgotten
    pieces with action buttons (archivia, da donare).
-9. **Wishlist e valigie** — wishlist pieces; packing lists with checkboxes.
-10. **Vocabolari** (in the module's settings page) — edit styles, categories, occasions, locations.
+9. **Wishlist e valigie** (`wardrobe-collections`) — wishlist pieces; packing lists with checkboxes.
+10. **Vocabolari** (`wardrobe-vocab`) — edit styles, categories, occasions, locations.
 
-**Widgets** (dashboard, also composable by Oracle via the contract's `dashboard_*` tools): *Outfit di oggi*
-(`cards`, auto, `configurable`: occasion), *In lavanderia* (`list`), *Capi dimenticati* (`list`, auto),
-*Guardaroba in numeri* (`stat`, auto), *Ultimi outfit* (`timeline`).
+**Widgets** (elements `wardrobe-w-*`; Oracle can place them only by proposing a `webui.dashboards` change,
+which Marko confirms): *Outfit di oggi* (m/l, auto, params: occasion), *In lavanderia* (s/m), *Capi
+dimenticati* (m, auto, params: days), *Guardaroba in numeri* (s/m, auto), *Ultimi outfit* (m/l).
 
 ## 8. Phases
 
@@ -256,7 +259,7 @@ and the add-piece fast path. Rules: `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, ev
 | **W1** | Archive blob store + `wardrobe_*` tables and `/api/wardrobe-store`; module skeleton (service, Dockerfile, compose global, Hub registration, settings, startup); data model + validation; CRUD pieces/outfits/wears/taxonomies with seed; photos + thumbnails; swagger; docs; tests | — |
 | **W2** | MCP tools; `hestia_common.context_client` + `/api/module/context`; Telegram photo → draft piece; Hermes confirm for delete | W1 |
 | **W3** | Stats, suggestion engine, derived counters, forgotten/gaps, agenda jobs + Hermes review | W1 |
-| **W4** | WebUI pages + widgets via the plugin contract | W1–W3 + plugin contract on main |
+| **W4** | UI bundle `Hestia-Wardrobe/ui/` (Lit, pages + widgets) + manifest + Dockerfile Node stage | W1–W3 + plugin contract on main |
 | **W5** | describe-photo (Oracle vision), collections (capsule, packing lists), export/import | W1 |
 | **W6** (later, step by step) | Outfit board: manual collage of piece photos in the builder (drag/scale, saved in `outfit.board`) → then automatic cut-outs (background removal, run where the hardware allows) → auto-composed outfit image | W4 |
 
