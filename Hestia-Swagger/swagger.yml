@@ -1308,6 +1308,59 @@ paths:
                     items:
                       type: object
 
+  /api/discovery/catalog:
+    get:
+      tags: [Hub]
+      summary: One catalog of module contributions, organized by client and type
+      description: |
+        Tools (MCP, client `*`), commands, and client plugin contributions (page, widget, quick_action, bundle)
+        read from each module's `capabilities.ui_manifest`. See docs/work/2026-10-17-client-plugins/SPEC.md §4.2.
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: client
+          in: query
+          schema: {type: string}
+          example: webui
+        - name: type
+          in: query
+          description: Comma-separated types (tool, command, page, widget, quick_action)
+          schema: {type: string}
+          example: page,widget,quick_action
+        - name: module
+          in: query
+          schema: {type: string}
+          example: scout
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revision: {type: integer}
+                  ui_revision: {type: string}
+                  modules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        module: {type: string}
+                        title: {type: string}
+                        icon: {type: string}
+                        color: {type: string}
+                        version: {type: string}
+                        online: {type: boolean}
+                  contributions:
+                    type: object
+                    description: "{client: {type: [items]}} — items carry id `<module>.<id>`, module, label, online"
+                    additionalProperties:
+                      type: object
+                      additionalProperties:
+                        type: array
+                        items: {type: object}
+
   /api/discovery/module-tools:
     get:
       tags: [Hub]

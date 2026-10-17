@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.5 |
+| **Version** | 2.6 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Approved 2026-10-17 (decisions §8) — in progress |
 
@@ -150,7 +150,7 @@ and in a Ctrl+K palette:
   Home shows the module's `favorite` / due-today chips.
 - Long-press / ⋯ on a chip → other date or details (the WebUI adds a `date` field to `params`); `hint` carries the
   progress line ("2/3 questa settimana").
-- Same look inside widgets: the SDK kit has `<hx-quicklog>` (big chips, one tap = done, toast with Annulla, ⋯, progress
+- Same look inside widgets: the SDK kit has `<hxk-quicklog>` (big chips, one tap = done, toast with Annulla, ⋯, progress
   line) fed by the same `source`, so a module's auto widget and the Home strip read as one place to tick things off.
 
 Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
@@ -170,6 +170,9 @@ Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
 - Any tech that works in the client it targets (Marko: "basta che funzioni per il tipo di client"): Lit + TS is the
   default and what the SDK kit is written in; vanilla TS/HTML or Angular Elements are fine. **Always** with the shared
   styles and libraries (SDK tokens, kit CSS and components), so every plugin looks and behaves like Hestia.
+- The WebUI serves the SDK **once** (`/plugins/_sdk/sdk.js`, Lit inside) and an import map points
+  `@hestia/webui-sdk`, `lit`, `lit/*` to it: plugin bundles hold only their own code, and all share one kit. Kit
+  elements are prefixed `hxk-` (the WebUI's Angular kit owns `hx-*`).
 - The WebUI creates the element and sets two properties: `host` (§4.5) and `ctx`
   (`{route params, query, widget params, size, theme, client}`); it listens for nothing else.
 - Styling: the design tokens are CSS variables (`--surface-1`, `--accent`, …) which reach inside shadow DOM; the

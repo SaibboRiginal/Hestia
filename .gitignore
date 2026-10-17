@@ -135,3 +135,6 @@ AI_RULEBOOK.md
 # Angular / Node (Hestia-WebUI/frontend)
 node_modules/
 .angular/
+
+# Client plugin bundles (built in the module image, never committed)
+Hestia-*/ui/dist/

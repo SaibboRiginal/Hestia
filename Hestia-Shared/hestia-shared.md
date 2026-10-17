@@ -117,6 +117,28 @@ Themis (`/api/settings/key/{key}/options`) so every client gets the same list. `
 clients show the settings of a group as a grid (Oracle: use case × fornitore / modello).
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
+## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
+
+A module with a UI ships it inside the module and advertises it to the clients (contract:
+`docs/work/2026-10-17-client-plugins/SPEC.md` §4):
+
+```python
+from hestia_common.plugin_client import PluginClient, page, widget, quick_action
+
+ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/ui/dist")
+ui.webui(entry="scout.js", api_prefix="/api/ui/",
+         pages=[page("case", "Case", element="scout-listings", icon="home")],
+         widgets=[widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l"], auto=True)],
+         quick_actions=[quick_action("fetch", "Controlla email", "POST", "/api/ui/cycle", icon="refresh")])
+app.include_router(ui.router())                       # GET /api/ui/manifest · GET /ui/<client>/<file>
+registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest + ui_version
+```
+
+Validation at declare time: element names `<module>-…`, every path under `api_prefix`, known parents/sizes/param
+types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). The browser side is
+`Hestia-Shared/webui-sdk/` (`@hestia/webui-sdk`: host API types, `HestiaElement`, shared Lit kit `hxk-*`, build
+script) — see its `README.md`.
+
 ## Presence client (`hestia_common.presence_client`)
 
 Assistant activity state kept by Chronos (see `Hestia-Chronos/hestia-chronos.md`). Report facts, ask effects —

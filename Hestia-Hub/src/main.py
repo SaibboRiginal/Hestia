@@ -35,8 +35,10 @@ except ModuleNotFoundError:
 
 from .modules.discovery import (
     _mcp_commands_cache_invalidate,
+    discover_catalog,
     discover_commands,
     discover_module_tools,
+    ui_manifest_cache_invalidate,
 )
 from .modules.events import RegistryEvents
 from .modules.registry import ServiceRegistry
@@ -91,6 +93,7 @@ def register_service(req: RegisterServiceRequest):
     if register_status != "refreshed":
         events.bump(registry.all_services(), reason="register")
         _mcp_commands_cache_invalidate(req.name)
+        ui_manifest_cache_invalidate(req.name)
     log_event(
         logger,
         logging.DEBUG if register_status == "refreshed" else logging.INFO,
@@ -169,6 +172,19 @@ def discovery_commands(client: str = ""):
     compatibility (e.g. ``?client=telegram``).
     """
     return {"commands": discover_commands(registry, client_key=client)}
+
+
+@app.get("/api/discovery/catalog")
+def discovery_catalog(client: str = "", type: str = "", module: str = ""):
+    """One catalog of what modules contribute, organized by client × type.
+
+    Types: ``tool`` (MCP, client ``*``), ``command``, ``page``, ``widget``, ``quick_action`` (+ ``bundle``
+    for clients that load module UI). Filters: ``client=webui``, ``type=page,widget``, ``module=scout``.
+    Contract: ``docs/work/2026-10-17-client-plugins/SPEC.md`` §4.2.
+    """
+    types = [t.strip().lower() for t in type.split(",") if t.strip()] or None
+    catalog = discover_catalog(registry, client=client, types=types, module=module)
+    return {"revision": events.revision, **catalog}
 
 
 # ── Standards ─────────────────────────────────────────────────────────────────

@@ -331,6 +331,12 @@ No code-only behavior changes are considered complete without synchronized docs.
 1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
 2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
+4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
+   `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`
+   (`capabilities.ui_manifest` in its Hub registration, next to `mcp_endpoint`). Hub exposes ONE catalog organized by
+   client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action). Clients load what they support
+   and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
+   calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
 
 ## Governance Automation (Mandatory)
 

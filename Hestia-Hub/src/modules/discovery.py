@@ -5,6 +5,7 @@ registry for tool-routing and command discovery.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import time
@@ -272,3 +273,129 @@ def discover_commands(registry: ServiceRegistry, client_key: str = "") -> list[d
         item.pop("_registration_ts", None)
     results.sort(key=lambda c: (c.get("service", ""), c.get("command", "")))
     return results
+
+
+# ── Client plugins catalog (docs/work/2026-10-17-client-plugins §4.2) ──────────
+# Modules advertise ``capabilities.ui_manifest`` (+ ``ui_version``) like they advertise ``mcp_endpoint``.
+# The catalog is one view, organized by client × type, over tools, commands and UI contributions.
+_UI_MANIFEST_TTL = 300.0
+_ONLINE_WINDOW = 180.0          # modules re-register every 60 s
+CATALOG_TYPES = ("tool", "command", "page", "widget", "quick_action")
+UI_TYPES = ("page", "widget", "quick_action")
+# Command discovery predates the catalog: the WebUI's commands use the client key "ui".
+_COMMAND_CLIENT_KEY = {"webui": "ui"}
+
+# service → {"version", "fetched_at", "manifest", "ok"}; the last good manifest is kept while a module is down.
+_ui_manifest_cache: dict[str, dict] = {}
+
+
+def _fetch_ui_manifest(service_name: str, url: str, version: str, timeout: float = 4.0) -> tuple[dict | None, bool]:
+    now = time.time()
+    cached = _ui_manifest_cache.get(service_name)
+    if cached and cached["version"] == version and cached["ok"] and now - cached["fetched_at"] < _UI_MANIFEST_TTL:
+        return cached["manifest"], True
+    try:
+        resp = requests.get(url, timeout=timeout)
+        if resp.status_code == 200 and isinstance(resp.json(), dict):
+            manifest = resp.json()
+            _ui_manifest_cache[service_name] = {"version": version, "fetched_at": now, "manifest": manifest, "ok": True}
+            if not cached or cached.get("version") != version:
+                logger.info("event=ui_manifest_discovered service=%s version=%s", service_name, version)
+            return manifest, True
+        logger.debug("event=ui_manifest_non_200 service=%s status=%s", service_name, resp.status_code)
+    except Exception as exc:  # noqa: BLE001 — a broken module must not break the catalog
+        logger.debug("event=ui_manifest_failed service=%s error=%s", service_name, exc)
+    if cached:
+        cached["ok"] = False
+        logger.info("[🔄] event=ui_manifest_stale service=%s version=%s", service_name, cached.get("version"))
+        return cached["manifest"], False
+    return None, False
+
+
+def ui_manifest_cache_invalidate(service_name: str | None = None) -> None:
+    """Force a refetch on the next catalog read (registry change); last good manifests are kept."""
+    for name, item in _ui_manifest_cache.items():
+        if service_name is None or name == service_name:
+            item["fetched_at"] = 0.0
+
+
+def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[str] | None = None,
+                     module: str = "") -> dict:
+    """One catalog organized by client × type: ``{modules, contributions: {client: {type: [...]}}}``.
+
+    - ``tool`` (MCP, client ``*``) and ``command`` (per client) come from the existing discovery.
+    - ``page`` · ``widget`` · ``quick_action`` (+ ``bundle``) come from each module's UI manifest.
+    Offline modules keep their last manifest with ``online: false`` so clients can say "non raggiungibile".
+    """
+    client = (client or "").strip().lower()
+    wanted = [t for t in (types or CATALOG_TYPES) if t in CATALOG_TYPES]
+    module = (module or "").strip().lower()
+    now = time.time()
+    modules: dict[str, dict] = {}
+    contributions: dict[str, dict[str, list]] = {}
+
+    def add(cl: str, kind: str, item: dict) -> None:
+        contributions.setdefault(cl, {}).setdefault(kind, []).append(item)
+
+    newest: dict[str, dict] = {}
+    for svc in registry.all_services():
+        name = str(svc.get("name", "")).strip().lower()
+        if name and float(svc.get("updated_at") or 0) >= float(newest.get(name, {}).get("updated_at") or 0):
+            newest[name] = svc
+
+    for name, svc in sorted(newest.items()):
+        if module and name != module:
+            continue
+        caps = svc.get("capabilities") or {}
+        fresh = now - float(svc.get("updated_at") or 0) < _ONLINE_WINDOW
+        url = str(caps.get("ui_manifest") or "").strip()
+        if not url or not any(t in UI_TYPES for t in wanted):
+            continue
+        manifest, ok = _fetch_ui_manifest(name, url, str(caps.get("ui_version") or ""))
+        if not manifest:
+            continue
+        online = fresh and ok
+        modules[name] = {"module": name, "title": manifest.get("title") or name, "icon": manifest.get("icon", ""),
+                         "color": manifest.get("color", ""), "description": manifest.get("description", ""),
+                         "version": manifest.get("version", ""), "online": online}
+        for cl, block in (manifest.get("clients") or {}).items():
+            if client and cl != client:
+                continue
+            if not isinstance(block, dict):
+                continue
+            if block.get("entry"):
+                add(cl, "bundle", {"id": name, "module": name, "entry": block["entry"], "api_prefix": block.get("api_prefix", ""),
+                                   "sdk": block.get("sdk", ""), "version": manifest.get("version", ""), "online": online})
+            for kind in UI_TYPES:
+                if kind not in wanted:
+                    continue
+                for item in block.get(kind) or []:
+                    if isinstance(item, dict) and item.get("id"):
+                        add(cl, kind, {**item, "id": f"{name}.{item['id']}", "local_id": item["id"],
+                                       "module": name, "online": online})
+
+    # Pre-existing discovery, folded in.
+    if "command" in wanted:
+        for cl in ([client] if client else ["webui", "telegram"]):
+            for cmd in discover_commands(registry, client_key=_COMMAND_CLIENT_KEY.get(cl, cl)):
+                if not module or cmd.get("service") == module:
+                    add(cl, "command", cmd)
+    if "tool" in wanted:
+        for svc_name, svc in sorted(newest.items()):
+            if module and svc_name != module:
+                continue
+            endpoint = str((svc.get("capabilities") or {}).get("mcp_endpoint") or "").strip()
+            if not endpoint:
+                continue
+            for cmd in _fetch_mcp_tools_as_commands(svc_name, endpoint, svc.get("capabilities") or {}):
+                add("*", "tool", {"id": f"{svc_name}.{cmd['command']}", "name": cmd["command"], "module": svc_name,
+                                  "title": cmd.get("title", ""), "description": cmd.get("description", ""),
+                                  "clients": cmd.get("clients", [])})
+
+    for block in contributions.values():
+        for kind, items in block.items():
+            items.sort(key=lambda it: (int(it.get("order", 100)) if isinstance(it.get("order", 100), int) else 100,
+                                       str(it.get("module", "")), str(it.get("id", it.get("command", "")))))
+    marker = "|".join(f"{m}:{v['version']}:{int(v['online'])}" for m, v in sorted(modules.items()))
+    return {"modules": list(modules.values()), "contributions": contributions,
+            "ui_revision": hashlib.sha1(marker.encode()).hexdigest()[:12]}

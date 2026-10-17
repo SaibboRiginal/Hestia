@@ -1,0 +1,20 @@
+{
+  "name": "@hestia/webui-sdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hestia WebUI plugin SDK: host API types, shared Lit kit, plugin build script",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "node build.mjs runtime",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "lit": "3.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "typescript": "~5.7.2"
+  }
+}
