@@ -1,10 +1,10 @@
-# SPEC — Coach: workout tracking & adaptive training module
+# SPEC — Hercules: gym coach, workout tracking & adaptive training module
 
 | | |
 |---|---|
-| **Version** | 1.4 |
+| **Version** | 2.0 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
-| **Status** | Draft — waiting for Marko's confirmation (no code yet) |
+| **Status** | §13 answered by Marko 2026-10-17 → v2.0, waiting for his go to start P1 |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -22,9 +22,9 @@ Sibling modules designed in parallel: Guardaroba (wardrobe), Self care. §9 list
 
 ## 1. Goal
 
-A new **domain module `Hestia-Coach`** (domain `fitness`, like Scout owns `real_estate`) that is a complete
+A new **domain module `Hestia-Hercules`** (domain `fitness`, like Scout owns `real_estate`) that is a complete
 strength-training tracker (reference apps: Strong, Hevy, JEFIT) with Hestia's extra: the assistant knows my
-training and can **adapt today's workout** to how I feel, using rules that live in Coach, not in Oracle.
+training and can **adapt today's workout** to how I feel, using rules that live in Hercules, not in Oracle.
 
 ## 2. Scope
 
@@ -32,8 +32,9 @@ training and can **adapt today's workout** to how I feel, using rules that live 
 - Exercise catalog: seeded library (~120 common exercises, Italian names + English aliases) + my custom ones.
 - Workout templates ("schede") grouping exercises with targets; folders; optional weekly **program**.
 - Live workout logging (sets, weight, reps, RPE/RIR, set types, rest timer, supersets, notes).
+- **Offline first**: the UI works with no connection (gym) and syncs when back online (§8.0).
 - History, personal records, statistics, progress charts, body measurements.
-- Progression engine (what to lift next time) and deload/stall detection — deterministic, in Coach.
+- Progression engine (what to lift next time) and deload/stall detection — deterministic, in Hercules.
 - Readiness check-in + **adaptation engine** (bad day, little time, pain, no equipment, skipped day).
 - MCP tools for the assistant; a short on-demand context summary.
 - Agenda integration (planned days, reminders via Chronos → Hermes); settings in Themis.
@@ -41,29 +42,29 @@ training and can **adapt today's workout** to how I feel, using rules that live 
 - Import (Strong / Hevy CSV) and export (CSV / JSON).
 
 ### Out (v1, kept for later — see §10)
-Cardio GPS tracking, wearables / Health Connect sync, progress photos, exercise demo videos, nutrition,
+Cardio, running and other sports (Marko already tracks them with **Garmin**; Hercules is gym only), GPS, wearables / Health Connect sync, progress photos, exercise demo videos, nutrition,
 social features, a mobile-native app.
 
-## 3. Data model (stored in Archive, owned by Coach)
+## 3. Data model (stored in Archive, owned by Hercules)
 
-Archive gets a pure-storage area `/api/coach-store/*` (same pattern as settings-store / presence-store:
+Archive gets a pure-storage area `/api/hercules-store/*` (same pattern as settings-store / presence-store:
 typed tables, CRUD + range queries, no business rules). All ids UUID, all rows `created_at/updated_at`,
 soft delete (`archived`) so history never loses an exercise.
 
 | Table | Key fields |
 |---|---|
-| `coach_exercises` | name, aliases[], kind (`weight_reps` · `bodyweight_reps` · `weighted_bodyweight` · `assisted_bodyweight` · `reps_only` · `duration` · `distance_duration`), primary_muscles[], secondary_muscles[], stress_joints[] (for the pain rule), movement_pattern (squat · hinge · push_h · push_v · pull_h · pull_v · lunge · carry · core · isolation), equipment (`barbell` · `dumbbell` · `machine` · `cable` · `kettlebell` · `band` · `bodyweight` · `other`), unilateral, increment_kg (null = setting by equipment), notes, instructions, media_url, is_custom, archived |
-| `coach_templates` | name, folder, notes, color, estimated_minutes, position, archived |
-| `coach_template_items` | template_id, exercise_id, position, superset_group, rest_seconds, notes, **targets**: list of planned sets `{type, reps_min, reps_max, weight_kg?, rpe?, duration_s?, distance_m?}`, progression rule (`double` · `linear` · `rpe` · `none`) |
-| `coach_programs` | name, active, start_date, weeks (null = repeating), schedule `[{weekday or day_index, template_id}]`, deload_every_weeks? |
-| `coach_sessions` | started_at, ended_at, template_id?, program_id?, name, status (`active` · `done` · `discarded`), notes, readiness `{energy, sleep, soreness, stress, pain_areas[], free_text}`, adaptation_id?, bodyweight_kg?, perceived_effort (1–10) |
-| `coach_session_exercises` | session_id, exercise_id, position, superset_group, notes, replaced_from_exercise_id? |
-| `coach_sets` | session_exercise_id, position, type (`warmup` · `normal` · `drop` · `failure`), weight_kg, reps, rpe?, rir?, duration_s?, distance_m?, completed, completed_at |
-| `coach_measurements` | taken_at, kind (`bodyweight` · `body_fat` · `waist` · `chest` · `arm` · `thigh` · … custom), value, unit |
-| `coach_adaptations` | created_at, session_id?, input (readiness + request), output (modified plan), rule_trace[], accepted |
+| `hercules_exercises` | name, aliases[], kind (`weight_reps` · `bodyweight_reps` · `weighted_bodyweight` · `assisted_bodyweight` · `reps_only` · `duration` · `distance_duration`), primary_muscles[], secondary_muscles[], stress_joints[] (for the pain rule), movement_pattern (squat · hinge · push_h · push_v · pull_h · pull_v · lunge · carry · core · isolation), equipment (`barbell` · `dumbbell` · `machine` · `cable` · `kettlebell` · `band` · `bodyweight` · `other`), unilateral, increment_kg (null = setting by equipment), notes, instructions, media_url, is_custom, archived |
+| `hercules_templates` | name, folder, notes, color, estimated_minutes, position, archived |
+| `hercules_template_items` | template_id, exercise_id, position, superset_group, rest_seconds, notes, **targets**: list of planned sets `{type, reps_min, reps_max, weight_kg?, rpe?, duration_s?, distance_m?}`, progression rule (`double` · `linear` · `rpe` · `none`) |
+| `hercules_programs` | name, active, start_date, weeks (null = repeating), schedule `[{weekday or day_index, template_id}]`, deload_every_weeks? |
+| `hercules_sessions` | started_at, ended_at, template_id?, program_id?, name, status (`active` · `done` · `discarded`), notes, readiness `{energy, sleep, soreness, stress, pain_areas[], free_text}`, adaptation_id?, bodyweight_kg?, perceived_effort (1–10) |
+| `hercules_session_exercises` | session_id, exercise_id, position, superset_group, notes, replaced_from_exercise_id? |
+| `hercules_sets` | session_exercise_id, position, type (`warmup` · `normal` · `drop` · `failure`), weight_kg, reps, rpe?, rir?, duration_s?, distance_m?, completed, completed_at |
+| `hercules_measurements` | taken_at, kind (`bodyweight` · `body_fat` · `waist` · `chest` · `arm` · `thigh` · … custom), value, unit |
+| `hercules_adaptations` | created_at, session_id?, input (readiness + request), output (modified plan), rule_trace[], accepted |
 
-Derived data (PRs, e1RM, volumes) is **computed by Coach**, not stored as truth; Coach may keep a cache
-table `coach_records` (exercise_id, record kind, value, set_id, achieved_at) rebuilt from sets on any edit.
+Derived data (PRs, e1RM, volumes) is **computed by Hercules**, not stored as truth; Hercules may keep a cache
+table `hercules_records` (exercise_id, record kind, value, set_id, achieved_at) rebuilt from sets on any edit.
 Weights are stored in kg; display unit is a setting (kg/lb).
 
 ## 4. Features (what makes it a "serious app")
@@ -108,7 +109,7 @@ exercises volume).
 Import Strong and Hevy CSV exports (exercise names mapped to the catalog, unknowns become custom after a
 review step). Export everything as CSV (one row per set) and JSON.
 
-## 5. Coach engines (deterministic, in Coach — Oracle only calls them)
+## 5. Hercules engines (deterministic, in Hercules — Oracle only calls them)
 
 ### 5.1 Progression (next-time suggestion)
 - `double` (default for hypertrophy ranges): all sets at the top of the rep range at target RPE → +increment;
@@ -135,55 +136,75 @@ Rules (each a small, testable function, thresholds as settings):
 | equipment missing | swap to same pattern/muscle with available equipment |
 | skip | mark planned day skipped; program shifts (rotation) or keeps calendar (weekly) per setting; reminder moved via agenda |
 | postpone | agenda item moved to the chosen day/time |
-| repeated low energy (≥3 check-ins in 7 days) | propose a deload week (proposal, see 5.3) |
+| repeated low energy (≥3 check-ins in 7 days) | flag "deload suggested" in the summary; the assistant brings it up (5.3) |
 
-Today's adaptation applies **directly** to today's session when I ask (it's my request, reversible: "ripristina
-scheda originale"). It never changes the template.
+Adaptation is **a conversation with the assistant** (Marko, v2.0: "è più un feedback con cui parlo con
+l'assistente"): I tell it how I feel, Oracle calls `hercules_adapt_today`, shows the adjusted plan with the
+reasons, we talk it over, and it is applied to today's session when I agree in the chat. Reversible
+("ripristina scheda originale"); it never changes the template.
 
-### 5.3 Permanent changes
-Changes to templates/programs suggested by the assistant or by the engines (deload week, swap an exercise
-for good, raise a rep range) are **proposals**: Coach stores them and sends them to me through **Hermes**
-(message + Accept/Reject buttons, `service.action_required`, like Themis proposals). When I ask a change
-myself in chat ("togli lo squat dalla scheda A"), the assistant calls the edit tool directly — I asked it.
+### 5.3 Feedback and permanent changes (conversational, no Hermes proposals)
+- After a workout (or any time) I give feedback in chat or in the finish screen: "troppo pesante", "spalla
+  fastidiosa sulla panca", "mi annoia". `hercules_feedback` stores it (session/exercise, tags, free text);
+  the engines use it next time (pain tag → pain rule; "too heavy" → no increment; boredom → swap suggestion).
+- Engine findings (stall, deload due, repeated low energy, often-skipped exercise) are **not pushed**: they
+  appear in `hercules_summary` / module context, so the assistant raises them when we talk about training.
+- Changes to templates/programs are made only when I agree in the conversation; the assistant then calls
+  `hercules_edit_template` / `hercules_edit_program`. Every edit keeps a revision (undo).
 
 ## 6. Assistant integration
 
 ### 6.1 MCP tools (`hestia_common.mcp_helpers.MCPTool`, domain `fitness`)
-Read: `coach_summary` (week at a glance, next workout, recent PRs, stalls, readiness trend — caveman text),
-`coach_next_workout`, `coach_history` (range/exercise filter), `coach_exercise_stats` (e1RM trend, PRs),
-`coach_search_exercises`, `coach_templates`, `coach_records`.
-Write: `coach_start_session`, `coach_log_sets` (natural logging: "panca 80x8, 80x8, 77.5x7"), `coach_finish_session`,
-`coach_checkin` (readiness), `coach_adapt_today`, `coach_restore_today`, `coach_skip_day`, `coach_postpone`,
-`coach_edit_template` (only on my explicit request), `coach_propose_change` (→ Hermes), `coach_log_measurement`.
+Read: `hercules_summary` (week at a glance, next workout, recent PRs, stalls, readiness trend — caveman text),
+`hercules_next_workout`, `hercules_history` (range/exercise filter), `hercules_exercise_stats` (e1RM trend, PRs),
+`hercules_search_exercises`, `hercules_templates`, `hercules_records`.
+Write: `hercules_start_session`, `hercules_log_sets` (natural logging: "panca 80x8, 80x8, 77.5x7"), `hercules_finish_session`,
+`hercules_checkin` (readiness), `hercules_adapt_today`, `hercules_restore_today`, `hercules_skip_day`, `hercules_postpone`,
+`hercules_feedback`, `hercules_edit_template` / `hercules_edit_program` (only after my yes in chat), `hercules_log_measurement`.
 Telegram-visible commands (group "Allenamento"): oggi, inizia, log, fine, check-in, salta, statistiche.
 
 ### 6.2 Context for the assistant
 On demand, consistent with Themis ("Oracle knows itself on demand"): Oracle's classifier gets a `fitness`
-domain (`preference_domains.py`) so these tools load only when relevant; `coach_summary` is the compact
+domain (`preference_domains.py`) so these tools load only when relevant; `hercules_summary` is the compact
 context. Shared contract `GET /api/module/context` (agreed with the sibling threads, §9): a ≤1-line caveman summary ("Allenamento: Push A oggi ·
 3/4 sett. · PR panca 85 kg") a module may expose for the assistant's daily context.
-Memory facts stay in Oracle/Archive memory; Coach data stays in Coach (no duplication into memory).
+Memory facts stay in Oracle/Archive memory; Hercules data stays in Hercules (no duplication into memory).
 
-### 6.3 Proactivity (all via agenda, no timers)
-Registered with `agenda_client` (keys `coach.*`, I can edit/pause them like any agenda rule):
-`coach.reminder` (planned days, at the setting time → Hermes "Oggi: Push A · 55 min"), `coach.missed`
-(evening check: planned but not done → Hermes asks "saltato o spostiamo?" with buttons Skip / Tomorrow /
-Ignore), `coach.weekly_review` (Sunday: week summary, PRs, stalls). Presence: reminders respect
-`notify.level` through Hermes (no logic in Coach).
+### 6.3 Proactivity (minimal, all via agenda, no timers)
+Marko's rule (same as Self care): reminders **off by default**, at most one live reminder, never stacking.
+- `hercules.reminder` (agenda job, disabled by default): on a planned day, one Hermes message "Oggi: Push A ·
+  55 min"; if a reminder is still unread it is replaced, not added; a skip counter is shown, not repeated messages.
+- Missed days and the weekly picture are not pushed: they are in `hercules_summary` / module context, and the
+  assistant mentions them when I talk to it ("ho saltato martedì, spostiamo?").
+- Presence: Hermes applies `notify.level` (no logic in Hercules).
 
 ## 7. Settings (Themis, `settings_client.setting(...)`, no env)
-`coach.units` (kg/lb) · `coach.rest.default_seconds` (90) · `coach.increment.<equipment>` · `coach.bar_weight`
-(20) · `coach.plates` (list) · `coach.e1rm_formula` (epley/brzycki) · `coach.week_start` (monday) ·
-`coach.weekly_target` (sessions, 3) · `coach.stall.exposures` (3) · `coach.adapt.*` thresholds ·
-`coach.reminder.time` · `coach.missed.enabled` · `coach.skip_mode` (shift/keep) · `coach.warmup.scheme`.
+`hercules.units` (kg/lb) · `hercules.rest.default_seconds` (90) · `hercules.increment.<equipment>` · `hercules.bar_weight`
+(20) · `hercules.plates` (list) · `hercules.e1rm_formula` (epley/brzycki) · `hercules.week_start` (monday) ·
+`hercules.weekly_target` (sessions, 3) · `hercules.stall.exposures` (3) · `hercules.adapt.*` thresholds ·
+`hercules.reminder.enabled` (false) · `hercules.reminder.time` · `hercules.skip_mode` (shift/keep) · `hercules.warmup.scheme`.
 Env: only `COACH_PORT` / Hub URL (infrastructure).
 
 ## 8. Clients (UI through the plugin contract — implemented after that contract is on main)
 
-Contract v2.0: `docs/work/2026-10-17-client-plugins/SPEC.md` §4 — Coach ships its own UI as a Web Components
-bundle (Lit + TS) in `Hestia-Coach/ui/`, announced on Hub with `capabilities.ui_manifest`; the WebUI loads it
+Contract v2.0: `docs/work/2026-10-17-client-plugins/SPEC.md` §4 — Hercules ships its own UI as a Web Components
+bundle (Lit + TS) in `Hestia-Hercules/ui/`, announced on Hub with `capabilities.ui_manifest`; the WebUI loads it
 from a link. Sub-pages via `parent`, widgets with `params`. Live parts (active workout, rest timer) live in the
-bundle and use `host.notify` for browser notifications; Coach serves `started_at` / `rest_until`, the bundle ticks.
+bundle and use `host.notify` for browser notifications; Hercules serves `started_at` / `rest_until`, the bundle ticks.
+
+### 8.0 Offline first and sync
+- The bundle is installable (PWA via the WebUI; service worker caches the bundle and its assets — needs the
+  plugin runtime to allow a module-scoped service worker, asked to the plugin thread).
+- Local store in **IndexedDB**: catalog, templates, program, settings snapshot, last 90 days of sessions/sets,
+  records cache. The UI always reads/writes local first; the live workout never waits on the network.
+- Every write is an **op** in a local outbox: `{op_id (uuid), entity, id (client uuid), action
+  upsert|delete, fields, updated_at, device_id}`. All ids are generated on the client.
+- `POST /api/hercules/sync {device_id, cursor, ops[]}` → Hercules applies ops **idempotently** (op_id
+  dedupe), returns `{applied[], rejected[], changes_since_cursor[], cursor}`. Conflict rule: last write wins
+  per row by `updated_at`; sets are rows of their own, so two devices rarely collide; deletes are tombstones.
+- Sync runs on reconnect, on app open, and after finishing a workout; a small badge shows "N modifiche da
+  sincronizzare". Records/stats are recomputed server-side after sync and pulled back.
+- The assistant sees data only after sync (shown in the summary: "ultimo sync 2 h fa").
 
 ### 8.1 WebUI pages (always visible, per-client show/hide from the contract)
 "Allenamento" with sub-pages: **Oggi** (next workout card, check-in, start; becomes the live workout),
@@ -196,47 +217,48 @@ Next workout · This week (sessions/target, streak, volume) · Recent PRs · Exe
 (param: exercise) · Muscle volume map (param: period) · Bodyweight trend · Active workout (timer + current set).
 
 ### 8.3 Telegram
-Commands from Hub discovery (6.1), natural-language logging through Oracle, Hermes reminders with buttons.
+Commands from Hub discovery (6.1), natural-language logging through Oracle, the optional single reminder.
 No rest timer on Telegram (WebUI only).
 
 ## 9. Shared with Guardaroba and Self care (to align, not to duplicate)
-- Storage pattern: Archive `/api/<module>-store/*` typed tables, pure storage; the module owns logic (Coach needs
+- Storage pattern: Archive `/api/<module>-store/*` typed tables, pure storage; the module owns logic (Hercules needs
   typed tables: stats query sets by date/exercise range; generic entities would mean loading everything).
 - Plugin contract for pages/widgets (sibling thread owns it).
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`, Hub tag `context`, built with
-  `hestia_common.context_client.ModuleContext("coach", "fitness", build_fn)` (written by the Guardaroba thread);
-  `coach_summary` returns the same text. Automatic inclusion in Oracle is a separate Oracle step.
+  `hestia_common.context_client.ModuleContext("hercules", "fitness", build_fn)` (written by the Guardaroba thread);
+  `hercules_summary` returns the same text. Automatic inclusion in Oracle is a separate Oracle step.
 - Photos/media (later, §10): the shared Archive media/blob store designed by the Guardaroba thread.
-- Ports: Guardaroba 19017, Self care 19018, Coach 19019.
-- Proposals for permanent changes → Hermes, same `service.action_required` shape as Themis.
-- Health/safety tone: Coach never pushes through pain, no medical advice.
+- Ports: Guardaroba 19017, Self care 19018, Hercules 19019.
+- Changes are agreed in conversation with the assistant (no proposal cards); reminders off by default, one live max.
+- Health/safety tone: Hercules never pushes through pain, no medical advice.
 
 ## 10. Later (not v1)
 Progress photos (Archive file store) · exercise images/video · cardio sessions with GPS/heart rate ·
-Health Connect / Garmin / Apple Health import · AI-generated programs from goals (Coach rules + Oracle
+read-only Garmin summary (runs/cardio load) only as context for the gym plan · AI-generated programs from goals (Hercules rules + Oracle
 wording) · nutrition link · 3D/heat muscle map.
 
 ## 11. Phases (each shippable alone)
 | Phase | Content |
 |---|---|
-| **P1** | `Hestia-Coach` service (FastAPI, Dockerfile, compose global, Hub registration, port **19019** — agreed with Guardaroba 19017 / Self care 19018), Archive `coach-store` tables + API, catalog seed, CRUD for exercises/templates/programs/sessions/sets/measurements, swagger, `hestia-coach.md` |
+| **P1** | `Hestia-Hercules` service (FastAPI, Dockerfile, compose global, Hub registration, port **19019** — agreed with Guardaroba 19017 / Self care 19018), Archive `hercules-store` tables + API, catalog seed, CRUD for exercises/templates/programs/sessions/sets/measurements, swagger, `hestia-hercules.md` |
 | **P2** | Records, e1RM, statistics endpoints, progression engine, stall detection, import/export |
-| **P3** | MCP tools, `fitness` domain in Oracle classifier, readiness + adaptation engine, proposals → Hermes, agenda jobs, Themis settings |
-| **P4** | UI bundle `Hestia-Coach/ui/` (pages + widgets) on the plugin contract v2 (needs the WebUI runtime on main) |
-| **P5** | Telegram commands polish, natural logging parsing, weekly review |
+| **P3** | MCP tools, `fitness` domain in Oracle classifier, readiness + adaptation engine, feedback, module context, optional reminder job, Themis settings |
+| **P4** | UI bundle `Hestia-Hercules/ui/` (pages + widgets) on the plugin contract v2 (needs the WebUI runtime on main) |
+| **P5** | Telegram commands polish, natural logging parsing |
 
 ## 12. Acceptance criteria
 1. I can build a scheda, start it on the phone, log a full session with the rest timer, and see "last time"
    values and next-time suggestions; nothing is lost on reload.
 2. History, PRs and charts are correct against a hand-checked dataset (unit tests on records/e1RM/volume).
-3. "Oggi sono a pezzi e ho 30 minuti" in chat → Oracle calls `coach_adapt_today` → a shorter, lighter plan
+3. "Oggi sono a pezzi e ho 30 minuti" in chat → Oracle calls `hercules_adapt_today` → a shorter, lighter plan
    with the rules explained; "ripristina" restores it.
-4. A planned day not done triggers the evening Hermes message with buttons; Skip/Tomorrow work.
+4. Offline: with the network off I start, log and finish a whole session on the phone; back online it syncs
+   with no duplicates and no lost sets (also two devices editing different sessions).
 5. A Strong CSV export imports with mapped exercises.
 6. Pages and widgets show up through the plugin contract and can be hidden per client.
 7. Pytest (unit/api) tests for every engine rule (run by Marko/CI, not by Claude).
 
-## 13. Open questions for Marko
-1. Name: `Hestia-Coach` (domain modules use plain names like Scout) — or a Greek one (e.g. Heracles)?
-2. Mostly strength/gym, or also cardio/sport sessions in v1?
-3. Today's adaptation applies directly when I ask, permanent changes via Hermes confirmation — OK?
+## 13. Decisions (Marko, 2026-10-17)
+1. Name: **Hercules** (`Hestia-Hercules`; UI label "Allenamento").
+2. Gym only (weights); cardio and sports stay on Garmin. Must work **offline** and sync when online.
+3. Adaptation and changes are a **conversation with the assistant** (feedback), not Hermes proposals.
