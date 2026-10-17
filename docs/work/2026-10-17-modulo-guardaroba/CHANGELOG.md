@@ -9,3 +9,4 @@
 - v1.6 — 2026-10-17 — Home quick mark uses the plugin contract quick actions (§4.2b, v2.3): dynamic chips of favourite outfits, one-tap worn with undo, same strip as Self care / Coach — source: Claude, plugin contract update.
 - v1.7 — 2026-10-17 — *Oggi indosso* widget built on the SDK `<hx-quicklog>` (plugin contract v2.4), same source as the quick action — source: Claude, plugin contract update.
 - v1.8 — 2026-10-17 — reminder aligned with Hermes on main (040f1f6): `replaces` key, skip counter added by Hermes (not by the module), outfit buttons `resolves: true`, marking elsewhere `closes`, subscription registered at startup — source: Claude, Hermes reminders thread.
+- v1.9 — 2026-10-17 — plugin contract approved (v2.6, phase 1 on main): status updated, SDK kit renamed `hxk-*` (`<hxk-quicklog>`) — source: Claude, plugin thread.

@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.8 |
+| **Version** | 1.9 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
-| **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
+| **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract `docs/work/2026-10-17-client-plugins/SPEC.md` (v2.6, approved; phase 1 on main: `hestia_common.plugin_client`, Hub catalog, `Hestia-Shared/webui-sdk` with kit `hxk-*`) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -268,7 +268,7 @@ WebUI rule (`<hx-resize>` behaviour, via the SDK kit equivalent).
 10. **Vocabolari** (`wardrobe-vocab`) — edit styles, categories, occasions, locations.
 
 **Home first** (v1.5, user: everything super quick from the WebUI Home): the auto widget *Oggi indosso*
-(`wardrobe-w-today`, m/l, built on the SDK kit `<hx-quicklog>` fed by the quick-action source below) shows favourite outfits as big chips plus today's suggestion; one tap = marked, toast
+(`wardrobe-w-today`, m/l, built on the SDK kit `<hxk-quicklog>` fed by the quick-action source below) shows favourite outfits as big chips plus today's suggestion; one tap = marked, toast
 with "Annulla"; long press / ⋯ = pick pieces or another date. With a goal it shows the period progress
 ("2/3 questa settimana"). Favourites (⭐ on outfits and pieces) drive the chips, ordered by least recently
 marked. **Quick action** (plugin contract §4.2b, drawn by the WebUI itself, no bundle load): `outfit_worn` "Outfit

@@ -1,6 +1,6 @@
 # PROGRESS — wardrobe module
 
-Spec: `SPEC.md` v1.8 · resume from the first unchecked box.
+Spec: `SPEC.md` v1.9 · resume from the first unchecked box.
 
 - [x] Request read, repo studied (Scout skeleton, Archive entities, no blob storage, Oracle image analysis)
 - [x] Shared choices sent to the Self care / Coach / plugin threads (ports 19017–19019, `<module>.<kind>` entities, Archive blob store, `/api/module/context`)
@@ -11,7 +11,7 @@ Spec: `SPEC.md` v1.8 · resume from the first unchecked box.
 - [ ] W1 Archive blob store + module skeleton + CRUD + photos + swagger + docs + tests
 - [ ] W2 MCP tools, context summary, Telegram photo draft, Hermes confirm for delete
 - [ ] W3 Stats, suggestion engine, agenda jobs + Hermes review
-- [ ] W4 UI bundle (Lit Web Components) per plugin contract v2 (waits for it on main)
+- [ ] W4 UI bundle (Lit Web Components) per plugin contract v2 (contract phase 1 on main; WebUI loading = its phase 2)
 - [ ] W5 describe-photo, collections, export/import
 - [ ] W6 Outfit board / photo composition (later)
 - [ ] W7 Mirror check-in: photo before going out → recognised pieces → wear entry (far future)
