@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.5 |
+| **Version** | 1.6 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
@@ -269,8 +269,12 @@ WebUI rule (`<hx-resize>` behaviour, via the SDK kit equivalent).
 (`wardrobe-w-today`, m/l) shows favourite outfits as big chips plus today's suggestion; one tap = marked, toast
 with "Annulla"; long press / ⋯ = pick pieces or another date. With a goal it shows the period progress
 ("2/3 questa settimana"). Favourites (⭐ on outfits and pieces) drive the chips, ordered by least recently
-marked. Same interaction pattern as Self care's "fatto oggi" and Coach's quick log, through a shared SDK
-component proposed to the plugin thread, so the Home reads as one place to check things off.
+marked. **Quick action** (plugin contract §4.2b, drawn by the WebUI itself, no bundle load): `outfit_worn` "Outfit
+indossato", group "Guardaroba", dynamic `source` `GET /api/ui/quick/outfits` → favourite outfits first (then
+today's suggestion), each `{id, label, icon, state: todo|done, hint: "2/3 settimana" when a goal is on,
+favorite}`; tap `POST /api/ui/outfits/{id}/worn`, undo `DELETE /api/ui/outfits/{id}/worn/today`. Same chips in the
+Ctrl+K palette; pin order is the WebUI's `webui.home.quick`. This is the same strip Self care and Coach use, so
+the Home is one place to check things off.
 
 **Widgets** (elements `wardrobe-w-*`; Oracle can place them only by proposing a `webui.dashboards` change,
 which Marko confirms): *Oggi indosso* (above, auto, params: occasion), *Outfit di oggi* (suggestion only, m/l, params: occasion), *In lavanderia* (s/m), *Capi
