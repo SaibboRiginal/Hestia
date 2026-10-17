@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code yet) |
 
@@ -203,7 +203,9 @@ No rest timer on Telegram (WebUI only).
 - Storage pattern: Archive `/api/<module>-store/*` typed tables, pure storage; the module owns logic (Coach needs
   typed tables: stats query sets by date/exercise range; generic entities would mean loading everything).
 - Plugin contract for pages/widgets (sibling thread owns it).
-- `GET /api/module/context` (short caveman summary Oracle may include) + on-demand `<module>_summary` tool.
+- `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`, Hub tag `context`, built with
+  `hestia_common.context_client.ModuleContext("coach", "fitness", build_fn)` (written by the Guardaroba thread);
+  `coach_summary` returns the same text. Automatic inclusion in Oracle is a separate Oracle step.
 - Photos/media (later, §10): the shared Archive media/blob store designed by the Guardaroba thread.
 - Ports: Guardaroba 19017, Self care 19018, Coach 19019.
 - Proposals for permanent changes → Hermes, same `service.action_required` shape as Themis.
