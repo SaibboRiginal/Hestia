@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
@@ -262,6 +262,7 @@ dimenticati* (m, auto, params: days), *Guardaroba in numeri* (s/m, auto), *Ultim
 | **W4** | UI bundle `Hestia-Wardrobe/ui/` (Lit, pages + widgets) + manifest + Dockerfile Node stage | W1–W3 + plugin contract on main |
 | **W5** | describe-photo (Oracle vision), collections (capsule, packing lists), export/import | W1 |
 | **W6** (later, step by step) | Outfit board: manual collage of piece photos in the builder (drag/scale, saved in `outfit.board`) → then automatic cut-outs (background removal, run where the hardware allows) → auto-composed outfit image | W4 |
+| **W7** (far future) | **Mirror check-in**: a photo of yourself before going out (WebUI/Telegram) → Oracle vision compares it with the pieces' photos and descriptions → proposed wear entry (pieces + matching outfit, confidence) → you confirm or fix with one tap; the photo can be kept as the outfit's "worn" picture. Optional agenda nudge in the morning | W5 (describe-photo), pieces with photos |
 
 ## 9. Acceptance criteria
 
