@@ -1,6 +1,6 @@
 # PROGRESS — client plugins
 
-Spec: `SPEC.md` v2.3 · resume from the first unchecked box.
+Spec: `SPEC.md` v2.4 · resume from the first unchecked box.
 
 - [x] Current state studied (WebUI APP_MODULES registry, Hub discovery/registry, Themis user scope, Scout tools)
 - [x] Dossier created (SPEC v1.0 → v2.0 after Marko: bundles loaded from a link, Hub catalog, client-owned config)

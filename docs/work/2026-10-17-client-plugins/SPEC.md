@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code before it) |
 
@@ -148,7 +148,10 @@ and in a Ctrl+K palette:
 - Optional `params` → a tiny inline sheet (e.g. "peso", "note") instead of a page.
 - The user pins/unpins chips (★) and orders them: WebUI setting `webui.home.quick` (client-owned, §4.6). By default
   Home shows the module's `favorite` / due-today chips.
-- Widgets can also act in one tap (they are full components), quick actions are the zero-load path.
+- Long-press / ⋯ on a chip → other date or details (the WebUI adds a `date` field to `params`); `hint` carries the
+  progress line ("2/3 questa settimana").
+- Same look inside widgets: the SDK kit has `<hx-quicklog>` (big chips, one tap = done, toast with Annulla, ⋯, progress
+  line) fed by the same `source`, so a module's auto widget and the Home strip read as one place to tick things off.
 
 Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
 
