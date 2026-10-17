@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | §13 answered by Marko 2026-10-17 → v2.0, waiting for his go to start P1 |
 
@@ -193,9 +193,11 @@ from a link. Sub-pages via `parent`, widgets with `params`. Live parts (active w
 bundle and use `host.notify` for browser notifications; Hercules serves `started_at` / `rest_until`, the bundle ticks.
 
 ### 8.0 Offline first and sync
-- The bundle is installable (PWA via the WebUI; service worker caches the bundle and its assets — needs the
-  plugin runtime to allow a module-scoped service worker, asked to the plugin thread).
-- Local store in **IndexedDB**: catalog, templates, program, settings snapshot, last 90 days of sessions/sets,
+- Plugin contract v2.2 §4.5b: the WebUI is a PWA whose service worker caches shell, catalog and plugin bundles
+  with their assets (per version). The bundle uses `host.online` + `online`/`offline` events and
+  `host.store(name)` (IndexedDB namespaced `hestia.hercules.<name>`). Offline `host.api` fails with `offline`
+  and queues nothing: the outbox and sync below are Hercules' own.
+- Local store via `host.store` (IndexedDB): catalog, templates, program, settings snapshot, last 90 days of sessions/sets,
   records cache. The UI always reads/writes local first; the live workout never waits on the network.
 - Every write is an **op** in a local outbox: `{op_id (uuid), entity, id (client uuid), action
   upsert|delete, fields, updated_at, device_id}`. All ids are generated on the client.

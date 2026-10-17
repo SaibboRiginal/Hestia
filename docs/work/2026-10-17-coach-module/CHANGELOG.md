@@ -12,3 +12,4 @@
   (cardio/sports stay on Garmin); offline first with outbox sync (§8.0); adaptation and template changes are a
   conversation with the assistant + feedback tool, no Hermes proposals; reminders off by default, one live max —
   reason: Marko's answers to §13 — source: user in project thread.
+- v2.1 — 2026-10-17 — §8.0 uses plugin contract v2.2 offline support (PWA cache, host.online, host.store) — reason: contract update — source: thread Plugin dei moduli nei client.
