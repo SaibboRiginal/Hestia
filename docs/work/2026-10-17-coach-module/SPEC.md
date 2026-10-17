@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code yet) |
 
@@ -179,6 +179,11 @@ Ignore), `coach.weekly_review` (Sunday: week summary, PRs, stalls). Presence: re
 Env: only `COACH_PORT` / Hub URL (infrastructure).
 
 ## 8. Clients (UI through the plugin contract — implemented after that contract is on main)
+
+Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4 — sub-pages via `parent`, widget `params`
+(configurable per dashboard instance), live parts (active workout, rest timer, browser notifications) as
+client-side components `renderer: "native:coach.<name>"` in `Hestia-WebUI/frontend/src/app/plugins/coach/`;
+Coach serves `started_at` / `rest_until`, the component ticks the time (no server push in v1).
 
 ### 8.1 WebUI pages (always visible, per-client show/hide from the contract)
 "Allenamento" with sub-pages: **Oggi** (next workout card, check-in, start; becomes the live workout),
