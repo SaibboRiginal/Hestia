@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code before it) |
 
@@ -32,7 +32,7 @@ configure what is visible and the dashboards — stored as **that client's own s
 
 ### In
 - Contract v2 (§4): manifest in Hub registration, bundle format (custom elements), host API given to plugins.
-- Hub: `GET /api/discovery/plugins?client=webui` (aggregates manifests, same pattern and cache as commands).
+- Hub: `GET /api/discovery/catalog` — one catalog organized by client and type (tools, commands, pages, widgets), existing discovery endpoints unchanged.
 - `hestia_common.plugin_client` (Python): declare manifest, put it in `capabilities`, serve the bundle files.
 - **Hestia WebUI SDK** `Hestia-Shared/webui-sdk/` (TypeScript): types, `definePlugin`, host API, design tokens +
   CSS kit, small Lit-based kit components (button, card, stat, list, table, chart, empty/error states, form
@@ -53,7 +53,7 @@ configure what is visible and the dashboards — stored as **that client's own s
 | Module | Job in this feature |
 |---|---|
 | **Each module** (Scout, …) | owns its UI bundle and its own REST endpoints; advertises the manifest in its Hub registration |
-| **Hub** | registry + discovery (already does it for MCP tools/commands): `/api/discovery/plugins`; routing unchanged |
+| **Hub** | registry + discovery (already does it for MCP tools/commands): one organized `/api/discovery/catalog`; routing unchanged |
 | **WebUI** (client) | loads bundles, gives them the host API, owns **its own configuration** (visibility, dashboards, layout) as its Themis settings, proxies plugin calls only to the plugin's own module |
 | **Themis** | stores every client's configuration like any setting (owner = the client, e.g. `webui.*`); history/undo free |
 | **Oracle** | sees widgets and dashboards through the WebUI's MCP tools; **proposes** a dashboard through Themis, Marko confirms via Hermes (same rule as every setting) |
@@ -93,19 +93,52 @@ Pages are **always visible** by default; `detail=True` pages have no sidebar ent
 configure per dashboard instance; `sizes` from `s` (1×1), `m` (2×1), `l` (2×2), `xl` (4×2); `auto` = proposed on
 the automatic Home dashboard.
 
-### 4.2 Manifest (what Hub aggregates)
+### 4.2 One catalog, organized by client and by type (Hub)
+
+Hub already has the pieces: the registry with each service's `capabilities`, MCP tool discovery
+(`mcp_endpoint`), inline `commands`, `module_tool_domains`. Today each is read by its own endpoint. v2.1 puts them
+in **one organized catalog** without breaking the existing endpoints (they stay, the catalog is a view over them
+plus the new UI contributions):
+
+`GET /api/discovery/catalog?client=webui&type=page,widget` →
+
+```json
+{ "revision": 42,
+  "modules": [ {"module": "scout", "title": "Scout", "icon": "home", "color": "amber", "online": true, "version": "1.4.0+3f7f11f"} ],
+  "contributions": {
+    "webui":    { "page": [ … ], "widget": [ … ], "card": [ … ], "quick_action": [ … ], "bundle": [ {"module": "scout", "entry": "/ui/webui/scout.js", "api_prefix": "/api/ui/"} ] },
+    "telegram": { "command": [ … ], "widget": [ … ] },
+    "*":        { "tool": [ … ] } } }
+```
+
+- **Client** = who can show it (`webui`, `telegram`, future ones; `*` = every client, e.g. MCP tools).
+- **Type** (closed list, the client ignores types it does not know):
+
+| Type | Client | What it is | v1 |
+|---|---|---|---|
+| `tool` | `*` | MCP tool (Oracle, MCP gateway) — existing | ✓ existing |
+| `command` | telegram, webui | command from a tool (Telegram menu, Comandi page) — existing | ✓ existing |
+| `page` | webui | full page, always visible by default, sub-pages via `parent` | ✓ |
+| `widget` | webui (telegram later: text) | block for dashboards, with `params`, `sizes`, `auto` | ✓ |
+| `card` | webui | how the module's items look **inside the chat** (e.g. a Scout listing card when Oracle answers with houses) | later |
+| `quick_action` | webui | entry in a Ctrl+K palette ("Nuovo capo", "Inizia allenamento") | later |
+
+- Each item carries `id` (`<module>.<id>`), `module`, `label`, `icon`, `order` and its type's fields.
+- Modules declare everything in one place: `capabilities.ui_manifest` (UI) next to `mcp_endpoint` (tools);
+  `plugin_client` builds the manifest, Hub fetches and caches it like MCP tools (TTL, refreshed on re-register).
+- Offline modules stay in the catalog with `online: false`, so the client can say "Scout non raggiungibile".
+- The WebUI Comandi & MCP page becomes the browser of this catalog (filters client · type · module).
+
+Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
 
 ```json
 { "module": "scout", "version": "1.4.0+3f7f11f", "title": "Scout", "icon": "home", "color": "amber",
   "clients": {
     "webui": { "entry": "/ui/webui/scout.js", "api_prefix": "/api/ui/", "sdk": "1",
-               "pages":   [ {"id": "case", "label": "Case", "element": "scout-listings", "icon": "home", "order": 10} ],
-               "widgets": [ {"id": "nuove", "label": "Nuove case", "element": "scout-new-widget",
-                             "sizes": ["m", "l"], "auto": true, "params": {"city": {"type": "string"}}} ] } } }
+               "page":   [ {"id": "case", "label": "Case", "element": "scout-listings", "icon": "home", "order": 10} ],
+               "widget": [ {"id": "nuove", "label": "Nuove case", "element": "scout-new-widget",
+                            "sizes": ["m", "l"], "auto": true, "params": {"city": {"type": "string"}}} ] } } }
 ```
-
-`GET /api/discovery/plugins?client=webui` → `{revision, plugins: [manifest + online]}` (offline modules are
-listed as offline so the client can say "Scout non raggiungibile" instead of dropping the pages).
 
 ### 4.3 Bundle = Web Components
 
@@ -154,6 +187,9 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 | `webui.dashboards` | object | `[{id, title, icon, auto, created_by, items:[{widget, x, y, w, h, params, title}]}]` |
 | `webui.plugins.prefs` | object | per-plugin preferences written by `host.config` |
 
+- **No central module for this**: visibility is only Marko's customization of a client, so each client owns it.
+  It is still "central" for free because every client's settings live in Themis: one Impostazioni panel can show
+  them per client, history/undo works, Oracle can read them.
 - `scope="user"`, so Themis already layers them (profile → client); another client (Telegram) declares its own.
 - Impostazioni → *Plugin*: modules with their pages/widgets and switches; dashboards edited on the dashboard page.
 - **Home dashboard**: built from visible `auto` widgets until the user edits it (then it is saved; new auto widgets
@@ -168,7 +204,7 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 |---|---|---|---|
 | Module | GET | `/api/ui/manifest` | manifest (also advertised as `capabilities.ui_manifest`) |
 | Module | GET | `/ui/<client>/{file}` | bundle and static assets (ETag) |
-| Hub | GET | `/api/discovery/plugins?client=` | aggregated catalog + online state + revision |
+| Hub | GET | `/api/discovery/catalog?client=&type=&module=` | organized catalog (§4.2) + online state + revision |
 | WebUI | GET | `/api/webui/plugins` | catalog for the frontend (with visibility applied) |
 | WebUI | GET | `/plugins/{module}/{file}` | bundle proxy (cached by version) |
 | WebUI | ANY | `/api/webui/plugins/{module}/call/{path}` | plugin → its own module (checks `api_prefix`) → 403 otherwise |
@@ -197,8 +233,8 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 
 ## 7. Phases
 
-- **P1 Contract**: `plugin_client` (manifest, router, bundle files), Hub `/api/discovery/plugins` (+ cache,
-  revision), WebUI SDK (types, host API, kit, build script), swagger, ARCHITECTURE rule.
+- **P1 Contract**: `plugin_client` (manifest, router, bundle files), Hub `/api/discovery/catalog` (+ cache,
+  revision, existing endpoints untouched), WebUI SDK (types, host API, kit, build script), swagger, ARCHITECTURE rule.
 - **P2 WebUI runtime**: .NET `PluginsController` (catalog, bundle proxy, call proxy, image), WebUI settings
   (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host), dashboard page +
   edit mode, Impostazioni → Plugin, MCP endpoint, DESIGN-SYSTEM § Plugins. `ng build` + Playwright on mocks.
