@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Approved by the user (v2.0 answers §13). Implementation starts after the module-plugin contract (thread "Plugin dei moduli nei client") is on main |
 
@@ -91,11 +91,14 @@ One row = **one physical item**. Buying the same product again creates a new row
 - Routine: `id`, `name` (e.g. "Viso sera", "Maschera capelli"), `areas[]`, `slot` (`morning` · `evening` · `anytime`
   · custom label), `cadence`, `reminder` (on/off, **off by default**), `status` (`active` · `paused` · `archived`),
   `order`, `color`/`icon`, `current_version`.
-- **Cadence = a goal, not a calendar** (v2.0). One of:
+- **Cadence = an option chosen per routine** (v2.1: the user picks it in one control; default `target`). One of:
   - `daily` — every day (e.g. face morning);
   - `target` — `{times: 2, per: week|month}`, optionally a range `{min: 1, max: 2}` (e.g. hair mask 1–2/week);
   - `as_needed` — no goal, only logged when done;
-  - `fixed_days` — weekdays, kept for whoever wants them, never the default.
+  - `fixed_days` — mandatory on chosen weekdays.
+  `daily` and `fixed_days` are "obbligatorie" (missing one counts as skipped in stats); `target` = "almeno N"
+  (e.g. two face routines, each at least 2×/week); stats work the same for all modes.
+- `favorite` (bool) + `order`: favourites are the ones on the WebUI Home quick widget (§9).
   Plus constraints: `max_per_day` (default 1), `min_gap_hours` (e.g. 48 for an exfoliation), and
   `not_same_day_as[]` (other routines/steps). Conflicts on actives (§4) add `not_same_day_as` pairs **automatically**
   (a routine with retinol and one with AHA/BHA), the user can add more by hand.
@@ -116,7 +119,8 @@ One row per routine run: `routine_id`, `version`, `date`, `done_at`, `status` (`
 (`webui` · `telegram` · `assistant` · `reminder_button`). Ad-hoc usage outside routines (a mask on Sunday) is a log
 with `routine_id = null` and one step.
 
-### 3.6 Journal — `selfcare_journal` (per body part, v2.0)
+### 3.6 Journal — `selfcare_journal` (per body part, v2.0; optional, hidden until enabled — v2.1)
+Purpose: see whether products and routines actually work (e.g. pimples trend down since retinol started).
 One entry per area per day (one quick form can fill several areas at once). `date`, `area`, `scores` (user-chosen metrics per area, 1–5: viso → idratazione, brufoli, rossori, oleosità,
 sensibilità; capelli → caduta, forfora, lucentezza…; metrics are an editable list per area), `tags`
 (ciclo, stress, sole, viaggio, nuovo prodotto…), `note`, `photo_ids[]`. Optional and quick (3 taps).
@@ -210,6 +214,7 @@ Principle (v2.0): **few, useful, never piling up.**
 | `selfcare.alerts.expiry_days` | int, 30 | expiry warning |
 | `selfcare.alerts.restock_days` | int, 14 | predicted finish warning |
 | `selfcare.alerts.enabled` | bool, true | |
+| `selfcare.journal.enabled` | bool, false | shows the Diario tab and journal tools |
 | `selfcare.journal.prompt` | enum off/after_evening/weekly, off | ask for a journal entry after the evening routine |
 | `selfcare.default_pao_months` | int, 12 | used when PAO unknown |
 | `selfcare.currency` | string, EUR | |
@@ -234,6 +239,11 @@ Mobile-first, design system `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`, side panel
 5. **Statistiche & storia** — adherence heatmap (calendar), streaks, uses per product, spend per month, the merged
    timeline, "periodo" picker.
 6. **Lista spesa** — wishlist + restock suggestions.
+
+**Home quick log (v2.1, top priority of the UI)**: widget "Self care" on the WebUI **Home**: favourite routines as
+big buttons, **one tap = "fatta oggi"** (toast with Annulla, no dialog), a badge with this week's progress
+(1/2), a second tap shows the steps to untick a skipped one; also favourite products for an ad-hoc use (mask).
+Everything else is optional detail.
 
 **Widgets** (dashboard): "Routine di oggi" (checklist, tick from the widget), "Prossima routine" (compact),
 "In scadenza / da ricomprare", "Streak".
