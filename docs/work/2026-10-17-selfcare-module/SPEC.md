@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Approved by the user (v2.0 answers §13). Implementation starts after the module-plugin contract (thread "Plugin dei moduli nei client") is on main |
 
@@ -193,16 +193,14 @@ Principle (v2.0): **few, useful, never piling up.**
   `POST /api/selfcare/reminders/run`. Hygieia nudges a routine only when it is `due` (behind its goal) and not
   `blocked`, and at most `selfcare.reminders.max_per_week` times per routine (default 2). Daily routines done
   every day are never nudged.
-- **One live reminder per routine**: event `selfcare.reminder` with `dedupe_key = selfcare.reminder.<routine_id>`.
-  If the previous one is still unanswered, the new one **replaces** it (`closes` the old key, then sends the new one)
-  and says how many times it was skipped: «Maschera capelli — 0/1 questa settimana, saltata 3 volte». So there is
-  never more than one per routine on any client.
-- Actions **Fatto** · **Salta** · **Non questa settimana**; the button routes back to `POST logs/quick` (Fatto logs it,
-  Salta counts a skip, Non questa settimana silences that routine until the next period).
-- **Generic need, owned by Hermes**: Marko wants this "one live notification with a skip counter" for every module.
-  Proposed as a Hermes feature (event key `replaces: <dedupe_key>` + `repeat_count` kept by Hermes, updating the
-  notification in place on every client); handed to the channel session to schedule in Hermes. Until it exists,
-  Hygieia uses `closes` + new event as above (same result for the user).
+- **One live reminder per routine** — Hermes feature (on main, 040f1f6; `Hestia-Hermes/hestia-hermes.md`
+  "One live reminder per thing"): event `selfcare.reminder` with payload `replaces: "selfcare.reminder.<routine_id>"`.
+  Hermes supersedes the previous open one on every client and adds the skip counter itself, so Hygieia's text
+  **never counts skips** («Maschera capelli — 0/1 questa settimana»). Needs a matching Hermes subscription
+  (registered at startup like other modules).
+- Actions **Fatto** (`resolves: true`, or `closes: <key>` + `decision: done`) · **Salta** (keeps the chain, Hermes
+  counts it) · **Non questa settimana** (resolves and silences the routine until the next period); each routes back
+  to `POST logs/quick`.
 - Text of reminders and alerts is short plain Italian, readable aloud as-is, so the future **audio client** (the
   assistant speaking notifications) needs nothing from this module.
 - Alerts of §4 → Hermes events `selfcare.alert` (level info, dedupe per product+type). Presence quiet hours are
