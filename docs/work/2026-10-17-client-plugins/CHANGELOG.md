@@ -7,3 +7,4 @@
 - v2.2 — 2026-10-17 — offline: WebUI PWA with service worker caching shell + plugin bundles by version, host.online/events, host.store (IndexedDB per module); sync stays the module's job — request from the Hercules (coach) thread for gym use — Hestia AI (peer thread)
 - v2.3 — 2026-10-17 — quick actions moved into v1: one-tap chips on WebUI Home + Ctrl+K, drawn by the WebUI (static or dynamic source, undo, pin with webui.home.quick) — Marko's request in the wardrobe thread relayed by the coordinator — user via project thread
 - v2.4 — 2026-10-17 — quick actions: ⋯ for other date/details, progress hint, SDK <hx-quicklog> with the same look for widgets — proposal from the wardrobe thread — Hestia AI (peer thread)
+- v2.5 — 2026-10-17 — approved: plugin tech free per client but always shared styles/libs; bundles built in Docker; chat-born proposals confirmed by a question card in the same chat (Hermes only silent inbox) — Marko's answers — user via project thread

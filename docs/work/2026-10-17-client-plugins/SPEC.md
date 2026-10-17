@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.4 |
+| **Version** | 2.5 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
-| **Status** | Draft — waiting for Marko's confirmation (no code before it) |
+| **Status** | Approved 2026-10-17 (decisions §8) — in progress |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -167,8 +167,9 @@ Module manifest (`GET /api/ui/manifest`, built by `plugin_client`):
 ### 4.3 Bundle = Web Components
 
 - One ES module (`entry`) that registers custom elements with names prefixed by the module (`scout-…`).
-- Any tech that outputs custom elements: **Lit + TS (recommended, small, the SDK kit is Lit)**, vanilla TS/HTML,
-  or Angular Elements (allowed; heavier, ~150 KB per plugin).
+- Any tech that works in the client it targets (Marko: "basta che funzioni per il tipo di client"): Lit + TS is the
+  default and what the SDK kit is written in; vanilla TS/HTML or Angular Elements are fine. **Always** with the shared
+  styles and libraries (SDK tokens, kit CSS and components), so every plugin looks and behaves like Hestia.
 - The WebUI creates the element and sets two properties: `host` (§4.5) and `ctx`
   (`{route params, query, widget params, size, theme, client}`); it listens for nothing else.
 - Styling: the design tokens are CSS variables (`--surface-1`, `--accent`, …) which reach inside shadow DOM; the
@@ -232,7 +233,14 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
   are appended, never moved).
 - Oracle: the WebUI registers in Hub with a small MCP endpoint: `webui_widgets(q?)` (compact catalog) and
   `webui_dashboards()`. To create or change a dashboard Oracle uses the existing `settings_propose` on
-  `webui.dashboards` → Hermes → Marko confirms (same rule as every setting; nothing is written behind his back).
+  `webui.dashboards` (nothing is written behind Marko's back).
+- **Confirmation in the same chat** (Marko: "la conferma direttamente in chat, come fa Claude con le domande"):
+  a proposal made during a conversation carries `origin: {client, session}`; Oracle emits in that chat stream the
+  existing `question` packet (`kind: confirm`, `question_id = proposal id`, header "Nuova dashboard", a compact
+  preview of the widgets) and the card's Approva / Rifiuta calls Themis approve/reject (`by: <client>`). Hermes is not
+  pushed for it: the event is kept only silently in the inbox (existing "solo sul client di origine" rule) so it can
+  still be answered later. Proposals not born in a chat (Athena) keep going through Hermes. This applies to every
+  Themis proposal made in chat, settings included.
 
 ### 4.7 Endpoints
 
@@ -262,7 +270,7 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 2. Module stopped → its pages say "non raggiungibile", widgets show a muted offline state, nothing else breaks.
 3. Impostazioni → Plugin: hiding Scout's page removes it from the WebUI sidebar; reset/undo works (Themis history).
 4. Home dashboard shows Scout's auto widgets; add/move/resize/remove, configure params, create a second dashboard.
-5. Chat "creami una dashboard con le case a Milano" → Oracle proposes it; after Approva it appears in the WebUI.
+5. Chat "creami una dashboard con le case a Milano" → a confirm card in the same chat (with preview); Approva → it appears in the WebUI; no Telegram push.
 6. Scout pages: filter, detail, status change, favourite/discard, "Controlla email" with toast and refresh.
 7. A plugin calling another module's path or outside `api_prefix` gets 403.
 8. Home quick actions: a due routine chip → one tap → ✓ with Annulla, no page load; pin/unpin with ★.
@@ -276,13 +284,14 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
   (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host, Home quick-action strip + Ctrl+K palette), PWA service worker (offline bundles), dashboard page +
   edit mode, Impostazioni → Plugin, MCP endpoint, DESIGN-SYSTEM § Plugins. `ng build` + Playwright on mocks.
 - **P3 Scout plugin**: endpoints, user flag, `ui/` bundle (Lit), Dockerfile build stage, `_link`, docs.
-- **P4 Oracle**: domain routing for `webui_widgets` / dashboards proposal, end-to-end check of criterion 5.
+- **P4 Oracle + Themis**: domain routing for `webui_widgets` / dashboards proposal; proposals with `origin` → `question`
+  confirm card in the same chat, Hermes only silent inbox; WebUI/Telegram answer the card via Themis; criterion 5.
 
 Tests: written (plugin_client, Hub discovery, call-proxy guard), not run here (user rule).
 
-## 8. Decisions to confirm (Marko)
+## 8. Decisions (Marko, 2026-10-17)
 
-1. Plugins as **Web Components with Lit + TS** (recommended; Angular Elements allowed when a plugin wants it).
-2. Bundles **built in the module's Docker image** (recommended), not committed to git.
-3. Oracle **proposes** dashboards via Themis and you approve (recommended, same rule as settings) — or it writes
-   them directly because they are only layout.
+1. Plugin tech: anything that works for the client it targets; always the shared styles and libraries (Lit is the
+   SDK default).
+2. Bundles built in the module's Docker image, not committed. ✓
+3. Oracle proposes dashboards; the confirmation is a card **in the same chat** (`question` packet), not a Hermes push.
