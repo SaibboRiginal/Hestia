@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.7 |
+| **Version** | 1.8 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
@@ -228,9 +228,11 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
 - Job `wardrobe.reminder` (daily check at `wardrobe.reminder.time`, agenda): sends **only** when the goal is
   behind for the period, nothing was marked today, the assistant presence allows notifications (not dnd /
   sleep), and the weekly cap is not reached. One live notification at a time through Hermes' repeat chain
-  (`replaces: wardrobe.reminder`, thread "Promemoria unici in Hermes"): a new one replaces the old and says how
-  many were skipped. Buttons: the top 3 favourite/suggested outfits ("Indossato: Ufficio blu") = one tap marks it,
-  "Altro" opens the WebUI widget, "Salta". Marking from anywhere closes the live reminder.
+  (event payload `replaces: "wardrobe.reminder"`, see `Hestia-Hermes/hestia-hermes.md` "One live reminder per
+  thing"): Hermes supersedes the previous open one on every client and adds the skip counter itself (the
+  module's text never counts skips). A matching Hermes subscription for the event is registered at startup. Buttons: the top 3 favourite/suggested outfits ("Indossato: Ufficio blu") = one tap marks it,
+  "Altro" opens the WebUI widget, "Salta". Outfit buttons carry `resolves: true`; marking from the WebUI or
+  chat sends `closes: "wardrobe.reminder"`, so the live reminder disappears everywhere.
 - Job `wardrobe.review` (monthly, 1st Sunday 10:00, registered with `agenda_client`, runs only when
   `wardrobe.review.enabled`): Hermes notification to `owner` with forgotten pieces, pieces to repair, laundry
   older than 7 days, outfits to review. User edits/pauses in the agenda win.
