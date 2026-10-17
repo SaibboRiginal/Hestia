@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.4 |
+| **Version** | 1.5 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
@@ -110,6 +110,11 @@ accessories ×n — a slot can be empty), `styles`, `occasions`, `seasons` (defa
 tap on "Indossato" on an outfit card or widget, date = today, editable) or by telling the assistant. Nothing in
 the module assumes marks are complete: no daily nudge, no "missing days", no streaks. Marks are sparse hints
 that make suggestions and stats a bit smarter; without them everything still works.
+
+**Optional goal** (v1.5, user; same shape as Self care's cadence): setting `wardrobe.tracking.goal` =
+`off` (default) · `{times: N, per: day|week|month}` (e.g. 1/day, 3/week). With a goal on, stats show "segnati
+N su M questa settimana" and the reminder below may fire; a missed period simply starts a new one (no
+"overdue forever", no guilt counters). Marking is always the same one tap, goal or not.
 `date`, `outfit_id?` or `piece_ids[]` (ad-hoc outfit), `occasion?`, `weather? {temp_c, condition}`,
 `rating?` (how it felt), `notes?`, `source` (webui · telegram · assistant). Writing/deleting a wear updates
 `wear_count`/`last_worn` on the pieces and the outfit.
@@ -213,9 +218,19 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
 | `wardrobe.photo.max_mb` | 10 | live |
 | `wardrobe.currency` | EUR | live |
 | `wardrobe.review.enabled` | false | live — monthly review notification |
+| `wardrobe.tracking.goal` | off | live — `{times, per}` goal for "Indossato" marks (§4.3) |
+| `wardrobe.reminder.enabled` | false | live — mark reminder, only meaningful with a goal |
+| `wardrobe.reminder.time` | 08:30 | live — when the reminder may arrive |
+| `wardrobe.reminder.max_per_week` | 2 | live |
 | `wardrobe.log.level` | INFO | live |
 
 ### 6.4 Agenda + Hermes
+- Job `wardrobe.reminder` (daily check at `wardrobe.reminder.time`, agenda): sends **only** when the goal is
+  behind for the period, nothing was marked today, the assistant presence allows notifications (not dnd /
+  sleep), and the weekly cap is not reached. One live notification at a time through Hermes' repeat chain
+  (`replaces: wardrobe.reminder`, thread "Promemoria unici in Hermes"): a new one replaces the old and says how
+  many were skipped. Buttons: the top 3 favourite/suggested outfits ("Indossato: Ufficio blu") = one tap marks it,
+  "Altro" opens the WebUI widget, "Salta". Marking from anywhere closes the live reminder.
 - Job `wardrobe.review` (monthly, 1st Sunday 10:00, registered with `agenda_client`, runs only when
   `wardrobe.review.enabled`): Hermes notification to `owner` with forgotten pieces, pieces to repair, laundry
   older than 7 days, outfits to review. User edits/pauses in the agenda win.
@@ -250,8 +265,15 @@ WebUI rule (`<hx-resize>` behaviour, via the SDK kit equivalent).
 9. **Wishlist e valigie** (`wardrobe-collections`) — wishlist pieces; packing lists with checkboxes.
 10. **Vocabolari** (`wardrobe-vocab`) — edit styles, categories, occasions, locations.
 
+**Home first** (v1.5, user: everything super quick from the WebUI Home): the auto widget *Oggi indosso*
+(`wardrobe-w-today`, m/l) shows favourite outfits as big chips plus today's suggestion; one tap = marked, toast
+with "Annulla"; long press / ⋯ = pick pieces or another date. With a goal it shows the period progress
+("2/3 questa settimana"). Favourites (⭐ on outfits and pieces) drive the chips, ordered by least recently
+marked. Same interaction pattern as Self care's "fatto oggi" and Coach's quick log, through a shared SDK
+component proposed to the plugin thread, so the Home reads as one place to check things off.
+
 **Widgets** (elements `wardrobe-w-*`; Oracle can place them only by proposing a `webui.dashboards` change,
-which Marko confirms): *Outfit di oggi* (m/l, auto, params: occasion), *In lavanderia* (s/m), *Capi
+which Marko confirms): *Oggi indosso* (above, auto, params: occasion), *Outfit di oggi* (suggestion only, m/l, params: occasion), *In lavanderia* (s/m), *Capi
 dimenticati* (m, auto, params: days), *Guardaroba in numeri* (s/m, auto), *Ultimi outfit* (m/l).
 
 ## 8. Phases
