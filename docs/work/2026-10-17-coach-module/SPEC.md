@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
 | **Status** | Agreed with Marko 2026-10-17; implementation waits for the plugin contract on main (his call) |
 
@@ -185,7 +185,10 @@ Marko's rule (same as Self care): reminders **off by default**, at most one live
 - `hercules.reminder` (agenda job, disabled by default): only when I'm **behind a goal** and haven't trained
   today; never during DND/night (presence); max 2 per week (setting). One Hermes message "Oggi: Push A · 55 min ·
   1/3 questa settimana" with my favourite templates as buttons (Inizia / Segna fatto); a still-unread reminder is
-  replaced, not added, and carries a skip counter (Hermes repeat chain, as in Guardaroba/Self care).
+  replaced, not added (Hermes "One live reminder per thing", `Hestia-Hermes/hestia-hermes.md`): the event carries
+  `replaces: "hercules.reminder"`, Hermes supersedes the open one on every client and adds the skip counter itself
+  (Hercules text never counts skips); "Segna fatto" resolves it (`resolves: true` / `closes: "hercules.reminder"`).
+  Hercules registers the matching Hermes subscription at startup.
 - Missed days and the weekly picture are not pushed: they are in `hercules_summary` / module context, and the
   assistant mentions them when I talk to it ("ho saltato martedì, spostiamo?").
 - Presence: Hermes applies `notify.level` (no logic in Hercules).
