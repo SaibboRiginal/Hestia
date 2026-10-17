@@ -1,291 +1,215 @@
-# SPEC — Client plugins: modules install pages, widgets and dashboards into clients (WebUI first) · Scout as first plugin
+# SPEC — Client plugins: modules ship their own UI, clients discover and load it · Scout as first plugin
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 2.0 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Draft — waiting for Marko's confirmation (no code before it) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
 User's words (summary, Italian original in the thread): give custom modules a way to **"install" themselves**
-into the clients that have a plugin interface (WebUI first), so a module like Scout is not only notifications
-but can be **seen**: widgets, pages, etc. Widgets are placed and configured by hand **or shown automatically in
-a dashboard**; **Oracle can also create dashboards** for me. Pages are **always visible**. Settings to **hide or
-show** each thing **per client**. Then implement it for **Scout** so Scout gets visual feedback. Next, new modules
-(wardrobe, self care, coach — separate threads) will build on this contract as full standalone-quality apps
-with pages and assistant context.
+into the clients that have a plugin interface (WebUI first): widgets, pages, etc. Widgets placed and configured
+by hand or shown automatically in a dashboard; Oracle can also create dashboards. Pages always visible. Settings
+to hide/show per client. Then do it for **Scout**. New modules (wardrobe, self care, coach — separate threads)
+build on this as full standalone-quality apps.
+
+v2.0 (Marko, after reading v1): a plugin is **a small standalone app (TS/HTML, even Angular) that the WebUI loads
+from a link** and that adds routes and widgets dynamically, calling its own endpoints. The plugin system is a
+**catalog like the MCP one** (modules only say they are available) — **no new module**. **Each client keeps its
+own configuration** (what is shown, dashboards): the client is what gets configured.
 
 ---
 
 ## 1. Goal
 
-One **plugin contract** that any module (core or domain) uses to declare *what it can show* — pages, widgets,
-data sources and actions — once, generically, without knowing which client will render it. Clients that have a
-plugin interface (today: WebUI) discover the declarations and render them in the Hestia design system. The user
-decides per client what is visible. Dashboards compose widgets from any module; the user or Oracle builds them.
-Scout is the reference implementation.
+A module that has a UI ships it **inside the module** as a browser bundle (Web Components). It advertises it in its
+Hub registration, exactly like it advertises its MCP tools. Each client with a plugin interface (today the WebUI)
+reads the catalog from Hub, loads the bundles it supports, mounts their pages and widgets, and lets the user
+configure what is visible and the dashboards — stored as **that client's own settings** in Themis.
 
 ## 2. Scope
 
 ### In
-- Contract v1 (§4): manifest, surfaces (page, widget), data sources, actions, block kinds and their data shapes.
-- `hestia_common.plugin_client` (shared lib, same pattern as `settings_client`): declare + register + re-assert
-  + mount the data/action endpoints.
-- **New core module `Hestia-Agora`** (§3): plugin catalog + dashboards (storage in Archive) + MCP tools so
-  Oracle can list widgets and create/edit dashboards.
-- Visibility per client = Themis `scope="user"` settings auto-declared for every surface (profile → client layer).
-- WebUI: plugin runtime (sidebar entries for plugin pages, generic page renderer, block components, dashboard
-  page with edit mode, "Plugin" section in Impostazioni to show/hide per client), .NET proxy controller.
-- Scout plugin: "Case" page (filters, list/cards, detail), "Statistiche" section, widgets, actions.
-- Docs: `docs/ARCHITECTURE.md` (global rule), Agora + Scout + WebUI module docs, swagger, AI-GUIDE, DESIGN-SYSTEM.
+- Contract v2 (§4): manifest in Hub registration, bundle format (custom elements), host API given to plugins.
+- Hub: `GET /api/discovery/plugins?client=webui` (aggregates manifests, same pattern and cache as commands).
+- `hestia_common.plugin_client` (Python): declare manifest, put it in `capabilities`, serve the bundle files.
+- **Hestia WebUI SDK** `Hestia-Shared/webui-sdk/` (TypeScript): types, `definePlugin`, host API, design tokens +
+  CSS kit, small Lit-based kit components (button, card, stat, list, table, chart, empty/error states, form
+  fields, image picker), build script (esbuild) → one ES module per module.
+- WebUI: plugin loader (dynamic routes `/p/<module>/...`, sidebar entries, widget host), proxy for plugin calls,
+  dashboards page with edit mode, Impostazioni → *Plugin* (show/hide), WebUI's own settings for its configuration,
+  small MCP endpoint so Oracle can see widgets and propose dashboards.
+- Scout plugin: pages Case (+ detail) and Statistiche, widgets, actions.
+- Docs: `docs/ARCHITECTURE.md` (global rule), Hub/Scout/WebUI docs, swagger, AI-GUIDE, DESIGN-SYSTEM § Plugins.
 
 ### Out (for now)
-- Telegram rendering of plugins (contract allows it: `clients`; a later `/dashboard` text snapshot is possible).
+- Telegram plugins (contract allows other clients: `clients.telegram` later, e.g. text widgets).
 - Wardrobe / self care / coach modules → their own threads, on top of this contract.
-- Module-shipped JS bundles (web components) → contract reserves `renderer: "element:…"` for later (§4.7).
-- Photo outfit composition (wardrobe thread, later).
+- Device-level configuration (phone vs desk) → later, as a layer of the client's settings.
 
 ## 3. Who does what (module boundaries)
 
 | Module | Job in this feature |
 |---|---|
-| **Each module** (Scout, …) | declares its manifest; serves its own data sources and actions (its own data only) |
-| **Agora** (new, core, port **19020**, Raspberry Pi like Themis) | **catalog** of every module's manifest (register, re-assert, online state via Hub); **dashboards** (CRUD, auto "Home" dashboard); MCP tools for dashboards. Owns no domain data, renders nothing |
-| **Archive** | stores dashboards (one generic table `ui_dashboards`), like the settings store |
-| **Themis** | visibility settings per surface (user scope → client layer); the user changes them like any setting |
-| **Hub** | routing only (client → module data/action, module → Agora). Unchanged |
-| **WebUI** | renders surfaces and dashboards; proxies data/actions only to paths declared in the catalog |
-| **Oracle** | only through Agora's MCP tools (`ui_widgets`, `dashboard_*`) when the user asks in chat |
-| **Hermes** | unchanged: modules keep notifying through it; a notification may link to a plugin page (`_link`) |
+| **Each module** (Scout, …) | owns its UI bundle and its own REST endpoints; advertises the manifest in its Hub registration |
+| **Hub** | registry + discovery (already does it for MCP tools/commands): `/api/discovery/plugins`; routing unchanged |
+| **WebUI** (client) | loads bundles, gives them the host API, owns **its own configuration** (visibility, dashboards, layout) as its Themis settings, proxies plugin calls only to the plugin's own module |
+| **Themis** | stores every client's configuration like any setting (owner = the client, e.g. `webui.*`); history/undo free |
+| **Oracle** | sees widgets and dashboards through the WebUI's MCP tools; **proposes** a dashboard through Themis, Marko confirms via Hermes (same rule as every setting) |
+| **Hermes** | unchanged; a notification may carry `_link: {module, page, id}` → the WebUI opens that plugin page |
 
-Why a new module and not Hub/Themis: Hub is registry + router (no business logic), Themis is settings; a
-dashboard is user content composed across modules, so it needs one owner. Agora = "the square where modules show
-themselves".
+No new module: the catalog is discovery (Hub), the configuration belongs to the client.
 
-## 4. The contract v1 (read this if you build a plugin)
+## 4. The contract v2 (read this if you build a plugin)
 
-### 4.1 Declaring (Python module)
+### 4.1 Module side (Python)
 
 ```python
-from hestia_common.plugin_client import PluginClient, page, widget, section, block, source, action, field
+from hestia_common.plugin_client import PluginClient, page, widget
 
 ui = PluginClient("scout", title="Scout", icon="home", color="amber",
-                  description="Case trovate dalle email degli annunci")
-ui.declare(
-  sources=[
-    source("listings", "/api/ui/listings", params=["q", "city", "status", "price_max", "rooms_min", "sort", "limit", "offset"]),
-    source("listing", "/api/ui/listings/{id}"),
-    source("stats", "/api/ui/stats"),
-  ],
-  actions=[
-    action("fetch_now", "Controlla email", "POST", "/api/scout/cycle", icon="refresh", tone="primary"),
-    action("set_status", "Cambia stato", "PATCH", "/api/ui/listings/{id}",
-           fields=[field("listing_status", "Stato", "enum", options=["available", "in_negotiation", "sold"])]),
-  ],
+                  dist="/code/app/ui/dist")          # built bundle (see §4.4)
+ui.webui(
+  entry="scout.js",                                   # ES module that defines the custom elements
   pages=[
-    page("listings", "Case", icon="home", order=10,
-         filters=[field("q", "Cerca", "string"), field("city", "Città", "enum", options_source="stats#cities"),
-                  field("price_max", "Prezzo max", "int", unit="€")],
-         sections=[
-           section("Panoramica", [block("stat", source="stats#kpi")]),
-           section("Annunci", [block("cards", source="listings", item_page="listing",
-                                     item_actions=["set_status"])]),
-         ],
-         actions=["fetch_now"]),
-    page("listing", "Annuncio", detail=True, sections=[section(None, [block("detail", source="listing")])]),
+    page("case", "Case", element="scout-listings", icon="home", order=10),
+    page("case/:id", "Annuncio", element="scout-listing", detail=True),
+    page("statistiche", "Statistiche", element="scout-stats", icon="chart", parent="case"),
   ],
   widgets=[
-    widget("new_listings", "Nuove case", block("list", source="listings", params={"sort": "-created", "limit": 5}),
-           size="m", auto=True),
-    widget("kpi", "Case in numeri", block("stat", source="stats#kpi"), size="s", auto=True),
+    widget("kpi", "Case in numeri", element="scout-kpi-widget", sizes=["s", "m"], auto=True),
+    widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l"], auto=True,
+           params={"city": {"type": "string", "label": "Città"}, "limit": {"type": "int", "default": 5}}),
   ],
+  api_prefix="/api/ui/",                              # paths the bundle may call on its own module
 )
-app.include_router(ui.router())   # GET /api/ui/manifest (Agora re-reads it); data/actions are the module's own routes
-ui.start()                        # background register to Agora via Hub + hourly re-assert (like settings_client)
+app.include_router(ui.router())    # GET /api/ui/manifest, GET /ui/webui/{file} (bundle + assets, ETag)
+capabilities["ui_manifest"] = ui.manifest_path      # in the Hub registration payload, next to mcp_endpoint
 ```
 
-Ids: surface id = `<module>.<id>` (`scout.listings`, `scout.new_listings`). Paths are the module's own routes,
-reached only through Hub (`/route/<module>/<path>`); `{id}`-style placeholders are filled by the client.
+Pages are **always visible** by default; `detail=True` pages have no sidebar entry; `parent` makes sub-pages
+(sidebar entry expands: Guardaroba → Capi · Outfit · Accessori). Widget `params` = what the user (or Oracle) can
+configure per dashboard instance; `sizes` from `s` (1×1), `m` (2×1), `l` (2×2), `xl` (4×2); `auto` = proposed on
+the automatic Home dashboard.
 
-### 4.2 Manifest (JSON, what Agora stores and clients read)
+### 4.2 Manifest (what Hub aggregates)
 
 ```json
-{ "module": "scout", "version": 3, "title": "Scout", "icon": "home", "color": "amber", "description": "…",
-  "sources":  { "listings": {"path": "/api/ui/listings", "params": ["q", "…"]}, "…": {} },
-  "actions":  { "fetch_now": {"label": "Controlla email", "method": "POST", "path": "/api/scout/cycle",
-                              "icon": "refresh", "tone": "primary", "confirm": null, "fields": []} },
-  "pages":    [ {"id": "listings", "label": "Case", "icon": "home", "order": 10, "detail": false,
-                 "clients": ["*"], "filters": [], "actions": ["fetch_now"],
-                 "sections": [ {"title": "Panoramica", "blocks": [ {"kind": "stat", "source": "stats#kpi"} ]} ] } ],
-  "widgets":  [ {"id": "new_listings", "label": "Nuove case", "size": "m", "auto": true, "clients": ["*"],
-                 "block": {"kind": "list", "source": "listings", "params": {"limit": 5}},
-                 "configurable": ["city", "price_max"] } ] }
+{ "module": "scout", "version": "1.4.0+3f7f11f", "title": "Scout", "icon": "home", "color": "amber",
+  "clients": {
+    "webui": { "entry": "/ui/webui/scout.js", "api_prefix": "/api/ui/", "sdk": "1",
+               "pages":   [ {"id": "case", "label": "Case", "element": "scout-listings", "icon": "home", "order": 10} ],
+               "widgets": [ {"id": "nuove", "label": "Nuove case", "element": "scout-new-widget",
+                             "sizes": ["m", "l"], "auto": true, "params": {"city": {"type": "string"}}} ] } } }
 ```
 
-- `version` = hash/counter; clients refetch when the catalog revision changes.
-- `source#path` selects a sub-object of the source's answer (`stats#kpi` → `answer.kpi`).
-- `clients`: `["*"]` or a list (`webui`, `telegram`, …). A client shows only what it supports (§4.6).
-- `configurable`: widget params the user/Oracle may set per dashboard instance (e.g. city filter).
+`GET /api/discovery/plugins?client=webui` → `{revision, plugins: [manifest + online]}` (offline modules are
+listed as offline so the client can say "Scout non raggiungibile" instead of dropping the pages).
 
-### 4.3 Surfaces
+### 4.3 Bundle = Web Components
 
-- **Page** — a full screen. Non-detail pages get a sidebar entry under the module's group, **always visible by
-  default**. `detail: true` pages have no entry; they open from an item (`item_page`), route
-  `/p/<module>/<page>/<id>`. **Sub-pages**: `parent: "<page id>"` → the parent's sidebar entry expands into its
-  children (e.g. Guardaroba → Capi · Outfit · Accessori · Statistiche); the parent may have no sections (opens the
-  first child). A page = header (label, page actions, "Chiedi a Hestia") + optional filter bar +
-  optional `tabs` + sections; each section = title + grid of blocks (`span` 1–4 columns).
-- **Widget** — one block in a card, for dashboards. `size`: `s` (1×1), `m` (2×1), `l` (2×2), `xl` (4×2).
-  `auto: true` → appears on the automatic **Home** dashboard. Clicking a widget title opens `open_page` if set.
+- One ES module (`entry`) that registers custom elements with names prefixed by the module (`scout-…`).
+- Any tech that outputs custom elements: **Lit + TS (recommended, small, the SDK kit is Lit)**, vanilla TS/HTML,
+  or Angular Elements (allowed; heavier, ~150 KB per plugin).
+- The WebUI creates the element and sets two properties: `host` (§4.5) and `ctx`
+  (`{route params, query, widget params, size, theme, client}`); it listens for nothing else.
+- Styling: the design tokens are CSS variables (`--surface-1`, `--accent`, …) which reach inside shadow DOM; the
+  SDK ships the kit CSS and components so plugins look native in every theme. Phone: plugins must work at 360 px.
+- Live UI (workout timer, rest countdown, browser notifications) is plain client-side code in the bundle;
+  `host.notify()` asks the permission and shows a browser notification.
 
-### 4.4 Block kinds (closed vocabulary; data shapes are what the source returns)
+### 4.4 Build and deploy
 
-| kind | data shape (source answer, or `#sub` of it) | use |
+- Source in `Hestia-<Name>/ui/` (`package.json`, `src/`), built with `Hestia-Shared/webui-sdk/build.mjs`
+  (esbuild) into `Hestia-<Name>/ui/dist/` — **not committed** (`.gitignore`).
+- The module Dockerfile gets a Node build stage (multi-stage, output copied into the Python image). A UI change
+  needs `up-all.bat --build <svc>` (Forge tells the user, like WebUI changes).
+- Version in the manifest (`version + build hash`) → the WebUI caches bundles and reloads when it changes.
+
+### 4.5 Host API (what a plugin can do — `@hestia/webui-sdk`)
+
+| | |
+|---|---|
+| `host.api(method, path, {query, body})` | calls **its own module** through WebUI → Hub; only paths under `api_prefix`; returns `{status, data}` |
+| `host.image(path)` | URL for an image served by its module (module returns `{mime, data_b64}`; WebUI serves bytes) |
+| `host.upload(file, {maxSide: 2048})` | resizes on the device, returns `{name, mime, data_b64}` (≤ 8 MB) to put in a body |
+| `host.navigate(page, params)` / `host.link(...)` | routes inside the plugin (`/p/scout/case/123`) or other plugins |
+| `host.toast(text, tone)` · `host.confirm(title, text, danger)` | WebUI toasts and dialogs |
+| `host.assistant({label, hints, prompt})` | opens "Crea con Hestia" with the page context |
+| `host.notify(title, body)` | browser notification (asks permission once) |
+| `host.config` | read/write of the plugin's **per-client** preferences (stored in WebUI settings, §4.6) |
+| `host.on('refresh' \| 'theme' \| 'visible', cb)` | lifecycle |
+
+Rule: a plugin talks only to its own module. Data from other modules goes through its module (or Oracle via MCP).
+
+### 4.6 Client configuration (each client owns its own)
+
+The WebUI declares **its own** Themis settings (like it does already for `webui.auth.local_without_token`):
+
+| Key | Type | |
 |---|---|---|
-| `stat` | `{items:[{label, value, unit?, delta?, tone?, icon?, hint?}]}` | KPI tiles |
-| `list` | `{items:[{id, title, subtitle?, meta?, badge?:{text,tone}, icon?, image?, url?}], total?}` | compact lists |
-| `cards` | same as `list` + `fields?:[{label,value}]`, `tags?:[]` | rich items with photo |
-| `table` | `{columns:[{key,label,type?:text\|number\|money\|date\|badge\|link, sort?}], rows:[{id, …}], total?}` | sortable tables |
-| `detail` | `{title, subtitle?, image?, images?, badge?, fields:[{label,value,type?}], text?, links?:[{label,url}]}` | one record |
-| `chart` | `{type: line\|bar\|donut, x?:[…], series:[{name, values:[…], tone?}], unit?}` | trends, splits |
-| `timeline` | `{items:[{at, title, text?, tone?, icon?}]}` | history, logs |
-| `steps` | `{items:[{id, title, text?, done?, meta?}]}` (+ `toggle_action`) | routines, checklists |
-| `progress` | `{items:[{label, value, max, unit?, tone?}]}` | goals, gauges |
-| `markdown` | `{text}` | free text |
-| `form` | none (built from `action.fields`, types = Themis setting types) | create/edit records |
-| `actions` | none (list of action ids) | buttons |
+| `webui.plugins.hidden` | list | hidden pages/widgets (`scout.case`, `scout.*`); empty = everything visible |
+| `webui.plugins.order` | list | sidebar order of plugin pages |
+| `webui.dashboards` | object | `[{id, title, icon, auto, created_by, items:[{widget, x, y, w, h, params, title}]}]` |
+| `webui.plugins.prefs` | object | per-plugin preferences written by `host.config` |
 
-Common: `empty` text, `params` (fixed source params), `item_page`, `item_actions`, `refresh` seconds (≥ 30).
-Paging: client sends `limit`/`offset`, source returns `total`. Tones: `neutral, info, success, warning, danger, accent`.
-Every block shows loading / empty / error states (module offline → "Scout non raggiungibile", no crash).
+- `scope="user"`, so Themis already layers them (profile → client); another client (Telegram) declares its own.
+- Impostazioni → *Plugin*: modules with their pages/widgets and switches; dashboards edited on the dashboard page.
+- **Home dashboard**: built from visible `auto` widgets until the user edits it (then it is saved; new auto widgets
+  are appended, never moved).
+- Oracle: the WebUI registers in Hub with a small MCP endpoint: `webui_widgets(q?)` (compact catalog) and
+  `webui_dashboards()`. To create or change a dashboard Oracle uses the existing `settings_propose` on
+  `webui.dashboards` → Hermes → Marko confirms (same rule as every setting; nothing is written behind his back).
 
-### 4.5 Actions
+### 4.7 Endpoints
 
-`{label, method, path, icon?, tone?, confirm?: "text", fields?: [field…]}`. With `fields` the client opens a form
-(same controls as Themis settings: enum, bool, int, float, string, text, time, list, date, image-url, **image**).
-**Image upload** (`image`, `images`): the client resizes on device (long side ≤ 2048 px, JPEG/WebP) and sends
-`{name, mime, data_b64}` (≤ 8 MB each) inside the JSON body — Hub envelopes stay JSON, no multipart. The module
-stores the file (its own data volume or Archive documents) and serves it back as a source route. Answer of
-an action: `{ok, message?, refresh?: ["listings"], open?: {page, id}}`. Clients show `message` as a toast and
-refresh the named sources. Destructive actions must set `confirm`.
-
-### 4.6 Visibility per client (Themis)
-
-`plugin_client` auto-declares for every non-detail surface a Themis setting
-`<module>.ui.<surface>.visible` (`bool`, `scope="user"`, group "Interfaccia", default `true`, `oracle="propose"`).
-Profile = default for every client, client layer = override (hide Scout's page on the phone WebUI but not on desk
-is a later "device" layer, out of v1). Clients read them with the catalog. Impostazioni → *Plugin* lists modules
-and their pages/widgets with the switches.
-
-Client capability: each client sends `client=<name>&kinds=stat,list,…` when reading the catalog; Agora drops
-surfaces whose `clients` exclude it or whose blocks use kinds the client cannot draw.
-
-### 4.7 Renderer (rich apps)
-
-A page or widget may set `renderer`:
-- absent (default) → generic renderer from blocks. **Preferred**: zero client code.
-- `"native:<module>.<name>"` → a component shipped in the client (WebUI: `src/app/plugins/<module>/`,
-  registered in `plugins/registry.ts`), for app-quality screens blocks can't do (live workout logger, outfit
-  composer). Still declared, routed, made visible and permission-checked by the contract; data still only from
-  the module's sources/actions. Shown only while the module is registered.
-- Live UI (running workout timer, rest countdown, browser notifications) is **client-side** inside a `native:`
-  component: the source gives `started_at`/`rest_until`, the component ticks and calls the Notification API
-  itself; nothing is pushed by the server in v1. Generic blocks refresh by polling (`refresh` ≥ 30 s; a native
-  component may poll faster while visible).
-- `"element:<url>"` → reserved for module-shipped web components (not in v1).
-
-### 4.8 Dashboards (Agora)
-
-```json
-{ "id": "home", "title": "Home", "icon": "grid", "auto": true, "created_by": "user|oracle", "clients": ["*"],
-  "items": [ {"widget": "scout.new_listings", "x": 0, "y": 0, "w": 2, "h": 1, "params": {"city": "Milano"},
-              "title": "Case a Milano"} ] }
-```
-
-- **Home** (`auto: true`): built from every visible `auto` widget, ordered by module; once the user edits it,
-  it becomes a normal dashboard (new auto widgets are appended at the end, never moved).
-- Users: create, rename, delete, edit mode (add from catalog, drag to move, resize s/m/l/xl, per-item params from
-  `configurable`, title override). Dashboards appear in the sidebar under *Dashboard*.
-- Oracle (MCP, domain `ui`): `ui_widgets(q?)` (catalog for the model, compact), `dashboard_list`,
-  `dashboard_create(title, items)`, `dashboard_update(id, add?, remove?, title?)`. Created directly when the
-  user asks in chat (reversible user content, marked "creata da Hestia"); Athena may only *suggest* via Hermes.
-
-### 4.9 Endpoints
-
-Module (via `plugin_client`): `GET /api/ui/manifest`. Its sources/actions are its own routes.
-
-Agora (via Hub `/route/agora/…`):
-
-| Method | Path | |
-|---|---|---|
-| POST | `/api/plugins/register` | module sends manifest (idempotent, by module + version) |
-| GET | `/api/plugins/catalog` | `client, kinds` → modules (online from Hub) + surfaces + visibility + `revision` |
-| GET | `/api/plugins/revision` | change marker (catalog + dashboards) |
-| GET/POST | `/api/dashboards` | list / create |
-| GET/PUT/DELETE | `/api/dashboards/{id}` | read / replace / delete |
-
-WebUI backend (`/api/webui/plugins/*`, token-protected): `catalog`, `data/{module}/{source}` (query →
-path params + query), `action/{module}/{action}` (body), `dashboards*`. It checks the module/source/action exist in
-the catalog before calling Hub — no free proxy.
-
-### 4.10 Not in this contract
-
-Assistant context from a module (e.g. a common `GET /api/module/context` summary for Oracle) is not a UI concern:
-the wardrobe thread defines it in its dossier and self care / coach reuse it. Data stays reachable to Oracle via
-MCP tools as today.
-
-### 4.11 Rules for plugin authors
-
-- Sources are **read-only** and fast (< 1 s); heavy work stays in the module's own jobs (agenda).
-- Return labels in Italian, already formatted for people (money, dates as ISO + client formats them).
-- Images: `https` URLs or module routes (`/api/ui/files/{id}` through Hub); never data from other modules.
-- No secrets or raw personal data in manifests (the repo is public; manifests are code).
-- A module's notifications (Hermes) may carry `_link: {module, page, id}` → WebUI opens the plugin page.
+| Who | Method | Path | |
+|---|---|---|---|
+| Module | GET | `/api/ui/manifest` | manifest (also advertised as `capabilities.ui_manifest`) |
+| Module | GET | `/ui/<client>/{file}` | bundle and static assets (ETag) |
+| Hub | GET | `/api/discovery/plugins?client=` | aggregated catalog + online state + revision |
+| WebUI | GET | `/api/webui/plugins` | catalog for the frontend (with visibility applied) |
+| WebUI | GET | `/plugins/{module}/{file}` | bundle proxy (cached by version) |
+| WebUI | ANY | `/api/webui/plugins/{module}/call/{path}` | plugin → its own module (checks `api_prefix`) → 403 otherwise |
 
 ## 5. Scout plugin (first implementation)
 
-- Sources: `listings` (search over Archive `real_estate`: q, city, status, price range, rooms, sqm, sort, paging),
-  `listing/{id}` (detail: fields, summary, features, link to the ad, map link from geocoding), `stats`
-  (kpi: totale, disponibili, in trattativa, venduti, prezzo medio, €/m² medio; charts: nuove case per settimana,
-  per stato, prezzo per città; `cities` for the filter).
-- Page **Case**: KPI row, filters, cards (price, m², rooms, city, status badge, score, "Apri annuncio"), detail page.
-  Page tab **Statistiche**: charts.
-- Actions: *Controlla email* (existing cycle), *Cambia stato* (patch `listing_status`), *Preferita* / *Scarta*
-  (new user flag `user_flag: favorite|discarded`, discarded hidden by default).
-- Widgets (auto): *Case in numeri* (s), *Nuove case* (m); manual: *Preferite* (m), *Prezzi per città* (l).
-- Notifications: Scout's `entity.upserted` events gain `_link` to the listing.
+- Module endpoints `/api/ui/…`: `listings` (q, city, status, price, rooms, m², sort, paging), `listings/{id}`,
+  `stats` (KPI, nuove per settimana, per stato, prezzi per città, città per i filtri), `PATCH listings/{id}`
+  (`listing_status`, user flag `favorite|discarded`), `POST cycle` (existing email cycle).
+- Pages: **Case** (KPI row, filters, cards with price, m², rooms, city, status, score, "Apri annuncio", Preferita /
+  Scarta), **Annuncio** (detail, features, summary, map link), **Statistiche** (charts).
+- Widgets: *Case in numeri* (auto), *Nuove case* (auto, param city), *Preferite*, *Prezzi per città*.
+- Scout's `entity.upserted` notifications gain `_link` to the listing.
 
 ## 6. Acceptance criteria
 
-1. A module that calls `PluginClient(...).declare(...); start()` appears in the WebUI (sidebar page + widgets in the
-   catalog) with **no WebUI code change** (generic renderer), within a minute of starting.
-2. Module stopped → its pages show "non raggiungibile" and widgets a muted offline state; no errors elsewhere.
-3. Impostazioni → Plugin: hiding Scout's page on WebUI removes the sidebar entry; Telegram unaffected; reset works.
-4. Home dashboard shows Scout's auto widgets; user can add/move/resize/remove widgets, create a second dashboard.
-5. In chat "creami una dashboard con le case a Milano" → Oracle uses `ui_widgets` + `dashboard_create`; it appears
-   in the sidebar marked as created by Hestia.
-6. Scout page: filter, open detail, change status, mark favourite, run "Controlla email" with toast + refresh.
-7. WebUI proxy rejects undeclared modules/sources/actions (403).
-8. Phone layout usable (sidebar burger, one-column dashboard, cards stack).
+1. A module with a `ui/` bundle and `capabilities.ui_manifest` appears in the WebUI (sidebar + widget catalog)
+   **without changing or rebuilding the WebUI**, within a minute of registering.
+2. Module stopped → its pages say "non raggiungibile", widgets show a muted offline state, nothing else breaks.
+3. Impostazioni → Plugin: hiding Scout's page removes it from the WebUI sidebar; reset/undo works (Themis history).
+4. Home dashboard shows Scout's auto widgets; add/move/resize/remove, configure params, create a second dashboard.
+5. Chat "creami una dashboard con le case a Milano" → Oracle proposes it; after Approva it appears in the WebUI.
+6. Scout pages: filter, detail, status change, favourite/discard, "Controlla email" with toast and refresh.
+7. A plugin calling another module's path or outside `api_prefix` gets 403.
+8. Usable on the phone (360 px), light and dark themes.
 
 ## 7. Phases
 
-- **P1 Contract + Agora**: `plugin_client` (declare, validate kinds/fields, manifest router, register/re-assert,
-  visibility settings), Agora service (catalog, dashboards, Archive store `ui_dashboards`, MCP tools), compose
-  global + rpi, Hub tags, swagger, docs.
-- **P2 WebUI runtime**: .NET `PluginsController`; frontend `features/plugins/` (catalog store, dynamic sidebar
-  group, page renderer, 12 block components, action forms, dashboard page + edit mode), Impostazioni → Plugin,
-  DESIGN-SYSTEM § Plugins. Verified with `ng build` + Playwright on mocked API.
-- **P3 Scout plugin**: sources, actions, user flag, manifest, `_link` on events, docs.
-- **P4 Oracle**: domain `ui` routing for the dashboard tools, prompt hints; end-to-end check of criterion 5.
+- **P1 Contract**: `plugin_client` (manifest, router, bundle files), Hub `/api/discovery/plugins` (+ cache,
+  revision), WebUI SDK (types, host API, kit, build script), swagger, ARCHITECTURE rule.
+- **P2 WebUI runtime**: .NET `PluginsController` (catalog, bundle proxy, call proxy, image), WebUI settings
+  (`webui.plugins.*`, `webui.dashboards`), Angular loader (dynamic routes, sidebar, widget host), dashboard page +
+  edit mode, Impostazioni → Plugin, MCP endpoint, DESIGN-SYSTEM § Plugins. `ng build` + Playwright on mocks.
+- **P3 Scout plugin**: endpoints, user flag, `ui/` bundle (Lit), Dockerfile build stage, `_link`, docs.
+- **P4 Oracle**: domain routing for `webui_widgets` / dashboards proposal, end-to-end check of criterion 5.
 
-Tests: written for `plugin_client` validation and Agora (unit/api), not run here (user rule).
+Tests: written (plugin_client, Hub discovery, call-proxy guard), not run here (user rule).
 
 ## 8. Decisions to confirm (Marko)
 
-1. **New module Agora** owns catalog + dashboards (recommended) — alternative: catalog in Hub, dashboards in Themis.
-2. **Rich apps**: declarative blocks first + `native:` WebUI components when blocks are not enough (recommended);
-   module-shipped web components later.
-3. **Oracle creates dashboards directly** when asked in chat (recommended, reversible); Athena only suggests.
-4. Visibility per **client** (webui/telegram) in v1; per **device** (phone vs desk) later.
+1. Plugins as **Web Components with Lit + TS** (recommended; Angular Elements allowed when a plugin wants it).
+2. Bundles **built in the module's Docker image** (recommended), not committed to git.
+3. Oracle **proposes** dashboards via Themis and you approve (recommended, same rule as settings) — or it writes
+   them directly because they are only layout.
