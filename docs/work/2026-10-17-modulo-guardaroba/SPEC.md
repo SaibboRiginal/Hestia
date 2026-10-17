@@ -1,8 +1,8 @@
-# SPEC — Wardrobe module (Guardaroba): pieces, accessories, outfits, wear diary, stats
+# SPEC — Wardrobe module (Guardaroba): pieces, accessories, outfits, occasional wear marks, stats
 
 | | |
 |---|---|
-| **Version** | 1.3 |
+| **Version** | 1.4 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
 | **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract v2 `docs/work/2026-10-17-client-plugins/SPEC.md` §4 (itself a draft); built once that contract is on main |
 
@@ -47,7 +47,7 @@ suggest outfits for an occasion, a season, the weather or a trip.
 - New **generic blob store in Archive** (`/api/blobs`) for photos [shared: owned by this thread, reusable by
   Self care / Coach].
 - REST API (consumed by WebUI through Hub), MCP tools (Oracle, Telegram, MCP gateway), assistant context
-  summary, statistics, rule-based outfit suggestions, wear diary, laundry/status tracking, wishlist.
+  summary, statistics, rule-based outfit suggestions, optional "indossato" marks, laundry/status tracking, wishlist.
 - Optional AI help through **Oracle only**: describe a photo to prefill a new piece.
 - Settings through Themis (`SettingsClient("wardrobe")`), scheduling through the agenda, notifications through
   Hermes.
@@ -93,7 +93,7 @@ material, style) made by Oracle, for semantic search ("la camicia azzurra di lin
 | `purchase` | `{date?, price?, currency, store?, gift}` | cost per wear in stats |
 | `photos` | `[blob_id]` | first = cover; thumbnails generated (§4.6) |
 | `favorite`, `tags`, `notes` | bool, list, str | |
-| `wear_count`, `last_worn` | derived | recomputed from the diary, never typed by hand |
+| `wear_count`, `last_worn` | derived | from the "indossato" marks; `last_worn` can also be set by hand ("l'ho messo la settimana scorsa") |
 
 Accessories use the same model (`kind=accessory`) with categories bag, belt, watch, jewellery, glasses, hat,
 scarf, gloves, tie, wallet, other; they get their own page and filters.
@@ -105,7 +105,11 @@ accessories ×n — a slot can be empty), `styles`, `occasions`, `seasons` (defa
 `source` (user · assistant), `status` (active · archived), `notes`. Derived: `wear_count`, `last_worn`,
 `complete` (false when a piece is donated/archived → shown as "da rivedere").
 
-### 4.3 Wear (`wardrobe_wears` + `wardrobe_wear_pieces`) — diary entry (what was worn on a day)
+### 4.3 Wear (`wardrobe_wears` + `wardrobe_wear_pieces`) — an occasional "indossato" mark
+**Not a daily diary** (v1.4, user): Marko marks a wear only when he feels like it, by picking the outfit (one
+tap on "Indossato" on an outfit card or widget, date = today, editable) or by telling the assistant. Nothing in
+the module assumes marks are complete: no daily nudge, no "missing days", no streaks. Marks are sparse hints
+that make suggestions and stats a bit smarter; without them everything still works.
 `date`, `outfit_id?` or `piece_ids[]` (ad-hoc outfit), `occasion?`, `weather? {temp_c, condition}`,
 `rating?` (how it felt), `notes?`, `source` (webui · telegram · assistant). Writing/deleting a wear updates
 `wear_count`/`last_worn` on the pieces and the outfit.
@@ -143,9 +147,9 @@ New generic Archive API, pure storage (no meaning):
 | POST | `/api/wardrobe/pieces/{id}/photos` · DELETE `.../photos/{blob_id}` | add/remove photo, set cover |
 | POST | `/api/wardrobe/pieces/bulk` | bulk status change (e.g. 5 pieces → laundry) |
 | GET/POST, GET/PATCH/DELETE | `/api/wardrobe/outfits[/{id}]` | same as pieces |
-| GET/POST, DELETE | `/api/wardrobe/wears[/{id}]` | diary (range `from`/`to`) / log a wear |
+| GET/POST, DELETE | `/api/wardrobe/wears[/{id}]` | marks (range `from`/`to`) / mark an outfit or pieces as worn |
 | POST | `/api/wardrobe/suggest` | `{date?, occasion?, styles?, weather?, exclude_recent_days?, count?}` → ranked outfits (saved + generated) with reasons |
-| GET | `/api/wardrobe/stats` | totals by kind/category/colour/season/style, value, cost per wear, most/least worn, forgotten pieces, gaps (e.g. no winter shoes) |
+| GET | `/api/wardrobe/stats` | totals by kind/category/colour/season/style, value, value, forgotten pieces (from marks and the hand-set last worn), most/least worn and cost per wear shown only as hints when marks exist, gaps (e.g. no winter shoes) |
 | GET/PUT | `/api/wardrobe/taxonomies[/{name}]` | vocabularies |
 | GET/POST, PATCH | `/api/wardrobe/collections[/{id}]` | capsules, packing lists |
 | POST | `/api/wardrobe/describe-photo` | photo → Oracle (vision) → proposed piece fields (never saved by itself) |
@@ -215,8 +219,6 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
 - Job `wardrobe.review` (monthly, 1st Sunday 10:00, registered with `agenda_client`, runs only when
   `wardrobe.review.enabled`): Hermes notification to `owner` with forgotten pieces, pieces to repair, laundry
   older than 7 days, outfits to review. User edits/pauses in the agenda win.
-- Optional evening nudge "cosa hai indossato oggi?" as a second agenda job `wardrobe.diary_prompt` (disabled
-  by default) — diary quality drives stats and suggestions.
 
 ## 7. UI (WebUI) — through the plugin contract
 
@@ -236,14 +238,14 @@ WebUI rule (`<hx-resize>` behaviour, via the SDK kit equivalent).
    actions on a card (in lavanderia, indossato oggi, preferito); "+" opens the add flow.
 2. **Accessori** (`wardrobe-pieces` with `kind=accessory`) — same view preset on `kind=accessory`.
 3. **Dettaglio capo** (`wardrobe-piece`, detail page `capi/:id`) — side drawer (`<hx-resize key="wardrobe-piece">`) or full page on phone: photos
-   carousel, all fields editable inline, outfits that use it, wear history, cost per wear.
+   carousel, all fields editable inline, outfits that use it, last time worn (if marked).
 4. **Aggiungi capo** (`wardrobe-add`) — fast path: take/choose photo → "Compila con l'AI" (describe-photo) → review → save;
    only name + category required, the rest optional; "aggiungi un altro" keeps category/brand.
 5. **Outfit** (`wardrobe-outfits`, builder `wardrobe-outfit-builder`) — cards with a mosaic of piece thumbnails by slot; **builder**: slots on the left, piece picker
    on the right filtered by slot (`<hx-resize key="wardrobe-builder">`); save, rate, mark worn.
-6. **Diario** (`wardrobe-diary`) — month calendar with the outfit thumbnail per day; tap a day to log/edit.
+6. *(no Diario page)* — marks are listed in the outfit/piece detail ("ultime volte"); "Indossato" button on outfit cards and on the *Outfit di oggi* widget.
 7. **Suggerimenti** (`wardrobe-suggest`) — "Cosa mi metto": occasion/weather inputs, ranked outfits with reasons, "indossa" / "salva".
-8. **Statistiche** (`wardrobe-stats`) — charts: category/colour/season distribution, most/least worn, cost per wear, forgotten
+8. **Statistiche** (`wardrobe-stats`) — charts: category/colour/season distribution, most/least worn (when marked), forgotten
    pieces with action buttons (archivia, da donare).
 9. **Wishlist e valigie** (`wardrobe-collections`) — wishlist pieces; packing lists with checkboxes.
 10. **Vocabolari** (`wardrobe-vocab`) — edit styles, categories, occasions, locations.
@@ -262,7 +264,7 @@ dimenticati* (m, auto, params: days), *Guardaroba in numeri* (s/m, auto), *Ultim
 | **W4** | UI bundle `Hestia-Wardrobe/ui/` (Lit, pages + widgets) + manifest + Dockerfile Node stage | W1–W3 + plugin contract on main |
 | **W5** | describe-photo (Oracle vision), collections (capsule, packing lists), export/import | W1 |
 | **W6** (later, step by step) | Outfit board: manual collage of piece photos in the builder (drag/scale, saved in `outfit.board`) → then automatic cut-outs (background removal, run where the hardware allows) → auto-composed outfit image | W4 |
-| **W7** (far future) | **Mirror check-in**: a photo of yourself before going out (WebUI/Telegram) → Oracle vision compares it with the pieces' photos and descriptions → proposed wear entry (pieces + matching outfit, confidence) → you confirm or fix with one tap; the photo can be kept as the outfit's "worn" picture. Optional agenda nudge in the morning | W5 (describe-photo), pieces with photos |
+| **W7** (far future) | **Mirror check-in**: a photo of yourself before going out (WebUI/Telegram) → Oracle vision compares it with the pieces' photos and descriptions → proposed wear entry (pieces + matching outfit, confidence) → you confirm or fix with one tap; the photo can be kept as the outfit's "worn" picture. No nudges: only when he takes the photo | W5 (describe-photo), pieces with photos |
 
 ## 9. Acceptance criteria
 
@@ -271,10 +273,11 @@ dimenticati* (m, auto, params: days), *Guardaroba in numeri* (s/m, auto), *Ultim
 2. Every field of §4 is editable; pieces filter by kind/category/season/style/status/colour and are found by
    semantic search ("giacca pesante scura").
 3. Outfits can be built from pieces by slot, rated, worn; donating a piece flags its outfits "da rivedere".
-4. Logging a wear updates wear count / last worn of pieces and outfit; the diary shows every day.
+4. Marking an outfit as worn takes one tap and updates last worn of its pieces; with no marks at all, suggestions
+   and stats still work (no errors, no "dati mancanti" nagging).
 5. "Cosa mi metto domani per ufficio, 8 gradi, pioggia" through chat returns 3 outfits from available pieces
    (no laundry, right season/warmth, not worn in the last days) with reasons.
-6. Stats show cost per wear, forgotten pieces and gaps; the monthly review (when enabled) arrives through Hermes.
+6. Stats show composition, value, forgotten pieces and gaps (usage hints only when marks exist); the monthly review (when enabled) arrives through Hermes.
 7. The assistant answers wardrobe questions using only the tools/context (no data in Oracle).
 8. No direct service URLs (Hub only), no DB outside Archive, no LLM call outside Oracle, no new env tunables
    (only infra: port/URLs, `ARCHIVE_BLOB_MAX_MB`), no personal data in tracked files.
