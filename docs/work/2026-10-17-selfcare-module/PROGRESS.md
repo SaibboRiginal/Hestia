@@ -5,7 +5,8 @@ Read SPEC.md first. Resume from the first unchecked box.
 - [x] Study repo, module patterns (Scout, Dummy, Archive presence store, Themis, agenda, Hermes actions)
 - [x] Agree ports/storage with parallel threads (Guardaroba 19017, Self care 19018, Coach 19019; shared media store owned by Guardaroba)
 - [x] SPEC v1.0 written
-- [ ] Marko confirms SPEC (open points §13)
+- [x] Marko confirmed SPEC (v2.0: flexible goals, few non-stacking reminders, journal per body part)
+- [ ] Wait for the plugin contract on main (thread "Plugin dei moduli nei client"), then start phase 1
 - [ ] Phase 1 — backend core (skeleton, Archive tables + store, products/areas/lists, routines+versions, logs, today, MCP tools, tests)
 - [ ] Phase 2 — tracking & insight (events, stats, prediction, alerts, conflicts, timeline, journal, shopping)
 - [ ] Phase 3 — reminders (agenda jobs, Hermes buttons, snooze)
