@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
-| **Status** | §13 answered by Marko 2026-10-17 → v2.0, waiting for his go to start P1 |
+| **Status** | Agreed with Marko 2026-10-17; implementation waits for the plugin contract on main (his call) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -170,10 +170,22 @@ context. Shared contract `GET /api/module/context` (agreed with the sibling thre
 3/4 sett. · PR panca 85 kg") a module may expose for the assistant's daily context.
 Memory facts stay in Oracle/Archive memory; Hercules data stays in Hercules (no duplication into memory).
 
+### 6.2b Training goals (same shape as Self care / Guardaroba)
+- A goal is optional: `off` (default) or `{times, per: day|week|month}`.
+- **Generic first**: "allenarmi 3 volte a settimana" counts any finished session. **Then optionally specific**:
+  goals per template ("Gambe 1/settimana") or per muscle group ("schiena 2/settimana", counts sessions with ≥N hard
+  sets for it). A program (§4.2) may set its goal automatically (days in the schedule per week).
+- Progress shown everywhere the same way: "2/3 questa settimana", streak of periods met, history per period.
+- **Fatto oggi in un tocco** from the WebUI Home (shared quick-log component proposed to the plugin thread):
+  favourite templates as big chips. Tap → choose "Inizia" (live logging) or "Segna fatto" (records the session
+  with the template's planned values, editable later, with Annulla). Also "fatto" in chat to the assistant.
+
 ### 6.3 Proactivity (minimal, all via agenda, no timers)
 Marko's rule (same as Self care): reminders **off by default**, at most one live reminder, never stacking.
-- `hercules.reminder` (agenda job, disabled by default): on a planned day, one Hermes message "Oggi: Push A ·
-  55 min"; if a reminder is still unread it is replaced, not added; a skip counter is shown, not repeated messages.
+- `hercules.reminder` (agenda job, disabled by default): only when I'm **behind a goal** and haven't trained
+  today; never during DND/night (presence); max 2 per week (setting). One Hermes message "Oggi: Push A · 55 min ·
+  1/3 questa settimana" with my favourite templates as buttons (Inizia / Segna fatto); a still-unread reminder is
+  replaced, not added, and carries a skip counter (Hermes repeat chain, as in Guardaroba/Self care).
 - Missed days and the weekly picture are not pushed: they are in `hercules_summary` / module context, and the
   assistant mentions them when I talk to it ("ho saltato martedì, spostiamo?").
 - Presence: Hermes applies `notify.level` (no logic in Hercules).
@@ -181,9 +193,9 @@ Marko's rule (same as Self care): reminders **off by default**, at most one live
 ## 7. Settings (Themis, `settings_client.setting(...)`, no env)
 `hercules.units` (kg/lb) · `hercules.rest.default_seconds` (90) · `hercules.increment.<equipment>` · `hercules.bar_weight`
 (20) · `hercules.plates` (list) · `hercules.e1rm_formula` (epley/brzycki) · `hercules.week_start` (monday) ·
-`hercules.weekly_target` (sessions, 3) · `hercules.stall.exposures` (3) · `hercules.adapt.*` thresholds ·
+`hercules.goal` (off | {times, per}) · `hercules.reminder.max_per_week` (2) · `hercules.stall.exposures` (3) · `hercules.adapt.*` thresholds ·
 `hercules.reminder.enabled` (false) · `hercules.reminder.time` · `hercules.skip_mode` (shift/keep) · `hercules.warmup.scheme`.
-Env: only `COACH_PORT` / Hub URL (infrastructure).
+Env: only `HERCULES_PORT` / Hub URL (infrastructure).
 
 ## 8. Clients (UI through the plugin contract — implemented after that contract is on main)
 

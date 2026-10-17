@@ -14,3 +14,4 @@
   reason: Marko's answers to §13 — source: user in project thread.
 - v2.1 — 2026-10-17 — §8.0 uses plugin contract v2.2 offline support (PWA cache, host.online, host.store) — reason: contract update — source: thread Plugin dei moduli nei client.
 - v2.2 — 2026-10-17 — §8.2b quick actions (start today, resume, log bodyweight, skip today) — reason: plugin contract v2.3 — source: thread Plugin dei moduli nei client.
+- v2.3 — 2026-10-17 — §6.2b optional training goals (generic N per day/week/month, then per template/muscle), one-tap 'fatto oggi' from Home with favourites, reminders only when behind (max 2/week, one live); implementation waits for plugin contract — reason: Marko's messages (this thread + Guardaroba thread, applies to all modules) — source: user in project threads.
