@@ -23,6 +23,7 @@ DEDUPE_RECURRING_TYPES = "hermes.dedupe.recurring_types"
 BATCH_WINDOW = "hermes.batch.window"
 BATCH_MAX_ATTEMPTS = "hermes.batch.max_attempts"
 RETRACT_AFTER = "hermes.retract.after"
+REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
 
 settings = SettingsClient("hermes")
 settings.declare([
@@ -51,6 +52,10 @@ settings.declare([
             min=1, max=46, unit="h",
             help="Le notifiche già viste o gestite spariscono dalla chat Telegram dopo questo tempo "
                  "(restano nell'elenco della WebUI). Telegram permette di cancellarle solo entro 48 h."),
+    setting(REPEAT_RESET_AFTER_DAYS, "Azzera il contatore dei promemoria dopo", "int", 30, group="Promemoria",
+            min=1, max=365, unit="giorni",
+            help="Un promemoria ripetuto (es. una routine) tiene il conto di quante volte l'hai saltato. "
+                 "Se per questo tempo non arriva più, il conto riparte da zero."),
 ]).declare_log_level()
 
 

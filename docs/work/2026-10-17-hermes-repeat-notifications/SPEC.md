@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat (project thread "Modulo Self care", 2026-10-17, point 2; split out by the channel session) | Proposed — waiting for user approval |
+| 1.1 | user via external chat (project thread "Modulo Self care", 2026-10-17, point 2; split out by the channel session) | Approved 2026-10-17 («deve funzionare con Hermes e per tutti i client») — implemented |
 
 ## 1. Goal
 Marko: «non voglio avere tipo 999 promemoria se non li risolve ogni giorno, mantiene magari 1 con quante volte sono
@@ -73,8 +73,8 @@ an audio client just reads it after the message. The inbox `view` exposes the sa
 ### 5.4 Clients
 - **Telegram**: `update` with `state: superseded` → delete the old message (fallback over 48 h: buttons replaced by
   «↻ Sostituito»); new message rendered with the repeat line in italics under the text.
-- **WebUI**: backend unchanged (it forwards to SignalR); frontend removes a superseded item from the list (and
-  its toast), shows the repeat chip on cards and toasts, counts don't double.
+- **WebUI**: backend unchanged (it forwards to SignalR); frontend removes a superseded item from the list (an
+  old toast simply expires), shows the repeat chip on cards and toasts, counts don't double.
 
 ### 5.5 Settings (Themis, `hermes_settings.py`)
 | Key | Type / default | Effect |

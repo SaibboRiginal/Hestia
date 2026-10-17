@@ -50,6 +50,7 @@ const LEVEL_ICON: Record<string, string> = { info: 'bell', success: 'check', war
               <div class="main">
                 <div class="meta">
                   <span class="src">{{ sourceLabel(n.source) }}</span>
+                  @if (n.repeat) { <hx-badge tone="warning" title="Lo stesso promemoria, inviato di nuovo">↻ {{ n.repeat.text }}</hx-badge> }
                   @if (n.other_client && n.origin) { <hx-badge tone="neutral">da {{ clientLabel(n.origin.client) }}</hx-badge> }
                   <span class="time">{{ time(n.created_at) }}</span>
                   @if (!n.read) { <span class="dot" title="Da leggere"></span> }

@@ -131,7 +131,7 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted |
+| `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted; repeat chains: `repeat.text` shown in italics («↻ Saltato 2 volte»), `update superseded` → old message deleted (over 48 h: «↻ Sostituito»), button on a replaced one → «Sostituita da un promemoria più recente» |
 | `POST` | `/api/dispatch/send` | Legacy (no longer called by Hermes): dispatch payloads via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
 | `GET` | `/health` | Service health |
 

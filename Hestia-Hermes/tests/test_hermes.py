@@ -291,3 +291,96 @@ class TestPresenceHold:
         result = center.publish(message="ciao", event_type="x.y", domain="d", level="info")
         assert sent and all(b["silent"] for b in sent)
         assert result["deliveries"] == 2
+
+
+@pytest.mark.unit
+class TestRepeatChain:
+    """SPEC 2026-10-17-hermes-repeat-notifications: one live reminder per thing + skip counter."""
+
+    @staticmethod
+    def _row(nid, state, created_at, repeat=None, resolved=False):
+        payload = {"notification": {"repeat": repeat} if repeat else {}, "deliveries": {}}
+        if resolved:
+            payload["repeat_resolved"] = True
+        return {"outbound_event_id": nid, "lifecycle_state": state, "created_at": created_at, "payload": payload}
+
+    @staticmethod
+    def _recent(days=1):
+        from datetime import datetime, timedelta, timezone
+        return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    def _publish(self, center, rows):
+        center.archive.get_outbound_events.return_value = rows
+        bodies = {}
+
+        def fake_route(service, path, body, **kw):
+            bodies[service] = body
+            return 200, {"delivered": True}
+        with patch.object(center, "_route", side_effect=fake_route), \
+                patch.object(center, "_broadcast") as broadcast, \
+                patch("modules.notifications.settings") as settings:
+            settings.get.return_value = 30
+            result = center.publish(message="Maschera capelli", event_type="selfcare.reminder",
+                                    domain="selfcare", replaces="selfcare.reminder.r42")
+        return result, bodies, broadcast
+
+    def test_first_occurrence_has_no_counter(self, center):
+        result, bodies, broadcast = self._publish(center, [])
+        assert result["repeat"]["count"] == 1
+        assert bodies["telegram"]["repeat"] is None
+        center.archive.find_active_outbound_event.assert_not_called()   # never deduped
+        broadcast.assert_not_called()
+
+    def test_open_previous_is_superseded_and_counted(self, center):
+        prev = self._row("old", "delivered", self._recent(), {"count": 2, "skipped": 1, "since": "2026-10-12T08:00:00+00:00"})
+        center.archive.patch_outbound_event.return_value = (200, prev)
+        result, bodies, broadcast = self._publish(center, [prev])
+        first = center.archive.patch_outbound_event.call_args_list[0]
+        assert first.args[:2] == ("old", "superseded")
+        assert broadcast.call_args.args[1]["state"] == "superseded"
+        assert result["repeat"]["count"] == 3 and result["repeat"]["skipped"] == 2
+        assert bodies["webui"]["repeat"]["text"] == "Saltato 2 volte · dal 12 ott"
+
+    def test_resolved_chain_starts_fresh(self, center):
+        prev = self._row("old", "answered", self._recent(), {"count": 4, "skipped": 3, "since": "x"}, resolved=True)
+        result, _, broadcast = self._publish(center, [prev])
+        assert result["repeat"]["count"] == 1
+        broadcast.assert_not_called()
+
+    def test_skip_answer_keeps_counting(self, center):
+        prev = self._row("old", "answered", self._recent(), {"count": 1, "skipped": 0, "since": "x"})
+        result, _, _ = self._publish(center, [prev])
+        assert result["repeat"]["skipped"] == 1
+
+    def test_idle_chain_resets(self, center):
+        prev = self._row("old", "answered", self._recent(days=40), {"count": 5, "skipped": 4, "since": "x"})
+        result, _, _ = self._publish(center, [prev])
+        assert result["repeat"]["count"] == 1
+
+    def test_resolving_action_marks_chain(self, center):
+        center.archive.get_outbound_event.return_value = {
+            "outbound_event_id": "n1", "lifecycle_state": "delivered",
+            "payload": {"notification": {"actions": normalize_done()}}}
+        with patch.object(center, "_route", return_value=(200, {})), patch.object(center, "_broadcast"):
+            center.answer("n1", "done", "telegram")
+        merges = [c.kwargs.get("payload_merge") or {} for c in center.archive.patch_outbound_event.call_args_list]
+        assert any(m.get("repeat_resolved") for m in merges)
+
+    def test_inbox_hides_superseded(self, center):
+        center.archive.get_outbound_events.return_value = []
+        center.inbox()
+        query = center.archive.get_outbound_events.call_args_list[0].args[0]
+        assert "superseded" not in query["lifecycle_states"]
+
+    def test_service_passes_replaces(self, hermes_service):
+        hermes_service.archive.get_active_subscriptions.return_value = [
+            {"id": "s", "filters": {}, "channels": [{"type": "all"}]}]
+        hermes_service.process_event("selfcare.reminder", "selfcare", "r42", {
+            "_message": "Maschera", "replaces": "selfcare.reminder.r42"})
+        kwargs = hermes_service.notifications.publish.call_args.kwargs
+        assert kwargs["replaces"] == "selfcare.reminder.r42"
+
+
+def normalize_done():
+    from modules.notifications import normalize_actions
+    return normalize_actions([{"id": "done", "label": "Fatto", "service": "hygieia", "path": "/l", "resolves": True}])

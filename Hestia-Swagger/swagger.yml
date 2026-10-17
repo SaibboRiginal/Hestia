@@ -836,6 +836,11 @@ components:
         payload:
           type: object
           additionalProperties: true
+          description: >-
+            Domain data plus Hermes keys: _message, _title, _level, _source, _actions (an action may carry
+            resolves: true = ends a repeat chain), _origin, dedupe_key; closes + decision (done/resolved also
+            end a repeat chain) + outcome_text; replaces: "<key>" = same reminder again: never deduped, the
+            previous open one is superseded on every client and Hermes keeps the counter (result.repeat).
         event_ts:
           type: string
           format: date-time
@@ -900,7 +905,13 @@ components:
             properties: { id: { type: string }, label: { type: string }, style: { type: string } }
         origin: { type: object, nullable: true, properties: { client: { type: string }, session_id: { type: string } } }
         payload: { type: object, additionalProperties: true }
-        state: { type: string, description: "update: seen | answered | expired" }
+        state: { type: string, description: "update: seen | answered | expired | superseded (a newer occurrence of the same reminder replaced it: drop it)" }
+        superseded_by: { type: string, description: "update superseded: id of the new occurrence" }
+        repeat:
+          type: object
+          nullable: true
+          description: "Repeat chain counter, only from the second occurrence on; text = short Italian, readable aloud"
+          properties: { count: { type: integer }, skipped: { type: integer }, since: { type: string }, text: { type: string, example: "Saltato 2 volte · dal 12 ott" } }
         seen: { type: object, properties: { by: { type: string }, at: { type: string } } }
         answer: { type: object, properties: { action_id: { type: string }, label: { type: string }, by: { type: string }, status: { type: string }, outcome_text: { type: string } } }
         pending: { type: boolean }
@@ -927,6 +938,7 @@ components:
         seen: { type: object, nullable: true }
         answer: { type: object, nullable: true }
         deliveries: { type: object, additionalProperties: { type: string } }
+        repeat: { type: object, nullable: true, description: "same as ClientNotifyRequest.repeat (superseded rows are not listed)" }
 
     OutboundEventUpsertRequest:
       type: object

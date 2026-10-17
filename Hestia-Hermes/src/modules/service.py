@@ -138,9 +138,11 @@ class HermesService:
         brief_id = str(payload.get("brief_id", "")).strip() or None
         anchor = _dedupe_anchor(payload, question_id, brief_id, event_type, domain, entity_id)
         max_age = float(settings.get(DEDUPE_RECURRING_MAX_AGE)) if event_type in recurring_event_types() else None
+        # Repeat chain (same reminder again): one live notification + counter, never deduped.
+        replaces = str(payload.get("replaces") or payload.get("_replaces") or "").strip() or None
 
         # Batched domains: one narrated message per subscription after a settling window.
-        if domain in BATCHED_DOMAINS and event_type in BATCHED_EVENT_TYPES:
+        if domain in BATCHED_DOMAINS and event_type in BATCHED_EVENT_TYPES and not replaces:
             queued = 0
             for subscription in matched_subs:
                 sub_id = subscription.get("id")
@@ -183,7 +185,7 @@ class HermesService:
             event_type=event_type, domain=domain, entity_id=entity_id,
             actions=payload.get("_actions"), audience=audience, origin=origin,
             dedupe_key=anchor, dedupe_max_age=max_age, event_payload=payload,
-            subscription_id=str(matched_subs[0].get("id")),
+            subscription_id=str(matched_subs[0].get("id")), replaces=replaces,
         )
         logger.info(
             "event=event_processed ms=%d domain=%s event_type=%s entity_id=%s subscriptions=%d matched=%d deliveries=%d",
@@ -195,6 +197,7 @@ class HermesService:
             "deliveries": result.get("deliveries", 0),
             "notification_id": result.get("notification_id"),
             "deduped": result.get("deduped", False),
+            **({"repeat": result["repeat"]} if replaces and result.get("repeat") else {}),
         }
 
     def send_direct(self, channel: str, target: str, message: str, metadata: dict | None = None,

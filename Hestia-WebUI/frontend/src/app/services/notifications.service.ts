@@ -9,6 +9,8 @@ import { ToastService } from '../ui';
  * Hermes notifications in the WebUI (SPEC docs/work/2026-10-10-hermes-global-notifications).
  * Inbox = Archive through Hermes (`/api/webui/notifications*`); live pushes on SignalR.
  * Read state is global: what is seen here is seen on Telegram too, and vice versa.
+ * Repeat chains (SPEC docs/work/2026-10-17-hermes-repeat-notifications): a reminder sent again
+ * replaces the previous one (update `superseded` → removed here) and carries `repeat.text`.
  */
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
 export type NotificationFilter = 'unread' | 'pending' | 'all';
@@ -36,7 +38,10 @@ export interface HestiaNotification {
   other_client: boolean;
   seen: { by: string; at: string } | null;
   answer: NotificationAnswer | null;
+  /** Same reminder sent again: how many times it was skipped (null on the first one). */
+  repeat?: NotificationRepeat | null;
 }
+export interface NotificationRepeat { count: number; skipped: number; since?: string; text: string; }
 export interface NotificationCounts { unread: number; pending: number; }
 
 const CLIENT = 'webui';
@@ -171,6 +176,7 @@ export class NotificationsService {
       event_type: String(push['event_type'] ?? ''), actions,
       audience: origin ? 'origin' : 'global', origin,
       other_client: !!origin && origin.client !== CLIENT, seen: null, answer: null,
+      repeat: (push['repeat'] as NotificationRepeat | null) ?? null,
     };
     if (this.items().some(x => x.id === n.id)) return;
     if (this.filter() !== 'pending' || n.pending) {
@@ -184,7 +190,8 @@ export class NotificationsService {
     const mode = this.toastMode();
     const important = n.pending || n.level === 'warning' || n.level === 'error';
     if (mode === 'none' || (mode === 'important' && !important)) return;
-    const text = n.title || plain(n.message).slice(0, 140) || 'Nuova notifica';
+    const base = n.title || plain(n.message).slice(0, 140) || 'Nuova notifica';
+    const text = n.repeat ? `${base} · ${n.repeat.text}` : base;
     this.toast.show(text, toneOf(n.level), {
       label: n.pending ? 'Rispondi' : 'Apri',
       run: () => void this.router.navigate(['/notifications']),
@@ -195,7 +202,10 @@ export class NotificationsService {
   private onUpdate(push: HermesPush): void {
     const state = String(push['state'] ?? '');
     const known = this.items().find(x => x.id === push.notification_id);
-    if (state === 'seen') {
+    if (state === 'superseded') {
+      // A newer occurrence of the same reminder replaced it: only the live one is listed.
+      this.items.update(list => list.filter(n => n.id !== push.notification_id));
+    } else if (state === 'seen') {
       if (known && !known.read) {
         this.patch(known.id, { read: true, state: 'seen', seen: (push['seen'] as HestiaNotification['seen']) ?? null });
       }

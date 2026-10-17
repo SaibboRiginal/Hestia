@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-17
+- Hermes: one live reminder per thing on every client — events with `replaces: <key>` supersede the previous open one (Telegram deletes it, WebUI removes it) and carry a skip counter kept by Hermes («Saltato 2 volte · dal 12 ott»); `resolves: true` actions or `closes` done end the chain, setting `hermes.repeat.reset_after_days` → `docs/work/2026-10-17-hermes-repeat-notifications/` [ext-chat]
+
 ## 2026-10-11
 - WebUI Calendar list view: red «Adesso · HH:mm» divider at the current time with auto-scroll, past rows dimmed with their outcome (ok + duration / fallito + detail / nessun esito / concluso, «in corso» while running) → `docs/work/2026-10-04-calendar-skills-forge-ui/` [ext-chat]
 - Chat mode and context: conversation mode Auto · Rapida · Pensata · CoT as Themis setting `oracle.chat.mode` (WebUI selector in the composer, per conversation; Telegram `/settings` → Modalità; Pensata/CoT always reason, CoT deep + step recap); WebUI reasoning shown by default (compatto) with *Dettagliato* and *Dal vivo*, switchable from the chat ⚙; chat header gauge with context window % of the provider in use and this conversation's tokens/cache/cost (Oracle per-session usage, Gemini/Claude usage recorded) → `docs/work/2026-10-11-chat-modalita-contesto/` [ext-chat]

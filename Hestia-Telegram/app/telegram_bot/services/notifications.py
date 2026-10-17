@@ -8,6 +8,9 @@ this module renders those notifications as Telegram messages:
 - ``update``: seen elsewhere / answered → the buttons are replaced by a
   status line ("✓ Vista su WebUI", "✅ Approva · da WebUI").
 - ``retract``: delete the message (Hermes asks after the cleanup delay).
+- repeat chains: a reminder sent again carries ``repeat.text`` («Saltato 2 volte»),
+  shown in italics; the previous one arrives as ``update`` ``superseded`` and is
+  deleted (over 48 h Telegram refuses: its buttons become «↻ Sostituito»).
 
 A button press goes to Hermes (first answer wins); any user message in the
 chat marks the notifications shown here as seen.
@@ -90,6 +93,9 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         message = f"<b>{escape(title)}</b>\n{message}" if message else f"<b>{escape(title)}</b>"
     if not message:
         return 400, {"delivered": False, "detail": "message required"}
+    repeat_text = str((body.get("repeat") or {}).get("text") or "").strip()
+    if repeat_text:
+        message = f"{message}\n<i>↻ {escape(repeat_text)}</i>"
 
     markup = None
     buttons = [
@@ -121,7 +127,12 @@ def _apply_update(body: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", "edited": False}
     state = str(body.get("state") or "")
     text = ""
-    if state in ("answered", "expired"):
+    if state == "superseded":
+        # A newer occurrence of the same reminder was sent: never two in the chat.
+        if _retract(body).get("deleted"):
+            return {"status": "ok", "deleted": True}
+        text = "↻ Sostituito"
+    elif state in ("answered", "expired"):
         answer = body.get("answer") or {}
         if state == "expired" or answer.get("status") == "expired":
             text = "⌛ Scaduta"
@@ -179,10 +190,13 @@ def handle_callback(call) -> None:
     if status == 409:
         by = answer.get("by")
         note = f"Già gestita da {_client_label(by)}" if by and by != CLIENT_NAME else "Già gestita"
+        status_line = f"✅ {answer.get('label') or note}"
+        if payload.get("state") == "superseded":
+            note, status_line = "Sostituita da un promemoria più recente", "↻ Sostituito"
         core.bot.answer_callback_query(call.id, note)
         try:
             core.bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id,
-                                               reply_markup=_status_markup(f"✅ {answer.get('label') or note}"))
+                                               reply_markup=_status_markup(status_line))
         except Exception:
             pass
         return

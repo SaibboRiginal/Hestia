@@ -10,6 +10,11 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
 - Actions: ``{id, label, style, service, method, path, body}`` (Hermes routes the
   answer to the asking module via Hub; ``"<client>"`` in body = answering client)
   or legacy ``{text, command}`` (the answering client runs the Hub command).
+- Repeat chains (SPEC 2026-10-17-hermes-repeat-notifications): an event with
+  ``replaces: <key>`` is a new occurrence of the same reminder; the previous open
+  one is ``superseded`` on every client, so at most one is live, and Hermes keeps
+  the counter (``repeat: {count, skipped, since}``). An action with
+  ``resolves: true`` (or ``closes`` with decision done/resolved) ends the chain.
 - Hermes keeps no domain logic: it delivers, claims answers, forwards them and
   tells every client what happened (``update``) or to drop a stale message
   (``retract``).
@@ -27,7 +32,7 @@ from typing import Any, Callable
 import requests
 
 from .clients import ClientRegistry, NotifyClient
-from .hermes_settings import DELIVERY_MAX_ATTEMPTS, RETRACT_AFTER, settings
+from .hermes_settings import DELIVERY_MAX_ATTEMPTS, REPEAT_RESET_AFTER_DAYS, RETRACT_AFTER, settings
 from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
 
 logger = logging.getLogger("hestia_hermes.notifications")
@@ -36,6 +41,11 @@ CHANNEL = "notification"
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
 ANSWERABLE_STATES = ["created", "queued", "delivered", "seen", "failed"]
 CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
+# Inbox "all": every state but superseded (a replaced reminder is history, only the live one is listed).
+LISTED_STATES = UNREAD_STATES + ["seen", "answered", "dismissed", "expired", "dead"]
+# ``closes`` decisions that end a repeat chain (the next reminder starts from zero).
+RESOLVING_DECISIONS = {"done", "resolved"}
+_MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]
 # Messages already seen/handled are retracted from transient client surfaces
 # (Telegram chat) after the setting hermes.retract.after (hours); the inbox keeps
 # them. Telegram lets a bot delete its own messages only within 48 h, hence the window.
@@ -63,6 +73,27 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _parse_ts(value: Any) -> datetime | None:
+    try:
+        ts = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+
+
+def public_repeat(repeat: Any) -> dict[str, Any] | None:
+    """Client-facing counter of a repeat chain, only from the second occurrence on.
+    ``text`` is short Italian, ready to show or read aloud: «Saltato 3 volte · dal 12 ott»."""
+    if not isinstance(repeat, dict) or int(repeat.get("count") or 1) <= 1:
+        return None
+    skipped = int(repeat.get("skipped") or 0)
+    text = f"Saltato {skipped} volt{'a' if skipped == 1 else 'e'}"
+    since = _parse_ts(repeat.get("since"))
+    if since:
+        text += f" · dal {since.day} {_MONTHS[since.month - 1]}"
+    return {"count": int(repeat["count"]), "skipped": skipped, "since": repeat.get("since"), "text": text}
+
+
 def normalize_actions(raw: Any) -> list[dict[str, Any]]:
     """Accept Themis-style flat route actions and legacy {text, command}."""
     actions: list[dict[str, Any]] = []
@@ -88,6 +119,8 @@ def normalize_actions(raw: Any) -> list[dict[str, Any]]:
             item["command"] = str(act["command"]).strip()
         else:
             continue
+        if act.get("resolves"):
+            item["resolves"] = True   # answering with it ends a repeat chain
         actions.append(item)
     return actions
 
@@ -134,6 +167,7 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
         "seen": stored.get("read"),
         "answer": stored.get("answer"),
         "deliveries": {k: (v or {}).get("state") for k, v in deliveries.items()},
+        "repeat": public_repeat(n.get("repeat")),
     }
 
 
@@ -195,9 +229,13 @@ class NotificationCenter:
         dedupe_max_age: float | None = None,
         event_payload: dict[str, Any] | None = None,
         subscription_id: str | None = None,
+        replaces: str | None = None,
     ) -> dict[str, Any]:
-        """Store one notification and fan it out to every client."""
-        if dedupe_key:
+        """Store one notification and fan it out to every client.
+        ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one."""
+        if replaces:
+            dedupe_key = replaces
+        elif dedupe_key:
             existing = self.archive.find_active_outbound_event(dedupe_key, max_age_seconds=dedupe_max_age)
             if existing:
                 logger.info("event=notification_deduped dedupe_key=%s existing=%s",
@@ -223,6 +261,8 @@ class NotificationCenter:
         }
         if held:
             spec["held"] = notify_level
+        if replaces:
+            spec["repeat"] = self._advance_chain(replaces, notification_id)
         self.archive.upsert_outbound_event({
             "outbound_event_id": notification_id,
             "dedupe_key": dedupe_key or f"notification:{notification_id}",
@@ -249,9 +289,45 @@ class NotificationCenter:
             self.archive.patch_outbound_event(
                 notification_id, str(current.get("lifecycle_state")), payload_merge={"deliveries": deliveries})
         logger.info("event=notification_published notification_id=%s event_type=%s audience=%s held=%s "
-                    "clients=%s delivered=%d", notification_id, event_type, audience, spec.get("held") or "-",
+                    "repeat=%s clients=%s delivered=%d", notification_id, event_type, audience,
+                    spec.get("held") or "-", (spec.get("repeat") or {}).get("count", "-"),
                     ",".join(f"{k}:{v.get('state')}" for k, v in deliveries.items()) or "-", delivered)
-        return {"notification_id": notification_id, "deduped": False, "deliveries": delivered}
+        result = {"notification_id": notification_id, "deduped": False, "deliveries": delivered}
+        if replaces:
+            result["repeat"] = spec["repeat"]
+        return result
+
+    def _advance_chain(self, key: str, new_id: str) -> dict[str, Any]:
+        """Next counter of the repeat chain ``key``; every still-open occurrence is superseded
+        (compare-and-set: an answer arriving meanwhile wins) and every client drops it."""
+        now = datetime.now(timezone.utc)
+        rows = self.archive.get_outbound_events({"channel": CHANNEL, "dedupe_key": key, "limit": 20})
+        rows = sorted(rows, key=lambda r: str(r.get("created_at") or ""), reverse=True)
+        latest = rows[0] if rows else None
+        for row in rows:
+            if row.get("lifecycle_state") not in ANSWERABLE_STATES:
+                continue
+            code, current = self.archive.patch_outbound_event(
+                str(row.get("outbound_event_id")), "superseded", only_if_states=ANSWERABLE_STATES,
+                payload_merge={"superseded_by": new_id}, detail=f"superseded by {new_id}")
+            if code == 200 and isinstance(current, dict):
+                self._broadcast(current, {"state": "superseded", "superseded_by": new_id})
+                logger.info("event=notification_superseded notification_id=%s by=%s key=%s",
+                            row.get("outbound_event_id"), new_id, key)
+            elif code == 409 and row is latest:
+                latest = self.archive.get_outbound_event(str(row.get("outbound_event_id"))) or row
+        fresh = {"count": 1, "skipped": 0, "since": now.isoformat()}
+        if not latest:
+            return fresh
+        stored = latest.get("payload") if isinstance(latest.get("payload"), dict) else {}
+        previous = (stored.get("notification") or {}).get("repeat") or {}
+        last_at = _parse_ts(latest.get("created_at"))
+        reset_after = timedelta(days=int(settings.get(REPEAT_RESET_AFTER_DAYS)))
+        if stored.get("repeat_resolved") or (last_at and now - last_at > reset_after):
+            return fresh
+        return {"count": int(previous.get("count") or 1) + 1,
+                "skipped": int(previous.get("skipped") or 0) + 1,
+                "since": previous.get("since") or latest.get("created_at") or now.isoformat()}
 
     def _client_body(self, notification_id: str, spec: dict, client: str,
                      event_payload: dict | None) -> dict[str, Any]:
@@ -269,6 +345,7 @@ class NotificationCenter:
             "created_at": spec.get("created_at"),
             "actions": public_actions(spec.get("actions") or []),
             "origin": origin or None,
+            "repeat": public_repeat(spec.get("repeat")),
             "payload": event_payload or {},
         }
 
@@ -378,7 +455,8 @@ class NotificationCenter:
                                 _outcome_text(payload, "Già gestita"), http=409)
         if 200 <= code < 300:
             return self._finish(notification_id, answer, "done",
-                                _outcome_text(payload, f"{action.get('label')} ✓"))
+                                _outcome_text(payload, f"{action.get('label')} ✓"),
+                                resolves=bool(action.get("resolves")))
         # Module failed: release the claim so the user can try again.
         self.archive.patch_outbound_event(
             notification_id, "seen", only_if_states=["answered"],
@@ -392,7 +470,10 @@ class NotificationCenter:
         row = self.archive.get_outbound_event(notification_id) or {}
         answer = (row.get("payload") or {}).get("answer") or {"by": client}
         if ok:
-            _, result = self._finish(notification_id, answer, "done", text or f"{answer.get('label', '')} ✓")
+            actions = ((row.get("payload") or {}).get("notification") or {}).get("actions") or []
+            resolves = any(a.get("id") == answer.get("action_id") and a.get("resolves") for a in actions)
+            _, result = self._finish(notification_id, answer, "done", text or f"{answer.get('label', '')} ✓",
+                                     resolves=resolves)
             return result
         self.archive.patch_outbound_event(
             notification_id, "seen", only_if_states=["answered"],
@@ -400,10 +481,12 @@ class NotificationCenter:
         return {"status": "error"}
 
     def _finish(self, notification_id: str, answer: dict, status: str, text: str,
-                http: int = 200) -> tuple[int, dict[str, Any]]:
+                http: int = 200, resolves: bool = False) -> tuple[int, dict[str, Any]]:
         final = {**answer, "status": status, "outcome_text": text}
-        code, row = self.archive.patch_outbound_event(
-            notification_id, "answered", payload_merge={"answer": final})
+        merge: dict[str, Any] = {"answer": final}
+        if resolves:
+            merge["repeat_resolved"] = True
+        code, row = self.archive.patch_outbound_event(notification_id, "answered", payload_merge=merge)
         if code == 200 and isinstance(row, dict):
             self._broadcast(row, {"state": "answered", "answer": final})
         return http, {"status": status, "answer": final}
@@ -412,7 +495,9 @@ class NotificationCenter:
 
     def close(self, dedupe_key: str, decision: str, outcome_text: str, by: str) -> int:
         rows = self.archive.get_outbound_events({"channel": CHANNEL, "dedupe_key": dedupe_key, "limit": 20})
+        resolving = str(decision or "").lower() in RESOLVING_DECISIONS
         closed = 0
+        touched: set[str] = set()
         for row in rows:
             if row.get("lifecycle_state") in CLOSED_STATES and row.get("lifecycle_state") != "answered":
                 continue
@@ -424,11 +509,22 @@ class NotificationCenter:
             final = {"action_id": previous.get("action_id"), "label": previous.get("label"),
                      "by": previous.get("by") or by, "at": _now(), "status": decision or "closed",
                      "outcome_text": outcome_text}
+            merge: dict[str, Any] = {"answer": final}
+            if resolving:
+                merge["repeat_resolved"] = True
             code, updated = self.archive.patch_outbound_event(
-                str(row.get("outbound_event_id")), state, payload_merge={"answer": final})
+                str(row.get("outbound_event_id")), state, payload_merge=merge)
             if code == 200 and isinstance(updated, dict):
                 closed += 1
+                touched.add(str(row.get("outbound_event_id")))
                 self._broadcast(updated, {"state": state, "answer": final})
+        if resolving and rows:
+            # Ends the repeat chain even when the latest occurrence was already handled (e.g. «Salta»).
+            latest = max(rows, key=lambda r: str(r.get("created_at") or ""))
+            if str(latest.get("outbound_event_id")) not in touched:
+                self.archive.patch_outbound_event(
+                    str(latest.get("outbound_event_id")), str(latest.get("lifecycle_state")),
+                    only_if_states=[str(latest.get("lifecycle_state"))], payload_merge={"repeat_resolved": True})
         logger.info("event=notification_closed dedupe_key=%s decision=%s closed=%d", dedupe_key, decision, closed)
         return closed
 
@@ -436,7 +532,8 @@ class NotificationCenter:
 
     def inbox(self, *, filter_: str = "all", source: str = "", before: str = "", limit: int = 50,
               client: str = "") -> dict[str, Any]:
-        query: dict[str, Any] = {"channel": CHANNEL, "order_by": "created", "limit": max(1, min(limit, 200))}
+        query: dict[str, Any] = {"channel": CHANNEL, "order_by": "created", "limit": max(1, min(limit, 200)),
+                                 "lifecycle_states": ",".join(LISTED_STATES)}
         if filter_ == "unread":
             query["lifecycle_states"] = ",".join(UNREAD_STATES)
         elif filter_ == "pending":

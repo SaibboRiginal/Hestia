@@ -108,6 +108,8 @@ Proactive dispatch core — the only outbound messenger to the user's clients.
 - Consumes domain events and checks matching subscriptions.
 - Deduplicates alerts and delivers each notification to **every client** (Hub `layer:client` +
   `capabilities.notify_endpoint`), or only to the client a request came from (others keep it in the inbox).
+- Recurring nudges (reminders) never pile up: the module sends `replaces: "<key>"`; Hermes keeps one live
+  notification per key on every client with the skip counter (`resolves: true` / `closes` done ends it).
 - Read state is global; answers go to the module that asked, first answer wins.
 - Writes delivery outcomes to Archive.
 

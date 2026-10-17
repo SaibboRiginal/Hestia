@@ -68,6 +68,23 @@ within the cooldown window.
 - **Retry**: per client — only the clients that failed are retried (`hermes.delivery.max_attempts`), then `dead`.
 - Client contract (`kind: notification | update | retract`): see `Hestia-Swagger/swagger.yml` `ClientNotifyRequest`.
 
+## One live reminder per thing (2026-10-17, dossier `docs/work/2026-10-17-hermes-repeat-notifications`)
+
+- A module that nudges about the same thing again sends `replaces: "<key>"` in the event payload (alias
+  `_replaces`; the key names the thing, e.g. `selfcare.reminder.<routine_id>`). The key is the row's `dedupe_key`;
+  such events are **never deduped**.
+- Hermes reads the latest row with that key: every still-open occurrence becomes `superseded` (compare-and-set,
+  a concurrent answer wins) and every client gets `update {state: "superseded", superseded_by}` (Telegram deletes
+  the message, over 48 h «↻ Sostituito»; WebUI removes it). A late answer on it → `409 already_handled`.
+- Counter in `payload.notification.repeat {count, skipped, since}`: previous not resolved → +1 / +1, else
+  fresh. Clients get `repeat: {count, skipped, since, text}` from the 2nd occurrence («Saltato 2 volte · dal 12 ott»,
+  readable aloud). The module's own text never counts skips.
+- The chain ends (`payload.repeat_resolved`) when the user answers with an action flagged `resolves: true`
+  («Fatto») or the module sends `closes: <key>` with `decision` `done`/`resolved`. Other answers («Salta») count
+  as skipped. A chain idle longer than `hermes.repeat.reset_after_days` starts from zero.
+- The inbox lists every state but `superseded`: only the live occurrence is shown.
+- When to nudge stays with the module (e.g. Self care max 2/week).
+
 ## API (MVP)
 
 | Method | Path | Description |
@@ -128,6 +145,7 @@ Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router
 | `hermes.batch.window` | int 30 s | Settling window for batched entity alerts (also backoff base) |
 | `hermes.batch.max_attempts` | int 6 | Attempts for a failed batch before giving up |
 | `hermes.retract.after` | int 6 h (1–46) | Handled notifications are retracted from Telegram after this delay |
+| `hermes.repeat.reset_after_days` | int 30 days (1–365) | A repeat chain idle longer than this starts again from zero |
 | `hermes.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
 
 Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,
