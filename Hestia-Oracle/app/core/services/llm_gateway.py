@@ -28,6 +28,11 @@ logger = logging.getLogger("hestia_oracle.llm_gateway")
 _PREFIX = "ORACLE_LLM_PROFILE_"
 
 
+def _chat_timeout() -> float:
+    from core.services import oracle_settings
+    return float(oracle_settings.get_int(oracle_settings.GATEWAY_CHAT_TIMEOUT, 1))
+
+
 def _profiles() -> dict[str, dict[str, str]]:
     found: dict[str, dict[str, str]] = {}
     for key, value in os.environ.items():
@@ -134,7 +139,7 @@ def chat(body: dict[str, Any]) -> dict[str, Any]:
         resp = requests.post(
             f"{prof['base_url'].rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {prof.get('api_key', '')}", "Content-Type": "application/json"},
-            json=payload, timeout=float(os.getenv("ORACLE_LLM_CHAT_TIMEOUT_SEC", "600")))
+            json=payload, timeout=_chat_timeout())
     except requests.RequestException as exc:
         raise LLMGatewayError(f"profile '{name}' unreachable: {exc}", 502)
     if resp.status_code >= 400:
@@ -211,7 +216,7 @@ def _chat_ollama(prof: dict, body: dict[str, Any]) -> dict[str, Any]:
         request["options"]["num_predict"] = body["max_tokens"]
     try:
         resp = requests.post(f"{prof['ollama_host']}/api/chat", json=request,
-                             timeout=float(os.getenv("ORACLE_LLM_CHAT_TIMEOUT_SEC", "600")))
+                             timeout=_chat_timeout())
     except requests.RequestException as exc:
         raise LLMGatewayError(f"profile 'local' unreachable: {exc}", 502)
     if resp.status_code >= 400:

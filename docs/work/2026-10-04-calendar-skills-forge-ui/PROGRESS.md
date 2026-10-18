@@ -30,7 +30,7 @@ Spec: `SPEC.md` v2.4 · resume from the first unchecked box.
 - [x] Docs: hestia-chronos/webui/hephaestus/oracle/shared.md, DESIGN-SYSTEM.md, swagger, compose (`WEBUI_ICS_KEY`), root CHANGELOG
 - [x] Checks: `ng build` clean (initial < budget), ruff (only pre-existing findings), ad-hoc check of cascade/cycle/fail with a fake Archive, parse/ICS helpers, Playwright screenshots (drawer wide/phone dark, details, logs, ICS)
 - [x] A10 list view: "Adesso" divider + scroll to it, outcome of past rows (2026-10-11, `ng build` clean)
-- [ ] Pending on user side: .NET build + real run (drawer with Oracle, agenda tools, quick add, ICS on a phone)
+- [ ] Pending on user side: .NET build + real run (drawer with Oracle, agenda tools, quick add, ICS on a phone) — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left
 
 ## C. Sviluppo page
 - [x] Oracle claude runner `stream-json` → live raw file on the shared mount, imported as normalized transcript per task; local/cloud engines emit the same events
@@ -40,5 +40,5 @@ Spec: `SPEC.md` v2.4 · resume from the first unchecked box.
 - [x] Calendar: Forge items → "Apri in Sviluppo" (Log link → A9)
 - [x] Docs: hestia-hephaestus.md, hestia-oracle.md, hestia-webui.md, DESIGN-SYSTEM.md, swagger, root CHANGELOG
 - [x] Checks: `ng build` clean, ruff on changed Python, Playwright screenshots (mocked API with real repo data; wide/phone/dark)
-- [ ] Pending on user side: .NET build + real run with a Forge task (Claude and local engine)
+- [ ] Pending on user side: .NET build + real run with a Forge task (Claude and local engine) — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left
 - [ ] Later: SignalR push instead of polling

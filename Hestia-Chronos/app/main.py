@@ -694,7 +694,7 @@ def get_agenda(
     # Window starts at local midnight: "agenda di oggi" used to start at "now",
     # hiding events already started today and all-day events (stored 00:00).
     from zoneinfo import ZoneInfo
-    tz = ZoneInfo(os.getenv("CHRONOS_DISPLAY_TZ") or os.getenv("TZ") or "Europe/Rome")
+    tz = ZoneInfo(assistant_agenda._TZ_DEFAULT)
     now = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     to_time = now + timedelta(days=days)
     items = archive_client.list_items(

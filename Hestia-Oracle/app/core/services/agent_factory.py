@@ -26,8 +26,8 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── System prompts ────────────────────────────────────────────────────────────
 
-_GENERIC_SYSTEM_PROMPT = os.getenv(
-    "HESTIA_PERSONA", prompt_config.analyst_persona_default())
+# Persona text = prompt map (overridable in the prompts file like every prompt).
+_GENERIC_SYSTEM_PROMPT = prompt_config.analyst_persona_default()
 _CODE_SYSTEM_PROMPT = (
     "You are an expert software engineer. Output clean, correct, well-structured code. "
     "Think before writing. Explain your approach briefly, then provide the implementation."
@@ -68,16 +68,13 @@ class AgentFactory:
     # Four architectural use cases.  The MODEL for each comes from settings.
     _USECASES: tuple[str, ...] = ("generic", "reasoning", "code", "embedding")
 
-    # Thinking-auto-detection family set — configurable, not hardcoded.
-    _THINKING_FAMILIES: frozenset[str] = frozenset(
-        f.strip().lower() for f in os.getenv(
-            "ORACLE_THINKING_FAMILIES",
-            "gemma4,gemma3,gemma,qwen3,deepseek-r1,llama4,phi4,llama,llama2,llama3",
-        ).split(",") if f.strip()
-    )
+    # Per-model cache: model_name → Ollama family (the family set is a live setting,
+    # oracle.provider.ollama.thinking_families, checked at every resolution).
+    _family_cache: dict[str, str] = {}
 
-    # Per-model cache: model_name → bool
-    _thinking_cache: dict[str, bool] = {}
+    @staticmethod
+    def _thinking_families() -> frozenset[str]:
+        return frozenset(oracle_settings.get_list(oracle_settings.THINKING_FAMILIES, lower=True))
 
     @staticmethod
     def _prepared_config() -> dict[str, dict[str, str]]:
@@ -155,36 +152,28 @@ class AgentFactory:
         Queries ``POST /api/show`` and inspects ``details.family`` against
         the known-thinking-families set.  Cached per model name.
         """
-        if model_name in AgentFactory._thinking_cache:
-            return AgentFactory._thinking_cache[model_name]
-
-        ollama_url = str(
-            os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-        ).replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
-        try:
-            resp = requests.post(
-                f"{ollama_url}/api/show",
-                json={"name": model_name},
-                timeout=5,
-            )
-            resp.raise_for_status()
-            info = resp.json() or {}
-            details = info.get("details") if isinstance(
-                info.get("details"), dict) else {}
-            family = str(details.get("family", "") or "").strip().lower()
-            supports = family in AgentFactory._THINKING_FAMILIES
-            logger.info(
-                "event=thinking_auto_detect model=%s family=%s supports=%s",
-                model_name, family or "unknown", supports,
-            )
-        except Exception as exc:
-            logger.debug(
-                "event=thinking_auto_detect_failed model=%s error=%s — assuming False",
-                model_name, exc,
-            )
-            supports = False
-
-        AgentFactory._thinking_cache[model_name] = supports
+        if model_name not in AgentFactory._family_cache:
+            ollama_url = str(
+                os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+            ).replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
+            try:
+                resp = requests.post(f"{ollama_url}/api/show", json={"name": model_name}, timeout=5)
+                resp.raise_for_status()
+                info = resp.json() or {}
+                details = info.get("details") if isinstance(info.get("details"), dict) else {}
+                AgentFactory._family_cache[model_name] = str(details.get("family", "") or "").strip().lower()
+            except Exception as exc:
+                logger.debug(
+                    "event=thinking_auto_detect_failed model=%s error=%s — assuming False",
+                    model_name, exc,
+                )
+                return False
+        family = AgentFactory._family_cache[model_name]
+        supports = bool(family) and family in AgentFactory._thinking_families()
+        logger.info(
+            "event=thinking_auto_detect model=%s family=%s supports=%s",
+            model_name, family or "unknown", supports,
+        )
         return supports
 
     @staticmethod
@@ -218,7 +207,7 @@ class AgentFactory:
 
     # ── Gemini model name validation ─────────────────────────────────────────
 
-    _GEMINI_TEXT_DEFAULT = os.getenv("ORACLE_GEMINI_TEXT_DEFAULT_MODEL", "")
+    _GEMINI_TEXT_DEFAULT = "gemini-2.5-flash"
     _GEMINI_EMBED_DEFAULT = "models/embedding-001"
 
     @staticmethod
@@ -245,36 +234,20 @@ class AgentFactory:
 
     @staticmethod
     def _remap_gemini_when_no_api_key(cfg: dict[str, dict[str, str]]) -> None:
-        """If GEMINI_API_KEY is missing and a use case uses Gemini, remap to Ollama.
+        """If GEMINI_API_KEY is missing and a use case uses Gemini, remap it to Ollama.
 
-        The remap target models come from env vars (Rulebook 1.4).
+        Target = the use case's local model (its own if already on Ollama, else the declared
+        Ollama default, ``oracle_settings.local_default_model``).
         """
         api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
         if api_key:
             return
-        defaults = {
-            "embed": os.getenv("ORACLE_GEMINI_FALLBACK_EMBED_MODEL", ""),
-            "code":  os.getenv("ORACLE_GEMINI_FALLBACK_CODE_MODEL", ""),
-            "":      os.getenv("ORACLE_GEMINI_FALLBACK_DEFAULT_MODEL", ""),
-        }
         for key, entry in cfg.items():
             if str(entry.get("prov", "")).strip().lower() != "gemini":
                 continue
-            category = ""
-            if "embed" in key:
-                category = "embed"
-            elif "code" in key:
-                category = "code"
-            fb = defaults.get(category, defaults[""])
-            if not fb:
-                logger.warning(
-                    "event=gemini_key_missing_no_fallback key=%s gemini_model=%s "
-                    "— GEMINI_API_KEY not set and no ORACLE_GEMINI_FALLBACK_*_MODEL configured",
-                    key, entry.get("mod", ""),
-                )
-                continue
+            fb = oracle_settings.local_default_model(key)
             logger.warning(
-                "event=gemini_key_missing_remapping key=%s from=%s to=ollama/%s",
+                "[🔄] event=gemini_key_missing_remapping key=%s from=%s to=ollama/%s",
                 key, entry.get("mod", ""), fb,
             )
             entry["prov"] = "ollama"

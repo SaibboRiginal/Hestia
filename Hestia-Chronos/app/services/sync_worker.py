@@ -1,8 +1,13 @@
-"""Chronos sync worker — periodic Hecate Calendar → Archive sync."""
+"""Chronos sync worker — periodic Hecate Calendar → Archive sync.
+
+Driven by the agenda job ``chronos.calendar_sync`` (its recurrence = how often; paused by the user = no
+sync, not even at boot). Window, calendar id and new-event notices are Themis settings read each sync.
+"""
 from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -10,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from core import archive_client, hermes_client
+from core import chronos_settings as CS
 
 logger = logging.getLogger("hestia_chronos.sync_worker")
 
@@ -17,13 +23,15 @@ logger = logging.getLogger("hestia_chronos.sync_worker")
 #  Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ENABLED = os.getenv("CHRONOS_SYNC_ENABLED", "true").strip().lower() == "true"
-_POLL_SECONDS = int(os.getenv("CHRONOS_SYNC_POLL_SECONDS", "900"))
-_LOOK_BACK_DAYS = int(os.getenv("CHRONOS_SYNC_LOOK_BACK_DAYS", "1"))
-_LOOK_AHEAD_DAYS = int(os.getenv("CHRONOS_SYNC_LOOK_AHEAD_DAYS", "30"))
-_NOTIFY_NEW = os.getenv("CHRONOS_SYNC_NOTIFY_NEW",
-                        "true").strip().lower() == "true"
-_CALENDAR_ID = os.getenv("CHRONOS_SYNC_CALENDAR_ID", "primary")
+# Code default of the agenda job recurrence (the user edits it in the agenda; that edit wins).
+_DEFAULT_INTERVAL_SECONDS = 900
+
+
+def _int_setting(key: str, fallback: int) -> int:
+    try:
+        return max(0, int(CS.settings.get(key)))
+    except (TypeError, ValueError):
+        return fallback
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  State
@@ -96,8 +104,10 @@ def _tick() -> None:
     logger.info("event=sync_tick_start")
 
     now = datetime.now(timezone.utc)
-    window_start = now - timedelta(days=_LOOK_BACK_DAYS)
-    window_end = now + timedelta(days=_LOOK_AHEAD_DAYS)
+    window_start = now - timedelta(days=_int_setting(CS.SYNC_LOOK_BACK_DAYS, 1))
+    window_end = now + timedelta(days=max(1, _int_setting(CS.SYNC_LOOK_AHEAD_DAYS, 30)))
+    calendar_id = str(CS.settings.get(CS.SYNC_CALENDAR_ID) or "primary").strip() or "primary"
+    notify_new = bool(CS.settings.get(CS.SYNC_NOTIFY_NEW))
 
     active = ["google", "outlook"]
 
@@ -112,7 +122,7 @@ def _tick() -> None:
                 "start_datetime": window_start.isoformat(),
                 "end_datetime": window_end.isoformat(),
                 "provider": provider,
-                "calendar_id": _CALENDAR_ID,
+                "calendar_id": calendar_id,
                 "max_results": 250,
             },
             "body": None,
@@ -165,7 +175,7 @@ def _tick() -> None:
             )
 
             # Queue notification candidates (skip on first tick to avoid spam)
-            if is_new and _first_tick_done and _NOTIFY_NEW:
+            if is_new and _first_tick_done and notify_new:
                 if _is_future_event(record):
                     newly_seen.append(record)
 
@@ -242,46 +252,73 @@ def run_sync(trigger: str = "api") -> dict:
 
 def agenda_rules() -> list[dict]:
     """Calendar sync as a recurring job of the assistant agenda (fired via Hub)."""
-    minutes = max(1, _POLL_SECONDS // 60)
+    minutes = max(1, _DEFAULT_INTERVAL_SECONDS // 60)
     return [{
         "key": AGENDA_JOB_KEY, "type": "job", "title": "Chronos: sincronizza calendari",
         "description": "Importa gli eventi da Google/Outlook (via Hecate) e avvisa dei nuovi.",
         "start_at": "2026-01-01T00:00:00", "recurrence": f"FREQ=MINUTELY;INTERVAL={minutes}",
         "action": {"service": "chronos", "path": "/api/calendar/sync", "method": "POST",
                    "body": {"trigger": "agenda"}, "timeout_seconds": 20},
-        "params": {"interval_seconds": _POLL_SECONDS},
+        "params": {"interval_seconds": _DEFAULT_INTERVAL_SECONDS},
     }]
 
 
-def _agenda_driving() -> bool:
-    """True when the agenda job exists and is handled (or paused by the user)."""
+_FREQ_SECONDS = {"MINUTELY": 60, "HOURLY": 3600, "DAILY": 86400}
+
+
+def _interval_seconds(item: dict | None) -> int:
+    """Sync interval = recurrence of the agenda job (user edits win), else the code default."""
+    rule = str((item or {}).get("recurrence") or "").upper()
+    freq = re.search(r"FREQ=(MINUTELY|HOURLY|DAILY)", rule)
+    if not freq:
+        return _DEFAULT_INTERVAL_SECONDS
+    interval = re.search(r"INTERVAL=(\d+)", rule)
+    return _FREQ_SECONDS[freq.group(1)] * max(1, int(interval.group(1)) if interval else 1)
+
+
+def _job() -> dict | None:
     from services import agenda as assistant_agenda
     try:
-        item = assistant_agenda.get(AGENDA_JOB_KEY)
+        return assistant_agenda.get(AGENDA_JOB_KEY)
     except Exception:
+        return None                       # missing or Archive down
+
+
+def _user_stopped(item: dict | None) -> bool:
+    """Paused/cancelled by the user = no calendar sync (no fallback)."""
+    return bool(item) and item.get("status") in {"paused", "cancelled", "completed"}
+
+
+def _agenda_driving(item: dict | None = None) -> bool:
+    """True when the agenda job exists and is handled (or paused by the user)."""
+    item = item if item is not None else _job()
+    if not item:
         return False                      # missing or Archive down → fallback
-    if item["status"] in {"paused", "cancelled", "completed"}:
+    if _user_stopped(item):
         return True                       # user decision: do not self-run
     last = item.get("last_fired")
     if not last:
         return True
     age = (datetime.now(timezone.utc) - datetime.fromisoformat(str(last).replace("Z", "+00:00"))
            ).total_seconds()
-    return age <= 3 * _POLL_SECONDS
+    return age <= 3 * _interval_seconds(item)
 
 
 def _run_loop() -> None:
     """Boot sync + agenda registration; then fallback only if the agenda is not driving."""
     from services import agenda as assistant_agenda
     logger.info(
-        "event=sync_worker_started_poll_every [SYNC] Worker started — agenda job every %ds | window -%dd to +%dd | notify_new=%s",
-        _POLL_SECONDS,
-        _LOOK_BACK_DAYS,
-        _LOOK_AHEAD_DAYS,
-        _NOTIFY_NEW,
+        "event=sync_worker_started_poll_every [SYNC] Worker started — agenda job %s | window -%dd to +%dd | notify_new=%s",
+        AGENDA_JOB_KEY,
+        _int_setting(CS.SYNC_LOOK_BACK_DAYS, 1),
+        _int_setting(CS.SYNC_LOOK_AHEAD_DAYS, 30),
+        bool(CS.settings.get(CS.SYNC_NOTIFY_NEW)),
     )
     registered = False
-    run_sync("startup")
+    if _user_stopped(_job()):
+        logger.info("event=sync_startup_skipped reason=agenda_job_paused")
+    else:
+        run_sync("startup")
     while True:
         time.sleep(60)
         if not registered:
@@ -291,7 +328,7 @@ def _run_loop() -> None:
             except Exception as exc:
                 logger.warning("[🔄] event=sync_agenda_register_failed error=%s", exc)
         try:
-            if time.time() - _last_run_ts >= _POLL_SECONDS and not _agenda_driving():
+            if time.time() - _last_run_ts >= _DEFAULT_INTERVAL_SECONDS and not _agenda_driving():
                 logger.info("[🔄] event=sync_fallback_run reason=agenda_not_driving")
                 run_sync("fallback")
         except Exception as exc:
@@ -304,11 +341,7 @@ def _run_loop() -> None:
 
 
 def start() -> None:
-    """Start the sync worker in a daemon thread."""
-    if not _ENABLED:
-        logger.info(
-            "event=sync_sync_worker_disabled_chronos_sync_enabled [SYNC] Sync worker disabled (CHRONOS_SYNC_ENABLED=false)")
-        return
+    """Start the sync worker in a daemon thread (pause the agenda job to stop syncing)."""
     t = threading.Thread(
         target=_run_loop, name="chronos-sync-worker", daemon=True)
     t.start()

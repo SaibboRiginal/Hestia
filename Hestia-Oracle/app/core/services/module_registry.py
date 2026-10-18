@@ -7,10 +7,10 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class ModuleToolRegistry:
-    def __init__(self, module_tool_urls: list[str], ttl_seconds: int = 120, hub_api_url: str | None = None):
+    def __init__(self, module_tool_urls: list[str], ttl_seconds: int | None = None, hub_api_url: str | None = None):
         self.module_tool_urls = [
             u.rstrip("/") for u in module_tool_urls if u and u.strip()]
-        self.ttl_seconds = ttl_seconds
+        self._ttl_seconds = ttl_seconds  # None = setting oracle.cache.tool_registry_ttl (live)
         self.hub_api_url = hub_api_url.rstrip("/") if hub_api_url else None
         self._last_refresh = 0.0
         self._domain_to_urls: dict[str, list[str]] = {}
@@ -19,6 +19,17 @@ class ModuleToolRegistry:
         self._service_topology: dict[str, set[str]] = {}
         # Explicit tool-domain ownership (capabilities.owns_tool_domains)
         self._service_owned_domains: dict[str, set[str]] = {}
+
+    @property
+    def ttl_seconds(self) -> int:
+        if self._ttl_seconds is not None:
+            return int(self._ttl_seconds)
+        from core.services import oracle_settings
+        return oracle_settings.get_int(oracle_settings.TOOL_REGISTRY_TTL, 0)
+
+    @ttl_seconds.setter
+    def ttl_seconds(self, value: int | None) -> None:
+        self._ttl_seconds = value
 
     def _needs_refresh(self) -> bool:
         return (time.time() - self._last_refresh) > self.ttl_seconds or not self._domain_to_urls

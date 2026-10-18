@@ -1,56 +1,35 @@
 """Preference domain classifier — embedding-based, no LLM.
 
-Fixed domain categories (Rulebook 1.4: configurable via env var).
+Domain categories: setting ``oracle.memory.preference_domains`` (Impostazioni → Oracle → Memoria).
 Preferences are assigned 0→N domains via embedding cosine similarity
 against domain descriptions at creation time.  No dynamic domain creation.
 """
 from __future__ import annotations
 
-import json
 import logging
-import os
 from typing import Callable
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── Domain definitions ──────────────────────────────────────────────────────
-# Format: JSON object  { "domain_key": "description for embedding matching" }
-# Set ORACLE_PREFERENCE_DOMAINS to override.
-_DEFAULT_DOMAINS: dict[str, str] = {
-    "general": "Universal preferences, default catch-all for anything not fitting other domains",
-    "calendar": "Scheduling, time management, appointments, events, deadlines, agenda, reminders",
-    "real_estate": "Housing, property, apartments, listings, buying, selling, renting homes, real estate market",
-    "email": "Messages, communication, inbox, correspondence, mail, letters, notifications",
-    "system": "Technology, services, monitoring, software, hardware, tech infrastructure, servers",
-    "food": "Cuisine, restaurants, dietary preferences, cooking, eating, food, meals, recipes",
-    "work": "Professional life, projects, career, workplace, business, job, office, employment",
-    "health": "Medical, fitness, wellness, exercise, healthcare, doctor, gym, nutrition",
-    "travel": "Trips, transportation, locations, navigation, commuting, vacations, flights, hotels",
-    "finance": "Money, budgeting, purchases, banking, investments, savings, expenses, payments",
-}
+# { "domain_key": "description for embedding matching" } — default declared with the setting.
 
-# Similarity threshold: preference assigned to domain if cosine sim > this.
-_SIMILARITY_THRESHOLD: float = float(
-    os.getenv("ORACLE_PREF_DOMAIN_SIM_THRESHOLD", "0.55"))
+# Domains (name → description) and the similarity threshold are central settings
+# (oracle.memory.preference_domains / oracle.memory.domain_threshold), read at use time.
+
+
+def _settings():
+    from core.services import oracle_settings  # lazy: settings import the provider registry
+    return oracle_settings
 
 
 def _parse_domains() -> dict[str, str]:
-    raw = os.getenv("ORACLE_PREFERENCE_DOMAINS", "")
-    if raw.strip():
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, dict) and parsed:
-                return {str(k): str(v) for k, v in parsed.items()}
-        except json.JSONDecodeError:
-            logger.warning(
-                "event=pref_domains_parse_failed "
-                "ORACLE_PREFERENCE_DOMAINS is not valid JSON; using defaults")
-    return dict(_DEFAULT_DOMAINS)
+    """Current preference domains (setting; default = ``oracle_settings.DEFAULT_PREFERENCE_DOMAINS``)."""
+    return _settings().preference_domains()
 
 
-PREFERENCE_DOMAINS: dict[str, str] = _parse_domains()
-DOMAIN_KEYS: list[str] = sorted(PREFERENCE_DOMAINS.keys())
-SIMILARITY_THRESHOLD: float = _SIMILARITY_THRESHOLD
+def similarity_threshold() -> float:
+    return _settings().get_float(_settings().DOMAIN_THRESHOLD)
 
 
 # ── Cosine similarity (pure Python, no numpy dependency) ────────────────────
@@ -84,12 +63,18 @@ class PreferenceDomainClassifier:
     def __init__(self, embed_fn: Callable[[str], list[float]]) -> None:
         self._embed = embed_fn
         self._domain_embeddings: dict[str, list[float]] = {}
+        self._warmed_for: dict[str, str] = {}
         self._warm()
 
     def _warm(self) -> None:
-        """Pre-compute domain description embeddings."""
-        for key in DOMAIN_KEYS:
-            desc = PREFERENCE_DOMAINS.get(key, key)
+        """Pre-compute domain description embeddings (again when the domains setting changes)."""
+        domains = _parse_domains()
+        if domains == self._warmed_for:
+            return
+        self._domain_embeddings = {}
+        self._warmed_for = dict(domains)
+        for key in sorted(domains):
+            desc = domains.get(key, key)
             try:
                 vec = self._embed(desc)
                 self._domain_embeddings[key] = vec
@@ -123,11 +108,13 @@ class PreferenceDomainClassifier:
         if not vec:
             return ["general"]
 
+        self._warm()
+        threshold = similarity_threshold()
         matches: list[str] = []
-        for key in DOMAIN_KEYS:
+        for key in sorted(self._domain_embeddings):
             dom_vec = self._domain_embeddings.get(key, [])
             sim = cosine_similarity(vec, dom_vec)
-            if sim >= SIMILARITY_THRESHOLD:
+            if sim >= threshold:
                 matches.append(key)
                 logger.trace(
                     "event=pref_domain_match text_preview=%s domain=%s sim=%.3f",

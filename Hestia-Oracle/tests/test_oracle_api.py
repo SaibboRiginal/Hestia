@@ -274,6 +274,37 @@ class TestOracleLlmGenerateEndpoint:
             "agents.universal_agent.UniversalAgent", FakeAgent)
         return created
 
+    def test_use_case_selects_module_model_settings(self, oracle_client, monkeypatch):
+        """Scout sends use_case=scout_extraction: primary + fallback come from oracle.models.scout_extraction.*."""
+        client, _ = oracle_client
+        from core.services import oracle_settings
+        eff = oracle_settings.settings._effective
+        monkeypatch.setitem(eff, "oracle.models.scout_extraction.provider", "gemini")
+        monkeypatch.setitem(eff, "oracle.models.scout_extraction.model", "gemini-2.5-flash")
+        monkeypatch.setitem(eff, "oracle.models.scout_extraction.fallback_provider", "gemini")
+        monkeypatch.setitem(eff, "oracle.models.scout_extraction.fallback_model", "gemini-2.5-flash-lite")
+        created = self._mock_agent_chain(monkeypatch, primary_exc=RuntimeError("429 quota"))
+
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout_extraction"})
+
+        assert resp.status_code == 200
+        assert [(a.provider, a.model_name) for a in created] == [
+            ("gemini", "gemini-2.5-flash"), ("gemini", "gemini-2.5-flash-lite")]
+
+    def test_module_use_case_follows_generic_when_empty(self, oracle_client, monkeypatch):
+        """Athena use cases default to provider "" = same models as «Uso generale»."""
+        client, _ = oracle_client
+        from core.services import oracle_settings
+        eff = oracle_settings.settings._effective
+        monkeypatch.setitem(eff, "oracle.models.generic.provider", "ollama")
+        monkeypatch.setitem(eff, "oracle.models.generic.model", "local-model")
+        created = self._mock_agent_chain(monkeypatch, primary_exc=RuntimeError("down"))
+
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena_auditor"})
+
+        assert resp.status_code == 200
+        assert (created[0].provider, created[0].model_name) == ("ollama", "local-model")
+
     def test_fallback_uses_generic_fallback_settings(
             self, oracle_client, monkeypatch):
         client, _ = oracle_client

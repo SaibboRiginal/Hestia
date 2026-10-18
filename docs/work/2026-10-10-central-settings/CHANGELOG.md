@@ -35,3 +35,8 @@
 - v2.3 — 2026-10-11 — Impostazioni becomes one VS Code-like page: a single search over personal and system
   settings, Personali in the same rows as Sistema, resizable sidebar; user-scope settings live in Personali only
   — source: user via WebUI feedback (project chat, relayed by the coordinator).
+
+- v2.4 — 2026-10-18 — P6 closed: Oracle, Chronos, Telegram tunables → Themis; Scout/Athena model choices become
+  Oracle use cases (`/api/llm/generate` `use_case`); the agenda job is the calendar sync switch/interval; container
+  `TZ` replaces `ORACLE_TIMEZONE` / `CHRONOS_DISPLAY_TZ` — source: user via external chat («aggiusta tutto», all
+  waiting threads), coherence thread.

@@ -11,7 +11,6 @@ This module composes:
   - stream_emitter: NDJSON event formatting
 """
 import logging
-import os
 import threading
 import time
 import uuid
@@ -25,8 +24,10 @@ from core.services.hub_client import HubClient
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-_MAX_DOC_ARCHIVE_BYTES = int(
-    os.getenv("DOC_MAX_ARCHIVE_BYTES", str(10 * 1024 * 1024)))  # 10 MB
+def _max_archive_bytes() -> int:
+    """Largest file archived for RAG: setting ``oracle.documents.max_archive_mb`` (live)."""
+    from core.services import oracle_settings
+    return oracle_settings.get_int(oracle_settings.DOC_MAX_ARCHIVE_MB, 1) * 1024 * 1024
 
 
 class DocumentAnalyser:
@@ -99,7 +100,8 @@ class DocumentAnalyser:
 
         # Archive document in background
         document_id = uuid.uuid4().hex
-        if len(file_bytes) <= _MAX_DOC_ARCHIVE_BYTES:
+        max_bytes = _max_archive_bytes()
+        if len(file_bytes) <= max_bytes:
             threading.Thread(
                 target=self._archiver.archive,
                 args=(file_bytes, mime_type, final_answer, document_id,
@@ -119,7 +121,7 @@ class DocumentAnalyser:
         else:
             logger.info(
                 "event=analyser_file_too_large_archive [ANALYSER] File too large to archive (%s bytes > %s limit).",
-                len(file_bytes), _MAX_DOC_ARCHIVE_BYTES,
+                len(file_bytes), max_bytes,
             )
 
         total_ms = int((time.perf_counter() - t0) * 1000)

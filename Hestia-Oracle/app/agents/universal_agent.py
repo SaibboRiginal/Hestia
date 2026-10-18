@@ -9,10 +9,6 @@ from google.genai import types
 
 from agents.providers import get_provider, is_provider_type
 
-# Retry configuration — overridable via env
-_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
-_RETRY_BASE_DELAY = float(os.getenv("LLM_RETRY_BASE_DELAY_SEC", "1.0"))
-
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
@@ -24,11 +20,6 @@ class UniversalAgent:
         self.provider = provider.lower()
         self.model_name = model_name
         self.thinking = thinking
-        self.ollama_timeout_sec = int(os.getenv("OLLAMA_TIMEOUT_SEC", "120"))
-        self.ollama_embed_timeout_sec = int(
-            os.getenv("OLLAMA_EMBED_TIMEOUT_SEC", "60"))
-        self.ollama_tool_call_mode = os.getenv(
-            "OLLAMA_TOOL_CALL_MODE", "auto").strip().lower()
         # Provider types in agents/providers (anthropic, claude_cli): every call is delegated.
         self._impl = None
 
@@ -50,8 +41,8 @@ class UniversalAgent:
                 self.provider = "ollama"
                 # Preserve explicit model when it already targets local Ollama.
                 if "gemini" in (self.model_name or "").lower() or "models/" in (self.model_name or "").lower():
-                    self.model_name = os.getenv(
-                        "ORACLE_GEMINI_KEY_MISSING_FALLBACK_MODEL", "")
+                    from core.services import oracle_settings
+                    self.model_name = oracle_settings.local_default_model(self.label)
                 self._init_ollama_defaults()
             else:
                 self.client = genai.Client(api_key=api_key)
@@ -62,6 +53,22 @@ class UniversalAgent:
     def _init_ollama_defaults(self) -> None:
         self.ollama_url = os.getenv(
             "OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
+
+    # Timeouts / tool-call mode: central settings, read at every call (live).
+    @property
+    def ollama_timeout_sec(self) -> int:
+        from core.services import oracle_settings
+        return oracle_settings.get_int(oracle_settings.OLLAMA_TIMEOUT, 1)
+
+    @property
+    def ollama_embed_timeout_sec(self) -> int:
+        from core.services import oracle_settings
+        return oracle_settings.get_int(oracle_settings.OLLAMA_EMBED_TIMEOUT, 1)
+
+    @property
+    def ollama_tool_call_mode(self) -> str:
+        from core.services import oracle_settings
+        return str(oracle_settings.settings.get(oracle_settings.OLLAMA_TOOL_MODE) or "auto").strip().lower()
 
     @staticmethod
     def _ollama_options() -> dict:
@@ -92,14 +99,17 @@ class UniversalAgent:
 
         Raises the last exception if all attempts are exhausted.
         """
+        from core.services import oracle_settings
+        max_retries = oracle_settings.get_int(oracle_settings.LLM_RETRIES, 1)
+        base_delay = oracle_settings.get_float(oracle_settings.LLM_RETRY_DELAY, 0.0)
         last_exc = None
-        for attempt in range(_MAX_RETRIES):
+        for attempt in range(max_retries):
             try:
                 return fn(*args, **kwargs)
             except Exception as exc:
                 last_exc = exc
-                if attempt < _MAX_RETRIES - 1:
-                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
                     time.sleep(delay)
         raise last_exc
 

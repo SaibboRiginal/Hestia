@@ -39,15 +39,29 @@ import requests
 from dateutil.rrule import rrulestr
 
 from core import archive_client
+from core import chronos_settings as CS
 
 logger = logging.getLogger("hestia_chronos.agenda")
 
 SOURCE = "hestia"
 TYPES = ("event", "task", "job", "window")
 _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
-_TZ_DEFAULT = os.getenv("CHRONOS_DISPLAY_TZ") or os.getenv("TZ") or "Europe/Rome"
-_TICK = max(15, int(os.getenv("CHRONOS_AGENDA_TICK_SECONDS", "60")))
-_MAX_ATTEMPTS = int(os.getenv("CHRONOS_AGENDA_MAX_ATTEMPTS", "5"))
+_TZ_DEFAULT = os.getenv("TZ") or "Europe/Rome"     # infrastructure: container timezone
+
+
+def _tick_seconds() -> int:
+    """``chronos.agenda.tick_seconds`` (live, re-read every loop iteration)."""
+    try:
+        return max(15, int(CS.settings.get(CS.AGENDA_TICK)))
+    except (TypeError, ValueError):
+        return 60
+
+
+def _max_attempts() -> int:
+    try:
+        return max(1, int(CS.settings.get(CS.AGENDA_MAX_ATTEMPTS)))
+    except (TypeError, ValueError):
+        return 5
 _lock = threading.RLock()
 
 
@@ -532,7 +546,7 @@ def tick(now: datetime | None = None) -> dict:
         if item["type"] not in {"task", "job"} or not item.get("action") or item["status"] in {"paused", "failed"}:
             continue
         try:
-            since = _parse(item["last_fired"], "UTC") if item.get("last_fired") else now - timedelta(seconds=_TICK * 2)
+            since = _parse(item["last_fired"], "UTC") if item.get("last_fired") else now - timedelta(seconds=_tick_seconds() * 2)
             due = [o for o in occurrences(item, since, now + timedelta(seconds=1))
                    if not o["skipped"] and since < _parse(o["start"], "UTC") <= now]
             if not item.get("recurrence"):
@@ -554,7 +568,7 @@ def tick(now: datetime | None = None) -> dict:
                         fresh["status"] = "completed"
                 else:
                     fresh["attempts"] = int(fresh.get("attempts") or 0) + 1
-                    if fresh["attempts"] >= _MAX_ATTEMPTS:
+                    if fresh["attempts"] >= _max_attempts():
                         fresh["status"] = "failed"
                 _save(fresh)
                 if fresh["status"] == "failed" and fresh.get("parent"):
@@ -581,7 +595,7 @@ def on_tick(fn) -> None:
 def start_worker() -> None:
     def _loop():
         while True:
-            time.sleep(_TICK)
+            time.sleep(_tick_seconds())
             try:
                 tick()
             except Exception as exc:
@@ -594,7 +608,7 @@ def start_worker() -> None:
                                    getattr(hook, "__name__", hook), exc)
 
     threading.Thread(target=_loop, daemon=True, name="agenda-worker").start()
-    logger.info("event=agenda_worker_started tick=%ds", _TICK)
+    logger.info("event=agenda_worker_started tick=%ds", _tick_seconds())
 
 
 # ── Templates: what the user can create per module (WebUI wizard) ─────────────

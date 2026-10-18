@@ -45,6 +45,12 @@ def _workdir_root() -> Path:
     return Path(os.getenv("ORACLE_CODE_WORKDIR_ROOT", "/forge/worktrees")).resolve()
 
 
+def _model() -> str:
+    """Claude Code model for Forge: setting ``oracle.models.claude_code.model`` ("" = CLI default)."""
+    from core.services import oracle_settings
+    return str(oracle_settings.settings.get(oracle_settings.CLAUDE_CODE_MODEL) or "").strip()
+
+
 def status() -> dict[str, Any]:
     if not shutil.which(_bin()):
         return {"available": False,
@@ -55,7 +61,7 @@ def status() -> dict[str, Any]:
                 "detail": "no auth: set CLAUDE_CODE_OAUTH_TOKEN in Oracle .env (run `claude setup-token`)"}
     if not _workdir_root().is_dir():
         return {"available": False, "detail": f"worktree root {_workdir_root()} not mounted"}
-    return {"available": True, "detail": "ok", "model": os.getenv("ORACLE_CLAUDE_MODEL", "") or "default"}
+    return {"available": True, "detail": "ok", "model": _model() or "default"}
 
 
 def transcript_path(workdir: Path) -> Path:
@@ -90,7 +96,7 @@ def run(workdir: str, prompt: str, append_system_prompt: str = "",
            "--allowedTools", _ALLOWED_TOOLS]
     if append_system_prompt:
         cmd += ["--append-system-prompt", append_system_prompt]
-    model = os.getenv("ORACLE_CLAUDE_MODEL", "").strip()
+    model = _model()
     if model:
         cmd += ["--model", model]
 

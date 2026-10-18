@@ -128,8 +128,8 @@ def parse_subscription_actions(
                        for d in domains if str(d).strip()}
     allowed_domains.add("general")
     allowed_event_types = {"entity.upserted"}
-    force_telegram_target = os.getenv(
-        "ORACLE_FORCE_TELEGRAM_TARGET", "1").strip().lower() not in {"0", "false", "no"}
+    from core.services import oracle_settings  # lazy: settings import the provider registry
+    force_telegram_target = oracle_settings.get_bool(oracle_settings.FORCE_OWNER_TARGET)
     fallback_target = default_target or os.getenv(
         "ORACLE_NOTIFY_DEFAULT_TARGET", owner)
 

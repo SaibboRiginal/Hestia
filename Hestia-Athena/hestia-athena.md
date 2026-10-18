@@ -178,9 +178,12 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub base URL |
 | `HUB_KEEPALIVE_SECONDS` | `60` | Hub re-registration period |
 | `ATHENA_ORACLE_HINT_ROUTE` | `api/athena/hints` | Oracle path for hints (route) |
-| `ATHENA_STRATEGIST_MODEL` / `ATHENA_STRATEGIST_PROVIDER` | (Oracle default) | Model override for strategist + consolidation (to move to Oracle settings) |
-| `ATHENA_AUDITOR_MODEL` / `ATHENA_AUDITOR_PROVIDER` | (Oracle default) | Model override for the auditor (to move to Oracle settings) |
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
+
+Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena_strategist`
+(strategist + memory consolidation) or `athena_auditor` (answer audit); the models are the Oracle settings
+`oracle.models.athena_strategist.*` / `oracle.models.athena_auditor.*` (default «Come Uso generale» = Oracle's
+generic models).
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)

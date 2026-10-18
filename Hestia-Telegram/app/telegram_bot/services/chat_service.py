@@ -1,5 +1,4 @@
 import json
-import os
 import threading
 import logging
 import time
@@ -714,7 +713,7 @@ def handle_chat_message(message):
             stream=True,
             # (connect, max silence between chunks): no timeout used to hang
             # the chat forever when Oracle stalled.
-            timeout=(10, float(os.getenv("TELEGRAM_ORACLE_STREAM_TIMEOUT", "600"))),
+            timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT))),
         ) as res:
             res.raise_for_status()
             consume_oracle_stream(res, renderer, streamed_signals, streamed_questions)
@@ -946,7 +945,7 @@ def handle_file_message(message):
             files={
                 "file": (filename or f"attachment.{mime_type.split('/')[-1]}", file_bytes, mime_type)},
             stream=True,
-            timeout=(10, float(os.getenv("TELEGRAM_ORACLE_STREAM_TIMEOUT", "600"))),
+            timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT))),
         ) as res:
             res.raise_for_status()
             consume_oracle_stream(res, renderer, streamed_signals, [])

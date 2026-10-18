@@ -7,6 +7,7 @@ from typing import Any
 
 import requests
 
+import telegram_settings
 from telegram_bot import core
 from telegram_bot.services.command_service import refresh_command_registry
 
@@ -33,6 +34,9 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self._send_json(200, {"status": "ok", "service": "telegram"})
             return
+        if self.path == "/api/settings/effective":
+            self._send_json(200, telegram_settings.effective_payload())
+            return
         if self.path.startswith("/api/logs"):
             from urllib.parse import parse_qs, urlsplit
 
@@ -58,6 +62,17 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"status": "error", "detail": "not found"})
 
     def do_POST(self):
+        if self.path == "/api/settings/reload":
+            # Themis pushes changed values here (via Hub) so live settings apply at once.
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length).decode("utf-8") if content_length else ""
+                payload = json.loads(body) if body else {}
+                self._send_json(200, telegram_settings.reload_payload(payload if isinstance(payload, dict) else {}))
+            except Exception as e:
+                logger.warning("event=settings_reload_failed error=%s", e)
+                self._send_json(400, {"status": "error", "detail": str(e)})
+            return
         if self.path == "/api/events/registry-changed":
             import threading
             threading.Thread(target=refresh_command_registry, kwargs={
@@ -186,7 +201,7 @@ def _format_single_alert_with_oracle(
         effective_instructions = (
             core.build_client_instructions_for_chat(str(chat_id))
             if chat_id is not None
-            else core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS
+            else core.client_instructions()
         )
         request_payload = {
             "command": f"alert:{domain}",
@@ -297,7 +312,7 @@ def format_multiple_alerts_with_oracle(
         effective_instructions = (
             core.build_client_instructions_for_chat(str(chat_id))
             if chat_id is not None
-            else core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS
+            else core.client_instructions()
         )
         request_payload = {
             "command": f"alert:multi",

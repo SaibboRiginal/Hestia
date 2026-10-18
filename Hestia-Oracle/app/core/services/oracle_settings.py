@@ -1,8 +1,10 @@
 """Oracle settings declared to Themis (central settings).
 
-Models per use case replace the old ``MODEL_USECASE_*`` env vars. Endpoints and keys
-(``OLLAMA_URL``, ``GEMINI_API_KEY``…) are infrastructure and stay in env.
-Model changes are live: ``AgentFactory.reconfigure`` updates the agents in place.
+Models per use case replace the old ``MODEL_USECASE_*`` env vars; the per-module LLM choices
+(Scout extraction, Athena strategist/auditor) are use cases here too: modules send ``use_case``.
+Endpoints, keys, binaries/paths, ``ORACLE_EMBED_DIM`` (Archive ``Vector(768)``) and ``TZ`` are
+infrastructure and stay in env. Every tunable is read at use time (``apply="live"``):
+model changes go through ``AgentFactory.reconfigure`` (agents updated in place).
 """
 from __future__ import annotations
 
@@ -31,6 +33,23 @@ USECASES = {
     "code":      ("Codice",                   "ollama", "gemma4:e4b",          "gemini", "gemini-2.0-flash",      "auto"),
     "embedding": ("Embedding (ricerca)",      "ollama", "qwen3-embedding:0.6b", "gemini", "gemini-embedding-001", None),
 }
+# Use cases of other modules (they send ``use_case`` to /api/llm/generate). Provider "" = same
+# provider/model as «Uso generale» (Oracle default), so nothing to keep in sync.
+FOLLOW = ("", "Come «Uso generale»")
+SERVICE_USECASES = {
+    #  use case            label                          provider  model              fb provider fb model
+    "scout_extraction":  ("Scout · lettura annunci",      "gemini", "gemini-2.5-flash", "gemini", "gemini-2.5-flash-lite"),
+    "athena_strategist": ("Athena · strategia e memoria", "",       "",                 "",       ""),
+    "athena_auditor":    ("Athena · revisione risposte",  "",       "",                 "",       ""),
+}
+_SERVICE_HELP = {
+    "scout_extraction": "Estrae i dati degli annunci dalle mail di Scout. Se il principale finisce la quota "
+                        "passa a quello di riserva.",
+    "athena_strategist": "Ragionamenti di Athena (proposte, consolidamento della memoria).",
+    "athena_auditor": "Valuta la qualità delle risposte dell'assistente.",
+}
+CLAUDE_CODE_MODEL = "oracle.models.claude_code.model"
+
 _HELP = {
     "generic": "Chat, classificazione, scelta degli strumenti, memoria.",
     "reasoning": "Analisi lunghe e ragionamenti complessi (caricato quando serve).",
@@ -69,6 +88,27 @@ def _definitions() -> list[dict]:
                                 group="Modelli", options=THINKING, order=base + 4, advanced=True,
                                 help="Automatico = attivo se il modello lo supporta.", row=label,
                                 column="Ragionamento"))
+    for i, (uc, (label, prov, model, fb_prov, fb_model)) in enumerate(SERVICE_USECASES.items()):
+        base = 100 + i * 10
+        defs += [
+            setting(key(uc, "provider"), f"{label} · fornitore", "enum", prov, group="Modelli",
+                    options=[FOLLOW] + PROVIDERS, help=_SERVICE_HELP[uc], order=base, advanced=True,
+                    row=label, column="Fornitore"),
+            setting(key(uc, "model"), f"{label} · modello", "model", model, group="Modelli",
+                    options_source=f"/api/llm/models?provider={{{key(uc, 'provider')}}}",
+                    help="Vuoto = modello di «Uso generale».", order=base + 1, advanced=True,
+                    row=label, column="Modello"),
+            setting(key(uc, "fallback_provider"), f"{label} · fornitore di riserva", "enum", fb_prov,
+                    group="Modelli", options=[FOLLOW] + PROVIDERS, order=base + 2, advanced=True,
+                    help="Usato se il principale non risponde.", row=label, column="Riserva · fornitore"),
+            setting(key(uc, "fallback_model"), f"{label} · modello di riserva", "model", fb_model,
+                    group="Modelli", options_source=f"/api/llm/models?provider={{{key(uc, 'fallback_provider')}}}",
+                    order=base + 3, advanced=True, row=label, column="Riserva · modello"),
+        ]
+    defs.append(setting(CLAUDE_CODE_MODEL, "Forge · Claude Code · modello", "model", "", group="Modelli",
+                        options_source="/api/llm/models?provider=claude_cli", order=200, advanced=True,
+                        help="Modello usato da Claude Code quando Forge lavora con il motore Claude. "
+                             "Vuoto = predefinito di Claude Code."))
     return defs
 
 
@@ -140,7 +180,307 @@ _CONTEXT = [
                  "Disattivalo se il server rifiuta il campo."),
 ]
 
-settings.declare(_definitions() + _CHAT + _CONTEXT, presets=_presets()).declare_log_level()
+# ── Runtime tunables (were ORACLE_* / OLLAMA_* / DOC_* env vars) ─────────────────────────────
+# Agent loop
+MAX_TURNS = "oracle.agent.max_turns"
+MAX_TOKENS = "oracle.agent.max_tokens"
+TOOL_RESULT_MAX_CHARS = "oracle.agent.tool_result_max_chars"
+EARLY_EXIT_NO_TOOL_TURNS = "oracle.agent.early_exit_no_tool_turns"
+MAX_PARALLEL_TOOLS = "oracle.agent.max_parallel_tools"
+# Conversation context
+HISTORY_LIMIT = "oracle.context.history_messages"
+HISTORY_CHAR_LIMIT = "oracle.context.history_message_chars"
+ENTITIES_LIMIT = "oracle.context.entities"
+FIELD_CHAR_LIMIT = "oracle.context.entity_field_chars"
+COMPACT_TRIGGER = "oracle.context.compact_trigger_messages"
+COMPACT_KEEP = "oracle.context.compact_keep_recent"
+TODAY_AGENDA = "oracle.context.today_agenda"
+# Time limits per request source (s)
+TIMEOUTS = {
+    "foreground_chat": ("Risposta in chat", 8),
+    "action_selection": ("Scelta dell'azione", 12),
+    "action_service_route": ("Azione su un modulo", 25),
+    "memory_extraction": ("Estrazione della memoria", 10),
+    "background_compaction": ("Compattazione in background", 8),
+    "notification_formatting": ("Testo delle notifiche", 12),
+}
+GATEWAY_CHAT_TIMEOUT = "oracle.timeouts.gateway_chat"
+# Providers (endpoints stay env)
+LLM_RETRIES = "oracle.provider.retries"
+LLM_RETRY_DELAY = "oracle.provider.retry_delay"
+OLLAMA_TIMEOUT = "oracle.provider.ollama.timeout"
+OLLAMA_EMBED_TIMEOUT = "oracle.provider.ollama.embed_timeout"
+OLLAMA_TOOL_MODE = "oracle.provider.ollama.tool_call_mode"
+THINKING_FAMILIES = "oracle.provider.ollama.thinking_families"
+# Memory
+NOTICE_WAIT = "oracle.memory.notice_wait"
+DOMAIN_THRESHOLD = "oracle.memory.domain_threshold"
+PREFERENCE_DOMAINS = "oracle.memory.preference_domains"
+FORCE_OWNER_TARGET = "oracle.memory.force_owner_target"
+# High-impact approval gate (safety: the assistant may only read these)
+APPROVAL_ENABLED = "oracle.approval.enabled"
+APPROVAL_TTL = "oracle.approval.ttl"
+APPROVAL_BULK_MIN = "oracle.approval.bulk_min_count"
+APPROVAL_METHODS = "oracle.approval.methods"
+APPROVAL_COMMANDS = "oracle.approval.commands"
+# Athena hints, caches, background tasks
+HINTS_ENABLED = "oracle.hints.enabled"
+HINTS_TTL = "oracle.hints.ttl"
+HINTS_MAX = "oracle.hints.max"
+SCHEMAS_CACHE_TTL = "oracle.cache.schemas_ttl"
+TOOL_REGISTRY_TTL = "oracle.cache.tool_registry_ttl"
+TASKS_MAX = "oracle.tasks.max_kept"
+# Documents
+DOC_MAX_ARCHIVE_MB = "oracle.documents.max_archive_mb"
+DOC_SEARCH_THRESHOLD = "oracle.documents.search_threshold"
+VISION_MODELS = "oracle.documents.vision_models"
+AUDIO_MODELS = "oracle.documents.audio_models"
+WHISPER_MODEL = "oracle.documents.whisper_model"
+# Prompt A/B experiments: surface → key prefix
+AB_SURFACES = {"alert_formatter": ("oracle.prompt_ab.alert", "Notifiche"),
+               "planner_behavior": ("oracle.prompt_ab.planner", "Pianificatore")}
+
+DEFAULT_PREFERENCE_DOMAINS = {
+    "general": "Universal preferences, default catch-all for anything not fitting other domains",
+    "calendar": "Scheduling, time management, appointments, events, deadlines, agenda, reminders",
+    "real_estate": "Housing, property, apartments, listings, buying, selling, renting homes, real estate market",
+    "email": "Messages, communication, inbox, correspondence, mail, letters, notifications",
+    "system": "Technology, services, monitoring, software, hardware, tech infrastructure, servers",
+    "food": "Cuisine, restaurants, dietary preferences, cooking, eating, food, meals, recipes",
+    "work": "Professional life, projects, career, workplace, business, job, office, employment",
+    "health": "Medical, fitness, wellness, exercise, healthcare, doctor, gym, nutrition",
+    "travel": "Trips, transportation, locations, navigation, commuting, vacations, flights, hotels",
+    "finance": "Money, budgeting, purchases, banking, investments, savings, expenses, payments",
+}
+_DEFAULT_THINKING_FAMILIES = ["gemma4", "gemma3", "gemma", "qwen3", "deepseek-r1", "llama4", "phi4", "llama",
+                              "llama2", "llama3"]
+_DEFAULT_VISION = ["gemma-3", "gemma4", "gemma3", "gemini", "gpt-4o", "gpt-4-vision", "claude-3", "llava", "bakllava",
+                   "moondream", "minicpm-v", "phi-3-vision", "phi3v", "qwen2-vl", "qwen-vl", "internvl"]
+_WHISPER = [("tiny", "Minimo (più veloce)"), ("base", "Base"), ("small", "Piccolo"), ("medium", "Medio"),
+            ("large-v3", "Grande (più preciso)")]
+_TOOL_MODES = [("auto", "Automatico"), ("native", "Nativo"), ("text", "Testo")]
+
+_AGENT = [
+    setting(MAX_TURNS, "Passi massimi per risposta", "int", 25, group="Agente", min=1, max=100, unit="passi",
+            order=0, help="Quante volte al massimo l'assistente usa gli strumenti prima di risponderti "
+                          "(la modalità CoT ne usa almeno 50)."),
+    setting(MAX_TOKENS, "Token massimi per risposta", "int", 0, group="Agente", min=0, max=2_000_000,
+            unit="token", order=1, advanced=True, help="Limite di token consumati in un ragionamento. 0 = nessun limite."),
+    setting(TOOL_RESULT_MAX_CHARS, "Lunghezza massima del risultato di uno strumento", "int", 2000,
+            group="Agente", min=200, max=50000, unit="caratteri", order=2, advanced=True,
+            help="Oltre questa lunghezza il risultato viene accorciato prima di darlo al modello."),
+    setting(EARLY_EXIT_NO_TOOL_TURNS, "Chiudi dopo passi senza strumenti", "int", 2, group="Agente", min=1,
+            max=10, unit="passi", order=3, advanced=True,
+            help="Se il modello non usa strumenti per questi passi di fila (e ha già fatto qualcosa), risponde."),
+    setting(MAX_PARALLEL_TOOLS, "Strumenti in parallelo", "int", 8, group="Agente", min=1, max=32, order=4,
+            advanced=True, help="Quanti strumenti possono girare insieme nello stesso passo."),
+    setting(HISTORY_LIMIT, "Messaggi precedenti nel contesto", "int", 6, group="Contesto", min=1, max=100,
+            unit="messaggi", order=10, help="Quanti messaggi della conversazione l'assistente rilegge a ogni risposta."),
+    setting(HISTORY_CHAR_LIMIT, "Lunghezza massima di un messaggio precedente", "int", 500, group="Contesto",
+            min=50, max=20000, unit="caratteri", order=11, advanced=True,
+            help="I messaggi vecchi più lunghi vengono accorciati nel contesto."),
+    setting(ENTITIES_LIMIT, "Elementi dei moduli nel contesto", "int", 12, group="Contesto", min=1, max=100,
+            order=12, advanced=True, help="Quanti elementi trovati nei moduli (annunci, eventi…) entrano nell'analisi."),
+    setting(FIELD_CHAR_LIMIT, "Lunghezza massima di un campo", "int", 280, group="Contesto", min=50, max=5000,
+            unit="caratteri", order=13, advanced=True, help="Ogni campo di un elemento viene accorciato a questa lunghezza."),
+    setting(COMPACT_TRIGGER, "Riassumi la conversazione oltre", "int", 20, group="Contesto", min=6, max=500,
+            unit="messaggi", order=14, advanced=True,
+            help="Oltre questo numero di messaggi la parte vecchia della conversazione viene riassunta."),
+    setting(COMPACT_KEEP, "Messaggi recenti da non riassumere", "int", 6, group="Contesto", min=2, max=50,
+            unit="messaggi", order=15, advanced=True, help="Gli ultimi messaggi restano interi quando si riassume."),
+    setting(TODAY_AGENDA, "Agenda di oggi nel contesto", "bool", True, group="Contesto", order=16,
+            help="A ogni risposta l'assistente legge gli impegni di oggi dal calendario (qualche token in più)."),
+]
+_TIMEOUTS = [
+    setting(f"oracle.timeouts.{name}", f"Tempo massimo · {label.lower()}", "int", default, group="Tempi",
+            min=1, max=600, unit="s", order=i, advanced=True,
+            help="Oltre questo tempo il passaggio viene saltato o si passa al piano di riserva.")
+    for i, (name, (label, default)) in enumerate(TIMEOUTS.items())
+] + [
+    setting(GATEWAY_CHAT_TIMEOUT, "Tempo massimo · richieste di Forge al modello", "int", 600, group="Tempi",
+            min=30, max=3600, unit="s", order=20, advanced=True,
+            help="Una richiesta di Forge (profili locale/cloud) che supera questo tempo fallisce."),
+    setting(OLLAMA_TIMEOUT, "Tempo massimo · risposta di Ollama", "int", 120, group="Tempi", min=10, max=1800,
+            unit="s", order=21, help="Quanto aspetto una risposta del modello locale."),
+    setting(OLLAMA_EMBED_TIMEOUT, "Tempo massimo · embedding di Ollama", "int", 60, group="Tempi", min=5,
+            max=600, unit="s", order=22, advanced=True),
+    setting(LLM_RETRIES, "Tentativi verso il modello", "int", 3, group="Tempi", min=1, max=10, order=23,
+            advanced=True, help="Quante volte riprovo una chiamata al modello che fallisce."),
+    setting(LLM_RETRY_DELAY, "Attesa tra i tentativi", "float", 1.0, group="Tempi", min=0.1, max=60, unit="s",
+            order=24, advanced=True, help="Prima attesa; raddoppia a ogni nuovo tentativo."),
+]
+_PROVIDER = [
+    setting(OLLAMA_TOOL_MODE, "Ollama · modo di chiamare gli strumenti", "enum", "auto", group="Contesto",
+            options=_TOOL_MODES, order=5, advanced=True,
+            help="Nativo: usa le chiamate strumenti di Ollama. Testo: il modello le scrive nel testo. "
+                 "Automatico: nativo, testo se il modello non lo supporta."),
+    setting(THINKING_FAMILIES, "Ollama · famiglie di modelli che ragionano", "list", _DEFAULT_THINKING_FAMILIES,
+            group="Contesto", order=6, advanced=True,
+            help="Con ragionamento «Automatico», un modello di queste famiglie ragiona prima di rispondere."),
+]
+_MEMORY = [
+    setting(NOTICE_WAIT, "Attesa per gli avvisi di memoria", "float", 8.0, group="Memoria", min=0, max=60,
+            unit="s", order=0, advanced=True,
+            help="Dopo la risposta aspetto al massimo questo tempo per dirti cosa ho memorizzato."),
+    setting(DOMAIN_THRESHOLD, "Somiglianza per assegnare un'area", "float", 0.55, group="Memoria", min=0.1,
+            max=0.99, order=1, advanced=True,
+            help="Una preferenza va in un'area (cibo, lavoro…) se le somiglia almeno così. Più alto = più severo."),
+    setting(PREFERENCE_DOMAINS, "Aree delle preferenze", "object", DEFAULT_PREFERENCE_DOMAINS, group="Memoria",
+            order=2, advanced=True,
+            help="Nome dell'area → descrizione (in inglese) usata per riconoscerla. «general» c'è sempre."),
+    setting(FORCE_OWNER_TARGET, "Avvisi delle sottoscrizioni sempre a te", "bool", True, group="Memoria",
+            order=3, advanced=True,
+            help="Gli avvisi che chiedi in chat («avvisami quando…») arrivano sempre a te, "
+                 "ignorando altre destinazioni proposte dal modello."),
+]
+_APPROVAL = [
+    setting(APPROVAL_ENABLED, "Chiedi conferma per le azioni importanti", "bool", True, group="Conferme",
+            oracle="read", order=0,
+            help="Prima di cancellare, modificare o fare azioni su più elementi l'assistente ti chiede conferma."),
+    setting(APPROVAL_TTL, "Validità di una richiesta di conferma", "int", 600, group="Conferme", min=30,
+            max=86400, unit="s", oracle="read", order=1, advanced=True,
+            depends_on={"key": APPROVAL_ENABLED, "equals": True},
+            help="Dopo questo tempo una richiesta di conferma senza risposta scade."),
+    setting(APPROVAL_BULK_MIN, "Conferma se l'azione tocca almeno", "int", 2, group="Conferme", min=1, max=100,
+            unit="elementi", oracle="read", order=2, advanced=True,
+            depends_on={"key": APPROVAL_ENABLED, "equals": True},
+            help="Un'azione ripetuta su almeno questi elementi chiede conferma."),
+    setting(APPROVAL_METHODS, "Tipi di richiesta da confermare", "list", ["DELETE", "PUT", "PATCH"],
+            group="Conferme", oracle="read", order=3, advanced=True,
+            depends_on={"key": APPROVAL_ENABLED, "equals": True},
+            help="Metodi HTTP che chiedono sempre conferma (DELETE = cancella, PUT/PATCH = modifica)."),
+    setting(APPROVAL_COMMANDS, "Comandi da confermare sempre", "list", [], group="Conferme", oracle="read",
+            order=4, advanced=True, depends_on={"key": APPROVAL_ENABLED, "equals": True},
+            help="Nomi di comandi che chiedono sempre conferma, qualunque sia il tipo."),
+]
+_RUNTIME = [
+    setting(HINTS_ENABLED, "Usa i suggerimenti di Athena", "bool", True, group="Memoria", order=9,
+            help="Le osservazioni di Athena (cosa ti interessa ora) guidano le risposte. Spento = ignorate."),
+    setting(HINTS_TTL, "Durata dei suggerimenti di Athena", "int", 7200, group="Memoria", min=60, max=604800,
+            unit="s", order=10, advanced=True, help="Per quanto tempo un suggerimento di Athena resta valido."),
+    setting(HINTS_MAX, "Suggerimenti di Athena tenuti", "int", 300, group="Memoria", min=10, max=5000,
+            order=11, advanced=True),
+    setting(SCHEMAS_CACHE_TTL, "Cache degli schemi dei moduli", "int", 30, group="Diagnostica", min=0,
+            max=3600, unit="s", order=10, advanced=True),
+    setting(TOOL_REGISTRY_TTL, "Cache degli strumenti dei moduli", "int", 120, group="Diagnostica", min=0,
+            max=3600, unit="s", order=11, advanced=True,
+            help="Ogni quanto rileggo dai moduli l'elenco degli strumenti disponibili."),
+    setting(TASKS_MAX, "Attività in background ricordate", "int", 500, group="Diagnostica", min=50, max=10000,
+            order=12, advanced=True),
+]
+_DOCUMENTS = [
+    setting(DOC_MAX_ARCHIVE_MB, "Dimensione massima per archiviare un file", "int", 10, group="Documenti",
+            min=1, max=500, unit="MB", order=0,
+            help="I file più grandi vengono analizzati ma non salvati nell'archivio dei documenti."),
+    setting(DOC_SEARCH_THRESHOLD, "Distanza massima nella ricerca documenti", "float", 1.2, group="Documenti",
+            min=0.1, max=2.0, order=1, advanced=True,
+            help="Più basso = solo documenti molto pertinenti; più alto = più risultati."),
+    setting(WHISPER_MODEL, "Trascrizione audio locale · modello", "enum", "base", group="Documenti",
+            options=_WHISPER, order=2, advanced=True,
+            help="Modello WhisperX per trascrivere l'audio in locale. Più grande = più preciso e più lento."),
+    setting(VISION_MODELS, "Modelli che leggono immagini", "list", _DEFAULT_VISION, group="Documenti",
+            order=3, advanced=True, help="Inizio del nome dei modelli che possono guardare immagini e PDF."),
+    setting(AUDIO_MODELS, "Modelli che ascoltano l'audio", "list", ["gemini-1.5", "gemini-2"], group="Documenti",
+            order=4, advanced=True, help="Inizio del nome dei modelli che capiscono l'audio senza trascrizione."),
+]
+_AB = []
+for _i, (_surface, (_prefix, _label)) in enumerate(AB_SURFACES.items()):
+    _AB += [
+        setting(f"{_prefix}.enabled", f"Esperimento prompt · {_label}", "bool", False, group="Esperimenti",
+                order=_i * 10, advanced=True,
+                help="Divide le richieste tra le varianti del prompt per confrontarle."),
+        setting(f"{_prefix}.variants", f"Esperimento prompt · {_label} · varianti", "list",
+                ["control", "experimental"], group="Esperimenti", order=_i * 10 + 1, advanced=True),
+        setting(f"{_prefix}.default", f"Esperimento prompt · {_label} · variante normale", "string", "control",
+                group="Esperimenti", order=_i * 10 + 2, advanced=True,
+                help="Usata quando l'esperimento è spento."),
+        setting(f"{_prefix}.force", f"Esperimento prompt · {_label} · forza variante", "string", "",
+                group="Esperimenti", order=_i * 10 + 3, advanced=True,
+                help="Se indicata, usata sempre (anche a esperimento spento)."),
+    ]
+
+settings.declare(_definitions() + _CHAT + _CONTEXT + _AGENT + _TIMEOUTS + _PROVIDER + _MEMORY + _APPROVAL
+                 + _RUNTIME + _DOCUMENTS + _AB, presets=_presets()).declare_log_level()
+
+
+# ── Typed readers (live; a bad stored value falls back to the declared default) ──────────────
+def _default(key_: str):
+    return (settings._defs.get(key_) or {}).get("default")
+
+
+def get_int(key_: str, minimum: int | None = None) -> int:
+    try:
+        value = int(settings.get(key_))
+    except (TypeError, ValueError):
+        value = int(_default(key_))
+    return value if minimum is None else max(minimum, value)
+
+
+def get_float(key_: str, minimum: float | None = None) -> float:
+    try:
+        value = float(settings.get(key_))
+    except (TypeError, ValueError):
+        value = float(_default(key_))
+    return value if minimum is None else max(minimum, value)
+
+
+def get_bool(key_: str) -> bool:
+    value = settings.get(key_)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on", "si", "sì"}
+    return bool(value)
+
+
+def get_list(key_: str, *, lower: bool = False, upper: bool = False) -> list[str]:
+    """List setting as clean strings (a comma-separated string is accepted too)."""
+    value = settings.get(key_)
+    if isinstance(value, str):
+        value = value.split(",")
+    if not isinstance(value, (list, tuple)):
+        value = _default(key_) or []
+    out = [str(v).strip() for v in value if str(v).strip()]
+    if lower:
+        out = [v.lower() for v in out]
+    if upper:
+        out = [v.upper() for v in out]
+    return out
+
+
+def timeout(source: str, fallback: int) -> int:
+    """Time limit (s) of one request source (``oracle.timeouts.<source>``)."""
+    if source not in TIMEOUTS:
+        return fallback
+    return get_int(f"oracle.timeouts.{source}", 1)
+
+
+def preference_domains() -> dict[str, str]:
+    value = settings.get(PREFERENCE_DOMAINS)
+    if isinstance(value, dict) and value:
+        return {str(k): str(v) for k, v in value.items() if str(k).strip()}
+    return dict(DEFAULT_PREFERENCE_DOMAINS)
+
+
+def prompt_ab(surface: str) -> dict:
+    """A/B config of one prompt surface: enabled, variants, default, forced."""
+    prefix = (AB_SURFACES.get(surface) or ("", ""))[0]
+    if not prefix:
+        return {}
+    return {"enabled": get_bool(f"{prefix}.enabled"),
+            "variants": tuple(dict.fromkeys(get_list(f"{prefix}.variants"))) or ("control",),
+            "default": str(settings.get(f"{prefix}.default") or "").strip() or "control",
+            "forced": str(settings.get(f"{prefix}.force") or "").strip()}
+
+
+def local_default_model(uc: str) -> str:
+    """Local (Ollama) model for a use case when a cloud one cannot run (no key): its own model if it is
+    already on Ollama, else the declared Ollama default."""
+    base = uc.removesuffix("_fallback")
+    if base not in USECASES:
+        base = "generic"
+    current = usecase(base)
+    if current["prov"] == "ollama" and current["mod"]:
+        return current["mod"]
+    return USECASES[base][2]
 
 
 def context_window() -> int:
@@ -209,7 +549,19 @@ def chat_mode(requested: str | None, *, client: str = "", session: str = "") -> 
 
 
 def usecase(uc: str) -> dict[str, str]:
-    """Current config of one use case: provider, model, thinking, fallback provider/model."""
+    """Current config of one use case: provider, model, thinking, fallback provider/model.
+
+    Module use cases (``SERVICE_USECASES``) with an empty provider follow «Uso generale»."""
+    if uc in SERVICE_USECASES:
+        generic = usecase("generic")
+        prov = str(settings.get(key(uc, "provider")) or "")
+        fb_prov = str(settings.get(key(uc, "fallback_provider")) or "")
+        out = dict(generic)
+        if prov:
+            out["prov"], out["mod"] = prov, str(settings.get(key(uc, "model")) or "").strip()
+        if fb_prov:
+            out["fb_prov"], out["fb_mod"] = fb_prov, str(settings.get(key(uc, "fallback_model")) or "").strip()
+        return out
     return {
         "prov": str(settings.get(key(uc, "provider")) or "ollama"),
         "mod": str(settings.get(key(uc, "model")) or "").strip(),

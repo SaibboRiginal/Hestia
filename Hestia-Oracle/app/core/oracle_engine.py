@@ -273,6 +273,11 @@ class SessionIntent:
     action_intent: bool = False
 
 
+def _approval_ttl() -> int:
+    from core.services import oracle_settings as _os
+    return _os.get_int(_os.APPROVAL_TTL, 30)
+
+
 class OracleEngine:
     """Top-level orchestrator — instantiate once per process."""
 
@@ -293,25 +298,14 @@ class OracleEngine:
         # ── Infrastructure services ───────────────────────────────────────────
         self._hub = HubClient(self._hub_url)
 
-        # Small TTL caches for quasi-static discovery endpoints.
-        self._domains_cache_ttl_seconds = int(
-            os.getenv("ORACLE_DOMAINS_CACHE_TTL_SECONDS", "30"))
-        self._schemas_cache_ttl_seconds = int(
-            os.getenv("ORACLE_SCHEMAS_CACHE_TTL_SECONDS", "30"))
+        # Small TTL cache for quasi-static discovery endpoints (TTL: oracle.cache.schemas_ttl, live).
         self._domains_cache_value: list[str] = ["general"]
         self._domains_cache_ts: float = 0.0
         self._schemas_cache_value: dict = {}
         self._schemas_cache_ts: float = 0.0
 
-        self._context_builder = ContextBuilder(
-            max_history_messages=int(os.getenv("ORACLE_HISTORY_LIMIT", "6")),
-            max_history_chars=int(
-                os.getenv("ORACLE_HISTORY_CHAR_LIMIT", "500")),
-            max_entities_in_context=int(
-                os.getenv("ORACLE_CONTEXT_ENTITIES_LIMIT", "12")),
-            max_field_chars=int(
-                os.getenv("ORACLE_CONTEXT_FIELD_CHAR_LIMIT", "280")),
-        )
+        # Limits from settings oracle.context.* (read at use time).
+        self._context_builder = ContextBuilder()
 
         module_tool_urls = [
             u.strip()
@@ -323,8 +317,7 @@ class OracleEngine:
 
         self._module_registry = ModuleToolRegistry(
             module_tool_urls=module_tool_urls,
-            ttl_seconds=int(
-                os.getenv("MODULE_TOOL_REGISTRY_TTL_SECONDS", "120")),
+            ttl_seconds=None,  # setting oracle.cache.tool_registry_ttl (live)
             hub_api_url=self._hub_url,
         )
 
@@ -390,53 +383,21 @@ class OracleEngine:
         self._session_clients: dict[str, str] = {}
 
         # ── Phase 2: query-source execution policy matrix ─────────────────────
-        # Keep execution behavior explicit by request source.
-        self._execution_policy_timeouts: dict[str, int] = {
-            "foreground_chat": int(os.getenv("ORACLE_POLICY_FOREGROUND_CHAT_TIMEOUT_SEC", "8")),
-            "action_selection": int(os.getenv("ORACLE_POLICY_ACTION_SELECTION_TIMEOUT_SEC", "12")),
-            "action_service_route": int(os.getenv("ORACLE_POLICY_ACTION_SERVICE_ROUTE_TIMEOUT_SEC", "25")),
-            "memory_extraction": int(os.getenv("ORACLE_POLICY_MEMORY_EXTRACTION_TIMEOUT_SEC", "10")),
-            "background_compaction": int(os.getenv("ORACLE_POLICY_BACKGROUND_COMPACTION_TIMEOUT_SEC", "8")),
-            "notification_formatting": int(os.getenv("ORACLE_POLICY_NOTIFICATION_FORMATTING_TIMEOUT_SEC", "12")),
-        }
-        self._task_store = TaskLifecycleStore(
-            max_tasks=int(os.getenv("ORACLE_TASK_STORE_MAX", "500")),
-        )
+        # Timeouts per request source: settings oracle.timeouts.* (oracle_settings.timeout, live).
+        from core.services import oracle_settings as _os
+        self._task_store = TaskLifecycleStore(max_tasks=_os.get_int(_os.TASKS_MAX, 50))
+        _os.settings.on_change(
+            lambda changed: setattr(self._task_store, "_max_tasks", _os.get_int(_os.TASKS_MAX, 50))
+            if _os.TASKS_MAX in changed else None)
 
-        self._oracle_timezone = str(
-            os.getenv("ORACLE_TIMEZONE", "Europe/Rome")).strip() or "Europe/Rome"
-        self._agent_action_tool_policy = os.getenv(
-            "ORACLE_AGENT_ACTION_TOOL_POLICY",
-            "Richiesta di modifica (crea, aggiorna, elimina, attiva, disattiva) + tool compatibile -> chiama almeno un tool prima della risposta.",
-        ).strip()
+        # User's local time = container TZ (infrastructure, same for every module).
+        self._oracle_timezone = str(os.getenv("TZ", "Europe/Rome")).strip() or "Europe/Rome"
 
-        # ── High-impact action approval gate ────────────────────────────────
-        self._approval_enabled = os.getenv(
-            "ORACLE_HIGH_IMPACT_APPROVAL_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-        self._approval_ttl_seconds = int(
-            os.getenv("ORACLE_HIGH_IMPACT_APPROVAL_TTL_SECONDS", "600"))
-        self._approval_bulk_min_count = int(
-            os.getenv("ORACLE_HIGH_IMPACT_APPROVAL_BULK_MIN_COUNT", "2"))
-        self._approval_methods = {
-            item.strip().upper()
-            for item in os.getenv("ORACLE_HIGH_IMPACT_APPROVAL_METHODS", "DELETE,PUT,PATCH").split(",")
-            if item.strip()
-        }
-        self._approval_command_allowlist = {
-            item.strip().lower()
-            for item in os.getenv("ORACLE_HIGH_IMPACT_APPROVAL_COMMANDS", "").split(",")
-            if item.strip()
-        }
+        # ── High-impact action approval gate (settings oracle.approval.*, read at use time) ──
         self._pending_action_approvals: dict[str, dict[str, Any]] = {}
         self._approval_lock = threading.Lock()
 
-        # ── Athena advisory hints (Hub-routed ingest) ───────────────────────
-        self._athena_hints_enabled = os.getenv(
-            "ORACLE_ATHENA_HINTS_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-        self._athena_hints_ttl_seconds = int(
-            os.getenv("ORACLE_ATHENA_HINTS_TTL_SECONDS", "7200"))
-        self._athena_hints_max = int(
-            os.getenv("ORACLE_ATHENA_HINTS_MAX", "300"))
+        # ── Athena advisory hints (Hub-routed ingest; TTL/max: oracle.hints.*) ──
         self._athena_hints: list[dict[str, Any]] = []
         self._athena_hints_lock = threading.Lock()
 
@@ -463,16 +424,17 @@ class OracleEngine:
         trace_id: str | None = None,
     ) -> dict[str, Any]:
         """Persist an advisory Athena hint in the in-memory hint buffer."""
-        if not self._athena_hints_enabled:
+        from core.services import oracle_settings as _os
+        if not _os.get_bool(_os.HINTS_ENABLED):
             return {
                 "status": "disabled",
                 "stored": False,
-                "reason": "ORACLE_ATHENA_HINTS_ENABLED=0",
+                "reason": f"{_os.HINTS_ENABLED}=false",
             }
 
         now = time.time()
         ttl_seconds = int(hint_payload.get("ttl_seconds")
-                          or self._athena_hints_ttl_seconds)
+                          or _os.get_int(_os.HINTS_TTL, 30))
         ttl_seconds = max(30, ttl_seconds)
 
         hint_id = str(hint_payload.get("hint_id") or uuid.uuid4().hex)
@@ -511,8 +473,9 @@ class OracleEngine:
             self._athena_hints = [h for h in self._athena_hints if str(
                 h.get("hint_id")) != hint_id]
             self._athena_hints.append(row)
-            if len(self._athena_hints) > self._athena_hints_max:
-                self._athena_hints = self._athena_hints[-self._athena_hints_max:]
+            hints_max = _os.get_int(_os.HINTS_MAX, 1)
+            if len(self._athena_hints) > hints_max:
+                self._athena_hints = self._athena_hints[-hints_max:]
 
         logger.info(
             "event=athena_hint_ingested hint_id=%s trace_id=%s session_id=%s domains=%s priority=%s",
@@ -683,9 +646,9 @@ class OracleEngine:
 
     def _policy_timeout(self, source: str, fallback: int = 10) -> int:
         """Return configured timeout seconds for a given execution source."""
-        value = self._execution_policy_timeouts.get(source, fallback)
+        from core.services import oracle_settings
         try:
-            return max(1, int(value))
+            return max(1, int(oracle_settings.timeout(source, fallback)))
         except Exception:
             return max(1, int(fallback))
 
@@ -702,7 +665,8 @@ class OracleEngine:
         valid_domains: list[str],
         limit: int = 3,
     ) -> list[dict[str, Any]]:
-        if not self._athena_hints_enabled:
+        from core.services import oracle_settings as _os
+        if not _os.get_bool(_os.HINTS_ENABLED):
             return []
 
         normalized_session = str(session_id or "").strip()
@@ -1158,9 +1122,9 @@ class OracleEngine:
         agent_loop_client_instructions_parts: list[str] = []
         if planner_contract:
             agent_loop_client_instructions_parts.append(planner_contract)
-        if intent.action_intent and self._agent_action_tool_policy:
-            agent_loop_client_instructions_parts.append(
-                self._agent_action_tool_policy)
+        action_tool_policy = prompt_config.prompt("agent_action_tool_policy").strip()
+        if intent.action_intent and action_tool_policy:
+            agent_loop_client_instructions_parts.append(action_tool_policy)
         if athena_hint_prompt_block:
             agent_loop_client_instructions_parts.append(
                 f"ATHENA_ADVISORY_HINTS:\n{athena_hint_prompt_block}")
@@ -1202,7 +1166,8 @@ class OracleEngine:
         t_agent_loop = time.perf_counter()
 
         # Resolve max turns: higher when action_intent is True (complex tasks)
-        _default_max_turns = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "25"))
+        from core.services import oracle_settings as _os
+        _default_max_turns = _os.get_int(_os.MAX_TURNS, 1)
         resolved_max_turns = _default_max_turns
         # auto / thinking: reasoning on · cot: deep reasoning + more turns
         # quick mode: never reaches here (caught above)
@@ -1765,7 +1730,8 @@ class OracleEngine:
         t_domains_ms = int((time.perf_counter() - t_domains) * 1000)
 
         schemas_from_cache = False
-        if now - self._schemas_cache_ts <= self._schemas_cache_ttl_seconds and isinstance(self._schemas_cache_value, dict):
+        from core.services import oracle_settings as _os
+        if now - self._schemas_cache_ts <= _os.get_int(_os.SCHEMAS_CACHE_TTL, 0) and isinstance(self._schemas_cache_value, dict):
             schemas = dict(self._schemas_cache_value)
             schemas_from_cache = True
             t_schemas_ms = 0
@@ -2063,7 +2029,8 @@ class OracleEngine:
         """After the final answer: stream what background memory saved (notices), or nothing."""
         if not waiter:
             return
-        wait_s = float(os.getenv("ORACLE_MEMORY_NOTICE_WAIT_SECONDS", "8"))
+        from core.services import oracle_settings as _os
+        wait_s = _os.get_float(_os.NOTICE_WAIT, 0.0)
         if not waiter["done"].wait(max(0.0, wait_s)):
             logger.info("event=memory_notice_wait_timeout wait_s=%s", wait_s)
             return
@@ -2503,7 +2470,8 @@ class OracleEngine:
             }
 
         # Separate: keep last 6 messages, compact the rest
-        keep_count = int(os.getenv("ORACLE_COMPACT_KEEP_RECENT", "6"))
+        from core.services import oracle_settings as _os
+        keep_count = _os.get_int(_os.COMPACT_KEEP, 1)
         to_compact = history_raw[:-keep_count] if len(history_raw) > keep_count else []
         to_keep = history_raw[-keep_count:] if len(history_raw) > keep_count else history_raw
 
@@ -2760,17 +2728,19 @@ class OracleEngine:
         action_name: str,
         param_sets: list[dict],
     ) -> bool:
-        if not self._approval_enabled:
+        from core.services import oracle_settings as _os
+        if not _os.get_bool(_os.APPROVAL_ENABLED):
             return False
 
         method = str(matched.get("method", "POST")).upper().strip()
-        if method in self._approval_methods:
+        if method in set(_os.get_list(_os.APPROVAL_METHODS, upper=True)):
             return True
 
-        if self._approval_command_allowlist and action_name.strip().lower() in self._approval_command_allowlist:
+        commands = set(_os.get_list(_os.APPROVAL_COMMANDS, lower=True))
+        if commands and action_name.strip().lower() in commands:
             return True
 
-        return len(param_sets) >= max(1, self._approval_bulk_min_count)
+        return len(param_sets) >= _os.get_int(_os.APPROVAL_BULK_MIN, 1)
 
     def _queue_high_impact_approval(
         self,
@@ -2797,7 +2767,7 @@ class OracleEngine:
                 "trace_id": str(trace_id or "").strip() or None,
                 "client_instructions": str(client_instructions or "").strip() or None,
                 "created_at": time.time(),
-                "expires_at": time.time() + max(30, self._approval_ttl_seconds),
+                "expires_at": time.time() + _approval_ttl(),
             }
         return token
 
@@ -3051,13 +3021,13 @@ class OracleEngine:
                 return self._ask_analyst(prompt)
 
     def _now_in_oracle_timezone(self) -> datetime:
-        """Return timezone-aware current datetime using ORACLE_TIMEZONE when valid."""
+        """Return timezone-aware current datetime in the container TZ when valid."""
         if ZoneInfo is not None:
             try:
                 return datetime.now(ZoneInfo(self._oracle_timezone))
             except Exception:
                 logger.warning(
-                    "event=oracle_timezone_invalid_fallback_utc Invalid ORACLE_TIMEZONE value | timezone=%s fallback=UTC",
+                    "event=oracle_timezone_invalid_fallback_utc Invalid TZ value | timezone=%s fallback=UTC",
                     self._oracle_timezone,
                 )
         return datetime.now(datetime_timezone.utc)
@@ -3105,7 +3075,8 @@ class OracleEngine:
         ]
 
         # Calendar context from Chronos (best-effort, non-blocking)
-        if os.getenv("ORACLE_TEMPORAL_CALENDAR_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}:
+        from core.services import oracle_settings as _os
+        if _os.get_bool(_os.TODAY_AGENDA):
             try:
                 agenda = self._hub.route_to_service(
                     service="chronos",

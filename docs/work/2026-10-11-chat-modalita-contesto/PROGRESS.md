@@ -11,4 +11,4 @@ Spec: `SPEC.md` v1.0 · resume from the first unchecked box.
 - [x] WebUI frontend: composer mode picker, thinking display in chat popover + live/detailed, context gauge
 - [x] Docs: hestia-oracle.md, hestia-webui.md, hestia-telegram.md, swagger, root CHANGELOG
 - [x] Verified here: py_compile, `ng build`, Playwright screenshots with mocked API; tests added `Hestia-Oracle/tests/test_chat_modes_usage.py` (not run, user rule)
-- [ ] User test on the real stack (.NET build + run)
+- [ ] User test on the real stack (.NET build + run) — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left

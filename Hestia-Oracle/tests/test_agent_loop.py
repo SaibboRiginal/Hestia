@@ -324,27 +324,24 @@ class TestRunAgentLoop:
         )
         assert tokens == tokens_out
 
-    def test_max_turns_reached_returns_final_non_empty(self):
-        # LLM always emits a tool call → loop should terminate at MAX_AGENT_TURNS
-        import os
-        os.environ["ORACLE_MAX_AGENT_TURNS"] = "2"
+    def test_max_turns_reached_returns_final_non_empty(self, monkeypatch):
+        # LLM always emits a tool call → loop should terminate at oracle.agent.max_turns
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.MAX_TURNS, 2)
         tool = _make_tool("infinite_tool")
         ask = _ask_fn_sequence(
             _xml_tool_call("infinite_tool", {}),
             _xml_tool_call("infinite_tool", {}),
             "Risposta finale.",
         )
-        try:
-            answer, _, _ = run_agent_loop(
-                user_message="Loop",
-                history_text="",
-                preference_facts=[],
-                tools=[tool],
-                ask_fn=ask,
-            )
-            assert isinstance(answer, str)
-        finally:
-            os.environ["ORACLE_MAX_AGENT_TURNS"] = "6"
+        answer, _, _ = run_agent_loop(
+            user_message="Loop",
+            history_text="",
+            preference_facts=[],
+            tools=[tool],
+            ask_fn=ask,
+        )
+        assert isinstance(answer, str)
 
     def test_ask_tools_fn_returns_tool_call_dict(self):
         """When ask_tools_fn is provided and returns a tool call, it should execute the tool."""
@@ -471,10 +468,10 @@ class TestRunAgentLoop:
         assert any("get_data" in line for line in thinking_lines)
         assert any("tool_call" in line for line in thinking_lines)
 
-    def test_custom_max_turns_overrides_env(self):
-        """max_turns parameter should override env default."""
-        import os
-        os.environ["ORACLE_MAX_AGENT_TURNS"] = "100"
+    def test_custom_max_turns_overrides_setting(self, monkeypatch):
+        """max_turns parameter should override the oracle.agent.max_turns setting."""
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.MAX_TURNS, 100)
         tool = _make_tool("a")
         ask = _ask_fn_sequence(
             _xml_tool_call("a", {}),
@@ -482,19 +479,16 @@ class TestRunAgentLoop:
             _xml_tool_call("a", {}),
             "Done.",
         )
-        try:
-            answer, tokens, tool_log = run_agent_loop(
-                user_message="X",
-                history_text="",
-                preference_facts=[],
-                tools=[tool],
-                ask_fn=ask,
-                max_turns=2,  # override — only 2 turns
-            )
-            # Should exit after 2 turns, not 100
-            assert len(tool_log) <= 2
-        finally:
-            os.environ["ORACLE_MAX_AGENT_TURNS"] = "25"
+        answer, tokens, tool_log = run_agent_loop(
+            user_message="X",
+            history_text="",
+            preference_facts=[],
+            tools=[tool],
+            ask_fn=ask,
+            max_turns=2,  # override — only 2 turns
+        )
+        # Should exit after 2 turns, not 100
+        assert len(tool_log) <= 2
 
     def test_action_intent_injects_policy_into_prompt(self):
         """When action_intent=True, the system prompt should include action policy."""

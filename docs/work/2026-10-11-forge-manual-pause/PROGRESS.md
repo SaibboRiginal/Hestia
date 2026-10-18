@@ -9,4 +9,4 @@
 - [x] Docs: hestia-hephaestus.md, hestia-webui.md, swagger.yml, root CHANGELOG
 - [x] v2.0 dedup `hephaestus.forge.dedup_days` (Forge.find_duplicate), `approve {engine}`, proposer in WebUI + brief
 - [x] v2.0 tests in `test_forge_pause.py` (smoke-run), `ng build` ok, docs + swagger
-- [ ] Marko: .NET build + real run (`up-all.bat --build`), try Pausa on the Sviluppo page
+- [ ] Marko: .NET build + real run (`up-all.bat --build`), try Pausa on the Sviluppo page — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left

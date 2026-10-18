@@ -97,7 +97,30 @@ itself. `tone`/`custom_prompt` are read and written through `services/personal_s
 
 ### Signal cards (legacy, non-stream paths only)
 The notification-compile path (`/api/subscriptions/compile` response `signals`) still uses signal cards:
-`TELEGRAM_SIGNAL_STYLE=minimal|compact|rich`, `TELEGRAM_SIGNAL_STYLE_BY_FAMILY=action=compact,...`.
+central settings `telegram.signals.style` (`minimal`|`compact`|`rich`) and per family
+`telegram.signals.style_memory|subscription|action|other` (empty = general style).
+
+### Module settings (Themis, `app/telegram_settings.py`)
+Tunables are central settings (`SettingsClient("telegram")`, all `apply=live`, read at use time). Env keeps only
+secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, `HUB_API_URL`, `TELEGRAM_BASE_URL`,
+`TELEGRAM_CONTROL_PORT`, `FEEDBACK_ARCHIVE_URL`, `WEBUI_API_URL`, `WEBUI_PUBLIC_URL`, `WEBUI_ADMIN_SECRET`.
+Separate from the personal chat settings (`oracle.chat.*`, see Settings above).
+
+| Key | Default | Was env |
+|---|---|---|
+| `telegram.alerts.buffer_window` | 0.8 s | `ALERT_BUFFER_WINDOW_SECONDS` |
+| `telegram.feedback.prompt_rate` | 0.15 | `TELEGRAM_FEEDBACK_PROMPT_RATE` |
+| `telegram.feedback.snooze_days` | 7 | `FEEDBACK_SNOOZE_DEFAULT_DAYS` |
+| `telegram.commands.hidden_services` | `[]` | `TELEGRAM_HIDDEN_COMMAND_SERVICES` |
+| `telegram.commands.hidden` | `notifica_attiva, notifica_disattiva, notifiche_attive` | `TELEGRAM_HIDDEN_DYNAMIC_COMMANDS` |
+| `telegram.chat.locale` | `it` | `TELEGRAM_LOCALE` |
+| `telegram.chat.client_instructions` | Telegram style/format contract | `TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS` |
+| `telegram.oracle.stream_timeout` | 600 s | `TELEGRAM_ORACLE_STREAM_TIMEOUT` |
+| `telegram.signals.style` / `.style_<family>` | `minimal` / empty | `TELEGRAM_SIGNAL_STYLE`, `TELEGRAM_SIGNAL_STYLE_BY_FAMILY` |
+| `telegram.log.level` | `LOG_LEVEL` at boot | — |
+
+`settings.start()` runs at boot (background register, hourly re-assert); the control server answers
+`GET /api/settings/effective` and `POST /api/settings/reload` so Themis pushes changes at once.
 
 ### Input Collection Contract (Global)
 - Commands must not rely on technical `key=value` syntax as primary UX.
@@ -113,15 +136,15 @@ The notification-compile path (`/api/subscriptions/compile` response `signals`) 
 | `/avvisi_recenti` | Show recent alerts in natural formatted text |
 | `/notifiche_attive` | Show active subscriptions in readable format |
 | `/scout_listings` | Show property list with HTML links |
-| `/snooze_feedback` | Suspend feedback prompts for 7 days |
+| `/snooze_feedback` | Suspend feedback prompts (`telegram.feedback.snooze_days`, default 7) |
 | `/feedback good` / `/feedback bad` | Rate last Oracle response |
 
 ### Feedback Collection
-- Inline 👍/👎 buttons appear after eligible chat responses (configurable rate, default ~15%).
+- Inline 👍/👎 buttons appear after eligible chat responses (setting `telegram.feedback.prompt_rate`, default 0.15).
 - Never on greetings, trivial messages, or during snooze periods.
 - Feedback is submitted to Archive's `feedback_submit` MCP tool via Hub routing.
 - On button press, the feedback prompt message is **deleted from chat** immediately — no lingering acknowledgment text.
-- Snooze via `/snooze_feedback` — writes a durable preference to Archive; auto-expires after 7 days.
+- Snooze via `/snooze_feedback` — writes a durable preference to Archive; auto-expires after `telegram.feedback.snooze_days` (default 7).
 
 ### Confirm cards from the chat (2026-10-18, client plugins)
 - An Oracle `question` with `question_id` (no approval `id`), e.g. a Themis proposal made in this chat ("crea una
@@ -140,6 +163,8 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 | `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted; repeat chains: `repeat.text` shown in italics («↻ Saltato 2 volte»), `update superseded` → old message deleted (over 48 h: «↻ Sostituito»), button on a replaced one → «Sostituita da un promemoria più recente» |
 | `POST` | `/api/dispatch/send` | Legacy (no longer called by Hermes): dispatch payloads via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
 | `GET` | `/health` | Service health |
+| `GET` | `/api/settings/effective` | Themis: values Telegram is using now (`hestia_common.settings_client` contract) |
+| `POST` | `/api/settings/reload` | Themis: push changed values (`{values, shared}`) or re-fetch them (empty body) |
 
 ---
 

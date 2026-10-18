@@ -1,12 +1,12 @@
 """Chronos notification worker — proactive calendar reminders via Hermes.
 
-Background thread started at FastAPI startup.  Every CHRONOS_NOTIFY_POLL_SECONDS
-(default 300 = 5 minutes) it:
+Background thread started at FastAPI startup.  Every ``chronos.reminders.poll_seconds``
+(Themis setting, default 300 = 5 minutes, re-read each iteration) it:
 
-  1. Reads upcoming events from Archive for the next NOTIFY_LOOK_AHEAD_HOURS
-     (default 26).
+  1. Reads upcoming events from Archive for the next ``chronos.reminders.look_ahead_hours``
+     (Themis setting, default 26).
   2. For each event, determines which notification bucket applies:
-       • "1d"  — event starts in ≤ 26h and > 2h 10m
+       • "1d"  — event starts in ≤ look-ahead hours and > 2h 10m
        • "2h"  — event starts in ≤ 2h 10m and > 35m
        • "30m" — event starts in ≤ 35m and > 0m (i.e. hasn't passed yet)
   3. Sends a Hermes notification if that bucket hasn't been sent yet for
@@ -28,20 +28,33 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from core import archive_client, hermes_client
+from core import chronos_settings as CS
 
 logger = logging.getLogger("hestia_chronos.notification_worker")
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Configuration (from env)
+#  Configuration (Themis settings, read at use time)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_POLL_SECONDS = int(os.getenv("CHRONOS_NOTIFY_POLL_SECONDS", "300"))
-_LOOK_AHEAD_HOURS = float(os.getenv("NOTIFY_LOOK_AHEAD_HOURS", "26"))
 
-# Bucket thresholds in minutes (upper boundary — lower boundary is the next bucket)
+def _poll_seconds() -> int:
+    try:
+        return max(30, int(CS.settings.get(CS.REMINDERS_POLL)))
+    except (TypeError, ValueError):
+        return 300
+
+
+def _look_ahead_hours() -> float:
+    try:
+        return max(3.0, float(CS.settings.get(CS.REMINDERS_LOOK_AHEAD_HOURS)))
+    except (TypeError, ValueError):
+        return 26.0
+
+
+# Bucket thresholds in minutes (upper boundary — lower boundary is the next bucket);
+# the "1d" upper boundary is the look-ahead setting.
 _BUCKET_30M_MAX_MINUTES = 35.0
 _BUCKET_2H_MAX_MINUTES = 130.0     # 2h 10m
-_BUCKET_1D_MAX_MINUTES = _LOOK_AHEAD_HOURS * 60
 
 _BUCKET_LABELS = {
     "30m": "30 minuti",
@@ -62,7 +75,7 @@ def _determine_bucket(minutes_until: float) -> str | None:
         return "30m"
     if minutes_until <= _BUCKET_2H_MAX_MINUTES:
         return "2h"
-    if minutes_until <= _BUCKET_1D_MAX_MINUTES:
+    if minutes_until <= _look_ahead_hours() * 60:
         return "1d"
     return None
 
@@ -72,7 +85,7 @@ _IT_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "lug
 
 
 def _format_datetime(iso_str: str) -> str:
-    """Italian date/time in the user's timezone (CHRONOS_DISPLAY_TZ / TZ, default
+    """Italian date/time in the user's timezone (container ``TZ``, default
     Europe/Rome).  Stored values are often UTC: showing them raw was 1-2h off."""
     try:
         from zoneinfo import ZoneInfo
@@ -82,7 +95,7 @@ def _format_datetime(iso_str: str) -> str:
             return f"{dt.day} {_IT_MONTHS[dt.month - 1]} {dt.year} (tutto il giorno)"
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        tz_name = os.getenv("CHRONOS_DISPLAY_TZ") or os.getenv("TZ") or "Europe/Rome"
+        tz_name = os.getenv("TZ") or "Europe/Rome"
         local = dt.astimezone(ZoneInfo(tz_name))
         return f"{local.day} {_IT_MONTHS[local.month - 1]} {local.year}, {local:%H:%M}"
     except Exception:
@@ -126,20 +139,20 @@ def _build_notification(item: dict, bucket: str) -> str:
 def _run_loop() -> None:
     logger.info(
         "event=notify_worker_started_poll_every [NOTIFY] Worker started — poll every %ds, look-ahead %.0fh",
-        _POLL_SECONDS,
-        _LOOK_AHEAD_HOURS,
+        _poll_seconds(),
+        _look_ahead_hours(),
     )
     while True:
         try:
             _tick()
         except Exception as exc:
             logger.error("event=notify_unhandled_error_tick [NOTIFY] Unhandled error in tick: %s", exc)
-        time.sleep(_POLL_SECONDS)
+        time.sleep(_poll_seconds())
 
 
 def _tick() -> None:
     now = datetime.now(timezone.utc)
-    look_ahead = now + timedelta(hours=_LOOK_AHEAD_HOURS)
+    look_ahead = now + timedelta(hours=_look_ahead_hours())
 
     items = archive_client.list_upcoming(
         from_time=now.isoformat(),

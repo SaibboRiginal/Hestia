@@ -892,8 +892,10 @@ def llm_code_endpoint(req: CodeTaskRequest):
 def llm_generate_endpoint(req: dict):
     """
     Ollama-compatible LLM endpoint for services.
-    Accepts: {"prompt": "...", "model": "...", "provider": "..."}
-    Returns: {"response": "..."}
+    Accepts: {"prompt": "...", "use_case": "...", "model": "...", "provider": "..."}
+    ``use_case`` (e.g. scout_extraction, athena_auditor) picks the module's model settings
+    (``oracle.models.<use_case>.*``); default = generic. Explicit model/provider still win.
+    Returns: {"response": "...", "model": "...", "provider": "..."}
     """
     from agents.universal_agent import UniversalAgent
     try:
@@ -901,9 +903,14 @@ def llm_generate_endpoint(req: dict):
         if not prompt:
             raise HTTPException(status_code=400, detail="prompt required")
 
-        # Same source as AgentFactory: settings oracle.models.generic.* (Themis).
+        # Same source as AgentFactory: settings oracle.models.<use case>.* (Themis).
         from core.services import oracle_settings
-        generic = oracle_settings.usecase("generic")
+        use_case = str(req.get("use_case") or "").strip().lower()
+        if use_case not in oracle_settings.SERVICE_USECASES and use_case not in oracle_settings.USECASES:
+            if use_case:
+                logger.warning("[🔄] event=llm_generate_unknown_use_case use_case=%s fallback=generic", use_case)
+            use_case = "generic"
+        generic = oracle_settings.usecase(use_case)
         default_provider, default_model = generic["prov"], generic["mod"]
 
         model = req.get("model") or default_model
@@ -920,7 +927,7 @@ def llm_generate_endpoint(req: dict):
                 "event=llm_generate_primary_failed "
                 "provider=%s model=%s error=%s — trying fallback",
                 provider, model, primary_exc)
-            # Fallback: same source of truth as AgentFactory (generic fallback settings).
+            # Fallback: same source of truth as AgentFactory (the use case's fallback settings).
             fallback_provider, fallback_model = generic["fb_prov"], generic["fb_mod"]
             try:
                 fallback_agent = UniversalAgent(

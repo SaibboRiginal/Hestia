@@ -29,7 +29,7 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
   main (event `service.action_required` with `kind: settings.proposal`, `closes` on decision); Athena candidate kind
   `setting` (`CHIAVE`/`VALORE`, observer lists proposable settings) → Themis proposal, capped by the new setting
   `athena.settings.proposals_per_day`. Parser regression test added (pytest not run).
-- [ ] P6 Migrate remaining modules' tunable env vars (one module per step):
+- [x] P6 Migrate remaining modules' tunable env vars (one module per step):
   - [x] Hecate (calendar backfill, Archive/calendar timeouts, auth re-check, notify cooldown)
   - [x] Scout (cycle interval, mail senders/filters, batching, LLM timeout, reconcile, enrichment)
   - [x] Hermes (delivery retries, recurring dedupe, batch window, Telegram retract delay) and MCP (tool cache, timeouts)
@@ -39,12 +39,24 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
     hours are code defaults of the Chronos windows (user edits there win), not settings
   - [x] Hephaestus (Forge fallback/turns/timeouts/merge/rollback/push/verify/scheduler, remediation) and Metis
     (dataset limits/labels; base model read from Oracle `oracle.models.generic.model`, training window = agenda)
-  - [ ] Oracle, Chronos, Telegram — after the threads working on them (local context, presence, Telegram settings)
-  - Left in env on purpose: per-module LLM choices (Scout `SCOUT_LLM_*`, Athena `ATHENA_*_MODEL/PROVIDER`) wait for
-    the Oracle step (they belong in Oracle settings); Hecate `GOOGLE_OAUTH_FLOW_MODE`; Forge test/deploy commands.
-  - Follow-ups: Argus monitor loop, Forge scheduler, Hermes retry loop, Hecate auth re-check are still sleep loops
-    (should become agenda jobs); swagger lacks the per-module `/api/settings/*` endpoints.
-- [ ] Docs: hestia-<name>.md, swagger, .env.example notes, docs/ARCHITECTURE.md rule
+  - [x] Oracle (2026-10-18, v2.4): agent loop, context, timeouts/retries, Ollama behaviour, memory, Athena hints,
+    approval gate (assistant read-only), caches, documents, prompt A/B → `oracle.*`; `ORACLE_CLAUDE_MODEL` →
+    `oracle.models.claude_code.model`; dead Gemini model vars removed; `ORACLE_TIMEZONE` → container `TZ`
+  - [x] Scout / Athena model choices → Oracle use cases `scout_extraction`, `athena_strategist`, `athena_auditor`
+    (`/api/llm/generate` takes `use_case`); `SCOUT_LLM_*`, `ATHENA_*_MODEL/PROVIDER` removed
+  - [x] Chronos: agenda tick/attempts, sync window/calendar/notify-new, reminder poll/look-ahead → `chronos.*`;
+    `CHRONOS_SYNC_ENABLED` / `_POLL_SECONDS` dropped (the agenda job `chronos.calendar_sync` is the switch and the
+    interval); `CHRONOS_DISPLAY_TZ` → `TZ`
+  - [x] Telegram: alert grouping, feedback rate/snooze, hidden commands, locale, client instructions, stream timeout,
+    signal style (+ per family, action = compact as the compose ran) → `telegram.*`; control server answers
+    `/api/settings/effective|reload`
+  - Left in env on purpose: secrets, URLs/ports, binaries/paths, `ORACLE_EMBED_DIM` (DB column), Oracle LLM gateway
+    profiles (endpoint + key bundles), `ORACLE_NOTIFY_DEFAULT_TARGET`, Hecate `GOOGLE_OAUTH_FLOW_MODE`, Forge
+    test/deploy commands.
+  - Follow-up (optional): Argus monitor loop, Forge scheduler, Hermes retry loop, Hecate auth re-check are still
+    sleep loops (could become agenda jobs).
+- [x] Docs: hestia-<name>.md, swagger (`/api/settings/effective|reload` with `shared`, `/api/llm/generate` `use_case`),
+  .env.example and compose comments, docs/ARCHITECTURE.md rule
 - [x] Out of scope fix: Archive `avvisi_recenti` response prompt no longer Scout-specific (generic, caveman style)
 - [x] v2.3 Impostazioni VS Code-like (2026-10-11): one search over everything (local, instant), sidebar
   Personali + Sistema with match counts, resizable; Personali rows = `<hx-setting-shell>`; user-scope settings

@@ -3528,6 +3528,9 @@ paths:
               properties:
                 prompt:
                   type: string
+                use_case:
+                  type: string
+                  description: "Oracle model use case (oracle.models.<use_case>, e.g. scout_extraction, athena_strategist, athena_auditor); unknown → generic. Explicit model/provider win."
                 model:
                   type: string
                 provider:
@@ -3908,7 +3911,7 @@ paths:
               required: [text]
               properties:
                 text: {type: string}
-                tz: {type: string, description: IANA zone of the user (default CHRONOS_DISPLAY_TZ)}
+                tz: {type: string, description: IANA zone of the user (default the container TZ)}
       responses:
         "200": {description: "{status, draft: {title, type, start_at, end_at, recurrence, description}}"}
         "400": {description: text too short}
@@ -5736,7 +5739,7 @@ paths:
       tags: [Meta]
       summary: (every module with settings, hestia_common; also WebUI, internal network only) values the module is really using
       responses:
-        "200": {description: "{owner, loaded, values{}, pending_restart[]}"}
+        "200": {description: "{owner, loaded, values{}, shared{} (followed personal values), pending_restart[]}"}
 
   /api/settings/reload:
     post:
@@ -5745,7 +5748,7 @@ paths:
       requestBody:
         content:
           application/json:
-            schema: {type: object, properties: {values: {type: object}}}
+            schema: {type: object, properties: {values: {type: object}, shared: {type: object, description: "followed themis.personal.* values"}}}
       responses:
         "200": {description: "{owner, applied[], pending_restart[]}"}
 

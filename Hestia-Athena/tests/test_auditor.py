@@ -131,3 +131,22 @@ class TestConversationAuditor:
         # Verify it called the right URL
         call_url = mock_session.post.call_args[0][0]
         assert "/route/archive/api/feedback" in call_url
+
+
+@pytest.mark.unit
+def test_oracle_calls_send_use_case_not_model():
+    """Model choice lives in Oracle (oracle.models.athena_*): Athena sends only the use case."""
+    from core.strategist import Strategist
+
+    for obj, call, use_case in (
+        (ConversationAuditor("http://hub/api"), "_call_oracle_llm", "athena_auditor"),
+        (Strategist("http://hub/api"), "_call_oracle", "athena_strategist"),
+    ):
+        resp = MagicMock(status_code=200, content=b"{}")
+        resp.json.return_value = {"payload": {"response": "ok"}}
+        obj._session = MagicMock()
+        obj._session.post.return_value = resp
+        getattr(obj, call)("prompt")
+        body = obj._session.post.call_args.kwargs["json"]["body"]
+        assert body["use_case"] == use_case
+        assert "model" not in body and "provider" not in body

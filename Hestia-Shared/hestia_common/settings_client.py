@@ -348,7 +348,7 @@ class SettingsClient:
         @router.get("/api/settings/effective")
         def settings_effective():
             return {"owner": self.owner, "loaded": self._loaded, "values": self.values(),
-                    "pending_restart": self.pending_restart()}
+                    "shared": dict(self._shared), "pending_restart": self.pending_restart()}
 
         @router.post("/api/settings/reload")
         def settings_reload(body: dict | None = None):

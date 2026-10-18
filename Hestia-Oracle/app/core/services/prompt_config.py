@@ -17,6 +17,10 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 _DEFAULT_PROMPTS: dict[str, str] = {
+    "agent_action_tool_policy": (
+        "Richiesta di modifica (crea, aggiorna, elimina, attiva, disattiva) + tool compatibile -> "
+        "chiama almeno un tool prima della risposta."
+    ),
     # Caveman style: short lines, imperative, zero filler. Every token is paid on
     # every turn (local context is small, cloud is billed). Keep it that way.
     "conversation_style_contract": (
@@ -262,45 +266,19 @@ def _build_prompt_map() -> dict[str, str]:
 
 
 _PROMPTS = _build_prompt_map()
-_DYNAMIC_BOUNDARY = os.getenv(
-    "ORACLE_PROMPT_DYNAMIC_BOUNDARY",
-    "SYSTEM_PROMPT_DYNAMIC_BOUNDARY",
-).strip() or "SYSTEM_PROMPT_DYNAMIC_BOUNDARY"
+# Internal markers (not settings): where the cacheable static prompt ends; salt of the A/B bucketing.
+_DYNAMIC_BOUNDARY = "SYSTEM_PROMPT_DYNAMIC_BOUNDARY"
+_PROMPT_VARIANT_SALT = "hestia"
 
 
-def _parse_bool_env(name: str, default: bool = False) -> bool:
-    raw = str(os.getenv(name, "1" if default else "0")).strip().lower()
-    return raw in {"1", "true", "yes", "on"}
-
-
-def _parse_variants_env(name: str, default: str) -> tuple[str, ...]:
-    parts = [item.strip() for item in os.getenv(
-        name, default).split(",") if item.strip()]
-    if not parts:
-        return ("control",)
-    return tuple(dict.fromkeys(parts))
-
-
-_PROMPT_VARIANT_SALT = os.getenv(
-    "ORACLE_PROMPT_AB_SALT", "hestia").strip() or "hestia"
-_PROMPT_VARIANT_CONFIG: dict[str, dict[str, Any]] = {
-    "alert_formatter": {
-        "enabled": _parse_bool_env("ORACLE_PROMPT_AB_ALERT_ENABLED", False),
-        "variants": _parse_variants_env("ORACLE_PROMPT_AB_ALERT_VARIANTS", "control,experimental"),
-        "default": str(os.getenv("ORACLE_PROMPT_AB_ALERT_DEFAULT", "control")).strip() or "control",
-        "forced": str(os.getenv("ORACLE_PROMPT_AB_ALERT_FORCE", "")).strip(),
-    },
-    "planner_behavior": {
-        "enabled": _parse_bool_env("ORACLE_PROMPT_AB_PLANNER_ENABLED", False),
-        "variants": _parse_variants_env("ORACLE_PROMPT_AB_PLANNER_VARIANTS", "control,experimental"),
-        "default": str(os.getenv("ORACLE_PROMPT_AB_PLANNER_DEFAULT", "control")).strip() or "control",
-        "forced": str(os.getenv("ORACLE_PROMPT_AB_PLANNER_FORCE", "")).strip(),
-    },
-}
+def _variant_config(surface: str) -> dict[str, Any]:
+    """A/B config of a prompt surface: central settings ``oracle.prompt_ab.*`` (live)."""
+    from core.services import oracle_settings  # lazy: settings import the provider registry
+    return oracle_settings.prompt_ab(surface)
 
 
 def select_variant(surface: str, seed: str | None = None) -> str:
-    cfg = _PROMPT_VARIANT_CONFIG.get(surface) or {}
+    cfg = _variant_config(surface)
     variants = tuple(cfg.get("variants") or ("control",))
     if not variants:
         return "control"

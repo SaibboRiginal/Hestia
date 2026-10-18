@@ -144,6 +144,32 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 | `CALENDAR_SERVICE_BASE_URL` | This service's public base URL for Hub registration |
 | `ARCHIVE_URL` | Archive base URL for calendar persistence |
 | `HERMES_URL` | Hermes base URL for notifications |
+| `CALENDAR_PORT`, `CALENDAR_SERVICE_VERSION`, `STARTUP_WAIT_TIMEOUT_SECONDS`, `LOG_LEVEL` | Bootstrap / infrastructure |
+| `TZ` | Container timezone (default Europe/Rome): reminder times, agenda wall time, "today" of `/api/calendar/agenda` |
+
+Everything tunable is a Themis setting (see **Settings** below); env keeps only infrastructure.
+
+## Settings (Themis, owner `chronos`)
+
+One `SettingsClient("chronos")` (`app/core/presence_settings.py`); agenda/calendar/reminder keys are declared in
+`app/core/chronos_settings.py`. All `apply=live`: read at use time, loops re-read them every iteration.
+
+| Key | Default | Group | What |
+|---|---|---|---|
+| `chronos.agenda.tick_seconds` (adv.) | 60 s (15–600) | Agenda | Agenda worker tick |
+| `chronos.agenda.max_attempts` (adv.) | 5 | Agenda | Retries of a one-off `task` before `failed` |
+| `chronos.sync.notify_new` | on | Calendario | Notice for a new future event found in Google/Outlook |
+| `chronos.sync.look_ahead_days` | 30 | Calendario | Days ahead imported by the sync |
+| `chronos.sync.look_back_days` (adv.) | 1 | Calendario | Days back re-read by the sync |
+| `chronos.sync.calendar_id` (adv.) | `primary` | Calendario | Provider calendar id read by the sync |
+| `chronos.reminders.look_ahead_hours` | 26 h | Promemoria | First reminder ("1d" bucket upper bound; then 2 h and 30 min) |
+| `chronos.reminders.poll_seconds` (adv.) | 300 s | Promemoria | Reminder worker poll |
+| `chronos.presence.*` | see Assistant presence | Presenza | Presence engine |
+| `chronos.log.level` (adv.) | `LOG_LEVEL` | Diagnostica | Log level |
+
+Not settings on purpose: the **sync frequency** is the recurrence of the agenda job `chronos.calendar_sync`
+(code default 15 min; the user moves it in the agenda, and **pausing/cancelling it turns calendar sync off**, also
+at boot — there is no separate on/off switch); the **timezone** is the container `TZ`.
 
 ---
 
@@ -164,7 +190,7 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 
 ## Reminder & agenda behaviour (fixes)
 
-- Reminder times shown in `CHRONOS_DISPLAY_TZ` / `TZ` (default Europe/Rome) with Italian month names; titles,
+- Reminder times shown in `TZ` (default Europe/Rome) with Italian month names; titles,
   locations and descriptions are HTML-escaped. All-day events (date-only) are flagged `all_day`.
 - `GET /api/calendar/agenda` window starts at local midnight (today's past and all-day events included).
 - Provider syncs no longer overwrite the user's `nag_enabled` choice; a rescheduled event (new `start_at`) resets
@@ -181,13 +207,13 @@ A second calendar, owned by Chronos, where **Hestia and its modules plan their o
 | Type | Meaning | Example |
 |---|---|---|
 | `event` | informational / planned | "Forge: sviluppo X" (scheduled Claude task) |
-| `task` | one-off action executed at `start_at` (retried up to `CHRONOS_AGENDA_MAX_ATTEMPTS`, then `failed`) | a repair Argus/Hephaestus planned for tonight |
+| `task` | one-off action executed at `start_at` (retried up to `chronos.agenda.max_attempts`, then `failed`) | a repair Argus/Hephaestus planned for tonight |
 | `job` | recurring action (RRULE) | "Scout: controlla le email ogni 30 min" |
 | `window` | recurring period in which something is allowed (RRULE + duration) | "Claude Pro: notti prima del reset" |
 
 Actions are `{service, method, path, body, query, timeout_seconds}` executed **through Hub** by the agenda worker
-(`CHRONOS_AGENDA_TICK_SECONDS`, 60). Recurring jobs fire only their latest due occurrence (no storm after downtime).
-Recurrence is evaluated in local wall time (`tz`, default `CHRONOS_DISPLAY_TZ`/`TZ`/Europe/Rome), DST-safe.
+(setting `chronos.agenda.tick_seconds`, 60 s). Recurring jobs fire only their latest due occurrence (no storm after downtime).
+Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST-safe.
 
 ### Rules are data
 
@@ -248,7 +274,7 @@ nothing stops; a rule the user **paused/cancelled** is a decision and is respect
 | Key | Type | Owner | Default | What happens |
 |---|---|---|---|---|
 | `scout.email_cycle` | job | scout | every `SCOUT_POLL_INTERVAL_SECONDS` (30 min) | `POST scout /api/scout/cycle` — email → listings cycle |
-| `chronos.calendar_sync` | job | chronos | every `CHRONOS_SYNC_POLL_SECONDS` (15 min) | `POST chronos /api/calendar/sync` — Hecate → Archive sync |
+| `chronos.calendar_sync` | job | chronos | every 15 min (edit/pause in the agenda) | `POST chronos /api/calendar/sync` — Hecate → Archive sync |
 | `athena.consolidation` | window | athena | daily 03–05 | memory consolidation, once a day inside the window |
 | `athena.skill_curation` | window | athena | daily 05–07 | skill curation, once a day inside the window |
 | `athena.thinking` | window | athena | all day | idle thinking cycles; skip/pause to silence Athena |

@@ -8,7 +8,6 @@ as additional public methods without changing existing ones.
 """
 import json
 import logging
-import os
 from typing import Callable
 
 import requests
@@ -17,7 +16,10 @@ from core.services.hub_client import HubClient
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-_DOC_SEARCH_THRESHOLD = float(os.getenv("DOC_SEARCH_THRESHOLD", "1.2"))
+def _search_threshold() -> float:
+    """Max vector distance of a relevant document: setting ``oracle.documents.search_threshold``."""
+    from core.services import oracle_settings
+    return oracle_settings.get_float(oracle_settings.DOC_SEARCH_THRESHOLD)
 
 # Keywords that indicate the user is asking about their stored documents
 _DOC_AWARENESS_KEYWORDS: frozenset[str] = frozenset([
@@ -56,7 +58,7 @@ class DocumentRAG:
                 "chat_id": chat_id,
                 "session_id": session_id,
                 "limit": limit,
-                "threshold": _DOC_SEARCH_THRESHOLD,
+                "threshold": _search_threshold(),
             }
             routed = self._hub.post("/documents/search", body, timeout=8)
             payload = routed.get("payload") if isinstance(

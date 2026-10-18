@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User request · channel: external chat (Claude Code cloud session, project thread) · 2026-10-10 |
-| **Status** | Approved 2026-10-10 — in progress (P1–P2 done) |
+| **Status** | Approved 2026-10-10 — P1–P6 done (2026-10-18); user real run pending |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 

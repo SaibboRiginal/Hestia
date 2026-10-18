@@ -9,6 +9,8 @@
       `tests/test_themis_personal.py` (not run by the suite here; checked by calling it directly)
 - [x] All Python suites, .NET + Angular builds, local real run of the stack (SPEC «Verified»)
 - [x] Fixes from the real run (SPEC «Fixed after the real run») with regression tests
-- [ ] P6 of central settings for Oracle / Chronos / Telegram (docs/work/2026-10-10-central-settings)
-- [ ] Marko: ok to merge branch `claude/project-thread-w9loez` into main, then `up-all.bat --build themis hercules hygieia wardrobe scout`
+- [x] P6 of central settings for Oracle / Chronos / Telegram + Scout/Athena models as Oracle use cases
+      (docs/work/2026-10-10-central-settings v2.4); all suites green again; Oracle live: 94 settings registered, live change applied
+- [x] Other dossiers: .NET build ticks / notes, Hermes retract item closed
+- [ ] Merge into main (or PR), then Marko: `up-all.bat --build` (whole stack: shared lib and many modules changed)
 - [ ] Later (optional): one generic Archive module store instead of three copies
