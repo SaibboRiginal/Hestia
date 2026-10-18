@@ -34,6 +34,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 from hestia_common.agenda_client import AgendaClient, daily_window
 from hestia_common.presence_client import PresenceClient
+from hestia_common.plugin_client import PluginClient, page
 
 logger, log_buffer = setup_service_logging("hestia_metis")
 
@@ -60,6 +61,19 @@ _HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 
 hub = HubClient(_HUB_API_URL)
+
+# ── WebUI plugin (core module, «Sistema» section): Miglioramento ─────────────
+# SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3. Bundle Hestia-Metis/ui → <dist>/webui/metis.js,
+# built in the image and copied outside /code (the compose dev mount of app/ would hide it). Read only:
+# insights, datasets and LoRA jobs through the existing /api/metis/ reads; training stays a chat/agenda action.
+UI_DIST = os.getenv("METIS_UI_DIST", "/ui/dist")
+ui = PluginClient("metis", title="Metis", icon="flask", color="purple", kind="core", dist=UI_DIST,
+                  description="Miglioramento continuo: dove Hestia sbaglia, dataset e training dei modelli.",
+                  version=SERVICE_VERSION)
+ui.webui(entry="metis.js", api_prefix="/api/metis/",
+         pages=[page("miglioramento", "Miglioramento", element="metis-improvement", icon="chart", order=180,
+                     help="Dove Hestia risponde peggio secondo i tuoi voti, i dataset raccolti e i training LoRA "
+                          "(pianificati nella finestra notturna dell'agenda, in corso, finiti).")])
 
 # ── Assistant agenda (Chronos) ────────────────────────────────────────────────
 # Training is heavy (GPU/CPU for hours): non-user requests are planned as agenda
@@ -617,6 +631,7 @@ except ModuleNotFoundError:
     )
 
 app.include_router(create_log_control_router("hestia_metis"))
+app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
 app.include_router(metis_settings.router())   # GET /api/settings/effective, POST /api/settings/reload
 
 # ── Hub registration ──────────────────────────────────────────────────────────
@@ -637,6 +652,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "loRA_train": "/api/metis/lora/train",
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
+        **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
     },
 }
 

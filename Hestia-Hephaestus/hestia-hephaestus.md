@@ -28,8 +28,29 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - POST /api/hephaestus/remediate/{task_id}/rollback
 - GET /api/hephaestus/tasks
 - GET /api/hephaestus/tasks/{task_id}
+- GET /api/ui/manifest · GET /ui/webui/{file} (WebUI plugin, see below)
 
 Execution endpoints above are implemented as policy-gated remediation flows (task creation, approval, rollback metadata) with real Hub-routed maintenance execution against target services.
+
+### WebUI plugin (Sistema)
+
+Hephaestus ships its own inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
+`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
+(WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it: no new endpoint).
+- page **Riparazioni** (`riparazioni`, `hephaestus-repairs`, order 170): remediation tasks from
+  `/api/hephaestus/tasks` + `/runbooks` + `/status` — counts per state, filter, per task runbook (title, steps,
+  read-only/rollback checkpoints), consent tier, dry-run, environment, attempts, notes timeline, execution result,
+  `rollback_ref`, branch, Forge task after escalation. Read only: approve/undo keep their consent path (chat/Telegram
+  tools `hephaestus_approve` / `hephaestus_rollback`); the page only says how to ask.
+- widget **Forge** (`forge`, `hephaestus-forge-widget`, sizes s/m/l, auto): active/paused/off, running, queue,
+  awaiting review, proposed, Claude budget phase (`/forge/status`, `/forge/claude-budget`, `/forge/tasks`). Its only
+  button is the existing manual brake `POST /forge/pause` (after a confirm, same switch as Sviluppo/Telegram).
+- No quick actions. The WebUI *Sviluppo* page (Forge tasks) stays built-in until it is ported (§A4).
+- Unreachable module → the page/widget shows the "non raggiungibile" state.
+Bundle: `Hestia-Hephaestus/ui/src` (Lit, `@hestia/webui-sdk`), built by the Node stage of the Dockerfile into
+`/ui/dist/webui/hephaestus.js` (outside `/code`: the dev mount of `app/` would hide it); infra env
+`HEPHAESTUS_UI_DIST` (default `/ui/dist`). Local check: `cd Hestia-Shared/webui-sdk && node build.mjs plugin
+../../Hestia-Hephaestus/ui/src/index.ts /tmp/x/webui/hephaestus.js` and `tsc -p ../../Hestia-Hephaestus/ui/tsconfig.json`.
 
 ### Repairs in the assistant agenda
 
