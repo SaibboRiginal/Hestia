@@ -53,6 +53,25 @@ public class HubClient
         }
     }
 
+    /// <summary>One catalog of module contributions for a client (tools, commands, pages, widgets,
+    /// quick actions, bundles) — Hub <c>/api/discovery/catalog</c>.</summary>
+    public async Task<JsonElement?> DiscoverCatalogAsync(
+        string client, string types, CancellationToken ct = default)
+    {
+        try
+        {
+            var resp = await _http.GetAsync(
+                $"{_hubUrl}/discovery/catalog?client={Uri.EscapeDataString(client)}&type={Uri.EscapeDataString(types)}", ct);
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _logger.LogWarning("[🔄] event=hub_discovery_catalog_failed error={Error}", ex.Message);
+            return null;
+        }
+    }
+
     /// <summary>Get a single service from the registry.</summary>
     public async Task<JsonElement?> GetServiceAsync(
         string serviceName, CancellationToken ct = default)

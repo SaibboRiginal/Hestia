@@ -4,6 +4,8 @@ import { Type } from '@angular/core';
  * WebUI module registry — ONE place to add a page.
  * Each entry becomes a route (/path, lazy loaded) and a sidebar item.
  * Guide: DESIGN-SYSTEM.md § "Add a module".
+ * Pages of Hestia modules (client plugins) are NOT listed here: they come from Hub's catalog at runtime
+ * (features/plugins, routes /p/<module>/…, dashboards /d/<id>).
  */
 export interface AppModule {
   path: string;
@@ -15,6 +17,8 @@ export interface AppModule {
 }
 
 export const APP_MODULES: AppModule[] = [
+  { path: 'home', label: 'Home', icon: 'home',
+    load: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent) },
   { path: 'chat', label: 'Chat', icon: 'chat',
     load: () => import('./features/chat/chat-page.component').then(m => m.ChatPageComponent) },
   { path: 'notifications', label: 'Notifiche', icon: 'bell', badge: 'notifications',

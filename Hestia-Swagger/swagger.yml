@@ -6230,6 +6230,52 @@ paths:
       responses:
         "200": {description: "{session_id, before_tokens, after_tokens, …}"}
 
+  /api/webui/plugins/catalog:
+    get:
+      tags: [WebUI]
+      summary: Client plugins for this WebUI (→ Hub /api/discovery/catalog?client=webui), cached 15 s
+      parameters:
+        - {name: fresh, in: query, required: false, schema: {type: boolean}, description: "skip the 15 s cache"}
+      responses:
+        "200": {description: "{revision, ui_revision, modules[], contributions.webui.{bundle,page,widget,quick_action}[]}"}
+
+  /api/webui/plugins/{module}/bundle/{file}:
+    get:
+      tags: [WebUI]
+      summary: A module's WebUI bundle file (→ Hub route <module>/ui/webui/<file>); the browser imports it as an ES module
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: file, in: path, required: true, schema: {type: string}, description: "path inside ui/dist/webui (no ..)"}
+      responses:
+        "200": {description: "file content (text/javascript, css, json, svg)"}
+        "404": {description: unknown module or file}
+
+  /api/webui/plugins/{module}/call/{path}:
+    get: &plugin_call
+      tags: [WebUI]
+      summary: Plugin → its own module (→ Hub route <module>/<path>); path must start with the module's api_prefix
+      description: Any method (GET/POST/PUT/PATCH/DELETE). Query and JSON body are forwarded; access_token is never forwarded.
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: path, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: module answer (status code passed through)}
+        "403": {description: path outside the module's api_prefix}
+    post: *plugin_call
+    put: *plugin_call
+    patch: *plugin_call
+    delete: *plugin_call
+
+  /api/webui/plugins/{module}/image:
+    get:
+      tags: [WebUI]
+      summary: Image from a module ({mime, data_b64} answer turned into bytes); usable in <img src> with ?token=
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: path, in: query, required: true, schema: {type: string}, description: "under the module's api_prefix"}
+      responses:
+        "200": {description: image bytes}
+
   /api/webui/presence:
     get:
       tags: [WebUI]

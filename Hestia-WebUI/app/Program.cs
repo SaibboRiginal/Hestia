@@ -27,6 +27,7 @@ builder.Services.AddSingleton<PublicUrlService>();
 builder.Services.AddSingleton<PresencePinger>();
 builder.Services.AddSingleton<WebUISettings>();
 builder.Services.AddSingleton<LocalAccess>();
+builder.Services.AddSingleton<PluginCatalog>();
 builder.Services.AddHostedService<WebUISettingsRegistrar>();
 
 builder.Services.AddHttpClient<HubClient>(client =>
@@ -201,12 +202,19 @@ if (Directory.Exists(staticDir))
 {
     // index.html must never be cached: it names the hashed bundles, and a stale copy keeps running the
     // old app after an update (e.g. the old login flow). Hashed .js/.css stay cacheable.
+    // sw.js and the plugin SDK runtime (/plugins/_sdk/) are not hashed either: always revalidated.
+    var types = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+    types.Mappings[".webmanifest"] = "application/manifest+json";
     var staticOpts = new StaticFileOptions
     {
+        ContentTypeProvider = types,
         OnPrepareResponse = ctx =>
         {
-            if (ctx.File.Name.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            var name = ctx.File.Name;
+            if (name.EndsWith(".html", StringComparison.OrdinalIgnoreCase) || name == "sw.js" || name.EndsWith(".webmanifest"))
                 ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+            else if (ctx.Context.Request.Path.StartsWithSegments("/plugins/_sdk"))
+                ctx.Context.Response.Headers.CacheControl = "no-cache";
         },
     };
     app.UseDefaultFiles();

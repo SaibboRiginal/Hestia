@@ -5,6 +5,7 @@ import { ModuleInfo } from './central-settings.api';
 import { CentralSettingsStore, moduleLabel } from './central-settings.store';
 import { PERSONAL_SECTIONS, PersonalSettingsComponent, personalHits } from './personal-settings.component';
 import { HEALTH, SystemSettingsComponent } from './system-settings.component';
+import { PluginSettingsComponent } from '../plugins/plugin-settings.component';
 
 /**
  * Impostazioni, VS Code-like: one search box over every setting (personal and system), a
@@ -14,7 +15,7 @@ import { HEALTH, SystemSettingsComponent } from './system-settings.component';
  */
 @Component({
   selector: 'app-settings-page',
-  imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent],
+  imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent, PluginSettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
@@ -62,6 +63,8 @@ import { HEALTH, SystemSettingsComponent } from './system-settings.component';
             <app-personal-settings [query]="store.query()" />
           }
           @if (store.visible().length || store.hiddenAdvanced() || store.onlyModified() || !pTotal()) { <app-system-settings /> }
+        } @else if (view() === 'p:plugin') {
+          <app-plugin-settings />
         } @else if (view().startsWith('p:')) {
           <app-personal-settings [section]="view().slice(2)" />
         } @else {

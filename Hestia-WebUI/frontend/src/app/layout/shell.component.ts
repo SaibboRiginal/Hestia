@@ -11,11 +11,13 @@ import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer
 import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
 import { PresenceService, PresenceState, ago, reasonLabel } from '../services/presence.service';
+import { PluginsService } from '../features/plugins/plugins.service';
+import { CommandPaletteComponent } from '../features/plugins/command-palette.component';
 
 /** App frame: collapsible, resizable sidebar (modules from APP_MODULES) + routed page + global overlays. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
@@ -24,6 +26,7 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
         <div class="brand">
           <span class="logo">◈</span>
           <span class="name">Hestia</span>
+          @if (!plugins.online()) { <span class="offline" title="Sei offline: i moduli mostrano gli ultimi dati salvati"><hx-icon name="offline" [size]="14" />offline</span> }
           <button class="icon-btn collapse" (click)="toggleCollapse()" [attr.aria-label]="collapsed() ? 'Espandi' : 'Comprimi'">
             <hx-icon name="sidebar" [size]="17" />
           </button>
@@ -41,6 +44,27 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
             </a>
           }
         </nav>
+        @if (otherDashboards().length) {
+          <div class="sect">Dashboard</div>
+          <nav>
+            @for (d of otherDashboards(); track d.id) {
+              <a class="item" [routerLink]="'/d/' + d.id" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="d.title">
+                <hx-icon [name]="d.icon || 'grid'" [size]="18" /><span>{{ d.title }}</span>
+              </a>
+            }
+          </nav>
+        }
+        @if (pluginNav().length) {
+          <div class="sect">Moduli</div>
+          <nav class="mods">
+            @for (p of pluginNav(); track p.id) {
+              <a class="item" [class.child]="!!p.parent" [class.off]="!p.online" [routerLink]="plugins.link(p.module, p.local_id)"
+                 routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="p.online ? p.label : p.label + ' (non raggiungibile)'">
+                <hx-icon [name]="p.icon || 'puzzle'" [size]="p.parent ? 16 : 18" /><span>{{ p.label }}</span>
+              </a>
+            }
+          </nav>
+        }
         <div class="spacer"></div>
         <nav>
           @for (m of bottom; track m.path) {
@@ -115,10 +139,12 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
       </main>
     </div>
     @defer (when assistant.isOpen()) { <hx-assistant /> }
+    @defer (on idle) { <hx-command-palette /> }
     <hx-toast-host />
     <hx-dialog-host />
   `,
   styles: [`
+    .offline { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--warning, #d9a441); padding: 2px 8px; border-radius: 999px; background: var(--surface-2, transparent); border: 1px solid var(--border); }
     :host { display: block; height: 100vh; }
     .shell { display: flex; height: 100%; }
     .nav { position: relative; width: var(--nav-width); flex-shrink: 0; background: var(--bg-subtle); border-right: 1px solid var(--border);
@@ -130,6 +156,12 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
     .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-md); display: inline-grid; place-items: center; color: var(--text-3); }
     .icon-btn:hover { background: var(--surface-2); color: var(--text); }
     nav { display: flex; flex-direction: column; gap: 2px; }
+    .sect { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; padding: 12px 12px 4px; white-space: nowrap; }
+    .collapsed .sect { visibility: hidden; height: 8px; padding: 0; }
+    .mods { overflow-y: auto; min-height: 0; }
+    .item.child { padding-left: 30px; height: 32px; font-size: 13.5px; }
+    .collapsed .item.child { padding-left: 10px; }
+    .item.off { opacity: .55; }
     .item { display: flex; align-items: center; gap: 11px; height: 36px; padding: 0 10px; border-radius: var(--radius-md);
             color: var(--text-2); font-size: 14px; white-space: nowrap; text-decoration: none !important; width: 100%; text-align: left; }
     .item:hover { background: var(--surface-2); color: var(--text); }
@@ -188,6 +220,7 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
       .collapsed .count { position: static; margin-left: auto; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
       .collapse { display: none; }
       .mobile-open .nav { transform: none; }
+
       .mobile-open .scrim { display: block; position: fixed; inset: 0; background: var(--overlay); z-index: 790; }
       .burger { display: inline-grid; }
     }
@@ -201,6 +234,14 @@ export class ShellComponent {
   assistant = inject(AssistantService);
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
+  plugins = inject(PluginsService);
+  /** Module pages (client plugins): parents followed by their sub-pages. */
+  readonly pluginNav = computed(() => {
+    const pages = this.plugins.navPages();
+    const top = pages.filter(p => !p.parent || !pages.some(x => x.module === p.module && x.local_id === p.parent));
+    return top.flatMap(p => [p, ...pages.filter(c => c.parent === p.local_id && c.module === p.module)]);
+  });
+  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home'));
   presenceOpen = signal(false);
   presencePos = signal({ left: 8, bottom: 8, maxHeight: 480 });
 
@@ -258,6 +299,7 @@ export class ShellComponent {
     if (this.signalR.connectionState() !== 'connected') await this.signalR.connect();
     this.notifications.start();
     this.presence.start();
+    this.plugins.start();
     await Promise.all([this.session.load(), this.settings.load()]);
   }
 

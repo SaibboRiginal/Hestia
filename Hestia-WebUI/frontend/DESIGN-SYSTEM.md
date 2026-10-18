@@ -140,3 +140,20 @@ history/undo) or just `<hx-setting-control [item] [compact] (commit)>` (the inpu
 (`hestia_common.settings_client.setting`, optional `row`/`column` for a table) and it appears in Impostazioni → Sistema.
 A setting that lives only in this client uses `<hx-setting-shell label help [wide]>` around its control, so every
 row of Impostazioni looks the same and the page search finds it (add it to `personal-settings.component.ts`).
+
+## 9. Client plugins (`features/plugins/`, contract in `docs/work/2026-10-17-client-plugins/SPEC.md` §4)
+
+Module UI is **not** written in this Angular app. A module ships Web Components (Lit) built with
+`Hestia-Shared/webui-sdk` (`node build.mjs plugin src/index.ts ui/dist/webui/index.js`) and declares them with
+`hestia_common.plugin_client`; the WebUI loads them from the Hub catalog at runtime.
+
+- Element names `<module>-…`; extend `HestiaElement`; use the `hxk-*` kit (icon, button, badge, card, stat, state,
+  list, chart, field, image-picker, quicklog). It reads the same CSS tokens, so plugins follow the theme. `hx-*` stays
+  the Angular kit.
+- Call only your module: `this.host.api('GET', '/api/ui/...')`. Navigate with `host.navigate(page, params)`;
+  feedback with `host.toast`, `host.confirm`; keep offline data in `host.store(name)`; react to `host.on('refresh'|'online'|…)`.
+- Widgets get a padded body (12 px) and `ctx.size` (`s|m|l|xl` = 1×1, 2×1, 2×2, 4×2 cells of 170 px); content must
+  fit or scroll inside. On phone every widget is one column and one row tall (min 150 px, grows with content).
+- Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
+- In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
+

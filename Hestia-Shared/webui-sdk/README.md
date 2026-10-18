@@ -71,7 +71,8 @@ FROM node:22-alpine AS ui-build
 WORKDIR /sdk
 COPY Hestia-Shared/webui-sdk/package.json Hestia-Shared/webui-sdk/package-lock.json ./
 RUN npm ci --no-audit --no-fund
-COPY Hestia-Shared/webui-sdk/ ./
+COPY Hestia-Shared/webui-sdk/src ./src
+COPY Hestia-Shared/webui-sdk/build.mjs ./
 COPY Hestia-<Name>/ui/ /ui/
 RUN node build.mjs plugin /ui/src/index.ts /ui/dist/webui/<name>.js
 

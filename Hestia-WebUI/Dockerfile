@@ -1,9 +1,16 @@
 # Stage 1: Build Angular frontend
 FROM node:22-alpine AS frontend-build
+# Plugin SDK runtime (Lit + shared kit), served once at /plugins/_sdk/sdk.js for every module's UI bundle
+WORKDIR /sdk
+COPY Hestia-Shared/webui-sdk/package.json Hestia-Shared/webui-sdk/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY Hestia-Shared/webui-sdk/src ./src
+COPY Hestia-Shared/webui-sdk/build.mjs ./
 WORKDIR /build
 COPY Hestia-WebUI/frontend/package.json Hestia-WebUI/frontend/package-lock.json* ./
 RUN npm ci --legacy-peer-deps
 COPY Hestia-WebUI/frontend/ ./
+RUN node /sdk/build.mjs runtime /build/public/plugins/_sdk
 RUN npm run build -- --configuration production
 
 # Stage 2: Build .NET backend

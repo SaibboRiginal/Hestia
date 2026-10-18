@@ -17,7 +17,12 @@ export class AuthService {
   checkAccess(): Promise<boolean> {
     this.accessCheck ??= firstValueFrom(
       this.http.get<{ local: boolean; tokenRequired: boolean }>(`${this.apiBase}/auth/access`)
-    ).then(r => !!r?.local && !r.tokenRequired).catch(() => false).then(local => {
+    ).then(r => {
+      const local = !!r?.local && !r.tokenRequired;
+      if (local) localStorage.setItem('hestia_local', '1'); else localStorage.removeItem('hestia_local');
+      return local;
+    // Offline (PWA, status 0): keep the last answer so the home-network app still opens without a token.
+    }).catch(e => e?.status === 0 && localStorage.getItem('hestia_local') === '1').then(local => {
       this.local.set(local);
       return local;
     });
@@ -47,6 +52,7 @@ export class AuthService {
     this.local.set(false);
     this.accessCheck = null;   // asked again on the next navigation (e.g. local access switched off)
     localStorage.removeItem('hestia_token');
+    navigator.serviceWorker?.controller?.postMessage('logout');   // drop cached catalog/settings/bundles
   }
 
   getToken(): string | null {

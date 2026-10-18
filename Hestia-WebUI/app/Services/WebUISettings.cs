@@ -41,6 +41,27 @@ public class WebUISettings
             ["advanced"] = false,
             ["order"] = 0,
         },
+        // Client plugins (docs/work/2026-10-17-client-plugins §4.6): this client's own configuration of what
+        // modules contribute. User scope → Themis layers profile → client "webui"; the frontend writes the
+        // client layer. Oracle may only propose (dashboards are confirmed in the chat card).
+        UserSetting("webui.plugins.hidden", "Plugin nascosti", "list", Array.Empty<string>(), 10,
+            "Pagine e widget dei moduli nascosti in questa WebUI (es. scout.case, scout.*). Vuoto = tutto visibile."),
+        UserSetting("webui.plugins.order", "Ordine delle pagine dei moduli", "list", Array.Empty<string>(), 11,
+            "Ordine delle pagine dei moduli nella barra laterale."),
+        UserSetting("webui.home.quick", "Azioni rapide in Home", "list", Array.Empty<string>(), 12,
+            "Azioni rapide fissate (★) in Home, in ordine. Vuoto = quelle preferite e da fare oggi."),
+        UserSetting("webui.dashboards", "Dashboard", "object", new Dictionary<string, object?> { ["dashboards"] = Array.Empty<object>() }, 13,
+            "Dashboard della WebUI: titolo e widget dei moduli con posizione, misura e parametri.", oracle: "propose"),
+        UserSetting("webui.plugins.prefs", "Preferenze dei plugin", "object", new Dictionary<string, object?>(), 14,
+            "Preferenze che ogni plugin salva per questa WebUI."),
+    };
+
+    private static Dictionary<string, object?> UserSetting(string key, string label, string type, object? def,
+        int order, string help, string oracle = "read") => new()
+    {
+        ["key"] = key, ["label"] = label, ["type"] = type, ["default"] = def, ["group"] = "Plugin e dashboard",
+        ["help"] = help, ["apply"] = "live", ["scope"] = "user", ["oracle"] = oracle, ["advanced"] = true,
+        ["order"] = order,
     };
 
     public Dictionary<string, object?> Values() => new() { [LocalWithoutTokenKey] = _localWithoutToken };

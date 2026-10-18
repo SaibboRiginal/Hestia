@@ -17,6 +17,7 @@ export const PERSONAL_SECTIONS: PersonalSection[] = [
   { id: 'assistente', label: 'Assistente', icon: 'chat' },
   { id: 'messaggi', label: 'Messaggi di sistema', icon: 'bell' },
   { id: 'sessione', label: 'Sessione', icon: 'refresh' },
+  { id: 'plugin', label: 'Moduli e Home', icon: 'puzzle' },
 ];
 
 /** Every personal setting, so the page search finds them like the system ones. */

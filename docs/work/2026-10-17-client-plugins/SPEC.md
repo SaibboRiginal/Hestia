@@ -223,9 +223,9 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
 |---|---|---|
 | `webui.plugins.hidden` | list | hidden pages/widgets (`scout.case`, `scout.*`); empty = everything visible |
 | `webui.plugins.order` | list | sidebar order of plugin pages |
-| `webui.dashboards` | object | `[{id, title, icon, auto, created_by, items:[{widget, x, y, w, h, params, title}]}]` |
+| `webui.dashboards` | object | `{dashboards: [{id, title, icon, auto, created_by, items:[{widget, x, y, w, h, params, title}]}]}` |
 | `webui.home.quick` | list | pinned quick actions on Home, in order (`self_care.routine_done:viso-sera`) |
-| `webui.plugins.prefs` | object | per-plugin preferences written by `host.config` |
+| `webui.plugins.prefs` | object | `{<module>: {...}}` per-plugin preferences written by `host.config` |
 
 - **No central module for this**: visibility is only Marko's customization of a client, so each client owns it.
   It is still "central" for free because every client's settings live in Themis: one Impostazioni panel can show
