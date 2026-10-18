@@ -496,7 +496,7 @@ class Wardrobe:
                 "forgotten": [f["name"] for f in s["forgotten"][:8]], "gaps": s["gaps"], "goal": g,
                 "favorite_outfits": [o["name"] for o in self.outfits(favorite=True, limit=8)["items"]]}
 
-    def context(self, budget: int = 600) -> dict:
+    def context(self, budget: int = 400) -> dict:
         text = "Guardaroba: " + self.summary()["text"]
         if len(text) > budget:
             text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"

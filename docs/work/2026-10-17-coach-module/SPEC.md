@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 2.5 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
-| **Status** | Agreed with Marko 2026-10-17; P1–P3 (service, store, engines, tools) on main 2026-10-18, UI bundle in progress |
+| **Status** | Agreed with Marko 2026-10-17; P1–P3 (service, store, engines, tools) on main 2026-10-18, P4 UI bundle on main 2026-10-18 · Marko's real run pending · P5 after his feedback |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 

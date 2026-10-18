@@ -414,11 +414,10 @@ def summary():
 @app.get("/api/module/context")
 def module_context(budget: int = 400):
     """Shared contract (SPEC §9): a short caveman line the assistant may include."""
-    s = hercules.summary()
-    text = s["text"]
+    text = "Allenamento: " + hercules.summary()["text"]
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
-    return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": "Allenamento: " + text}
+    return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": text}
 
 
 # ── quick actions (WebUI Home) ───────────────────────────────────────────────
@@ -502,7 +501,8 @@ def reminder_check():
             "event_type": "service.action_required", "domain": "fitness", "entity_id": key,
             "payload": {"kind": "hercules.reminder", "service": "hercules", "source": "hercules", "domain": "fitness",
                         "_source": "hercules", "_title": "Allenamento", "target": "owner", "replaces": key,
-                        "level": "info", "_message": text, "_actions": actions}}, timeout=8)
+                        "level": "info", "_message": text, "_actions": actions,
+                        "_link": {"module": "hercules", "page": "allenamento"}}}, timeout=8)
         hercules.mark_reminder_sent()
         logger.info("event=hercules_reminder_sent template=%s hint=%s", tpl.get("id"), goal["hint"])
     except Exception as exc:

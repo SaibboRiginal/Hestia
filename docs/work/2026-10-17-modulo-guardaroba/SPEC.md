@@ -202,7 +202,7 @@ Telegram: a photo sent with "aggiungi al guardaroba" → `describe-photo` → dr
 
 ### 6.2 Assistant context contract [shared, defined here; Self care and Coach reuse it]
 The plugin contract leaves assistant context out (its §4.10), so this dossier defines it for every module:
-- Route `GET /api/module/context?budget=<chars, default 600>` → `{module, domain, updated_at, text}`. `text` =
+- Route `GET /api/module/context?budget=<chars, default 400>` → `{module, domain, updated_at, text}`. `text` =
   caveman-style lines, already trimmed to `budget`, no secrets, e.g. `guardaroba: 84 capi (41 top, 18 bottom…),
   12 outfit; stile prevalente smart casual; in lavanderia 3; dimenticati >180g: 7; ultimo outfit 16/10
   "ufficio blu"`. Cheap (< 200 ms, computed from counters, cached 5 min).

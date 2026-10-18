@@ -217,7 +217,7 @@ Principle (v2.0): **few, useful, never piling up.**
 | `hygieia.alerts.enabled` | bool, true | |
 | `hygieia.week_start` | int 0–6, 0 | first day of the week for weekly goals |
 | `hygieia.default_pao_months` | int, 12 | used when PAO unknown |
-| `hygieia.currency` | string, EUR | |
+| `hygieia.currency` | enum EUR/CHF/USD/GBP, EUR | same options as `wardrobe.currency` |
 
 ## 9. UI (client plugins — needs the plugin contract on main)
 

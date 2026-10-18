@@ -60,6 +60,7 @@ with something already done or due today) · `paused`. A target routine is behin
 - Agenda job `hygieia.alerts` (daily 10:00) → `POST /api/selfcare/alerts/run`: expiring / running out / finished
   but still in a routine, at most once a week per product (`replaces: selfcare.alert.<type>.<product_id>`),
   actions **Buttato** / **Ricomprato**.
+- Every notification carries `_link` to its plugin page (`routine/<id>` for reminders, `prodotti/<id>` for alerts).
 - Texts are short plain Italian, readable aloud as-is (future audio client).
 
 ## Client UI (plugin contract)
@@ -74,7 +75,7 @@ A UI change needs `up-all.bat --build hygieia`.
 
 ## Settings (Themis, `hygieia.*`)
 
-week_start (0 = Monday), currency (EUR), default_pao_months (12), reminders.enabled (true; each routine is still
+week_start (0 = Monday), currency (EUR; EUR/CHF/USD/GBP like Wardrobe), default_pao_months (12), reminders.enabled (true; each routine is still
 off until switched on), reminders.max_per_week (2), alerts.enabled (true), alerts.expiry_days (30),
 alerts.restock_days (14). The diary has no switch: it is there and used only when wanted.
 

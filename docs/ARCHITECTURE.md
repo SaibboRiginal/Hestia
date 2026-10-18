@@ -343,6 +343,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action). Clients load what they support
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
+   Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
+   Wardrobe 50s; a new module takes the next free one). Module notifications carry `_link: {module, page}` so a
+   client can open the plugin page.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth

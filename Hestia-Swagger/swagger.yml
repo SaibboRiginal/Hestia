@@ -6850,7 +6850,7 @@ paths:
   /api/selfcare/meta:
     get:
       tags: [Hygieia]
-      summary: "Lists: areas, categories, actives (with conflict family), journal metrics, conflicts, tags, slots, statuses, levels, cadence modes; journal_enabled"
+      summary: "Lists: areas, categories, actives (with conflict family), journal metrics, conflicts, tags, slots, statuses, levels, cadence modes"
       servers:
         - url: http://localhost:19018
       responses:

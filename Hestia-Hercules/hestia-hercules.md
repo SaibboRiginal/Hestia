@@ -46,7 +46,8 @@
 Agenda job `hercules.reminder` (daily 18:30, editable in the agenda) → `POST /api/hercules/reminder/check`.
 Sends only when enabled, a goal is behind, nothing done or skipped today, no live session, and under
 `hercules.reminder.max_per_week`. Hermes `service.action_required` with `replaces: hercules.reminder`
-(one live reminder) and actions **Segna fatto** (`resolves: true`) / **Salta oggi**; target `owner`.
+(one live reminder) and actions **Segna fatto** (`resolves: true`) / **Salta oggi**; target `owner`;
+`_link` opens the plugin page `allenamento`.
 
 ## Client UI (plugin contract)
 

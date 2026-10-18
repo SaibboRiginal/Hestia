@@ -55,7 +55,8 @@ settings = SettingsClient("hygieia")
 settings.declare([
     setting("hygieia.week_start", "Inizio settimana", "enum", "monday", group="Generale",
             options=[("monday", "Lunedì"), ("sunday", "Domenica")], help="Per gli obiettivi «N volte a settimana»."),
-    setting("hygieia.currency", "Valuta", "string", "EUR", group="Generale"),
+    setting("hygieia.currency", "Valuta", "enum", "EUR", group="Generale",
+            options=[("EUR", "Euro (€)"), ("CHF", "Franco svizzero"), ("USD", "Dollaro"), ("GBP", "Sterlina")]),
     setting("hygieia.default_pao_months", "Durata dopo l'apertura", "int", 12, group="Prodotti", min=1, max=60, unit="mesi",
             help="Quando il prodotto non indica il PAO (il barattolino «12M»)."),
     setting("hygieia.reminders.enabled", "Promemoria", "bool", True, group="Promemoria",
@@ -366,12 +367,12 @@ def quick_product_undo(id: str, date: str = ""):
 
 
 # ── reminders and alerts (agenda jobs → Hermes, one live notification per thing) ──
-def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info") -> None:
+def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "oggi") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body={
         "event_type": "service.action_required", "domain": "selfcare", "entity_id": key,
         "payload": {"kind": key.rsplit(".", 1)[0], "service": "hygieia", "source": "hygieia", "domain": "selfcare",
                     "_source": "hygieia", "_title": title, "target": "owner", "replaces": key, "level": level,
-                    "_message": text, "_actions": actions}}, timeout=8)
+                    "_message": text, "_actions": actions, "_link": {"module": "hygieia", "page": page}}}, timeout=8)
 
 
 @app.post(f"{API}/reminders/run")
@@ -393,7 +394,7 @@ def reminders_run():
              "method": "POST", "path": f"{API}/routines/{rid}/snooze", "body": {}, "resolves": True},
         ]
         try:
-            _emit(f"selfcare.reminder.{rid}", "Self care", hygieia.reminder_text(p), actions)
+            _emit(f"selfcare.reminder.{rid}", "Self care", hygieia.reminder_text(p), actions, page=f"routine/{rid}")
             hygieia.mark_reminder_sent(rid)
             logger.info("event=selfcare_reminder_sent routine=%s hint=%s", rid, p.get("hint"))
             out.append({"routine_id": rid, "send": True})
@@ -424,7 +425,8 @@ def alerts_run():
             actions = [{"id": "bought", "label": "Ricomprato", "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
-            _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info")
+            _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
+                  page=f"prodotti/{pid}")
             hygieia.store.upsert("alert", key, {"sent": today.isoformat(), "type": a["type"], "product_id": pid})
             sent.append(a["key"])
         except Exception as exc:

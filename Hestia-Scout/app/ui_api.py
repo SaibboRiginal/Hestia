@@ -80,9 +80,9 @@ plugin.webui(
     ],
     quick_actions=[
         quick_action("controlla", "Controlla email annunci", "POST", "/api/ui/cycle", icon="refresh",
-                     group="Case", order=50),
+                     group="Case", order=21),
         quick_action("preferita", "Preferita", "POST", "/api/ui/listings/{id}/favorite", icon="star",
-                     group="Nuove case", source="/api/ui/quick/new", order=40,
+                     group="Nuove case", source="/api/ui/quick/new", order=20,
                      undo={"method": "DELETE", "path": "/api/ui/listings/{id}/favorite"}),
     ],
 )

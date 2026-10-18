@@ -302,7 +302,7 @@ def summary():
 
 
 @app.get("/api/module/context")
-def module_context(budget: int = 600):
+def module_context(budget: int = 400):
     """Assistant context contract (SPEC §6.2): a short caveman line Oracle may include."""
     _refresh()
     return wardrobe.context(budget)
@@ -472,17 +472,17 @@ ui = PluginClient("wardrobe", title="Guardaroba", icon="shirt", color="purple",
                   description="Capi, accessori, outfit e cosa mettersi.", dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="wardrobe.js", api_prefix=f"{API}/",
-    pages=[page("capi", "Guardaroba", element="wardrobe-pieces", icon="shirt", order=40,
+    pages=[page("capi", "Guardaroba", element="wardrobe-pieces", icon="shirt", order=50,
                 help="Tutti i tuoi capi con foto, filtri e ricerca."),
            page("capi/:id", "Capo", element="wardrobe-piece", detail=True, parent="capi"),
-           page("accessori", "Accessori", element="wardrobe-accessories", icon="tag", order=41, parent="capi"),
-           page("outfit", "Outfit", element="wardrobe-outfits", icon="grid", order=42, parent="capi"),
+           page("accessori", "Accessori", element="wardrobe-accessories", icon="tag", order=51, parent="capi"),
+           page("outfit", "Outfit", element="wardrobe-outfits", icon="grid", order=52, parent="capi"),
            page("outfit/:id", "Outfit", element="wardrobe-outfit", detail=True, parent="capi"),
-           page("cosa-mi-metto", "Cosa mi metto", element="wardrobe-suggest", icon="sparkle", order=43, parent="capi"),
-           page("statistiche", "Statistiche", element="wardrobe-stats", icon="chart", order=44, parent="capi"),
-           page("liste", "Valigie e liste", element="wardrobe-collections", icon="list", order=45, parent="capi"),
+           page("cosa-mi-metto", "Cosa mi metto", element="wardrobe-suggest", icon="sparkle", order=53, parent="capi"),
+           page("statistiche", "Statistiche", element="wardrobe-stats", icon="chart", order=54, parent="capi"),
+           page("liste", "Valigie e liste", element="wardrobe-collections", icon="list", order=55, parent="capi"),
            page("liste/:id", "Lista", element="wardrobe-collection", detail=True, parent="capi"),
-           page("vocabolari", "Vocabolari", element="wardrobe-vocab", icon="settings", order=46, parent="capi")],
+           page("vocabolari", "Vocabolari", element="wardrobe-vocab", icon="settings", order=56, parent="capi")],
     widgets=[widget("oggi", "Oggi indosso", element="wardrobe-today-widget", sizes=["m", "l"], auto=True,
                     open_page="outfit", icon="shirt",
                     params={"occasion": {"type": "string", "label": "Occasione (es. ufficio)"}}),
@@ -500,7 +500,7 @@ ui.webui(
     quick_actions=[
         quick_action("indossato", "Outfit indossato", "POST", f"{API}/quick/{{id}}", icon="shirt", group="Guardaroba",
                      source=f"{API}/quick/outfits", undo={"method": "DELETE", "path": f"{API}/quick/{{id}}"},
-                     favorite=True, order=40),
+                     favorite=True, order=50),
     ],
 )
 app.include_router(ui.router())

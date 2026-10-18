@@ -538,7 +538,7 @@ services:
     container_name: hestia_hygieia
     restart: unless-stopped
     ports:
-      - "19018:19018"  # Hercules API port (self care)
+      - "19018:19018"  # Hygieia API port (self care)
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
       - SERVICE_NAME=hygieia
