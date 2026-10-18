@@ -531,6 +531,36 @@ services:
     networks:
       - hestia_net
 
+  hygieia:
+    build:
+      context: .
+      dockerfile: Hestia-Hygieia/Dockerfile                 # also builds the WebUI plugin bundle (ui/)
+    container_name: hestia_hygieia
+    restart: unless-stopped
+    ports:
+      - "19018:19018"  # Hercules API port (self care)
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
+      - SERVICE_NAME=hygieia
+      - SERVICE_BASE_URL=http://hestia_hygieia:19018
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=domain
+      - SERVICE_TAGS=domain,selfcare,context
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:selfcare,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day for routine goals, reminders
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:                                                 # ui/dist is baked in the image: no ui mount
+      - ./Hestia-Hygieia/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
   hephaestus:
     build:
       context: .

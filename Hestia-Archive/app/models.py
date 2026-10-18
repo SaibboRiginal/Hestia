@@ -427,3 +427,28 @@ class HerculesRecord(Base):
 
     __table_args__ = (Index("ix_hercules_kind_at", "kind", "at"),
                       Index("ix_hercules_kind_ref", "kind", "ref_id"))
+
+
+# ── Hygieia (self care) storage — owner of the semantics: Hestia-Hygieia ─────
+
+SELFCARE_SEQ = Sequence("selfcare_records_seq", metadata=Base.metadata)
+
+
+class SelfcareRecord(Base):
+    """One row of the self care module (product, product event, routine, routine version, log, journal entry,
+    custom option, reminder state). ``updated_at`` is the writer's clock for last-write-wins; ``seq`` grows on
+    every write (mirror cursor); deletes are tombstones."""
+    __tablename__ = "selfcare_records"
+
+    kind = Column(String, primary_key=True)
+    id = Column(String, primary_key=True)
+    parent_id = Column(String, nullable=True, index=True)   # log → routine, version → routine, event → product
+    ref_id = Column(String, nullable=True, index=True)      # product → product_key, log → date…
+    at = Column(DateTime(timezone=True), nullable=True)     # the row's time (log done_at, event at…)
+    data = Column(JSONB, nullable=False, default=dict)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+    deleted = Column(Boolean, nullable=False, default=False)
+    seq = Column(BigInteger, SELFCARE_SEQ, nullable=False, index=True)
+
+    __table_args__ = (Index("ix_selfcare_kind_at", "kind", "at"),
+                      Index("ix_selfcare_kind_ref", "kind", "ref_id"))

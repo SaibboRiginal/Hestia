@@ -20,6 +20,7 @@ info:
     | Hephaestus| 19010 |
     | Dummy     | 19011 |
     | Themis    | 19016 |
+    | Hygieia   | 19018 |
     | Hercules  | 19019 |
   version: 1.0.0
 
@@ -78,6 +79,10 @@ tags:
     description: Gym coach — exercises, templates, live sessions (offline sync), records, progress, goals
   - name: Archive — Hercules store
     description: Generic (kind,id) records with last-write-wins and a sync cursor (only Hercules calls it)
+  - name: Hygieia
+    description: Self care — products, routines with goals (no fixed schedule), planner with active conflicts, history, stats
+  - name: Archive — Self care store
+    description: Generic (kind,id) records with last-write-wins and a cursor (only Hygieia calls it)
   - name: Archive — Settings store
     description: Generic storage of setting values, light history and proposals (only Themis calls it)
   - name: Meta
@@ -6363,6 +6368,432 @@ paths:
   /api/hercules-store/cursor:
     get:
       tags: [Archive — Hercules store]
+      summary: "Current sync cursor"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/meta:
+    get:
+      tags: [Hygieia]
+      summary: "Lists: areas, categories, actives (with conflict family), journal metrics, conflicts, tags, slots, statuses, levels, cadence modes; journal_enabled"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/options/{name}:
+    post:
+      tags: [Hygieia]
+      summary: "Add a value to a list (areas, categories, actives, metrics, conflicts, tags)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/options/{id}:
+    delete:
+      tags: [Hygieia]
+      summary: "Archive a custom list value"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/products:
+    get:
+      tags: [Hygieia]
+      summary: "Products with derived fields (uses, last_used, days_open, expiry, finish_estimate, routines, price_per_use); q, area, category, status (current|csv), active, sort"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hygieia]
+      summary: "Add a product (only name required)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/products/{id}:
+    get:
+      tags: [Hygieia]
+      summary: "Product detail: events, other bottles (same product_key), uses per week"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Hygieia]
+      summary: "Update a product (events written for status, level, rating, verdict changes)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hygieia]
+      summary: "Delete a product"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/products/{id}/status:
+    post:
+      tags: [Hygieia]
+      summary: "{status, date?} wishlist|stock|in_use|paused|finished|discarded"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/products/{id}/level:
+    post:
+      tags: [Hygieia]
+      summary: "{level} full|3/4|half|1/4|almost_empty"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/products/{id}/repurchase:
+    post:
+      tags: [Hygieia]
+      summary: "New bottle of the same product (status stock)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/products/{id}/use:
+    post:
+      tags: [Hygieia]
+      summary: "Ad-hoc use {date?, note?} (stock becomes in_use)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hygieia]
+      summary: "Undo the last ad-hoc use of the day (?date)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines:
+    get:
+      tags: [Hygieia]
+      summary: "Routines with goal, state of today and hint (?archived)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hygieia]
+      summary: "Create a routine {name, slot, areas, cadence, steps[], max_per_day, not_same_day_as, reminder, favorite}"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines/{id}:
+    get:
+      tags: [Hygieia]
+      summary: "Routine detail: steps with product, plan of today, versions, stats, compatibility notes, reminder state"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Hygieia]
+      summary: "Update; a new version only when steps change ({steps, reason})"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hygieia]
+      summary: "Archive a routine"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines/{id}/undo:
+    post:
+      tags: [Hygieia]
+      summary: "Restore the previous version of the steps"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines/{id}/plan:
+    get:
+      tags: [Hygieia]
+      summary: "Plan of the routine for a day (?date)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines/{id}/done:
+    post:
+      tags: [Hygieia]
+      summary: "Log {date?, status done|partial, steps?[{step_id, done}], note?}; 409 when already done max_per_day"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hygieia]
+      summary: "Undo the last log of the day (?date)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines/{id}/skip:
+    post:
+      tags: [Hygieia]
+      summary: "Log a skip {date?, note?}"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/routines/{id}/snooze:
+    post:
+      tags: [Hygieia]
+      summary: "No reminder for this routine until next week"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/today:
+    get:
+      tags: [Hygieia]
+      summary: "Plan of the day: routines with state (done, due, suggested, wait, ok, off, rest, blocked, paused), steps with reasons, next, counts (?date, ?paused)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/logs:
+    get:
+      tags: [Hygieia]
+      summary: "Logs (days, routine_id, product_id)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/logs/{id}:
+    delete:
+      tags: [Hygieia]
+      summary: "Delete a log"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/journal:
+    get:
+      tags: [Hygieia]
+      summary: "Optional diary per area: items, series per metric, markers (routine versions, products opened/finished)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hygieia]
+      summary: "Add {date?, entries[{area, scores{metric:1-5}, tags, note}]}"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/journal/{id}:
+    delete:
+      tags: [Hygieia]
+      summary: "Delete a diary entry"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/stats:
+    get:
+      tags: [Hygieia]
+      summary: "Heatmap, per-routine adherence/streak/history, top products, spend per month, products by status, week (?days)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/timeline:
+    get:
+      tags: [Hygieia]
+      summary: "Changes over time: routine versions, product events, diary (days, since, until)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/period:
+    get:
+      tags: [Hygieia]
+      summary: "What was in use on a day: routine versions, products open, diary ±7 days (?date)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/alerts:
+    get:
+      tags: [Hygieia]
+      summary: "Expiring, running out, finished but still in a routine"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/shopping:
+    get:
+      tags: [Hygieia]
+      summary: "Wishlist, running out, finished worth buying again"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/check:
+    get:
+      tags: [Hygieia]
+      summary: "Compatibility notes for a routine or a product/actives (routine_id, product, actives csv)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/summary:
+    get:
+      tags: [Hygieia]
+      summary: "Short text + alerts + products in use + plan"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/overview:
+    get:
+      tags: [Hygieia]
+      summary: "Everything the assistant needs in one call"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/export:
+    get:
+      tags: [Hygieia]
+      summary: "Full JSON export"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/quick/routines:
+    get:
+      tags: [Hygieia]
+      summary: "Home chips: routines to do today and favorites (QuickChip[])"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/quick/routine/{id}:
+    post:
+      tags: [Hygieia]
+      summary: "One-tap done (default steps of today)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hygieia]
+      summary: "Undo the one-tap done"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/quick/products:
+    get:
+      tags: [Hygieia]
+      summary: "Home chips: favorite products in use"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/quick/product/{id}:
+    post:
+      tags: [Hygieia]
+      summary: "One-tap product used"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hygieia]
+      summary: "Undo the one-tap use"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/reminders/run:
+    post:
+      tags: [Hygieia]
+      summary: "Agenda job hygieia.planner: at most hygieia.reminders.max_per_week reminders, one live per routine (Hermes replaces)"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/alerts/run:
+    post:
+      tags: [Hygieia]
+      summary: "Agenda job hygieia.alerts: weekly notice per expiring / running out product"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare-store/records:
+    put:
+      tags: [Archive — Self care store]
+      summary: "Upsert rows {kind,id,parent_id,ref_id,at,data,updated_at,deleted}; newer stored rows come back in stale"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Archive — Self care store]
+      summary: "Rows by kind/parent_id/ref_id/ids/at range/since_seq (tombstones included with since_seq)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare-store/cursor:
+    get:
+      tags: [Archive — Self care store]
       summary: "Current sync cursor"
       servers:
         - url: http://localhost:19002

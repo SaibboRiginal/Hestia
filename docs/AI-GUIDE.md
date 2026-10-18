@@ -23,6 +23,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Metis | 19014 | hestia_metis | datasets from feedback, LoRA training (agenda window) |
 | WebUI | 19015 | hestia_webui | .NET 9 + Angular web client (chat, commands, calendar) |
 | Themis | 19016 | hestia_themis | **central settings**: modules declare, clients/assistant read-change, user confirms proposals |
+| Hygieia | 19018 | hestia_hygieia | self care: products and their life, routines as goals (no fixed days), planner with active conflicts, one-tap done, history/stats, few non-stacking reminders, WebUI plugin |
 | Hercules | 19019 | hestia_hercules | gym coach: exercises, templates, live sessions offline (sync), records, adaptation by conversation, WebUI plugin |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |

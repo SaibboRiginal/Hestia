@@ -1,0 +1,21 @@
+# Standalone run (the global stack is docker-compose.global.yml at repo root).
+services:
+  hestia_hygieia:
+    build:
+      context: ..
+      dockerfile: Hestia-Hygieia/Dockerfile
+    container_name: hestia_hygieia
+    ports:
+      - "${HYGIEIA_PORT:-19018}:19018"
+    environment:
+      - SERVICE_NAME=hygieia
+      - SERVICE_BASE_URL=http://hestia_hygieia:19018
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - TZ=${TZ:-Europe/Rome}
+    networks:
+      - hestia_net
+    restart: unless-stopped
+
+networks:
+  hestia_net:
+    external: true

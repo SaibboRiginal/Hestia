@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
-| **Status** | Approved by the user (v2.0 answers §13). Implementation starts after the module-plugin contract (thread "Plugin dei moduli nei client") is on main |
+| **Status** | Approved by the user (v2.0 answers §13). Phases 1–4 implemented on main 2026-10-18 (hold lifted by Marko); real run by Marko pending; phase 5 open |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -45,9 +45,9 @@ Out of scope: medical advice beyond common cosmetic knowledge; e-commerce; order
 
 | Need | Owner | How |
 |---|---|---|
-| Data (tables) | **Archive** | new typed tables + router `/api/selfcare-store` (pattern of `presence.py`) |
+| Data (tables) | **Archive** | one generic records table `selfcare_records` + router `/api/selfcare-store` (same protocol as `hercules-store`, v2.4) |
 | Domain logic, validation, stats, routine engine | **Hygieia** | its own API, never a DB connection |
-| When the planner runs | **Chronos** | one agenda job `selfcare.planner` registered with `agenda_client` (daily, default 20:30), user-editable |
+| When the planner runs | **Chronos** | one agenda job `hygieia.planner` registered with `agenda_client` (daily, default 20:30), user-editable |
 | Delivering reminders / alerts, "Fatto / Salta / Dopo" buttons | **Hermes** | Hygieia emits events; button actions route back to Hygieia via Hub |
 | Tunables | **Themis** | `settings_client.setting(...)`, no new env var |
 | Reasoning, advice, natural-language edits | **Oracle** | only through Hygieia's MCP tools |
@@ -135,8 +135,8 @@ sensibilità; capelli → caduta, forfora, lucentezza…; metrics are an editabl
 - **Adherence & streaks** per routine (week / month / all time), skipped steps most often.
 - **Product usage**: uses per product (from logs), days since opened, estimated finish date
   (from previous bottles of the same `product_key` or from size ÷ observed uses), cost per month / per use.
-- **Alerts** (each a Hermes event, dedupe per product): expiring within `selfcare.alerts.expiry_days`,
-  level `almost_empty` or predicted finish within `selfcare.alerts.restock_days` → shopping list, product in a
+- **Alerts** (each a Hermes event, dedupe per product): expiring within `hygieia.alerts.expiry_days`,
+  level `almost_empty` or predicted finish within `hygieia.alerts.restock_days` → shopping list, product in a
   routine but `finished`.
 - **Conflicts / compatibility** (advisory, never blocking): seeded editable rules on actives in the same slot/day
   (retinoide + AHA/BHA, retinoide + benzoyl peroxide, vitamina C + AHA, …), and "SPF missing in a morning face
@@ -188,10 +188,10 @@ Telegram gets the visible ones as commands through Hub discovery (`telegram_grou
 ## 7. Reminders and notifications
 
 Principle (v2.0): **few, useful, never piling up.**
-- Reminders are **off by default**, per routine. Master switch `selfcare.reminders.enabled`.
-- One agenda job `selfcare.planner` (daily, default 20:30, the user moves it in the agenda; his edit wins) calls
+- Reminders are **off by default**, per routine. Master switch `hygieia.reminders.enabled`.
+- One agenda job `hygieia.planner` (daily, default 20:30, the user moves it in the agenda; his edit wins) calls
   `POST /api/selfcare/reminders/run`. Hygieia nudges a routine only when it is `due` (behind its goal) and not
-  `blocked`, and at most `selfcare.reminders.max_per_week` times per routine (default 2). Daily routines done
+  `blocked`, and at most `hygieia.reminders.max_per_week` times per routine (default 2). Daily routines done
   every day are never nudged.
 - **One live reminder per routine** — Hermes feature (on main, 040f1f6; `Hestia-Hermes/hestia-hermes.md`
   "One live reminder per thing"): event `selfcare.reminder` with payload `replaces: "selfcare.reminder.<routine_id>"`.
@@ -210,15 +210,16 @@ Principle (v2.0): **few, useful, never piling up.**
 
 | Key | Type / default | Notes |
 |---|---|---|
-| `selfcare.reminders.enabled` | bool, true | master switch (each routine is still off until enabled) |
-| `selfcare.reminders.max_per_week` | int, 2 | max nudges per routine per week |
-| `selfcare.alerts.expiry_days` | int, 30 | expiry warning |
-| `selfcare.alerts.restock_days` | int, 14 | predicted finish warning |
-| `selfcare.alerts.enabled` | bool, true | |
-| `selfcare.journal.enabled` | bool, false | shows the Diario tab and journal tools |
-| `selfcare.journal.prompt` | enum off/after_evening/weekly, off | ask for a journal entry after the evening routine |
-| `selfcare.default_pao_months` | int, 12 | used when PAO unknown |
-| `selfcare.currency` | string, EUR | |
+| `hygieia.reminders.enabled` | bool, true | master switch (each routine is still off until enabled) |
+| `hygieia.reminders.max_per_week` | int, 2 | max nudges per routine per week |
+| `hygieia.alerts.expiry_days` | int, 30 | expiry warning |
+| `hygieia.alerts.restock_days` | int, 14 | predicted finish warning |
+| `hygieia.alerts.enabled` | bool, true | |
+| `hygieia.journal.enabled` | bool, false | shows the Diario tab and journal tools |
+| `hygieia.journal.prompt` | enum off/after_evening/weekly, off | ask for a journal entry after the evening routine (not implemented yet, phase 5) |
+| `hygieia.week_start` | int 0–6, 0 | first day of the week for weekly goals |
+| `hygieia.default_pao_months` | int, 12 | used when PAO unknown |
+| `hygieia.currency` | string, EUR | |
 
 ## 9. UI (client plugins — needs the plugin contract on main)
 
@@ -279,8 +280,8 @@ Everything else is optional detail.
 
 ## 12. Design decisions
 
-- **Typed tables, not generic `entities`**: routines/logs/versions need relational queries (stats, periods);
-  generic JSON entities would push that logic into Python scans.
+- ~~Typed tables~~ (v2.4): one generic records table like Hercules — the module keeps an in-memory mirror, so
+  stats and periods are cheap Python over a few thousand rows, and every new module shares one Archive protocol.
 - **Versions immutable, logs reference the version** → history is exact even after edits.
 - **One row per physical item** + `product_key` → real usage durations and cost per bottle.
 - **Lists are data** (areas, categories, actives, metrics, conflict rules) → extensible without code (same idea as
@@ -297,3 +298,19 @@ Everything else is optional detail.
    a skip counter instead of many (to be generic for all modules, via Hermes).
 3. Journal per body part: yes (phase 2).
 4. Implementation starts after the plugin contract is on main.
+
+## 14. Implementation notes (v2.4, 2026-10-18)
+
+- **Storage**: Archive `selfcare_records (kind, id, parent_id, ref_id, at, data JSONB, updated_at, deleted, seq)`
+  via `/api/selfcare-store/{records,cursor}`, same protocol as `hercules-store`. Kinds: product, event, routine,
+  version, log, journal, option, reminder, alert. The §3 "tables" are these kinds; their fields are in `data`.
+  Hygieia keeps a mirror pulled by cursor; Archive down → reads from the mirror, writes answer 503.
+- **Owner name**: Themis checks the owner as a service name, so settings are `hygieia.*` (not `selfcare.*`);
+  agenda jobs `hygieia.planner` (20:30) and `hygieia.alerts` (10:00). Public API stays `/api/selfcare/*`,
+  MCP tools `selfcare_*`, Hermes chain keys `selfcare.reminder.<routine_id>` / `selfcare.alert.<type>.<product_id>`.
+- **Steps** can be paused (`paused_until`, "niente retinolo per una settimana"); the planner skips them with the reason.
+- **Reminder actions**: Fatto → `POST quick/routine/{id}` (resolves) · Salta → `POST routines/{id}/skip` (chain stays,
+  Hermes counts) · Non questa settimana → `POST routines/{id}/snooze` (resolves). Alerts: Buttato / Ricomprato.
+- **UI** (plugin bundle `ui/src`): pages oggi, routine, routine/:id, prodotti, prodotti/:id, diario, statistiche,
+  spesa; widgets oggi (quick chips), prossima, prodotti (alerts), settimana; quick actions fatta, uso.
+  `<hx-resize>` side panels are a WebUI-only element, so plugin pages use bottom sheets instead.

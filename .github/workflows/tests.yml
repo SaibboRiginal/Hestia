@@ -30,6 +30,7 @@ jobs:
           - Telegram
           - Themis
           - Hercules
+          - Hygieia
 
     steps:
       - uses: actions/checkout@v4
