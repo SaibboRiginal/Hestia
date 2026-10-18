@@ -29,6 +29,7 @@ jobs:
           - Scout
           - Telegram
           - Themis
+          - Hercules
 
     steps:
       - uses: actions/checkout@v4

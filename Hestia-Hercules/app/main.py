@@ -429,6 +429,10 @@ def quick_templates():
 
 @app.post(f"{API}/quick/{{id}}")
 def quick_done(id: str, body: dict = Body(default={})):
+    if id.startswith("resume:"):        # chip of the live session: nothing to log, the WebUI opens the page
+        act = hercules.active_session()
+        return {"session_id": act["id"] if act else None, "resumed": bool(act),
+                "label": f"Ripreso {act.get('name')}" if act else "Nessun allenamento in corso"}
     out = hercules.quick_done(id, day=body.get("date"))
     return {**out, "label": f"{out['name']} segnato fatto"}
 

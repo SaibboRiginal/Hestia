@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-18
+- Hercules (gym coach, port 19019): catalog of 115 exercises, templates and programs, live sessions with offline sync (Archive `hercules-store`, LWW + cursor), PRs/e1RM/volume, progression and stall hints, adaptation by conversation with the assistant (20 `hercules_*` tools), goals «N volte a settimana», optional reminder via Hermes, Strong/Hevy import; WebUI plugin with live workout that works offline (rest timer, warm-ups, plates), templates and weekly program, exercises, history, progress, body, 8 widgets and Home «Segna fatto» → `docs/work/2026-10-17-coach-module/` [ext-chat]
+
 ## 2026-10-17
 - Hermes: one live reminder per thing on every client — events with `replaces: <key>` supersede the previous open one (Telegram deletes it, WebUI removes it) and carry a skip counter kept by Hermes («Saltato 2 volte · dal 12 ott»); `resolves: true` actions or `closes` done end the chain, setting `hermes.repeat.reset_after_days` → `docs/work/2026-10-17-hermes-repeat-notifications/` [ext-chat]
 

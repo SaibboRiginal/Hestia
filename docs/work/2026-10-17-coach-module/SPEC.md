@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.4 |
+| **Version** | 2.5 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
-| **Status** | Agreed with Marko 2026-10-17; implementation waits for the plugin contract on main (his call) |
+| **Status** | Agreed with Marko 2026-10-17; P1–P3 (service, store, engines, tools) on main 2026-10-18, UI bundle in progress |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -47,9 +47,13 @@ social features, a mobile-native app.
 
 ## 3. Data model (stored in Archive, owned by Hercules)
 
-Archive gets a pure-storage area `/api/hercules-store/*` (same pattern as settings-store / presence-store:
-typed tables, CRUD + range queries, no business rules). All ids UUID, all rows `created_at/updated_at`,
-soft delete (`archived`) so history never loses an exercise.
+Archive gets a pure-storage area `/api/hercules-store/*` with **one generic table** `hercules_records`
+(v2.5: `kind, id` primary key, `parent_id`, `ref_id`, `at`, `data` JSONB, `updated_at`, `deleted` tombstone, `seq` from a
+global sequence). Writes are last-write-wins by `updated_at` (an older write comes back as `stale`), every write takes
+a new `seq`, and `GET ?since_seq=` is the sync cursor. Reason: offline clients sync any kind with one idempotent
+op format, and Hercules keeps an in-memory mirror (instant statistics, stale reads when Archive is away).
+The table below is the shape of `data` per `kind` (exercise, template with items, program, session with its
+exercises, set, measurement, adaptation, plus feedback, goal, plan, checkin, reminder); validation lives in Hercules.
 
 | Table | Key fields |
 |---|---|
@@ -63,8 +67,8 @@ soft delete (`archived`) so history never loses an exercise.
 | `hercules_measurements` | taken_at, kind (`bodyweight` · `body_fat` · `waist` · `chest` · `arm` · `thigh` · … custom), value, unit |
 | `hercules_adaptations` | created_at, session_id?, input (readiness + request), output (modified plan), rule_trace[], accepted |
 
-Derived data (PRs, e1RM, volumes) is **computed by Hercules**, not stored as truth; Hercules may keep a cache
-table `hercules_records` (exercise_id, record kind, value, set_id, achieved_at) rebuilt from sets on any edit.
+Derived data (PRs, e1RM, volumes) is **computed by Hercules**, not stored as truth; Hercules computes them from its mirror
+(cache keyed by the store revision).
 Weights are stored in kg; display unit is a setting (kg/lb).
 
 ## 4. Features (what makes it a "serious app")

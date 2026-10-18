@@ -20,6 +20,7 @@ info:
     | Hephaestus| 19010 |
     | Dummy     | 19011 |
     | Themis    | 19016 |
+    | Hercules  | 19019 |
   version: 1.0.0
 
 servers:
@@ -73,6 +74,10 @@ tags:
     description: Retrospective focus-brief cognition runtime
   - name: Themis
     description: Central settings — modules declare, clients and assistant read/change, user confirms proposals
+  - name: Hercules
+    description: Gym coach — exercises, templates, live sessions (offline sync), records, progress, goals
+  - name: Archive — Hercules store
+    description: Generic (kind,id) records with last-write-wins and a sync cursor (only Hercules calls it)
   - name: Archive — Settings store
     description: Generic storage of setting values, light history and proposals (only Themis calls it)
   - name: Meta
@@ -5798,6 +5803,567 @@ paths:
       responses:
         "200": {description: updated proposal}
         "409": {description: already decided}
+
+  /api/hercules/bootstrap:
+    get:
+      tags: [Hercules]
+      summary: "Everything a client needs offline (catalog, templates, programs, goals, last 120 days, suggestions, client settings, cursor)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sync:
+    post:
+      tags: [Hercules]
+      summary: "Offline outbox: {device_id, cursor, ops[{op_id,kind,id,action upsert|delete,fields,updated_at}]} → {applied, rejected, stale, changes, cursor, suggestions}; idempotent, last write wins"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/meta:
+    get:
+      tags: [Hercules]
+      summary: "Muscles, groups, joints, equipment, kinds, patterns, feedback tags"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/exercises:
+    get:
+      tags: [Hercules]
+      summary: "Search the catalog (q, muscle, equipment, archived)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hercules]
+      summary: "Create a custom exercise"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/exercises/{id}:
+    get:
+      tags: [Hercules]
+      summary: "Exercise detail: records, e1RM history, last sessions, alternatives"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Hercules]
+      summary: "Edit exercise"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hercules]
+      summary: "Archive/delete exercise"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/templates:
+    get:
+      tags: [Hercules]
+      summary: "Templates (workout types) with next suggestion"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hercules]
+      summary: "Create template"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/templates/{id}:
+    get:
+      tags: [Hercules]
+      summary: "Template with per-exercise progression suggestion"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Hercules]
+      summary: "Edit template (keeps previous revision)"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hercules]
+      summary: "Delete template"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/templates/{id}/undo:
+    post:
+      tags: [Hercules]
+      summary: "Restore the previous revision"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/programs:
+    get:
+      tags: [Hercules]
+      summary: "Programs (weekly or rotation)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hercules]
+      summary: "Create program (one active)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/programs/{id}:
+    put:
+      tags: [Hercules]
+      summary: "Edit program"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hercules]
+      summary: "Delete program"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/next:
+    get:
+      tags: [Hercules]
+      summary: "Next workout (plan override → program → least recent favourite) with estimated minutes"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions:
+    get:
+      tags: [Hercules]
+      summary: "Sessions (days, template_id, exercise_id, limit)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hercules]
+      summary: "Start a session (template_id or empty); 409 when one is active"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/active:
+    get:
+      tags: [Hercules]
+      summary: "Active session or null"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/start-next:
+    post:
+      tags: [Hercules]
+      summary: "Start the next planned workout"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/log-text:
+    post:
+      tags: [Hercules]
+      summary: "Log sets from text: \"panca 80x8, 80x8; trazioni 8, 7\""
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/{id}:
+    get:
+      tags: [Hercules]
+      summary: "Session detail: blocks, planned/logged sets, last time, rest_until, PRs"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    patch:
+      tags: [Hercules]
+      summary: "Edit session"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hercules]
+      summary: "Delete session"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/{id}/finish:
+    post:
+      tags: [Hercules]
+      summary: "Finish: PRs, summary, optional update_template"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/{id}/discard:
+    post:
+      tags: [Hercules]
+      summary: "Discard the live session"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/{id}/exercises:
+    post:
+      tags: [Hercules]
+      summary: "Add or replace an exercise in the session"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sessions/{id}/sets:
+    post:
+      tags: [Hercules]
+      summary: "Log one set"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/sets/{id}:
+    delete:
+      tags: [Hercules]
+      summary: "Delete a set"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/plans:
+    get:
+      tags: [Hercules]
+      summary: "Planned days (skips, moves) for the next days"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/days/skip:
+    post:
+      tags: [Hercules]
+      summary: "Skip a day"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hercules]
+      summary: "Undo skip"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/days/postpone:
+    post:
+      tags: [Hercules]
+      summary: "Move a workout to another day"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/checkin:
+    post:
+      tags: [Hercules]
+      summary: "Readiness check-in (energy, sleep, soreness, pain_areas, time_minutes)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/feedback:
+    post:
+      tags: [Hercules]
+      summary: "Feedback on a session/exercise (tags too_heavy, pain, great…)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/adapt:
+    post:
+      tags: [Hercules]
+      summary: "Preview today's adjusted plan (pain, low energy, time, missing equipment, intent); not applied"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/adapt/{id}/apply:
+    post:
+      tags: [Hercules]
+      summary: "Apply an adaptation to today's session"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/restore:
+    post:
+      tags: [Hercules]
+      summary: "Restore the original plan"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/measurements:
+    get:
+      tags: [Hercules]
+      summary: "Body measurements"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hercules]
+      summary: "Log a measurement"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/measurements/{id}:
+    delete:
+      tags: [Hercules]
+      summary: "Delete measurement"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/stats:
+    get:
+      tags: [Hercules]
+      summary: "Volume, sessions, muscle sets per period, heatmap, recent PRs"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/records:
+    get:
+      tags: [Hercules]
+      summary: "Personal records per exercise"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/goals:
+    get:
+      tags: [Hercules]
+      summary: "Goals with progress (done/times, behind, streak)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hercules]
+      summary: "Create/edit goal ({times, per day|week|month, scope any|template|muscle})"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/goals/{id}:
+    delete:
+      tags: [Hercules]
+      summary: "Delete goal"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/summary:
+    get:
+      tags: [Hercules]
+      summary: "Short text summary for the assistant (flags deload_suggested, stall, missed days)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/quick/templates:
+    get:
+      tags: [Hercules]
+      summary: "Home chips for \"fatto oggi\""
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/quick/{id}:
+    post:
+      tags: [Hercules]
+      summary: "Mark a template done today (one tap)"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hercules]
+      summary: "Undo today's quick done"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/quick-bodyweight:
+    post:
+      tags: [Hercules]
+      summary: "Log bodyweight from the Home quick action ({peso})"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/import/preview:
+    post:
+      tags: [Hercules]
+      summary: "Strong/Hevy CSV preview with exercise mapping"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/import/commit:
+    post:
+      tags: [Hercules]
+      summary: "Import CSV (idempotent)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/export:
+    get:
+      tags: [Hercules]
+      summary: "Export csv or json"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/reminder/check:
+    post:
+      tags: [Hercules]
+      summary: "Agenda job: nudge through Hermes only when a goal is behind (off by default)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules-store/records:
+    put:
+      tags: [Archive — Hercules store]
+      summary: "Upsert rows {kind,id,parent_id,ref_id,at,data,updated_at,deleted}; newer stored rows come back in stale"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Archive — Hercules store]
+      summary: "Rows by kind/parent_id/ref_id/ids/at range/since_seq (tombstones included with since_seq)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/hercules-store/cursor:
+    get:
+      tags: [Archive — Hercules store]
+      summary: "Current sync cursor"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
 
   /api/presence-store:
     get:

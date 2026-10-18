@@ -24,6 +24,8 @@ It stores and serves all persistent state through generic APIs.
 - **Settings store** (`/api/settings-store/*`): tables `setting_values`, `setting_history` (last 10 per key,
   trimmed on write), `setting_proposals`. Pure storage: meaning, validation and permissions live in Themis,
   its only caller.
+- **Hercules store** (`/api/hercules-store/*`): table `hercules_records` (kind, id, parent_id, ref_id, at, data JSONB,
+  updated_at, deleted, seq). Last-write-wins writes, tombstones, `seq` cursor for sync. Pure storage for Hercules.
 - **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
   `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
@@ -45,6 +47,9 @@ It stores and serves all persistent state through generic APIs.
 | `GET`/`PUT`/`DELETE` | `/api/settings-store/values` | Setting values (Themis only) |
 | `GET` | `/api/settings-store/history` | Setting change log |
 | `GET`/`POST`/`PATCH` | `/api/settings-store/proposals[/{id}]` | Assistant proposals (first answer wins) |
+| `PUT` | `/api/hercules-store/records` | Upsert rows (LWW; newer stored rows returned in `stale`) (Hercules only) |
+| `GET` | `/api/hercules-store/records` | Rows by kind/parent/ref/ids/at range/`since_seq` |
+| `GET` | `/api/hercules-store/cursor` | Current sync cursor |
 | `GET` | `/api/presence-store` | Presence signals (expired purged) + snapshot (Chronos only) |
 | `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
 | `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |

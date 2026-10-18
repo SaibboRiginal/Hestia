@@ -745,7 +745,7 @@ class Hercules:
         else:
             lines.append(f"Settimana: {week[-1]['sessions']} allenamenti")
         if prs:
-            lines.append("PR: " + ", ".join(f"{p['exercise']} {progression.fmt_kg(p['value'])}" for p in prs))
+            lines.append("PR: " + ", ".join(f"{p['exercise']} {p['label'].lower()} {progression.fmt_kg(p['value'])}" for p in prs))
         if stalls:
             lines.append("Stallo: " + ", ".join(s["exercise"] for s in stalls[:3]))
         if "deload_suggested" in flags:
