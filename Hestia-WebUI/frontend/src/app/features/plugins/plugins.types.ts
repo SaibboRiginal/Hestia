@@ -77,6 +77,8 @@ export interface Dashboard {
   title: string;
   icon?: string;
   auto?: boolean;                       // Home before the user edits it: composed from auto widgets
+  kind?: 'domain' | 'core';             // which auto widgets an automatic dashboard takes (Home: domain, Sistema: core)
+  removed?: boolean;                    // the user deleted the ready-made «Sistema»: kept as a marker so it does not come back
   created_by?: 'user' | 'oracle' | string;
   items: DashboardItem[];
   dismissed?: string[];                 // auto widgets the user removed from an automatic dashboard
