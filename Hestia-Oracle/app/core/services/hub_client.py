@@ -124,20 +124,6 @@ class HubClient:
             raise RuntimeError(routed.get("payload", "delete failed"))
         return routed.get("payload")
 
-    def get_commands(self, client: str = "") -> list[dict]:
-        """Fetch all registered service commands from Hub discovery endpoint."""
-        try:
-            url = f"{self._base}/discovery/commands"
-            if client:
-                url += f"?client={client}"
-            resp = requests.get(url, timeout=5)
-            if resp.status_code == 200:
-                return resp.json().get("commands") or []
-        except Exception as exc:
-            logger.trace(
-                "event=hubclient_get_commands_failed [HubClient] get_commands failed: %s", exc)
-        return []
-
     def route_to_service(
         self,
         service: str,

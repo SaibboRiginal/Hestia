@@ -181,3 +181,48 @@ def pytest_collection_modifyitems(config, items):
         if "llm_live" in item.keywords:
             if not run_live or not ollama_available:
                 item.add_marker(skip_live)
+
+
+class HubBackedMCP:
+    """Test double of ``hestia_common.mcp_client.MCPClient`` that keeps the old test hooks working:
+    tools come from ``hub.get_commands()`` (as Hestia-MCP would list them) and calls go to
+    ``hub.route_to_service`` after the same template rules Hestia-MCP applies (``hestia_common.tool_call``)."""
+
+    def __init__(self, hub):
+        self._hub = hub
+        self.calls: list[tuple[str, dict, dict]] = []
+
+    def list_tools(self, **_kw) -> list[dict]:
+        from hestia_common.tool_call import is_write, template_vars
+        tools = []
+        for cmd in self._hub.get_commands() or []:
+            args = cmd.get("arguments_schema") or {}
+            if args:
+                props = {k: {"type": v.get("type", "string"), "description": v.get("description", k)} for k, v in args.items()}
+                required = [k for k, v in args.items() if v.get("required")]
+            else:
+                names = template_vars(cmd.get("body_template") or {}) | template_vars(cmd.get("query_template") or {}) \
+                    | template_vars(str(cmd.get("path") or ""))
+                props = {n: {"type": "string", "description": n} for n in sorted(names)}
+                required = sorted(names)
+            meta = {k: cmd[k] for k in ("service", "method", "path", "response_mode", "clients", "query_template",
+                                        "body_template") if k in cmd}
+            tools.append({"name": cmd.get("command"), "title": cmd.get("title") or cmd.get("command"),
+                          "description": cmd.get("description", ""),
+                          "inputSchema": {"type": "object", "properties": props, "required": required},
+                          "annotations": {"readOnlyHint": not is_write(cmd)}, "_meta": {"hestia": meta}})
+        return tools
+
+    def call(self, name, arguments=None, *, session_id="", notify_target="", trace_id="", service="",
+             origin_client="", timeout=None):
+        from hestia_common.tool_call import build_request
+        cmd = next((c for c in self._hub.get_commands() or []
+                    if c.get("command") == name and (not service or c.get("service") == service)), None)
+        if cmd is None:
+            return False, f"Unknown tool: {name}"
+        ctx = {"session_id": session_id, "notify_target": notify_target, "trace_id": trace_id, "client": origin_client}
+        self.calls.append((name, dict(arguments or {}), ctx))
+        req = build_request(cmd, arguments or {}, ctx)
+        return self._hub.route_to_service(service=req["service"], path=req["path"], method=req["method"],
+                                          body=req["body"], query=req["query"], timeout=timeout or 15,
+                                          headers=req["headers"])

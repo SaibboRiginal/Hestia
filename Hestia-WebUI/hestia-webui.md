@@ -137,7 +137,9 @@ Toasts (*tutte / solo importanti / nessuno*) are a per-browser preference in the
 Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/ui`), shell with module registry
 (`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
 sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
-move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**,
+move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**
+(tools from Hestia-MCP `tools/list` as client `webui`, run with `tools/call` — `HubClient.McpListToolsAsync` /
+`McpCallToolAsync`; arguments come from each tool's JSON schema),
 **Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 

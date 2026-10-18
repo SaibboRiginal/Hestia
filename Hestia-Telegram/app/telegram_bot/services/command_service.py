@@ -31,7 +31,6 @@ from telegram_bot.services.calendar_wizard import (
 from telegram_bot.services.registry import (
     build_commands_keyboard,
     build_group_commands_keyboard,
-    discover_commands_from_hub,
     fetch_registry_revision,
     get_grouped_commands,
     get_local_command_items,

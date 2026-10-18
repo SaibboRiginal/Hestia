@@ -9,6 +9,8 @@ import json
 from unittest.mock import MagicMock, patch, call
 import pytest
 
+from conftest import HubBackedMCP
+
 from core.oracle_engine import OracleEngine, SessionIntent
 from core.services.agent_factory import AgentFactory
 
@@ -46,6 +48,7 @@ def engine():
         eng._hub.get_commands = MagicMock(return_value=[])
         eng._hub.get_history = MagicMock(return_value=[])
         eng._hub.route_to_service = MagicMock(return_value=(True, {}))
+        eng._mcp = HubBackedMCP(eng._hub)   # tools via Hestia-MCP, fed by the hub mocks
         yield eng
 
 

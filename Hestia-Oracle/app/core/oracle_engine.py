@@ -49,6 +49,7 @@ from core.document.archiver import DocumentArchiver
 from core.document.rag import DocumentRAG
 from core.document.analyser import DocumentAnalyser
 from core.agent_loop import run_agent_loop, ToolDefinition
+from hestia_common.mcp_client import MCPClient, as_command
 
 
 def _resolve_task_lifecycle_store() -> type:
@@ -70,96 +71,6 @@ _STARTUP_TS = time.time()
 
 _NUMERIC_SHORTHAND_PATTERN = re.compile(
     r"^\s*([0-9]+(?:[\.,][0-9]+)?)\s*([kKmM])\s*$")
-_TEMPLATE_VAR_PATTERN = re.compile(
-    r"\$(session_id|chat_id|owner|arg\.[a-zA-Z0-9_]+)")
-
-
-# ── Tool-call helper functions ─────────────────────────────────────────────────
-
-_PATH_VAR_PATTERN = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}")
-
-
-def _fill_path_vars(path: str, args: dict) -> tuple[str, set[str]]:
-    """Fill tool path variables declared as ``$name`` or ``{name}`` from *args*.
-
-    ``_resolve_template`` only knows session_id/chat_id/owner/arg.*, so paths like
-    ``/forge/tasks/$task_id/approve`` or ``/auth/poll/{provider}`` were called with
-    the literal placeholder. Returns the path and the consumed arg names.
-    """
-    from urllib.parse import quote
-
-    consumed: set[str] = set()
-
-    def _sub(match: re.Match) -> str:
-        name = match.group(1) or match.group(2)
-        if name not in args or args[name] is None:
-            return match.group(0)
-        consumed.add(name)
-        return quote(str(args[name]), safe="")
-
-    return _PATH_VAR_PATTERN.sub(_sub, path or ""), consumed
-
-
-def _collect_vars(obj, result: set) -> None:
-    """Collect all $variable names from a nested template structure."""
-    if isinstance(obj, dict):
-        for v in obj.values():
-            _collect_vars(v, result)
-    elif isinstance(obj, list):
-        for item in obj:
-            _collect_vars(item, result)
-    elif isinstance(obj, str):
-        text = obj.strip()
-        if text.startswith("$"):
-            result.add(text[1:])
-        for match in _TEMPLATE_VAR_PATTERN.finditer(obj):
-            result.add(match.group(1))
-
-
-def _resolve_var_token(var: str, args: dict, session_id: str, notify_target: str | None):
-    if var == "session_id":
-        return session_id
-    if var in ("chat_id", "owner") and notify_target:
-        return notify_target
-    if var.startswith("arg."):
-        return args.get(var.replace("arg.", "", 1).strip().lower())
-    return args.get(var)
-
-
-def _resolve_template(obj, args: dict, session_id: str, notify_target: str | None):
-    """Recursively resolve $var references in a template dict/list/str."""
-    if isinstance(obj, dict):
-        return {k: _resolve_template(v, args, session_id, notify_target) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_resolve_template(item, args, session_id, notify_target) for item in obj]
-    if isinstance(obj, str):
-        text = obj.strip()
-        if text.startswith("$"):
-            # Check if it exactly matches one token so we can preserve real types (like int/bool)
-            if _TEMPLATE_VAR_PATTERN.fullmatch(text):
-                return _resolve_var_token(text[1:], args, session_id, notify_target)
-
-        def _sub(match: re.Match) -> str:
-            token = match.group(1)
-            resolved = _resolve_var_token(
-                token, args, session_id, notify_target)
-            if resolved is None:
-                return ""
-            # If the resolved token needs to be inserted into a path, ensure it's URL-encoded if it has spaces or special chars
-            from urllib.parse import quote
-            return quote(str(resolved), safe="")
-
-        return _TEMPLATE_VAR_PATTERN.sub(_sub, obj)
-    return obj
-
-
-def _strip_nones(obj):
-    """Remove None values from nested dicts/lists (for clean API payloads)."""
-    if isinstance(obj, dict):
-        return {k: _strip_nones(v) for k, v in obj.items() if v is not None}
-    if isinstance(obj, list):
-        return [_strip_nones(item) for item in obj if item is not None]
-    return obj
 
 
 def _parse_numeric_like(value: Any) -> int | float | None:
@@ -297,6 +208,8 @@ class OracleEngine:
 
         # ── Infrastructure services ───────────────────────────────────────────
         self._hub = HubClient(self._hub_url)
+        # Tools of every module: only through Hestia's one MCP server (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+        self._mcp = MCPClient(self._hub_url, client="oracle")
 
         # Small TTL cache for quasi-static discovery endpoints (TTL: oracle.cache.schemas_ttl, live).
         self._domains_cache_value: list[str] = ["general"]
@@ -1501,8 +1414,8 @@ class OracleEngine:
         history_chars = sum(len(str(m.get("content", ""))) for m in history_data if isinstance(m, dict))
         history_tokens = _est("x" * history_chars)
 
-        # Tools from Hub
-        all_commands = self._hub.get_commands() or []
+        # Tools from Hestia-MCP
+        all_commands = self._mcp.list_tools()
         tool_count = len(all_commands)
         tool_chars_est = tool_count * 120  # compact name+desc average
         tools_tokens = _est("x" * tool_chars_est)
@@ -2201,7 +2114,7 @@ class OracleEngine:
         ))
 
         # ── Hub Action Commands — filtered to domain-owning services ────────
-        all_commands = self._hub.get_commands() or []
+        all_commands = [as_command(t) for t in self._mcp.list_tools()]
         _filtered_cmds = 0
         for cmd in all_commands:
             cmd_name = cmd.get("command")
@@ -2215,114 +2128,38 @@ class OracleEngine:
                 _filtered_cmds += 1
                 continue
 
-            # Build schema for Agent
+            # Schema: Hestia-MCP already gives it (declared arguments, or the variables of the tool's templates).
+            args_schema = cmd.get("arguments_schema") or {}
             schema = {
                 "type": "object",
-                "properties": {},
-                "required": []
+                "properties": {k: {"description": str(v.get("description", k)), "type": str(v.get("type", "string"))}
+                               for k, v in args_schema.items()},
+                "required": [k for k, v in args_schema.items() if dict(v).get("required", False)],
             }
-
-            args_schema = cmd.get("arguments_schema") or {}
-
-            if args_schema:
-                schema["properties"] = {
-                    k: {
-                        "description": str(v.get("description", k)),
-                        "type": str(v.get("type", "string"))
-                    } for k, v in args_schema.items()
-                }
-                schema["required"] = [
-                    k for k, v in args_schema.items() if dict(v).get("required", False)]
-            else:
-                flat = set()
-                _collect_vars(cmd.get("body_template") or {}, flat)
-                _collect_vars(cmd.get("query_template") or {}, flat)
-                _collect_vars(str(cmd.get("path") or ""), flat)
-                flat -= {"session_id", "chat_id", "owner"}
-                for v in flat:
-                    schema["properties"][v] = {
-                        "type": "string", "description": v}
-                    schema["required"].append(v)
 
             def make_handler(command_def):
                 def _hub_command_handler(**kwargs):
-                    method = str(command_def.get("method", "GET")).upper()
-                    service = str(command_def.get("service", ""))
-                    path_tpl = str(command_def.get("path") or "").strip()
-
-                    body = _resolve_template(
-                        command_def.get("body_template") or {},
-                        kwargs,
-                        session_id,
-                        notify_target,
-                    )
-                    query = _resolve_template(
-                        command_def.get("query_template") or {},
-                        kwargs,
-                        session_id,
-                        notify_target,
-                    )
-                    # Auto-map kwargs: query for GET/HEAD/DELETE, body for POST/PUT/PATCH
-                    if method in ("GET", "HEAD", "DELETE") and not command_def.get("query_template"):
-                        for k, v in kwargs.items():
-                            if k not in query and v is not None:
-                                query[k] = v
-                    if method in ("POST", "PUT", "PATCH") and not command_def.get("body_template"):
-                        if body is None:
-                            body = {}
-                        for k, v in kwargs.items():
-                            if k not in body and v is not None:
-                                body[k] = v
-
-                    path = _resolve_template(
-                        path_tpl,
-                        kwargs,
-                        session_id,
-                        notify_target,
-                    )
-                    path, _consumed = _fill_path_vars(str(path or ""), kwargs)
-                    for _name in _consumed:
-                        if isinstance(body, dict):
-                            body.pop(_name, None)
-                        if isinstance(query, dict):
-                            query.pop(_name, None)
-
-                    if body and isinstance(body, dict):
-                        body = _strip_nones(body) or None
-                    if query and isinstance(query, dict):
-                        query = {k: v for k, v in query.items()
-                                 if v is not None}
-
-                    try:
-                        ok, result = self._hub.route_to_service(
-                            service=service,
-                            path=str(path).lstrip("/"),
-                            method=method,
-                            body=body,
-                            query=query or {},
-                            timeout=self._policy_timeout(
-                                "action_service_route"),
-                            headers=self._trace_headers(session_id, trace_id),
-                        )
-                        return (ok, result)
-                    except Exception as exc:
-                        import traceback
-                        return (False, f"Hub command execution failed: {exc}\n{traceback.format_exc()}")
+                    # Hestia-MCP fills templates/path and routes through Hub (hestia_common.tool_call).
+                    args = {k: v for k, v in kwargs.items() if v is not None}
+                    return self._mcp.call(
+                        str(command_def.get("command")), args,
+                        session_id=session_id, notify_target=str(notify_target or ""),
+                        trace_id=str(trace_id or ""), service=str(command_def.get("service", "")),
+                        origin_client=self._session_clients.get(session_id) or "",
+                        timeout=self._policy_timeout("action_service_route"))
 
                 return _hub_command_handler
 
             if any(t.name == cmd_name for t in tools):
                 continue
 
-            _method = str(cmd.get("method") or "GET").upper()
             tools.append(ToolDefinition(
                 name=cmd_name,
                 description=cmd.get(
                     "description", f"Execute {cmd_name} command"),
                 parameters=schema,
                 handler=make_handler(cmd),
-                writes=_method in {"POST", "PUT", "PATCH", "DELETE"} and not any(
-                    k in cmd_name for k in ("search", "list", "query", "status", "stats", "show")),
+                writes=bool(cmd.get("writes")),
                 title=str(cmd.get("title") or cmd_name),
             ))
 
@@ -2796,46 +2633,18 @@ class OracleEngine:
         all_ok = True
 
         for params in param_sets:
-            body = _resolve_template(
-                matched.get("body_template") or {},
-                params,
-                session_id,
-                notify_target,
-            )
-            query = _resolve_template(
-                matched.get("query_template") or {},
-                params,
-                session_id,
-                notify_target,
-            )
-            path = _resolve_template(
-                str(matched.get("path") or "").strip(),
-                params,
-                session_id,
-                notify_target,
-            )
-            path, _ = _fill_path_vars(str(path or ""), params)
-
-            if body and isinstance(body, dict):
-                body = _strip_nones(body) or None
-            if query and isinstance(query, dict):
-                query = {k: v for k, v in query.items() if v is not None}
-
+            path = str(matched.get("path") or "")
             logger.info(
                 "event=tool_call_cmd_service_path Tool call | cmd=%s service=%s path=%s",
                 action_name,
                 matched.get("service", ""),
                 path,
             )
-            ok, result = self._hub.route_to_service(
-                service=matched.get("service", ""),
-                path=str(path or ""),
-                method=matched.get("method", "POST"),
-                body=body,
-                query=query or {},
-                timeout=self._policy_timeout("action_service_route"),
-                headers=self._trace_headers(session_id, trace_id),
-            )
+            ok, result = self._mcp.call(
+                action_name, params, session_id=session_id, notify_target=str(notify_target or ""),
+                trace_id=str(trace_id or ""), service=str(matched.get("service", "")),
+                origin_client=self._session_clients.get(session_id) or "",
+                timeout=self._policy_timeout("action_service_route"))
             route_results.append({
                 "ok": ok,
                 "result": result,

@@ -61,6 +61,8 @@ tags:
     description: Real estate search and module tools
   - name: Chronos
     description: Calendar CRUD and agenda
+  - name: MCP
+    description: Hestia's one MCP server — every client (Oracle, Telegram, WebUI, external AIs) lists and runs tools here
   - name: Argus
     description: System health monitoring and log analysis
   - name: Iris
@@ -4856,6 +4858,52 @@ paths:
       responses:
         "200":
           description: "{from, to, days, count, items[...]}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  MCP — 19013  (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /mcp:
+    post:
+      tags: [MCP]
+      summary: MCP over Streamable HTTP (JSON answers) — initialize · tools/list · tools/call · ping
+      description: |
+        JSON-RPC 2.0, one message or a batch. Notifications (no id) → 202. Internal clients call it through Hub
+        (`POST /api/route/mcp/mcp`) and name themselves with header `X-Hestia-Client` (oracle, telegram, webui).
+        Hestia details travel in `_meta.hestia`:
+        - tools/list → each tool has `name, title, description, inputSchema, annotations.readOnlyHint` and
+          `_meta.hestia {service, method, path, response_mode, response_prompt, clients, telegram_*…}`;
+          `params._meta.hestia.services` narrows the list. A client sees tools whose `clients` is empty, `*` or its own.
+        - tools/call → `params {name, arguments, _meta.hestia {session_id, notify_target, trace_id, client, service,
+          timeout_seconds}}`; answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
+          service, wrapped}}` (`wrapped` = a non-object module answer is in `structuredContent.result`).
+          `_meta.hestia.client` is forwarded to the module as `X-Hestia-Client` (the client the user talks from).
+      servers:
+        - url: http://localhost:19013
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jsonrpc: {type: string, enum: ["2.0"]}
+                id: {oneOf: [{type: string}, {type: integer}]}
+                method: {type: string, enum: [initialize, tools/list, tools/call, ping]}
+                params: {type: object}
+      responses:
+        "200":
+          description: JSON-RPC result or error (-32600 invalid, -32601 unknown method, -32602 unknown tool)
+        "202":
+          description: Notification accepted
+    get:
+      tags: [MCP]
+      summary: No server stream (405, Allow POST)
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "405":
+          description: Not supported
 
   # ══════════════════════════════════════════════════════════════════════════
   #  ARGUS — 19008

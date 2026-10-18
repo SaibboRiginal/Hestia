@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-18 |
 | **Status** | Approved 2026-10-18 (Marko, card) — in progress, see PROGRESS.md |
 
@@ -136,11 +136,12 @@ Telegram reads Hestia-MCP `/tools/all`, Hestia-MCP proxies `/tools/call` with it
 - **Hestia-MCP is the only MCP server of Hestia**: standard **MCP Streamable HTTP** `POST /mcp` (JSON-RPC
   `initialize`, `tools/list`, `tools/call`, `ping`; later `resources/*` for dossiers). It still aggregates every
   module's own `/mcp` (they stay as they are) and proxies calls through Hub.
-- **Every client uses it the same way**: Oracle (agent loop, and the `claude -p` provider via `--mcp-config` pointing to
-  the same endpoint), Telegram (command menu), WebUI (Comandi page, assistant tools), external AIs. Oracle's domain
-  filter becomes a standard-compatible extra on `tools/list` (`params._meta.domains`), so Oracle stays an ordinary MCP
-  client. The old `/tools`, `/tools/all`, `/tools/call` and Hub `/discovery/module-tools` stay only until every caller
-  moved, then are removed (one change per caller).
+- **Every client uses it the same way**: Oracle (agent loop), Telegram (command menu), WebUI (Comandi page),
+  external AIs. Oracle keeps its own domain-owner filter on the list it gets (`params._meta.hestia.services` can
+  narrow a list). The `claude -p` provider keeps answering with tool calls that Oracle's loop runs through MCP (v2.2:
+  letting the CLI call tools itself would move the approval/notice logic out of Oracle's loop). The old `/tools`,
+  `/tools/all`, `/tools/call` are removed. Hub `/discovery/commands` stays as the registry view **only Hestia-MCP
+  reads**; Hub `/discovery/module-tools` stays (it is Oracle's entity search on modules, not a tool list).
 - **Who sees what = the client's access** (B6): internal clients (Oracle, Telegram, WebUI) see every tool as today;
   an external client sees only the tools its access allows, and only among the tools a module marked `"external"` in
   `MCPTool.clients` (the module decides what may leave the house; nothing is exposed by default).
@@ -212,7 +213,7 @@ Owner: **Hestia-MCP** (it is the door for tools). Page **Accessi** in its plugin
 | Module | Job |
 |---|---|
 | Each core module | its plugin bundle (pages, widgets, quick actions), its read endpoints, `"external"` on the tools it lets out; the modules that own today's built-in pages take them over (A4) |
-| Hub | catalog carries `kind` and `badge`; `/discovery/module-tools` retired once Oracle uses MCP |
+| Hub | catalog carries `kind` and `badge`; `/discovery/commands` read only by Hestia-MCP |
 | WebUI | shell only (Home, Chat, Impostazioni); sidebar sections + pins (A5); public `/mcp` door; OAuth consent page |
 | Hestia-MCP | the one MCP server for every client; accesses (tokens, OAuth server), rate limit, audit; Comandi & Accessi pages |
 | Hephaestus (Forge) | Sviluppo page as its plugin (+ *Copia per AI*), `forge_task_note`, `forge_submit_branch`, external tools flagged |

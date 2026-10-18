@@ -1,16 +1,12 @@
-"""Hestia-MCP — Model Context Protocol Gateway.
+"""Hestia-MCP — Hestia's one MCP server.
 
-Single tool source for the entire Hestia ecosystem.
-Aggregates MCP tools from internal services and third-party servers.
-Provides domain-filtered tool manifests to Oracle.
-Replaces Hub's /discovery/commands as the canonical tool registry.
+Every client lists and calls tools here, the same way (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2):
+Oracle, Telegram, the WebUI through Hub; external AIs through the WebUI door.
 
 Endpoints:
-  GET  /tools?domains=scout,chronos  → tools for Oracle agent loop
-  GET  /tools/all                    → all tools (Telegram command catalog)
-  POST /tools/call                   → proxy a tool call
-  GET  /health                       → service health
-  GET  /api/logs                     → log buffer
+  POST /mcp        → MCP (Streamable HTTP, JSON): initialize · tools/list · tools/call · ping
+  GET  /health     → service health
+  GET  /api/logs   → log buffer
 """
 import logging
 import os
@@ -19,13 +15,13 @@ import threading
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 from core.service_contract import HestiaServiceBase, ServiceDescriptor
 from core.mcp_settings import settings as mcp_settings
-from core.tool_registry import ToolRegistry
+from core.catalog import ToolCatalog
+from core.mcp_server import MCPServer
 
 # ── Logging setup ────────────────────────────────────────────────────────────
 try:
@@ -50,8 +46,7 @@ class MCPService(HestiaServiceBase):
     def build_capabilities(self) -> dict[str, Any]:
         return {
             "mcp_gateway": True,
-            "tool_registry": "/tools",
-            "tool_call": "/tools/call",
+            "mcp_server": "/mcp",
         }
 
 
@@ -66,13 +61,15 @@ descriptor = ServiceDescriptor(
 )
 
 service = MCPService(descriptor)
-registry = ToolRegistry(hub_api_url=HUB_API_URL)
+catalog = ToolCatalog(hub_api_url=HUB_API_URL)
+server = MCPServer(catalog, HUB_API_URL, version=SERVICE_VERSION)
 
 # ── App ──────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Hestia MCP Gateway", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(mcp_settings.router())
+app.include_router(server.router())
 
 
 @app.on_event("startup")
@@ -97,7 +94,7 @@ def on_startup():
 
     # Initial tool cache warm
     try:
-        registry.refresh()
+        catalog.commands(refresh=True)
     except Exception:
         pass
 
@@ -117,35 +114,3 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 
 
 app.include_router(create_log_control_router("hestia_mcp"))
-
-
-class ToolCallRequest(BaseModel):
-    tool: str
-    params: dict = {}
-    service: str = ""
-
-
-@app.get("/tools")
-def get_tools(domains: str = Query(default="general", description="Comma-separated domain list")):
-    """Return tools for the given domains. Used by Oracle's agent loop."""
-    domain_list = [d.strip().lower() for d in domains.split(",") if d.strip()]
-    if not domain_list:
-        domain_list = ["general"]
-    tools = registry.get_tools_for_domains(domain_list)
-    return {"domains": domain_list, "count": len(tools), "tools": tools}
-
-
-@app.get("/tools/all")
-def get_all_tools():
-    """Return all tools across all domains. Used by Telegram for command catalog."""
-    tools = registry.list_all_tools()
-    return {"count": len(tools), "tools": tools}
-
-
-@app.post("/tools/call")
-def call_tool(req: ToolCallRequest):
-    """Proxy a tool call to the target service via Hub routing."""
-    ok, result = registry.call_tool(req.tool, req.params, req.service)
-    if not ok:
-        raise HTTPException(status_code=502, detail=str(result))
-    return {"status": "ok", "tool": req.tool, "result": result}

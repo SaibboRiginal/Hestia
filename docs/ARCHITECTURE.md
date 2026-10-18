@@ -229,11 +229,10 @@ Generic integration testing module.
 - Not tied to a single organ; usable by any service that needs an integration target.
 
 ### Hestia-MCP 🔌
-Model Context Protocol gateway — single tool source for the ecosystem.
-- Aggregates MCP tools from all Hestia services and third-party MCP servers.
-- Domain-aware tool filtering — Oracle never sees more than ~12 tools at once.
-- Proxies tool calls to target services via Hub routing.
-- Replaces Hub's `/discovery/commands` as the canonical tool registry.
+Hestia's one MCP server (`POST /mcp`, standard MCP over Streamable HTTP).
+- Every client lists and runs tools only here, the same way: Oracle, Telegram, WebUI, external AIs.
+- Catalog = Hub registry discovery (modules' own `/mcp` + inline commands) as MCP tools, Hestia details in `_meta.hestia`.
+- Executes with the shared rules of `hestia_common.tool_call`, always through Hub routing.
 
 ---
 
@@ -349,6 +348,9 @@ No code-only behavior changes are considered complete without synchronized docs.
 ## Capability Discovery Contract (Mandatory)
 
 1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
+   Hub's discovery is read only by Hestia-MCP: **clients list and run tools only through Hestia-MCP `/mcp`**
+   (`hestia_common.mcp_client`, WebUI `HubClient.McpListToolsAsync`), never with their own resolver
+   (`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §B2).
    Tool names of domain modules are `<domain>_<verb>` in English (`fitness_log_sets`, `selfcare_today`,
    `wardrobe_suggest`): the domain the module registers, never the module's mythological name or Italian words.
 2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.

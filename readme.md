@@ -180,7 +180,7 @@ flowchart LR
 | [Hephaestus](Hestia-Hephaestus/hestia-hephaestus.md) | 19010 | Guarded remediation and **Forge** (self-development) |
 | [Dummy](Hestia-Dummy/hestia-dummy.md) | 19011 | Integration-test target |
 | [Iris](Hestia-Iris/hestia-iris.md) | 19012 | Email domain logic |
-| [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | MCP gateway exposing every service's tools |
+| [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | Hestia's one MCP server: Oracle, Telegram, WebUI (and external AIs) list and run every module's tools here |
 | [Metis](Hestia-Metis/hestia-metis.md) | 19014 | Datasets from feedback, benchmarks, LoRA training |
 | [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web client |
 | [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings: modules declare, every client and the assistant read/change, you confirm |
