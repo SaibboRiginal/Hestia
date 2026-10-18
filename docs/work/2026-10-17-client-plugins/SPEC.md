@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.6 |
+| **Version** | 2.7 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
-| **Status** | Approved 2026-10-17 (decisions §8) — in progress |
+| **Status** | Done 2026-10-18 (P1–P4 on main) — Marko's real run pending (`up-all.bat --build`) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -244,6 +244,14 @@ The WebUI declares **its own** Themis settings (like it does already for `webui.
   pushed for it: the event is kept only silently in the inbox (existing "solo sul client di origine" rule) so it can
   still be answered later. Proposals not born in a chat (Athena) keep going through Hermes. This applies to every
   Themis proposal made in chat, settings included.
+- How it is wired (v2.7): Oracle remembers each session's client and sends `X-Hestia-Client` (+ `X-Session-Id`) on
+  tool calls; Themis `POST /api/settings/proposals` with both → origin → the answer carries
+  `confirm {question_id: "themis:<id>", header, prompt, options, actions}`; the agent loop keeps it in the tool log and
+  Oracle emits it as a `question` (kind confirm) after the answer; `POST /api/chat/question-answer` routes the chosen
+  action through Hub (`<client>` → answering client). Hermes gets the proposal with `_origin` + `_quiet` (inbox copy,
+  every push silent). A user-scope setting owned by a client module (`webui.*`) is proposed on that client's layer.
+  WebUI tools: `webui_widgets(q)` → `GET /api/ai/widgets`, `webui_dashboards()` → `GET /api/ai/dashboards`
+  (also MCP `/mcp`).
 
 ### 4.7 Endpoints
 

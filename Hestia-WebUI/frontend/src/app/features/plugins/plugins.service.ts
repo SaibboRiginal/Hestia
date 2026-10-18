@@ -89,7 +89,8 @@ export class PluginsService {
     this.started = true;
     void this.refreshCatalog();
     void this.loadConfig();
-    setInterval(() => { if (document.visibilityState === 'visible') void this.refreshCatalog(); }, 60_000);
+    // Config too: a dashboard approved from a chat or from another device shows up without a reload.
+    setInterval(() => { if (document.visibilityState === 'visible') { void this.refreshCatalog(); void this.loadConfig(); } }, 60_000);
     document.addEventListener('visibilitychange', () => {
       const visible = document.visibilityState === 'visible';
       this.emitAll(visible ? 'visible' : 'hidden');

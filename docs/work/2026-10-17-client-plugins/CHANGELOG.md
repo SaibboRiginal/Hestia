@@ -9,3 +9,4 @@
 - v2.4 — 2026-10-17 — quick actions: ⋯ for other date/details, progress hint, SDK <hx-quicklog> with the same look for widgets — proposal from the wardrobe thread — Hestia AI (peer thread)
 - v2.5 — 2026-10-17 — approved: plugin tech free per client but always shared styles/libs; bundles built in Docker; chat-born proposals confirmed by a question card in the same chat (Hermes only silent inbox) — Marko's answers — user via project thread
 - v2.6 — 2026-10-17 — SDK served once by the WebUI with an import map (shared Lit + kit), kit prefix hxk- (WebUI Angular owns hx-) — found while building P1 — Hestia AI
+- v2.7 — 2026-10-18 — status Done; §4.6 records how the chat confirmation is wired (X-Hestia-Client, Themis `confirm`, Oracle question action, Hermes `_quiet`, client-layer target) and the WebUI assistant tools paths — implementation detail found while building P4 — Hestia AI

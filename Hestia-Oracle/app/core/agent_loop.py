@@ -664,6 +664,10 @@ def run_agent_loop(
                     "turn": turn,
                     "writes": bool(getattr(_tdef, "writes", False)),
                     "title": getattr(_tdef, "title", "") or tn,
+                    # A module asking the user to confirm in this chat (Themis proposal): Oracle emits it
+                    # as a question card after the answer.
+                    "confirm": result_raw.get("confirm") if ok and isinstance(result_raw, dict)
+                    and isinstance(result_raw.get("confirm"), dict) else None,
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the

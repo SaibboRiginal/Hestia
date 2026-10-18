@@ -109,3 +109,29 @@ def test_themis_end_to_end():
     assert client.get("argus.mode")=="calm"
     try: themis.decide(p["proposal_id"], False); pytest.fail("second answer accepted")
     except ThemisError as e: assert e.status==409
+
+
+@pytest.mark.unit
+def test_chat_born_proposal_targets_client_layer_and_returns_confirm():
+    """Client plugins SPEC §4.6: a proposal made in a chat answers with a confirm card; a client-owned
+    user setting (webui.dashboards) is proposed on that client's layer."""
+    fake = FakeArchive()
+    themis = Themis(fake, Registry(None))
+    webui = SettingsClient("webui", hub_api_url="http://x")
+    webui.declare([setting("webui.dashboards", "Dashboard", "object", {"dashboards": []}, scope="user")])
+    themis.register("webui", list(webui._defs.values()), [], {})
+    emitted = []
+    themis._emit = lambda kind, entity_id, payload: emitted.append((kind, payload))
+    value = {"dashboards": [{"id": "casa", "title": "Casa", "items": [{"widget": "scout.nuove", "size": "l"}]}]}
+    p = themis.propose("webui.dashboards", value, proposer="oracle", reason="come chiesto",
+                       origin={"client": "webui", "session_id": "s1"})
+    assert p["status"] == "pending" and p["scope"] == "client" and p["scope_id"] == "webui"
+    c = p["confirm"]
+    assert c["question_id"] == f"themis:{p['proposal_id']}" and "«Casa» (1 elementi)" in c["prompt"]
+    assert c["actions"]["approve"]["path"].endswith("/approve") and c["actions"]["approve"]["body"] == {"by": "<client>"}
+    kind, payload = emitted[-1]
+    assert kind == "settings.proposal" and payload["_quiet"] and payload["_origin"]["client"] == "webui"
+    again = themis.propose("webui.dashboards", value, proposer="oracle", origin={"client": "webui", "session_id": "s1"})
+    assert again["status"] == "already_pending" and again["confirm"]["question_id"] == c["question_id"]
+    themis.decide(p["proposal_id"], True, by="webui")
+    assert themis.get("webui.dashboards", client="webui")["value"] == value

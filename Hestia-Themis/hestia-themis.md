@@ -45,6 +45,11 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
   (contract shared with `docs/work/2026-10-10-hermes-global-notifications/`) → applied (history actor = proposer) → `settings.changed` notice.
   Later answers get `409 {status: already_decided}`. Closing (approved/rejected/expired) emits
   `settings.proposal_closed` with `closes: settings.proposal:<id>`, `decision`, `outcome_text`.
+- **Proposal born in a chat** (client plugins, 2026-10-18): Oracle's tool call carries `X-Session-Id` +
+  `X-Hestia-Client` → origin → the answer has `confirm {question_id: "themis:<id>", header, prompt, options,
+  actions}` and Oracle shows it as a confirm card in that chat (answer = approve/reject action routed via Hub with
+  `by: <client>`); the Hermes copy carries `_origin` + `_quiet` (inbox only, no push). A user-scope setting owned by
+  a client (`webui.*`, `telegram.*`) is proposed on that client's layer (`scope=client`, `scope_id=<client>`).
 
 ## API (via Hub `/route/themis/...`)
 

@@ -385,6 +385,9 @@ class OracleEngine:
         # Future: persist to Archive for multi-process / restart resilience.
         self._pending_questions: dict[str, dict] = {}
         self._questions_lock = threading.Lock()
+        # session → client (webui, telegram…) of its last chat turn: tool calls carry it to the modules
+        # (X-Hestia-Client), so e.g. a Themis proposal made in a chat is confirmed in that same chat.
+        self._session_clients: dict[str, str] = {}
 
         # ── Phase 2: query-source execution policy matrix ─────────────────────
         # Keep execution behavior explicit by request source.
@@ -629,8 +632,11 @@ class OracleEngine:
         options: list | None = None,
         timeout_sec: int | None = None,
         required: bool = True,
+        actions: dict | None = None,
     ) -> str:
-        """Register a pending question and return the NDJSON question frame to emit."""
+        """Register a pending question and return the NDJSON question frame to emit.
+        ``actions`` = ``{answer value: {service, method, path, body}}``: the chosen one is routed through Hub
+        when the user answers (``<client>`` in the body → the answering client)."""
         with self._questions_lock:
             self._pending_questions[question_id] = {
                 "session_id": session_id,
@@ -639,6 +645,7 @@ class OracleEngine:
                 "kind": kind,
                 "answer": None,
                 "resolved": False,
+                "actions": actions or {},
             }
         self._append_interaction_ledger(
             event_type="question_asked",
@@ -669,6 +676,9 @@ class OracleEngine:
         headers = {"X-Session-Id": session_id}
         if trace_id:
             headers["X-Trace-Id"] = str(trace_id)
+        client = self._session_clients.get(session_id)
+        if client:
+            headers["X-Hestia-Client"] = client
         return headers
 
     def _policy_timeout(self, source: str, fallback: int = 10) -> int:
@@ -775,6 +785,30 @@ class OracleEngine:
         )
         return True
 
+    def run_question_action(self, question_id: str, answer: str, client: str = "") -> dict | None:
+        """Route the action bound to the chosen answer (module-made confirm cards, e.g. Themis proposals).
+        None when the question has no actions (a plain question the agent reads back)."""
+        with self._questions_lock:
+            entry = self._pending_questions.get(question_id) or {}
+            action = (entry.get("actions") or {}).get(str(answer or "").strip())
+            session_id = str(entry.get("session_id") or "")
+        if not action:
+            return None
+        who = client or self._session_clients.get(session_id) or "user"
+        body = json.loads(json.dumps(action.get("body") or {}).replace('"<client>"', json.dumps(who)))
+        try:
+            ok, result = self._hub.route_to_service(
+                service=str(action.get("service") or ""), path=str(action.get("path") or "").lstrip("/"),
+                method=str(action.get("method") or "POST").upper(), body=body or None, query={},
+                timeout=self._policy_timeout("action_service_route"), headers=self._trace_headers(session_id))
+        except Exception as exc:
+            ok, result = False, str(exc)
+        logger.info("event=question_action_routed question_id=%s answer=%s service=%s ok=%s",
+                    question_id, answer, action.get("service"), ok)
+        if not ok:
+            logger.warning("[🔄] event=question_action_failed question_id=%s result=%s", question_id, str(result)[:200])
+        return {"ok": bool(ok), "result": result if isinstance(result, (dict, list)) else str(result)[:300]}
+
     def get_question_answer(self, question_id: str) -> Optional[str]:
         """Return the recorded answer for question_id, or None if unresolved."""
         with self._questions_lock:
@@ -818,6 +852,7 @@ class OracleEngine:
         save_history: bool = True,
         mode: str = "auto",
         model: str = "generic",
+        client: str = "",
     ):
         """Main conversational loop. Yields NDJSON lines.
 
@@ -834,6 +869,8 @@ class OracleEngine:
         """
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex[:12]
+        if client and session_id:
+            self._session_clients[session_id] = str(client)[:40]
         logger.trace("event=chat_entry trace_id=%s session_id=%s mode=%s model=%s msg=%s",
                      trace_id, session_id, mode, model,
                      json.dumps(user_message[:120], ensure_ascii=False))
@@ -1296,6 +1333,15 @@ class OracleEngine:
                 if not entry.get("ok"):
                     detail = f"{detail}: {str(entry.get('result_preview') or '')[:160]}"
                 yield stream_emitter.emit_notice(kind, detail=detail, data={"tool": entry.get("tool")})
+            # Module-made confirmations (e.g. Themis proposal from this chat): a question card here, the
+            # answer routes the module's own action (client plugins SPEC §4.6) — no Hermes round trip.
+            for entry in tool_log:
+                card = entry.get("confirm")
+                if isinstance(card, dict) and card.get("question_id"):
+                    yield self.ask_question(
+                        session_id, str(card["question_id"]), str(card.get("header") or "Confermi?"),
+                        str(card.get("prompt") or ""), kind="confirm", options=card.get("options") or None,
+                        actions=card.get("actions") if isinstance(card.get("actions"), dict) else None)
 
         total_ms = int((time.perf_counter() - t0) * 1000)
         logger.info(

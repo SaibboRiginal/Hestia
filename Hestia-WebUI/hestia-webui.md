@@ -58,6 +58,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/plugins/catalog` | Client plugins (Hub catalog `client=webui`), 15 s cache |
 | GET | `/api/webui/plugins/{module}/bundle/{file}` | Module WebUI bundle file (via Hub) |
 | ANY | `/api/webui/plugins/{module}/call/{path}` | Plugin → its own module; 403 outside its `api_prefix` |
+| GET | `/api/ai/widgets?q=` · `/api/ai/dashboards` | Assistant tools `webui_widgets` / `webui_dashboards` (internal, via Hub) |
+| POST | `/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings) |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
@@ -113,6 +115,10 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - PWA: `public/manifest.webmanifest` + `public/sw.js` (registered in production only). Offline the shell, catalog,
   settings and plugin bundles come from cache; plugin calls reject with `offline`; sidebar shows an "offline" badge.
   The home-network "no token" answer is remembered for offline starts. Logout clears the data cache.
+- Dashboards from the chat: Hestia reads `webui_widgets` / `webui_dashboards` and proposes `webui.dashboards`
+  (Themis, layer `client:webui`); the confirm card appears in the same chat (ChatHub sends the answer with
+  `client: webui`, shows the outcome as a notice) and the WebUI reloads its config (also every 60 s).
+- CSP: `script-src … blob:` (plugin modules) and `img-src … https:` (module photos).
 
 ### Notifiche page (2026-10-10, `features/notifications/`, `services/notifications.service.ts`)
 

@@ -1,6 +1,7 @@
 namespace Hestia.WebUI.Hubs;
 
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Hestia.WebUI.Models;
 using Hestia.WebUI.Services;
@@ -236,15 +237,35 @@ public class ChatHub : Hub
 
         try
         {
-            await _hubClient.RoutePostAsync("oracle", "/api/chat/question-answer", new
+            var (status, payload) = await _hubClient.RouteRawAsync("oracle", "/api/chat/question-answer", HttpMethod.Post, new
             {
                 session_id = _sessionManager.GetSession(),
                 question_id = questionId,
                 answer = answer,
-                client = "web"
+                client = "webui"
             });
-            await Clients.Caller.SendAsync("ReceiveEvent",
-                new { type = "status", content = $"Answer sent for {questionId}" });
+            // A confirm card made by a module (e.g. Themis proposal): Oracle routed the chosen action → show the outcome.
+            if (status < 400 && payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("action", out var action)
+                && action.ValueKind == JsonValueKind.Object)
+            {
+                var ok = action.TryGetProperty("ok", out var okEl) && okEl.ValueKind == JsonValueKind.True;
+                var approved = answer is "approve" or "yes";
+                await Clients.Caller.SendAsync("ReceiveEvent", new
+                {
+                    type = "notice",
+                    kind = ok ? "action.done" : "action.failed",
+                    level = ok ? (approved ? "success" : "info") : "error",
+                    icon = ok ? "check" : "alert",
+                    title = ok ? (approved ? "Approvata" : "Rifiutata") : "Non riuscito",
+                    detail = ok ? "" : "La risposta non è arrivata al modulo: riprova dalle notifiche",
+                    data = new { question_id = questionId, answer },
+                });
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("ReceiveEvent",
+                    new { type = "status", content = $"Answer sent for {questionId}" });
+            }
         }
         catch (Exception ex)
         {

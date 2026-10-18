@@ -3,6 +3,7 @@ import os
 import threading
 import logging
 import time
+import uuid
 from html import escape
 from typing import Any
 
@@ -105,6 +106,48 @@ def _respond_oracle_high_impact_approval(
     return payload if isinstance(payload, dict) else {}
 
 
+def _send_oracle_question(chat_id, session_id: str, question: dict) -> None:
+    """A confirm card a module asked for in this chat (e.g. a Themis proposal, client plugins SPEC §4.6):
+    two buttons; the answer goes back to Oracle, which routes the module's action."""
+    options = [o for o in (question.get("options") or []) if isinstance(o, dict) and o.get("value")]
+    if len(options) < 2:
+        options = [{"label": "Sì", "value": "yes"}, {"label": "No", "value": "no"}]
+    token = uuid.uuid4().hex[:16]
+    core.PENDING_CONFIRMATIONS[token] = {
+        "action": "oracle_question", "chat_id": str(chat_id), "session_id": session_id,
+        "question_id": str(question.get("question_id")), "confirm": str(options[0]["value"]),
+        "cancel": str(options[1]["value"]), "created_at": int(time.time()),
+        "labels": [str(options[0].get("label") or "Sì"), str(options[1].get("label") or "No")],
+    }
+    text = f"<b>{escape(str(question.get('header') or 'Confermi?'))}</b>"
+    if question.get("prompt"):
+        text += f"\n{escape(str(question['prompt']))}"
+    core.bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=_build_confirmation_keyboard(
+        token, confirm_label=f"✅ {options[0].get('label') or 'Sì'}", cancel_label=f"❌ {options[1].get('label') or 'No'}"))
+
+
+def _answer_oracle_question(call, token: str, action: str, payload: dict) -> None:
+    answer = payload["cancel"] if action in {"cancel", "cancel_cmd"} else payload["confirm"]
+    label = payload["labels"][1] if answer == payload["cancel"] else payload["labels"][0]
+    oracle_base_url = core.resolve_oracle_chat_url().rsplit("/api/chat", 1)[0]
+    try:
+        response = requests.post(f"{oracle_base_url}/api/chat/question-answer", json={
+            "session_id": payload["session_id"], "question_id": payload["question_id"],
+            "answer": answer, "client": "telegram"}, timeout=20)
+        result = response.json() if response.content else {}
+        ok = response.status_code < 400 and (result.get("action") or {}).get("ok", True)
+    except Exception as error:
+        logger.warning("[🔄] event=oracle_question_answer_failed question_id=%s error=%s", payload["question_id"], error)
+        ok = False
+    if not ok:
+        core.PENDING_CONFIRMATIONS[token] = payload
+        core.bot.answer_callback_query(call.id, "Non riuscito, riprova")
+        return
+    core.bot.edit_message_text(f"{call.message.html_text or call.message.text}\n\n<b>{escape(label)}</b> ✓",
+                               chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
+    core.bot.answer_callback_query(call.id, label)
+
+
 def is_authorized(message) -> bool:
     user_id = str(message.from_user.id)
     if not core.is_allowed_user(user_id):
@@ -143,6 +186,10 @@ def handle_confirmation(call):
         payload = core.PENDING_CONFIRMATIONS.pop(token, None)
         if not payload:
             core.bot.answer_callback_query(call.id, "Richiesta scaduta")
+            return
+
+        if payload.get("action") == "oracle_question":
+            _answer_oracle_question(call, token, action, payload)
             return
 
         # Handle Oracle high-impact action approval confirmation/cancel.
@@ -681,6 +728,9 @@ def handle_chat_message(message):
         )
 
         for question in streamed_questions:
+            if not question.get("id") and question.get("question_id"):
+                _send_oracle_question(chat_id, session_id, question)
+                continue
             token = str(question.get("id") or "").strip()
             if not token:
                 continue

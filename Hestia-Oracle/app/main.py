@@ -467,7 +467,8 @@ def chat_endpoint(req: ChatRequest):
                     req.client_instructions, req.client, current_session, presence_state),
                 save_history=req.save_history,
                 mode=mode,
-                model=req.model)),
+                model=req.model,
+                client=req.client or "")),
             media_type="application/x-ndjson"
         )
     except Exception as e:
@@ -678,7 +679,8 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
                 status_code=404,
                 detail=f"Question '{req.question_id}' not found or already resolved.",
             )
-        return {"resolved": True, "question_id": req.question_id}
+        action = engine.run_question_action(req.question_id, req.answer, client=req.client or "")
+        return {"resolved": True, "question_id": req.question_id, **({"action": action} if action else {})}
     except HTTPException:
         raise
     except Exception as e:

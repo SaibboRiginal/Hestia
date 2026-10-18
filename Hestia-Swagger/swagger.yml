@@ -3341,7 +3341,7 @@ paths:
                   type: string
       responses:
         "200":
-          description: "{resolved, question_id}"
+          description: "{resolved, question_id, action?: {ok, result}} — action = the module action bound to the answer (confirm cards, e.g. Themis proposals)"
         "404":
           description: "question not found or already resolved"
 
@@ -5666,9 +5666,12 @@ paths:
     post:
       tags: [Themis]
       summary: Assistant proposes a change (assistant tool settings_propose; Athena in autonomy) — never applied without the user
-      description: Themis stores it as pending and sends it to the user through Hermes (service.action_required, payload kind settings.proposal, _message, _actions Approva/Rifiuta with service/method/path).
+      description: Themis stores it as pending and sends it to the user through Hermes (service.action_required, payload kind settings.proposal, _message, _actions Approva/Rifiuta with service/method/path). Born in a chat (X-Session-Id + X-Hestia-Client, or body origin) → the answer adds `confirm` (card for that chat, Oracle emits it as a question) and the Hermes copy is quiet (inbox only).
       servers:
         - url: http://localhost:19016
+      parameters:
+        - {name: X-Session-Id, in: header, required: false, schema: {type: string}}
+        - {name: X-Hestia-Client, in: header, required: false, schema: {type: string}, description: "client of the chat (webui, telegram)"}
       requestBody:
         content:
           application/json:
@@ -5680,8 +5683,9 @@ paths:
                 value: {}
                 reason: {type: string}
                 proposer: {type: string, enum: [oracle, athena]}
+                origin: {type: object, description: "{client, session_id} — same as the two headers"}
       responses:
-        "200": {description: "{status: pending|already_pending|unchanged, proposal_id, key, value, current, label}"}
+        "200": {description: "{status: pending|already_pending|unchanged, proposal_id, key, value, current, label, confirm?: {question_id, header, prompt, options, actions}}"}
         "403": {description: setting reserved to the user}
 
   /api/settings/proposals/{proposal_id}/approve:
@@ -6954,6 +6958,22 @@ paths:
         - {name: path, in: query, required: true, schema: {type: string}, description: "under the module's api_prefix"}
       responses:
         "200": {description: image bytes}
+
+  /api/ai/widgets:
+    get:
+      tags: [WebUI]
+      summary: Assistant tool webui_widgets — compact widget catalog for dashboards (internal, via Hub)
+      parameters:
+        - {name: q, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: "{count, widgets: [{id, label, module, help, sizes, size, auto, online, params}]}"}
+
+  /api/ai/dashboards:
+    get:
+      tags: [WebUI]
+      summary: Assistant tool webui_dashboards — current value of webui.dashboards (client layer webui)
+      responses:
+        "200": {description: "{key, note, value: {dashboards: [...]}}"}
 
   /api/webui/presence:
     get:

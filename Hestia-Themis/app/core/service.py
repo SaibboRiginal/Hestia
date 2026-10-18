@@ -41,6 +41,24 @@ def _short(value: Any, limit: int = 80) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
+# User-scope settings owned by a client (its own UI config, e.g. webui.dashboards): a proposal targets that
+# client's layer, otherwise the client value would keep hiding the approved one.
+CLIENT_MODULES = {"webui", "telegram"}
+
+
+def _describe(value: Any) -> str:
+    """Readable preview for a confirmation card: lists of titled objects become «A» (3), «B» (5)."""
+    if isinstance(value, dict) and len(value) == 1 and isinstance(next(iter(value.values())), list):
+        value = next(iter(value.values()))
+    if isinstance(value, list) and value and all(isinstance(v, dict) and v.get("title") for v in value):
+        parts = []
+        for v in value[:6]:
+            items = v.get("items")
+            parts.append(f"«{v['title']}»" + (f" ({len(items)} elementi)" if isinstance(items, list) else ""))
+        return ", ".join(parts) + (f" e altri {len(value) - 6}" if len(value) > 6 else "")
+    return _short(value, 160)
+
+
 class Themis:
     def __init__(self, hub: Hub, registry: Registry):
         self.hub = hub
@@ -299,7 +317,10 @@ class Themis:
 
     # ── proposals (assistant → user's confirmation via Hermes) ─────────────
     def propose(self, key: str, value: Any, *, proposer: str, reason: str = "",
-                scope: str | None = None, scope_id: str | None = None) -> dict:
+                scope: str | None = None, scope_id: str | None = None, origin: dict | None = None) -> dict:
+        """``origin`` = ``{client, session_id}`` when the proposal is born in a chat: the answer is a
+        confirmation card in that same chat (``confirm`` in the result, Oracle emits it as a ``question``);
+        Hermes keeps it only as a quiet inbox copy."""
         d = self.registry.definition(key)
         if not d:
             raise ThemisError(f"impostazione {key} sconosciuta", 404)
@@ -309,22 +330,59 @@ class Themis:
             value = validate(d, value)
         except SettingValueError as exc:
             raise ThemisError(f"{d.get('label') or key}: {exc}", 422)
+        if not scope and d.get("scope") == "user" and d.get("module") in CLIENT_MODULES:
+            scope, scope_id = "client", d["module"]
         scope, scope_id = self._target(d, scope, scope_id)
-        current = self.get(key).get("value")
+        current = self.get(key, client=scope_id if scope == "client" else "").get("value")
         if current == value:
             return {"status": "unchanged", "key": key, "value": value}
         for p in self.proposals(status="pending"):
             if p.get("key") == key and p.get("value") == value:
-                return {**p, "status": "already_pending"}
+                return {**p, "status": "already_pending",
+                        **({"confirm": self._confirm(d, p, current)} if origin else {})}
         proposal_id = uuid.uuid4().hex[:12]
         row = self.hub.ok("archive", "POST", "api/settings-store/proposals", body={
             "proposal_id": proposal_id, "key": key, "scope": scope, "scope_id": scope_id, "value": value,
             "reason": (reason or "")[:500], "proposer": proposer,
             "expires_at": (datetime.now(timezone.utc) + timedelta(hours=PROPOSAL_TTL_HOURS)).isoformat()})
         self._bump(f"proposal:{proposal_id}")
-        self._notify_proposal(d, row or {}, current)
-        logger.info("event=themis_proposal_created id=%s key=%s proposer=%s", proposal_id, key, proposer)
-        return {"status": "pending", **(row or {}), "label": d.get("label"), "current": current}
+        self._notify_proposal(d, row or {}, current, origin)
+        logger.info("event=themis_proposal_created id=%s key=%s proposer=%s origin=%s", proposal_id, key, proposer,
+                    (origin or {}).get("client", "-"))
+        result = {"status": "pending", **(row or {}), "label": d.get("label"), "current": current}
+        if origin:
+            result["confirm"] = self._confirm(d, row or {"proposal_id": proposal_id, "value": value, "reason": reason},
+                                              current)
+        return result
+
+    def _proposal_text(self, d: dict, row: dict, current: Any) -> str:
+        who = {"oracle": "Hestia (chat)", "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
+        text = (f"⚙️ {who} propone di cambiare «{d.get('label') or d.get('key')}» "
+                f"({d.get('module')}): {_describe(current)} → {_describe(row.get('value'))}.")
+        if row.get("reason"):
+            text += f"\nMotivo: {row['reason']}"
+        return text
+
+    @staticmethod
+    def _decision_actions(pid: str) -> list[dict]:
+        return [
+            {"id": "approve", "label": "Approva", "text": "✅ Approva", "style": "primary", "service": "themis",
+             "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
+            {"id": "reject", "label": "Rifiuta", "text": "❌ Rifiuta", "style": "danger", "service": "themis",
+             "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
+        ]
+
+    def _confirm(self, d: dict, row: dict, current: Any) -> dict:
+        """Card for the chat that asked (Oracle ``question`` packet, kind confirm). Answer = one action id,
+        routed by Oracle through Hub with ``<client>`` replaced by the answering client."""
+        pid = str(row.get("proposal_id") or "")
+        prompt = f"«{d.get('label') or d.get('key')}»: {_describe(current)} → {_describe(row.get('value'))}"
+        if row.get("reason"):
+            prompt += f"\n{row['reason']}"
+        actions = self._decision_actions(pid)
+        return {"question_id": f"themis:{pid}", "header": "Confermi la modifica?", "prompt": prompt,
+                "options": [{"label": a["label"], "value": a["id"]} for a in actions],
+                "actions": {a["id"]: {k: a[k] for k in ("service", "method", "path", "body")} for a in actions}}
 
     def proposals(self, status: str | None = None) -> list[dict]:
         rows = self.hub.ok("archive", "GET", "api/settings-store/proposals", query={"status": status, "limit": 200})
@@ -411,20 +469,11 @@ class Themis:
                                "fallback=panel_banner", kind, exc)
         threading.Thread(target=_run, daemon=True, name="themis-hermes").start()
 
-    def _notify_proposal(self, d: dict, row: dict, current: Any) -> None:
+    def _notify_proposal(self, d: dict, row: dict, current: Any, origin: dict | None = None) -> None:
         pid = row.get("proposal_id", "")
-        who = {"oracle": "Hestia (chat)", "athena": "Athena"}.get(row.get("proposer"), row.get("proposer"))
-        text = (f"⚙️ {who} propone di cambiare «{d.get('label') or d.get('key')}» "
-                f"({d.get('module')}): {_short(current)} → {_short(row.get('value'))}.")
-        if row.get("reason"):
-            text += f"\nMotivo: {row['reason']}"
-        actions = [
-            {"id": "approve", "label": "Approva", "text": "✅ Approva", "style": "primary", "service": "themis",
-             "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
-            {"id": "reject", "label": "Rifiuta", "text": "❌ Rifiuta", "style": "danger", "service": "themis",
-             "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
-        ]
-        self._emit("settings.proposal", f"settings.proposal:{pid}",
-                   {"proposal_id": pid, "key": d.get("key"), "title": "Proposta di modifica impostazione",
-                    "level": "warning",
-                    "_message": text, "_actions": actions})
+        payload = {"proposal_id": pid, "key": d.get("key"), "title": "Proposta di modifica impostazione",
+                   "level": "warning", "_message": self._proposal_text(d, row, current),
+                   "_actions": self._decision_actions(pid)}
+        if origin:   # asked in a chat: the card is there; Hermes keeps a quiet inbox copy (no push)
+            payload.update({"_origin": origin, "_quiet": True})
+        self._emit("settings.proposal", f"settings.proposal:{pid}", payload)

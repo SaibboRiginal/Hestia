@@ -123,6 +123,12 @@ The notification-compile path (`/api/subscriptions/compile` response `signals`) 
 - On button press, the feedback prompt message is **deleted from chat** immediately — no lingering acknowledgment text.
 - Snooze via `/snooze_feedback` — writes a durable preference to Archive; auto-expires after 7 days.
 
+### Confirm cards from the chat (2026-10-18, client plugins)
+- An Oracle `question` with `question_id` (no approval `id`), e.g. a Themis proposal made in this chat ("crea una
+  dashboard…", "cambia l'impostazione…"), becomes a message with two buttons; the answer goes to Oracle
+  `POST /api/chat/question-answer` (`client: telegram`), which routes the module's action. The Hermes copy of such a
+  proposal is quiet, so the card in the chat is where you answer.
+
 ---
 
 ## API Endpoints

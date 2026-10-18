@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -189,11 +189,16 @@ def settings_proposals(status: str | None = "pending"):
 
 
 @app.post("/api/settings/proposals")
-def settings_propose(body: dict):
-    """The assistant (Oracle on request, Athena in autonomy) proposes; the user decides via Hermes."""
+def settings_propose(body: dict, x_session_id: str = Header(default=""), x_hestia_client: str = Header(default="")):
+    """The assistant (Oracle on request, Athena in autonomy) proposes; the user decides.
+    Born in a chat (Oracle sends ``X-Session-Id`` + ``X-Hestia-Client``) → confirmation card in that chat
+    (``confirm`` in the answer); otherwise via Hermes."""
+    origin = body.get("origin") if isinstance(body.get("origin"), dict) else None
+    if not origin and x_session_id and x_hestia_client:
+        origin = {"client": x_hestia_client, "session_id": x_session_id}
     return themis.propose(str(body.get("key") or ""), body.get("value"),
                           proposer=str(body.get("proposer") or "oracle"), reason=str(body.get("reason") or ""),
-                          scope=body.get("scope"), scope_id=body.get("scope_id"))
+                          scope=body.get("scope"), scope_id=body.get("scope_id"), origin=origin)
 
 
 @app.post("/api/settings/proposals/{proposal_id}/approve")

@@ -246,6 +246,7 @@ class NotificationCenter:
         subscription_id: str | None = None,
         replaces: str | None = None,
         link: dict[str, Any] | None = None,
+        quiet: bool = False,
     ) -> dict[str, Any]:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one."""
@@ -277,6 +278,8 @@ class NotificationCenter:
         }
         if public_link(link):
             spec["link"] = public_link(link)
+        if quiet:   # the answer is asked elsewhere (e.g. a confirm card in the chat): inbox copy, no push
+            spec["quiet"] = True
         if held:
             spec["held"] = notify_level
         if replaces:
@@ -355,7 +358,8 @@ class NotificationCenter:
             "kind": "notification",
             "notification_id": notification_id,
             "target": str(origin.get("session_id") or "owner") if is_origin else "owner",
-            "silent": (spec.get("audience") == "origin" and not is_origin) or bool(spec.get("held")),
+            "silent": (spec.get("audience") == "origin" and not is_origin) or bool(spec.get("held"))
+                      or bool(spec.get("quiet")),
             "title": spec.get("title", ""),
             "message": spec.get("message", ""),
             "level": spec.get("level", "info"),

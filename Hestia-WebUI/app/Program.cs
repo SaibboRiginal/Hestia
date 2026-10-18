@@ -146,6 +146,9 @@ using (var scope = app.Services.CreateScope())
                 swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
                 // Hermes delivers every notification here (SPEC hermes-global-notifications).
                 notify_endpoint = "/api/notify",
+                // Assistant tools: widget catalog + dashboards (client plugins SPEC §4.6), next to Themis'.
+                mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/mcp",
+                module_tool_domains = new[] { "system", "settings" },
             }
         };
 

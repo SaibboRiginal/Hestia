@@ -1,5 +1,5 @@
 import { uid } from '../core/uid';
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, Injector, inject, signal } from '@angular/core';
 import { SignalRService } from './signalr.service';
 import { ChatMessage, ChatNotice, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
 import { NoticePrefsService } from './notice-prefs.service';
@@ -16,6 +16,7 @@ export class ChatService {
   private signalR = inject(SignalRService);
   private noticePrefs = inject(NoticePrefsService);
   private toast = inject(ToastService);
+  private injector = inject(Injector);
   /** Last assistant message: notices (e.g. memory saved) can arrive after `final`. */
   private lastAssistantId: string | null = null;
 
@@ -244,6 +245,11 @@ export class ChatService {
   }
 
   private handleNotice(event: ServerEvent): void {
+    // A settings proposal decided from its chat card (e.g. a dashboard Hestia built): reload the WebUI's own config.
+    const qid = String((event.data as Record<string, unknown> | undefined)?.['question_id'] ?? '');
+    if (qid.startsWith('themis:')) {
+      void import('../features/plugins/plugins.service').then(m => setTimeout(() => void this.injector.get(m.PluginsService).loadConfig(), 800));
+    }
     const n: ChatNotice = {
       id: uid(), kind: event.kind || 'info', level: event.level || 'info',
       icon: event.icon || 'info', emoji: event.emoji, title: event.title || 'Info',
