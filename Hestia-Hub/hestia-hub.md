@@ -47,7 +47,32 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 | `GET` | `/api/discovery/commands` | Commands from inline `capabilities.commands` + MCP tools (`?client=`) |
 | `GET` | `/api/discovery/catalog` | **One catalog** organized by client × type (`?client=webui&type=page,widget&module=scout`): `tool` (MCP, client `*`), `command`, and the UI contributions `page` · `widget` · `quick_action` · `bundle` read from each module's `capabilities.ui_manifest` (cached 5 min, refetched when `ui_version` changes). Offline modules keep their last manifest with `online: false`. Each module carries `kind` (`domain` · `core`: the WebUI shows core modules under *Sistema*) and pages may carry `badge {source, field}`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.2 |
 | `ANY` | `/api/route/{service}/{path:path}` | Proxy request to named service/path. Two styles: **envelope** (POST `{method, headers, query, body, timeout_seconds}`) or **direct passthrough** (real method + query string + raw JSON body; timeout via `X-Hub-Timeout-Seconds`, default 8s). Response is always `{status_code, service, target, payload}` |
+| `GET` | `/api/ui/map` | *Mappa* read model (WebUI plugin): every service (newest instance, `instances` count) **plus Hub itself**: `online` (re-registered in the last 180 s), `node` (`capabilities.node` or base-URL host), `version`, `last_heartbeat`, `age_seconds`, `topology_tags` + parsed `topology`, `has_ui`, `has_mcp`; top level `revision`, `updated_at`, `online_count`, `offline_count`. `?probe=true` also calls each health endpoint in parallel (`health`: healthy · degraded · unavailable) |
+| `GET` | `/api/ui/manifest` | Hub's own plugin manifest (also folded into the catalog in-process) |
+| `GET` | `/ui/webui/{file}` | Hub's plugin bundle file (`hub.js`) |
 | `GET` | `/health` | Hub health |
+
+---
+
+## WebUI plugin (core, *Sistema*)
+
+Hub ships its own "inside view" on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`,
+order 100; SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2). Code: `src/modules/inside.py` (manifest +
+read model), bundle `ui/` (Lit, `@hestia/webui-sdk`) built in the Docker image's Node stage to `/ui/dist/webui/hub.js`
+(`HUB_UI_DIST`, outside `/code/src` so the dev mount does not hide it). `api_prefix` = `/api/ui/`.
+
+| Contribution | Element | What |
+|---|---|---|
+| Page *Mappa* (`mappa`) | `hub-map` | Every service: online/offline, node, version, last heartbeat, topology tags, instances, UI/MCP badges; group by layer / node / type, search; *Verifica salute* = `GET /api/ui/map?probe=true`. Hub unreachable → "Hub non raggiungibile" state |
+| Widget *Servizi online* (`online`, auto, s/m) | `hub-online-widget` | online / total + the offline ones by name |
+
+Hub never registers with itself, so two things are done in-process:
+- **Catalog**: `discover_catalog(..., local_manifests={"hub": manifest})` adds Hub's manifest (always `online`;
+  wins over a registered service with the same name).
+- **Routing**: `/api/route/hub/<path>` (unicast, when no service named `hub` is registered) is answered by
+  `inside.local_route` — `GET /api/ui/manifest`, `GET /api/ui/map`, `GET /ui/<client>/<file>` (non-JSON as
+  `{"raw": text}`, like a proxied module); other paths 404, other methods 405. `target` = `"local"`.
+  This is what the WebUI plugin proxy and bundle loader use (`RouteRawAsync("hub", …)`).
 
 ---
 

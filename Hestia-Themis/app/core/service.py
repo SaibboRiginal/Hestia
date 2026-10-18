@@ -25,6 +25,7 @@ logger = logging.getLogger("hestia_themis.service")
 USER_SCOPES = ("session", "client", "profile")          # resolution order for scope=user definitions
 ACTORS_ASSISTANT = {"oracle", "athena"}
 HISTORY_KEEP = 10
+HISTORY_KEEP_SCAN = 500                                   # Registro page: newest changes read from Archive (max)
 PROPOSAL_TTL_HOURS = 24
 PROFILE_ID = "owner"
 SELF_OWNER = "themis"                                     # Themis' own settings (personal ones): nothing to reload
@@ -302,6 +303,43 @@ class Themis:
         rows = self.hub.ok("archive", "GET", "api/settings-store/history",
                            query={"key": key, "scope": scope, "scope_id": scope_id, "limit": limit})
         return rows if isinstance(rows, list) else []
+
+    def history_all(self, *, limit: int = 50, offset: int = 0, module: str = "", actor: str = "", key: str = "",
+                    sessions: bool = False) -> dict:
+        """Every recorded change (all keys, newest first, paged) for the Registro page. Archive keeps the last
+        ``HISTORY_KEEP`` changes per key; ``undoable`` marks the latest change of its key/scope (the one the
+        existing ``undo`` restores). Session copies (new chat = profile values copied) are hidden by default."""
+        limit, offset = max(1, min(int(limit), 200)), max(0, int(offset))
+        rows = self.hub.ok("archive", "GET", "api/settings-store/history",
+                           query={"key": key or None, "limit": HISTORY_KEEP_SCAN})
+        rows = rows if isinstance(rows, list) else []
+        actors = [a.strip() for a in actor.split(",") if a.strip()]
+        seen: set[tuple] = set()
+        out: list[dict] = []
+        for r in rows:
+            ident = (r.get("key"), r.get("scope"), r.get("scope_id") or "")
+            latest = ident not in seen
+            seen.add(ident)
+            if r.get("scope") == "session" and not sessions:
+                continue
+            d = self.registry.definition(str(r.get("key") or "")) or {}
+            row_module = d.get("module") or str(r.get("key") or "").split(".", 1)[0]
+            if module and row_module != module:
+                continue
+            who = str(r.get("actor") or "")
+            if actors and not any(who == a or who.startswith(f"{a}:") for a in actors):
+                continue
+            reason = str(r.get("reason") or "")
+            kind = ("undo" if reason == "annulla" else "reset" if r.get("new_value") is None
+                    else "approved" if reason.startswith("proposta approvata") else
+                    "preset" if reason.startswith("preset ") else "change")
+            out.append({**r, "label": d.get("label") or r.get("key"), "module": row_module, "type": d.get("type"),
+                        "kind": kind, "latest": latest,
+                        "undoable": latest and bool(d) and r.get("scope") != "session"})
+        page = out[offset: offset + limit]
+        return {"items": page, "total": len(out), "offset": offset,
+                "next_offset": offset + limit if offset + limit < len(out) else None,
+                "scanned": len(rows), "keep_per_key": HISTORY_KEEP}
 
     def undo(self, key: str, *, scope: str = "system", scope_id: str = "", actor: str = "user") -> dict:
         """Restore the value before the last change (as a new change, so undo is undoable)."""

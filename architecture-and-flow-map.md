@@ -146,6 +146,14 @@ flowchart LR
 4. A fix made by an external AI: `forge_submit_branch` → Forge fetches the branch, tests it, asks the owner; merge
    and deploy only after the owner's approval.
 
+### Plugin flow (module pages and widgets)
+1. A module with a UI declares its pages, widgets and quick actions (`hestia_common.plugin_client`) in its Hub
+   registration capabilities; Hub merges them into `/api/discovery/catalog` (core modules `kind=core`).
+2. Hub never registers with itself: it folds its own manifest into the catalog and answers
+   `/api/route/hub/{api/ui/*, ui/*}` locally.
+3. The WebUI loads each bundle through Hub and proxies the plugin's calls only under its `api_prefix`; core modules
+   go under *Sistema* and their `auto` widgets build the *Sistema* dashboard.
+
 ### Assistant agenda flow (rules as data)
 1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.
 2. Windows: modules ask Chronos `GET /api/agenda/windows/{key}` before doing scheduled work (fallback if down).

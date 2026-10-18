@@ -292,3 +292,12 @@ def test_mcp_tools_and_manifest():
     webui = manifest["clients"]["webui"]
     assert any(q["id"] == "indossato" for q in webui.get("quick_action") or [])
     assert {"capi", "outfit", "cosa-mi-metto"} <= {p["id"] for p in webui["page"]}
+
+
+@pytest.mark.unit
+def test_reminder_day_is_the_local_day_near_midnight(wd):
+    # Regression: timestamps are stored in UTC; at 00:20 in Rome the UTC date is still yesterday,
+    # so "already sent today" compared the wrong day (CI red between 22:00 and 24:00 UTC).
+    assert wd._local_day("2026-10-18T22:20:00+00:00") == "2026-10-19"
+    assert wd._local_day("2026-10-18T12:00:00+00:00") == "2026-10-18"
+    assert wd._local_day("2026-10-18") == "2026-10-18"

@@ -19,7 +19,8 @@ from core.argus_settings import settings as argus_settings
 from core.health_poller import poll_all
 from core.hub_client import discover_services
 from schemas.reports import SystemReport
-from services import analysis_service, monitor_service
+from core.ui_plugin import ui
+from services import analysis_service, health_history, monitor_service
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -193,6 +194,7 @@ except ModuleNotFoundError:
 
 app.include_router(create_log_control_router("hestia_argus"))
 app.include_router(argus_settings.router())
+app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/<file> (WebUI plugin)
 
 # ---------------------------------------------------------------------------
 # Health
@@ -247,6 +249,33 @@ def get_logs(
         "filters": {"service": service, "level": level, "since": since},
         "events": [e.model_dump() for e in events],
     }
+
+
+@app.get("/api/argus/overview", tags=["argus"])
+def get_overview() -> dict:
+    """Last monitor cycle in one look (no network): healthy/total, services not up, open incidents."""
+    return health_history.overview()
+
+
+@app.get("/api/argus/history", tags=["argus"])
+def get_history(
+    minutes: int = Query(default=360, ge=5, le=1440, description="Window in minutes (max 24 h)"),
+    buckets: int = Query(default=60, ge=1, le=240, description="Strip length (worst status per bucket)"),
+) -> dict:
+    """Health per service over time (in memory, since Argus started): strip u/w/d/- per bucket + uptime %."""
+    return health_history.history(minutes=minutes, buckets=buckets)
+
+
+@app.get("/api/argus/incidents", tags=["argus"])
+def get_incidents(limit: int = Query(default=20, ge=0, le=50, description="Closed incidents to return")) -> dict:
+    """Open incidents and the last closed ones, each with what Argus did (alert, repair, recheck, recovery)."""
+    return health_history.incidents(limit=limit)
+
+
+@app.get("/api/argus/recheck-targets", tags=["argus"])
+def get_recheck_targets() -> dict:
+    """Quick-action chips «Ricontrolla <servizio>»: one per service that is not up."""
+    return {"items": health_history.recheck_targets()}
 
 
 @app.post("/api/argus/analyze", tags=["argus"])

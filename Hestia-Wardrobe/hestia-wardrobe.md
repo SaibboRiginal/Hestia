@@ -53,6 +53,7 @@
   Sends only when `wardrobe.reminder.enabled`, a goal exists, nothing marked today, the goal is behind (or daily) and
   under `wardrobe.reminder.max_per_week`. One live reminder (`replaces: wardrobe.reminder`), actions = favourite
   outfits (`resolves: true`) + **Salta**. Marking from anywhere closes it (`closes` + decision done).
+  "Sent today" and "this week" use the local day of the stored UTC timestamps (2026-10-18 fix: near midnight the UTC date is another day).
 - Agenda job `wardrobe.review` (first Sunday of the month 10:00) → `POST /api/wardrobe/review/run` when
   `wardrobe.review.enabled`: forgotten, to repair, long in laundry, outfits to review.
 

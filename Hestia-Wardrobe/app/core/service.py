@@ -67,6 +67,16 @@ class Wardrobe:
     def today(self) -> date:
         return datetime.now(self.tz).date()
 
+    def _local_day(self, iso: Any) -> str:
+        """Local date (YYYY-MM-DD) of a stored UTC timestamp: near midnight the UTC date is another day."""
+        try:
+            dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        except ValueError:
+            return str(iso or "")[:10]
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+        return dt.astimezone(self.tz).date().isoformat()
+
     # ── vocabularies ───────────────────────────────────────────────────────
     def ensure_vocabularies(self) -> None:
         """Seed the default vocabularies once (idempotent: existing rows are the user's and stay)."""
@@ -569,8 +579,8 @@ class Wardrobe:
         if g["per"] != "day" and not g["behind"]:
             return {"send": False, "why": "not_behind"}
         week0 = self._period_start(self.today(), "week").isoformat()
-        sent = [r for r in self.store.items("reminder") if str(r.get("at") or "")[:10] >= week0]
-        if any(str(r.get("at") or "")[:10] == self.today().isoformat() for r in sent):
+        sent = [r for r in self.store.items("reminder") if self._local_day(r.get("at")) >= week0]
+        if any(self._local_day(r.get("at")) == self.today().isoformat() for r in sent):
             return {"send": False, "why": "sent_today"}       # one nudge a day, like every module
         if len(sent) >= int(self.cfg("reminder.max_per_week", 2)):
             return {"send": False, "why": "weekly_cap"}
@@ -582,7 +592,7 @@ class Wardrobe:
     def _close_reminder(self) -> None:
         """Marking from anywhere closes the live reminder (Hermes ``closes``)."""
         week_ago = (self.today() - timedelta(days=7)).isoformat()
-        if not any(str(r.get("at") or "")[:10] >= week_ago for r in self.store.items("reminder")):
+        if not any(self._local_day(r.get("at")) >= week_ago for r in self.store.items("reminder")):
             return                                    # no live reminder to close
         try:
             self.hub.call("hermes", "POST", "api/events/ingest", body={

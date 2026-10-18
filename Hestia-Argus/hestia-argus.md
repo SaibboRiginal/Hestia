@@ -46,7 +46,12 @@ Hub Monitor Logs / Docker Tails │
 | GET | `/api/argus/logs` | Recent filtered log events (params: `service`, `level`, `since`) |
 | POST | `/api/argus/analyze` | Full system analysis report |
 | POST | `/api/argus/remediate` | Forward remediation intent to Hephaestus via Hub route |
-| POST | `/api/argus/recheck/{service}` | Repair follow-up (fired by the agenda): up → close + recovery notice; still down → new repair request + next recheck |
+| POST | `/api/argus/recheck/{service}` | Repair follow-up (fired by the agenda, or *Ricontrolla* in the WebUI): up → close + recovery notice; still down → new repair request + next recheck. Answer carries `health` and a short `message` (toast) |
+| GET | `/api/argus/overview` | Last monitor cycle, no network: `total`, `healthy`, `unhealthy`, `unhealthy_services[]`, `open_incidents`, `last_cycle_at`, `last_cycle_ms`, `cycles` (widget *Stato sistema*) |
+| GET | `/api/argus/history` | Health per service over time (`minutes` 5–1440, default 360; `buckets` 1–240, default 60): per service `status`, `error`, `checked_at`, `strip` (one char per bucket, worst status: `u` up · `w` degraded · `d` down · `-` no data), `uptime_pct`, `incident_open` |
+| GET | `/api/argus/incidents` | `open[]` and `recent[]` (closed, `limit` ≤ 50) incidents, each with `actions[]` = what Argus did (`detected`, `status`, `alert`, `remediation`, `recheck_planned`, `recheck`, `recovered`; `ok` when known) |
+| GET | `/api/argus/recheck-targets` | `{items: [{id, label, icon, state, hint}]}` — one *Ricontrolla* chip per service that is not up (quick-action `source`) |
+| GET | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (`argus.js`) |
 
 ### Query parameters for `/api/argus/logs`
 
@@ -55,6 +60,26 @@ Hub Monitor Logs / Docker Tails │
 | `service` | — | Filter by service name (e.g. `scout`) |
 | `level` | `WARNING` | Minimum severity: `WARNING`, `ERROR`, `CRITICAL` |
 | `since` | `30m` | Time window: `30m`, `1h`, `2h` etc. |
+
+## WebUI plugin (core, *Sistema*)
+
+Argus ships its "inside view" on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`, order
+110; SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A6). Manifest: `app/core/ui_plugin.py` (its
+`ui_manifest`/`ui_version` go in the Hub registration capabilities). Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in
+the Docker image's Node stage to `/ui/dist/webui/argus.js` (`ARGUS_UI_DIST`, outside `/code` so the dev mount does
+not hide it). `api_prefix` = `/api/argus/` (no duplicate endpoints).
+
+| Contribution | Element | What |
+|---|---|---|
+| Page *Salute* (`salute`) | `argus-health` | KPI tiles; open incidents with the timeline of what Argus did; health strip per service over 1/6/24 h with uptime %; closed incidents; log viewer (service, minimum level, period, text search) over `/api/argus/logs`; *Ricontrolla* per service (confirm when not up: it may re-request the repair) |
+| Widget *Stato sistema* (`stato`, auto, s/m/l) | `argus-status-widget` | healthy / total, services not up, open incidents (`/api/argus/overview`) |
+| Quick action *Ricontrolla* (`ricontrolla`) | — | `POST /api/argus/recheck/{id}`, chips from `/api/argus/recheck-targets` (only services that are not up) |
+
+History and incidents (`app/services/health_history.py`) are **in memory**: one sample per service per minute
+(worst status), 24 h kept; 50 closed incidents kept. A restart starts empty (Argus owns no DB). Fed by the monitor
+cycle (`record_cycle`, `note_unhealthy`/`note_action`/`note_recovered`) and by `recheck`. Logs:
+`event=argus_incident_opened` / `event=argus_incident_closed`. Module stopped → the page/widget show
+"Argus non raggiungibile".
 
 ## Hub Registration
 
@@ -78,6 +103,7 @@ Env holds only infrastructure; every tunable is a central setting (below).
 | `HESTIA_DOCS_PATH` | `/hestia_root` | Repo mount used to load project docs as Oracle context |
 | `STARTUP_WAIT_TIMEOUT_SECONDS` | `0` | Wait for Hub readiness at startup (0 = indefinitely) |
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `argus.log.level`) |
+| `ARGUS_UI_DIST` | `/ui/dist` | WebUI plugin bundle folder (set in the Dockerfile; infra only) |
 
 ## Central settings
 

@@ -134,9 +134,37 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.log.level` | enum | `LOG_LEVEL` env | log verbosity |
 
 ### Thinking archive
-- Every cycle is stored in-memory (ring buffer, configurable max) and pushed to Archive
+- Every cycle is stored in-memory (ring buffer, `athena.thinking.store_max`) and pushed to Archive
 - Archive entity type: `athena_thinking` under domain `cognition`
-- Clients can query `/api/athena/thinking` to see "what Athena is thinking"
+- Clients can query `/api/athena/thinking` (full records) or `/api/athena/thinking/summary` (compact) to see
+  "what Athena is thinking"
+- A record keeps **every** candidate the strategist proposed, accepted or discarded: `score`, the 5 `signals` (after
+  the retrospective boost), `accepted`, `gate_reason` (Italian: «punteggio 0.48 < soglia 0.55 (urgenza bassa, utilità
+  bassa)» — the factors that cost the most points, or the strongest ones when accepted) and `outcome`
+  (`emitted` · `forge` · `forge_skipped` · `setting_proposed` · `setting_skipped` · `failed` · `discarded`). The record
+  also has `threshold` and `duration_ms`. Log: `event=thinking_cycle_done trigger= candidates= accepted= emitted= ms=`.
+
+### «Pensa ora» (one cycle now)
+`POST /api/athena/think` runs one full cycle (observe → think → gate → act → archive, `trigger=manual`) in the
+background, past the idle gate and the `athena.thinking` agenda window (the user asked for it). One cycle at a time:
+a lock is shared with the loop (`busy` if one is running; the periodic cycle skips with
+`event=thinking_cycle_skipped reason=cycle_running`). `POST /api/athena/trigger` stays the "reflect on a theme" action
+(agenda template `reflect`, custom title/summary/signals).
+
+### WebUI plugin: Pensieri (core module, Sistema section)
+Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_prefix=/api/athena/`; SPEC
+`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2). Bundle `ui/` (Lit, SDK kit) built in the Docker image (Node stage
+→ `/ui/dist/webui/athena.js`, outside `/code/app` because of the dev mount; infra env `ATHENA_UI_DIST`).
+
+| Kind | Id | What |
+|---|---|---|
+| page (order 130) | `pensieri` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena non raggiungibile» |
+| widget (auto) | `ultimo` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
+| quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
+
+### MCP tool `athena_thinking(limit?)`
+Read only (GET `/api/athena/thinking/summary`), clients `ui` + `external` (external AIs with an MCP access may read
+it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 
 ## API
 
@@ -150,7 +178,10 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | GET | `/api/athena/tasks/{task_id}` | Single task detail |
 | GET | `/api/athena/commitments` | Active commitments (action items tracked) |
 | POST | `/api/athena/commitments/{brief_id}/resolve` | Resolve a commitment |
-| GET | `/api/athena/thinking` | Recent thinking records (new in Phase 3) |
+| GET | `/api/athena/thinking` | Recent thinking records, full (observation payload included) |
+| GET | `/api/athena/thinking/summary?limit=` | Compact cycles + `running`, `threshold`, `weights`, `loop_enabled`, `strategist_enabled` (page Pensieri, MCP `athena_thinking`) |
+| POST | `/api/athena/think` | «Pensa ora»: one full cycle now in background → `{status: started, trace_id}` or `{status: busy}` |
+| GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
 
 ### When Athena works = assistant agenda windows
@@ -179,6 +210,7 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `HUB_KEEPALIVE_SECONDS` | `60` | Hub re-registration period |
 | `ATHENA_ORACLE_HINT_ROUTE` | `api/athena/hints` | Oracle path for hints (route) |
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
+| `ATHENA_UI_DIST` | `/ui/dist` | WebUI bundle folder (set in the Dockerfile, infrastructure) |
 
 Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena_strategist`
 (strategist + memory consolidation) or `athena_auditor` (answer audit); the models are the Oracle settings

@@ -16,6 +16,7 @@ from core.oracle_engine import OracleEngine
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+    from hestia_common.plugin_client import PluginClient, page, widget
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -23,6 +24,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
+    from hestia_common.plugin_client import PluginClient, page, widget
 
 logger, log_buffer = setup_service_logging("hestia_oracle")
 
@@ -157,8 +159,62 @@ except Exception as exc:
 
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
+from core.services import activity_log  # noqa: E402
 
 app.include_router(_oracle_settings.settings.router())
+
+# ── WebUI plugin (core module, Sistema section): Cervello ────────────────────
+# Inside view of Oracle (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): recent turns, LLM use per
+# use case/model, tokens/cost per day, Claude Code. Reads under /api/ui/ (Oracle's routes are spread over prefixes).
+UI_DIST = os.getenv("ORACLE_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
+ui = PluginClient("oracle", title="Oracle", icon="brain", color="purple", kind="core", dist=UI_DIST,
+                  description="Il cervello di Hestia: richieste, modelli usati, token e costi, Claude Code.",
+                  version=os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"))
+ui.webui(entry="oracle.js", api_prefix="/api/ui/",
+         pages=[page("cervello", "Cervello", element="oracle-brain", icon="brain", order=120,
+                     help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), uso dei modelli "
+                          "per caso d'uso, token e costi per giorno, stato di Claude Code.")],
+         widgets=[widget("uso-oggi", "Uso modelli oggi", element="oracle-usage-widget", sizes=["s", "m", "l"],
+                         size="m", open_page="cervello", icon="chart",
+                         help="Chiamate, token e costo di oggi, per modello.")])
+app.include_router(ui.router())
+
+
+@app.get("/api/ui/activity")
+def ui_activity(limit: int = 30):
+    """Recent chat turns (newest first) + last real user interaction (page Cervello)."""
+    ts = _LAST_USER_ACTIVITY["ts"]
+    rows = activity_log.recent(limit)
+    return {"status": "ok", "count": len(rows), "turns": rows, "last_user_activity_ts": ts or None,
+            "idle_seconds": int(time.time() - ts) if ts else None}
+
+
+@app.get("/api/ui/stats")
+def ui_stats(days: int = 14):
+    """LLM use from the in-memory llm_stats: per day (tokens, cost), today per use case/model, and the
+    rolling averages per use case (prompt size, cache hit, speed). Counted since Oracle started."""
+    out = llm_stats.daily(days)
+    for row in out["today_by_model"]:
+        row["label"] = _use_case_label(row["use_case"])
+    use_cases = [{"use_case": uc, "label": _use_case_label(uc), **row}
+                 for uc, row in sorted(llm_stats.summary().items())]
+    return {"status": "ok", **out, "use_cases": use_cases}
+
+
+def _use_case_label(use_case: str) -> str:
+    """Italian name of a use case (the same labels as the oracle.models.* settings)."""
+    if use_case == "claude_code":
+        return "Claude Code (Forge)"
+    entry = _oracle_settings.USECASES.get(use_case) or _oracle_settings.SERVICE_USECASES.get(use_case)
+    return entry[0] if entry else use_case
+
+
+@app.get("/api/ui/code")
+def ui_code():
+    """Claude Code ("code" use case): ready or why not, plus the recent Forge runs."""
+    from core.services.claude_code_runner import runs, status
+    return {"status": "ok", **status(), **runs()}
+
 
 
 @app.get("/api/llm/models")
@@ -216,6 +272,7 @@ def _register_on_hub():
         "capabilities": {
             "chat_endpoint": "/api/chat",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
+            **ui.capabilities(service_base_url),
         },
     }
     try:

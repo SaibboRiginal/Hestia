@@ -31,6 +31,7 @@ except Exception:  # pragma: no cover - Python without zoneinfo support
 from core.services.agent_factory import AgentFactory, conversation_style_contract
 from core.services.hub_client import HubClient
 from core.services import llm_stats
+from core.services import activity_log
 from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_THRESHOLD
 from core.services import stream_emitter
 from core.services import prompt_config
@@ -746,6 +747,16 @@ class OracleEngine:
         """
         t0 = time.perf_counter()
         trace_id = uuid.uuid4().hex[:12]
+        usage_before = llm_stats.session_usage(session_id)
+
+        def _record_turn(route: str, domains: list[str] | None = None, tool_log: list | None = None) -> None:
+            # Inside view (WebUI page Cervello, GET /api/ui/activity): one row per finished turn.
+            activity_log.record_turn(
+                session_id=session_id, client=client, mode=mode, route=route, model=agent.model_name,
+                provider=agent.provider, domains=domains, tool_log=tool_log,
+                total_ms=int((time.perf_counter() - t0) * 1000), message=user_message,
+                usage_before=usage_before, usage_after=llm_stats.session_usage(session_id), trace_id=trace_id)
+
         if client and session_id:
             self._session_clients[session_id] = str(client)[:40]
         logger.trace("event=chat_entry trace_id=%s session_id=%s mode=%s model=%s msg=%s",
@@ -805,6 +816,7 @@ class OracleEngine:
             if save_history:
                 self._save_history(session_id, user_message, answer, trace_id=trace_id)
             yield stream_emitter.emit_final(answer, "general")
+            _record_turn("quick")
             logger.info(
                 "event=chat_done_summary session_id=%s total_ms=%s mode=quick model=%s provider=%s thinking=%s tools=0 answer_len=%s trace_id=%s",
                 session_id,
@@ -941,6 +953,7 @@ class OracleEngine:
                 trace_id,
             )
             yield stream_emitter.emit_final(answer, "general")
+            _record_turn("quick_chat", ["general"])
             _mem_waiter = self._phase_background_memory(
                 user_message, session_id, notify_target,
                 force_notification_compiler,
@@ -1222,6 +1235,7 @@ class OracleEngine:
                         actions=card.get("actions") if isinstance(card.get("actions"), dict) else None)
 
         total_ms = int((time.perf_counter() - t0) * 1000)
+        _record_turn("agent", list(intent.valid_domains or []), tool_log)
         logger.info(
             "event=chat_done_summary session_id=%s total_ms=%s mode=%s model=%s provider=%s thinking=%s tools=%s answer_len=%s tokens=%s trace_id=%s",
             session_id,

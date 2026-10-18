@@ -57,7 +57,23 @@ except ModuleNotFoundError:
         wait_for_hub_services,
     )
 
+from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+
 logger, log_buffer = setup_service_logging("hestia_chronos")
+
+UI_DIST = os.getenv("CHRONOS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
+ui = PluginClient("chronos", title="Chronos", icon="repeat", color="amber", kind="core", dist=UI_DIST,
+                  description="L'agenda dell'assistente al lavoro: esecuzioni dei job, errori, regole per modulo.",
+                  version=os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"))
+ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
+         pages=[page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=150,
+                     help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
+                          "è durata, e le regole registrate da ogni modulo. Il calendario resta in Agenda.")],
+         widgets=[widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
+                         open_page="esecuzioni", icon="alert",
+                         help="Job dell'agenda falliti nelle ultime 24 ore, con «Riprova».")],
+         quick_actions=[quick_action("riprova", "Riprova job", "POST", "/api/agenda/items/{id}/run", icon="refresh",
+                                     group="Sistema", source="/api/agenda/runs/failed", order=150)])
 
 
 class ModuleMaintenanceRequest(BaseModel):
@@ -89,6 +105,7 @@ class ModuleMaintenanceResponse(BaseModel):
 app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/chronos.js
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools
@@ -498,7 +515,7 @@ def on_startup() -> None:
         logger=logger,
     )
 
-    register_on_hub(hub_api_url, service_base_url)
+    register_on_hub(hub_api_url, service_base_url, extra_capabilities=ui.capabilities(service_base_url))
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
     def _hub_keepalive():
@@ -510,6 +527,7 @@ def on_startup() -> None:
                     service_base_url,
                     max_attempts=1,
                     quiet_success=True,
+                    extra_capabilities=ui.capabilities(service_base_url),
                 )
             except Exception as error:
                 logger.warning(
@@ -924,6 +942,31 @@ def agenda_fail(ref: str, req: AgendaFail) -> dict:
 @app.post("/api/agenda/items/{ref}/run")
 def agenda_run(ref: str) -> dict:
     return {"status": "ok", **_agenda_guard(assistant_agenda.run_now, ref)}
+
+
+def _since(value: str | None, hours: float | None) -> datetime | None:
+    if value:
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="since must be an ISO datetime")
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - timedelta(hours=hours) if hours else None
+
+
+@app.get("/api/agenda/runs")
+def agenda_runs(owner: str | None = None, status: str | None = Query(None, description="ok | failed | skipped"),
+                since: str | None = Query(None, description="ISO; or use hours"),
+                hours: float | None = Query(None, ge=0, le=24 * 400), limit: int = Query(100, ge=1, le=500)) -> dict:
+    """Job/task runs of the assistant agenda (newest first) + summary + rules registered per owner
+    (WebUI plugin page «Esecuzioni»)."""
+    return _agenda_guard(assistant_agenda.runs, owner=owner, status=status, since=_since(since, hours), limit=limit)
+
+
+@app.get("/api/agenda/runs/failed")
+def agenda_runs_failed(hours: float = Query(24, ge=1, le=24 * 30)) -> list[dict]:
+    """Chips of the quick action «Riprova job»: jobs whose last run failed (id = item key)."""
+    return assistant_agenda.failed_jobs(since=_since(None, hours))
 
 
 class AgendaTemplates(BaseModel):

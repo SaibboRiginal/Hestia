@@ -672,3 +672,97 @@ def create_from_template(owner: str, template_id: str, *, values: dict, start_at
                   action=action if kind in ("task", "job") else None,
                   key=f"{owner}.tpl.{template_id}.{uuid.uuid4().hex[:6]}",
                   params={"template": template_id, "values": values}, created_by="user")
+
+
+# ── Runs view (WebUI plugin «Esecuzioni», SPEC 2026-10-18-moduli-core-e-mcp-esterno §A2) ──────────
+RUN_STATUSES = ("ok", "failed", "skipped")
+
+
+def _run_row(item: dict, *, status: str, at: str, occurrence: str | None, detail: str | None = None,
+             by: str | None = None, duration_ms: int | None = None) -> dict:
+    return {"item_id": item["id"], "key": item["key"], "title": item["title"], "owner": item["owner"],
+            "type": item["type"], "item_status": item["status"], "status": status, "at": at,
+            "occurrence": occurrence, "detail": detail, "by": by, "duration_ms": duration_ms,
+            "manual": bool(occurrence and str(occurrence).startswith("manual:")),
+            "can_run": bool(item.get("action")) and item["status"] not in {"cancelled", "completed"}}
+
+
+def runs(*, owner: str | None = None, status: str | None = None, since: datetime | None = None,
+         limit: int = 100, now: datetime | None = None) -> dict:
+    """Every recorded run of jobs/tasks (each item keeps its last runs) + skipped past occurrences,
+    newest first, with a summary and the rules registered per owner."""
+    if status and status not in RUN_STATUSES:
+        raise AgendaError(f"status must be one of {', '.join(RUN_STATUSES)}")
+    now = now or datetime.now(timezone.utc)
+    items = [_to_item(r) for r in _raw_items()]
+    rows: list[dict] = []
+    owners: dict[str, dict] = {}
+    for item in items:
+        o = owners.setdefault(item["owner"], {"owner": item["owner"], "rules": 0, "active": 0, "paused": 0,
+                                              "failed": 0, "user_modified": 0, "types": {}})
+        o["rules"] += 1
+        o["types"][item["type"]] = o["types"].get(item["type"], 0) + 1
+        if item["status"] in {"paused", "failed"}:
+            o[item["status"]] += 1
+        elif item["status"] not in {"cancelled", "completed"}:
+            o["active"] += 1
+        o["user_modified"] += int(item["user_modified"])
+        if owner and item["owner"] != owner:
+            continue
+        for r in item.get("runs") or []:
+            if isinstance(r, dict) and r.get("at"):
+                rows.append(_run_row(item, status="ok" if r.get("ok") else "failed", at=str(r["at"]),
+                                     occurrence=r.get("occurrence"), detail=r.get("detail"), by=r.get("by"),
+                                     duration_ms=r.get("duration_ms")))
+        if item["type"] in {"job", "task"}:
+            for occ in item.get("skips") or []:
+                try:
+                    when = _parse(occ, "UTC")
+                except (TypeError, ValueError):
+                    continue
+                if when <= now:
+                    rows.append(_run_row(item, status="skipped", at=when.isoformat(), occurrence=occ))
+
+    def _ts(row: dict) -> datetime:
+        try:
+            return _parse(row["at"], "UTC")
+        except (TypeError, ValueError):
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    if since:
+        rows = [r for r in rows if _ts(r) >= since]
+    rows.sort(key=_ts, reverse=True)
+    summary = {s: sum(1 for r in rows if r["status"] == s) for s in RUN_STATUSES}
+    durations = [int(r["duration_ms"]) for r in rows if r["duration_ms"] is not None]
+    summary["avg_ms"] = int(sum(durations) / len(durations)) if durations else None
+    summary["failed_items"] = sum(1 for i in items if i["status"] == "failed" and (not owner or i["owner"] == owner))
+    if status:
+        rows = [r for r in rows if r["status"] == status]
+    return {"count": len(rows), "runs": rows[: max(1, min(int(limit), 500))], "summary": summary,
+            "owners": sorted(owners.values(), key=lambda o: o["owner"])}
+
+
+def failed_jobs(since: datetime | None = None, now: datetime | None = None) -> list[dict]:
+    """Jobs/tasks whose last run failed (or that stopped as failed) and can run again: «Riprova job» chips."""
+    now = now or datetime.now(timezone.utc)
+    since = since or now - timedelta(days=1)
+    out = []
+    for item in (_to_item(r) for r in _raw_items()):
+        if item["type"] not in {"job", "task"} or not item.get("action") or item["status"] in {"cancelled", "completed"}:
+            continue
+        last = item.get("last_result") if isinstance(item.get("last_result"), dict) else None
+        failed_now = item["status"] == "failed"
+        if not failed_now and not (last and not last.get("ok")):
+            continue
+        try:
+            at = _parse(last["at"], "UTC") if last and last.get("at") else None
+        except (TypeError, ValueError):
+            at = None
+        if not failed_now and (at is None or at < since):
+            continue
+        out.append({"id": item["key"], "item_id": item["id"], "label": item["title"], "owner": item["owner"],
+                    "icon": "refresh", "state": "late", "status": item["status"],
+                    "at": last.get("at") if last else None, "detail": (last or {}).get("detail"),
+                    "hint": item["owner"]})
+    out.sort(key=lambda c: str(c.get("at") or ""), reverse=True)
+    return out

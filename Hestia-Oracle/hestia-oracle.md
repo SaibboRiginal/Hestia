@@ -153,6 +153,10 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `GET` | `/api/chat/context?session_id=` | Context-window stats (token breakdown, compaction availability) |
 | `POST` | `/api/chat/compact?session_id=` | Force-compact conversation history via LLM summarisation |
 | `GET` | `/api/sessions` | Global Oracle state (models, uptime, Hub URL) |
+| `GET` | `/api/ui/manifest` · `/ui/webui/oracle.js` | WebUI plugin manifest and bundle (see «WebUI plugin: Cervello») |
+| `GET` | `/api/ui/activity?limit=` | Recent chat turns, newest first (route, domains, tools ok/failed, model/provider, ms, LLM usage of the turn) + last user activity |
+| `GET` | `/api/ui/stats?days=` | LLM use: tokens/cost per day (≤31), today per use case × provider × model, rolling averages per use case |
+| `GET` | `/api/ui/code` | Claude Code status (`/api/llm/code/status`) + recent runs (`running`, `runs[]`: task folder, state, ok, ms, turns, cost) |
 | `GET` | `/health` | Service health |
 
 ### Module tools (agent loop)
@@ -219,7 +223,7 @@ This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI 
 
 Declared in `app/core/services/oracle_settings.py`, read at use time (no restart). Env keeps only infrastructure:
 endpoints/keys (`OLLAMA_URL`, `GEMINI_API_KEY`, `ORACLE_OPENAI_*`, `ORACLE_ANTHROPIC_API_KEY`,
-`ORACLE_LLM_PROFILE_*`), binaries/paths (`ORACLE_CLAUDE_BIN`, `ORACLE_CODE_WORKDIR_ROOT`, `ORACLE_PROMPTS_FILE`),
+`ORACLE_LLM_PROFILE_*`), binaries/paths (`ORACLE_CLAUDE_BIN`, `ORACLE_CODE_WORKDIR_ROOT`, `ORACLE_PROMPTS_FILE`, `ORACLE_UI_DIST` — WebUI bundle, set in the Dockerfile),
 `ORACLE_EMBED_DIM` (tied to Archive `Vector(768)`), `TZ`, Hub/Archive URLs, `MODULE_TOOLS_URL(S)`, version,
 `ORACLE_NOTIFY_DEFAULT_TARGET` (identity of the owner). Prompt text (persona, action-tool policy) is in the prompt
 map (`agent_action_tool_policy`, overridable in the prompts file), not env.
@@ -368,6 +372,27 @@ Built-in profiles, no extra env: `local` = Ollama + setting `oracle.models.code.
 endpoint) + the first Gemini model among the code/reasoning/generic settings (primary, then fallback) + `GEMINI_API_KEY`. `ORACLE_LLM_PROFILE_<NAME>_BASE_URL/_MODEL/_API_KEY`
 only override them or add another provider. Claude Code CLI is installed by default
 (`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when `CLAUDE_CODE_OAUTH_TOKEN` is set.
+
+## WebUI plugin: Cervello (core module, Sistema section)
+
+Oracle ships its inside view on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`; SPEC
+`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2). Declared in `app/main.py`, bundle `ui/` (Lit, SDK kit) built in
+the Docker image (Node stage → `/ui/dist/webui/oracle.js`, outside `/code` because of the dev mount; infra env
+`ORACLE_UI_DIST`). `api_prefix` = `/api/ui/` (Oracle's routes are spread over several prefixes, so the page reads three
+small `/api/ui/*` views instead of calling them directly). The Hub registration carries `ui_manifest`/`ui_version`.
+
+| Kind | Id | What |
+|---|---|---|
+| page (order 120) | `cervello` → `<oracle-brain>` | KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
+| widget | `uso-oggi` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
+
+Data sources (all in memory, reset when Oracle restarts — an inside view, not an audit log):
+- `core/services/activity_log.py` — ring of the last 200 finished chat turns, written at the three `chat_done_summary`
+  points of `OracleEngine.chat` (the turn's usage = delta of `llm_stats.session_usage`). Message preview ≤ 80 chars.
+- `core/services/llm_stats.py` — besides the rolling window per use case, daily totals per (use case, provider, model)
+  for the last 31 local days (`daily()`).
+- `core/services/claude_code_runner.py` — last 20 runs (`runs()`); a finished run with `usage` also goes into the daily
+  totals as use case `claude_code`.
 
 ## Assistant presence
 

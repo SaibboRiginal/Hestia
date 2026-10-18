@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-18 |
-| **Status** | Approved 2026-10-18 (Marko, card) — in progress, see PROGRESS.md |
+| **Status** | Approved 2026-10-18 (Marko, card) — P1–P4 built, P5–P6 next, see PROGRESS.md |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -50,6 +50,21 @@ inside Athena is Athena. A module that changes its internals updates its own pag
 
 Hestia-MCP is already covered by the *Comandi & MCP* page; Hecate/Iris/Atlas/Archive come later if wanted.
 Exact fields are fixed per module during its phase (endpoint reading first, *new* endpoints only where data is missing).
+
+**As built in P4 (v2.4)** — new reads live under each plugin's own `api_prefix` (the WebUI proxy refuses anything else):
+- Hub: `GET /api/ui/map?probe=` (registry + optional health probe). Hub never registers with itself, so it folds its
+  own manifest into the catalog and answers `/api/route/hub/{api/ui/*, ui/*}` locally.
+- Argus: `/api/argus/overview`, `/history`, `/incidents`, `/recheck-targets` (health samples and incidents in memory, 24 h).
+- Oracle: `/api/ui/activity`, `/api/ui/stats`, `/api/ui/code` (in memory, reset on restart).
+- Athena: every candidate keeps `gate_reason` and `outcome` (discarded ones too); `/api/athena/thinking/summary`;
+  *Pensa ora* = new `POST /api/athena/think` (one real cycle, past the idle gate; `/trigger` stays the agenda template);
+  MCP tool `athena_thinking` (ui + external).
+- Hermes: `/api/ui/deliveries`, `/api/ui/subscriptions`, `/api/ui/clients` (from the per-client delivery log in Archive).
+- Chronos: `/api/agenda/runs`, `/api/agenda/runs/failed` (not `/api/ui/runs`); *Riprova* = existing run-now.
+- Themis: `/api/settings/history` (all keys, paged; not `/api/ui/history`); `proposals?status=all`.
+- Hephaestus, Metis: existing reads only (Hephaestus `api_prefix` `/api/hephaestus/` covers Forge too).
+- WebUI: ready-made dashboard **Sistema** from the core modules' `auto` widgets (Home keeps the domain ones); hidden
+  while no core widget exists, a deleted Sistema stays deleted.
 
 ### A3. Contract additions (small)
 

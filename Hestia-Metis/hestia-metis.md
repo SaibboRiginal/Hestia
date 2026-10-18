@@ -58,6 +58,7 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `POST` | `/api/metis/dataset/build` · `/benchmark/run` · `/lora/train` | REST mirrors of the MCP tools (auto-mounted by `mount_missing_rest_routes`; were 404 via Hub/Telegram) |
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
+| `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
 
 Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archive in the Hub envelope query
@@ -69,6 +70,21 @@ read via Hub from Oracle `GET /api/settings/effective` (`oracle.models.generic.m
 `[🔄]` fallback to Oracle's declared default `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
 `metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
 (dataset + log in `METIS_DATA_DIR`, default `/code/data` = `Hestia-Metis/data` volume); it used to report "triggered" without starting anything.
+
+## WebUI plugin (Sistema)
+
+Metis ships its inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
+`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
+section *Sistema*), `api_prefix` `/api/metis/`, no new endpoint.
+- page **Miglioramento** (`miglioramento`, `metis-improvement`, order 180): *Dove sbaglia* from
+  `/api/metis/insights` (grades, negatives, negative share, weak domains with labels and examples), *Dataset* from
+  `/api/metis/dataset/status` (in-memory, shown only when there are some), *Training LoRA* from `/api/metis/lora/jobs`
+  (state, dataset, base model, requester, planned start). Read only: building datasets and training stay chat/agenda
+  actions; a planned training is moved/cancelled from the agenda window `metis.training`.
+- No widgets, no quick actions. Metis unreachable → "non raggiungibile"; Archive feedback unavailable → only that
+  card shows an error.
+Bundle: `Hestia-Metis/ui/src` (Lit, `@hestia/webui-sdk`), built by the Node stage of the Dockerfile into
+`/ui/dist/webui/metis.js` (outside `/code`: the dev mount of `app/` would hide it); infra env `METIS_UI_DIST`.
 
 ## Constraints
 
@@ -101,6 +117,7 @@ Endpoints `GET /api/settings/effective`, `POST /api/settings/reload` (used by Th
 | `METIS_TRAINING_SCRIPT` | `/code/data/train_lora.py` | Path to external training script (put it in `Hestia-Metis/data/`) |
 | `METIS_DATA_DIR` | `/code/data` | Exported datasets, training logs, `lora_jobs.json` |
 | `LOG_LEVEL` | `INFO` | Boot log level only (then `metis.log.level`) |
+| `METIS_UI_DIST` | `/ui/dist` | Built WebUI plugin bundle (set by the Dockerfile) |
 
 ## Docker
 

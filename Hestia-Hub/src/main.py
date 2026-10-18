@@ -41,6 +41,7 @@ from .modules.discovery import (
     ui_manifest_cache_invalidate,
 )
 from .modules.events import RegistryEvents
+from .modules import inside
 from .modules.registry import ServiceRegistry
 from .modules.router import proxy_request
 from .modules.schemas import (
@@ -82,6 +83,7 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
     }
 
 app.include_router(create_log_control_router("hestia_hub"))
+app.include_router(inside.ui.router())   # GET /api/ui/manifest · GET /ui/webui/<file> (Hub's own WebUI plugin)
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 
@@ -183,8 +185,24 @@ def discovery_catalog(client: str = "", type: str = "", module: str = ""):
     Contract: ``docs/work/2026-10-17-client-plugins/SPEC.md`` §4.2.
     """
     types = [t.strip().lower() for t in type.split(",") if t.strip()] or None
-    catalog = discover_catalog(registry, client=client, types=types, module=module)
+    catalog = discover_catalog(registry, client=client, types=types, module=module,
+                               local_manifests=inside.local_manifests())
     return {"revision": events.revision, **catalog}
+
+
+# ── WebUI plugin reads (Mappa page, Servizi online widget) ─────────────────────
+
+
+def _service_map(probe: bool = False) -> dict:
+    return inside.service_map(registry.all_services(), revision=events.revision, updated_at=events.updated_at,
+                              probe=probe, health_timeout=_health_timeout)
+
+
+@app.get("/api/ui/map")
+def ui_map(probe: bool = False):
+    """Every service (+ Hub): online by heartbeat, node, version, last heartbeat, topology, registry revision.
+    ``probe=true`` also calls each health endpoint (like ``/api/status``)."""
+    return _service_map(probe)
 
 
 # ── Standards ─────────────────────────────────────────────────────────────────
@@ -299,6 +317,12 @@ def _route_sync(service_name: str, path: str, req: RouteRequest):
             raise HTTPException(status_code=400, detail="Empty service list")
     else:
         target_names = [service_name]
+
+    # ── Hub itself (its WebUI plugin: bundle + /api/ui reads) — Hub never registers with itself ──
+    if target_names == ["hub"] and not registry.get("hub"):
+        status_code, payload = inside.local_route(path, req.method, req.query, _service_map)
+        log_event(logger, logging.DEBUG, "hub_local_route", service="hub", path=path, status_code=status_code)
+        return {"status_code": status_code, "service": "hub", "target": "local", "payload": payload}
 
     # ── Stream mode — forward NDJSON/SSE directly (no envelope) ───────────
     if req.stream and len(target_names) == 1:

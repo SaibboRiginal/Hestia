@@ -208,6 +208,19 @@ class TestChatQuickChat:
         assert answers[0]["domain"] == "general"
         assert "Fast fallback" in answers[0]["reply"]
 
+    def test_quick_chat_turn_reaches_the_inside_view(self, engine):
+        """Every finished turn leaves one row for the WebUI page Cervello (GET /api/ui/activity)."""
+        from core.services import activity_log
+        activity_log.reset()
+        engine._agents.generic.ask.side_effect = [_quick_chat_json(), "Fast fallback response."]
+        engine._hub.get.return_value = _SAMPLE_DOMAINS
+        _collect_ndjson_lines(engine.chat("Ciao come stai?", "test-session", client="webui"))
+        rows = activity_log.recent(5)
+        assert len(rows) == 1
+        assert rows[0]["route"] == "quick_chat" and rows[0]["client"] == "webui"
+        assert rows[0]["domains"] == ["general"] and rows[0]["preview"] == "Ciao come stai?"
+        activity_log.reset()
+
     def test_quick_chat_saves_history(self, engine):
         """Quick chat should persist user+assistant messages to Archive."""
         engine._agents.generic.ask.return_value = _quick_chat_json()

@@ -17,6 +17,10 @@ create_log_control_router = import_shared_symbol(
     "hestia_common.logging_utils", "create_log_control_router"
 )
 logger, log_buffer = setup_service_logging("hestia_athena")
+plugin_client = import_shared_symbol("hestia_common.plugin_client", "PluginClient")
+plugin_page = import_shared_symbol("hestia_common.plugin_client", "page")
+plugin_widget = import_shared_symbol("hestia_common.plugin_client", "widget")
+plugin_quick_action = import_shared_symbol("hestia_common.plugin_client", "quick_action")
 
 
 class AthenaService(HestiaServiceBase):
@@ -51,7 +55,10 @@ class AthenaService(HestiaServiceBase):
             "manual_trigger_endpoint": "/api/athena/trigger",
             "commitments_endpoint": "/api/athena/commitments",
             "thinking_endpoint": "/api/athena/thinking",
+            "thinking_summary_endpoint": "/api/athena/thinking/summary",
+            "think_now_endpoint": "/api/athena/think",
             "observation_endpoint": "/api/athena/observation",
+            **ui.capabilities(SERVICE_BASE_URL),
         }
 
 
@@ -127,7 +134,26 @@ service = AthenaService(
 )
 runtime = AthenaRuntime()
 
+# ── WebUI plugin (core module, Sistema section): Pensieri ────────────────────
+# Inside view (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): every cycle observe → think → gate → act.
+UI_DIST = os.getenv("ATHENA_UI_DIST", "/ui/dist")   # outside /code/app: the compose dev mount must not hide it
+API = "/api/athena"
+ui = plugin_client("athena", title="Athena", icon="zap", color="amber", kind="core", dist=UI_DIST,
+                   description="Cosa pensa Hestia da sola: osserva, propone, filtra con il punteggio, agisce.",
+                   version=SERVICE_VERSION)
+ui.webui(
+    entry="athena.js", api_prefix=f"{API}/",
+    pages=[plugin_page("pensieri", "Pensieri", element="athena-thoughts", icon="zap", order=130,
+                       help="Ogni ciclo di Athena: cosa ha osservato, cosa ha pensato, il punteggio (5 fattori) "
+                            "e cosa ha fatto o scartato, con il motivo. Impegni aperti. «Pensa ora» per un ciclo subito.")],
+    widgets=[plugin_widget("ultimo", "Ultimo pensiero", element="athena-last-widget", sizes=["m", "l"], auto=True,
+                           open_page="pensieri", icon="zap", help="L'ultimo ciclo di Athena e cosa ne è uscito.")],
+    quick_actions=[plugin_quick_action("pensa", "Fai pensare Athena", "POST", f"{API}/think", icon="zap",
+                                       group="Sistema")],
+)
+
 app = FastAPI(title="Hestia Athena", version=SERVICE_VERSION)
+app.include_router(ui.router())
 
 
 @app.on_event("startup")
@@ -261,6 +287,20 @@ def athena_thinking(
     }
 
 
+@app.get("/api/athena/thinking/summary")
+def athena_thinking_summary(limit: int = 10) -> dict[str, Any]:
+    """Compact cycles (newest first) for the Pensieri page and the MCP tool ``athena_thinking``: observation
+    counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome."""
+    return runtime.thinking_summary(limit=limit)
+
+
+@app.post("/api/athena/think")
+def athena_think_now() -> dict[str, Any]:
+    """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
+    ``started`` or ``busy`` (a cycle is already running); the record appears in /api/athena/thinking."""
+    return runtime.think_now()
+
+
 @app.get("/api/athena/observation")
 def athena_observation() -> dict[str, Any]:
     """Return the most recent observation snapshot.
@@ -296,6 +336,30 @@ try:
         return result
 
     _athena_mcp_tools = [
+        # Inside view, also for external AIs (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): read only.
+        MCPTool(
+            name="athena_thinking",
+            description=(
+                "Ultimi cicli di pensiero di Athena (la parte proattiva di Hestia): cosa ha osservato, le azioni "
+                "candidate con i 5 fattori del punteggio (urgenza, utilità, novità, sicurezza, disturbo), soglia, "
+                "accettate o scartate con il motivo, e cosa ne ha fatto (inviata, Forge, proposta impostazione)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 50,
+                              "description": "Quanti cicli (default 10, più recenti prima)"},
+                },
+            },
+            handler=lambda limit=10, **_kw: runtime.thinking_summary(limit=int(limit or 10)),
+            title="💭 Pensieri di Athena",
+            method="GET",
+            path="/api/athena/thinking/summary",
+            clients=["ui", "external"],
+            response_mode="oracle_natural",
+            telegram_visible=False,
+            telegram_group="sistema",
+        ),
         MCPTool(
             name="athena_audit_conversation",
             description=(

@@ -99,6 +99,9 @@ within the cooldown window.
 | `POST` | `/api/notifications/{id}/seen` · `/seen-all` | Global read state |
 | `POST` | `/api/notifications/{id}/answer` · `/answer/outcome` | First answer wins, routed to the asking module |
 | `POST` | `/api/notifications/retract-stale` | Agenda job: retract handled messages from clients |
+| `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
+| `GET` | `/api/ui/subscriptions` · `/api/ui/clients` | Active subscriptions (domain, event type, filters, channels) · clients reached now |
+| `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |
 
 System subscription (`service.action_required`) is bootstrapped at startup for the user (`owner`,
 channel `{"type": "all"}` = every client; Telegram resolves `owner` to its `ALLOWED_USER_ID`); older `sys-action-required-<chat id>` subscriptions are
@@ -106,6 +109,23 @@ deactivated so alerts are not sent twice.
 | `GET` | `/health` | Hermes health |
 
 ---
+
+## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
+
+Core module (`kind: "core"`, WebUI *Sistema* section, order 140), `api_prefix` `/api/ui/` (Hermes' own routes
+are spread over `/api/notifications`, `/api/events`…, so the page reads three small `/api/ui/*` views instead):
+- page **Consegne** (`hermes-deliveries`): every notification (newest first, paged) with its state on each client
+  (consegnata / solo elenco / fallita / abbandonata, attempts, *ritirata* from the chat), *trattenuta* by
+  presence (+ released in the digest), *silenziosa* (quiet inbox copy), *sostituita* (repeat chain), the answer
+  (action, client, outcome) or the actions still waiting; filters by flag and client; active subscriptions and the
+  clients reached. Read-only: the inbox to read and answer stays the WebUI **Notifiche** page (it moves to this
+  plugin in P6).
+- widget **Consegne oggi** (`hermes-today-widget`, s/m, auto): today's notifications, failed, held, waiting.
+- Hermes down → the page shows «Hermes non raggiungibile» (SDK `hxk-state offline`).
+
+Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in the Dockerfile Node stage →
+`/ui/dist/webui/hermes.js` (outside `/code`: the compose dev mount of `src/` must not hide it; env
+`HERMES_UI_DIST`, infrastructure). The manifest keys (`ui_manifest`, `ui_version`) go in the Hub registration.
 
 ## Constraints
 

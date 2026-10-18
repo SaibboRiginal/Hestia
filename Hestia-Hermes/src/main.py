@@ -6,7 +6,7 @@ import threading
 import time
 import requests
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
@@ -34,14 +34,33 @@ from .modules.schemas import (
 )
 from .modules.hermes_settings import DELIVERY_RETRY_INTERVAL, settings as hermes_settings
 from .modules.service import HermesService
+from .modules import ui_view
+from hestia_common.plugin_client import PluginClient, page, widget
 
 logger, log_buffer = setup_service_logging("hestia_hermes")
+
+SERVICE_VERSION = os.getenv("HERMES_SERVICE_VERSION", "1.0.0")
+UI_DIST = os.getenv("HERMES_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of src/ must not hide it
 
 app = FastAPI(title="Hestia Hermes", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(hermes_settings.router())
 service = HermesService()
+
+# ── WebUI plugin (core module, Sistema section): Consegne ────────────────────
+# Routes of Hermes are spread over /api/notifications, /api/events…: the plugin reads /api/ui/* only.
+ui = PluginClient("hermes", title="Hermes", icon="bell", color="teal", kind="core", dist=UI_DIST,
+                  description="Cosa Hermes ha consegnato a quale client: trattenute, silenziose, ritirate, risposte.",
+                  version=SERVICE_VERSION)
+ui.webui(entry="hermes.js", api_prefix="/api/ui/",
+         pages=[page("consegne", "Consegne", element="hermes-deliveries", icon="bell", order=140,
+                     help="Ogni notifica e a quali client è arrivata (Telegram, WebUI…): trattenuta dalla presenza, "
+                          "silenziosa, ritirata dalla chat, risposta. L'elenco da leggere resta in Notifiche.")],
+         widgets=[widget("oggi", "Consegne oggi", element="hermes-today-widget", sizes=["s", "m"], auto=True,
+                         open_page="consegne", icon="bell",
+                         help="Notifiche di oggi: consegnate, trattenute, fallite, in attesa di risposta.")])
+app.include_router(ui.router())
 
 
 def _bootstrap_system_subscription(hub_api_url: str) -> None:
@@ -140,12 +159,13 @@ def register_on_hub_startup():
         "base_url": service_base_url,
         "health_endpoint": "/health",
         "service_type": "core",
-        "service_version": os.getenv("HERMES_SERVICE_VERSION", "1.0.0"),
+        "service_version": SERVICE_VERSION,
         "tags": ["core", "dispatch"],
         "topology_tags": ["layer:foundation", "domain:dispatch", "status:stable"],
         "capabilities": {
             "event_ingest": "/api/events/ingest",
             "notifications": "/api/notifications",
+            **ui.capabilities(service_base_url),
         },
     }
     max_attempts = int(os.getenv("HERMES_HUB_REGISTER_RETRIES", "8"))
@@ -392,3 +412,36 @@ def update_outbound_event_state(req: OutboundEventStateUpdateRequest):
         superseded_by=req.superseded_by,
     )
     return {"status": "ok", "updated": bool(updated)}
+
+
+# ── Inside view (WebUI plugin «Consegne»): read-only ─────────────────────────
+
+def _ui_guard(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except ui_view.ArchiveUnavailable:
+        logger.warning("[🔄] event=hermes_ui_archive_unavailable")
+        raise HTTPException(status_code=502, detail="archivio non disponibile")
+
+
+@app.get("/api/ui/deliveries")
+def ui_deliveries(since: str = "", before: str = "", limit: int = 50, flag: str = "", client: str = "",
+                  source: str = ""):
+    """Delivery log: per notification, the state on every client + held/quiet/retracted/answer.
+    ``flag`` held | quiet | retracted | failed | answered | superseded | pending; ``before`` = page cursor."""
+    return _ui_guard(ui_view.deliveries, service.archive, since=since, before=before, limit=limit,
+                     flag=flag, client=client, source=source)
+
+
+@app.get("/api/ui/subscriptions")
+def ui_subscriptions():
+    """Active subscriptions (what makes an event become a notification)."""
+    return _ui_guard(ui_view.subscriptions, service.archive)
+
+
+@app.get("/api/ui/clients")
+def ui_clients():
+    """Clients Hermes delivers to right now (Hub topology ``layer:client`` + notify_endpoint)."""
+    return notification_clients()

@@ -13,6 +13,7 @@ from .core.remediation_service import RemediationService
 from .core.service import HephaestusService
 from .core.service_contract import ServiceDescriptor
 from .core.service_runtime import load_runtime_config
+from .core.webui_plugin import ui as webui_plugin
 from .core.shared_imports import import_shared_symbol
 from .forge.config import load_forge_config
 from .forge.router import create_forge_router, create_repo_router
@@ -136,6 +137,7 @@ app.include_router(create_hephaestus_router(remediation_service))
 app.include_router(create_forge_router(forge))
 app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
+app.include_router(webui_plugin.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools

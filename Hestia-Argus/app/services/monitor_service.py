@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 from core import argus_settings as cfg
 from core import docker_client, forge_proposer, health_poller, hub_client
+from services import health_history
 
 try:
     from hestia_common.agenda_client import AgendaClient, template as agenda_template
@@ -77,6 +78,7 @@ def _plan_recheck(service: str, status: str, error: str | None) -> None:
         description=f"Servizio {service} non sano: {str(error or 'unknown')[:200]}. "
                     "Argus ricontrolla e richiede di nuovo la riparazione a Hephaestus.",
         params={"service": service, "attempt": attempt})
+    health_history.note_action(service, "recheck_planned", f"Ricontrollo in agenda tra {minutes} min (tentativo {attempt})")
 
 
 def _close_repair(service: str) -> None:
@@ -92,13 +94,17 @@ def recheck(service: str) -> dict:
     else:
         report = health_poller.poll_service(target)
         report_status, error = report.status, report.error
+    health_history.record(service, report_status, error)
+    health_history.note_action(service, "recheck", f"Ricontrollato: {report_status}", ok=report_status == "up")
     if report_status == "up":
+        health_history.note_recovered(service)
         _close_repair(service)
         with _unhealthy_lock:
             was = _unhealthy.pop(service, None)
         if was:
             send_recovery(service)
-        return {"status": "ok", "service": service, "health": "up"}
+        return {"status": "ok", "service": service, "health": "up", "message": f"{service} risponde ✓"}
+    health_history.note_unhealthy(service, report_status, error)
     ok, response = (False, {"skipped": "auto_remediate_disabled"})
     if cfg.get_bool(cfg.REMEDIATE_ENABLED):
         ok, response = hub_client.request_hephaestus_remediation(
@@ -107,10 +113,12 @@ def recheck(service: str) -> dict:
             requested_action="auto_health_recovery", environment=cfg.get_str(cfg.REMEDIATE_ENVIRONMENT),
             dry_run=cfg.get_bool(cfg.REMEDIATE_DRY_RUN), auto_approve=False,
             metadata={"status": report_status, "error": error, "recheck_attempt": _repair_attempts.get(service, 0)})
+        health_history.note_action(service, "remediation", "Riparazione richiesta di nuovo a Hephaestus", ok=ok)
     _plan_recheck(service, report_status, error)
     logger.info("[🔄] event=argus_recheck_still_unhealthy service=%s status=%s remediation_ok=%s next_attempt=%d",
                 service, report_status, ok, _repair_attempts.get(service, 0))
     return {"status": "ok", "service": service, "health": report_status,
+            "message": f"{service}: {report_status}" + (" · riparazione richiesta" if ok else ""),
             "remediation_requested": ok, "remediation": response,
             "next_attempt": _repair_attempts.get(service, 0)}
 
@@ -311,6 +319,7 @@ def _run_once() -> None:
     logger.info("event=monitor_cycle_start")
     services = hub_client.discover_services()
     health = health_poller.poll_all(services)
+    health_history.record_cycle(health, ms=int((time.perf_counter() - t0) * 1000))
 
     # --- Provider auth check (periodic) ---
     if cfg.get_bool(cfg.AUTH_CHECK_ENABLED):
@@ -326,6 +335,8 @@ def _run_once() -> None:
         if report.status != "up":
             with _unhealthy_lock:
                 _unhealthy[name] = report.status
+            if health_history.note_unhealthy(name, report.status, report.error):
+                health_history.note_action(name, "alert", "Avviso a Hermes")
             send_alert(
                 ServiceAlert(
                     service=name,
@@ -354,6 +365,9 @@ def _run_once() -> None:
                         "from_monitor_loop": True,
                     },
                 )
+                health_history.note_action(
+                    name, "remediation",
+                    "Riparazione richiesta a Hephaestus" + (" (prova, dry-run)" if dry_run else ""), ok=ok)
                 logger.info(
                     "event=argus_autoremediate_requested service=%s ok=%s dry_run=%s response=%s",
                     name,
@@ -366,6 +380,7 @@ def _run_once() -> None:
             with _unhealthy_lock:
                 _unhealthy.pop(name, None)
             _close_repair(name)
+            health_history.note_recovered(name)
             send_recovery(name)
 
     _report_degraded()

@@ -145,6 +145,7 @@ Telegram  ──(file + caption)──►  Oracle /api/chat/document
 | `ARCHIVE_URL` | Archive base URL for calendar persistence |
 | `HERMES_URL` | Hermes base URL for notifications |
 | `CALENDAR_PORT`, `CALENDAR_SERVICE_VERSION`, `STARTUP_WAIT_TIMEOUT_SECONDS`, `LOG_LEVEL` | Bootstrap / infrastructure |
+| `CHRONOS_UI_DIST` | WebUI plugin bundle folder (Dockerfile sets `/ui/dist`, outside the `app/` dev mount) |
 | `TZ` | Container timezone (default Europe/Rome): reminder times, agenda wall time, "today" of `/api/calendar/agenda` |
 
 Everything tunable is a Themis setting (see **Settings** below); env keeps only infrastructure.
@@ -249,6 +250,8 @@ Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST
 | POST | `/api/agenda/items/{ref}/fail` | A module reports the work behind the item failed `{detail}` → `failed` + parent marked |
 | POST | `/api/agenda/parse` | Natural-language quick add `{text, tz?}` → `draft {title, type, start_at, end_at, recurrence, description}` (Oracle `/api/llm/generate` through Hub, Chronos validates; nothing created) |
 | GET | `/api/agenda/ics?days=60&past_days=7&owner=&types=event,task,window` | Read-only iCalendar feed (expanded occurrences, skips/moves applied; jobs excluded by default) |
+| GET | `/api/agenda/runs?owner=&status=ok\|failed\|skipped&since=\|hours=&limit=100` | Every recorded run of jobs/tasks (from `meta.runs`) + skipped past occurrences, newest first, with `summary {ok, failed, skipped, avg_ms, failed_items}` and `owners` (rules registered per module: active / paused / failed / changed by the user, per type) — plugin page *Esecuzioni* |
+| GET | `/api/agenda/runs/failed?hours=24` | Chips `[{id: key, label, owner, at, detail, state: late}]` of jobs whose last run failed (or stopped `failed`) — source of the quick action *Riprova job* |
 
 **Run log**: every execution (tick or "run now") is appended to `meta.runs` (last 50:
 `{occurrence, ok, detail, at, by, duration_ms}`); occurrences expose `run` so the calendar shows ok/failed per
@@ -285,6 +288,23 @@ nothing stops; a rule the user **paused/cancelled** is a decision and is respect
 | `hephaestus.repair.<id>` | event/task | hephaestus | now / +15 min × attempt | repair awaiting approval, or retry of a failed repair (`POST /api/hephaestus/remediate/{id}/retry`); last failure → Forge code-fix task |
 | `assistant.sleep` | window | chronos | daily 01–07 | the night: presence goes to «Sonno profondo» (if `chronos.presence.use_sleep_window`) |
 | `argus.repair.<service>` | task | argus | +10 min, doubling (max 6 h) | `POST argus /api/argus/recheck/{service}`: still down → new repair request + next recheck; recovery closes it |
+
+## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
+
+Core module (`kind: "core"`, WebUI *Sistema* section, order 150), `api_prefix` `/api/agenda/` (Chronos' own
+agenda routes: no duplicate endpoints):
+- page **Esecuzioni** (`chronos-runs`): runs of the assistant agenda (riuscito / fallito / saltato, time, module,
+  duration, started by the agenda or by hand, error detail), filters by outcome / period / module, *Riprova* on a
+  failed run, and **Regole per modulo** (what each module registered, paused, stopped, changed by the user). The
+  calendar stays the WebUI **Agenda** page (it moves to this plugin in P6). Each item keeps its last 50 runs.
+- widget **Job falliti** (`chronos-failed-widget`, s/m, auto): jobs failed in the last 24 h with *Riprova*.
+- quick action **Riprova job** (dynamic: `source` `/api/agenda/runs/failed`, `POST /api/agenda/items/{id}/run`
+  = the existing run-now). A rule stopped as `failed` stays failed after a manual run (unchanged behaviour): the
+  user resumes it from Agenda.
+- Chronos down → «Chronos non raggiungibile».
+
+Bundle `ui/` → Dockerfile Node stage → `/ui/dist/webui/chronos.js`; manifest keys in the Hub registration
+(`register_on_hub(extra_capabilities=…)`).
 
 ## Assistant presence (activity state)
 
