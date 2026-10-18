@@ -23,6 +23,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
+from hestia_common.plugin_client import PluginClient, page
 from hestia_common.settings_client import PERSONAL
 
 from .core.hub import Hub, HubError
@@ -49,6 +50,17 @@ registry.register(SELF_OWNER, list(PERSONAL.values()))
 
 app = FastAPI(title="Hestia-Themis", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# ── WebUI plugin (core module, Sistema section): Registro ────────────────────
+UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
+ui = PluginClient("themis", title="Themis", icon="settings", color="gray", kind="core", dist=UI_DIST,
+                  description="Chi ha cambiato quale impostazione, quando e come: modifiche, proposte, annulla.",
+                  version=SERVICE_VERSION)
+ui.webui(entry="themis.js", api_prefix="/api/settings/",
+         pages=[page("registro", "Registro", element="themis-log", icon="settings", order=160,
+                     help="Ogni modifica e proposta di impostazione: chi (tu, Athena, Oracle, un client, un'AI "
+                          "esterna), quando, da cosa a cosa. Annulla l'ultima modifica; le proposte aspettano te.")])
+app.include_router(ui.router())
 
 
 @app.exception_handler(ThemisError)
@@ -175,6 +187,14 @@ def settings_history(key: str, scope: str = "system", scope_id: str = "", limit:
     return {"key": key, "history": themis.history(key, scope=scope, scope_id=scope_id, limit=limit)}
 
 
+@app.get("/api/settings/history")
+def settings_history_all(limit: int = 50, offset: int = 0, module: str = "", actor: str = "", key: str = "",
+                         sessions: bool = False):
+    """Every setting change (all keys, newest first, paged): who, when, old → new, ``undoable``
+    (WebUI plugin page «Registro»). ``actor`` = comma list of user | oracle | athena | external (any external:<name>) | <client>…"""
+    return themis.history_all(limit=limit, offset=offset, module=module, actor=actor, key=key, sessions=sessions)
+
+
 @app.post("/api/settings/key/{key}/undo")
 def settings_undo(key: str, body: dict | None = None):
     body = body or {}
@@ -197,7 +217,8 @@ def settings_init_session(session: str, body: dict | None = None):
 
 @app.get("/api/settings/proposals")
 def settings_proposals(status: str | None = "pending"):
-    return {"proposals": themis.proposals(status=status or None)}
+    """``status`` pending (default) | approved | rejected | expired | all (or empty)."""
+    return {"proposals": themis.proposals(status=None if status in (None, "", "all") else status)}
 
 
 @app.post("/api/settings/proposals")
@@ -316,7 +337,8 @@ _REGISTRATION = {
 
 
 def _register() -> None:
-    resp = requests.post(f"{HUB_API_URL}/registry/register", json=_REGISTRATION, timeout=4)
+    payload = {**_REGISTRATION, "capabilities": {**_REGISTRATION["capabilities"], **ui.capabilities(SERVICE_BASE_URL)}}
+    resp = requests.post(f"{HUB_API_URL}/registry/register", json=payload, timeout=4)
     if resp.status_code >= 400:
         logger.warning("event=hub_registration_non_success status=%s body=%s", resp.status_code, resp.text[:200])
     else:

@@ -1402,6 +1402,37 @@ paths:
         "200":
           description: OK
 
+  /api/ui/map:
+    get:
+      tags: [Hub]
+      summary: Mappa read model (Hub WebUI plugin) — every service plus Hub itself
+      description: |
+        One row per service (newest instance) plus Hub: online = re-registered in the last 180 s, node
+        (`capabilities.node` or base-URL host), version, last heartbeat, topology tags. `probe=true` also calls each
+        health endpoint in parallel. Also reachable as `/api/route/hub/api/ui/map` (answered in-process by Hub).
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - name: probe
+          in: query
+          schema: {type: boolean, default: false}
+      responses:
+        "200": {description: "{revision, updated_at, generated_at, online_window_seconds, probed, services_count, online_count, offline_count, services: [{name, node, service_type, version, tags[], topology_tags[], topology{}, last_heartbeat, age_seconds, online, instances, has_ui, has_mcp, self?, health?, health_status_code?}]}"}
+
+  /hub/api/ui/manifest:
+    get:
+      tags: [Hub]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `mappa` (hub-map, order 100), widget
+        `online` (hub-online-widget, auto). Bundle file at /ui/webui/hub.js. Hub never registers with itself: this
+        manifest is folded into `/api/discovery/catalog` in-process, and `/api/route/hub/{api/ui/*, ui/*}` is answered
+        locally (GET only; other paths 404, other methods 405).
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200": {description: "{module: hub, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
+
   /api/standards/registration:
     get:
       tags: [Hub]
@@ -5095,7 +5126,68 @@ paths:
             type: string
       responses:
         "200":
-          description: "{status, service, health, remediation_requested, next_attempt}"
+          description: "{status, service, health, message, remediation_requested, next_attempt}"
+
+  /api/argus/overview:
+    get:
+      tags: [Argus]
+      summary: Last monitor cycle in one look (no network) — widget Stato sistema
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200": {description: "{last_cycle_at, last_cycle_ms, cycles, total, healthy, unhealthy, unhealthy_services: [{service, status, error}], open_incidents}"}
+
+  /api/argus/history:
+    get:
+      tags: [Argus]
+      summary: Health per service over time (in memory since Argus started, 24 h kept)
+      servers:
+        - url: http://localhost:19008
+      parameters:
+        - name: minutes
+          in: query
+          schema: {type: integer, default: 360, minimum: 5, maximum: 1440}
+        - name: buckets
+          in: query
+          schema: {type: integer, default: 60, minimum: 1, maximum: 240}
+      responses:
+        "200": {description: "{minutes, buckets, bucket_seconds, from, to, last_cycle_at, last_cycle_ms, services: {name: {status, error, checked_at, strip ('u' up, 'w' degraded, 'd' down, '-' no data per bucket), uptime_pct, incident_open}}}"}
+        "422": {description: Parameter out of range}
+
+  /api/argus/incidents:
+    get:
+      tags: [Argus]
+      summary: Open and recently closed incidents with what Argus did
+      servers:
+        - url: http://localhost:19008
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, default: 20, minimum: 0, maximum: 50}
+      responses:
+        "200": {description: "{open: [Incident], recent: [Incident], open_count}; Incident = {id, service, status, error, opened_at, closed_at, duration_seconds, actions: [{at, kind: detected|status|alert|remediation|recheck_planned|recheck|recovered, ok, text}]}"}
+
+  /api/argus/recheck-targets:
+    get:
+      tags: [Argus]
+      summary: Quick-action chips «Ricontrolla <servizio>» (services that are not up)
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200": {description: "{items: [{id, label, icon, state, hint}]}"}
+
+  /argus/api/ui/manifest:
+    get:
+      tags: [Argus]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/argus/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `salute` (argus-health, order 110),
+        widget `stato` (argus-status-widget, auto), quick action `ricontrolla` (POST /api/argus/recheck/{id}, source
+        /api/argus/recheck-targets). Bundle file at /ui/webui/argus.js. Read by Hub through `capabilities.ui_manifest`.
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200": {description: "{module: argus, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
 
   /api/argus/remediate:
     post:
