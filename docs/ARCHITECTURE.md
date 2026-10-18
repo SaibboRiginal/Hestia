@@ -250,6 +250,17 @@ Real-estate domain module.
 - Exposes generic module tools for Oracle retrieval.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered Scout data hygiene.
 
+### Hestia-Hercules 🏋️
+Gym coach module (port 19019): exercises, templates and weekly program, live sessions that work offline, records and
+progress, goals «N volte a settimana», adaptation by conversation with the assistant (`fitness_*` tools). Rows in
+Archive `hercules-store`; reminder through the agenda and Hermes (off by default). Details:
+`Hestia-Hercules/hestia-hercules.md`.
+
+### Hestia-Hygieia 🧴
+Self care module (port 19018): products with their life (stock, expiry, price per use), routines as ordered steps
+with goals, what to do today, diary per body area, stats, shopping list (`selfcare_*` tools). Rows in Archive
+`selfcare-store`; reminders through the agenda and Hermes (off by default). Details: `Hestia-Hygieia/hestia-hygieia.md`.
+
 ### Hestia-Wardrobe 👕
 Wardrobe domain module (port 19017): pieces, accessories, outfits, deterministic «Cosa mi metto» with reasons,
 status (laundry, lent…), occasional «Indossato» marks with an optional goal, packing lists, stats. Rows in Archive

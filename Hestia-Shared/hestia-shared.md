@@ -117,6 +117,28 @@ Themis (`/api/settings/key/{key}/options`) so every client gets the same list. `
 clients show the settings of a group as a grid (Oracle: use case × fornitore / modello).
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
+**Personal settings shared by every module** (owner Themis, group «Personali», `settings_client.PERSONAL`):
+`themis.personal.week_start` (monday/sunday) and `themis.personal.currency`. A module never declares its own copy:
+`settings.follow_personal()` (or `follow({...})`) sends `follows` on register, Themis answers `shared` and pushes
+it again on every change; `settings.get("themis.personal.week_start")` then works like an own key
+(`week_start_index()` gives 0 = Monday … 6 = Sunday).
+
+## Reminders (`hestia_common.reminders`)
+
+One reminder model for every module; the schedule is a Chronos agenda job, delivery is Hermes.
+
+```python
+from hestia_common.reminders import reminder_settings, reminder_event
+settings.declare([..., *reminder_settings("hercules", help="…")])   # <m>.reminder.enabled (off) + .max_per_week
+hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
+    module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento", text="…",
+    actions=[{"id": "skip", "label": "Salta oggi"}], page="allenamento"))
+```
+
+The body is a `service.action_required` event on domain `system` (where Hermes' owner subscription listens; the
+module domain travels in the payload) with `target: owner`, `replaces: <key>` (one live notification per key) and
+`_link` to the module page. Modules send at most one reminder a day and respect `max_per_week`.
+
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
 A module with a UI ships it inside the module and advertises it to the clients (contract:

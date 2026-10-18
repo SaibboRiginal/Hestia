@@ -16,6 +16,10 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Chronos | Domain (Calendar) | Yes (calendar workflows + assistant agenda) | No | Routes provider calendar calls to Hecate; owns the assistant agenda |
 | Iris | Domain (Email) | Yes (email workflows) | No (gateway-mediated when needed) | Exposes email-domain APIs and commands |
 | Scout | Domain (Real Estate) | Yes (listing extraction/ranking) | No | Pulls domain email feed via Hecate connector path |
+| Hercules | Domain (Fitness) | Yes (gym coach) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
+| Hygieia | Domain (Self care) | Yes (products, routines) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
+| Wardrobe | Domain (Wardrobe) | Yes (pieces, outfits, suggestions) | No | Archive store + blobs, agenda + Hermes, WebUI plugin |
+| Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
 | Athena | Core Organ | Yes (proactive advisory cognition, idle retrospective) | No | Advisory hints for Oracle; improvement hand-off to Forge |
@@ -144,7 +148,15 @@ flowchart LR
    (events). Jobs keep a module-side fallback (Chronos down / job missing / stale) that never overrides a pause.
 
 ### LLM access rule
-Only Oracle talks to LLM providers. Athena/Metis use `/api/llm/generate`, Forge uses `/api/llm/chat` — always via Hub.
+Only Oracle talks to LLM providers. Athena/Metis/Scout use `/api/llm/generate`, Forge uses `/api/llm/chat` — always
+via Hub. Callers name a `use_case` (e.g. `scout_extraction`, `athena_strategist`, `athena_auditor`); the model and its
+fallback are Oracle settings `oracle.models.<use_case>.*` (Impostazioni → Modelli), never env in the caller.
+
+### Module reminder flow
+1. Agenda job (Chronos) calls the module's reminder check; the module decides (enabled, goal behind, once a day,
+   weekly cap).
+2. Module → Hermes `api/events/ingest` with `hestia_common.reminders.reminder_event` (domain `system`, `replaces`,
+   `_link`); Hermes delivers to every client of the owner; an answer is routed back to the module.
 
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).
