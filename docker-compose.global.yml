@@ -514,8 +514,8 @@ services:
       - SERVICE_NAME=hercules
       - SERVICE_BASE_URL=http://hestia_hercules:19019
       - SERVICE_VERSION=1.0.0
-      - SERVICE_TYPE=domain
-      - SERVICE_TAGS=domain,fitness,context
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,fitness,context
       - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:fitness,status:alpha
       - TZ=${TZ:-Europe/Rome}                                # Local day for streaks, goals, reminders
       - LOG_HEALTH_ACCESS_MODE=off

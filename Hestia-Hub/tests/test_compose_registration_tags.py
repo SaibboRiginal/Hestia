@@ -56,3 +56,13 @@ def test_themis_default_tags_pass_hub_validation():
     tags = re.search(r'"SERVICE_TAGS", "([^"]+)"', source).group(1).split(",")
     topo = re.search(r'"SERVICE_TOPOLOGY_TAGS", "([^"]+)"', source).group(1).split(",")
     RegisterServiceRequest(name="themis", base_url="http://themis:1", tags=tags, topology_tags=topo)
+
+
+@pytest.mark.unit
+def test_hercules_default_tags_pass_hub_validation():
+    source = (_ROOT / "Hestia-Hercules" / "app" / "main.py").read_text(encoding="utf-8")
+    stype = re.search(r'"SERVICE_TYPE", "([^"]+)"', source).group(1)
+    tags = re.search(r'"SERVICE_TAGS", "([^"]+)"', source).group(1).split(",")
+    topo = re.search(r'"SERVICE_TOPOLOGY_TAGS", "([^"]+)"', source).group(1).split(",")
+    RegisterServiceRequest(name="hercules", base_url="http://hercules:1", service_type=stype, tags=tags,
+                           topology_tags=topo)
