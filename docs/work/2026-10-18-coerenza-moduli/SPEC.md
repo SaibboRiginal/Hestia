@@ -67,5 +67,8 @@ Marko: «fai tutti i test che puoi … e aggiusta tutto», for every waiting thr
   informative only; regression test `test_health_ok_when_hecate_unreachable`.
 - Hercules and Wardrobe could nudge twice the same day when the job ran again: «one a day» guard like Hygieia
   (`sent_today`), tests.
+- Scout plugin bundle 404 in the WebUI («Interfaccia di Scout non disponibile», Marko's run): compose mounts
+  `Hestia-Scout/app` over `/code` and hid `/code/ui/dist` baked in the image; the bundle is now in `/ui/dist`
+  (`SCOUT_UI_DIST`). Hercules, Hygieia and Wardrobe mount only `/code/app`, so their `/code/ui/dist` is visible.
 - `selfcare_overview` → `selfcare_summary` like `fitness_summary` / `wardrobe_summary`; no personal name in the
   tool description.

@@ -92,3 +92,12 @@ def test_stats_and_manifest(client):
     m = c.get("/api/ui/manifest").json()
     assert {p["id"] for p in m["clients"]["webui"]["page"]} == {"case", "case/:id", "statistiche"}
     assert c.get("/api/ui/listings/doesnotexist").status_code == 404
+
+
+def test_bundle_dir_outside_mounted_code(tmp_path, monkeypatch):
+    # Regression: compose mounts Hestia-Scout/app over /code, so the image bakes the bundle in /ui/dist
+    # (SCOUT_UI_DIST); a bundle under /code/ui/dist was hidden and the WebUI got 404 on scout.js.
+    (tmp_path / "webui").mkdir()
+    (tmp_path / "webui" / "scout.js").write_text("export {}")
+    monkeypatch.setenv("SCOUT_UI_DIST", str(tmp_path))
+    assert ui_api._dist_dir() == tmp_path

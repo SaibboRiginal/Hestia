@@ -132,7 +132,8 @@ Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 ### WebUI plugin (2026-10-17, dossier `docs/work/2026-10-17-client-plugins/`)
 
 `app/ui_api.py` declares the plugin and serves its data; `ui/src/` is the Lit bundle (built with the shared SDK in
-the Node stage of the Dockerfile; `ui/dist/` is git-ignored).
+the Node stage of the Dockerfile; `ui/dist/` is git-ignored). The image keeps the bundle in `/ui/dist`
+(`SCOUT_UI_DIST`), outside `/code`, because compose mounts `Hestia-Scout/app` over `/code`.
 - Pages: **Case** (`/p/scout/case`: KPI, search, città, ordinamento, Da valutare/Preferite/Scartate/Tutte, prezzo
   max, locali, stato; cards with ☆ Preferita and Scarta + Annulla), **Annuncio** (`case/:key`: photos, facts,
   features, description, map link, "Apri annuncio", "Chiedi a Hestia", status correction), **Statistiche case**.

@@ -48,7 +48,8 @@ NEW_DAYS = 7
 # ── plugin manifest ────────────────────────────────────────────────────────
 def _dist_dir() -> Path:
     here = Path(__file__).resolve().parent
-    for candidate in (here / "ui" / "dist", here.parent / "ui" / "dist"):   # Docker: /code/ui/dist · repo: Hestia-Scout/ui/dist
+    env = os.getenv("SCOUT_UI_DIST", "")                                     # Docker: /ui/dist (baked in the image)
+    for candidate in ((Path(env),) if env else ()) + (here / "ui" / "dist", here.parent / "ui" / "dist"):   # repo: Hestia-Scout/ui/dist
         if candidate.is_dir():
             return candidate
     return here / "ui" / "dist"
