@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, Float, Index, UniqueConstraint
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Index, UniqueConstraint, Sequence
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
@@ -402,3 +402,28 @@ class PresenceChange(Base):
     id = Column(Integer, primary_key=True, index=True)
     data = Column(JSONB, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ── Hercules (gym coach) storage — owner of the semantics: Hestia-Hercules ───
+
+HERCULES_SEQ = Sequence("hercules_records_seq", metadata=Base.metadata)
+
+
+class HerculesRecord(Base):
+    """One synced row of the gym coach (exercise, template, program, session, set, measurement, feedback,
+    adaptation, goal). Ids are client UUIDs (offline first); ``updated_at`` is the writer's clock for
+    last-write-wins; ``seq`` grows on every write and is the sync cursor; deletes are tombstones."""
+    __tablename__ = "hercules_records"
+
+    kind = Column(String, primary_key=True)
+    id = Column(String, primary_key=True)
+    parent_id = Column(String, nullable=True, index=True)   # set → session, feedback → session…
+    ref_id = Column(String, nullable=True, index=True)      # set → exercise, measurement → its kind…
+    at = Column(DateTime(timezone=True), nullable=True)     # the row's time (session start, measurement…)
+    data = Column(JSONB, nullable=False, default=dict)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+    deleted = Column(Boolean, nullable=False, default=False)
+    seq = Column(BigInteger, HERCULES_SEQ, nullable=False, index=True)
+
+    __table_args__ = (Index("ix_hercules_kind_at", "kind", "at"),
+                      Index("ix_hercules_kind_ref", "kind", "ref_id"))
