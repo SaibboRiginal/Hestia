@@ -322,8 +322,9 @@ export class PluginsService {
 
 function asList(v: unknown): string[] { return Array.isArray(v) ? v.map(String) : []; }
 
-/** `import()` of a runtime URL, kept out of the Angular bundler's static analysis. */
-const dynamicImport = new Function('u', 'return import(u)') as (u: string) => Promise<unknown>;
+/** `import()` of a runtime URL (blob: module). Not `new Function` (CSP has no unsafe-eval); the bundler leaves a
+ *  non-literal import untouched. CSP allows `script-src blob:` for this (Program.cs). */
+const dynamicImport = (u: string): Promise<unknown> => import(/* @vite-ignore */ /* webpackIgnore: true */ u);
 
 async function notify(title: string, body?: string, tag?: string): Promise<boolean> {
   if (!('Notification' in window)) return false;
