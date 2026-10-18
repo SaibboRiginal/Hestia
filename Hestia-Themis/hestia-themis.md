@@ -70,11 +70,12 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 | GET/PUT/DELETE | `/api/settings/key/{key}` | read / change / reset |
 | GET | `/api/settings/key/{key}/options` | choices: static `options`, or the owner's `options_source` with `{other.key}` filled from current values (e.g. installed Ollama models) |
 | GET | `/api/settings/key/{key}/history` | last changes |
+| GET | `/api/settings/history` | every change, all keys, newest first, paged (`limit` ≤200, `offset`, `module`, `actor` comma list — `external` matches every `external:<name>`, `key`, `sessions`) → `{items, total, next_offset, keep_per_key}`; each row adds `label`, `module`, `kind` (change/undo/reset/approved/preset) and `undoable` (latest change of its key/scope). Session copies hidden by default — plugin page *Registro* |
 | POST | `/api/settings/key/{key}/undo` | user undo |
 | POST | `/api/settings/key/{key}/undo-propose` | assistant undo (a proposal) |
 | POST | `/api/settings/presets/{module}/{preset}/apply` | apply a preset |
 | POST | `/api/settings/sessions/{session}/init` | new session from profile defaults |
-| GET/POST | `/api/settings/proposals` | list (with the setting `label`) / propose |
+| GET/POST | `/api/settings/proposals` | list (`status` pending default · approved · rejected · expired · `all`; with the setting `label`) / propose |
 | POST | `/api/settings/proposals/{id}/approve` · `/reject` | user's answer |
 
 MCP tools (Hestia-MCP, domains `system`, `settings`): `settings_search`, `settings_get`, `settings_propose`,
@@ -87,5 +88,21 @@ MCP tools (Hestia-MCP, domains `system`, `settings`): `settings_search`, `settin
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub |
 | `SERVICE_BASE_URL` | `http://hestia_themis:19016` | advertised URL |
 | `THEMIS_DATA_DIR` | `/code/data` | schema cache |
+| `THEMIS_UI_DIST` | `/ui/dist` | WebUI plugin bundle (set by the Dockerfile, outside the `app/` dev mount) |
+
+## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
+
+Core module (`kind: "core"`, WebUI *Sistema* section, order 160), `api_prefix` `/api/settings/` (Themis' own
+routes). No widget.
+- page **Registro** (`themis-log`): every setting change — who (Tu / Tu via WebUI or Telegram, Oracle, Athena, a
+  client, an external AI `external:<name>`), when, old → new, kind (annullata, predefinito, proposta approvata,
+  preset), scope — filters by who and module, paged; **Annulla** on the latest change of a key = the existing
+  `POST /api/settings/key/{key}/undo` (same as *Annulla ultima* in Impostazioni; the undo is logged too).
+  Proposals: pending ones on top (**Approva / Rifiuta** = the existing user answer, `by: webui`), the decided ones
+  in the *Proposte* tab (proposer, decision, who decided). Nothing applies an assistant proposal without the user.
+- Themis down → «Themis non raggiungibile».
+
+Bundle `ui/` → Dockerfile Node stage → `/ui/dist/webui/themis.js`; manifest keys merged into the Hub
+registration at every (keepalive) register.
 
 Design dossier: `docs/work/2026-10-10-central-settings/`.
