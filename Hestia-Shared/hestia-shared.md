@@ -156,6 +156,10 @@ app.include_router(ui.router())                       # GET /api/ui/manifest · 
 registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest + ui_version
 ```
 
+`PluginClient(..., kind="core")` marks a system module (WebUI shows its pages under *Sistema*; default `domain`).
+`page(..., badge={"source": "/api/…", "field": "unread"})` adds a counter next to the sidebar entry (GET under
+`api_prefix`, a number in `field`).
+
 Validation at declare time: element names `<module>-…`, every path under `api_prefix`, known parents/sizes/param
 types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). The browser side is
 `Hestia-Shared/webui-sdk/` (`@hestia/webui-sdk`: host API types, `HestiaElement`, shared Lit kit `hxk-*`, build

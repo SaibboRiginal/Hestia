@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-18 |
-| **Status** | Draft — waiting for Marko's ok before implementing |
+| **Status** | Approved 2026-10-18 (Marko, card) — in progress, see PROGRESS.md |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -265,4 +265,4 @@ v1.0 defaults, revised by Marko (2026-10-18):
 4. Access management with tokens + OAuth from a page (B6).
 5. Core modules: pages + widgets + quick actions (A6).
 
-Still to confirm: external write tools limited to create task, note, submit branch, propose setting (B4); phase order §5.
+Confirmed 2026-10-18: external write tools limited to create task, note, submit branch, propose setting (B4); phase order §5.

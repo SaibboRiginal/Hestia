@@ -43,6 +43,7 @@ SDK_VERSION = "1"
 CLIENTS = {"webui", "telegram"}
 SIZES = ("s", "m", "l", "xl")
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+KINDS = {"domain", "core"}   # core = system modules (WebUI groups them under «Sistema»)
 PARAM_TYPES = {"string", "text", "int", "float", "bool", "enum", "date", "time", "list"}
 TEXT_FILES = {".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
               ".json": "application/json", ".svg": "image/svg+xml", ".map": "application/json"}
@@ -64,13 +65,17 @@ def _params(params: dict | None) -> dict:
 
 
 def page(id: str, label: str, *, element: str, icon: str = "", order: int = 100, parent: str = "",
-         detail: bool = False, help: str = "") -> dict:
+         detail: bool = False, help: str = "", badge: dict | None = None) -> dict:
     """A full page. Non-detail pages are always visible by default (sidebar entry); ``detail`` pages open
-    from an item (``case/:id``); ``parent`` makes a sub-page."""
+    from an item (``case/:id``); ``parent`` makes a sub-page. ``badge`` = ``{source, field}``: a GET under
+    api_prefix whose ``field`` (a number) the client shows next to the sidebar entry (e.g. unread count)."""
     if not _ID_RE.match(id):
         raise ValueError(f"bad page id {id!r}")
+    if badge is not None and (not badge.get("source") or not badge.get("field")):
+        raise ValueError(f"page {id}: badge needs source and field")
     return {"id": id, "label": label, "element": element, "icon": icon, "order": int(order),
-            "parent": parent, "detail": bool(detail or ":" in id), "help": help}
+            "parent": parent, "detail": bool(detail or ":" in id), "help": help,
+            "badge": {"source": badge["source"], "field": badge["field"]} if badge else None}
 
 
 def widget(id: str, label: str, *, element: str, sizes: list[str] | None = None, size: str = "",
@@ -114,8 +119,11 @@ class PluginClient:
     """Builds the module's manifest, serves it and the bundle files, and gives the Hub capabilities."""
 
     def __init__(self, module: str, *, title: str, icon: str = "", color: str = "", description: str = "",
-                 dist: str | os.PathLike | None = None, version: str = ""):
+                 dist: str | os.PathLike | None = None, version: str = "", kind: str = "domain"):
+        if kind not in KINDS:
+            raise ValueError(f"kind must be one of {sorted(KINDS)}")
         self.module = module.strip().lower()
+        self.kind = kind
         self.title = title
         self.icon = icon
         self.color = color
@@ -163,7 +171,8 @@ class PluginClient:
                 el = item.get("element")
                 if el is not None and (not _ELEMENT_RE.match(el) or not el.startswith(f"{self.module}-")):
                     raise ValueError(f"{self.module}: element {el!r} must be a custom element named '{self.module}-…'")
-                for path in (item.get("path"), item.get("source"), (item.get("undo") or {}).get("path")):
+                for path in (item.get("path"), item.get("source"), (item.get("undo") or {}).get("path"),
+                             (item.get("badge") or {}).get("source")):
                     if path and not path.startswith(prefix):
                         raise ValueError(f"{self.module}: {path!r} outside api_prefix {prefix!r}")
         pages = {p["id"] for p in block.get("page", [])}
@@ -187,7 +196,7 @@ class PluginClient:
 
     def manifest(self) -> dict:
         body = {"module": self.module, "title": self.title, "icon": self.icon, "color": self.color,
-                "description": self.description, "clients": self._clients}
+                "description": self.description, "kind": self.kind, "clients": self._clients}
         digest = hashlib.sha1((json.dumps(body, sort_keys=True) + self._bundle_hash()).encode()).hexdigest()[:10]
         return {**body, "version": f"{self.version}+{digest}"}
 

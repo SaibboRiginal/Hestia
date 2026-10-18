@@ -360,7 +360,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
-   Wardrobe 50s; a new module takes the next free one). Module notifications carry `_link: {module, page}` so a
+   Wardrobe 50s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
+   hundreds (Hub 100, Argus 110, Oracle 120, Athena 130, Hermes 140, Chronos 150, Themis 160, Hephaestus 170,
+   Metis 180); the WebUI groups them under *Sistema* (`docs/work/2026-10-18-moduli-core-e-mcp-esterno/`). Module notifications carry `_link: {module, page}` so a
    client can open the plugin page.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the

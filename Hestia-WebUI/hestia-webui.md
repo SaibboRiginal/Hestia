@@ -107,10 +107,13 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - **Home** (`/home`, first module) = quick-action strip + dashboard grid; until edited it is composed from widgets
   marked `auto`. Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
   remove; Oracle-created dashboards carry `created_by: oracle`.
-- Module pages at `/p/<module>/<page>` (sidebar "Moduli"; detail pages hidden). Ctrl/⌘+K palette: quick actions,
+- Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
+  Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave
+  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: quick actions,
   module pages, dashboards, WebUI pages.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
-  `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`.
+  `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
+  `webui.sidebar.pinned` (pinned sidebar entries, in order), `webui.sidebar.collapsed` (closed sidebar sections).
   Impostazioni → Personali → "Moduli e Home" toggles each module/contribution.
 - PWA: `public/manifest.webmanifest` + `public/sw.js` (registered in production only). Offline the shell, catalog,
   settings and plugin bundles come from cache; plugin calls reject with `offline`; sidebar shows an "offline" badge.

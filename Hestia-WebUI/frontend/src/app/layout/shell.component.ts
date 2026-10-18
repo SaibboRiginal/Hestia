@@ -12,9 +12,13 @@ import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
 import { PresenceService, PresenceState, ago, reasonLabel } from '../services/presence.service';
 import { PluginsService } from '../features/plugins/plugins.service';
+import { PluginPage } from '../features/plugins/plugins.types';
 import { CommandPaletteComponent } from '../features/plugins/command-palette.component';
 
-/** App frame: collapsible, resizable sidebar (modules from APP_MODULES) + routed page + global overlays. */
+interface NavEntry { id: string; label: string; icon: string; link: string; online: boolean; child: boolean; parent: string; badge: number; }
+interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'system'; label: string; items: NavEntry[]; }
+
+/** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays. */
 @Component({
   selector: 'app-shell',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent],
@@ -34,38 +38,38 @@ import { CommandPaletteComponent } from '../features/plugins/command-palette.com
         <button class="item ask" (click)="assistant.toggle(); mobileOpen.set(false)" title="Crea con Hestia (Ctrl+J)">
           <hx-icon name="sparkle" [size]="18" /><span>Crea con Hestia</span><kbd>Ctrl J</kbd>
         </button>
-        <nav>
-          @for (m of top; track m.path) {
-            <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
-              <hx-icon [name]="m.icon" [size]="18" /><span>{{ m.label }}</span>
-              @if (m.badge === 'notifications' && notifications.badge()) {
-                <b class="count">{{ notifications.badge() > 99 ? '99+' : notifications.badge() }}</b>
+        <!-- One scroll area between the fixed top and bottom (A5): sections, collapsible, with pinned entries first. -->
+        <div class="scroll">
+          @for (sec of sections(); track sec.key) {
+            @if (sec.items.length) {
+              <button type="button" class="sect" (click)="plugins.toggleNavSection(sec.key)"
+                      [attr.aria-expanded]="!isSectionClosed(sec.key)">
+                <span>{{ sec.label }}</span><hx-icon [name]="isSectionClosed(sec.key) ? 'chevron-right' : 'chevron-down'" [size]="13" />
+              </button>
+              @if (!isSectionClosed(sec.key) || collapsed()) {
+                <nav>
+                  @for (e of sec.items; track e.id) {
+                    <div class="row" [class.child]="e.child" [class.dragging]="dragId() === e.id"
+                         [attr.draggable]="sec.key === 'pinned' && !collapsed()"
+                         (dragstart)="dragStart(e.id, sec.key)" (dragover)="dragOver($event, e.id, sec.key)"
+                         (drop)="drop($event)" (dragend)="dragId.set(null)">
+                      <a class="item" [class.child]="e.child" [class.off]="!e.online" [routerLink]="e.link" routerLinkActive="active"
+                         (click)="mobileOpen.set(false)" [attr.title]="e.online ? e.label : e.label + ' (non raggiungibile)'">
+                        <hx-icon [name]="e.icon" [size]="e.child ? 16 : 18" /><span>{{ e.label }}</span>
+                        @if (e.badge) { <b class="count">{{ e.badge > 99 ? '99+' : e.badge }}</b> }
+                      </a>
+                      <button type="button" class="pin" [class.on]="sec.key === 'pinned'" (click)="plugins.toggleNavPin(e.id)"
+                              [attr.aria-label]="sec.key === 'pinned' ? 'Togli da Fissati' : 'Fissa in cima'"
+                              [attr.title]="sec.key === 'pinned' ? 'Togli da Fissati' : 'Fissa in cima'">
+                        <hx-icon name="pin" [size]="14" />
+                      </button>
+                    </div>
+                  }
+                </nav>
               }
-            </a>
+            }
           }
-        </nav>
-        @if (otherDashboards().length) {
-          <div class="sect">Dashboard</div>
-          <nav>
-            @for (d of otherDashboards(); track d.id) {
-              <a class="item" [routerLink]="'/d/' + d.id" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="d.title">
-                <hx-icon [name]="d.icon || 'grid'" [size]="18" /><span>{{ d.title }}</span>
-              </a>
-            }
-          </nav>
-        }
-        @if (pluginNav().length) {
-          <div class="sect">Moduli</div>
-          <nav class="mods">
-            @for (p of pluginNav(); track p.id) {
-              <a class="item" [class.child]="!!p.parent" [class.off]="!p.online" [routerLink]="plugins.link(p.module, p.local_id)"
-                 routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="p.online ? p.label : p.label + ' (non raggiungibile)'">
-                <hx-icon [name]="p.icon || 'puzzle'" [size]="p.parent ? 16 : 18" /><span>{{ p.label }}</span>
-              </a>
-            }
-          </nav>
-        }
-        <div class="spacer"></div>
+        </div>
         <nav>
           @for (m of bottom; track m.path) {
             <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
@@ -156,9 +160,25 @@ import { CommandPaletteComponent } from '../features/plugins/command-palette.com
     .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-md); display: inline-grid; place-items: center; color: var(--text-3); }
     .icon-btn:hover { background: var(--surface-2); color: var(--text); }
     nav { display: flex; flex-direction: column; gap: 2px; }
-    .sect { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; padding: 12px 12px 4px; white-space: nowrap; }
-    .collapsed .sect { visibility: hidden; height: 8px; padding: 0; }
-    .mods { overflow-y: auto; min-height: 0; }
+    .brand, .item.ask, .nav > nav, .presence-wrap, .conn { flex-shrink: 0; }
+    .scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 2px;
+              margin: 0 -8px; padding: 0 8px 8px; scrollbar-width: thin; }
+    .sect { display: flex; align-items: center; gap: 4px; width: 100%; background: none; border: 0; cursor: pointer; text-align: left;
+            font: 600 11px var(--font-sans); color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; padding: 12px 12px 4px; white-space: nowrap; }
+    .sect:hover { color: var(--text-2); }
+    .sect hx-icon { opacity: 0; transition: opacity var(--dur) var(--ease); }
+    .sect:hover hx-icon, .sect:focus-visible hx-icon, .sect[aria-expanded=false] hx-icon { opacity: 1; }
+    .collapsed .sect { visibility: hidden; height: 8px; padding: 0; pointer-events: none; }
+    .row { position: relative; }
+    .row.dragging { opacity: .4; }
+    .pin { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: var(--radius-md);
+           display: inline-grid; place-items: center; background: none; border: 0; color: var(--text-3); cursor: pointer; opacity: 0; }
+    .row:hover .pin, .pin:focus-visible { opacity: 1; }
+    .row:hover .item .count { visibility: hidden; }
+    .pin:hover { background: var(--surface-3); color: var(--text); }
+    .pin.on { color: var(--accent); }
+    .collapsed .pin { display: none; }
+    @media (hover: none) { .pin { opacity: .6; } .row .item .count { visibility: visible; } }
     .item.child { padding-left: 30px; height: 32px; font-size: 13.5px; }
     .collapsed .item.child { padding-left: 10px; }
     .item.off { opacity: .55; }
@@ -176,7 +196,6 @@ import { CommandPaletteComponent } from '../features/plugins/command-palette.com
     .count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--accent);
              color: var(--accent-contrast); font: 600 11px/18px var(--font-sans); text-align: center; }
     .collapsed .count { position: absolute; top: 3px; left: 22px; margin: 0; min-width: 15px; height: 15px; line-height: 15px; font-size: 9.5px; padding: 0 3px; }
-    .spacer { flex: 1; }
     .conn { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-3); padding: 8px 12px 2px; white-space: nowrap; }
     .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); flex-shrink: 0; }
     .conn[data-state=connected] .dot { background: var(--success); }
@@ -242,6 +261,68 @@ export class ShellComponent {
     return top.flatMap(p => [p, ...pages.filter(c => c.parent === p.local_id && c.module === p.module)]);
   });
   readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home'));
+
+  /** Every sidebar entry by section; pinned ones move to «Fissati» (in the user's order) and leave their section. */
+  readonly sections = computed<NavSection[]>(() => {
+    const kinds = this.plugins.modules();
+    const unread = this.notifications.badge();
+    const badges = this.plugins.badges();
+    const app: NavEntry[] = this.top.map(m => ({ id: `app.${m.path}`, label: m.label, icon: m.icon, link: '/' + m.path, online: true,
+      child: false, parent: '', badge: m.badge === 'notifications' ? unread : 0 }));
+    const dash: NavEntry[] = this.otherDashboards().map(d => ({ id: `dash.${d.id}`, label: d.title, icon: d.icon || 'grid', link: '/d/' + d.id,
+      online: true, child: false, parent: '', badge: 0 }));
+    const page = (p: PluginPage): NavEntry => ({ id: p.id, label: p.label, icon: p.icon || 'puzzle', link: this.plugins.link(p.module, p.local_id),
+      online: p.online, child: !!p.parent, parent: p.parent ? `${p.module}.${p.parent}` : '', badge: badges[p.id] ?? 0 });
+    const nav = this.pluginNav();
+    const mods = nav.filter(p => kinds.get(p.module)?.kind !== 'core').map(page);
+    const sys = nav.filter(p => kinds.get(p.module)?.kind === 'core').map(page);
+    const all = new Map([...app, ...dash, ...mods, ...sys].map(e => [e.id, e] as [string, NavEntry]));
+    const pinnedIds = this.plugins.navPinned().filter(id => all.has(id));
+    const taken = new Set(pinnedIds);
+    // A pinned parent brings its (unpinned) sub-pages; a sub-page pinned alone is shown as a normal entry.
+    const pinned: NavEntry[] = pinnedIds.flatMap(id => {
+      const e = all.get(id)!;
+      const kids = [...all.values()].filter(c => c.parent === id && !taken.has(c.id));
+      kids.forEach(c => taken.add(c.id));
+      return [{ ...e, child: false }, ...kids];
+    });
+    const rest = (list: NavEntry[]) => list.filter(e => !taken.has(e.id));
+    return [
+      { key: 'pinned', label: 'Fissati', items: pinned },
+      { key: 'app', label: 'Generale', items: rest(app) },
+      { key: 'dashboards', label: 'Dashboard', items: rest(dash) },
+      { key: 'modules', label: 'Moduli', items: rest(mods) },
+      { key: 'system', label: 'Sistema', items: rest(sys) },
+    ];
+  });
+
+  isSectionClosed(key: string): boolean { return this.plugins.navCollapsed().includes(key); }
+
+  /** Drag to reorder inside «Fissati» (native drag and drop; the order is saved on drop). */
+  dragId = signal<string | null>(null);
+  private dragOrder: string[] | null = null;
+  dragStart(id: string, section: string): void {
+    if (section !== 'pinned') return;
+    this.dragId.set(id);
+    this.dragOrder = [...this.plugins.navPinned()];
+  }
+  dragOver(ev: DragEvent, overId: string, section: string): void {
+    const id = this.dragId();
+    if (!id || section !== 'pinned' || !this.dragOrder) return;
+    ev.preventDefault();
+    const order = this.dragOrder;
+    const from = order.indexOf(id), to = order.indexOf(overId);
+    if (from < 0 || to < 0 || from === to) return;
+    order.splice(to, 0, order.splice(from, 1)[0]);
+    this.plugins.navPinned.set([...order]);
+  }
+  drop(ev: DragEvent): void {
+    if (!this.dragId() || !this.dragOrder) return;
+    ev.preventDefault();
+    void this.plugins.setNavPinned(this.dragOrder);
+    this.dragOrder = null;
+    this.dragId.set(null);
+  }
   presenceOpen = signal(false);
   presencePos = signal({ left: 8, bottom: 8, maxHeight: 480 });
 

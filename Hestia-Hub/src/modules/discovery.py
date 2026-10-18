@@ -357,6 +357,7 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
         online = fresh and ok
         modules[name] = {"module": name, "title": manifest.get("title") or name, "icon": manifest.get("icon", ""),
                          "color": manifest.get("color", ""), "description": manifest.get("description", ""),
+                         "kind": manifest.get("kind") if manifest.get("kind") in ("domain", "core") else "domain",
                          "version": manifest.get("version", ""), "online": online}
         for cl, block in (manifest.get("clients") or {}).items():
             if client and cl != client:

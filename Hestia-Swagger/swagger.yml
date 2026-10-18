@@ -1367,6 +1367,7 @@ paths:
                         icon: {type: string}
                         color: {type: string}
                         version: {type: string}
+                        kind: {type: string, enum: [domain, core], description: "core = system module (WebUI «Sistema»)"}
                         online: {type: boolean}
                   contributions:
                     type: object
