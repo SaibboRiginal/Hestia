@@ -78,13 +78,13 @@ class ArchiveClient:
             logger.warning("event=failed_route_entity_vault Failed to route entity to Vault: %s", e)
         return False
 
-    def get_entity_records(self, domain: str, status: str = "active", limit: int = 1000) -> list:
+    def get_entity_records(self, domain: str, status: str = "active", limit: int = 1000,
+                           include_embedding: bool = True) -> list:
         try:
-            payload = self._route_archive("GET", "api/entities/records", query={
-                "domain": domain,
-                "status": status,
-                "limit": limit,
-            }, timeout=8)
+            query = {"domain": domain, "status": status, "limit": limit}
+            if not include_embedding:
+                query["include_embedding"] = "false"
+            payload = self._route_archive("GET", "api/entities/records", query=query, timeout=8)
             if isinstance(payload, list):
                 return payload
             logger.warning("event=vault_rejected_entity_records_request Vault rejected entity records request")

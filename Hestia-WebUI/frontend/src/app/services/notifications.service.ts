@@ -40,7 +40,10 @@ export interface HestiaNotification {
   answer: NotificationAnswer | null;
   /** Same reminder sent again: how many times it was skipped (null on the first one). */
   repeat?: NotificationRepeat | null;
+  /** Module page to open (`_link` of a module event): WebUI route /p/<module>/<page>?params. */
+  link?: NotificationLink | null;
 }
+export interface NotificationLink { module: string; page: string; params?: Record<string, string>; }
 export interface NotificationRepeat { count: number; skipped: number; since?: string; text: string; }
 export interface NotificationCounts { unread: number; pending: number; }
 
@@ -177,6 +180,7 @@ export class NotificationsService {
       audience: origin ? 'origin' : 'global', origin,
       other_client: !!origin && origin.client !== CLIENT, seen: null, answer: null,
       repeat: (push['repeat'] as NotificationRepeat | null) ?? null,
+      link: (push['link'] as NotificationLink | null) ?? null,
     };
     if (this.items().some(x => x.id === n.id)) return;
     if (this.filter() !== 'pending' || n.pending) {

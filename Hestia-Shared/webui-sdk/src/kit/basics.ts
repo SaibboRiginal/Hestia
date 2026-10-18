@@ -4,6 +4,13 @@ import { kitStyles, toneColor, tokens } from '../styles';
 /** Small inline icon set (stroke icons, same style as the WebUI hx-icon). */
 const ICONS: Record<string, string> = {
   check: 'M5 12l5 5L20 7',
+  external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z',
+  'chevron-left': 'M15 6l-6 6 6 6',
+  'chevron-right': 'M9 6l6 6-6 6',
+  filter: 'M3 5h18l-7 8v6l-4-2v-4z',
+  'eye-off': 'M3 3l18 18M10.6 6.1A10 10 0 0112 6c5 0 9 6 9 6a17 17 0 01-2.7 3.3M6.4 7.4C4.2 8.9 3 12 3 12s4 6 9 6c1.5 0 2.9-.4 4.1-1M9.9 9.9a3 3 0 004.2 4.2',
+  pin: 'M12 21s-7-6.2-7-11a7 7 0 1114 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z',
   plus: 'M12 5v14M5 12h14',
   x: 'M6 6l12 12M18 6L6 18',
   refresh: 'M20 11a8 8 0 10-2.3 5.7M20 4v7h-7',

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "useDefineForClassFields": false,
+    "experimentalDecorators": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": {
+      "@hestia/webui-sdk": ["../../Hestia-Shared/webui-sdk/src/index.ts"],
+      "lit": ["../../Hestia-Shared/webui-sdk/node_modules/lit"],
+      "lit/*": ["../../Hestia-Shared/webui-sdk/node_modules/lit/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

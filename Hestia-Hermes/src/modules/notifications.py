@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -79,6 +80,19 @@ def _parse_ts(value: Any) -> datetime | None:
     except (TypeError, ValueError):
         return None
     return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+
+
+def public_link(raw: Any) -> dict[str, Any] | None:
+    """``_link: {module, page, params?}`` from a module event → a client opens that plugin page
+    (WebUI ``/p/<module>/<page>``; client plugins SPEC §4). Anything else is dropped."""
+    if not isinstance(raw, dict):
+        return None
+    module, page = str(raw.get("module") or "").strip(), str(raw.get("page") or "").strip()
+    if not re.fullmatch(r"[a-z0-9_-]{1,40}", module) or not re.fullmatch(r"[A-Za-z0-9_/:.-]{1,120}", page):
+        return None
+    params = raw.get("params") if isinstance(raw.get("params"), dict) else {}
+    return {"module": module, "page": page,
+            "params": {str(k)[:40]: str(v)[:300] for k, v in list(params.items())[:8]}}
 
 
 def public_repeat(repeat: Any) -> dict[str, Any] | None:
@@ -168,6 +182,7 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
         "answer": stored.get("answer"),
         "deliveries": {k: (v or {}).get("state") for k, v in deliveries.items()},
         "repeat": public_repeat(n.get("repeat")),
+        "link": public_link(n.get("link")),
     }
 
 
@@ -230,6 +245,7 @@ class NotificationCenter:
         event_payload: dict[str, Any] | None = None,
         subscription_id: str | None = None,
         replaces: str | None = None,
+        link: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one."""
@@ -259,6 +275,8 @@ class NotificationCenter:
             "actions": normalized_actions,
             "created_at": _now(),
         }
+        if public_link(link):
+            spec["link"] = public_link(link)
         if held:
             spec["held"] = notify_level
         if replaces:
@@ -346,6 +364,7 @@ class NotificationCenter:
             "actions": public_actions(spec.get("actions") or []),
             "origin": origin or None,
             "repeat": public_repeat(spec.get("repeat")),
+            "link": spec.get("link"),
             "payload": event_payload or {},
         }
 

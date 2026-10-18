@@ -215,6 +215,16 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 api_app.include_router(create_log_control_router("hestia_scout"))
 api_app.include_router(scout_central_settings.router())  # Themis: /api/settings/effective|reload
 
+# ── WebUI plugin (client plugins SPEC §5): /api/ui/* data + manifest + bundle files ──
+from core.archive_client import ArchiveClient
+from ui_api import ListingStore, build_router as build_ui_router, plugin as ui_plugin
+
+ui_store = ListingStore(ArchiveClient(api_url="", hub_api_url=os.getenv("HUB_API_URL", "http://hestia_hub:19001/api")),
+                        TARGET_DOMAIN)
+api_app.include_router(ui_plugin.router())
+api_app.include_router(build_ui_router(
+    ui_store, run_cycle=lambda: scout_cycle(CycleRequest(trigger="webui")), cycle_status=scout_cycle_status))
+
 @api_app.get("/api/module-tools/domains")
 def list_module_domains():
     return {"domains": [TARGET_DOMAIN]}
@@ -457,6 +467,7 @@ def _register_with_hub(port: int):
             "module_tool_domains": [TARGET_DOMAIN],
             "module_tool_endpoint": f"{service_base_url.rstrip('/')}/api/module-tools",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
+            **ui_plugin.capabilities(service_base_url),
         },
     }
     try:

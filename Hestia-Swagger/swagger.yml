@@ -1835,6 +1835,12 @@ paths:
           schema:
             type: integer
             default: 100
+        - name: include_embedding
+          in: query
+          description: false = rows without vectors (lighter, e.g. a module UI listing)
+          schema:
+            type: boolean
+            default: true
       responses:
         "200":
           description: List of EntityResponse
@@ -4508,6 +4514,113 @@ paths:
       responses:
         "200":
           description: "{status: started|busy|ok|error, trigger}"
+
+  /api/ui/listings:
+    get:
+      tags: [Scout]
+      summary: Listings for the WebUI plugin (filters, sort, paging)
+      servers:
+        - url: http://localhost:19006
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: city, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [available, in_negotiation, investment_occupied, sold, unknown]}}
+        - {name: flag, in: query, schema: {type: string, enum: ["", favorite, discarded, all]}, description: "'' = not discarded"}
+        - {name: price_min, in: query, schema: {type: number}}
+        - {name: price_max, in: query, schema: {type: number}}
+        - {name: rooms_min, in: query, schema: {type: number}}
+        - {name: surface_min, in: query, schema: {type: number}}
+        - {name: days, in: query, schema: {type: integer}, description: "arrived in the last N days"}
+        - {name: sort, in: query, schema: {type: string, enum: [new, price_asc, price_desc, ppm2, surface]}}
+        - {name: offset, in: query, schema: {type: integer, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, default: 30, maximum: 200}}
+      responses:
+        "200": {description: "{total, offset, items[], cities[], statuses[]}"}
+
+  /api/ui/listings/{key}:
+    get:
+      tags: [Scout]
+      summary: One listing with photos, features, description (key = 12 hex of sha1(entity_id))
+      servers:
+        - url: http://localhost:19006
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: listing detail}
+        "404": {description: not found}
+    patch:
+      tags: [Scout]
+      summary: Set the user's mark or correct the status
+      servers:
+        - url: http://localhost:19006
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                flag: {type: string, enum: ["", favorite, discarded]}
+                status: {type: string, enum: [available, in_negotiation, investment_occupied, sold, unknown]}
+      responses:
+        "200": {description: updated listing}
+
+  /api/ui/listings/{key}/favorite:
+    post:
+      tags: [Scout]
+      summary: Mark as favorite (Home quick action)
+      servers:
+        - url: http://localhost:19006
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: updated listing}
+    delete:
+      tags: [Scout]
+      summary: Undo favorite
+      servers:
+        - url: http://localhost:19006
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: updated listing}
+
+  /api/ui/stats:
+    get:
+      tags: [Scout]
+      summary: Plugin statistics (KPI, new per week, by status, price by city)
+      servers:
+        - url: http://localhost:19006
+      parameters:
+        - {name: city, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{total, new, favorites, discarded, available, avg_price, avg_ppm2, by_status[], weeks[], price_by_city[], cities[]}"}
+
+  /api/ui/quick/new:
+    get:
+      tags: [Scout]
+      summary: Quick-action chips (newest unmarked listings)
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200": {description: "[{id, label, icon, state, hint}]"}
+
+  /api/ui/cycle:
+    post:
+      tags: [Scout]
+      summary: Start the email cycle from the plugin (async)
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200": {description: "{status: started|busy}"}
+    get:
+      tags: [Scout]
+      summary: Cycle state
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200": {description: cycle state}
 
   /api/scout/stats:
     get:

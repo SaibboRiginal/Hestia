@@ -147,15 +147,21 @@ def get_entity_records(
     domain: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 500,
+    include_embedding: bool = True,
     db: Session = Depends(database.get_db),
 ):
-    """Return paginated raw entity rows with optional domain/status filters."""
+    """Return paginated raw entity rows with optional domain/status filters.
+    ``include_embedding=false`` drops the vectors (a module UI listing rows needs only payload + dates)."""
     q = db.query(models.EntityRecord)
     if domain:
         q = q.filter(models.EntityRecord.domain == domain)
     if status:
         q = q.filter(models.EntityRecord.status == status)
-    return q.order_by(models.EntityRecord.updated_at.desc()).limit(max(1, min(limit, 5000))).all()
+    rows = q.order_by(models.EntityRecord.updated_at.desc()).limit(max(1, min(limit, 5000))).all()
+    if include_embedding:
+        return rows
+    return [{"id": r.id, "entity_id": r.entity_id, "domain": r.domain, "status": r.status, "payload": r.payload,
+             "created_at": r.created_at, "updated_at": r.updated_at, "embedding": None} for r in rows]
 
 
 # ── Hybrid search (vector + SQL filters) ─────────────────────────────────────

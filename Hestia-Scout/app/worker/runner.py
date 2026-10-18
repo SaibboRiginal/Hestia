@@ -5,6 +5,7 @@ import requests
 
 from core import scout_settings
 from core.archive_client import ArchiveClient
+from domain.listing_key import listing_key
 from domain.house_entity import HouseEntity
 from tools.geocoding import GeocodingService
 from worker.extractor import (
@@ -94,11 +95,13 @@ class ScoutWorker:
 
     def _publish_entity_event(self, entity_id: str, payload: dict) -> bool:
         """Publish entity.upserted to Hermes via Hub. Returns True on success."""
+        # _link: the WebUI opens the listing in Scout's plugin page (several → the list page).
+        link = {"module": "scout", "page": f"case/{listing_key(str(entity_id))}", "list": "case"}
         event_payload = {
             "event_type": "entity.upserted",
             "domain": self.target_domain,
             "entity_id": str(entity_id),
-            "payload": payload,
+            "payload": {**(payload or {}), "_link": link},
         }
         route_body = {
             "method": "POST",

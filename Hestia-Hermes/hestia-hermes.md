@@ -55,6 +55,9 @@ within the cooldown window.
   `_title`, `_level` (info/success/warning/error; `service.action_required`/`service.health` → warning),
   `_source` (module label/filter), `_actions`, `_origin`, `dedupe_key`; `closes: <dedupe_key>` + `decision` +
   `outcome_text` closes an earlier notification (e.g. Themis `settings.proposal_closed`) without subscriptions.
+- **Link** `_link: {module, page, params?}` (client plugins): stored as `notification.link`, sent to clients and in
+  the inbox view; the WebUI shows "Apri" → `/p/<module>/<page>`. Batched domains: one entity → its link; several from
+  one module with `_link.list` → that list page.
 - **Actions** `{id ≤ 20 chars, label|text, style, service, method, path, body}`: the client calls
   `POST /api/notifications/{id}/answer`; Hermes claims it with an Archive compare-and-set (first answer wins,
   late ones get `409 already_handled`), routes the action to the module via Hub (`"<client>"` in body =

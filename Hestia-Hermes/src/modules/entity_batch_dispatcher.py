@@ -79,6 +79,19 @@ def _schedule_flush(key: tuple, entry: _BatchEntry) -> None:
     entry.timer = timer
 
 
+def _batch_link(entities: list[dict]) -> dict | None:
+    """One entity → its own ``_link``; several from one module → that module's list page (``_link.list``)."""
+    links = [e.get("_link") for e in entities if isinstance(e, dict) and isinstance(e.get("_link"), dict)]
+    if not links:
+        return None
+    if len(entities) == 1:
+        return links[0]
+    first = links[0]
+    if first.get("list") and all(l.get("module") == first.get("module") for l in links):
+        return {"module": first.get("module"), "page": first.get("list")}
+    return None
+
+
 def _flush(key: tuple) -> None:
     """Flush the batch for the given key — called from the timer thread."""
     with _queues_lock:
@@ -101,7 +114,9 @@ def _flush(key: tuple) -> None:
     ok = False
     if _publisher is not None:
         try:
-            ok = bool(_publisher(entry.subscription_id, entry.channel_type, entry.domain, text))
+            link = _batch_link(entry.entities)
+            ok = bool(_publisher(entry.subscription_id, entry.channel_type, entry.domain, text,
+                                 **({"link": link} if link else {})))
             detail = "published" if ok else "no client reached"
         except Exception as exc:
             detail = str(exc)

@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { ButtonVariant, MenuItem, UI } from '../../ui';
+import { PluginsService } from '../plugins/plugins.service';
 import {
   HestiaNotification, NotificationFilter, NotificationsService, ToastMode, clientLabel,
 } from '../../services/notifications.service';
@@ -57,6 +59,9 @@ const LEVEL_ICON: Record<string, string> = { info: 'bell', success: 'check', war
                 </div>
                 @if (n.title) { <div class="title">{{ n.title }}</div> }
                 <div class="msg hx-prose" [innerHTML]="n.message"></div>
+                @if (n.link) {
+                  <div class="actions"><button hx-btn size="sm" variant="secondary" icon="chevron-right" (click)="open(n)">Apri</button></div>
+                }
                 @if (n.pending && n.actions.length) {
                   <div class="actions">
                     @for (a of n.actions; track a.id) {
@@ -118,6 +123,14 @@ const LEVEL_ICON: Record<string, string> = { info: 'bell', success: 'check', war
 })
 export class NotificationsPageComponent implements OnInit, OnDestroy {
   svc = inject(NotificationsService);
+  private plugins = inject(PluginsService);
+  private router = inject(Router);
+
+  open(n: HestiaNotification) {
+    if (!n.link) return;
+    if (!n.read) void this.svc.markSeen(n);
+    void this.router.navigateByUrl(this.plugins.link(n.link.module, n.link.page, n.link.params));
+  }
   clientLabel = clientLabel;
 
   filters = computed(() => {

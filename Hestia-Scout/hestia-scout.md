@@ -121,6 +121,30 @@ Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
 | `POST` | `/api/scout/cycle` | Run the email → listings cycle `{trigger, wait}` (default async; one cycle at a time, `busy` otherwise) |
 | `GET` | `/api/scout/cycle` | Cycle state: running, last start/finish/trigger/error, agenda job, interval |
+| `GET` | `/api/ui/manifest` | WebUI plugin manifest (`hestia_common.plugin_client`) |
+| `GET` | `/ui/webui/scout.js` | Plugin bundle (built in the image from `ui/`) |
+| `GET` | `/api/ui/listings` | Listings for the plugin: `q, city, status, flag (''=da valutare, favorite, discarded, all), price_min/max, rooms_min, surface_min, days, sort (new, price_asc, price_desc, ppm2, surface), offset, limit` → `{total, items, cities, statuses}` |
+| `GET` | `/api/ui/listings/{key}` | One listing with photos, features, summary (`key` = 12 hex of sha1(entity_id)) |
+| `PATCH` | `/api/ui/listings/{key}` | `{flag?: favorite\|discarded\|'', status?: ListingStatus}` |
+| `POST/DELETE` | `/api/ui/listings/{key}/favorite` | Quick action "Preferita" and its undo |
+| `GET` | `/api/ui/stats?city=` | KPI, new per week (8), by status, price by city, cities |
+| `GET` | `/api/ui/quick/new` | Home chips: newest listings not yet marked |
+| `POST/GET` | `/api/ui/cycle` | Same as `/api/scout/cycle` (async) / its state, for the plugin |
+
+### WebUI plugin (2026-10-17, dossier `docs/work/2026-10-17-client-plugins/`)
+
+`app/ui_api.py` declares the plugin and serves its data; `ui/src/` is the Lit bundle (built with the shared SDK in
+the Node stage of the Dockerfile; `ui/dist/` is git-ignored).
+- Pages: **Case** (`/p/scout/case`: KPI, search, città, ordinamento, Da valutare/Preferite/Scartate/Tutte, prezzo
+  max, locali, stato; cards with ☆ Preferita and Scarta + Annulla), **Annuncio** (`case/:key`: photos, facts,
+  features, description, map link, "Apri annuncio", "Chiedi a Hestia", status correction), **Statistiche case**.
+- Widgets: *Case in numeri* and *Nuove case* (param città, giorni) on the automatic Home; *Case preferite*,
+  *Prezzi per città*. Quick actions: "Controlla email annunci", and the newest unmarked listings as chips (tap =
+  Preferita, Annulla in the toast).
+- Writes only `user_flag` (`favorite`/`discarded`, cleared as `none` because Archive keeps old values on empty)
+  and `listing_status` in the Archive payload. Reads `GET /api/entities/records?include_embedding=false`, cached 30 s.
+- `entity.upserted` events carry `_link: {module: scout, page: case/<key>, list: case}`; the WebUI notification gets
+  an "Apri" button (several listings in one batch → the list page).
 
 ### Schedule = assistant agenda job
 
