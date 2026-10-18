@@ -18,6 +18,7 @@ except ModuleNotFoundError:
 TOOLS_CACHE_TTL = "mcp.tools.cache_ttl"
 HUB_DISCOVERY_TIMEOUT = "mcp.discovery.hub_timeout"
 SERVER_TIMEOUT = "mcp.calls.timeout"
+EXTERNAL_RATE = "mcp.external.max_calls_per_min"
 
 settings = SettingsClient("mcp")
 settings.declare([
@@ -30,4 +31,7 @@ settings.declare([
     setting(SERVER_TIMEOUT, "Attesa risposta di un modulo", "int", 10, group="Strumenti", min=1, max=300,
             unit="s", advanced=True,
             help="Quanto aspetto un modulo quando elenco i suoi strumenti o ne eseguo uno."),
+    setting(EXTERNAL_RATE, "Chiamate al minuto per un'AI esterna", "int", 60, group="AI esterne", min=1, max=1000,
+            unit="/min", help="Quante chiamate al minuto accetto da ogni accesso esterno (Claude, ChatGPT, Cursor…). "
+                              "Oltre rispondo 429 e l'AI riprova poco dopo."),
 ]).declare_log_level()

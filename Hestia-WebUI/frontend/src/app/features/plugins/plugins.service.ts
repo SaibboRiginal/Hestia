@@ -18,6 +18,8 @@ export const CFG = {
   quick: 'webui.home.quick',
   dashboards: 'webui.dashboards',
   prefs: 'webui.plugins.prefs',
+  pinned: 'webui.sidebar.pinned',
+  collapsed: 'webui.sidebar.collapsed',
 } as const;
 
 export const SIZE_SPAN: Record<WidgetSize, { c: number; r: number }> = { s: { c: 1, r: 1 }, m: { c: 2, r: 1 }, l: { c: 2, r: 2 }, xl: { c: 4, r: 2 } };
@@ -50,6 +52,11 @@ export class PluginsService {
   readonly quickPins = signal<string[]>([]);
   readonly dashboardsCfg = signal<Dashboard[] | null>(null);   // null = never saved (Home is automatic)
   readonly prefs = signal<Record<string, Record<string, unknown>>>({});
+  /** Sidebar arranged by the user: pinned entry ids (in order) and collapsed section keys. */
+  readonly navPinned = signal<string[]>([]);
+  readonly navCollapsed = signal<string[]>([]);
+  /** Counters next to plugin pages that declare a `badge` (page id → number). */
+  readonly badges = signal<Record<string, number>>({});
   readonly online = signal(typeof navigator === 'undefined' ? true : navigator.onLine);
 
   readonly modules = computed(() => new Map((this.catalog()?.modules ?? []).map(m => [m.module, m] as [string, PluginModule])));
@@ -106,6 +113,7 @@ export class PluginsService {
       const prev = this.catalog();
       this.catalog.set(cat);
       this.catalogError.set(false);
+      void this.refreshBadges();
       // A bundle whose version changed is reloaded on next use (elements already defined stay: definePlugin is idempotent).
       for (const b of cat.contributions?.webui?.bundle ?? []) {
         const old = prev?.contributions?.webui?.bundle?.find(x => x.module === b.module);
@@ -127,6 +135,8 @@ export class PluginsService {
       this.dashboardsCfg.set(Array.isArray(dash?.dashboards) && dash!.dashboards.length ? dash!.dashboards : null);
       const prefs = val(CFG.prefs);
       this.prefs.set(prefs && typeof prefs === 'object' ? prefs as Record<string, Record<string, unknown>> : {});
+      this.navPinned.set(asList(val(CFG.pinned)));
+      this.navCollapsed.set(asList(val(CFG.collapsed)));
     } catch {
       /* Themis down: defaults (everything visible, automatic Home) */
     } finally {
@@ -161,6 +171,42 @@ export class PluginsService {
   async setOrder(ids: string[]): Promise<void> {
     this.order.set(ids);
     await this.saveConfig(CFG.order, ids);
+  }
+
+  /** Pins/unpins a sidebar entry; a pinned entry leaves its own section (never shown twice). */
+  async toggleNavPin(id: string): Promise<void> {
+    const prev = this.navPinned();
+    const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+    this.navPinned.set(next);
+    if (!(await this.saveConfig(CFG.pinned, next))) this.navPinned.set(prev);
+  }
+
+  async setNavPinned(ids: string[]): Promise<void> {
+    const prev = this.navPinned();
+    this.navPinned.set(ids);
+    if (!(await this.saveConfig(CFG.pinned, ids))) this.navPinned.set(prev);
+  }
+
+  async toggleNavSection(key: string): Promise<void> {
+    const prev = this.navCollapsed();
+    const next = prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key];
+    this.navCollapsed.set(next);
+    if (!(await this.saveConfig(CFG.collapsed, next))) this.navCollapsed.set(prev);
+  }
+
+  /** Reads every visible page badge through the page's own module (same api_prefix guard as plugin calls). */
+  async refreshBadges(): Promise<void> {
+    const pages = this.navPages().filter(p => p.badge?.source && p.online);
+    if (!pages.length) { if (Object.keys(this.badges()).length) this.badges.set({}); return; }
+    const out: Record<string, number> = {};
+    await Promise.all(pages.map(async p => {
+      try {
+        const r = await this.call<Record<string, unknown> | null>(p.module, 'GET', p.badge!.source);
+        const n = r.ok ? Number(r.data?.[p.badge!.field]) : NaN;
+        if (Number.isFinite(n) && n > 0) out[p.id] = n;
+      } catch { /* module unreachable: no badge */ }
+    }));
+    this.badges.set(out);
   }
 
   async togglePin(key: string): Promise<void> {

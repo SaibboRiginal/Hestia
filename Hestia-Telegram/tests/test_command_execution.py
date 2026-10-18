@@ -324,3 +324,35 @@ class TestCommandDeliverySafetyCoverage:
         _, second_kwargs = mock_bot.send_message.call_args_list[1]
         assert first_kwargs.get("parse_mode") == "HTML"
         assert "parse_mode" not in second_kwargs
+
+
+@pytest.mark.unit
+class TestRouteCommandThroughMCP:
+    """Tools run through Hestia-MCP (one way, docs/work/2026-10-18-moduli-core-e-mcp-esterno);
+    an arg_picker source (no tool name) is a plain Hub read with the shared template rules."""
+
+    def test_tool_goes_to_mcp_with_chat_context(self, monkeypatch):
+        from telegram_bot.services import registry, router
+        seen = {}
+
+        class _MCP:
+            def call(self, name, arguments=None, **kw):
+                seen.update(name=name, args=arguments, **kw)
+                return True, {"ok": 1}
+        monkeypatch.setattr(registry, "mcp_client", lambda: _MCP())
+        monkeypatch.setattr(router.core, "get_session", lambda chat: "sess-1")
+        ok, payload = router.route_command_from_metadata(
+            {"command": "forge_tasks", "tool": "forge_tasks", "service": "hephaestus"}, 42, {"limit": 3})
+        assert ok and payload == {"ok": 1}
+        assert seen["name"] == "forge_tasks" and seen["args"] == {"limit": 3}
+        assert seen["session_id"] == "sess-1" and seen["notify_target"] == "42"
+
+    def test_picker_source_is_routed_with_templates(self, monkeypatch):
+        from telegram_bot.services import router
+        captured = {}
+        monkeypatch.setattr(router.core, "get_session", lambda chat: "sess-2")
+        monkeypatch.setattr(router, "route_service_command",
+                            lambda **kw: captured.update(kw) or (True, []))
+        router.route_command_from_metadata(
+            {"service": "hermes", "method": "GET", "path": "/api/subs", "query_template": {"owner": "$chat_id"}}, 7, {})
+        assert captured["service"] == "hermes" and captured["query"] == {"owner": "7"}

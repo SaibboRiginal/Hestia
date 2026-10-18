@@ -25,9 +25,11 @@ Telegram must:
 - Forwards to Oracle (`POST /api/chat`) with session-aware context.
 - Streams status and renders final Oracle reply.
 
-### Command Rendering (Hub-discovered)
-- Loads command catalog dynamically via Hub discovery.
-- Executes commands by routing through Hub.
+### Command Rendering (tools from Hestia-MCP)
+- Loads the command catalog from Hestia's one MCP server (`tools/list` as client `telegram`, through Hub) —
+  `services/registry.py` with `hestia_common.mcp_client`; tool names with dots become `_` commands.
+- Runs a command with `tools/call` (session id + chat id as notify target); `arg_picker` sources (data reads a tool
+  declares) use the shared template rules (`hestia_common.tool_call`) and a plain Hub route.
 - Supports `oracle_natural` response mode: command payloads must be formatted by Oracle for user display.
 - `/avvisi_recenti` must always be user-formatted text, never raw JSON in chat output.
 

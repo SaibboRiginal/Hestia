@@ -59,7 +59,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/plugins/{module}/bundle/{file}` | Module WebUI bundle file (via Hub) |
 | ANY | `/api/webui/plugins/{module}/call/{path}` | Plugin → its own module; 403 outside its `api_prefix` |
 | GET | `/api/ai/widgets?q=` · `/api/ai/dashboards` | Assistant tools `webui_widgets` / `webui_dashboards` (internal, via Hub) |
-| POST | `/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings) |
+| POST | `/api/ai/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings); was `/mcp` before 2026-10-18 |
+| POST | `/mcp` | **Public MCP door for external AIs** (`McpDoorController`): body + `Authorization: Bearer` → Hub → Hestia-MCP `/mcp/external` (token, scope, rate limit there); no WebUI login, always a token, also at home. GET/DELETE → 405 |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
@@ -107,10 +108,13 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - **Home** (`/home`, first module) = quick-action strip + dashboard grid; until edited it is composed from widgets
   marked `auto`. Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
   remove; Oracle-created dashboards carry `created_by: oracle`.
-- Module pages at `/p/<module>/<page>` (sidebar "Moduli"; detail pages hidden). Ctrl/⌘+K palette: quick actions,
+- Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
+  Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave
+  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: quick actions,
   module pages, dashboards, WebUI pages.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
-  `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`.
+  `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
+  `webui.sidebar.pinned` (pinned sidebar entries, in order), `webui.sidebar.collapsed` (closed sidebar sections).
   Impostazioni → Personali → "Moduli e Home" toggles each module/contribution.
 - PWA: `public/manifest.webmanifest` + `public/sw.js` (registered in production only). Offline the shell, catalog,
   settings and plugin bundles come from cache; plugin calls reject with `offline`; sidebar shows an "offline" badge.
@@ -134,7 +138,9 @@ Toasts (*tutte / solo importanti / nessuno*) are a per-browser preference in the
 Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/ui`), shell with module registry
 (`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
 sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
-move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**,
+move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**
+(tools from Hestia-MCP `tools/list` as client `webui`, run with `tools/call` — `HubClient.McpListToolsAsync` /
+`McpCallToolAsync`; arguments come from each tool's JSON schema),
 **Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
@@ -324,6 +330,10 @@ Built Angular app served as static files from `wwwroot/`.
 - `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`; path compared
   lowercase, routing is case-insensitive); exempt: login, `auth/access`, command list, `/api/webui/admin/*`
   (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).
+- **MCP door** `POST /mcp` (2026-10-18, `McpDoorController`): outside `/api/webui/`, so neither the WebUI token
+  nor local access applies; it needs `Authorization: Bearer <access token>` always (also at home) and Hestia-MCP
+  checks it (401 / 403 / 429). Only the header and the JSON body are forwarded (max 1 MB). The WebUI's own module
+  MCP moved to `/api/ai/mcp` to free the path.
 - **Local access without token** (`Services/LocalAccess.cs`, SPEC `docs/work/2026-10-11-webui-local-access`):
   the middleware and the hub skip the token only when ALL hold — Themis `webui.auth.local_without_token`
   on (default; the assistant cannot propose it), no Cloudflare/proxy header (`Cf-Connecting-Ip`, `Cf-Ray`,

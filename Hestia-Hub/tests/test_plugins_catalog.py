@@ -61,6 +61,9 @@ class TestPluginClient:
         lambda c: c.webui(entry="", pages=[page("a", "A", element="scout-a")]),
         lambda c: c.webui(entry="x.js", pages=[page("b", "B", element="scout-b", parent="missing")]),
         lambda c: c.webui(entry="x.js", widgets=[widget("w", "W", element="scout-w", sizes=["huge"])]),
+        lambda c: c.webui(entry="x.js", pages=[page("a", "A", element="scout-a",
+                                                    badge={"source": "/api/other/n", "field": "n"})]),
+        lambda c: c.webui(entry="x.js", pages=[page("a", "A", element="scout-a", badge={"source": "/api/ui/n"})]),
     ])
     def test_validation(self, bad):
         with pytest.raises(ValueError):
@@ -91,7 +94,21 @@ class TestHubCatalog:
         webui = cat["contributions"]["webui"]
         assert [p["id"] for p in webui["page"]] == ["scout.case", "scout.case/:id"]
         assert webui["widget"][0]["module"] == "scout" and webui["bundle"][0]["entry"] == "/ui/webui/scout.js"
-        assert cat["modules"][0]["online"] is True
+        assert cat["modules"][0]["online"] is True and cat["modules"][0]["kind"] == "domain"
+
+    def test_core_kind_and_badge_reach_the_catalog(self, monkeypatch):
+        core = PluginClient("athena", title="Athena", kind="core")
+        core.webui(entry="athena.js", api_prefix="/api/athena/",
+                   pages=[page("pensieri", "Pensieri", element="athena-thinking",
+                               badge={"source": "/api/athena/status", "field": "pending"})])
+        monkeypatch.setattr(disc.requests, "get", lambda url, timeout=0: _Resp(core.manifest()))
+        reg = ServiceRegistry()
+        reg.register({"name": "athena", "base_url": "http://a", "capabilities": core.capabilities("http://a")})
+        cat = disc.discover_catalog(reg, client="webui", types=["page"])
+        assert cat["modules"][0]["kind"] == "core"
+        assert cat["contributions"]["webui"]["page"][0]["badge"] == {"source": "/api/athena/status", "field": "pending"}
+        with pytest.raises(ValueError):
+            PluginClient("x", title="X", kind="system")
 
     def test_offline_module_keeps_last_manifest(self, ui, monkeypatch):
         monkeypatch.setattr(disc.requests, "get", lambda url, timeout=0: _Resp(ui.manifest()))

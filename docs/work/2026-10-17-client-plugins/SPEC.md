@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.7 |
+| **Version** | 2.8 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-17 |
 | **Status** | Done 2026-10-18 (P1–P4 on main) — Marko's real run pending (`up-all.bat --build`) |
 
@@ -87,6 +87,9 @@ ui.webui(
 app.include_router(ui.router())    # GET /api/ui/manifest, GET /ui/webui/{file} (bundle + assets, ETag)
 capabilities["ui_manifest"] = ui.manifest_path      # in the Hub registration payload, next to mcp_endpoint
 ```
+
+v2.8 note (2026-10-18, `docs/work/2026-10-18-moduli-core-e-mcp-esterno`): `PluginClient(kind="core"|"domain")` in the
+manifest (catalog `modules[].kind`, WebUI section *Sistema*) and `page(badge={source, field})` (sidebar counter).
 
 Pages are **always visible** by default; `detail=True` pages have no sidebar entry; `parent` makes sub-pages
 (sidebar entry expands: Guardaroba → Capi · Outfit · Accessori). Widget `params` = what the user (or Oracle) can

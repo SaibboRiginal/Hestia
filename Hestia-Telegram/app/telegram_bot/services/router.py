@@ -6,13 +6,13 @@ and the command executor, plus argument parsing and template resolution.
 from __future__ import annotations
 
 import re
-from urllib.parse import quote
 import logging
 from typing import Any
 
 import requests
 
 from telegram_bot import core
+from hestia_common.tool_call import build_request, resolve
 
 logger = logging.getLogger("hestia_telegram.router")
 
@@ -45,54 +45,8 @@ def extract_required_args(arguments_help: str) -> list[str]:
 # ── Template resolution ───────────────────────────────────────────────────────
 
 def resolve_template(value: Any, session_id: str, chat_id: int, parsed_args: dict[str, Any]) -> Any:
-    """Recursively replace ``$session_id``, ``$chat_id``, and ``$arg.*`` placeholders."""
-    if isinstance(value, str):
-        stripped = value.strip()
-        if stripped == "$session_id":
-            return session_id
-        if stripped == "$chat_id":
-            return str(chat_id)
-        if stripped.startswith("$arg."):
-            arg_key = stripped.replace("$arg.", "", 1).strip().lower()
-            return parsed_args.get(arg_key)
-
-        def _sub(match: re.Match) -> str:
-            token = match.group(1)
-            if token == "session_id":
-                return session_id
-            if token == "chat_id":
-                return str(chat_id)
-            if token.startswith("arg."):
-                return str(parsed_args.get(token[4:].strip().lower(), ""))
-            return ""
-
-        return re.sub(r"\$(session_id|chat_id|arg\.[a-zA-Z0-9_]+)", _sub, value)
-
-    if isinstance(value, dict):
-        resolved: dict[str, Any] = {}
-        for k, item in value.items():
-            computed = resolve_template(item, session_id, chat_id, parsed_args)
-            is_arg_tmpl = isinstance(
-                item, str) and item.strip().startswith("$arg.")
-            if is_arg_tmpl and (computed is None or computed == ""):
-                continue
-            if computed is not None:
-                resolved[k] = computed
-        return resolved
-
-    if isinstance(value, list):
-        out: list[Any] = []
-        for item in value:
-            computed = resolve_template(item, session_id, chat_id, parsed_args)
-            is_arg_tmpl = isinstance(
-                item, str) and item.strip().startswith("$arg.")
-            if is_arg_tmpl and (computed is None or computed == ""):
-                continue
-            if computed is not None:
-                out.append(computed)
-        return out
-
-    return value
+    """``$session_id``, ``$chat_id`` and ``$arg.*`` placeholders — the shared rules of ``hestia_common.tool_call``."""
+    return resolve(value, parsed_args, {"session_id": session_id, "notify_target": str(chat_id)})
 
 
 # ── Hub routing ───────────────────────────────────────────────────────────────
@@ -160,41 +114,16 @@ def route_command_from_metadata(
     chat_id: int,
     parsed_args: dict[str, Any],
 ) -> tuple[bool, Any]:
-    """Resolve templates from *command_meta* and dispatch via Hub."""
-    query_template = command_meta.get("query_template") if isinstance(
-        command_meta.get("query_template"), dict) else {}
-    body_template = command_meta.get("body_template") if isinstance(
-        command_meta.get("body_template"), dict) else {}
+    """Run a tool through Hestia-MCP (the one way, docs/work/2026-10-18-moduli-core-e-mcp-esterno).
 
+    ``command_meta`` without a tool name is an ``arg_picker.source`` (a data read declared by a tool):
+    the same template rules (``hestia_common.tool_call``) and a plain Hub route."""
     session_id = core.get_session(str(chat_id))
-    query = resolve_template(query_template, session_id, chat_id, parsed_args)
-    if not isinstance(query, dict):
-        query = {}
-    query.update(parsed_args)
-
-    body = resolve_template(body_template, session_id, chat_id, parsed_args)
-    if not isinstance(body, dict):
-        body = {}
-
-    path_value = resolve_template(str(command_meta.get(
-        "path", "")).strip(), session_id, chat_id, parsed_args)
-    # Path variables declared as $name or {name} (MCP tools: "$task_id",
-    # "{provider}") were sent literally; fill them from args and drop them
-    # from the query string.
-    consumed: set[str] = set()
-
-    def _fill(match: re.Match) -> str:
-        key = (match.group(1) or match.group(2) or "").lower()
-        consumed.add(key)
-        return quote(str(parsed_args.get(key, "")), safe="")
-
-    path_value = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}", _fill, str(path_value or ""))
-    for key in consumed:
-        query.pop(key, None)
-    return route_service_command(
-        service=str(command_meta.get("service", "")).strip(),
-        path=str(path_value or "").strip(),
-        method=str(command_meta.get("method", "GET")).upper(),
-        query=query,
-        body=body,
-    )
+    tool = str(command_meta.get("tool") or "").strip()
+    if tool:
+        from telegram_bot.services.registry import mcp_client
+        return mcp_client().call(tool, parsed_args, session_id=session_id, notify_target=str(chat_id),
+                                 service=str(command_meta.get("service", "")), timeout=25)
+    req = build_request(command_meta, parsed_args, {"session_id": session_id, "notify_target": str(chat_id)})
+    return route_service_command(service=req["service"], path=req["path"], method=req["method"],
+                                 query=req["query"], body=req["body"] or {})

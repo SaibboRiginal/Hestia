@@ -13,6 +13,8 @@ import time
 from typing import Any
 from unittest.mock import MagicMock, patch, PropertyMock
 import pytest
+
+from conftest import HubBackedMCP
 import requests
 
 from core.oracle_engine import OracleEngine
@@ -158,6 +160,7 @@ def engine():
         eng._hub.get_history = MagicMock(return_value=[])
         eng._hub.route_to_service = MagicMock(return_value=(True, {"result": "ok"}))
         eng._hub.append_interaction_ledger = MagicMock()
+        eng._mcp = HubBackedMCP(eng._hub)   # tools via Hestia-MCP, fed by the hub mocks
         eng._hub.create_feedback_record = MagicMock(return_value={"id": 1})
         eng._hub.list_feedback_records = MagicMock(return_value=[])
         eng._hub.export_feedback_jsonl = MagicMock(return_value="")

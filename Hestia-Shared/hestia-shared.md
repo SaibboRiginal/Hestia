@@ -156,10 +156,33 @@ app.include_router(ui.router())                       # GET /api/ui/manifest · 
 registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest + ui_version
 ```
 
+`PluginClient(..., kind="core")` marks a system module (WebUI shows its pages under *Sistema*; default `domain`).
+`page(..., badge={"source": "/api/…", "field": "unread"})` adds a counter next to the sidebar entry (GET under
+`api_prefix`, a number in `field`).
+
 Validation at declare time: element names `<module>-…`, every path under `api_prefix`, known parents/sizes/param
 types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). The browser side is
 `Hestia-Shared/webui-sdk/` (`@hestia/webui-sdk`: host API types, `HestiaElement`, shared Lit kit `hxk-*`, build
 script) — see its `README.md`.
+
+## Tools: MCP client (`hestia_common.mcp_client`) + call rules (`hestia_common.tool_call`)
+
+Every client reaches tools only through Hestia-MCP `/mcp` (through Hub):
+
+```python
+from hestia_common.mcp_client import MCPClient, as_command
+mcp = MCPClient(HUB_API_URL, client="telegram")         # oracle | telegram | webui …
+tools = mcp.list_tools()                                 # MCP tools; Hestia details in tool["_meta"]["hestia"]
+cmd = as_command(tools[0])                               # old command shape (service, method, path, telegram_*…)
+ok, payload = mcp.call("forge_tasks", {"limit": 5}, session_id=sid, notify_target=chat_id,
+                       origin_client="webui")             # origin_client → X-Hestia-Client towards the module
+```
+
+`tool_call.build_request(tool, args, ctx)` is the one implementation of how a tool becomes a Hub request (path
+`$x`/`{x}`, templates `$session_id` · `$chat_id`/`$owner` · `$arg.x`, the rest to query or JSON body; `ctx.access`
+→ `X-Hestia-Access`, the access name of an external AI);
+`tool_call.resolve` / `template_vars` / `is_write` are the pieces. Hestia-MCP uses it; Telegram reuses `resolve`
+for `arg_picker` sources (data reads declared by a tool).
 
 ## Presence client (`hestia_common.presence_client`)
 

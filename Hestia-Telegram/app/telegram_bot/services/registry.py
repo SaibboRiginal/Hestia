@@ -10,6 +10,7 @@ import requests
 from telebot.types import BotCommand, BotCommandScopeChat, InlineKeyboardButton, InlineKeyboardMarkup
 
 from telegram_bot import core
+from hestia_common.mcp_client import MCPClient, as_command, hestia_meta
 
 logger = logging.getLogger("hestia_telegram.registry")
 
@@ -34,82 +35,32 @@ GROUP_ORDER: list[tuple[str, str, str]] = [
 # ── Hub discovery ─────────────────────────────────────────────────────────────
 
 
+_mcp: MCPClient | None = None
+
+
+def mcp_client() -> MCPClient:
+    """The one way to Hestia's tools: Hestia-MCP ``/mcp`` through Hub (docs/work/2026-10-18-moduli-core-e-mcp-esterno)."""
+    global _mcp
+    if _mcp is None:
+        _mcp = MCPClient(core.HUB_API_URL, client="telegram", cache_ttl=0)
+    return _mcp
+
+
 def discover_commands_from_mcp() -> dict[str, dict[str, Any]]:
-    """Fetch the full tool list from Hestia-MCP and convert to command format."""
-    try:
-        # Via Hub route (Communication Policy): no direct MCP base URL.
-        response = requests.get(f"{core.HUB_API_URL}/route/mcp/tools/all",
-                                headers={"X-Hub-Timeout-Seconds": "10"}, timeout=12)
-        if response.status_code != 200:
-            logger.debug("event=mcp_command_discovery_non200 status=%s", response.status_code)
-            return {}
-        routed = response.json() or {}
-        if int(routed.get("status_code", 500)) >= 400:
-            logger.debug("event=mcp_command_discovery_routed_error status=%s", routed.get("status_code"))
-            return {}
-        catalog = routed.get("payload") or {}
-        discovered: dict[str, dict[str, Any]] = {}
-        for tool in catalog.get("tools", []) or []:
-            if not isinstance(tool, dict):
-                continue
-            name = str(tool.get("name", "")).strip().lower()
-            if not name:
-                continue
-            path = str(tool.get("path", "")).strip()
-            # Skip internal tools with no routable path (Oracle always-tools)
-            if not path:
-                continue
-            # Normalize name for Telegram compatibility (dots → underscores)
-            safe_name = name.replace(".", "_").replace("-", "_")
-            # Map MCP tool format → Hub command format
-            clients = tool.get("clients") or ["*"]
-            if isinstance(clients, str):
-                clients = [clients]
-            title = tool.get("title", "") or safe_name.replace("_", " ").title()
-            # Use MCP-provided service name — NEVER extract from tool name
-            service = str(tool.get("service", "")).strip().lower()
-            if not service:
-                continue
-            discovered[safe_name] = {
-                "command": safe_name,
-                "title": title,
-                "description": tool.get("description", ""),
-                "method": tool.get("method", "GET"),
-                "path": path,
-                "clients": clients,
-                "response_mode": tool.get("response_mode", "oracle_natural"),
-                "response_prompt": tool.get("response_prompt", ""),
-                "telegram_visible": tool.get("telegram_visible", True),
-                "telegram_group": tool.get("telegram_group", ""),
-                "service": service,
-            }
-        logger.info("event=discovered_commands_from_mcp count=%d", len(discovered))
-        return discovered
-    except Exception as exc:
-        logger.debug("event=mcp_command_discovery_failed error=%s", exc)
-        return {}
-
-
-def discover_commands_from_hub() -> dict[str, dict[str, Any]]:
-    """Fallback: fetch commands from Hub (legacy — being phased out)."""
-    try:
-        response = requests.get(
-            f"{core.HUB_API_URL}/discovery/commands", params={"client": "telegram"}, timeout=6
-        )
-        if response.status_code != 200:
-            return {}
-        discovered: dict[str, dict[str, Any]] = {}
-        for item in response.json().get("commands", []) or []:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("command", "")).strip().lower()
-            if name:
-                discovered[name] = item
-        logger.debug("event=discovered_commands_from_hub count=%d", len(discovered))
-        return discovered
-    except Exception as exc:
-        logger.debug("event=hub_command_discovery_failed error=%s", exc)
-        return {}
+    """Tools Telegram may show, from Hestia-MCP, as Telegram commands (name with dots → underscores)."""
+    discovered: dict[str, dict[str, Any]] = {}
+    for tool in mcp_client().list_tools(refresh=True):
+        cmd = as_command(tool)
+        name = str(cmd.get("command") or "").strip().lower()
+        if not name or not cmd.get("path") or not cmd.get("service"):
+            continue
+        safe_name = name.replace(".", "_").replace("-", "_")
+        discovered[safe_name] = {**cmd, "command": safe_name, "tool": tool.get("name"),
+                                 "title": cmd.get("title") or safe_name.replace("_", " ").title(),
+                                 "clients": cmd.get("clients") or ["*"],
+                                 "telegram_visible": bool(hestia_meta(tool).get("telegram_visible", True))}
+    logger.info("event=discovered_commands_from_mcp count=%d", len(discovered))
+    return discovered
 
 
 def fetch_registry_revision() -> int | None:

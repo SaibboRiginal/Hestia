@@ -155,6 +155,14 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `GET` | `/api/sessions` | Global Oracle state (models, uptime, Hub URL) |
 | `GET` | `/health` | Service health |
 
+### Module tools (agent loop)
+
+Oracle is an ordinary client of Hestia's one MCP server: `_build_domain_tools` lists tools with
+`hestia_common.mcp_client.MCPClient(client="oracle")` (it sees all and keeps only the domain owners' tools) and every
+call goes through `tools/call` (session id, notify target, trace id; the session's client as `X-Hestia-Client`, timeout
+`action_service_route`). Hestia-MCP fills templates and routes through Hub; Oracle no longer has its own resolver.
+Oracle's own tools (memory, documents, session info, logs) stay in-process.
+
 ### MCP Tools (Plan P3c)
 
 Exposed via `/mcp` endpoint, registered with Hestia-MCP:

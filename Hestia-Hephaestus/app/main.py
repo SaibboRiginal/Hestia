@@ -239,7 +239,7 @@ try:
             },
             handler=lambda **kw: {"status": "ok", "tool": "forge_develop", "params": kw},
             title="\U0001f9e9 Sviluppa Hestia", method="POST", path="/api/hephaestus/forge/tasks",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt="Conferma in 1-2 righe: task creato (id corto), motore, avviserai quando pronto.",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -247,10 +247,11 @@ try:
             name="forge_tasks",
             description="Elenca i task di auto-sviluppo (Forge) e il loro stato",
             parameters={"type": "object", "properties": {
-                "state": {"type": "string", "description": "Filtro stato: proposed, running, awaiting_review, deployed..."}}},
+                "state": {"type": "string", "description": "Filtro stato: proposed, running, awaiting_review, deployed..."},
+                "limit": {"type": "integer", "description": "Quanti task al massimo (default 50)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_tasks", "params": kw},
             title="\U0001f9f0 Task sviluppo", method="GET", path="/api/hephaestus/forge/tasks/brief",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt="Mostra TUTTE le righe di tasks, una per task: id, stato, richiesta. Niente JSON.",
             telegram_visible=True, telegram_group="sistema",
         ),
@@ -260,8 +261,70 @@ try:
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_status", "params": kw},
             title="\u2699\ufe0f Stato Forge", method="GET", path="/api/hephaestus/forge/status",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
+        ),
+        # Task detail, notes and "I fixed it on this branch" — also open to external AIs (MCP access, SPEC
+        # docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4). Approve/merge/rollback never leave the house.
+        MCPTool(
+            name="forge_task",
+            description="Dettaglio di un task di sviluppo: richiesta, stato, motore, errore, test, dossier (workdoc), "
+                        "branch, note, storia degli stati",
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task (anche i primi 6 caratteri)"}},
+                "required": ["task_id"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_task", "params": kw},
+            title="\U0001f50e Dettaglio task sviluppo", method="GET", path="/api/hephaestus/forge/tasks/$task_id/overview",
+            clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_task_diff",
+            description="Diff completo (git) prodotto da un task di sviluppo",
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task"}}, "required": ["task_id"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_task_diff", "params": kw},
+            title="\U0001f4dd Diff task sviluppo", method="GET", path="/api/hephaestus/forge/tasks/$task_id/diff",
+            clients=["ui", "external"], response_mode="raw_json", telegram_visible=False, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_dossier",
+            description="SPEC, PROGRESS e CHANGELOG di un dossier di lavoro (docs/work/<nome>), es. il workdoc di un task",
+            parameters={"type": "object", "properties": {
+                "name": {"type": "string", "description": "Nome cartella in docs/work (campo workdoc del task)"}},
+                "required": ["name"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_dossier", "params": kw},
+            title="\U0001f4c2 Dossier di lavoro", method="GET", path="/api/hephaestus/repo/dossiers/$name",
+            clients=["ui", "external"], response_mode="raw_json", telegram_visible=False, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_task_note",
+            description="Aggiunge un'analisi o un'indicazione a un task di sviluppo (la vede il proprietario; il motore "
+                        "la usa quando il task parte o viene riprovato)",
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task"},
+                "text": {"type": "string", "description": "Analisi, causa trovata, file da toccare, come verificare"}},
+                "required": ["task_id", "text"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_task_note", "params": kw},
+            title="\U0001f4ac Nota su task sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/notes",
+            clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="sistema",
+        ),
+        MCPTool(
+            name="forge_submit_branch",
+            description=(
+                "Consegna una correzione già fatta su un branch del repo (origin): Forge scarica il branch, esegue i "
+                "suoi test e chiede l'approvazione al proprietario come sempre; dopo l'ok fa merge, riavvio, controllo "
+                "salute e rollback automatico se qualcosa va storto. Task in stato proposed, scheduled, failed, "
+                "no_changes o awaiting_review."
+            ),
+            parameters={"type": "object", "properties": {
+                "task_id": {"type": "string", "description": "Id task (crealo prima con forge_develop se non esiste)"},
+                "branch": {"type": "string", "description": "Nome del branch su origin con la correzione"},
+                "summary": {"type": "string", "description": "Cosa cambia il branch e perché"}},
+                "required": ["task_id", "branch"]},
+            handler=lambda **kw: {"status": "ok", "tool": "forge_submit_branch", "params": kw},
+            title="\U0001f69a Consegna branch a Forge", method="POST",
+            path="/api/hephaestus/forge/tasks/$task_id/submit-branch",
+            clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="sistema",
         ),
         # Manual brake: a direct user command (Telegram button / "metti in pausa lo sviluppo").
         MCPTool(

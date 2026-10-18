@@ -93,7 +93,7 @@ within the cooldown window.
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/events/ingest` | Ingest one event and evaluate subscriptions |
-| `POST` | `/api/dispatch/send` | Legacy direct send: `owner` → every client; concrete target + client name → that client |
+| `POST` | `/api/dispatch/send` | Legacy direct send: `owner` → every client; concrete target + client name → that client; `metadata.quiet` → inbox only, no push (e.g. an external AI's write, Hestia-MCP) |
 | `GET` | `/api/notifications` | Inbox (`filter` all/unread/pending, `source`, `before`, `limit`, `client`) |
 | `GET` | `/api/notifications/counts` · `/clients` | Unread/pending counters · discovered clients |
 | `POST` | `/api/notifications/{id}/seen` · `/seen-all` | Global read state |

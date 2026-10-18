@@ -10,6 +10,7 @@ export interface PluginModule {
   description: string;
   version: string;
   online: boolean;
+  kind?: 'domain' | 'core';  // core = system module, shown under «Sistema» in the sidebar
 }
 
 interface Contribution {
@@ -27,6 +28,7 @@ export interface PluginPage extends Contribution {
   parent: string;        // local id of the parent page ('' = top level)
   detail: boolean;       // opened from an item ('case/:id'), no sidebar entry
   help?: string;
+  badge?: { source: string; field: string } | null;   // GET under api_prefix → number shown next to the entry
 }
 
 export interface ParamSpec { type: string; label: string; default?: unknown; options?: string[]; }

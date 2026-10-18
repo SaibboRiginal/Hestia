@@ -32,25 +32,100 @@ public class HubClient
         return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
     }
 
-    /// <summary>Discover commands available to a given client.</summary>
-    public async Task<List<JsonElement>> DiscoverCommandsAsync(
-        string client = "ui", CancellationToken ct = default)
+    // ── Tools: Hestia's one MCP server (Hestia-MCP /mcp through Hub) ──────────
+    // Every client lists and runs tools the same way (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+    private long _mcpId;
+
+    /// <summary>MCP tools this client may see; Hestia details in <c>_meta.hestia</c>. Empty when unreachable.</summary>
+    public async Task<List<JsonElement>> McpListToolsAsync(string client = "webui", CancellationToken ct = default)
     {
         try
         {
-            var resp = await _http.GetAsync(
-                $"{_hubUrl}/discovery/commands?client={client}", ct);
-            resp.EnsureSuccessStatusCode();
-            var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            if (json.TryGetProperty("commands", out var commands))
-                return commands.EnumerateArray().ToList();
-            return [];
+            var result = await McpRpcAsync(client, "tools/list",
+                new Dictionary<string, object?> { ["_meta"] = new Dictionary<string, object?> { ["hestia"] = new { client } } },
+                15, ct);
+            if (result.TryGetProperty("tools", out var tools) && tools.ValueKind == JsonValueKind.Array)
+                return tools.EnumerateArray().ToList();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "event=hub_discovery_commands_failed");
-            return [];
+            _logger.LogWarning(ex, "event=mcp_list_tools_failed client={Client}", client);
         }
+        return [];
+    }
+
+    /// <summary>Runs one tool. Ok=false carries the module's error payload (or a <c>{detail}</c>).</summary>
+    public async Task<(bool Ok, JsonElement Payload)> McpCallToolAsync(
+        string client, string name, Dictionary<string, object> args, string? sessionId = null,
+        double timeoutSeconds = 30, CancellationToken ct = default)
+    {
+        var hestia = new Dictionary<string, object?> { ["timeout_seconds"] = timeoutSeconds };
+        if (!string.IsNullOrEmpty(sessionId)) hestia["session_id"] = sessionId;
+        var result = await McpRpcAsync(client, "tools/call", new Dictionary<string, object?>
+        {
+            ["name"] = name, ["arguments"] = args,
+            ["_meta"] = new Dictionary<string, object?> { ["hestia"] = hestia },
+        }, timeoutSeconds + 2, ct);
+        if (result.ValueKind != JsonValueKind.Object)
+            return (false, JsonSerializer.SerializeToElement(new { detail = "empty answer from mcp" }));
+        var isError = result.TryGetProperty("isError", out var e) && e.ValueKind == JsonValueKind.True;
+        var payload = result.TryGetProperty("structuredContent", out var sc) ? sc : result;
+        var wrapped = result.TryGetProperty("_meta", out var meta) && meta.TryGetProperty("hestia", out var h)
+                      && h.TryGetProperty("wrapped", out var w) && w.ValueKind == JsonValueKind.True;
+        if (wrapped && payload.TryGetProperty("result", out var inner)) payload = inner;
+        return (!isError, payload);
+    }
+
+    /// <summary>MCP tool → the command shape the WebUI pages use (arguments_schema = JSON schema).</summary>
+    public static Dictionary<string, object?> ToolAsCommand(JsonElement tool)
+    {
+        string Str(JsonElement el, string key, string def = "") =>
+            el.ValueKind == JsonValueKind.Object && el.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String
+                ? v.GetString() ?? def : def;
+        var meta = tool.TryGetProperty("_meta", out var m) && m.TryGetProperty("hestia", out var hm) ? hm : default;
+        var name = Str(tool, "name");
+        return new Dictionary<string, object?>
+        {
+            ["command"] = name,
+            ["title"] = Str(tool, "title", name),
+            ["description"] = Str(tool, "description"),
+            ["service"] = Str(meta, "service"),
+            ["method"] = Str(meta, "method", "GET"),
+            ["path"] = Str(meta, "path"),
+            ["response_mode"] = Str(meta, "response_mode", "oracle_natural"),
+            ["response_prompt"] = Str(meta, "response_prompt"),
+            ["clients"] = meta.ValueKind == JsonValueKind.Object && meta.TryGetProperty("clients", out var c) ? (object)c : null,
+            ["arguments_schema"] = tool.TryGetProperty("inputSchema", out var schema) ? (object)schema : null,
+        };
+    }
+
+    private async Task<JsonElement> McpRpcAsync(string client, string method, object parameters, double timeoutSeconds,
+        CancellationToken ct)
+    {
+        var envelope = new Dictionary<string, object?>
+        {
+            ["method"] = "POST",
+            ["timeout_seconds"] = timeoutSeconds,
+            ["headers"] = new Dictionary<string, string> { ["X-Hestia-Client"] = client },
+            ["body"] = new Dictionary<string, object?>
+            {
+                ["jsonrpc"] = "2.0", ["id"] = Interlocked.Increment(ref _mcpId), ["method"] = method, ["params"] = parameters,
+            },
+        };
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds + 5));
+        var resp = await _http.PostAsync($"{_hubUrl}/route/mcp/mcp",
+            new StringContent(JsonSerializer.Serialize(envelope), Encoding.UTF8, "application/json"), cts.Token);
+        resp.EnsureSuccessStatusCode();
+        var routed = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        if (routed.TryGetProperty("status_code", out var status) && status.ValueKind == JsonValueKind.Number
+            && status.GetInt32() >= 400)
+            throw new InvalidOperationException($"mcp returned {status.GetInt32()}");
+        var payload = routed.TryGetProperty("payload", out var p) ? p : routed;
+        if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("error", out var err))
+            throw new InvalidOperationException(err.TryGetProperty("message", out var msg) ? msg.GetString() : "mcp error");
+        return payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("result", out var result)
+            ? result : default;
     }
 
     /// <summary>One catalog of module contributions for a client (tools, commands, pages, widgets,
@@ -135,10 +210,12 @@ public class HubClient
     /// </summary>
     public async Task<(int Status, JsonElement Payload)> RouteRawAsync(
         string service, string path, HttpMethod method, object? body = null,
-        Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default)
+        Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default,
+        Dictionary<string, string>? headers = null)
     {
         var envelope = new Dictionary<string, object?> { ["method"] = method.Method, ["timeout_seconds"] = timeoutSeconds };
         if (query?.Count > 0) envelope["query"] = query;
+        if (headers?.Count > 0) envelope["headers"] = headers;
         if (body is not null) envelope["body"] = body;
         try
         {

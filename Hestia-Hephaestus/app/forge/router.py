@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -26,6 +26,17 @@ class ForgeTaskRequest(BaseModel):
     parent_task: str = Field("", description="follow-up of this task: inherits workdoc + services + context")
     agenda_parent: str = Field("", description="agenda key this task serves: cancelling it rejects the task; "
                                                "a failed task marks it")
+
+
+class ForgeNote(BaseModel):
+    text: str = Field(..., description="Analysis or hint for this task")
+    by: str = "user"
+
+
+class ForgeBranchSubmit(BaseModel):
+    branch: str = Field(..., description="Branch on the repo remote (origin) with the fix")
+    summary: str = Field("", description="What the branch changes and why")
+    by: str = "user"
 
 
 class ForgeEngineChoice(BaseModel):
@@ -103,8 +114,11 @@ def create_forge_router(forge: Forge) -> APIRouter:
         return {"status": "ok", **_guard(forge.set_claude_schedule, **body.model_dump())}
 
     @router.post("/tasks")
-    def forge_submit(req: ForgeTaskRequest) -> dict[str, Any]:
-        task = _guard(forge.submit, **req.model_dump())
+    def forge_submit(req: ForgeTaskRequest, x_hestia_access: str = Header(default="")) -> dict[str, Any]:
+        data = req.model_dump()
+        if x_hestia_access:   # an external AI (Hestia-MCP door): a proposal like a module's, never "the user typed it"
+            data.update(source="external", requested_by=x_hestia_access, auto_start=None, auto_merge=None)
+        task = _guard(forge.submit, **data)
         return {"status": "ok", "task": _public(task)}
 
     @router.get("/tasks")
@@ -123,6 +137,24 @@ def create_forge_router(forge: Forge) -> APIRouter:
         if not task:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
         return {"status": "ok", "task": task}
+
+    @router.get("/tasks/{task_id}/overview")
+    def forge_overview(task_id: str) -> dict[str, Any]:
+        """One task for an external AI or a card: compact fields + notes + recent history + submitted branch."""
+        task = _guard(forge._require, task_id)
+        return {"status": "ok", "task": overview(task)}
+
+    @router.post("/tasks/{task_id}/notes")
+    def forge_note(task_id: str, body: ForgeNote, x_hestia_access: str = Header(default="")) -> dict[str, Any]:
+        task = _guard(forge.add_note, task_id, body.text, x_hestia_access or body.by)
+        return {"status": "ok", "task_id": task["id"], "notes": len(task.get("notes") or [])}
+
+    @router.post("/tasks/{task_id}/submit-branch")
+    def forge_submit_branch(task_id: str, body: ForgeBranchSubmit,
+                            x_hestia_access: str = Header(default="")) -> dict[str, Any]:
+        task = _guard(forge.submit_branch, task_id, body.branch, body.summary, x_hestia_access or body.by)
+        return {"status": "ok", "task": _public(task),
+                "next": "Forge scarica il branch, esegue i test e chiede l'approvazione al proprietario."}
 
     @router.get("/tasks/{task_id}/diff", response_class=PlainTextResponse)
     def forge_diff(task_id: str) -> str:
@@ -208,6 +240,17 @@ def _public(task: dict) -> dict:
     return out
 
 
+def overview(task: dict) -> dict:
+    out = _public(task)
+    out["notes"] = list(task.get("notes") or [])
+    out["history"] = list(task.get("history") or [])[-20:]
+    if task.get("external"):
+        out["external_branch"] = {k: v for k, v in task["external"].items() if k != "pending"}
+    if task.get("context"):
+        out["context"] = str(task["context"])[:1500]
+    return out
+
+
 _CLOSED_STATES = {"deployed", "merged", "rejected", "rolled_back", "no_changes"}
 BRIEF_CHARS = 1600   # Oracle cuts tool results at ~2000 chars: the whole list must fit below that
 
@@ -287,5 +330,9 @@ def create_repo_router(forge: Forge) -> APIRouter:
     @router.get("/dossiers")
     def repo_dossiers(ref: str = "") -> dict[str, Any]:
         return _guard(repo.dossiers, ref)
+
+    @router.get("/dossiers/{name}")
+    def repo_dossier(name: str, ref: str = "") -> dict[str, Any]:
+        return _guard(repo.dossier, name, ref)
 
     return router

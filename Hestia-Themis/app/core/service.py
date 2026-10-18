@@ -377,6 +377,8 @@ class Themis:
 
     def _proposal_text(self, d: dict, row: dict, current: Any) -> str:
         who = {"oracle": "Hestia (chat)", "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
+        if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
+            who = f"{who[len('external:'):]} (AI esterna)"
         text = (f"⚙️ {who} propone di cambiare «{d.get('label') or d.get('key')}» "
                 f"({d.get('module')}): {_describe(current)} → {_describe(row.get('value'))}.")
         if row.get("reason"):

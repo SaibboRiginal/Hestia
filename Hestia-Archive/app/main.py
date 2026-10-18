@@ -15,7 +15,7 @@ from sqlalchemy import text
 
 from . import models, database, schemas
 from .database import engine, SessionLocal
-from .routers import archive, blobs, chat, calendar, documents, entities, hercules_store, memory, presence, selfcare_store, settings, wardrobe_store
+from .routers import archive, blobs, chat, calendar, documents, entities, hercules_store, mcp_access_store, memory, presence, selfcare_store, settings, wardrobe_store
 
 try:
     from hestia_common.logging_utils import create_log_control_router, log_event, setup_service_logging
@@ -98,6 +98,7 @@ app.include_router(hercules_store.router)
 app.include_router(selfcare_store.router)
 app.include_router(wardrobe_store.router)
 app.include_router(blobs.router)
+app.include_router(mcp_access_store.router)
 
 # ── MCP tools ──────────────────────────────────────────────────────────────────
 try:

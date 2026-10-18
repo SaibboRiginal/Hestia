@@ -147,7 +147,8 @@ using (var scope = app.Services.CreateScope())
                 // Hermes delivers every notification here (SPEC hermes-global-notifications).
                 notify_endpoint = "/api/notify",
                 // Assistant tools: widget catalog + dashboards (client plugins SPEC §4.6), next to Themis'.
-                mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/mcp",
+                // /api/ai/mcp: the WebUI's own module tools. /mcp is the public door for external AIs.
+                mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/api/ai/mcp",
                 module_tool_domains = new[] { "system", "settings" },
             }
         };

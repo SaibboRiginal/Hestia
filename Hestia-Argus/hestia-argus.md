@@ -63,6 +63,7 @@ Hub Monitor Logs / Docker Tails │
 - **Topology tags**: `layer:foundation`, `domain:observability`, `status:stable`
 - **Capabilities**: `argus.status`, `argus.logs`, `argus.analyze`
 - **Telegram commands**: `system_status`, `system_log`, `system_analysis`, `system_remediate`
+- **External AIs** (MCP access, 2026-10-18): `system_status` and `system_log` are marked `"external"` (read only)
 
 ## Environment Variables
 

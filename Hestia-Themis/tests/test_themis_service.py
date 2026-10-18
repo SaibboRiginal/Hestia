@@ -135,3 +135,12 @@ def test_chat_born_proposal_targets_client_layer_and_returns_confirm():
     assert again["status"] == "already_pending" and again["confirm"]["question_id"] == c["question_id"]
     themis.decide(p["proposal_id"], True, by="webui")
     assert themis.get("webui.dashboards", client="webui")["value"] == value
+
+
+@pytest.mark.unit
+def test_external_ai_proposal_names_the_access():
+    """An external AI's proposal (Hestia-MCP door, proposer external:<access>) reads as that AI, not as Hestia."""
+    themis = Themis(FakeArchive(), Registry(None))
+    text = themis._proposal_text({"key": "argus.mode", "label": "Modalità", "module": "argus"},
+                                 {"proposer": "external:Claude Code PC", "value": "calm"}, "normal")
+    assert text.startswith("⚙️ Claude Code PC (AI esterna) propone")

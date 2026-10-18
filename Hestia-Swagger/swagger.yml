@@ -61,6 +61,8 @@ tags:
     description: Real estate search and module tools
   - name: Chronos
     description: Calendar CRUD and agenda
+  - name: MCP
+    description: Hestia's one MCP server — every client (Oracle, Telegram, WebUI, external AIs) lists and runs tools here
   - name: Argus
     description: System health monitoring and log analysis
   - name: Iris
@@ -87,6 +89,8 @@ tags:
     description: Wardrobe — pieces, accessories, outfits, «Cosa mi metto», «Indossato», packing lists, stats, photos
   - name: Archive — Wardrobe store
     description: Same (kind,id) last-write-wins records as the Hercules store, for Wardrobe only
+  - name: Archive — MCP accesses
+    description: Who may use Hestia's MCP from outside (Hestia-MCP only); tokens only as sha256
   - name: Archive — Blobs
     description: Generic byte storage for module files (photos), deduplicated per module by sha256
   - name: Archive — Settings store
@@ -1367,6 +1371,7 @@ paths:
                         icon: {type: string}
                         color: {type: string}
                         version: {type: string}
+                        kind: {type: string, enum: [domain, core], description: "core = system module (WebUI «Sistema»)"}
                         online: {type: boolean}
                   contributions:
                     type: object
@@ -4857,6 +4862,166 @@ paths:
           description: "{from, to, days, count, items[...]}"
 
   # ══════════════════════════════════════════════════════════════════════════
+  #  MCP — 19013  (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /mcp:
+    post:
+      tags: [MCP]
+      summary: MCP over Streamable HTTP (JSON answers) — initialize · tools/list · tools/call · ping
+      description: |
+        JSON-RPC 2.0, one message or a batch. Notifications (no id) → 202. Internal clients call it through Hub
+        (`POST /api/route/mcp/mcp`) and name themselves with header `X-Hestia-Client` (oracle, telegram, webui).
+        Hestia details travel in `_meta.hestia`:
+        - tools/list → each tool has `name, title, description, inputSchema, annotations.readOnlyHint` and
+          `_meta.hestia {service, method, path, response_mode, response_prompt, clients, telegram_*…}`;
+          `params._meta.hestia.services` narrows the list. A client sees tools whose `clients` is empty, `*` or its own.
+        - tools/call → `params {name, arguments, _meta.hestia {session_id, notify_target, trace_id, client, service,
+          timeout_seconds}}`; answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
+          service, wrapped}}` (`wrapped` = a non-object module answer is in `structuredContent.result`).
+          `_meta.hestia.client` is forwarded to the module as `X-Hestia-Client` (the client the user talks from).
+
+        **Public door for external AIs** (server 19015 = WebUI, the only service behind the tunnel): the same path
+        `POST /mcp` on the WebUI needs `Authorization: Bearer <token>` (an access from *Accessi AI*) and is forwarded
+        through Hub to `/mcp/external` below; no WebUI login there, always a token. GET/DELETE → 405.
+      servers:
+        - url: http://localhost:19013
+        - url: http://localhost:19015
+          description: WebUI public door (external AIs, bearer token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jsonrpc: {type: string, enum: ["2.0"]}
+                id: {oneOf: [{type: string}, {type: integer}]}
+                method: {type: string, enum: [initialize, tools/list, tools/call, ping]}
+                params: {type: object}
+      responses:
+        "200":
+          description: JSON-RPC result or error (-32600 invalid, -32601 unknown method, -32602 unknown tool)
+        "202":
+          description: Notification accepted
+    get:
+      tags: [MCP]
+      summary: No server stream (405, Allow POST)
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "405":
+          description: Not supported
+
+  /mcp/external:
+    post:
+      tags: [MCP]
+      summary: The same MCP for external AIs, behind an access token (reached only through the WebUI door)
+      description: |
+        Only tools whose module wrote `"external"` in `clients`, limited by the access (scope, tool list). Towards the
+        module the call carries only `X-Hestia-Access: <access name>`. Every call logged `event=mcp_external_call`;
+        a write leaves a silent Hermes inbox entry. Rate limit: Themis `mcp.external.max_calls_per_min` per access.
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: Authorization, in: header, required: true, schema: {type: string, example: "Bearer hst_…"}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, description: "JSON-RPC 2.0 message or batch, as /mcp"}
+      responses:
+        "200": {description: JSON-RPC result or error}
+        "202": {description: Notification accepted}
+        "401": {description: "Wrong, revoked or expired token (WWW-Authenticate: Bearer)"}
+        "403": {description: A read-only access called a write tool}
+        "429": {description: "Over the per-minute limit (Retry-After: 60)"}
+
+  /api/mcp/accesses:
+    get:
+      tags: [MCP]
+      summary: External AI accesses (Accessi AI page) — never tokens or hashes
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{accesses[{access_id, name, kind, scope, tools, expires_at, revoked_at, last_used_at, calls_today, calls_total, created_at}]}"}
+    post:
+      tags: [MCP]
+      summary: New access; the token is in this answer only (stored as sha256)
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: base_url, in: query, required: false, schema: {type: string}, description: "address for the ready setup lines (e.g. the tunnel URL)"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, example: Claude Code PC}
+                scope: {type: string, enum: [read, write], default: read}
+                tools: {type: array, items: {type: string}, description: "[] = every tool open to external AIs"}
+                expires_days: {type: integer, default: 90, description: "0 / null = no expiry"}
+      responses:
+        "200": {description: "{access, token, setup{url, header, claude_code, json}}"}
+        "400": {description: Missing name or unknown scope}
+
+  /api/mcp/accesses/tools:
+    get:
+      tags: [MCP]
+      summary: Tools open to external AIs (what an access can be limited to)
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{tools[{name, title, description, service, writes}]}"}
+
+  /api/mcp/accesses/{access_id}:
+    patch:
+      tags: [MCP]
+      summary: Change name, scope, tools, expiry (expires_days 0 = never)
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{access}"}
+        "404": {description: Access not found}
+    delete:
+      tags: [MCP]
+      summary: Remove an access
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: deleted|absent}"}
+
+  /api/mcp/accesses/{access_id}/revoke:
+    post:
+      tags: [MCP]
+      summary: Stop an access at once
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{access}"}
+
+  /api/mcp/accesses/{access_id}/renew:
+    post:
+      tags: [MCP]
+      summary: New token for the access (the old one stops at once; a revoked access comes back)
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+        - {name: base_url, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: "{access, token, setup}"}
+
+  # ══════════════════════════════════════════════════════════════════════════
   #  ARGUS — 19008
   # ══════════════════════════════════════════════════════════════════════════
 
@@ -5302,6 +5467,67 @@ paths:
         "200": {description: "{status, task} (the new task)"}
         "404": {description: Task not found}
 
+  /api/hephaestus/forge/tasks/{task_id}/overview:
+    get:
+      tags: [Hephaestus]
+      summary: "Compact task + notes + last 20 state changes + submitted branch (tool forge_task)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, task}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/notes:
+    post:
+      tags: [Hephaestus]
+      summary: "Analysis or hint on a task (tool forge_task_note); given to the engine when it runs or is retried"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+        - {name: X-Hestia-Access, in: header, required: false, schema: {type: string}, description: "external AI access name (set by Hestia-MCP) → note author"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: {type: string}
+                by: {type: string, default: user}
+      responses:
+        "200": {description: "{status, task_id, notes}"}
+
+  /api/hephaestus/forge/tasks/{task_id}/submit-branch:
+    post:
+      tags: [Hephaestus]
+      summary: "\"Fixed on this branch\": Forge fetches it from origin, runs its tests, asks the owner (tool forge_submit_branch)"
+      description: |
+        Task in proposed / scheduled / failed / no_changes / awaiting_review. Auto merge is always off for it: after
+        the owner's approval, merge + deploy + health check + auto rollback as usual.
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+        - {name: X-Hestia-Access, in: header, required: false, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch]
+              properties:
+                branch: {type: string, example: claude/fix-calendar-tz}
+                summary: {type: string}
+      responses:
+        "200": {description: "{status, task, next}"}
+        "400": {description: Invalid branch name}
+        "409": {description: Task in a state that does not accept a branch}
+
   /api/hephaestus/repo/branches:
     get:
       tags: [Hephaestus]
@@ -5408,6 +5634,19 @@ paths:
         "200": {description: "{status, ref, dossiers[{name, path, title, version, status, source, progress{done, total}}]}"}
         "400": {description: Invalid ref or path}
         "503": {description: Repo not mounted}
+
+  /api/hephaestus/repo/dossiers/{name}:
+    get:
+      tags: [Hephaestus]
+      summary: "One dossier: SPEC, PROGRESS, CHANGELOG of docs/work/<name>/ (tool forge_dossier)"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: name, in: path, required: true, schema: {type: string}}
+        - {name: ref, in: query, schema: {type: string, default: HEAD}}
+      responses:
+        "200": {description: "{status, ref, name, path, title, version, status, source, files{SPEC.md|PROGRESS.md|CHANGELOG.md: {text, truncated}}}"}
+        "404": {description: Dossier not found}
 
   /api/hephaestus/forge/tasks/{task_id}/approve:
     post:
@@ -6779,6 +7018,67 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/mcp-access-store/accesses:
+    get:
+      tags: [Archive — MCP accesses]
+      summary: "MCP accesses (Hestia-MCP only); no hashes"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{accesses[...]}"}
+    post:
+      tags: [Archive — MCP accesses]
+      summary: "Create {access_id, name, kind, scope, tools, token_hash, expires_at, meta}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: access}
+        "409": {description: access id already used}
+
+  /api/mcp-access-store/accesses/by-hash/{token_hash}:
+    get:
+      tags: [Archive — MCP accesses]
+      summary: "Access of a token (sha256)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: token_hash, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: access}
+        "404": {description: unknown token}
+
+  /api/mcp-access-store/accesses/{access_id}:
+    patch:
+      tags: [Archive — MCP accesses]
+      summary: "Change name, scope, tools, token_hash, expires_at (clear_expiry), revoked"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: access}
+        "404": {description: access not found}
+    delete:
+      tags: [Archive — MCP accesses]
+      summary: "Delete an access"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: deleted|absent}"}
+
+  /api/mcp-access-store/accesses/{access_id}/used:
+    post:
+      tags: [Archive — MCP accesses]
+      summary: "One call made: last use + counters (today, total)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, calls_today}"}
+
   /api/blobs:
     post:
       tags: [Archive — Blobs]
@@ -7878,6 +8178,13 @@ paths:
         - {name: q, in: query, required: false, schema: {type: string}}
       responses:
         "200": {description: "{count, widgets: [{id, label, module, help, sizes, size, auto, online, params}]}"}
+
+  /api/ai/mcp:
+    post:
+      tags: [WebUI]
+      summary: The WebUI's own module tools as MCP JSON-RPC (capabilities.mcp_endpoint; read by Hub). Was /mcp before 2026-10-18
+      responses:
+        "200": {description: JSON-RPC result}
 
   /api/ai/dashboards:
     get:

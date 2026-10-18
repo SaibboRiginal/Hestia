@@ -180,7 +180,7 @@ flowchart LR
 | [Hephaestus](Hestia-Hephaestus/hestia-hephaestus.md) | 19010 | Guarded remediation and **Forge** (self-development) |
 | [Dummy](Hestia-Dummy/hestia-dummy.md) | 19011 | Integration-test target |
 | [Iris](Hestia-Iris/hestia-iris.md) | 19012 | Email domain logic |
-| [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | MCP gateway exposing every service's tools |
+| [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | Hestia's one MCP server: Oracle, Telegram, WebUI and external AIs (with an access token, through the WebUI door `/mcp`) list and run every module's tools here |
 | [Metis](Hestia-Metis/hestia-metis.md) | 19014 | Datasets from feedback, benchmarks, LoRA training |
 | [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web client |
 | [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings: modules declare, every client and the assistant read/change, you confirm |
@@ -209,6 +209,29 @@ flowchart LR
 
 Permission modes per engine (`ask` · `auto` · `full_auto`) are set from Telegram, and autonomous Claude Code work
 only runs inside agenda windows you control.
+
+### Connect an external AI (Collegare un'AI esterna)
+
+Claude Code, Claude Desktop, Cursor, VS Code, Gemini CLI or Codex CLI can read Hestia's development list, add notes
+and hand in fixes through MCP, without Forge or a local model doing the coding.
+
+1. WebUI → *Sistema* → **Accessi AI** → *Nuovo token*: name it ("Claude Code PC"), pick *Solo lettura* or
+   *Lettura e scrittura*, an expiry and, if you want, only some tools. The token is shown **once**.
+2. Paste the ready line it shows, e.g. for Claude Code:
+   `claude mcp add --transport http hestia http://localhost:19015/mcp --header "Authorization: Bearer hst_…"`
+   (other clients: the JSON block on the same card).
+3. Ask your AI: "elenca i task di sviluppo di Hestia", "guarda il task a1b2c3 e il suo dossier".
+
+What it can do: `forge_tasks`, `forge_task`, `forge_task_diff`, `forge_dossier`, `forge_status`, `system_status`,
+`system_log`, `settings_search`, `settings_get`; with write access also `forge_develop` (a proposal),
+`forge_task_note`, `forge_submit_branch` ("fixed on this branch": Forge fetches it, runs its tests and asks you as
+usual) and `settings_propose` (you confirm). Approving, merging and rolling back stay yours. Every call is logged and
+writes show up silently in Notifiche; revoke or renew a token in one tap.
+
+From outside home the address is the tunnel's: the quick tunnel of `cloudflare-tunnel.bat` changes URL at every
+start, so a connector needs a **named** Cloudflare tunnel with your own hostname (keep the hostname in `.env`, not
+in the repo). claude.ai web/mobile and ChatGPT connectors need OAuth, which comes next
+(`docs/work/2026-10-18-moduli-core-e-mcp-esterno`, phase P5).
 
 ## 🗂️ Project structure
 

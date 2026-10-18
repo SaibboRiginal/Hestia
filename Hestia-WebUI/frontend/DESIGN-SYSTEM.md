@@ -156,4 +156,10 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   fit or scroll inside. On phone every widget is one column and one row tall (min 150 px, grows with content).
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
+- Sidebar (`layout/shell.component.ts`): fixed top (logo, Crea con Hestia) and bottom (Impostazioni, Esci, state),
+  **one scroll area** in between with sections *Fissati · Generale · Dashboard · Moduli · Sistema* (core modules =
+  manifest `kind: "core"`). Section headers collapse (`webui.sidebar.collapsed`); the pin on hover moves an entry to
+  *Fissati* (`webui.sidebar.pinned`, ids `app.<path>` · `dash.<id>` · `<module>.<page>`), drag to reorder there. The
+  list is computed, so a pinned entry leaves its section (never shown twice); a pinned parent brings its sub-pages.
+  A page with `badge: {source, field}` shows that number (read through the plugin call proxy with the catalog poll).
 

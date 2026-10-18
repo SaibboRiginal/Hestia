@@ -113,7 +113,7 @@ try:
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_status", "params": kw},
             title="\U0001f5a5️ Stato sistema", method="GET", path="/api/argus/status",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 "Sii ESTREMAMENTE conciso. "
                 "Una riga introduttiva con il conteggio (es. '9/9 servizi online'). "
@@ -136,7 +136,7 @@ try:
             },
             handler=lambda **kw: {"status": "ok", "tool": "system_log", "params": kw},
             title="\U0001f4cb Log di sistema", method="GET", path="/api/argus/logs",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 "Sii ESTREMAMENTE conciso. "
                 "Se non ci sono eventi: una sola frase '✅ Nessun warning recente.' "

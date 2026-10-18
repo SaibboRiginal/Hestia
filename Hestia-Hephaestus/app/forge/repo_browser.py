@@ -255,6 +255,27 @@ class RepoBrowser:
         rows.sort(key=lambda d: d["name"], reverse=True)
         return {"ref": r, "dossiers": rows}
 
+    DOSSIER_FILES = ("SPEC.md", "PROGRESS.md", "CHANGELOG.md")
+
+    def dossier(self, name: str, ref: str | None = None, max_chars: int = 40000) -> dict[str, Any]:
+        """SPEC, PROGRESS and CHANGELOG of one task dossier (docs/work/<name>/), for an external AI or a page."""
+        clean = re.sub(r"[^A-Za-z0-9._-]", "", str(name or ""))
+        if not clean or clean.startswith("."):
+            raise RepoError("dossier name required (a folder of docs/work)")
+        r = _ref(ref)
+        files: dict[str, Any] = {}
+        for fname in self.DOSSIER_FILES:
+            try:
+                text = git_ops.git(self.repo, "show", f"{r}:docs/work/{clean}/{fname}", timeout=20)
+            except git_ops.GitError:
+                continue
+            body, cut = _clip(text, max_chars)
+            files[fname] = {"text": body, "truncated": cut}
+        if not files:
+            raise RepoError(f"dossier '{clean}' not found on {r}", 404)
+        return {"ref": r, "name": clean, "path": f"docs/work/{clean}",
+                **spec_header((files.get("SPEC.md") or {}).get("text", "")), "files": files}
+
 
 def spec_header(spec: str) -> dict[str, Any]:
     """Title + Version/Source/Status from a SPEC.md header table."""
