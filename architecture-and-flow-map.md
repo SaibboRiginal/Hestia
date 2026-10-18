@@ -26,7 +26,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
 | Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
-| MCP | Core Gateway | No tool-ownership (aggregates) | No | MCP tool registry — aggregates tools from all services and third-party servers |
+| MCP | Core Gateway | No tool-ownership (aggregates) | No | Hestia's one MCP server: every client (Oracle, Telegram, WebUI, external AIs with an access) lists and runs tools here; owns external accesses |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |
 | Shared | Shared Library | No | No | Common runtime/logging/startup helpers for services |
 
@@ -135,6 +135,16 @@ flowchart LR
    - `claude` → Claude Code CLI inside Hephaestus.
 4. Forge commits, runs the touched services' tests, notifies the user via Hub → Hermes → Telegram.
 5. "approva sviluppo <id>" → merge (+ optional deploy, health check via Hub, auto rollback).
+
+### Tool flow (one MCP for every client)
+1. Each module declares its tools (`/mcp` or inline commands); Hub's discovery is read only by Hestia-MCP.
+2. Oracle, Telegram and the WebUI call Hestia-MCP `/mcp` through Hub (`tools/list`, `tools/call`); Hestia-MCP builds
+   the request with `hestia_common.tool_call` and routes it through Hub to the module.
+3. External AI (Claude Code, Cursor…): WebUI `POST /mcp` with `Authorization: Bearer <token>` → Hub → Hestia-MCP
+   `/mcp/external` → access check (Archive `mcp-access-store`, hashed token), scope, rate limit → only tools marked
+   `"external"` → module with `X-Hestia-Access`; writes leave a silent Hermes inbox entry.
+4. A fix made by an external AI: `forge_submit_branch` → Forge fetches the branch, tests it, asks the owner; merge
+   and deploy only after the owner's approval.
 
 ### Assistant agenda flow (rules as data)
 1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.
