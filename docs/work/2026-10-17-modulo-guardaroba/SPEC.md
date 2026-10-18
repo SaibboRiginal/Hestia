@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.9 |
+| **Version** | 1.10 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
-| **Status** | Draft — waiting for user approval. UI part (§7) follows the plugin contract `docs/work/2026-10-17-client-plugins/SPEC.md` (v2.6, approved; phase 1 on main: `hestia_common.plugin_client`, Hub catalog, `Hestia-Shared/webui-sdk` with kit `hxk-*`) |
+| **Status** | Approved by the user 2026-10-18 · W1–W5 implemented on main 2026-10-18 (real run pending) · W6–W7 later. UI follows the plugin contract `docs/work/2026-10-17-client-plugins/SPEC.md` (v2.6) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -60,6 +60,12 @@ suggest outfits for an occasion, a season, the weather or a trip.
 - Multi-user wardrobes (single owner, like the rest of Hestia).
 
 ## 4. Data model (Archive tables, storage router `/api/wardrobe-store`)
+
+> **v1.10 — as built:** one generic table `wardrobe_records (kind, id, parent_id, ref_id, at, data JSONB, updated_at,
+> deleted, seq)` with last-write-wins and a cursor (the Hercules store pattern), plus an in-memory mirror in the module
+> for search, stats and suggestions; kinds piece, outfit, wear, taxonomy, collection, reminder, photo. No embeddings:
+> text search over the mirror (name, brand, colours, materials, category, tags). The field list below still describes
+> what each kind holds.
 
 Tables `wardrobe_pieces`, `wardrobe_outfits`, `wardrobe_outfit_pieces` (outfit_id, piece_id, slot, order),
 `wardrobe_wears`, `wardrobe_wear_pieces` (wear_id, piece_id), `wardrobe_taxonomies`, `wardrobe_collections`.
@@ -218,14 +224,14 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
 | `wardrobe.photo.max_mb` | 10 | live |
 | `wardrobe.currency` | EUR | live |
 | `wardrobe.review.enabled` | false | live — monthly review notification |
-| `wardrobe.tracking.goal` | off | live — `{times, per}` goal for "Indossato" marks (§4.3) |
+| `wardrobe.tracking.goal_times` | 0 | live — goal for "Indossato" marks, 0 = none (§4.3) |
+| `wardrobe.tracking.goal_per` | week | live — day / week / month |
 | `wardrobe.reminder.enabled` | false | live — mark reminder, only meaningful with a goal |
-| `wardrobe.reminder.time` | 08:30 | live — when the reminder may arrive |
 | `wardrobe.reminder.max_per_week` | 2 | live |
-| `wardrobe.log.level` | INFO | live |
+| `wardrobe.ai.profile` | cloud | live — Oracle profile that describes photos |
 
 ### 6.4 Agenda + Hermes
-- Job `wardrobe.reminder` (daily check at `wardrobe.reminder.time`, agenda): sends **only** when the goal is
+- Job `wardrobe.reminder` (daily check at 08:30, time edited on the agenda item): sends **only** when the goal is
   behind for the period, nothing was marked today, the assistant presence allows notifications (not dnd /
   sleep), and the weekly cap is not reached. One live notification at a time through Hermes' repeat chain
   (event payload `replaces: "wardrobe.reminder"`, see `Hestia-Hermes/hestia-hermes.md` "One live reminder per

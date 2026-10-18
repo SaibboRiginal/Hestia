@@ -83,6 +83,12 @@ tags:
     description: Self care — products, routines with goals (no fixed schedule), planner with active conflicts, history, stats
   - name: Archive — Self care store
     description: Generic (kind,id) records with last-write-wins and a cursor (only Hygieia calls it)
+  - name: Wardrobe
+    description: Wardrobe — pieces, accessories, outfits, «Cosa mi metto», «Indossato», packing lists, stats, photos
+  - name: Archive — Wardrobe store
+    description: Same (kind,id) last-write-wins records as the Hercules store, for Wardrobe only
+  - name: Archive — Blobs
+    description: Generic byte storage for module files (photos), deduplicated per module by sha256
   - name: Archive — Settings store
     description: Generic storage of setting values, light history and proposals (only Themis calls it)
   - name: Meta
@@ -6346,6 +6352,473 @@ paths:
       summary: "Agenda job: nudge through Hermes only when a goal is behind (off by default)"
       servers:
         - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/meta:
+    get:
+      tags: [Wardrobe]
+      summary: "Labels (kinds, seasons, statuses, slots…), vocabularies, today, season, currency, goal progress"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/vocabularies:
+    get:
+      tags: [Wardrobe]
+      summary: "The user's vocabularies: category, style, occasion, pattern, fit, location, color"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/vocabularies/{name}:
+    put:
+      tags: [Wardrobe]
+      summary: "Replace one vocabulary {values[{key,label,hidden,order,…}]}; keys used by pieces cannot be removed (422)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/pieces:
+    get:
+      tags: [Wardrobe]
+      summary: "Pieces with filters kind (comma list), category, status, season, style, occasion, color, q, favorite, not_worn_days, sort recent|name|worn|least_worn|last_worn"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Wardrobe]
+      summary: "Create a piece (only name and category required); optional photo {name, mime, data_b64} becomes the cover"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/pieces/bulk:
+    post:
+      tags: [Wardrobe]
+      summary: "{ids, changes{status|location|favorite|condition}} on many pieces"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/pieces/{id}:
+    get:
+      tags: [Wardrobe]
+      summary: "Piece with usage (wear_count, last_worn, cost_per_wear), outfits and marks"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    patch:
+      tags: [Wardrobe]
+      summary: "Partial update"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Wardrobe]
+      summary: "Archive (default) or delete with hard=true (photos too)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/pieces/{id}/photos:
+    post:
+      tags: [Wardrobe]
+      summary: "Add a photo {photo{name,mime,data_b64}, cover}: fixed orientation, metadata dropped, 3 sizes in Archive blobs"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/pieces/{id}/photos/{photo_id}:
+    delete:
+      tags: [Wardrobe]
+      summary: "Remove a photo (blobs deleted when unused)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/pieces/{id}/photos/{photo_id}/cover:
+    post:
+      tags: [Wardrobe]
+      summary: "Make it the main photo"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/files/{photo_id}:
+    get:
+      tags: [Wardrobe]
+      summary: "Image {mime, data_b64}; size thumb|medium|original (plugin contract)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/outfits:
+    get:
+      tags: [Wardrobe]
+      summary: "Outfits with filters q, season, occasion, style, favorite; sort recent|name|worn|least_recent|rating|favorites"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Wardrobe]
+      summary: "Create {name?, slots[{slot,piece_id}] or piece_ids, occasions, styles, seasons, favorite}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/outfits/{id}:
+    get:
+      tags: [Wardrobe]
+      summary: "Outfit with pieces by slot, availability, last worn, marks"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    patch:
+      tags: [Wardrobe]
+      summary: "Partial update"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Wardrobe]
+      summary: "Archive (default) or delete with hard=true"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/outfits/{id}/photos:
+    post:
+      tags: [Wardrobe]
+      summary: "Add a worn photo"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/outfits/{id}/photos/{photo_id}:
+    delete:
+      tags: [Wardrobe]
+      summary: "Remove a worn photo"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/outfits/{id}/worn:
+    post:
+      tags: [Wardrobe]
+      summary: "Mark worn {date?, note?} (once per outfit per day; already=true when repeated)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/outfits/{id}/worn/today:
+    delete:
+      tags: [Wardrobe]
+      summary: "Undo the mark of today (or ?date=)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/wears:
+    get:
+      tags: [Wardrobe]
+      summary: "«Indossato» marks (date_from, date_to, limit)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Wardrobe]
+      summary: "Mark {outfit_id | piece_ids, date?, note?}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/wears/{id}:
+    delete:
+      tags: [Wardrobe]
+      summary: "Remove a mark"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/suggest:
+    post:
+      tags: [Wardrobe]
+      summary: "«Cosa mi metto» {occasion, temp_c, rain, date, styles, count} → items[{outfit_id?, name, pieces, score, reasons}]"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/suggest/save:
+    post:
+      tags: [Wardrobe]
+      summary: "Save a suggestion {slots, name} as an outfit"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/stats:
+    get:
+      tags: [Wardrobe]
+      summary: "Composition, value, forgotten, gaps; usage hints (most worn, cost per wear, per month)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/summary:
+    get:
+      tags: [Wardrobe]
+      summary: "One-line summary + totals, laundry, forgotten, gaps, goal, favourite outfits"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/collections:
+    get:
+      tags: [Wardrobe]
+      summary: "Capsules, packing and shopping lists"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Wardrobe]
+      summary: "Create {name, type capsule|packing|shopping|custom, piece_ids, outfit_ids, items}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/collections/packing:
+    post:
+      tags: [Wardrobe]
+      summary: "Proposed packing list {name?, from, to, place, occasion, temp_c, rain}: one outfit per day"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/collections/{id}:
+    get:
+      tags: [Wardrobe]
+      summary: "One list with progress"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    patch:
+      tags: [Wardrobe]
+      summary: "Partial update"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Wardrobe]
+      summary: "Delete the list"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/collections/{id}/check:
+    post:
+      tags: [Wardrobe]
+      summary: "Tick/untick {item_id, checked?}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/describe-photo:
+    post:
+      tags: [Wardrobe]
+      summary: "Photo → proposed piece fields through Oracle (never saves); ok=false when the AI is away"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/export:
+    get:
+      tags: [Wardrobe]
+      summary: "Everything as JSON {filename, mime, text}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/import:
+    post:
+      tags: [Wardrobe]
+      summary: "Merge an export {text} (same ids replaced)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/quick/outfits:
+    get:
+      tags: [Wardrobe]
+      summary: "Home chips: favourite outfits + today's idea (state todo|done, goal hint)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/quick/{id}:
+    post:
+      tags: [Wardrobe]
+      summary: "One-tap «Indossato» for a chip {date?, note?}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Wardrobe]
+      summary: "Undo for a chip (?date=)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/reminder/check:
+    post:
+      tags: [Wardrobe]
+      summary: "Agenda job: Hermes reminder only with a goal that is behind (off by default)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/reminder/skip:
+    post:
+      tags: [Wardrobe]
+      summary: "No-op answer for «Salta» / «Tieni» buttons"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/review/run:
+    post:
+      tags: [Wardrobe]
+      summary: "Agenda job: monthly review through Hermes (off by default)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/module/context:
+    get:
+      tags: [Wardrobe]
+      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules: same contract)"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe-store/records:
+    put:
+      tags: [Archive — Wardrobe store]
+      summary: "Upsert rows (LWW; newer stored rows come back in stale)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Archive — Wardrobe store]
+      summary: "Rows by kind/parent_id/ref_id/ids/at range/since_seq"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe-store/cursor:
+    get:
+      tags: [Archive — Wardrobe store]
+      summary: "Current sync cursor"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/blobs:
+    post:
+      tags: [Archive — Blobs]
+      summary: "Store bytes {owner_module, content_type, data_base64, meta} → {blob_id, size, sha256, deduped}; 413 over 15 MB"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Archive — Blobs]
+      summary: "Blob metadata of ?owner_module="
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/blobs/{blob_id}/meta:
+    get:
+      tags: [Archive — Blobs]
+      summary: "Metadata"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/blobs/{blob_id}/base64:
+    get:
+      tags: [Archive — Blobs]
+      summary: "{blob_id, mime, data_b64}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/blobs/{blob_id}:
+    get:
+      tags: [Archive — Blobs]
+      summary: "Raw bytes"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Archive — Blobs]
+      summary: "Delete"
+      servers:
+        - url: http://localhost:19002
       responses:
         "200": {description: OK}
 

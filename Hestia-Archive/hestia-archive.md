@@ -28,6 +28,10 @@ It stores and serves all persistent state through generic APIs.
   updated_at, deleted, seq). Last-write-wins writes, tombstones, `seq` cursor for sync. Pure storage for Hercules.
 - **Self care store** (`/api/selfcare-store/*`): table `selfcare_records`, same columns and protocol as the Hercules
   store. Pure storage for Hygieia.
+- **Wardrobe store** (`/api/wardrobe-store/*`): table `wardrobe_records`, same shape and rules as the Hercules store.
+  Pure storage for Wardrobe.
+- **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
+  deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos first).
 - **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
   `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
@@ -55,6 +59,12 @@ It stores and serves all persistent state through generic APIs.
 | `PUT` | `/api/selfcare-store/records` | Upsert rows (LWW; newer stored rows returned in `stale`) (Hygieia only) |
 | `GET` | `/api/selfcare-store/records` | Rows by kind/parent/ref/ids/at range/`since_seq` |
 | `GET` | `/api/selfcare-store/cursor` | Current cursor |
+| `PUT`/`GET` | `/api/wardrobe-store/records` | Wardrobe rows (same contract as hercules-store) (Wardrobe only) |
+| `GET` | `/api/wardrobe-store/cursor` | Current sync cursor |
+| `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
+| `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
+| `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
+| `DELETE` | `/api/blobs/{id}` | Delete a blob |
 | `GET` | `/api/presence-store` | Presence signals (expired purged) + snapshot (Chronos only) |
 | `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
 | `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |

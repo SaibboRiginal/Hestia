@@ -250,6 +250,12 @@ Real-estate domain module.
 - Exposes generic module tools for Oracle retrieval.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered Scout data hygiene.
 
+### Hestia-Wardrobe 👕
+Wardrobe domain module (port 19017): pieces, accessories, outfits, deterministic «Cosa mi metto» with reasons,
+status (laundry, lent…), occasional «Indossato» marks with an optional goal, packing lists, stats. Rows in Archive
+`wardrobe-store`, photo bytes in Archive `blobs`; photo recognition only through Oracle; reminders through the agenda
+and Hermes (off by default). Details: `Hestia-Wardrobe/hestia-wardrobe.md`.
+
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
 - Trigger source: Argus/Oracle/explicit user command.
@@ -337,6 +343,12 @@ No code-only behavior changes are considered complete without synchronized docs.
    client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action). Clients load what they support
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
+5. **Module context**: a domain module that can enrich the assistant's context exposes
+   `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
+   budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth
+   saying; Oracle decides when to include it.
+6. **Module files**: bytes (photos, attachments) go to Archive `/api/blobs` (`owner_module`, deduplicated by sha256);
+   the module keeps the blob ids in its own rows and serves images to clients as `{mime, data_b64}`.
 
 ## Governance Automation (Mandatory)
 

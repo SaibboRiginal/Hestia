@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Index, UniqueConstraint, Sequence
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Boolean, Float, Index, UniqueConstraint, Sequence, LargeBinary
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
@@ -452,3 +452,45 @@ class SelfcareRecord(Base):
 
     __table_args__ = (Index("ix_selfcare_kind_at", "kind", "at"),
                       Index("ix_selfcare_kind_ref", "kind", "ref_id"))
+
+
+# ── Wardrobe storage — owner of the semantics: Hestia-Wardrobe ───────────────
+
+WARDROBE_SEQ = Sequence("wardrobe_records_seq", metadata=Base.metadata)
+
+
+class WardrobeRecord(Base):
+    """One row of the wardrobe (piece, outfit, wear, taxonomy, collection…), same shape as the Hercules store:
+    ``updated_at`` = writer's clock for last-write-wins, ``seq`` = change cursor, deletes are tombstones."""
+    __tablename__ = "wardrobe_records"
+
+    kind = Column(String, primary_key=True)
+    id = Column(String, primary_key=True)
+    parent_id = Column(String, nullable=True, index=True)   # wear → outfit
+    ref_id = Column(String, nullable=True, index=True)
+    at = Column(DateTime(timezone=True), nullable=True)     # wear date, purchase date…
+    data = Column(JSONB, nullable=False, default=dict)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+    deleted = Column(Boolean, nullable=False, default=False)
+    seq = Column(BigInteger, WARDROBE_SEQ, nullable=False, index=True)
+
+    __table_args__ = (Index("ix_wardrobe_kind_at", "kind", "at"),)
+
+
+# ── Blob store — generic binary files (photos) for any module ───────────────
+
+class BlobRecord(Base):
+    """A binary file (photo, thumbnail) owned by a module. Pure storage: the meaning of ``meta`` and which
+    blobs belong together is the owner's business. Deduped per module by sha256."""
+    __tablename__ = "blobs"
+
+    blob_id = Column(String, primary_key=True)
+    owner_module = Column(String, nullable=False, index=True)
+    content_type = Column(String, nullable=False)
+    size = Column(Integer, nullable=False)
+    sha256 = Column(String, nullable=False, index=True)
+    data = Column(LargeBinary, nullable=False)
+    meta = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("owner_module", "sha256", name="uq_blobs_owner_sha"),)
