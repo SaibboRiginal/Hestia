@@ -544,8 +544,8 @@ services:
       - SERVICE_NAME=hygieia
       - SERVICE_BASE_URL=http://hestia_hygieia:19018
       - SERVICE_VERSION=1.0.0
-      - SERVICE_TYPE=domain
-      - SERVICE_TAGS=domain,selfcare,context
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,selfcare,context
       - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:selfcare,status:alpha
       - TZ=${TZ:-Europe/Rome}                                # Local day for routine goals, reminders
       - LOG_HEALTH_ACCESS_MODE=off

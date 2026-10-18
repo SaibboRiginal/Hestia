@@ -41,8 +41,8 @@ logger, log_buffer = setup_service_logging("hestia_hygieia")
 SERVICE_NAME = os.getenv("SERVICE_NAME", "hygieia")
 SERVICE_BASE_URL = os.getenv("SERVICE_BASE_URL", "http://hestia_hygieia:19018")
 SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
-SERVICE_TYPE = os.getenv("SERVICE_TYPE", "domain")
-SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "domain,selfcare,context").split(",") if t.strip()]
+SERVICE_TYPE = os.getenv("SERVICE_TYPE", "module")
+SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "module,selfcare,context").split(",") if t.strip()]
 SERVICE_TOPOLOGY_TAGS = [t.strip().lower() for t in os.getenv(
     "SERVICE_TOPOLOGY_TAGS", "layer:domain,domain:selfcare,status:alpha").split(",") if t.strip()]
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
