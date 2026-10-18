@@ -21,7 +21,7 @@
 
 - [x] Chronos: per-occurrence move (overrides), range query start/end, include_done
 - [x] Verified with `ng build` + Playwright screenshots (mocked API): week/month/list/details/editor/chat/settings, light/dark, mobile
-- [ ] .NET backend not compiled here (no dotnet in the sandbox): build locally
+- [x] .NET backend builds (verified 2026-10-18, 0 warnings, 0 errors)
 
 ## 3. Telegram / packets
 - [x] Root cause of double reply (status edited with the answer + answer re-sent) and "Non risulta eseguita…" (no-action contract always injected in quick answers)
@@ -31,5 +31,5 @@
 - [x] WebUI notice rendering (`.hx-notice`, toasts) + Settings → Messaggi di sistema
 - [x] Selective memory policy (gate + Claude-like extractor prompt)
 - [x] Checks: py_compile + ruff (no new findings), `ng build` clean. Tests NOT run (user: no tests without permission)
-- [ ] .NET `OracleEvent` notice fields not compiled here: build locally
+- [x] .NET `OracleEvent` notice fields build (verified 2026-10-18)
 - [ ] Next ideas: per-chat memory review command (`/memoria` list/forget), notice action buttons (e.g. "Annulla" on memory.saved)

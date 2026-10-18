@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from datetime import datetime, timedelta
 from typing import Any
@@ -195,8 +194,7 @@ class MemoryConsolidator:
         try:
             resp = requests.post(
                 f"{self._oracle_route}/api/llm/generate",
-                json={"prompt": prompt, "model": os.getenv("ATHENA_STRATEGIST_MODEL", ""),
-                      "provider": os.getenv("ATHENA_STRATEGIST_PROVIDER", "")},
+                json={"prompt": prompt, "use_case": "athena_strategist"},  # oracle.models.athena_strategist.*
                 timeout=get_int(S.MEMORY_ORACLE_TIMEOUT),
             )
             if resp.status_code == 200:

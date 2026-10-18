@@ -27,6 +27,7 @@ ACTORS_ASSISTANT = {"oracle", "athena"}
 HISTORY_KEEP = 10
 PROPOSAL_TTL_HOURS = 24
 PROFILE_ID = "owner"
+SELF_OWNER = "themis"                                     # Themis' own settings (personal ones): nothing to reload
 
 
 class ThemisError(Exception):
@@ -89,18 +90,31 @@ class Themis:
         return {r["key"]: r.get("value") for r in self._stored(prefix=f"{owner}.", scope="system")}
 
     # ── registration ────────────────────────────────────────────────────────
+    def shared_values(self, owner: str) -> dict[str, Any]:
+        """Other owners' settings that ``owner`` follows (the personal ones…): stored value or default."""
+        out: dict[str, Any] = {}
+        for key in self.registry.follows(owner):
+            d = self.registry.definition(key)
+            if not d:
+                continue
+            rows = self._stored(key=key, scope="system")
+            out[key] = rows[0].get("value") if rows else d.get("default")
+        return out
+
+    # ── registration ────────────────────────────────────────────────────────
     def register(self, owner: str, definitions: list[dict], presets: list[dict] | None,
-                 effective: dict | None) -> dict:
+                 effective: dict | None, follows: list | None = None) -> dict:
         if not owner or not isinstance(definitions, list):
             raise ThemisError("owner e definitions obbligatori")
-        if self.registry.register(owner, definitions, presets, effective):
+        if self.registry.register(owner, definitions, presets, effective, follows):
             self._bump(f"schema:{owner}")
         try:
             values = self.system_values(owner)
+            shared = self.shared_values(owner)
         except Exception as exc:
             logger.warning("[🔄] event=themis_archive_unreachable owner=%s error=%s", owner, exc)
             raise ThemisError("archivio non raggiungibile", 503)
-        return {"owner": owner, "values": values, "revision": self.revision}
+        return {"owner": owner, "values": values, "shared": shared, "revision": self.revision}
 
     # ── module state ────────────────────────────────────────────────────────
     def _effective(self, owner: str) -> dict | None:
@@ -119,16 +133,22 @@ class Themis:
         with ThreadPoolExecutor(max_workers=min(8, len(owners))) as pool:
             return dict(zip(owners, pool.map(self._effective, owners)))
 
-    def _notify_reload(self, owner: str) -> None:
-        """Push the owner's stored system values; it applies live ones at once."""
-        def _run():
+    def _notify_reload(self, owner: str, key: str = "") -> None:
+        """Push the owner's stored system values (and the ones it follows); it applies live ones at once.
+        A change of ``key`` also reaches every module that follows it (personal settings)."""
+        targets = [o for o in dict.fromkeys([owner, *(self.registry.followers(key) if key else [])])
+                   if o != SELF_OWNER]
+
+        def _run(target: str):
             try:
-                self.hub.call(owner, "POST", "api/settings/reload",
-                              body={"values": self.system_values(owner)}, timeout=5)
+                self.hub.call(target, "POST", "api/settings/reload",
+                              body={"values": self.system_values(target), "shared": self.shared_values(target)},
+                              timeout=5)
             except Exception as exc:
                 logger.warning("[🔄] event=themis_reload_failed owner=%s error=%s "
-                               "fallback=module_reregisters", owner, exc)
-        threading.Thread(target=_run, daemon=True, name=f"themis-reload-{owner}").start()
+                               "fallback=module_reregisters", target, exc)
+        for target in targets:
+            threading.Thread(target=_run, args=(target,), daemon=True, name=f"themis-reload-{target}").start()
 
     # ── listing ─────────────────────────────────────────────────────────────
     def _user_layers(self, keys: set[str], client: str, session: str) -> dict[str, dict[str, Any]]:
@@ -261,7 +281,7 @@ class Themis:
             "reason": reason or None, "history_keep": HISTORY_KEEP})
         logger.info("event=themis_setting_set key=%s scope=%s actor=%s", key, scope, actor)
         if scope == "system":
-            self._notify_reload(d["module"])
+            self._notify_reload(d["module"], key)
         self._bump(f"set:{key}")
         return {"key": key, "scope": scope, "scope_id": scope_id, "value": value, "revision": self.revision}
 
@@ -274,7 +294,7 @@ class Themis:
         self.hub.ok("archive", "DELETE", "api/settings-store/values", query={
             "key": key, "scope": scope, "scope_id": scope_id, "actor": actor, "history_keep": HISTORY_KEEP})
         if scope == "system":
-            self._notify_reload(d["module"])
+            self._notify_reload(d["module"], key)
         self._bump(f"reset:{key}")
         return {"key": key, "scope": scope, "value": d.get("default"), "revision": self.revision}
 
@@ -445,7 +465,7 @@ class Themis:
             "reason": f"proposta approvata ({by}): {proposal.get('reason') or ''}"[:500],
             "history_keep": HISTORY_KEEP})
         if (proposal.get("scope") or "system") == "system" and d.get("module"):
-            self._notify_reload(d["module"])
+            self._notify_reload(d["module"], proposal["key"])
         self._bump(f"approved:{proposal['key']}")
         self._emit("settings.changed", f"settings.changed:{proposal['proposal_id']}",
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),

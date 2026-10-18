@@ -618,8 +618,9 @@ class TestAthenaHints:
         result = engine.list_athena_hints(limit=10)
         assert len(result) >= 1
 
-    def test_athena_hints_disabled_when_env_false(self, engine):
-        engine._athena_hints_enabled = False
+    def test_athena_hints_disabled_when_setting_false(self, engine, monkeypatch):
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.HINTS_ENABLED, False)
         result = engine.ingest_athena_hint({"summary": "Should not store"})
         assert result["status"] == "disabled"
         assert result["stored"] is False
@@ -652,7 +653,6 @@ class TestAthenaHints:
 class TestActionApproval:
     def test_approval_queue_and_resolve(self, engine):
         """Queue an approval token, then resolve it with approve=True."""
-        engine._approval_enabled = True
         token = engine._queue_high_impact_approval(
             matched={"command": "delete_event", "method": "DELETE", "path": "/api/events/123",
                      "service": "chronos", "title": "Elimina evento"},
@@ -675,7 +675,6 @@ class TestActionApproval:
 
     def test_approval_reject(self, engine):
         """Rejecting an approval should cancel the action."""
-        engine._approval_enabled = True
         token = engine._queue_high_impact_approval(
             matched={"command": "delete_event", "method": "DELETE", "path": "/api/events/123",
                      "service": "chronos", "title": "Elimina evento"},
@@ -699,10 +698,11 @@ class TestActionApproval:
         )
         assert result["status"] == "not_found"
 
-    def test_approval_expired_cleaned_up(self, engine):
+    def test_approval_expired_cleaned_up(self, engine, monkeypatch):
         """Expired approvals should be cleaned up."""
-        engine._approval_enabled = True
-        engine._approval_ttl_seconds = 0
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.APPROVAL_ENABLED, True)
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.APPROVAL_TTL, 0)
         token = engine._queue_high_impact_approval(
             matched={"command": "test", "method": "POST", "path": "/api/test",
                      "service": "test", "title": "Test"},
@@ -1050,7 +1050,8 @@ class TestTemporalContextEnriched:
         assert "tomorrow_date=" in ctx
 
     def test_calendar_disabled_respected(self, engine, monkeypatch):
-        monkeypatch.setenv("ORACLE_TEMPORAL_CALENDAR_ENABLED", "0")
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.TODAY_AGENDA, False)
         ctx = engine._current_datetime_context()
         assert "TODAY_AGENDA" not in ctx
 

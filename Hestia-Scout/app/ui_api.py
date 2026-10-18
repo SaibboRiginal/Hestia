@@ -48,7 +48,8 @@ NEW_DAYS = 7
 # ── plugin manifest ────────────────────────────────────────────────────────
 def _dist_dir() -> Path:
     here = Path(__file__).resolve().parent
-    for candidate in (here / "ui" / "dist", here.parent / "ui" / "dist"):   # Docker: /code/ui/dist · repo: Hestia-Scout/ui/dist
+    env = os.getenv("SCOUT_UI_DIST", "")                                     # Docker: /ui/dist (baked in the image)
+    for candidate in ((Path(env),) if env else ()) + (here / "ui" / "dist", here.parent / "ui" / "dist"):   # repo: Hestia-Scout/ui/dist
         if candidate.is_dir():
             return candidate
     return here / "ui" / "dist"
@@ -80,9 +81,9 @@ plugin.webui(
     ],
     quick_actions=[
         quick_action("controlla", "Controlla email annunci", "POST", "/api/ui/cycle", icon="refresh",
-                     group="Case", order=50),
+                     group="Case", order=21),
         quick_action("preferita", "Preferita", "POST", "/api/ui/listings/{id}/favorite", icon="star",
-                     group="Nuove case", source="/api/ui/quick/new", order=40,
+                     group="Nuove case", source="/api/ui/quick/new", order=20,
                      undo={"method": "DELETE", "path": "/api/ui/listings/{id}/favorite"}),
     ],
 )

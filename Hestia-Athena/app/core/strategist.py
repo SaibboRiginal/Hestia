@@ -12,7 +12,6 @@ Design goals for local/resource-constrained execution:
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 from uuid import uuid4
 
@@ -25,7 +24,7 @@ from .schemas import ActionCandidate, ObservationSnapshot, RelevanceSignals
 logger = logging.getLogger("hestia_athena.strategist")
 
 # Enabled / timeout / max candidates: central settings athena.strategist.* (read at use time).
-# ATHENA_STRATEGIST_MODEL/PROVIDER stay env (model choice belongs to Oracle; see hestia-athena.md).
+# Model choice belongs to Oracle: use case ``athena_strategist`` (oracle.models.athena_strategist.*).
 
 
 def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
@@ -254,8 +253,7 @@ class Strategist:
         timeout = get_float(S.STRATEGIST_TIMEOUT)
         body = {
             "prompt": prompt,
-            "model": os.getenv("ATHENA_STRATEGIST_MODEL", ""),
-            "provider": os.getenv("ATHENA_STRATEGIST_PROVIDER", ""),
+            "use_case": "athena_strategist",   # Oracle settings oracle.models.athena_strategist.*
         }
         envelope = {
             "method": "POST",

@@ -53,18 +53,29 @@ class Registry:
 
     # ── registration ────────────────────────────────────────────────────────
     def register(self, owner: str, definitions: list[dict], presets: list[dict] | None = None,
-                 effective: dict | None = None) -> bool:
-        """Replace ``owner``'s schema. Returns True when the schema changed."""
+                 effective: dict | None = None, follows: list | None = None) -> bool:
+        """Replace ``owner``'s schema and the other owners' keys it follows (personal settings).
+        Returns True when the schema changed."""
         defs = [dict(d, module=owner) for d in definitions or []
                 if isinstance(d, dict) and str(d.get("key", "")).startswith(f"{owner}.")]
-        entry = {"definitions": defs, "presets": [p for p in presets or [] if isinstance(p, dict)]}
+        entry = {"definitions": defs, "presets": [p for p in presets or [] if isinstance(p, dict)],
+                 "follows": sorted({str(k) for k in follows or [] if str(k) and not str(k).startswith(f"{owner}.")})}
         with self._lock:
             old = self._modules.get(owner) or {}
             changed = (old.get("definitions"), old.get("presets")) != (entry["definitions"], entry["presets"])
             self._modules[owner] = {**entry, "registered_at": time.time(), "effective": dict(effective or {})}
-            if changed:
+            if changed or old.get("follows") != entry["follows"]:
                 self._save_cache()
         return changed
+
+    def follows(self, owner: str) -> list[str]:
+        with self._lock:
+            return list((self._modules.get(owner) or {}).get("follows") or [])
+
+    def followers(self, key: str) -> list[str]:
+        """Modules that follow ``key`` (they get a reload when it changes)."""
+        with self._lock:
+            return sorted(o for o, e in self._modules.items() if key in (e.get("follows") or []))
 
     def set_effective(self, owner: str, effective: dict) -> None:
         with self._lock:

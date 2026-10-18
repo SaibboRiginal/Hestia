@@ -250,6 +250,17 @@ Real-estate domain module.
 - Exposes generic module tools for Oracle retrieval.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered Scout data hygiene.
 
+### Hestia-Hercules 🏋️
+Gym coach module (port 19019): exercises, templates and weekly program, live sessions that work offline, records and
+progress, goals «N volte a settimana», adaptation by conversation with the assistant (`fitness_*` tools). Rows in
+Archive `hercules-store`; reminder through the agenda and Hermes (off by default). Details:
+`Hestia-Hercules/hestia-hercules.md`.
+
+### Hestia-Hygieia 🧴
+Self care module (port 19018): products with their life (stock, expiry, price per use), routines as ordered steps
+with goals, what to do today, diary per body area, stats, shopping list (`selfcare_*` tools). Rows in Archive
+`selfcare-store`; reminders through the agenda and Hermes (off by default). Details: `Hestia-Hygieia/hestia-hygieia.md`.
+
 ### Hestia-Wardrobe 👕
 Wardrobe domain module (port 19017): pieces, accessories, outfits, deterministic «Cosa mi metto» with reasons,
 status (laundry, lent…), occasional «Indossato» marks with an optional goal, packing lists, stats. Rows in Archive
@@ -285,7 +296,10 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    - Errors are logged with `[🔄]` prefix and enough context to diagnose the failure. Silent failure is forbidden.
 8. **Settings are data (Themis):** a tunable knob is declared with `hestia_common.settings_client`, never a new
    env var. Env holds only secrets and infrastructure. The assistant never applies a setting: it proposes, the
-   user confirms through Hermes.
+   user confirms through Hermes. Personal facts every module needs (week start, currency) are the Themis
+   settings `themis.personal.*`, read with `follow_personal()`; no module keeps its own copy. Module reminders
+   use `hestia_common.reminders`: the same `<module>.reminder.enabled` (off) / `.max_per_week` settings, the
+   schedule as an agenda job (Chronos), delivery through Hermes with `replaces` and `_link`.
 9. **Presence is effects, not names:** modules report facts to Chronos (pings, activities, signals) and ask
    effects through `hestia_common.presence_client`; they never test a state name, so new states are data only.
    Chronos down → safe defaults, each module keeps following its own agenda windows.
@@ -335,6 +349,8 @@ No code-only behavior changes are considered complete without synchronized docs.
 ## Capability Discovery Contract (Mandatory)
 
 1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
+   Tool names of domain modules are `<domain>_<verb>` in English (`fitness_log_sets`, `selfcare_today`,
+   `wardrobe_suggest`): the domain the module registers, never the module's mythological name or Italian words.
 2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
@@ -343,6 +359,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action). Clients load what they support
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
+   Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
+   Wardrobe 50s; a new module takes the next free one). Module notifications carry `_link: {module, page}` so a
+   client can open the plugin page.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth

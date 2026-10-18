@@ -37,16 +37,8 @@ from core.services import stream_emitter as _stream_emitter
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-MAX_AGENT_TURNS: int = int(os.getenv("ORACLE_MAX_AGENT_TURNS", "25"))
-MAX_AGENT_TOKENS: int = int(os.getenv("ORACLE_MAX_AGENT_TOKENS", "0"))  # 0 = unlimited
-TOOL_RESULT_MAX_CHARS: int = int(
-    os.getenv("ORACLE_TOOL_RESULT_MAX_CHARS", "2000")
-)
-# Early exit: if the LLM hasn't called a tool in this many consecutive turns
-# and we have already made progress, exit the loop.
-_EARLY_EXIT_NO_TOOL_TURNS: int = int(
-    os.getenv("ORACLE_AGENT_EARLY_EXIT_NO_TOOL_TURNS", "2")
-)
+# Turn cap, token budget, tool-result size, early exit and parallelism are central settings
+# (oracle.agent.*), read at every run (live): see _settings().
 
 # ── Token counting ───────────────────────────────────────────────────────────────
 # Window and compaction threshold are Themis settings (oracle.provider.ollama.num_ctx,
@@ -59,7 +51,6 @@ def _settings():
     return oracle_settings
 
 
-_MAX_PARALLEL_TOOLS: int = int(os.getenv("ORACLE_MAX_PARALLEL_TOOLS", "8"))
 
 # Cached chars-per-token ratio per model name.  Populated lazily via
 # Ollama /api/tokenize on first use; falls back to 3.0 if unreachable.
@@ -260,7 +251,9 @@ def _extract_tool_call(text: str) -> dict | None:
     return None
 
 
-def _truncate_tool_result(result: str, max_chars: int = TOOL_RESULT_MAX_CHARS) -> str:
+def _truncate_tool_result(result: str, max_chars: int | None = None) -> str:
+    if max_chars is None:
+        max_chars = _settings().get_int(_settings().TOOL_RESULT_MAX_CHARS, 1)
     if len(result) <= max_chars:
         return result
     return result[:max_chars] + (f"\n[…result truncated at {max_chars} of {len(result)} chars: "
@@ -288,7 +281,11 @@ def run_agent_loop(
     estimated token count exceeds the compaction threshold.  It should
     return the new compacted history text, or None if no change.
     """
-    resolved_max_turns = max_turns if max_turns is not None else MAX_AGENT_TURNS
+    _cfg = _settings()
+    resolved_max_turns = max_turns if max_turns is not None else _cfg.get_int(_cfg.MAX_TURNS, 1)
+    max_agent_tokens = _cfg.get_int(_cfg.MAX_TOKENS, 0)
+    early_exit_no_tool_turns = _cfg.get_int(_cfg.EARLY_EXIT_NO_TOOL_TURNS, 1)
+    max_parallel_tools = _cfg.get_int(_cfg.MAX_PARALLEL_TOOLS, 1)
     # Deterministic order: the tool list is part of the cached prompt prefix.
     tools = sorted(tools, key=lambda t: t.name)
     tool_map = {t.name: t for t in tools}
@@ -424,11 +421,11 @@ def run_agent_loop(
         _cumulative_tokens += _prompt_tokens_est
 
         # ── Claude Agent SDK pattern: budget check ─────────────────────────
-        if MAX_AGENT_TOKENS > 0 and _cumulative_tokens > MAX_AGENT_TOKENS:
+        if max_agent_tokens > 0 and _cumulative_tokens > max_agent_tokens:
             logger.warning(
                 "event=agent_loop_budget_exceeded turn=%d cumulative_tokens=%d "
                 "budget=%d — exiting loop",
-                turn, _cumulative_tokens, MAX_AGENT_TOKENS,
+                turn, _cumulative_tokens, max_agent_tokens,
             )
             final_answer = (
                 "⚠️ Ho raggiunto il limite di contesto per questa richiesta. "
@@ -608,7 +605,7 @@ def run_agent_loop(
                 _results_list = [_exec_one(tool_calls_list[0])]
             else:
                 with concurrent.futures.ThreadPoolExecutor(
-                    max_workers=min(len(tool_calls_list), _MAX_PARALLEL_TOOLS)
+                    max_workers=min(len(tool_calls_list), max_parallel_tools)
                 ) as executor:
                     # map() keeps call order, so the scratchpad lines match
                     # the order the model asked for.
@@ -704,7 +701,7 @@ def run_agent_loop(
 
             # Early exit when NO tools called yet: require consecutive
             # no-tool turns before giving up.
-            elif _consecutive_no_tool >= _EARLY_EXIT_NO_TOOL_TURNS and turn > 0:
+            elif _consecutive_no_tool >= early_exit_no_tool_turns and turn > 0:
                 logger.info(
                     "event=agent_loop_early_exit_no_tools turn=%s consecutive_no_tool=%s",
                     turn, _consecutive_no_tool,

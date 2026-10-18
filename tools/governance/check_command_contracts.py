@@ -43,7 +43,7 @@ CONTRACT_KEYWORDS = (
 MAINTENANCE_ELIGIBLE_SERVICES: list[tuple[str, str]] = [
     ("archive", "Hestia-Archive/app/main.py"),
     ("scout", "Hestia-Scout/app/main.py"),
-    ("chronos", "Hestia-Chronos/app/core/hub_client.py"),
+    ("chronos", "Hestia-Chronos/app/main.py"),
     ("iris", "Hestia-Iris/app/main.py"),
 ]
 MAINTENANCE_RECONCILE_PATH = "/api/module/maintenance/reconcile"
@@ -120,7 +120,8 @@ def check_maintenance_contracts(errors: list[str]) -> None:
         source = src_file.read_text(encoding="utf-8")
 
         # Check 1: a command name ending in _reconcile is declared
-        has_reconcile_cmd = "_reconcile" in source and "command" in source
+        # (commands are MCP tools since the module tool registry; older services say "command")
+        has_reconcile_cmd = "_reconcile" in source and ("command" in source or "MCPTool" in source)
         # Check 2: the canonical maintenance path is present
         has_maintenance_path = MAINTENANCE_RECONCILE_PATH in source
 

@@ -42,7 +42,7 @@ with something already done or due today) · `paused`. A target routine is behin
 ## Assistant
 
 - Tools (`selfcare` domain via `module_tool_domains`, REST path `/api/selfcare/tools/<name>`, JSON-RPC `POST /mcp`):
-  `selfcare_overview`, `today`, `log`, `products`, `product_get`, `product_add`, `product_update`, `routines`,
+  `selfcare_summary`, `today`, `log`, `products`, `product_get`, `product_add`, `product_update`, `routines`,
   `routine_get`, `routine_create`, `routine_edit` (add / remove / step cadence / pause N days / routine cadence /
   status / reminder / favorite, always with a reason), `undo_routine`, `journal_add`,
   `stats`, `timeline`, `period`, `check`, `shopping` (all prefixed `selfcare_`).
@@ -52,14 +52,16 @@ with something already done or due today) · `paused`. A target routine is behin
 ## Reminders and alerts (few, never piling up)
 
 - Agenda job `hygieia.planner` (daily 20:30, editable in the agenda) → `POST /api/selfcare/reminders/run`.
-  Only routines with the reminder switched on (off by default), state `due`, not silenced, not already sent
-  today, and under `hygieia.reminders.max_per_week` per routine. Hermes `service.action_required` with
+  Only when the common switch `hygieia.reminder.enabled` is on (off by default), and only routines with their
+  own reminder switched on, state `due`, not silenced, not already sent today, and under
+  `hygieia.reminder.max_per_week` per routine. Event built by `hestia_common.reminders.reminder_event`. Hermes `service.action_required` with
   `replaces: selfcare.reminder.<routine_id>` (one live reminder, Hermes adds the skip counter); target `owner`.
   Actions: **Fatto** (resolves → `quick/routine/{id}`), **Salta** (`routines/{id}/skip`), **Non questa
   settimana** (resolves → `routines/{id}/snooze`).
 - Agenda job `hygieia.alerts` (daily 10:00) → `POST /api/selfcare/alerts/run`: expiring / running out / finished
   but still in a routine, at most once a week per product (`replaces: selfcare.alert.<type>.<product_id>`),
   actions **Buttato** / **Ricomprato**.
+- Every notification carries `_link` to its plugin page (`routine/<id>` for reminders, `prodotti/<id>` for alerts).
 - Texts are short plain Italian, readable aloud as-is (future audio client).
 
 ## Client UI (plugin contract)
@@ -74,9 +76,11 @@ A UI change needs `up-all.bat --build hygieia`.
 
 ## Settings (Themis, `hygieia.*`)
 
-week_start (0 = Monday), currency (EUR), default_pao_months (12), reminders.enabled (true; each routine is still
-off until switched on), reminders.max_per_week (2), alerts.enabled (true), alerts.expiry_days (30),
-alerts.restock_days (14). The diary has no switch: it is there and used only when wanted.
+default_pao_months (12), reminder.enabled (false) and reminder.max_per_week (2) from
+`hestia_common.reminders.reminder_settings` (same two settings in every module; each routine still chooses its own
+reminder), alerts.enabled (true), alerts.expiry_days (30), alerts.restock_days (14). The diary has no switch: it is
+there and used only when wanted. Week start and currency are the personal settings `themis.personal.week_start` /
+`themis.personal.currency` (owner Themis, read with `follow_personal()`), never a module copy.
 
 ## API (via Hub `/route/hygieia/...`)
 

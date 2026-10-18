@@ -17,6 +17,13 @@ The conversational AI brain of Hestia. Receives messages from interface services
 ### Universal LLM Connector
 - Abstracts cloud LLM providers (Gemini, Claude) and local Ollama behind a single `UniversalAgent` interface. Provider types `anthropic` and `claude_cli` live in `app/agents/providers/` (one class per type, config dict in, no env reads); `app/agents/llm_config.py` `load_llm_config()` is the only place reading their infrastructure env.
 - **Use-case model config** via central settings `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model,thinking}` (Themis; WebUI → Impostazioni → Oracle, presets Economico/Bilanciato/Qualità; declared in `app/core/services/oracle_settings.py`; live: `AgentFactory.reconfigure` updates the agents in place): `generic` (chat, classify, tools, memory, format), `reasoning` (deep thinking, loaded on demand), `code` (code generation), `embedding` (vectors). Each use case has primary + fallback provider/model pair. Mode (quick/auto/thinking) controls orchestration process; use case controls which brain.
+- **Module use cases** (other modules' LLM choices live here, not in their env): `scout_extraction` (Scout listing
+  extraction, default `gemini-2.5-flash` → reserve `gemini-2.5-flash-lite`, i.e. the old quota hop),
+  `athena_strategist` (strategist + memory consolidation), `athena_auditor` (answer audit). Keys
+  `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model}`; provider `""` («Come Uso generale»,
+  default for Athena) = same models as `generic`. Modules call `/api/llm/generate` with `{"prompt", "use_case"}`.
+- `oracle.models.claude_code.model`: model of Claude Code for Forge (`/api/llm/code`), `""` = CLI default.
+- No Gemini key: a Gemini use case runs on its local model (its own Ollama model, else the declared Ollama default).
 - If primary (Ollama) is unavailable, falls back to the assigned Gemini model automatically at runtime.
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
@@ -39,7 +46,8 @@ The conversational AI brain of Hestia. Receives messages from interface services
 ### Temporal Context Awareness
 - Every chat turn injects explicit current date/time context (timezone-aware) into routing and analysis prompts.
 - Relative temporal expressions such as "oggi", "domani", and "la prossima settimana" are resolved against that context before planning/tool reasoning.
-- Timezone is configurable via environment (`ORACLE_TIMEZONE`, default `Europe/Rome`).
+- Timezone = container `TZ` (infrastructure, same as every module; default `Europe/Rome`).
+- Today's agenda from Chronos is added to the context when `oracle.context.today_agenda` is on (default).
 
 ### User Preferences
 - Oracle reads and writes user preferences from Archive (`user` domain).
@@ -85,18 +93,20 @@ The conversational AI brain of Hestia. Receives messages from interface services
 - Oracle can ingest Athena advisory hints through `POST /api/athena/hints`.
 - Hints are advisory-only context and do not bypass Oracle action execution contracts.
 - Chat/planner prompt assembly can include relevant non-expired hints for the active session and domain.
+- Settings `oracle.hints.enabled` (on), `oracle.hints.ttl` (7200 s), `oracle.hints.max` (300).
 
 ### Prompt Variant Gating (A/B)
-- Planner and alert formatter prompts support env-gated variant selection.
-- Deterministic variant selection uses a stable bucketing seed (`session_id`, command/trace context, and salt).
+- Planner and alert formatter prompts support settings-gated variant selection:
+  `oracle.prompt_ab.{alert,planner}.{enabled,variants,default,force}` (off, `control,experimental`, `control`, "").
+- Deterministic variant selection uses a stable bucketing seed (`session_id`, command/trace context, fixed salt).
 - Selected variant IDs are logged for regression and quality comparisons.
 
 ### Agentic Tool Calling (Unified)
 - All tool execution flows through a single ReAct-style agent loop (`core/agent_loop.py`).
 - A single tool manifest is built per turn: domain search tools + all Hub-discovered commands + memory tools.
 - The LLM decides which tools to call and in what order — no separate pre-check or heuristic routing.
-- **Max agent turns:** configurable via `ORACLE_MAX_AGENT_TURNS` (default 25). Complex multi-step tasks can use many turns; simple tasks exit early (1-2 turns).
-- **Early exit:** when the LLM produces text without tool calls for 2 consecutive turns after having already called tools, the loop terminates.
+- **Max agent turns:** setting `oracle.agent.max_turns` (default 25; CoT uses at least 50). Complex multi-step tasks can use many turns; simple tasks exit early (1-2 turns).
+- **Early exit:** when the LLM produces text without tool calls for `oracle.agent.early_exit_no_tool_turns` (2) consecutive turns after having already called tools, the loop terminates.
 
 ### Visible Thinking
 - The agent loop emits **thinking** NDJSON events (`type: "thinking"`) for real-time visibility:
@@ -134,7 +144,7 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
-| `POST` | `/api/llm/generate` | Raw LLM call for internal service use — primary/fallback chain follows the settings `oracle.models.generic.*` (same source of truth as AgentFactory) |
+| `POST` | `/api/llm/generate` | Raw LLM call for internal service use `{prompt, use_case?, model?, provider?}` — primary/fallback chain follows the settings `oracle.models.<use_case>.*` (default `generic`; unknown use case → `generic`; explicit model/provider win) → `{response, model, provider}` |
 | `GET` | `/api/llm/models?provider=` | Model choices for a provider (`ollama` = installed models from `/api/tags`, `gemini` = curated list, `anthropic` = Models API or built-in list, `claude_cli` = haiku/sonnet/opus) → `{options:[{value,label}]}`; used by the settings panel |
 | `GET` | `/api/settings/effective` · `POST /api/settings/reload` | Central settings: effective values / reload (called by Themis) |
 | `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
@@ -190,12 +200,32 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
 - `{"type":"final","reply":"...","domain":"..."}` — terminal answer event.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
-- `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to `ORACLE_MEMORY_NOTICE_WAIT_SECONDS`, default 8). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
+- `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
 ---
+
+## Settings (Themis, all live)
+
+Declared in `app/core/services/oracle_settings.py`, read at use time (no restart). Env keeps only infrastructure:
+endpoints/keys (`OLLAMA_URL`, `GEMINI_API_KEY`, `ORACLE_OPENAI_*`, `ORACLE_ANTHROPIC_API_KEY`,
+`ORACLE_LLM_PROFILE_*`), binaries/paths (`ORACLE_CLAUDE_BIN`, `ORACLE_CODE_WORKDIR_ROOT`, `ORACLE_PROMPTS_FILE`),
+`ORACLE_EMBED_DIM` (tied to Archive `Vector(768)`), `TZ`, Hub/Archive URLs, `MODULE_TOOLS_URL(S)`, version,
+`ORACLE_NOTIFY_DEFAULT_TARGET` (identity of the owner). Prompt text (persona, action-tool policy) is in the prompt
+map (`agent_action_tool_policy`, overridable in the prompts file), not env.
+
+| Group | Keys (default) |
+|---|---|
+| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8) |
+| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…) |
+| Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
+| Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
+| Conferme | `oracle.approval.enabled` (on), `.ttl` (600 s), `.bulk_min_count` (2), `.methods` (DELETE, PUT, PATCH), `.commands` ([]) — the assistant may only read them |
+| Documenti | `oracle.documents.max_archive_mb` (10), `.search_threshold` (1.2), `.whisper_model` (base, reloaded on change), `.vision_models`, `.audio_models` (prefix lists) |
+| Esperimenti | `oracle.prompt_ab.*` (above) |
+| Diagnostica | `oracle.cache.schemas_ttl` (30 s), `.tool_registry_ttl` (120 s), `oracle.tasks.max_kept` (500), `oracle.log.level` |
 
 ## Constraints
 
@@ -238,7 +268,7 @@ as every other Oracle call (Ollama's `/v1` ignores `num_ctx`: it reloaded the mo
 long Forge prompts were cut silently). Request/response are translated to the OpenAI shape (`reasoning_content`,
 `tool_calls`, `finish_reason=length` when the window is full); `/api/llm/profiles` reports its `context_window`.
 Example cloud: `ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1`, `_MODEL=qwen/qwen3-coder`, `_API_KEY=sk-or-…`.
-Timeout per call: `ORACLE_LLM_CHAT_TIMEOUT_SEC` (600). Used by Hephaestus Forge engines `local`/`cloud`.
+Timeout per call: setting `oracle.timeouts.gateway_chat` (600 s). Used by Hephaestus Forge engines `local`/`cloud`.
 
 ## Prompts (caveman style, single source)
 
@@ -263,7 +293,7 @@ agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps paralle
 ### Claude Code ("code" use case on the Pro/Max subscription)
 
 - Build Oracle with `--build-arg INSTALL_CLAUDE_CODE=1`; put `CLAUDE_CODE_OAUTH_TOKEN` (run `claude setup-token` on
-  your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Optional `ORACLE_CLAUDE_MODEL`.
+  your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Model: setting `oracle.models.claude_code.model` (empty = CLI default).
 - Code tasks run inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus). The CLI never sees
   `ORACLE_ANTHROPIC_API_KEY`.
 

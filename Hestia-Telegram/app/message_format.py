@@ -1,4 +1,3 @@
-import os
 import json
 import re
 from html import escape as html_escape
@@ -6,6 +5,8 @@ from html import unescape
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
+
+from telegram_settings import SIGNALS_STYLE, SIGNALS_STYLE_BY_FAMILY, settings
 
 
 _SIGNAL_STYLE_ALLOWED = {"minimal", "compact", "rich"}
@@ -134,32 +135,6 @@ def _normalize_signal_style(value: str | None, fallback: str = "minimal") -> str
     return style if style in _SIGNAL_STYLE_ALLOWED else fallback
 
 
-def _parse_signal_style_overrides(raw: str) -> dict[str, str]:
-    # Format: "memory=minimal,subscription=minimal,action=compact,default=minimal"
-    out: dict[str, str] = {}
-    for part in str(raw or "").split(","):
-        item = part.strip()
-        if not item or "=" not in item:
-            continue
-        key, value = item.split("=", 1)
-        normalized_key = str(key).strip().lower()
-        if not normalized_key:
-            continue
-        out[normalized_key] = _normalize_signal_style(
-            str(value).strip().lower(), fallback="minimal"
-        )
-    return out
-
-
-_TELEGRAM_SIGNAL_STYLE = _normalize_signal_style(
-    os.getenv("TELEGRAM_SIGNAL_STYLE", "minimal"),
-    fallback="minimal",
-)
-_TELEGRAM_SIGNAL_STYLE_BY_FAMILY = _parse_signal_style_overrides(
-    os.getenv("TELEGRAM_SIGNAL_STYLE_BY_FAMILY", "")
-)
-
-
 def _signal_family(event: str) -> str:
     normalized = str(event or "").strip().lower()
     if normalized.startswith("memory."):
@@ -173,10 +148,9 @@ def _signal_family(event: str) -> str:
 
 def _resolve_signal_style(signal: dict[str, Any], event: str) -> str:
     family = _signal_family(event)
-    override = _TELEGRAM_SIGNAL_STYLE_BY_FAMILY.get(family) or _TELEGRAM_SIGNAL_STYLE_BY_FAMILY.get(
-        "default"
-    )
-    style = _normalize_signal_style(override, fallback=_TELEGRAM_SIGNAL_STYLE)
+    base = _normalize_signal_style(settings.get(SIGNALS_STYLE), fallback="minimal")
+    override = settings.get(SIGNALS_STYLE_BY_FAMILY.get(family, ""), "")
+    style = _normalize_signal_style(override, fallback=base)
 
     # Optional per-signal client override (keeps payload canonical while client chooses rendering).
     ui = signal.get("ui") if isinstance(signal.get("ui"), dict) else {}

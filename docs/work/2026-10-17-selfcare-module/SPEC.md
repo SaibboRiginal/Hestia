@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.5 |
+| **Version** | 2.6 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Approved by the user (v2.0 answers §13). Phases 1–4 implemented on main 2026-10-18 (hold lifted by Marko); real run by Marko pending; phase 5 open |
 
@@ -158,7 +158,7 @@ Plugin (contract `docs/work/2026-10-17-client-plugins/SPEC.md` v2.3): `GET /api/
 UI API under `/api/ui/`. Quick actions (§4.2b): dynamic `routine_done` with `source: /api/ui/quick/routines` (one chip
 per favourite / due-today routine, `state` todo|done|late, `hint` "1/2 sett."), `POST /api/ui/routines/{id}/done`,
 undo `DELETE /api/ui/routines/{id}/done/today`; `product_used` same shape for favourite products.
-Context: `GET /api/module/context` — the same short caveman summary as `selfcare_overview`, common contract of the
+Context: `GET /api/module/context` — the same short caveman summary as `selfcare_summary`, common contract of the
 three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its context: `?budget=` →
 `{module, domain, updated_at, text}`, Hub tag `context`, built with `hestia_common.context_client.ModuleContext`
 (written by the Guardaroba thread, its SPEC §6.2). Photo uploads follow the plugin contract (base64 ≤ 8 MB, resized by the client).
@@ -167,7 +167,7 @@ three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its
 
 | Tool | Does |
 |---|---|
-| `selfcare_overview` | current routines with steps, products in use, alerts — short, caveman-style; the assistant's context |
+| `selfcare_summary` | current routines with steps, products in use, alerts — short, caveman-style; the assistant's context |
 | `selfcare_today` | what is left today / tonight |
 | `selfcare_log` | "fatto la routine sera", "ho saltato il retinolo", ad-hoc use |
 | `selfcare_products` / `selfcare_product_get` | search by name/area/active/status |
@@ -182,16 +182,16 @@ three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its
 Writes from the assistant are the user's own data asked in chat, so they apply directly and are reported in the
 answer (and logged with `source=assistant`); routine edits are reversible (previous version kept).
 How the overview reaches the assistant's standing context (always-on snippet vs. tool call) follows the
-"context contribution" part of the plugin contract; until then it is the `selfcare_overview` tool.
+"context contribution" part of the plugin contract; until then it is the `selfcare_summary` tool.
 Telegram gets the visible ones as commands through Hub discovery (`telegram_group: "Self care"`).
 
 ## 7. Reminders and notifications
 
 Principle (v2.0): **few, useful, never piling up.**
-- Reminders are **off by default**, per routine. Master switch `hygieia.reminders.enabled`.
+- Reminders are **off by default**, per routine. Common switch `hygieia.reminder.enabled` (off, same as every module).
 - One agenda job `hygieia.planner` (daily, default 20:30, the user moves it in the agenda; his edit wins) calls
   `POST /api/selfcare/reminders/run`. Hygieia nudges a routine only when it is `due` (behind its goal) and not
-  `blocked`, and at most `hygieia.reminders.max_per_week` times per routine (default 2). Daily routines done
+  `blocked`, and at most `hygieia.reminder.max_per_week` times per routine (default 2). Daily routines done
   every day are never nudged.
 - **One live reminder per routine** — Hermes feature (on main, 040f1f6; `Hestia-Hermes/hestia-hermes.md`
   "One live reminder per thing"): event `selfcare.reminder` with payload `replaces: "selfcare.reminder.<routine_id>"`.
@@ -210,14 +210,15 @@ Principle (v2.0): **few, useful, never piling up.**
 
 | Key | Type / default | Notes |
 |---|---|---|
-| `hygieia.reminders.enabled` | bool, true | master switch (each routine is still off until enabled) |
-| `hygieia.reminders.max_per_week` | int, 2 | max nudges per routine per week |
+| `hygieia.reminder.enabled` | bool, false | common reminder switch (`hestia_common.reminders`); each routine still chooses its own |
+| `hygieia.reminder.max_per_week` | int, 2 | max nudges per routine per week |
 | `hygieia.alerts.expiry_days` | int, 30 | expiry warning |
 | `hygieia.alerts.restock_days` | int, 14 | predicted finish warning |
 | `hygieia.alerts.enabled` | bool, true | |
-| `hygieia.week_start` | int 0–6, 0 | first day of the week for weekly goals |
 | `hygieia.default_pao_months` | int, 12 | used when PAO unknown |
-| `hygieia.currency` | string, EUR | |
+
+Week start and currency are the personal settings `themis.personal.week_start` / `themis.personal.currency`
+shared by every module (v2.6), not module keys.
 
 ## 9. UI (client plugins — needs the plugin contract on main)
 

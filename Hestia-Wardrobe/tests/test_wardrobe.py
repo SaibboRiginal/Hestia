@@ -199,6 +199,7 @@ def test_goal_and_reminder_rules(wd):
                      "wardrobe.reminder.enabled": True})
     assert wd.reminder_decision()["send"] is True
     wd.mark_reminder_sent()
+    assert wd.reminder_decision()["why"] == "sent_today"      # one nudge a day
     wd.mark_worn({"piece_ids": [tee["id"], jeans["id"]]})
     g = wd.goal_progress()
     assert g["met"] and g["marked_today"]
@@ -282,7 +283,7 @@ def test_mcp_tools_and_manifest():
     from app import main
     tools = main._tools
     names = {t.name for t in tools}
-    assert {"guardaroba_riepilogo", "guardaroba_suggerisci", "guardaroba_indossato", "guardaroba_elimina"} <= names
+    assert {"wardrobe_summary", "wardrobe_suggest", "wardrobe_log_worn", "wardrobe_delete"} <= names
     for t in tools:
         assert t.description and t.parameters["type"] == "object"
         assert t.path.startswith("/api/wardrobe/tools/")

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from typing import Any
 
@@ -25,9 +24,8 @@ from .athena_settings import get_float, get_int
 logger = logging.getLogger("hestia_athena.auditor")
 
 # Timeout / default turns: central settings athena.audit.* (read at use time).
-# Model/provider stay env (model choice belongs to Oracle; flagged in hestia-athena.md).
-AUDITOR_MODEL = os.getenv("ATHENA_AUDITOR_MODEL", "")
-AUDITOR_PROVIDER = os.getenv("ATHENA_AUDITOR_PROVIDER", "")
+# Model choice belongs to Oracle: use case ``athena_auditor`` (oracle.models.athena_auditor.*).
+AUDITOR_USE_CASE = "athena_auditor"
 
 _JUDGE_PROMPT = (
     "Sei un valutatore di qualità per un assistente AI chiamato Hestia.\n"
@@ -181,8 +179,7 @@ class ConversationAuditor:
         timeout = get_float(S.AUDIT_TIMEOUT)
         body = {
             "prompt": prompt,
-            "model": AUDITOR_MODEL,
-            "provider": AUDITOR_PROVIDER,
+            "use_case": AUDITOR_USE_CASE,
         }
         envelope = {
             "method": "POST",

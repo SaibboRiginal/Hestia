@@ -44,13 +44,11 @@ for _p in [str(_APP_PATH), str(_SHARED_PATH)]:
 # empty → auto-fallback to Ollama
 os.environ.setdefault("GEMINI_API_KEY", "")
 os.environ.setdefault("OLLAMA_URL", "http://localhost:11434/api/generate")
-os.environ.setdefault("OLLAMA_TOOL_CALL_MODE", "auto")
 os.environ.setdefault("HUB_API_URL", "http://fake-hub:19001/api")
 os.environ.setdefault("ARCHIVE_URL", "http://fake-archive:19002/api")
-os.environ.setdefault("ORACLE_MAX_AGENT_TURNS", "6")
-os.environ.setdefault("ORACLE_TOOL_RESULT_MAX_CHARS", "2000")
 os.environ.setdefault("LOG_LEVEL", "WARNING")     # quiet during tests
-# Models come from central settings (oracle_settings defaults; no Themis in tests)
+# Models and every tunable come from central settings (oracle_settings defaults; no Themis in tests).
+# A test changes one with monkeypatch.setitem(oracle_settings.settings._effective, KEY, value).
 
 
 @pytest.fixture(scope="session")

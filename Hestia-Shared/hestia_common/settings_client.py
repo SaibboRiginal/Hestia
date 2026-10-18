@@ -92,6 +92,23 @@ def preset(id: str, label: str, *, group: str, values: dict, help: str = "") -> 
     return {"id": id, "label": label, "group": group, "values": dict(values), "help": help}
 
 
+# Personal settings shared by every module: Themis owns them, modules read them with ``follow_personal()``.
+# A module never declares its own copy (no ``<module>.week_start`` / ``<module>.currency``).
+PERSONAL: dict[str, dict] = {d["key"]: d for d in (
+    setting("themis.personal.week_start", "Inizio settimana", "enum", "monday", group="Personali",
+            options=[("monday", "Lunedì"), ("sunday", "Domenica")],
+            help="Per tutti gli obiettivi «N volte a settimana» e le statistiche settimanali."),
+    setting("themis.personal.currency", "Valuta", "enum", "EUR", group="Personali",
+            options=[("EUR", "Euro (€)"), ("CHF", "Franco svizzero"), ("USD", "Dollaro"), ("GBP", "Sterlina")],
+            help="Prezzi e spese in tutti i moduli."),
+)}
+
+
+def week_start_index(value: Any) -> int:
+    """``themis.personal.week_start`` → Python weekday of the first day (0 = Monday, 6 = Sunday)."""
+    return 6 if str(value or "").lower() == "sunday" else 0
+
+
 class SettingsClient:
     """Declares one module's settings to Themis and keeps their effective values."""
 
@@ -107,8 +124,42 @@ class SettingsClient:
         self._loaded = False
         self._started = False
         self._user_cache: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
+        self._follows: dict[str, Any] = {}       # other owners' keys this module reads (key → default)
+        self._shared: dict[str, Any] = {}
 
     # ── declaration ─────────────────────────────────────────────────────────
+    def follow(self, defaults: dict[str, Any]) -> "SettingsClient":
+        """Read settings owned by someone else (``{key: default}``), e.g. the personal ones
+        (:data:`PERSONAL`). Themis answers them on register and pushes their changes; ``get`` reads them."""
+        for key, default in (defaults or {}).items():
+            self._follows[key] = default
+            self._shared.setdefault(key, default)
+        return self
+
+    def follow_personal(self) -> "SettingsClient":
+        """The personal settings every module shares (week start, currency…), owned by Themis."""
+        return self.follow({k: d["default"] for k, d in PERSONAL.items()})
+
+    def _shared_changed(self, shared: dict | None) -> dict[str, Any]:
+        """Take followed values from Themis (missing → default); ``on_change`` gets the changed ones."""
+        if not self._follows:
+            return {}
+        changed: dict[str, Any] = {}
+        with self._lock:
+            for key, default in self._follows.items():
+                value = (shared or {}).get(key, default)
+                if self._shared.get(key) != value:
+                    self._shared[key] = value
+                    changed[key] = value
+        if changed:
+            logger.info("event=settings_shared_applied owner=%s keys=%s", self.owner, ",".join(sorted(changed)))
+            for cb in list(self._callbacks):
+                try:
+                    cb(dict(changed))
+                except Exception as exc:
+                    logger.warning("event=settings_callback_failed owner=%s error=%s", self.owner, exc)
+        return changed
+
     def declare(self, definitions: list[dict], presets: list[dict] | None = None) -> "SettingsClient":
         for d in definitions:
             if not str(d.get("key", "")).startswith(f"{self.owner}."):
@@ -146,6 +197,8 @@ class SettingsClient:
         with self._lock:
             if key in self._effective:
                 return self._effective[key]
+            if key in self._shared:
+                return self._shared[key]
         d = self._defs.get(key)
         return d.get("default") if d else default
 
@@ -201,7 +254,7 @@ class SettingsClient:
         try:
             status, payload = self._call("POST", "api/settings/register", body={
                 "owner": self.owner, "definitions": list(self._defs.values()), "presets": self._presets,
-                "effective": self.values()})
+                "effective": self.values(), "follows": sorted(self._follows)})
         except Exception as exc:
             logger.warning("[🔄] event=settings_register_failed owner=%s error=%s fallback=defaults",
                            self.owner, exc)
@@ -210,6 +263,7 @@ class SettingsClient:
             logger.warning("[🔄] event=settings_register_rejected owner=%s status=%s", self.owner, status)
             return False
         self.apply(payload.get("values") or {}, initial=not self._loaded)
+        self._shared_changed(payload.get("shared"))
         logger.info("event=settings_registered owner=%s definitions=%d", self.owner, len(self._defs))
         return True
 
@@ -294,13 +348,15 @@ class SettingsClient:
         @router.get("/api/settings/effective")
         def settings_effective():
             return {"owner": self.owner, "loaded": self._loaded, "values": self.values(),
-                    "pending_restart": self.pending_restart()}
+                    "shared": dict(self._shared), "pending_restart": self.pending_restart()}
 
         @router.post("/api/settings/reload")
         def settings_reload(body: dict | None = None):
             values = (body or {}).get("values")
             if isinstance(values, dict):
                 changed = self.apply(values, initial=not self._loaded)
+                if isinstance((body or {}).get("shared"), dict):
+                    changed = {**changed, **self._shared_changed(body["shared"])}
             else:  # no values given: fetch them (register answers with the stored values)
                 before = self.values()
                 self.register()

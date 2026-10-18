@@ -69,7 +69,8 @@ class TestUniversalAgentOllamaFallback:
         assert "Risposta" in result
 
     def test_ask_with_tools_no_native_falls_back_to_text(self, monkeypatch):
-        monkeypatch.setenv("OLLAMA_TOOL_CALL_MODE", "text")
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.OLLAMA_TOOL_MODE, "text")
         monkeypatch.setenv("OLLAMA_URL", "http://localhost:11434/api/generate")
         agent = UniversalAgent(
             role_prompt="Test",

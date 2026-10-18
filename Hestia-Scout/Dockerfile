@@ -21,7 +21,9 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 # Copy all application code last (this layer changes frequently)
 COPY Hestia-Shared/hestia_common /code/hestia_common
 COPY Hestia-Scout/app/ /code/
-COPY --from=ui-build /ui/dist /code/ui/dist
+# Outside /code: compose mounts ./Hestia-Scout/app over /code, which would hide a bundle baked there.
+COPY --from=ui-build /ui/dist /ui/dist
+ENV SCOUT_UI_DIST=/ui/dist
 
 # Run the endless background worker
 CMD ["python", "main.py"]

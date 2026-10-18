@@ -21,7 +21,7 @@ from dateutil.rrule import rrulestr
 logger = logging.getLogger("hestia_chronos.agenda_parse")
 
 _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
-_TZ_DEFAULT = os.getenv("CHRONOS_DISPLAY_TZ") or os.getenv("TZ") or "Europe/Rome"
+_TZ_DEFAULT = os.getenv("TZ") or "Europe/Rome"     # infrastructure: container timezone
 _TYPES = {"event", "task", "job", "window"}
 _DAYS_IT = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
 

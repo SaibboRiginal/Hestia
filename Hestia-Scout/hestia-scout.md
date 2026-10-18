@@ -56,13 +56,11 @@ Scout is also an event producer for proactive workflows: when entities are creat
 
 ## LLM Extractor (via Oracle)
 
-Extraction calls Oracle `POST /api/llm/generate` through Hub (`evaluators/oracle_evaluator.py`): Oracle is the single
-owner of LLM provider keys. Scout picks the model explicitly so batch extraction keeps its own profile:
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `SCOUT_LLM_PROVIDER` | `gemini` | Provider Oracle should use |
-| `SCOUT_LLM_MODELS` | `gemini-2.5-flash,gemini-2.5-flash-lite` | Tried in order; quota/429 → next model |
+Extraction calls Oracle `POST /api/llm/generate` through Hub (`evaluators/oracle_evaluator.py`) with
+`{"prompt", "use_case": "scout_extraction"}`: Oracle owns provider keys **and the model choice**. The extractor
+model is the Oracle setting `oracle.models.scout_extraction.*` (Impostazioni → Oracle → Modelli, advanced): default
+`gemini` / `gemini-2.5-flash`, reserve `gemini-2.5-flash-lite` — when the first model is out of quota (429) Oracle
+answers with the reserve one (the old `SCOUT_LLM_MODELS` hop). No Scout env var for the model.
 
 Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 
@@ -134,7 +132,8 @@ Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 ### WebUI plugin (2026-10-17, dossier `docs/work/2026-10-17-client-plugins/`)
 
 `app/ui_api.py` declares the plugin and serves its data; `ui/src/` is the Lit bundle (built with the shared SDK in
-the Node stage of the Dockerfile; `ui/dist/` is git-ignored).
+the Node stage of the Dockerfile; `ui/dist/` is git-ignored). The image keeps the bundle in `/ui/dist`
+(`SCOUT_UI_DIST`), outside `/code`, because compose mounts `Hestia-Scout/app` over `/code`.
 - Pages: **Case** (`/p/scout/case`: KPI, search, città, ordinamento, Da valutare/Preferite/Scartate/Tutte, prezzo
   max, locali, stato; cards with ☆ Preferita and Scarta + Annulla), **Annuncio** (`case/:key`: photos, facts,
   features, description, map link, "Apri annuncio", "Chiedi a Hestia", status correction), **Statistiche case**.
@@ -237,7 +236,6 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 | `HUB_API_URL` / `ARCHIVE_API_URL` | Hub / Archive base URLs |
 | `SCOUT_SERVICE_BASE_URL` / `SCOUT_TOOLS_PORT` / `SCOUT_SERVICE_VERSION` | Hub registration + listening port |
 | `STARTUP_WAIT_TIMEOUT_SECONDS` | Startup wait for Hub/dependencies (0 = forever) |
-| `SCOUT_LLM_PROVIDER` / `SCOUT_LLM_MODELS` | Extractor provider/models sent to Oracle (see above) |
 | `LOG_LEVEL` | Boot log level only (live value = `scout.log.level`) |
 | `SCOUT_DEBUG_*` | Only for the `scout_debug.py` developer CLI (output paths/print toggles), not the service |
 

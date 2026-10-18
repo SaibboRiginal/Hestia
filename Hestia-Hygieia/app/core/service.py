@@ -24,6 +24,10 @@ class NotFound(LookupError):
     pass
 
 
+WEEK_START_KEY = "themis.personal.week_start"   # personal settings shared by every module (owner Themis)
+CURRENCY_KEY = "themis.personal.currency"
+
+
 class Conflict(RuntimeError):
     def __init__(self, message: str, **detail):
         super().__init__(message)
@@ -96,7 +100,7 @@ class Hygieia:
         return datetime.now(self.tz).date()
 
     def week_start(self) -> int:
-        return 6 if self.setting("hygieia.week_start", "monday") == "sunday" else 0
+        return 6 if self.setting(WEEK_START_KEY, "monday") == "sunday" else 0
 
     def local_date(self, value: Any) -> date | None:
         dt = parse_dt(value)
@@ -150,7 +154,7 @@ class Hygieia:
                 "metrics": self.options("metrics"), "conflicts": self.options("conflicts"), "tags": self.options("tags"),
                 "slots": catalog.SLOTS, "statuses": catalog.STATUSES, "levels": catalog.LEVELS, "verdicts": catalog.VERDICTS,
                 "units": catalog.UNITS, "cadence_modes": catalog.CADENCE_MODES, "periods": catalog.PERIODS,
-                "currency": self.setting("hygieia.currency", "EUR"), "week_start": self.week_start()}
+                "currency": self.setting(CURRENCY_KEY, "EUR"), "week_start": self.week_start()}
 
     # ── products ────────────────────────────────────────────────────────────
     def _actives(self, value: Any) -> list[dict]:
@@ -198,7 +202,7 @@ class Hygieia:
             merged["purchased_at"] = self.today().isoformat()
         merged["favorite"] = bool(merged.get("favorite"))
         merged["unit"] = merged.get("unit") or "ml"
-        merged["currency"] = merged.get("currency") or self.setting("hygieia.currency", "EUR")
+        merged["currency"] = merged.get("currency") or self.setting(CURRENCY_KEY, "EUR")
         merged["product_key"] = catalog.product_key(merged["brand"], name)
         merged.pop("id", None)
         pid = id or new_id()
@@ -921,9 +925,9 @@ class Hygieia:
         return {"routine_id": rid, "silenced_until": until, "label": f"{r['name']}: niente promemoria fino al {until}"}
 
     def reminder_decisions(self) -> list[dict]:
-        if not self.setting("hygieia.reminders.enabled", True):
-            return [{"send": False, "why": "disabled"}]
-        max_week = int(self.setting("hygieia.reminders.max_per_week", 2))
+        if not self.setting("hygieia.reminder.enabled", False):   # common reminder switch, off by default
+            return []
+        max_week = int(self.setting("hygieia.reminder.max_per_week", 2))
         today = self.today().isoformat()
         week = period_start(self.today(), "week", self.week_start()).isoformat()
         out = []

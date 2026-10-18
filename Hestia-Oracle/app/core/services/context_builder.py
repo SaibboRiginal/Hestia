@@ -1,18 +1,17 @@
 import json
 import logging
-import os
 from typing import Any
 
 from core.services import prompt_config
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-# ── Compaction thresholds ─────────────────────────────────────────────────────
-# Trigger background compaction when history exceeds this many messages.
-_COMPACT_TRIGGER_MESSAGES: int = int(
-    os.getenv("ORACLE_COMPACT_TRIGGER_MSGS", "20"))
-# Keep this many recent (uncompressed) messages after compaction.
-_COMPACT_KEEP_RECENT: int = int(os.getenv("ORACLE_COMPACT_KEEP_RECENT", "6"))
+# Limits and compaction thresholds are central settings (oracle.context.*), read at use time.
+
+
+def _settings():
+    from core.services import oracle_settings  # lazy: settings import the provider registry
+    return oracle_settings
 
 # ── Protected content classes (must NOT be lossy-summarised) ──────────────────
 # These role+content patterns are extracted before compaction and preserved
@@ -28,19 +27,42 @@ _PROTECTED_PREFIXES = (
 
 
 class ContextBuilder:
+    """Builds prompts from history and module data.
+
+    Limits passed to the constructor are fixed (tests); ``None`` = the live setting.
+    """
+
     def __init__(
         self,
-        max_history_messages: int,
-        max_history_chars: int,
-        max_entities_in_context: int,
-        max_field_chars: int,
+        max_history_messages: int | None = None,
+        max_history_chars: int | None = None,
+        max_entities_in_context: int | None = None,
+        max_field_chars: int | None = None,
     ):
-        self.max_history_messages = max_history_messages
-        self.max_history_chars = max_history_chars
-        self.max_entities_in_context = max_entities_in_context
-        self.max_field_chars = max_field_chars
+        self._fixed = {"max_history_messages": max_history_messages, "max_history_chars": max_history_chars,
+                       "max_entities_in_context": max_entities_in_context, "max_field_chars": max_field_chars}
         # session -> id of the first message of its history window (see stable_window)
         self._window_start: dict[str, Any] = {}
+
+    def _limit(self, name: str, key: str) -> int:
+        fixed = self._fixed.get(name)
+        return int(fixed) if fixed is not None else _settings().get_int(key, 1)
+
+    @property
+    def max_history_messages(self) -> int:
+        return self._limit("max_history_messages", _settings().HISTORY_LIMIT)
+
+    @property
+    def max_history_chars(self) -> int:
+        return self._limit("max_history_chars", _settings().HISTORY_CHAR_LIMIT)
+
+    @property
+    def max_entities_in_context(self) -> int:
+        return self._limit("max_entities_in_context", _settings().ENTITIES_LIMIT)
+
+    @property
+    def max_field_chars(self) -> int:
+        return self._limit("max_field_chars", _settings().FIELD_CHAR_LIMIT)
 
     @property
     def history_step(self) -> int:
@@ -204,7 +226,7 @@ class ContextBuilder:
 
     def needs_compaction(self, history_data: list) -> bool:
         """Return True when history is long enough to warrant background compaction."""
-        return len(history_data) >= _COMPACT_TRIGGER_MESSAGES
+        return len(history_data) >= _settings().get_int(_settings().COMPACT_TRIGGER, 1)
 
     def extract_protected_messages(self, history_data: list) -> list[dict]:
         """Extract messages containing protected content (must not be lossy-summarised).
@@ -256,8 +278,9 @@ class ContextBuilder:
             return False
 
         # Partition history
-        old_segment = history_data[:-_COMPACT_KEEP_RECENT]
-        recent_segment = history_data[-_COMPACT_KEEP_RECENT:]
+        keep = _settings().get_int(_settings().COMPACT_KEEP, 1)
+        old_segment = history_data[:-keep]
+        recent_segment = history_data[-keep:]
 
         if not old_segment:
             return False

@@ -157,6 +157,8 @@ def on_chat(message):
 
 def run():
     threading.Thread(target=run_control_api, daemon=True).start()
+    from telegram_settings import settings as telegram_settings
+    telegram_settings.start()   # Themis: declare + load values (background, hourly re-assert)
 
     ok = register_telegram_service()
     if ok:

@@ -201,13 +201,25 @@ class TestTokenCounter:
 class TestPreferenceDomains:
     """Plan P3a: embedding-based multi-domain preference assignment."""
 
-    def test_domain_list_from_env(self, monkeypatch):
-        """ORACLE_PREFERENCE_DOMAINS overrides the default domain list."""
-        monkeypatch.setenv("ORACLE_PREFERENCE_DOMAINS",
-                           json.dumps({"test_domain": "Test description"}))
+    def test_domain_list_from_setting(self, monkeypatch):
+        """oracle.memory.preference_domains overrides the default domain list (live)."""
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.PREFERENCE_DOMAINS,
+                            {"test_domain": "Test description"})
         from core.services.preference_domains import _parse_domains
         domains = _parse_domains()
-        assert "test_domain" in domains
+        assert domains == {"test_domain": "Test description"}
+
+    def test_classifier_rewarms_when_domains_change(self, monkeypatch):
+        """A changed domains setting is embedded again on the next classification (no restart)."""
+        from core.services import oracle_settings
+        from core.services.preference_domains import PreferenceDomainClassifier
+        clf = PreferenceDomainClassifier(embed_fn=lambda text: [1.0, 0.0])
+        assert "food" in clf._domain_embeddings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.PREFERENCE_DOMAINS,
+                            {"garden": "Plants"})
+        assert clf.classify("roses") == ["general", "garden"]
+        assert set(clf._domain_embeddings) == {"garden"}
 
     def test_cosine_identical(self):
         """Cosine similarity of identical vectors is 1.0."""

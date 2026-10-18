@@ -214,3 +214,26 @@ class TestOwnerTargetAlias:
         import telegram_bot.core as core_module
         monkeypatch.setattr(core_module, "ALLOWED_USER_ID", "")
         assert core_module.resolve_notify_target("owner") == ""
+
+
+@pytest.mark.api
+class TestControlApiSettings:
+    """Themis endpoints (GET effective, POST reload) on the plain http.server control API."""
+
+    def teardown_method(self):
+        import telegram_settings
+        telegram_settings.settings.apply({})
+
+    def test_get_effective_lists_telegram_values(self):
+        status, body = _FakeRequestHandler("/api/settings/effective", method="GET").response()
+        assert status == 200
+        assert body["owner"] == "telegram"
+        assert body["values"]["telegram.signals.style"] == "minimal"
+
+    def test_post_reload_applies_pushed_values(self):
+        import telegram_settings
+        payload = json.dumps({"values": {"telegram.alerts.buffer_window": 2.5}}).encode()
+        status, body = _FakeRequestHandler("/api/settings/reload", method="POST", body=payload).response()
+        assert status == 200
+        assert body["applied"] == ["telegram.alerts.buffer_window"]
+        assert telegram_settings.settings.get(telegram_settings.ALERTS_BUFFER_WINDOW) == 2.5

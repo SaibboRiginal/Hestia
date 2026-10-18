@@ -14,5 +14,5 @@ Spec: `SPEC.md` v1.3 · resume from the first unchecked box.
 - [x] P3 WebUI backend (`/api/notify` internal-only, SignalR `ReceiveNotification`, `/api/webui/notifications*`)
 - [x] P4 WebUI frontend (Notifiche page, sidebar badge, toasts with per-browser preference) — `ng build` clean
 - [x] P5 Docs: hestia-hermes.md, hestia-telegram.md, hestia-webui.md, swagger, ARCHITECTURE rule
-- [ ] Marko: .NET build + real run (WebUI backend not buildable in the cloud container); pytest per user rule not run by Claude
-- [ ] When Hermes moves to central settings: retract delay (6 h) becomes Themis setting `hermes.retract_after`
+- [ ] Marko: .NET build + real run (WebUI backend not buildable in the cloud container); pytest per user rule not run by Claude — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left
+- [x] Retract delay is the Themis setting `hermes.retract.after` (default 6 h), done with central settings P6

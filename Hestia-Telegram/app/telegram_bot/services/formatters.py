@@ -351,7 +351,7 @@ def format_command_payload_with_oracle(
     effective_instructions = (
         core.build_client_instructions_for_chat(str(chat_id))
         if chat_id is not None
-        else core.TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS
+        else core.client_instructions()
     )
     request_payload = {
         "command": command_name,
@@ -360,7 +360,7 @@ def format_command_payload_with_oracle(
         "client_instructions": effective_instructions,
         "client": "telegram",
         "thinking": False,
-        "locale": core.TELEGRAM_LOCALE,
+        "locale": core.locale(),
     }
     try:
         status, data = core.oracle_post("api/format", request_payload, timeout=30)

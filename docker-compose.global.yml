@@ -131,21 +131,8 @@ services:
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONPATH=/code                                     # Ensure shared package /code/hestia_common is importable
       - PYTHONUNBUFFERED=1
-      # Tuning (override as needed):
-      # ORACLE_HISTORY_LIMIT=6          past messages included in context (int)
-      # ORACLE_HISTORY_CHAR_LIMIT=500   max chars per history message (int)
-      # ORACLE_CONTEXT_ENTITIES_LIMIT=12  max entities in analysis prompt (int)
-      # ORACLE_CONTEXT_FIELD_CHAR_LIMIT=280  max chars per entity field (int)
-      # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  module-tool cache TTL (int)
-      # ORACLE_FORCE_TELEGRAM_TARGET=1  force subscription channels to user's chat_id (0|1)
-      # ORACLE_ATHENA_HINTS_ENABLED=1  enable Athena advisory hint ingestion (0|1)
-      # ORACLE_ATHENA_HINTS_TTL_SECONDS=7200  Athena hint TTL in Oracle buffer (int)
-      # ORACLE_ATHENA_HINTS_MAX=300  max Athena hints retained in memory (int)
-      # ORACLE_PROMPT_AB_ALERT_ENABLED=0  enable alert formatter A/B prompt gating (0|1)
-      # ORACLE_PROMPT_AB_ALERT_VARIANTS=control,experimental  alert prompt variants
-      # ORACLE_PROMPT_AB_PLANNER_ENABLED=0  enable planner behavior A/B prompt gating (0|1)
-      # ORACLE_PROMPT_AB_PLANNER_VARIANTS=control,experimental  planner prompt variants
-      # ORACLE_PROMPT_AB_SALT=hestia  deterministic bucketing salt for prompt experiments
+      - TZ=${TZ:-Europe/Rome}                                # Local time for the assistant (today, agenda)
+      # Agent loop, context, timeouts, memory, approvals, documents, prompt A/B: Themis settings oracle.* (Impostazioni → Sistema → Oracle)
     volumes:
       - ./Hestia-Oracle/app:/code
       - ./Hestia-Shared/hestia_common:/code/hestia_common
@@ -208,10 +195,7 @@ services:
       - ORACLE_API_URL=http://hestia_oracle:19004/api/chat   # Oracle chat endpoint URL
       - TELEGRAM_BASE_URL=http://hestia_telegram:8010        # This service's public URL (includes control port)
       - TELEGRAM_CONTROL_PORT=8010                           # Internal HTTP port for Hub dispatch and health (int, default 8010)
-      - TELEGRAM_COMMAND_REFRESH_SECONDS=0                   # Seconds between command registry polls; 0 = webhook only (int)
-      - TELEGRAM_SIGNAL_STYLE=minimal                        # Signal card detail level: minimal | compact | rich
-      - TELEGRAM_SIGNAL_STYLE_BY_FAMILY=action=compact       # Optional overrides (CSV key=value), e.g. action=compact,memory=minimal,subscription=minimal
-      - ALERT_BUFFER_WINDOW_SECONDS=0.8                      # Seconds to buffer consecutive alerts before grouping (float)
+      # Signal style, alert grouping, feedback, hidden commands, locale: Themis settings telegram.* (Impostazioni → Sistema)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - WEBUI_API_URL=http://hestia_webui:19015               # WebUI backend (direct — security exception, NOT via Hub)
@@ -329,8 +313,8 @@ services:
       - CALENDAR_PORT=19007                                  # Port this service listens on (int)
       - ARCHIVE_URL=http://hestia_archive:19002               # Archive base URL for calendar items
       - HERMES_URL=http://hestia_hermes:19005                 # Hermes URL for dispatching notifications
-      - CHRONOS_NOTIFY_POLL_SECONDS=300                       # Seconds between notification polling cycles (int, default 300 = 5 min)
-      - NOTIFY_LOOK_AHEAD_HOURS=26                            # Hours ahead to check for upcoming events (int, default 26)
+      - TZ=${TZ:-Europe/Rome}                                # Local time for agenda, reminders, calendar display
+      # Agenda tick, calendar sync window, reminder look-ahead: Themis settings chronos.* (Impostazioni → Sistema)
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
@@ -538,7 +522,7 @@ services:
     container_name: hestia_hygieia
     restart: unless-stopped
     ports:
-      - "19018:19018"  # Hercules API port (self care)
+      - "19018:19018"  # Hygieia API port (self care)
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for service registration
       - SERVICE_NAME=hygieia

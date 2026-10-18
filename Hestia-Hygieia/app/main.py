@@ -28,6 +28,7 @@ except ModuleNotFoundError:
 
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
 from .core import catalog
@@ -53,16 +54,10 @@ API = "/api/selfcare"
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("hygieia")
 settings.declare([
-    setting("hygieia.week_start", "Inizio settimana", "enum", "monday", group="Generale",
-            options=[("monday", "Lunedì"), ("sunday", "Domenica")], help="Per gli obiettivi «N volte a settimana»."),
-    setting("hygieia.currency", "Valuta", "string", "EUR", group="Generale"),
     setting("hygieia.default_pao_months", "Durata dopo l'apertura", "int", 12, group="Prodotti", min=1, max=60, unit="mesi",
             help="Quando il prodotto non indica il PAO (il barattolino «12M»)."),
-    setting("hygieia.reminders.enabled", "Promemoria", "bool", True, group="Promemoria",
-            help="Interruttore generale. Ogni routine resta senza promemoria finché non lo attivi su quella routine."),
-    setting("hygieia.reminders.max_per_week", "Promemoria massimi a settimana", "int", 2, group="Promemoria", min=1, max=7,
-            help="Per ogni routine. Uno solo resta visibile e dice quante volte l'hai saltata.",
-            depends_on={"key": "hygieia.reminders.enabled", "equals": True}),
+    *reminder_settings("hygieia", help="Poi scegli su ogni routine se vuoi il promemoria. Al massimo N a settimana "
+                                       "per routine; uno solo resta visibile e dice quante volte l'hai saltata."),
     setting("hygieia.alerts.enabled", "Avvisi prodotti", "bool", True, group="Avvisi",
             help="Scadenze e prodotti che stanno finendo, uno per prodotto."),
     setting("hygieia.alerts.expiry_days", "Avviso scadenza", "int", 30, group="Avvisi", min=1, max=180, unit="giorni",
@@ -70,7 +65,7 @@ settings.declare([
     setting("hygieia.alerts.restock_days", "Avviso da ricomprare", "int", 14, group="Avvisi", min=1, max=90, unit="giorni",
             help="Quando la stima dice che finisce entro questi giorni.",
             depends_on={"key": "hygieia.alerts.enabled", "equals": True}),
-])
+]).follow_personal()                                       # week start, currency: personal settings shared by every module
 
 hub = Hub(HUB_API_URL)
 store = Store(hub)
@@ -366,12 +361,10 @@ def quick_product_undo(id: str, date: str = ""):
 
 
 # ── reminders and alerts (agenda jobs → Hermes, one live notification per thing) ──
-def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info") -> None:
-    hub.ok("hermes", "POST", "api/events/ingest", body={
-        "event_type": "service.action_required", "domain": "selfcare", "entity_id": key,
-        "payload": {"kind": key.rsplit(".", 1)[0], "service": "hygieia", "source": "hygieia", "domain": "selfcare",
-                    "_source": "hygieia", "_title": title, "target": "owner", "replaces": key, "level": level,
-                    "_message": text, "_actions": actions}}, timeout=8)
+def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "oggi") -> None:
+    hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
+        module="hygieia", domain="selfcare", key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
+        actions=actions, page=page, level=level), timeout=8)
 
 
 @app.post(f"{API}/reminders/run")
@@ -393,7 +386,7 @@ def reminders_run():
              "method": "POST", "path": f"{API}/routines/{rid}/snooze", "body": {}, "resolves": True},
         ]
         try:
-            _emit(f"selfcare.reminder.{rid}", "Self care", hygieia.reminder_text(p), actions)
+            _emit(f"selfcare.reminder.{rid}", "Self care", hygieia.reminder_text(p), actions, page=f"routine/{rid}")
             hygieia.mark_reminder_sent(rid)
             logger.info("event=selfcare_reminder_sent routine=%s hint=%s", rid, p.get("hint"))
             out.append({"routine_id": rid, "send": True})
@@ -424,7 +417,8 @@ def alerts_run():
             actions = [{"id": "bought", "label": "Ricomprato", "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
-            _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info")
+            _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
+                  page=f"prodotti/{pid}")
             hygieia.store.upsert("alert", key, {"sent": today.isoformat(), "type": a["type"], "product_id": pid})
             sent.append(a["key"])
         except Exception as exc:
@@ -719,7 +713,7 @@ try:
     O = {"type": "object"}
     G = "selfcare"
     _tools = [
-        MCPTool(name="selfcare_overview", description="Self care di Marko: routine (con passi e frequenza), prodotti in "
+        MCPTool(name="selfcare_summary", description="Self care dell'utente: routine (con passi e frequenza), prodotti in "
                 "uso, avvisi (scadenze, da ricomprare) e cosa resta oggi. Usalo per primo per qualsiasi domanda su "
                 "skincare, capelli, corpo, cosmetici.", parameters={"type": "object", "properties": {}},
                 handler=_t(_overview), title="✨ Self care", path=f"{API}/overview", clients=["telegram", "ui"], telegram_group=G),

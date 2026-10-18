@@ -21,6 +21,9 @@ from .suggest import Suggester, season_of
 logger = logging.getLogger("hestia_wardrobe.service")
 
 PER_LABEL = {"day": "oggi", "week": "questa settimana", "month": "questo mese"}
+# Personal settings shared by every module (owner Themis): never a wardrobe.* copy.
+WEEK_START_KEY = "themis.personal.week_start"
+CURRENCY_KEY = "themis.personal.currency"
 
 
 class NotFound(LookupError):
@@ -50,6 +53,16 @@ class Wardrobe:
         except Exception:
             return default
         return default if value is None else value
+
+    def personal(self, key: str, default: Any = None) -> Any:
+        try:
+            value = self._cfg(key, default)
+        except Exception:
+            return default
+        return default if value is None else value
+
+    def currency(self) -> str:
+        return str(self.personal(CURRENCY_KEY, "EUR"))
 
     def today(self) -> date:
         return datetime.now(self.tz).date()
@@ -89,7 +102,7 @@ class Wardrobe:
         return {"kinds": domain.KINDS, "seasons": domain.SEASONS, "statuses": domain.STATUSES, "conditions": domain.CONDITIONS,
                 "slots": domain.SLOTS, "collection_types": domain.COLLECTION_TYPES, "vocabularies": self.vocabularies(),
                 "today": self.today().isoformat(), "season": season_of(self.today()),
-                "currency": self.cfg("currency", "EUR"), "goal": self.goal_progress()}
+                "currency": self.currency(), "goal": self.goal_progress()}
 
     # ── shared lookups ─────────────────────────────────────────────────────
     def _pieces_raw(self) -> list[dict]:
@@ -420,7 +433,8 @@ class Wardrobe:
             return d
         if per == "month":
             return d.replace(day=1)
-        return d - timedelta(days=d.weekday())
+        first = 6 if self.personal(WEEK_START_KEY, "monday") == "sunday" else 0
+        return d - timedelta(days=(d.weekday() - first) % 7)
 
     def _period_next(self, start: date, per: str) -> date:
         if per == "day":
@@ -470,7 +484,7 @@ class Wardrobe:
     def stats(self) -> dict:
         return stats_mod.compute(self._pieces_raw(), self.store.items("outfit"), self._wears(), self.vocab_map("category"),
                                  self.vocab_map("color"), self.today(), int(self.cfg("forgotten_days", 180)),
-                                 str(self.cfg("currency", "EUR")))
+                                 self.currency())
 
     def summary(self) -> dict:
         s = self.stats()
@@ -496,7 +510,7 @@ class Wardrobe:
                 "forgotten": [f["name"] for f in s["forgotten"][:8]], "gaps": s["gaps"], "goal": g,
                 "favorite_outfits": [o["name"] for o in self.outfits(favorite=True, limit=8)["items"]]}
 
-    def context(self, budget: int = 600) -> dict:
+    def context(self, budget: int = 400) -> dict:
         text = "Guardaroba: " + self.summary()["text"]
         if len(text) > budget:
             text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
@@ -556,6 +570,8 @@ class Wardrobe:
             return {"send": False, "why": "not_behind"}
         week0 = self._period_start(self.today(), "week").isoformat()
         sent = [r for r in self.store.items("reminder") if str(r.get("at") or "")[:10] >= week0]
+        if any(str(r.get("at") or "")[:10] == self.today().isoformat() for r in sent):
+            return {"send": False, "why": "sent_today"}       # one nudge a day, like every module
         if len(sent) >= int(self.cfg("reminder.max_per_week", 2)):
             return {"send": False, "why": "weekly_cap"}
         return {"send": True, "goal": g, "chips": [c for c in self.quick_chips(3)]}

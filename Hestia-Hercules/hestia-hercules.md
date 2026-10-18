@@ -15,9 +15,9 @@
   measurements, goals, check-ins, feedback, adaptations, day plans (skip / move).
 - Computes everything derived: e1RM (Epley/Brzycki), PRs, volume per muscle/group, progression suggestions
   (double, linear, rpe), stalls and deload hint, goal progress and streak, warm-ups, plate maths.
-- **Adaptation is a conversation**: the assistant calls `hercules_adapt_today` with what Marko says (pain,
+- **Adaptation is a conversation**: the assistant calls `fitness_adapt_today` with what Marko says (pain,
   energy, time, missing equipment, intent); Hercules applies its rules and returns the plan + trace; nothing is
-  applied until `hercules_apply_adaptation`; `hercules_restore_today` goes back. No Hermes proposal cards.
+  applied until `fitness_apply_adaptation`; `fitness_restore_today` goes back. No Hermes proposal cards.
 - Does not call models (Oracle is the brain) and has no database (Archive `hercules-store`).
 
 ## Storage and offline sync
@@ -33,7 +33,7 @@
 
 ## Assistant
 
-- Tools (`fitness` domain via `module_tool_domains`, REST path `/api/hercules/tools/<name>`): `hercules_summary`,
+- Tools (`fitness` domain via `module_tool_domains`, REST path `/api/hercules/tools/<name>`): `fitness_summary`,
   `next_workout`, `history`, `exercise_stats`, `search_exercises`, `templates`, `start_session`, `log_sets`
   (natural text: "panca 80x8, 80x8; trazioni 8, 7"), `finish_session`, `checkin`, `adapt_today`,
   `apply_adaptation`, `restore_today`, `skip_day`, `postpone`, `feedback`, `edit_template`, `undo_template`,
@@ -46,7 +46,8 @@
 Agenda job `hercules.reminder` (daily 18:30, editable in the agenda) → `POST /api/hercules/reminder/check`.
 Sends only when enabled, a goal is behind, nothing done or skipped today, no live session, and under
 `hercules.reminder.max_per_week`. Hermes `service.action_required` with `replaces: hercules.reminder`
-(one live reminder) and actions **Segna fatto** (`resolves: true`) / **Salta oggi**; target `owner`.
+(one live reminder) and actions **Segna fatto** (`resolves: true`) / **Salta oggi**; target `owner`;
+`_link` opens the plugin page `allenamento`.
 
 ## Client UI (plugin contract)
 
@@ -57,9 +58,10 @@ A UI change needs `up-all.bat --build hercules`.
 
 ## Settings (Themis, `hercules.*`)
 
-units, week_start, rest.default_seconds, bar_weight, plates, warmup.scheme, increment.{barbell,dumbbell,machine,cable},
+units, rest.default_seconds, bar_weight, plates, warmup.scheme, increment.{barbell,dumbbell,machine,cable},
 e1rm_formula, stall.exposures, adapt.low_energy, adapt.weight_cut_pct, skip_mode, reminder.enabled (false),
-reminder.max_per_week (2).
+reminder.max_per_week (2) from `hestia_common.reminders`. Week start is the personal setting
+`themis.personal.week_start` (shared by every module).
 
 ## API (via Hub `/route/hercules/...`)
 

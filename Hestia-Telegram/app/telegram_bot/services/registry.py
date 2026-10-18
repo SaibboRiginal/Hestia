@@ -206,8 +206,10 @@ def get_visible_command_items(surface: str = "menu") -> list[tuple[str, dict[str
     with core.COMMAND_REGISTRY_LOCK:
         registry_items = sorted(core.COMMAND_REGISTRY.items())
 
+    hidden_commands = core.hidden_dynamic_commands()
+    hidden_services = core.hidden_command_services()
     for name, meta in registry_items:
-        if name in core.TELEGRAM_HIDDEN_DYNAMIC_COMMANDS:
+        if name in hidden_commands:
             continue
         # Respect explicit telegram_visible: false from MCP tools
         if meta.get("telegram_visible") is False:
@@ -215,7 +217,7 @@ def get_visible_command_items(surface: str = "menu") -> list[tuple[str, dict[str
         service = str(meta.get("service", "")).strip().lower()
         response_mode = str(
             meta.get("response_mode", "raw_json")).strip().lower()
-        if service in core.TELEGRAM_HIDDEN_COMMAND_SERVICES:
+        if service in hidden_services:
             continue
         if response_mode == "raw_json":
             continue
@@ -326,15 +328,17 @@ def setup_commands():
     with core.COMMAND_REGISTRY_LOCK:
         registry_items = sorted(core.COMMAND_REGISTRY.items())
 
+    hidden_commands = core.hidden_dynamic_commands()
+    hidden_services = core.hidden_command_services()
     for name, meta in registry_items:
-        if name in core.TELEGRAM_HIDDEN_DYNAMIC_COMMANDS:
+        if name in hidden_commands:
             continue
         if meta.get("telegram_visible") is False:
             continue
         service = str(meta.get("service", "")).strip().lower()
         response_mode = str(
             meta.get("response_mode", "raw_json")).strip().lower()
-        if service in core.TELEGRAM_HIDDEN_COMMAND_SERVICES:
+        if service in hidden_services:
             continue
         if response_mode == "raw_json":
             continue

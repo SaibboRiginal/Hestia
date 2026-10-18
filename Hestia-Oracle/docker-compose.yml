@@ -20,23 +20,10 @@ services:
       - OLLAMA_URL=http://host.docker.internal:11434/api/generate  # Ollama generate endpoint (local LLM)
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
-      # Tuning parameters (set in app/.env or override here):
-      # ORACLE_HISTORY_LIMIT=6          number of past messages included in context (int)
-      # ORACLE_HISTORY_CHAR_LIMIT=500   max chars per history message before truncation (int)
-      # ORACLE_CONTEXT_ENTITIES_LIMIT=12  max entities injected into the analysis prompt (int)
-      # ORACLE_CONTEXT_FIELD_CHAR_LIMIT=280  max chars per entity field value (int)
-      # ORACLE_TOOL_RESULT_MAX_CHARS=2000  max chars retained from each tool result in agent loop (int)
-      # MODULE_TOOL_REGISTRY_TTL_SECONDS=120  cache TTL for module-tool registry (int)
-      # ORACLE_FORCE_TELEGRAM_TARGET=1  force all subscription channels to use the user's Telegram chat_id (0|1)
-      # ── Enhancement Plan tuning (2026-06-18) ────────────────────────
-      # Context window, Ollama keep-alive, compaction threshold: settings Impostazioni → Oracle → Contesto.
+      - TZ=${TZ:-Europe/Rome}                                # Local time for the assistant (today, agenda)
+      # Agent loop, context, timeouts, memory, approvals, documents: Themis settings oracle.* (Impostazioni → Sistema → Oracle).
       # ORACLE_OPENAI_BASE_URL=http://host.docker.internal:8080/v1  OpenAI-compatible server (llama-server, vLLM) → provider `openai`
       # ORACLE_OPENAI_API_KEY=            only if that server wants a key (put it in app/.env)
-      # ORACLE_MAX_PARALLEL_TOOLS=8       max concurrent tool executions (int)
-      # ORACLE_MAX_AGENT_TOKENS=0         max cumulative tokens per agent loop, 0=unlimited (int)
-      # ORACLE_PREFERENCE_DOMAINS=        JSON override for preference domain definitions
-      # ORACLE_PREF_DOMAIN_SIM_THRESHOLD=0.55  cosine similarity for domain assignment
-      # ORACLE_THINKING_FAMILIES=gemma4,gemma3,qwen3,deepseek-r1,llama4,phi4  model families supporting think
       # Models per use case (provider, model, fallback, thinking) are settings: Impostazioni → Oracle → Modelli.
     env_file:
       - ./app/.env

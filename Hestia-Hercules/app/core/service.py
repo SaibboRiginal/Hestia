@@ -18,6 +18,7 @@ from .store import Store, StoreUnavailable, now_iso, parse_dt
 logger = logging.getLogger("hestia_hercules.service")
 
 WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+WEEK_START_KEY = "themis.personal.week_start"   # personal setting shared by every module (owner Themis)
 
 
 class NotFound(LookupError):
@@ -48,8 +49,16 @@ class Hercules:
     def today(self) -> date:
         return datetime.now(self.tz).date()
 
+    def week_start_name(self) -> str:
+        """Personal setting shared by every module (Themis ``themis.personal.week_start``)."""
+        try:
+            value = self.setting(WEEK_START_KEY)
+        except Exception:
+            value = None
+        return value or "monday"
+
     def week_start(self) -> int:
-        return 6 if self.cfg("week_start", "monday") == "sunday" else 0
+        return 6 if self.week_start_name() == "sunday" else 0
 
     def formula(self) -> str:
         return self.cfg("e1rm_formula", "epley")
@@ -799,7 +808,7 @@ class Hercules:
         return {"units": self.cfg("units", "kg"), "rest_default": self.cfg("rest.default_seconds", 90),
                 "bar_weight": self.cfg("bar_weight", 20), "plates": self.cfg("plates", [25, 20, 15, 10, 5, 2.5, 1.25]),
                 "increments": {**progression.DEFAULT_INCREMENTS, **{k: v for k, v in self.increments().items() if v}},
-                "e1rm_formula": self.formula(), "week_start": self.cfg("week_start", "monday"),
+                "e1rm_formula": self.formula(), "week_start": self.week_start_name(),
                 "warmup": self.warmup_scheme()}
 
     def warmup_scheme(self) -> list[dict]:
@@ -910,6 +919,8 @@ class Hercules:
             return {"send": False, "why": "skipped_today"}
         week0 = records.period_start(self.today(), "week", self.week_start())
         sent = [r for r in self.store.items("reminder") if (records.local_date(r.get("at"), self.tz) or date.min) >= week0]
+        if any(records.local_date(r.get("at"), self.tz) == self.today() for r in sent):
+            return {"send": False, "why": "sent_today"}       # one nudge a day, like every module
         if len(sent) >= int(self.cfg("reminder.max_per_week", 2)):
             return {"send": False, "why": "weekly_cap"}
         return {"send": True, "goal": behind[0]["progress"], "next": self.next_workout()}

@@ -151,3 +151,28 @@ class TestScoutHealth:
             body = client.get("/health").json()
         assert body.get("status") == "ok"
         assert "scout" in body.get("service", "").lower()
+
+
+@pytest.mark.unit
+def test_oracle_evaluator_sends_use_case_not_model(monkeypatch):
+    """Model choice lives in Oracle (oracle.models.scout_extraction.*): Scout sends only the use case."""
+    from evaluators.oracle_evaluator import OracleEvaluator
+    sent = {}
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"status_code": 200, "payload": {"response": "{}", "model": "gemini-2.5-flash"}}
+
+    def _post(url, json=None, timeout=None):
+        sent.update(url=url, body=json["body"])
+        return _Resp()
+
+    monkeypatch.setattr("evaluators.oracle_evaluator.requests.post", _post)
+    out = OracleEvaluator("SYS", hub_api_url="http://hub/api").evaluate("annuncio")
+    assert sent["url"] == "http://hub/api/route/oracle/api/llm/generate"
+    assert sent["body"]["use_case"] == "scout_extraction"
+    assert "model" not in sent["body"] and "provider" not in sent["body"]
+    assert out == {"raw_response": "{}", "model_used": "gemini-2.5-flash", "error": None}

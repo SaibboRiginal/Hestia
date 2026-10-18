@@ -26,6 +26,7 @@ except ModuleNotFoundError:
 
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
 from .core import catalog, domain
@@ -51,8 +52,6 @@ settings = SettingsClient("hercules")
 settings.declare([
     setting("hercules.units", "Unità di peso", "enum", "kg", group="Generale", options=[("kg", "kg"), ("lb", "lb")],
             help="Come vedo i pesi. Nel database sono sempre in kg."),
-    setting("hercules.week_start", "Inizio settimana", "enum", "monday", group="Generale",
-            options=[("monday", "Lunedì"), ("sunday", "Domenica")]),
     setting("hercules.rest.default_seconds", "Recupero predefinito", "int", 90, group="Allenamento", min=15, max=600,
             unit="s", help="Timer di recupero quando l'esercizio non ne ha uno suo."),
     setting("hercules.bar_weight", "Peso del bilanciere", "float", 20, group="Allenamento", min=0, max=50, unit="kg"),
@@ -74,11 +73,8 @@ settings.declare([
     setting("hercules.skip_mode", "Giorno saltato", "enum", "shift", group="Programma",
             options=[("shift", "La rotazione slitta"), ("keep", "Si passa alla scheda successiva")],
             help="Vale per i programmi a rotazione; quelli settimanali seguono il calendario."),
-    setting("hercules.reminder.enabled", "Promemoria", "bool", False, group="Promemoria",
-            help="Solo se sei indietro con l'obiettivo e oggi non ti sei allenato. Uno alla volta."),
-    setting("hercules.reminder.max_per_week", "Promemoria massimi a settimana", "int", 2, group="Promemoria", min=1, max=7,
-            depends_on={"key": "hercules.reminder.enabled", "equals": True}),
-])
+    *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo e oggi non ti sei allenato. Uno alla volta."),
+]).follow_personal()                                       # week start: personal setting shared by every module
 
 hub = Hub(HUB_API_URL)
 store = Store(hub)
@@ -414,11 +410,10 @@ def summary():
 @app.get("/api/module/context")
 def module_context(budget: int = 400):
     """Shared contract (SPEC §9): a short caveman line the assistant may include."""
-    s = hercules.summary()
-    text = s["text"]
+    text = "Allenamento: " + hercules.summary()["text"]
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
-    return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": "Allenamento: " + text}
+    return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": text}
 
 
 # ── quick actions (WebUI Home) ───────────────────────────────────────────────
@@ -496,13 +491,10 @@ def reminder_check():
                         "resolves": True})
     actions.append({"id": "skip", "label": "Salta oggi", "text": "⏭ Salta oggi", "service": "hercules",
                     "method": "POST", "path": f"{API}/days/skip", "body": {}})
-    key = "hercules.reminder"
     try:
-        hub.call("hermes", "POST", "api/events/ingest", body={
-            "event_type": "service.action_required", "domain": "fitness", "entity_id": key,
-            "payload": {"kind": "hercules.reminder", "service": "hercules", "source": "hercules", "domain": "fitness",
-                        "_source": "hercules", "_title": "Allenamento", "target": "owner", "replaces": key,
-                        "level": "info", "_message": text, "_actions": actions}}, timeout=8)
+        hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
+            module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento", text=text,
+            actions=actions, page="allenamento"), timeout=8)
         hercules.mark_reminder_sent()
         logger.info("event=hercules_reminder_sent template=%s hint=%s", tpl.get("id"), goal["hint"])
     except Exception as exc:
@@ -707,7 +699,7 @@ try:
         saved = hercules.save_template(t, by_assistant=True)
         return {"saved": True, "template": saved["name"], "revision": saved.get("revision"),
                 "exercises": [next((e["name"] for e in exs if e["id"] == i["exercise_id"]), "?") for i in saved["items"]],
-                "undo": "hercules_undo_template"}
+                "undo": "fitness_undo_template"}
 
     def _undo_template(template: str = "") -> dict:
         match = [t for t in hercules.store.items("template") if template.lower() in t["name"].lower() or t["id"] == template]
@@ -733,96 +725,96 @@ try:
     I = {"type": "integer"}
     L = {"type": "array", "items": {"type": "string"}}
     _tools = [
-        MCPTool(name="hercules_summary", description="Allenamento a colpo d'occhio: prossimo allenamento, obiettivo "
+        MCPTool(name="fitness_summary", description="Allenamento a colpo d'occhio: prossimo allenamento, obiettivo "
                 "(es. 2/3 settimana), record recenti, stalli, giorni saltati, segnali di energia bassa. Usalo per "
                 "qualsiasi domanda su palestra/allenamento prima di altro.", parameters={"type": "object", "properties": {}},
                 handler=_t(_summary), title="🏋️ Riepilogo allenamento", path=f"{API}/summary", clients=["telegram", "ui"],
                 telegram_group="allenamento"),
-        MCPTool(name="hercules_next_workout", description="Il prossimo allenamento con esercizi e pesi suggeriti "
+        MCPTool(name="fitness_next_workout", description="Il prossimo allenamento con esercizi e pesi suggeriti "
                 "(progressione automatica) e il motivo.", parameters={"type": "object", "properties": {}},
                 handler=_t(_next), title="🏋️ Allenamento di oggi", path=f"{API}/next", clients=["telegram", "ui"],
                 telegram_group="allenamento"),
-        MCPTool(name="hercules_history", description="Allenamenti passati (giorni indietro, filtro esercizio).",
+        MCPTool(name="fitness_history", description="Allenamenti passati (giorni indietro, filtro esercizio).",
                 parameters={"type": "object", "properties": {"days": I, "exercise": S, "limit": I}},
                 handler=_t(_history), title="🏋️ Storico allenamenti", path=f"{API}/sessions", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_exercise_stats", description="Record e andamento di un esercizio (massimale stimato, "
+        MCPTool(name="fitness_exercise_stats", description="Record e andamento di un esercizio (massimale stimato, "
                 "peso massimo, ultime sedute, stallo).", parameters={"type": "object", "properties": {"exercise": S},
                                                                        "required": ["exercise"]},
                 handler=_t(_exercise_stats), title="🏋️ Statistiche esercizio", path=f"{API}/records", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_search_exercises", description="Cerca esercizi nel catalogo (nome o muscolo: petto, "
+        MCPTool(name="fitness_search_exercises", description="Cerca esercizi nel catalogo (nome o muscolo: petto, "
                 "spalle, braccia, schiena, core, gambe).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
                 handler=_t(_search), title="🏋️ Cerca esercizi", path=f"{API}/exercises", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_templates", description="Le mie schede di allenamento con esercizi e durata.",
+        MCPTool(name="fitness_templates", description="Le mie schede di allenamento con esercizi e durata.",
                 parameters={"type": "object", "properties": {}}, handler=_t(_templates), title="🏋️ Schede",
                 path=f"{API}/templates", clients=["telegram", "ui"], telegram_group="allenamento"),
-        MCPTool(name="hercules_start_session", description="Inizia un allenamento (scheda per nome, vuoto = quella di oggi).",
+        MCPTool(name="fitness_start_session", description="Inizia un allenamento (scheda per nome, vuoto = quella di oggi).",
                 parameters={"type": "object", "properties": {"template": S}}, handler=_t(_start),
                 title="🏋️ Inizia allenamento", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
                 telegram_group="allenamento"),
-        MCPTool(name="hercules_log_sets", description="Registra serie nell'allenamento in corso dal testo: "
+        MCPTool(name="fitness_log_sets", description="Registra serie nell'allenamento in corso dal testo: "
                 "'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. Peso x ripetizioni (x serie), @RPE opzionale.",
                 parameters={"type": "object", "properties": {"text": S}, "required": ["text"]}, handler=_t(_log),
                 title="🏋️ Registra serie", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
                 telegram_group="allenamento"),
-        MCPTool(name="hercules_finish_session", description="Concludi l'allenamento in corso: riepilogo e nuovi record.",
+        MCPTool(name="fitness_finish_session", description="Concludi l'allenamento in corso: riepilogo e nuovi record.",
                 parameters={"type": "object", "properties": {"notes": S, "effort": I}}, handler=_t(_finish),
                 title="🏋️ Fine allenamento", method="POST", path=f"{API}/sessions/{{id}}/finish",
                 clients=["telegram", "ui"], telegram_group="allenamento"),
-        MCPTool(name="hercules_checkin", description="Salva come mi sento oggi: energia 1-5, sonno 1-5, indolenzimenti, "
+        MCPTool(name="fitness_checkin", description="Salva come mi sento oggi: energia 1-5, sonno 1-5, indolenzimenti, "
                 "dolori (spalla, ginocchio, schiena…), minuti a disposizione.",
                 parameters={"type": "object", "properties": {"energy": I, "sleep": I, "soreness": L, "pain_areas": L,
                                                              "time_minutes": I, "free_text": S}},
                 handler=_t(_checkin), title="🏋️ Check-in", method="POST", path=f"{API}/checkin", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_adapt_today", description="Proponi l'allenamento di oggi adattato a come sto (energia "
+        MCPTool(name="fitness_adapt_today", description="Proponi l'allenamento di oggi adattato a come sto (energia "
                 "1-5, minuti, dolori, indolenzimenti, attrezzi mancanti, intent lighter|shorter|harder). NON lo applica: "
-                "mostra all'utente 'trace' e chiedi se va bene; se dice sì chiama hercules_apply_adaptation. "
+                "mostra all'utente 'trace' e chiedi se va bene; se dice sì chiama fitness_apply_adaptation. "
                 "Mai consigliare di allenarsi sul dolore.",
                 parameters={"type": "object", "properties": {"energy": I, "time_minutes": I, "pain_areas": L,
                                                              "soreness": L, "equipment_missing": L, "intent": S,
                                                              "free_text": S}},
                 handler=_t(_adapt), title="🏋️ Adatta allenamento", method="POST", path=f"{API}/adapt", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_apply_adaptation", description="Applica l'adattamento proposto (solo dopo il sì dell'utente).",
+        MCPTool(name="fitness_apply_adaptation", description="Applica l'adattamento proposto (solo dopo il sì dell'utente).",
                 parameters={"type": "object", "properties": {"adaptation_id": S}, "required": ["adaptation_id"]},
                 handler=_t(_apply), title="🏋️ Applica adattamento", method="POST", path=f"{API}/adapt/{{adaptation_id}}/apply",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_restore_today", description="Ripristina la scheda originale di oggi (annulla l'adattamento).",
+        MCPTool(name="fitness_restore_today", description="Ripristina la scheda originale di oggi (annulla l'adattamento).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_restore), title="🏋️ Ripristina scheda",
                 method="POST", path=f"{API}/restore", clients=["ui"], telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_skip_day", description="Segna saltato l'allenamento di un giorno (default oggi).",
+        MCPTool(name="fitness_skip_day", description="Segna saltato l'allenamento di un giorno (default oggi).",
                 parameters={"type": "object", "properties": {"date": S, "note": S}}, handler=_t(_skip),
                 title="🏋️ Salta allenamento", method="POST", path=f"{API}/days/skip", clients=["telegram", "ui"],
                 telegram_group="allenamento"),
-        MCPTool(name="hercules_postpone", description="Sposta l'allenamento di oggi (o di date_from) al giorno 'to' (YYYY-MM-DD).",
+        MCPTool(name="fitness_postpone", description="Sposta l'allenamento di oggi (o di date_from) al giorno 'to' (YYYY-MM-DD).",
                 parameters={"type": "object", "properties": {"to": S, "date_from": S}, "required": ["to"]},
                 handler=_t(_postpone), title="🏋️ Sposta allenamento", method="POST", path=f"{API}/days/postpone",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_feedback", description="Salva un feedback sull'allenamento o su un esercizio. tags: "
+        MCPTool(name="fitness_feedback", description="Salva un feedback sull'allenamento o su un esercizio. tags: "
                 "too_heavy, too_light, pain, great, tired, bored, short_time, technique. Le regole lo usano la volta dopo.",
                 parameters={"type": "object", "properties": {"text": S, "tags": L, "exercise": S}}, handler=_t(_feedback),
                 title="🏋️ Feedback allenamento", method="POST", path=f"{API}/feedback", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_edit_template", description="Modifica una scheda: togli/aggiungi esercizio, serie e "
-                "ripetizioni. Solo dopo che l'utente ha detto sì in chat. Annullabile con hercules_undo_template.",
+        MCPTool(name="fitness_edit_template", description="Modifica una scheda: togli/aggiungi esercizio, serie e "
+                "ripetizioni. Solo dopo che l'utente ha detto sì in chat. Annullabile con fitness_undo_template.",
                 parameters={"type": "object", "properties": {"template": S, "remove_exercise": S, "add_exercise": S,
                                                              "sets": I, "reps_min": I, "reps_max": I,
                                                              "changes": {"type": "object"}}, "required": ["template"]},
                 handler=_t(_edit_template), title="🏋️ Modifica scheda", method="PUT", path=f"{API}/templates/{{id}}",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_undo_template", description="Annulla l'ultima modifica di una scheda.",
+        MCPTool(name="fitness_undo_template", description="Annulla l'ultima modifica di una scheda.",
                 parameters={"type": "object", "properties": {"template": S}, "required": ["template"]},
                 handler=_t(_undo_template), title="🏋️ Annulla modifica scheda", method="POST",
                 path=f"{API}/templates/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="allenamento"),
-        MCPTool(name="hercules_log_measurement", description="Registra peso corporeo (kg) o una misura (kind: waist, "
+        MCPTool(name="fitness_log_measurement", description="Registra peso corporeo (kg) o una misura (kind: waist, "
                 "chest, arm, thigh, body_fat…).", parameters={"type": "object", "properties": {
                     "value": {"type": "number"}, "kind": S}, "required": ["value"]},
                 handler=_t(_measure), title="🏋️ Registra peso", method="POST", path=f"{API}/measurements",
                 clients=["telegram", "ui"], telegram_group="allenamento"),
-        MCPTool(name="hercules_set_goal", description="Imposta un obiettivo di allenamento: times per day|week|month; "
+        MCPTool(name="fitness_set_goal", description="Imposta un obiettivo di allenamento: times per day|week|month; "
                 "scope any (qualsiasi), template (target = nome scheda) o muscle (petto, spalle, braccia, schiena, core, gambe).",
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},

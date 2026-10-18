@@ -10,6 +10,8 @@ import telebot
 
 import message_format
 import session_store
+import telegram_settings as tg_settings
+from telegram_settings import settings
 from command_catalog import telegram_local_commands
 
 try:
@@ -59,37 +61,27 @@ HUB_API_URL = os.getenv(
 STATE_FILE = "data/telegram_state.json"
 SESSION_SETTINGS_FILE = "data/session_settings.json"
 
-TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS = os.getenv(
-    "TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS",
-    "Rispondi in modo conciso (massimo 6-8 righe), personale e caldo. "
-    "Parla in prima persona femminile e usa il nome Mark quando naturale.\n\n"
-    "FORMATO RICHIESTO DAL CLIENT: Markdown. "
-    "Usa **grassetto**, _corsivo_, [testo descrittivo](url) per link. "
-    "Per elenchi usa • (bullet) su ogni riga. "
-    "NON usare tag HTML (<b>, <i>, <a>, <code>, <pre>, <br>). "
-    "NON mostrare URL in chiaro. "
-    "NON usare ## headings o */- per liste.",
-)
-
 TELEGRAM_CONTROL_PORT = int(os.getenv("TELEGRAM_CONTROL_PORT", "8010"))
 TELEGRAM_BASE_URL = os.getenv(
     "TELEGRAM_BASE_URL", f"http://hestia_telegram:{TELEGRAM_CONTROL_PORT}"
 ).rstrip("/")
-TELEGRAM_LOCALE = os.getenv("TELEGRAM_LOCALE", "it")
 
-TELEGRAM_HIDDEN_COMMAND_SERVICES = {
-    item.strip().lower()
-    for item in os.getenv("TELEGRAM_HIDDEN_COMMAND_SERVICES", "").split(",")
-    if item.strip()
-}
-TELEGRAM_HIDDEN_DYNAMIC_COMMANDS = {
-    item.strip().lower()
-    for item in os.getenv(
-        "TELEGRAM_HIDDEN_DYNAMIC_COMMANDS",
-        "notifica_attiva,notifica_disattiva,notifiche_attive",
-    ).split(",")
-    if item.strip()
-}
+def client_instructions() -> str:
+    """Base style/format instructions sent to Oracle (setting, live)."""
+    return str(settings.get(tg_settings.CHAT_CLIENT_INSTRUCTIONS) or "")
+
+
+def locale() -> str:
+    return str(settings.get(tg_settings.CHAT_LOCALE) or "it")
+
+
+def hidden_command_services() -> set[str]:
+    return tg_settings.as_set(tg_settings.COMMANDS_HIDDEN_SERVICES)
+
+
+def hidden_dynamic_commands() -> set[str]:
+    return tg_settings.as_set(tg_settings.COMMANDS_HIDDEN)
+
 
 PENDING_CONFIRMATIONS: dict[str, dict] = {}
 COMMAND_REGISTRY: dict[str, dict[str, Any]] = {}
@@ -103,11 +95,8 @@ LOCAL_COMMANDS = {item["command"]: item for item in telegram_local_commands()}
 ALERT_BUFFER: dict[str, list[dict]] = {}  # chat_id -> [alerts]
 ALERT_BUFFER_LOCK = threading.Lock()
 ALERT_BUFFER_TIMERS: dict[str, threading.Timer] = {}  # chat_id -> timer
-ALERT_BUFFER_WINDOW = float(os.getenv("ALERT_BUFFER_WINDOW_SECONDS", "0.8"))
 
 # ── Feedback prompting ──────────────────────────────────────────────────────
-FEEDBACK_PROMPT_RATE = float(os.getenv("TELEGRAM_FEEDBACK_PROMPT_RATE", "0.15"))
-FEEDBACK_SNOOZE_DEFAULT_DAYS = int(os.getenv("FEEDBACK_SNOOZE_DEFAULT_DAYS", "7"))
 FEEDBACK_ARCHIVE_URL = os.getenv(
     "FEEDBACK_ARCHIVE_URL",
     f"{HUB_API_URL}/route/archive/api/feedback",
@@ -184,7 +173,7 @@ def should_show_feedback_prompt(chat_id: str, message_text: str, has_tools: bool
     if count == 1:
         return True
     import random
-    return random.random() < FEEDBACK_PROMPT_RATE
+    return random.random() < float(settings.get(tg_settings.FEEDBACK_PROMPT_RATE))
 
 
 def build_feedback_keyboard(interaction_id: str = "") -> "types.InlineKeyboardMarkup":
@@ -238,8 +227,10 @@ def submit_feedback_to_archive(
         return False
 
 
-def snooze_feedback(chat_id: str, days: int = FEEDBACK_SNOOZE_DEFAULT_DAYS) -> str:
+def snooze_feedback(chat_id: str, days: int | None = None) -> str:
     """Save a snooze preference to Archive. Returns until-ISO string."""
+    if days is None:
+        days = int(settings.get(tg_settings.FEEDBACK_SNOOZE_DAYS))
     import datetime as _dt
     until = _dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(days=days)
     until_iso = until.isoformat()
@@ -390,7 +381,7 @@ def reset_session_settings(chat_id: str):
 def build_client_instructions_for_chat(chat_id: str) -> str:
     return session_store.build_client_instructions_for_chat(
         SESSION_SETTINGS_FILE,
-        TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS,
+        client_instructions(),
         str(chat_id),
     )
 
@@ -511,7 +502,7 @@ def buffer_alert(
                 ALERT_BUFFER_TIMERS.pop(chat_id, None)
             flush_buffered_alerts(chat_id)
 
-        timer = threading.Timer(ALERT_BUFFER_WINDOW, flush_alerts)
+        timer = threading.Timer(float(settings.get(tg_settings.ALERTS_BUFFER_WINDOW)), flush_alerts)
         timer.daemon = True
         ALERT_BUFFER_TIMERS[chat_id] = timer
         timer.start()

@@ -77,7 +77,7 @@ def _load_yolo():
 
 
 # ── WhisperX singleton ────────────────────────────────────────────────────────
-_WHISPER_LOADED = False
+_WHISPER_LOADED = ""  # name of the loaded model ("" = none yet)
 _WHISPER_MODEL = None
 
 _MIME_TO_EXT: dict[str, str] = {
@@ -93,21 +93,24 @@ _MIME_TO_EXT: dict[str, str] = {
 }
 
 
+def _whisper_name() -> str:
+    from core.services import oracle_settings
+    return str(oracle_settings.settings.get(oracle_settings.WHISPER_MODEL) or "base")
+
+
 def _load_whisper():
-    """Return WhisperX model, loading once on first call."""
+    """Return the WhisperX model of setting ``oracle.documents.whisper_model``; loaded on first
+    use and again when the setting changes."""
     global _WHISPER_LOADED, _WHISPER_MODEL
-    if _WHISPER_LOADED:
+    name = _whisper_name()
+    if _WHISPER_LOADED == name:
         return _WHISPER_MODEL
-    _WHISPER_LOADED = True
+    _WHISPER_LOADED = name
+    _WHISPER_MODEL = None
     try:
         import whisperx
-        _WHISPER_MODEL = whisperx.load_model(
-            os.getenv("WHISPER_MODEL", "base"),
-            device="cpu",
-            compute_type="int8",
-        )
-        logger.info("event=local_whisperx_model_loaded [LOCAL] WhisperX model loaded (%s)",
-                    os.getenv("WHISPER_MODEL", "base"))
+        _WHISPER_MODEL = whisperx.load_model(name, device="cpu", compute_type="int8")
+        logger.info("event=local_whisperx_model_loaded [LOCAL] WhisperX model loaded (%s)", name)
     except Exception as exc:
         logger.info("event=local_whisperx_unavailable [LOCAL] WhisperX unavailable: %s", exc)
     return _WHISPER_MODEL

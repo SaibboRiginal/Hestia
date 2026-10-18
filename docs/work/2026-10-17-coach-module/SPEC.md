@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.5 |
+| **Version** | 2.6 |
 | **Source** | User via external chat (Claude Code cloud project, thread "Modulo Coach allenamenti") · 2026-10-17 |
-| **Status** | Agreed with Marko 2026-10-17; P1–P3 (service, store, engines, tools) on main 2026-10-18, UI bundle in progress |
+| **Status** | Agreed with Marko 2026-10-17; P1–P3 (service, store, engines, tools) on main 2026-10-18, P4 UI bundle on main 2026-10-18 · Marko's real run pending · P5 after his feedback |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -58,7 +58,7 @@ exercises, set, measurement, adaptation, plus feedback, goal, plan, checkin, rem
 | Table | Key fields |
 |---|---|
 | `hercules_exercises` | name, aliases[], kind (`weight_reps` · `bodyweight_reps` · `weighted_bodyweight` · `assisted_bodyweight` · `reps_only` · `duration` · `distance_duration`), primary_muscles[], secondary_muscles[], stress_joints[] (for the pain rule), movement_pattern (squat · hinge · push_h · push_v · pull_h · pull_v · lunge · carry · core · isolation), equipment (`barbell` · `dumbbell` · `machine` · `cable` · `kettlebell` · `band` · `bodyweight` · `other`), unilateral, increment_kg (null = setting by equipment), notes, instructions, media_url, is_custom, archived |
-| `hercules_templates` | name, folder, notes, color, estimated_minutes, position, archived |
+| `fitness_templates` | name, folder, notes, color, estimated_minutes, position, archived |
 | `hercules_template_items` | template_id, exercise_id, position, superset_group, rest_seconds, notes, **targets**: list of planned sets `{type, reps_min, reps_max, weight_kg?, rpe?, duration_s?, distance_m?}`, progression rule (`double` · `linear` · `rpe` · `none`) |
 | `hercules_programs` | name, active, start_date, weeks (null = repeating), schedule `[{weekday or day_index, template_id}]`, deload_every_weeks? |
 | `hercules_sessions` | started_at, ended_at, template_id?, program_id?, name, status (`active` · `done` · `discarded`), notes, readiness `{energy, sleep, soreness, stress, pain_areas[], free_text}`, adaptation_id?, bodyweight_kg?, perceived_effort (1–10) |
@@ -143,33 +143,33 @@ Rules (each a small, testable function, thresholds as settings):
 | repeated low energy (≥3 check-ins in 7 days) | flag "deload suggested" in the summary; the assistant brings it up (5.3) |
 
 Adaptation is **a conversation with the assistant** (Marko, v2.0: "è più un feedback con cui parlo con
-l'assistente"): I tell it how I feel, Oracle calls `hercules_adapt_today`, shows the adjusted plan with the
+l'assistente"): I tell it how I feel, Oracle calls `fitness_adapt_today`, shows the adjusted plan with the
 reasons, we talk it over, and it is applied to today's session when I agree in the chat. Reversible
 ("ripristina scheda originale"); it never changes the template.
 
 ### 5.3 Feedback and permanent changes (conversational, no Hermes proposals)
 - After a workout (or any time) I give feedback in chat or in the finish screen: "troppo pesante", "spalla
-  fastidiosa sulla panca", "mi annoia". `hercules_feedback` stores it (session/exercise, tags, free text);
+  fastidiosa sulla panca", "mi annoia". `fitness_feedback` stores it (session/exercise, tags, free text);
   the engines use it next time (pain tag → pain rule; "too heavy" → no increment; boredom → swap suggestion).
 - Engine findings (stall, deload due, repeated low energy, often-skipped exercise) are **not pushed**: they
-  appear in `hercules_summary` / module context, so the assistant raises them when we talk about training.
+  appear in `fitness_summary` / module context, so the assistant raises them when we talk about training.
 - Changes to templates/programs are made only when I agree in the conversation; the assistant then calls
-  `hercules_edit_template` / `hercules_edit_program`. Every edit keeps a revision (undo).
+  `fitness_edit_template` / `hercules_edit_program`. Every edit keeps a revision (undo).
 
 ## 6. Assistant integration
 
 ### 6.1 MCP tools (`hestia_common.mcp_helpers.MCPTool`, domain `fitness`)
-Read: `hercules_summary` (week at a glance, next workout, recent PRs, stalls, readiness trend — caveman text),
-`hercules_next_workout`, `hercules_history` (range/exercise filter), `hercules_exercise_stats` (e1RM trend, PRs),
-`hercules_search_exercises`, `hercules_templates`, `hercules_records`.
-Write: `hercules_start_session`, `hercules_log_sets` (natural logging: "panca 80x8, 80x8, 77.5x7"), `hercules_finish_session`,
-`hercules_checkin` (readiness), `hercules_adapt_today`, `hercules_restore_today`, `hercules_skip_day`, `hercules_postpone`,
-`hercules_feedback`, `hercules_edit_template` / `hercules_edit_program` (only after my yes in chat), `hercules_log_measurement`.
+Read: `fitness_summary` (week at a glance, next workout, recent PRs, stalls, readiness trend — caveman text),
+`fitness_next_workout`, `fitness_history` (range/exercise filter), `fitness_exercise_stats` (e1RM trend, PRs),
+`fitness_search_exercises`, `fitness_templates`, `hercules_records`.
+Write: `fitness_start_session`, `fitness_log_sets` (natural logging: "panca 80x8, 80x8, 77.5x7"), `fitness_finish_session`,
+`fitness_checkin` (readiness), `fitness_adapt_today`, `fitness_restore_today`, `fitness_skip_day`, `fitness_postpone`,
+`fitness_feedback`, `fitness_edit_template` / `hercules_edit_program` (only after my yes in chat), `fitness_log_measurement`.
 Telegram-visible commands (group "Allenamento"): oggi, inizia, log, fine, check-in, salta, statistiche.
 
 ### 6.2 Context for the assistant
 On demand, consistent with Themis ("Oracle knows itself on demand"): Oracle's classifier gets a `fitness`
-domain (`preference_domains.py`) so these tools load only when relevant; `hercules_summary` is the compact
+domain (`preference_domains.py`) so these tools load only when relevant; `fitness_summary` is the compact
 context. Shared contract `GET /api/module/context` (agreed with the sibling threads, §9): a ≤1-line caveman summary ("Allenamento: Push A oggi ·
 3/4 sett. · PR panca 85 kg") a module may expose for the assistant's daily context.
 Memory facts stay in Oracle/Archive memory; Hercules data stays in Hercules (no duplication into memory).
@@ -193,13 +193,13 @@ Marko's rule (same as Self care): reminders **off by default**, at most one live
   `replaces: "hercules.reminder"`, Hermes supersedes the open one on every client and adds the skip counter itself
   (Hercules text never counts skips); "Segna fatto" resolves it (`resolves: true` / `closes: "hercules.reminder"`).
   Hercules registers the matching Hermes subscription at startup.
-- Missed days and the weekly picture are not pushed: they are in `hercules_summary` / module context, and the
+- Missed days and the weekly picture are not pushed: they are in `fitness_summary` / module context, and the
   assistant mentions them when I talk to it ("ho saltato martedì, spostiamo?").
 - Presence: Hermes applies `notify.level` (no logic in Hercules).
 
 ## 7. Settings (Themis, `settings_client.setting(...)`, no env)
 `hercules.units` (kg/lb) · `hercules.rest.default_seconds` (90) · `hercules.increment.<equipment>` · `hercules.bar_weight`
-(20) · `hercules.plates` (list) · `hercules.e1rm_formula` (epley/brzycki) · `hercules.week_start` (monday) ·
+(20) · `hercules.plates` (list) · `hercules.e1rm_formula` (epley/brzycki) · week start = personal `themis.personal.week_start` ·
 `hercules.goal` (off | {times, per}) · `hercules.reminder.max_per_week` (2) · `hercules.stall.exposures` (3) · `hercules.adapt.*` thresholds ·
 `hercules.reminder.enabled` (false) · `hercules.reminder.time` · `hercules.skip_mode` (shift/keep) · `hercules.warmup.scheme`.
 Env: only `HERCULES_PORT` / Hub URL (infrastructure).
@@ -252,7 +252,7 @@ No rest timer on Telegram (WebUI only).
 - Plugin contract for pages/widgets (sibling thread owns it).
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`, Hub tag `context`, built with
   `hestia_common.context_client.ModuleContext("hercules", "fitness", build_fn)` (written by the Guardaroba thread);
-  `hercules_summary` returns the same text. Automatic inclusion in Oracle is a separate Oracle step.
+  `fitness_summary` returns the same text. Automatic inclusion in Oracle is a separate Oracle step.
 - Photos/media (later, §10): the shared Archive media/blob store designed by the Guardaroba thread.
 - Ports: Guardaroba 19017, Self care 19018, Hercules 19019.
 - Changes are agreed in conversation with the assistant (no proposal cards); reminders off by default, one live max.
@@ -276,7 +276,7 @@ wording) · nutrition link · 3D/heat muscle map.
 1. I can build a scheda, start it on the phone, log a full session with the rest timer, and see "last time"
    values and next-time suggestions; nothing is lost on reload.
 2. History, PRs and charts are correct against a hand-checked dataset (unit tests on records/e1RM/volume).
-3. "Oggi sono a pezzi e ho 30 minuti" in chat → Oracle calls `hercules_adapt_today` → a shorter, lighter plan
+3. "Oggi sono a pezzi e ho 30 minuti" in chat → Oracle calls `fitness_adapt_today` → a shorter, lighter plan
    with the rules explained; "ripristina" restores it.
 4. Offline: with the network off I start, log and finish a whole session on the phone; back online it syncs
    with no duplicates and no lost sets (also two devices editing different sessions).

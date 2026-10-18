@@ -38,6 +38,10 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
   Themis or Archive down → defaults, `[🔄]` log, retry every 60 s.
 - **User change**: `PUT /api/settings/key/{key}` → validated → Archive (history) → owner reloads → live values
   apply at once, restart values flagged `restart_required` until the module restarts.
+- **Personal settings** (`themis.personal.week_start`, `themis.personal.currency`, group «Personali»): owned by
+  Themis (`hestia_common.settings_client.PERSONAL`), shared by every module. A module reads them with
+  `SettingsClient.follow_personal()` (register sends `follows`, the answer carries `shared`); a change reloads every
+  follower. Modules never declare their own copy. `GET /api/settings/effective` answers Themis' own values.
 - **Assistant proposal**: MCP tool `settings_propose` (or Athena `POST /api/settings/proposals`) → Archive
   (pending) → Hermes event `service.action_required` with payload `kind=settings.proposal`, `_message`,
   `_actions` (`{id, label, style, service: themis, method: POST, path: /api/settings/proposals/{id}/approve|reject,
