@@ -538,7 +538,8 @@ class AthenaRuntime:
             strong = sorted((k for k in good if good[k] >= 0.7), key=lambda k: -GATE_WEIGHTS[k][0] * good[k])[:2]
             words = [f"{GATE_WEIGHTS[k][1]} alta" if k != "interruption_cost" else "disturbo basso" for k in strong]
         else:
-            weak = sorted((k for k in good if good[k] < 0.5), key=lambda k: GATE_WEIGHTS[k][0] * good[k])[:2]
+            # the factors that cost the most points (weight × what is missing)
+            weak = sorted((k for k in good if good[k] < 0.5), key=lambda k: -GATE_WEIGHTS[k][0] * (1 - good[k]))[:2]
             words = [f"{GATE_WEIGHTS[k][1]} bassa" if k != "interruption_cost" else "disturbo alto" for k in weak]
         return f"{head} ({', '.join(words)})" if words else head
 

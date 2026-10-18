@@ -561,6 +561,11 @@ components:
         error:
           type: string
           nullable: true
+        threshold:
+          type: number
+          description: Gate threshold used in this cycle
+        duration_ms:
+          type: integer
 
     ObservationSnapshot:
       type: object
@@ -659,6 +664,12 @@ components:
           type: number
         accepted:
           type: boolean
+        gate_reason:
+          type: string
+          description: Why the relevance gate accepted/discarded it (Italian, e.g. "punteggio 0.48 < soglia 0.55 (urgenza bassa)")
+        outcome:
+          type: string
+          enum: ["", emitted, forge, forge_skipped, setting_proposed, setting_skipped, failed, discarded]
 
     TaskLifecycleRecord:
       type: object
@@ -3657,6 +3668,51 @@ paths:
       responses:
         "200": {description: "{status, available, detail, model}"}
 
+  /oracle/api/ui/manifest:
+    get:
+      tags: [Oracle]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `cervello` (oracle-brain, order 120),
+        widget `uso-oggi` (oracle-usage-widget). Bundle file at /ui/webui/oracle.js.
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{module: oracle, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
+
+  /oracle/api/ui/activity:
+    get:
+      tags: [Oracle]
+      summary: Recent chat turns (real path /api/ui/activity; page Cervello)
+      description: In memory (last 200 turns, reset on restart). Newest first.
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 30, maximum: 200}}
+      responses:
+        "200": {description: "{status, count, turns: [{at, trace_id, session, client, mode, route: quick|quick_chat|agent, model, provider, domains[], tools: [{tool, ok, writes}], tools_failed, ms, preview, usage{calls, input_tokens, output_tokens, cost_usd}}], last_user_activity_ts, idle_seconds}"}
+
+  /oracle/api/ui/stats:
+    get:
+      tags: [Oracle]
+      summary: LLM use per day and per use case/model (real path /api/ui/stats; page Cervello, widget Uso modelli oggi)
+      description: From the in-memory llm_stats (since Oracle started; days kept ≤ 31).
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: days, in: query, schema: {type: integer, default: 14, maximum: 31}}
+      responses:
+        "200": {description: "{status, days: [{day, calls, input_tokens, cached_tokens, output_tokens, cost_usd}] (oldest first), today{…}, today_by_model: [{use_case, label, provider, model, calls, input_tokens, cached_tokens, output_tokens, cost_usd}], use_cases: [{use_case, label, calls, provider, model, avg_prompt_tokens, max_prompt_tokens, cache_hit_pct, cache_estimated, avg_load_ms, avg_prompt_ms, tokens_per_second, last_at}], since}"}
+
+  /oracle/api/ui/code:
+    get:
+      tags: [Oracle]
+      summary: Claude Code status and recent runs (real path /api/ui/code; page Cervello)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, available, detail, model?, running, runs: [{task, started_at, state: running|done|failed, ok, ms, turns, cost_usd, error}]}"}
+
   /api/llm/code:
     post:
       tags: [Oracle]
@@ -3879,6 +3935,48 @@ paths:
         - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
       responses:
         "200": {description: "{status, ok, detail}"}
+
+  /api/agenda/runs:
+    get:
+      tags: [Chronos]
+      summary: Runs of the assistant agenda's jobs/tasks (WebUI plugin page Esecuzioni)
+      description: |
+        Every recorded run (`meta.runs`, last 50 per item) plus skipped past occurrences, newest first; summary and the
+        rules registered per owner (module).
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: owner, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string, enum: [ok, failed, skipped]}}
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {name: hours, in: query, schema: {type: number}, description: "alternative to since: last N hours"}
+        - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 500}}
+      responses:
+        "200": {description: "{count, runs: [{item_id, key, title, owner, type, item_status, status: ok|failed|skipped, at, occurrence, detail, by, duration_ms, manual, can_run}], summary{ok, failed, skipped, avg_ms, failed_items}, owners: [{owner, rules, active, paused, failed, user_modified, types{}}]}"}
+        "400": {description: bad status or since}
+
+  /api/agenda/runs/failed:
+    get:
+      tags: [Chronos]
+      summary: Jobs whose last run failed — chips of the quick action «Riprova job» (POST /api/agenda/items/{id}/run)
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: hours, in: query, schema: {type: number, default: 24}}
+      responses:
+        "200": {description: "[{id (item key), item_id, label, owner, icon, state: late, status, at, detail, hint}]"}
+
+  /chronos/api/ui/manifest:
+    get:
+      tags: [Chronos]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/agenda/)
+      description: |
+        Page `esecuzioni` (chronos-runs, order 150), widget `falliti` «Job falliti» (chronos-failed-widget, auto),
+        quick action `riprova` «Riprova job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{module: chronos, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
 
   /api/agenda/items/{ref}/links:
     get:
@@ -4337,6 +4435,59 @@ paths:
       responses:
         "200":
           description: "{clients: [name]}"
+
+  /hermes/api/ui/manifest:
+    get:
+      tags: [Hermes]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `consegne` (hermes-deliveries,
+        order 140), widget `oggi` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{module: hermes, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
+
+  /hermes/api/ui/deliveries:
+    get:
+      tags: [Hermes]
+      summary: Delivery log (real path /api/ui/deliveries) — page Consegne, widget Consegne oggi
+      description: |
+        Notifications newest first with their state on every client and what happened to them: held by presence
+        (and released in the digest), quiet (inbox copy only), retracted from a chat, superseded (repeat chain),
+        answer. Message preview only (HTML stripped), never the event payload. 502 when Archive is unavailable.
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {name: before, in: query, schema: {type: string, format: date-time}, description: "page cursor (next_before)"}
+        - {name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}
+        - {name: flag, in: query, schema: {type: string, enum: [held, quiet, retracted, failed, answered, superseded, pending]}}
+        - {name: client, in: query, schema: {type: string}, description: "only rows delivered (any state) to this client"}
+        - {name: source, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{items: [{id, created_at, updated_at, state, title, preview, level, source, event_type, audience, origin_client, actions[], clients{<name>: {state: delivered|skipped|failed|dead, at, attempts, retracted, detail}}, answer{by, action_id, label, status, outcome_text, at}, seen{by, at}, repeat{count, skipped}, flags{held, held_released, quiet, retracted, failed, answered, superseded, pending}}], summary{total, held, quiet, retracted, failed, answered, superseded, pending, clients{<name>: {delivered, skipped, failed}}}, next_before}"}
+        "400": {description: bad flag or date}
+        "502": {description: Archive unavailable}
+
+  /hermes/api/ui/subscriptions:
+    get:
+      tags: [Hermes]
+      summary: Active subscriptions (real path /api/ui/subscriptions) — page Consegne
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{count, subscriptions: [{subscription_id, owner, domain, event_type, filters{}, channels[{type, client?}], updated_at}]}"}
+        "502": {description: Archive unavailable}
+
+  /hermes/api/ui/clients:
+    get:
+      tags: [Hermes]
+      summary: Clients Hermes delivers to now (real path /api/ui/clients; same as /api/notifications/clients)
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{clients: [name]}"}
 
   /api/notifications/seen-all:
     post:
@@ -5978,6 +6129,35 @@ paths:
       responses:
         "200": {description: "{key, history[{old_value, new_value, actor, reason, created_at}]}"}
 
+  /api/settings/history:
+    get:
+      tags: [Themis]
+      summary: Every setting change, all keys, newest first, paged (WebUI plugin page Registro)
+      description: |
+        Reads the newest 500 changes from Archive (which keeps the last 10 per key). `undoable` = latest change of its
+        key/scope (what POST /api/settings/key/{key}/undo restores). Session copies are hidden unless `sessions=true`.
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}
+        - {name: offset, in: query, schema: {type: integer, default: 0}}
+        - {name: module, in: query, schema: {type: string}}
+        - {name: actor, in: query, schema: {type: string}, description: "comma list (user, webui, telegram, oracle, athena, external = any external:<name>)"}
+        - {name: key, in: query, schema: {type: string}}
+        - {name: sessions, in: query, schema: {type: boolean, default: false}}
+      responses:
+        "200": {description: "{items[{id, key, scope, scope_id, old_value, new_value, actor, reason, created_at, label, module, type, kind: change|undo|reset|approved|preset, latest, undoable}], total, offset, next_offset, scanned, keep_per_key}"}
+
+  /themis/api/ui/manifest:
+    get:
+      tags: [Themis]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/settings/)
+      description: Page `registro` (themis-log, order 160), no widget. Bundle file at /ui/webui/themis.js.
+      servers:
+        - url: http://localhost:19016
+      responses:
+        "200": {description: "{module: themis, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
+
   /api/settings/key/{key}/undo:
     post:
       tags: [Themis]
@@ -6034,7 +6214,7 @@ paths:
       servers:
         - url: http://localhost:19016
       parameters:
-        - {name: status, in: query, schema: {type: string, default: pending}}
+        - {name: status, in: query, schema: {type: string, default: pending}, description: "pending | approved | rejected | expired | all (or empty)"}
       responses:
         "200": {description: "{proposals[]}"}
     post:
@@ -8189,6 +8369,44 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/AthenaThinkingRecord"
+
+  /api/athena/thinking/summary:
+    get:
+      tags: [Athena]
+      summary: Compact thinking cycles (page Pensieri, MCP tool athena_thinking)
+      description: >
+        Newest first. Observation as counts (no services payload), every candidate (accepted or discarded) with
+        its 5 gate signals, score, accepted, gate_reason and outcome.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 10, maximum: 50}}
+      responses:
+        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
+
+  /api/athena/think:
+    post:
+      tags: [Athena]
+      summary: «Pensa ora» — run one full thinking cycle now (background)
+      description: >
+        observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
+        One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{status: started, trace_id} | {status: busy, detail}"}
+
+  /athena/api/ui/manifest:
+    get:
+      tags: [Athena]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/athena/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130),
+        widget `ultimo` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{module: athena, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
 
   /api/athena/observation:
     get:

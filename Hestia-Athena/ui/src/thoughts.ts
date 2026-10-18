@@ -110,7 +110,7 @@ export class AthenaThoughts extends HestiaElement {
   }
 
   private candidate(c: any, threshold: number) {
-    const out = OUTCOMES[c.outcome] || (c.accepted ? OUTCOMES.emitted : OUTCOMES.discarded);
+    const out = OUTCOMES[c.outcome] || (c.accepted ? { label: 'accettata', tone: 'success' } : OUTCOMES.discarded);
     const score = Number(c.score || 0);
     return html`<div class=${c.accepted ? 'cand ok' : 'cand'}>
       <div class="line"><span class="title grow">${c.title || 'Senza titolo'}</span>
