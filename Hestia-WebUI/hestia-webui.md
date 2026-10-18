@@ -106,7 +106,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   imports it as a blob module; the bundle imports the shared SDK (`/plugins/_sdk/sdk.js`, built from
   `Hestia-Shared/webui-sdk` in the Dockerfile) through the import map in `index.html`. Elements get `host` + `ctx`.
 - **Home** (`/home`, first module) = quick-action strip + dashboard grid; until edited it is composed from widgets
-  marked `auto`. Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
+  marked `auto` of the domain modules. A ready-made *Sistema* dashboard (`/d/sistema`) takes the core modules' `auto`
+  widgets (hidden while there is none; deleting it leaves a `removed` marker in `webui.dashboards`). Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
   remove; Oracle-created dashboards carry `created_by: oracle`.
 - Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
   Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave

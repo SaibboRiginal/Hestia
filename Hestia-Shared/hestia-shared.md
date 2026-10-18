@@ -164,6 +164,7 @@ Validation at declare time: element names `<module>-…`, every path under `api_
 types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). The browser side is
 `Hestia-Shared/webui-sdk/` (`@hestia/webui-sdk`: host API types, `HestiaElement`, shared Lit kit `hxk-*`, build
 script) — see its `README.md`.
+`hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins).
 
 ## Tools: MCP client (`hestia_common.mcp_client`) + call rules (`hestia_common.tool_call`)
 
