@@ -210,7 +210,8 @@ def test_journal(hy):
 
 
 # ── reminders, quick ──────────────────────────────────────────────────────────
-def test_reminders_weekly_limit_and_snooze(hy):
+def test_reminders_weekly_limit_and_snooze(hy, monkeypatch):
+    monkeypatch.setitem(SETTINGS, "hygieia.reminder.enabled", True)   # common switch, off by default
     r = hy.save_routine({"name": "Maschera", "cadence": {"mode": "daily"}, "reminder": True, "steps": [{"label": "maschera"}]})
     d = hy.reminder_decisions()
     assert d[0]["send"]

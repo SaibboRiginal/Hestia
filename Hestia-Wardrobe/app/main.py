@@ -26,6 +26,7 @@ except ModuleNotFoundError:
 
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
 from .core import domain
@@ -53,8 +54,6 @@ settings = SettingsClient("wardrobe")
 settings.declare([
     setting("wardrobe.forgotten_days", "Capo dimenticato dopo", "int", 180, group="Generale", min=14, max=1095, unit="giorni",
             help="Capi non indossati da più giorni di così finiscono tra i «dimenticati»."),
-    setting("wardrobe.currency", "Valuta", "enum", "EUR", group="Generale",
-            options=[("EUR", "Euro (€)"), ("CHF", "Franco svizzero"), ("USD", "Dollaro"), ("GBP", "Sterlina")]),
     setting("wardrobe.photo.max_mb", "Dimensione massima foto", "int", 10, group="Generale", min=1, max=15, unit="MB"),
     setting("wardrobe.suggest.count", "Outfit suggeriti", "int", 3, group="Suggerimenti", min=1, max=10),
     setting("wardrobe.suggest.exclude_recent_days", "Non riproporre per", "int", 4, group="Suggerimenti", min=0, max=30,
@@ -64,17 +63,14 @@ settings.declare([
     setting("wardrobe.tracking.goal_per", "Periodo dell'obiettivo", "enum", "week", group="Indossato",
             options=[("day", "Al giorno"), ("week", "A settimana"), ("month", "Al mese")],
             depends_on={"key": "wardrobe.tracking.goal_times", "not_equals": 0}),
-    setting("wardrobe.reminder.enabled", "Promemoria", "bool", False, group="Indossato",
-            help="Solo con un obiettivo, solo se sei indietro e oggi non hai segnato nulla. Uno alla volta; l'orario "
-                 "si cambia nell'agenda (Promemoria guardaroba)."),
-    setting("wardrobe.reminder.max_per_week", "Promemoria massimi a settimana", "int", 2, group="Indossato", min=1, max=7,
-            depends_on={"key": "wardrobe.reminder.enabled", "equals": True}),
+    *reminder_settings("wardrobe", help="Solo con un obiettivo, solo se sei indietro e oggi non hai segnato nulla. Uno "
+                                        "alla volta; l'orario si cambia nell'agenda (Promemoria guardaroba)."),
     setting("wardrobe.review.enabled", "Revisione mensile", "bool", False, group="Notifiche",
             help="Una volta al mese: capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere."),
     setting("wardrobe.ai.profile", "AI per le foto", "enum", "cloud", group="AI",
             options=[("cloud", "Cloud (Gemini)"), ("local", "Locale (Ollama)")],
             help="Quale modello di Oracle descrive la foto di un nuovo capo. Serve un modello che vede le immagini."),
-])
+]).follow_personal()                                       # week start, currency: personal settings shared by every module
 
 hub = Hub(HUB_API_URL)
 store = Store(hub)
@@ -385,15 +381,12 @@ def quick_undo(id: str, date: str = ""):
 
 
 # ── notifications through Hermes (agenda jobs; both off by default) ──────────
-def _notify(key: str, title: str, text: str, actions: list[dict], *, replaces: bool, link: dict | None = None) -> None:
-    payload = {"kind": key, "service": "wardrobe", "source": "wardrobe", "domain": "wardrobe", "_source": "wardrobe",
-               "_title": title, "target": "owner", "level": "info", "_message": text, "_actions": actions}
-    if replaces:
-        payload["replaces"] = key
-    if link:
-        payload["_link"] = link
-    hub.ok("hermes", "POST", "api/events/ingest", body={"event_type": "service.action_required", "domain": "wardrobe",
-                                                       "entity_id": key, "payload": payload}, timeout=8)
+def _notify(key: str, title: str, text: str, actions: list[dict], *, replaces: bool, page: str = "") -> None:
+    body = reminder_event(module="wardrobe", domain="wardrobe", key=key, title=title, text=text, actions=actions,
+                          page=page)
+    if not replaces:                                   # a one-off question (delete), not a reminder thread
+        body["payload"].pop("replaces", None)
+    hub.ok("hermes", "POST", "api/events/ingest", body=body, timeout=8)
 
 
 @app.post(f"{API}/reminder/check")
@@ -411,7 +404,7 @@ def reminder_check():
                     "path": f"{API}/reminder/skip", "body": {}})
     try:
         _notify("wardrobe.reminder", "Guardaroba", f"👕 Cosa indossi oggi? · {goal['hint']}", actions, replaces=True,
-                link={"module": "wardrobe", "page": "outfit"})
+                page="outfit")
         wardrobe.mark_reminder_sent()
     except Exception as exc:
         logger.warning("[🔄] event=wardrobe_reminder_emit_failed error=%s fallback=next_check", exc)
@@ -449,7 +442,7 @@ def review_run():
         return {"send": False, "why": "nothing_to_say"}
     try:
         _notify("wardrobe.review", "Guardaroba del mese", "👕 Revisione del guardaroba\n" + "\n".join(lines), [],
-                replaces=True, link={"module": "wardrobe", "page": "statistiche"})
+                replaces=True, page="statistiche")
     except Exception as exc:
         logger.warning("[🔄] event=wardrobe_review_emit_failed error=%s fallback=next_month", exc)
         return {"send": False, "why": "hermes_unreachable"}
@@ -653,21 +646,21 @@ try:
     L = {"type": "array", "items": {"type": "string"}}
     G = "guardaroba"
     _tools = [
-        MCPTool(name="guardaroba_riepilogo", description="Guardaroba a colpo d'occhio: quanti capi/outfit, stile, in "
+        MCPTool(name="wardrobe_summary", description="Guardaroba a colpo d'occhio: quanti capi/outfit, stile, in "
                 "lavanderia, dimenticati, ultimo outfit indossato, obiettivo. Usalo prima di altro per domande sul "
                 "guardaroba o sui vestiti.", parameters={"type": "object", "properties": {}}, handler=_t(_summary),
                 title="👕 Riepilogo guardaroba", clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_cerca", description="Cerca capi, scarpe e accessori che possiedo (testo libero: nome, "
+        MCPTool(name="wardrobe_search", description="Cerca capi, scarpe e accessori che possiedo (testo libero: nome, "
                 "colore, materiale, marca; filtri kind garment|shoes|accessory, season spring|summer|autumn|winter, status "
                 "active|laundry|lent|to_repair|to_donate|wishlist, not_worn_days).",
                 parameters={"type": "object", "properties": {"query": S, "kind": S, "category": S, "season": S, "status": S,
                                                              "color": S, "not_worn_days": I, "limit": I}},
                 handler=_t(_search), title="👕 Cerca nel guardaroba", clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_capo", description="Dettaglio di un capo (per nome o id): taglia, materiali, acquisto, "
+        MCPTool(name="wardrobe_piece", description="Dettaglio di un capo (per nome o id): taglia, materiali, acquisto, "
                 "outfit in cui è, quante volte segnato indossato.", parameters={"type": "object", "properties": {"piece": S},
                                                                                 "required": ["piece"]},
                 handler=_t(_piece), title="👕 Dettaglio capo", clients=["ui"], telegram_visible=False, telegram_group=G),
-        MCPTool(name="guardaroba_aggiungi", description="Aggiungi un capo che l'utente dice di avere/aver comprato. "
+        MCPTool(name="wardrobe_add", description="Aggiungi un capo che l'utente dice di avere/aver comprato. "
                 "category: chiave o nome (camicia, jeans, sneakers, giacca, orologio…). colors: nomi (blu navy, bianco). "
                 "warmth/formality 1-5 se li sai.",
                 parameters={"type": "object", "properties": {"name": S, "category": S, "colors": L, "brand": S, "size": S,
@@ -675,43 +668,43 @@ try:
                                                              "purchase_date": S, "store_name": S, "notes": S, "status": S,
                                                              "warmth": I, "formality": I}, "required": ["name", "category"]},
                 handler=_t(_add), title="👕 Aggiungi capo", method="POST", clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_modifica", description="Modifica un capo: status (laundry = in lavanderia, active = di "
+        MCPTool(name="wardrobe_update", description="Modifica un capo: status (laundry = in lavanderia, active = di "
                 "nuovo nell'armadio, lent, to_repair, to_donate, donated), favorite, location o altri campi in changes.",
                 parameters={"type": "object", "properties": {"piece": S, "status": S, "favorite": B, "location": S,
                                                              "changes": {"type": "object"}}, "required": ["piece"]},
                 handler=_t(_edit), title="👕 Modifica capo", method="PATCH", clients=["ui"], telegram_visible=False,
                 telegram_group=G),
-        MCPTool(name="guardaroba_outfit", description="I miei outfit salvati (filtri: testo, stagione, occasione, preferiti).",
+        MCPTool(name="wardrobe_outfits", description="I miei outfit salvati (filtri: testo, stagione, occasione, preferiti).",
                 parameters={"type": "object", "properties": {"query": S, "season": S, "occasion": S, "favorite": B,
                                                              "limit": I}},
                 handler=_t(_outfits), title="👕 Outfit", clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_crea_outfit", description="Salva un outfit dai capi (nomi o id). Usalo quando l'utente "
+        MCPTool(name="wardrobe_create_outfit", description="Salva un outfit dai capi (nomi o id). Usalo quando l'utente "
                 "chiede di salvare una combinazione o ne approva una suggerita.",
                 parameters={"type": "object", "properties": {"name": S, "pieces": L, "occasions": L, "styles": L,
                                                              "favorite": B}, "required": ["pieces"]},
                 handler=_t(_create_outfit), title="👕 Crea outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group=G),
-        MCPTool(name="guardaroba_suggerisci", description="«Cosa mi metto»: outfit dai capi disponibili (non in "
+        MCPTool(name="wardrobe_suggest", description="«Cosa mi metto»: outfit dai capi disponibili (non in "
                 "lavanderia, giusta stagione e temperatura, non messi di recente) con i motivi. occasion: work, office, "
                 "evening, date, travel, home, sport, ceremony, weekend, party. Aggiungi tu gusto e spiegazione.",
                 parameters={"type": "object", "properties": {"occasion": S, "temp_c": N, "rain": B, "date": S,
                                                              "styles": L, "count": I}},
                 handler=_t(_suggest), title="👕 Cosa mi metto", method="POST", clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_indossato", description="Segna cosa ho indossato (outfit per nome, oppure capi), "
+        MCPTool(name="wardrobe_log_worn", description="Segna cosa ho indossato (outfit per nome, oppure capi), "
                 "default oggi. Facoltativo: l'utente lo fa solo quando vuole.",
                 parameters={"type": "object", "properties": {"outfit": S, "pieces": L, "date": S, "note": S}},
                 handler=_t(_worn), title="👕 Indossato", method="POST", clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_statistiche", description="Statistiche: composizione per categoria/colore/stagione, "
+        MCPTool(name="wardrobe_stats", description="Statistiche: composizione per categoria/colore/stagione, "
                 "valore, capi dimenticati, lacune; uso (più messi, costo per utilizzo) solo come indicazione.",
                 parameters={"type": "object", "properties": {}}, handler=_t(_stats), title="👕 Statistiche guardaroba",
                 clients=["telegram", "ui"], telegram_group=G),
-        MCPTool(name="guardaroba_valigia", description="Prepara una lista valigia per un viaggio (date YYYY-MM-DD, luogo, "
+        MCPTool(name="wardrobe_packing", description="Prepara una lista valigia per un viaggio (date YYYY-MM-DD, luogo, "
                 "occasione, temperatura prevista): un outfit al giorno dai capi disponibili.",
                 parameters={"type": "object", "properties": {"place": S, "date_from": S, "date_to": S, "occasion": S,
                                                              "temp_c": N, "rain": B}, "required": ["date_from"]},
                 handler=_t(_packing), title="👕 Valigia", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group=G),
-        MCPTool(name="guardaroba_elimina", description="Elimina un capo o un outfit: NON elimina subito, manda all'utente "
+        MCPTool(name="wardrobe_delete", description="Elimina un capo o un outfit: NON elimina subito, manda all'utente "
                 "una richiesta di conferma con i pulsanti Elimina / Archivia / Tieni.",
                 parameters={"type": "object", "properties": {"piece": S, "outfit": S}},
                 handler=_t(_delete), title="👕 Elimina", method="POST", clients=["ui"], telegram_visible=False,

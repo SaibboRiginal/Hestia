@@ -52,8 +52,9 @@ with something already done or due today) · `paused`. A target routine is behin
 ## Reminders and alerts (few, never piling up)
 
 - Agenda job `hygieia.planner` (daily 20:30, editable in the agenda) → `POST /api/selfcare/reminders/run`.
-  Only routines with the reminder switched on (off by default), state `due`, not silenced, not already sent
-  today, and under `hygieia.reminders.max_per_week` per routine. Hermes `service.action_required` with
+  Only when the common switch `hygieia.reminder.enabled` is on (off by default), and only routines with their
+  own reminder switched on, state `due`, not silenced, not already sent today, and under
+  `hygieia.reminder.max_per_week` per routine. Event built by `hestia_common.reminders.reminder_event`. Hermes `service.action_required` with
   `replaces: selfcare.reminder.<routine_id>` (one live reminder, Hermes adds the skip counter); target `owner`.
   Actions: **Fatto** (resolves → `quick/routine/{id}`), **Salta** (`routines/{id}/skip`), **Non questa
   settimana** (resolves → `routines/{id}/snooze`).
@@ -75,9 +76,11 @@ A UI change needs `up-all.bat --build hygieia`.
 
 ## Settings (Themis, `hygieia.*`)
 
-week_start (0 = Monday), currency (EUR; EUR/CHF/USD/GBP like Wardrobe), default_pao_months (12), reminders.enabled (true; each routine is still
-off until switched on), reminders.max_per_week (2), alerts.enabled (true), alerts.expiry_days (30),
-alerts.restock_days (14). The diary has no switch: it is there and used only when wanted.
+default_pao_months (12), reminder.enabled (false) and reminder.max_per_week (2) from
+`hestia_common.reminders.reminder_settings` (same two settings in every module; each routine still chooses its own
+reminder), alerts.enabled (true), alerts.expiry_days (30), alerts.restock_days (14). The diary has no switch: it is
+there and used only when wanted. Week start and currency are the personal settings `themis.personal.week_start` /
+`themis.personal.currency` (owner Themis, read with `follow_personal()`), never a module copy.
 
 ## API (via Hub `/route/hygieia/...`)
 

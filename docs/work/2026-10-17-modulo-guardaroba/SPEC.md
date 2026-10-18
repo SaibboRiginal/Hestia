@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.10 |
+| **Version** | 1.11 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Guardaroba") · 2026-10-17 |
 | **Status** | Approved by the user 2026-10-18 · W1–W5 implemented on main 2026-10-18 (real run pending) · W6–W7 later. UI follows the plugin contract `docs/work/2026-10-17-client-plugins/SPEC.md` (v2.6) |
 
@@ -185,18 +185,18 @@ can explain. Oracle adds the reasoning/taste on top through the tools; the modul
 ### 6.1 MCP tools (`hestia_common.mcp_helpers.MCPTool`, telegram group `guardaroba`)
 | Tool | Does | Writes? |
 |---|---|---|
-| `guardaroba_cerca` | search pieces/accessories (text + semantic + filters) | no |
-| `guardaroba_capo` | piece detail with outfits and wears | no |
-| `guardaroba_aggiungi` | add a piece ("ho comprato una camicia blu di lino") | yes, direct (the user asked) |
-| `guardaroba_modifica` | edit fields / status (laundry, lent, to donate…) | yes, direct |
-| `guardaroba_outfit` | list / detail outfits | no |
-| `guardaroba_crea_outfit` | save an outfit from pieces | yes, direct |
-| `guardaroba_suggerisci` | "cosa mi metto" → engine results with reasons | no |
-| `guardaroba_indossato` | log today's (or a date's) outfit/pieces | yes, direct |
-| `guardaroba_statistiche` | stats and forgotten pieces | no |
-| `guardaroba_valigia` | packing list for a trip (collection) | yes, direct |
-| `guardaroba_riepilogo` | same text as `/api/module/context` (on-demand summary) | no |
-| `guardaroba_elimina` | delete a piece/outfit | **confirm via Hermes** (button) before acting |
+| `wardrobe_search` | search pieces/accessories (text + semantic + filters) | no |
+| `wardrobe_piece` | piece detail with outfits and wears | no |
+| `wardrobe_add` | add a piece ("ho comprato una camicia blu di lino") | yes, direct (the user asked) |
+| `wardrobe_update` | edit fields / status (laundry, lent, to donate…) | yes, direct |
+| `wardrobe_outfits` | list / detail outfits | no |
+| `wardrobe_create_outfit` | save an outfit from pieces | yes, direct |
+| `wardrobe_suggest` | "cosa mi metto" → engine results with reasons | no |
+| `wardrobe_log_worn` | log today's (or a date's) outfit/pieces | yes, direct |
+| `wardrobe_stats` | stats and forgotten pieces | no |
+| `wardrobe_packing` | packing list for a trip (collection) | yes, direct |
+| `wardrobe_summary` | same text as `/api/module/context` (on-demand summary) | no |
+| `wardrobe_delete` | delete a piece/outfit | **confirm via Hermes** (button) before acting |
 
 Telegram: a photo sent with "aggiungi al guardaroba" → `describe-photo` → draft shown → user confirms.
 
@@ -206,7 +206,7 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
   caveman-style lines, already trimmed to `budget`, no secrets, e.g. `guardaroba: 84 capi (41 top, 18 bottom…),
   12 outfit; stile prevalente smart casual; in lavanderia 3; dimenticati >180g: 7; ultimo outfit 16/10
   "ufficio blu"`. Cheap (< 200 ms, computed from counters, cached 5 min).
-- The same text is offered as an on-demand MCP tool `<prefix>_riepilogo` (here `guardaroba_riepilogo`; Coach /
+- The same text is offered as an on-demand MCP tool `<prefix>_riepilogo` (here `wardrobe_summary`; Coach /
   Self care may name theirs `coach_summary` / `selfcare_overview`), so the agent can pull it any time.
 - Discovery: the module's Hub registration carries the tag `context` (Hub vocabulary extended). Oracle (the only
   consumer) may add the `text` of modules whose `domain` matches the classified chat domain as one context line,
@@ -222,7 +222,7 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
 | `wardrobe.suggest.count` | 3 | live |
 | `wardrobe.suggest.exclude_recent_days` | 4 | live |
 | `wardrobe.photo.max_mb` | 10 | live |
-| `wardrobe.currency` | EUR | live |
+| currency | personal `themis.personal.currency` (shared by every module) | live |
 | `wardrobe.review.enabled` | false | live — monthly review notification |
 | `wardrobe.tracking.goal_times` | 0 | live — goal for "Indossato" marks, 0 = none (§4.3) |
 | `wardrobe.tracking.goal_per` | week | live — day / week / month |

@@ -21,6 +21,9 @@ from .suggest import Suggester, season_of
 logger = logging.getLogger("hestia_wardrobe.service")
 
 PER_LABEL = {"day": "oggi", "week": "questa settimana", "month": "questo mese"}
+# Personal settings shared by every module (owner Themis): never a wardrobe.* copy.
+WEEK_START_KEY = "themis.personal.week_start"
+CURRENCY_KEY = "themis.personal.currency"
 
 
 class NotFound(LookupError):
@@ -50,6 +53,16 @@ class Wardrobe:
         except Exception:
             return default
         return default if value is None else value
+
+    def personal(self, key: str, default: Any = None) -> Any:
+        try:
+            value = self._cfg(key, default)
+        except Exception:
+            return default
+        return default if value is None else value
+
+    def currency(self) -> str:
+        return str(self.personal(CURRENCY_KEY, "EUR"))
 
     def today(self) -> date:
         return datetime.now(self.tz).date()
@@ -89,7 +102,7 @@ class Wardrobe:
         return {"kinds": domain.KINDS, "seasons": domain.SEASONS, "statuses": domain.STATUSES, "conditions": domain.CONDITIONS,
                 "slots": domain.SLOTS, "collection_types": domain.COLLECTION_TYPES, "vocabularies": self.vocabularies(),
                 "today": self.today().isoformat(), "season": season_of(self.today()),
-                "currency": self.cfg("currency", "EUR"), "goal": self.goal_progress()}
+                "currency": self.currency(), "goal": self.goal_progress()}
 
     # ── shared lookups ─────────────────────────────────────────────────────
     def _pieces_raw(self) -> list[dict]:
@@ -420,7 +433,8 @@ class Wardrobe:
             return d
         if per == "month":
             return d.replace(day=1)
-        return d - timedelta(days=d.weekday())
+        first = 6 if self.personal(WEEK_START_KEY, "monday") == "sunday" else 0
+        return d - timedelta(days=(d.weekday() - first) % 7)
 
     def _period_next(self, start: date, per: str) -> date:
         if per == "day":
@@ -470,7 +484,7 @@ class Wardrobe:
     def stats(self) -> dict:
         return stats_mod.compute(self._pieces_raw(), self.store.items("outfit"), self._wears(), self.vocab_map("category"),
                                  self.vocab_map("color"), self.today(), int(self.cfg("forgotten_days", 180)),
-                                 str(self.cfg("currency", "EUR")))
+                                 self.currency())
 
     def summary(self) -> dict:
         s = self.stats()

@@ -282,7 +282,7 @@ def test_mcp_tools_and_manifest():
     from app import main
     tools = main._tools
     names = {t.name for t in tools}
-    assert {"guardaroba_riepilogo", "guardaroba_suggerisci", "guardaroba_indossato", "guardaroba_elimina"} <= names
+    assert {"wardrobe_summary", "wardrobe_suggest", "wardrobe_log_worn", "wardrobe_delete"} <= names
     for t in tools:
         assert t.description and t.parameters["type"] == "object"
         assert t.path.startswith("/api/wardrobe/tools/")

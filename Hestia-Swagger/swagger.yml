@@ -5494,8 +5494,12 @@ paths:
                   type: array
                   items: {type: object, description: "{id, label, group, values{key: value}, help}"}
                 effective: {type: object, description: values the module is using now}
+                follows:
+                  type: array
+                  items: {type: string}
+                  description: "other owners' keys the module reads (personal settings themis.personal.*); their changes are pushed to it"
       responses:
-        "200": {description: "{owner, values{key: value}, revision}"}
+        "200": {description: "{owner, values{key: value}, shared{followed key: value}, revision}"}
         "503": {description: Archive unreachable (module keeps defaults and retries)}
 
   /api/settings/revision:
@@ -7233,7 +7237,7 @@ paths:
   /api/selfcare/reminders/run:
     post:
       tags: [Hygieia]
-      summary: "Agenda job hygieia.planner: at most hygieia.reminders.max_per_week reminders, one live per routine (Hermes replaces)"
+      summary: "Agenda job hygieia.planner: at most hygieia.reminder.max_per_week reminders, one live per routine (Hermes replaces)"
       servers:
         - url: http://localhost:19018
       responses:

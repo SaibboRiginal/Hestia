@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (Marko: «sono tutti completati? sono tutti consistenti tra di loro?») |
-| **Status** | Done 2026-10-18 — small fixes on main, larger items below wait for Marko's decision |
+| **Status** | Implemented on branch `claude/project-thread-w9loez` 2026-10-18 — waiting Marko's ok to merge into main |
 
 ## Goal
 Check that the work built in parallel threads follows one standard: client plugins (Scout as plugin), Hercules,
@@ -33,15 +33,19 @@ Hygieia, Wardrobe, Hermes one-live-reminder. Fix small, clear inconsistencies; l
 - Leftovers of the removed diary switch (swagger `journal_enabled`, root CHANGELOG «(off)»); compose comment
   «Hercules API port (self care)»; Hercules SPEC status still said «UI bundle in progress».
 
-## Open — needs Marko
-1. **Nobody reads `/api/module/context`.** The modules serve it, Oracle doesn't call it, so the assistant doesn't
-   see training/self care/wardrobe state unless it calls a tool. Needs an Oracle consumer (discovery by capability
-   `context_endpoint`, budget per module, cache).
-2. **Three naming styles**: tools `hercules_*` (module), `selfcare_*` (domain, English), `guardaroba_*` (Italian);
-   API `/api/hercules`, `/api/selfcare`, `/api/wardrobe`. Pick one rule (proposal: tools and API by domain in
-   English) and rename in one pass (tools, swagger, UI `api_prefix`, docs).
-3. **Duplicated personal tunables**: `hercules.week_start` + `hygieia.week_start`, `hygieia.currency` +
-   `wardrobe.currency`. Proposal: one personal setting each (Themis «Personali»), modules read it.
-4. **Two reminder models**: Hercules/Wardrobe one switch off by default; Hygieia master switch on + per-routine
-   switch off. Both respect the rules; harmonise only if Marko wants one behaviour.
-5. Archive has three copies of the same store router: could become one generic module store (refactor, optional).
+## Decisions (Marko, 2026-10-18)
+1. **Module context**: no change. Oracle's classifier already picks the domain and loads its tools; the modules'
+   `/api/module/context` stays available for a future consumer (day planning), nothing wires it into every chat.
+2. **Tool names** = `<domain>_<verb>` in English: `hercules_*` → `fitness_*`, `guardaroba_*` → `wardrobe_*`
+   (`wardrobe_summary`, `_search`, `_piece`, `_add`, `_update`, `_outfits`, `_create_outfit`, `_suggest`,
+   `_log_worn`, `_stats`, `_packing`, `_delete`); `selfcare_*` already fits. Rule in docs/ARCHITECTURE.md.
+3. **Common rules, work done by the dedicated modules**:
+   - Personal settings `themis.personal.week_start` / `themis.personal.currency` (owner Themis, group «Personali»,
+     `settings_client.PERSONAL`). Modules read them with `SettingsClient.follow_personal()`: register sends
+     `follows`, Themis answers `shared` and reloads every follower when one changes. Removed `hercules.week_start`,
+     `hygieia.week_start`, `hygieia.currency`, `wardrobe.currency`; Wardrobe's weekly goal now honours week start.
+   - Reminders: `hestia_common.reminders` — `reminder_settings(module)` (same `<module>.reminder.enabled` off +
+     `.max_per_week`) and `reminder_event(...)` (Hermes body with `replaces`, `target: owner`, `_link`). Schedule
+     stays an agenda job (Chronos), delivery stays Hermes. Hygieia's `hygieia.reminders.*` → `hygieia.reminder.*`,
+     off by default like the others (each routine still chooses its own reminder).
+4. Reminder models harmonised by 3. Generic Archive module store: optional refactor, not done.

@@ -39,11 +39,11 @@
 
 ## Assistant
 
-- Tools (`wardrobe` domain via `module_tool_domains`, REST `/api/wardrobe/tools/<name>`): `guardaroba_riepilogo`,
-  `guardaroba_cerca`, `guardaroba_capo`, `guardaroba_aggiungi`, `guardaroba_modifica` (status: laundry, lent…),
-  `guardaroba_outfit`, `guardaroba_crea_outfit`, `guardaroba_suggerisci`, `guardaroba_indossato`,
-  `guardaroba_statistiche`, `guardaroba_valigia`, `guardaroba_elimina`. Pieces and outfits are found by name.
-- `guardaroba_elimina` never deletes: it asks through Hermes with **Elimina / Archivia / Tieni**.
+- Tools (`wardrobe` domain via `module_tool_domains`, REST `/api/wardrobe/tools/<name>`): `wardrobe_summary`,
+  `wardrobe_search`, `wardrobe_piece`, `wardrobe_add`, `wardrobe_update` (status: laundry, lent…),
+  `wardrobe_outfits`, `wardrobe_create_outfit`, `wardrobe_suggest`, `wardrobe_log_worn`,
+  `wardrobe_stats`, `wardrobe_packing`, `wardrobe_delete`. Pieces and outfits are found by name.
+- `wardrobe_delete` never deletes: it asks through Hermes with **Elimina / Archivia / Tieni**.
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`: one caveman line (counts, style, laundry,
   forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`.
 
@@ -66,9 +66,10 @@ Crea outfit / Da donare. A UI change needs `up-all.bat --build wardrobe`.
 
 ## Settings (Themis, `wardrobe.*`)
 
-forgotten_days (180), currency (EUR), photo.max_mb (10), suggest.count (3), suggest.exclude_recent_days (4),
+forgotten_days (180), photo.max_mb (10), suggest.count (3), suggest.exclude_recent_days (4),
 tracking.goal_times (0 = no goal), tracking.goal_per (week), reminder.enabled (false), reminder.max_per_week (2),
-review.enabled (false), ai.profile (cloud).
+review.enabled (false), ai.profile (cloud). Reminder settings come from `hestia_common.reminders`; currency and
+week start (weekly goal) are the personal settings `themis.personal.*`.
 
 ## API (via Hub `/route/wardrobe/...`)
 

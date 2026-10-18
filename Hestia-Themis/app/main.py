@@ -23,9 +23,11 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
+from hestia_common.settings_client import PERSONAL
+
 from .core.hub import Hub, HubError
 from .core.registry import Registry
-from .core.service import Themis, ThemisError
+from .core.service import SELF_OWNER, Themis, ThemisError
 
 logger, log_buffer = setup_service_logging("hestia_themis")
 
@@ -42,6 +44,8 @@ DATA_DIR = Path(os.getenv("THEMIS_DATA_DIR", "/code/data"))
 hub = Hub(HUB_API_URL)
 registry = Registry(DATA_DIR / "schema_cache.json")
 themis = Themis(hub, registry)
+# Personal settings shared by every module (week start, currency): Themis owns them, modules follow them.
+registry.register(SELF_OWNER, list(PERSONAL.values()))
 
 app = FastAPI(title="Hestia-Themis", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -85,7 +89,15 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 def settings_register(body: dict):
     """A module declares its settings; the answer carries its stored system values."""
     return themis.register(str(body.get("owner") or ""), body.get("definitions") or [],
-                           body.get("presets") or [], body.get("effective") or {})
+                           body.get("presets") or [], body.get("effective") or {}, body.get("follows") or [])
+
+
+@app.get("/api/settings/effective")
+def settings_effective():
+    """Themis' own settings (the personal ones every module follows): no runtime copy, stored = effective."""
+    return {"owner": SELF_OWNER, "loaded": True, "values": {**{k: d["default"] for k, d in PERSONAL.items()},
+                                                            **themis.system_values(SELF_OWNER)},
+            "pending_restart": []}
 
 
 @app.get("/api/settings/revision")

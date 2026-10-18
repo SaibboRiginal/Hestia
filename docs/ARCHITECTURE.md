@@ -285,7 +285,10 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    - Errors are logged with `[🔄]` prefix and enough context to diagnose the failure. Silent failure is forbidden.
 8. **Settings are data (Themis):** a tunable knob is declared with `hestia_common.settings_client`, never a new
    env var. Env holds only secrets and infrastructure. The assistant never applies a setting: it proposes, the
-   user confirms through Hermes.
+   user confirms through Hermes. Personal facts every module needs (week start, currency) are the Themis
+   settings `themis.personal.*`, read with `follow_personal()`; no module keeps its own copy. Module reminders
+   use `hestia_common.reminders`: the same `<module>.reminder.enabled` (off) / `.max_per_week` settings, the
+   schedule as an agenda job (Chronos), delivery through Hermes with `replaces` and `_link`.
 9. **Presence is effects, not names:** modules report facts to Chronos (pings, activities, signals) and ask
    effects through `hestia_common.presence_client`; they never test a state name, so new states are data only.
    Chronos down → safe defaults, each module keeps following its own agenda windows.
@@ -335,6 +338,8 @@ No code-only behavior changes are considered complete without synchronized docs.
 ## Capability Discovery Contract (Mandatory)
 
 1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
+   Tool names of domain modules are `<domain>_<verb>` in English (`fitness_log_sets`, `selfcare_today`,
+   `wardrobe_suggest`): the domain the module registers, never the module's mythological name or Italian words.
 2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
