@@ -95,8 +95,8 @@ def test_run_external_fetches_the_branch_into_the_task_worktree(monkeypatch, tmp
     origin, repo, other = tmp_path / "origin.git", tmp_path / "repo", tmp_path / "other"
     subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
     subprocess.run(["git", "clone", "-q", str(origin), str(repo)], check=True, capture_output=True)
-    for cwd in (repo,):
-        _git(cwd, "config", "user.email", "t@t"), _git(cwd, "config", "user.name", "t")
+    _git(repo, "config", "user.email", "t@t"), _git(repo, "config", "user.name", "t")
+    _git(repo, "symbolic-ref", "HEAD", "refs/heads/main")   # whatever init.defaultBranch the runner has
     (repo / "a.txt").write_text("one\n")
     _git(repo, "add", "-A"), _git(repo, "commit", "-qm", "init"), _git(repo, "push", "-q", "origin", "HEAD:main")
     subprocess.run(["git", "clone", "-q", str(origin), str(other)], check=True, capture_output=True)
