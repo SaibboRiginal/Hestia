@@ -1,5 +1,5 @@
 /**
- * <hygieia-journal> — optional diary per body area (off by default, setting hygieia.journal.enabled):
+ * <hygieia-journal> — diary per body area, used only when wanted:
  * quick 1–5 scores, tags and a note; trends per metric with the routine/product changes around them.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
@@ -29,7 +29,6 @@ export class HygieiaJournal extends HestiaElement {
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
   private async load() {
     this.m = await meta(this.host);
-    if (!this.m?.journal_enabled) { this.data = null; return; }
     const r = await this.host.api('GET', `${API}/journal`, { query: { area: this.area } });
     this.data = r.ok ? r.data : null;
   }
@@ -44,10 +43,6 @@ export class HygieiaJournal extends HestiaElement {
   render() {
     const back = html`<button class="link" @click=${() => this.host.navigate('oggi')}>‹ Oggi</button>`;
     if (!this.m) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
-    if (!this.m.journal_enabled) return html`<div class="page">${back}<h1>Diario</h1><div class="card col">
-      <div>Il diario è spento.</div>
-      <div class="muted small">Serve se vuoi segnare come stanno pelle, capelli, barba… (voti da 1 a 5 e una nota) e vedere se una routine o un prodotto nuovo cambia qualcosa.
-        Lo accendi in Impostazioni → Sistema → Self care → «journal.enabled».</div></div></div>`;
     const ms = this.metrics(), series = this.data?.series?.[this.area] || {};
     return html`<div class="page">
       ${back}

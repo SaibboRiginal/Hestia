@@ -150,7 +150,6 @@ class Hygieia:
                 "metrics": self.options("metrics"), "conflicts": self.options("conflicts"), "tags": self.options("tags"),
                 "slots": catalog.SLOTS, "statuses": catalog.STATUSES, "levels": catalog.LEVELS, "verdicts": catalog.VERDICTS,
                 "units": catalog.UNITS, "cadence_modes": catalog.CADENCE_MODES, "periods": catalog.PERIODS,
-                "journal_enabled": bool(self.setting("hygieia.journal.enabled", False)),
                 "currency": self.setting("hygieia.currency", "EUR"), "week_start": self.week_start()}
 
     # ── products ────────────────────────────────────────────────────────────

@@ -8,3 +8,4 @@
 - v2.2 — 2026-10-17 — Home quick log mapped to plugin contract v2.3 quick actions (§4.2b), manifest at /api/ui/manifest — plugin thread update — ai
 - v2.3 — 2026-10-17 — reminders use Hermes 'replaces' chains (skip counter by Hermes), interim closes+new-event workaround dropped — Hermes reminders thread on main — ai
 - v2.4 — 2026-10-18 — storage as one generic records table (Hercules protocol) instead of typed tables; settings/agenda keys `hygieia.*` (Themis owner = service name); step pause `paused_until`; reminder actions mapped to real endpoints; §14 implementation notes — implementation — ai
+- v2.5 — 2026-10-18 — diary always available, setting `hygieia.journal.enabled` (and the planned `journal.prompt`) removed — Marko: "o c'è una feature o non c'è" — user via external chat

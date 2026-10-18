@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.4 |
+| **Version** | 2.5 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Modulo Self care") · 2026-10-17 |
 | **Status** | Approved by the user (v2.0 answers §13). Phases 1–4 implemented on main 2026-10-18 (hold lifted by Marko); real run by Marko pending; phase 5 open |
 
@@ -119,7 +119,7 @@ One row per routine run: `routine_id`, `version`, `date`, `done_at`, `status` (`
 (`webui` · `telegram` · `assistant` · `reminder_button`). Ad-hoc usage outside routines (a mask on Sunday) is a log
 with `routine_id = null` and one step.
 
-### 3.6 Journal — `selfcare_journal` (per body part, v2.0; optional, hidden until enabled — v2.1)
+### 3.6 Journal — `selfcare_journal` (per body part, v2.0; always available, used only when wanted — v2.5)
 Purpose: see whether products and routines actually work (e.g. pimples trend down since retinol started).
 One entry per area per day (one quick form can fill several areas at once). `date`, `area`, `scores` (user-chosen metrics per area, 1–5: viso → idratazione, brufoli, rossori, oleosità,
 sensibilità; capelli → caduta, forfora, lucentezza…; metrics are an editable list per area), `tags`
@@ -215,8 +215,6 @@ Principle (v2.0): **few, useful, never piling up.**
 | `hygieia.alerts.expiry_days` | int, 30 | expiry warning |
 | `hygieia.alerts.restock_days` | int, 14 | predicted finish warning |
 | `hygieia.alerts.enabled` | bool, true | |
-| `hygieia.journal.enabled` | bool, false | shows the Diario tab and journal tools |
-| `hygieia.journal.prompt` | enum off/after_evening/weekly, off | ask for a journal entry after the evening routine (not implemented yet, phase 5) |
 | `hygieia.week_start` | int 0–6, 0 | first day of the week for weekly goals |
 | `hygieia.default_pao_months` | int, 12 | used when PAO unknown |
 | `hygieia.currency` | string, EUR | |
@@ -314,3 +312,5 @@ Everything else is optional detail.
 - **UI** (plugin bundle `ui/src`): pages oggi, routine, routine/:id, prodotti, prodotti/:id, diario, statistiche,
   spesa; widgets oggi (quick chips), prossima, prodotti (alerts), settimana; quick actions fatta, uso.
   `<hx-resize>` side panels are a WebUI-only element, so plugin pages use bottom sheets instead.
+- **No feature switches** (v2.5, Marko): a feature either exists or not; the diary has no on/off setting, it is simply
+  there and used only when wanted. Settings are for tunables (limits, days, currency), not for hiding features.

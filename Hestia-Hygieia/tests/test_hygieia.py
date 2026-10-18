@@ -45,7 +45,7 @@ class FakeArchive:
         return {"rows": rows, "cursor": self.seq}
 
 
-SETTINGS = {"hygieia.journal.enabled": True}
+SETTINGS: dict = {}
 
 
 @pytest.fixture

@@ -70,8 +70,6 @@ settings.declare([
     setting("hygieia.alerts.restock_days", "Avviso da ricomprare", "int", 14, group="Avvisi", min=1, max=90, unit="giorni",
             help="Quando la stima dice che finisce entro questi giorni.",
             depends_on={"key": "hygieia.alerts.enabled", "equals": True}),
-    setting("hygieia.journal.enabled", "Diario pelle e capelli", "bool", False, group="Diario",
-            help="Voti rapidi per parte del corpo, per capire se un prodotto funziona. Spento = nascosto."),
 ])
 
 hub = Hub(HUB_API_URL)
@@ -688,8 +686,6 @@ try:
 
     def _journal_add(area: str = "", scores: dict | None = None, note: str = "", tags: list | None = None,
                      date: str = "") -> dict:
-        if not hygieia.setting("hygieia.journal.enabled", False):
-            return {"error": "il diario è spento nelle impostazioni (hygieia.journal.enabled)"}
         rows = hygieia.journal_add({"date": date or None, "entries": [{"area": area, "scores": scores or {}, "note": note,
                                                                       "tags": tags or []}]}, source="assistant")
         return {"saved": len(rows)}

@@ -44,7 +44,7 @@ with something already done or due today) · `paused`. A target routine is behin
 - Tools (`selfcare` domain via `module_tool_domains`, REST path `/api/selfcare/tools/<name>`, JSON-RPC `POST /mcp`):
   `selfcare_overview`, `today`, `log`, `products`, `product_get`, `product_add`, `product_update`, `routines`,
   `routine_get`, `routine_create`, `routine_edit` (add / remove / step cadence / pause N days / routine cadence /
-  status / reminder / favorite, always with a reason), `undo_routine`, `journal_add` (only when the diary is on),
+  status / reminder / favorite, always with a reason), `undo_routine`, `journal_add`,
   `stats`, `timeline`, `period`, `check`, `shopping` (all prefixed `selfcare_`).
 - `GET /api/module/context?budget=`: short caveman lines (left today, goals behind, alerts).
 - Every step change keeps a version; `POST /routines/{id}/undo` goes back.
@@ -67,7 +67,7 @@ with something already done or due today) · `paused`. A target routine is behin
 Bundle `ui/src/index.ts` → `/ui/webui/hygieia.js` (built in the Dockerfile). Pages: oggi (today: one tap per
 routine, steps with reasons, wait timers, "ho usato un prodotto"), routine, routine/:id (editor: steps, order,
 own cadence, pause, goal, zones, never-same-day, reminder, favorite, adherence, versions), prodotti,
-prodotti/:id, diario (only when enabled), statistiche (heatmap, routines, top products, spend, history of
+prodotti/:id, diario, statistiche (heatmap, routines, top products, spend, history of
 changes, a past day, JSON export), spesa. Widgets: oggi (quick chips), prossima, prodotti (alerts), settimana.
 Quick actions: fatta (routines to do today + favorites, undo), uso (favorite products, undo).
 A UI change needs `up-all.bat --build hygieia`.
@@ -76,7 +76,7 @@ A UI change needs `up-all.bat --build hygieia`.
 
 week_start (0 = Monday), currency (EUR), default_pao_months (12), reminders.enabled (true; each routine is still
 off until switched on), reminders.max_per_week (2), alerts.enabled (true), alerts.expiry_days (30),
-alerts.restock_days (14), journal.enabled (false).
+alerts.restock_days (14). The diary has no switch: it is there and used only when wanted.
 
 ## API (via Hub `/route/hygieia/...`)
 

@@ -224,7 +224,7 @@ export class HygieiaToday extends HestiaElement {
     const nav = html`<div class="nav">
       <button class="tab" @click=${() => this.host.navigate('routine')}>Routine</button>
       <button class="tab" @click=${() => this.host.navigate('prodotti')}>Prodotti</button>
-      ${this.m?.journal_enabled ? html`<button class="tab" @click=${() => this.host.navigate('diario')}>Diario</button>` : nothing}
+      <button class="tab" @click=${() => this.host.navigate('diario')}>Diario</button>
       <button class="tab" @click=${() => this.host.navigate('statistiche')}>Statistiche</button>
       <button class="tab" @click=${() => this.host.navigate('spesa')}>Spesa</button></div>`;
     const head = html`<div class="between wrap">

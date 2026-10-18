@@ -14,4 +14,4 @@ Read SPEC.md first. Resume from the first unchecked box.
 - [ ] Phase 5 — extras (photos, barcode/Open Beauty Facts, import/export)
 - [x] Docs: hestia-hygieia.md, swagger, Archive doc, AI-GUIDE table, root CHANGELOG, compose, CI
 - [ ] Marko: `up-all.bat --build hygieia archive` and a real run (Docker build of the UI bundle, Themis/agenda registration, Hermes buttons)
-- [ ] Journal: Marko's answer pending (kept optional, off by default)
+- [x] Journal: always available, no on/off setting (Marko 2026-10-18, SPEC v2.5)
