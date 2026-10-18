@@ -18,6 +18,10 @@ ALLOWED_TAGS = {
     "gateway",
     "settings",
     "improvement",
+    "context",      # serves GET /api/module/context (assistant context contract)
+    "fitness",
+    "wardrobe",
+    "selfcare",
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -48,6 +52,9 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "system",
         "improvement",
         "settings",
+        "fitness",
+        "wardrobe",
+        "selfcare",
     },
     "status": {
         "alpha",
