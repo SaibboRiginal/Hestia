@@ -18,6 +18,8 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +66,19 @@ def status() -> dict[str, Any]:
     return {"available": True, "detail": "ok", "model": _model() or "default"}
 
 
+# Recent runs (in memory, WebUI page *Cervello* via GET /api/ui/code): task folder, start, ms, ok, turns, cost.
+_runs_lock = threading.Lock()
+_runs: deque = deque(maxlen=20)
+
+
+def runs(limit: int = 10) -> dict[str, Any]:
+    """Recent Claude Code runs, newest first, and how many are running now."""
+    with _runs_lock:
+        rows = [dict(r) for r in _runs]
+    rows.reverse()
+    return {"running": sum(1 for r in rows if r["state"] == "running"), "runs": rows[: max(1, min(int(limit), 20))]}
+
+
 def transcript_path(workdir: Path) -> Path:
     """Live transcript of a run: ``<root>/.transcripts/<task folder>.jsonl``.
 
@@ -77,6 +92,29 @@ _MAX_LINE = 200_000   # one stream-json line (a huge tool output) is clipped, ne
 
 def run(workdir: str, prompt: str, append_system_prompt: str = "",
         max_turns: int = 40, timeout_seconds: int = 1800) -> dict[str, Any]:
+    """Run one coding task (see ``_run``) and keep it in the recent-runs list."""
+    row: dict[str, Any] = {"task": Path(str(workdir or "")).name[:80], "started_at": time.time(), "state": "running",
+                           "ok": None, "ms": 0, "turns": 0, "cost_usd": None, "error": ""}
+    with _runs_lock:
+        _runs.append(row)
+    t0 = time.perf_counter()
+    try:
+        result = _run(workdir, prompt, append_system_prompt, max_turns, timeout_seconds)
+        row.update(state="done", ok=bool(result.get("ok")), turns=int(result.get("turns") or 0),
+                   cost_usd=result.get("cost_usd"))
+        return result
+    except ClaudeCodeError as exc:
+        row.update(state="failed", ok=False, error=str(exc)[:200])
+        raise
+    except Exception as exc:
+        row.update(state="failed", ok=False, error=str(exc)[:200])
+        raise
+    finally:
+        row["ms"] = int((time.perf_counter() - t0) * 1000)
+
+
+def _run(workdir: str, prompt: str, append_system_prompt: str = "",
+         max_turns: int = 40, timeout_seconds: int = 1800) -> dict[str, Any]:
     st = status()
     if not st["available"]:
         raise ClaudeCodeError(st["detail"], 503)
@@ -149,6 +187,14 @@ def run(workdir: str, prompt: str, append_system_prompt: str = "",
         "transcript_path": str(tpath),
     }
     logger.info("event=claude_code_run_done ok=%s turns=%s", ok, result["turns"])
+    if data.get("usage") or data.get("total_cost_usd"):
+        # Same daily totals as every other LLM call (use case "claude_code"; page Cervello).
+        from core.services import llm_stats
+        try:
+            llm_stats.record_anthropic("claude_code", "claude_code", model or "default", data.get("usage") or {},
+                                       cost_usd=float(data.get("total_cost_usd") or 0))
+        except Exception as exc:  # noqa: BLE001 — stats never fail a run
+            logger.debug("event=claude_code_stats_failed error=%s", exc)
     return result
 
 

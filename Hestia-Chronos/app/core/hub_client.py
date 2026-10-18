@@ -17,6 +17,7 @@ def register_on_hub(
     max_attempts: int = 8,
     retry_delay: float = 2.0,
     quiet_success: bool = False,
+    extra_capabilities: dict | None = None,
 ) -> None:
     """Register this service in Hub with retry logic.
 
@@ -41,6 +42,7 @@ def register_on_hub(
             },
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["calendar"],
+            **(extra_capabilities or {}),   # WebUI plugin manifest (ui_manifest, ui_version)
         },
     }
 

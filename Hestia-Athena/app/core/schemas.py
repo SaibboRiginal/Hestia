@@ -90,6 +90,8 @@ class ActionCandidate(BaseModel):
     signals: RelevanceSignals = Field(default_factory=RelevanceSignals)
     score: float = 0.0
     accepted: bool = False
+    gate_reason: str = ""   # why the relevance gate accepted/discarded it (Italian, shown on the Pensieri page)
+    outcome: str = ""       # emitted | forge | forge_skipped | setting_proposed | setting_skipped | failed | discarded
 
 
 class ThinkingRecord(BaseModel):
@@ -105,3 +107,5 @@ class ThinkingRecord(BaseModel):
     emitted_count: int = 0
     hint_published: bool = False
     error: str | None = None
+    threshold: float = 0.0   # gate threshold used in this cycle
+    duration_ms: int = 0     # observe → think → act

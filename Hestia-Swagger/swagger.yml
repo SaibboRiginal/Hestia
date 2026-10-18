@@ -5127,6 +5127,19 @@ paths:
         "200":
           description: OK
 
+  /hephaestus/api/ui/manifest:
+    get:
+      tags: [Hephaestus]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/hephaestus/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `riparazioni` (hephaestus-repairs,
+        order 170), widget `forge` (hephaestus-forge-widget, auto). Bundle file at /ui/webui/hephaestus.js
+        (404 for unknown files). Read by Hub through `capabilities.ui_manifest`.
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{module, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
+
   /api/hephaestus/status:
     get:
       tags: [Hephaestus]
@@ -5691,6 +5704,18 @@ paths:
         - {name: task_id, in: path, required: true, schema: {type: string}}
       responses:
         "200": {description: "{status, task}"}
+
+  /metis/api/ui/manifest:
+    get:
+      tags: [Metis]
+      summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/metis/)
+      description: |
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `miglioramento` (metis-improvement,
+        order 180), no widgets. Bundle file at /ui/webui/metis.js (404 for unknown files).
+      servers:
+        - url: http://localhost:19014
+      responses:
+        "200": {description: "{module, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
 
   /api/metis/lora/jobs:
     get:

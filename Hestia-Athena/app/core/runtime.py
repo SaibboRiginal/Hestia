@@ -55,6 +55,43 @@ THINKING_WINDOW_DEFAULT = (0, 0)
 
 logger = logging.getLogger("hestia_athena.runtime")
 
+# Relevance gate: factor → (weight, Italian label). Score = Σ weight × value (interruption cost counts as 1 − value).
+GATE_WEIGHTS = {
+    "urgency": (0.30, "urgenza"),
+    "usefulness": (0.25, "utilità"),
+    "novelty": (0.20, "novità"),
+    "confidence": (0.15, "sicurezza"),
+    "interruption_cost": (0.10, "disturbo"),
+}
+
+
+def compact_record(record: dict[str, Any]) -> dict[str, Any]:
+    """A thinking record without the bulky observation payload (services list, raw errors)."""
+    obs = record.get("observation") or {}
+    keep = ("candidate_id", "title", "summary", "kind", "domain", "priority", "reasoning", "signals", "score",
+            "accepted", "gate_reason", "outcome", "setting_key", "setting_value")
+    return {
+        "record_id": record.get("record_id"), "trace_id": record.get("trace_id"),
+        "cycle_at": record.get("cycle_at"), "trigger": record.get("trigger"),
+        "threshold": record.get("threshold"), "duration_ms": record.get("duration_ms", 0),
+        "emitted_count": record.get("emitted_count", 0), "error": record.get("error"),
+        "observation": {
+            "services": len(obs.get("services") or []),
+            "unhealthy_services": list(obs.get("unhealthy_services") or []),
+            "domains": [{"domain": d.get("domain"), "total": d.get("total_entities", 0),
+                         "recent": d.get("recent_count", 0), "pending": d.get("pending_count", 0)}
+                        for d in (obs.get("domains") or [])],
+            "active_commitments": obs.get("active_commitments", 0),
+            "unresolved_commitments": obs.get("unresolved_commitments", 0),
+            "failure_streak": obs.get("failure_streak", 0),
+            "recent_errors": len(obs.get("recent_errors") or []),
+            "recent_errors_sample": [str(e)[:160] for e in (obs.get("recent_errors") or [])[:3]],
+            "quality_issues": [str(q)[:160] for q in (obs.get("quality_issues") or [])[:3]],
+            "presence": obs.get("presence") or "",
+        },
+        "candidates": [{k: c.get(k) for k in keep} for c in (record.get("candidates") or [])],
+    }
+
 
 def _normalize_01(value: float) -> float:
     return max(0.0, min(1.0, value))
@@ -108,6 +145,7 @@ class AthenaRuntime:
             max_tasks=get_int(S.TASK_STORE_MAX)  # apply=restart
         )
         self._thinking_records: list[dict[str, Any]] = []
+        self._cycle_lock = threading.Lock()   # one thinking cycle at a time (loop or «Pensa ora»)
 
         self._loop_paused_logged = False
         self._forge_day = ""
@@ -408,6 +446,19 @@ class AthenaRuntime:
         records.reverse()
         return records[: max(1, min(int(limit), self.thinking_store_max))]
 
+    def thinking_summary(self, limit: int = 10) -> dict[str, Any]:
+        """Compact cycles for the Pensieri page and the MCP tool ``athena_thinking`` (newest first): what was
+        observed (counts, not payloads), every candidate with its 5 gate factors, score, accepted/discarded and
+        why, and what was done with it."""
+        rows = [compact_record(r) for r in self.list_thinking_records(limit=max(1, min(int(limit or 10), 50)))]
+        return {
+            "status": "ok", "count": len(rows), "running": self.cycle_running,
+            "threshold": self.emit_threshold, "loop_enabled": self.loop_enabled,
+            "strategist_enabled": self.strategist.enabled, "interval_seconds": self.interval_seconds,
+            "weights": {k: w for k, (w, _) in GATE_WEIGHTS.items()},
+            "cycles": rows,
+        }
+
     # ── Outcome tracking ─────────────────────────────────────────────────────
 
     def _record_outcome(self, payload: dict[str, Any]) -> None:
@@ -477,6 +528,28 @@ class AthenaRuntime:
 
         return adjusted
 
+    def gate_reason(self, signals: RelevanceSignals, score: float, accepted: bool) -> str:
+        """Why the gate decided so, in words: score vs threshold and the factors that weighed most."""
+        values = {k: _normalize_01(getattr(signals, k)) for k in GATE_WEIGHTS}
+        good = {k: (1.0 - v if k == "interruption_cost" else v) for k, v in values.items()}
+        cmp = "≥" if accepted else "<"
+        head = f"punteggio {score:.2f} {cmp} soglia {self.emit_threshold:.2f}"
+        if accepted:
+            strong = sorted((k for k in good if good[k] >= 0.7), key=lambda k: -GATE_WEIGHTS[k][0] * good[k])[:2]
+            words = [f"{GATE_WEIGHTS[k][1]} alta" if k != "interruption_cost" else "disturbo basso" for k in strong]
+        else:
+            weak = sorted((k for k in good if good[k] < 0.5), key=lambda k: GATE_WEIGHTS[k][0] * good[k])[:2]
+            words = [f"{GATE_WEIGHTS[k][1]} bassa" if k != "interruption_cost" else "disturbo alto" for k in weak]
+        return f"{head} ({', '.join(words)})" if words else head
+
+    def _gate(self, candidate: ActionCandidate) -> ActionCandidate:
+        candidate.score = self.score(candidate.signals)
+        candidate.accepted = candidate.score >= self.emit_threshold
+        candidate.gate_reason = self.gate_reason(candidate.signals, candidate.score, candidate.accepted)
+        if not candidate.accepted:
+            candidate.outcome = "discarded"
+        return candidate
+
     def score(self, signals: RelevanceSignals) -> float:
         weighted = (
             0.30 * _normalize_01(signals.urgency)
@@ -504,6 +577,14 @@ class AthenaRuntime:
         observation: ObservationSnapshot,
         retrospective: dict[str, Any],
     ) -> list[ActionCandidate]:
+        """Accepted candidates only (see ``_think_all``)."""
+        return [c for c in self._think_all(observation, retrospective) if c.accepted]
+
+    def _think_all(
+        self,
+        observation: ObservationSnapshot,
+        retrospective: dict[str, Any],
+    ) -> list[ActionCandidate]:
         """Generate and score action candidates from observation.
 
         Candidates come from the Strategist (Oracle LLM).  If the strategist
@@ -526,19 +607,17 @@ class AthenaRuntime:
             )
             return []
 
-        accepted: list[ActionCandidate] = []
+        scored: list[ActionCandidate] = []
         for candidate in candidates:
             # Apply retrospective boost to candidate signals
-            boosted = self._apply_retrospective_to_signals(
+            candidate.signals = self._apply_retrospective_to_signals(
                 candidate.signals, retrospective
             )
-            score = self.score(boosted)
-            candidate.score = score
-            candidate.signals = boosted
-            candidate.accepted = score >= self.emit_threshold
+            self._gate(candidate)
+            score = candidate.score
+            scored.append(candidate)
 
             if candidate.accepted:
-                accepted.append(candidate)
                 logger.info(
                     "event=action_candidate_accepted "
                     "title=%s kind=%s priority=%s score=%.3f threshold=%.3f",
@@ -558,7 +637,7 @@ class AthenaRuntime:
                     self.emit_threshold,
                 )
 
-        return accepted
+        return scored
 
     # ── Brief building (replaces hardcoded _build_brief) ─────────────────────
 
@@ -848,6 +927,42 @@ class AthenaRuntime:
             return
         self._thinking_paused_logged = False
 
+        if not self._cycle_lock.acquire(blocking=False):
+            logger.info("event=thinking_cycle_skipped reason=cycle_running trigger=periodic")
+            return
+        try:
+            self._thinking_cycle("periodic", run_trace_id)
+        finally:
+            self._cycle_lock.release()
+
+    @property
+    def cycle_running(self) -> bool:
+        return self._cycle_lock.locked()
+
+    def think_now(self) -> dict[str, Any]:
+        """«Pensa ora» (WebUI, quick action): one full cycle now, in the background, past the idle gate and the
+        agenda window (the user asked). Returns at once; the new record appears in /api/athena/thinking."""
+        if not self._cycle_lock.acquire(blocking=False):
+            logger.info("event=think_now_busy")
+            return {"status": "busy", "detail": "Athena sta già pensando"}
+        trace_id = f"athena-now-{uuid4().hex[:10]}"
+
+        def _run() -> None:
+            try:
+                self._thinking_cycle("manual", trace_id)
+            except Exception as exc:  # noqa: BLE001 — a failed cycle is logged, never kills the service
+                logger.warning("event=think_now_failed trace_id=%s error=%s", trace_id, exc)
+            finally:
+                self._cycle_lock.release()
+
+        logger.info("event=think_now_started trace_id=%s", trace_id)
+        threading.Thread(target=_run, daemon=True, name="athena-think-now").start()
+        return {"status": "started", "trace_id": trace_id}
+
+    def _thinking_cycle(self, trigger: str, run_trace_id: str) -> dict[str, Any]:
+        """observe → think → gate → act → archive. Every candidate is kept in the record (accepted or discarded,
+        with the gate's reason and what happened to it)."""
+        t0 = time.perf_counter()
         retrospective = self._retrospective_snapshot()
 
         # Phase 1: Observe
@@ -857,20 +972,22 @@ class AthenaRuntime:
         # Phase 2: Think (LLM via Oracle) — reported as a light activity of the assistant
         with self.presence.activity("athena.thinking", label="Athena pensa", load="light", resource="gpu",
                                     ttl_seconds=900):
-            candidates = self._think(observation, retrospective)
+            scored = self._think_all(observation, retrospective)
+        candidates = [c for c in scored if c.accepted]
 
         # Track the cycle
         thinking_record = ThinkingRecord(
             trace_id=run_trace_id,
-            trigger="periodic",
+            trigger=trigger,
             observation=observation,
-            candidates=candidates,
+            candidates=scored,
             emitted_count=0,
             hint_published=False,
+            threshold=self.emit_threshold,
         )
 
         task = self._task_store.create_task(
-            task_type="athena.focus_brief.periodic",
+            task_type=f"athena.focus_brief.{trigger}",
             trace_id=run_trace_id,
             metadata={
                 "observation_id": observation.observation_id,
@@ -898,7 +1015,7 @@ class AthenaRuntime:
                 result={
                     "accepted": False,
                     "candidate_count": 0,
-                    "reason": "no_candidates_generated",
+                    "reason": "no_candidates_generated" if not scored else "all_below_threshold",
                     "trace_id": run_trace_id,
                     "observation_id": observation.observation_id,
                 },
@@ -949,10 +1066,12 @@ class AthenaRuntime:
                         score=candidate.score,
                         trace_id=run_trace_id,
                     )
+                    candidate.outcome = "emitted"
                     if candidate.kind == "improvement":
-                        self._send_to_forge(candidate, run_trace_id)
+                        candidate.outcome = "forge" if self._send_to_forge(candidate, run_trace_id) else "forge_skipped"
                     elif candidate.kind == "setting":
-                        self._propose_setting(candidate, run_trace_id)
+                        candidate.outcome = ("setting_proposed" if self._propose_setting(candidate, run_trace_id)
+                                             else "setting_skipped")
                     emitted_count += 1
                     hint_published = True
                     thinking_record.emitted_count = emitted_count
@@ -971,6 +1090,7 @@ class AthenaRuntime:
                     )
                 except Exception as error:
                     errors.append(str(error))
+                    candidate.outcome = "failed"
                     logger.warning(
                         "event=candidate_emit_failed "
                         "trace_id=%s candidate=%s error=%s",
@@ -1003,7 +1123,11 @@ class AthenaRuntime:
             )
 
         # Archive this thinking cycle
+        thinking_record.duration_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info("event=thinking_cycle_done trigger=%s trace_id=%s candidates=%d accepted=%d emitted=%d ms=%d",
+                    trigger, run_trace_id, len(scored), len(candidates), emitted_count, thinking_record.duration_ms)
         self._store_thinking_record(thinking_record)
+        return thinking_record.model_dump()
 
     def _loop(self) -> None:
         logger.info(
@@ -1158,9 +1282,7 @@ class AthenaRuntime:
         candidates = self.strategist.reason(observation) if request.summary else []
         scored_candidates: list[ActionCandidate] = []
         for c in candidates:
-            c.score = self.score(c.signals)
-            c.accepted = c.score >= self.emit_threshold
-            scored_candidates.append(c)
+            scored_candidates.append(self._gate(c))
 
         thinking_record = ThinkingRecord(
             trace_id=trace_id,
@@ -1169,6 +1291,7 @@ class AthenaRuntime:
             candidates=scored_candidates,
             emitted_count=1 if accepted else 0,
             hint_published=False,
+            threshold=self.emit_threshold,
         )
 
         task = self._task_store.create_task(

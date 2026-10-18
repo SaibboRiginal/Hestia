@@ -320,12 +320,14 @@ def ui_manifest_cache_invalidate(service_name: str | None = None) -> None:
 
 
 def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[str] | None = None,
-                     module: str = "") -> dict:
+                     module: str = "", local_manifests: dict[str, dict] | None = None) -> dict:
     """One catalog organized by client × type: ``{modules, contributions: {client: {type: [...]}}}``.
 
     - ``tool`` (MCP, client ``*``) and ``command`` (per client) come from the existing discovery.
     - ``page`` · ``widget`` · ``quick_action`` (+ ``bundle``) come from each module's UI manifest.
     Offline modules keep their last manifest with ``online: false`` so clients can say "non raggiungibile".
+    ``local_manifests`` = manifests served in-process (Hub's own plugin: Hub never registers with itself);
+    always online, and they win over a registered service with the same name.
     """
     client = (client or "").strip().lower()
     wanted = [t for t in (types or CATALOG_TYPES) if t in CATALOG_TYPES]
@@ -343,18 +345,7 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
         if name and float(svc.get("updated_at") or 0) >= float(newest.get(name, {}).get("updated_at") or 0):
             newest[name] = svc
 
-    for name, svc in sorted(newest.items()):
-        if module and name != module:
-            continue
-        caps = svc.get("capabilities") or {}
-        fresh = now - float(svc.get("updated_at") or 0) < _ONLINE_WINDOW
-        url = str(caps.get("ui_manifest") or "").strip()
-        if not url or not any(t in UI_TYPES for t in wanted):
-            continue
-        manifest, ok = _fetch_ui_manifest(name, url, str(caps.get("ui_version") or ""))
-        if not manifest:
-            continue
-        online = fresh and ok
+    def ingest(name: str, manifest: dict, online: bool) -> None:
         modules[name] = {"module": name, "title": manifest.get("title") or name, "icon": manifest.get("icon", ""),
                          "color": manifest.get("color", ""), "description": manifest.get("description", ""),
                          "kind": manifest.get("kind") if manifest.get("kind") in ("domain", "core") else "domain",
@@ -374,6 +365,23 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
                     if isinstance(item, dict) and item.get("id"):
                         add(cl, kind, {**item, "id": f"{name}.{item['id']}", "local_id": item["id"],
                                        "module": name, "online": online})
+
+    local = {str(k).strip().lower(): v for k, v in (local_manifests or {}).items() if isinstance(v, dict)}
+    ui_wanted = any(t in UI_TYPES for t in wanted)
+    for name, manifest in sorted(local.items()):
+        if ui_wanted and (not module or name == module):
+            ingest(name, manifest, True)
+    for name, svc in sorted(newest.items()):
+        if (module and name != module) or name in local or not ui_wanted:
+            continue
+        caps = svc.get("capabilities") or {}
+        fresh = now - float(svc.get("updated_at") or 0) < _ONLINE_WINDOW
+        url = str(caps.get("ui_manifest") or "").strip()
+        if not url:
+            continue
+        manifest, ok = _fetch_ui_manifest(name, url, str(caps.get("ui_version") or ""))
+        if manifest:
+            ingest(name, manifest, fresh and ok)
 
     # Pre-existing discovery, folded in.
     if "command" in wanted:

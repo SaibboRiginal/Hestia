@@ -4,7 +4,8 @@ Fed by every provider from what the server already returns (Ollama ``prompt_eval
 ``load_duration``, OpenAI-compatible ``usage`` + llama-server ``timings``, Anthropic ``usage``).
 Kept in memory as a short rolling window per agent label, plus running totals per
 conversation (the chat stream binds its session id, see ``bind_session``); exposed by
-``/api/chat/context``.
+``/api/chat/context``. Also daily totals per use case × provider × model (last ``_DAYS`` local days, in
+memory since the start of Oracle), read by the WebUI page *Cervello* (``GET /api/ui/stats``).
 """
 from __future__ import annotations
 
@@ -13,15 +14,19 @@ import logging
 import threading
 import time
 from collections import OrderedDict, deque
+from datetime import date, datetime, timedelta
 from typing import Any, Iterator
 
 logger = logging.getLogger("hestia_oracle.llm_stats")
 
 _WINDOW = 50
 _MAX_SESSIONS = 200
+_DAYS = 31
+_STARTED_AT = time.time()
 _lock = threading.Lock()
 _calls: dict[str, deque] = {}
 _sessions: "OrderedDict[str, dict]" = OrderedDict()
+_daily: dict[str, dict[tuple[str, str, str], dict]] = {}   # "YYYY-MM-DD" → (label, provider, model) → totals
 _current_session: contextvars.ContextVar[str] = contextvars.ContextVar("llm_stats_session", default="")
 
 
@@ -61,6 +66,44 @@ def _add_to_session(row: dict) -> None:
             _sessions.popitem(last=False)
 
 
+def _add_to_day(label: str, row: dict) -> None:
+    day = datetime.fromtimestamp(row["at"]).date().isoformat()
+    key = (label, row["provider"], row["model"])
+    with _lock:
+        per_day = _daily.setdefault(day, {})
+        tot = per_day.setdefault(key, {"calls": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0,
+                                       "cost_usd": 0.0})
+        tot["calls"] += 1
+        tot["input_tokens"] += row["prompt_tokens"]
+        tot["cached_tokens"] += row["cached_tokens"]
+        tot["output_tokens"] += row["output_tokens"]
+        tot["cost_usd"] = round(tot["cost_usd"] + float(row.get("cost_usd") or 0), 6)
+        for old in sorted(_daily)[:-_DAYS]:
+            del _daily[old]
+
+
+def daily(days: int = 14, today: date | None = None) -> dict:
+    """Totals per day (oldest first, empty days included) and today's split per use case/model."""
+    days = max(1, min(int(days or 14), _DAYS))
+    today = today or date.today()
+    with _lock:
+        snapshot = {d: {k: dict(v) for k, v in rows.items()} for d, rows in _daily.items()}
+    zero = {"calls": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+    series = []
+    for i in range(days - 1, -1, -1):
+        day = (today - timedelta(days=i)).isoformat()
+        tot = dict(zero)
+        for row in snapshot.get(day, {}).values():
+            for k in zero:
+                tot[k] += row[k]
+        tot["cost_usd"] = round(tot["cost_usd"], 6)
+        series.append({"day": day, **tot})
+    split = [{"use_case": label, "provider": provider, "model": model, **row}
+             for (label, provider, model), row in snapshot.get(today.isoformat(), {}).items()]
+    split.sort(key=lambda r: (-r["calls"], r["use_case"]))
+    return {"days": series, "today": series[-1], "today_by_model": split, "since": _STARTED_AT}
+
+
 def session_usage(session_id: str) -> dict:
     """Running totals of one conversation ({} before its first counted call)."""
     with _lock:
@@ -91,6 +134,7 @@ def record(label: str, provider: str, model: str, *, prompt_tokens: int, cached_
     with _lock:
         _calls.setdefault(label, deque(maxlen=_WINDOW)).append(row)
     _add_to_session(row)
+    _add_to_day(label, row)
     cache_pct = round(100 * cached_tokens / prompt_tokens, 1) if prompt_tokens else 0.0
     tok_s = round(row["output_tokens"] / (row["output_ms"] / 1000), 1) if row["output_ms"] else 0.0
     logger.info(
@@ -195,3 +239,4 @@ def reset() -> None:
     with _lock:
         _calls.clear()
         _sessions.clear()
+        _daily.clear()

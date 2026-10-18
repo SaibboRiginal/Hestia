@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 
 from core import argus_settings as cfg
+from core.ui_plugin import ui
 
 from schemas.reports import LogEvent
 
@@ -62,6 +63,8 @@ def register(*, quiet_success: bool = False) -> bool:
             },
             "mcp_endpoint": f"{ARGUS_SERVICE_BASE_URL.rstrip('/')}/mcp",
             "module_tool_domains": ["system"],
+            # WebUI plugin (Salute page, Stato sistema widget): manifest URL + version for the Hub catalog.
+            **ui.capabilities(ARGUS_SERVICE_BASE_URL),
         },
     }
     try:
