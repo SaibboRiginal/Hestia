@@ -158,7 +158,7 @@ Plugin (contract `docs/work/2026-10-17-client-plugins/SPEC.md` v2.3): `GET /api/
 UI API under `/api/ui/`. Quick actions (§4.2b): dynamic `routine_done` with `source: /api/ui/quick/routines` (one chip
 per favourite / due-today routine, `state` todo|done|late, `hint` "1/2 sett."), `POST /api/ui/routines/{id}/done`,
 undo `DELETE /api/ui/routines/{id}/done/today`; `product_used` same shape for favourite products.
-Context: `GET /api/module/context` — the same short caveman summary as `selfcare_overview`, common contract of the
+Context: `GET /api/module/context` — the same short caveman summary as `selfcare_summary`, common contract of the
 three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its context: `?budget=` →
 `{module, domain, updated_at, text}`, Hub tag `context`, built with `hestia_common.context_client.ModuleContext`
 (written by the Guardaroba thread, its SPEC §6.2). Photo uploads follow the plugin contract (base64 ≤ 8 MB, resized by the client).
@@ -167,7 +167,7 @@ three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its
 
 | Tool | Does |
 |---|---|
-| `selfcare_overview` | current routines with steps, products in use, alerts — short, caveman-style; the assistant's context |
+| `selfcare_summary` | current routines with steps, products in use, alerts — short, caveman-style; the assistant's context |
 | `selfcare_today` | what is left today / tonight |
 | `selfcare_log` | "fatto la routine sera", "ho saltato il retinolo", ad-hoc use |
 | `selfcare_products` / `selfcare_product_get` | search by name/area/active/status |
@@ -182,7 +182,7 @@ three new modules (Guardaroba, Self care, Coach) so Oracle can include it in its
 Writes from the assistant are the user's own data asked in chat, so they apply directly and are reported in the
 answer (and logged with `source=assistant`); routine edits are reversible (previous version kept).
 How the overview reaches the assistant's standing context (always-on snippet vs. tool call) follows the
-"context contribution" part of the plugin contract; until then it is the `selfcare_overview` tool.
+"context contribution" part of the plugin contract; until then it is the `selfcare_summary` tool.
 Telegram gets the visible ones as commands through Hub discovery (`telegram_group: "Self care"`).
 
 ## 7. Reminders and notifications

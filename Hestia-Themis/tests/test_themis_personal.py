@@ -73,3 +73,6 @@ def test_reminder_event_shape():
     p = body["payload"]
     assert body["entity_id"] == "wardrobe.reminder" and p["replaces"] == "wardrobe.reminder"
     assert p["target"] == "owner" and p["_link"] == {"module": "wardrobe", "page": "outfit"}
+    # Regression: Hermes' owner subscription listens on domain "system"; any other envelope domain
+    # matched no subscription and the reminder was never delivered.
+    assert body["domain"] == "system" and p["domain"] == "wardrobe"

@@ -570,6 +570,8 @@ class Wardrobe:
             return {"send": False, "why": "not_behind"}
         week0 = self._period_start(self.today(), "week").isoformat()
         sent = [r for r in self.store.items("reminder") if str(r.get("at") or "")[:10] >= week0]
+        if any(str(r.get("at") or "")[:10] == self.today().isoformat() for r in sent):
+            return {"send": False, "why": "sent_today"}       # one nudge a day, like every module
         if len(sent) >= int(self.cfg("reminder.max_per_week", 2)):
             return {"send": False, "why": "weekly_cap"}
         return {"send": True, "goal": g, "chips": [c for c in self.quick_chips(3)]}

@@ -38,11 +38,13 @@ def reminder_event(*, module: str, domain: str, key: str, title: str, text: str,
     """Hermes ``/api/events/ingest`` body for a reminder or alert of ``module``.
 
     ``key`` is the thread (one live notification per key, Hermes ``replaces``); actions that end it carry
-    ``resolves: true``; ``page`` opens the module's plugin page from the notification (``_link``)."""
+    ``resolves: true``; ``page`` opens the module's plugin page from the notification (``_link``).
+    The envelope domain is ``system``: Hermes' standing owner subscription listens there; the module's
+    own domain travels in the payload."""
     payload: dict[str, Any] = {
         "kind": kind or key, "service": module, "source": module, "domain": domain, "_source": module,
         "_title": title, "target": "owner", "replaces": key, "level": level, "_message": text,
         "_actions": list(actions or [])}
     if page:
         payload["_link"] = {"module": module, "page": page}
-    return {"event_type": "service.action_required", "domain": domain, "entity_id": key, "payload": payload}
+    return {"event_type": "service.action_required", "domain": "system", "entity_id": key, "payload": payload}

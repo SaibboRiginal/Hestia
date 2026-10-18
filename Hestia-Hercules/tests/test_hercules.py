@@ -176,3 +176,14 @@ def test_strong_import_is_idempotent(hc):
 
 def test_reminder_off_by_default(hc):
     assert hc.reminder_decision()["send"] is False
+
+
+def test_reminder_once_a_day():
+    cfg = {"hercules.reminder.enabled": True, "hercules.reminder.max_per_week": 3}
+    h = Hercules(Store(FakeArchive(), min_refresh_seconds=0), cfg.get, tz_name="Europe/Rome")
+    h.save("goal", {"times": 5, "per": "week"})
+    if h.reminder_decision().get("why") == "on_track":
+        pytest.skip("goal not behind on this weekday")
+    assert h.reminder_decision()["send"] is True
+    h.mark_reminder_sent()
+    assert h.reminder_decision()["why"] == "sent_today"

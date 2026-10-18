@@ -713,7 +713,7 @@ try:
     O = {"type": "object"}
     G = "selfcare"
     _tools = [
-        MCPTool(name="selfcare_overview", description="Self care di Marko: routine (con passi e frequenza), prodotti in "
+        MCPTool(name="selfcare_summary", description="Self care dell'utente: routine (con passi e frequenza), prodotti in "
                 "uso, avvisi (scadenze, da ricomprare) e cosa resta oggi. Usalo per primo per qualsiasi domanda su "
                 "skincare, capelli, corpo, cosmetici.", parameters={"type": "object", "properties": {}},
                 handler=_t(_overview), title="✨ Self care", path=f"{API}/overview", clients=["telegram", "ui"], telegram_group=G),

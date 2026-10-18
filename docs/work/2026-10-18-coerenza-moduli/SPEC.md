@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat (Marko: «sono tutti completati? sono tutti consistenti tra di loro?») |
 | **Status** | Implemented on branch `claude/project-thread-w9loez` 2026-10-18 — waiting Marko's ok to merge into main |
 
@@ -49,3 +49,23 @@ Hygieia, Wardrobe, Hermes one-live-reminder. Fix small, clear inconsistencies; l
      stays an agenda job (Chronos), delivery stays Hermes. Hygieia's `hygieia.reminders.*` → `hygieia.reminder.*`,
      off by default like the others (each routine still chooses its own reminder).
 4. Reminder models harmonised by 3. Generic Archive module store: optional refactor, not done.
+
+## Verified with a real run (2026-10-18, v1.2)
+Marko: «fai tutti i test che puoi … e aggiusta tutto», for every waiting thread.
+- pytest (unit/api/format) green in every Python service; .NET WebUI build (0 warnings) and Angular production
+  build OK; the four plugin bundles build.
+- Local stack (Hub, Archive + Postgres, Themis, Hermes, Chronos, Hercules, Hygieia, Wardrobe): all register,
+  catalog order right, tools listed with the new names, agenda rules registered, `themis.personal.week_start`
+  pushed to the three modules, quick actions mark/undo, module context, reminders delivered in the Hermes inbox
+  with `_link` and answered from it (the module gets the action).
+
+## Fixed after the real run
+- Reminders were never delivered: `reminder_event` put the module domain on the envelope, but Hermes' standing
+  owner subscription listens on domain `system` (like Themis, Argus, Hecate). Envelope domain is now `system`,
+  the module domain stays in the payload; regression assert in `test_themis_personal.py`.
+- Chronos `/health` answered 500 when Hecate was down (agenda and presence looked down): providers are now
+  informative only; regression test `test_health_ok_when_hecate_unreachable`.
+- Hercules and Wardrobe could nudge twice the same day when the job ran again: «one a day» guard like Hygieia
+  (`sent_today`), tests.
+- `selfcare_overview` → `selfcare_summary` like `fitness_summary` / `wardrobe_summary`; no personal name in the
+  tool description.

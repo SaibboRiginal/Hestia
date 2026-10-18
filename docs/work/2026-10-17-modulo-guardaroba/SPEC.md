@@ -207,7 +207,7 @@ The plugin contract leaves assistant context out (its §4.10), so this dossier d
   12 outfit; stile prevalente smart casual; in lavanderia 3; dimenticati >180g: 7; ultimo outfit 16/10
   "ufficio blu"`. Cheap (< 200 ms, computed from counters, cached 5 min).
 - The same text is offered as an on-demand MCP tool `<prefix>_riepilogo` (here `wardrobe_summary`; Coach /
-  Self care may name theirs `coach_summary` / `selfcare_overview`), so the agent can pull it any time.
+  Self care may name theirs `fitness_summary` / `selfcare_summary`), so the agent can pull it any time.
 - Discovery: the module's Hub registration carries the tag `context` (Hub vocabulary extended). Oracle (the only
   consumer) may add the `text` of modules whose `domain` matches the classified chat domain as one context line,
   within its own budget setting. That Oracle step is a small separate change owned by Oracle, done after the

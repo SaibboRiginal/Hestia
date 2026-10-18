@@ -558,11 +558,15 @@ def _presence_boot() -> None:
 
 @app.get("/health")
 def health() -> dict:
-    status_code, status_payload = _route_hecate(
-        method="GET",
-        path="/api/gateway/providers",
-        timeout_seconds=10,
-    )
+    # Calendar providers are informative: Hecate down must not make Chronos (agenda, presence) look down.
+    try:
+        status_code, status_payload = _route_hecate(
+            method="GET",
+            path="/api/gateway/providers",
+            timeout_seconds=10,
+        )
+    except Exception:
+        status_code, status_payload = 503, {}
     return {
         "status": "ok",
         "service": "hestia_chronos",

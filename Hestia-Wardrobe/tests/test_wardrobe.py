@@ -199,6 +199,7 @@ def test_goal_and_reminder_rules(wd):
                      "wardrobe.reminder.enabled": True})
     assert wd.reminder_decision()["send"] is True
     wd.mark_reminder_sent()
+    assert wd.reminder_decision()["why"] == "sent_today"      # one nudge a day
     wd.mark_worn({"piece_ids": [tee["id"], jeans["id"]]})
     g = wd.goal_progress()
     assert g["met"] and g["marked_today"]

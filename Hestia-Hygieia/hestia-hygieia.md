@@ -42,7 +42,7 @@ with something already done or due today) · `paused`. A target routine is behin
 ## Assistant
 
 - Tools (`selfcare` domain via `module_tool_domains`, REST path `/api/selfcare/tools/<name>`, JSON-RPC `POST /mcp`):
-  `selfcare_overview`, `today`, `log`, `products`, `product_get`, `product_add`, `product_update`, `routines`,
+  `selfcare_summary`, `today`, `log`, `products`, `product_get`, `product_add`, `product_update`, `routines`,
   `routine_get`, `routine_create`, `routine_edit` (add / remove / step cadence / pause N days / routine cadence /
   status / reminder / favorite, always with a reason), `undo_routine`, `journal_add`,
   `stats`, `timeline`, `period`, `check`, `shopping` (all prefixed `selfcare_`).

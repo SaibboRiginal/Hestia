@@ -185,3 +185,15 @@ def test_create_event_propagates_hecate_error(monkeypatch):
     }
     resp = client.post("/api/calendar/events", json=body)
     assert resp.status_code == 503
+
+
+def test_health_ok_when_hecate_unreachable(monkeypatch):
+    """Regression: /health answered 500 when Hub could not route to Hecate (Chronos looked down)."""
+    import requests
+
+    def _down(url, json, timeout):
+        return _FakeResponse(503, {})
+
+    monkeypatch.setattr(requests, "post", _down)
+    body = chronos_main.health()
+    assert body["status"] == "ok" and body["providers"] == {}

@@ -919,6 +919,8 @@ class Hercules:
             return {"send": False, "why": "skipped_today"}
         week0 = records.period_start(self.today(), "week", self.week_start())
         sent = [r for r in self.store.items("reminder") if (records.local_date(r.get("at"), self.tz) or date.min) >= week0]
+        if any(records.local_date(r.get("at"), self.tz) == self.today() for r in sent):
+            return {"send": False, "why": "sent_today"}       # one nudge a day, like every module
         if len(sent) >= int(self.cfg("reminder.max_per_week", 2)):
             return {"send": False, "why": "weekly_cap"}
         return {"send": True, "goal": behind[0]["progress"], "next": self.next_workout()}
