@@ -71,6 +71,7 @@ const ICONS: Record<string, string> = {
   home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   pulse: 'M2 12h4l3-8 4 16 3-8h6',
+  host: 'M3 4h18v6H3zM3 14h18v6H3zM7 7h.01M7 17h.01',
   shirt: 'M8.5 3.5L3.5 6.5l2 4 2-1V20.5h9V9.5l2 1 2-4-5-3a3.5 3.5 0 0 1-7 0z',
   pin: 'M12 17v5M9 4h6M10 4v6l-3 3v2h10v-2l-3-3V4',
   star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',

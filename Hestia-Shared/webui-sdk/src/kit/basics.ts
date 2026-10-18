@@ -19,6 +19,8 @@ const ICONS: Record<string, string> = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   home: 'M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  pulse: 'M2 12h4l3-8 4 16 3-8h6',
+  host: 'M3 4h18v6H3zM3 14h18v6H3zM7 7h.01M7 17h.01',
   clock: 'M12 7v5l3 2M12 21a9 9 0 110-18 9 9 0 010 18z',
   heart: 'M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
