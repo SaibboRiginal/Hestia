@@ -64,6 +64,9 @@ MODES = ("ask", "auto", "full_auto")
 _MODE_ALIASES = {"propose": "ask", "auto_start": "auto", "yolo": "full_auto", "full": "full_auto"}
 DEFAULT_MODES = {"local": "auto", "cloud": "ask"}
 USER_SOURCES = {"user", "telegram", "ui", "oracle"}
+# A fix made elsewhere (external AI via MCP, forge_submit_branch): Forge fetches, tests, asks as usual.
+BRANCH_SUBMIT_STATES = {"proposed", "scheduled", "failed", "no_changes", "awaiting_review"}
+_BRANCH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
 
 
 def normalize_mode(mode: str) -> str:
@@ -412,6 +415,9 @@ class Forge:
                     with self.presence.activity("hephaestus.deploy", label="aggiornamento", load="heavy",
                                                 kind="maintenance", ttl_seconds=1800):
                         self._merge_and_deploy(task, task.get("approved_by", "user"))
+                elif (task.get("external") or {}).get("pending"):
+                    with self.presence.activity("forge.task", label="Forge", load="medium", ttl_seconds=3600):
+                        self._run_external(task)
                 else:
                     engine = self._engine_name_for(task.get("engine_requested", "auto"))
                     with self.presence.activity("forge.task", label="Forge", load="heavy",
@@ -589,8 +595,53 @@ class Forge:
         return self.submit(request=old.get("request", ""), services=old.get("services") or [],
                            engine="" if old.get("engine_requested") in (None, "auto") else old["engine_requested"],
                            source="ui", requested_by=requested_by, context=f"Riprova del task {old['id']}. "
-                           f"Esito precedente: {str(old.get('error') or old.get('summary') or '')[:800]}",
+                           f"Esito precedente: {str(old.get('error') or old.get('summary') or '')[:800]}"
+                           + notes_text(old),
                            workdoc=old.get("workdoc") or "")
+
+    def add_note(self, task_id: str, text: str, by: str = "user") -> dict[str, Any]:
+        """An analysis or hint on a task (Sviluppo page, external AI): shown with the task, given to the engine
+        when the task runs or is retried."""
+        task = self._require(task_id)
+        text = str(text or "").strip()
+        if len(text) < 3:
+            raise ForgeError("Note too short")
+        note = {"ts": _now(), "by": str(by or "user")[:80], "text": text[:4000]}
+        with self._lock:
+            notes = task.setdefault("notes", [])
+            notes.append(note)
+            del notes[:-30]
+            task["updated_at"] = note["ts"]
+        self._save()
+        logger.info("event=forge_task_note task_id=%s by=%s chars=%d", task["id"], note["by"], len(note["text"]))
+        return task
+
+    def submit_branch(self, task_id: str, branch: str, summary: str = "", by: str = "user") -> dict[str, Any]:
+        """"I fixed it on this branch": Forge fetches ``branch`` from origin, runs its tests and asks for the
+        approval as usual (never merges on its own). The external AI codes wherever it likes; Forge stays the
+        only deploy gate."""
+        task = self._require(task_id)
+        branch = str(branch or "").strip()
+        if (not _BRANCH_RE.match(branch) or ".." in branch or "//" in branch or branch.endswith((".lock", "/"))
+                or branch.startswith("auto/forge/")):
+            raise ForgeError(f"Invalid branch '{branch}' (a branch on origin, not auto/forge/*)")
+        state = task.get("state")
+        if state not in BRANCH_SUBMIT_STATES:
+            raise ForgeError(f"Task in state '{state}': a branch can be submitted when it is "
+                             f"{', '.join(sorted(BRANCH_SUBMIT_STATES))}", 409)
+        if not git_ops.is_repo(self.cfg.repo_path):
+            raise ForgeError(f"Repo not mounted at {self.cfg.repo_path} (volume ./:/repo)", 503)
+        with self._lock:
+            task["external"] = {"branch": branch, "summary": str(summary or "").strip()[:4000],
+                                "by": str(by or "user")[:80], "at": _now(), "pending": True}
+            task["manual_start"] = True        # a deliberate submission, not an autonomous proposal
+            task.pop("held_by_pause", None)
+            task["auto_merge"] = False         # the owner approves every external fix
+            task["error"] = None
+        if state == "scheduled":
+            self.agenda.hide_task(task["id"])
+        self._enqueue(task, f"branch {branch} submitted by {by}")
+        return task
 
     def diff(self, task_id: str) -> str:
         task = self._require(task_id)
@@ -766,7 +817,8 @@ class Forge:
             task["workdoc"] = workdoc
         src = (f"{task.get('requested_by') or 'user'} via {task.get('source') or 'hestia'} "
                f"-> Forge task {task['id']} [forge:{task['id']}]")
-        prompt = build_task_prompt(task["request"], task["services"], task.get("context", ""), workdoc, src)
+        prompt = build_task_prompt(task["request"], task["services"], str(task.get("context") or "") + notes_text(task),
+                                   workdoc, src)
         t0 = time.perf_counter()
         self.artifacts.start_transcript(task["id"], prompt, engine.name)
         result = engine.run(worktree, prompt, test_runner,
@@ -806,6 +858,11 @@ class Forge:
                 f"{_esc(result.summary[:500])}"))
             return
 
+        self._review(task, worktree, base_sha, sha, result.summary, result.ok)
+
+    def _review(self, task: dict, worktree: Path, base_sha: str, sha: str, summary: str, engine_ok: bool,
+                heading: str = "Forge: modifica pronta") -> None:
+        """Forge's own tests on the result, then the owner's approval (or auto merge when allowed)."""
         changed = git_ops.changed_files(worktree, base_sha)
         tests_ok, tests_out = run_test_command(
             worktree, self.cfg.test_cmd, self._test_paths(worktree, changed, task["services"]))
@@ -824,19 +881,58 @@ class Forge:
             except Exception as exc:
                 logger.warning("[🔄] event=forge_push_failed task_id=%s error=%s", task["id"], exc)
 
-        self._set_state(task, "awaiting_review", f"engine_ok={result.ok} tests_ok={tests_ok}")
+        self._set_state(task, "awaiting_review", f"engine_ok={engine_ok} tests_ok={tests_ok}")
         tests_label = {True: "✅ test ok", False: "❌ test falliti", None: "➖ nessun test"}[tests_ok]
         short = task["id"][:6]
         self._notify(task, (
-            f"🧩 <b>Forge: modifica pronta</b> <code>{short}</code> · {tests_label}\n"
-            f"{_esc(result.summary[:900])}\n\n<pre>{_esc(task['diff_stat'][-900:])}</pre>\n"
+            f"🧩 <b>{_esc(heading)}</b> <code>{short}</code> · {tests_label}\n"
+            f"{_esc(summary[:900])}\n\n<pre>{_esc(task['diff_stat'][-900:])}</pre>\n"
             f"Rispondi \"approva sviluppo {short}\" per applicarla, \"rifiuta {short}\" per scartarla."))
 
-        if task.get("auto_merge") and tests_ok is True and result.ok:
+        if task.get("auto_merge") and tests_ok is True and engine_ok:
             with self._lock:
                 task["approved_by"] = "policy:auto_merge"
             self._set_state(task, "approved", "auto_merge policy")
             self._merge_and_deploy(task, "policy:auto_merge")
+
+    def _run_external(self, task: dict) -> None:
+        """A branch made elsewhere (forge_submit_branch): fetch → worktree → Forge's tests → approval."""
+        repo = self.cfg.repo_path
+        ext = task["external"]
+        branch, by = ext["branch"], ext.get("by") or "user"
+        worktree = self.cfg.worktrees_path / task["id"]
+        self._cleanup(task, delete_branch=True)
+        base_branch = self._base_branch()
+        base_sha = git_ops.rev(repo, base_branch)
+        try:
+            head = git_ops.fetch_branch(repo, branch)
+        except git_ops.GitError as exc:
+            with self._lock:
+                ext["pending"] = False
+                task["error"] = f"fetch {branch}: {exc}"[:1000]
+            self._set_state(task, "failed", f"external branch {branch} not fetched: {exc}")
+            self._notify(task, f"❌ Forge <code>{task['id'][:6]}</code>: branch <code>{_esc(branch)}</code> "
+                               f"non scaricato da origin — {_esc(str(exc)[:300])}")
+            return
+        git_ops.create_worktree(repo, worktree, task["branch"], head)
+        with self._lock:
+            task.update({"worktree": str(worktree), "base_branch": base_branch, "base_sha": base_sha,
+                         "engine": "external"})
+        self._set_state(task, "running", f"external branch {branch}@{head[:8]} by {by}")
+        if not git_ops.changed_files(worktree, base_sha):
+            self._cleanup(task, delete_branch=True)
+            with self._lock:
+                ext["pending"] = False
+            self._set_state(task, "no_changes", f"branch {branch} has nothing new on {base_branch}")
+            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: il branch <code>{_esc(branch)}</code> "
+                               f"non cambia nulla rispetto a {_esc(base_branch)}.")
+            return
+        summary = ext.get("summary") or f"Branch {branch}"
+        with self._lock:
+            ext["pending"] = False
+            task["summary"] = f"{summary}\n\n(branch {branch} di {by})"
+        self._review(task, worktree, base_sha, head, task["summary"], True,
+                     heading=f"Forge: correzione esterna pronta ({by})")
 
     def _check_mergeable(self, task: dict) -> None:
         repo = self.cfg.repo_path
@@ -980,3 +1076,12 @@ class Forge:
 def _esc(text: str) -> str:
     import html
     return html.escape(str(text or ""))
+
+
+def notes_text(task: dict) -> str:
+    """Notes on a task (owner, external AI) as prompt context for the engine."""
+    notes = task.get("notes") or []
+    if not notes:
+        return ""
+    lines = [f"- [{n.get('by')}] {' '.join(str(n.get('text') or '').split())[:1500]}" for n in notes[-10:]]
+    return "\nNote sul task (analisi e indicazioni):\n" + "\n".join(lines)

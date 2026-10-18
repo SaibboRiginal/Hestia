@@ -179,7 +179,8 @@ ok, payload = mcp.call("forge_tasks", {"limit": 5}, session_id=sid, notify_targe
 ```
 
 `tool_call.build_request(tool, args, ctx)` is the one implementation of how a tool becomes a Hub request (path
-`$x`/`{x}`, templates `$session_id` · `$chat_id`/`$owner` · `$arg.x`, the rest to query or JSON body);
+`$x`/`{x}`, templates `$session_id` · `$chat_id`/`$owner` · `$arg.x`, the rest to query or JSON body; `ctx.access`
+→ `X-Hestia-Access`, the access name of an external AI);
 `tool_call.resolve` / `template_vars` / `is_write` are the pieces. Hestia-MCP uses it; Telegram reuses `resolve`
 for `arg_picker` sources (data reads declared by a tool).
 

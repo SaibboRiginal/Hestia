@@ -85,7 +85,8 @@ def _strip_nones(obj: Any) -> Any:
 def build_request(tool: dict, args: dict | None, ctx: dict | None = None) -> dict:
     """``{service, method, path, query, body, headers}`` for Hub ``/route/<service>/<path>``.
 
-    ``ctx`` = caller context: ``session_id``, ``notify_target`` (chat id / owner), ``client``, ``trace_id``."""
+    ``ctx`` = caller context: ``session_id``, ``notify_target`` (chat id / owner), ``client``, ``trace_id``,
+    ``access`` (external AI access name → ``X-Hestia-Access``)."""
     args = {k: v for k, v in (args or {}).items() if v is not None}
     ctx = ctx or {}
     method = str(tool.get("method") or "GET").upper()
@@ -119,6 +120,8 @@ def build_request(tool: dict, args: dict | None, ctx: dict | None = None) -> dic
         headers["X-Trace-Id"] = str(ctx["trace_id"])
     if ctx.get("client"):
         headers["X-Hestia-Client"] = str(ctx["client"])
+    if ctx.get("access"):   # an external AI's access name (Hestia-MCP external door): who asked, for the module
+        headers["X-Hestia-Access"] = str(ctx["access"])
     return {"service": str(tool.get("service") or "").strip(), "method": method, "path": path.lstrip("/"),
             "query": {k: v for k, v in (query or {}).items() if v is not None},
             "body": (_strip_nones(body) or None) if isinstance(body, dict) else body, "headers": headers}

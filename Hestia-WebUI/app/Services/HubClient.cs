@@ -210,10 +210,12 @@ public class HubClient
     /// </summary>
     public async Task<(int Status, JsonElement Payload)> RouteRawAsync(
         string service, string path, HttpMethod method, object? body = null,
-        Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default)
+        Dictionary<string, string>? query = null, double timeoutSeconds = 20, CancellationToken ct = default,
+        Dictionary<string, string>? headers = null)
     {
         var envelope = new Dictionary<string, object?> { ["method"] = method.Method, ["timeout_seconds"] = timeoutSeconds };
         if (query?.Count > 0) envelope["query"] = query;
+        if (headers?.Count > 0) envelope["headers"] = headers;
         if (body is not null) envelope["body"] = body;
         try
         {

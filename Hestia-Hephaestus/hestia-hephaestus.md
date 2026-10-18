@@ -213,7 +213,30 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | GET | `/api/hephaestus/forge/tasks/{id}/files?diff` | Changed files (+/−, status) and diff; live worktree includes uncommitted/untracked files |
 | GET | `/api/hephaestus/forge/tasks/{id}/workdoc` | Dossier `docs/work/<workdoc>/*.md` + every other `.md` the task changed |
 | GET | `/api/hephaestus/forge/tasks/{id}/tests` · `logs` · `events` | Full pytest output + counts · engine/deploy logs · state timeline |
+| GET | `/api/hephaestus/forge/tasks/{id}/overview` | Compact task + notes + last 20 state changes + submitted branch (tool `forge_task`) |
+| POST | `/api/hephaestus/forge/tasks/{id}/notes` | `{text, by}` — analysis/hint on a task (tool `forge_task_note`); `by` = `X-Hestia-Access` when present |
+| POST | `/api/hephaestus/forge/tasks/{id}/submit-branch` | `{branch, summary}` — "fixed on this branch" (tool `forge_submit_branch`), see below |
 | GET | `/api/hephaestus/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only git browser of the checkout (Sviluppo page) |
+| GET | `/api/hephaestus/repo/dossiers/{name}` | SPEC, PROGRESS, CHANGELOG of `docs/work/<name>/` (tool `forge_dossier`) |
+
+### External AIs (MCP access) — notes and "fixed on this branch"
+
+SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §B4. With an access made on the WebUI page *Accessi AI*,
+an external AI (Claude Code, Cursor…) reaches the tools Forge marked `"external"`: `forge_tasks`, `forge_task`,
+`forge_task_diff`, `forge_dossier`, `forge_status` (read) and `forge_develop`, `forge_task_note`,
+`forge_submit_branch` (write access). Approve, reject, merge, rollback, pause and engine settings stay internal.
+
+- Hestia-MCP sends `X-Hestia-Access: <access name>`. `POST /forge/tasks` with it → `source=external`,
+  `requested_by=<name>`, `auto_start`/`auto_merge` of the body ignored: an external request is a proposal like a
+  module's (permission mode, pause and duplicates apply), never "the user typed it".
+- **Notes** (`notes[]`, last 30): shown with the task; the last 10 go into the engine prompt context when the task
+  runs, and into the context of a retry.
+- **Submit branch**: task in `proposed`, `scheduled`, `failed`, `no_changes` or `awaiting_review`; branch name
+  checked (no `..`, not `auto/forge/*`). The task is queued; the worker fetches `refs/heads/<branch>` from `origin`
+  (`git_ops.fetch_branch`), puts it in the task worktree on `auto/forge/<id>` (engine `external`), runs Forge's own
+  tests and asks the approval as for any change ("Forge: correzione esterna pronta (<name>)"). `auto_merge` is
+  forced off: every external fix waits for the owner. After the ok: merge, deploy, health check, auto rollback as
+  usual. Fetch failure → `failed` with the git error; branch equal to base → `no_changes`.
 
 ### Task artifacts & transcript (Sviluppo page)
 

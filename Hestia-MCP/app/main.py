@@ -4,9 +4,11 @@ Every client lists and calls tools here, the same way (docs/work/2026-10-18-modu
 Oracle, Telegram, the WebUI through Hub; external AIs through the WebUI door.
 
 Endpoints:
-  POST /mcp        → MCP (Streamable HTTP, JSON): initialize · tools/list · tools/call · ping
-  GET  /health     → service health
-  GET  /api/logs   → log buffer
+  POST /mcp            → MCP (Streamable HTTP, JSON): initialize · tools/list · tools/call · ping (internal clients)
+  POST /mcp/external   → the same MCP for external AIs, behind an access token (WebUI door /mcp forwards here)
+  /api/mcp/accesses    → accesses management (Accessi page in the WebUI, plugin of this module)
+  GET  /health         → service health
+  GET  /api/logs       → log buffer
 """
 import logging
 import os
@@ -22,6 +24,8 @@ from core.service_contract import HestiaServiceBase, ServiceDescriptor
 from core.mcp_settings import settings as mcp_settings
 from core.catalog import ToolCatalog
 from core.mcp_server import MCPServer
+from core.access import AccessStore
+from core.external import ExternalDoor
 
 # ── Logging setup ────────────────────────────────────────────────────────────
 try:
@@ -32,6 +36,7 @@ except ModuleNotFoundError:
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
+from hestia_common.plugin_client import PluginClient, page
 
 logger, log_buffer = setup_service_logging("hestia_mcp")
 
@@ -39,6 +44,16 @@ logger, log_buffer = setup_service_logging("hestia_mcp")
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 SERVICE_BASE_URL = os.getenv("MCP_SERVICE_BASE_URL", "http://hestia_mcp:19013")
 SERVICE_VERSION = os.getenv("MCP_SERVICE_VERSION", "1.0.0")
+UI_DIST = os.getenv("MCP_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
+
+# ── WebUI plugin (core module, Sistema section): Accessi AI ──────────────────
+ui = PluginClient("mcp", title="Comandi & MCP", icon="command", color="blue", kind="core", dist=UI_DIST,
+                  description="Gli strumenti di Hestia e chi li può usare da fuori (AI esterne).",
+                  version=SERVICE_VERSION)
+ui.webui(entry="mcp.js", api_prefix="/api/mcp/",
+         pages=[page("accessi", "Accessi AI", element="mcp-accesses", icon="external", order=190,
+                     help="Token per collegare Claude Code, Claude Desktop, Cursor o un'altra AI agli strumenti di "
+                          "Hestia (MCP). Revoca e rinnovo in un tocco.")])
 
 # ── Service descriptor ───────────────────────────────────────────────────────
 
@@ -47,6 +62,8 @@ class MCPService(HestiaServiceBase):
         return {
             "mcp_gateway": True,
             "mcp_server": "/mcp",
+            "mcp_external": "/mcp/external",
+            **ui.capabilities(SERVICE_BASE_URL),
         }
 
 
@@ -63,6 +80,8 @@ descriptor = ServiceDescriptor(
 service = MCPService(descriptor)
 catalog = ToolCatalog(hub_api_url=HUB_API_URL)
 server = MCPServer(catalog, HUB_API_URL, version=SERVICE_VERSION)
+accesses = AccessStore(HUB_API_URL)
+door = ExternalDoor(server, accesses, HUB_API_URL)
 
 # ── App ──────────────────────────────────────────────────────────────────────
 
@@ -70,6 +89,8 @@ app = FastAPI(title="Hestia MCP Gateway", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(mcp_settings.router())
 app.include_router(server.router())
+app.include_router(door.router())
+app.include_router(ui.router())
 
 
 @app.on_event("startup")

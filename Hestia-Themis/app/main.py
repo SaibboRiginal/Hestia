@@ -201,15 +201,21 @@ def settings_proposals(status: str | None = "pending"):
 
 
 @app.post("/api/settings/proposals")
-def settings_propose(body: dict, x_session_id: str = Header(default=""), x_hestia_client: str = Header(default="")):
+def settings_propose(body: dict, x_session_id: str = Header(default=""), x_hestia_client: str = Header(default=""),
+                     x_hestia_access: str = Header(default="")):
     """The assistant (Oracle on request, Athena in autonomy) proposes; the user decides.
     Born in a chat (Oracle sends ``X-Session-Id`` + ``X-Hestia-Client``) → confirmation card in that chat
-    (``confirm`` in the answer); otherwise via Hermes."""
+    (``confirm`` in the answer); otherwise via Hermes. An external AI (``X-Hestia-Access`` from the Hestia-MCP
+    door) proposes under its access name and never picks the confirmation chat."""
     origin = body.get("origin") if isinstance(body.get("origin"), dict) else None
-    if not origin and x_session_id and x_hestia_client:
-        origin = {"client": x_hestia_client, "session_id": x_session_id}
+    if x_hestia_access:
+        origin, proposer = None, f"external:{x_hestia_access}"
+    else:
+        proposer = str(body.get("proposer") or "oracle")
+        if not origin and x_session_id and x_hestia_client:
+            origin = {"client": x_hestia_client, "session_id": x_session_id}
     return themis.propose(str(body.get("key") or ""), body.get("value"),
-                          proposer=str(body.get("proposer") or "oracle"), reason=str(body.get("reason") or ""),
+                          proposer=proposer, reason=str(body.get("reason") or ""),
                           scope=body.get("scope"), scope_id=body.get("scope_id"), origin=origin)
 
 
@@ -263,13 +269,13 @@ try:
                     "module": {"type": "string", "description": "modulo opzionale (oracle, argus…)"},
                     "limit": {"type": "integer"}}},
                 handler=_tool_search, title="⚙️ Cerca impostazioni", method="GET",
-                path="/api/settings/search", clients=["ui"], response_mode="oracle_natural",
+                path="/api/settings/search", clients=["ui", "external"], response_mode="oracle_natural",
                 telegram_visible=False, telegram_group="impostazioni"),
         MCPTool(name="settings_get",
                 description="Dettaglio di un'impostazione: descrizione, valori ammessi, valore attuale, stato.",
                 parameters={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]},
                 handler=_tool_get, title="⚙️ Dettaglio impostazione", method="GET",
-                path="/api/settings/key/{key}", clients=["ui"], telegram_visible=False,
+                path="/api/settings/key/{key}", clients=["ui", "external"], telegram_visible=False,
                 telegram_group="impostazioni"),
         MCPTool(name="settings_propose",
                 description="Proponi all'utente di cambiare un'impostazione. NON la applica: l'utente "
@@ -279,7 +285,7 @@ try:
                     "reason": {"type": "string", "description": "perché, in una frase"}},
                     "required": ["key", "value"]},
                 handler=_tool_propose, title="⚙️ Proponi modifica impostazione", method="POST",
-                path="/api/settings/proposals", clients=["ui"], telegram_visible=False,
+                path="/api/settings/proposals", clients=["ui", "external"], telegram_visible=False,
                 telegram_group="impostazioni"),
         MCPTool(name="settings_undo",
                 description="Proponi di annullare l'ultima modifica di un'impostazione (conferma dell'utente).",

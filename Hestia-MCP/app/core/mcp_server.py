@@ -36,6 +36,9 @@ INSTRUCTIONS = ("Hestia is a personal assistant made of modules. Tools are named
                 "the owner in Hestia, never here.")
 
 
+FORBIDDEN = -32003   # an external access may not run this tool (HTTP 403 at the door)
+
+
 class RpcError(Exception):
     def __init__(self, code: int, message: str):
         super().__init__(message)
@@ -65,8 +68,10 @@ class MCPServer:
     def tools_list(self, params: dict, ctx: dict) -> dict:
         services = _hestia(params).get("services")
         tools = self.catalog.tools(ctx.get("client", ""), services if isinstance(services, list) else None)
-        if ctx.get("allow") is not None:   # an access limited to some tools (P3)
+        if ctx.get("allow") is not None:   # an external access limited to some tools
             tools = [t for t in tools if ctx["allow"](t)]
+        if ctx.get("external") and not ctx.get("can_write"):   # read-only access: only reading tools
+            tools = [t for t in tools if (t.get("annotations") or {}).get("readOnlyHint")]
         return {"tools": tools}
 
     def tools_call(self, params: dict, ctx: dict) -> dict:
@@ -77,20 +82,30 @@ class MCPServer:
         if not cmd or not cmd.get("service") or not cmd.get("path"):
             raise RpcError(-32602, f"Unknown tool: {name}")
         client = ctx.get("client", "")
-        if not visible_to(cmd, client) or (ctx.get("allow") is not None and not ctx["allow"](to_mcp_tool(cmd))):
+        tool = to_mcp_tool(cmd)
+        if not visible_to(cmd, client) or (ctx.get("allow") is not None and not ctx["allow"](tool)):
             raise RpcError(-32602, f"Unknown tool: {name}")
-        # X-Hestia-Client towards the module = the client the user talks from (given by internal callers),
-        # not who calls this server; an external access never chooses it.
-        call_ctx = {k: hestia.get(k) for k in ("session_id", "notify_target", "trace_id")}
-        if hestia.get("client") and not ctx.get("external"):
-            call_ctx["client"] = str(hestia["client"])
+        writes = not tool["annotations"]["readOnlyHint"]
+        if ctx.get("external") and writes and not ctx.get("can_write"):
+            raise RpcError(FORBIDDEN, f"This access is read-only: {name} changes something")
+        if ctx.get("external"):
+            # An external access never chooses session, chat or client: the module sees only who it is.
+            call_ctx = {"access": ctx.get("access_name") or "external"}
+        else:
+            # X-Hestia-Client towards the module = the client the user talks from (given by internal callers),
+            # not who calls this server.
+            call_ctx = {k: hestia.get(k) for k in ("session_id", "notify_target", "trace_id")}
+            if hestia.get("client"):
+                call_ctx["client"] = str(hestia["client"])
         req = build_request(cmd, args, call_ctx)
         timeout = float(hestia.get("timeout_seconds") or settings.get(SERVER_TIMEOUT))
-        timeout = max(1.0, min(300.0, timeout))
+        timeout = max(1.0, min(20.0 if ctx.get("external") else 300.0, timeout))   # external: inside the WebUI door
         t0 = time.perf_counter()
         ok, status, payload = self._route(req, timeout)
         logger.info("event=mcp_tool_call tool=%s service=%s client=%s ok=%s status=%s ms=%d", name, req["service"],
                     client or "-", ok, status, int((time.perf_counter() - t0) * 1000))
+        if ctx.get("external") and ctx.get("on_call"):
+            ctx["on_call"](tool, ok, payload)
         structured = payload if isinstance(payload, dict) else {"result": payload}
         text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, default=str)
         return {"content": [{"type": "text", "text": text}], "structuredContent": structured, "isError": not ok,

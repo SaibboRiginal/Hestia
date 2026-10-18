@@ -32,6 +32,9 @@ It stores and serves all persistent state through generic APIs.
   Pure storage for Wardrobe.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
   deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos first).
+- **MCP access store** (`/api/mcp-access-store/*`): table `mcp_accesses` (access_id, name, kind token|oauth,
+  scope read|write, tools, token_hash (sha256, unique), expires_at, revoked_at, last_used_at, calls_day/date/total,
+  meta). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
 - **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
   `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
@@ -65,6 +68,10 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
 | `DELETE` | `/api/blobs/{id}` | Delete a blob |
+| `GET`/`POST` | `/api/mcp-access-store/accesses` | MCP accesses (Hestia-MCP only): list · create `{access_id, name, kind, scope, tools, token_hash, expires_at}` |
+| `GET` | `/api/mcp-access-store/accesses/by-hash/{sha256}` | Access of a token (404 = unknown) |
+| `PATCH`/`DELETE` | `/api/mcp-access-store/accesses/{id}` | Change (name, scope, tools, token_hash, expiry, `revoked`) · delete |
+| `POST` | `/api/mcp-access-store/accesses/{id}/used` | One call made: last use + counters |
 | `GET` | `/api/presence-store` | Presence signals (expired purged) + snapshot (Chronos only) |
 | `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
 | `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |

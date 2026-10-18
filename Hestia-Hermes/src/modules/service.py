@@ -205,7 +205,8 @@ class HermesService:
     def send_direct(self, channel: str, target: str, message: str, metadata: dict | None = None,
                     actions: Any = None) -> tuple[bool, str]:
         """Legacy ``/api/dispatch/send``: ``target`` owner (or empty) → every client;
-        a concrete target on a known client (e.g. Forge requester's chat) → that client only."""
+        a concrete target on a known client (e.g. Forge requester's chat) → that client only.
+        ``metadata.quiet`` → stored in the inbox of every client without a push."""
         target = str(target or "").strip()
         channel = str(channel or "").strip().lower()
         origin = None
@@ -215,8 +216,9 @@ class HermesService:
         result = self.notifications.publish(
             message=message, event_type=str(meta.get("type") or "direct.message"), domain="system",
             source=str(meta.get("source") or ""), actions=actions,
-            audience="origin" if origin else "global", origin=origin)
-        ok = bool(result.get("deliveries"))
+            audience="origin" if origin else "global", origin=origin,
+            quiet=bool(meta.get("quiet")))   # inbox copy only, no push (e.g. an external AI's write)
+        ok = bool(result.get("deliveries")) or bool(meta.get("quiet"))
         return ok, "sent" if ok else "no client reached"
 
     def retry_failed_deliveries(self, limit: int = 50) -> dict:

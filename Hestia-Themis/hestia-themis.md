@@ -54,6 +54,9 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
   actions}` and Oracle shows it as a confirm card in that chat (answer = approve/reject action routed via Hub with
   `by: <client>`); the Hermes copy carries `_origin` + `_quiet` (inbox only, no push). A user-scope setting owned by
   a client (`webui.*`, `telegram.*`) is proposed on that client's layer (`scope=client`, `scope_id=<client>`).
+- **Proposal from an external AI** (2026-10-18, Hestia-MCP door): `X-Hestia-Access: <name>` → proposer
+  `external:<name>`, shown as "<name> (AI esterna) propone…", confirmed via Hermes (never a chat card). Tools open to
+  external AIs: `settings_search`, `settings_get`, `settings_propose`.
 
 ## API (via Hub `/route/themis/...`)
 

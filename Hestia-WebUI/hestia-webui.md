@@ -59,7 +59,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/plugins/{module}/bundle/{file}` | Module WebUI bundle file (via Hub) |
 | ANY | `/api/webui/plugins/{module}/call/{path}` | Plugin → its own module; 403 outside its `api_prefix` |
 | GET | `/api/ai/widgets?q=` · `/api/ai/dashboards` | Assistant tools `webui_widgets` / `webui_dashboards` (internal, via Hub) |
-| POST | `/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings) |
+| POST | `/api/ai/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings); was `/mcp` before 2026-10-18 |
+| POST | `/mcp` | **Public MCP door for external AIs** (`McpDoorController`): body + `Authorization: Bearer` → Hub → Hestia-MCP `/mcp/external` (token, scope, rate limit there); no WebUI login, always a token, also at home. GET/DELETE → 405 |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
@@ -329,6 +330,10 @@ Built Angular app served as static files from `wwwroot/`.
 - `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`; path compared
   lowercase, routing is case-insensitive); exempt: login, `auth/access`, command list, `/api/webui/admin/*`
   (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).
+- **MCP door** `POST /mcp` (2026-10-18, `McpDoorController`): outside `/api/webui/`, so neither the WebUI token
+  nor local access applies; it needs `Authorization: Bearer <access token>` always (also at home) and Hestia-MCP
+  checks it (401 / 403 / 429). Only the header and the JSON body are forwarded (max 1 MB). The WebUI's own module
+  MCP moved to `/api/ai/mcp` to free the path.
 - **Local access without token** (`Services/LocalAccess.cs`, SPEC `docs/work/2026-10-11-webui-local-access`):
   the middleware and the hub skip the token only when ALL hold — Themis `webui.auth.local_without_token`
   on (default; the assistant cannot propose it), no Cloudflare/proxy header (`Cf-Connecting-Ip`, `Cf-Ray`,

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-18 |
 | **Status** | Approved 2026-10-18 (Marko, card) — in progress, see PROGRESS.md |
 
@@ -146,7 +146,9 @@ Telegram reads Hestia-MCP `/tools/all`, Hestia-MCP proxies `/tools/call` with it
   an external client sees only the tools its access allows, and only among the tools a module marked `"external"` in
   `MCPTool.clients` (the module decides what may leave the house; nothing is exposed by default).
 - **Public door = WebUI** (the only service behind the Cloudflare tunnel): WebUI `/mcp` forwards to Hestia-MCP through
-  Hub (`/route/mcp/mcp`). No new port is published. Internal clients call Hestia-MCP through Hub as today.
+  Hub (v2.3: `/route/mcp/mcp/external`, a separate endpoint that always wants an access token; the internal `/mcp`
+  is never reachable from the door). No new port is published. Internal clients call Hestia-MCP through Hub as today.
+  The WebUI's own module tools (widgets, dashboards) move from `/mcp` to `/api/ai/mcp` to free the path.
 - **Audit**: every external call logged `event=mcp_external_call access=<name> tool=<tool> ok=<bool>`; every write tool
   also leaves a silent Hermes inbox entry ("Claude esterno ha creato il task …"), no push.
 - **Settings (Themis)**: `mcp.external.max_calls_per_min` (int, default 60). No on/off switch: no access = no door.
@@ -170,15 +172,19 @@ Read (no side effects):
 - `forge_tasks(status?, q?, limit?)` — the development list (id, title, status, engine, created, last event).
 - `forge_task(task_id)` — request text, status, engine, error, test results, WORKDOC name, branch, events.
 - `forge_task_diff(task_id)` · `forge_dossier(name)` (SPEC/PROGRESS/CHANGELOG of a dossier) · `forge_status()`.
-- `system_status()` (Hub registry + Argus) · `service_logs(service, level?, since?, q?)` (Argus/Hub logs, capped).
-- `athena_thinking(limit?)` · `settings_get(key|module)`.
+- `system_status()` (Hub registry + Argus) · `system_log(service?, level?, since?)` (Argus logs, capped).
+- `settings_search(query?, module?)` · `settings_get(key)`. `athena_thinking(limit?)` comes with Athena's inside view
+  (P4: Athena has no read endpoint for its cycles yet).
 
 Write (guarded, nothing irreversible):
-- `forge_develop(request)` — creates a normal Forge task (same queue, same approval).
+- `forge_develop(request)` — creates a normal Forge task (same queue, same approval). v2.3: it is filed as
+  `source=external` (requested_by = access name): a proposal like a module's, so the permission mode, the pause and
+  the duplicate check apply, and `auto_start`/`auto_merge` from the caller are ignored.
 - `forge_task_note(task_id, text)` — adds an analysis/hint to a task (shown on Sviluppo, used by Forge on retry).
 - `forge_submit_branch(task_id, branch, summary)` — "I fixed it on this branch": Forge fetches the branch from the
   repo remote, runs its tests, asks Marko through Hermes as usual, then merges, restarts, health-checks, rolls back on
   failure. So the external AI codes wherever it likes (GitHub, its own checkout), Forge stays the only deploy gate.
+  v2.3: accepted for tasks in proposed / scheduled / failed / no_changes / awaiting_review; auto merge always off.
 - `settings_propose(key, value, reason)` — proposal only, Marko confirms via Hermes.
 
 Never exposed: approve/reject/merge/rollback, direct setting writes, Hecate/Gmail, anything that sends messages.
@@ -246,11 +252,12 @@ Owner: **Hestia-MCP** (it is the door for tools). Page **Accessi** in its plugin
 - **P2 One MCP**: Hestia-MCP Streamable HTTP `/mcp` (+ `_meta.domains`); Oracle agent loop and `claude -p`, Telegram,
   WebUI move to it; old endpoints removed after the last caller; docs.
 - **P3 Accesses + external door**: Archive `mcp-access`, tokens, scopes, rate limit, audit, WebUI `/mcp` door, Forge
-  `forge_task_note` / `forge_submit_branch`, tools flagged `external`; README "Collegare un'AI esterna".
+  `forge_task_note` / `forge_submit_branch`, tools flagged `external`; README "Collegare un'AI esterna". v2.3: the token
+  part of the *Accessi* page (Hestia-MCP plugin, Sistema) ships here so criterion 4 can be tried right away.
 - **P4 Inside views**: plugins for Hub, Argus, Oracle, Athena, then Hermes, Chronos, Themis, Hephaestus, Metis (+ the
   *new* reads found missing), dashboard *Sistema*.
-- **P5 OAuth + Accessi page**: OAuth 2.1 server in Hestia-MCP, WebUI consent page, Accessi page (in/out), Hecate for
-  outbound credentials, named tunnel guide.
+- **P5 OAuth + Accessi page**: OAuth 2.1 server in Hestia-MCP, WebUI consent page, Accessi page OAuth accesses and
+  outbound list (tokens are already there from P3), Hecate for outbound credentials, named tunnel guide.
 - **P6 Built-in pages → plugins**: Sviluppo (+ *Copia per AI*), Notifiche, Agenda, Comandi & MCP, Documenti — one per
   change, old routes redirect.
 

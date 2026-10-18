@@ -7,7 +7,7 @@ using Hestia.WebUI.Services;
 
 /// <summary>
 /// The WebUI's own tools for the assistant (client plugins SPEC §4.6): which widgets exist and which dashboards
-/// the user has. Served as REST (Hub commands: Oracle calls them by path) and as MCP JSON-RPC at <c>/mcp</c>
+/// the user has. Served as REST (Hub commands: Oracle calls them by path) and as MCP JSON-RPC at <c>/api/ai/mcp</c>
 /// (advertised as <c>capabilities.mcp_endpoint</c>). Read-only: a dashboard is created or changed only through
 /// Themis <c>settings_propose</c> on <c>webui.dashboards</c>, confirmed by the user in the chat.
 /// Outside <c>/api/webui/</c> like <c>/api/settings</c>: internal callers (Hub), no browser token.
@@ -64,7 +64,9 @@ public class AssistantToolsController : ControllerBase
     [HttpGet("api/ai/dashboards")]
     public async Task<IActionResult> Dashboards() => Ok(await DashboardsAsync());
 
-    [HttpPost("mcp")]
+    // Module MCP of the WebUI (read by Hub/Hestia-MCP). Not /mcp: that is the public door for external AIs
+    // (McpDoorController).
+    [HttpPost("api/ai/mcp")]
     public async Task<IActionResult> Mcp([FromBody] JsonElement body)
     {
         var id = body.TryGetProperty("id", out var idEl) ? (object?)idEl : null;

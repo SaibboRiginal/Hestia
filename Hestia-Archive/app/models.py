@@ -494,3 +494,26 @@ class BlobRecord(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (UniqueConstraint("owner_module", "sha256", name="uq_blobs_owner_sha"),)
+
+
+# ── MCP accesses — owner of the semantics: Hestia-MCP ───────────────────────
+
+class MCPAccess(Base):
+    """Who may use Hestia's MCP from outside (an external AI). Pure storage: Hestia-MCP decides what a scope
+    allows. Tokens only as a sha256 hash (shown once at creation, never stored in clear)."""
+    __tablename__ = "mcp_accesses"
+
+    access_id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    kind = Column(String, nullable=False, default="token")        # token | oauth
+    scope = Column(String, nullable=False, default="read")        # read | write
+    tools = Column(JSONB, nullable=False, default=list)           # [] = every tool open to external clients
+    token_hash = Column(String, nullable=True, unique=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    calls_date = Column(String, nullable=True)                    # YYYY-MM-DD of calls_day
+    calls_day = Column(Integer, nullable=False, default=0)
+    calls_total = Column(BigInteger, nullable=False, default=0)
+    meta = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

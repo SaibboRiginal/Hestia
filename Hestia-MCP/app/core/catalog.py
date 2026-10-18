@@ -53,11 +53,17 @@ def to_mcp_tool(cmd: dict) -> dict:
             "_meta": {"hestia": meta}}
 
 
+EXTERNAL = "external"
+
+
 def visible_to(cmd: dict, client: str) -> bool:
-    """Empty ``clients`` = every client; otherwise the client's key or ``*``. Oracle sees everything."""
+    """Empty ``clients`` = every client; otherwise the client's key or ``*``. Oracle sees everything.
+    External AIs see only tools whose module wrote ``"external"`` explicitly (nothing leaves the house by default)."""
+    clients = [str(c).lower() for c in cmd.get("clients") or []]
+    if client == EXTERNAL:
+        return EXTERNAL in clients
     if not client or client == "oracle":
         return True
-    clients = [str(c).lower() for c in cmd.get("clients") or []]
     return not clients or "*" in clients or CLIENT_KEYS.get(client, client) in clients or client in clients
 
 

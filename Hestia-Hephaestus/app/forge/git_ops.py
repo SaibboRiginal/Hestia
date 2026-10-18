@@ -97,3 +97,9 @@ def revert_merge(repo: Path, merge_sha: str, name: str, email: str) -> str:
 
 def push(repo: Path, branch: str) -> None:
     git(repo, "push", "-u", "origin", branch, timeout=180)
+
+
+def fetch_branch(repo: Path, branch: str) -> str:
+    """Fetch ``branch`` from ``origin`` (a fix made elsewhere, e.g. by an external AI) → its sha."""
+    git(repo, "fetch", "--no-tags", "origin", f"refs/heads/{branch}", timeout=180)
+    return rev(repo, "FETCH_HEAD")
