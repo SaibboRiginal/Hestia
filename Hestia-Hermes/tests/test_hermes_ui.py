@@ -94,7 +94,12 @@ class TestUiEndpoints:
         assert m["module"] == "hermes" and m["kind"] == "core"
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/ui/" and web["entry"] == "/ui/webui/hermes.js"
-        assert [p["id"] for p in web["page"]] == ["consegne"] and web["page"][0]["order"] == 140
+        pages = {p["id"]: p for p in web["page"]}
+        assert list(pages) == ["notifiche", "consegne"]
+        assert pages["notifiche"]["order"] == 140 and pages["notifiche"]["element"] == "hermes-inbox"
+        assert pages["notifiche"]["badge"] == {"source": "/api/ui/inbox/counts", "field": "unread"}
+        assert pages["notifiche"]["badge"]["source"].startswith(web["api_prefix"])
+        assert pages["consegne"]["order"] == 141 and pages["consegne"]["parent"] == "notifiche"
         assert [w["id"] for w in web["widget"]] == ["oggi"] and web["widget"][0]["open_page"] == "consegne"
 
     def test_deliveries_endpoint(self, app_client):
@@ -118,3 +123,46 @@ class TestUiEndpoints:
         with patch.object(main.service.archive, "_route_archive", return_value=rows):
             body = client.get("/api/ui/subscriptions").json()
         assert body["count"] == 1 and body["subscriptions"][0]["channels"] == [{"type": "all"}]
+
+
+@pytest.mark.api
+class TestUiInbox:
+    """«Notifiche» page: thin /api/ui/inbox* doors on the existing notifications logic (client = webui)."""
+
+    def test_inbox_list_defaults_to_webui(self, app_client):
+        client, main = app_client
+        with patch.object(main.service.notifications, "inbox", return_value={"items": [], "counts": {}}) as m:
+            assert client.get("/api/ui/inbox", params={"filter": "pending", "source": "scout",
+                                                       "before": "2026-10-18T08:00:00Z"}).status_code == 200
+        m.assert_called_once_with(filter_="pending", source="scout", before="2026-10-18T08:00:00Z",
+                                  limit=40, client="webui")
+
+    def test_counts_is_badge_source(self, app_client):
+        client, main = app_client
+        with patch.object(main.service.notifications, "counts", return_value={"unread": 3, "pending": 1}) as m:
+            assert client.get("/api/ui/inbox/counts").json() == {"unread": 3, "pending": 1}
+        m.assert_called_once_with("webui")
+
+    def test_seen_and_seen_all(self, app_client):
+        client, main = app_client
+        n = main.service.notifications
+        with patch.object(n, "mark_seen", return_value={"status": "ok", "changed": True}) as seen:
+            assert client.post("/api/ui/inbox/n1/seen", json={}).json()["changed"] is True
+            assert client.post("/api/ui/inbox/n2/seen").status_code == 200
+        assert [c.args for c in seen.call_args_list] == [("n1", "webui"), ("n2", "webui")]
+        with patch.object(n, "mark_all_seen", return_value={"status": "ok", "changed": 2}) as all_:
+            assert client.post("/api/ui/inbox/seen-all", json={}).json()["changed"] == 2
+        all_.assert_called_once_with("webui", None)
+
+    def test_answer_passes_status_through(self, app_client):
+        client, main = app_client
+        n = main.service.notifications
+        with patch.object(n, "answer", return_value=(200, {"status": "done", "answer": {"label": "Approva"}})) as m:
+            r = client.post("/api/ui/inbox/n1/answer", json={"action_id": "ok"})
+        assert r.status_code == 200 and r.json()["answer"]["label"] == "Approva"
+        m.assert_called_once_with("n1", "ok", "webui")
+        handled = {"status": "already_handled", "answer": {"by": "telegram"}}
+        with patch.object(n, "answer", return_value=(409, handled)):
+            r = client.post("/api/ui/inbox/n1/answer", json={"action_id": "ok"})
+        assert r.status_code == 409 and r.json()["answer"]["by"] == "telegram"
+        assert client.post("/api/ui/inbox/n1/answer", json={}).status_code == 422

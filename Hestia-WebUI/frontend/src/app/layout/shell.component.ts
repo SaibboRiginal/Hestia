@@ -74,9 +74,6 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
           @for (m of bottom; track m.path) {
             <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
               <hx-icon [name]="m.icon" [size]="18" /><span>{{ m.label }}</span>
-              @if (m.badge === 'notifications' && notifications.badge()) {
-                <b class="count">{{ notifications.badge() > 99 ? '99+' : notifications.badge() }}</b>
-              }
             </a>
           }
           @if (!auth.local()) {
@@ -265,10 +262,9 @@ export class ShellComponent {
   /** Every sidebar entry by section; pinned ones move to «Fissati» (in the user's order) and leave their section. */
   readonly sections = computed<NavSection[]>(() => {
     const kinds = this.plugins.modules();
-    const unread = this.notifications.badge();
     const badges = this.plugins.badges();
     const app: NavEntry[] = this.top.map(m => ({ id: `app.${m.path}`, label: m.label, icon: m.icon, link: '/' + m.path, online: true,
-      child: false, parent: '', badge: m.badge === 'notifications' ? unread : 0 }));
+      child: false, parent: '', badge: 0 }));
     const dash: NavEntry[] = this.otherDashboards().map(d => ({ id: `dash.${d.id}`, label: d.title, icon: d.icon || 'grid', link: '/d/' + d.id,
       online: true, child: false, parent: '', badge: 0 }));
     const page = (p: PluginPage): NavEntry => ({ id: p.id, label: p.label, icon: p.icon || 'puzzle', link: this.plugins.link(p.module, p.local_id),

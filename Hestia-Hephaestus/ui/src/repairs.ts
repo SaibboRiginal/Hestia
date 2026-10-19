@@ -75,7 +75,7 @@ export class HephaestusRepairs extends HestiaElement {
         <span>Tentativi</span><span>${t.attempts ?? 1}</span>
         <span>Ritorno indietro</span><span><code>${t.rollback_ref || '–'}</code></span>
         <span>Branch</span><span><code>${t.branch || '–'}</code></span>
-        ${t.forge_task_id ? html`<span>Forge</span><span>passata allo sviluppo: task <code>${short(t.forge_task_id)}</code> (pagina Sviluppo)</span>` : nothing}
+        ${t.forge_task_id ? html`<span>Forge</span><span>passata allo sviluppo: <a href=${this.host.link('sviluppo', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('sviluppo', { task: t.forge_task_id }); }}>task <code>${short(t.forge_task_id)}</code> in Sviluppo</a></span>` : nothing}
         <span>Id</span><span><code>${t.task_id}</code></span>
       </div>
       ${rb?.steps?.length ? html`<div><div class="small muted">Passi del runbook</div><ol>${rb.steps.map((s: any) => html`<li>${s.title}

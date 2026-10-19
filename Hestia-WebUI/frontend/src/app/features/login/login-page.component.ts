@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ButtonComponent, FieldComponent } from '../../ui';
 
@@ -33,13 +33,18 @@ import { ButtonComponent, FieldComponent } from '../../ui';
 export class LoginPageComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
+  /** Where the guard was going (e.g. the OAuth consent card): same-origin paths only. */
+  private next = (() => {
+    const url = inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl') || '/';
+    return url.startsWith('/') && !url.startsWith('//') ? url : '/';
+  })();
   token = '';
   loading = signal(false);
   error = signal('');
 
   constructor() {
     // From the home network no token is needed: go straight to the app.
-    void this.auth.checkAccess().then(local => { if (local) this.router.navigate(['/']); });
+    void this.auth.checkAccess().then(local => { if (local) this.router.navigateByUrl(this.next); });
   }
 
   async submit() {
@@ -47,7 +52,7 @@ export class LoginPageComponent {
     this.error.set('');
     const ok = await this.auth.login(this.token.trim());
     this.loading.set(false);
-    if (ok) this.router.navigate(['/']);
+    if (ok) this.router.navigateByUrl(this.next);
     else this.error.set('Token non valido o scaduto');
   }
 }

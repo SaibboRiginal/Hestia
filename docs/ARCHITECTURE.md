@@ -139,8 +139,10 @@ User interface relay for chat, file attachments, and clear session commands.
 
 ### Hestia-WebUI 🌐
 Web client (.NET 9 backend + Angular frontend, port 19015).
-- Chat (SignalR streaming of Oracle NDJSON), Commands & MCP, Documents, Settings, Google-like calendar of the
-  assistant agenda, "Sviluppo" page (Forge tasks + read-only repo browser), "Crea con Hestia" drawer.
+- Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, "Crea con Hestia" drawer. Everything
+  else is a module plugin page: Agenda (Chronos, Google-like calendar; ICS feed stays a WebUI path), Sviluppo (Hephaestus), Notifiche (Hermes),
+  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti (Oracle) and the core inside views; old routes redirect.
+- Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`/webui_token`).
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
 
@@ -238,6 +240,12 @@ Hestia's one MCP server (`POST /mcp`, standard MCP over Streamable HTTP).
   Archive): they see only tools a module marked `"external"`, within the access's scope and tool list, rate-limited
   (`mcp.external.max_calls_per_min`), audited, and their writes leave a silent Hermes inbox entry. Approve, merge and
   rollback never leave the house: Forge stays the only deploy gate (`forge_submit_branch`).
+- OAuth 2.1 (claude.ai web/mobile, ChatGPT): Hestia-MCP is the authorization server (`core/oauth.py`: registration,
+  PKCE S256, single-use codes, rotating refresh tokens, replay revokes); the WebUI forwards `/.well-known/oauth-*` and
+  `/oauth/*` through Hub; `/oauth/authorize` only parks the request: a code exists only after **Consenti** on the
+  consent card of *Accessi AI* (behind the WebUI login). A grant is an access of kind `oauth` in the same list.
+- Outbound (third-party MCP servers Hestia may use): credentials are Hecate's, in its `.env` only
+  (`HECATE_MCP_<NAME>_URL/_KEY`); Hecate lists names and status, never a value.
 
 ---
 

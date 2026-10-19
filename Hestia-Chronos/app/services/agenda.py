@@ -533,8 +533,16 @@ def run_now(ref: str | int, by: str = "user") -> dict:
         at = datetime.now(timezone.utc).isoformat()
         item["last_result"] = {"ok": ok, "detail": detail, "at": at, "by": by}
         _record_run(item, None, ok, detail, at, by, ms)
+        reactivated = False
+        if ok and item["status"] == "failed":
+            # A manual run that works fixes what stopped the rule: recurring rules go back on, one-offs are done.
+            # Paused stays paused (a user decision).
+            item["status"] = "confirmed" if item.get("recurrence") else "completed"
+            item["attempts"] = 0
+            reactivated = True
+            logger.info("event=agenda_reactivated item=%s status=%s by=%s", item["key"], item["status"], by)
         _save(item)
-    return {"ok": ok, "detail": detail}
+    return {"ok": ok, "detail": detail, "reactivated": reactivated}
 
 
 def tick(now: datetime | None = None) -> dict:

@@ -515,5 +515,47 @@ class MCPAccess(Base):
     calls_date = Column(String, nullable=True)                    # YYYY-MM-DD of calls_day
     calls_day = Column(Integer, nullable=False, default=0)
     calls_total = Column(BigInteger, nullable=False, default=0)
+    # OAuth accesses (kind oauth, docs/work/2026-10-18-moduli-core-e-mcp-esterno §B6): token_hash = the current
+    # short-lived access token, refresh_hash = the current refresh token (rotated on use; the previous one is kept
+    # to spot a replay), token_expires_at = when the access token stops. Hashes only.
+    client_id = Column(String, nullable=True, index=True)
+    refresh_hash = Column(String, nullable=True, unique=True, index=True)
+    prev_refresh_hash = Column(String, nullable=True, index=True)
+    token_expires_at = Column(DateTime(timezone=True), nullable=True)
     meta = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class MCPOAuthClient(Base):
+    """An OAuth client registered by itself (RFC 7591 dynamic registration: claude.ai, ChatGPT…). The client id is
+    public; a client secret, when there is one, only as a sha256 hash. Semantics: Hestia-MCP."""
+    __tablename__ = "mcp_oauth_clients"
+
+    client_id = Column(String, primary_key=True)
+    client_name = Column(String, nullable=False)
+    redirect_uris = Column(JSONB, nullable=False, default=list)
+    auth_method = Column(String, nullable=False, default="none")     # none | client_secret_post | client_secret_basic
+    secret_hash = Column(String, nullable=True)
+    meta = Column(JSONB, nullable=False, default=dict)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class MCPOAuthCode(Base):
+    """A one-time authorization code issued on the WebUI consent page (only its sha256). It carries what Marko chose
+    there (scope, tools, expiry); used once, then ``access_id`` names the access it became."""
+    __tablename__ = "mcp_oauth_codes"
+
+    code_hash = Column(String, primary_key=True)
+    client_id = Column(String, nullable=False, index=True)
+    redirect_uri = Column(String, nullable=False)
+    code_challenge = Column(String, nullable=False)
+    scope = Column(String, nullable=False, default="read")
+    tools = Column(JSONB, nullable=False, default=list)
+    name = Column(String, nullable=False)
+    expires_days = Column(Integer, nullable=True)
+    resource = Column(String, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    access_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

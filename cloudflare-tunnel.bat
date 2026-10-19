@@ -34,6 +34,17 @@ if not exist "data" mkdir "data"
 set "TUNNEL_LOG=%CD%\data\tunnel.log"
 
 echo [OK] Prerequisites met.
+
+:: Named tunnel (fixed address) when .env has CLOUDFLARE_TUNNEL_NAME + CLOUDFLARE_TUNNEL_HOSTNAME.
+set "CF_NAME="
+set "CF_HOST="
+if exist ".env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do (
+        if "%%a"=="CLOUDFLARE_TUNNEL_NAME" set "CF_NAME=%%b"
+        if "%%a"=="CLOUDFLARE_TUNNEL_HOSTNAME" set "CF_HOST=%%b"
+    )
+)
+if defined CF_NAME if defined CF_HOST goto named_tunnel
 echo [..] Starting cloudflared tunnel (logs: data\tunnel.log)...
 
 :: cloudflared writes its logs to stderr; capture to file, discard stdout
@@ -56,6 +67,15 @@ if errorlevel 1 (
 
 echo.
 echo Tunnel is running. Press any key to stop.
+goto hecate_tunnel
+
+:named_tunnel
+echo [..] Starting named tunnel %CF_NAME% for https://%CF_HOST% (logs: data\tunnel.log)...
+start /b "" cloudflared.exe tunnel run --url http://localhost:19015 %CF_NAME% 2>"%TUNNEL_LOG%" 1>nul
+powershell -ExecutionPolicy Bypass -Command "$url='https://%CF_HOST%'; Start-Sleep 5; Write-Host '============================================================'; Write-Host '  Tunnel URL:' $url; Write-Host '  MCP for external AIs:' ($url + '/mcp'); Write-Host '============================================================'; try{$body=ConvertTo-Json -InputObject @{url=$url}; $h=@{}; if($env:WEBUI_ADMIN_SECRET){$h['X-WebUI-Admin-Secret']=$env:WEBUI_ADMIN_SECRET}; $null=Invoke-RestMethod 'http://localhost:19015/api/webui/admin/public-url' -Method Post -Body $body -ContentType 'application/json' -Headers $h; Write-Host '  [OK] URL registered with WebUI.'}catch{Write-Host '  [WARN] Could not register URL - WebUI may still be starting.'}; Write-Host ''"
+echo Named tunnel is running. If the address does not answer, check data\tunnel.log.
+
+:hecate_tunnel
 
 :: ── Hecate OAuth tunnel (port 19003) ─────────────────────────────
 :: Start a second cloudflared instance so Google OAuth callbacks can

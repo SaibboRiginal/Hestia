@@ -27,6 +27,7 @@ export async function retry(host: HestiaHost, key: string, title: string): Promi
   const r = await host.api('POST', `${API}/items/${encodeURIComponent(key)}/run`);
   if (!r.ok) { host.toast(r.error || `${title}: non avviato`, 'danger'); return false; }
   const ok = !!r.data?.ok;
-  host.toast(ok ? `${title}: eseguito` : `${title}: fallito di nuovo`, ok ? 'success' : 'danger');
+  const back = ok && r.data?.reactivated ? ' · regola riattivata' : '';
+  host.toast(ok ? `${title}: eseguito${back}` : `${title}: fallito di nuovo`, ok ? 'success' : 'danger');
   return ok;
 }

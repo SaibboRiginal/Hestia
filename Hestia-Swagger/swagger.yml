@@ -2973,6 +2973,15 @@ paths:
         "200":
           description: "{status, providers[]}"
 
+  /api/gateway/outbound/mcp:
+    get:
+      tags: [Hecate]
+      summary: Outbound MCP servers from .env (HECATE_MCP_<NAME>_URL / _KEY) — names, host and status, never a key
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, servers: [{name, host, auth: key|none, status: configured|invalid_url}], how_to}"}
+
   /api/gateway/auth/refresh/{provider}:
     post:
       tags: [Hecate]
@@ -3713,6 +3722,83 @@ paths:
       responses:
         "200": {description: "{status, available, detail, model?, running, runs: [{task, started_at, state: running|done|failed, ok, ms, turns, cost_usd, error}]}"}
 
+  /oracle/api/ui/documents:
+    get:
+      tags: [Oracle]
+      summary: Documents kept for RAG, from Archive via Hub (real path /api/ui/documents; page Documenti)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 200}}
+        - {name: domain, in: query, schema: {type: string}}
+        - {name: permanent, in: query, schema: {type: boolean}}
+      responses:
+        "200": {description: "{status, count, documents: [{document_id, filename, title, summary, mime_type, file_size_bytes, domain, tags[], is_permanent, chunk_count, access_count, created_at, last_accessed_at}], domains}"}
+        "502": {description: Archive not reachable}
+    post:
+      tags: [Oracle]
+      summary: Add a file (base64 from the SDK upload helper); archived in background like a chat attachment
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data_b64]
+              properties:
+                name: {type: string}
+                mime: {type: string}
+                data_b64: {type: string, description: "base64 (or data: URI)"}
+      responses:
+        "200": {description: "{status: ingesting, document_id, filename, mime_type, file_size_bytes}"}
+        "400": {description: Empty or invalid base64}
+        "413": {description: Larger than oracle.documents.max_archive_mb}
+        "415": {description: Unsupported file type}
+
+  /oracle/api/ui/documents/search:
+    get:
+      tags: [Oracle]
+      summary: Semantic search over document passages, the same the chat uses (real path /api/ui/documents/search)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: query, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 8, maximum: 20}}
+      responses:
+        "200": {description: "{status, query, count, chunks: [{document_id, title, summary, chunk_text, chunk_index, distance, is_permanent, domain, tags}]}"}
+        "400": {description: Empty query}
+
+  /oracle/api/ui/documents/{document_id}/permanent:
+    patch:
+      tags: [Oracle]
+      summary: Keep a document for good or make it temporary (real path /api/ui/documents/{id}/permanent)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: document_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [is_permanent], properties: {is_permanent: {type: boolean}}}
+      responses:
+        "200": {description: "{status, document_id, is_permanent}"}
+        "404": {description: Document not found}
+
+  /oracle/api/ui/documents/{document_id}:
+    delete:
+      tags: [Oracle]
+      summary: Delete a document and its passages (real path /api/ui/documents/{id})
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: document_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: deleted, document_id}"}
+        "404": {description: Document not found}
+
   /api/llm/code:
     post:
       tags: [Oracle]
@@ -3934,7 +4020,7 @@ paths:
       parameters:
         - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
       responses:
-        "200": {description: "{status, ok, detail}"}
+        "200": {description: "{status, ok, detail, reactivated} — a working run of a rule stopped as failed puts it back on (recurring → confirmed, one-off → completed); paused stays paused"}
 
   /api/agenda/runs:
     get:
@@ -3966,12 +4052,33 @@ paths:
       responses:
         "200": {description: "[{id (item key), item_id, label, owner, icon, state: late, status, at, detail, hint}]"}
 
+  /api/agenda/logs:
+    get:
+      tags: [Chronos]
+      summary: A module's logs around an occurrence (Agenda «Log del modulo»)
+      description: |
+        Chronos reads `{service}/api/logs` through Hub (the module's in-memory buffer, last 2000 lines) and keeps the
+        lines within `at ± minutes`. Old occurrences may return nothing (`oldest` says how far the buffer goes).
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: service, in: query, required: true, schema: {type: string, pattern: "^[a-z0-9_-]{2,40}$"}}
+        - {name: at, in: query, required: true, schema: {type: string, format: date-time}}
+        - {name: minutes, in: query, schema: {type: integer, default: 5, minimum: 1, maximum: 120}}
+        - {name: level, in: query, schema: {type: string}}
+        - {name: contains, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{service, from, to, count, oldest, logs: [{ts, level, message, ...}]}"}
+        "400": {description: bad service or at}
+        "502": {description: module unreachable}
+
   /chronos/api/ui/manifest:
     get:
       tags: [Chronos]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/agenda/)
       description: |
-        Page `esecuzioni` (chronos-runs, order 150), widget `falliti` «Job falliti» (chronos-failed-widget, auto),
+        Pages `agenda` «Agenda di Hestia» (chronos-agenda, order 150; WebUI /calendar redirects here) and `esecuzioni`
+        (chronos-runs, order 151, parent agenda), widget `falliti` «Job falliti» (chronos-failed-widget, auto),
         quick action `riprova` «Riprova job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
       servers:
         - url: http://localhost:19007
@@ -4441,8 +4548,9 @@ paths:
       tags: [Hermes]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `consegne` (hermes-deliveries,
-        order 140), widget `oggi` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `notifiche` (hermes-inbox, order 140,
+        badge {source: /api/ui/inbox/counts, field: unread}), sub-page `consegne` (hermes-deliveries, order 141),
+        widget `oggi` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
       servers:
         - url: http://localhost:19005
       responses:
@@ -4488,6 +4596,92 @@ paths:
         - url: http://localhost:19005
       responses:
         "200": {description: "{clients: [name]}"}
+
+  /hermes/api/ui/inbox:
+    get:
+      tags: [Hermes]
+      summary: Inbox for the plugin page Notifiche (real path /api/ui/inbox; same as GET /api/notifications, client webui)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, unread, pending], default: all } }
+        - { name: source, in: query, schema: { type: string } }
+        - { name: before, in: query, description: created_at cursor, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, default: 40, maximum: 200 } }
+        - { name: client, in: query, schema: { type: string, default: webui } }
+      responses:
+        "200":
+          description: "{items: HermesNotification[], counts: {unread, pending}}"
+
+  /hermes/api/ui/inbox/counts:
+    get:
+      tags: [Hermes]
+      summary: Unread / pending counters (real path /api/ui/inbox/counts) — sidebar badge of Notifiche
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: client, in: query, schema: { type: string, default: webui } }
+      responses:
+        "200":
+          description: "{unread, pending}"
+
+  /hermes/api/ui/inbox/seen-all:
+    post:
+      tags: [Hermes]
+      summary: Mark every unread notification seen (real path /api/ui/inbox/seen-all; client webui)
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { client: { type: string, default: webui } } }
+      responses:
+        "200":
+          description: "{status: ok, changed}"
+
+  /hermes/api/ui/inbox/{notification_id}/seen:
+    post:
+      tags: [Hermes]
+      summary: Mark one notification seen everywhere (real path /api/ui/inbox/{id}/seen; client webui)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { client: { type: string, default: webui } } }
+      responses:
+        "200":
+          description: "{status: ok, changed}"
+
+  /hermes/api/ui/inbox/{notification_id}/answer:
+    post:
+      tags: [Hermes]
+      summary: Answer with one of the notification's buttons (real path /api/ui/inbox/{id}/answer; first answer wins)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action_id]
+              properties:
+                action_id: { type: string }
+                client: { type: string, default: webui }
+      responses:
+        "200":
+          description: "{status, answer{action_id, label, by, at, status, outcome_text}}"
+        "404":
+          description: not_found / unknown_action
+        "409":
+          description: "already_handled, with the winning answer"
 
   /api/notifications/seen-all:
     post:
@@ -5115,9 +5309,59 @@ paths:
       responses:
         "200": {description: JSON-RPC result or error}
         "202": {description: Notification accepted}
-        "401": {description: "Wrong, revoked or expired token (WWW-Authenticate: Bearer)"}
+        "401": {description: "Wrong, revoked or expired token (WWW-Authenticate: Bearer error=\"invalid_token\", resource_metadata=\"<base>/.well-known/oauth-protected-resource/mcp\")"}
         "403": {description: A read-only access called a write tool}
         "429": {description: "Over the per-minute limit (Retry-After: 60)"}
+
+  /api/mcp/ui/tools:
+    get:
+      tags: [MCP]
+      summary: Comandi page — the tools the WebUI sees (same list as /mcp tools/list for client webui), as commands
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{commands: [{command, title, description, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
+
+  /api/mcp/ui/tools/call:
+    post:
+      tags: [MCP]
+      summary: Comandi page — run one tool as client webui (same rules as /mcp tools/call, X-Hestia-Client webui, 20 s)
+      servers:
+        - url: http://localhost:19013
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command: {type: string}
+                args: {type: object, additionalProperties: true}
+      responses:
+        "200": {description: "{ok, result, error?, status_code, response_mode}"}
+        "400": {description: Missing command}
+        "404": {description: Unknown tool or not visible to the WebUI}
+
+  /api/mcp/ui/tools/format:
+    post:
+      tags: [MCP]
+      summary: Comandi page — readable text of a tool result (Oracle /api/format via Hub, plain text)
+      servers:
+        - url: http://localhost:19013
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command: {type: string}
+                result: {description: Raw result of the call}
+                response_prompt: {type: string}
+      responses:
+        "200": {description: "{ok, text} (ok=false, text='' when Oracle cannot format)"}
 
   /api/mcp/accesses:
     get:
@@ -5202,6 +5446,138 @@ paths:
         - {name: base_url, in: query, required: false, schema: {type: string}}
       responses:
         "200": {description: "{access, token, setup}"}
+
+  /api/mcp/outbound:
+    get:
+      tags: [MCP]
+      summary: Servizi esterni — third-party MCP servers Hestia may use (from Hecate; names and status only)
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{servers: [{name, host, auth: key|none, status: configured|invalid_url}], how_to}"}
+        "503": {description: Hecate unreachable}
+
+  /.well-known/oauth-protected-resource/mcp:
+    get:
+      tags: [MCP]
+      summary: OAuth protected resource metadata (RFC 9728); also without /mcp. Public via the WebUI door
+      description: Base address = header `X-Hestia-Public-Base` (set by the WebUI for a tunnel or local host), else http://localhost:19015.
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{resource: <base>/mcp, authorization_servers: [<base>], scopes_supported: [read, write]}"}
+
+  /.well-known/oauth-authorization-server:
+    get:
+      tags: [MCP]
+      summary: OAuth authorization server metadata (RFC 8414) — issuer, endpoints, S256 only, grants code + refresh
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: Metadata}
+
+  /oauth/register:
+    post:
+      tags: [MCP]
+      summary: Dynamic client registration (RFC 7591) — redirect URIs https or http on loopback; 10 per minute
+      servers:
+        - url: http://localhost:19013
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {client_name: {type: string}, redirect_uris: {type: array, items: {type: string}},
+                     token_endpoint_auth_method: {type: string, enum: [none, client_secret_post, client_secret_basic]}}}
+      responses:
+        "201": {description: "{client_id: hmc_…, client_secret? (shown once), redirect_uris, …}"}
+        "400": {description: "{error: invalid_redirect_uri | invalid_client_metadata}"}
+        "429": {description: Too many registrations}
+
+  /oauth/authorize:
+    get:
+      tags: [MCP]
+      summary: Check client, exact redirect_uri and PKCE S256, then park the request for the consent card (no code here)
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: response_type, in: query, required: true, schema: {type: string, enum: [code]}}
+        - {name: client_id, in: query, required: true, schema: {type: string}}
+        - {name: redirect_uri, in: query, required: false, schema: {type: string}}
+        - {name: code_challenge, in: query, required: true, schema: {type: string}}
+        - {name: code_challenge_method, in: query, required: true, schema: {type: string, enum: [S256]}}
+        - {name: state, in: query, required: false, schema: {type: string}}
+        - {name: scope, in: query, required: false, schema: {type: string, example: "read write"}}
+      responses:
+        "200": {description: "{status: consent, request_id} or {status: error, error, error_description, redirect?} (no redirect for an unknown client or redirect_uri)"}
+
+  /oauth/token:
+    post:
+      tags: [MCP]
+      summary: Token endpoint — authorization_code (PKCE, single-use code) and refresh_token (rotated on every use)
+      description: Form-encoded or JSON. A replayed code or old refresh token revokes the access. Access tokens `hso_…` last Themis `mcp.oauth.access_token_minutes`.
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{access_token: hso_…, token_type: Bearer, expires_in, refresh_token: hsr_…, scope}"}
+        "400": {description: "{error: invalid_grant | unsupported_grant_type | invalid_request}"}
+        "401": {description: "{error: invalid_client}"}
+
+  /oauth/revoke:
+    post:
+      tags: [MCP]
+      summary: Revoke (RFC 7009) — either token of a grant stops the whole access; unknown tokens are not an error
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{}"}
+
+  /api/mcp/oauth/requests/{request_id}:
+    get:
+      tags: [MCP]
+      summary: Consent card (WebUI, behind login) — who asks, redirect host, requested scope, tools open to external AIs
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: request_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{request_id, client_name, redirect_host, scope, expires_in, tools[]}"}
+        "404": {description: Expired (15 min) or already used}
+
+  /api/mcp/oauth/requests/{request_id}/approve:
+    post:
+      tags: [MCP]
+      summary: Consenti — issue the code with the scope, tools and expiry picked on the card
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: request_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {scope: {type: string, enum: [read, write]}, tools: {type: array, items: {type: string}},
+                     expires_days: {type: integer, nullable: true}, name: {type: string}}}
+      responses:
+        "200": {description: "{redirect} — the client's redirect_uri with code, state, iss"}
+
+  /api/mcp/oauth/requests/{request_id}/deny:
+    post:
+      tags: [MCP]
+      summary: Rifiuta — redirect with error=access_denied
+      servers:
+        - url: http://localhost:19013
+      parameters:
+        - {name: request_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{redirect}"}
+
+  /api/mcp/oauth/clients:
+    get:
+      tags: [MCP]
+      summary: Registered OAuth clients (no secrets)
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{clients[]}"}
 
   # ══════════════════════════════════════════════════════════════════════════
   #  ARGUS — 19008
@@ -5612,6 +5988,30 @@ paths:
         - {name: limit, in: query, schema: {type: integer, default: 50}}
       responses:
         "200": {description: "{status, total, by_state{}, tasks[] (strings), omitted?}"}
+
+  /api/hephaestus/forge/counts:
+    get:
+      tags: [Hephaestus]
+      summary: Forge tasks per state (Sviluppo page badge)
+      description: "`review` = awaiting_review + proposed (what waits for the owner) — the WebUI plugin page badge field. Over the newest 200 tasks."
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{status, total, by_state{}, awaiting_review, proposed, review, running, open}"}
+
+  /api/hephaestus/forge/tasks/export:
+    get:
+      tags: [Hephaestus]
+      summary: «Copia per AI» — markdown of some Forge tasks for an external AI
+      description: "Built from the forge_task (`/tasks/{id}/overview`) and forge_tasks (`/tasks/brief`) views: request, state, origin, error, tests, dossier path `docs/work/<workdoc>/`, notes, recent history and how to hand a fix back via MCP (`forge_task_note`, `forge_submit_branch` when the state accepts a branch). Returned only (clipboard / .md download in the Sviluppo page): nothing is written to the repo."
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: ids, in: query, required: true, description: "comma separated task ids (short ids accepted), max 50", schema: {type: string}}
+      responses:
+        "200": {description: "{status, count, missing[], markdown, filename}"}
+        "400": {description: ids missing}
+        "404": {description: none of the tasks found}
 
   /api/hephaestus/forge/tasks/{task_id}:
     get:
@@ -7376,6 +7776,103 @@ paths:
       responses:
         "200": {description: "{status, calls_today}"}
 
+  /api/mcp-access-store/accesses/by-refresh/{refresh_hash}:
+    get:
+      tags: [Archive — MCP accesses]
+      summary: "Access of an OAuth refresh token (hash); reused: true = the previous one (a replay)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: refresh_hash, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{access…, reused}"}
+        "404": {description: Unknown}
+
+  /api/mcp-access-store/accesses/{access_id}/rotate:
+    post:
+      tags: [Archive — MCP accesses]
+      summary: New access + refresh token hashes, only if old_refresh_hash is still current
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: access_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [old_refresh_hash, token_hash, refresh_hash, token_expires_at]}
+      responses:
+        "200": {description: "{access}"}
+        "409": {description: Already rotated}
+
+  /api/mcp-access-store/oauth/clients:
+    get:
+      tags: [Archive — MCP accesses]
+      summary: OAuth clients (no secret hash)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{clients[]}"}
+    post:
+      tags: [Archive — MCP accesses]
+      summary: Store a registered client {client_id, client_name, redirect_uris, auth_method, secret_hash?, meta}
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{client}"}
+        "409": {description: client id already used}
+
+  /api/mcp-access-store/oauth/clients/{client_id}:
+    get:
+      tags: [Archive — MCP accesses]
+      summary: One client (has_secret, never the hash)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: client_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{client}"}
+        "404": {description: Unknown}
+    delete:
+      tags: [Archive — MCP accesses]
+      summary: Delete a client
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: client_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: deleted|absent}"}
+
+  /api/mcp-access-store/oauth/clients/{client_id}/check-secret:
+    post:
+      tags: [Archive — MCP accesses]
+      summary: "{secret_hash} matches the client's? → {ok} (the stored hash never leaves Archive)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: client_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{ok}"}
+
+  /api/mcp-access-store/oauth/codes:
+    post:
+      tags: [Archive — MCP accesses]
+      summary: Store an authorization code (hash, client, redirect_uri, PKCE challenge, consent choices, expires_at)
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{status, client_id, expires_at}"}
+
+  /api/mcp-access-store/oauth/codes/consume:
+    post:
+      tags: [Archive — MCP accesses]
+      summary: "Use a code once {code_hash, access_id}: its data + reused (a second use returns the access it became)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{reused, access_id, client_id, redirect_uri, code_challenge, scope, tools, name, expires_days, resource, expires_at}"}
+        "404": {description: Unknown code}
+
   /api/blobs:
     post:
       tags: [Archive — Blobs]
@@ -8458,6 +8955,15 @@ paths:
       summary: Compact the current conversation (→ Oracle /api/chat/compact)
       responses:
         "200": {description: "{session_id, before_tokens, after_tokens, …}"}
+
+  /.well-known/oauth-authorization-server (WebUI door):
+    get:
+      tags: [WebUI]
+      summary: "Public OAuth door (OAuthDoorController, no WebUI login): /.well-known/oauth-*, /oauth/register|token|revoke → Hub → Hestia-MCP with X-Hestia-Public-Base; /oauth/authorize → 302 /p/mcp/accessi?oauth=<id> (consent card)"
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: As the Hestia-MCP endpoint of the same path}
 
   /api/webui/plugins/catalog:
     get:

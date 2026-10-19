@@ -61,6 +61,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/ai/widgets?q=` · `/api/ai/dashboards` | Assistant tools `webui_widgets` / `webui_dashboards` (internal, via Hub) |
 | POST | `/api/ai/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings); was `/mcp` before 2026-10-18 |
 | POST | `/mcp` | **Public MCP door for external AIs** (`McpDoorController`): body + `Authorization: Bearer` → Hub → Hestia-MCP `/mcp/external` (token, scope, rate limit there); no WebUI login, always a token, also at home. GET/DELETE → 405 |
+| GET | `/.well-known/oauth-protected-resource[/mcp]` · `/.well-known/oauth-authorization-server` | OAuth metadata (`OAuthDoorController` → Hub → Hestia-MCP, with `X-Hestia-Public-Base`) |
+| POST | `/oauth/register` · `/oauth/token` · `/oauth/revoke` | OAuth 2.1 for claude.ai / ChatGPT connectors (form or JSON body + `Authorization` forwarded) |
+| GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/accessi?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
@@ -72,26 +75,12 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | PUT/DELETE | `/api/webui/central-settings/key/{key}` | change (`{value}`) / reset to default — actor `webui` |
 | POST | `/api/webui/central-settings/key/{key}/undo` · `presets/{module}/{id}/apply` | undo · apply a preset |
 | POST | `/api/webui/central-settings/proposals/{id}/{approve,reject}` | answer an assistant proposal (`by: webui`, first answer wins) |
-| GET | `/api/webui/commands` | Discover commands |
-| POST | `/api/webui/commands/execute` | Execute command |
 | POST | `/api/webui/feedback` | Submit feedback |
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
-| GET | `/api/webui/documents` | List documents |
-| DELETE | `/api/webui/documents/{id}` | Delete document |
-| GET | `/api/webui/agenda/occurrences?start&end` | Assistant agenda occurrences (→ Chronos `/api/agenda`) |
-| GET/POST | `/api/webui/agenda/items` | Items list / create (owner user) |
-| PATCH/DELETE | `/api/webui/agenda/items/{key}` | Change (by=user) / cancel |
-| POST | `/api/webui/agenda/items/{key}/skip` · `unskip` · `move` · `run` | Skip/restore occurrence, move one occurrence (exception), run now |
-| POST | `/api/webui/agenda/parse` | Natural-language quick add → draft (→ Chronos `/api/agenda/parse`) |
-| GET | `/api/webui/agenda/logs?service&at&minutes&contains` | Logs of a service around an occurrence: `{svc}/api/logs` (in-memory buffer) filtered to `at ± minutes` |
-| GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only) |
-| GET | `/api/webui/forge/status` · `tasks` · `tasks/{id}` · `tasks/{id}/transcript` · `files` · `workdoc` · `tests` · `logs` · `events` | Sviluppo page (→ Hephaestus `/api/hephaestus/forge/*`) |
-| POST | `/api/webui/forge/tasks` · `tasks/{id}/approve` · `reject` · `rollback` · `retry` | New task / follow-up (`source=ui`) and actions (`by=user`) |
-| POST | `/api/webui/forge/pause` | `{paused}` — manual pause of autonomous development (→ Hephaestus `/api/hephaestus/forge/pause`, `by=user`) |
-| GET | `/api/webui/forge/repo/branches` · `tags` · `log` · `commits/{sha}` · `compare` · `tree` · `file` · `dossiers` | Read-only repository browser (→ Hephaestus `/api/hephaestus/repo/*`) |
-| GET | `/api/webui/notifications?filter&source&before&limit` · `counts` | Notifiche page (→ Hermes `/api/notifications`, `client=webui`) |
+| GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only). The rest of the agenda API moved with the page into Chronos's plugin (2026-10-19) |
+| GET | `/api/webui/notifications?filter&source&before&limit` · `counts` | Inbox (→ Hermes `/api/notifications`, `client=webui`); the Notifiche page itself is Hermes' plugin |
 | POST | `/api/webui/notifications/{id}/seen` · `seen-all` · `{id}/answer` | Global read state; answer (`{actionId}`, 409 = already handled elsewhere) |
 | POST | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`), **internal network only** (not proxied, private IP): pushes `ReceiveNotification` on SignalR to every open browser; `retract` ignored (the inbox keeps everything); repeat chains: `update superseded` removes the old item from the Notifiche page, `repeat.text` shown as a badge on cards and in the toast |
 | GET | `/health` | Health check |
@@ -125,9 +114,12 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   `client: webui`, shows the outcome as a notice) and the WebUI reloads its config (also every 60 s).
 - CSP: `script-src … blob:` (plugin modules) and `img-src … https:` (module photos).
 
-### Notifiche page (2026-10-10, `features/notifications/`, `services/notifications.service.ts`)
+### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifiche`, `services/notifications.service.ts`)
 
-Hermes inbox shared by every client (Archive through Hermes). Sidebar item with unread badge; filters
+The page moved into Hermes (plugin, badge from its own counts); `/notifications` redirects there keeping the query.
+The WebUI keeps `NotificationsService`: SignalR pushes, toasts (mode shared with the page through localStorage + the
+`hestia:notification-prefs` event), seen-on-push while the plugin page is open. As before: Hermes inbox shared by
+every client (Archive through Hermes); filters
 *Da leggere · Da rispondere · Tutte*, module filter, toggle *Anche da altri client* (notifications that answer
 a request made on another client, hidden by default); grouped by day; action buttons or outcome
 ("Approva · da Telegram · 10:42"). Live: SignalR `ReceiveNotification` (`notification` / `update`), refresh on
@@ -137,7 +129,8 @@ Toasts (*tutte / solo importanti / nessuno*) are a per-browser preference in the
 ### Frontend structure (rewritten 2026-10-03)
 
 Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/ui`), shell with module registry
-(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
+(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (since 2026-10-19 Chronos's plugin page
+`/p/chronos/agenda`, `/calendar` redirects; `Hestia-Chronos/ui/src/agenda.ts` + `ui/src/cal/`; calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
 sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
 move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**
 (tools from Hestia-MCP `tools/list` as client `webui`, run with `tools/call` — `HubClient.McpListToolsAsync` /
@@ -145,8 +138,12 @@ move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "wh
 **Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
-### Sviluppo page (2026-10-04, `features/forge/`)
+### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/sviluppo`)
 
+Moved into Hephaestus (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`, adds *Copia per AI*); `/forge`
+redirects keeping `?task=` / `?view=`. Same behaviour as described here. Comandi & MCP (`/commands` →
+`/p/mcp/comandi`) and Documenti (`/documents` → `/p/oracle/documenti`) moved the same way; their old WebUI
+controllers are gone (chat upload stays in `ChatController`).
 Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - **Task** mode: left = task list (search, filters Tutti/Aperti/Applicati/Non riusciti, live state dot);
   centre = the engine **conversation** (`forge-transcript`: messages, collapsible reasoning, every tool call with
@@ -163,7 +160,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   commit detail (files + diff), file browser at any ref (markdown preview), branches with ahead/behind and Forge
   task links, compare, tags, `docs/work` dossiers with version/status/progress, root CHANGELOG.
 - Live: while a task works the page polls every 4 s (task + new transcript events), files every ~12 s;
-  the list refreshes every 15 s. Deep link `/forge?task=<id>` (calendar Forge items: **Apri in Sviluppo**),
+  the list refreshes every 15 s. Deep link `/forge?task=<id>` (Agenda Forge items: **Apri in Sviluppo** → `/p/hephaestus/sviluppo?task=`),
   `/forge?view=repo`.
 - Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
   (list → task with back button).
@@ -229,7 +226,10 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Live refresh: `AssistantService.changed$` fires on `agenda.planned` / `action.done` / `forge.task` /
   subscription notices (from the drawer or the chat) → calendar and Sviluppo reload.
 
-### Calendar view rules (2026-10-04, `features/calendar/calendar.prefs.ts`)
+### Calendar view rules (2026-10-04; since 2026-10-19 in Chronos's Agenda plugin, `Hestia-Chronos/ui/src/cal/prefs.ts`)
+
+The page asks Hestia through the plugin host (`host.assistant(...)`), logs come from Chronos
+`GET /api/agenda/logs` and edits are sent with `by=user` by the plugin itself.
 
 - **Navigation**: header arrows step by view (tooltip says "Giorno/Settimana/Mese precedente"); mini calendar →
   focuses that day (highlighted in every view; from month view it opens the day view, otherwise nothing visible
@@ -246,7 +246,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   reached); one-off module items always; past module items only when failed, last 7 days, one per rule
   ("fallito ×N"). All thresholds editable; stored per browser with the other calendar prefs.
 - **Create**: split "Nuovo" → *Evento libero* (generic editor) or *Da un modulo…* (wizard: pick a module template
-  → fields + when/repeat → review). Templates come from the modules (`GET /api/webui/agenda/templates` → Chronos);
+  → fields + when/repeat → review). Templates come from the modules (Chronos `GET /api/agenda/templates`);
   created items are yours (`created_by=user`) and run the module action.
 - **Aggiungi rapido** (sidebar, under Nuovo): "domani alle 15 dentista" → Chronos/Oracle parse → editor prefilled
   (you confirm). Failure → editor with the text as title.
@@ -329,12 +329,17 @@ Built Angular app served as static files from `wwwroot/`.
   `WebUI:SecretKey`, random per start → every restart invalidated the token. Nothing is written to Archive
   memory any more (the clear token was readable by Oracle's memory tools).
 - `TokenAuthMiddleware` protects `/api/webui/*` (header `X-Access-Token` or `?token=`; path compared
-  lowercase, routing is case-insensitive); exempt: login, `auth/access`, command list, `/api/webui/admin/*`
+  lowercase, routing is case-insensitive); exempt: login, `auth/access`, `/api/webui/admin/*`
   (guarded by `AdminGuard`), `/health`, static files, `/hubs/chat` (auth in the hub).
 - **MCP door** `POST /mcp` (2026-10-18, `McpDoorController`): outside `/api/webui/`, so neither the WebUI token
   nor local access applies; it needs `Authorization: Bearer <access token>` always (also at home) and Hestia-MCP
   checks it (401 / 403 / 429). Only the header and the JSON body are forwarded (max 1 MB). The WebUI's own module
-  MCP moved to `/api/ai/mcp` to free the path.
+  MCP moved to `/api/ai/mcp` to free the path. Its 401 says `WWW-Authenticate: Bearer resource_metadata="…"`.
+- **OAuth door** (2026-10-19, `OAuthDoorController`): `/.well-known/oauth-*` and `/oauth/*` are public too, but never
+  issue anything by themselves: a code exists only after **Consenti** on the consent card (Accessi AI, behind the
+  login, which now returns to the page it came from via `returnUrl`, same-origin paths only).
+  `X-Hestia-Public-Base` is sent only for a tunnel host (`IsPublicHost`) or a local one, so a forged Host cannot put
+  another domain in the OAuth metadata.
 - **Local access without token** (`Services/LocalAccess.cs`, SPEC `docs/work/2026-10-11-webui-local-access`):
   the middleware and the hub skip the token only when ALL hold — Themis `webui.auth.local_without_token`
   on (default; the assistant cannot propose it), no Cloudflare/proxy header (`Cf-Connecting-Ip`, `Cf-Ray`,

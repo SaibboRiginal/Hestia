@@ -94,7 +94,10 @@ class TestUiEndpoints:
         assert m["module"] == "chronos" and m["kind"] == "core"
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/agenda/" and web["entry"] == "/ui/webui/chronos.js"
-        assert web["page"][0]["id"] == "esecuzioni" and web["page"][0]["order"] == 150
+        pages = {p["id"]: p for p in web["page"]}
+        assert pages["agenda"]["order"] == 150 and pages["agenda"]["element"] == "chronos-agenda"
+        assert pages["agenda"]["parent"] == "" and not pages["agenda"]["detail"]
+        assert pages["esecuzioni"]["parent"] == "agenda" and pages["esecuzioni"]["order"] == 151
         assert web["widget"][0]["id"] == "falliti"
         qa = web["quick_action"][0]
         assert qa["path"] == "/api/agenda/items/{id}/run" and qa["source"] == "/api/agenda/runs/failed"
@@ -106,6 +109,55 @@ class TestUiEndpoints:
         assert client.get("/api/agenda/runs", params={"status": "x"}).status_code == 400
         assert client.get("/api/agenda/runs", params={"since": "ieri"}).status_code == 400
 
+    def test_occurrences_under_the_plugin_prefix(self):
+        """The calendar page reads /api/agenda/occurrences (``/api/agenda`` is outside api_prefix ``/api/agenda/``)."""
+        import main as chronos_main
+        client = _client()
+        with patch.object(chronos_main.assistant_agenda, "agenda", return_value=[{"key": "a"}]) as ag:
+            body = client.get("/api/agenda/occurrences", params={
+                "start": "2026-10-19T00:00:00Z", "end": "2026-10-26T00:00:00Z", "include_done": "true"}).json()
+        assert body["count"] == 1 and body["occurrences"] == [{"key": "a"}]
+        lo, hi = ag.call_args.args
+        assert (hi - lo).days == 7 and ag.call_args.kwargs["include_done"] is True
+        assert client.get("/api/agenda/occurrences", params={"start": "boh"}).status_code == 400
+
+    def test_logs_endpoint_cuts_the_module_buffer_around_the_occurrence(self):
+        import main as chronos_main
+        rows = [{"ts": "2026-10-19T10:00:00+00:00", "level": "INFO", "message": "early"},
+                {"ts": "2026-10-19T10:58:00+00:00", "level": "INFO", "message": "near"},
+                {"ts": "2026-10-19T11:03:00Z", "level": "ERROR", "message": "near too"},
+                {"ts": "boh", "level": "INFO", "message": "bad ts"}]
+
+        class _R:
+            content = b"x"
+            def json(self):
+                return {"status_code": 200, "payload": {"logs": rows}}
+        with patch("requests.post", return_value=_R()) as post:
+            body = _client().get("/api/agenda/logs", params={"service": "scout", "at": "2026-10-19T11:00:00Z",
+                                                             "minutes": 5}).json()
+        assert "/route/scout/api/logs" in post.call_args.args[0]
+        assert [r["message"] for r in body["logs"]] == ["near", "near too"] and body["oldest"] == rows[0]["ts"]
+        client = _client()
+        assert client.get("/api/agenda/logs", params={"service": "../x", "at": "2026-10-19T11:00:00Z"}).status_code == 400
+        assert client.get("/api/agenda/logs", params={"service": "scout", "at": "ieri"}).status_code == 400
+
     def test_failed_endpoint(self, agenda):
         rows = _client().get("/api/agenda/runs/failed", params={"hours": 24 * 30}).json()
         assert {r["id"] for r in rows} >= {"forge.fix"}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("recurrence,status_before,ok,expected", [
+    ("RRULE:FREQ=HOURLY", "failed", True, "confirmed"),   # Riprova worked → the rule is back on
+    (None, "failed", True, "completed"),                  # one-off done
+    ("RRULE:FREQ=HOURLY", "failed", False, "failed"),     # still broken → stays stopped
+    ("RRULE:FREQ=HOURLY", "paused", True, "paused"),      # paused is the user's decision
+])
+def test_run_now_reactivates_a_failed_rule_when_it_works(recurrence, status_before, ok, expected):
+    from services import agenda as A
+    item = {"id": 7, "key": "scout.mail", "action": {"service": "scout", "path": "/x"}, "status": status_before,
+            "recurrence": recurrence, "attempts": 3}
+    with patch.object(A, "get", return_value=item), patch.object(A, "_fire", return_value=(ok, "done")), \
+            patch.object(A, "_save", side_effect=lambda i: i), patch.object(A, "_record_run"):
+        out = A.run_now(7)
+    assert item["status"] == expected and out["reactivated"] == (expected != status_before)

@@ -157,6 +157,11 @@ The conversational AI brain of Hestia. Receives messages from interface services
 | `GET` | `/api/ui/activity?limit=` | Recent chat turns, newest first (route, domains, tools ok/failed, model/provider, ms, LLM usage of the turn) + last user activity |
 | `GET` | `/api/ui/stats?days=` | LLM use: tokens/cost per day (≤31), today per use case × provider × model, rolling averages per use case |
 | `GET` | `/api/ui/code` | Claude Code status (`/api/llm/code/status`) + recent runs (`running`, `runs[]`: task folder, state, ok, ms, turns, cost) |
+| `GET` | `/api/ui/documents?limit=&domain=&permanent=` | Documenti page: documents from Archive (via Hub) `{documents, count, domains}`; Archive down → 502 |
+| `GET` | `/api/ui/documents/search?query=&limit=` | Semantic search over passages (same as the chat, threshold `oracle.documents.search_threshold`) |
+| `POST` | `/api/ui/documents` | Add a file `{name, mime, data_b64}` → `{status: ingesting, document_id}`; archiving (extract → chunks → embeddings → Archive) runs in background, session `webui-documenti`; 415 type, 413 too big |
+| `PATCH` | `/api/ui/documents/{id}/permanent` | `{is_permanent}`: keep for good (never pruned) or temporary |
+| `DELETE` | `/api/ui/documents/{id}` | Delete document and passages (404 unknown) |
 | `GET` | `/health` | Service health |
 
 ### Module tools (agent loop)
@@ -385,6 +390,7 @@ small `/api/ui/*` views instead of calling them directly). The Hub registration 
 |---|---|---|
 | page (order 120) | `cervello` → `<oracle-brain>` | KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
 | widget | `uso-oggi` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
+| page (order 121) | `documenti` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle non raggiungibile» |
 
 Data sources (all in memory, reset when Oracle restarts — an inside view, not an audit log):
 - `core/services/activity_log.py` — ring of the last 200 finished chat turns, written at the three `chat_done_summary`

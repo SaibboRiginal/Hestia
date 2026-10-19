@@ -135,7 +135,7 @@ Every `.env` is documented in its `.env.example`, and every compose variable has
 | Claude Code as coding engine | `CLAUDE_CODE_OAUTH_TOKEN` in `Hestia-Oracle/app/.env` | From `claude setup-token` (Pro/Max). Forge then can use the `claude` engine. |
 | Forge behaviour | `HEPHAESTUS_FORGE_*` in `Hestia-Hephaestus/app/.env` | Engine order, auto-rollback, deploy command. |
 | WebUI hardening | `WEBUI_ADMIN_SECRET`, `WEBUI_SECRET_KEY`, `WEBUI_ICS_KEY` in the root `.env` | See [`Hestia-WebUI/hestia-webui.md`](Hestia-WebUI/hestia-webui.md). |
-| Remote WebUI access | `cloudflare-tunnel.bat` | Quick Cloudflare tunnel to port 19015. |
+| Remote WebUI access | `cloudflare-tunnel.bat` | Cloudflare tunnel to port 19015: quick (random URL) or named (`CLOUDFLARE_TUNNEL_NAME` + `CLOUDFLARE_TUNNEL_HOSTNAME`). |
 | Resilient web fetching | Run Atlas on the host: `Hestia-Atlas/run_host.bat` / `run_host.sh` | Browser-assisted page fetching for modules. |
 | Raspberry Pi core | `ARCHIVE_DATABASE_URL` in the root `.env`, then `docker compose -f docker-compose.rpi.yml up -d --build` | Always-on services only, external Postgres. |
 
@@ -228,10 +228,26 @@ What it can do: `forge_tasks`, `forge_task`, `forge_task_diff`, `forge_dossier`,
 usual) and `settings_propose` (you confirm). Approving, merging and rolling back stay yours. Every call is logged and
 writes show up silently in Notifiche; revoke or renew a token in one tap.
 
-From outside home the address is the tunnel's: the quick tunnel of `cloudflare-tunnel.bat` changes URL at every
-start, so a connector needs a **named** Cloudflare tunnel with your own hostname (keep the hostname in `.env`, not
-in the repo). claude.ai web/mobile and ChatGPT connectors need OAuth, which comes next
-(`docs/work/2026-10-18-moduli-core-e-mcp-esterno`, phase P5).
+**claude.ai (web and phone) and ChatGPT** speak only OAuth: add a *custom connector* with the public address
+`https://<your-hostname>/mcp`. The app opens Hestia, you log in to the WebUI and the **Accessi AI** page shows a
+consent card ("Collegare Claude?") where you pick read or read-write, the tools and the expiry; *Consenti* sends you
+back to the app. The connection shows up in the same list (badge *OAuth*): revoke it there whenever you want.
+
+**Fixed address (named tunnel).** The quick tunnel of `cloudflare-tunnel.bat` changes URL at every start; connectors
+need a fixed one. Once, with a free Cloudflare account and a domain on it:
+
+```
+cloudflared tunnel login
+cloudflared tunnel create hestia
+cloudflared tunnel route dns hestia hestia.<your-domain>
+```
+
+then put `CLOUDFLARE_TUNNEL_NAME=hestia` and `CLOUDFLARE_TUNNEL_HOSTNAME=hestia.<your-domain>` in the root `.env`
+(never in the repo). `cloudflare-tunnel.bat` then runs the named tunnel and prints the MCP address. On the same PC
+you can always use `http://localhost:19015/mcp` without any tunnel.
+
+**Servizi esterni**: third-party MCP servers Hestia may use are listed on the same page; their address and key live
+only in `Hestia-Hecate/app/.env` (`HECATE_MCP_<NAME>_URL`, `HECATE_MCP_<NAME>_KEY`).
 
 ## 🗂️ Project structure
 

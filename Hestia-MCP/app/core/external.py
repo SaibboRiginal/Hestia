@@ -4,6 +4,8 @@
 service behind the tunnel) forwards ``Authorization: Bearer <token>`` here through Hub. Wrong, revoked or expired
 token → 401; over ``mcp.external.max_calls_per_min`` → 429; a read-only access calling a write tool → 403.
 Every call is logged ``event=mcp_external_call``; a write also leaves a silent Hermes inbox entry.
+The 401 carries ``WWW-Authenticate: Bearer resource_metadata="…"`` so an OAuth client (claude.ai, ChatGPT) finds the
+authorization server (core/oauth.py); OAuth access tokens (``hso_``) pass the same check as ``hst_`` tokens.
 
 ``/api/mcp/accesses`` manages accesses (Accessi page, behind the WebUI login). It is not reachable from the door.
 """
@@ -23,6 +25,7 @@ from core.access import AccessError, AccessStore, RateLimiter, allows_tool
 from core.catalog import EXTERNAL
 from core.mcp_server import FORBIDDEN, MCPServer
 from core.mcp_settings import EXTERNAL_RATE, settings
+from core.oauth import external_tool_list, public_base, www_authenticate
 
 logger = logging.getLogger("hestia_mcp.external")
 
@@ -115,7 +118,9 @@ class ExternalDoor:
                 return _rpc_error(None, -32603, str(exc), 503)
             if access is None:
                 logger.info("event=mcp_external_denied reason=%s", why)
-                return _rpc_error(None, -32001, f"Unauthorized ({why})", 401, {"WWW-Authenticate": "Bearer"})
+                # resource_metadata: where an OAuth client (claude.ai, ChatGPT) starts the authorization (RFC 9728).
+                header = www_authenticate(public_base(request), "invalid_token" if token else None)
+                return _rpc_error(None, -32001, f"Unauthorized ({why})", 401, {"WWW-Authenticate": header})
             try:
                 body = await request.json()
             except ValueError:
@@ -150,10 +155,7 @@ class ExternalDoor:
         @router.get("/api/mcp/accesses/tools")
         def accesses_tools():
             """Tools a module opened to external AIs (what an access can be limited to)."""
-            tools = self.server.catalog.tools(EXTERNAL)
-            return {"tools": [{"name": t["name"], "title": t.get("title"), "description": t.get("description"),
-                               "service": (t.get("_meta") or {}).get("hestia", {}).get("service"),
-                               "writes": not t["annotations"]["readOnlyHint"]} for t in tools]}
+            return {"tools": external_tool_list(self.server.catalog)}
 
         @router.post("/api/mcp/accesses")
         def accesses_create(body: AccessCreate, base_url: str = ""):
@@ -174,11 +176,30 @@ class ExternalDoor:
         def accesses_renew(access_id: str, base_url: str = ""):
             def _renew():
                 access, token = store.renew(access_id)
+                if not token:   # OAuth access: extended, the AI keeps its own (refresh) token
+                    return {"access": access, "token": None, "setup": None}
                 return {"access": access, "token": token, "setup": setup_lines(token, base_url)}
             return _guard(_renew)
 
         @router.delete("/api/mcp/accesses/{access_id}")
         def accesses_delete(access_id: str):
             return _guard(lambda: store.delete(access_id))
+
+        @router.get("/api/mcp/outbound")
+        def outbound():
+            """Servizi esterni: third-party MCP servers Hestia itself would use. Their credentials are Hecate's
+            (it owns external providers): names and status only, never a value."""
+            try:
+                resp = requests.post(f"{self.hub}/route/hecate/api/gateway/outbound/mcp",
+                                     json={"method": "GET", "headers": {}, "query": {}, "body": None,
+                                           "timeout_seconds": 8}, timeout=11)
+                routed = resp.json() if resp.status_code == 200 else {}
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("[🔄] event=mcp_outbound_list_failed error=%s", exc)
+                return JSONResponse({"detail": "Hecate non raggiungibile"}, status_code=503)
+            if int(routed.get("status_code", 502)) >= 400:
+                return JSONResponse({"detail": "Hecate non raggiungibile"}, status_code=503)
+            payload = routed.get("payload") or {}
+            return {"servers": payload.get("servers") or [], "how_to": payload.get("how_to")}
 
         return router

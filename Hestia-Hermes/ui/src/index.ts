@@ -4,6 +4,7 @@
  */
 import { definePlugin } from '@hestia/webui-sdk';
 import { HermesDeliveries } from './deliveries';
+import { HermesInbox } from './inbox';
 import { HermesTodayWidget } from './widget';
 
-definePlugin({ 'hermes-deliveries': HermesDeliveries, 'hermes-today-widget': HermesTodayWidget });
+definePlugin({ 'hermes-inbox': HermesInbox, 'hermes-deliveries': HermesDeliveries, 'hermes-today-widget': HermesTodayWidget });

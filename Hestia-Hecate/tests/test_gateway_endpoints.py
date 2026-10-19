@@ -477,3 +477,13 @@ def test_get_logs_endpoint(client):
     data = resp.json()
     assert data["service"] == "hestia_hecate"
     assert "logs" in data
+
+
+def test_gateway_outbound_mcp_endpoint_never_returns_keys(client, monkeypatch):
+    monkeypatch.setenv("HECATE_MCP_NOTION_URL", "https://mcp.notion.example/mcp")
+    monkeypatch.setenv("HECATE_MCP_NOTION_KEY", "sk-very-secret")
+    resp = client.get("/api/gateway/outbound/mcp")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert {"name": "notion", "host": "mcp.notion.example", "auth": "key", "status": "configured"} in data["servers"]
+    assert "sk-very-secret" not in resp.text and data["how_to"]

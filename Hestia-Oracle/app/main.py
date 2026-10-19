@@ -173,7 +173,10 @@ ui = PluginClient("oracle", title="Oracle", icon="brain", color="purple", kind="
 ui.webui(entry="oracle.js", api_prefix="/api/ui/",
          pages=[page("cervello", "Cervello", element="oracle-brain", icon="brain", order=120,
                      help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), uso dei modelli "
-                          "per caso d'uso, token e costi per giorno, stato di Claude Code.")],
+                          "per caso d'uso, token e costi per giorno, stato di Claude Code."),
+                page("documenti", "Documenti", element="oracle-documents", icon="file", order=121,
+                     help="I file che hai condiviso con Hestia (in chat o da qui): cercali come fa la chat, "
+                          "aggiungine di nuovi, tienili per sempre o eliminali.")],
          widgets=[widget("uso-oggi", "Uso modelli oggi", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="cervello", icon="chart",
                          help="Chiamate, token e costo di oggi, per modello.")])
@@ -214,6 +217,59 @@ def ui_code():
     """Claude Code ("code" use case): ready or why not, plus the recent Forge runs."""
     from core.services.claude_code_runner import runs, status
     return {"status": "ok", **status(), **runs()}
+
+
+# ── Documenti page (SPEC §A4): documents in Archive, same search and archiving pipeline as the chat ─────────
+from core.services import ui_documents  # noqa: E402
+
+
+class UiDocumentUpload(BaseModel):
+    name: str = ""
+    mime: str = "application/octet-stream"
+    data_b64: str
+
+
+class UiDocumentPermanent(BaseModel):
+    is_permanent: bool
+
+
+def _ui_doc(fn, *args, **kwargs):
+    try:
+        return fn(engine, *args, **kwargs)
+    except ui_documents.DocumentError as exc:
+        if exc.status >= 500:
+            logger.warning("[🔄] event=ui_documents_archive_failed detail=%s", exc.detail)
+        raise HTTPException(status_code=exc.status, detail=exc.detail)
+
+
+@app.get("/api/ui/documents")
+def ui_documents_list(limit: int = 100, domain: str = "", permanent: Optional[bool] = None):
+    """Documents Hestia keeps (newest first), with domain / permanent filters."""
+    return _ui_doc(ui_documents.list_documents, limit=limit, domain=domain, permanent=permanent)
+
+
+@app.get("/api/ui/documents/search")
+def ui_documents_search(query: str = "", limit: int = 8):
+    """Semantic search over document passages (the one the chat uses)."""
+    return _ui_doc(ui_documents.search, query, limit=limit)
+
+
+@app.post("/api/ui/documents")
+def ui_documents_add(req: UiDocumentUpload):
+    """Add a file (base64, from the SDK upload helper): archived in the background like a chat attachment."""
+    max_bytes = _oracle_settings.get_int(_oracle_settings.DOC_MAX_ARCHIVE_MB, 1) * 1024 * 1024
+    return _ui_doc(ui_documents.ingest, req.name, req.mime, req.data_b64, max_bytes)
+
+
+@app.patch("/api/ui/documents/{document_id}/permanent")
+def ui_documents_permanent(document_id: str, req: UiDocumentPermanent):
+    """Keep a document for good (never pruned) or make it temporary again."""
+    return _ui_doc(ui_documents.set_permanent, document_id, req.is_permanent)
+
+
+@app.delete("/api/ui/documents/{document_id}")
+def ui_documents_delete(document_id: str):
+    return _ui_doc(ui_documents.delete, document_id)
 
 
 

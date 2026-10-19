@@ -145,6 +145,10 @@ flowchart LR
    `"external"` → module with `X-Hestia-Access`; writes leave a silent Hermes inbox entry.
 4. A fix made by an external AI: `forge_submit_branch` → Forge fetches the branch, tests it, asks the owner; merge
    and deploy only after the owner's approval.
+5. OAuth AI (claude.ai, ChatGPT): `/mcp` 401 with `resource_metadata` → WebUI `/.well-known/oauth-*` →
+   `/oauth/register` → `/oauth/authorize` (WebUI → Hub → Hestia-MCP parks the request) → browser to
+   `/p/mcp/accessi?oauth=<id>` (WebUI login) → **Consenti** → code to the AI's redirect → `/oauth/token` (PKCE) →
+   `hso_…` bearer on `/mcp` exactly like a token access; `refresh_token` rotates, a replay revokes the access.
 
 ### Plugin flow (module pages and widgets)
 1. A module with a UI declares its pages, widgets and quick actions (`hestia_common.plugin_client`) in its Hub

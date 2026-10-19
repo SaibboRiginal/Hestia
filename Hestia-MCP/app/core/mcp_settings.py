@@ -19,6 +19,7 @@ TOOLS_CACHE_TTL = "mcp.tools.cache_ttl"
 HUB_DISCOVERY_TIMEOUT = "mcp.discovery.hub_timeout"
 SERVER_TIMEOUT = "mcp.calls.timeout"
 EXTERNAL_RATE = "mcp.external.max_calls_per_min"
+OAUTH_TOKEN_MINUTES = "mcp.oauth.access_token_minutes"
 
 settings = SettingsClient("mcp")
 settings.declare([
@@ -34,4 +35,8 @@ settings.declare([
     setting(EXTERNAL_RATE, "Chiamate al minuto per un'AI esterna", "int", 60, group="AI esterne", min=1, max=1000,
             unit="/min", help="Quante chiamate al minuto accetto da ogni accesso esterno (Claude, ChatGPT, Cursor…). "
                               "Oltre rispondo 429 e l'AI riprova poco dopo."),
+    setting(OAUTH_TOKEN_MINUTES, "Durata di un token OAuth", "int", 60, group="AI esterne", min=5, max=1440,
+            unit="min", advanced=True,
+            help="Per quanto vale il token che do a claude.ai o ChatGPT dopo il consenso. Poi l'AI lo rinnova da "
+                 "sola (token di rinnovo, cambiato a ogni uso); revocando l'accesso si ferma tutto subito."),
 ]).declare_log_level()

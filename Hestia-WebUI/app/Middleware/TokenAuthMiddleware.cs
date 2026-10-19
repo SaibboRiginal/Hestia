@@ -45,13 +45,6 @@ public class TokenAuthMiddleware
             return;
         }
 
-        // Commands are read-only metadata — no auth needed
-        if (path == "/api/webui/commands")
-        {
-            await _next(context);
-            return;
-        }
-
         // Admin API is internal-network only — called by Telegram, not the browser
         if (path.StartsWith("/api/webui/admin/"))
         {

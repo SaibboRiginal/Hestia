@@ -34,7 +34,9 @@ It stores and serves all persistent state through generic APIs.
   deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos first).
 - **MCP access store** (`/api/mcp-access-store/*`): table `mcp_accesses` (access_id, name, kind token|oauth,
   scope read|write, tools, token_hash (sha256, unique), expires_at, revoked_at, last_used_at, calls_day/date/total,
-  meta). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
+  meta; OAuth grants also client_id, refresh_hash, prev_refresh_hash, token_expires_at), `mcp_oauth_clients`
+  (client_id, name, redirect_uris, auth_method, secret_hash) and `mcp_oauth_codes` (code_hash, PKCE challenge, consent
+  choices, used_at). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
 - **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
   `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
@@ -72,6 +74,11 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/mcp-access-store/accesses/by-hash/{sha256}` | Access of a token (404 = unknown) |
 | `PATCH`/`DELETE` | `/api/mcp-access-store/accesses/{id}` | Change (name, scope, tools, token_hash, expiry, `revoked`) · delete |
 | `POST` | `/api/mcp-access-store/accesses/{id}/used` | One call made: last use + counters |
+| `GET` | `/api/mcp-access-store/accesses/by-refresh/{sha256}` | Access of an OAuth refresh token (`reused: true` = the previous one, a replay) |
+| `POST` | `/api/mcp-access-store/accesses/{id}/rotate` | New token + refresh hashes, only if `old_refresh_hash` is current (409 otherwise) |
+| `GET`/`POST` | `/api/mcp-access-store/oauth/clients` | OAuth clients (no secret hash) · store a registered one |
+| `GET`/`DELETE` | `/api/mcp-access-store/oauth/clients/{id}` · `POST …/check-secret` | One client · delete · `{secret_hash}` matches? → `{ok}` |
+| `POST` | `/api/mcp-access-store/oauth/codes` · `/oauth/codes/consume` | Store a code · use it once (`reused` + the access it became on a replay) |
 | `GET` | `/api/presence-store` | Presence signals (expired purged) + snapshot (Chronos only) |
 | `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
 | `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |

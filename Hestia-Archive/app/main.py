@@ -36,6 +36,10 @@ _ADDITIVE_COLUMNS = [
     ("user_preferences", "embedding", "vector(768)"),
     ("user_preferences", "domains", "JSONB"),
     ("user_preferences", "extra_data", "JSONB"),
+    ("mcp_accesses", "client_id", "VARCHAR"),
+    ("mcp_accesses", "refresh_hash", "VARCHAR"),
+    ("mcp_accesses", "prev_refresh_hash", "VARCHAR"),
+    ("mcp_accesses", "token_expires_at", "TIMESTAMPTZ"),
 ]
 
 
