@@ -279,6 +279,9 @@ The page asks Hestia through the plugin host (`host.assistant(...)`), logs come 
 
 ## Known Constraints
 
+- **Hub registration**: once at startup (after Oracle discovery), then every 60 s (`PeriodicTimer` in `Program.cs`)
+  like the Python services; before 2026-10-19 it registered only once, so *Mappa* showed the WebUI offline after
+  3 minutes and a Hub restart forgot it (found by the cloud test bench).
 - **Document uploads** travel as base64 JSON through Hub (Hub envelopes cannot carry multipart) to Oracle's
   `/api/chat/document/json`, the JSON twin of `/api/chat/document` (a `document` field on `/api/chat` was ignored).
 - `HubClient` raises when the routed `status_code` ≥ 400 (target errors used to look like success).

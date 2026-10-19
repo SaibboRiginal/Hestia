@@ -139,3 +139,7 @@ node_modules/
 # Client plugin bundles (built in the module image, never committed)
 Hestia-*/ui/dist/
 Hestia-WebUI/frontend/public/plugins/_sdk/
+
+# Cloud test bench (tools/cloud_test.py): report, screenshots, proxy CA copy
+.cloud-test/
+tools/cloud_test/base/ca/

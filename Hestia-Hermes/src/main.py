@@ -184,6 +184,27 @@ def register_on_hub_startup():
         description="hub",
     )
 
+    # Regardless of the initial result, keep re-registering so a Hub restart doesn't lose this service.
+    # Started first: the success path returns early (it used to skip this, so the Hub saw Hermes offline
+    # after 3 minutes and lost it on restart — found by the cloud test bench, 2026-10-19).
+    def _hub_keepalive():
+        while True:
+            time.sleep(60)
+            try:
+                requests.post(f"{hub_api_url}/registry/register",
+                              json=payload, timeout=4)
+            except Exception as error:
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    "hub_keepalive_exception",
+                    service="hermes",
+                    hub=hub_api_url,
+                    error=str(error),
+                )
+    threading.Thread(target=_hub_keepalive, daemon=True,
+                     name="hub-keepalive").start()
+
     for attempt in range(1, max_attempts + 1):
         try:
             response = requests.post(
@@ -245,24 +266,6 @@ def register_on_hub_startup():
         hub=hub_api_url,
     )
 
-    # Regardless of initial result, keep re-registering so a Hub restart doesn't lose this service.
-    def _hub_keepalive():
-        while True:
-            time.sleep(60)
-            try:
-                requests.post(f"{hub_api_url}/registry/register",
-                              json=payload, timeout=4)
-            except Exception as error:
-                log_event(
-                    logger,
-                    logging.WARNING,
-                    "hub_keepalive_exception",
-                    service="hermes",
-                    hub=hub_api_url,
-                    error=str(error),
-                )
-    threading.Thread(target=_hub_keepalive, daemon=True,
-                     name="hub-keepalive").start()
 
 
 @app.on_event("startup")

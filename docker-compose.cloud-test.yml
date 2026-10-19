@@ -1,0 +1,33 @@
+# Cloud test bench override — use ONLY with tools/cloud_test.py (Claude cloud session, GitHub Codespaces).
+#   python tools/cloud_test.py up      → docker compose -f docker-compose.global.yml -f docker-compose.cloud-test.yml …
+# The normal local run (up-all.bat) never reads this file. Dossier: docs/work/2026-10-19-banco-prova-cloud/
+#
+# - fake_llm: deterministic stand-in for Ollama (no GPU in the cloud); every answer starts with "[LLM finto]".
+#   With GEMINI_API_KEY in the environment the script switches Oracle's models to Gemini instead.
+# - Oracle: Ollama URL → fake_llm, Claude Code CLI not installed (no subscription token in a test bench).
+
+services:
+  fake_llm:
+    image: python:3.12-slim
+    container_name: hestia_fake_llm
+    restart: unless-stopped
+    command: ["python", "/fake/fake_ollama.py"]
+    environment:
+      - FAKE_LLM_PORT=11434
+      - ORACLE_EMBED_DIM=${ORACLE_EMBED_DIM:-768}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./tools/cloud_test:/fake:ro
+    networks:
+      - hestia_net
+
+  oracle:
+    build:
+      args:
+        INSTALL_CLAUDE_CODE: "0"
+    environment:
+      - OLLAMA_URL=http://hestia_fake_llm:11434/api/generate
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      fake_llm:
+        condition: service_started

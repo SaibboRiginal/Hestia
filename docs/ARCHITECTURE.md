@@ -473,7 +473,9 @@ This creates:
 - Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
 - Iris threads are grouped by normalized subject (Gmail thread ids are matched when present).
 - Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
-- Hub registry is in memory: services re-register every `HUB_KEEPALIVE_SECONDS` (60s) after a Hub restart.
+- Hub registry is in memory: every service (Python ones, Hermes, the .NET WebUI) re-registers every 60 s, so it comes
+  back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
+  missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).
 
 ## Dependency and Flow Map
 
