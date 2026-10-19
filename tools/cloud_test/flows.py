@@ -189,6 +189,9 @@ def flow_hercules(ctx: dict) -> None:
 
     def template():
         bench, row = pick("panca piana"), pick("rematore")
+        for old in api(M, "GET", "api/hercules/templates")["items"]:  # earlier runs: Home shows at most 6 favourites
+            if str(old.get("name", "")).startswith("Banco Push "):
+                api(M, "DELETE", f"api/hercules/templates/{old['id']}")
         t = api(M, "POST", "api/hercules/templates", {"name": f"Banco Push {RUN}", "favorite": True, "items": [
             {"exercise_id": bench, "rest_seconds": 120, "sets": [{"reps_min": 6, "reps_max": 8, "weight_kg": 60}] * 3},
             {"exercise_id": row, "sets": [{"reps_min": 8, "reps_max": 12}] * 3}]})
