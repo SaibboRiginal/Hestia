@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User via external chat (brainstorm 2026-10-19, item 1 of the final list in `/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md`) → project thread «Oracle a blocchi» |
-| **Status** | Approved v1.1 (Marko, card, 2026-10-19 11:55) — in progress, see PROGRESS.md |
+| **Status** | Approved v1.1 (Marko, card, 2026-10-19 11:55); v1.2 = implementation refinements (below) — implemented, Marko real run pending |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -134,15 +134,15 @@ Plus two things that only make sense once the blocks exist:
   cost (provider-reported, or computed from `oracle.pricing` — object setting `{provider/model: $ per Mtok in, out,
   cached}`; subscription steps show "abbonamento" with the CLI's own equivalent cost), outcome (ok / quota / error /
   skipped).
-- Caller identity: `hestia_common` Hub route helper adds header `X-Hestia-Caller: <service>` (Hub forwards headers in
-  the envelope already); missing → `sconosciuto`.
+- Caller identity (v1.2): the module is the prefix of the use case (`scout.annunci` → `scout`), which every module
+  already declares and sends — no header needed; Oracle's own calls are `oracle.*`, Forge's `forge.codice`.
 - Storage: rows are **pushed** by Oracle to Archive (new store `llm-usage`, fire-and-forget through Hub, retention
   `oracle.usage.retention_days` default 90); aggregates are queried from Archive. The in-memory `llm_stats` stays
   for the live chat gauge.
 - `GET /api/llm/usage?group=module|session|usecase|model&days=N` + per-session detail.
 - WebUI: Oracle's plugin page **Cervello** gains a tab **Uso** (cards per module: calls today, calls/hour, tokens,
   cache hit %, cost; table of sessions; daily chart; which chain step answered and how often a fallback was used) and
-  a tab **Modelli** with the chain editor (drag to reorder steps, provider/model pickers from
+  a tab **Modelli** with the chain editor (↑↓ buttons to reorder steps (v1.2: works on phones), provider/model pickers from
   `/api/llm/providers`, quota state per step) and use case → chain picker. It writes through Themis like every
   setting.
 
@@ -186,9 +186,9 @@ Plus two things that only make sense once the blocks exist:
 
 ## Phases
 - P1 Providers (Themis + `ORACLE_KEY_*`) + chains + quota skip in Oracle core (dispatch through chain; `universal_agent` keeps provider code).
-- P2 Use cases declared by modules (`hestia_common`), → chains, settings migration, Modelli simplified, the rest under *avanzate*; Forge on `forge` chain,
+- P2 Use cases declared by modules (`hestia_common`), → chains, settings migration, Modelli simplified, the rest under *avanzate*; Forge on use case `forge.codice`,
   profiles removed (Hephaestus + swagger).
-- P3 Usage: caller header, Archive `llm-usage`, `/api/llm/usage`.
+- P3 Usage: module from the use case prefix, Archive `llm-usage`, `/api/llm/usage`.
 - P4 WebUI: *Cervello* tab Uso; Modelli editor (providers, chains, use cases by module, mode).
 - P5 External mode: `oracle.brain.*`, MCP bridge, Claude Code agent, session cache + rebuild from Archive; `codex` adapter.
 - P6 Docs everywhere, cloud bench run with screenshots, root CHANGELOG, PR merged when CI green.
@@ -198,3 +198,20 @@ Plus two things that only make sense once the blocks exist:
   `llm_chain_exhausted` error from Oracle. Shared files (`Hestia-Oracle/app/main.py`, `hestia-oracle.md`) are edited
   in small hunks and merged from main before each push.
 - «Email in push e modulo Spese»: Spese will just send its own `use_case` (§C) — nothing to wait for.
+
+## Implementation notes (v1.2, 2026-10-19)
+- Oracle use cases: `oracle.generale`, `oracle.ragionamento`, `oracle.codice`, `oracle.documenti` (vision; documents,
+  images, audio), `oracle.embedding`. Default chains `veloce`, `potente`, `codice`, `visione`, `embedding`.
+- Module use cases shipped: `scout.annunci`, `athena.strategia`, `athena.revisione`, `argus.analisi`, `chronos.agenda`,
+  `wardrobe.foto` (chain `visione`, replaces the setting `wardrobe.ai.profile`), `forge.codice` (Hephaestus).
+  Metis reads the current model from `/api/llm/usecases/oracle.generale`.
+- Forge engines: `oracle` (chain of `forge.codice`) and `claude`; old `local`/`cloud` names are aliases. Permission
+  group of `oracle` = `cloud` when any usable step is billed, else `local`.
+- Agent settings: `oracle.brain.agent` = `claude` | `codex` and a separate `oracle.brain.model` (instead of a provider
+  of kind agent); `oracle.brain.fallback` = `interna` | `nessuno`. In esterna the classifier still runs (it gives the
+  domain filter of the tools), quick shortcuts are skipped. The bridge calls Oracle on loopback
+  (`/api/agent-bridge/<token>`, one token per turn) because the tool handlers live in Oracle's process.
+- Usage rows are pushed by one background worker started by the first row (no timer); Archive applies retention on
+  write. `oracle.pricing` keys are `provider/model` or `model`.
+- Old `oracle.models.*` rows stay in Archive as orphans (Themis cannot delete undeclared keys); the migration runs only
+  while neither `oracle.chains` nor `oracle.usecases` was ever stored.

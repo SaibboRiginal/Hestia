@@ -128,8 +128,9 @@ Every `.env` is documented in its `.env.example`, and every compose variable has
 
 | Feature | What to set | Notes |
 |---|---|---|
-| Cloud LLM fallback | `GEMINI_API_KEY` in `Hestia-Oracle/app/.env` | Used when the local model fails; also enables the Forge `cloud` engine. |
-| Different models | WebUI → Impostazioni → Oracle (or presets Economico / Bilanciato / Qualità) | Per use case: generic, reasoning, code, embedding (embeddings are fitted to 768 dims). |
+| Cloud models (Gemini, DeepSeek, Claude API…) | one key per provider in `Hestia-Oracle/app/.env`: `ORACLE_KEY_GEMINI`, `ORACLE_KEY_DEEPSEEK`, `ORACLE_KEY_CLAUDE_API`… | A provider without its key is skipped by every chain; with it, its models can be steps of a chain (e.g. after the local model). |
+| Different models | WebUI → Oracle → Cervello → **Modelli** | Providers (name, standard, address), chains of models (order = fallback, quota skip) and the chain/mode of every use case each module declares. Usage per module and conversation: tab **Uso**. |
+| Claude Code / Codex as Hestia's brain | Modelli → «Modalità del cervello» = Esterna; `CLAUDE_CODE_OAUTH_TOKEN` (Claude) or `ORACLE_INSTALL_CODEX=1` + `codex login` (Codex) | The agent runs the loop with Hestia's tools over MCP; Hestia keeps history and memory. |
 | Google Calendar + Gmail | `HECATE_ENABLE_PROVIDER_GOOGLE=true` + OAuth client in `Hestia-Hecate/app/.env` | Step by step: [`Hestia-Hecate/hestia-hecate.md`](Hestia-Hecate/hestia-hecate.md) → *Google setup*. From the phone, ask the bot "collega Google Calendar". |
 | Outlook calendar | `HECATE_ENABLE_PROVIDER_MICROSOFT=true` + `OUTLOOK_*` | Same file. |
 | Claude Code as coding engine | `CLAUDE_CODE_OAUTH_TOKEN` in `Hestia-Oracle/app/.env` | From `claude setup-token` (Pro/Max). Forge then can use the `claude` engine. |

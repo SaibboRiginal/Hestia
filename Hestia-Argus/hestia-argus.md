@@ -99,7 +99,7 @@ Env holds only infrastructure; every tunable is a central setting (below).
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub base URL |
 | `ARGUS_SERVICE_BASE_URL` | `http://hestia_argus:19008` | This service's externally reachable URL |
 | `ARGUS_PORT` | `19008` | Listening port |
-| `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools) |
+| `ORACLE_ROUTE_PATH` | `api/llm/generate` | Hub-routed Oracle path for alert narration/analysis (plain generation; no classifier/tools; use case `argus.analisi`, declared in the Hub registration, chain chosen in Oracle → Modelli) |
 | `HESTIA_DOCS_PATH` | `/hestia_root` | Repo mount used to load project docs as Oracle context |
 | `STARTUP_WAIT_TIMEOUT_SECONDS` | `0` | Wait for Hub readiness at startup (0 = indefinitely) |
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `argus.log.level`) |

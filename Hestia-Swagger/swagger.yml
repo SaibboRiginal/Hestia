@@ -3558,15 +3558,15 @@ paths:
   /api/llm/models:
     get:
       tags: [Oracle]
-      summary: Model choices for a provider (settings panel comboboxes)
+      summary: Model choices of a named provider (oracle.providers; chain editor)
       parameters:
         - in: query
           name: provider
           required: true
-          schema: { type: string, enum: [ollama, gemini, anthropic, claude_cli] }
+          schema: { type: string, example: ollama }
       responses:
         "200":
-          description: "{options: [{value, label}]} — ollama = installed models, gemini = curated list"
+          description: "{options: [{value, label}]} — Ollama installed models, Gemini curated list, Anthropic Models API, OpenAI-compatible /models, Claude CLI haiku/sonnet/opus"
           content:
             application/json:
               schema: { type: object }
@@ -3574,7 +3574,7 @@ paths:
   /api/llm/generate:
     post:
       tags: [Oracle]
-      summary: Raw LLM generation (bypass Oracle agent chain)
+      summary: Plain generation for services along a use case's chain (no classifier, no tools)
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -3589,14 +3589,113 @@ paths:
                   type: string
                 use_case:
                   type: string
-                  description: "Oracle model use case (oracle.models.<use_case>, e.g. scout_extraction, athena_strategist, athena_auditor); unknown → generic. Explicit model/provider win."
-                model:
-                  type: string
-                provider:
-                  type: string
+                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.annunci, athena.strategia; default oracle.generale; undeclared → runs like oracle.generale and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
       responses:
         "200":
-          description: "{response, model, provider}"
+          description: "{response, model, provider, use_case, chain} — provider/model of the chain step that answered"
+        "503":
+          description: "Every step of the chain failed or is out of quota (detail names the chain and each step)"
+
+  /api/llm/providers:
+    get:
+      tags: [Oracle]
+      summary: Named providers (setting oracle.providers) — never a key
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: check, in: query, schema: {type: boolean, default: false}, description: "true = also list each available provider's models"}
+      responses:
+        "200": {description: "{status, providers: [{name, type, label, url, key_env, key_set, needs_key, available, detail, exhausted: {model: until}}], types: {type: label}}"}
+
+  /api/llm/chains:
+    get:
+      tags: [Oracle]
+      summary: Model chains (setting oracle.chains) with each step's state
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, chains: {name: {label, single_step, steps: [{provider, model, thinking?, available, detail, exhausted_until}]}}}"}
+
+  /api/llm/usecases:
+    get:
+      tags: [Oracle]
+      summary: Every use case (Oracle's, declared by modules, undeclared seen) with its effective chain, mode, thinking
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, usecases: [{id, module, label, chain, mode, thinking, help, undeclared?, effective_chain, effective_mode, effective_thinking}]}"}
+
+  /api/llm/usecases/{use_case}:
+    get:
+      tags: [Oracle]
+      summary: What a chat on this use case would use now (Forge engine oracle, use case forge.codice)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: use_case, in: path, required: true, schema: {type: string, example: forge.codice}}
+      responses:
+        "200": {description: "{status, use_case, chain, available, detail, provider, model, context_window, billed, steps[{provider, model}]}"}
+
+  /api/llm/usage:
+    get:
+      tags: [Oracle]
+      summary: Usage of the models (rows kept in Archive llm-usage), grouped
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: group, in: query, schema: {type: string, enum: [module, session, usecase, model, step, day], default: module}}
+        - {name: days, in: query, schema: {type: integer, default: 7}}
+        - {name: module, in: query, schema: {type: string}}
+        - {name: session_id, in: query, schema: {type: string}}
+        - {name: use_case, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{status, group, days, rows: [{<group keys>, calls, ok, errors, quota, fallbacks, input_tokens, cached_tokens, output_tokens, cost_usd, avg_duration_ms, max_input_tokens, context_window, first_at, last_at}]}"}
+        "502": {description: Archive unreachable}
+
+  /api/llm/usage/calls:
+    get:
+      tags: [Oracle]
+      summary: Latest single LLM calls (e.g. one conversation), newest first
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: query, schema: {type: string}}
+        - {name: module, in: query, schema: {type: string}}
+        - {name: use_case, in: query, schema: {type: string}}
+        - {name: days, in: query, schema: {type: integer, default: 7}}
+        - {name: limit, in: query, schema: {type: integer, default: 100}}
+      responses:
+        "200": {description: "{status, rows: [{at, module, use_case, chain, step, provider, model, client, session_id, input_tokens, cached_tokens, output_tokens, context_window, duration_ms, cost_usd, cost_kind, outcome, detail}]}"}
+
+  /api/agent-bridge/{token}/tools:
+    get:
+      tags: [Oracle]
+      summary: Loopback only — tools of the external agent's running turn (stdio MCP bridge tools/list)
+      servers:
+        - url: http://127.0.0.1:19004
+      parameters:
+        - {name: token, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{tools: [{name, description, inputSchema}]}"}
+        "403": {description: Not from loopback}
+        "404": {description: Unknown or finished turn}
+
+  /api/agent-bridge/{token}/call:
+    post:
+      tags: [Oracle]
+      summary: Loopback only — run one tool for the external agent (same handler and approval gate as the internal loop)
+      servers:
+        - url: http://127.0.0.1:19004
+      parameters:
+        - {name: token, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {name: {type: string}, params: {type: object}}}
+      responses:
+        "200": {description: "{ok, result}"}
+        "403": {description: Not from loopback}
+        "404": {description: Unknown or finished turn}
 
   /api/chat/{session_id}:
     delete:
@@ -3660,17 +3759,6 @@ paths:
             {session_id, before_tokens, after_tokens, messages_before,
              messages_after, summary_chars}
 
-  /api/llm/profiles:
-    get:
-      tags: [Oracle]
-      summary: LLM profiles served by Oracle (no secrets)
-      servers:
-        - url: http://localhost:19004
-      parameters:
-        - {name: check, in: query, schema: {type: boolean, default: true}}
-      responses:
-        "200": {description: "{status, profiles{name: {model, base_url, available, detail}}}"}
-
   /api/llm/code/status:
     get:
       tags: [Oracle]
@@ -3724,6 +3812,116 @@ paths:
         - url: http://localhost:19004
       responses:
         "200": {description: "{status, available, detail, model?, running, runs: [{task, started_at, state: running|done|failed, ok, ms, turns, cost_usd, error}]}"}
+
+  /oracle/api/ui/models:
+    get:
+      tags: [Oracle]
+      summary: Tab Modelli — providers (no keys), standards, chains with step state, use cases, overrides, modes (real path /api/ui/models)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, providers[], types[{value,label}], chains{}, usecases[], overrides{}, modes[{value,label}]}"}
+
+  /oracle/api/ui/models/list:
+    get:
+      tags: [Oracle]
+      summary: Model names of a provider (real path /api/ui/models/list)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: provider, in: query, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, provider, models: [string]}"}
+        "404": {description: Unknown provider}
+
+  /oracle/api/ui/models/{part}:
+    put:
+      tags: [Oracle]
+      summary: Save providers | chains | usecases through Themis (actor user; real path /api/ui/models/{part})
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: part, in: path, required: true, schema: {type: string, enum: [providers, chains, usecases]}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [value], properties: {value: {type: object}}}
+      responses:
+        "200": {description: "{status, key}"}
+        "400": {description: "Invalid value (unknown standard, chain without steps)"}
+        "502": {description: Themis refused the change}
+
+  /oracle/api/ui/models/quota/reset:
+    post:
+      tags: [Oracle]
+      summary: «Riprova adesso» — forget the quota state of a provider/model (all when no provider)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: provider, in: query, schema: {type: string}}
+        - {name: model, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{status}"}
+
+  /oracle/api/ui/usage:
+    get:
+      tags: [Oracle]
+      summary: Tab Uso — same as /api/llm/usage (real path /api/ui/usage; also /api/ui/usage/calls)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, group, days, rows[]}"}
+
+  /api/llm-usage-store/rows:
+    post:
+      tags: [Archive]
+      summary: Store LLM usage rows (Oracle only); rows older than retention_days are deleted on write
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rows]
+              properties:
+                rows: {type: array, maxItems: 500, items: {type: object, description: "{at, module, use_case, chain?, step, provider?, model?, client?, session_id?, input_tokens, cached_tokens, output_tokens, context_window, duration_ms, cost_usd, cost_kind?, outcome, detail?}"}}
+                retention_days: {type: integer, default: 90}
+      responses:
+        "200": {description: "{status, written, removed}"}
+        "413": {description: More than 500 rows}
+    get:
+      tags: [Archive]
+      summary: Latest single calls, newest first (real path GET /api/llm-usage-store/rows)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: session_id, in: query, schema: {type: string}}
+        - {name: module, in: query, schema: {type: string}}
+        - {name: use_case, in: query, schema: {type: string}}
+        - {name: days, in: query, schema: {type: integer, default: 7}}
+        - {name: limit, in: query, schema: {type: integer, default: 100}}
+      responses:
+        "200": {description: "{rows: [...]}"}
+
+  /api/llm-usage-store/summary:
+    get:
+      tags: [Archive]
+      summary: Sums of LLM usage rows grouped by module | session | usecase | model | step | day
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: group, in: query, schema: {type: string, enum: [module, session, usecase, model, step, day], default: module}}
+        - {name: days, in: query, schema: {type: integer, default: 7}}
+        - {name: module, in: query, schema: {type: string}}
+        - {name: session_id, in: query, schema: {type: string}}
+        - {name: use_case, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 200}}
+      responses:
+        "200": {description: "{group, days, rows: [{<group keys>, calls, ok, errors, quota, fallbacks, input_tokens, cached_tokens, output_tokens, cost_usd, avg_duration_ms, max_input_tokens, context_window, first_at, last_at}]}"}
+        "400": {description: Unknown group}
 
   /oracle/api/ui/documents:
     get:
@@ -3830,7 +4028,7 @@ paths:
   /api/llm/chat:
     post:
       tags: [Oracle]
-      summary: OpenAI-compatible chat completion on a named profile (tool calling supported)
+      summary: OpenAI-compatible chat completion along a use case's chain (tool calling supported)
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -3841,15 +4039,16 @@ paths:
               type: object
               required: [messages]
               properties:
-                profile: {type: string, default: local}
+                use_case: {type: string, default: forge.codice, description: "Declared use case (Forge: forge.codice, Wardrobe: wardrobe.foto)"}
                 messages: {type: array, items: {type: object}}
                 tools: {type: array, items: {type: object}}
                 temperature: {type: number}
-                model: {type: string}
+                max_tokens: {type: integer}
+                tool_choice: {}
       responses:
-        "200": {description: Provider chat completion JSON}
-        "404": {description: Profile not configured}
-        "502": {description: Provider error/unreachable}
+        "200": {description: "Provider chat completion JSON + hestia_step {use_case, chain, step, provider, model}"}
+        "400": {description: messages missing}
+        "502": {description: "Every step failed (detail names the chain and each step)"}
 
   /api/chat/sessions:
     get:
@@ -5847,7 +6046,7 @@ paths:
               type: object
               required: [engine]
               properties:
-                engine: {type: string, enum: [local, cloud, claude]}
+                engine: {type: string, enum: [oracle, claude], description: "local/cloud are read as oracle"}
       responses:
         "200": {description: "{status, default_engine, available, detail}"}
         "400": {description: Unknown engine}
@@ -6323,7 +6522,7 @@ paths:
               properties:
                 by: {type: string, default: user}
                 now: {type: boolean, description: skip the Claude budget window}
-                engine: {type: string, enum: [local, cloud, claude, ""], description: "proposed/scheduled: who develops it (explicit choice starts now); empty = as proposed"}
+                engine: {type: string, enum: [oracle, claude, ""], description: "proposed/scheduled: who develops it (explicit choice starts now); empty = as proposed"}
       responses:
         "200": {description: "{status, task}"}
         "400": {description: Unknown engine}

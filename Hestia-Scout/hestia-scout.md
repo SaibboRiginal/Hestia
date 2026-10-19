@@ -57,14 +57,14 @@ Scout is also an event producer for proactive workflows: when entities are creat
 ## LLM Extractor (via Oracle)
 
 Extraction calls Oracle `POST /api/llm/generate` through Hub (`evaluators/oracle_evaluator.py`) with
-`{"prompt", "use_case": "scout_extraction"}`: Oracle owns provider keys **and the model choice**. The extractor
-model is the Oracle setting `oracle.models.scout_extraction.*` (Impostazioni → Oracle → Modelli, advanced): default
-`gemini` / `gemini-2.5-flash`, reserve `gemini-2.5-flash-lite` — when the first model is out of quota (429) Oracle
-answers with the reserve one (the old `SCOUT_LLM_MODELS` hop). No Scout env var for the model.
+`{"prompt", "use_case": "scout.annunci"}`: Oracle owns provider keys **and the model choice**. Scout declares the use
+case in its Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`, suggested chain `veloce`);
+Marko picks its chain in Oracle → Cervello → Modelli. A model out of quota (429) is skipped and the next step of the
+chain answers (the old `SCOUT_LLM_MODELS` hop). No Scout env var for the model.
 
 Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 
-`GEMINI_API_KEY` now lives only in Oracle. (Previously Scout embedded its own Gemini client and key; the unused
+Provider keys live only in Oracle (`ORACLE_KEY_<NAME>`). (Previously Scout embedded its own Gemini client and key; the unused
 `OllamaEvaluator` was removed.)
 
 ## Data Model: `real_estate` Listing

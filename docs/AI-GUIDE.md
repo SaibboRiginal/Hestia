@@ -45,11 +45,16 @@ serves the declared REST path of handler-only tools — call it after the app's 
 
 ## 3. LLM access (Oracle only)
 
-- Use cases = central settings (Themis) `oracle.models.<generic|reasoning|code|embedding>.{provider,model,
-  fallback_provider,fallback_model,thinking}` (ollama | gemini), live, with presets; never env.
-- `/api/llm/generate` plain prompt; `/api/llm/chat` OpenAI-compatible with profiles: `local` (Ollama +
-  CODE model) and `cloud` (Gemini OpenAI-compat + CODE fallback model + `GEMINI_API_KEY`), both derived
-  automatically; `ORACLE_LLM_PROFILE_<NAME>_*` only to add/override.
+- Oracle a blocchi (dossier `docs/work/2026-10-19-oracle-a-blocchi`): named **providers** `oracle.providers`
+  (type = standard: ollama | openai | anthropic | gemini | claude_cli; keys only in env `ORACLE_KEY_<NAME>`),
+  reusable **chains** `oracle.chains` (ordered provider/model steps; a quota error skips that model until its reset),
+  **use cases** `<module>.<task>` declared by each module in its Hub registration (`capabilities.llm_usecases` via
+  `hestia_common.oracle_usecases`) and mapped to chain/mode/thinking in `oracle.usecases`. One editor: Oracle →
+  Cervello → Modelli. A new module that needs an LLM declares its use cases; it never names a provider or model.
+- Brain mode `oracle.brain.mode` interna (chains) | esterna (Claude Code / Codex run the loop with Hestia's tools
+  through `core.services.mcp_bridge`; Archive stays the session truth). Usage rows → Archive `llm-usage`.
+- `/api/llm/generate {prompt, use_case}` plain prompt; `/api/llm/chat {use_case, messages, tools}` OpenAI-compatible
+  along the use case's chain (Forge: `forge.codice`).
 - `/api/llm/code`: Claude Code CLI (`claude -p`) in a Forge worktree under `/forge/worktrees`, auth
   `CLAUDE_CODE_OAUTH_TOKEN` (Pro/Max, from `claude setup-token`). Only for code tasks.
 - Embeddings are truncated + renormalized to 768 (`ORACLE_EMBED_DIM`) because Archive is `Vector(768)`.

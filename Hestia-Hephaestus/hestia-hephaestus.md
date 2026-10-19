@@ -126,26 +126,27 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 - **Human gate on merge:** nothing merges without "approva sviluppo <id>" unless the group is in `full_auto`.
 - Who may start/merge alone: see *Permission modes* below.
 
-### Engines — local and cloud side by side
+### Engines — Oracle's chain and Claude Code
 
 | Engine | What | Where configured |
 |---|---|---|
-| `local` | Built-in agent; LLM = Oracle profile `local` (Ollama) | **Oracle**: `ORACLE_LLM_PROFILE_LOCAL_BASE_URL/_MODEL/_API_KEY` (default Ollama `qwen2.5-coder:14b`) |
-| `cloud` | Built-in agent; LLM = Oracle profile `cloud` (OpenRouter, Gemini...) | **Oracle**: `ORACLE_LLM_PROFILE_CLOUD_*` |
+| `oracle` | Built-in agent; each turn goes to Oracle `/api/llm/chat` with use case **`forge.codice`** (declared by Hephaestus in its Hub registration), which walks its chain (default `codice`: local Ollama first, then cloud steps; quota skip) | **Oracle → Cervello → Modelli**: chain of `forge.codice` |
 | `claude` | Claude Code (Pro/Max subscription) run **by Oracle** in the shared task worktree (`POST /api/llm/code`) | **Oracle**: build `--build-arg INSTALL_CLAUDE_CODE=1`, `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` in Oracle's `.env` (plan limits) |
 
+Old names `local`, `cloud`, `builtin`, `ollama` (tasks, settings, agenda rules) are read as `oracle`.
+
 **Microservice boundary:** Forge never holds LLM URLs or keys. The built-in agent sends each turn
-(messages + tools) to Oracle `POST /api/llm/chat {profile}` via Hub; Oracle owns providers.
+(messages + tools) to Oracle `POST /api/llm/chat {use_case: "forge.codice"}` via Hub; Oracle owns providers and chains.
 Claude Code also lives in Oracle (the LLM core holds every credential, including the Pro token). Task worktrees
 are mounted at the same absolute path `/forge/worktrees` in Hephaestus and Oracle, and the repo at `/repo` in both,
 so git worktree links resolve. Hephaestus keeps orchestration: branch, independent tests, merge, deploy, rollback.
 All other calls also go through Hub: Hermes (notifications), service `/health` (deploy check).
 Requests reach Forge only via Hub: user → Telegram → Oracle → Hub → Hephaestus; Athena/Argus → Hub → Hephaestus.
 
-- Default engine = central setting `hephaestus.forge.engine` (Themis, live, default `local`): WebUI →
+- Default engine = central setting `hephaestus.forge.engine` (Themis, live, default `oracle`): WebUI →
   Impostazioni → Hephaestus, or `POST /api/hephaestus/forge/engine` from a client (saved to Themis as a user
   change). The assistant can only propose it (`settings_propose`), you confirm via Hermes.
-  Fallback order = setting `hephaestus.forge.fallback` (default `local, cloud, claude`).
+  Fallback order = setting `hephaestus.forge.fallback` (default `oracle, claude`).
 - Per task: "sviluppa X con claude" → `engine` field (no fallback when explicit).
 
 ### Permission modes (like Claude Code / Codex)
@@ -161,7 +162,9 @@ Themis). Safety switches: the assistant may read them but never propose them (`o
 | `auto` | start on their own branch | start | waits for you |
 | `full_auto` | start | start | automatic if engine ok + tests green (health check, auto rollback) |
 
-Groups: `local` = local engine (default `auto`); `cloud` = cloud profile + claude (default `ask`: no tokens spent without your ok).
+Groups: `local` = engine `oracle` while every usable step of `forge.codice` is unbilled (local models; default `auto`);
+`cloud` = engine `oracle` with a billed step (cloud key, subscription) or `claude` (default `ask`: no tokens spent without
+your ok). Oracle's `/api/llm/usecases/forge.codice` says `billed`.
 
 ### Who decides, duplicates, engine per task
 
@@ -230,7 +233,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | GET | `/api/hephaestus/forge/status` | Repo, base branch, engines availability, queue |
 | POST | `/api/hephaestus/forge/pause` | `{"paused": bool}` — manual pause of autonomous starts (saved to Themis); returns `{paused, held[]}` |
 | GET | `/api/hephaestus/forge/engine` | Default engine, fallback chain, availability |
-| POST | `/api/hephaestus/forge/engine` | `{"engine": "local|cloud|claude"}` — set default (persisted) |
+| POST | `/api/hephaestus/forge/engine` | `{"engine": "oracle|claude"}` — set default (persisted; `local`/`cloud` read as `oracle`) |
 | GET | `/api/hephaestus/forge/settings` | Default engine, fallback, permission modes |
 | POST | `/api/hephaestus/forge/settings/mode` | `{"mode": "ask|auto|full_auto", "group": "local|cloud|"}` |
 | POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target, workdoc, parent_task, agenda_parent}` — `parent_task` = follow-up (inherits workdoc, services, outcome as context); `agenda_parent` = linked agenda key |
@@ -284,7 +287,7 @@ an external AI (Claude Code, Cursor…) reaches the tools Forge marked `"externa
     `/forge/worktrees/.transcripts/<id>.jsonl` (shared mount, outside the worktree so it is never committed).
     While the run lasts, `/transcript` normalizes it on read (live view); at the end Forge imports it into
     `transcript.jsonl` and deletes the raw file.
-  - `local` / `cloud`: the built-in agent loop emits assistant text, reasoning (when the model returns it),
+  - `oracle`: the built-in agent loop emits assistant text, reasoning (when the model returns it),
     every tool call with its arguments and every tool result.
 - **Repo browser** (`forge/repo_browser.py`): only `git` plumbing, refs/paths validated (no `..`, no `.git`, no
   leading `-`), secret files (`.env`, tokens, credentials) listed as secret and never served, diffs capped at 300 KB,
@@ -336,9 +339,9 @@ engine/modes also applied by `Forge._apply_settings`). Endpoints `GET /api/setti
 |---|---|---|
 | `hephaestus.forge.paused` | bool · `false` (read) | manual pause: no task starts on its own (see *Manual pause*) |
 | `hephaestus.forge.dedup_days` | int giorni · 7 (0–90) | module proposals similar to a task of these days are not created again |
-| `hephaestus.forge.engine` | enum · `local` | default coding engine |
+| `hephaestus.forge.engine` | enum · `oracle` | default coding engine (`oracle` = Oracle chain of `forge.codice`, `claude`) |
 | `hephaestus.forge.mode.local` / `.cloud` | enum · `auto` / `ask` (read) | permission mode per group |
-| `hephaestus.forge.fallback` | list · `[local, cloud, claude]` | engines tried when the default is unavailable |
+| `hephaestus.forge.fallback` | list · `[oracle, claude]` | engines tried when the default is unavailable |
 | `hephaestus.forge.max_turns` | int · 40 (5–300) | agent turn limit (built-in loop and Claude Code) |
 | `hephaestus.forge.llm_timeout` | int s · 600 | Oracle `/api/llm/chat` timeout per turn |
 | `hephaestus.forge.engine_timeout` | int s · 1800 | Claude Code session timeout |
@@ -365,10 +368,10 @@ code-execution surface, so not editable from clients), `HEPHAESTUS_NOTIFY_TARGET
 
 Forge reports its work to Chronos presence: each task runs as activity `forge.task` (heavy, claude_quota/gpu), each deploy as `hephaestus.deploy` (maintenance → «Sto mangiando»). Autonomous scheduled tasks start only when presence allows `work.heavy` and `llm.claude` (unknown → allowed). Claude limit exhausted → signal `resource.claude_quota_left=0` until the reset.
 
-### Local/cloud engine and the context window
+### Engine `oracle` and the context window
 
-The built-in engine (`local`, `cloud`) reads the model window from Oracle's `/api/llm/profiles`
-(`context_window`, = Themis `oracle.provider.ollama.num_ctx` for the Ollama profile) and keeps the
+The built-in engine reads the model window from Oracle's `/api/llm/usecases/forge.codice`
+(`context_window` of the first usable step, = Themis `oracle.provider.ollama.num_ctx` for an Ollama step) and keeps the
 prompt within ~70% of it (≈3 chars/token): old tool outputs become `[old output trimmed]`, the latest
 one is clipped with a hint to read a smaller range. A stop is reported precisely: `model context full`
 (answer cut, `finish_reason=length` → raise num_ctx or use `claude`), `turn limit reached`, or

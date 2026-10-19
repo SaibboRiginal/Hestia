@@ -371,11 +371,11 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ---
 
-## §13 Unit Tests — /api/llm/generate endpoint (4 cases, NEW)
+## §13 Unit Tests — /api/llm/generate endpoint (chains, 2026-10-19)
 
-- ✅ Fallback follows the central settings `oracle.models.generic.fallback_{provider,model}`; old env vars are ignored
-- ✅ A changed fallback setting is used on the next call (live)
-- ✅ Both primary and fallback fail → 500 with combined context in detail
+- ✅ The use case's chain answers; a declared module use case uses its own chain; undeclared → «Uso generale» (listed)
+- ✅ An OpenAI-compatible step without key is still tried (local servers need none)
+- ✅ Every step failing → 503 naming the chain and each step
 - ✅ Missing/blank prompt → 400 (HTTPException must not be swallowed by the generic handler)
 
 ---
@@ -387,3 +387,18 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 - Old/legacy files (oracle_engine_old.py, memory_service_old.py, memory_service_new.py) are excluded from coverage targets.
 - Document pipeline modules (analyser, archiver, extractor, rag, local_models) have lower coverage — tests for these require file fixtures and are lower priority than core chat/agent functionality.
 - **2026-06-18**: Oracle Enhancement Plan P1-P3 features added with 20 new unit tests (test_plan_features.py). AgentFactory now validates required MODEL_USECASE_* env vars at startup. TRACE log level registered in conftest for all tests.
+
+## §Oracle a blocchi (2026-10-19, dossier docs/work/2026-10-19-oracle-a-blocchi)
+
+- `test_llm_chains.py`: providers (key env names, availability, unknown type dropped, no key in views, Ollama address
+  from infra env, Anthropic-compatible address), quota (detection, reset from Retry-After/retryDelay/midnight
+  Pacific/cooldown, expiry), ChainAgent (quota marks and moves on, other errors don't mark, all failing →
+  ChainExhausted, stream fallback only before the first token, embedding chain one step, unknown chain → general),
+  module use cases from the Hub registry, migration of old `oracle.models.*`, usage rows (one per step with outcome and
+  tokens, stream with session/client, calls outside a chain, pricing, batches to Archive).
+- `test_external_agent.py`: mode per use case, tools through the bridge token + session cache (resume, invalidated by an
+  internal turn), unavailable agent, MCP JSON-RPC forwarding, loopback-only bridge endpoints, Claude Code and Codex
+  command/output parsing with fake CLIs. `test_oracle_engine_core.py::TestChatExternalBrain`: the agent answers even a
+  quick chat; failure → internal loop.
+- `test_oracle_ui.py::TestModelsTab`, `test_oracle_api.py`: Modelli view without keys, writes through Themis with
+  validation, quota reset of one pair; `/api/llm/usage` reads the Archive store.
