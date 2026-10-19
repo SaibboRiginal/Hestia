@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 3 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator |
 | **Status** | Approved by Marko 2026-10-19 (answers in §10) — implementing |
 
@@ -148,6 +148,11 @@ Iris: match headers against subscriptions ─▶ for each match: ship full mail 
   generic Oracle change: attachments are stored in Archive blobs (`owner_module=chat`) and their ids are given to the
   tools of the chosen domain, so `finance_import_statement(blob_id)` can take the file. Useful later for Wardrobe
   photos too. (§10 Q3)
+  *How (v1.2):* a module declares `attachment_handlers` in its Hub capabilities (`mime`, `match` words, `min_hits`,
+  `path`). Oracle's document path extracts the text; on a match it stores the file as a blob (`owner_module=chat`) and
+  calls `POST <module><path>` with the blob id. The module answers `{handled, text}` (Plutus: the preview counts +
+  «Li registro?» + the import id); that text is the chat reply and stays in the history, so «sì» reaches
+  `finance_import_statement(import_id, commit=true)`. No match / module declines / any error → the usual analysis.
 - **Quick entry:** Home quick action «Spesa veloce» (amount + category chips, undo); chat «ho speso 12 € al bar» →
   `finance_add`.
 

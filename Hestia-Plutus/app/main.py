@@ -300,6 +300,39 @@ def import_undo(id: str):
     return statements.undo(id)
 
 
+# Chat attachments (Oracle hand-off): a PDF whose text has these words is offered to Plutus (Hub capability).
+ATTACHMENT_HANDLERS = [{"mime": ["application/pdf"], "label": "Estratto conto", "min_hits": 2, "path": f"{API}/attachments",
+                        "match": ["lista movimenti", "estratto conto", "saldo contabile", "saldo disponibile", "saldo iniziale",
+                                  "saldo finale", "data valuta", "data operazione", "iban", "movimenti"]}]
+
+
+def _money(v: float, cur: str) -> str:
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + (" €" if cur == "EUR" else f" {cur}")
+
+
+@app.post(f"{API}/attachments")
+def attachment(body: dict = Body(...)):
+    """Oracle hand-off: a statement PDF sent in chat (Archive blob) → preview; the reply asks to confirm."""
+    try:
+        v = statements.preview(blob_id=str(body.get("blob_id") or ""), name=str(body.get("filename") or ""),
+                               account="hype", source="chat")
+    except (Invalid, NotFound) as exc:
+        logger.info("event=plutus_attachment_declined reason=%s", exc)
+        return {"handled": False, "reason": str(exc)}
+    c, cur = v["counts"], v["currency"]
+    new, dup, link = c.get("new", 0), c.get("duplicate", 0), c.get("link", 0)
+    if not new and not link:
+        text = (f"Ho letto l'estratto conto ({v['period'][0]} → {v['period'][1]}): i {dup} movimenti ci sono già "
+                "tutti, non aggiungo niente.")
+    else:
+        text = (f"Ho letto l'estratto conto ({v['period'][0]} → {v['period'][1]}): {new + link} movimenti da "
+                f"aggiungere, spese nuove {_money(v['total_new_spent'], cur)}"
+                + (f", {link} collegati a pagamenti PayPal già registrati (contati una volta)" if link else "")
+                + (f", {dup} già presenti" if dup else "")
+                + f". Li registro? Rispondi «sì» oppure controllali in Spese › Importa. (import_id {v['id']})")
+    return {"handled": True, "text": text, "import_id": v["id"], "counts": c}
+
+
 # ── PayPal mails pushed by Iris ──────────────────────────────────────────────
 _mail_lock = threading.Lock()
 _mail_stats: dict[str, Any] = {"last_run": None, "processed": 0, "added": 0, "last_error": None}
@@ -728,7 +761,7 @@ except NameError:
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": [DOMAIN],
-            "context_endpoint": "/api/module/context"}
+            "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:

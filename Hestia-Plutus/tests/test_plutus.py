@@ -387,3 +387,18 @@ def test_manifest_pages_widgets_quick_action(api):
     text = str(web)
     for el in ("plutus-overview", "plutus-transactions", "plutus-import", "plutus-month-widget", "Spesa veloce"):
         assert el in text
+
+
+@pytest.mark.api
+def test_api_chat_attachment_handoff(api):
+    c, main, fake = api
+    fake.blobs["chatblob"] = base64.b64encode(_pdf(_STMT)).decode()
+    out = c.post("/api/finance/attachments", json={"blob_id": "chatblob", "filename": "ottobre.pdf"}).json()
+    assert out["handled"] and "Li registro?" in out["text"] and out["import_id"] in out["text"]
+    assert c.post("/api/finance/tools/import_statement",
+                  json={"import_id": out["import_id"], "commit": "true"}).json()["committed"]
+    again = c.post("/api/finance/attachments", json={"blob_id": "chatblob"}).json()
+    assert again["handled"] and "ci sono già" in again["text"]
+    assert c.post("/api/finance/attachments", json={"blob_id": "missing"}).json()["handled"] is False
+    caps = main._registration()["capabilities"]
+    assert caps["attachment_handlers"][0]["path"] == "/api/finance/attachments"
