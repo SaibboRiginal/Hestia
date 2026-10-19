@@ -33,7 +33,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -166,7 +166,6 @@ class OAuthServer:
             "revocation_endpoint_auth_methods_supported": list(_AUTH_METHODS),
             "scopes_supported": list(SCOPES),
             "authorization_response_iss_parameter_supported": True,
-            "service_documentation": "https://github.com/marcovidic/Hestia#collegare-unai-esterna",
         }
 
     # ── RFC 7591 registration ──────────────────────────────────────────────
@@ -310,7 +309,6 @@ class OAuthServer:
                 user, _, password = base64.b64decode(authorization[6:].strip()).decode("utf-8").partition(":")
             except (ValueError, UnicodeDecodeError):
                 raise OAuthError("invalid_client", "Malformed Basic header", 401)
-            from urllib.parse import unquote
             client_id, secret = unquote(user), unquote(password)
         client = self._client(client_id)
         if client is None:
@@ -474,6 +472,8 @@ class OAuthServer:
         async def revoke(request: Request):
             try:
                 self.revoke_token(await _form(request))
+            except OAuthError as exc:
+                return exc.response()
             except AccessError as exc:
                 return OAuthError("temporarily_unavailable", str(exc), 503).response()
             return JSONResponse({}, headers={"Cache-Control": "no-store"})
