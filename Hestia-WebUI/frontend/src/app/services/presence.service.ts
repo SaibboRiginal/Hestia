@@ -43,7 +43,7 @@ const EFFECT_LABELS: Record<string, Record<string, string>> = {
   },
   'chat.reply': {
     live: '',
-    queued: 'Il cervello è offline: i messaggi in chat restano in coda e avranno risposta appena torna',
+    queued: 'Oracle è offline: i messaggi in chat restano in coda e avranno risposta appena torna',
   },
   'notify.level': {
     all: 'Ti arrivano tutte le notifiche',
@@ -68,7 +68,7 @@ export function reasonLabel(r?: string): string {
     case 'signal': case 'clear':
       if (a?.startsWith('resource.claude')) return 'quota Claude';
       if (a?.startsWith('health.')) return 'moduli in errore';
-      if (a?.startsWith('brain.')) return 'cervello (Oracle) offline o tornato';
+      if (a?.startsWith('oracle.offline')) return 'Oracle offline o tornato';
       if (a?.startsWith('manual.dnd')) return 'Non disturbare scaduto';
       return '';
     default: return '';
@@ -106,7 +106,7 @@ export class PresenceService {
     return Object.keys(EFFECT_LABELS).filter(k => e[k]).map(k => EFFECT_LABELS[k][e[k]] ?? `${k}: ${e[k]}`)
       .filter(Boolean);
   });
-  /** Brain offline (presence overlay, SPEC cervello-offline): chat messages wait in a queue. */
+  /** Oracle offline (presence overlay, SPEC oracle-offline): chat messages wait in a queue. */
   readonly chatQueued = computed(() => this.state()?.effects?.['chat.reply'] === 'queued');
 
   start(): void {

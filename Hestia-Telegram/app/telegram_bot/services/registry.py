@@ -117,7 +117,7 @@ def register_telegram_service() -> bool:
             "hub_events_webhook": "/api/events/registry-changed",
             # Hermes delivers every notification here (SPEC hermes-global-notifications).
             "notify_endpoint": "/api/notify",
-            # Chronos calls it when the brain is back (SPEC cervello-offline): answer the queued messages.
+            # Chronos calls it when Oracle is back (SPEC oracle-offline): answer the queued messages.
             "chat_queue_drain": "/api/chat-queue/drain",
         },
     }

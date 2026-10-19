@@ -7,7 +7,7 @@
 Argus continuously monitors every Hestia service by polling their `/health` endpoints and
 collecting runtime logs (Hub monitor API by default, Docker tailing as fallback). When an issue is detected it alerts the user
 through **Hermes** (every client); Oracle only writes the text, with a fixed text when it cannot. Oracle itself down
-→ *brain offline* (below). Argus also exposes an on-demand HTTP API so the Oracle
+→ *Oracle offline* (below). Argus also exposes an on-demand HTTP API so the Oracle
 chatbox and Telegram commands can query the current system state at any time.
 
 Argus is the only monitoring authority. It does not execute code fixes; instead it emits remediation intents for execution services (Hephaestus).
@@ -31,7 +31,7 @@ Hub Monitor Logs / Docker Tails │
     └──────────► Monitor Loop ──┴──► Alert Worker
                                          │
                      text: Hub route -> Oracle /api/llm/generate
-                           (fixed text when Oracle fails or the brain is offline)
+                           (fixed text when Oracle fails or Oracle is offline)
                      send: Hub route -> Hermes /api/events/ingest
                                          │
                                Remediation Intent Dispatcher
@@ -133,7 +133,7 @@ read at use time, so changes apply live unless marked *restart*. Safety switches
 | `argus.remediate.timeout` | int (s) | `15` | Hub-routed timeout of the remediation request |
 | `argus.repair.recheck` | int (min) | `10` | First agenda recheck after a service goes down (doubles each attempt) |
 | `argus.repair.recheck_max` | int (min) | `360` | Backoff cap for agenda rechecks |
-| `argus.brain.grace` | int (s) | `60` | Oracle down this long → presence signal `brain.offline` + Hermes notice (0 = at once) |
+| `argus.oracle.grace` | int (s) | `60` | Oracle down this long → presence signal `oracle.offline` + Hermes notice (0 = at once) |
 | `argus.forge.enabled` | bool | `true` | Recurring errors become Forge fix proposals — `oracle=read` |
 | `argus.forge.threshold` | int | `3` | Occurrences of one signature inside the window |
 | `argus.forge.window` | int (s) | `3600` | Counting window |
@@ -153,27 +153,27 @@ volumes:
 
 1. Monitor loop detects a service is down or degraded (or new WARNING+ log lines).
 2. `alert_worker.send_alert()` dedupes (cooldown) and batches (`argus.alerts.batch_window`).
-3. The batch text is written by Oracle (`/route/oracle/api/llm/generate`, plain generation); if Oracle fails or the
-   brain is offline, a fixed grouped text is used at once.
+3. The batch text is written by Oracle (`/route/oracle/api/llm/generate`, plain generation); if Oracle fails or is
+   offline, a fixed grouped text is used at once.
 4. Argus publishes the event to **Hermes** (`service.health`, `_message` = the text): Hermes delivers it to every
    client (Telegram, WebUI). Argus never talks to Telegram directly (Hermes is the only outbound messenger).
 5. Optional: Argus emits a structured remediation intent for Hephaestus (policy-gated) and plans agenda rechecks.
 
-## Brain offline (Oracle down)
+## Oracle offline (Oracle down)
 
-SPEC `docs/work/2026-10-19-cervello-offline` (v2.0), code `app/services/brain_watch.py`, fed by the monitor cycle and
+SPEC `docs/work/2026-10-19-oracle-offline` (v2.0), code `app/services/oracle_watch.py`, fed by the monitor cycle and
 `recheck/oracle` (no loop of its own).
-- Oracle unhealthy or missing from the Hub registry for `argus.brain.grace` s (60) → presence signal
-  `brain.offline = true` (meta `reason` unreachable/unhealthy/unregistered, `since`; refreshed every 10 min, TTL 30
-  min) → Chronos overlay «🧠 Cervello offline» (effect `chat.reply = queued`, proactive work deferred).
+- Oracle unhealthy or missing from the Hub registry for `argus.oracle.grace` s (60) → presence signal
+  `oracle.offline = true` (meta `reason` unreachable/unhealthy/unregistered, `since`; refreshed every 10 min, TTL 30
+  min) → Chronos overlay «⚠️ Oracle offline» (effect `chat.reply = queued`, proactive work deferred).
 - Same moment, one Hermes notice with fixed text (event `service.action_required`, the system subscription every
-  client always has, unlike the opt-in `service.health` alerts; `replaces: "system.brain"`, one live notice). Oracle back → signal
-  cleared and the notice closed (`closes: "system.brain"`) with «🧠 Di nuovo online dopo N min». Chronos then asks
+  client always has, unlike the opt-in `service.health` alerts; `replaces: "system.oracle"`, one live notice). Oracle back → signal
+  cleared and the notice closed (`closes: "system.oracle"`) with «✅ Oracle di nuovo online dopo N min». Chronos then asks
   the chat clients to answer the messages they queued (`chat_queue_drain`).
-- Oracle's generic `service.health` alert/recovery is not sent (the brain notice replaces it); repair requests and
+- Oracle's generic `service.health` alert/recovery is not sent (the Oracle notice replaces it); repair requests and
   agenda rechecks stay as for any service. A shorter outage (restart, deploy) says nothing.
-- While offline Argus never asks Oracle to write a text (no 60 s waits). Logs: `event=brain_offline`,
-  `event=brain_online`.
+- While offline Argus never asks Oracle to write a text (no 60 s waits). Logs: `event=oracle_offline`,
+  `event=oracle_online`.
 
 ## Forge fix proposals
 
@@ -210,4 +210,4 @@ recovered → entry completed and recovery notice. Visible/movable/cancellable f
 
 ## Assistant presence
 
-Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `brain.offline` (see *Brain offline*): overlay «Cervello offline».
+Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Oracle offline».

@@ -225,7 +225,7 @@ presence.signal("resource.claude_quota_left", 12, ttl_seconds=3600)
 presence.context_line()                               # one line for a model's context
 ```
 
-Effects include `chat.reply` (`live` | `queued`: brain offline, chat clients queue messages; fallback `live`).
+Effects include `chat.reply` (`live` | `queued`: Oracle offline, chat clients queue messages; fallback `live`).
 State cached 15 s; Chronos down → `[🔄]` log and `FALLBACK_EFFECTS` (everything allowed, every notification
 delivered), so each module still follows only its own agenda windows.
 

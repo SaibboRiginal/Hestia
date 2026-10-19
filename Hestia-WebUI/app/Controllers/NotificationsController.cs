@@ -44,7 +44,7 @@ public class NotificationsController : ControllerBase
         return Ok(new { delivered = true });
     }
 
-    /// <summary>Brain back (Chronos presence, SPEC cervello-offline): answer the queued chat messages.</summary>
+    /// <summary>Oracle back (Chronos presence, SPEC oracle-offline): answer the queued chat messages.</summary>
     [HttpPost("api/chat-queue/drain")]
     [InternalNetworkGuard]
     public IActionResult DrainChatQueue([FromServices] ChatQueueService queue)

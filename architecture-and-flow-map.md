@@ -204,13 +204,13 @@ fallback are Oracle settings `oracle.models.<use_case>.*` (Impostazioni → Mode
 2. Module → Hermes `api/events/ingest` with `hestia_common.reminders.reminder_event` (domain `system`, `replaces`,
    `_link`); Hermes delivers to every client of the owner; an answer is routed back to the module.
 
-### Brain offline flow (Oracle down)
-1. Argus' monitor cycle sees Oracle down past `argus.brain.grace` (60 s) → presence signal `brain.offline` (Chronos
-   overlay «🧠 Cervello offline», effect `chat.reply = queued`) + one Hermes notice to every client.
+### Oracle offline flow (Oracle down)
+1. Argus' monitor cycle sees Oracle down past `argus.oracle.grace` (60 s) → presence signal `oracle.offline` (Chronos
+   overlay «⚠️ Oracle offline», effect `chat.reply = queued`) + one Hermes notice to every client.
 2. Telegram/WebUI: a chat message Oracle does not accept → Archive `/api/chat-queue` + fixed «in coda» reply.
 3. Oracle healthy → Argus clears the signal and closes the notice; Chronos sees `chat.reply` back to `live` and calls each
    client's `capabilities.chat_queue_drain` via Hub; each client replays its queue to Oracle, oldest first.
-SPEC `docs/work/2026-10-19-cervello-offline`.
+SPEC `docs/work/2026-10-19-oracle-offline`.
 
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).

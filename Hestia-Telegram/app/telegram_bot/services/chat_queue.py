@@ -1,7 +1,7 @@
-"""Chat queue — messages written while the brain (Oracle) is offline.
+"""Chat queue — messages written while Oracle is offline.
 
-SPEC docs/work/2026-10-19-cervello-offline §3. A message Oracle did not accept is stored in Archive
-(``/api/chat-queue``, client ``telegram``) and the user gets a fixed reply. When the brain is back, Chronos calls
+SPEC docs/work/2026-10-19-oracle-offline §3. A message Oracle did not accept is stored in Archive
+(``/api/chat-queue``, client ``telegram``) and the user gets a fixed reply. When Oracle is back, Chronos calls
 ``POST /api/chat-queue/drain`` (capability ``chat_queue_drain``); the same drain runs at startup. Oldest first,
 one at a time, each answered as a reply to the original message.
 """
@@ -21,8 +21,8 @@ logger = logging.getLogger("hestia_telegram.chat_queue")
 
 CLIENT = "telegram"
 DRAIN_PATH = "/api/chat-queue/drain"
-FILE_OFFLINE_TEXT = ("🧠 <b>Il cervello è offline</b>: non posso leggere il file adesso. "
-                     "Rimandamelo appena torno.")
+FILE_OFFLINE_TEXT = ("⚠️ <b>Oracle è offline</b>: non posso leggere il file adesso. "
+                     "Rimandamelo quando torna online.")
 _drain_lock = threading.Lock()
 
 
@@ -60,7 +60,7 @@ def enqueue(chat_id, session_id: str, text: str, message_id: int | None, error: 
 def queued_text(item: dict) -> str:
     position = int(item.get("position") or 1)
     where = f" (n° {position})" if position > 1 else ""
-    return (f"🧠 <b>Il cervello è offline</b>: messaggio in coda{where}, "
+    return (f"⚠️ <b>Oracle è offline</b>: messaggio in coda{where}, "
             "ti rispondo appena torna.")
 
 
@@ -107,7 +107,7 @@ def drain(reason: str = "") -> dict:
             if per_chat.get(target, 0) > 1 and target not in headed:
                 headed.add(target)
                 try:
-                    core.bot.send_message(int(target), f"🧠 Rispondo ai {per_chat[target]} messaggi arrivati "
+                    core.bot.send_message(int(target), f"✅ Rispondo ai {per_chat[target]} messaggi arrivati "
                                                        "mentre ero offline.", parse_mode="HTML")
                 except Exception:
                     pass
@@ -142,7 +142,7 @@ def _answer(item: dict) -> tuple[bool, str]:
         send_oracle_questions(chat_id, str(item["session_id"]), result.signals, result.questions)
         return True, ""
     except OracleUnavailable as exc:
-        core.bot.edit_message_text(f"🧠 Il cervello non risponde ancora: resto in coda.\n<code>{escape(str(exc))}</code>",
+        core.bot.edit_message_text(f"⚠️ Oracle non risponde ancora: resto in coda.\n<code>{escape(str(exc))}</code>",
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]
     except Exception as exc:

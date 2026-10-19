@@ -1,7 +1,7 @@
-"""Chat queue storage — messages written while the brain (Oracle) was offline.
+"""Chat queue storage — messages written while Oracle was offline.
 
-Archive only stores (SPEC docs/work/2026-10-19-cervello-offline §3): each chat client queues its own messages
-when Oracle does not answer and replays them when Chronos tells it the brain is back. ``claim`` is a
+Archive only stores (SPEC docs/work/2026-10-19-oracle-offline §3): each chat client queues its own messages
+when Oracle does not answer and replays them when Chronos tells it Oracle is back. ``claim`` is a
 compare-and-set ``queued → answering`` so two drains never answer the same message twice; an item left in
 ``answering`` by a crashed drain is claimable again after ``stale_seconds``.
 """

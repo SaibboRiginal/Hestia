@@ -112,15 +112,15 @@ BUILTIN_STATES: dict[str, dict] = {
                  [_c("health.degraded_services", ">=", "$tired_degraded")]],
         "effects": {"llm.claude": "save", "chat.style": "brief"},
     },
-    # Oracle down longer than argus.brain.grace (signal from Argus, SPEC docs/work/2026-10-19-cervello-offline).
+    # Oracle down longer than argus.oracle.grace (signal from Argus, SPEC docs/work/2026-10-19-oracle-offline).
     # Back to chat.reply=live → Chronos asks the chat clients to answer their queues.
-    "brain_offline": {
-        "kind": "overlay", "priority": 95, "label": "Cervello offline", "emoji": "🧠",
+    "oracle_offline": {
+        "kind": "overlay", "priority": 95, "label": "Oracle offline", "emoji": "⚠️",
         "help": "Oracle non risponde: comandi, notifiche e agenda funzionano; i messaggi in chat restano in coda "
-                "e avranno risposta appena torna. I lavori che usano il cervello aspettano.",
-        "when": [[_c("brain.offline", "true")]],
+                "e avranno risposta appena torna. I lavori che usano Oracle aspettano.",
+        "when": [[_c("oracle.offline", "true")]],
         "effects": {"work.light": "defer", "work.heavy": "defer", "chat.reply": "queued"},
-        "notice": "il cervello è offline, ti rispondo appena torna",
+        "notice": "Oracle è offline, ti rispondo appena torna",
     },
 }
 CORE_STATES = tuple(k for k, v in BUILTIN_STATES.items() if v.get("core"))
