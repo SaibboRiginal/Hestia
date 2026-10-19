@@ -398,7 +398,7 @@ def test_api_chat_attachment_handoff(api):
     assert c.post("/api/finance/tools/import_statement",
                   json={"import_id": out["import_id"], "commit": "true"}).json()["committed"]
     again = c.post("/api/finance/attachments", json={"blob_id": "chatblob"}).json()
-    assert again["handled"] and "ci sono già" in again["text"]
+    assert again["handled"] and "ci sono già tutti" in again["text"]
     assert c.post("/api/finance/attachments", json={"blob_id": "missing"}).json()["handled"] is False
     caps = main._registration()["capabilities"]
     assert caps["attachment_handlers"][0]["path"] == "/api/finance/attachments"

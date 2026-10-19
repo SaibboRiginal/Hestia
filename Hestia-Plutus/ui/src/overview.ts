@@ -3,7 +3,7 @@
  *                     what needs a look (to review, PayPal check, statement import).
  */
 import { HestiaElement, html, nothing } from '@hestia/webui-sdk';
-import { API, PERIOD, addMonths, budgetBar, call, catDot, dayLabel, meta, money, plutusStyles, txRow } from './util';
+import { API, PERIOD, addMonths, budgetBar, call, dayLabel, meta, money, plutusStyles, txRow } from './util';
 
 export class PlutusOverview extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, latest: { state: true }, m: { state: true }, month: { state: true },
@@ -60,8 +60,8 @@ export class PlutusOverview extends HestiaElement {
       ${s.budget ? html`<div class="card col"><div class="between"><span class="small muted">Budget del mese</span>
         <span class="small tnum">${money(s.spent, cur)} / ${money(s.budget, cur)}</span></div>${budgetBar(pct)}</div>` : nothing}
       <div class="card col"><div class="between"><h2>Categorie</h2><button class="link" @click=${() => this.host.navigate('budget')}>Budget ›</button></div>
-        ${s.categories.length ? html`<div class="list">${s.categories.map((c: any) => html`<div class="li" @click=${() => this.host.navigate('movimenti', { categoria: c.id, mese: s.month })}>
-          ${catDot(c)}<div class="grow col" style="gap:4px"><div class="between"><span class="truncate">${c.label}</span>
+        ${s.categories.length ? html`<div class="list">${s.categories.map((c: any, i: number) => html`<div class="li" @click=${() => this.host.navigate('movimenti', { categoria: c.id, mese: s.month })}>
+          <span class="dot" style="background:var(--cal-${(i % 8) + 1})" title="stesso colore del grafico"></span><div class="grow col" style="gap:4px"><div class="between"><span class="truncate">${c.label}</span>
             <span class="tnum small">${money(c.spent, cur)}${c.budget ? html`<span class="muted"> / ${money(c.budget, cur)}</span>` : nothing}</span></div>
             ${budgetBar(c.pct)}</div></div>`)}</div>` : html`<div class="empty">Nessuna spesa in questo mese.</div>`}
       </div>
