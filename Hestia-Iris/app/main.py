@@ -308,17 +308,6 @@ def email_messages(q: str = "", since: str | None = None,
     return {"status": "ok", "query": q, "backend": data.get("backend"), "count": len(rows), "messages": rows}
 
 
-@app.post("/api/email/ingest")
-def email_ingest(body: dict[str, Any]) -> dict[str, Any]:
-    """Trigger a provider mail fetch through Hecate (``/api/ingest/trigger``).
-    Domain modules (Scout) call Iris — Iris owns the email domain."""
-    try:
-        return _hecate("POST", "api/ingest/trigger", body=body, timeout=120) or {"status": "ok"}
-    except HTTPException as exc:
-        logger.warning("[🔄] event=iris_ingest_failed status=%s detail=%s", exc.status_code, exc.detail)
-        return {"status": "error", "detail": str(exc.detail)[:300]}
-
-
 @app.post("/api/email/send")
 def email_send(req: EmailSendRequest) -> dict[str, Any]:
     t0 = time.perf_counter()

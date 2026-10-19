@@ -1,7 +1,7 @@
 """Mail gateway — Gmail via the Google OAuth token only (no IMAP / app passwords).
 
-Iris (email domain) and the ``iris_email`` connector (Scout) reach mail only
-through Hecate. Read needs scope gmail.readonly, send needs gmail.send (both in
+Iris (email domain) reaches mail only through Hecate; the mail watcher (core.mail_watch) is the
+one place that looks for new mail. Read needs scope gmail.readonly, send needs gmail.send (both in
 the default GOOGLE_OAUTH_SCOPES).
 """
 from __future__ import annotations
