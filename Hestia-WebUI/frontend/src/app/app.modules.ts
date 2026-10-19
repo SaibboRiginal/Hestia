@@ -5,8 +5,8 @@ import { Type } from '@angular/core';
  * Each entry becomes a route (/path, lazy loaded) and a sidebar item.
  * Guide: DESIGN-SYSTEM.md § "Add a module".
  * Pages of Hestia modules (client plugins) are NOT listed here: they come from Hub's catalog at runtime
- * (features/plugins, routes /p/<module>/…, dashboards /d/<id>). Notifiche, Comandi & MCP, Sviluppo and Documenti
- * became plugin pages of Hermes, Hestia-MCP, Hephaestus and Oracle: their old paths redirect (app.routes.ts).
+ * (features/plugins, routes /p/<module>/…, dashboards /d/<id>). Agenda, Notifiche, Comandi & MCP, Sviluppo and Documenti
+ * became plugin pages of Chronos, Hermes, Hestia-MCP, Hephaestus and Oracle: their old paths redirect (app.routes.ts).
  */
 export interface AppModule {
   path: string;
@@ -21,8 +21,6 @@ export const APP_MODULES: AppModule[] = [
     load: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent) },
   { path: 'chat', label: 'Chat', icon: 'chat',
     load: () => import('./features/chat/chat-page.component').then(m => m.ChatPageComponent) },
-  { path: 'calendar', label: 'Agenda di Hestia', icon: 'calendar',
-    load: () => import('./features/calendar/calendar-page.component').then(m => m.CalendarPageComponent) },
   { path: 'settings', label: 'Impostazioni', icon: 'settings', bottom: true,
     load: () => import('./features/settings/settings-page.component').then(m => m.SettingsPageComponent) },
 ];

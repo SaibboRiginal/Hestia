@@ -4052,12 +4052,33 @@ paths:
       responses:
         "200": {description: "[{id (item key), item_id, label, owner, icon, state: late, status, at, detail, hint}]"}
 
+  /api/agenda/logs:
+    get:
+      tags: [Chronos]
+      summary: A module's logs around an occurrence (Agenda «Log del modulo»)
+      description: |
+        Chronos reads `{service}/api/logs` through Hub (the module's in-memory buffer, last 2000 lines) and keeps the
+        lines within `at ± minutes`. Old occurrences may return nothing (`oldest` says how far the buffer goes).
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: service, in: query, required: true, schema: {type: string, pattern: "^[a-z0-9_-]{2,40}$"}}
+        - {name: at, in: query, required: true, schema: {type: string, format: date-time}}
+        - {name: minutes, in: query, schema: {type: integer, default: 5, minimum: 1, maximum: 120}}
+        - {name: level, in: query, schema: {type: string}}
+        - {name: contains, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{service, from, to, count, oldest, logs: [{ts, level, message, ...}]}"}
+        "400": {description: bad service or at}
+        "502": {description: module unreachable}
+
   /chronos/api/ui/manifest:
     get:
       tags: [Chronos]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/agenda/)
       description: |
-        Page `esecuzioni` (chronos-runs, order 150), widget `falliti` «Job falliti» (chronos-failed-widget, auto),
+        Pages `agenda` «Agenda di Hestia» (chronos-agenda, order 150; WebUI /calendar redirects here) and `esecuzioni`
+        (chronos-runs, order 151, parent agenda), widget `falliti` «Job falliti» (chronos-failed-widget, auto),
         quick action `riprova` «Riprova job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
       servers:
         - url: http://localhost:19007

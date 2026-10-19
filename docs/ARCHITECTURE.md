@@ -139,8 +139,8 @@ User interface relay for chat, file attachments, and clear session commands.
 
 ### Hestia-WebUI 🌐
 Web client (.NET 9 backend + Angular frontend, port 19015).
-- Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, Google-like calendar of the assistant
-  agenda, "Crea con Hestia" drawer. Everything else is a module plugin page: Sviluppo (Hephaestus), Notifiche (Hermes),
+- Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, "Crea con Hestia" drawer. Everything
+  else is a module plugin page: Agenda (Chronos, Google-like calendar; ICS feed stays a WebUI path), Sviluppo (Hephaestus), Notifiche (Hermes),
   Comandi & MCP + Accessi AI (Hestia-MCP), Documenti (Oracle) and the core inside views; old routes redirect.
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`/webui_token`).

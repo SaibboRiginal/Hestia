@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, signal } from '@angular/core';
 import { BadgeComponent, ButtonComponent, IconComponent, PopoverComponent, SpinnerComponent } from '../../ui';
-import { fmt } from '../calendar/date-utils';
+import { fmt } from '../../ui/date-utils';
 import { CentralSettingsApi, HistoryRow, SettingItem } from './central-settings.api';
 import { CentralSettingsStore, isModified } from './central-settings.store';
 import { SettingControlComponent } from './setting-control.component';

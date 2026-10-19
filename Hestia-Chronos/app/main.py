@@ -66,9 +66,12 @@ ui = PluginClient("chronos", title="Chronos", icon="repeat", color="amber", kind
                   description="L'agenda dell'assistente al lavoro: esecuzioni dei job, errori, regole per modulo.",
                   version=os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
-         pages=[page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=150,
+         pages=[page("agenda", "Agenda di Hestia", element="chronos-agenda", icon="calendar", order=150,
+                     help="Il calendario dell'assistente: eventi, task, job e finestre di ogni modulo, in vista giorno, "
+                          "settimana, mese o elenco. Crea, sposta, salta o annulla; i tuoi cambi vincono sui moduli."),
+                page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=151, parent="agenda",
                      help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
-                          "è durata, e le regole registrate da ogni modulo. Il calendario resta in Agenda.")],
+                          "è durata, e le regole registrate da ogni modulo.")],
          widgets=[widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
                          open_page="esecuzioni", icon="alert",
                          help="Job dell'agenda falliti nelle ultime 24 ore, con «Riprova».")],
@@ -979,6 +982,53 @@ def agenda_runs(owner: str | None = None, status: str | None = Query(None, descr
 def agenda_runs_failed(hours: float = Query(24, ge=1, le=24 * 30)) -> list[dict]:
     """Chips of the quick action «Riprova job»: jobs whose last run failed (id = item key)."""
     return assistant_agenda.failed_jobs(since=_since(None, hours))
+
+
+_LOG_SERVICE_RE = __import__("re").compile(r"^[a-z0-9_-]{2,40}$")
+
+
+@app.get("/api/agenda/logs")
+def agenda_logs(service: str, at: str, minutes: int = Query(5, ge=1, le=120), level: str | None = None,
+                contains: str | None = None) -> dict:
+    """«Log del modulo» of the calendar page: the service's own ``/api/logs`` (in-memory buffer, recent hours) read
+    through Hub and cut to ``at ± minutes``. Under the plugin's api_prefix so the page needs nothing else."""
+    import requests
+
+    if not _LOG_SERVICE_RE.match(service or ""):
+        raise HTTPException(status_code=400, detail="invalid service")
+    try:
+        center = datetime.fromisoformat(at.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="at must be an ISO datetime")
+    if center.tzinfo is None:
+        center = center.replace(tzinfo=timezone.utc)
+    lo, hi = center - timedelta(minutes=minutes), center + timedelta(minutes=minutes)
+    query = {"limit": "2000", **({"level": level} if level else {}), **({"contains": contains} if contains else {})}
+    hub_api_url = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    try:
+        resp = requests.post(f"{hub_api_url}/route/{service}/api/logs",
+                             json={"method": "GET", "headers": {}, "query": query, "body": None, "timeout_seconds": 15},
+                             timeout=20)
+        routed = resp.json() if resp.content else {}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[🔄] event=agenda_logs_failed service=%s error=%s", service, exc)
+        raise HTTPException(status_code=502, detail=f"{service} non raggiungibile")
+    status = int((routed or {}).get("status_code", 502))
+    if status >= 400:
+        raise HTTPException(status_code=502 if status >= 500 else status, detail=f"{service}: log non disponibili")
+    rows, oldest = [], None
+    for row in ((routed.get("payload") or {}).get("logs") or []):
+        try:
+            ts = datetime.fromisoformat(str(row.get("ts")).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        oldest = oldest or row.get("ts")
+        if lo <= ts <= hi:
+            rows.append(row)
+    return {"service": service, "from": lo.isoformat(), "to": hi.isoformat(), "count": len(rows), "oldest": oldest,
+            "logs": rows}
 
 
 class AgendaTemplates(BaseModel):

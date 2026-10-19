@@ -251,6 +251,7 @@ Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST
 | POST | `/api/agenda/parse` | Natural-language quick add `{text, tz?}` → `draft {title, type, start_at, end_at, recurrence, description}` (Oracle `/api/llm/generate` through Hub, Chronos validates; nothing created) |
 | GET | `/api/agenda/ics?days=60&past_days=7&owner=&types=event,task,window` | Read-only iCalendar feed (expanded occurrences, skips/moves applied; jobs excluded by default) |
 | GET | `/api/agenda/runs?owner=&status=ok\|failed\|skipped&since=\|hours=&limit=100` | Every recorded run of jobs/tasks (from `meta.runs`) + skipped past occurrences, newest first, with `summary {ok, failed, skipped, avg_ms, failed_items}` and `owners` (rules registered per module: active / paused / failed / changed by the user, per type) — plugin page *Esecuzioni* |
+| GET | `/api/agenda/logs?service=&at=&minutes=5&level=&contains=` | A module's logs around an occurrence: Chronos reads `{service}/api/logs` through Hub (its in-memory buffer, last 2000 lines) and keeps `at ± minutes` (1–120); `{service, from, to, count, oldest, logs}`; module unreachable → 502 (`[🔄] event=agenda_logs_failed`) — Agenda *Log del modulo* |
 | GET | `/api/agenda/runs/failed?hours=24` | Chips `[{id: key, label, owner, at, detail, state: late}]` of jobs whose last run failed (or stopped `failed`) — source of the quick action *Riprova job* |
 
 **Run log**: every execution (tick or "run now") is appended to `meta.runs` (last 50:
@@ -293,10 +294,16 @@ nothing stops; a rule the user **paused/cancelled** is a decision and is respect
 
 Core module (`kind: "core"`, WebUI *Sistema* section, order 150), `api_prefix` `/api/agenda/` (Chronos' own
 agenda routes: no duplicate endpoints):
+- page **Agenda di Hestia** (`chronos-agenda`, order 150, since 2026-10-19; `/calendar` redirects to
+  `/p/chronos/agenda`): the calendar moved from the WebUI (`ui/src/agenda.ts` + `ui/src/cal/`) with the same
+  behaviour (month/week/day/list, mini calendar, filters, popover details, editor with recurrence, wizard *Da un
+  modulo…*, quick add, drag & drop, skip/move one occurrence or the whole series, run now, *Chiedi a Hestia*
+  through the host assistant, *Apri in Sviluppo* for Forge items). Edits are sent `by=user`. *Log del modulo*
+  reads `GET /api/agenda/logs`; the phone ICS feed stays a WebUI path (`/api/webui/agenda/feed.ics?key=`).
 - page **Esecuzioni** (`chronos-runs`): runs of the assistant agenda (riuscito / fallito / saltato, time, module,
   duration, started by the agenda or by hand, error detail), filters by outcome / period / module, *Riprova* on a
-  failed run, and **Regole per modulo** (what each module registered, paused, stopped, changed by the user). The
-  calendar stays the WebUI **Agenda** page (it moves to this plugin in P6). Each item keeps its last 50 runs.
+  failed run, and **Regole per modulo** (what each module registered, paused, stopped, changed by the user); it
+  sits under Agenda (order 151). Each item keeps its last 50 runs.
 - widget **Job falliti** (`chronos-failed-widget`, s/m, auto): jobs failed in the last 24 h with *Riprova*.
 - quick action **Riprova job** (dynamic: `source` `/api/agenda/runs/failed`, `POST /api/agenda/items/{id}/run`
   = the existing run-now). When a manual run of a rule stopped as `failed` works, the rule goes back on (recurring →

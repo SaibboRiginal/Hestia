@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.5 |
+| **Version** | 2.6 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-18 |
-| **Status** | Approved 2026-10-18 (Marko, card) — P1–P6 built (Agenda page still built-in, follow-up), see PROGRESS.md |
+| **Status** | Approved 2026-10-18 (Marko, card) — P1–P6 built (Agenda included, 2026-10-19), see PROGRESS.md |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -296,8 +296,10 @@ Owner: **Hestia-MCP** (it is the door for tools). Page **Accessi** in its plugin
   (Hestia-MCP, 190, Accessi 191 under it) are plugin pages; old WebUI routes `/notifications`, `/documents`, `/forge`,
   `/commands` redirect keeping the query; old Angular pages and `Forge`/`Commands`/`Files` controllers removed. The
   WebUI keeps the notification badge-free shell, toasts and seen-on-push (mode shared with the plugin page).
-  **Agenda** stays the built-in WebUI page for now: its plugin port (`Hestia-Chronos/ui/src/cal/`) is half done and
-  not registered; finishing it is the next change.
+  **Agenda** (v2.6): Chronos page `agenda` (150) with *Esecuzioni* under it (151); same calendar as before
+  (`ui/src/agenda.ts` + `ui/src/cal/`), `/calendar` redirects, `features/calendar` removed. *Log del modulo* is
+  Chronos `GET /api/agenda/logs` (under its api_prefix); `AgendaController` keeps only the ICS feed (phones use
+  `?key=WEBUI_ICS_KEY`, not a WebUI token).
 - Chronos *Riprova*: a manual run that works puts a rule stopped as `failed` back on (`reactivated: true`).
 
 Each phase updates the module `.md`, swagger, README/ARCHITECTURE where touched, this dossier and the root CHANGELOG.

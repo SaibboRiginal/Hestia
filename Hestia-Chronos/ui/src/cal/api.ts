@@ -11,6 +11,9 @@ export interface AgendaDraft { title: string; type: AgendaType; start_at: string
 export type TemplateBody = { values: Record<string, unknown>; start_at: string; end_at?: string | null;
                              recurrence?: string | null; type?: string; description?: string };
 
+export interface LogRow { ts: string; level: string; message: string; }
+export interface LogsResult { service: string; from: string; to: string; count: number; oldest: string | null; logs: LogRow[]; }
+
 export class AgendaError extends Error { constructor(msg: string, readonly offline = false) { super(msg); } }
 
 const enc = encodeURIComponent;
@@ -60,6 +63,10 @@ export class AgendaApi {
   async parse(text: string): Promise<AgendaDraft> {
     const r = await this.call<{ draft: AgendaDraft }>('POST', '/parse', { body: { text, tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
     return r.draft;
+  }
+  /** A module's logs around an occurrence (its in-memory buffer: recent hours only), read by Chronos through Hub. */
+  logs(service: string, at: string, minutes = 5) {
+    return this.call<LogsResult>('GET', '/logs', { query: { service, at, minutes } });
   }
   /** The read-only iCalendar file (the Hub hands non-JSON answers over as {raw}). */
   async ics(): Promise<string> {

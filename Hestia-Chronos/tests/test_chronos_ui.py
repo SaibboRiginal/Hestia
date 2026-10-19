@@ -94,8 +94,10 @@ class TestUiEndpoints:
         assert m["module"] == "chronos" and m["kind"] == "core"
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/agenda/" and web["entry"] == "/ui/webui/chronos.js"
-        # The calendar stays the WebUI's built-in Agenda until its plugin page is complete (P6 follow-up).
-        assert [p["id"] for p in web["page"]] == ["esecuzioni"] and web["page"][0]["order"] == 150
+        pages = {p["id"]: p for p in web["page"]}
+        assert pages["agenda"]["order"] == 150 and pages["agenda"]["element"] == "chronos-agenda"
+        assert pages["agenda"]["parent"] == "" and not pages["agenda"]["detail"]
+        assert pages["esecuzioni"]["parent"] == "agenda" and pages["esecuzioni"]["order"] == 151
         assert web["widget"][0]["id"] == "falliti"
         qa = web["quick_action"][0]
         assert qa["path"] == "/api/agenda/items/{id}/run" and qa["source"] == "/api/agenda/runs/failed"
@@ -118,6 +120,26 @@ class TestUiEndpoints:
         lo, hi = ag.call_args.args
         assert (hi - lo).days == 7 and ag.call_args.kwargs["include_done"] is True
         assert client.get("/api/agenda/occurrences", params={"start": "boh"}).status_code == 400
+
+    def test_logs_endpoint_cuts_the_module_buffer_around_the_occurrence(self):
+        import main as chronos_main
+        rows = [{"ts": "2026-10-19T10:00:00+00:00", "level": "INFO", "message": "early"},
+                {"ts": "2026-10-19T10:58:00+00:00", "level": "INFO", "message": "near"},
+                {"ts": "2026-10-19T11:03:00Z", "level": "ERROR", "message": "near too"},
+                {"ts": "boh", "level": "INFO", "message": "bad ts"}]
+
+        class _R:
+            content = b"x"
+            def json(self):
+                return {"status_code": 200, "payload": {"logs": rows}}
+        with patch("requests.post", return_value=_R()) as post:
+            body = _client().get("/api/agenda/logs", params={"service": "scout", "at": "2026-10-19T11:00:00Z",
+                                                             "minutes": 5}).json()
+        assert "/route/scout/api/logs" in post.call_args.args[0]
+        assert [r["message"] for r in body["logs"]] == ["near", "near too"] and body["oldest"] == rows[0]["ts"]
+        client = _client()
+        assert client.get("/api/agenda/logs", params={"service": "../x", "at": "2026-10-19T11:00:00Z"}).status_code == 400
+        assert client.get("/api/agenda/logs", params={"service": "scout", "at": "ieri"}).status_code == 400
 
     def test_failed_endpoint(self, agenda):
         rows = _client().get("/api/agenda/runs/failed", params={"hours": 24 * 30}).json()

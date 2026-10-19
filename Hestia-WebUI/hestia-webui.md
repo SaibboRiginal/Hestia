@@ -79,13 +79,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
-| GET | `/api/webui/agenda/occurrences?start&end` | Assistant agenda occurrences (→ Chronos `/api/agenda`) |
-| GET/POST | `/api/webui/agenda/items` | Items list / create (owner user) |
-| PATCH/DELETE | `/api/webui/agenda/items/{key}` | Change (by=user) / cancel |
-| POST | `/api/webui/agenda/items/{key}/skip` · `unskip` · `move` · `run` | Skip/restore occurrence, move one occurrence (exception), run now |
-| POST | `/api/webui/agenda/parse` | Natural-language quick add → draft (→ Chronos `/api/agenda/parse`) |
-| GET | `/api/webui/agenda/logs?service&at&minutes&contains` | Logs of a service around an occurrence: `{svc}/api/logs` (in-memory buffer) filtered to `at ± minutes` |
-| GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only) |
+| GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only). The rest of the agenda API moved with the page into Chronos's plugin (2026-10-19) |
 | GET | `/api/webui/notifications?filter&source&before&limit` · `counts` | Inbox (→ Hermes `/api/notifications`, `client=webui`); the Notifiche page itself is Hermes' plugin |
 | POST | `/api/webui/notifications/{id}/seen` · `seen-all` · `{id}/answer` | Global read state; answer (`{actionId}`, 409 = already handled elsewhere) |
 | POST | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`), **internal network only** (not proxied, private IP): pushes `ReceiveNotification` on SignalR to every open browser; `retract` ignored (the inbox keeps everything); repeat chains: `update superseded` removes the old item from the Notifiche page, `repeat.text` shown as a badge on cards and in the toast |
@@ -135,7 +129,8 @@ Toasts (*tutte / solo importanti / nessuno*) are a per-browser preference in the
 ### Frontend structure (rewritten 2026-10-03)
 
 Claude-like design system with themes (`src/app/core/theme`), UI kit (`src/app/ui`), shell with module registry
-(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
+(`src/app/app.modules.ts`) and lazy feature pages: **Chat**, **Agenda di Hestia** (since 2026-10-19 Chronos's plugin page
+`/p/chronos/agenda`, `/calendar` redirects; `Hestia-Chronos/ui/src/agenda.ts` + `ui/src/cal/`; calendar: month/week/day/list — list has an *Adesso* divider and the outcome of past items —
 sidebar mini-calendar + layers + module/type filters, popover details, editor with recurrence builder, drag & drop
 move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "whole series"), **Comandi & MCP**
 (tools from Hestia-MCP `tools/list` as client `webui`, run with `tools/call` — `HubClient.McpListToolsAsync` /
@@ -165,7 +160,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   commit detail (files + diff), file browser at any ref (markdown preview), branches with ahead/behind and Forge
   task links, compare, tags, `docs/work` dossiers with version/status/progress, root CHANGELOG.
 - Live: while a task works the page polls every 4 s (task + new transcript events), files every ~12 s;
-  the list refreshes every 15 s. Deep link `/forge?task=<id>` (calendar Forge items: **Apri in Sviluppo**),
+  the list refreshes every 15 s. Deep link `/forge?task=<id>` (Agenda Forge items: **Apri in Sviluppo** → `/p/hephaestus/sviluppo?task=`),
   `/forge?view=repo`.
 - Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
   (list → task with back button).
@@ -231,7 +226,10 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Live refresh: `AssistantService.changed$` fires on `agenda.planned` / `action.done` / `forge.task` /
   subscription notices (from the drawer or the chat) → calendar and Sviluppo reload.
 
-### Calendar view rules (2026-10-04, `features/calendar/calendar.prefs.ts`)
+### Calendar view rules (2026-10-04; since 2026-10-19 in Chronos's Agenda plugin, `Hestia-Chronos/ui/src/cal/prefs.ts`)
+
+The page asks Hestia through the plugin host (`host.assistant(...)`), logs come from Chronos
+`GET /api/agenda/logs` and edits are sent with `by=user` by the plugin itself.
 
 - **Navigation**: header arrows step by view (tooltip says "Giorno/Settimana/Mese precedente"); mini calendar →
   focuses that day (highlighted in every view; from month view it opens the day view, otherwise nothing visible
@@ -248,7 +246,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   reached); one-off module items always; past module items only when failed, last 7 days, one per rule
   ("fallito ×N"). All thresholds editable; stored per browser with the other calendar prefs.
 - **Create**: split "Nuovo" → *Evento libero* (generic editor) or *Da un modulo…* (wizard: pick a module template
-  → fields + when/repeat → review). Templates come from the modules (`GET /api/webui/agenda/templates` → Chronos);
+  → fields + when/repeat → review). Templates come from the modules (Chronos `GET /api/agenda/templates`);
   created items are yours (`created_by=user`) and run the module action.
 - **Aggiungi rapido** (sidebar, under Nuovo): "domani alle 15 dentista" → Chronos/Oracle parse → editor prefilled
   (you confirm). Failure → editor with the text as title.

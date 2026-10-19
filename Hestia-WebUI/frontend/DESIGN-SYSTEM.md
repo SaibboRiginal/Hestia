@@ -87,8 +87,8 @@ export class NotesPageComponent {}
 ```
 
 3. Backend: add `Hestia-WebUI/app/Controllers/NotesController.cs` that proxies to the owning service via
-   `HubClient` (see `AgendaController.cs`). The token middleware already protects `/api/webui/*`.
-4. State: a `@Injectable({providedIn:'root'})` store with signals (see `features/calendar/calendar.store.ts`),
+   `HubClient` (see `AgendaController.cs`, the ICS feed). The token middleware already protects `/api/webui/*`.
+4. State: a `@Injectable({providedIn:'root'})` store with signals (see `services/notifications.service.ts`),
    API calls in a small `*.api.ts` service; errors → `ToastService`.
 5. Document the module in `Hestia-WebUI/hestia-webui.md` and follow the work protocol (`CLAUDE.md`).
 
@@ -112,11 +112,12 @@ export class NotesPageComponent {}
 
 ## 6. Calendar module (reference implementation)
 
-`features/calendar/`: `calendar.store.ts` (state, ranges, filters, actions), `agenda.api.ts`
-(`/api/webui/agenda/*` → Chronos), views `time-grid` (week/day: windows as bands, overlap columns, pointer
-drag/resize with 15-min snap), `month-view` (window bars, chips grouped ×N, HTML5 drag between days),
-`list-view`, `mini-calendar`, `event-details` (popover), `event-editor` (modal, RRULE builder).
-Sources/layers: `CalendarSource` (`kind: 'ai' | 'external'`) — external calendars plug in there.
+Since 2026-10-19 the Agenda is Chronos's plugin page (`/p/chronos/agenda`, `/calendar` redirects), written with
+the plugin SDK (§7): `Hestia-Chronos/ui/src/agenda.ts` (page: layout, actions, dialogs) and
+`ui/src/cal/`: `store.ts` (state, ranges, filters), `api.ts` (Chronos `/api/agenda*` through `host.api`), `views/timegrid.ts` (week/day: windows as bands,
+overlap columns, pointer drag/resize with 15-min snap), `views/month.ts`, `views/list.ts`, `mini.ts`, `details.ts`
+(popover), `editor.ts` (modal, RRULE builder), `wizard.ts` (module templates). Only the ICS feed stays in the
+WebUI (`AgendaController`). Sources/layers: `CalendarSource` (`kind: 'ai' | 'external'`) — external calendars plug in there.
 
 ## 6b. Assistant drawer
 
