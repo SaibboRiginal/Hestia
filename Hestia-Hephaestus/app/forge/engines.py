@@ -111,7 +111,7 @@ class BuiltinEngine(Engine):
     _MIN_BUDGET = 8000
 
     def __init__(self, cfg: ForgeConfig, name: str = "oracle"):
-        from core.capabilities import FORGE_USECASE
+        from ..core.capabilities import FORGE_USECASE
         self.cfg = cfg
         self.name = name
         self.use_case = FORGE_USECASE

@@ -9,9 +9,10 @@
 - [x] P4 WebUI Cervello tabs Uso + Modelli (chain editor); Sistema links the object settings to it
 - [x] P5 External agent mode: `oracle.brain.*`, stdio MCP bridge, Claude Code + Codex adapters, session cache, fallback interna, `ORACLE_INSTALL_CODEX`
 - [x] P6 Docs (oracle, hephaestus, archive, scout, athena, argus, chronos, wardrobe, metis, shared md, swagger, .env.example, compose, ARCHITECTURE, AI-GUIDE, readme, TESTING), SPEC v1.2, root CHANGELOG
-- [ ] Cloud bench run (`python tools/cloud_test.py all`) on this branch
+- [x] Cloud bench run (`python tools/cloud_test.py all`): all up and smoke ok except Hephaestus crash-looping on `from core.capabilities` (bare import, hidden by the test sys.path) → relative import + regression test that imports the engine like the container
+- [ ] Bench re-run after the Hephaestus fix
 - [ ] PR opened, CI green, merged
 - [ ] Marko real run: add keys `ORACLE_KEY_*`, check Cervello → Modelli and Uso, try brain mode Esterna with Claude Code
 
-Tests: Oracle 465, Archive 23, Hephaestus 42, Scout 21, Athena 102, Argus 18, Chronos 41, Metis 25, Wardrobe 19 pass;
+Tests: Oracle 465, Archive 23, Hephaestus 43, Scout 21, Athena 102, Argus 18, Chronos 41, Metis 25, Wardrobe 19 pass;
 Oracle and Hephaestus UI typecheck + bundle build; Angular `ng build` ok.
