@@ -19,6 +19,7 @@ from core.registry import get_fetcher_class, FETCHER_REGISTRY
 from core.archive_client import ArchiveClient
 from core.state_manager import StateManager
 from core import google_oauth
+from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
                                   settings as hecate_settings)
 
@@ -770,6 +771,12 @@ def gateway_providers():
         "providers": providers,
         "runtime": _calendar_registry.status_report(),
     }
+
+
+@app.get("/api/gateway/outbound/mcp")
+def gateway_outbound_mcp():
+    """Third-party MCP servers Hestia may use (credentials in .env, Hecate's): names, host and status only."""
+    return {"status": "ok", "servers": outbound_servers(), "how_to": OUTBOUND_HOW_TO}
 
 
 @app.get("/api/gateway/auth/status")

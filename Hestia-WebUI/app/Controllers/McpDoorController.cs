@@ -31,7 +31,7 @@ public class McpDoorController : ControllerBase
     {
         var auth = Request.Headers.Authorization.FirstOrDefault() ?? "";
         if (!auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            return Unauthorized401("Missing bearer token");
+            return Unauthorized401("Missing bearer token", invalidToken: false);
 
         JsonElement body;
         try
@@ -49,7 +49,7 @@ public class McpDoorController : ControllerBase
         _logger.LogInformation("event=mcp_door_call status={Status}", status);
 
         if (status == 202) return StatusCode(202);
-        if (status == 401) return Unauthorized401(null, payload);
+        if (status == 401) return Unauthorized401(null, invalidToken: true, payload);
         if (status == 429) Response.Headers.RetryAfter = "60";
         return new ContentResult
         {
@@ -68,9 +68,13 @@ public class McpDoorController : ControllerBase
         return StatusCode(405);
     }
 
-    private IActionResult Unauthorized401(string? message, JsonElement? payload = null)
+    /// <summary>401 with the RFC 9728 challenge: OAuth clients (claude.ai, ChatGPT) learn where to start from it.</summary>
+    private IActionResult Unauthorized401(string? message, bool invalidToken, JsonElement? payload = null)
     {
-        Response.Headers.WWWAuthenticate = "Bearer";
+        var basePublic = OAuthDoorController.PublicBase(Request) ?? "http://localhost:19015";
+        var error = invalidToken ? "error=\"invalid_token\", " : "";
+        Response.Headers.WWWAuthenticate =
+            $"Bearer {error}resource_metadata=\"{basePublic}/.well-known/oauth-protected-resource/mcp\"";
         if (payload is { ValueKind: JsonValueKind.Object } p)
             return new ContentResult { StatusCode = 401, ContentType = "application/json", Content = p.GetRawText() };
         return StatusCode(401, new { jsonrpc = "2.0", id = (object?)null, error = new { code = -32001, message } });
