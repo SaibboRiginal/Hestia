@@ -17,8 +17,8 @@ Scout is also an event producer for proactive workflows: when entities are creat
 ## Pipeline
 
 ```
-[Hecate: IrisEmailFetcher]
-        │  raw emails
+[Hecate watcher → Iris dispatch]  ← push: Iris stores listing mails in Archive, rings /api/scout/mail
+        │  raw emails (Archive, real_estate, unevaluated)
         ▼
 [Scout: pre_parser.py]          ← URL extraction, zero LLM calls
         │  url→record_id map
@@ -39,8 +39,8 @@ Scout is also an event producer for proactive workflows: when entities are creat
                              [Hermes: entity.upserted event]
 ```
 
-1. **Startup:** Scout targets Hecate `iris_email` source for email retrieval.
-2. **Scheduled fetch:** Scout calls Hecate (via Hub route) to retrieve new domain emails.
+1. **Startup:** Scout subscribes to Iris (`MailClient("scout")`, key `listings`, rules from `scout.mail.*`) and runs one cycle on the mails that arrived while it was down.
+2. **Push:** Hecate's watcher sees new mail, Iris stores the matching ones in Archive (`real_estate`, `reference_id = mail:real_estate:<gmail id>`) and calls `POST /api/scout/mail` → the cycle runs on the unevaluated records. Scout never polls mail.
 3. **Pre-parse (no LLM):** `pre_parser.py` strips HTML, extracts `[PROPERTY_LINK: url]` markers from every record. Builds a `url → record_id` map and a `record_id → clean_text` map.
 4. **Deduplication:** `archive_client.get_all_entity_ids()` fetches all known property URLs from Archive. New vs. existing URLs are classified without any LLM call.
 5. **Status update path (existing):** For known entities whose URL appeared in the new emails, `StatusUpdater` runs a regex keyword scan on the email text to detect `listing_status` changes (`available → in_negotiation → sold` etc.). If the status changed, only the `listing_status` field is patched in Archive — no full LLM extraction.
@@ -48,9 +48,9 @@ Scout is also an event producer for proactive workflows: when entities are creat
 7. **LLM extraction (new entities only):** The minimal representative set is passed to the LLM extractor in batches. The LLM extracts structured property data including `listing_status`.
 8. **Storage:** Structured listings are saved to Archive under the `real_estate` domain.
 9. **Event emission:** Scout publishes `entity.upserted` event to Hermes (via Hub routing).
-10. **Mark parsed:** All processed Hecate-sourced records are marked parsed regardless of which path handled them.
+10. **Mark parsed:** All processed mail records are marked parsed regardless of which path handled them.
 11. **Availability:** Oracle queries module tools / Archive for `real_estate` data.
-12. **Shutdown:** Scout stops scheduled cycles (no direct connector deregistration needed).
+12. **Shutdown:** nothing to stop (no polling; mails arriving meanwhile wait in Archive).
 
 ---
 
@@ -118,7 +118,9 @@ Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 | `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
 | `POST` | `/api/scout/cycle` | Run the email → listings cycle `{trigger, wait}` (default async; one cycle at a time, `busy` otherwise) |
-| `GET` | `/api/scout/cycle` | Cycle state: running, last start/finish/trigger/error, agenda job, interval |
+| `GET` | `/api/scout/cycle` | Cycle state: running, last start/finish/trigger/error, `mail: push`, subscription `scout:listings` |
+| `POST` | `/api/scout/mail` | Iris doorbell `{owner, key, domain, count, reference_ids, source}` → runs the cycle (async) on the pending records |
+| `POST` | `/api/scout/check` | «Controlla email»: Iris backfill of the last day + cycle (MCP tool `scout_fetch`) |
 | `GET` | `/api/ui/manifest` | WebUI plugin manifest (`hestia_common.plugin_client`) |
 | `GET` | `/ui/webui/scout.js` | Plugin bundle (built in the image from `ui/`) |
 | `GET` | `/api/ui/listings` | Listings for the plugin: `q, city, status, flag (''=da valutare, favorite, discarded, all), price_min/max, rooms_min, surface_min, days, sort (new, price_asc, price_desc, ppm2, surface), offset, limit` → `{total, items, cities, statuses}` |
@@ -127,7 +129,7 @@ Per-call timeout = central setting `scout.llm.timeout` (default 120 s, live).
 | `POST/DELETE` | `/api/ui/listings/{key}/favorite` | Quick action "Preferita" and its undo |
 | `GET` | `/api/ui/stats?city=` | KPI, new per week (8), by status, price by city, cities |
 | `GET` | `/api/ui/quick/new` | Home chips: newest listings not yet marked |
-| `POST/GET` | `/api/ui/cycle` | Same as `/api/scout/cycle` (async) / its state, for the plugin |
+| `POST/GET` | `/api/ui/cycle` | POST = same as `/api/scout/check` (backfill + cycle); GET = cycle state, for the plugin |
 
 ### WebUI plugin (2026-10-17, dossier `docs/work/2026-10-17-client-plugins/`)
 
@@ -145,14 +147,16 @@ the Node stage of the Dockerfile; `ui/dist/` is git-ignored). The image keeps th
 - `entity.upserted` events carry `_link: {module: scout, page: case/<key>, list: case}`; the WebUI notification gets
   an "Apri" button (several listings in one batch → the list page).
 
-### Schedule = assistant agenda job
+### Mail by push (Iris subscription, 2026-10-19)
 
-The cycle is the agenda job **`scout.email_cycle`** (every `scout.cycle.interval`, default 1800 s = 30 min;
-a change re-declares the agenda default, a job you edited in the agenda keeps your edit),
-registered at boot in Hestia's agenda (Chronos) and fired through Hub → `POST /api/scout/cycle`. You see it in
-"agenda di Hestia" and can move it, pause it, skip one run or run it now. One cycle runs at boot.
-Fallback: Scout checks every minute; if Chronos is unreachable, the job is missing or it has not fired for
-3× the interval, Scout runs the cycle itself (`[🔄] event=scout_cycle_fallback`). A job you paused is respected.
+Scout has **no mail polling job**. At boot it subscribes to Iris (`hestia_common.mail_client`, subscription
+`scout:listings`, path `/api/scout/mail`, domain `real_estate`; senders from `scout.mail.senders`, or the Gmail queries
+of `scout.mail.filter_queries` when set), re-asserted hourly and refreshed at once when those settings change. A new
+or changed rule gets a 7-day backfill from Iris. One cycle runs at boot for mails that waited in Archive.
+The old 30-minute agenda job `scout.email_cycle` is retired on existing installs (`AgendaClient.retire`), and the
+setting `scout.cycle.interval`, the agenda template `extra_check` and the fallback loop are gone.
+«Controlla ora» (plugin quick action, `scout_fetch`) = Iris backfill (last day) + cycle. Reconcile/enrichment keep
+their own cadence (`scout.reconcile.every_cycles` counts cycles, now one per push).
 
 ### Worker batching policy
 - `scout.batch.min_size=1` (no hard wait for 5 items)
@@ -217,9 +221,8 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 
 | Key | Type | Default | Effect |
 |---|---|---|---|
-| `scout.cycle.interval` | int (s, 60–86400) | `1800` | Default recurrence of agenda job `scout.email_cycle` + fallback period |
-| `scout.mail.senders` | list | `nonrispondere@idealista.it`, `noreply@notifiche.immobiliare.it` | Portal senders → `FROM "<sender>"` mail searches |
-| `scout.mail.filter_queries` | list | `[]` | Explicit mail search queries (advanced); non-empty → senders ignored |
+| `scout.mail.senders` | list | `nonrispondere@idealista.it`, `noreply@notifiche.immobiliare.it` | Portal senders (addresses or domains) → `senders` of the Iris subscription |
+| `scout.mail.filter_queries` | list | `[]` | Explicit Gmail queries (advanced, `queries` of the subscription); non-empty → senders ignored |
 | `scout.batch.min_size` | int | `1` | Min new emails before extraction |
 | `scout.batch.max_size` | int | `5` | Emails per model call |
 | `scout.batch.debounce` | int (s) | `45` | Wait to gather near-simultaneous mails (0 = none) |

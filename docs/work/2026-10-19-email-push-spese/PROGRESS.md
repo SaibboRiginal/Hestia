@@ -9,4 +9,4 @@
 - [x] P4 Statements: preview/commit/undo, PayPal↔bank linking, recurring; chat PDF via Oracle `attachment_handlers` hand-off (Oracle 4 new tests, 414 green; Plutus 25 green)
 - [x] P5 Plugin «Spese»: panoramica, movimenti + dettaglio + form, budget, abbonamenti, importa (PDF + email PayPal), statistiche, categorie e regole, widget mese/ultimi; riepilogo mensile, avvisi budget e promemoria estratto (agenda → Hermes). Icone wallet/upload/target/mail aggiunte a WebUI e kit
 - [x] P6 Gmail Pub/Sub (B) code — written with P1, inactive until env is set
-- [ ] P7 Verify on cloud bench, docs, root CHANGELOG
+- [ ] P7 Verify on cloud bench, docs, root CHANGELOG — docs + swagger + CHANGELOG done; left: cloud bench run, PR, CI, merge
