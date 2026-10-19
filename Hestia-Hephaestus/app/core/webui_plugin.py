@@ -9,7 +9,10 @@ would hide it).
   or undoing a repair keeps its consent path (chat/Telegram tools hephaestus_approve / hephaestus_rollback).
 - widget *Forge*: state, queue, waiting review, Claude budget window; the only button is the existing
   manual brake (POST /api/hephaestus/forge/pause), after a confirm.
-The Sviluppo page (Forge task list) stays built-in in the WebUI until it is ported (SPEC §A4).
+- page *Sviluppo* (SPEC §A4, ported from the WebUI's built-in /forge page): Forge tasks (list + filters, engine
+  conversation, files/diff/dossier/tests/logs/branch, approve/reject/start with engine, pause, new task, follow-up)
+  and the read-only repository browser; *Copia per AI* (§B5, GET forge/tasks/export). Badge = tasks waiting for you
+  (GET forge/counts → ``review``). Deep links: ``?task=<id>`` (also a short id), ``?view=repo``.
 Every path is under /api/hephaestus/ (remediation and Forge share it), so no duplicate endpoint is needed.
 """
 from __future__ import annotations
@@ -30,11 +33,16 @@ ui = PluginClient("hephaestus", title="Hephaestus", icon="code", color="amber", 
                   version=os.getenv("SERVICE_VERSION", "1.0.0"))
 ui.webui(
     entry="hephaestus.js", api_prefix=API_PREFIX,
-    pages=[page("riparazioni", "Riparazioni", element="hephaestus-repairs", icon="settings", order=170,
+    pages=[page("sviluppo", "Sviluppo", element="hephaestus-sviluppo", icon="code", order=170,
+                badge={"source": f"{API_PREFIX}forge/counts", "field": "review"},
+                help="Forge sviluppa Hestia su rami separati: qui vedi i task, la conversazione del motore, il diff, "
+                     "il dossier e i test, e decidi tu se applicare. «Copia per AI» prepara i task scelti per "
+                     "un'altra AI (consegna la correzione via MCP)."),
+           page("riparazioni", "Riparazioni", element="hephaestus-repairs", icon="settings", order=171,
                 help="Le riparazioni dei servizi: quale runbook, che consenso serve, se era una prova (dry-run), "
                      "com'è andata e da dove si torna indietro. Approvare o annullare resta a te, in chat o su "
                      "Telegram.")],
     widgets=[widget("forge", "Forge", element="hephaestus-forge-widget", sizes=["s", "m", "l"], size="m",
-                    auto=True, icon="code",
+                    auto=True, icon="code", open_page="sviluppo",
                     help="Stato dell'auto-sviluppo: in pausa o attivo, coda, task da rivedere e finestra Claude.")],
 )

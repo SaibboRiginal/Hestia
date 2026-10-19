@@ -4,5 +4,6 @@
  */
 import { definePlugin } from '@hestia/webui-sdk';
 import { McpAccesses } from './accesses';
+import { McpCommands } from './commands';
 
-definePlugin({ 'mcp-accesses': McpAccesses });
+definePlugin({ 'mcp-accesses': McpAccesses, 'mcp-commands': McpCommands });

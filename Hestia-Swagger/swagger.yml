@@ -4441,8 +4441,9 @@ paths:
       tags: [Hermes]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `consegne` (hermes-deliveries,
-        order 140), widget `oggi` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `notifiche` (hermes-inbox, order 140,
+        badge {source: /api/ui/inbox/counts, field: unread}), sub-page `consegne` (hermes-deliveries, order 141),
+        widget `oggi` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
       servers:
         - url: http://localhost:19005
       responses:
@@ -4488,6 +4489,92 @@ paths:
         - url: http://localhost:19005
       responses:
         "200": {description: "{clients: [name]}"}
+
+  /hermes/api/ui/inbox:
+    get:
+      tags: [Hermes]
+      summary: Inbox for the plugin page Notifiche (real path /api/ui/inbox; same as GET /api/notifications, client webui)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, unread, pending], default: all } }
+        - { name: source, in: query, schema: { type: string } }
+        - { name: before, in: query, description: created_at cursor, schema: { type: string, format: date-time } }
+        - { name: limit, in: query, schema: { type: integer, default: 40, maximum: 200 } }
+        - { name: client, in: query, schema: { type: string, default: webui } }
+      responses:
+        "200":
+          description: "{items: HermesNotification[], counts: {unread, pending}}"
+
+  /hermes/api/ui/inbox/counts:
+    get:
+      tags: [Hermes]
+      summary: Unread / pending counters (real path /api/ui/inbox/counts) — sidebar badge of Notifiche
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: client, in: query, schema: { type: string, default: webui } }
+      responses:
+        "200":
+          description: "{unread, pending}"
+
+  /hermes/api/ui/inbox/seen-all:
+    post:
+      tags: [Hermes]
+      summary: Mark every unread notification seen (real path /api/ui/inbox/seen-all; client webui)
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { client: { type: string, default: webui } } }
+      responses:
+        "200":
+          description: "{status: ok, changed}"
+
+  /hermes/api/ui/inbox/{notification_id}/seen:
+    post:
+      tags: [Hermes]
+      summary: Mark one notification seen everywhere (real path /api/ui/inbox/{id}/seen; client webui)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { client: { type: string, default: webui } } }
+      responses:
+        "200":
+          description: "{status: ok, changed}"
+
+  /hermes/api/ui/inbox/{notification_id}/answer:
+    post:
+      tags: [Hermes]
+      summary: Answer with one of the notification's buttons (real path /api/ui/inbox/{id}/answer; first answer wins)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action_id]
+              properties:
+                action_id: { type: string }
+                client: { type: string, default: webui }
+      responses:
+        "200":
+          description: "{status, answer{action_id, label, by, at, status, outcome_text}}"
+        "404":
+          description: not_found / unknown_action
+        "409":
+          description: "already_handled, with the winning answer"
 
   /api/notifications/seen-all:
     post:

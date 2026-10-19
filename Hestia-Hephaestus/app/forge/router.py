@@ -1,15 +1,19 @@
 """HTTP surface of Forge: /api/hephaestus/forge/*"""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
+from .export import MAX_EXPORT, export_markdown
 from .inspector import TaskInspector
 from .repo_browser import RepoBrowser, RepoError
-from .service import USER_SOURCES, Forge, ForgeError
+from .service import BRANCH_SUBMIT_STATES, USER_SOURCES, Forge, ForgeError
+
+logger = logging.getLogger("hestia_hephaestus.forge")
 
 
 class ForgeTaskRequest(BaseModel):
@@ -131,6 +135,34 @@ def create_forge_router(forge: Forge) -> APIRouter:
         """Every task in one short line each (chat tool forge_tasks): fits Oracle's tool-result cap."""
         return {"status": "ok", **brief(forge.list(state=state, limit=limit))}
 
+    @router.get("/counts")
+    def forge_counts() -> dict[str, Any]:
+        """Tasks per state + what waits for the owner (Sviluppo page badge: ``review``)."""
+        return {"status": "ok", **counts(forge.list(limit=200))}
+
+    @router.get("/tasks/export")
+    def forge_export(ids: str = "") -> dict[str, Any]:
+        """«Copia per AI» (Sviluppo page): markdown of the chosen tasks from the forge_task / forge_tasks views.
+        Returned only, never written anywhere."""
+        wanted = [i.strip() for i in ids.split(",") if i.strip()][:MAX_EXPORT]
+        if not wanted:
+            raise HTTPException(status_code=400, detail="ids required (comma separated task ids)")
+        found, missing, seen = [], [], set()
+        for tid in wanted:
+            task = forge.get(tid)
+            if not task:
+                missing.append(tid)
+            elif task["id"] not in seen:
+                seen.add(task["id"])
+                found.append(task)
+        if not found:
+            raise HTTPException(status_code=404, detail=f"Task not found: {', '.join(missing)}")
+        views = [overview(t) for t in found]
+        markdown = export_markdown(views, brief(found)["tasks"], BRANCH_SUBMIT_STATES, USER_SOURCES, missing)
+        logger.info("event=forge_export tasks=%d missing=%d chars=%d", len(found), len(missing), len(markdown))
+        return {"status": "ok", "count": len(found), "missing": missing, "markdown": markdown,
+                "filename": f"hestia-forge-{'-'.join(t['id'][:6] for t in found[:3])}.md"}
+
     @router.get("/tasks/{task_id}")
     def forge_get(task_id: str) -> dict[str, Any]:
         task = forge.get(task_id)
@@ -249,6 +281,23 @@ def overview(task: dict) -> dict:
     if task.get("context"):
         out["context"] = str(task["context"])[:1500]
     return out
+
+
+_ACTIVE_STATES = {"queued", "running", "approved", "merging"}
+
+
+def counts(rows: list[dict]) -> dict[str, Any]:
+    """``review`` = waiting for the owner (diff to review + proposals to start), as the old page subtitle."""
+    by_state: dict[str, int] = {}
+    for t in rows:
+        st = str(t.get("state") or "?")
+        by_state[st] = by_state.get(st, 0) + 1
+    n = by_state.get
+    return {"total": len(rows), "by_state": by_state,
+            "awaiting_review": n("awaiting_review", 0), "proposed": n("proposed", 0),
+            "review": n("awaiting_review", 0) + n("proposed", 0),
+            "running": sum(n(s, 0) for s in _ACTIVE_STATES),
+            "open": sum(n(s, 0) for s in _ACTIVE_STATES | {"proposed", "scheduled", "awaiting_review"})}
 
 
 _CLOSED_STATES = {"deployed", "merged", "rejected", "rolled_back", "no_changes"}

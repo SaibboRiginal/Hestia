@@ -7,6 +7,7 @@ Endpoints:
   POST /mcp            → MCP (Streamable HTTP, JSON): initialize · tools/list · tools/call · ping (internal clients)
   POST /mcp/external   → the same MCP for external AIs, behind an access token (WebUI door /mcp forwards here)
   /api/mcp/accesses    → accesses management (Accessi page in the WebUI, plugin of this module)
+  /api/mcp/ui/tools    → Comandi page: the tools the WebUI sees, run one (core/ui_tools.py)
   GET  /health         → service health
   GET  /api/logs       → log buffer
 """
@@ -26,6 +27,7 @@ from core.catalog import ToolCatalog
 from core.mcp_server import MCPServer
 from core.access import AccessStore
 from core.external import ExternalDoor
+from core.ui_tools import UiTools
 
 # ── Logging setup ────────────────────────────────────────────────────────────
 try:
@@ -46,12 +48,15 @@ SERVICE_BASE_URL = os.getenv("MCP_SERVICE_BASE_URL", "http://hestia_mcp:19013")
 SERVICE_VERSION = os.getenv("MCP_SERVICE_VERSION", "1.0.0")
 UI_DIST = os.getenv("MCP_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 
-# ── WebUI plugin (core module, Sistema section): Accessi AI ──────────────────
+# ── WebUI plugin (core module, Sistema section): Comandi & MCP + Accessi AI ──────────────────
 ui = PluginClient("mcp", title="Comandi & MCP", icon="command", color="blue", kind="core", dist=UI_DIST,
                   description="Gli strumenti di Hestia e chi li può usare da fuori (AI esterne).",
                   version=SERVICE_VERSION)
 ui.webui(entry="mcp.js", api_prefix="/api/mcp/",
-         pages=[page("accessi", "Accessi AI", element="mcp-accesses", icon="external", order=190,
+         pages=[page("comandi", "Comandi & MCP", element="mcp-commands", icon="terminal", order=190,
+                     help="Tutti gli strumenti che Hestia offre (gli stessi di chat, Telegram e AI esterne): "
+                          "cerca, leggi i parametri ed eseguili."),
+                page("accessi", "Accessi AI", element="mcp-accesses", icon="external", order=191, parent="comandi",
                      help="Token per collegare Claude Code, Claude Desktop, Cursor o un'altra AI agli strumenti di "
                           "Hestia (MCP). Revoca e rinnovo in un tocco.")])
 
@@ -91,6 +96,7 @@ app.include_router(mcp_settings.router())
 app.include_router(server.router())
 app.include_router(door.router())
 app.include_router(ui.router())
+app.include_router(UiTools(server, HUB_API_URL).router())   # Comandi page: /api/mcp/ui/tools…
 
 
 @app.on_event("startup")

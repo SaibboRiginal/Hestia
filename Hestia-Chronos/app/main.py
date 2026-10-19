@@ -66,9 +66,12 @@ ui = PluginClient("chronos", title="Chronos", icon="repeat", color="amber", kind
                   description="L'agenda dell'assistente al lavoro: esecuzioni dei job, errori, regole per modulo.",
                   version=os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
-         pages=[page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=150,
+         pages=[page("agenda", "Agenda di Hestia", element="chronos-agenda", icon="calendar", order=150,
+                     help="Il calendario dell'assistente: eventi, task, job e finestre di ogni modulo, in vista giorno, "
+                          "settimana, mese o elenco. Crea, sposta, salta o annulla; i tuoi cambi vincono sui moduli."),
+                page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=151, parent="agenda",
                      help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
-                          "è durata, e le regole registrate da ogni modulo. Il calendario resta in Agenda.")],
+                          "è durata, e le regole registrate da ogni modulo.")],
          widgets=[widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
                          open_page="esecuzioni", icon="alert",
                          help="Job dell'agenda falliti nelle ultime 24 ore, con «Riprova».")],
@@ -834,6 +837,18 @@ def agenda_view(days: int = Query(7, ge=1, le=400), owner: str | None = None, ty
     rows = assistant_agenda.agenda(lo, hi, owner=owner, type_=type, include_done=include_done)
     return {"from": lo.isoformat(), "to": hi.isoformat(), "days": days,
             "count": len(rows), "occurrences": rows}
+
+
+@app.get("/api/agenda/occurrences")
+def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = None, type: str | None = None,
+                       past_hours: int = Query(0, ge=0, le=24 * 400),
+                       start: str | None = Query(None, description="ISO start (overrides days/past_hours)"),
+                       end: str | None = Query(None, description="ISO end (with start)"),
+                       include_done: bool = Query(False, description="also completed/cancelled items")) -> dict:
+    """Same as ``GET /api/agenda`` under the plugin's ``api_prefix`` (``/api/agenda/``): the calendar page
+    (WebUI plugin «Agenda di Hestia») reads its occurrences here."""
+    return agenda_view(days=days, owner=owner, type=type, past_hours=past_hours, start=start, end=end,
+                       include_done=include_done)
 
 
 @app.get("/api/agenda/items")
