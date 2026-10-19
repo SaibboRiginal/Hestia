@@ -4,7 +4,7 @@ Fed by every provider from what the server already returns (Ollama ``prompt_eval
 ``load_duration``, OpenAI-compatible ``usage`` + llama-server ``timings``, Anthropic ``usage``).
 Kept in memory as a short rolling window per agent label, plus running totals per
 conversation (the chat stream binds its session id, see ``bind_session``); exposed by
-``/api/chat/context``. Also daily totals per use case × provider × model (last ``_DAYS`` local days, in
+``/api/chat/context``. Every call also becomes a usage row pushed to Archive (``llm_usage``). Also daily totals per use case × provider × model (last ``_DAYS`` local days, in
 memory since the start of Oracle), read by the WebUI page *Cervello* (``GET /api/ui/stats``).
 """
 from __future__ import annotations
@@ -30,19 +30,26 @@ _daily: dict[str, dict[tuple[str, str, str], dict]] = {}   # "YYYY-MM-DD" → (l
 _current_session: contextvars.ContextVar[str] = contextvars.ContextVar("llm_stats_session", default="")
 
 
-def bind_session(session_id: str, stream: Iterator[str]) -> Iterator[str]:
-    """Run each step of a chat stream with *session_id* bound, so every LLM call it makes is
-    also counted for that conversation. Set around every ``next()``: the web server may resume
-    the generator from a different thread/context each time."""
+def bind_session(session_id: str, stream: Iterator[str], client: str = "") -> Iterator[str]:
+    """Run each step of a chat stream with *session_id* (and the *client*) bound, so every LLM call it makes
+    is also counted for that conversation and its usage rows name them. Set around every ``next()``: the web
+    server may resume the generator from a different thread/context each time."""
+    from core.services import llm_usage
     while True:
         token = _current_session.set(session_id or "")
+        client_token = llm_usage.bind_client(client)
         try:
             item = next(stream)
         except StopIteration:
             return
         finally:
+            llm_usage.reset_client(client_token)
             _current_session.reset(token)
         yield item
+
+
+def current_session() -> str:
+    return _current_session.get()
 
 
 def _add_to_session(row: dict) -> None:
@@ -135,6 +142,11 @@ def record(label: str, provider: str, model: str, *, prompt_tokens: int, cached_
         _calls.setdefault(label, deque(maxlen=_WINDOW)).append(row)
     _add_to_session(row)
     _add_to_day(label, row)
+    try:
+        from core.services import llm_usage
+        llm_usage.on_stats(label, row)
+    except Exception as exc:  # usage is never worth failing a call
+        logger.debug("event=llm_usage_row_failed error=%s", exc)
     cache_pct = round(100 * cached_tokens / prompt_tokens, 1) if prompt_tokens else 0.0
     tok_s = round(row["output_tokens"] / (row["output_ms"] / 1000), 1) if row["output_ms"] else 0.0
     logger.info(

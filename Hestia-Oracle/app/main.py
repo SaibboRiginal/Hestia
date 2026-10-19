@@ -317,6 +317,33 @@ def llm_usecase_status_endpoint(use_case: str):
     return {"status": "ok", **usecase_status(use_case)}
 
 
+@app.get("/api/llm/usage")
+def llm_usage_endpoint(group: str = "module", days: int = 7, module: str = "", session_id: str = "",
+                       use_case: str = ""):
+    """Usage of the models (panel Cervello → Uso): sums of the calls of the last *days* grouped by
+    module | session | usecase | model | step | day (rows kept in Archive, store ``llm-usage``)."""
+    from core.services import llm_usage
+    try:
+        data = llm_usage.query("summary", {"group": group, "days": days, "module": module,
+                                           "session_id": session_id, "use_case": use_case})
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=f"usage not readable: {exc}")
+    return {"status": "ok", **(data if isinstance(data, dict) else {"rows": []})}
+
+
+@app.get("/api/llm/usage/calls")
+def llm_usage_calls_endpoint(days: int = 7, module: str = "", session_id: str = "", use_case: str = "",
+                             limit: int = 100):
+    """Latest single calls (newest first), e.g. the detail of one session."""
+    from core.services import llm_usage
+    try:
+        data = llm_usage.query("rows", {"days": days, "module": module, "session_id": session_id,
+                                        "use_case": use_case, "limit": limit})
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=f"usage not readable: {exc}")
+    return {"status": "ok", **(data if isinstance(data, dict) else {"rows": []})}
+
+
 @app.on_event("startup")
 def register_on_hub_startup():
     """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
@@ -618,7 +645,7 @@ def chat_endpoint(req: ChatRequest):
                 save_history=req.save_history,
                 mode=mode,
                 model=req.model,
-                client=req.client or "")),
+                client=req.client or ""), client=req.client or ""),
             media_type="application/x-ndjson"
         )
     except Exception as e:

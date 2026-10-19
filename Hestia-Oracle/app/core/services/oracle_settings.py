@@ -25,6 +25,8 @@ PROVIDERS_KEY = "oracle.providers"
 CHAINS_KEY = "oracle.chains"
 USECASES_KEY = "oracle.usecases"
 CHAIN_COOLDOWN = "oracle.quota.cooldown_minutes"
+USAGE_RETENTION = "oracle.usage.retention_days"
+PRICING_KEY = "oracle.pricing"
 BRAIN_MODE = "oracle.brain.mode"
 BRAIN_AGENT = "oracle.brain.agent"
 BRAIN_FALLBACK = "oracle.brain.fallback"
@@ -53,6 +55,12 @@ def _definitions() -> list[dict]:
                 min=1, max=1440, unit="min", advanced=True,
                 help="Quando il fornitore non dice quando si ricarica la quota (Gemini giornaliero: mezzanotte "
                      "del Pacifico)."),
+        setting(USAGE_RETENTION, "Conserva l'uso dei modelli per", "int", 90, group="Uso", order=0, min=1,
+                max=3650, unit="giorni", help="Ogni chiamata a un modello resta nel pannello Uso per questi giorni."),
+        setting(PRICING_KEY, "Prezzi dei modelli", "object", {}, group="Uso", order=1,
+                help="Dollari per milione di token, per «fornitore/modello» (o solo il modello): "
+                     "{\"gemini/gemini-2.5-flash\": {\"in\": 0.3, \"out\": 2.5, \"cached\": 0.075}}. "
+                     "Serve solo dove il fornitore non dice il costo; i modelli locali costano 0."),
     ]
 
 
@@ -224,7 +232,7 @@ _TIMEOUTS = [
 ] + [
     setting(GATEWAY_CHAT_TIMEOUT, "Tempo massimo · richieste di Forge al modello", "int", 600, group="Tempi",
             min=30, max=3600, unit="s", order=20, advanced=True,
-            help="Una richiesta di Forge (profili locale/cloud) che supera questo tempo fallisce."),
+            help="Una richiesta di Forge al modello (uso forge.codice) che supera questo tempo fallisce."),
     setting(OLLAMA_TIMEOUT, "Tempo massimo · risposta di Ollama", "int", 120, group="Tempi", min=10, max=1800,
             unit="s", order=21, help="Quanto aspetto una risposta del modello locale."),
     setting(OLLAMA_EMBED_TIMEOUT, "Tempo massimo · embedding di Ollama", "int", 60, group="Tempi", min=5,

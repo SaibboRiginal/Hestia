@@ -15,7 +15,7 @@ from typing import Any
 
 import requests
 
-from core.services import llm_chains, llm_providers
+from core.services import llm_chains, llm_providers, llm_stats, llm_usage
 
 logger = logging.getLogger("hestia_oracle.llm_gateway")
 
@@ -101,22 +101,28 @@ def chat(body: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(body.get("messages"), list) or not body["messages"]:
         raise LLMGatewayError("messages required")
     use_case = str(body.get("use_case") or DEFAULT_USECASE).strip().lower()
+    chain_name = llm_chains.usecase_config(use_case)["chain"]
     errors: list[str] = []
     for index, step in _chat_steps(use_case):
         provider, model = step["provider"], step["model"]
-        try:
-            if llm_providers.type_of(provider) == "ollama":
-                data = _chat_ollama(provider, model, body)
-            else:
-                data = _chat_openai(provider, model, body)
-        except _StepError as exc:
-            if llm_chains.is_quota_error(exc):
-                llm_chains.mark_exhausted(provider, model, exc)
-            else:
-                logger.warning("[🔄] event=llm_gateway_step_failed use_case=%s provider=%s model=%s error=%s",
-                               use_case, provider, model, str(exc)[:200])
-            errors.append(f"{provider}/{model}: {str(exc)[:160]}")
-            continue
+        with llm_usage.step(use_case, chain_name, index, provider, model) as usage:
+            try:
+                if llm_providers.type_of(provider) == "ollama":
+                    data = _chat_ollama(provider, model, body)
+                else:
+                    data = _chat_openai(provider, model, body)
+                llm_stats.record_openai(use_case, model, data)
+            except _StepError as exc:
+                quota = llm_chains.is_quota_error(exc)
+                llm_usage.finish(usage, "quota" if quota else "error", str(exc)[:300])
+                if quota:
+                    llm_chains.mark_exhausted(provider, model, exc)
+                else:
+                    logger.warning("[🔄] event=llm_gateway_step_failed use_case=%s provider=%s model=%s error=%s",
+                                   use_case, provider, model, str(exc)[:200])
+                errors.append(f"{provider}/{model}: {str(exc)[:160]}")
+                continue
+        llm_usage.finish(usage)
         data["hestia_step"] = {"use_case": use_case, "chain": llm_chains.usecase_config(use_case)["chain"],
                                "step": index, "provider": provider, "model": model}
         return data

@@ -217,3 +217,61 @@ class TestMigration:
         assert puts == [oracle_settings.CHAINS_KEY, oracle_settings.USECASES_KEY]
         done = NS(orphans=fake.orphans, stored=lambda: {oracle_settings.CHAINS_KEY: {}}, put=fake.put)
         assert llm_migration.run(done) is False
+
+
+@pytest.mark.unit
+class TestUsageRows:
+    def _chain(self, monkeypatch, steps, uc="scout.annunci"):
+        _set(monkeypatch, oracle_settings.CHAINS_KEY, {"c": {"steps": steps}})
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {uc: {"chain": "c"}})
+        return llm_chains.ChainAgent(uc)
+
+    def test_one_row_per_step_with_outcome_and_tokens(self, monkeypatch, fake_agents):
+        from core.services import llm_stats, llm_usage
+        agent = self._chain(monkeypatch, [{"provider": "gemini", "model": "a"}, {"provider": "ollama", "model": "b"}])
+
+        def tokens(self):
+            if self.model_name == "a":
+                raise RuntimeError("429 quota")
+            llm_stats.record("x", "ollama", "b", prompt_tokens=100, cached_tokens=60, output_tokens=7)
+            return "ok"
+        monkeypatch.setattr(_Agent, "_run", tokens)
+        assert agent.ask("x") == "ok"
+        quota, ok = llm_usage.captured
+        assert (quota["outcome"], quota["step"], quota["provider"]) == ("quota", 0, "gemini")
+        assert (ok["outcome"], ok["step"], ok["module"], ok["use_case"], ok["chain"]) == ("ok", 1, "scout",
+                                                                                          "scout.annunci", "c")
+        assert (ok["input_tokens"], ok["cached_tokens"], ok["output_tokens"]) == (100, 60, 7)
+        assert ok["cost_kind"] == "locale" and ok["cost_usd"] == 0
+
+    def test_stream_row_and_session_client(self, monkeypatch, fake_agents):
+        from core.services import llm_stats, llm_usage
+        agent = self._chain(monkeypatch, [{"provider": "ollama", "model": "b"}])
+        out = "".join(llm_stats.bind_session("s9", agent.ask_stream("x"), client="webui"))
+        assert out == "ab"
+        (row,) = llm_usage.captured
+        assert (row["session_id"], row["client"], row["outcome"]) == ("s9", "webui", "ok")
+
+    def test_call_outside_a_chain_still_counted(self):
+        from core.services import llm_stats, llm_usage
+        llm_stats.record("code", "claude_cli", "sonnet", prompt_tokens=10, cost_usd=0.02)
+        (row,) = llm_usage.captured
+        assert row["use_case"] == "oracle.codice" and row["module"] == "oracle"
+
+    def test_price_from_table_and_subscription(self, monkeypatch):
+        from core.services import llm_usage
+        monkeypatch.setenv("ORACLE_KEY_GEMINI", "k")
+        _set(monkeypatch, oracle_settings.PRICING_KEY, {"gemini/flash": {"in": 1.0, "out": 2.0, "cached": 0.5}})
+        cost, kind = llm_usage.price("gemini", "flash", 1_000_000, 400_000, 1_000_000)
+        assert kind == "api" and cost == pytest.approx(0.6 + 0.2 + 2.0)
+        assert llm_usage.price("gemini", "other", 10, 0, 10) == (0.0, "sconosciuto")
+        assert llm_usage.price("claude", "sonnet", 10, 0, 10, reported=0.3) == (0.3, "abbonamento")
+
+    def test_drain_sends_batches_to_archive(self, monkeypatch):
+        from core.services import llm_usage
+        sent = []
+        monkeypatch.setattr(llm_usage, "_send", sent.append)
+        monkeypatch.setattr(llm_usage, "_BATCH", 2)
+        monkeypatch.setattr(llm_usage, "_pending", [{"a": 1}, {"a": 2}, {"a": 3}])
+        llm_usage.flush()
+        assert sent == [[{"a": 1}, {"a": 2}], [{"a": 3}]] and llm_usage._pending == []

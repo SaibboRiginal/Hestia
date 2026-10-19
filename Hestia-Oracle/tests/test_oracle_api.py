@@ -348,6 +348,20 @@ class TestOracleLlmGenerateEndpoint:
         assert resp.status_code == 503
         assert "veloce" in resp.json()["detail"] and "ollama/a" in resp.json()["detail"]
 
+    def test_usage_reads_archive_store(self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+        from core.services import llm_usage
+        asked = []
+
+        def query(path, params):
+            asked.append((path, params))
+            return {"rows": [{"module": "scout", "calls": 3}]}
+        monkeypatch.setattr(llm_usage, "query", query)
+        out = client.get("/api/llm/usage", params={"group": "module", "days": 1}).json()
+        assert out["rows"][0]["calls"] == 3 and asked[0][0] == "summary" and asked[0][1]["days"] == 1
+        assert client.get("/api/llm/usage/calls", params={"session_id": "s1"}).status_code == 200
+        assert asked[1][0] == "rows" and asked[1][1]["session_id"] == "s1"
+
     def test_missing_prompt_returns_400(self, oracle_client):
         client, _ = oracle_client
         resp = client.post("/api/llm/generate", json={"prompt": "  "})

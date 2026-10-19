@@ -374,8 +374,17 @@ class ChainAgent:
         _answered.set({"use_case": self.use_case, "chain": usecase_config(self.use_case)["chain"], "step": index,
                        "provider": step["provider"], "model": step["model"]})
 
-    def _failed(self, step: dict, exc: Exception, errors: list[str]) -> None:
-        if is_quota_error(exc):
+    def _usage(self, index: int, step: dict):
+        from core.services import llm_usage
+        return llm_usage.step(self.use_case, usecase_config(self.use_case)["chain"], index, step["provider"],
+                              step["model"])
+
+    def _failed(self, step: dict, exc: Exception, errors: list[str], usage: dict | None = None) -> None:
+        quota = is_quota_error(exc)
+        if usage is not None:
+            from core.services import llm_usage
+            llm_usage.finish(usage, "quota" if quota else "error", str(exc)[:300])
+        if quota:
             mark_exhausted(step["provider"], step["model"], exc)
         else:
             logger.warning("[🔄] event=llm_chain_step_failed use_case=%s provider=%s model=%s error=%s",
@@ -391,12 +400,15 @@ class ChainAgent:
 
     def _call(self, method: str, *args, **kwargs):
         errors: list[str] = []
+        from core.services import llm_usage
         for index, step, agent in self.steps():
-            try:
-                result = getattr(agent, method)(*args, **kwargs)
-            except Exception as exc:
-                self._failed(step, exc, errors)
-                continue
+            with self._usage(index, step) as usage:
+                try:
+                    result = getattr(agent, method)(*args, **kwargs)
+                except Exception as exc:
+                    self._failed(step, exc, errors, usage)
+                    continue
+            llm_usage.finish(usage)
             self._answered(index, step)
             return result
         raise self._exhausted(errors)
@@ -420,20 +432,34 @@ class ChainAgent:
     def ask_stream(self, user_message: str) -> Iterator[str]:
         """Stream from the first step that produces a token; a step failing before its first token passes
         to the next one; after the first token a failure ends the stream (callers keep what they got)."""
+        from core.services import llm_usage
         errors: list[str] = []
         for index, step, agent in self.steps():
             started = False
+            with self._usage(index, step) as usage:
+                pass   # the context is re-bound around each next(): a generator may resume elsewhere
+            stream = agent.ask_stream(user_message)
             try:
-                for token in agent.ask_stream(user_message):
+                while True:
+                    bound = llm_usage.resume(usage)
+                    try:
+                        token = next(stream)
+                    except StopIteration:
+                        break
+                    finally:
+                        llm_usage.suspend(bound)
                     if not started:
                         started = True
                         self._answered(index, step)
                     yield token
-                return
             except Exception as exc:
                 if started:
+                    llm_usage.finish(usage, "error", str(exc)[:300])
                     raise
-                self._failed(step, exc, errors)
+                self._failed(step, exc, errors, usage)
+                continue
+            llm_usage.finish(usage)
+            return
         raise self._exhausted(errors)
 
 
