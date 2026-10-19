@@ -143,7 +143,9 @@ class TestAccesses:
         assert _rpc(c, "tools/list", token=out["token"]).status_code == 200
         c.post(f"/api/mcp/accesses/{out['access']['access_id']}/revoke")
         resp = _rpc(c, "tools/list", token=out["token"])
-        assert resp.status_code == 401 and resp.headers["www-authenticate"] == "Bearer"
+        assert resp.status_code == 401
+        challenge = resp.headers["www-authenticate"]     # tells OAuth clients where to start (RFC 9728)
+        assert challenge.startswith('Bearer error="invalid_token"') and "/.well-known/oauth-protected-resource/mcp" in challenge
         renewed = c.post(f"/api/mcp/accesses/{out['access']['access_id']}/renew").json()
         assert _rpc(c, "tools/list", token=out["token"]).status_code == 401      # old token stops at once
         assert _rpc(c, "tools/list", token=renewed["token"]).status_code == 200
