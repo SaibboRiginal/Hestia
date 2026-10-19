@@ -57,6 +57,7 @@ docs/                     AI-GUIDE.md, work/ (task dossiers)
 ```
 python -m pytest -q -m "unit or api or format" Hestia-<Name>/tests
 ```
+Whole stack without Marko's PC (Claude cloud / Codespaces): `python tools/cloud_test.py all` (TESTING.md).
 Markers: unit, api, format (fast, no network) · llm_live / integration (need Ollama). Fix until green;
 add a regression test for every bug fixed.
 

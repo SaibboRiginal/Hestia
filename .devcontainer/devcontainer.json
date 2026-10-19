@@ -1,0 +1,23 @@
+// GitHub Codespaces: the whole Hestia stack as a test bench you open from the browser (also phone).
+// Start: Code → Codespaces → New (4-core). Then in the terminal: python tools/cloud_test.py all
+// Login link for the forwarded WebUI port: python tools/cloud_test.py token
+// Ports stay private (only your GitHub account). Docs: TESTING.md «Banco di prova cloud».
+{
+  "name": "Hestia — banco di prova",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": { "cpus": 4, "memory": "16gb", "storage": "32gb" },
+  "forwardPorts": [19015, 19000],
+  "portsAttributes": {
+    "19015": { "label": "WebUI", "onAutoForward": "notify" },
+    "19000": { "label": "Swagger", "onAutoForward": "silent" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
+  "secrets": {
+    "GEMINI_API_KEY": { "description": "Optional: real answers from Gemini instead of the fake LLM (Codespaces secret, never in the repo)." },
+    "TELEGRAM_BOT_TOKEN": { "description": "Optional: a TEST bot token to try the Telegram client too." }
+  },
+  "postCreateCommand": "python tools/cloud_test.py prepare"
+}

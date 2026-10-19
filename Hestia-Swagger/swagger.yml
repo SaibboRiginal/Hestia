@@ -1206,6 +1206,9 @@ paths:
     post:
       tags: [Hub]
       summary: Register a service
+      description: >-
+        Also the keepalive: every service calls it again every 60 s. A service with no registration in the
+        last 180 s is shown offline (`/api/ui/map`), and the in-memory registry is rebuilt this way after a Hub restart.
       servers:
         - url: http://localhost:19001
       requestBody:

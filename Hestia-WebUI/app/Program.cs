@@ -129,43 +129,61 @@ using (var scope = app.Services.CreateScope())
 
     // Token state is restored by TokenManager from /app/data (volume), not from Archive.
 
-    try
+    var payload = new
     {
-        var payload = new
+        name = hestiaOpts.ServiceName,
+        base_url = hestiaOpts.ServiceBaseUrl,
+        health_endpoint = "/health",
+        service_type = hestiaOpts.ServiceType,
+        service_version = hestiaOpts.ServiceVersion,
+        tags = hestiaOpts.ServiceTags.Split(',').Select(t => t.Trim()).Where(t => t.Length > 0).ToList(),
+        topology_tags = hestiaOpts.ServiceTopologyTags.Split(',').Select(t => t.Trim()).Where(t => t.Length > 0).ToList(),
+        capabilities = new
         {
-            name = hestiaOpts.ServiceName,
-            base_url = hestiaOpts.ServiceBaseUrl,
-            health_endpoint = "/health",
-            service_type = hestiaOpts.ServiceType,
-            service_version = hestiaOpts.ServiceVersion,
-            tags = hestiaOpts.ServiceTags.Split(',').Select(t => t.Trim()).Where(t => t.Length > 0).ToList(),
-            topology_tags = hestiaOpts.ServiceTopologyTags.Split(',').Select(t => t.Trim()).Where(t => t.Length > 0).ToList(),
-            capabilities = new
-            {
-                interface_type = "web",
-                swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
-                // Hermes delivers every notification here (SPEC hermes-global-notifications).
-                notify_endpoint = "/api/notify",
-                // Assistant tools: widget catalog + dashboards (client plugins SPEC §4.6), next to Themis'.
-                // /api/ai/mcp: the WebUI's own module tools. /mcp is the public door for external AIs.
-                mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/api/ai/mcp",
-                module_tool_domains = new[] { "system", "settings" },
-            }
-        };
+            interface_type = "web",
+            swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
+            // Hermes delivers every notification here (SPEC hermes-global-notifications).
+            notify_endpoint = "/api/notify",
+            // Assistant tools: widget catalog + dashboards (client plugins SPEC §4.6), next to Themis'.
+            // /api/ai/mcp: the WebUI's own module tools. /mcp is the public door for external AIs.
+            mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/api/ai/mcp",
+            module_tool_domains = new[] { "system", "settings" },
+        }
+    };
+    var payloadJson = JsonSerializer.Serialize(payload);
+    var httpFactory = app.Services.GetRequiredService<IHttpClientFactory>();
 
-        var httpClient = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient();
-        var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-        var resp = await httpClient.PostAsync($"{hestiaOpts.HubApiUrl}/registry/register", content);
-
-        if (resp.IsSuccessStatusCode)
-            logger.LogInformation("event=registered_on_hub hub={Hub} service={Svc}", hestiaOpts.HubApiUrl, hestiaOpts.ServiceName);
-        else
-            logger.LogWarning("event=hub_registration_failed status={Status} body={Body}", (int)resp.StatusCode, await resp.Content.ReadAsStringAsync());
-    }
-    catch (Exception ex)
+    async Task<bool> RegisterOnHubAsync()
     {
-        logger.LogWarning(ex, "event=hub_registration_failed_non_fatal");
+        try
+        {
+            var content = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
+            var resp = await httpFactory.CreateClient().PostAsync($"{hestiaOpts.HubApiUrl}/registry/register", content);
+            if (resp.IsSuccessStatusCode) return true;
+            logger.LogWarning("event=hub_registration_failed status={Status} body={Body}", (int)resp.StatusCode, await resp.Content.ReadAsStringAsync());
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "event=hub_registration_failed_non_fatal");
+        }
+        return false;
     }
+
+    if (await RegisterOnHubAsync())
+        logger.LogInformation("event=registered_on_hub hub={Hub} service={Svc}", hestiaOpts.HubApiUrl, hestiaOpts.ServiceName);
+
+    // Keepalive like the Python services: the Hub marks a service offline after 180 s without a registration
+    // and forgets it on restart. The WebUI registered only once (found by the cloud test bench, 2026-10-19).
+    _ = Task.Run(async () =>
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(60));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(app.Lifetime.ApplicationStopping))
+                await RegisterOnHubAsync();
+        }
+        catch (OperationCanceledException) { /* shutting down */ }
+    });
 }
 
 // ── Middleware Pipeline ────────────────────────────────────────────────────

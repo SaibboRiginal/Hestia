@@ -140,6 +140,13 @@ Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in the Dockerfile Node stage →
 `/ui/dist/webui/hermes.js` (outside `/code`: the compose dev mount of `src/` must not hide it; env
 `HERMES_UI_DIST`, infrastructure). The manifest keys (`ui_manifest`, `ui_version`) go in the Hub registration.
 
+## Hub registration
+
+Registers at startup (retries) and re-registers every 60 s from a daemon thread (`hub-keepalive`), whatever the
+first result: the Hub shows a service offline after 180 s without it and forgets it on restart. Until 2026-10-19 the
+thread started only when every first attempt failed, so a healthy Hermes looked offline on *Mappa* (found by the
+cloud test bench; regression test `TestHubKeepalive`).
+
 ## Constraints
 
 - No domain-specific ranking logic.

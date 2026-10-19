@@ -36,12 +36,35 @@ Run critical only: `pytest -m "unit or api or format" --tb=short -v`
 | Dummy | [Hestia-Dummy/tests/TESTING.md](Hestia-Dummy/tests/TESTING.md) | 🟢 NORMAL |
 | Metis | [Hestia-Metis/tests/TESTING.md](Hestia-Metis/tests/TESTING.md) | 🟢 NORMAL |
 
+## Banco di prova cloud (whole stack, no local PC)
+
+Runs every service for real (WebUI .NET + Angular included) in a **Claude cloud session** or a **GitHub Codespace**,
+then checks it like a user. Dossier: `docs/work/2026-10-19-banco-prova-cloud/`.
+
+```
+python tools/cloud_test.py all      # prepare (Docker, base images, .env) + up (build, start) + check
+python tools/cloud_test.py check    # again: health, Hub registry, smoke calls, WebUI screenshots
+python tools/cloud_test.py token    # login link (Codespaces forwards the port through a proxy → token needed)
+python tools/cloud_test.py logs oracle · down
+```
+
+- Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
+- Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
+  → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».
+- Telegram starts only with a (test) `TELEGRAM_BOT_TOKEN`; Google/Microsoft OAuth needs a person in a browser.
+- Claude cloud network: Docker Hub rate-limits (429) and Debian's apt servers are blocked, Ubuntu's are allowed.
+  The script takes images from `mirror.gcr.io`, builds Ubuntu 24.04 stand-ins for `python:3.12-slim` and
+  `dotnet/aspnet:9.0` (same Python 3.12, same .NET runtime) and layers the session's interception CAs
+  (`/root/.ccr/ca-bundle.crt`) into the base images. Codespaces: official images, untouched.
+- Start a Codespace: *Code → Codespaces → New* (4-core, `.devcontainer/devcontainer.json`); ports stay private.
+
 ## Critical Regressions Log
 
 > Any time a test is written because of a real user-facing bug, document it here.
 
 | Date | Symptom | Test Added | Root Cause |
 |------|---------|-----------|------------|
+| 2026-10-19 | *Mappa* shows WebUI and Hermes offline after 3 min; a Hub restart forgets them | Hermes `TestHubKeepalive` | Hermes started its keepalive only if every first registration failed; the WebUI had none |
 | 2026-10 | Google OAuth always failed (`Error 400 invalid_request`) | Hecate 7.13–7.25 | OOB redirect blocked by Google since 2023 |
 | _first entry TBD_ | LLM returns `**bold**` instead of `<b>bold</b>` | Telegram 2.1.1, Oracle 1.8.13 | Format contract not enforced on all paths |
 | _first entry TBD_ | Tool not called for calendar query | Oracle 1.8.1 | Agent loop pattern matching failed |

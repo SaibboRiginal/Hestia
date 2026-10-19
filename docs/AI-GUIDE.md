@@ -120,6 +120,10 @@ Details: `Hestia-Themis/hestia-themis.md`.
 - WebUI Docker build has no internet for Angular font inlining → fonts via `<link>` + `fonts.inline=false`.
   The WebUI image bakes the frontend: after a pull, `docker compose ... up -d --build webui` (no volume mount).
 - Telegram HTML parse mode supports only a small tag subset (b, i, u, s, code, pre, a, blockquote).
+- Every service must re-register on the Hub every 60 s (keepalive), not only at startup: *Mappa* marks it offline
+  after 180 s and a Hub restart forgets it.
+- No Marko PC needed for a real run: `python tools/cloud_test.py all` starts the whole stack in a Claude cloud
+  session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Banco di prova cloud».
 
 ## 8. Where to look
 
@@ -127,5 +131,5 @@ Details: `Hestia-Themis/hestia-themis.md`.
 |---|---|
 | Global rules/contracts | `docs/ARCHITECTURE.md` (public front page: `readme.md`) |
 | Dependency graph + flows | `architecture-and-flow-map.md` |
-| Test plans | `TESTING.md`, `Hestia-*/tests/TESTING.md` |
+| Test plans | `TESTING.md`, `Hestia-*/tests/TESTING.md`; whole-stack run: `tools/cloud_test.py` |
 | Task history | `CHANGELOG.md`, `docs/work/*/` |

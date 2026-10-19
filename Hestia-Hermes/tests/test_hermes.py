@@ -270,6 +270,28 @@ class TestHermesHealth:
 
 
 @pytest.mark.unit
+class TestHubKeepalive:
+    """Regression (cloud test bench 2026-10-19): a successful first registration returned before the
+    keepalive thread started, so the Hub marked Hermes offline after 3 min and lost it on a Hub restart."""
+
+    def test_keepalive_starts_when_first_registration_succeeds(self):
+        with patch("requests.post"), patch("requests.get"), \
+                patch("hestia_common.startup_utils.wait_for_http_ready"):
+            import src.main as hermes_main
+        ok = MagicMock(status_code=200)
+        with patch.object(hermes_main.requests, "post", return_value=ok), \
+                patch.object(hermes_main, "wait_for_http_ready"), \
+                patch.object(hermes_main, "wait_for_hub_services"), \
+                patch.object(hermes_main, "_bootstrap_system_subscription"), \
+                patch.object(hermes_main, "_register_agenda"), \
+                patch.object(hermes_main.threading, "Thread") as thread:
+            hermes_main.register_on_hub_startup()
+        names = [c.kwargs.get("name") for c in thread.call_args_list]
+        assert "hub-keepalive" in names
+        thread.return_value.start.assert_called()
+
+
+@pytest.mark.unit
 class TestPresenceHold:
     """Assistant presence notify.level (SPEC assistant-presence): held = inbox only + digest later."""
 
