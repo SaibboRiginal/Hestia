@@ -7,6 +7,6 @@
 - [x] P2 Scout on push (subscription scout:listings, /api/scout/mail, /api/scout/check, job retired, scout.cycle.interval removed, Hecate iris_email + Iris /api/email/ingest removed; Scout tests 25)
 - [x] P3 Plutus core: service, store (Archive finance-store), PayPal parser, categories + learned rules, budgets, alerts, recurring, review, reminders, MCP tools, plugin manifest, Docker + compose + CI matrix; 24 tests green
 - [x] P4 Statements: preview/commit/undo, PayPal↔bank linking, recurring; chat PDF via Oracle `attachment_handlers` hand-off (Oracle 4 new tests, 414 green; Plutus 25 green)
-- [ ] P5 Plugin + reflection
+- [x] P5 Plugin «Spese»: panoramica, movimenti + dettaglio + form, budget, abbonamenti, importa (PDF + email PayPal), statistiche, categorie e regole, widget mese/ultimi; riepilogo mensile, avvisi budget e promemoria estratto (agenda → Hermes). Icone wallet/upload/target/mail aggiunte a WebUI e kit
 - [x] P6 Gmail Pub/Sub (B) code — written with P1, inactive until env is set
 - [ ] P7 Verify on cloud bench, docs, root CHANGELOG
