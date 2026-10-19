@@ -404,6 +404,27 @@ class PresenceChange(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+# ── Chat queue (brain offline) — owner of the semantics: each chat client ─────
+
+class ChatQueueItem(Base):
+    """A chat message written while Oracle was offline; its client answers it when the brain returns
+    (SPEC docs/work/2026-10-19-cervello-offline). ``state``: queued → answering → answered | failed."""
+    __tablename__ = "chat_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client = Column(String, index=True, nullable=False)
+    session_id = Column(String, nullable=False)
+    target = Column(String, nullable=True)
+    client_ref = Column(String, nullable=True)
+    text = Column(String, nullable=False)
+    meta = Column(JSONB, nullable=True)
+    state = Column(String, index=True, nullable=False, default="queued")
+    attempts = Column(Integer, nullable=False, default=0)
+    detail = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    answered_at = Column(DateTime(timezone=True), nullable=True)
+
+
 # ── Hercules (gym coach) storage — owner of the semantics: Hestia-Hercules ───
 
 HERCULES_SEQ = Sequence("hercules_records_seq", metadata=Base.metadata)

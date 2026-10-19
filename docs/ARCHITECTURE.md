@@ -158,7 +158,10 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
 - **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
   profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
   `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
-  Night = agenda window `assistant.sleep`. WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Client: `hestia_common.presence_client`; storage in Archive.
+  Night = agenda window `assistant.sleep`. **Brain offline** (Oracle down past `argus.brain.grace`): Argus sets
+  signal `brain.offline` → overlay «🧠 Cervello offline» (`chat.reply = queued`) + one Hermes notice; chat clients
+  queue what Oracle cannot take in Archive (`/api/chat-queue`) and answer it when Chronos says the brain is back
+  (`capabilities.chat_queue_drain`). SPEC `docs/work/2026-10-19-cervello-offline`. WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -472,7 +475,6 @@ This creates:
 - Metis `benchmark_run` returns `not_implemented`; LoRA training launches your external script (`Hestia-Metis/TODO.md`).
 - Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
 - Iris threads are grouped by normalized subject (Gmail thread ids are matched when present).
-- Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
 - Hub registry is in memory: every service (Python ones, Hermes, the .NET WebUI) re-registers every 60 s, so it comes
   back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
   missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).

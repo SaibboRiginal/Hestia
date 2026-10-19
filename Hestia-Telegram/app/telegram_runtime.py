@@ -174,6 +174,9 @@ def run():
     except ImportError:
         logger.warning("[🔄] event=hub_keepalive_unavailable reason=hestia_common_missing")
     refresh_command_registry(force=True)
+    # Messages queued while the brain was offline (and this bot was down too) get their answer now.
+    from telegram_bot.services.chat_queue import drain_async
+    drain_async("startup")
     logger.info(
         "event=command_registry_update_mode_push Command registry update mode=push (webhook-only after initial sync)"
     )

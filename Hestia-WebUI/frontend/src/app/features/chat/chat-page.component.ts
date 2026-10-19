@@ -14,6 +14,7 @@ import { ChatModeComponent } from './chat-mode.component';
 import { ChatContextComponent } from './chat-context.component';
 import { ChatQuickSettingsComponent } from '../settings/chat-quick-settings.component';
 import { NoticePrefsService } from '../../services/notice-prefs.service';
+import { PresenceService } from '../../services/presence.service';
 
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
@@ -52,7 +53,8 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
                 <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
               }
-              @if (m.content) { <div class="hx-prose" [innerHTML]="m.content"></div> }
+              @if (m.content) { <div class="hx-prose" [class.queued]="m.queuedId" [innerHTML]="m.content"></div> }
+              @if (m.queuedId) { <div class="inq"><hx-icon name="clock" [size]="14" /> In coda</div> }
               @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
               @if (m.isStreaming && m.content) { <span class="caret"></span> }
               @if (m.notices?.length && notices.inline()) {
@@ -66,7 +68,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
                   }
                 </div>
               }
-              @if (!m.isStreaming && m.content) {
+              @if (!m.isStreaming && m.content && !m.queuedId) {
                 <div class="foot">
                   <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)" title="Utile"><hx-icon name="thumb-up" [size]="15" /></button>
                   <button class="fb" [class.on]="rated()[m.id] === 'bad'" (click)="feedback('bad', m)" title="Non utile"><hx-icon name="thumb-down" [size]="15" /></button>
@@ -82,6 +84,12 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
     </div>
 
     <div class="composer-wrap">
+      @if (presence.chatQueued()) {
+        <div class="offline hx-fade-in" role="status">
+          <span class="oe">🧠</span>
+          <span><b>Cervello offline</b> · i messaggi restano in coda e avranno risposta appena torna.</span>
+        </div>
+      }
       @if (chat.pendingQuestion(); as q) {
         <div class="question hx-fade-in">
           <div class="qh"><hx-icon name="info" [size]="15" /> {{ q.header }}</div>
@@ -156,6 +164,11 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
     .qp { color: var(--text-2); font-size: 13.5px; margin: 4px 0 8px; }
     .qo, .qf { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
     .qf .hx-input { flex: 1; min-width: 160px; }
+    .offline { display: flex; align-items: center; gap: 8px; background: var(--warning-soft); color: var(--text);
+               border-radius: var(--radius-lg); padding: 9px 14px; margin-bottom: 10px; font-size: 13.5px; }
+    .offline .oe { font-size: 16px; }
+    .hx-prose.queued { color: var(--text-2); }
+    .inq { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--warning); }
     .skipq { font-size: 12px; color: var(--text-3); margin-top: 6px; }
     @media (max-width: 720px) { .thread { padding: 4px 12px 18px; } .composer-wrap { padding: 0 10px 8px; } .welcome h1 { font-size: 25px; } }
   `],
@@ -166,6 +179,7 @@ export class ChatPageComponent implements AfterViewChecked {
   private session = inject(SessionService);
   private settings = inject(SettingsService);
   notices = inject(NoticePrefsService);
+  presence = inject(PresenceService);
   private fb = inject(FeedbackService);
   private toast = inject(ToastService);
   private dialogs = inject(DialogService);

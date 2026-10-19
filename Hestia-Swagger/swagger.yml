@@ -5006,6 +5006,17 @@ paths:
         "200":
           description: "{delivered, ref?} · {delivered: false, skipped: true} (silent on Telegram)"
 
+  /api/chat-queue/drain:
+    post:
+      tags: [Clients]
+      summary: Answer the chat messages queued while the brain was offline — Chronos via Hub only
+      description: Declared by each chat client as capabilities.chat_queue_drain; Chronos calls it when the presence effect chat.reply goes back to live. Runs in the background. WebUI accepts it from the internal network only. SPEC docs/work/2026-10-19-cervello-offline.
+      servers:
+        - url: http://localhost:19006
+        - url: http://localhost:19015
+      responses:
+        "202": {description: "{status: started | busy}"}
+
   /api/outbound-events/state:
     post:
       tags: [Hermes]
@@ -8632,6 +8643,79 @@ paths:
         - {name: limit, in: query, schema: {type: integer, default: 50}}
       responses:
         "200": {description: "[{base, overlays, label, reason, from, from_label, at}]"}
+
+  /api/chat-queue:
+    post:
+      tags: [Archive — Chat queue]
+      summary: Queue a chat message written while the brain (Oracle) was offline
+      description: SPEC docs/work/2026-10-19-cervello-offline. Each chat client queues its own and answers them when Chronos says the brain is back.
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client, session_id, text]
+              properties:
+                client: {type: string, example: telegram}
+                session_id: {type: string}
+                text: {type: string}
+                target: {type: string, description: "Client-side destination (Telegram chat id)"}
+                client_ref: {type: string, description: "Client-side message to reply to"}
+                meta: {type: object}
+      responses:
+        "200": {description: "{id, client, session_id, target, client_ref, text, meta, state: queued, attempts, created_at, position}"}
+    get:
+      tags: [Archive — Chat queue]
+      summary: Queued items, oldest first
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: client, in: query, schema: {type: string}}
+        - {name: state, in: query, schema: {type: string, enum: [queued, answering, answered, failed], default: queued}}
+        - {name: limit, in: query, schema: {type: integer, default: 100}}
+      responses:
+        "200": {description: "{items: [item]}"}
+
+  /api/chat-queue/counts:
+    get:
+      tags: [Archive — Chat queue]
+      summary: Waiting messages (queued + answering) per client
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{waiting: {client: n}, total}"}
+
+  /api/chat-queue/{id}/claim:
+    post:
+      tags: [Archive — Chat queue]
+      summary: Compare-and-set queued → answering (one drain per message)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+        - {name: stale_seconds, in: query, schema: {type: integer, default: 600}, description: "An older claim is free again"}
+      responses:
+        "200": {description: item}
+        "409": {description: already_claimed}
+
+  /api/chat-queue/{id}/done:
+    post:
+      tags: [Archive — Chat queue]
+      summary: "ok → answered; not ok → queued again (failed after 5 attempts)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {ok: {type: boolean, default: true}, detail: {type: string}}}
+      responses:
+        "200": {description: item}
 
   /api/hephaestus/tasks/{task_id}:
     get:
