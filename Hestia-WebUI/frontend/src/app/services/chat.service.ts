@@ -30,6 +30,8 @@ export class ChatService {
 
   constructor() {
     this.signalR.events$.subscribe(event => {
+      // Answers to messages queued while the brain was offline reach every tab: the Chat page shows them.
+      if (event.type === 'queued_answer') { if (this.channel === 'main') this.handleQueuedAnswer(event); return; }
       if (this.signalR.activeChannel === this.channel) this.handleEvent(event);
     });
     // Another chat took the connection: the server cancelled our stream.
@@ -200,6 +202,14 @@ export class ChatService {
         }
         break;
 
+      case 'queued':
+        // Brain offline: the message waits in Archive and gets its answer when Oracle is back.
+        if (streamId) {
+          this.finalizeStreaming(streamId, event.content || 'Messaggio in coda');
+          this.messages.update(msgs => msgs.map(m => m.id === streamId ? { ...m, queuedId: event.queue_id } : m));
+        }
+        break;
+
       case 'stream_done':
         if (streamId) {
           this.finalizeStreaming(streamId, null, undefined, undefined);
@@ -242,6 +252,20 @@ export class ChatService {
         }
         break;
     }
+  }
+
+  private handleQueuedAnswer(event: ServerEvent): void {
+    const reply = event.reply || '';
+    const waiting = this.messages().some(m => m.queuedId === event.queue_id);
+    if (waiting) {
+      this.messages.update(msgs => msgs.map(m => m.queuedId === event.queue_id
+        ? { ...m, content: reply, queuedId: undefined, timestamp: new Date(), sessionId: event.session_id } : m));
+      return;
+    }
+    // Page reloaded meanwhile: show the pair (Oracle saved it in the session history anyway).
+    this.messages.update(msgs => [...msgs,
+      { id: uid(), role: 'user', content: event.message || '', timestamp: new Date() },
+      { id: uid(), role: 'assistant', content: reply, timestamp: new Date(), sessionId: event.session_id }]);
   }
 
   private handleNotice(event: ServerEvent): void {

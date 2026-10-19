@@ -34,7 +34,7 @@ logger = logging.getLogger("hestia_common.presence")
 
 FALLBACK_EFFECTS: dict[str, str] = {
     "work.light": "allow", "work.heavy": "allow", "llm.claude": "allow",
-    "notify.level": "all", "chat.style": "normal",
+    "notify.level": "all", "chat.style": "normal", "chat.reply": "live",
 }
 _CACHE_SECONDS = 15
 _FAIL_BACKOFF_SECONDS = 30

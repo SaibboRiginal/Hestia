@@ -13,6 +13,7 @@ Flow
 5. When the timer fires, the whole batch is narrated by Oracle in one natural
    Italian message and sent via Hermes as a single Telegram notification.
 6. Recoveries bypass batching: they are sent immediately via Oracle.
+7. While the brain is offline (``brain_watch``) Oracle is not asked: fixed text at once, no waits.
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 from core import argus_settings as cfg
 from core import hermes_client, oracle_client
 from schemas.reports import ServiceAlert
+from services import brain_watch
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
@@ -144,7 +146,7 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
         f"Non usare JSON o elenchi puntati nel messaggio finale."
     )
 
-    narrated = oracle_client.analyze(prompt)
+    narrated = "" if brain_watch.is_offline() else oracle_client.analyze(prompt)
     if narrated and narrated.strip():
         count = f" · {len(alerts)} eventi" if len(alerts) > 1 else ""
         return f"🔔 <b>Hestia Monitor{count}</b>\n\n{narrated.strip()}"
@@ -203,7 +205,7 @@ def send_recovery(service: str) -> None:
         f"Il servizio '{service}' di Hestia è tornato online correttamente. "
         f"Scrivi una breve notifica amichevole in italiano per informare l'utente della ripresa."
     )
-    narrated = oracle_client.analyze(prompt)
+    narrated = "" if brain_watch.is_offline() else oracle_client.analyze(prompt)
     if narrated and narrated.strip():
         text = f"✅ <b>Hestia Monitor</b>\n\n{narrated.strip()}"
     else:
