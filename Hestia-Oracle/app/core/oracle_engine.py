@@ -747,7 +747,7 @@ class OracleEngine:
           thinking → always agent loop (no quick-chat shortcut), model reasoning on.
           cot      → always agent loop, deep reasoning, higher max_turns, step-by-step plan.
 
-        Model (controls which BRAIN — settings oracle.models.<use case>.*):
+        Model (controls which BRAIN — the chain of the slot's use case, settings oracle.usecases / oracle.chains):
           generic   → daily driver
           reasoning → deep thinking (loaded on demand)
           code      → code generation

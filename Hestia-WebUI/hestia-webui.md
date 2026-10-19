@@ -179,14 +179,17 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Sistema: *Panoramica* +
   modules with a health dot and pending proposals; *Panoramica* = module cards (health from Hub, version, settings count, proposals) and the
   services without settings yet. A module = its groups; a group with presets shows *Economico / … /
-  Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table
-  (Oracle: use case × fornitore / modello / riserva). Filters *Solo modificate* and *Avanzate (N)*.
+  Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table.
+  Filters *Solo modificate* and *Avanzate (N)*.
 - `<hx-setting>` (`setting-row.component.ts`): label, help, badges *modificato · riavvio necessario · modulo
   offline · al riavvio · personale*, the control and a clock popover with the last changes, *Annulla ultima*,
   *Ripristina predefinito*. Settings whose `depends_on` is not met are greyed out with "Attiva solo con …".
 - `<hx-setting-control>` (`setting-control.component.ts`) picks the input by type (toggle, segmented ≤4 short
   options else dropdown, number + unit, model name with suggestions from `options`, 24h time, text, list one per
-  line, JSON). Emits only complete values; Themis validates and its Italian error goes to a toast.
+  line, JSON). An `object` setting with an `editor` hint (`llm_providers`, `llm_chains`, `llm_usecases`: Oracle's
+  providers, chains and use cases) also shows the link «Modifica in Oracle · Cervello · Modelli» to its dedicated
+  editor (`/p/oracle/cervello`, tab Modelli); the JSON stays editable. Emits only complete values; Themis validates
+  and its Italian error goes to a toast.
   Reusable outside the page (chat quick menu, P4).
 - `central-settings.store.ts`: loads every setting once (`items` without filters), reloads what Themis answers after every change (toast with *Annulla*) and polls
   `revision` every 15 s while visible, so changes from Telegram, another browser or an approved proposal show up.
