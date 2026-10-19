@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
 | **Status** | Approved 2026-10-19 (v2.0 = Marko's simplification on top of the approved v1.0) — implementing |
 
@@ -30,7 +30,8 @@ parallel state.
   seconds (new Themis setting, default 60, so a normal restart/deploy says nothing) → presence signal
   `brain.offline = true` (meta `since`, refreshed every cycle with a TTL, so a dead Argus does not leave it stuck);
   Oracle healthy again → signal cleared.
-- Same moment: one Hermes event (`service.health`, existing subscription path) with fixed `_message` and
+- Same moment: one Hermes event (`service.action_required`: the system subscription every client always has;
+  `service.health` alerts are opt-in) with fixed `_message` and
   `replaces: "system.brain"` (one live notice):
   «🧠 <b>Cervello offline</b>: Oracle non risponde. Comandi, notifiche e agenda funzionano; i messaggi in chat restano
   in coda e avranno risposta appena torna.» Back: `closes: "system.brain"` + «🧠 Di nuovo online dopo 14 min.»

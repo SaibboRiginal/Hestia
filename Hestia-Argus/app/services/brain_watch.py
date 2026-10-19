@@ -23,6 +23,9 @@ logger = logging.getLogger(f"hestia_argus.{__name__}")
 ORACLE = "oracle"
 SIGNAL = "brain.offline"
 NOTICE_KEY = "system.brain"
+# The system subscription Hermes bootstraps for the user on every client (service.health alerts are opt-in):
+# the brain notice must always arrive.
+NOTICE_EVENT = "service.action_required"
 _REFRESH_SECONDS = 600     # re-send the signal so its TTL never lapses while offline
 _SIGNAL_TTL = 1800         # a dead Argus does not leave the overlay on forever
 
@@ -97,7 +100,7 @@ def _go_offline(since: float, reason: str, error: str | None) -> None:
     logger.warning("[🔄] event=brain_offline reason=%s error=%s", reason, str(error or "")[:200])
     _signal(since, reason)
     hermes_client.publish_event(
-        domain="system", event_type="service.health", entity_id=NOTICE_KEY,
+        domain="system", event_type=NOTICE_EVENT, entity_id=NOTICE_KEY,
         payload={"_message": "🧠 <b>Cervello offline</b>: Oracle non risponde. Comandi, notifiche e agenda "
                              "funzionano; i messaggi in chat restano in coda e avranno risposta appena torna.",
                  "_title": "Cervello offline", "_level": "warning", "_source": "argus",
@@ -109,7 +112,7 @@ def _go_online(seconds_offline: float) -> None:
     if _presence is not None:
         _presence.clear(SIGNAL)
     hermes_client.publish_event(
-        domain="system", event_type="service.health", entity_id=f"{NOTICE_KEY}.online",
+        domain="system", event_type=NOTICE_EVENT, entity_id=f"{NOTICE_KEY}.online",
         payload={"_message": f"🧠 <b>Di nuovo online</b> dopo {_minutes(seconds_offline)}: rispondo ai messaggi "
                              "rimasti in coda.",
                  "_title": "Cervello di nuovo online", "_level": "success", "_source": "argus",
