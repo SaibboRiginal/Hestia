@@ -299,8 +299,9 @@ agenda routes: no duplicate endpoints):
   calendar stays the WebUI **Agenda** page (it moves to this plugin in P6). Each item keeps its last 50 runs.
 - widget **Job falliti** (`chronos-failed-widget`, s/m, auto): jobs failed in the last 24 h with *Riprova*.
 - quick action **Riprova job** (dynamic: `source` `/api/agenda/runs/failed`, `POST /api/agenda/items/{id}/run`
-  = the existing run-now). A rule stopped as `failed` stays failed after a manual run (unchanged behaviour): the
-  user resumes it from Agenda.
+  = the existing run-now). When a manual run of a rule stopped as `failed` works, the rule goes back on (recurring →
+  `confirmed`, one-off → `completed`, `reactivated: true`, `event=agenda_reactivated`); a `paused` rule stays paused
+  (Marko's choice, 2026-10-19).
 - Chronos down → «Chronos non raggiungibile».
 
 Bundle `ui/` → Dockerfile Node stage → `/ui/dist/webui/chronos.js`; manifest keys in the Hub registration

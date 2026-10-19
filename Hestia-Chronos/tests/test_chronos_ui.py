@@ -109,3 +109,20 @@ class TestUiEndpoints:
     def test_failed_endpoint(self, agenda):
         rows = _client().get("/api/agenda/runs/failed", params={"hours": 24 * 30}).json()
         assert {r["id"] for r in rows} >= {"forge.fix"}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("recurrence,status_before,ok,expected", [
+    ("RRULE:FREQ=HOURLY", "failed", True, "confirmed"),   # Riprova worked → the rule is back on
+    (None, "failed", True, "completed"),                  # one-off done
+    ("RRULE:FREQ=HOURLY", "failed", False, "failed"),     # still broken → stays stopped
+    ("RRULE:FREQ=HOURLY", "paused", True, "paused"),      # paused is the user's decision
+])
+def test_run_now_reactivates_a_failed_rule_when_it_works(recurrence, status_before, ok, expected):
+    from services import agenda as A
+    item = {"id": 7, "key": "scout.mail", "action": {"service": "scout", "path": "/x"}, "status": status_before,
+            "recurrence": recurrence, "attempts": 3}
+    with patch.object(A, "get", return_value=item), patch.object(A, "_fire", return_value=(ok, "done")), \
+            patch.object(A, "_save", side_effect=lambda i: i), patch.object(A, "_record_run"):
+        out = A.run_now(7)
+    assert item["status"] == expected and out["reactivated"] == (expected != status_before)

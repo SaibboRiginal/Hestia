@@ -3934,7 +3934,7 @@ paths:
       parameters:
         - {name: ref, in: path, required: true, schema: {type: string}, description: id or key}
       responses:
-        "200": {description: "{status, ok, detail}"}
+        "200": {description: "{status, ok, detail, reactivated} — a working run of a rule stopped as failed puts it back on (recurring → confirmed, one-off → completed); paused stays paused"}
 
   /api/agenda/runs:
     get:
