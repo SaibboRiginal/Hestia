@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.4 |
+| **Version** | 2.5 |
 | **Source** | User request · channel: project thread (Claude Code cloud session) · 2026-10-18 |
-| **Status** | Approved 2026-10-18 (Marko, card) — P1–P4 built, P5–P6 next, see PROGRESS.md |
+| **Status** | Approved 2026-10-18 (Marko, card) — P1–P6 built (Agenda page still built-in, follow-up), see PROGRESS.md |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -275,6 +275,30 @@ Owner: **Hestia-MCP** (it is the door for tools). Page **Accessi** in its plugin
   outbound list (tokens are already there from P3), Hecate for outbound credentials, named tunnel guide.
 - **P6 Built-in pages → plugins**: Sviluppo (+ *Copia per AI*), Notifiche, Agenda, Comandi & MCP, Documenti — one per
   change, old routes redirect.
+
+**As built P5–P6 (v2.5):**
+- OAuth 2.1 server = `Hestia-MCP/app/core/oauth.py`: metadata (RFC 8414/9728), dynamic registration (https or
+  loopback http redirects, 10/min brake), PKCE S256 only, codes 5 min and single-use (a replay revokes the access),
+  refresh tokens rotated on every use (a replayed old one revokes the access), revoke (RFC 7009). Access tokens
+  `hso_…` last `mcp.oauth.access_token_minutes` (Themis, default 60); clients `hmc_…`, codes and refresh tokens stored
+  only as sha256 in Archive (`mcp_oauth_clients`, `mcp_oauth_codes`, new `mcp_accesses` columns). A grant is an access
+  of kind `oauth` in the same list (revoke, *Riattiva*, delete).
+- Public door = WebUI `OAuthDoorController` (`/.well-known/oauth-*`, `/oauth/register|token|revoke` → Hub → Hestia-MCP
+  with `X-Hestia-Public-Base` only for a tunnel or local host). `/oauth/authorize` parks the request and redirects to
+  `/p/mcp/accessi?oauth=<id>`: the **consent card is on the Accessi AI page** (no separate WebUI page), behind the
+  normal login, which now returns to the page it came from. The `/mcp` 401 carries `WWW-Authenticate: Bearer
+  resource_metadata=…` so claude.ai / ChatGPT find the server.
+- Outbound: Hecate `GET /api/gateway/outbound/mcp` lists servers from `.env` (`HECATE_MCP_<NAME>_URL` / `_KEY`):
+  names, host, key yes/no, never a value; shown as *Servizi esterni* on Accessi AI. Using them in tools comes later.
+- Named tunnel: `CLOUDFLARE_TUNNEL_NAME` + `CLOUDFLARE_TUNNEL_HOSTNAME` in the root `.env` → `cloudflare-tunnel.bat`
+  runs `cloudflared tunnel run` and registers the fixed address; readme guide.
+- P6: Notifiche (Hermes, 140), Documenti (Oracle, 121), Sviluppo + *Copia per AI* (Hephaestus, 170), Comandi & MCP
+  (Hestia-MCP, 190, Accessi 191 under it) are plugin pages; old WebUI routes `/notifications`, `/documents`, `/forge`,
+  `/commands` redirect keeping the query; old Angular pages and `Forge`/`Commands`/`Files` controllers removed. The
+  WebUI keeps the notification badge-free shell, toasts and seen-on-push (mode shared with the plugin page).
+  **Agenda** stays the built-in WebUI page for now: its plugin port (`Hestia-Chronos/ui/src/cal/`) is half done and
+  not registered; finishing it is the next change.
+- Chronos *Riprova*: a manual run that works puts a rule stopped as `failed` back on (`reactivated: true`).
 
 Each phase updates the module `.md`, swagger, README/ARCHITECTURE where touched, this dossier and the root CHANGELOG.
 Tests written per phase, not run here (user rule).

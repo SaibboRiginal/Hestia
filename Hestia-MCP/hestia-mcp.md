@@ -38,7 +38,8 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
 - **Access** = name, scope `read` | `write`, tools (`[]` = every tool opened to external AIs), expiry, last use, calls
   today. Stored in Archive (`/api/mcp-access-store`); the token (`hst_…`) is shown once and stored only as sha256.
   Lookups are cached 30 s; revoke / renew / delete here drop the cache, so they take effect at once.
-- **Answers**: wrong, revoked or expired token → 401 (`WWW-Authenticate: Bearer`); more than
+- **Answers**: wrong, revoked or expired token → 401 (`WWW-Authenticate: Bearer error="invalid_token",
+  resource_metadata="<base>/.well-known/oauth-protected-resource/mcp"`, the start of OAuth for claude.ai / ChatGPT); more than
   `mcp.external.max_calls_per_min` messages a minute per access → 429 (`Retry-After: 60`); a `read` access calling a
   write tool → 403 (and `tools/list` shows it only reading tools); a tool outside the access → "Unknown tool".
 - **Towards the module** an external call carries only `X-Hestia-Access: <access name>` (never session, chat or
@@ -48,6 +49,28 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
 - Tools open to external AIs today: `forge_tasks`, `forge_task`, `forge_task_diff`, `forge_dossier`, `forge_status`,
   `forge_develop`, `forge_task_note`, `forge_submit_branch` (Hephaestus), `system_status`, `system_log` (Argus),
   `settings_search`, `settings_get`, `settings_propose` (Themis). Approve, reject, merge and rollback never leave.
+
+## OAuth 2.1 (claude.ai web/mobile, ChatGPT)
+
+`app/core/oauth.py` — SPEC §B3, §B6. For clients that only speak OAuth; everything public goes through the WebUI door
+(`OAuthDoorController`), which passes the address it was reached at in `X-Hestia-Public-Base` (issuer, metadata).
+- Metadata: `/.well-known/oauth-protected-resource[/mcp]` (RFC 9728), `/.well-known/oauth-authorization-server`
+  (RFC 8414). Dynamic registration `/oauth/register` (RFC 7591): redirect URIs https, or http only on loopback; 10
+  registrations a minute; clients `hmc_…` (public id; a secret only for confidential clients, stored hashed).
+- `/oauth/authorize` checks client, exact redirect_uri (an unknown one is never redirected to) and PKCE **S256 only**,
+  then parks the request (15 min, in memory): **no code without the consent card**. The WebUI sends the browser to
+  *Accessi AI* (`?oauth=<id>`, behind its login); *Consenti* (`POST /api/mcp/oauth/requests/{id}/approve`) issues a
+  5-minute single-use code with the scope, tools, expiry and name picked there; *Rifiuta* → `access_denied`.
+- `/oauth/token`: `authorization_code` (verifier, same redirect_uri, same client) → access token `hso_…`
+  (`mcp.oauth.access_token_minutes`) + refresh token `hsr_…`; `refresh_token` rotates both every time. A replayed
+  code or old refresh token **revokes the access**. `/oauth/revoke` (RFC 7009) stops the whole grant.
+- A grant is an access of kind `oauth` in the same list: same checks on `/mcp/external` (scope, tools, expiry, rate
+  limit, audit), *Revoca*, *Riattiva* (back on for 90 days, the AI keeps its refresh token), *Elimina*.
+- Logs: `event=mcp_oauth_client_registered|consent_asked|consent_given|consent_denied|token_refreshed`,
+  `event=mcp_oauth_token_refused error=`, `event=mcp_oauth_access_revoked_on_replay`.
+
+**Servizi esterni** (`GET /api/mcp/outbound`): third-party MCP servers Hestia may use, read from Hecate
+(`/api/gateway/outbound/mcp`, credentials in Hecate's `.env` only): names, host, key yes/no.
 
 **WebUI plugin** (core module, *Sistema*, bundle `ui/` → `/ui/dist/webui/mcp.js`, outside `/code` so the compose dev
 mount does not hide it):
@@ -59,7 +82,8 @@ mount does not hide it):
   (`core/ui_tools.py`): the same `MCPServer.tools_list` / `tools_call` as `/mcp` with client `webui` (same visibility,
   `X-Hestia-Client: webui` towards the module), call timeout 20 s.
 - sub-page *Accessi AI* (`accessi` → `mcp-accesses`, parent `comandi`): new token with the ready `claude mcp add` line
-  and JSON config, revoke, renew, delete, tool choice.
+  and JSON config, revoke, renew, delete, tool choice; OAuth consent card when opened with `?oauth=<id>`; badge
+  *OAuth* on grants; *Servizi esterni* list.
 
 ## API Endpoints
 
@@ -74,6 +98,12 @@ mount does not hide it):
 | `PATCH` | `/api/mcp/accesses/{id}` | Change name, scope, tools, expiry |
 | `POST` | `/api/mcp/accesses/{id}/revoke` · `/renew` | Stop it at once · new token (old one stops) |
 | `DELETE` | `/api/mcp/accesses/{id}` | Remove it |
+| `GET` | `/.well-known/oauth-protected-resource[/mcp]` · `/.well-known/oauth-authorization-server` | OAuth metadata (base from `X-Hestia-Public-Base`) |
+| `POST` | `/oauth/register` · `/oauth/token` · `/oauth/revoke` | OAuth 2.1 (form or JSON) |
+| `GET` | `/oauth/authorize` | `{status: consent, request_id}` or `{status: error, …, redirect?}` (the WebUI door turns it into redirects) |
+| `GET` | `/api/mcp/oauth/requests/{id}` · `POST …/approve` · `…/deny` | Consent card (WebUI only) |
+| `GET` | `/api/mcp/oauth/clients` | Registered OAuth clients |
+| `GET` | `/api/mcp/outbound` | Servizi esterni (from Hecate) |
 | `GET` | `/api/mcp/ui/tools` | Comandi page: tools the WebUI sees, as commands `{command, title, description, service, method, path, response_mode, writes, arguments_schema}` + `services` |
 | `POST` | `/api/mcp/ui/tools/call` | Run one `{command, args}` as client `webui` → `{ok, result, error?, status_code, response_mode}`; hidden/unknown → 404 |
 | `POST` | `/api/mcp/ui/tools/format` | `{command, result, response_prompt?}` → Oracle `/api/format` via Hub → `{ok, text}` (plain text; failure → `ok:false`) |
@@ -99,6 +129,7 @@ Declared in `app/core/mcp_settings.py` (`SettingsClient("mcp")`, router `GET /ap
 | `mcp.discovery.hub_timeout` | int 8 s | Timeout of the Hub registry lookup |
 | `mcp.calls.timeout` | int 10 s | Default timeout of a tool call (a caller may ask more in `_meta.hestia.timeout_seconds`, max 300) |
 | `mcp.external.max_calls_per_min` | int 60 /min | Messages a minute per external access; over it → 429 |
+| `mcp.oauth.access_token_minutes` | int 60 min (5–1440) | Life of an OAuth access token (`hso_…`); the refresh token renews it |
 | `mcp.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
 
 Env keeps only infrastructure: `HUB_API_URL`, `MCP_SERVICE_BASE_URL`, `MCP_SERVICE_VERSION`,

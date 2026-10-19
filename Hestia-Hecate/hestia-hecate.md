@@ -55,6 +55,7 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/logs` | Runtime log inspection (limit/level/contains) |
 | `GET` | `/api/gateway/providers` | List provider runtime status + registry |
 | `GET` | `/api/gateway/auth/status` | Auth/configuration state by provider |
+| `GET` | `/api/gateway/outbound/mcp` | Outbound MCP servers (third-party MCP servers Hestia may use): `{servers: [{name, host, auth, status}], how_to}` from `HECATE_MCP_<NAME>_URL/_KEY`, never a key (`app/core/outbound.py`); shown on WebUI *Accessi AI → Servizi esterni* |
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
 | `POST` | `/api/gateway/auth/initiate/{provider}` | Start OAuth flow: Google redirect URL or Microsoft device-code |
 | `GET` | `/api/gateway/auth/poll/{provider}` | Poll completion of pending OAuth device-code flow |
@@ -204,6 +205,7 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `HUB_API_URL` | `http://hestia_hub:19001/api` | Hub routing base URL |
 | `HECATE_SERVICE_BASE_URL` | `http://hestia_hecate:19003` | URL reported to Hub registry |
 | `HECATE_SERVICE_VERSION` | `1.0.0` | Version reported to Hub |
+| `HECATE_MCP_<NAME>_URL` · `HECATE_MCP_<NAME>_KEY` | — | Outbound MCP server address and its key (optional, sent as Bearer); one pair per server |
 | `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (never expires) |
 | `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret (never expires) |
 | `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (never expires — the only secret needed for API access) |

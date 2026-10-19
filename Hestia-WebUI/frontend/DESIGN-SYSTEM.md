@@ -127,10 +127,9 @@ Resizable from its left edge (`<hx-resize key="assistant">`, 340px–90vw, defau
 
 ## 7. Sviluppo module
 
-`features/forge/`: `forge.store.ts` (task list, selection, live polling, actions), `forge.api.ts`
-(`/api/webui/forge/*` → Hephaestus), `forge-page` (three-pane layout, composer, new-task modal),
-`transcript.component` (engine conversation), `task-panel.component` (Panoramica · File · Diff · Dossier · Test ·
-Log · Ramo), `repo-browser.component` + `graph.ts` (commit graph lanes, drawn per row in SVG with `--cal-*` colors).
+Since 2026-10-19 Sviluppo is Hephaestus' plugin page (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`:
+store, api, transcript, task panel, repo browser + graph), built with the plugin kit (`hxk-*`) and the same tokens.
+The WebUI route `/forge` only redirects to `/p/hephaestus/sviluppo`.
 
 ## 8. Central settings (`features/settings/`)
 
