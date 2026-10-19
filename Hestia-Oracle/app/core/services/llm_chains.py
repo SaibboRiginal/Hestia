@@ -201,6 +201,17 @@ _registry_cache: tuple[float, list[dict]] = (0.0, [])
 _REGISTRY_TTL = 60.0
 
 
+def _registry_services() -> list[dict]:
+    """Registered services from Hub (``/registry/services``)."""
+    import os
+    from core.services.hub_client import HubClient
+    services = HubClient(os.getenv("HUB_API_URL", "http://hestia_hub:19001/api")).hub_get(
+        "registry/services", default=[], timeout=4)
+    if isinstance(services, dict):
+        services = services.get("services") or list(services.values())
+    return [svc for svc in services or [] if isinstance(svc, dict)]
+
+
 def _registry_usecases() -> list[dict]:
     """Use cases declared by modules in Hub's registry (cached 60 s; Hub down → last known)."""
     global _registry_cache
@@ -208,16 +219,8 @@ def _registry_usecases() -> list[dict]:
     if time.time() - at < _REGISTRY_TTL:
         return rows
     try:
-        import os
-        from core.services.hub_client import HubClient
-        services = HubClient(os.getenv("HUB_API_URL", "http://hestia_hub:19001/api")).hub_get(
-            "registry/services", default=[], timeout=4)
-        if isinstance(services, dict):
-            services = services.get("services") or list(services.values())
         found: list[dict] = []
-        for svc in services or []:
-            if not isinstance(svc, dict):
-                continue
+        for svc in _registry_services():
             module = str(svc.get("service_name") or svc.get("name") or "").strip().lower()
             for item in ((svc.get("capabilities") or {}).get("llm_usecases") or []):
                 if isinstance(item, dict) and str(item.get("id") or "").strip():

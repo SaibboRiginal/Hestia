@@ -54,7 +54,8 @@ os.environ.setdefault("LOG_LEVEL", "WARNING")     # quiet during tests
 def _llm_chains_isolated(monkeypatch):
     """No Hub in tests: no module use cases from the registry; quota state and caches start empty."""
     from core.services import llm_chains
-    monkeypatch.setattr(llm_chains, "_registry_usecases", lambda: [])
+    monkeypatch.setattr(llm_chains, "_registry_services", lambda: [])
+    monkeypatch.setattr(llm_chains, "_registry_cache", (0.0, []))
     llm_chains.clear_exhausted()
     llm_chains._seen_usecases.clear()
     llm_chains._chain_agents.clear()

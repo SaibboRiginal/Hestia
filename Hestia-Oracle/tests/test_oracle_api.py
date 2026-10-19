@@ -251,123 +251,102 @@ class TestOracleTasksEndpoint:
 
 @pytest.mark.api
 class TestOracleLlmGenerateEndpoint:
-    """/api/llm/generate — primary/fallback chain resolves the oracle.models.generic.* settings."""
+    """/api/llm/generate — the use case's chain (oracle.usecases → oracle.chains) answers, step by step."""
 
-    def _mock_agent_chain(self, monkeypatch, primary_exc):
-        """Patch agents.universal_agent.UniversalAgent so the FIRST instance
-        (primary) fails and the second (fallback) succeeds — recording the
-        provider/model each instance was constructed with."""
-        created = []
+    @staticmethod
+    def _fake_agents(monkeypatch, fail: set[str] | None = None, quota: set[str] | None = None):
+        """Patch UniversalAgent: steps whose model is in *fail* raise, in *quota* raise a 429; the others answer
+        with their model name. Returns the (provider, model) of every agent asked."""
+        asked = []
 
         class FakeAgent:
-            def __init__(self, role_prompt="", provider="", model_name=""):
-                self.provider = provider
-                self.model_name = model_name
-                created.append(self)
+            def __init__(self, role_prompt="", provider="", model_name="", thinking=False, label=""):
+                self.provider_name, self.model_name = provider, model_name
 
-            def ask(self, prompt):
-                if len(created) == 1:
-                    raise primary_exc
-                return "fallback reply"
+            def ask(self, prompt, thinking=None):
+                asked.append((self.provider_name, self.model_name))
+                if self.model_name in (quota or set()):
+                    raise RuntimeError("429 RESOURCE_EXHAUSTED: quota exceeded, retryDelay: '30s'")
+                if self.model_name in (fail or set()):
+                    raise RuntimeError("down")
+                return f"reply from {self.model_name}"
 
-        monkeypatch.setattr(
-            "agents.universal_agent.UniversalAgent", FakeAgent)
-        return created
+        monkeypatch.setattr("agents.universal_agent.UniversalAgent", FakeAgent)
+        return asked
 
-    def test_use_case_selects_module_model_settings(self, oracle_client, monkeypatch):
-        """Scout sends use_case=scout_extraction: primary + fallback come from oracle.models.scout_extraction.*."""
-        client, _ = oracle_client
+    @staticmethod
+    def _chains(monkeypatch, chains: dict, usecases: dict | None = None):
         from core.services import oracle_settings
         eff = oracle_settings.settings._effective
-        monkeypatch.setitem(eff, "oracle.models.scout_extraction.provider", "gemini")
-        monkeypatch.setitem(eff, "oracle.models.scout_extraction.model", "gemini-2.5-flash")
-        monkeypatch.setitem(eff, "oracle.models.scout_extraction.fallback_provider", "gemini")
-        monkeypatch.setitem(eff, "oracle.models.scout_extraction.fallback_model", "gemini-2.5-flash-lite")
-        created = self._mock_agent_chain(monkeypatch, primary_exc=RuntimeError("429 quota"))
+        monkeypatch.setitem(eff, oracle_settings.CHAINS_KEY, chains)
+        monkeypatch.setitem(eff, oracle_settings.USECASES_KEY, usecases or {})
+        monkeypatch.setenv("ORACLE_KEY_GEMINI", "test-key")
 
-        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout_extraction"})
+    def test_use_case_points_to_its_chain(self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+        self._chains(monkeypatch, {
+            "veloce": {"steps": [{"provider": "ollama", "model": "local"}]},
+            "annunci": {"steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
+                                  {"provider": "gemini", "model": "gemini-2.5-flash-lite"}]}},
+            {"scout.annunci": {"chain": "annunci"}})
+        asked = self._fake_agents(monkeypatch, quota={"gemini-2.5-flash"})
+
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout.annunci"})
 
         assert resp.status_code == 200
-        assert [(a.provider, a.model_name) for a in created] == [
-            ("gemini", "gemini-2.5-flash"), ("gemini", "gemini-2.5-flash-lite")]
+        assert resp.json()["model"] == "gemini-2.5-flash-lite" and resp.json()["chain"] == "annunci"
+        assert asked == [("gemini", "gemini-2.5-flash"), ("gemini", "gemini-2.5-flash-lite")]
 
-    def test_module_use_case_follows_generic_when_empty(self, oracle_client, monkeypatch):
-        """Athena use cases default to provider "" = same models as «Uso generale»."""
+    def test_exhausted_step_is_skipped_by_every_chain_until_reset(self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        from core.services import oracle_settings
-        eff = oracle_settings.settings._effective
-        monkeypatch.setitem(eff, "oracle.models.generic.provider", "ollama")
-        monkeypatch.setitem(eff, "oracle.models.generic.model", "local-model")
-        created = self._mock_agent_chain(monkeypatch, primary_exc=RuntimeError("down"))
+        from core.services import llm_chains
+        self._chains(monkeypatch, {
+            "veloce": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "ollama", "model": "l"}]},
+            "potente": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "gemini", "model": "pro"}]}},
+            {"athena.strategia": {"chain": "potente"}})
+        asked = self._fake_agents(monkeypatch, quota={"flash"})
 
-        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena_auditor"})
+        assert client.post("/api/llm/generate", json={"prompt": "x"}).json()["model"] == "l"
+        assert client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena.strategia"}
+                           ).json()["model"] == "pro"
+        assert asked.count(("gemini", "flash")) == 1          # second chain skipped it
+        assert llm_chains.exhausted_until("gemini", "flash") > 0
 
-        assert resp.status_code == 200
-        assert (created[0].provider, created[0].model_name) == ("ollama", "local-model")
-
-    def test_fallback_uses_generic_fallback_settings(
-            self, oracle_client, monkeypatch):
+    def test_undeclared_use_case_runs_like_general_and_is_listed(self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        from core.services import oracle_settings
-        eff = oracle_settings.settings._effective
-        monkeypatch.setitem(eff, "oracle.models.generic.provider", "ollama")
-        monkeypatch.setitem(eff, "oracle.models.generic.model", "gemma4:e4b")
-        monkeypatch.setitem(eff, "oracle.models.generic.fallback_provider", "gemini")
-        monkeypatch.setitem(eff, "oracle.models.generic.fallback_model", "gemini-2.0-flash-lite")
-        # Old env vars are ignored (settings are the only source)
-        monkeypatch.setenv("MODEL_USECASE_GENERIC_FALLBACK_MODEL", "legacy-model")
+        self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "ollama", "model": "local"}]}})
+        self._fake_agents(monkeypatch)
 
-        created = self._mock_agent_chain(
-            monkeypatch, primary_exc=RuntimeError("ollama down"))
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "hercules.pianifica"})
+
+        assert resp.status_code == 200 and resp.json()["model"] == "local"
+        listed = client.get("/api/llm/usecases").json()["usecases"]
+        row = next(r for r in listed if r["id"] == "hercules.pianifica")
+        assert row["undeclared"] and row["effective_chain"] == "veloce"
+
+    def test_openai_compatible_step_needs_no_key(self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+        self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "deepseek", "model": "deepseek-chat"},
+                                                         {"provider": "ollama", "model": "local"}]}})
+        monkeypatch.delenv("ORACLE_KEY_DEEPSEEK", raising=False)
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.PROVIDERS_KEY, {
+            "ollama": {"type": "ollama"}, "deepseek": {"type": "openai", "url": "https://api.deepseek.com/v1"}})
+        asked = self._fake_agents(monkeypatch)
+        # deepseek is an OpenAI-compatible server: without a key it is still tried (local servers need none)
+        assert client.post("/api/llm/generate", json={"prompt": "x"}).json()["model"] == "deepseek-chat"
+        assert asked == [("deepseek", "deepseek-chat")]
+
+    def test_every_step_failing_returns_503_with_chain(self, oracle_client, monkeypatch):
+        client, _ = oracle_client
+        self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "ollama", "model": "a"},
+                                                         {"provider": "gemini", "model": "b"}]}})
+        self._fake_agents(monkeypatch, fail={"a", "b"})
 
         resp = client.post("/api/llm/generate", json={"prompt": "test"})
 
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["response"] == "fallback reply"
-        assert data["provider"] == "gemini"
-        assert data["model"] == "gemini-2.0-flash-lite"
-        assert len(created) == 2
-        assert created[1].provider == "gemini"
-        assert created[1].model_name == "gemini-2.0-flash-lite"
-
-    def test_fallback_follows_changed_settings(
-            self, oracle_client, monkeypatch):
-        client, _ = oracle_client
-        from core.services import oracle_settings
-        eff = oracle_settings.settings._effective
-        monkeypatch.setitem(eff, "oracle.models.generic.fallback_provider", "ollama")
-        monkeypatch.setitem(eff, "oracle.models.generic.fallback_model", "mistral:7b")
-
-        created = self._mock_agent_chain(
-            monkeypatch, primary_exc=RuntimeError("ollama down"))
-
-        resp = client.post("/api/llm/generate", json={"prompt": "test"})
-
-        assert resp.status_code == 200
-        assert resp.json()["provider"] == "ollama"
-        assert resp.json()["model"] == "mistral:7b"
-        assert created[1].provider == "ollama"
-        assert created[1].model_name == "mistral:7b"
-
-    def test_both_fail_returns_500_with_context(
-            self, oracle_client, monkeypatch):
-        client, _ = oracle_client
-
-        class AlwaysFails:
-            def __init__(self, role_prompt="", provider="", model_name=""):
-                pass
-
-            def ask(self, prompt):
-                raise RuntimeError("nope")
-
-        monkeypatch.setattr(
-            "agents.universal_agent.UniversalAgent", AlwaysFails)
-
-        resp = client.post("/api/llm/generate", json={"prompt": "test"})
-
-        assert resp.status_code == 500
-        assert "Fallback" in resp.json()["detail"]
+        assert resp.status_code == 503
+        assert "veloce" in resp.json()["detail"] and "ollama/a" in resp.json()["detail"]
 
     def test_missing_prompt_returns_400(self, oracle_client):
         client, _ = oracle_client

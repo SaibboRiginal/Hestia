@@ -117,7 +117,6 @@ def engine():
         bundle.reasoning.ask_stream.return_value = iter(["Reasoning ", "stream."])
         bundle.code.ask.return_value = "Code response."
         bundle.embedding.embed.return_value = [0.1] * 768
-        bundle.embedding_fallback.embed.return_value = [0.1] * 768
         bundle.generic_model_name = "mock-generic"
         mock_create.return_value = bundle
 

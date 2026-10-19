@@ -113,10 +113,11 @@ class TestClaudeCliProvider:
 
 
 @pytest.mark.unit
-def test_cli_env_has_no_anthropic_keys(monkeypatch):
+def test_cli_env_has_no_api_keys(monkeypatch):
     from agents.llm_config import cli_env
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "a")
-    monkeypatch.setenv("ORACLE_ANTHROPIC_API_KEY", "b")
+    monkeypatch.setenv("ORACLE_KEY_CLAUDE_API", "b")
+    monkeypatch.setenv("ORACLE_KEY_DEEPSEEK", "c")
     env = cli_env()
-    assert "ANTHROPIC_API_KEY" not in env and "ORACLE_ANTHROPIC_API_KEY" not in env
+    assert not {"ANTHROPIC_API_KEY", "ORACLE_KEY_CLAUDE_API", "ORACLE_KEY_DEEPSEEK"} & set(env)
