@@ -255,8 +255,8 @@ class Day:
                 until = s["paused_until"]
                 evaluated[s["id"]] = {"include": False, "state": "paused", "reason": f"in pausa fino al {until[8:10]}/{until[5:7]}",
                                       "goal": None}
-        # steps with their own goal first, the most behind wins the conflicts
-        order = {"due": 0, "suggested": 1, "wait": 2, "ok": 3, "off": 4, "rest": 5, "done": 6}
+        # steps with their own goal first: what is already done today is a fact, then the most behind wins the conflicts
+        order = {"done": -1, "due": 0, "suggested": 1, "wait": 2, "ok": 3, "off": 4, "rest": 5}
         with_goal = [s for s in steps if s.get("cadence") and s["id"] not in evaluated]
         goals = {s["id"]: goal_state(s["cadence"], self.step_days(rid, s["id"]), self.day, self.week_start,
                                      done_today=1 if logged.get(s["id"], {}).get("done") else 0) for s in with_goal}
@@ -266,7 +266,7 @@ class Day:
             fam = self.step_families(s)
             include, reason = g["state"] in ACTIVE_STATES or g["state"] == "done", ""
             if include and g["state"] != "done":
-                clash = [used[f] for f in fam if f in used]
+                clash = [used[f] for f in used if conflict_notes(fam, {f}, self.custom_conflicts)]
                 notes = [n for other in chosen.values() for n in conflict_notes(fam, other, self.custom_conflicts)]
                 notes += conflict_notes(fam, set(used), self.custom_conflicts)
                 partner = [o for o in s.get("not_same_day_as") or [] if o in chosen or o in {l.get("routine_id") for l in self.today_logs}]

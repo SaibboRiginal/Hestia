@@ -13,3 +13,4 @@
   (no env), state definitions stored as Themis setting `chronos.presence.states`; Hermes `notify.level` mapped on
   global notifications' `level` — source: coordinator relay (settings P1–P5 landed).
 - v2.3 — 2026-10-11 — WebUI state popover explains itself: base state `help` and `dnd_minutes` in the snapshot, effects in plain words under «Cosa cambia», «Storico» tab with reasons, «Non disturbare» explained — Marko found the effect lines and dnd unclear and asked for a history — source: user via WebUI feedback (coordinator relay)
+- v2.4 — 2026-10-19 — state tool name aligned with the code: `stato` (Chronos MCP, with `nondisturbare`/`disturbami`), not `assistant_state` — found by the cloud bench real-run flows — source: Hestia AI proactive (coordinator brief)

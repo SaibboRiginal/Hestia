@@ -263,7 +263,9 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 ## User activity (idle signal)
 
 `GET /api/activity` → `{last_user_activity_ts, idle_seconds}`. Updated on `/api/chat` and `/api/chat/document`
-only when `notify_target` is present (real client chats; internal callers like Argus narration are ignored).
+only when `notify_target` or `client` is present (real client chats: Telegram sends both, the WebUI only
+`client="webui"`; internal callers like Argus narration send neither and are ignored). The same rule decides the
+presence ping below.
 Athena uses it to think only while the user is idle.
 
 ## LLM gateway (single owner of provider access)
@@ -402,4 +404,4 @@ Data sources (all in memory, reset when Oracle restarts — an inside view, not 
 
 ## Assistant presence
 
-Every chat (text and document) pings Chronos presence (`oracle`, forced) and reads the state from before the ping: if `chronos.presence.oracle_context_line` is on, the system prompt gets one line (state, last interaction, notice) and «Rispondi breve.» when `chat.style=brief`. Code: `app/core/services/oracle_presence.py`.
+Every user chat (text and document, see the rule above) pings Chronos presence (`<client>`, forced) and reads the state from before the ping: if `chronos.presence.oracle_context_line` is on, the system prompt gets one line (state, last interaction, notice) and «Rispondi breve.» when `chat.style=brief`. Code: `app/core/services/oracle_presence.py`.

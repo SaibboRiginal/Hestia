@@ -41,7 +41,7 @@ Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 
 | Component | Usage |
 |---|---|
-| `<hx-icon name size stroke>` | stroke icons; list in `icon.component.ts` (add paths there) |
+| `<hx-icon name size stroke>` | stroke icons; list in `icon.component.ts` (add paths there). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the sidebar shows «info» — `python tools/cloud_test.py flows plugins` checks it |
 | `<button hx-btn variant size icon iconRight iconOnly block loading>` | variants `primary · secondary · ghost · subtle · danger`; sizes `sm · md · lg` |
 | `.hx-input`, `.hx-select`, `.hx-textarea`, `.hx-check` (+ `.mono`) | global form classes |
 | `<hx-field label hint error required>` | label/hint/error wrapper around a control |

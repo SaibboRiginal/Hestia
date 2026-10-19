@@ -15,3 +15,4 @@ Spec: `SPEC.md` v2.5 · resume from the first unchecked box.
 - [x] P4 UI bundle Hestia-Hercules/ui/ (offline first + /sync): 9 pages, 8 widgets, live workout with rest timer, warm-ups, plates; typecheck + esbuild build OK, flows driven in Chromium incl. offline → online sync (2026-10-18)
 - [ ] P5 Telegram polish (natural logging `fitness_log_sets` already in P3); wait for Marko's feedback from real use
 - [x] Root CHANGELOG line
+- [x] Real run on the cloud bench (2026-10-19, fake LLM): template, live session 6 sets, last time + suggestion, PRs/stats, offline sync repeated without duplicates, Home «Segna fatto» + Annulla, chat → `fitness_adapt_today`, apply/restore, weight + goal + summary all pass; fix found: bodyweight exercises (inverted row) were planned with the bodyweight as kg → `docs/work/2026-10-19-prove-reali-banco/`. Left for Marko: Telegram, a real model, his own gym session

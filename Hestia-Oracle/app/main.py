@@ -535,9 +535,9 @@ from core.services.oracle_presence import presence as _presence, presence_instru
 
 
 def _mark_user_activity(notify_target: Optional[str], client: Optional[str] = None) -> dict | None:
-    """Mark a real user chat. Returns the presence state read BEFORE the ping (so the
-    assistant sees how long the user was away, e.g. to say "bentornato")."""
-    if not notify_target:
+    """Mark a real user chat (Telegram sends notify_target, the WebUI only its client name). Returns the presence
+    state read BEFORE the ping (so the assistant sees how long the user was away, e.g. to say "bentornato")."""
+    if not notify_target and not client:
         return None
     _LAST_USER_ACTIVITY["ts"] = time.time()
     state = _presence.get()

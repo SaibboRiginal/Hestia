@@ -46,9 +46,13 @@ python tools/cloud_test.py all      # prepare (Docker, base images, .env) + up (
 python tools/cloud_test.py check    # again: health, Hub registry, smoke calls, WebUI screenshots
 python tools/cloud_test.py token    # login link (Codespaces forwards the port through a proxy → token needed)
 python tools/cloud_test.py logs oracle · down
+python tools/cloud_test.py flows [area…]   # real user flows end to end (after `all`)
 ```
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
+- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
+  agenda, presence, settings, plugins, mcp, webui (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
+  Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
   → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».
 - Telegram starts only with a (test) `TELEGRAM_BOT_TOKEN`; Google/Microsoft OAuth needs a person in a browser.
@@ -64,6 +68,11 @@ python tools/cloud_test.py logs oracle · down
 
 | Date | Symptom | Test Added | Root Cause |
 |------|---------|-----------|------------|
+| 2026-10-19 | Coach plans the bodyweight as kg on an inverted row | Hercules `test_bodyweight_exercise_never_suggests_the_bodyweight_as_load` | Progression used the bodyweight-based load for every kind |
+| 2026-10-19 | Self care suggests the AHA the evening after the retinol | Hygieia `test_after_a_retinol_evening_the_aha_says_not_today` | Steps done today sorted after the others, so the clash was never seen |
+| 2026-10-19 | «Cosa mi metto … ufficio» ignores the occasion | Wardrobe `test_italian_labels_become_vocabulary_keys` | Occasions/styles saved and matched as labels, rules use vocabulary keys |
+| 2026-10-19 | Chatting in the WebUI leaves the assistant «In attesa» | Oracle `test_webui_chat_counts_as_user_activity` | Presence pinged only when `notify_target` was set (Telegram) |
+| 2026-10-19 | Coach/Self care sidebar entries show the «info» icon | `cloud_test.py flows plugins` (icon check) | Plugin manifests used icons the WebUI did not draw |
 | 2026-10-19 | *Mappa* shows WebUI and Hermes offline after 3 min; a Hub restart forgets them | Hermes `TestHubKeepalive` | Hermes started its keepalive only if every first registration failed; the WebUI had none |
 | 2026-10 | Google OAuth always failed (`Error 400 invalid_request`) | Hecate 7.13–7.25 | OOB redirect blocked by Google since 2023 |
 | _first entry TBD_ | LLM returns `**bold**` instead of `<b>bold</b>` | Telegram 2.1.1, Oracle 1.8.13 | Format contract not enforced on all paths |

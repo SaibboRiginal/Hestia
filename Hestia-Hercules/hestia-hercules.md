@@ -15,6 +15,8 @@
   measurements, goals, check-ins, feedback, adaptations, day plans (skip / move).
 - Computes everything derived: e1RM (Epley/Brzycki), PRs, volume per muscle/group, progression suggestions
   (double, linear, rpe), stalls and deload hint, goal progress and streak, warm-ups, plate maths.
+  Bodyweight exercises plan what you type (extra load, assistance), never the bodyweight-based load the records use:
+  `bodyweight_reps` and `assisted_bodyweight` progress by reps only, `weighted_bodyweight` adds kilos to the ballast.
 - **Adaptation is a conversation**: the assistant calls `fitness_adapt_today` with what Marko says (pain,
   energy, time, missing equipment, intent); Hercules applies its rules and returns the plan + trace; nothing is
   applied until `fitness_apply_adaptation`; `fitness_restore_today` goes back. No Hermes proposal cards.

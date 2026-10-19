@@ -6,6 +6,7 @@ Usage (from the repo root, Linux, Docker):
   python tools/cloud_test.py prepare    # docker daemon, network, base images, .env files
   python tools/cloud_test.py up         # build and start every service (Telegram only with a bot token)
   python tools/cloud_test.py check      # health, Hub registry, smoke calls, WebUI screenshots → .cloud-test/
+  python tools/cloud_test.py flows [area…]  # real-run flows (modules, chat→tools, Hermes, MCP, WebUI) → .cloud-test/flows.md
   python tools/cloud_test.py token      # WebUI login link (Codespaces: the forwarded port needs the token)
   python tools/cloud_test.py logs SVC   # last log lines of one service
   python tools/cloud_test.py down       # stop and remove the containers (volumes kept)
@@ -449,6 +450,10 @@ def main(argv: list[str]) -> int:
         cmd_prepare(force)
         cmd_up()
         return cmd_check("--no-screens" not in argv)
+    elif cmd == "flows":
+        sys.path.insert(0, str(ROOT / "tools" / "cloud_test"))
+        import flows  # noqa: PLC0415 — only this command needs it
+        return flows.main(argv[2:])
     elif cmd == "token":
         cmd_token()
     elif cmd == "logs":

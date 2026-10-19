@@ -12,3 +12,4 @@
 - [x] Docs: TESTING.md, CLAUDE.md, AI-GUIDE, ARCHITECTURE, Hermes/WebUI md, swagger, root CHANGELOG
 - [ ] Gemini mode tried with a real key (needs `GEMINI_API_KEY` as environment variable / Codespaces secret)
 - [ ] Marko tries a Codespace himself
+- [x] Real flows: `python tools/cloud_test.py flows [area…]` (fake LLM scripted tools `#tool name {args}`), first full run 47 steps → `docs/work/2026-10-19-prove-reali-banco/`
