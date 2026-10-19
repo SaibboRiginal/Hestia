@@ -200,12 +200,10 @@ class OracleEngine:
             "ARCHIVE_API_URL", "http://hestia_archive:19002/api")
 
         # ── LLM agents ────────────────────────────────────────────────────────
+        # Chains are read live at every call: model settings changed from any client apply at once.
         self._agents = AgentFactory.create()
-        # Model settings changed from any client (Themis) → switch agents in place, no restart.
-        from core.services import oracle_settings
-        oracle_settings.settings.on_change(
-            lambda changed: AgentFactory.reconfigure(self._agents)
-            if any(k.startswith("oracle.models.") for k in changed) else None)
+        from core.services import llm_migration, oracle_settings
+        oracle_settings.settings.on_change(lambda changed: llm_migration.run(oracle_settings.settings))
 
         # ── Infrastructure services ───────────────────────────────────────────
         self._hub = HubClient(self._hub_url)
@@ -250,7 +248,6 @@ class OracleEngine:
             archive_url=self._archive_url,
             hub_api_url=self._hub_url,
             scribe_agent=self._agents.generic,
-            fallback_scribe_agent=self._agents.generic_fallback,
             context_builder=self._context_builder,
             pref_domain_classifier=_pref_classifier,
         )
@@ -258,20 +255,17 @@ class OracleEngine:
         self._control_service = UserControlService(
             hub_client=self._hub,
             scribe_agent=self._agents.generic,
-            fallback_scribe_agent=self._agents.generic_fallback,
         )
 
         self._classifier = ChatClassifier(
             router_agent=self._agents.generic,
-            fallback_router_agent=self._agents.generic_fallback,
         )
 
         # ── Document pipeline ─────────────────────────────────────────────────
         self._archiver = DocumentArchiver(
             hub_client=self._hub,
             embed_fn=self._embed,
-            analyst=self._agents.generic,
-            fallback_analyst=self._agents.generic_fallback,
+            analyst=self._agents.documents,
         )
 
         self._doc_rag = DocumentRAG(
@@ -282,8 +276,7 @@ class OracleEngine:
         self._doc_analyser = DocumentAnalyser(
             hub_client=self._hub,
             archiver=self._archiver,
-            analyst=self._agents.generic,
-            fallback_analyst=self._agents.generic_fallback,
+            analyst=self._agents.documents,
             style_contract_fn=conversation_style_contract,
         )
 
@@ -2834,14 +2827,8 @@ class OracleEngine:
                 f"MESSAGGIO UTENTE:\n{user_message}",
             ],
         )
-        # Use primary agent first; fall back only on failure
-        try:
-            return self._agents.generic.ask(prompt)
-        except Exception:
-            try:
-                return self._agents.generic_fallback.ask(prompt)
-            except Exception:
-                return self._ask_analyst(prompt)
+        # The generic chain already tries its fallback steps.
+        return self._ask_analyst(prompt)
 
     def _now_in_oracle_timezone(self) -> datetime:
         """Return timezone-aware current datetime in the container TZ when valid."""

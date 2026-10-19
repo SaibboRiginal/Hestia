@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 1.1 |
 | **Source** | User via external chat (brainstorm 2026-10-19, item 1 of the final list in `/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md`) → project thread «Oracle a blocchi» |
-| **Status** | Draft v1.1 (Marko's answers 2026-10-19) — waiting for approval before any code |
+| **Status** | Approved v1.1 (Marko, card, 2026-10-19 11:55) — in progress, see PROGRESS.md |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 

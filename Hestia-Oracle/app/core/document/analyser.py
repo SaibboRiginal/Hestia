@@ -38,13 +38,11 @@ class DocumentAnalyser:
         hub_client: HubClient,
         archiver: DocumentArchiver,
         analyst,
-        fallback_analyst,
         style_contract_fn: Callable[[], str],
     ) -> None:
         self._hub = hub_client
         self._archiver = archiver
         self._analyst = analyst
-        self._fallback = fallback_analyst
         self._style_contract = style_contract_fn
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -159,26 +157,16 @@ class DocumentAnalyser:
         try:
             return self._analyst.ask(text_prompt)
         except Exception:
-            try:
-                return self._fallback.ask(text_prompt)
-            except Exception:
-                return f"📝 Trascrizione:\n\n{transcript[:2000]}"
+            return f"📝 Trascrizione:\n\n{transcript[:2000]}"
 
     def _answer_via_llm(self, file_bytes: bytes, mime_type: str, full_prompt: str) -> str:
-        """Send file to analyst (then fallback, then local-text last resort)."""
+        """Send file to the analyst chain, then local-text last resort."""
         try:
             return self._analyst.ask_with_attachment(
                 file_bytes=file_bytes, mime_type=mime_type, user_message=full_prompt
             )
         except Exception as exc1:
-            logger.warning("event=analyser_primary_analyst_failed [ANALYSER] Primary analyst failed: %s", exc1)
-
-        try:
-            return self._fallback.ask_with_attachment(
-                file_bytes=file_bytes, mime_type=mime_type, user_message=full_prompt
-            )
-        except Exception as exc2:
-            logger.warning("event=analyser_fallback_analyst_failed [ANALYSER] Fallback analyst failed: %s", exc2)
+            logger.warning("[🔄] event=analyser_primary_analyst_failed [ANALYSER] Analyst chain failed: %s", exc1)
 
         # Last resort: extract text locally and ask text-only
         local_text = extract_text(file_bytes, mime_type)

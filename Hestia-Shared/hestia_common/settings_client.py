@@ -57,7 +57,8 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
             options: list | None = None, min: float | None = None, max: float | None = None,
             unit: str = "", apply: str = "live", scope: str = "system", depends_on: dict | None = None,
             oracle: str = "propose", advanced: bool = False, order: int = 0,
-            options_source: str = "", fields: dict | None = None, row: str = "", column: str = "") -> dict:
+            options_source: str = "", fields: dict | None = None, row: str = "", column: str = "",
+            editor: str = "") -> dict:
     """Build one setting definition (validated by Themis against its type).
 
     ``options``: for ``enum`` a list of values or ``(value, label)`` pairs.
@@ -66,6 +67,8 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
     ``fields``: for ``object`` the sub-fields (each a ``setting``-like dict without key).
     ``row``/``column``: optional table layout hint — settings of one group sharing rows and columns are
     shown by clients as a grid (e.g. row "Codice", column "Modello"); ``label`` stays the full name.
+    ``editor``: optional name of a dedicated client editor for an ``object`` value (e.g. ``llm_chains``);
+    clients without it show the generic JSON editor.
     ``oracle``: what the assistant may do — ``propose`` (default, always confirmed by the user),
     ``read``, or ``none`` for safety switches.
     """
@@ -81,7 +84,8 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
            "apply": apply, "scope": scope, "oracle": oracle, "advanced": bool(advanced), "order": int(order)}
     for name, value in (("options", opts), ("min", min), ("max", max), ("unit", unit or None),
                         ("depends_on", depends_on), ("options_source", options_source or None),
-                        ("fields", fields), ("row", row or None), ("column", column or None)):
+                        ("fields", fields), ("row", row or None), ("column", column or None),
+                        ("editor", editor or None)):
         if value is not None:
             out[name] = value
     return out
@@ -119,6 +123,7 @@ class SettingsClient:
         self._presets: list[dict] = []
         self._effective: dict[str, Any] = {}     # what the module really uses now
         self._stored: dict[str, Any] = {}        # last values received from Themis
+        self._orphans: dict[str, Any] = {}       # stored values of keys no longer declared (for migrations)
         self._callbacks: list[Callable[[dict], None]] = []
         self._lock = threading.Lock()
         self._loaded = False
@@ -206,6 +211,16 @@ class SettingsClient:
         with self._lock:
             return dict(self._effective)
 
+    def stored(self) -> dict[str, Any]:
+        """Values the user actually stored (declared keys only; missing = default)."""
+        with self._lock:
+            return dict(self._stored)
+
+    def orphans(self) -> dict[str, Any]:
+        """Stored values of keys this module no longer declares — read by one-time migrations."""
+        with self._lock:
+            return dict(self._orphans)
+
     def pending_restart(self) -> list[str]:
         with self._lock:
             return sorted(k for k, v in self._stored.items()
@@ -231,6 +246,7 @@ class SettingsClient:
         changed: dict[str, Any] = {}
         with self._lock:
             self._stored = {k: v for k, v in (stored or {}).items() if k in self._defs}
+            self._orphans = {k: v for k, v in (stored or {}).items() if k not in self._defs}
             for key, d in self._defs.items():
                 value = self._stored.get(key, d.get("default"))
                 if self._effective.get(key) == value:

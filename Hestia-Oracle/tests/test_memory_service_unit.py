@@ -24,8 +24,6 @@ def memory_service():
     """MemoryService with all external deps mocked."""
     scribe = MagicMock()
     scribe.ask.return_value = "NONE"
-    fallback_scribe = MagicMock()
-    fallback_scribe.ask.return_value = "NONE"
     context_builder = MagicMock()
     context_builder.max_history_messages = 10
     context_builder.max_history_chars = 500
@@ -35,7 +33,6 @@ def memory_service():
         archive_url="http://fake-archive:19002/api",
         hub_api_url="http://fake-hub:19001/api",
         scribe_agent=scribe,
-        fallback_scribe_agent=fallback_scribe,
         context_builder=context_builder,
     )
 
@@ -175,15 +172,8 @@ class TestAskFallback:
         result = memory_service._ask("Test prompt")
         assert result == "Primary response"
 
-    def test_fallback_used_when_primary_fails(self, memory_service):
-        memory_service.scribe.ask.side_effect = RuntimeError("Primary down")
-        memory_service.fallback_scribe.ask.return_value = "Fallback response"
-        result = memory_service._ask("Test prompt")
-        assert result == "Fallback response"
-
-    def test_both_fail_returns_none(self, memory_service):
-        memory_service.scribe.ask.side_effect = RuntimeError("Primary down")
-        memory_service.fallback_scribe.ask.side_effect = RuntimeError("Fallback down")
+    def test_chain_failure_returns_none(self, memory_service):
+        memory_service.scribe.ask.side_effect = RuntimeError("every step of the chain failed")
         result = memory_service._ask("Test prompt")
         assert result == "NONE"
 

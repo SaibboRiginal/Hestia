@@ -41,14 +41,25 @@ for _p in [str(_APP_PATH), str(_SHARED_PATH)]:
         sys.path.insert(0, _p)
 
 # ── Environment defaults (must be set before any Oracle module is imported) ───
-# empty → auto-fallback to Ollama
-os.environ.setdefault("GEMINI_API_KEY", "")
+# No provider keys (ORACLE_KEY_*): cloud steps of every chain are skipped as "not available".
 os.environ.setdefault("OLLAMA_URL", "http://localhost:11434/api/generate")
 os.environ.setdefault("HUB_API_URL", "http://fake-hub:19001/api")
 os.environ.setdefault("ARCHIVE_URL", "http://fake-archive:19002/api")
 os.environ.setdefault("LOG_LEVEL", "WARNING")     # quiet during tests
 # Models and every tunable come from central settings (oracle_settings defaults; no Themis in tests).
 # A test changes one with monkeypatch.setitem(oracle_settings.settings._effective, KEY, value).
+
+
+@pytest.fixture(autouse=True)
+def _llm_chains_isolated(monkeypatch):
+    """No Hub in tests: no module use cases from the registry; quota state and caches start empty."""
+    from core.services import llm_chains
+    monkeypatch.setattr(llm_chains, "_registry_usecases", lambda: [])
+    llm_chains.clear_exhausted()
+    llm_chains._seen_usecases.clear()
+    llm_chains._chain_agents.clear()
+    yield
+    llm_chains.clear_exhausted()
 
 
 @pytest.fixture(scope="session")
@@ -90,13 +101,10 @@ def mock_agent_bundle(mock_generic_agent):
     """Full AgentBundle with use-case agents mocked."""
     bundle = MagicMock()
     bundle.generic = mock_generic_agent
-    bundle.generic_fallback = _make_agent_mock("Fallback generic answer.")
     bundle.reasoning = _make_agent_mock("Mock reasoning answer.")
-    bundle.reasoning_fallback = _make_agent_mock("Fallback reasoning answer.")
     bundle.code = _make_agent_mock("Mock code answer.")
-    bundle.code_fallback = _make_agent_mock("Fallback code answer.")
+    bundle.documents = _make_agent_mock("Mock documents answer.")
     bundle.embedding = _make_agent_mock("")
-    bundle.embedding_fallback = _make_agent_mock("")
     bundle.generic_model_name = "mock-model"
     return bundle
 

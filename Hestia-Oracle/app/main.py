@@ -205,11 +205,13 @@ def ui_stats(days: int = 14):
 
 
 def _use_case_label(use_case: str) -> str:
-    """Italian name of a use case (the same labels as the oracle.models.* settings)."""
+    """Italian name of a use case (declared by Oracle or by its module) or of an agent slot."""
+    from core.services import llm_chains
     if use_case == "claude_code":
         return "Claude Code (Forge)"
-    entry = _oracle_settings.USECASES.get(use_case) or _oracle_settings.SERVICE_USECASES.get(use_case)
-    return entry[0] if entry else use_case
+    use_case = llm_chains.SLOTS.get(use_case, use_case)
+    entry = llm_chains.declared_usecases().get(use_case)
+    return entry["label"] if entry else use_case
 
 
 @app.get("/api/ui/code")
@@ -275,9 +277,44 @@ def ui_documents_delete(document_id: str):
 
 @app.get("/api/llm/models")
 def llm_models_endpoint(provider: str = "ollama"):
-    """Model choices for the settings panel (options_source of oracle.models.*.model)."""
-    from core.services.llm_gateway import list_models
-    return {"provider": provider, "options": list_models(provider)}
+    """Model choices of a named provider (chain editor in Modelli)."""
+    from core.services import llm_providers
+    return {"provider": provider, "options": [{"value": m, "label": m} for m in llm_providers.list_models(provider)]}
+
+
+@app.get("/api/llm/providers")
+def llm_providers_endpoint(check: bool = False):
+    """Named providers (setting oracle.providers): type, address, key set (never the key), availability,
+    models out of quota; ``check`` also lists each available provider's models."""
+    from core.services import llm_providers
+    from agents.providers import PROVIDER_TYPES
+    types = [{"value": t, "label": label} for t, label in llm_providers.TYPES.items()]
+    return {"status": "ok", "providers": llm_providers.public_view(check=check), "types": types,
+            "class_types": sorted(PROVIDER_TYPES)}
+
+
+@app.get("/api/llm/chains")
+def llm_chains_endpoint():
+    """Chains (setting oracle.chains) with each step's state (available, out of quota until)."""
+    from core.services import llm_chains
+    return {"status": "ok", "chains": llm_chains.chains_view()}
+
+
+@app.get("/api/llm/usecases")
+def llm_usecases_endpoint():
+    """Every use case — Oracle's, the ones modules declare in their Hub registration, undeclared ones seen —
+    with its effective chain, mode and thinking (overrides: setting oracle.usecases)."""
+    from core.services import llm_chains
+    return {"status": "ok", "usecases": llm_chains.usecases_view(), "modes": [
+        {"value": v, "label": label} for v, label in llm_chains.MODES]}
+
+
+@app.get("/api/llm/usecases/{use_case}")
+def llm_usecase_status_endpoint(use_case: str):
+    """What an OpenAI-compatible chat on *use_case* uses now (Forge engine ``oracle``): first usable step,
+    context window, whether any usable step is billed."""
+    from core.services.llm_gateway import usecase_status
+    return {"status": "ok", **usecase_status(use_case)}
 
 
 @app.on_event("startup")
@@ -957,17 +994,10 @@ def documents_search_endpoint(query: str):
     return {"count": len(chunks), "chunks": chunks}
 
 
-@app.get("/api/llm/profiles")
-def llm_profiles_endpoint(check: bool = True):
-    """LLM profiles Oracle can serve (no secrets).  Used by Forge."""
-    from core.services.llm_gateway import list_profiles
-    return {"status": "ok", "profiles": list_profiles(check=check)}
-
-
 @app.post("/api/llm/chat")
 def llm_chat_endpoint(req: dict):
-    """OpenAI-compatible chat (messages + tools) on a named profile.
-    Body: {profile: local|cloud|..., messages, tools?, temperature?, model?}"""
+    """OpenAI-compatible chat (messages + tools) along a use case's chain (Forge engine ``oracle``).
+    Body: {use_case?: forge.codice, messages, tools?, temperature?, max_tokens?}"""
     from core.services.llm_gateway import LLMGatewayError, chat
     try:
         return chat(req or {})
@@ -1004,74 +1034,27 @@ def llm_code_endpoint(req: CodeTaskRequest):
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """
-    Ollama-compatible LLM endpoint for services.
-    Accepts: {"prompt": "...", "use_case": "...", "model": "...", "provider": "..."}
-    ``use_case`` (e.g. scout_extraction, athena_auditor) picks the module's model settings
-    (``oracle.models.<use_case>.*``); default = generic. Explicit model/provider still win.
-    Returns: {"response": "...", "model": "...", "provider": "..."}
+    Plain generation for services: {"prompt": "...", "use_case": "scout.annunci"}.
+    ``use_case`` (declared by the module in its Hub registration) picks the chain (setting oracle.usecases,
+    default «Uso generale»); the chain tries its steps in order and skips the ones out of quota.
+    Returns: {"response": "...", "model": "...", "provider": "...", "use_case": "...", "chain": "..."}
     """
-    from agents.universal_agent import UniversalAgent
+    from core.services import llm_chains
+    prompt = str(req.get("prompt") or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt required")
+    use_case = str(req.get("use_case") or llm_chains.GENERAL).strip().lower()
+    agent = llm_chains.agent_for(use_case)
     try:
-        prompt = req.get("prompt", "").strip()
-        if not prompt:
-            raise HTTPException(status_code=400, detail="prompt required")
-
-        # Same source as AgentFactory: settings oracle.models.<use case>.* (Themis).
-        from core.services import oracle_settings
-        use_case = str(req.get("use_case") or "").strip().lower()
-        if use_case not in oracle_settings.SERVICE_USECASES and use_case not in oracle_settings.USECASES:
-            if use_case:
-                logger.warning("[🔄] event=llm_generate_unknown_use_case use_case=%s fallback=generic", use_case)
-            use_case = "generic"
-        generic = oracle_settings.usecase(use_case)
-        default_provider, default_model = generic["prov"], generic["mod"]
-
-        model = req.get("model") or default_model
-        provider = req.get("provider") or default_provider
-
-        agent = UniversalAgent(
-            role_prompt="", provider=provider, model_name=model)
-        agent.label = "api_generate"  # runtime stats
-        try:
-            response_text = agent.ask(prompt)
-            return {"response": response_text, "model": model, "provider": provider}
-        except Exception as primary_exc:
-            logger.warning(
-                "event=llm_generate_primary_failed "
-                "provider=%s model=%s error=%s — trying fallback",
-                provider, model, primary_exc)
-            # Fallback: same source of truth as AgentFactory (the use case's fallback settings).
-            fallback_provider, fallback_model = generic["fb_prov"], generic["fb_mod"]
-            try:
-                fallback_agent = UniversalAgent(
-                    role_prompt="", provider=fallback_provider,
-                    model_name=fallback_model)
-                fallback_agent.label = "api_generate"
-                response_text = fallback_agent.ask(prompt)
-                logger.info(
-                    "event=llm_generate_fallback_success "
-                    "fallback_provider=%s fallback_model=%s",
-                    fallback_provider, fallback_model)
-                return {
-                    "response": response_text,
-                    "model": fallback_model,
-                    "provider": fallback_provider,
-                }
-            except Exception as fallback_exc:
-                logger.exception(
-                    "event=llm_generate_fallback_failed "
-                    "fallback_provider=%s fallback_model=%s",
-                    fallback_provider, fallback_model)
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Primary ({provider}/{model}): {primary_exc} | "
-                           f"Fallback ({fallback_provider}/{fallback_model}): {fallback_exc}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(
-            "event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")
-        raise HTTPException(status_code=500, detail=str(e))
+        text = agent.ask(prompt)
+    except llm_chains.ChainExhausted as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        logger.exception("event=unhandled_error_llm_generate_endpoint use_case=%s", use_case)
+        raise HTTPException(status_code=500, detail=str(exc))
+    step = llm_chains.last_answered() or {}
+    return {"response": text, "model": step.get("model", ""), "provider": step.get("provider", ""),
+            "use_case": use_case, "chain": step.get("chain", "")}
 
 
 @app.delete("/api/chat/{session_id}")
