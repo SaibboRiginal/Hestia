@@ -103,7 +103,7 @@ export class OracleDocuments extends HestiaElement {
     this.host.toast(d.is_permanent ? 'Ora è temporaneo: può essere ripulito se non lo usi' : 'Tenuto per sempre', 'success');
   }
 
-  private async remove(d: any) {
+  private async drop(d: any) {
     if (!(await this.host.confirm('Eliminare il documento?', d.title || d.filename || d.document_id, { label: 'Elimina', danger: true }))) return;
     const r = await this.host.api('DELETE', `${API}/documents/${encodeURIComponent(d.document_id)}`);
     if (!r.ok) { this.host.toast(r.error || 'Eliminazione non riuscita', 'danger'); return; }
@@ -145,7 +145,7 @@ export class OracleDocuments extends HestiaElement {
         <hxk-button size="sm" variant="ghost" icon="sparkle" title="Chiedi a Hestia" @click=${() => this.ask(d)}></hxk-button>
         <hxk-button size="sm" variant="ghost" icon="pin" title=${d.is_permanent ? 'Rendi temporaneo' : 'Tieni per sempre'}
           @click=${() => this.keep(d)}></hxk-button>
-        <hxk-button size="sm" variant="ghost" icon="trash" title="Elimina" @click=${() => this.remove(d)}></hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="trash" title="Elimina" @click=${() => this.drop(d)}></hxk-button>
       </div>
     </div>`;
   }
