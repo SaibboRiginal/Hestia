@@ -10,7 +10,7 @@
 - [x] P5 External agent mode: `oracle.brain.*`, stdio MCP bridge, Claude Code + Codex adapters, session cache, fallback interna, `ORACLE_INSTALL_CODEX`
 - [x] P6 Docs (oracle, hephaestus, archive, scout, athena, argus, chronos, wardrobe, metis, shared md, swagger, .env.example, compose, ARCHITECTURE, AI-GUIDE, readme, TESTING), SPEC v1.2, root CHANGELOG
 - [x] Cloud bench run (`python tools/cloud_test.py all`): all up and smoke ok except Hephaestus crash-looping on `from core.capabilities` (bare import, hidden by the test sys.path) → relative import + regression test that imports the engine like the container
-- [ ] Bench re-run after the Hephaestus fix
+- [x] Bench re-run after the Hephaestus fix: 22 containers up, smoke all ✅, WebUI 37 pages 0 JS errors
 - [ ] PR opened, CI green, merged
 - [ ] Marko real run: add keys `ORACLE_KEY_*`, check Cervello → Modelli and Uso, try brain mode Esterna with Claude Code
 
