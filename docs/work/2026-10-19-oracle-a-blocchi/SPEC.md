@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User via external chat (brainstorm 2026-10-19, item 1 of the final list in `/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md`) → project thread «Oracle a blocchi» |
-| **Status** | Draft — waiting for Marko's approval before any code |
+| **Status** | Draft v1.1 (Marko's answers 2026-10-19) — waiting for approval before any code |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -19,39 +19,45 @@ case, a single `openai` endpoint, and Forge has its own parallel profiles (`ORAC
 ## Goal
 Oracle built from three simple blocks, configured in one place:
 
-1. **Providers** — *where* models live: a name, a type, an address and a key (env, infrastructure only).
+1. **Providers** — *where* models live: a name, a standard (type) and an address in Themis; the key alone in env.
 2. **Chains** — *which* models, in order, like CSS `font-family`: a named, reusable list of provider+model steps;
    a step out of quota is skipped until its quota resets, the next one answers.
-3. **Use cases** — *what for*: each use case (and each module's own use case) points to one chain.
+3. **Use cases** — *what for*: every module that needs Oracle declares its own use cases (one per kind of task);
+   each points to a chain, all edited in one place (Oracle → Modelli, grouped by module).
 
 Plus two things that only make sense once the blocks exist:
 
-4. **External agent mode** — a chain step can be an *agent* (Claude Code `claude -p`, Codex `codex exec`…) that
-   takes the whole turn and works with Hestia's MCP tools; Oracle stays the only door, Archive stays the source of
-   truth of conversations.
+4. **External mode** — a mode of its own (not a chain step): Oracle's internal machine (classifier, modes, tool
+   selection, agent loop) is replaced by an agent (Claude Code `claude -p`, Codex `codex exec`…) that works with
+   Hestia's MCP tools; Oracle stays the only door, Archive stays the source of truth of conversations.
 5. **Usage panel** — like Claude Projects' usage view: per module, per session, per use case and per chain step:
    calls, frequency, tokens, context fill, cache hits, cost, model actually used.
 
 ## Scope
 
-### A. Named providers (env = address + key only)
-- Env scheme, one block per provider, any number: `ORACLE_PROVIDER_<NAME>_TYPE`, `_URL`, `_KEY`
-  (e.g. `ORACLE_PROVIDER_DEEPSEEK_TYPE=openai`, `ORACLE_PROVIDER_DEEPSEEK_URL=https://api.deepseek.com/v1`,
-  `ORACLE_PROVIDER_DEEPSEEK_KEY=…`). `<NAME>` is what chains refer to (lower-cased: `deepseek`).
-- Types (existing code, generalised): `ollama`, `gemini`, `openai` (any OpenAI-compatible server: DeepSeek, Groq,
-  OpenRouter, LM Studio, llama-server, vLLM), `anthropic` (API key), `claude_cli` (subscription, as model),
-  and the new agent types of §D: `claude_code`, `codex`.
-- Built-in providers with no config: `ollama` (from the existing `OLLAMA_URL`, the infra address it already has) and
-  `claude` (`claude_cli`, present when the CLI is installed and logged in). Every other provider is declared.
-- **Removed, no compatibility layer** (rule: env keeps only secrets/infra, no legacy env): `GEMINI_API_KEY`
-  → `ORACLE_PROVIDER_GEMINI_KEY` (type `gemini` implied by the name `gemini` when `_TYPE` is absent, same for
-  `ollama`, `claude`, `anthropic`); `ORACLE_OPENAI_BASE_URL/_API_KEY` → a named `openai`-type provider;
-  `ORACLE_ANTHROPIC_API_KEY` → `ORACLE_PROVIDER_ANTHROPIC_KEY`; all `ORACLE_LLM_PROFILE_*` gone.
-  `.env.example`, compose comments, `tools/cloud_test.py` and the docs are updated in the same change; the cloud
-  bench secret becomes `ORACLE_PROVIDER_GEMINI_KEY`.
-- Safety kept: no provider key ever reaches a `claude`/`codex` subprocess (`cli_env()` strips every
-  `ORACLE_PROVIDER_*_KEY` and `ANTHROPIC_API_KEY`), so Forge's Claude Code never switches to paid API billing.
-- `GET /api/llm/providers`: name, type, address (no key), reachable, models (`list_models()`), per-model quota state.
+### A. Named providers (Themis = name, standard, address · env = key only)
+- Provider **types are standards**, providers are named instances (as LiteLLM/OpenRouter-style tools do):
+  | Type (standard) | Example providers |
+  |---|---|
+  | `ollama` | `ollama` (local) |
+  | `openai` (compatible) | `llamacpp` (llama-server, local), `lmstudio`, `deepseek`, `openrouter`, `groq` |
+  | `anthropic` | `claude-api` (API key), `deepseek-anthropic` |
+  | `gemini` | `gemini` (API key) |
+  | `claude_cli` | `claude` (subscription through the `claude` CLI, as a model in a chain) |
+  | agent (§D) | `claude-code` (subscription), `codex` |
+- Setting `oracle.providers` (Themis, object, live): `{name: {type, label, url}}`; added/edited from the WebUI.
+  Defaults: `ollama` (url from the existing infra `OLLAMA_URL`), `gemini`, `claude` / `claude-code` (shown only when
+  the CLI is installed and logged in).
+- **Keys stay in env** (repo is public): `ORACLE_KEY_<NAME>` (name upper-cased, `-` → `_`, e.g.
+  `ORACLE_KEY_DEEPSEEK`, `ORACLE_KEY_CLAUDE_API`). The panel shows only "key ✓ / missing".
+- **Removed, no compatibility layer** (rule: no legacy env): `GEMINI_API_KEY` → `ORACLE_KEY_GEMINI`;
+  `ORACLE_OPENAI_BASE_URL/_API_KEY` → an `openai` provider + `ORACLE_KEY_<NAME>`; `ORACLE_ANTHROPIC_API_KEY` →
+  `ORACLE_KEY_CLAUDE_API`; all `ORACLE_LLM_PROFILE_*` gone. `.env.example`, compose comments, `tools/cloud_test.py`
+  and docs updated in the same change; the cloud bench secret becomes `ORACLE_KEY_GEMINI`.
+- Safety kept: no key ever reaches a `claude`/`codex` subprocess (`cli_env()` strips every `ORACLE_KEY_*` and
+  `ANTHROPIC_API_KEY`), so Forge's Claude Code never switches to paid API billing.
+- `GET /api/llm/providers`: name, type, address, key present, reachable, models (`list_models()`), per-model quota
+  state.
 
 ### B. Named reusable chains
 - Setting `oracle.chains` (Themis, type object, live): `{name: {label, steps: [{provider, model, thinking?}]}}`.
@@ -74,45 +80,53 @@ Plus two things that only make sense once the blocks exist:
   today the fallback fails. (The "Cervello offline" thread decides what clients show then.)
 - Quota state lives in Oracle memory (lost on restart = at most one extra 429 per pair).
 
-### C. Use cases point to chains
-- Setting `oracle.usecases` (object, live): `{use_case: {chain, thinking}}` with the 7 known use cases and defaults:
-  generale → `veloce`, ragionamento → `potente`, codice → `codice`, embedding → `embedding`,
-  `scout_extraction` → `veloce`, `athena_strategist` → `potente`, `athena_auditor` → `veloce`; plus `forge` → `codice`.
-- **Any** module can send a new `use_case` to `/api/llm/generate` (future coaches, Spese…): unknown use cases run on
-  the `generale` chain and appear in the panel and in the editor, so Marko can point them to another chain without
-  touching Oracle code.
+### C. Use cases: declared by each module, configured in one place
+- Every module that calls Oracle **declares its use cases** (one per kind of task, as many as it needs) with
+  `hestia_common` (`oracle_usecases([...])` next to its settings declaration): id `<module>.<task>`, label,
+  suggested chain (`veloce`/`potente`/`codice`/…), optional suggested mode. Examples: `scout.annunci` → veloce,
+  `athena.strategia` → potente, `athena.revisione` → veloce, `hercules.pianifica` → potente (future coaches).
+  Oracle's own: `oracle.generale` → veloce, `oracle.ragionamento` → potente, `oracle.codice` → codice,
+  `oracle.embedding` → embedding; Forge: `forge.codice` → codice.
+- Setting `oracle.usecases` (object, live): `{use_case: {chain, mode, thinking}}` holds only Marko's overrides;
+  missing = the module's suggestion. `mode` = `segui` (global mode, default) | `interna` | `esterna`.
+- Modules call `/api/llm/generate` with their `use_case` (existing field; current ids renamed: `scout_extraction`
+  → `scout.annunci`, `athena_strategist` → `athena.strategia`, `athena_auditor` → `athena.revisione`). An
+  undeclared use case runs on `oracle.generale` and is listed too, so nothing breaks.
 - The 32 `oracle.models.*` settings and `oracle.models.claude_code.model` disappear; one-time migration on first
   start: if Marko changed any old value, Oracle writes the equivalent chain (`<use case>-personale`) and points the
   use case to it, then deletes the old keys (log `event=oracle_models_migrated`).
-- Forge: `/api/llm/chat` takes `use_case` (default `forge`) instead of `profile`; the Forge engines `local` and
-  `cloud` become one engine `oracle` (the in-process loop on the `forge` chain); engine `claude` stays (Claude
-  Code in the worktree, model = the chain's `claude_code` step if any, else Claude Code's default).
-  `GET /api/llm/profiles` is removed; callers updated (Hephaestus, swagger, WebUI).
-- Settings panel: **Modelli** shows only use case → chain (7 rows) and the chain list; everything else in Oracle's
-  settings (agent loop, context, timeouts, memory, approvals, documents, A/B) moves under *avanzate*. Every remaining
-  setting keeps its key (Athena/Themis proposals unaffected).
+- Forge: `/api/llm/chat` takes `use_case` (default `forge.codice`) instead of `profile`; the Forge engines `local`
+  and `cloud` become one engine `oracle` (the in-process loop on that use case's chain); engine `claude` stays
+  (Claude Code in the worktree). `GET /api/llm/profiles` is removed; callers updated (Hephaestus, swagger, WebUI).
+- Settings panel **Oracle → Modelli** = Fornitori, Catene, Usi grouped by module (chain + mode per row), Cervello
+  (global mode). Everything else in Oracle's settings (agent loop, context, timeouts, memory, approvals, documents,
+  A/B) moves under *avanzate*. Remaining settings keep their keys (Athena/Themis proposals unaffected).
 
-### D. External agent mode
-- New step kind **agent** (`claude_code`, `codex`): when the chain of a chat turn (`/api/chat`, proactive turns from
-  Chronos/Athena/Argus/modules) reaches an agent step, Oracle hands the **whole turn** to the agent instead of running
-  its own agent loop. On a plain `/api/llm/generate` call an agent step runs as a plain model call (no tools).
-  So "internal vs external" is not a switch: it is which step of the chain answers, and a chain can mix them
-  (`claude_code sonnet → gemini 2.5-flash → ollama`), so when the subscription limit is hit Hestia keeps answering.
+### D. External mode (a mode of its own)
+- Setting `oracle.brain.mode` = `interna` (default) | `esterna`, plus `oracle.brain.agent` (provider of kind
+  agent + model, e.g. `claude-code` / `sonnet`) and `oracle.brain.fallback` (`interna`, default, or none).
+  A use case can override the mode (§C). This is a real tunable, not a feature switch.
+- **Interna** = today's machine: classifier, Rapida/Pensata/CoT, context builder, domain tool selection, agent loop,
+  model from the use case's chain.
+- **Esterna** = the agent runs the loop. Oracle keeps the door work only: receives every turn (chat and proactive
+  turns from Chronos/Athena/Argus/modules), builds the context, saves messages to Archive, gives the agent Hestia's
+  tools, extracts memory after the turn, records usage. If the agent fails or hits its limit, the turn is redone in
+  `interna` with the chains (when `fallback = interna`), with full history.
 - Tools: the agent gets Hestia's tools through a **stdio MCP bridge started by Oracle** (`--mcp-config` for
   Claude Code, `-c mcp_servers…` for Codex). The bridge only forwards `tools/list` / `tools/call` to Oracle's own
   tool executor, so the agent sees the same domain-filtered tools, the same high-impact **approval gate**
   (confirmation through Hermes), the same logs and Hub routing as the internal loop. No new service URL, no direct
-  module access, Claude Code's own file/shell tools stay disabled.
+  module access; Claude Code's own file/shell tools stay disabled.
 - Sessions: **Archive stays the source of truth** (messages saved as today). The agent's session id
   (`--resume <id>`, `codex exec resume <id>`) is only a cache keyed by (Archive session, agent, model), kept in
-  Oracle memory. Missing, expired, different agent, or older than the last Archive message written by another step →
+  Oracle memory. Missing, expired, different agent, or older than the last Archive message written in `interna` →
   Oracle starts a new agent session primed with the same context it builds for the internal loop (summary + recent
-  messages + memory). Result: switching steps mid-conversation never loses history.
-- Prompt: the agent gets Oracle's system prompt (fixed prefix first, unchanged → provider-side cache works) and the
-  conversation style contract, so answers look the same whichever step answered.
-- Codex: implemented behind the same interface; usable only where its CLI is installed and logged in
-  (`ORACLE_INSTALL_CODEX=1` build arg, like Claude Code). Not testable in the cloud bench without a login → covered by
-  tests with a fake CLI.
+  messages + memory). Switching mode mid-conversation never loses history.
+- Prompt: the agent gets Oracle's system prompt (fixed prefix first → provider-side cache works) and the
+  conversation style contract, so answers look the same in both modes.
+- On a plain `/api/llm/generate` call of a use case in `esterna`, the agent answers without tools (one shot).
+- Codex: same interface; usable only where its CLI is installed and logged in (`ORACLE_INSTALL_CODEX=1` build arg,
+  like Claude Code). Not testable in the cloud bench without a login → covered by tests with a fake CLI.
 
 ### E. Usage panel
 - Every LLM call (internal steps and agent runs) produces one usage row: time, **caller module**, client and session
@@ -139,16 +153,18 @@ Plus two things that only make sense once the blocks exist:
 - `memory_note` for direct MCP chats (item 10).
 
 ## Acceptance criteria
-1. A provider is added by three env lines and appears in `/api/llm/providers` and in the chain editor.
+1. A provider is added from the WebUI (name, standard, address) + one `ORACLE_KEY_<NAME>` env line and appears in
+   `/api/llm/providers` and in the chain editor.
 2. A chain `gemini-2.5-flash → gemini-2.5-flash-lite → gemini-2.0-flash`: a 429 on the first step answers with the
    second, and the first is skipped by all chains until its reset; the panel shows it as exhausted until then.
 3. Changing the chain of «Uso generale» in one place changes chat, classifier and memory; changing chain `veloce`
    changes every use case that points to it.
-4. Forge `oracle` engine runs on the `forge` chain; no `ORACLE_LLM_PROFILE_*` or `/api/llm/profiles` left anywhere.
+4. Forge `oracle` engine runs on the `forge.codice` chain; no `ORACLE_LLM_PROFILE_*` or `/api/llm/profiles` left anywhere.
 5. Oracle's settings in *Modelli* (non-advanced) ≤ 10; old `oracle.models.*` values migrated once.
-6. With chain `claude_code → gemini`, a chat turn is answered by Claude Code using Hestia tools through the bridge
+6. In `esterna` with agent `claude-code`, a chat turn is answered by Claude Code using Hestia tools through the bridge
    (approval gate still asks via Hermes for high-impact tools); with the CLI failing/limited the same turn is answered
-   by Gemini with full history; Archive holds every message either way.
+   in `interna` with full history; Archive holds every message either way.
+6b. A module declaring two use cases shows two rows under its name in Modelli; changing one changes only that task.
 7. Usage panel shows per module (Scout, Athena, Forge, chat…) and per session: calls, frequency, tokens, context, cache,
    cost, model used; data survives an Oracle restart.
 8. Tests (unit/api) for chain resolution, quota skip/reset, migration, provider env parsing, bridge, session cache
@@ -157,23 +173,24 @@ Plus two things that only make sense once the blocks exist:
 9. Docs follow code: `hestia-oracle.md`, `hestia-hephaestus.md`, `hestia-archive.md`, swagger, `.env.example`,
    compose comments, `docs/ARCHITECTURE.md`, `docs/AI-GUIDE.md`, README, TESTING.md, root CHANGELOG.
 
-## Design decisions (defaults chosen; Marko can change them before approval)
-1. **Env names** `ORACLE_PROVIDER_<NAME>_{TYPE,URL,KEY}` and the old ones removed with no compatibility (rule:
-   no legacy env). One `.env` edit for Marko at upgrade (`GEMINI_API_KEY` → `ORACLE_PROVIDER_GEMINI_KEY`).
-2. **Embedding chain has one step.** Vectors from different models are not comparable: falling back to another model
-   would silently break memory and document search. If it fails the call fails (retried as today).
-3. **External mode is a step kind, not a switch** (rule: no on/off settings; and it gives fallback across modes).
-4. **Chains and use cases are two object settings** edited by a dedicated editor, instead of ~40 flat keys.
-5. **Usage rows in Archive** (only DB owner), pushed per call; no flush job.
-6. **Quota state in memory**, not persisted.
+## Design decisions
+1. **Providers in Themis, keys in env** (Marko 2026-10-19). Env names `ORACLE_KEY_<NAME>`; old env names removed
+   with no compatibility. One `.env` edit for Marko at upgrade (`GEMINI_API_KEY` → `ORACLE_KEY_GEMINI`).
+2. **Types are standards** (`openai`, `anthropic`, `gemini`, `ollama`, CLI, agent); providers are named instances
+   (Marko 2026-10-19). DeepSeek recommended on the `openai` standard (native tools, automatic prefix cache).
+3. **External is a mode of its own**, global with per-use-case override, falls back to internal (Marko 2026-10-19).
+4. **Use cases declared by modules**, several per module, configured in one place (Marko 2026-10-19).
+5. **Embedding chain has one step.** Vectors from different models are not comparable: falling back to another model
+   would silently break memory and document search.
+6. **Usage rows in Archive** (only DB owner), pushed per call; no flush job. **Quota state in memory**.
 
 ## Phases
-- P1 Providers + chains + quota skip in Oracle core (dispatch through chain; `universal_agent` keeps provider code).
-- P2 Use cases → chains, settings migration, Modelli simplified, the rest under *avanzate*; Forge on `forge` chain,
+- P1 Providers (Themis + `ORACLE_KEY_*`) + chains + quota skip in Oracle core (dispatch through chain; `universal_agent` keeps provider code).
+- P2 Use cases declared by modules (`hestia_common`), → chains, settings migration, Modelli simplified, the rest under *avanzate*; Forge on `forge` chain,
   profiles removed (Hephaestus + swagger).
 - P3 Usage: caller header, Archive `llm-usage`, `/api/llm/usage`.
-- P4 WebUI: *Cervello* tabs Uso and Modelli (chain editor).
-- P5 External agent mode: MCP bridge, `claude_code` step, session cache + rebuild from Archive; `codex` adapter.
+- P4 WebUI: *Cervello* tab Uso; Modelli editor (providers, chains, use cases by module, mode).
+- P5 External mode: `oracle.brain.*`, MCP bridge, Claude Code agent, session cache + rebuild from Archive; `codex` adapter.
 - P6 Docs everywhere, cloud bench run with screenshots, root CHANGELOG, PR merged when CI green.
 
 ## Coordination

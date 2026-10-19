@@ -1,7 +1,7 @@
 # Progress — Oracle a blocchi
 
 - [x] Read brainstorm (section 0 + Oracle sections), Oracle settings/providers/gateway, Forge engines
-- [x] SPEC v1.0 draft
+- [x] SPEC v1.0 draft; v1.1 with Marko's answers
 - [ ] Marko approves SPEC (no code before this)
 - [ ] P1 Named providers + chains + quota skip (Oracle core) + tests
 - [ ] P2 Use cases → chains, migration of `oracle.models.*`, Modelli simplified / rest advanced; Forge on `forge` chain, profiles removed
