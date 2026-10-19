@@ -113,6 +113,11 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   (Themis, layer `client:webui`); the confirm card appears in the same chat (ChatHub sends the answer with
   `client: webui`, shows the outcome as a notice) and the WebUI reloads its config (also every 60 s).
 - CSP: `script-src … blob:` (plugin modules) and `img-src … https:` (module photos).
+- Icon set (`ui/icon.component.ts`, mirrored by the SDK `hxk-icon`): 2026-10-19 added `wallet`, `upload`, `target`,
+  `mail`. New plugins that use them: **Spese** (module `plutus`, decade 60: Panoramica, Movimenti, Budget,
+  Abbonamenti, Importa, Statistiche, Categorie e regole; widgets *Spese del mese* / *Ultimi movimenti*; quick action
+  *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Controlla email»). No WebUI code: both
+  come from the Hub plugin catalog.
 
 ### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifiche`, `services/notifications.service.ts`)
 

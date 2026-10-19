@@ -8,7 +8,7 @@
 
 ## Responsibility
 
-A gateway runtime that executes provider-facing operations on behalf of domain services. Hecate owns provider auth lifecycles (Google/Outlook), exposes full calendar CRUD, and still supports connector-based fetch triggers for domain modules.
+A gateway runtime that executes provider-facing operations on behalf of domain services. Hecate owns provider auth lifecycles (Google/Outlook), exposes full calendar CRUD, runs the **one mail watcher** of Hestia (new mail → Iris, which dispatches to subscribed modules), and still supports connector-based fetch triggers (calendar).
 
 Hecate registers itself into Hub (service name `hecate`) and remains discoverable as gateway + fetch runtime.
 
@@ -41,7 +41,6 @@ Adding a new data source = implementing this interface and registering the conne
 
 | Connector | Type Key | Description |
 |---|---|---|
-| `EmailFetcher` | `iris_email` | Reads Hecate's mail gateway in-process (Gmail via OAuth; IMAP-style filter translated + since). Used by Scout |
 | `GCalFetcher` | `gcal` | Fetches Google calendar events via Hub-routed Hecate gateway APIs |
 | `OutlookFetcher` | `outlook_calendar` | Fetches Outlook calendar events via Hub-routed Hecate gateway APIs |
 
@@ -71,7 +70,10 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/gateway/email/messages` (alias `/api/gateway/mail/messages`) | Mail search: `q` = Gmail syntax, raw IMAP criteria (`FROM "x"`, translated for Gmail) or free text; `since` = ISO date; `limit`. Gmail API (OAuth). Auth failure → `status=error`, `action_required=reauth_google` + Telegram notification |
 | `GET` | `/api/gateway/email/messages/{id}` | Single message (Gmail id or Message-ID) |
 | `POST` | `/api/gateway/email/send` (alias `/api/gateway/mail/send`) | Send `{to, subject, body}` via Gmail API (`gmail.send`) |
-| `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy) |
+| `POST` | `/api/gateway/mail/watch/run` | One mail check (history API) → new headers pushed to Iris; body `{trigger}` (agenda job `hecate.mail_watch`) |
+| `GET` | `/api/gateway/mail/watch` | Watcher state: agenda job, interval, cursor/last check/last error/pending, Pub/Sub push status |
+| `POST` | `/api/gateway/mail/watch/renew` | Renew Gmail push (`users.watch` on the Pub/Sub topic); `inactive` when not configured |
+| `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy; calendar connectors only — mail goes through the watcher) |
 | `POST` | `/api/ingest/calendar/trigger` | Sync calendar events from providers into Archive |
 
 ### Google setup (one-time, ~5 min)
@@ -190,6 +192,8 @@ they are not env vars. All apply **live** (read at use time).
 | `hecate.archive.calendar_write_timeout` | int (s, advanced) | `10` | Timeout for calendar item writes to Archive |
 | `hecate.auth.recheck_interval` | int (s) | `3600` | Periodic provider auth re-check + re-notify (0 = only at startup) |
 | `hecate.auth.notify_cooldown` | int (s, advanced) | `300` | Min gap between identical action-required notifications |
+| `hecate.mail.watch_interval` | int (s) | `900` | Default recurrence of agenda job `hecate.mail_watch` (min 60) |
+| `hecate.mail.safety_interval` | int (s, advanced) | `21600` | Recurrence of `hecate.mail_watch` when Gmail Pub/Sub push is configured (safety net) |
 | `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
 
 Endpoints: `GET /api/settings/effective`, `POST /api/settings/reload` (used by Themis).
@@ -224,6 +228,10 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `GOOGLE_OAUTH_FLOW_MODE` | `redirect` | `redirect` (PKCE; any device with the Cloudflare tunnel, paste-URL fallback otherwise) or `device_code` (Desktop/TV clients only) |
 | `GOOGLE_TUNNEL_URL_FILE` | `/code/data/tunnel-url.txt` | Public tunnel URL written by `cloudflare-tunnel.bat`, used as redirect base |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Redirect URI for `redirect` flow mode |
+| `HECATE_MAIL_WATCH_STATE` | `/code/data/mail_watch.json` | Mail watcher state file (history cursor, pending ids) |
+| `HECATE_GMAIL_PUBSUB_TOPIC` | — | Optional Gmail push: `projects/<project>/topics/<topic>` |
+| `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` | — | Optional Gmail push: `projects/<project>/subscriptions/<sub>` (pull). Push is active only when topic + subscription are set |
+| `HECATE_GMAIL_PUBSUB_CREDENTIALS` | `/code/data/gmail-pubsub-sa.json` | Service-account JSON key (only *Pub/Sub Subscriber*) used for the streaming pull |
 | `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
 
 **Canonical Google OAuth setup (no expiring values):**
@@ -242,8 +250,49 @@ obtained live.
 
 Gmail only, via the Google OAuth token (no IMAP, no app passwords): read with `gmail.readonly`, send with
 `gmail.send` (both in the default scopes — re-authorize Google once if the token predates them).
-IMAP-style criteria from connectors (`FROM "x"`, `SUBJECT "y"`, `SINCE 01-Jan-2026`, `UNSEEN`) are translated to
+IMAP-style criteria (`FROM "x"`, `SUBJECT "y"`, `SINCE 01-Jan-2026`, `UNSEEN`) are translated to
 Gmail search. Auth failure → `status=error`, `action_required=reauth_google` + Telegram re-auth button.
+
+### Mail watcher (`core/mail_watch.py`) — push to Iris
+
+The **only** place in Hestia that looks for new mail; no module polls mail (rule: push, poll only when unavoidable).
+
+- Trigger: Chronos agenda job **`hecate.mail_watch`** → `POST /api/gateway/mail/watch/run` (recurrence from
+  `hecate.mail.watch_interval`, default 900 s; editable/pausable in the agenda, re-registered when the setting changes).
+  With Gmail Pub/Sub configured each notification also triggers a run, and the job slows to `hecate.mail.safety_interval`.
+  Concurrent triggers collapse (the running check runs once more).
+- Light check: Gmail **history API** from the stored `historyId` (`messageAdded`); nothing new = one tiny call, no
+  search, no body, no LLM. Cursor + state in `HECATE_MAIL_WATCH_STATE` (`data/mail_watch.json`).
+- First run (no cursor) only initialises the cursor: old mail is not pushed (modules use Iris backfill for that).
+- New messages → **headers only** (`id, message_id, thread_id, subject, from, to, date, snippet, labels`) →
+  `POST route/iris/api/email/incoming {messages, source}`. Iris decides who gets what.
+- Iris unreachable → cursor **kept**, ids saved as `pending` and offered again at the next check (nothing lost).
+- History expired (Gmail keeps ~a week) → `[🔄] event=mail_watch_history_expired`: search since the last good check
+  (`-in:sent -in:drafts`) and a fresh `historyId`.
+- Gmail not authorized / auth error → run recorded as `skipped` with `action_required=reauth_google` (no crash loop).
+- Logs: `event=mail_watch_pushed new= source= trigger=`, `[🔄] event=mail_watch_push_failed`, `event=mail_watch_initialized`.
+
+### Gmail push via Pub/Sub (`core/gmail_pubsub.py`, optional)
+
+Inactive until `HECATE_GMAIL_PUBSUB_TOPIC` and `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` are set. Hecate keeps one
+**streaming pull** open on the subscription (outgoing connection → real push without a public URL); every message
+just runs the normal watcher. `users.watch` expires after 7 days → daily agenda job **`hecate.mail_watch_renew`**
+(`POST /api/gateway/mail/watch/renew`), registered only when configured and retired otherwise. Stream errors →
+`[🔄] event=gmail_pubsub_stream_failed` with backoff; the periodic check stays as safety net.
+
+#### Gmail Pub/Sub setup (optional, one-time)
+
+1. Google Cloud Console, same project as the OAuth client → enable **Cloud Pub/Sub API**.
+2. *Pub/Sub → Topics* → **Create topic** (e.g. `hestia-gmail`). Note `projects/<project>/topics/<topic>`.
+3. Topic → *Permissions* → **Add principal** `gmail-api-push@system.gserviceaccount.com` with role
+   **Pub/Sub Publisher** (lets Gmail publish on it).
+4. *Subscriptions* → **Create subscription** on the topic, delivery type **Pull**. Note
+   `projects/<project>/subscriptions/<sub>`.
+5. *IAM → Service accounts* → create one with **only Pub/Sub Subscriber** (on the subscription is enough) →
+   *Keys* → add a JSON key. Put the file at `HECATE_GMAIL_PUBSUB_CREDENTIALS` (default
+   `Hestia-Hecate/data/gmail-pubsub-sa.json`, never committed).
+6. Set `HECATE_GMAIL_PUBSUB_TOPIC` and `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` in Hecate's env, restart Hecate.
+7. Check `GET /api/gateway/mail/watch` → `push.configured=true`, `push.active=true`, `push.watch_expiration` set.
 
 ## Provider Credential Ownership
 

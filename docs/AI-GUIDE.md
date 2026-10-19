@@ -9,7 +9,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 |---|---|---|---|
 | Hub | 19001 | hestia_hub | registry + **only** router (`/api/route/{svc}/{path}`), command discovery |
 | Archive | 19002 | hestia_archive | the only DB (Postgres+pgvector, `hestia_db` 5432): memory, entities, chat, calendar_items, documents, feedback |
-| Hecate | 19003 | hestia_hecate | provider gateway: Google/Microsoft OAuth, Calendar, Gmail (OAuth token only, **no IMAP**) |
+| Hecate | 19003 | hestia_hecate | provider gateway: Google/Microsoft OAuth, Calendar, Gmail (OAuth token only, **no IMAP**), the one mailbox watcher |
 | Oracle | 19004 | hestia_oracle | LLM core: chat agent loop, classifier, memory, `/api/llm/*`, Claude Code runner |
 | Hermes | 19005 | hestia_hermes | events/notifications (dedupe, retries) → Telegram |
 | Scout | 19006 | hestia_scout | domain: real-estate listings from emails |
@@ -18,7 +18,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Athena | 19009 | hestia_athena | idle cognition: observe → think → propose (improvements to Forge) |
 | Hephaestus | 19010 | hestia_hephaestus | remediation runbooks + **Forge** (self-development) |
 | Dummy | 19011 | hestia_dummy | template/test service (ignore) |
-| Iris | 19012 | hestia_iris | email domain logic (search/send/threads) via Hecate |
+| Iris | 19012 | hestia_iris | email domain logic (search/send/threads) via Hecate + **mail dispatcher** to module subscriptions |
 | MCP | 19013 | hestia_mcp | MCP gateway exposing every service tool |
 | Metis | 19014 | hestia_metis | datasets from feedback, LoRA training (agenda window) |
 | WebUI | 19015 | hestia_webui | .NET 9 + Angular web client (chat, commands, calendar) |
@@ -26,6 +26,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Hygieia | 19018 | hestia_hygieia | self care: products and their life, routines as goals (no fixed days), planner with active conflicts, one-tap done, history/stats, few non-stacking reminders, WebUI plugin |
 | Hercules | 19019 | hestia_hercules | gym coach: exercises, templates, live sessions offline (sync), records, adaptation by conversation, WebUI plugin |
 | Wardrobe | 19017 | hestia_wardrobe | wardrobe: pieces, accessories, outfits, «Cosa mi metto», laundry/status, packing lists, stats, photos in Archive blobs, WebUI plugin |
+| Plutus | 19020 | hestia_plutus | expenses «Spese» (domain `finance`): PayPal mails by push, bank statement PDF (Hype) from plugin or chat, categories, budgets, recurring, PayPal↔bank linking, WebUI plugin |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |
 | Atlas | host | — | HTML fetch/scrape, runs on the host (`run_host.bat`) |
@@ -88,6 +89,16 @@ Modules register defaults (idempotent by key) with `hestia_common.agenda_client.
 (`register_async`, `is_open(key, fallback)`, `should_self_run(key, interval)`, `plan`, `show`, `done`).
 Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
 
+## 5a. Mail flow (push) — subscribe, never poll
+
+Gmail → Hecate watcher (Chronos job `hecate.mail_watch`, default 15 min, history API; optional Gmail Pub/Sub streaming
+pull via `HECATE_GMAIL_PUBSUB_*`, then the job is only a safety net) → Iris `POST /api/email/incoming` → match against
+subscriptions → full mail stored in Archive as raw record under the subscriber's domain → doorbell
+`POST route/<module>/<path> {owner, key, domain, count, reference_ids}`. A module declares rules with
+`hestia_common.mail_client.MailClient(owner).subscribe_async(rules)`, processes `/api/archive/<domain>/unevaluated`
+when rung and once at startup, may ask `backfill(key)`. Subscribers today: Scout (`scout:listings`), Plutus (PayPal).
+Legacy rules a module stops declaring are retired with `AgendaClient.retire(keys)` (`POST /api/agenda/retire`).
+
 ## 5b. Settings (Themis) — tunables are data, not env
 
 A new tunable is a **setting**, not an env var: declare it with `hestia_common.settings_client`
@@ -127,6 +138,11 @@ Details: `Hestia-Themis/hestia-themis.md`.
 - Telegram HTML parse mode supports only a small tag subset (b, i, u, s, code, pre, a, blockquote).
 - Every service must re-register on the Hub every 60 s (keepalive), not only at startup: *Mappa* marks it offline
   after 180 s and a Hub restart forgets it.
+- Mail: no module polls Gmail or keeps a mail job (Scout's `scout.email_cycle`, Hecate's `iris_email` fetcher and
+  Iris `/api/email/ingest` are gone). New mail consumer = mail_client subscription. Pub/Sub is optional: without it
+  the 15-min history check is the push source (Gmail can push only through Pub/Sub).
+- Chat files for a module: declare `attachment_handlers` in Hub capabilities (Plutus: bank statement PDF); Oracle
+  stores the file as an Archive blob (`owner_module=chat`) and hands the blob id to the module, else normal analysis.
 - No Marko PC needed for a real run: `python tools/cloud_test.py all` starts the whole stack in a Claude cloud
   session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Banco di prova cloud».
 

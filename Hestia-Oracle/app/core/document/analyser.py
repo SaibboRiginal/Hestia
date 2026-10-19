@@ -20,6 +20,7 @@ from core.services import stream_emitter
 from core.document import capabilities, local_models
 from core.document.archiver import DocumentArchiver
 from core.document.extractor import extract_text
+from core.document.handoff import AttachmentHandoff
 from core.services.hub_client import HubClient
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
@@ -44,6 +45,7 @@ class DocumentAnalyser:
         self._archiver = archiver
         self._analyst = analyst
         self._style_contract = style_contract_fn
+        self._handoff = AttachmentHandoff(hub_client)
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -83,6 +85,20 @@ class DocumentAnalyser:
             full_prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{str(client_instructions).strip()}"
 
         final_answer = ""
+
+        handed = None if (is_audio or is_video) else self._try_handoff(
+            file_bytes, mime_type, user_message, session_id, filename)
+        if handed:
+            # A module took the file (e.g. bank statement → Spese): its answer is the reply, the file is its data
+            # (blob), so no copy in the RAG archive.
+            self._save_history(session_id, filename or mime_type, user_message, handed["text"])
+            yield stream_emitter.emit_signal(
+                event="attachment_handled", message=f"📎 Passato a {handed['service']}.",
+                data={k: handed.get(k) for k in ("service", "blob_id", "import_id") if handed.get(k)})
+            logger.info("event=analyser_done session_id=%s total_ms=%s route=handoff service=%s", session_id,
+                        int((time.perf_counter() - t0) * 1000), handed["service"])
+            yield stream_emitter.emit_final(handed["text"], "document")
+            return
 
         if needs_local_audio:
             final_answer = yield from self._answer_via_transcript(
@@ -130,6 +146,18 @@ class DocumentAnalyser:
         yield stream_emitter.emit_final(final_answer, "document")
 
     # ── Private helpers ───────────────────────────────────────────────────────
+
+    def _try_handoff(self, file_bytes: bytes, mime_type: str, user_message: str, session_id: str,
+                     filename: str | None) -> dict | None:
+        try:
+            text = extract_text(file_bytes, mime_type) if mime_type == "application/pdf" or mime_type.startswith("text/") else ""
+        except Exception:
+            text = ""
+        handler = self._handoff.pick(mime_type, text, user_message)
+        if not handler:
+            return None
+        return self._handoff.run(handler, file_bytes=file_bytes, mime=mime_type, filename=filename,
+                                 message=user_message, session_id=session_id)
 
     def _answer_via_transcript(
         self,

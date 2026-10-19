@@ -23,14 +23,9 @@ logger = logging.getLogger("hestia_scout.runner")
 
 
 class ScoutWorker:
-    def __init__(self, target_domain: str, target_source: str, target_filter: str | None = None, target_filters: list[str] | None = None):
+    def __init__(self, target_domain: str):
+        # Mails arrive by push: Iris stores them in Archive (this domain) and rings /api/scout/mail.
         self.target_domain = target_domain
-        self.target_source = target_source
-        # Explicit filters override the central settings (mail senders / queries, read each cycle).
-        configured_filters = target_filters if target_filters else [
-            target_filter] if target_filter else []
-        self._explicit_filters = [str(item).strip()
-                                  for item in configured_filters if str(item).strip()]
 
         self.hub_api_url = os.getenv(
             "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -47,10 +42,6 @@ class ScoutWorker:
         self._cycle_counter = 0
 
     # ── central settings (Themis, live: read at use time) ─────────────────
-    @property
-    def target_filters(self) -> list[str]:
-        return self._explicit_filters or scout_settings.target_filters()
-
     @property
     def reconcile_every_cycles(self) -> int:
         return scout_settings.get_int(scout_settings.RECONCILE_EVERY_CYCLES, 0)
@@ -426,78 +417,11 @@ class ScoutWorker:
                 url_recheck_count, url_sold_count,
             )
 
-    def _trigger_fetch_for_filter(self, filter_query: str) -> int:
-        command = {
-            "domain": self.target_domain,
-            "source": self.target_source,
-            "filter_query": filter_query,
-        }
-        try:
-            response = requests.post(
-                f"{self.hub_api_url}/route/iris/api/email/ingest",
-                json={
-                    "method": "POST",
-                    "headers": {},
-                    "query": {},
-                    "body": command,
-                    # Iris waits up to 120 s on Hecate (IMAP/Gmail fetch + Archive ship).
-                    "timeout_seconds": 130,
-                },
-                timeout=140,
-            )
-            routed: dict = {}
-            if response.status_code == 200:
-                routed = response.json() or {}
-                status_code = int(routed.get("status_code", 500))
-                payload = routed.get("payload") or {}
-                # Iris reports provider failures as 200 {"status": "error"}: not a success.
-                if status_code < 400 and str(payload.get("status", "ok")).lower() != "error":
-                    fetched = int(payload.get("fetched", 0) or 0)
-                    logger.info(
-                        "event=gateway_fetched_matching_items Gateway fetched matching items | fetched=%s",
-                        fetched,
-                    )
-                    return fetched
-
-            logger.warning(
-                "event=gateway_error_hub Gateway error via Hub | status_code=%s detail=%s",
-                response.status_code,
-                response.text if response.status_code != 200 else routed.get(
-                    "payload"),
-            )
-            return 0
-        except Exception as error:
-            logger.warning(
-                "event=could_not_reach_gateway_hub Could not reach Gateway via Hub | error=%s",
-                error,
-            )
-            return 0
-
-    def command_gateway_to_fetch(self):
-        if not self.target_filters:
-            logger.info(
-                "event=target_filters_configured_scout_ingestion \n[⚠] No target filters configured for Scout ingestion.")
-            return
-
-        total_fetched = 0
-        for filter_query in self.target_filters:
-            logger.info(
-                "event=commanding_gateway_fetch Commanding Gateway fetch | filter_query=%s",
-                filter_query,
-            )
-            total_fetched += self._trigger_fetch_for_filter(filter_query)
-
-        logger.info(
-            "event=gateway_fetch_round_complete Gateway fetch round complete | filters=%s total_fetched=%s",
-            len(self.target_filters),
-            total_fetched,
-        )
-
     def run_cycle(self):
         """Main work cycle for the Scout worker.
 
-        Optimized pipeline:
-        1. Command Ingest to fetch new emails.
+        Optimized pipeline (mails arrive by push: Iris already stored them in Archive):
+        1. (gone: Scout used to command a mail fetch here)
         2. Fetch all unevaluated email records.
         3. Pre-parse every email (no LLM) to extract listing URLs.
         4. Load all known entity IDs from Archive for the domain.
@@ -515,8 +439,6 @@ class ScoutWorker:
 
         if self.reconcile_every_cycles > 0 and self._cycle_counter % self.reconcile_every_cycles == 0:
             self.reconcile_entities()
-
-        self.command_gateway_to_fetch()
 
         # ── 1. Fetch emails ──────────────────────────────────────────
         logger.info(

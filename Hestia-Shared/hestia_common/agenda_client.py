@@ -125,6 +125,14 @@ class AgendaClient:
             return True
         return False
 
+    def retire(self, keys: list[str]) -> bool:
+        """Cancel default rules this module no longer needs (only the ones it created)."""
+        if not keys:
+            return True
+        status, _ = self._safe("agenda_retire_failed", "POST", "api/agenda/retire",
+                               body={"owner": self.owner, "keys": list(keys)})
+        return bool(status and status < 400)
+
     def register_templates(self, templates: list[dict]) -> bool:
         """Declare what the user can create for this module (wizard). Replaces this owner's set."""
         status, _ = self._safe("agenda_templates_failed", "POST", "api/agenda/templates",

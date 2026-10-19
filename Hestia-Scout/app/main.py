@@ -29,7 +29,8 @@ try:
         wait_for_http_ready,
         wait_for_hub_services,
     )
-    from hestia_common.agenda_client import AgendaClient, job_rule, template
+    from hestia_common.agenda_client import AgendaClient
+    from hestia_common.mail_client import MailClient, mail_rule
     from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
@@ -42,7 +43,8 @@ except ModuleNotFoundError:
         wait_for_http_ready,
         wait_for_hub_services,
     )
-    from hestia_common.agenda_client import AgendaClient, job_rule, template
+    from hestia_common.agenda_client import AgendaClient
+    from hestia_common.mail_client import MailClient, mail_rule
     from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 
 logger, log_buffer = setup_service_logging("hestia_scout")
@@ -52,7 +54,6 @@ LLM_USECASES = [llm_usecase("scout.annunci", "Scout · lettura annunci", chain="
                             help="Estrae i dati degli annunci dalle mail di Scout.")]
 
 TARGET_DOMAIN = "real_estate"
-TARGET_SOURCE = "iris_email"
 
 
 
@@ -105,61 +106,38 @@ def _build_retrieval_service() -> ScoutRetrievalService:
 
 
 retrieval_service = _build_retrieval_service()
-worker = ScoutWorker(
-    target_domain=TARGET_DOMAIN,
-    target_source=TARGET_SOURCE,
-)  # mail filters come from the central settings (scout.mail.*), read every cycle
+worker = ScoutWorker(target_domain=TARGET_DOMAIN)
 
 
-# ── Email cycle: planned in the assistant agenda (Chronos) ─────────────────
-# The cycle is a recurring agenda job ("scout.email_cycle") fired by Chronos
-# through Hub → POST /api/scout/cycle. The user sees it in Hestia's agenda and
-# can move/pause/skip it. Chronos down or job missing → Scout runs it itself.
-AGENDA_JOB_KEY = "scout.email_cycle"
-
-
-def poll_interval_seconds() -> int:
-    """Cycle interval: central setting ``scout.cycle.interval`` (live, min 60 s)."""
-    return scout_settings.get_int(scout_settings.CYCLE_INTERVAL, 60)
-
+# ── Email by PUSH (SPEC docs/work/2026-10-19-email-push-spese) ─────────────
+# Scout no longer polls: it subscribes to Iris with its mail rules (scout.mail.*). Iris stores each matching
+# mail in Archive (domain real_estate) and calls POST /api/scout/mail; the cycle processes the pending records.
+# The old agenda job "scout.email_cycle" is retired on existing installs.
+MAIL_KEY = "listings"
+RETIRED_AGENDA_JOBS = ["scout.email_cycle"]
+mail = MailClient("scout")
+agenda = AgendaClient("scout")
 
 _cycle_lock = threading.Lock()
 _cycle_state: dict[str, Any] = {"running": False, "last_started": None, "last_finished": None,
                                 "last_trigger": None, "last_error": None, "last_ts": 0.0}
-agenda = AgendaClient("scout")
 
 
-def _agenda_rules() -> list[dict]:
-    interval = poll_interval_seconds()
-    minutes = max(1, interval // 60)
-    return [job_rule(
-        AGENDA_JOB_KEY, "Scout: controlla email immobiliari",
-        service="scout", path="/api/scout/cycle", body={"trigger": "agenda"},
-        recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
-        description="Legge le nuove email annunci, estrae e aggiorna gli immobili. "
-                    "Sposta/metti in pausa dall'agenda di Hestia.",
-        params={"interval_seconds": interval}, timeout_seconds=20)]
+def _mail_rules() -> list[dict]:
+    senders, queries = scout_settings.mail_rule_parts()
+    return [mail_rule(MAIL_KEY, "Annunci immobiliari", path="/api/scout/mail", domain=TARGET_DOMAIN,
+                      senders=senders, queries=queries,
+                      description="Email dei portali immobiliari: Scout estrae e aggiorna gli immobili.")]
 
 
 def _on_settings_change(changed: dict) -> None:
-    """New interval → re-declare the agenda default (Chronos keeps a user-edited job as is)."""
-    if scout_settings.CYCLE_INTERVAL not in changed:
-        return
-    logger.info("event=scout_cycle_interval_applied interval=%ss", poll_interval_seconds())
-    threading.Thread(target=lambda: agenda.register(_agenda_rules()), daemon=True,
-                     name="scout-agenda-reregister").start()
+    """New senders / searches → the subscription in Iris follows at once."""
+    if changed.keys() & {scout_settings.MAIL_SENDERS, scout_settings.MAIL_FILTER_QUERIES}:
+        logger.info("event=scout_mail_rules_changed keys=%s", ",".join(sorted(changed)))
+        mail.refresh()
 
 
 scout_central_settings.on_change(_on_settings_change)
-
-
-def _agenda_templates() -> list[dict]:
-    """What the user can create for Scout from the calendar wizard."""
-    return [template(
-        "extra_check", "Controllo email annunci extra", service="scout", path="/api/scout/cycle",
-        body={"trigger": "agenda-template"}, type="task", types=["task", "job"], icon="search",
-        description="Legge subito (o ripetutamente) le email degli annunci, oltre al ciclo normale.",
-        title="Scout: controllo email extra", timeout_seconds=20)]
 
 
 def run_cycle_guarded(trigger: str) -> dict:
@@ -200,8 +178,34 @@ def scout_cycle(req: CycleRequest | None = None):
 
 @api_app.get("/api/scout/cycle")
 def scout_cycle_status():
-    return {"status": "ok", "agenda_job": AGENDA_JOB_KEY, "interval_seconds": poll_interval_seconds(),
+    return {"status": "ok", "mail": "push", "subscription": f"scout:{MAIL_KEY}",
             **{k: v for k, v in _cycle_state.items() if k != "last_ts"}}
+
+
+class MailDelivery(BaseModel):
+    owner: str = "scout"
+    key: str = MAIL_KEY
+    domain: str = TARGET_DOMAIN
+    count: int = 0
+    reference_ids: list[str] = Field(default_factory=list)
+    source: str = "watch"
+
+
+@api_app.post("/api/scout/mail")
+def scout_mail(req: MailDelivery | None = None):
+    """Iris rang: new listing mails are waiting in Archive → run the cycle on them (async)."""
+    req = req or MailDelivery()
+    logger.info("event=scout_mail_delivered count=%d source=%s", req.count, req.source)
+    return scout_cycle(CycleRequest(trigger=f"mail:{req.source}"))
+
+
+def check_now(days: int = 1) -> dict:
+    """«Controlla ora»: ask Iris to pass again the listing mails of the last days, then run the cycle."""
+    def _run():
+        mail.backfill(MAIL_KEY, days)       # delivered mails ring /api/scout/mail
+        run_cycle_guarded("user")           # pending records even when nothing new arrived
+    threading.Thread(target=_run, daemon=True, name="scout-check-now").start()
+    return {"status": "started", "trigger": "user"}
 
 
 @api_app.get("/health")
@@ -229,7 +233,13 @@ ui_store = ListingStore(ArchiveClient(api_url="", hub_api_url=os.getenv("HUB_API
                         TARGET_DOMAIN)
 api_app.include_router(ui_plugin.router())
 api_app.include_router(build_ui_router(
-    ui_store, run_cycle=lambda: scout_cycle(CycleRequest(trigger="webui")), cycle_status=scout_cycle_status))
+    ui_store, run_cycle=check_now, cycle_status=scout_cycle_status))
+
+
+@api_app.post("/api/scout/check")
+def scout_check():
+    """«Controlla email»: Iris backfill (last day) + cycle."""
+    return check_now()
 
 @api_app.get("/api/module-tools/domains")
 def list_module_domains():
@@ -353,12 +363,9 @@ if _HAS_MCP:
 
     def _mcp_scout_fetch() -> dict:
         """Trigger a full email fetch + parse + extract cycle on demand."""
-        result = run_cycle_guarded("user")
-        if result["status"] == "busy":
-            return {"status": "busy", "message": "Un ciclo è già in corso: riprova tra poco."}
-        if result["status"] == "error":
-            return {"status": "error", "message": f"Ciclo fallito: {result['error']}"}
-        return {"status": "ok", "message": "Fetch cycle completed. Check logs for details."}
+        check_now()
+        return {"status": "ok", "message": "Controllo avviato: le email annunci dell'ultimo giorno vengono "
+                                           "ripassate e lette."}
 
     def _mcp_scout_stats() -> dict:
         """Return real_estate domain summary: counts, statuses, date ranges."""
@@ -429,12 +436,12 @@ if _HAS_MCP:
                 response_prompt="Riassumi esito della riconciliazione Scout, indicando se era dry-run e cosa e stato verificato.",
                 telegram_visible=True, telegram_group="immobiliare"),
         MCPTool(name="scout_fetch",
-                description="Trigger Scout to fetch new emails from Hecate, parse listings, "
-                            "extract entities, and run the full pipeline immediately. "
+                description="Check listing emails NOW: Iris passes the last day's listing mails again and Scout "
+                            "parses and extracts them (new mails normally arrive by themselves). "
                             "Use when the user wants to check for new house listings NOW.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_fetch,
-                title="📥 Controlla email", method="POST", path="/api/scout/cycle",
+                title="📥 Controlla email", method="POST", path="/api/scout/check",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Conferma che il ciclo fetch è stato avviato e di controllare i log.",
                 telegram_visible=True, telegram_group="immobiliare"),
@@ -524,20 +531,11 @@ if __name__ == "__main__":
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
 
-    agenda.register_async(_agenda_rules, templates=_agenda_templates)
+    mail.subscribe_async(_mail_rules)
+    threading.Thread(target=lambda: agenda.retire(RETIRED_AGENDA_JOBS), daemon=True,
+                     name="scout-agenda-retire").start()
 
-    # First cycle at boot, then the agenda drives. Fallback: every minute check
-    # whether the agenda is handling the job; if Chronos is down, the job is
-    # missing or stale, run the cycle locally at the configured interval.
+    # Mails that arrived while Scout was down wait in Archive: process them once at boot, then Iris rings.
     run_cycle_guarded("startup")
     while True:
-        time.sleep(60)
-        try:
-            interval = poll_interval_seconds()
-            due = time.time() - _cycle_state["last_ts"] >= interval
-            if due and agenda.should_self_run(AGENDA_JOB_KEY, interval):
-                logger.info("[🔄] event=scout_cycle_fallback reason=agenda_not_driving interval=%ds",
-                            interval)
-                run_cycle_guarded("fallback")
-        except Exception as error:
-            logger.error("[🔄] event=scout_fallback_loop_error error=%s", error)
+        time.sleep(3600)

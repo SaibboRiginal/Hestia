@@ -122,6 +122,17 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - The analyst LLM reasons over the document and the user's instruction together, then returns a streamed NDJSON reply (same protocol as `/api/chat`).
 - Document turns are persisted in chat history so the session remains coherent.
 
+### Chat attachment hand-off to modules (`core/document/handoff.py`, 2026-10-19)
+Generic: Oracle knows no domain. A module declares in its Hub capabilities
+`attachment_handlers: [{mime: [...], match: [...], min_hits (default 2), path, label}]` (Plutus: bank statement PDFs).
+In `analyser.py`, before the normal analysis (not for audio/video), Oracle extracts the text (PDF/text) and picks
+the first handler whose `mime` fits and whose `match` words appear in the user's message (any) or in the text
+(≥ `min_hits`). On a match it stores the file in Archive blobs (`owner_module=chat`, meta name/session/for) and calls
+`POST route/<module>/<path> {blob_id, filename, mime, message, session_id}`. The module answers `{handled, text, …}`:
+that text is the chat reply (saved in history, so a following «sì» reaches the module's tools with the ids it
+carries), plus signal `attachment_handled`; the file is not copied into the RAG archive. No match, module declines
+or any error → `[🔄]` and the usual document analysis (nothing lost). Handlers list cached 60 s.
+
 ### Retrieval Strategy
 - Oracle invokes module tools via a generic endpoint (`POST /api/module-tools/query`) using domain + query + routing metadata.
 - Modules interpret domain-specific filters/preferences internally.
@@ -172,6 +183,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - `core/services/context_builder.py`: history/entity compaction + final analyst prompt assembly.
 - `core/services/prompt_config.py`: centralized prompt management with A/B variant gating.
 - `core/services/stream_emitter.py`: NDJSON event formatting for all stream types.
+- `core/document/analyser.py` + `handoff.py`: document chat path; attachment hand-off to modules (above).
 
 ---
 

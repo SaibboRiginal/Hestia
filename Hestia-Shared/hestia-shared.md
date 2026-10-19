@@ -33,14 +33,15 @@ Modules plan their work in Hestia's own agenda (Chronos `/api/agenda*`, via Hub)
 ```python
 from hestia_common.agenda_client import AgendaClient, job_rule, daily_window
 
-agenda = AgendaClient("scout")                       # owner = module name
+agenda = AgendaClient("hecate")                      # owner = module name
 agenda.register_async(lambda: [                       # retry until Chronos answers, re-assert hourly
-    job_rule("scout.email_cycle", "Scout: email", service="scout", path="/api/scout/cycle",
-             recurrence="FREQ=MINUTELY;INTERVAL=30"),
+    job_rule("hecate.mail_watch", "Hecate: controlla nuove email", service="hecate",
+             path="/api/gateway/mail/watch/run", recurrence="FREQ=MINUTELY;INTERVAL=15"),
     daily_window("athena.consolidation", "Athena: consolidamento", 3, 5),
 ])
 agenda.is_open("athena.consolidation", fallback=lambda: 3 <= now.hour < 5)   # window gate
-agenda.should_self_run("scout.email_cycle", 1800)    # job fallback guard (Chronos down / missing / stale)
+agenda.should_self_run("hecate.mail_watch", 900)     # job fallback guard (Chronos down / missing / stale)
+agenda.retire(["scout.email_cycle"])                 # cancel own default rules no longer declared (POST /api/agenda/retire)
 agenda.plan("metis.train.42", "Training", start_at, action={...})            # one-off task
 agenda.show(key, title, start_at); agenda.done(key); agenda.cancel(key)     # informational events
 agenda.plan(key, title, start_at, parent="user:abc")  # linked: parent cancelled → this cancelled
@@ -59,11 +60,34 @@ agenda.register_async(rules, templates=lambda: [template(
     fields={"service": {"type": "string", "label": "Servizio", "in": "path"}}, required=["service"],
     title="Argus: ricontrolla {service}")])
 ```
-Registered today: Scout (controllo email extra), Athena (rifletti su un tema), Argus (ricontrolla un servizio),
+Registered today: Athena (rifletti su un tema), Argus (ricontrolla un servizio),
 Hephaestus (sviluppo programmato).
 
 Rules are idempotent by `key`; edits made by the user (`user_modified`) are never overwritten. A paused or
 cancelled rule is a user decision: `is_open` → closed, `should_self_run` → False. Every call fails soft.
+`retire(keys)` cancels only rules the module itself created (user items stay; marked `params.retired_by_module`).
+
+## Mail subscriptions client (`hestia_common.mail_client`)
+
+Modules get mail by **push** from Iris, never by polling (one watcher in Hecate → Iris dispatch):
+
+```python
+from hestia_common.mail_client import MailClient, mail_rule
+
+mail = MailClient("scout")                           # owner = module name, calls go /route/iris/...
+mail.subscribe_async(lambda: [mail_rule(              # retry until Iris answers, re-assert hourly
+    "listings", "Annunci immobiliari", path="/api/scout/mail", domain="real_estate",
+    senders=["portal.example"], subject_contains=None, labels=None, queries=None)])
+mail.refresh()                                       # re-send now (settings behind the rules changed)
+mail.subscribe(rules)                                # one synchronous call (full rule set; missing keys removed)
+mail.backfill("listings", days=1)                    # "check now": Iris re-delivers matching mail of last days
+```
+
+Matching: `senders` = addresses or domains (`b.it` / `@b.it`), `subject_contains` = words, `labels` = Gmail labels;
+filled groups AND-ed, values OR-ed; `queries` = Gmail searches evaluated by Hecate. Iris stores each match in
+Archive under `domain` (`reference_id = mail:<domain>:<gmail id>`) and calls `POST <path> {owner, key, domain,
+count, reference_ids, source}`. The module processes its unevaluated records there **and once at startup** (mail
+that arrived while it was down). Fails soft (`[🔄] event=mail_subscribe_failed`).
 
 ## Response packets (standard for every client)
 
@@ -180,7 +204,8 @@ Validation at declare time: element names `<module>-…`, every path under `api_
 types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). The browser side is
 `Hestia-Shared/webui-sdk/` (`@hestia/webui-sdk`: host API types, `HestiaElement`, shared Lit kit `hxk-*`, build
 script) — see its `README.md`.
-`hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins).
+`hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
+2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
 
 ## Tools: MCP client (`hestia_common.mcp_client`) + call rules (`hestia_common.tool_call`)
 

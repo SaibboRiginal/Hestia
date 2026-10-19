@@ -1,6 +1,7 @@
 """Scout settings declared to Themis (central settings).
 
-Replace the old tunable env vars (SCOUT_POLL_INTERVAL_SECONDS, SCOUT_EMAIL_SENDERS,
+Replace the old tunable env vars (SCOUT_POLL_INTERVAL_SECONDS — gone with the mail poll, Scout now gets
+its mails by push from Iris — SCOUT_EMAIL_SENDERS,
 SCOUT_FILTER_QUERIES, SCOUT_*_BATCH_*, SCOUT_LLM_TIMEOUT_SECONDS, SCOUT_RECONCILE_EVERY_CYCLES,
 SCOUT_ENABLE_LISTING_ENRICHMENT, LOG_LEVEL). All live: read at the point of use.
 """
@@ -17,7 +18,6 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.settings_client import SettingsClient, setting
 
-CYCLE_INTERVAL = "scout.cycle.interval"
 MAIL_SENDERS = "scout.mail.senders"
 MAIL_FILTER_QUERIES = "scout.mail.filter_queries"
 BATCH_MIN_SIZE = "scout.batch.min_size"
@@ -32,14 +32,10 @@ DEFAULT_SENDERS = ["nonrispondere@idealista.it", "noreply@notifiche.immobiliare.
 
 settings = SettingsClient("scout")
 settings.declare([
-    setting(CYCLE_INTERVAL, "Intervallo controllo email annunci", "int", 1800, group="Controllo email",
-            min=60, max=86400, unit="s", order=0,
-            help="Ogni quanto Scout legge le nuove email degli annunci. È la ricorrenza predefinita del "
-                 "lavoro in agenda (se l'hai modificato dall'agenda vale la tua modifica)."),
     setting(MAIL_SENDERS, "Mittenti degli annunci", "list", list(DEFAULT_SENDERS), group="Controllo email",
             order=1,
-            help="Indirizzi dei portali immobiliari da cui leggere le email. Ignorati se imposti "
-                 "le ricerche email personalizzate."),
+            help="Indirizzi (o domini) dei portali immobiliari: Iris passa a Scout le loro email appena "
+                 "arrivano. Ignorati se imposti le ricerche email personalizzate."),
     setting(MAIL_FILTER_QUERIES, "Ricerche email personalizzate", "list", [], group="Controllo email",
             order=2, advanced=True,
             help="Ricerche email esplicite (una per riga, es. FROM \"indirizzo\"). Se vuoto si usano i mittenti."),
@@ -72,13 +68,12 @@ def _as_list(value, sep: str) -> list[str]:
     return [str(i).strip() for i in items if str(i).strip()]
 
 
-def target_filters() -> list[str]:
-    """Mail search queries: explicit ones, else built from the sender list."""
+def mail_rule_parts() -> tuple[list[str], list[str]]:
+    """``(senders, queries)`` of Scout's Iris subscription: explicit searches win over the sender list."""
     explicit = _as_list(settings.get(MAIL_FILTER_QUERIES), "||")
     if explicit:
-        return explicit
-    senders = _as_list(settings.get(MAIL_SENDERS), ",")
-    return [f'FROM "{sender}"' for sender in senders]
+        return [], explicit
+    return _as_list(settings.get(MAIL_SENDERS), ","), []
 
 
 def get_int(key: str, floor: int | None = None) -> int:

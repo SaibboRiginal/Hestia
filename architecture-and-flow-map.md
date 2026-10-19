@@ -12,13 +12,14 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hermes | Core | No | No | Dispatches events/notifications |
 | Telegram | Interface | No | No | User-facing chat/file relay to Oracle |
 | WebUI | Interface | No | No | Web-based chat/file relay to Oracle, SignalR streaming |
-| Hecate | Core Gateway | No domain logic | Yes (Google/Outlook provider runtime) | Provider-facing gateway + connector runtime |
+| Hecate | Core Gateway | No domain logic | Yes (Google/Outlook provider runtime) | Provider-facing gateway; the one Gmail watcher (pushes new mails to Iris) |
 | Chronos | Domain (Calendar) | Yes (calendar workflows + assistant agenda) | No | Routes provider calendar calls to Hecate; owns the assistant agenda |
-| Iris | Domain (Email) | Yes (email workflows) | No (gateway-mediated when needed) | Exposes email-domain APIs and commands |
-| Scout | Domain (Real Estate) | Yes (listing extraction/ranking) | No | Pulls domain email feed via Hecate connector path |
+| Iris | Domain (Email) | Yes (email workflows) | No (gateway-mediated when needed) | Email-domain APIs and commands; dispatches incoming mail to module subscriptions |
+| Scout | Domain (Real Estate) | Yes (listing extraction/ranking) | No | Gets listing mails by push (Iris subscription) |
 | Hercules | Domain (Fitness) | Yes (gym coach) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
 | Hygieia | Domain (Self care) | Yes (products, routines) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
 | Wardrobe | Domain (Wardrobe) | Yes (pieces, outfits, suggestions) | No | Archive store + blobs, agenda + Hermes, WebUI plugin |
+| Plutus | Domain (Finance) | Yes (expenses, budgets, statements) | No | PayPal mails by push (Iris), statement PDF via plugin or chat (Oracle hand-off), Archive `finance-store`, agenda + Hermes, WebUI plugin «Spese» |
 | Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
@@ -37,7 +38,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 3. Domain APIs remain domain-owned:
    - Chronos owns calendar business operations.
    - Iris owns email business operations.
-4. Scout consumes email-domain data through the Hecate connector flow (iris_email source), not by direct IMAP login in Scout.
+4. Modules get mail only by push: they subscribe at Iris (`hestia_common.mail_client`); nobody polls Gmail or logs in by IMAP.
 
 ## High-Level Dependency Graph
 
@@ -52,6 +53,7 @@ flowchart LR
     HUB --> CH[Chronos Calendar Domain]
     HUB --> IR[Iris Email Domain]
     HUB --> SC[Scout Real Estate Domain]
+    HUB --> PL[Plutus Expenses Domain]
     HUB --> AT[Athena Advisory Engine]
     HUB --> AG[Argus Monitoring]
     HUB --> HP[Hephaestus Remediation]
@@ -64,7 +66,10 @@ flowchart LR
 
     CH -->|provider calendar ops via Hub route| HE
     IR -->|provider mediation when needed| HE
-    SC -->|domain email source via iris_email connector| HE
+    HE -->|new mails push| IR
+    IR -->|doorbell for subscribed mail| SC
+    IR -->|doorbell for subscribed mail| PL
+    OR -->|chat attachment hand-off| PL
 
     HE --> GP[Google Provider Runtime]
     HE --> OP[Outlook Provider Runtime]
@@ -80,6 +85,7 @@ flowchart LR
     CH --> AR
     IR --> AR
     SC --> AR
+    PL --> AR
     OR --> AR
 
     MT[Metis Improvement] --> AR
@@ -90,6 +96,7 @@ flowchart LR
     AT -->|weak spots| MT
 
     SC --> HM
+    PL --> HM
     CH --> HM
     OR --> HM
     AG --> HM
@@ -107,7 +114,7 @@ flowchart LR
 ## Coverage Checklist
 
 - Core: Hub, Archive, Oracle, Hermes, Telegram, WebUI, Hecate
-- Domain: Chronos, Iris, Scout
+- Domain: Chronos, Iris, Scout, Hercules, Hygieia, Wardrobe, Plutus
 - Organ services: Argus, Hephaestus, Athena, Metis
 - Utility/support: Atlas, Dummy, Swagger, Shared, MCP
 
@@ -120,11 +127,26 @@ flowchart LR
 4. Hecate executes against Google/Outlook runtime.
 5. Chronos persists normalized state in Archive and emits via Hermes when applicable.
 
-### Email flow
+### Email flow (search/send)
 1. Oracle/Telegram triggers email-domain action.
 2. Iris handles email domain API semantics.
 3. If provider mediation/runtime is needed, flow is routed through Hecate.
-4. Scout reads domain email feed through Hecate connector path (`iris_email`) for extraction workflows.
+
+### Incoming mail flow (push, no module polls)
+1. Hecate watches Gmail: Chronos job `hecate.mail_watch` (default 15 min, history API) or, when configured, Gmail
+   Pub/Sub streaming pull (`HECATE_GMAIL_PUBSUB_*`; the job then stays as a safety net, `hecate.mail_watch_renew` daily).
+2. Hecate → Iris `POST /api/email/incoming` with the new mails' headers.
+3. Iris matches them against module subscriptions (`hestia_common.mail_client`, `/api/email/subscriptions`).
+4. For each match Iris stores the full mail in Archive as a raw record under the subscriber's domain (deduped), then
+   rings the module `POST route/<module>/<path> {owner, key, domain, count, reference_ids}`.
+5. The module processes its unevaluated records (also once at startup, so nothing is lost while it was down).
+   Subscribers: Scout (listings), Plutus (PayPal receipts).
+
+### Chat attachment hand-off
+1. A file sent in chat (Telegram/WebUI) → Oracle `/api/chat/document`.
+2. Oracle checks modules' `attachment_handlers` (Hub capabilities: mime + words). Match → file stored as Archive blob
+   (`owner_module=chat`) → `POST route/<module>/<path>` with the blob id → the module's `{handled, text}` is the reply.
+3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms.
 
 ### Self-development flow (Forge)
 1. User on Telegram: "aggiungi X" → Oracle (classifier: domain `system`) → tool `forge_develop` → Hub → Hephaestus.
@@ -164,10 +186,12 @@ flowchart LR
 3. Jobs/tasks: the Chronos agenda worker fires their action via Hub at the due time.
 4. The user reads and edits the agenda from Telegram (move, pause, skip, cancel, run now); edits win over defaults.
 5. The agenda (`source=hestia`) is separate from the user's calendars and never sent as user reminders.
-6. Registered today: `scout.email_cycle`, `chronos.calendar_sync` (jobs); `athena.consolidation`,
+6. Registered today: `hecate.mail_watch`, `hecate.mail_watch_renew`, `chronos.calendar_sync` (jobs); `athena.consolidation`,
    `athena.skill_curation`, `athena.thinking`, `metis.training`, `forge.claude_nights`, `forge.claude_final`
    (windows); `metis.train.<job>`, `hephaestus.repair.<id>`, `argus.repair.<service>` (tasks); `forge.task.<id>`
    (events). Jobs keep a module-side fallback (Chronos down / job missing / stale) that never overrides a pause.
+7. A rule a module no longer declares is retired by the module itself: `POST /api/agenda/retire {owner, keys}`
+   (only rules it created; user items stay). Example: Scout retired `scout.email_cycle`.
 
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate`, Forge and Wardrobe use
@@ -198,7 +222,7 @@ SPEC `docs/work/2026-10-19-cervello-offline`.
 3. Token saved to `Hestia-Hecate/data/google_token.json`, provider registry reloaded.
 
 ### Real-estate extraction flow
-1. Scout requests email-domain feed via Hecate connector runtime.
+1. Iris rings Scout (`/api/scout/mail`) for listing mails already stored in Archive (`real_estate`).
 2. Scout runs pre-parse, dedupe, extraction, enrichment.
 3. Scout writes entities to Archive and emits events to Hermes.
 

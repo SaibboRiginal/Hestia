@@ -875,6 +875,18 @@ def agenda_register(req: AgendaRegister) -> dict:
     return {"status": "ok", "count": len(items), "items": items}
 
 
+class AgendaRetire(BaseModel):
+    owner: str
+    keys: list[str]
+
+
+@app.post("/api/agenda/retire")
+def agenda_retire(req: AgendaRetire) -> dict:
+    """A module cancels default rules it no longer declares (only rules it created; user items stay)."""
+    keys = _agenda_guard(assistant_agenda.retire_rules, req.owner, req.keys)
+    return {"status": "ok", "retired": keys}
+
+
 @app.patch("/api/agenda/items/{ref}")
 def agenda_update(ref: str, req: AgendaItemChange) -> dict:
     changes = req.model_dump(exclude={"by"}, exclude_none=True)
