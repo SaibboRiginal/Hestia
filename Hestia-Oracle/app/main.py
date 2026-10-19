@@ -389,6 +389,35 @@ def llm_usecase_status_endpoint(use_case: str):
     return {"status": "ok", **usecase_status(use_case)}
 
 
+# ── External agent MCP bridge (dossier 2026-10-19-oracle-a-blocchi §D): loopback only, one token per turn ─────
+def _bridge_guard(request: Request) -> None:
+    host = (request.client.host if request.client else "") or ""
+    if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
+        raise HTTPException(status_code=403, detail="bridge is loopback only")
+
+
+@app.get("/api/agent-bridge/{token}/tools")
+def agent_bridge_tools(token: str, request: Request):
+    """Tools of the external agent's running turn (the stdio MCP bridge's tools/list)."""
+    from core.services import external_agent
+    _bridge_guard(request)
+    try:
+        return {"tools": external_agent.list_tools(token)}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown or finished turn")
+
+
+@app.post("/api/agent-bridge/{token}/call")
+def agent_bridge_call(token: str, body: dict, request: Request):
+    """Run one tool for the external agent (same handler, approval gate and logs as the internal loop)."""
+    from core.services import external_agent
+    _bridge_guard(request)
+    try:
+        return external_agent.call_tool(token, str(body.get("name") or ""), body.get("params") or {})
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown or finished turn")
+
+
 @app.get("/api/llm/usage")
 def llm_usage_endpoint(group: str = "module", days: int = 7, module: str = "", session_id: str = "",
                        use_case: str = ""):
@@ -1143,6 +1172,18 @@ def llm_generate_endpoint(req: dict):
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt required")
     use_case = str(req.get("use_case") or llm_chains.GENERAL).strip().lower()
+    from core.services import external_agent
+    if external_agent.mode_for(use_case) == "esterna":
+        try:   # external agent, one shot without tools
+            text = external_agent.ask(prompt, use_case=use_case)
+            cfg = external_agent.brain()
+            return {"response": text, "model": cfg["model"], "provider": cfg["agent"], "use_case": use_case,
+                    "chain": f"agente:{cfg['agent']}"}
+        except external_agent.AgentError as exc:
+            if external_agent.brain()["fallback"] != "interna":
+                raise HTTPException(status_code=503, detail=f"external agent: {exc}")
+            logger.warning("[🔄] event=llm_generate_external_failed use_case=%s fallback=interna error=%s",
+                           use_case, str(exc)[:200])
     agent = llm_chains.agent_for(use_case)
     try:
         text = agent.ask(prompt)

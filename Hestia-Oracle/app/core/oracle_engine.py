@@ -185,6 +185,20 @@ class SessionIntent:
     action_intent: bool = False
 
 
+def external_agent_system_prompt(preference_facts: list[str], client_instructions: str | None) -> str:
+    """System prompt of the external agent (§D): Oracle's persona and style contract first (fixed prefix → the
+    provider's prompt cache works), then the tool rule, preferences and this turn's instructions."""
+    parts = [prompt_config.analyst_persona_default(), conversation_style_contract(),
+             "Strumenti: usa SOLO gli strumenti MCP «hestia» per leggere o cambiare i dati di Hestia; se nessuno "
+             "serve rispondi e basta. Le azioni importanti chiedono conferma all'utente: se lo strumento lo dice, "
+             "riferiscilo."]
+    if preference_facts:
+        parts.append("PREFERENZE DELL'UTENTE:\n" + "\n".join(f"- {f}" for f in preference_facts[:10]))
+    if client_instructions:
+        parts.append(str(client_instructions).strip())
+    return "\n\n".join(p.strip() for p in parts if p and p.strip())
+
+
 def _approval_ttl() -> int:
     from core.services import oracle_settings as _os
     return _os.get_int(_os.APPROVAL_TTL, 30)
@@ -772,6 +786,10 @@ class OracleEngine:
 
         # ── Resolve agent by use case ──────────────────────────────────────────
         agent = self._resolve_agent(model)
+        # Brain mode (dossier 2026-10-19-oracle-a-blocchi §D): esterna = an agent CLI runs the loop below.
+        from core.services import external_agent, llm_chains
+        chat_use_case = llm_chains.SLOTS.get(model, llm_chains.GENERAL)
+        external = external_agent.mode_for(chat_use_case) == "esterna"
         logger.trace("event=chat_agent_resolved trace_id=%s agent_type=%s model=%s provider=%s thinking=%s",
                      trace_id, type(agent).__name__, agent.model_name, agent.provider, agent.thinking)
         logger.info(
@@ -792,8 +810,8 @@ class OracleEngine:
             trace_id=trace_id,
         )
 
-        # ── MODE: quick ───────────────────────────────────────────────────────
-        if mode == "quick":
+        # ── MODE: quick (in esterna the agent answers every turn) ─────────────
+        if mode == "quick" and not external:
             yield stream_emitter.emit_status("💬 Risposta rapida...")
             temporal_context = self._current_datetime_context()
             answer = self._quick_answer(
@@ -895,7 +913,7 @@ class OracleEngine:
         # ── Phase 3: QUICK CHAT shortcut ──────────────────────────────────────
         # Pensata / CoT were chosen by the user: always reason with the agent loop.
         if (intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD
-                and mode not in ("thinking", "cot")):
+                and mode not in ("thinking", "cot") and not external):
             yield stream_emitter.emit_status("💬 Conversazione rapida...")
             extra_context = ""
             if self._doc_rag.message_is_about_docs(user_message):
@@ -1123,21 +1141,40 @@ class OracleEngine:
             except Exception:
                 return None
 
-        answer, tokens, tool_log = run_agent_loop(
-            user_message=user_message,
-            history_text=history_text,
-            preference_facts=preference_facts,
-            tools=domain_tools,
-            ask_fn=lambda p: self._ask_analyst(p, thinking=_think_level),
-            ask_tools_fn=_ask_tools_bound,
-            stream_fn=_stream_final,
-            client_instructions=agent_loop_client_instructions,
-            conversation_style=conversation_style_contract(),
-            max_turns=resolved_max_turns,
-            on_thinking=_on_thinking,
-            action_intent=intent.action_intent,
-            compact_fn=_auto_compact,
-        )
+        answer = None
+        if external:
+            yield stream_emitter.emit_status("🤖 Agente esterno al lavoro...")
+            try:
+                answer, tool_log = external_agent.run_turn(
+                    session_id=session_id, user_message=user_message,
+                    system_prompt=external_agent_system_prompt(preference_facts, agent_loop_client_instructions),
+                    primer=history_text, tools=domain_tools, use_case=chat_use_case)
+                tokens = [answer]
+            except external_agent.AgentError as exc:
+                if external_agent.brain()["fallback"] != "interna":
+                    answer, tokens, tool_log = ("⚠️ L'agente esterno non ha risposto. Riprova tra poco.",
+                                                ["⚠️ L'agente esterno non ha risposto. Riprova tra poco."], [])
+                else:
+                    logger.warning("[🔄] event=chat_external_agent_failed session_id=%s fallback=interna error=%s",
+                                   session_id, str(exc)[:200])
+                    yield stream_emitter.emit_status("🔄 Agente esterno non disponibile: rispondo io...")
+        if answer is None:
+            external_agent.note_internal_turn(session_id)
+            answer, tokens, tool_log = run_agent_loop(
+                user_message=user_message,
+                history_text=history_text,
+                preference_facts=preference_facts,
+                tools=domain_tools,
+                ask_fn=lambda p: self._ask_analyst(p, thinking=_think_level),
+                ask_tools_fn=_ask_tools_bound,
+                stream_fn=_stream_final,
+                client_instructions=agent_loop_client_instructions,
+                conversation_style=conversation_style_contract(),
+                max_turns=resolved_max_turns,
+                on_thinking=_on_thinking,
+                action_intent=intent.action_intent,
+                compact_fn=_auto_compact,
+            )
         agent_loop_ms = int((time.perf_counter() - t_agent_loop) * 1000)
         logger.info(
             "event=chat_agent_loop_done trace_id=%s session_id=%s turns=%s tools_called=%s tools_available=%s tokens=%s answer_len=%s agent_loop_ms=%s model=%s provider=%s thinking=%s max_turns=%s domains=%s",

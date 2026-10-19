@@ -108,9 +108,10 @@ class TestLiveReads:
         monkeypatch.setitem(o.settings._effective, "oracle.prompt_ab.alert.force", "experimental")
         assert prompt_config.select_variant("alert_formatter", seed="x") == "experimental"
 
-    def test_models_are_three_objects_and_the_rest_is_advanced(self):
+    def test_models_are_three_objects_plus_brain_mode_and_the_rest_is_advanced(self):
         visible = [k for k, d in o.settings._defs.items() if not d["advanced"] and d["scope"] == "system"]
-        assert sorted(visible) == sorted([o.PROVIDERS_KEY, o.CHAINS_KEY, o.USECASES_KEY])
+        assert sorted(visible) == sorted([o.PROVIDERS_KEY, o.CHAINS_KEY, o.USECASES_KEY, o.BRAIN_MODE, o.BRAIN_AGENT,
+                                          o.BRAIN_MODEL, o.BRAIN_FALLBACK])
         assert not any(k.startswith("oracle.models.") for k in o.settings._defs)
 
     def test_vision_prefixes_live(self, monkeypatch):

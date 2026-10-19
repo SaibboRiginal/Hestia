@@ -129,7 +129,7 @@ def price(provider: str, model: str, inp: int, cached: int, out: int, reported: 
     reported → «api»; a provider that costs nothing (local) → 0, «locale»; else ``oracle.pricing``."""
     from core.services import llm_gateway, llm_providers, oracle_settings
     ptype = llm_providers.type_of(provider)
-    if ptype == "claude_cli":
+    if ptype == "claude_cli" or provider == "codex":   # subscriptions (Claude Code, Codex external agents)
         return reported, "abbonamento"
     if reported:
         return reported, "api"

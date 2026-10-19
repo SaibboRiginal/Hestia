@@ -29,8 +29,11 @@ USAGE_RETENTION = "oracle.usage.retention_days"
 PRICING_KEY = "oracle.pricing"
 BRAIN_MODE = "oracle.brain.mode"
 BRAIN_AGENT = "oracle.brain.agent"
+BRAIN_MODEL = "oracle.brain.model"
 BRAIN_FALLBACK = "oracle.brain.fallback"
 BRAIN_MODES = [("interna", "Interna"), ("esterna", "Esterna")]
+BRAIN_AGENTS = [("claude", "Claude Code (abbonamento)"), ("codex", "Codex (ChatGPT)")]
+BRAIN_FALLBACKS = [("interna", "Rifai il turno in modalità interna"), ("nessuno", "Nessuno: dimmi che non ha risposto")]
 
 settings = SettingsClient("oracle")
 
@@ -55,6 +58,17 @@ def _definitions() -> list[dict]:
                 min=1, max=1440, unit="min", advanced=True,
                 help="Quando il fornitore non dice quando si ricarica la quota (Gemini giornaliero: mezzanotte "
                      "del Pacifico)."),
+        setting(BRAIN_MODE, "Modalità del cervello", "enum", "interna", group="Modelli", order=4, options=BRAIN_MODES,
+                help="Interna: Oracle ragiona con le catene di modelli (classificatore, Rapida/Pensata/CoT, ciclo "
+                     "agente). Esterna: un agente (Claude Code, Codex) fa il ciclo con gli strumenti di Hestia; "
+                     "Oracle prepara il contesto, salva i messaggi e la memoria. Ogni uso può scegliere la sua."),
+        setting(BRAIN_AGENT, "Agente esterno", "enum", "claude", group="Modelli", order=5, options=BRAIN_AGENTS,
+                help="Serve il suo login: Claude Code con CLAUDE_CODE_OAUTH_TOKEN, Codex con `codex login` "
+                     "(immagine con ORACLE_INSTALL_CODEX=1)."),
+        setting(BRAIN_MODEL, "Modello dell'agente esterno", "string", "sonnet", group="Modelli", order=6,
+                help="Es. sonnet, opus (Claude Code) o gpt-5-codex (Codex). Vuoto = quello predefinito dell'agente."),
+        setting(BRAIN_FALLBACK, "Se l'agente esterno non risponde", "enum", "interna", group="Modelli", order=7,
+                options=BRAIN_FALLBACKS),
         setting(USAGE_RETENTION, "Conserva l'uso dei modelli per", "int", 90, group="Uso", order=0, min=1,
                 max=3650, unit="giorni", help="Ogni chiamata a un modello resta nel pannello Uso per questi giorni."),
         setting(PRICING_KEY, "Prezzi dei modelli", "object", {}, group="Uso", order=1,

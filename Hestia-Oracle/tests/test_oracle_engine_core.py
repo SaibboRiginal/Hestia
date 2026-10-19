@@ -1288,3 +1288,46 @@ class TestEndToEndTelegramCalendarFlow:
 
         finals = [l for l in lines if l.get("type") == "final"]
         assert len(finals) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Brain mode esterna (dossier 2026-10-19-oracle-a-blocchi §D)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+class TestChatExternalBrain:
+    def _external(self, monkeypatch, fallback="interna"):
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_MODE, "esterna")
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_FALLBACK, fallback)
+
+    def test_agent_answers_even_a_quick_chat(self, engine, monkeypatch):
+        from core.services import external_agent
+        self._external(monkeypatch)
+        engine._agents.generic.ask.return_value = _quick_chat_json()
+        engine._hub.get.return_value = _SAMPLE_DOMAINS
+        seen = {}
+
+        def run_turn(**kw):
+            seen.update(kw)
+            return "risposta dell'agente", [{"tool": "t", "ok": True, "result_preview": "", "turn": 1}]
+        monkeypatch.setattr(external_agent, "run_turn", run_turn)
+        lines = _collect_ndjson_lines(engine.chat("Ciao", "s-ext"))
+        final = [l for l in lines if l.get("type") == "final"]
+        assert final and "risposta dell'agente" in json.dumps(final[0], ensure_ascii=False)
+        assert seen["session_id"] == "s-ext" and seen["user_message"] == "Ciao"
+
+    def test_failure_falls_back_to_internal_loop(self, engine, monkeypatch):
+        from core.services import external_agent
+        self._external(monkeypatch)
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
+        engine._hub.get.return_value = _SAMPLE_DOMAINS
+
+        def boom(**kw):
+            raise external_agent.AgentError("no login")
+        monkeypatch.setattr(external_agent, "run_turn", boom)
+        lines = _collect_ndjson_lines(engine.chat("Cerca case", "s-ext2"))
+        statuses = [l.get("content", "") for l in lines if l.get("type") == "status"]
+        assert any("rispondo io" in s for s in statuses) and any(l["type"] == "final" for l in lines)
+        assert external_agent._internal_at.get("s-ext2")
