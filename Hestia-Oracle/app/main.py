@@ -172,8 +172,9 @@ ui = PluginClient("oracle", title="Oracle", icon="brain", color="purple", kind="
                   version=os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="oracle.js", api_prefix="/api/ui/",
          pages=[page("cervello", "Cervello", element="oracle-brain", icon="brain", order=120,
-                     help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), uso dei modelli "
-                          "per caso d'uso, token e costi per giorno, stato di Claude Code."),
+                     help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), stato di Claude "
+                          "Code; scheda Uso (chiamate, token, cache e costi per modulo e conversazione) e scheda "
+                          "Modelli (fornitori, catene di modelli, uso scelto da ogni modulo)."),
                 page("documenti", "Documenti", element="oracle-documents", icon="file", order=121,
                      help="I file che hai condiviso con Hestia (in chat o da qui): cercali come fa la chat, "
                           "aggiungine di nuovi, tienili per sempre o eliminali.")],
@@ -219,6 +220,77 @@ def ui_code():
     """Claude Code ("code" use case): ready or why not, plus the recent Forge runs."""
     from core.services.claude_code_runner import runs, status
     return {"status": "ok", **status(), **runs()}
+
+
+# ── Cervello → Modelli and Uso tabs (dossier docs/work/2026-10-19-oracle-a-blocchi §D-E) ──────────────────
+_MODEL_PARTS = {"providers": _oracle_settings.PROVIDERS_KEY, "chains": _oracle_settings.CHAINS_KEY,
+                "usecases": _oracle_settings.USECASES_KEY}
+
+
+class UiModelsWrite(BaseModel):
+    value: dict
+
+
+@app.get("/api/ui/models")
+def ui_models():
+    """Providers (no keys), standards, chains with each step's state, use cases by module, modes."""
+    from core.services import llm_chains, llm_providers
+    return {"status": "ok", "providers": llm_providers.public_view(),
+            "types": [{"value": k, "label": v} for k, v in llm_providers.TYPES.items()],
+            "chains": llm_chains.chains_view(), "usecases": llm_chains.usecases_view(),
+            "overrides": _oracle_settings.settings.get(_oracle_settings.USECASES_KEY, {}) or {},
+            "modes": [{"value": m, "label": label} for m, label in llm_chains.MODES]}
+
+
+@app.get("/api/ui/models/list")
+def ui_models_list(provider: str):
+    """Model names a provider offers (picker of the chain editor)."""
+    from core.services import llm_providers
+    if not llm_providers.get(provider):
+        raise HTTPException(status_code=404, detail="unknown provider")
+    return {"status": "ok", "provider": provider, "models": llm_providers.list_models(provider)}
+
+
+@app.put("/api/ui/models/{part}")
+def ui_models_write(part: str, req: UiModelsWrite):
+    """Marko's edit from the page Modelli (providers | chains | usecases): stored through Themis."""
+    from core.services import llm_providers
+    key = _MODEL_PARTS.get(part)
+    if not key:
+        raise HTTPException(status_code=404, detail="part must be providers | chains | usecases")
+    value = req.value
+    if part == "providers":
+        bad = [n for n, p in value.items() if not isinstance(p, dict) or p.get("type") not in llm_providers.TYPES]
+        if bad or not value:
+            raise HTTPException(status_code=400, detail=f"unknown standard for: {', '.join(bad) or 'empty'}")
+    elif part == "chains":
+        if not value or any(not isinstance(c, dict) or not isinstance(c.get("steps"), list) for c in value.values()):
+            raise HTTPException(status_code=400, detail="every chain needs a list of steps")
+    elif part == "usecases":
+        if any(not isinstance(v, dict) for v in value.values()):
+            raise HTTPException(status_code=400, detail="every use case needs an object")
+    if not _oracle_settings.settings.put(key, value, actor="user", reason="WebUI Cervello → Modelli"):
+        raise HTTPException(status_code=502, detail="Themis did not accept the change")
+    return {"status": "ok", "key": key}
+
+
+@app.post("/api/ui/models/quota/reset")
+def ui_models_quota_reset(provider: str = "", model: str = ""):
+    """«Riprova adesso»: forget a model's quota state (all when no provider)."""
+    from core.services import llm_chains
+    llm_chains.clear_exhausted(provider, model)
+    return {"status": "ok"}
+
+
+@app.get("/api/ui/usage")
+def ui_usage(group: str = "module", days: int = 7, module: str = "", session_id: str = "", use_case: str = ""):
+    """Tab Uso: same as ``GET /api/llm/usage``."""
+    return llm_usage_endpoint(group=group, days=days, module=module, session_id=session_id, use_case=use_case)
+
+
+@app.get("/api/ui/usage/calls")
+def ui_usage_calls(days: int = 7, module: str = "", session_id: str = "", use_case: str = "", limit: int = 100):
+    return llm_usage_calls_endpoint(days=days, module=module, session_id=session_id, use_case=use_case, limit=limit)
 
 
 # ── Documenti page (SPEC §A4): documents in Archive, same search and archiving pipeline as the chat ─────────

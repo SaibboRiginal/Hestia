@@ -152,3 +152,33 @@ class TestUiApi:
             main._register_on_hub()
         caps = post.call_args.kwargs["json"]["capabilities"]
         assert caps["ui_manifest"].endswith("/api/ui/manifest") and caps["ui_version"]
+
+
+# ── Cervello → Modelli / Uso (dossier 2026-10-19-oracle-a-blocchi) ─────────────
+
+@pytest.mark.api
+class TestModelsTab:
+    def test_models_view_has_no_keys(self, client, monkeypatch):
+        monkeypatch.setenv("ORACLE_KEY_DEEPSEEK", "sk-secret")
+        out = client.get("/api/ui/models").json()
+        assert "sk-secret" not in str(out)
+        assert {"providers", "types", "chains", "usecases", "modes"} <= set(out)
+        assert any(u["id"] == "oracle.generale" for u in out["usecases"])
+
+    def test_write_goes_through_themis_and_validates(self, client, monkeypatch):
+        from core.services import oracle_settings
+        puts = []
+        monkeypatch.setattr(oracle_settings.settings, "put", lambda k, v, **kw: puts.append((k, v, kw)) or True)
+        ok = client.put("/api/ui/models/chains", json={"value": {"veloce": {"steps": [{"provider": "ollama", "model": "m"}]}}})
+        assert ok.status_code == 200 and puts[0][0] == oracle_settings.CHAINS_KEY and puts[0][2]["actor"] == "user"
+        assert client.put("/api/ui/models/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 400
+        assert client.put("/api/ui/models/chains", json={"value": {"c": {}}}).status_code == 400
+        assert client.put("/api/ui/models/other", json={"value": {}}).status_code == 404
+
+    def test_quota_reset_one_pair(self, client):
+        from core.services import llm_chains
+        import time as _t
+        llm_chains._exhausted[("gemini", "a")] = _t.time() + 600
+        llm_chains._exhausted[("gemini", "b")] = _t.time() + 600
+        client.post("/api/ui/models/quota/reset", params={"provider": "gemini", "model": "a"})
+        assert set(llm_chains.exhausted_for("gemini")) == {"b"}

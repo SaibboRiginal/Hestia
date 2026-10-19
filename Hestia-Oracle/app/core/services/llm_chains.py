@@ -151,9 +151,14 @@ def exhausted_for(provider: str) -> dict[str, str]:
                 for (p, m), t in _exhausted.items() if p == provider and t > now}
 
 
-def clear_exhausted() -> None:
+def clear_exhausted(provider: str = "", model: str = "") -> None:
+    """Forget the quota state (all, or one provider/model pair: «riprova adesso» in the WebUI)."""
     with _lock:
-        _exhausted.clear()
+        if not provider:
+            _exhausted.clear()
+        else:
+            for key in [k for k in _exhausted if k[0] == provider and (not model or k[1] == model)]:
+                del _exhausted[key]
 
 
 def last_answered() -> dict | None:
