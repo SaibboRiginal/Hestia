@@ -11,4 +11,4 @@
 - [x] P6 Gmail Pub/Sub (B) code — written with P1, inactive until env is set
 - [x] P7 Docs (module docs, ARCHITECTURE, AI-GUIDE, readme, flow map, swagger, .env.example), root CHANGELOG, PR #8 (main merged: brain offline)
 - [x] P7 Cloud bench 2026-10-19: 23 containers up, 19 on Hub, 42 WebUI pages 0 JS errors, phone ok. Found and fixed: Hub rejected Plutus (tag `finance` not allowed, 422) → regression test in Hub. Real chain checked: PayPal mail in Archive `finance` → ring → Spese transaction (−23,50, marked evaluated); Iris without Gmail login answers 503 and stores nothing (Hecate retries) as designed; Hype-like PDF sent to Oracle `/api/chat/document/json` → hand-off to Plutus → reply «Li registro?» in chat history → `finance_import_statement` commit: 3 added, PayPal row linked, month spent 55,90 counted once. Screens: Spese panoramica/importa/movimenti/budget/abbonamenti/statistiche/categorie, Iris Email
-- [ ] P7 CI green on PR #8, merge
+- [x] P7 CI green on PR #8 (21 checks), merged by Claude as Marko asked. Left for Marko: real run on his PC (`up-all.bat --build`), Google re-login if Hecate asks, optional Gmail Pub/Sub setup (hestia-hecate.md)
