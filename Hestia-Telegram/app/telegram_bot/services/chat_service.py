@@ -1,5 +1,6 @@
 import json
 import threading
+from dataclasses import dataclass
 import logging
 import time
 import uuid
@@ -10,6 +11,7 @@ import requests
 from telebot import types
 
 from telegram_bot import core
+from telegram_bot.services import chat_queue
 from telegram_bot.services.reply_renderer import ReplyRenderer
 from telegram_bot.services.oauth_paste import complete_oauth_from_paste, match_oauth_callback
 from telegram_bot.services.command_service import (
@@ -63,6 +65,114 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
         elif kind == "error":
             renderer.on_notice({"type": "notice", "kind": "error", "level": "error", "emoji": "❌",
                                 "title": "Errore", "detail": str(data.get("message") or data.get("content") or "")})
+
+
+class OracleUnavailable(Exception):
+    """Oracle never accepted the request (down, unreachable, not registered): the message can be queued
+    (SPEC docs/work/2026-10-19-cervello-offline §3). An error inside an answer is not this."""
+
+
+@dataclass
+class OracleResult:
+    renderer: "ReplyRenderer"
+    signals: list
+    questions: list
+
+
+_DOWN_STATUSES = {502, 503, 504}
+
+
+def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
+               extra_instructions: str = "") -> OracleResult:
+    """Stream one chat turn from Oracle into a renderer on ``status_message_id``.
+    Raises ``OracleUnavailable`` when Oracle did not accept the request."""
+    session_settings = core.get_session_settings(str(chat_id))
+    renderer = ReplyRenderer(chat_id, status_message_id, session_settings)
+    signals: list[dict[str, Any]] = []
+    questions: list[dict[str, Any]] = []
+    instructions = core.build_client_instructions_for_chat(str(chat_id))
+    if extra_instructions:
+        instructions = f"{instructions}\n{extra_instructions}" if instructions else extra_instructions
+    try:
+        res_cm = requests.post(
+            core.resolve_oracle_chat_url(),
+            json={
+                "message": user_text,
+                "session_id": session_id,
+                "notify_target": str(chat_id),
+                "force_notification_compiler": False,
+                "client_instructions": instructions,
+                "client": "telegram",
+            },
+            stream=True,
+            # (connect, max silence between chunks): no timeout used to hang
+            # the chat forever when Oracle stalled.
+            timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT))),
+        )
+    except (requests.ConnectionError, requests.Timeout) as error:
+        raise OracleUnavailable(str(error)) from error
+    with res_cm as res:
+        if res.status_code in _DOWN_STATUSES:
+            raise OracleUnavailable(f"HTTP {res.status_code}")
+        res.raise_for_status()
+        consume_oracle_stream(res, renderer, signals, questions)
+    renderer.finish()
+    return OracleResult(renderer, signals, questions)
+
+
+def send_oracle_questions(chat_id, session_id: str, streamed_signals: list, streamed_questions: list) -> None:
+    """Confirm cards Oracle asked for during the turn."""
+    for question in streamed_questions:
+        if not question.get("id") and question.get("question_id"):
+            _send_oracle_question(chat_id, session_id, question)
+            continue
+        token = str(question.get("id") or "").strip()
+        if not token:
+            continue
+
+        options = question.get("options") if isinstance(
+            question.get("options"), list) else []
+        confirm_label = str(options[0]).strip() if len(options) >= 1 and str(
+            options[0]).strip() else "Conferma"
+        cancel_label = str(options[1]).strip() if len(options) >= 2 and str(
+            options[1]).strip() else "Annulla"
+
+        signal_match = next(
+            (
+                sig for sig in streamed_signals
+                if str(sig.get("event") or "") == "action.approval.required"
+                and str((sig.get("data") or {}).get("approval_token") or "") == token
+            ),
+            {},
+        )
+        trace_id = str(signal_match.get("trace_id")
+                       or question.get("trace_id") or "").strip()
+        timeout_sec = int(question.get("timeout_sec") or 0)
+        core.PENDING_CONFIRMATIONS[token] = {
+            "action": "oracle_high_impact_approval",
+            "chat_id": str(chat_id),
+            "trace_id": trace_id or None,
+            "created_at": int(time.time()),
+            "expires_at": int(time.time()) + max(30, timeout_sec) if timeout_sec > 0 else None,
+        }
+
+        header = str(question.get("header")
+                     or "Conferma richiesta").strip()
+        prompt = str(question.get("prompt") or "").strip()
+        question_html = f"<b>{escape(header)}</b>"
+        if prompt:
+            question_html += f"\n{escape(prompt)}"
+
+        core.bot.send_message(
+            chat_id,
+            question_html,
+            parse_mode="HTML",
+            reply_markup=_build_confirmation_keyboard(
+                token,
+                confirm_label=confirm_label,
+                cancel_label=cancel_label,
+            ),
+        )
 
 
 def _build_confirmation_keyboard(token: str, confirm_label: str = "Conferma", cancel_label: str = "Annulla"):
@@ -694,30 +804,7 @@ def handle_chat_message(message):
             )
             return
 
-        session_settings = core.get_session_settings(str(chat_id))
-        renderer = ReplyRenderer(chat_id, status_msg.message_id, session_settings)
-        streamed_signals: list[dict[str, Any]] = []
-        streamed_questions: list[dict[str, Any]] = []
-
-        oracle_chat_url = core.resolve_oracle_chat_url()
-        with requests.post(
-            oracle_chat_url,
-            json={
-                "message": user_text,
-                "session_id": session_id,
-                "notify_target": str(chat_id),
-                "force_notification_compiler": False,
-                "client_instructions": core.build_client_instructions_for_chat(str(chat_id)),
-                "client": "telegram",
-            },
-            stream=True,
-            # (connect, max silence between chunks): no timeout used to hang
-            # the chat forever when Oracle stalled.
-            timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT))),
-        ) as res:
-            res.raise_for_status()
-            consume_oracle_stream(res, renderer, streamed_signals, streamed_questions)
-        renderer.finish()
+        result = ask_oracle(chat_id, session_id, user_text, status_msg.message_id)
 
         # ── Feedback prompt (selective, rate-limited, snoozeable) ──────────
         _maybe_prompt_feedback(
@@ -725,60 +812,15 @@ def handle_chat_message(message):
             message_text=str(message.text or "").strip(),
             session_id=session_id,
         )
-
-        for question in streamed_questions:
-            if not question.get("id") and question.get("question_id"):
-                _send_oracle_question(chat_id, session_id, question)
-                continue
-            token = str(question.get("id") or "").strip()
-            if not token:
-                continue
-
-            options = question.get("options") if isinstance(
-                question.get("options"), list) else []
-            confirm_label = str(options[0]).strip() if len(options) >= 1 and str(
-                options[0]).strip() else "Conferma"
-            cancel_label = str(options[1]).strip() if len(options) >= 2 and str(
-                options[1]).strip() else "Annulla"
-
-            signal_match = next(
-                (
-                    sig for sig in streamed_signals
-                    if str(sig.get("event") or "") == "action.approval.required"
-                    and str((sig.get("data") or {}).get("approval_token") or "") == token
-                ),
-                {},
-            )
-            trace_id = str(signal_match.get("trace_id")
-                           or question.get("trace_id") or "").strip()
-            timeout_sec = int(question.get("timeout_sec") or 0)
-            core.PENDING_CONFIRMATIONS[token] = {
-                "action": "oracle_high_impact_approval",
-                "chat_id": str(chat_id),
-                "trace_id": trace_id or None,
-                "created_at": int(time.time()),
-                "expires_at": int(time.time()) + max(30, timeout_sec) if timeout_sec > 0 else None,
-            }
-
-            header = str(question.get("header")
-                         or "Conferma richiesta").strip()
-            prompt = str(question.get("prompt") or "").strip()
-            question_html = f"<b>{escape(header)}</b>"
-            if prompt:
-                question_html += f"\n{escape(prompt)}"
-
-            core.bot.send_message(
-                chat_id,
-                question_html,
-                parse_mode="HTML",
-                reply_markup=_build_confirmation_keyboard(
-                    token,
-                    confirm_label=confirm_label,
-                    cancel_label=cancel_label,
-                ),
-            )
+        send_oracle_questions(chat_id, session_id, result.signals, result.questions)
 
     except Exception as error:
+        if isinstance(error, OracleUnavailable):
+            queued = chat_queue.enqueue(chat_id, session_id, str(user_text or ""), message.message_id, error)
+            if queued is not None:
+                core.bot.edit_message_text(chat_queue.queued_text(queued), chat_id=chat_id,
+                                           message_id=status_msg.message_id, parse_mode="HTML")
+                return
         error_msg = f"⚠️ <b>Connessione all'Oracle fallita</b>\n<code>{escape(str(error))}</code>"
         core.bot.edit_message_text(
             error_msg,
@@ -932,6 +974,7 @@ def handle_file_message(message):
         renderer = ReplyRenderer(chat_id, status_msg.message_id, session_settings)
         streamed_signals: list[dict] = []
         oracle_doc_url = core.resolve_oracle_document_url()
+        accepted = False
         with requests.post(
             oracle_doc_url,
             data={
@@ -948,10 +991,18 @@ def handle_file_message(message):
             timeout=(10, float(core.settings.get(core.tg_settings.ORACLE_STREAM_TIMEOUT))),
         ) as res:
             res.raise_for_status()
+            accepted = True
             consume_oracle_stream(res, renderer, streamed_signals, [])
         renderer.finish()
 
     except Exception as error:
+        down = isinstance(error, (requests.ConnectionError, requests.Timeout)) or (
+            isinstance(error, requests.HTTPError) and getattr(error.response, "status_code", 0) in _DOWN_STATUSES)
+        if down and not accepted:
+            # Files are not queued (large, read in the same turn): SPEC cervello-offline §3.
+            core.bot.edit_message_text(chat_queue.FILE_OFFLINE_TEXT, chat_id=chat_id,
+                                       message_id=status_msg.message_id, parse_mode="HTML")
+            return
         core.bot.edit_message_text(
             f"⚠️ <b>Analisi documento fallita</b>\n<code>{escape(str(error))}</code>",
             chat_id=chat_id,
