@@ -36,16 +36,30 @@ Execution endpoints above are implemented as policy-gated remediation flows (tas
 
 Hephaestus ships its own inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
-(WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it: no new endpoint).
-- page **Riparazioni** (`riparazioni`, `hephaestus-repairs`, order 170): remediation tasks from
+(WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it).
+- page **Sviluppo** (`sviluppo`, `hephaestus-sviluppo`, order 170, first; §A4 — ported from the WebUI built-in
+  `/forge` page, which calls nothing of its own any more): Forge task list (search, filters Tutti / Aperti / *Dai
+  moduli* / Applicati / Non riusciti, open count, paused banner), the engine conversation (transcript polled every 4 s
+  while working — no streaming), follow-up composer (new task with `parent_task`), side panel Panoramica (incl. notes
+  + *Aggiungi nota*) · File · Diff (unified/split) · Dossier · Test · Log · Ramo, actions Avvia / Avvia ora with the
+  engine picker, Approva e applica, Rifiuta, Rollback, Riprova, Pausa/Riprendi, Nuovo sviluppo (engine, services,
+  continue a dossier), *Chiedi a Hestia*, engines + Claude budget when nothing is selected, read-only **Repository**
+  browser (commit graph, commit, files at any ref, branches, compare, tags, dossiers). **Copia per AI** (§B5): pick
+  tasks (or the current one) → `GET /forge/tasks/export` markdown → clipboard (fallback/also `.md` download); the
+  markdown comes from the forge_task / forge_tasks views and is never written to the repo. Badge: `GET /forge/counts`
+  field `review` (awaiting_review + proposed). Links: `/p/hephaestus/sviluppo?task=<id>` (short ids ok),
+  `?view=repo`. What the old WebUI controller added is sent by the plugin: actions `by=user`, new tasks
+  `source=ui, requested_by=user` (the Forge defaults are the same).
+- page **Riparazioni** (`riparazioni`, `hephaestus-repairs`, order 171): remediation tasks from
   `/api/hephaestus/tasks` + `/runbooks` + `/status` — counts per state, filter, per task runbook (title, steps,
   read-only/rollback checkpoints), consent tier, dry-run, environment, attempts, notes timeline, execution result,
-  `rollback_ref`, branch, Forge task after escalation. Read only: approve/undo keep their consent path (chat/Telegram
+  `rollback_ref`, branch, Forge task after escalation (link to it in Sviluppo). Read only: approve/undo keep their consent path (chat/Telegram
   tools `hephaestus_approve` / `hephaestus_rollback`); the page only says how to ask.
 - widget **Forge** (`forge`, `hephaestus-forge-widget`, sizes s/m/l, auto): active/paused/off, running, queue,
   awaiting review, proposed, Claude budget phase (`/forge/status`, `/forge/claude-budget`, `/forge/tasks`). Its only
-  button is the existing manual brake `POST /forge/pause` (after a confirm, same switch as Sviluppo/Telegram).
-- No quick actions. The WebUI *Sviluppo* page (Forge tasks) stays built-in until it is ported (§A4).
+  button is the existing manual brake `POST /forge/pause` (after a confirm, same switch as Sviluppo/Telegram);
+  it opens the Sviluppo page.
+- No quick actions.
 - Unreachable module → the page/widget shows the "non raggiungibile" state.
 Bundle: `Hestia-Hephaestus/ui/src` (Lit, `@hestia/webui-sdk`), built by the Node stage of the Dockerfile into
 `/ui/dist/webui/hephaestus.js` (outside `/code`: the dev mount of `app/` would hide it); infra env
@@ -222,6 +236,8 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | POST | `/api/hephaestus/forge/tasks` | `{request, services[], engine, auto_start, auto_merge, context, source, notify_target, workdoc, parent_task, agenda_parent}` — `parent_task` = follow-up (inherits workdoc, services, outcome as context); `agenda_parent` = linked agenda key |
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/brief` | One line per task (`id6 · state · services · request`), sized to fit Oracle's tool-result cap — used by the chat tool `forge_tasks` |
+| GET | `/api/hephaestus/forge/counts` | Tasks per state + `review` (awaiting_review + proposed) — Sviluppo page badge |
+| GET | `/api/hephaestus/forge/tasks/export?ids=a,b` | «Copia per AI»: markdown of the tasks (forge_task/forge_tasks views + how to submit a fix via MCP), returned only |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
 | GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |
 | POST | `/api/hephaestus/forge/tasks/{id}/approve` | proposed/scheduled → start (claude: waits for window unless `{"now": true}`) · awaiting_review → merge/deploy (async) |

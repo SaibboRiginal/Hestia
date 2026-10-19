@@ -5827,6 +5827,30 @@ paths:
       responses:
         "200": {description: "{status, total, by_state{}, tasks[] (strings), omitted?}"}
 
+  /api/hephaestus/forge/counts:
+    get:
+      tags: [Hephaestus]
+      summary: Forge tasks per state (Sviluppo page badge)
+      description: "`review` = awaiting_review + proposed (what waits for the owner) — the WebUI plugin page badge field. Over the newest 200 tasks."
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{status, total, by_state{}, awaiting_review, proposed, review, running, open}"}
+
+  /api/hephaestus/forge/tasks/export:
+    get:
+      tags: [Hephaestus]
+      summary: «Copia per AI» — markdown of some Forge tasks for an external AI
+      description: "Built from the forge_task (`/tasks/{id}/overview`) and forge_tasks (`/tasks/brief`) views: request, state, origin, error, tests, dossier path `docs/work/<workdoc>/`, notes, recent history and how to hand a fix back via MCP (`forge_task_note`, `forge_submit_branch` when the state accepts a branch). Returned only (clipboard / .md download in the Sviluppo page): nothing is written to the repo."
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: ids, in: query, required: true, description: "comma separated task ids (short ids accepted), max 50", schema: {type: string}}
+      responses:
+        "200": {description: "{status, count, missing[], markdown, filename}"}
+        "400": {description: ids missing}
+        "404": {description: none of the tasks found}
+
   /api/hephaestus/forge/tasks/{task_id}:
     get:
       tags: [Hephaestus]
