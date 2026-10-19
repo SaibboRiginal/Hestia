@@ -1,9 +1,9 @@
-"""Brain watch — Oracle (the only brain) down for longer than ``argus.brain.grace``.
+"""Oracle watch — Oracle (the only LLM core) down for longer than ``argus.oracle.grace``.
 
-SPEC docs/work/2026-10-19-cervello-offline §1. Fed by the monitor cycle (no loop of its own):
-- offline → presence signal ``brain.offline`` (Chronos overlay «Cervello offline», effect ``chat.reply=queued``;
+SPEC docs/work/2026-10-19-oracle-offline §1. Fed by the monitor cycle (no loop of its own):
+- offline → presence signal ``oracle.offline`` (Chronos overlay «Oracle offline», effect ``chat.reply=queued``;
   when it relaxes Chronos asks the chat clients to answer their queues) + one Hermes notice with fixed text
-  (``replaces: system.brain``, one live notice);
+  (``replaces: system.oracle``, one live notice);
 - back → signal cleared + the notice closed with «di nuovo online».
 While offline Argus never asks Oracle to narrate (fixed texts at once). A shorter outage (restart, deploy) says
 nothing: chat clients queue their messages anyway.
@@ -21,10 +21,10 @@ from core import hermes_client
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 ORACLE = "oracle"
-SIGNAL = "brain.offline"
-NOTICE_KEY = "system.brain"
+SIGNAL = "oracle.offline"
+NOTICE_KEY = "system.oracle"
 # The system subscription Hermes bootstraps for the user on every client (service.health alerts are opt-in):
-# the brain notice must always arrive.
+# the Oracle notice must always arrive.
 NOTICE_EVENT = "service.action_required"
 _REFRESH_SECONDS = 600     # re-send the signal so its TTL never lapses while offline
 _SIGNAL_TTL = 1800         # a dead Argus does not leave the overlay on forever
@@ -83,7 +83,7 @@ def observe(status: str | None, error: str | None = None, *, now: float | None =
                 _state["failing_since"] = now
             failing_since = _state["failing_since"]
             _state["reason"] = reason
-            if not _state["offline"] and now - failing_since >= cfg.get_int(cfg.BRAIN_GRACE, 0):
+            if not _state["offline"] and now - failing_since >= cfg.get_int(cfg.ORACLE_GRACE, 0):
                 _state.update(offline=True, offline_since=failing_since, signal_at=now)
                 transition = "offline"
             elif _state["offline"] and now - _state["signal_at"] >= _REFRESH_SECONDS:
@@ -97,27 +97,27 @@ def observe(status: str | None, error: str | None = None, *, now: float | None =
 
 
 def _go_offline(since: float, reason: str, error: str | None) -> None:
-    logger.warning("[🔄] event=brain_offline reason=%s error=%s", reason, str(error or "")[:200])
+    logger.warning("[🔄] event=oracle_offline reason=%s error=%s", reason, str(error or "")[:200])
     _signal(since, reason)
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=NOTICE_KEY,
-        payload={"_message": "🧠 <b>Cervello offline</b>: Oracle non risponde. Comandi, notifiche e agenda "
+        payload={"_message": "⚠️ <b>Oracle offline</b>: non risponde. Comandi, notifiche e agenda "
                              "funzionano; i messaggi in chat restano in coda e avranno risposta appena torna.",
-                 "_title": "Cervello offline", "_level": "warning", "_source": "argus",
-                 "replaces": NOTICE_KEY, "service": ORACLE, "status": "brain_offline", "reason": reason})
+                 "_title": "Oracle offline", "_level": "warning", "_source": "argus",
+                 "replaces": NOTICE_KEY, "service": ORACLE, "status": "oracle_offline", "reason": reason})
 
 
 def _go_online(seconds_offline: float) -> None:
-    logger.info("event=brain_online offline_for_s=%d", int(seconds_offline))
+    logger.info("event=oracle_online offline_for_s=%d", int(seconds_offline))
     if _presence is not None:
         _presence.clear(SIGNAL)
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=f"{NOTICE_KEY}.online",
-        payload={"_message": f"🧠 <b>Di nuovo online</b> dopo {_minutes(seconds_offline)}: rispondo ai messaggi "
+        payload={"_message": f"✅ <b>Oracle di nuovo online</b> dopo {_minutes(seconds_offline)}: rispondo ai messaggi "
                              "rimasti in coda.",
-                 "_title": "Cervello di nuovo online", "_level": "success", "_source": "argus",
+                 "_title": "Oracle di nuovo online", "_level": "success", "_source": "argus",
                  "closes": NOTICE_KEY, "decision": "resolved", "outcome_text": "Di nuovo online",
-                 "service": ORACLE, "status": "brain_online"})
+                 "service": ORACLE, "status": "oracle_online"})
 
 
 def reset() -> None:

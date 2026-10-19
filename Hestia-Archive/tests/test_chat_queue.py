@@ -1,4 +1,4 @@
-"""Chat queue store (docs/work/2026-10-19-cervello-offline §3) on an in-memory SQLite."""
+"""Chat queue store (docs/work/2026-10-19-oracle-offline §3) on an in-memory SQLite."""
 from __future__ import annotations
 
 import sys

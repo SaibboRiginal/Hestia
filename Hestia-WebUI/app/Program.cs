@@ -145,7 +145,7 @@ using (var scope = app.Services.CreateScope())
             swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
             // Hermes delivers every notification here (SPEC hermes-global-notifications).
             notify_endpoint = "/api/notify",
-            // Chronos calls it when the brain is back (SPEC cervello-offline): answer the queued chat messages.
+            // Chronos calls it when Oracle is back (SPEC oracle-offline): answer the queued chat messages.
             chat_queue_drain = "/api/chat-queue/drain",
             // Assistant tools: widget catalog + dashboards (client plugins SPEC §4.6), next to Themis'.
             // /api/ai/mcp: the WebUI's own module tools. /mcp is the public door for external AIs.
@@ -174,7 +174,7 @@ using (var scope = app.Services.CreateScope())
 
     if (await RegisterOnHubAsync())
         logger.LogInformation("event=registered_on_hub hub={Hub} service={Svc}", hestiaOpts.HubApiUrl, hestiaOpts.ServiceName);
-    // Messages queued while the brain was offline (and the WebUI was down too) get their answer now.
+    // Messages queued while Oracle was offline (and the WebUI was down too) get their answer now.
     app.Services.GetRequiredService<ChatQueueService>().DrainInBackground("startup");
 
     // Keepalive like the Python services: the Hub marks a service offline after 180 s without a registration

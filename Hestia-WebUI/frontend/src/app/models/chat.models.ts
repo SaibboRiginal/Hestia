@@ -11,7 +11,7 @@ export interface ChatMessage {
   sessionId?: string;
   /** System notices (memory saved, action done…) attached to this answer. */
   notices?: ChatNotice[];
-  /** Brain offline: id of the queued message this placeholder waits for (SPEC cervello-offline). */
+  /** Oracle offline: id of the queued message this placeholder waits for (SPEC oracle-offline). */
   queuedId?: number;
 }
 
@@ -88,7 +88,7 @@ export interface ServerEvent {
   missing_fields?: string[];
   data?: any;
   metadata?: ThinkingMetadata;
-  /** queued / queued_answer (brain offline). */
+  /** queued / queued_answer (Oracle offline). */
   queue_id?: number;
   position?: number;
   message?: string;

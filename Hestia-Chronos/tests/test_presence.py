@@ -118,15 +118,15 @@ class TestPresence:
 
 
 @pytest.mark.unit
-def test_brain_offline_overlay_queues_chat_and_drains_when_back(engine):
+def test_oracle_offline_overlay_queues_chat_and_drains_when_back(engine):
     engine.ping("telegram")
-    engine.set_signal("brain.offline", True)
+    engine.set_signal("oracle.offline", True)
     state = engine.view()
-    assert [o["key"] for o in state["overlays"]] == ["brain_offline"]
+    assert [o["key"] for o in state["overlays"]] == ["oracle_offline"]
     assert state["effects"]["chat.reply"] == "queued" and state["effects"]["work.light"] == "defer"
     assert "offline" in state["effects"]["chat.notice"]
     assert engine.calls["drain"] == []
-    engine.clear_signal("brain.offline")
+    engine.clear_signal("oracle.offline")
     state = engine.view()
     assert state["effects"]["chat.reply"] == "live" and state["overlays"] == []
     assert engine.calls["drain"] == [True]

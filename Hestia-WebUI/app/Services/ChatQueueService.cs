@@ -6,16 +6,16 @@ using Microsoft.AspNetCore.SignalR;
 using Hestia.WebUI.Hubs;
 
 /// <summary>
-/// Chat messages written while the brain (Oracle) is offline (SPEC docs/work/2026-10-19-cervello-offline §3).
+/// Chat messages written while Oracle is offline (SPEC docs/work/2026-10-19-oracle-offline §3).
 /// A message Oracle did not accept is stored in Archive (<c>/api/chat-queue</c>, client <c>webui</c>); when the
-/// brain is back Chronos calls <c>POST /api/chat-queue/drain</c> (capability <c>chat_queue_drain</c>), and the same
+/// Oracle is back Chronos calls <c>POST /api/chat-queue/drain</c> (capability <c>chat_queue_drain</c>), and the same
 /// drain runs at startup. The backend replays each message to Oracle (no browser needed: Oracle saves the history)
 /// and pushes the answer to open tabs as <c>queued_answer</c>.
 /// </summary>
 public class ChatQueueService
 {
     public const string Client = "webui";
-    public const string QueuedText = "🧠 Il cervello è offline: messaggio in coda, ti rispondo appena torna.";
+    public const string QueuedText = "⚠️ Oracle è offline: messaggio in coda, ti rispondo appena torna.";
 
     private readonly IServiceScopeFactory _scopes;
     private readonly IHubContext<ChatHub> _browsers;

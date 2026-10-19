@@ -404,11 +404,11 @@ class PresenceChange(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-# ── Chat queue (brain offline) — owner of the semantics: each chat client ─────
+# ── Chat queue (Oracle offline) — owner of the semantics: each chat client ─────
 
 class ChatQueueItem(Base):
-    """A chat message written while Oracle was offline; its client answers it when the brain returns
-    (SPEC docs/work/2026-10-19-cervello-offline). ``state``: queued → answering → answered | failed."""
+    """A chat message written while Oracle was offline; its client answers it when Oracle returns
+    (SPEC docs/work/2026-10-19-oracle-offline). ``state``: queued → answering → answered | failed."""
     __tablename__ = "chat_queue"
 
     id = Column(Integer, primary_key=True, index=True)
