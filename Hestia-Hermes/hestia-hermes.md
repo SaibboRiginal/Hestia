@@ -101,6 +101,8 @@ within the cooldown window.
 | `POST` | `/api/notifications/retract-stale` | Agenda job: retract handled messages from clients |
 | `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
 | `GET` | `/api/ui/subscriptions` · `/api/ui/clients` | Active subscriptions (domain, event type, filters, channels) · clients reached now |
+| `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |
+| `POST` | `/api/ui/inbox/{id}/seen` · `/api/ui/inbox/seen-all` · `/api/ui/inbox/{id}/answer` | Same logic as the `/api/notifications/*` actions (body `client` optional, default `webui`; answer body `{action_id}`, 409 = already handled) |
 | `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |
 
 System subscription (`service.action_required`) is bootstrapped at startup for the user (`owner`,
@@ -113,13 +115,24 @@ deactivated so alerts are not sent twice.
 ## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
 
 Core module (`kind: "core"`, WebUI *Sistema* section, order 140), `api_prefix` `/api/ui/` (Hermes' own routes
-are spread over `/api/notifications`, `/api/events`…, so the page reads three small `/api/ui/*` views instead):
-- page **Consegne** (`hermes-deliveries`): every notification (newest first, paged) with its state on each client
+are spread over `/api/notifications`, `/api/events`…, so the pages use small `/api/ui/*` doors instead):
+- page **Notifiche** (`hermes-inbox`, order 140, P6 — ported from the WebUI built-in page, which redirects here):
+  the inbox shared by every client (read here = read on Telegram). Filters *Da leggere · N* / *Da rispondere · N* /
+  *Tutte*, module, *Anche da altri client*; grouped by day (Oggi, Ieri, …); level icon, repeat badge (↻), origin
+  client, unread dot, title, message (Telegram-style HTML, sanitised: only b/i/u/s/code/pre/a(http)/br/blockquote);
+  *Apri* on the module page of `_link` (marks it seen); the notification's buttons (first answer wins, 409 →
+  «Già gestita da …»), the outcome or *Scaduta*, «Vista su Telegram»; *Segna tutte lette*; *Carica altre* (40 per
+  page, `before` cursor). Items shown in a visible tab for 1.5 s are marked seen. While visible the page polls
+  `/api/ui/inbox/counts` every 20 s and reloads when the counters move (no SignalR in plugins). Sidebar **badge**
+  = page badge `{source: /api/ui/inbox/counts, field: unread}`. Deep link `?filter=unread|pending|all&source=`.
+  The live toasts stay in the WebUI shell (it is the client); the page's *Avvisi a comparsa* select writes the
+  shell's own preference (`localStorage` `hestia_notification_prefs`, same origin) and fires the window event
+  `hestia:notification-prefs` `{toast}`.
+- sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifiche`): every notification (newest first, paged) with its state on each client
   (consegnata / solo elenco / fallita / abbandonata, attempts, *ritirata* from the chat), *trattenuta* by
   presence (+ released in the digest), *silenziosa* (quiet inbox copy), *sostituita* (repeat chain), the answer
   (action, client, outcome) or the actions still waiting; filters by flag and client; active subscriptions and the
-  clients reached. Read-only: the inbox to read and answer stays the WebUI **Notifiche** page (it moves to this
-  plugin in P6).
+  clients reached. Read-only: the inbox to read and answer is the **Notifiche** page above.
 - widget **Consegne oggi** (`hermes-today-widget`, s/m, auto): today's notifications, failed, held, waiting.
 - Hermes down → the page shows «Hermes non raggiungibile» (SDK `hxk-state offline`).
 

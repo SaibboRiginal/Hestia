@@ -48,15 +48,19 @@ app.add_middleware(CORSMiddleware, allow_origins=[
 app.include_router(hermes_settings.router())
 service = HermesService()
 
-# ── WebUI plugin (core module, Sistema section): Consegne ────────────────────
+# ── WebUI plugin (core module, Sistema section): Notifiche (inbox) + Consegne ────────────────────
 # Routes of Hermes are spread over /api/notifications, /api/events…: the plugin reads /api/ui/* only.
 ui = PluginClient("hermes", title="Hermes", icon="bell", color="teal", kind="core", dist=UI_DIST,
                   description="Cosa Hermes ha consegnato a quale client: trattenute, silenziose, ritirate, risposte.",
                   version=SERVICE_VERSION)
 ui.webui(entry="hermes.js", api_prefix="/api/ui/",
-         pages=[page("consegne", "Consegne", element="hermes-deliveries", icon="bell", order=140,
+         pages=[page("notifiche", "Notifiche", element="hermes-inbox", icon="bell", order=140,
+                     badge={"source": "/api/ui/inbox/counts", "field": "unread"},
+                     help="L'elenco delle notifiche, uguale su ogni client (letta qui = letta su Telegram): "
+                          "da leggere, da rispondere, tutte; i pulsanti rispondono al modulo che ha chiesto."),
+                page("consegne", "Consegne", element="hermes-deliveries", icon="send", order=141, parent="notifiche",
                      help="Ogni notifica e a quali client è arrivata (Telegram, WebUI…): trattenuta dalla presenza, "
-                          "silenziosa, ritirata dalla chat, risposta. L'elenco da leggere resta in Notifiche.")],
+                          "silenziosa, ritirata dalla chat, risposta. L'elenco da leggere è in Notifiche.")],
          widgets=[widget("oggi", "Consegne oggi", element="hermes-today-widget", sizes=["s", "m"], auto=True,
                          open_page="consegne", icon="bell",
                          help="Notifiche di oggi: consegnate, trattenute, fallite, in attesa di risposta.")])
@@ -445,3 +449,48 @@ def ui_subscriptions():
 def ui_clients():
     """Clients Hermes delivers to right now (Hub topology ``layer:client`` + notify_endpoint)."""
     return notification_clients()
+
+
+# ── Inbox (WebUI plugin «Notifiche»): thin /api/ui/ doors on the routes above ──
+# The WebUI proxy only lets a plugin call its api_prefix (/api/ui/), so the inbox page reaches the same logic
+# here. The plugin is a WebUI surface: the client is "webui" unless told otherwise (read on WebUI = read everywhere).
+
+UI_CLIENT = "webui"
+
+
+class UiClientRequest(BaseModel):
+    client: str = UI_CLIENT
+
+
+class UiAnswerRequest(BaseModel):
+    action_id: str
+    client: str = UI_CLIENT
+
+
+@app.get("/api/ui/inbox")
+def ui_inbox(filter: str = "all", source: str = "", before: str = "", limit: int = 40, client: str = UI_CLIENT):
+    """Inbox page: same as ``GET /api/notifications`` for the WebUI client."""
+    return list_notifications(filter=filter, source=source, before=before, limit=limit, client=client or UI_CLIENT)
+
+
+@app.get("/api/ui/inbox/counts")
+def ui_inbox_counts(client: str = UI_CLIENT):
+    """``{unread, pending}`` — also the sidebar badge source of the Notifiche page."""
+    return notification_counts(client or UI_CLIENT)
+
+
+@app.post("/api/ui/inbox/seen-all")
+def ui_inbox_seen_all(req: UiClientRequest | None = None):
+    return notifications_seen_all(NotificationSeenAllRequest(client=(req or UiClientRequest()).client or UI_CLIENT))
+
+
+@app.post("/api/ui/inbox/{notification_id}/seen")
+def ui_inbox_seen(notification_id: str, req: UiClientRequest | None = None):
+    return notification_seen(notification_id, NotificationClientRequest(client=(req or UiClientRequest()).client or UI_CLIENT))
+
+
+@app.post("/api/ui/inbox/{notification_id}/answer")
+def ui_inbox_answer(notification_id: str, req: UiAnswerRequest):
+    """First answer wins (409 ``already_handled`` with the winning ``answer``)."""
+    return notification_answer(notification_id, NotificationAnswerRequest(action_id=req.action_id,
+                                                                          client=req.client or UI_CLIENT))
