@@ -1,13 +1,15 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HermesPush, SignalRService } from './signalr.service';
 import { ToastService } from '../ui';
 
 /**
  * Hermes notifications in the WebUI (SPEC docs/work/2026-10-10-hermes-global-notifications).
- * Inbox = Archive through Hermes (`/api/webui/notifications*`); live pushes on SignalR.
+ * Inbox = Archive through Hermes (`/api/webui/notifications*`); live pushes on SignalR. The page itself is Hermes'
+ * plugin (`/p/hermes/notifiche`, SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno P6): here stay the badge, the
+ * toasts (mode shared with the page through localStorage + the `hestia:notification-prefs` event) and seen-on-push.
  * Read state is global: what is seen here is seen on Telegram too, and vice versa.
  * Repeat chains (SPEC docs/work/2026-10-17-hermes-repeat-notifications): a reminder sent again
  * replaces the previous one (update `superseded` → removed here) and carries `repeat.text`.
@@ -49,6 +51,8 @@ export interface NotificationCounts { unread: number; pending: number; }
 
 const CLIENT = 'webui';
 const PREFS_KEY = 'hestia_notification_prefs';
+const PREFS_EVENT = 'hestia:notification-prefs';
+const PAGE = '/p/hermes/notifiche';
 export const CLIENT_LABELS: Record<string, string> = { telegram: 'Telegram', webui: 'WebUI' };
 export const clientLabel = (name?: string | null) => (name && CLIENT_LABELS[name]) || name || '';
 
@@ -84,6 +88,17 @@ export class NotificationsService {
     this.started = true;
     this.signalR.notifications$.subscribe(push => this.onPush(push));
     this.signalR.reconnected$.subscribe(() => void this.refresh());
+    // The Notifiche plugin page is open: new items are shown there (and seen) instead of toasted.
+    const atPage = (url: string) => url.split('?')[0].startsWith(PAGE);
+    this.pageOpen.set(atPage(this.router.url));
+    this.router.events.subscribe(e => { if (e instanceof NavigationEnd) this.pageOpen.set(atPage(e.urlAfterRedirects)); });
+    if (typeof window !== 'undefined') {
+      window.addEventListener(PREFS_EVENT, (e: Event) => {
+        const mode = (e as CustomEvent<{ toast?: ToastMode }>).detail?.toast;
+        if (mode) this.toastMode.set(mode);
+      });
+      window.addEventListener('storage', e => { if (e.key === PREFS_KEY) this.toastMode.set(this.readPrefs()); });
+    }
     void this.loadCounts();
   }
 
@@ -198,7 +213,7 @@ export class NotificationsService {
     const text = n.repeat ? `${base} · ${n.repeat.text}` : base;
     this.toast.show(text, toneOf(n.level), {
       label: n.pending ? 'Rispondi' : 'Apri',
-      run: () => void this.router.navigate(['/notifications']),
+      run: () => void this.router.navigateByUrl(PAGE),
     }, n.pending ? 10000 : 6000);
     if (visible) void this.markSeen(n);
   }

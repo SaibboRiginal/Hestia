@@ -102,7 +102,7 @@ const WINDOW_TEXT: Record<string, string> = {
         <button hx-btn size="sm" variant="primary" icon="undo" (click)="act.emit('restore')">Ripristina regola</button>
       }
       @if (forgeTask(); as id) {
-        <a hx-btn size="sm" icon="code" [routerLink]="['/forge']" [queryParams]="{ task: id }">Apri in Sviluppo</a>
+        <a hx-btn size="sm" icon="code" [routerLink]="['/p/hephaestus/sviluppo']" [queryParams]="{ task: id }">Apri in Sviluppo</a>
       }
       <button hx-btn size="sm" variant="ghost" icon="sparkle" class="ask" (click)="act.emit('ask')" title="Modifica o spiega questa voce a parole">Chiedi a Hestia</button>
     </div>

@@ -66,12 +66,9 @@ ui = PluginClient("chronos", title="Chronos", icon="repeat", color="amber", kind
                   description="L'agenda dell'assistente al lavoro: esecuzioni dei job, errori, regole per modulo.",
                   version=os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
-         pages=[page("agenda", "Agenda di Hestia", element="chronos-agenda", icon="calendar", order=150,
-                     help="Il calendario dell'assistente: eventi, task, job e finestre di ogni modulo, in vista giorno, "
-                          "settimana, mese o elenco. Crea, sposta, salta o annulla; i tuoi cambi vincono sui moduli."),
-                page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=151, parent="agenda",
+         pages=[page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=150,
                      help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
-                          "è durata, e le regole registrate da ogni modulo.")],
+                          "è durata, e le regole registrate da ogni modulo. Il calendario resta in Agenda.")],
          widgets=[widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
                          open_page="esecuzioni", icon="alert",
                          help="Job dell'agenda falliti nelle ultime 24 ore, con «Riprova».")],

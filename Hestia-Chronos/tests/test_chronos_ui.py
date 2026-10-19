@@ -94,10 +94,8 @@ class TestUiEndpoints:
         assert m["module"] == "chronos" and m["kind"] == "core"
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/agenda/" and web["entry"] == "/ui/webui/chronos.js"
-        pages = {p["id"]: p for p in web["page"]}
-        assert pages["agenda"]["order"] == 150 and pages["agenda"]["element"] == "chronos-agenda"
-        assert pages["agenda"]["parent"] == "" and not pages["agenda"]["detail"]
-        assert pages["esecuzioni"]["parent"] == "agenda" and pages["esecuzioni"]["order"] == 151
+        # The calendar stays the WebUI's built-in Agenda until its plugin page is complete (P6 follow-up).
+        assert [p["id"] for p in web["page"]] == ["esecuzioni"] and web["page"][0]["order"] == 150
         assert web["widget"][0]["id"] == "falliti"
         qa = web["quick_action"][0]
         assert qa["path"] == "/api/agenda/items/{id}/run" and qa["source"] == "/api/agenda/runs/failed"

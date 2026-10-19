@@ -27,14 +27,27 @@ public class OAuthDoorController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>https://host as the client sees it (the tunnel sets X-Forwarded-Proto); null on a strange Host.</summary>
+    /// <summary>scheme://host as the client sees it (the tunnel sets X-Forwarded-Proto). Only for a public (tunnel)
+    /// host or a local one (same PC / home network); any other Host → null (Hestia-MCP then uses its default), so a
+    /// forged Host cannot put another domain in the OAuth metadata.</summary>
     public static string? PublicBase(HttpRequest request)
     {
         var host = request.Host.Value ?? "";
         if (!HostRe.IsMatch(host)) return null;
+        var name = request.Host.Host;
+        var publicUrl = request.HttpContext.RequestServices.GetService<PublicUrlService>();
+        var local = name is "localhost" or "127.0.0.1" || (System.Net.IPAddress.TryParse(name, out var ip)
+            && (System.Net.IPAddress.IsLoopback(ip) || IsPrivate(ip)));
+        if (!local && publicUrl?.IsPublicHost(name) != true) return null;
         var scheme = request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? request.Scheme;
         scheme = scheme == "https" ? "https" : "http";
         return $"{scheme}://{host}";
+    }
+
+    private static bool IsPrivate(System.Net.IPAddress ip)
+    {
+        var b = ip.GetAddressBytes();
+        return b.Length == 4 && (b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168));
     }
 
     private Dictionary<string, string> Headers(bool withAuth = false)
