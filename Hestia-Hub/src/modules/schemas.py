@@ -22,6 +22,7 @@ ALLOWED_TAGS = {
     "fitness",
     "wardrobe",
     "selfcare",
+    "finance",
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -55,6 +56,7 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "fitness",
         "wardrobe",
         "selfcare",
+        "finance",
     },
     "status": {
         "alpha",

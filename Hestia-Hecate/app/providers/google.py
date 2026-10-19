@@ -480,6 +480,10 @@ def _gmail_body(payload: dict) -> str:
     return "\n\n".join(t for t in texts if t).strip()
 
 
+class GmailHistoryExpired(Exception):
+    """Gmail no longer keeps the requested history point (about a week): fall back to a search."""
+
+
 class GoogleMailProvider:
     """Gmail API provider (read: gmail.readonly; send only with gmail.send)."""
 
@@ -554,6 +558,7 @@ class GoogleMailProvider:
             "created_at": created,
             "snippet": detail.get("snippet", ""),
             "body": body or detail.get("snippet", ""),
+            "labels": list(detail.get("labelIds") or []),
             "direction": "inbound",
         }
 
@@ -590,6 +595,69 @@ class GoogleMailProvider:
             if exc.resp.status in (401, 403):
                 raise self._auth_error(exc) from exc
             raise RuntimeError(f"Gmail API error {exc.resp.status}") from exc
+
+    # ── watcher support (history API: one tiny call when nothing arrived) ────────
+    def _require(self) -> None:
+        if not self._service:
+            raise GoogleMailAuthError(self._init_error or "Gmail provider not available")
+
+    def _http(self, exc: HttpError, what: str):
+        if exc.resp.status in (401, 403):
+            return self._auth_error(exc)
+        return RuntimeError(f"Gmail {what} error {exc.resp.status}")
+
+    def current_history_id(self) -> str:
+        self._require()
+        try:
+            return str(self._service.users().getProfile(userId="me").execute().get("historyId") or "")
+        except HttpError as exc:
+            raise self._http(exc, "profile") from exc
+
+    def added_since(self, start_history_id: str, max_pages: int = 20) -> tuple[list[str], str]:
+        """Ids of messages added after ``start_history_id`` and the newest history id.
+        Raises ``GmailHistoryExpired`` when Gmail no longer has that point (404)."""
+        self._require()
+        ids: list[str] = []
+        latest = str(start_history_id)
+        params = {"userId": "me", "startHistoryId": str(start_history_id), "historyTypes": ["messageAdded"],
+                  "maxResults": 500}
+        try:
+            for _ in range(max_pages):
+                page = self._service.users().history().list(**params).execute()
+                latest = str(page.get("historyId") or latest)
+                for h in page.get("history", []) or []:
+                    for added in h.get("messagesAdded", []) or []:
+                        msg = added.get("message") or {}
+                        labels = set(msg.get("labelIds") or [])
+                        if msg.get("id") and not labels & {"DRAFT", "SENT", "SPAM", "TRASH"} and msg["id"] not in ids:
+                            ids.append(msg["id"])
+                if not page.get("nextPageToken"):
+                    break
+                params["pageToken"] = page["nextPageToken"]
+        except HttpError as exc:
+            if exc.resp.status == 404:
+                raise GmailHistoryExpired(str(start_history_id)) from exc
+            raise self._http(exc, "history") from exc
+        return ids, latest
+
+    def headers(self, message_id: str) -> dict | None:
+        """Headers + labels + snippet only (no body): what Iris needs to match subscriptions."""
+        self._require()
+        try:
+            return self._row(message_id, False)
+        except HttpError as exc:
+            if exc.resp.status == 404:
+                return None
+            raise self._http(exc, "message") from exc
+
+    def watch(self, topic: str, label_ids: list[str] | None = None) -> dict:
+        """Gmail push: publish mailbox changes on a Pub/Sub topic (expires after 7 days → renew)."""
+        self._require()
+        body = {"topicName": topic, "labelFilterBehavior": "include", "labelIds": label_ids or ["INBOX"]}
+        try:
+            return self._service.users().watch(userId="me", body=body).execute()
+        except HttpError as exc:
+            raise self._http(exc, "watch") from exc
 
     def send(self, to: str, subject: str, body: str) -> dict:
         import base64

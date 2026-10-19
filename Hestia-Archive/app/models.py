@@ -580,3 +580,38 @@ class MCPOAuthCode(Base):
     used_at = Column(DateTime(timezone=True), nullable=True)
     access_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ── Generic module stores (same shape and protocol as the Hercules/self care/wardrobe stores) ────
+# One table per owner module; Archive only stores, the owner module gives every kind its meaning.
+
+def _module_record_model(class_name: str, table: str, doc: str):
+    seq = Sequence(f"{table}_seq", metadata=Base.metadata)
+    attrs = {
+        "__doc__": doc,
+        "__tablename__": table,
+        "kind": Column(String, primary_key=True),
+        "id": Column(String, primary_key=True),
+        "parent_id": Column(String, nullable=True, index=True),
+        "ref_id": Column(String, nullable=True, index=True),
+        "at": Column(DateTime(timezone=True), nullable=True),
+        "data": Column(JSONB, nullable=False, default=dict),
+        "updated_at": Column(DateTime(timezone=True), nullable=False),
+        "deleted": Column(Boolean, nullable=False, default=False),
+        "seq": Column(BigInteger, seq, nullable=False, index=True),
+        "__table_args__": (Index(f"ix_{table}_kind_at", "kind", "at"),
+                           Index(f"ix_{table}_kind_ref", "kind", "ref_id")),
+    }
+    model = type(class_name, (Base,), attrs)
+    model.SEQ_NAME = f"{table}_seq"
+    return model
+
+
+FinanceRecord = _module_record_model(
+    "FinanceRecord", "finance_records",
+    "One row of the expenses module Hestia-Plutus (transaction, category, rule, budget, account, import, "
+    "recurring). Owner of the semantics: Hestia-Plutus.")
+
+IrisRecord = _module_record_model(
+    "IrisRecord", "iris_records",
+    "One row of Hestia-Iris (mail subscription, delivery log). Owner of the semantics: Hestia-Iris.")

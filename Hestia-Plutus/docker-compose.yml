@@ -1,0 +1,21 @@
+# Standalone run (the global stack is docker-compose.global.yml at repo root).
+services:
+  hestia_plutus:
+    build:
+      context: ..
+      dockerfile: Hestia-Plutus/Dockerfile
+    container_name: hestia_plutus
+    ports:
+      - "${PLUTUS_PORT:-19020}:19020"
+    environment:
+      - SERVICE_NAME=plutus
+      - SERVICE_BASE_URL=http://hestia_plutus:19020
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - TZ=${TZ:-Europe/Rome}
+    networks:
+      - hestia_net
+    restart: unless-stopped
+
+networks:
+  hestia_net:
+    external: true

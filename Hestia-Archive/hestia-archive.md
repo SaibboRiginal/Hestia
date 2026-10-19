@@ -30,8 +30,15 @@ It stores and serves all persistent state through generic APIs.
   store. Pure storage for Hygieia.
 - **Wardrobe store** (`/api/wardrobe-store/*`): table `wardrobe_records`, same shape and rules as the Hercules store.
   Pure storage for Wardrobe.
+- **Finance store** (`/api/finance-store/*`): table `finance_records`, same shape and protocol as the Hercules store.
+  Pure storage for Plutus (expenses: transactions, categories, rules, budgets, accounts, imports, recurring).
+- **Iris store** (`/api/iris-store/*`): table `iris_records`, same shape and protocol. Pure storage for Iris (mail
+  subscriptions, kind `subscription`, id `<owner>:<key>`).
+  Both are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
+  own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
-  deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos first).
+  deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos, Plutus
+  statement PDFs; owner `chat` = chat attachments stored by Oracle for a module's attachment handler).
 - **MCP access store** (`/api/mcp-access-store/*`): table `mcp_accesses` (access_id, name, kind token|oauth,
   scope read|write, tools, token_hash (sha256, unique), expires_at, revoked_at, last_used_at, calls_day/date/total,
   meta; OAuth grants also client_id, refresh_hash, prev_refresh_hash, token_expires_at), `mcp_oauth_clients`
@@ -69,6 +76,8 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/selfcare-store/cursor` | Current cursor |
 | `PUT`/`GET` | `/api/wardrobe-store/records` | Wardrobe rows (same contract as hercules-store) (Wardrobe only) |
 | `GET` | `/api/wardrobe-store/cursor` | Current sync cursor |
+| `PUT`/`GET` | `/api/finance-store/records` · `GET /api/finance-store/cursor` | Plutus rows (same contract as hercules-store) (Plutus only) |
+| `PUT`/`GET` | `/api/iris-store/records` · `GET /api/iris-store/cursor` | Iris rows (same contract) (Iris only) |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
@@ -121,3 +130,5 @@ It stores and serves all persistent state through generic APIs.
 - Session summaries for Athena skills are stored as entities with `domain=session_summary`.
 - Startup waits for Postgres (`ARCHIVE_DB_WAIT_SECONDS`, 0 = forever) and re-registers on Hub every
   `HUB_KEEPALIVE_SECONDS` (Hub restarts no longer drop Archive).
+- 2026-10-19: generic `module_store` router → `/api/finance-store` (Plutus) and `/api/iris-store` (Iris); raw mail
+  records delivered by Iris land in `/api/archive` under the subscriber's domain (`reference_id = mail:<domain>:<gmail id>`).

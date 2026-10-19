@@ -333,6 +333,27 @@ def register_rules(owner: str, rules: list[dict]) -> list[dict]:
     return saved
 
 
+def retire_rules(owner: str, keys: list[str]) -> list[str]:
+    """A module no longer needs some of its own default rules (e.g. Scout's mail poll replaced by push).
+    Only rules the module itself created are cancelled (``params.retired_by_module``); user items stay."""
+    wanted = {str(k).strip() for k in keys if str(k).strip()}
+    retired: list[str] = []
+    for item in list_items(include_cancelled=True):
+        if item["key"] not in wanted or item["owner"] != owner or item["created_by"] != owner:
+            continue
+        if item["status"] == "cancelled":
+            continue
+        with _lock:
+            item = dict(item)
+            item["params"] = {**(item.get("params") or {}), "retired_by_module": True}
+            _save(item)
+        cancel(item["key"], by=f"module:{owner}")
+        retired.append(item["key"])
+    if retired:
+        logger.info("event=agenda_rules_retired owner=%s keys=%s", owner, ",".join(retired))
+    return retired
+
+
 def update(ref: str | int, changes: dict, by: str = "user") -> dict:
     with _lock:
         item = get(ref)
