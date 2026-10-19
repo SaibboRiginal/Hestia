@@ -37,6 +37,9 @@ It stores and serves all persistent state through generic APIs.
   meta; OAuth grants also client_id, refresh_hash, prev_refresh_hash, token_expires_at), `mcp_oauth_clients`
   (client_id, name, redirect_uris, auth_method, secret_hash) and `mcp_oauth_codes` (code_hash, PKCE challenge, consent
   choices, used_at). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
+- **Chat queue** (`/api/chat-queue/*`, table `chat_queue`): chat messages Oracle could not take while the brain was
+  offline; each chat client (Telegram, WebUI) queues its own and answers them when Chronos says the brain is back
+  (SPEC `docs/work/2026-10-19-cervello-offline`).
 - **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
   `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
@@ -83,6 +86,9 @@ It stores and serves all persistent state through generic APIs.
 | `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
 | `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |
 | `GET` | `/api/presence-store/history` | Presence state changes |
+| `POST` | `/api/chat-queue` | Queue a chat message written while the brain was offline `{client, session_id, text, target?, client_ref?, meta?}` → item + `position` |
+| `GET` | `/api/chat-queue` · `/counts` | Items oldest first (`client`, `state` default `queued`) · waiting per client |
+| `POST` | `/api/chat-queue/{id}/claim` · `/done` | Compare-and-set `queued → answering` (409 = someone else; a claim older than `stale_seconds` 600 is free again) · `{ok, detail}`: answered, or back to queued (failed after 5 attempts) |
 | `GET` | `/health` | Archive health |
 
 ---

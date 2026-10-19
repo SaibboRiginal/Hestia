@@ -11,6 +11,8 @@ export interface ChatMessage {
   sessionId?: string;
   /** System notices (memory saved, action done…) attached to this answer. */
   notices?: ChatNotice[];
+  /** Brain offline: id of the queued message this placeholder waits for (SPEC cervello-offline). */
+  queuedId?: number;
 }
 
 /** Standard Oracle `notice` packet — see Hestia-Shared/hestia-shared.md § Response packets. */
@@ -46,6 +48,8 @@ export interface ThinkingMetadata {
 // ── SignalR / Server Events ───────────────────────────────────────────────
 
 export type ServerEventType =
+  | 'queued'
+  | 'queued_answer'
   | 'token'
   | 'status'
   | 'thinking'
@@ -84,6 +88,10 @@ export interface ServerEvent {
   missing_fields?: string[];
   data?: any;
   metadata?: ThinkingMetadata;
+  /** queued / queued_answer (brain offline). */
+  queue_id?: number;
+  position?: number;
+  message?: string;
 }
 
 /** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */

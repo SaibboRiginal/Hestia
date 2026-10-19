@@ -203,3 +203,14 @@ never accepted and was stored in clear text in Archive memory). The message is H
 ## Assistant presence
 
 Every allowed command, file and chat message pings Chronos presence (`telegram`, debounced 60 s) through `telegram_bot/services/presence.py`. `/stato`, `/nondisturbare`, `/disturbami` come from Chronos MCP tools (group sistema).
+
+## Brain offline (chat queue)
+
+SPEC `docs/work/2026-10-19-cervello-offline`, code `telegram_bot/services/chat_queue.py`. A text message Oracle does not
+accept (connection refused, timeout before the answer, HTTP 502/503/504) is stored in Archive (`/api/chat-queue`,
+client `telegram`, the message id as `client_ref`) and the reply is «🧠 Il cervello è offline: messaggio in coda,
+ti rispondo appena torna.» A file while offline gets «rimandamelo appena torno» (not queued). Archive down too → the
+usual error. `POST /api/chat-queue/drain` (capability `chat_queue_drain`, called by Chronos when the brain is back) and
+startup answer the queue oldest first, each as a reply to the original message, with a note to Oracle about when it
+was written; one header line when a chat had more than one; the first Oracle failure stops the drain. The Hermes
+notice «Cervello offline» and `/stato` show the state.

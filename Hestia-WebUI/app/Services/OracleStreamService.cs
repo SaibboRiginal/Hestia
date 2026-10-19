@@ -49,6 +49,9 @@ public class OracleStreamService
 
     public bool IsReady => _oracleReady;
 
+    /// <summary>Event type yielded when Oracle never accepted the request (brain offline).</summary>
+    public const string UnavailableType = "oracle_unavailable";
+
     public async Task<bool> DiscoverAsync(HubClient hub)
     {
         try
@@ -162,6 +165,17 @@ public class OracleStreamService
         {
             _logger.LogInformation("event=hub_stream_cancelled");
             fatalEvent = new OracleEvent("status", Content: "Stream cancelled");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null or System.Net.HttpStatusCode.NotFound
+                                                  or System.Net.HttpStatusCode.BadGateway
+                                                  or System.Net.HttpStatusCode.ServiceUnavailable
+                                                  or System.Net.HttpStatusCode.GatewayTimeout)
+        {
+            // Oracle did not accept the request (not registered / down): the caller may queue the message
+            // (SPEC docs/work/2026-10-19-cervello-offline §3).
+            _logger.LogWarning("[🔄] event=oracle_unavailable url={Url} status={Status} error={Error}",
+                url, (int?)ex.StatusCode, ex.Message);
+            fatalEvent = new OracleEvent(UnavailableType, Content: ex.Message);
         }
         catch (Exception ex)
         {

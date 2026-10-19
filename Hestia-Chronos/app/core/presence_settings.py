@@ -37,10 +37,11 @@ EFFECT_ORDER: dict[str, list[str]] = {
     "llm.claude": ["allow", "save", "deny"],
     "notify.level": ["all", "important", "urgent"],
     "chat.style": ["normal", "brief"],
+    "chat.reply": ["live", "queued"],
 }
 DEFAULT_EFFECTS: dict[str, str] = {
     "work.light": "allow", "work.heavy": "allow", "llm.claude": "allow",
-    "notify.level": "all", "chat.style": "normal",
+    "notify.level": "all", "chat.style": "normal", "chat.reply": "live",
 }
 
 
@@ -110,6 +111,16 @@ BUILTIN_STATES: dict[str, dict] = {
         "when": [[_c("resource.claude_quota_left", "<", "$tired_quota")],
                  [_c("health.degraded_services", ">=", "$tired_degraded")]],
         "effects": {"llm.claude": "save", "chat.style": "brief"},
+    },
+    # Oracle down longer than argus.brain.grace (signal from Argus, SPEC docs/work/2026-10-19-cervello-offline).
+    # Back to chat.reply=live → Chronos asks the chat clients to answer their queues.
+    "brain_offline": {
+        "kind": "overlay", "priority": 95, "label": "Cervello offline", "emoji": "🧠",
+        "help": "Oracle non risponde: comandi, notifiche e agenda funzionano; i messaggi in chat restano in coda "
+                "e avranno risposta appena torna. I lavori che usano il cervello aspettano.",
+        "when": [[_c("brain.offline", "true")]],
+        "effects": {"work.light": "defer", "work.heavy": "defer", "chat.reply": "queued"},
+        "notice": "il cervello è offline, ti rispondo appena torna",
     },
 }
 CORE_STATES = tuple(k for k, v in BUILTIN_STATES.items() if v.get("core"))

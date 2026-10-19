@@ -282,7 +282,6 @@ create-service.bat Markets module 8012
 - **Real rollback for remediation**: Hephaestus runbook remediation still records rollback as metadata only
   (Forge already has true git revert).
 - **Metis**: live benchmark runner, persistent datasets, built-in LoRA training script.
-- **Argus fallback**: alert directly on Telegram when Oracle is down.
 - **Persistent Hub registry**: today services re-register after a Hub restart.
 - **Multi-node deployment**: shared Hub discovery across nodes, health-gated progressive rollout, automatic
   rollback on failed SLO checks.
