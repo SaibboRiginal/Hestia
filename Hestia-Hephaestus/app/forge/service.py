@@ -37,7 +37,7 @@ from . import deployer
 from .agenda_client import KEY_FINAL, KEY_NIGHTS, AgendaClient
 from .claude_budget import ClaudeBudget, ClaudeBudgetState, ClaudeSchedule
 from .agent_tools import run_test_command
-from .config import ENGINE_GROUP, ForgeConfig, normalize_engine
+from .config import ENGINE_GROUP, ForgeConfig, engine_group, normalize_engine
 from ..core.shared_imports import import_shared_symbol
 
 PresenceClient = import_shared_symbol("hestia_common.presence_client", "PresenceClient")
@@ -58,7 +58,7 @@ TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "n
 #   auto      → every task codes on its own branch; merge waits for you.
 #   full_auto → codes and, if engine ok + tests green, merges/deploys alone
 #               (health check + automatic rollback).
-# Groups: "local" (Ollama) and "cloud" (cloud profile + Claude: billed tokens).
+# Groups: "local" (oracle engine on a chain with no billed step) and "cloud" (billed steps or Claude Code).
 # Default engine and modes are central settings (forge_settings → Themis), applied live.
 MODES = ("ask", "auto", "full_auto")
 _MODE_ALIASES = {"propose": "ask", "auto_start": "auto", "yolo": "full_auto", "full": "full_auto"}
@@ -104,7 +104,7 @@ class Forge:
         self._tasks: dict[str, dict[str, Any]] = {}
         self._queue: "queue.Queue[str]" = queue.Queue()
         self._worker: threading.Thread | None = None
-        self._default_engine = "local"
+        self._default_engine = "oracle"
         self._modes = dict(DEFAULT_MODES)
         self._apply_settings(forge_settings.settings.values())
         forge_settings.settings.on_change(self._apply_settings)
@@ -128,7 +128,7 @@ class Forge:
                 "develop", "Sviluppo programmato", service="hephaestus", path="/api/hephaestus/forge/tasks",
                 type="task", types=["task"], icon="terminal",
                 fields={"request": {"type": "string", "label": "Richiesta", "format": "textarea", "description": "Cosa sviluppare o correggere"},
-                        "engine": {"type": "string", "label": "Motore", "enum": ["", "local", "cloud", "claude"], "default": "",
+                        "engine": {"type": "string", "label": "Motore", "enum": ["", "oracle", "claude"], "default": "",
                                    "description": "Motore (vuoto = predefinito)"}},
                 required=["request"], body={"source": "agenda", "requested_by": "user"},
                 title="Forge: sviluppo programmato", timeout_seconds=30,
@@ -304,7 +304,8 @@ class Forge:
         return engine.name if engine else normalize_engine(engine_requested) or self._default_engine
 
     def _mode_for(self, engine_requested: str) -> tuple[str, str]:
-        group = ENGINE_GROUP.get(self._engine_name_for(engine_requested), "cloud")
+        name = self._engine_name_for(engine_requested)
+        group = engine_group(self.engines.get(name) or name)
         return self._modes.get(group, "ask"), group
 
     def _save(self) -> None:

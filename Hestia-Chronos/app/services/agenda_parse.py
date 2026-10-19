@@ -41,10 +41,14 @@ class ParseError(Exception):
         self.status_code = status_code
 
 
+# LLM use case declared in the Hub registration (core/hub_client.py).
+USE_CASE = "chronos.agenda"
+
+
 def _generate(prompt: str, timeout: float = 45) -> str:
     resp = requests.post(
         f"{_HUB}/route/oracle/api/llm/generate",
-        json={"method": "POST", "headers": {}, "query": {}, "body": {"prompt": prompt},
+        json={"method": "POST", "headers": {}, "query": {}, "body": {"prompt": prompt, "use_case": USE_CASE},
               "timeout_seconds": timeout},
         timeout=timeout + 5)
     resp.raise_for_status()

@@ -30,6 +30,7 @@ try:
         wait_for_hub_services,
     )
     from hestia_common.agenda_client import AgendaClient, job_rule, template
+    from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -42,8 +43,13 @@ except ModuleNotFoundError:
         wait_for_hub_services,
     )
     from hestia_common.agenda_client import AgendaClient, job_rule, template
+    from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 
 logger, log_buffer = setup_service_logging("hestia_scout")
+
+# What Scout asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
+LLM_USECASES = [llm_usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
+                            help="Estrae i dati degli annunci dalle mail di Scout.")]
 
 TARGET_DOMAIN = "real_estate"
 TARGET_SOURCE = "iris_email"
@@ -468,6 +474,7 @@ def _register_with_hub(port: int):
             "module_tool_endpoint": f"{service_base_url.rstrip('/')}/api/module-tools",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             **ui_plugin.capabilities(service_base_url),
+            **llm_capabilities(LLM_USECASES),
         },
     }
     try:

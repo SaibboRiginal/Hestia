@@ -2,9 +2,9 @@
 
 - ``claude``       — Claude Code (Pro/Max subscription) run by Oracle in the task
   worktree via ``POST /api/llm/code``; Oracle holds the token.
-- ``local`` / ``cloud`` — in-process tool-calling loop.  The LLM is reached via
-  Oracle's ``/api/llm/chat`` (Hub route) on the profile of the same name:
-  Oracle owns provider URLs and keys (microservice boundary).
+- ``oracle`` — in-process tool-calling loop.  The LLM is reached via Oracle's
+  ``/api/llm/chat`` (Hub route) with the use case ``forge.codice``: Oracle walks that
+  use case's chain and owns provider URLs and keys (microservice boundary).
 """
 from __future__ import annotations
 
@@ -104,17 +104,19 @@ class OracleClaudeEngine(Engine):
 
 
 class BuiltinEngine(Engine):
-    """Agent loop for ``local`` and ``cloud``.  LLM access goes through Oracle
-    (``POST /api/llm/chat`` via Hub): Oracle owns provider URLs and keys,
-    Forge only names a profile."""
+    """Agent loop of engine ``oracle``.  LLM access goes through Oracle (``POST /api/llm/chat`` via Hub)
+    with Forge's use case: Oracle owns the chain, provider URLs and keys."""
     _CONTEXT_CHAR_BUDGET = 90000   # ~25k tokens: used when Oracle reports no window (cloud)
     _CHARS_PER_TOKEN = 3           # code/JSON is dense: ~3 chars per token
     _MIN_BUDGET = 8000
 
-    def __init__(self, cfg: ForgeConfig, name: str):
+    def __init__(self, cfg: ForgeConfig, name: str = "oracle"):
+        from core.capabilities import FORGE_USECASE
         self.cfg = cfg
         self.name = name
-        self.context_window = 0    # tokens, from Oracle's profile (local Ollama: num_ctx setting)
+        self.use_case = FORGE_USECASE
+        self.context_window = 0    # tokens, of the chain's first usable step (local Ollama: num_ctx setting)
+        self.group = "cloud"       # permission group: "local" only while every usable step is free
 
     def _route(self, method: str, path: str, body: dict | None, timeout: int) -> tuple[int, Any]:
         resp = requests.post(
@@ -127,17 +129,17 @@ class BuiltinEngine(Engine):
 
     def available(self) -> tuple[bool, str]:
         try:
-            status, payload = self._route("GET", "api/llm/profiles", None, 15)
+            status, info = self._route("GET", f"api/llm/usecases/{self.use_case}", None, 15)
         except Exception as exc:
             return False, f"Oracle unreachable via Hub: {exc}"
-        prof = ((payload or {}).get("profiles") or {}).get(self.name) if status < 400 else None
-        if not prof:
-            return False, f"Oracle has no '{self.name}' LLM profile (ORACLE_LLM_PROFILE_{self.name.upper()}_*)"
-        if prof.get("available") is False:
-            return False, f"{prof.get('model')}: {prof.get('detail')}"
-        self.context_window = int(prof.get("context_window") or 0)
+        if status >= 400 or not isinstance(info, dict):
+            return False, f"Oracle use case '{self.use_case}': status {status}"
+        if not info.get("available"):
+            return False, f"chain '{info.get('chain')}': {info.get('detail')}"
+        self.context_window = int(info.get("context_window") or 0)
+        self.group = "cloud" if info.get("billed", True) else "local"
         window = f", {self.context_window} token" if self.context_window else ""
-        return True, f"ok ({prof.get('model')} via Oracle{window})"
+        return True, f"ok ({info.get('provider')}/{info.get('model')} via Oracle, catena {info.get('chain')}{window})"
 
     def _budget(self) -> int:
         """Prompt chars that fit the model window, leaving ~30% for tool schemas and the answer.
@@ -182,7 +184,7 @@ class BuiltinEngine(Engine):
             try:
                 status, data = self._route(
                     "POST", "api/llm/chat",
-                    {"profile": self.name, "messages": messages,
+                    {"use_case": self.use_case, "messages": messages,
                      "tools": AgentTools.schemas(), "temperature": 0.2},
                     fs.get_int(fs.LLM_TIMEOUT, 60))
                 if status >= 400:
@@ -246,8 +248,7 @@ class BuiltinEngine(Engine):
 
 def build_engines(cfg: ForgeConfig) -> dict[str, Engine]:
     engines: list[Engine] = [
-        BuiltinEngine(cfg, "local"),
-        BuiltinEngine(cfg, "cloud"),
+        BuiltinEngine(cfg),
         OracleClaudeEngine(cfg),
     ]
     return {e.name: e for e in engines}
