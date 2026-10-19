@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 3 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator |
-| **Status** | Draft — waiting for Marko's approval (§10 questions) before any code |
+| **Status** | Approved by Marko 2026-10-19 (answers in §10) — implementing |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -49,7 +49,7 @@ Iris: match headers against subscriptions ─▶ for each match: ship full mail 
 ```
 
 ### 3.1 Hecate watcher (one per mailbox)
-- **A — light check (default, always available):** one Chronos agenda job `hecate.mail_watch` (default every 2 min,
+- **A — light check (default, always available):** one Chronos agenda job `hecate.mail_watch` (default every 15 min,
   editable/pausable in the agenda) → `POST /api/gateway/mail/watch/run`. Uses the Gmail **history API**
   (`users.history.list(startHistoryId)`, `messageAdded`, INBOX + any label): when nothing arrived it is one tiny call
   with an empty answer, no search, no LLM. Cursor `historyId` persisted in Hecate `data/`. History expired (Gmail keeps
@@ -61,7 +61,7 @@ Iris: match headers against subscriptions ─▶ for each match: ship full mail 
   (the quick tunnel URL changes at every restart, a push endpoint would break). Needs, once, in Marko's Google Cloud
   project: Pub/Sub API on, a topic with publish right for `gmail-api-push@system.gserviceaccount.com`, a subscription,
   and a credential allowed to read it (§10 Q2). `users.watch` expires after 7 days → Chronos job `hecate.mail_watch_renew`
-  (daily). When B is up, job A slows down to a safety net (default hourly) instead of disappearing (Pub/Sub may drop).
+  (daily). When B is up, job A slows down to a safety net (default every 6 h) instead of disappearing (Pub/Sub may drop).
   Topic/subscription names = infrastructure → env (`HECATE_GMAIL_PUBSUB_SUBSCRIPTION`, `…_TOPIC`); the check
   intervals = Themis settings `hecate.mail.watch_interval` / `hecate.mail.safety_interval`.
 - For every new message Hecate sends Iris only **headers** (`id`, `thread_id`, `from`, `to`, `subject`, `labels`,
@@ -86,8 +86,8 @@ Iris: match headers against subscriptions ─▶ for each match: ship full mail 
   "check now" button).
 - Endpoints (Iris): `POST /api/email/subscriptions` (register), `GET /api/email/subscriptions`, `DELETE …/{owner}/{key}`,
   `POST /api/email/incoming` (from Hecate), `POST …/backfill`, `GET /api/email/dispatch/log` (last deliveries).
-  Hub tools: `email_subscriptions` (read only). WebUI: Iris has no plugin today; the subscriptions + last deliveries are
-  shown in the existing Hub/system pages only if cheap (§10 Q4) — otherwise visible through the API and logs.
+  Hub tools: `email_subscriptions` (read only). WebUI: Iris serves a small plugin page **Email** (subscriptions, last
+  deliveries, unmatched count, watcher state, «controlla ora») so Marko never needs the logs.
 - Logs: `event=mail_dispatched owner= key= count=`, `event=mail_unmatched count=`, `[🔄] event=mail_ring_failed owner=`.
 
 ### 3.3 Chronos: retiring rules
@@ -235,12 +235,10 @@ root `CHANGELOG.md`.
 - Delivery via Archive raw records + "doorbell" instead of mail bodies in the push: durable, reuses Scout's pipeline.
 - Light check stays as safety net even with Pub/Sub.
 
-## 10. Questions for Marko
-1. **Name** Hestia-Plutus (port 19020, domain `finance`, tools `finance_*`) — OK, or another name (e.g. Spese)?
-2. **Gmail push (B)**: build it now (inactive until you do the Google Cloud Pub/Sub setup, credential = a service
-   account with only "Pub/Sub Subscriber", file in Hecate `data/`) or later? Recommended: now, inactive.
-3. **PDF in chat**: OK the small generic Oracle change (chat attachments saved in Archive and handed to the domain
-   tools), or only upload from the plugin page? Recommended: both.
-4. Iris subscriptions view in the WebUI: a small page in an existing system plugin, or API/logs only? Recommended:
-   small «Email» page (subscriptions + last deliveries).
-5. Default watch interval 2 min OK?
+## 10. Decisions (Marko, 2026-10-19)
+1. Name **Hestia-Plutus** (port 19020, domain `finance`, tools `finance_*`).
+2. Gmail Pub/Sub (B): written now, inactive until the Google Cloud setup («non importa se rimane bloccato»).
+3. Hype PDF both in chat and from the plugin. General rule: every input works **automatic and manual, always, for
+   everything**.
+4. Small WebUI page «Email» for subscriptions and deliveries.
+5. Watch interval: 2 min is too often; default **15 min** (tunable `hecate.mail.watch_interval`).
