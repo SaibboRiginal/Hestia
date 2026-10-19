@@ -20,7 +20,8 @@ import requests
 
 logger = logging.getLogger("hestia_mcp.access")
 
-TOKEN_PREFIX = "hst_"
+TOKEN_PREFIX = "hst_"          # access of kind token (made on the Accessi page)
+OAUTH_TOKEN_PREFIX = "hso_"    # short-lived access token of an access of kind oauth (core/oauth.py)
 SCOPES = ("read", "write")
 _STORE = "api/mcp-access-store/accesses"
 
@@ -49,13 +50,17 @@ def _parse(iso: str | None) -> datetime | None:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
-def usable(access: dict, now: datetime | None = None) -> tuple[bool, str]:
-    """``(ok, why)``: revoked or expired accesses stop at once."""
+def usable(access: dict, now: datetime | None = None, *, token: bool = True) -> tuple[bool, str]:
+    """``(ok, why)``: revoked or expired accesses stop at once. ``token`` also checks the short life of an OAuth
+    access token (``token_expires_at``); ``token=False`` checks only the access itself (refresh grant)."""
     now = now or datetime.now(timezone.utc)
     if access.get("revoked_at"):
         return False, "revoked"
     expires = _parse(access.get("expires_at"))
     if expires and expires <= now:
+        return False, "expired"
+    token_expires = _parse(access.get("token_expires_at")) if token else None
+    if token_expires and token_expires <= now:
         return False, "expired"
     return True, ""
 
@@ -138,14 +143,51 @@ class AccessStore:
         self._forget()
         return access
 
+    def create_oauth(self, body: dict) -> dict:
+        """An access of kind oauth (token exchange in core/oauth.py): hashes, scope and tools chosen on consent."""
+        access = self._ok(*self._archive("POST", _STORE, {**body, "kind": "oauth"}))
+        logger.info("event=mcp_access_created kind=oauth access=%s scope=%s tools=%d client=%s", body.get("name"),
+                    body.get("scope"), len(body.get("tools") or []), body.get("client_id"))
+        return access
+
+    def by_refresh(self, refresh_hash: str) -> dict | None:
+        status, payload = self._archive("GET", f"{_STORE}/by-refresh/{refresh_hash}")
+        if status >= 500:
+            raise AccessError("Archive unavailable", 503)
+        return payload if status < 400 and isinstance(payload, dict) else None
+
+    def rotate(self, access_id: str, old_refresh_hash: str, token_hash: str, refresh_hash: str,
+               token_expires_at: str) -> dict | None:
+        """New access + refresh token hashes; None when the refresh token was already rotated (race / replay)."""
+        status, payload = self._archive("POST", f"{_STORE}/{access_id}/rotate", {
+            "old_refresh_hash": old_refresh_hash, "token_hash": token_hash, "refresh_hash": refresh_hash,
+            "token_expires_at": token_expires_at})
+        self._forget()
+        if status == 409:
+            return None
+        return self._ok(status, payload)
+
+    def get(self, access_id: str) -> dict | None:
+        return next((a for a in self.list() if a.get("access_id") == access_id), None)
+
     def revoke(self, access_id: str) -> dict:
         access = self._ok(*self._archive("PATCH", f"{_STORE}/{access_id}", {"revoked": True}))
         self._forget()
         logger.info("event=mcp_access_revoked access=%s", access.get("name"))
         return access
 
-    def renew(self, access_id: str) -> tuple[dict, str]:
-        """New token for the same access (the old one stops at once); a revoked access comes back."""
+    def renew(self, access_id: str, oauth_days: int = 90) -> tuple[dict, str]:
+        """New token for the same access (the old one stops at once); a revoked access comes back.
+        An OAuth access has no token to show: it comes back (if revoked) and lasts ``oauth_days`` more; the AI keeps
+        its refresh token and goes on. Returns ``(access, "")`` then."""
+        current = self.get(access_id)
+        if current and current.get("kind") == "oauth":
+            expires = (datetime.now(timezone.utc) + timedelta(days=oauth_days)).isoformat()
+            access = self._ok(*self._archive("PATCH", f"{_STORE}/{access_id}",
+                                             {"revoked": False, "expires_at": expires}))
+            self._forget()
+            logger.info("event=mcp_access_renewed kind=oauth access=%s expires=%s", access.get("name"), expires)
+            return access, ""
         token = new_token()
         access = self._ok(*self._archive("PATCH", f"{_STORE}/{access_id}",
                                          {"token_hash": hash_token(token), "revoked": False}))
@@ -162,7 +204,7 @@ class AccessStore:
     def verify(self, token: str) -> tuple[dict | None, str]:
         """``(access, "")`` for a usable token, ``(None, why)`` otherwise (unknown | revoked | expired)."""
         token = str(token or "").strip()
-        if not token.startswith(TOKEN_PREFIX) or len(token) < 20:
+        if not token.startswith((TOKEN_PREFIX, OAUTH_TOKEN_PREFIX)) or len(token) < 20:
             return None, "unknown"
         digest = hash_token(token)
         now = time.time()

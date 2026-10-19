@@ -3713,6 +3713,83 @@ paths:
       responses:
         "200": {description: "{status, available, detail, model?, running, runs: [{task, started_at, state: running|done|failed, ok, ms, turns, cost_usd, error}]}"}
 
+  /oracle/api/ui/documents:
+    get:
+      tags: [Oracle]
+      summary: Documents kept for RAG, from Archive via Hub (real path /api/ui/documents; page Documenti)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 200}}
+        - {name: domain, in: query, schema: {type: string}}
+        - {name: permanent, in: query, schema: {type: boolean}}
+      responses:
+        "200": {description: "{status, count, documents: [{document_id, filename, title, summary, mime_type, file_size_bytes, domain, tags[], is_permanent, chunk_count, access_count, created_at, last_accessed_at}], domains}"}
+        "502": {description: Archive not reachable}
+    post:
+      tags: [Oracle]
+      summary: Add a file (base64 from the SDK upload helper); archived in background like a chat attachment
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data_b64]
+              properties:
+                name: {type: string}
+                mime: {type: string}
+                data_b64: {type: string, description: "base64 (or data: URI)"}
+      responses:
+        "200": {description: "{status: ingesting, document_id, filename, mime_type, file_size_bytes}"}
+        "400": {description: Empty or invalid base64}
+        "413": {description: Larger than oracle.documents.max_archive_mb}
+        "415": {description: Unsupported file type}
+
+  /oracle/api/ui/documents/search:
+    get:
+      tags: [Oracle]
+      summary: Semantic search over document passages, the same the chat uses (real path /api/ui/documents/search)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: query, in: query, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 8, maximum: 20}}
+      responses:
+        "200": {description: "{status, query, count, chunks: [{document_id, title, summary, chunk_text, chunk_index, distance, is_permanent, domain, tags}]}"}
+        "400": {description: Empty query}
+
+  /oracle/api/ui/documents/{document_id}/permanent:
+    patch:
+      tags: [Oracle]
+      summary: Keep a document for good or make it temporary (real path /api/ui/documents/{id}/permanent)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: document_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [is_permanent], properties: {is_permanent: {type: boolean}}}
+      responses:
+        "200": {description: "{status, document_id, is_permanent}"}
+        "404": {description: Document not found}
+
+  /oracle/api/ui/documents/{document_id}:
+    delete:
+      tags: [Oracle]
+      summary: Delete a document and its passages (real path /api/ui/documents/{id})
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: document_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: deleted, document_id}"}
+        "404": {description: Document not found}
+
   /api/llm/code:
     post:
       tags: [Oracle]
@@ -5205,6 +5282,56 @@ paths:
         "401": {description: "Wrong, revoked or expired token (WWW-Authenticate: Bearer)"}
         "403": {description: A read-only access called a write tool}
         "429": {description: "Over the per-minute limit (Retry-After: 60)"}
+
+  /api/mcp/ui/tools:
+    get:
+      tags: [MCP]
+      summary: Comandi page — the tools the WebUI sees (same list as /mcp tools/list for client webui), as commands
+      servers:
+        - url: http://localhost:19013
+      responses:
+        "200": {description: "{commands: [{command, title, description, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
+
+  /api/mcp/ui/tools/call:
+    post:
+      tags: [MCP]
+      summary: Comandi page — run one tool as client webui (same rules as /mcp tools/call, X-Hestia-Client webui, 20 s)
+      servers:
+        - url: http://localhost:19013
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command: {type: string}
+                args: {type: object, additionalProperties: true}
+      responses:
+        "200": {description: "{ok, result, error?, status_code, response_mode}"}
+        "400": {description: Missing command}
+        "404": {description: Unknown tool or not visible to the WebUI}
+
+  /api/mcp/ui/tools/format:
+    post:
+      tags: [MCP]
+      summary: Comandi page — readable text of a tool result (Oracle /api/format via Hub, plain text)
+      servers:
+        - url: http://localhost:19013
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command: {type: string}
+                result: {description: Raw result of the call}
+                response_prompt: {type: string}
+      responses:
+        "200": {description: "{ok, text} (ok=false, text='' when Oracle cannot format)"}
 
   /api/mcp/accesses:
     get:

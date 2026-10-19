@@ -49,9 +49,17 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
   `forge_develop`, `forge_task_note`, `forge_submit_branch` (Hephaestus), `system_status`, `system_log` (Argus),
   `settings_search`, `settings_get`, `settings_propose` (Themis). Approve, reject, merge and rollback never leave.
 
-**WebUI plugin** (core module, *Sistema*, order 190): page *Accessi AI* (`mcp-accesses`, bundle `ui/` →
-`/ui/dist/webui/mcp.js`, outside `/code` so the compose dev mount does not hide it): new token with the ready
-`claude mcp add` line and JSON config, revoke, renew, delete, tool choice.
+**WebUI plugin** (core module, *Sistema*, bundle `ui/` → `/ui/dist/webui/mcp.js`, outside `/code` so the compose dev
+mount does not hide it):
+- page *Comandi & MCP* (`comandi` → `mcp-commands`, order 190; ported from the built-in WebUI page, SPEC §A4): every
+  tool the WebUI sees grouped by module, search, description, `METHOD path`, arguments from the JSON schema (enum →
+  select, boolean → sì/no, array/object → JSON or `a, b, c`), *Esegui* (a tool that changes something asks first),
+  raw result; tools with `response_mode=oracle_natural` then get Oracle's readable text (second call, own 30 s budget
+  of the WebUI proxy); *Chiedi a Hestia* opens the assistant with the tool as context. Reads `/api/mcp/ui/tools…`
+  (`core/ui_tools.py`): the same `MCPServer.tools_list` / `tools_call` as `/mcp` with client `webui` (same visibility,
+  `X-Hestia-Client: webui` towards the module), call timeout 20 s.
+- sub-page *Accessi AI* (`accessi` → `mcp-accesses`, parent `comandi`): new token with the ready `claude mcp add` line
+  and JSON config, revoke, renew, delete, tool choice.
 
 ## API Endpoints
 
@@ -66,12 +74,15 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
 | `PATCH` | `/api/mcp/accesses/{id}` | Change name, scope, tools, expiry |
 | `POST` | `/api/mcp/accesses/{id}/revoke` · `/renew` | Stop it at once · new token (old one stops) |
 | `DELETE` | `/api/mcp/accesses/{id}` | Remove it |
+| `GET` | `/api/mcp/ui/tools` | Comandi page: tools the WebUI sees, as commands `{command, title, description, service, method, path, response_mode, writes, arguments_schema}` + `services` |
+| `POST` | `/api/mcp/ui/tools/call` | Run one `{command, args}` as client `webui` → `{ok, result, error?, status_code, response_mode}`; hidden/unknown → 404 |
+| `POST` | `/api/mcp/ui/tools/format` | `{command, result, response_prompt?}` → Oracle `/api/format` via Hub → `{ok, text}` (plain text; failure → `ok:false`) |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | Plugin manifest and bundle |
 | `GET` | `/health` | Service health |
 | `GET` | `/api/logs` | Filterable log buffer |
 
 Protocol versions: `2025-06-18` (default), `2025-03-26`, `2024-11-05`. Logs: `event=mcp_tool_call tool= service= client= ok= status= ms=`,
-`event=mcp_external_call`, `event=mcp_external_denied reason=`, `event=mcp_external_rate_limited`, `event=mcp_access_created|revoked|renewed`.
+`event=mcp_external_call`, `event=mcp_external_denied reason=`, `event=mcp_external_rate_limited`, `event=mcp_access_created|revoked|renewed`, `event=ui_tool_run tool= ok=`, `[🔄] event=ui_tool_format_failed`.
 
 ## Constraints
 - Never executes a tool itself: always through Hub routing.
