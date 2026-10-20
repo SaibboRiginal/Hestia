@@ -12,9 +12,11 @@ public class WebUISettings
 {
     public const string Owner = "webui";
     public const string LocalWithoutTokenKey = "webui.auth.local_without_token";
+    public const string TransferRestorePointsKey = "webui.transfer.restore_points";
 
     private readonly ILogger<WebUISettings> _logger;
     private volatile bool _localWithoutToken = true;
+    private volatile int _restorePoints = 5;
     private volatile bool _loaded;
 
     public WebUISettings(ILogger<WebUISettings> logger) => _logger = logger;
@@ -23,6 +25,9 @@ public class WebUISettings
     public bool LocalWithoutToken => _localWithoutToken;
 
     public bool Loaded => _loaded;
+
+    /// <summary>Restore points kept by «Esporta e importa» (newest first, older ones deleted).</summary>
+    public int TransferRestorePoints => _restorePoints;
 
     private static readonly object[] Definitions =
     {
@@ -40,6 +45,23 @@ public class WebUISettings
             ["oracle"] = "none",   // safety switch: the assistant can't even propose it
             ["advanced"] = false,
             ["order"] = 0,
+        },
+        new Dictionary<string, object?>
+        {
+            ["key"] = TransferRestorePointsKey,
+            ["label"] = "Punti di ripristino da tenere",
+            ["type"] = "int",
+            ["default"] = 5,
+            ["min"] = 1,
+            ["max"] = 20,
+            ["group"] = "Esporta e importa",
+            ["help"] = "Prima di ogni importazione Hestia salva una copia di ciò che verrà cambiato. Tiene le più " +
+                       "recenti, le altre vengono eliminate.",
+            ["apply"] = "live",
+            ["scope"] = "system",
+            ["oracle"] = "propose",
+            ["advanced"] = false,
+            ["order"] = 1,
         },
         // Client plugins (docs/work/2026-10-17-client-plugins §4.6): this client's own configuration of what
         // modules contribute. User scope → Themis layers profile → client "webui"; the frontend writes the
@@ -70,7 +92,10 @@ public class WebUISettings
         ["order"] = order,
     };
 
-    public Dictionary<string, object?> Values() => new() { [LocalWithoutTokenKey] = _localWithoutToken };
+    public Dictionary<string, object?> Values() => new()
+    {
+        [LocalWithoutTokenKey] = _localWithoutToken, [TransferRestorePointsKey] = _restorePoints,
+    };
 
     /// <summary>Declare definitions to Themis and apply the stored values it answers with.</summary>
     public async Task<bool> RegisterAsync(HubClient hub, CancellationToken ct = default)
@@ -102,6 +127,15 @@ public class WebUISettings
         if (values.ValueKind == JsonValueKind.Object && values.TryGetProperty(LocalWithoutTokenKey, out var v)
             && v.ValueKind is JsonValueKind.True or JsonValueKind.False)
             next = v.GetBoolean();
+        var points = 5;
+        if (values.ValueKind == JsonValueKind.Object && values.TryGetProperty(TransferRestorePointsKey, out var rp)
+            && rp.ValueKind == JsonValueKind.Number && rp.TryGetInt32(out var n))
+            points = Math.Clamp(n, 1, 20);
+        if (points != _restorePoints)
+        {
+            _restorePoints = points;
+            changed.Add(TransferRestorePointsKey);
+        }
         if (next != _localWithoutToken)
         {
             _localWithoutToken = next;

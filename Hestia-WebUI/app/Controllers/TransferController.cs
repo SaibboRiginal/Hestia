@@ -23,26 +23,19 @@ public class TransferController : ControllerBase
 
     private readonly HubClient _hub;
     private readonly WebUISettings _settings;
-    private readonly IHttpClientFactory _http;
-    private readonly IConfiguration _config;
     private readonly ILogger<TransferController> _logger;
 
-    public TransferController(HubClient hub, WebUISettings settings, IHttpClientFactory http, IConfiguration config,
-        ILogger<TransferController> logger)
+    public TransferController(HubClient hub, WebUISettings settings, ILogger<TransferController> logger)
     {
         _hub = hub;
         _settings = settings;
-        _http = http;
-        _config = config;
         _logger = logger;
     }
 
     /// <summary>Registered services with the transfer capability (Hub registry, no health probe).</summary>
     private async Task<Dictionary<string, JsonElement>> TransferModulesAsync(CancellationToken ct)
     {
-        var hubUrl = (Environment.GetEnvironmentVariable("HUB_API_URL") ?? _config["Hestia:HubApiUrl"]
-                      ?? "http://hestia_hub:19001/api").TrimEnd('/');
-        var res = await _http.CreateClient().GetFromJsonAsync<JsonElement>($"{hubUrl}/registry/services", ct);
+        var res = await _hub.GetServicesAsync(ct);
         var outMap = new Dictionary<string, JsonElement>();
         if (res.TryGetProperty("services", out var services) && services.ValueKind == JsonValueKind.Array)
             foreach (var svc in services.EnumerateArray())
@@ -125,9 +118,15 @@ public class TransferController : ControllerBase
 
     private static IEnumerable<JsonElement> Restore(JsonElement list) =>
         list.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array
-            ? items.EnumerateArray().Where(b => b.TryGetProperty("meta", out var m) && m.ValueKind == JsonValueKind.Object
-                && m.TryGetProperty("kind", out var k) && k.GetString() == RestoreKind)
+            ? items.EnumerateArray().Where(IsRestorePoint)
             : Enumerable.Empty<JsonElement>();
+
+    /// <summary>Blob meta of one of our restore points (never another module's file).</summary>
+    private static bool IsRestorePoint(JsonElement b) =>
+        b.ValueKind == JsonValueKind.Object
+        && b.TryGetProperty("owner_module", out var o) && o.GetString() == WebUISettings.Owner
+        && b.TryGetProperty("meta", out var m) && m.ValueKind == JsonValueKind.Object
+        && m.TryGetProperty("kind", out var k) && k.GetString() == RestoreKind;
 
     private static object View(JsonElement b)
     {
@@ -138,7 +137,7 @@ public class TransferController : ControllerBase
             created_at = b.TryGetProperty("created_at", out var c) ? c.GetString() : null,
             size = b.TryGetProperty("size", out var s) && s.ValueKind == JsonValueKind.Number ? s.GetInt64() : 0,
             label = meta.TryGetProperty("label", out var l) ? l.GetString() : null,
-            modules = meta.TryGetProperty("modules", out var m) ? m : default,
+            modules = meta.TryGetProperty("modules", out var m) ? (object?)m : null,
         };
     }
 
@@ -190,9 +189,7 @@ public class TransferController : ControllerBase
     {
         var (status, payload) = await _hub.RouteRawAsync("archive", $"/api/blobs/{Uri.EscapeDataString(id)}/meta",
             HttpMethod.Get, timeoutSeconds: 15, ct: HttpContext.RequestAborted);
-        if (status >= 400 || !Restore(JsonSerializer.SerializeToElement(new { items = new[] { payload } })).Any()
-            || payload.GetProperty("owner_module").GetString() != WebUISettings.Owner)
-            return NotFound();
+        if (status >= 400 || !IsRestorePoint(payload)) return NotFound();
         (status, payload) = await _hub.RouteRawAsync("archive", $"/api/blobs/{Uri.EscapeDataString(id)}/base64",
             HttpMethod.Get, timeoutSeconds: 60, ct: HttpContext.RequestAborted);
         if (status >= 400) return StatusCode(status, payload);
@@ -207,7 +204,7 @@ public class TransferController : ControllerBase
     {
         var (status, payload) = await _hub.RouteRawAsync("archive", $"/api/blobs/{Uri.EscapeDataString(id)}/meta",
             HttpMethod.Get, timeoutSeconds: 15, ct: HttpContext.RequestAborted);
-        if (status >= 400 || payload.GetProperty("owner_module").GetString() != WebUISettings.Owner) return NotFound();
+        if (status >= 400 || !IsRestorePoint(payload)) return NotFound();
         (status, payload) = await _hub.RouteRawAsync("archive", $"/api/blobs/{Uri.EscapeDataString(id)}",
             HttpMethod.Delete, timeoutSeconds: 15, ct: HttpContext.RequestAborted);
         return StatusCode(status, payload);
