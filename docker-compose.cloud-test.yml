@@ -31,3 +31,16 @@ services:
     depends_on:
       fake_llm:
         condition: service_started
+
+  # Test credentials come from the environment (Codespaces secrets), never from the repo. Empty = not used:
+  # without TELEGRAM_BOT_TOKEN the script does not start Telegram; without GOOGLE_CLIENT_ID Google stays off.
+  telegram:
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}   # a TEST bot from @BotFather
+      - ALLOWED_USER_ID=${ALLOWED_USER_ID:-}         # your numeric Telegram id (who the test bot answers)
+
+  hecate:
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}           # temporary Google OAuth client, type "Desktop app"
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - HECATE_ENABLE_PROVIDER_GOOGLE=${HESTIA_BENCH_GOOGLE:-false}   # set by tools/cloud_test.py when the id is there

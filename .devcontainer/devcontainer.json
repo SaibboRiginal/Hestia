@@ -1,6 +1,6 @@
 // GitHub Codespaces: the whole Hestia stack as a test bench you open from the browser (also phone).
-// Start: Code → Codespaces → New (4-core). Then in the terminal: python tools/cloud_test.py all
-// Login link for the forwarded WebUI port: python tools/cloud_test.py token
+// Start: Code → Codespaces → «…» → New with options (4-core): the page asks for the secrets below (all optional).
+// On every start it runs `python tools/cloud_test.py start`: build/start the stack, login link in .cloud-test/login.txt.
 // Ports stay private (only your GitHub account). Docs: TESTING.md «Banco di prova cloud».
 {
   "name": "Hestia — banco di prova",
@@ -16,8 +16,13 @@
   },
   "otherPortsAttributes": { "onAutoForward": "ignore" },
   "secrets": {
-    "GEMINI_API_KEY": { "description": "Optional: real answers from Gemini instead of the fake LLM (Codespaces secret, never in the repo)." },
-    "TELEGRAM_BOT_TOKEN": { "description": "Optional: a TEST bot token to try the Telegram client too." }
+    "GEMINI_API_KEY": { "description": "Real answers from Gemini instead of the fake LLM. Key from aistudio.google.com/apikey.",
+                        "documentationUrl": "https://aistudio.google.com/apikey" },
+    "TELEGRAM_BOT_TOKEN": { "description": "A TEST bot from @BotFather (/newbot), not your real one." },
+    "ALLOWED_USER_ID": { "description": "Your numeric Telegram id (ask @userinfobot): the test bot answers only you." },
+    "GOOGLE_CLIENT_ID": { "description": "Temporary Google OAuth client, type Desktop app (Calendar + Gmail API on, you as test user)." },
+    "GOOGLE_CLIENT_SECRET": { "description": "Secret of the same temporary Google OAuth client." }
   },
-  "postCreateCommand": "python tools/cloud_test.py prepare"
+  "postCreateCommand": "python tools/cloud_test.py prepare",
+  "postStartCommand": "python tools/cloud_test.py start"
 }

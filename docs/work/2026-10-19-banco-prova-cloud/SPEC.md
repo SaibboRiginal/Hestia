@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat (Marko: «"Banco di prova cloud" si ma funziona se non abbiamo tutto e oracle? non ho piu accesso per 2 settimane al mio PC locale») |
 | **Status** | Implemented on branch `claude/project-thread-gohyx3` 2026-10-19; first full run green |
 
@@ -69,3 +69,15 @@ so the "Marko build + real run" step stops waiting on his PC.
   them, so Hub routing to Hermes would fail until a container restart). Hermes started its keepalive thread only
   when every first registration failed; the WebUI had no keepalive. Both now re-register every 60 s; regression
   test `TestHubKeepalive` (Hermes); verified on the bench (both online after > 3 min).
+
+## Codespaces in one click (v1.2)
+Marko (2026-10-20): the Claude side stays with Claude; for himself the fewest steps and the least test data.
+- Creating the Codespace with *New with options* shows the recommended secrets of `devcontainer.json`
+  (all optional): `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN` + `ALLOWED_USER_ID` (a test bot), `GOOGLE_CLIENT_ID` +
+  `GOOGLE_CLIENT_SECRET` (a temporary Google OAuth client, type Desktop app). Secrets reach the containers only through
+  `docker-compose.cloud-test.yml` (`${VAR:-}`), never a file; Google is turned on only when both values are there.
+- `postStartCommand` runs `python tools/cloud_test.py start` on every start: stack up and the login link printed and
+  saved in `.cloud-test/login.txt`. Marko's steps: create the Codespace, wait, open the link.
+- Google login from the Codespace: the redirect goes to localhost, so after consent Marko pastes the final address
+  in the chat (Hecate's existing manual completion).
+
