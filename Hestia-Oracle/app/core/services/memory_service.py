@@ -36,6 +36,16 @@ MEMORY_CLASS_TASK = "task_goal_state"
 MEMORY_CLASS_DOMAIN_FACT = "domain_fact_entity"
 MEMORY_CLASS_COMMITMENT = "assistant_commitment"
 
+# ── Notes from external AIs (docs/work/2026-10-20-memory-note) ───────────────
+NOTE_MAX_FACTS = 10
+NOTE_MAX_CHARS = 300
+RECALL_MAX = 20
+
+
+def fact_key(text: str) -> str:
+    """Comparison key: lower case, letters and digits only."""
+    return " ".join("".join(c if c.isalnum() else " " for c in str(text or "").lower()).split())
+
 
 class MemoryService:
     """Coordinate user-preference and alert-subscription lifecycle.
@@ -441,7 +451,7 @@ class MemoryService:
                 fact=clean_fact,
                 domain=primary_domain,
                 memory_class=MEMORY_CLASS_PREFERENCE,
-                extra_fields={"domains": assigned_domains},
+                extra_fields={"domains": assigned_domains, "extra_data": {"source": "chat"}},
             )
             if saved:
                 logger.info(
@@ -494,6 +504,87 @@ class MemoryService:
             logger.warning(
                 "event=memory_tool_search_failed error=%s", exc)
             return (False, f"Memory search error: {exc}")
+
+    # ── Notes from external AIs (memory_note / memory_recall) ───────────────
+
+    def _classify(self, fact: str) -> list[str]:
+        if self.pref_domain_classifier is None:
+            return ["general"]
+        try:
+            return self.pref_domain_classifier.classify(fact) or ["general"]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[🔄] event=memory_note_classify_failed error=%s", exc)
+            return ["general"]
+
+    def save_note(self, facts, topic: str = "", access: str = "") -> tuple[bool, dict | str]:
+        """Save the durable facts an external AI distilled from a conversation (no LLM call).
+
+        *facts*: list of sentences or one string with a fact per line. Duplicates of an active memory
+        (same words, case/punctuation ignored) are skipped. Returns (ok, {saved, skipped}) or (False, reason)."""
+        items = facts if isinstance(facts, list) else str(facts or "").splitlines()
+        clean: list[str] = []
+        for item in items:
+            text = " ".join(str(item or "").split()).lstrip("-•* ").strip()
+            if text and text not in clean:
+                clean.append(text)
+        if not clean:
+            return (False, "No facts to save.")
+        if len(clean) > NOTE_MAX_FACTS:
+            return (False, f"Too many facts: max {NOTE_MAX_FACTS} per note.")
+        too_long = [f for f in clean if len(f) > NOTE_MAX_CHARS]
+        if too_long:
+            return (False, f"Each fact must be at most {NOTE_MAX_CHARS} characters.")
+
+        existing = {fact_key(str(m.get("fact") or "")): m for m in
+                    self._get_active_memory(memory_class=MEMORY_CLASS_PREFERENCE) or [] if isinstance(m, dict)}
+        access = str(access or "").strip()
+        origin = {"source": "external" if access else "chat", "access": access,
+                  "topic": str(topic or "").strip()[:120],
+                  "noted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        saved, skipped = [], []
+        for fact in clean:
+            same = existing.get(fact_key(fact))
+            if same is not None:
+                skipped.append({"fact": fact, "existing_id": same.get("id")})
+                continue
+            domains = self._classify(fact)
+            ok = self._save_memory_fact(fact=fact, domain=domains[0], memory_class=MEMORY_CLASS_PREFERENCE,
+                                        extra_fields={"domains": domains, "extra_data": origin})
+            if not ok:
+                return (False, f"Archive did not save the note (saved so far: {len(saved)}).")
+            saved.append({"fact": fact, "domains": domains})
+            existing[fact_key(fact)] = {"id": None, "fact": fact}
+        logger.info("event=memory_note_saved access=%s saved=%d skipped=%d",
+                    origin["access"], len(saved), len(skipped))
+        return (True, {"saved": saved, "skipped": skipped})
+
+    def recall(self, query: str = "") -> tuple[bool, list[dict] | str]:
+        """What Hestia knows about the user (keyword match), compact rows for an external AI."""
+        ok, rows = self.search_memories(query)
+        if not ok:
+            return (False, rows)
+        return (True, [{"fact": r.get("fact"), "domains": r.get("domains") or [r.get("domain")],
+                        "since": str(r.get("created_at") or "")[:10]} for r in rows[:RECALL_MAX]])
+
+    def list_memories(self) -> list[dict]:
+        """Active user memories with their origin, newest first (Memoria page)."""
+        rows = self._get_active_memory(memory_class=MEMORY_CLASS_PREFERENCE) or []
+        out = []
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            extra = r.get("extra_data") if isinstance(r.get("extra_data"), dict) else {}
+            out.append({"id": r.get("id"), "fact": r.get("fact"), "domains": r.get("domains") or [r.get("domain")],
+                        "source": extra.get("source") or "chat", "access": extra.get("access") or "",
+                        "topic": extra.get("topic") or "", "created_at": r.get("created_at")})
+        return out
+
+    def forget(self, memory_id: int) -> bool:
+        """Deactivate one memory (Archive keeps the row, Oracle stops using it)."""
+        done = self._route_archive("PATCH", f"/memory/{int(memory_id)}", body={"is_active": False})
+        if done is not None:
+            logger.info("event=memory_forgotten id=%s", memory_id)
+        return done is not None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
