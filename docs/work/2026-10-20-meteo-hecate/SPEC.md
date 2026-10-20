@@ -68,7 +68,7 @@ In:
    given, `suggest` takes the day's forecast (max temperature as `temp_c`, rain = rain_prob ≥ 50 % or rain_mm ≥ 1) and
    `packing` takes the trip's days at `place` (average max temp, rain if any day rains). The answer says which
    forecast was used (`weather: {source: "forecast", place, temp_c, rain, condition}`); values typed by the user always
-   win. Forecast missing (no city, out of range, provider down) → today's behaviour, nothing breaks. UI: the two forms
+   win. Forecast missing (no home place, out of range, provider down) → today's behaviour, nothing breaks. UI: the two forms
    show «Previsione: 18° · pioggia, Milano» pre-filled and still editable, with a toned icon, no emoji.
    The tools `wardrobe_suggest` / `wardrobe_packing` make `temp_c`/`rain` optional («lascia vuoto: uso la previsione»).
 7. **Weather in the agenda** (Marko: «averle nel calendario per i giorni della settimana o due»): the Chronos agenda
