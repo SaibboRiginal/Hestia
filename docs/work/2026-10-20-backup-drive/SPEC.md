@@ -2,148 +2,161 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
-| **Source** | user via Project thread — brainstorm 2026-10-19 item 8 («Backup su Google Drive — cartella `.hestia` (riusabile per tutto), scope `drive.file` nell'app Google di Hecate, job Chronos di backup cifrato di Archive, prova di ripristino»); started by Marko 2026-10-20 («voglio che venga fatto tutto») |
-| **Status** | Draft — waiting for Marko's approval |
+| **Version** | 1.1 |
+| **Source** | user via Project thread — brainstorm 2026-10-19 item 8 («Backup su Google Drive — cartella `.hestia` (riusabile per tutto), scope `drive.file` nell'app Google di Hecate, job Chronos di backup cifrato di Archive, prova di ripristino»); started by Marko 2026-10-20 («voglio che venga fatto tutto»); v1.1 answers of Marko 2026-10-20 (§10) |
+| **Status** | Approved — in progress |
 
 ## 1. Goal
 Diary, gym, wardrobe, expenses: data that cannot be recreated lives in one Postgres database on one PC. Every
 night Hestia makes an **encrypted copy of the whole database** and puts it in a `.hestia` folder on Marko's Google
-Drive. Once a month it **proves the copy can be restored** (restore into a scratch database, compare counts). If the
-PC dies, a new install + the passphrase + one Google login bring everything back with one command.
+Drive. Once a month it **proves the copy can be restored** (restore into a scratch database, compare counts).
+From the settings Marko sees the **history of backups and can roll back** to any of them, with an «Annulla
+ripristino» if the rollback was a mistake. On a new PC: install, passphrase, one Google login, «Ripristina».
 
 Not in scope: picking single items to move between two Hestia (that is «Importa ed esporta dati», §8).
 
 ## 2. What Marko sees
-- **WebUI → Sistema → Backup** (new page, icons and tones from the design system, no emoji):
-  - state card: last backup (when, size, «verificato il …»), next run (read from the agenda), Drive connected or not;
-  - list of backups on Drive: date, size, kind (giornaliero / mensile), verified mark;
-  - buttons «Esegui ora» and «Verifica ora»; when Drive is not authorized, «Collega Google Drive» (the existing
-    Google re-authorization flow).
+- **WebUI → Impostazioni → Sistema → Archivio** (a little hidden on purpose): under the retention settings a
+  **Backup** panel (icons and tones from the design system, no emoji):
+  - state: last backup (when, size, «verificato il …»), Google Drive connected or not, a job in progress (step);
+  - **history** of backups on Drive: date, size, verified mark, «Ripristina» on each one;
+  - «Esegui backup ora», «Verifica ora»; when Drive is not authorized, «Collega Google Drive» (existing Google
+    re-authorization flow);
+  - after a rollback: «Annulla ripristino» (back to the database as it was just before).
+  «Ripristina» asks for a confirmation that says what happens («I dati tornano al … Tutto quello che è cambiato
+  dopo viene sostituito. Puoi annullare finché non fai un altro ripristino.»).
 - **Agenda**: two rules he can move, pause or cancel like any other: «Backup» (every day 03:30) and
   «Verifica backup» (1st of the month 04:00).
-- **Notifications** (via the normal notifier, generic texts that name no module): only when something is wrong —
-  «Backup non riuscito: …», «Verifica del backup fallita: …», «Backup fermo: manca la passphrase», «Backup in attesa:
-  Google Drive non collegato (copia tenuta in locale)». A fixed problem closes with «Backup di nuovo regolare».
-- **Assistant**: read-only tool `backup_status` (last backup, last verification, problems), so «quando è stato
-  l'ultimo backup?» works in any chat. No tool to start a restore.
+- **Notifications** (normal notifier, generic texts that name no module) only when something is wrong:
+  «Backup non riuscito: …», «Verifica del backup fallita: …», «Backup fermo: manca la passphrase», «Backup in
+  attesa: Google Drive non collegato». A fixed problem closes with «Backup di nuovo regolare». A rollback sends
+  one «Dati ripristinati al …».
+- **Assistant**: read-only tool `backup_status` («quando è stato l'ultimo backup?»). No tool restores.
 
 ## 3. Architecture (module boundaries kept)
 | Who | Does | Why there |
 |---|---|---|
-| **Archive** | dump, encrypt, upload through Hub, retention, verify, restore command | only DB owner; the plaintext dump never leaves its container |
+| **Archive** | dump, encrypt, upload through Hub, retention, verify, restore/rollback | only DB owner; the plaintext dump never leaves its container |
 | **Hecate** | generic Google Drive file API confined to the `.hestia` folder | owns external providers and the Google OAuth token |
 | **Chronos** | two agenda rules registered by Archive with `agenda_client` | scheduling = agenda, no timers |
 | **Themis** | retention settings declared by Archive | tunables are settings |
 | **Hermes** | the problem notices | only outbound messenger |
-| **WebUI** | page «Backup» served as Archive's plugin (core plugin pattern) | client |
+| **WebUI** | the Backup panel = Archive's plugin element shown inside Archive's settings (new generic plugin contribution `settings_panel`) | client; any module can add a panel to its own settings |
 
-No new service, no direct URL (Archive → `POST {HUB}/route/hecate/api/drive/...`), no new LLM client, no new DB.
+No new service, no direct URL (Archive → `POST {HUB}/route/hecate/api/gateway/drive/...`), no new LLM client, no
+new DB.
 
 ### 3.1 Hecate: Drive files API (generic, reusable)
 Scope `https://www.googleapis.com/auth/drive.file` added to the default Google scopes: Hestia sees **only the files
 it created**, never the rest of the Drive. Root folder `.hestia` (created on first use, found again by its
-`appProperties.hestia=root`); callers name a subfolder (`backup`, later `export`, `documenti`…).
+`appProperties.hestia=root`); callers name a subfolder (`backup`, later `export`…).
 
-| Method | Path | |
+| Method | Path (`/api/gateway/drive/…`) | |
 |---|---|---|
-| GET | `/api/drive/status` | `{connected, scope_ok, root_id}` |
-| GET | `/api/drive/files?folder=backup` | `[{id, name, size, created_at, app_properties}]` |
-| POST | `/api/drive/upload/start` | `{folder, name, mime, size, app_properties}` → `{upload_id}` (Drive resumable upload) |
-| POST | `/api/drive/upload/{upload_id}/chunk` | `{offset, data_b64}` (≤ 4 MB per call, so the Hub envelope stays small) |
-| POST | `/api/drive/upload/{upload_id}/finish` | → file metadata |
-| GET | `/api/drive/files/{id}/chunk?offset=&length=` | `{data_b64, eof}` |
-| DELETE | `/api/drive/files/{id}` | moves to Drive trash |
+| GET | `status` | `{connected, scope_ok, error}` |
+| GET | `files?folder=backup` | `[{id, name, size, created_at, app_properties}]` |
+| POST | `upload/start` | `{folder, name, mime, size, app_properties}` → `{upload_id}` (Drive resumable upload) |
+| POST | `upload/{upload_id}/chunk` | `{offset, data_b64}` (2 MB per call, keeps the Hub envelope small) → `{received, done, file?}` |
+| GET | `files/{id}/chunk?offset=&length=` | `{data_b64, eof, size}` |
+| PATCH | `files/{id}` | `{app_properties}` (e.g. verification result) |
+| DELETE | `files/{id}` | moves to Drive trash |
 
-Missing scope → `409 {error:"drive_scope_missing"}` and Hecate's existing «riautentica Google» notice. Logs
-`event=drive_upload|drive_download|drive_delete folder=… bytes=…`.
+Missing scope → `409 {error:"drive_scope_missing"}`. Logs `event=drive_upload|drive_download|drive_delete …`.
 
 ### 3.2 Shared encryption: `hestia_common.crypto`
-Streaming encryption with a passphrase: scrypt (N=2^17) → AES-256-GCM in 1 MB chunks, header
-`HESTIA-ENC1 | salt | chunk size`, per-chunk nonce = counter, last chunk flagged (truncation is detected). Library
-`cryptography` (new dependency of Archive and of the modules that use the helper). The same helper is offered to «Importa ed esporta dati» for its
-optional password on the `.hestia` file (its open question 2), so Hestia has one encryption format.
+Streaming encryption with a passphrase: scrypt → AES-256-GCM in 1 MB chunks (header `HESTIA-ENC1`, salt, KDF
+params, nonce prefix; chunk counter in the nonce, last chunk flagged in the authenticated data, so truncation and
+tampering are detected). Library `cryptography`. «Importa ed esporta dati» reuses it for its optional file
+password (agreed with that thread), so Hestia has one encryption format.
 
-Passphrase = secret → env `HESTIA_BACKUP_PASSPHRASE` in `.env` (allowed: env is for secrets). It cannot live in the
-database, or it would be inside the backup it protects. **If it is lost, the backups cannot be opened**: the docs
-and the WebUI page say to keep it in a password manager.
+Passphrase = secret → env `HESTIA_BACKUP_PASSPHRASE` in `.env`. It cannot live in the database (it would be inside
+the backup it protects). **If it is lost, the backups cannot be opened**: docs and panel say so.
 
 ### 3.3 Archive: backup, retention, verify
-- `POST /api/backup/run` (agenda job `archive.backup`, daily 03:30):
-  `pg_dump -Fc` → temp file in a new volume `hestia_backups` → encrypt → upload in chunks to `backup/` as
-  `hestia-backup-AAAA-MM-GG-HHMM.dump.enc` with `app_properties {kind, sha256, tables: {name: rows}}` → row in a new
-  table `backups` (id, drive_file_id, name, size, sha256, row counts, created_at, status, verified_at, verify_result)
-  → retention → temp file deleted.
-- **Drive not reachable / not authorized**: the encrypted file stays in `hestia_backups` (at most 3 kept), the next
-  run uploads the pending ones first (`[🔄] event=backup_upload_retry`). Nothing is lost silently.
-- **Retention** (settings, §4): keep the last `keep_daily` backups + the first backup of each month for
-  `keep_monthly` months; older ones go to the Drive trash.
+- File content (before encryption): `HESTIA-BACKUP1` + a JSON manifest (created_at, Postgres version, row count
+  per table) + the `pg_dump -Fc` archive. Counts and dump come from **one snapshot** (`pg_export_snapshot` +
+  `pg_dump --snapshot`), so they match exactly.
+- `POST /api/backup/run` (agenda job `archive.backup`, daily 03:30; returns at once, works in background):
+  dump → encrypt into the volume `hestia_backups` → upload in chunks to `.hestia/backup/` as
+  `hestia-backup-AAAA-MM-GG-HHMM.enc` with `appProperties {hestia: backup, sha256, created_at}` → retention →
+  local file deleted.
+- The **history is Drive itself** (list of `backup/`), not a table: a rollback replaces every table, a list kept in
+  the database would roll back with it. Job state and last results live in `hestia_backups/state.json`.
+- **Drive not reachable / not authorized**: the encrypted file stays in `hestia_backups` (at most 3), the next run
+  uploads the pending ones first (`[🔄] event=backup_upload_retry`). No other local copy (Marko, §10.3).
+- **Retention** (settings §4): the newest `keep_daily` backups + the first backup of each of the last
+  `keep_monthly` months; the rest goes to the Drive trash.
 - `POST /api/backup/verify` (agenda job `archive.backup_verify`, 1st of the month 04:00): download the newest
-  backup, check sha256, decrypt, `pg_restore` into a scratch database `hestia_restore_check`, compare per-table row
-  counts with those recorded at dump time, drop the scratch database, record the result.
-- `GET /api/backup/status`, `GET /api/backup/list` (WebUI page + `backup_status` tool).
-- `pg_dump`/`pg_restore` in the Archive image: `postgresql-client` from the PGDG repo pinned to the server's
-  major version; at start Archive compares `pg_dump --version` with `SHOW server_version` and logs
-  `event=backup_client_mismatch` (the backup page shows it) instead of producing an unusable dump.
+  backup, check sha256, decrypt, restore into a scratch database `hestia_restore_check`, compare the row counts
+  with the manifest, drop the scratch database, write `verified_at`/`verify` into the file's appProperties.
+- `pg_dump`/`pg_restore` in the Archive image: `postgresql-client` from the PGDG repository for the majors
+  15, 16, 17; Archive uses the one matching the server (`SHOW server_version_num`), else the newest.
 - Logs: `event=backup_done name=… bytes=… seconds=…`, `event=backup_failed step=… error=…`,
-  `event=backup_verify ok=… tables=… mismatched=…`.
+  `event=backup_verify ok=… tables=… mismatched=…`, `event=backup_restore step=…`.
 
-### 3.4 Restore (deliberately a terminal command)
-`python tools/hestia_backup.py restore [--latest | --file <path> | --name <drive name>]`, run on the host:
-asks to type `RIPRISTINA`, stops the services that write to the database, runs `pg_restore --clean` inside the
-Archive container, starts them again, prints counts. On a brand-new PC: install, put the passphrase in `.env`,
-connect Google once in the WebUI (Hecate token is a file in `Hestia-Hecate/data`, not in the database), run the
-command. Also `tools/hestia_backup.py list` and `decrypt <file>` (for a copy downloaded by hand from drive.google.com).
-No restore button in the WebUI or tool for the assistant: overwriting everything is a deliberate act.
+### 3.4 Rollback (restore) from the settings
+`POST /api/backup/restore {file_id}` (background job, progress in `status`):
+1. download, check sha256, decrypt, restore into a new database `hestia_memory_restore`, run Archive's schema
+   migrations on it (an older backup gains today's tables/columns), compare counts with the manifest;
+   any failure here → the scratch database is dropped and nothing changed;
+2. **swap**: Archive answers 503 to everything else for a few seconds (modules already retry: `[🔄]`), closes its
+   connections, renames `hestia_memory` → `hestia_memory_prev` and `hestia_memory_restore` → `hestia_memory`,
+   reconnects;
+3. a new **data epoch** is written: every store answer carries `epoch`; a module whose mirror saw another epoch
+   drops the mirror and reloads (Hercules, Hygieia, Wardrobe, Plutus), so no stale row is written back;
+4. one notice «Dati ripristinati al …».
 
-## 4. Settings (Themis, declared by Archive)
+`POST /api/backup/undo` swaps back with `hestia_memory_prev` (available until the next rollback, which replaces it).
+CLI for a PC without WebUI yet or a file downloaded by hand: `python tools/hestia_backup.py list | restore
+<name|--file path> | undo | decrypt <file>` (runs inside the Archive container, asks to type `RIPRISTINA`).
+
+## 4. Settings (Themis, declared by Archive, group «Backup»)
 | Key | Default | |
 |---|---|---|
-| `archive.backup.keep_daily` | 7 | recent backups kept |
-| `archive.backup.keep_monthly` | 12 | monthly backups kept |
+| `archive.backup.keep_daily` | 3 | recent backups kept (one per day) |
+| `archive.backup.keep_monthly` | 3 | monthly backups kept |
 
-Schedule lives in the agenda, not in settings. No on/off switch: the backup always runs; pausing the agenda rule is
-Marko's decision.
+Time and frequency of backup and verification are the agenda rules (editable). No on/off switch: pausing the
+agenda rule is Marko's decision.
 
 ## 5. What goes in the backup
 The whole `hestia_memory` database (every module's records, blobs incl. wardrobe photos, settings, chat history,
-memory, agenda, MCP accesses). Not included: `.env`, Hecate's OAuth token file, `data/` folders, Docker volumes of
-other services, Forge worktrees (the code is on GitHub).
+memory, agenda, MCP accesses). Not included: `.env`, Hecate's OAuth token file, `data/` folders, other volumes,
+Forge worktrees (code is on GitHub).
 
 ## 6. Phases
 - **P1** `hestia_common.crypto` + tests (round trip, wrong passphrase, truncated/tampered file).
-- **P2** Hecate Drive API (`drive.file`, `.hestia` root, resumable upload/download in chunks) + tests with a fake
-  Drive; swagger; scope note in `.env.example`.
-- **P3** Archive backup/verify/retention, `backups` table, agenda rules, settings, `backup_status` tool,
-  `postgresql-client` in the image, volume `hestia_backups` + tests (real `pg_dump` on the cloud bench).
-- **P4** `tools/hestia_backup.py` (restore, list, decrypt) + Archive plugin page «Backup».
-- **P5** docs (`hestia-archive.md`, `hestia-hecate.md`, swagger, ARCHITECTURE, AI-GUIDE, README, TESTING) + cloud
-  bench flow `backup` (fake Drive: backup → verify → restore into a clean stack, screenshots).
+- **P2** Hecate Drive API + tests with a fake Drive; swagger; scope in defaults and `.env.example`.
+- **P3** Archive backup/verify/retention/restore/undo, epoch in store answers, agenda rules, settings,
+  `backup_status` tool, `postgresql-client` in the image, volume `hestia_backups` + tests; module mirrors follow
+  the epoch.
+- **P4** plugin contribution `settings_panel` (plugin_client, Hub catalog, WebUI .NET + Angular) + Archive bundle
+  `archive-backup-panel`; `tools/hestia_backup.py`.
+- **P5** docs (`hestia-archive.md`, `hestia-hecate.md`, swagger, ARCHITECTURE, AI-GUIDE, README, TESTING) + real
+  run on the bench (Postgres 15: backup → verify → rollback → undo).
 
 ## 7. Acceptance
-- A backup runs from the agenda, lands in `.hestia/backup` on Drive encrypted (the file does not start with the
-  `PGDMP` header), the list and the page show it.
+- A backup lands in `.hestia/backup` encrypted (no `PGDMP` header visible), the history shows it.
 - Verification restores it into a scratch database and the counts match; a tampered file fails with a notice.
 - With Drive disconnected the backup is kept locally and uploaded at the next run.
 - Retention keeps exactly `keep_daily` + monthly ones.
-- `restore --latest` on a clean bench stack brings back the data of the original one.
+- Rollback brings back the data of that day, module mirrors reload, «Annulla ripristino» brings back the data of
+  just before.
 - No passphrase, token or personal data in any tracked file.
 
-## 8. Alignment with «Importa ed esporta dati»
-Two tools, two jobs, no second format for the same thing:
-- **Backup** = disaster recovery: the whole database as an encrypted `pg_dump` (`.dump.enc`), restored all at once.
+## 8. Alignment with «Importa ed esporta dati» (agreed 2026-10-20)
+- **Backup** = disaster recovery and rollback: the whole database as an encrypted `pg_dump` (`.enc`).
 - **Transfer** = selective JSON `.hestia` file built by each module, merged with modes and preview.
-Shared pieces: `hestia_common.crypto` (one encryption format) and Hecate's Drive API with the `.hestia` root
-(transfer can later add «Salva su Drive» into `.hestia/export`).
+Shared, owned here: `hestia_common.crypto` and Hecate's Drive API with the `.hestia` root (transfer later adds
+«Salva su Drive» into `.hestia/export`).
 
 ## 9. What Marko does once (outside the code)
-1. Google Cloud console, the same project as today's Hestia OAuth app: enable **Google Drive API**.
+1. Google Cloud console, same project as the Hestia OAuth app: enable **Google Drive API**.
 2. OAuth consent screen: add scope `.../auth/drive.file`.
 3. `.env`: `HESTIA_BACKUP_PASSPHRASE=<long passphrase>`, also saved in a password manager.
 4. WebUI: «Collega Google Drive» (re-authorizes Google once; Calendar and Gmail keep working).
 
-## 10. Open questions for Marko
-1. Restore only by terminal command (recommended), or also a button in the WebUI?
-2. Defaults ok: every night 03:30, 7 daily + 12 monthly, verification monthly?
-3. Keep also one local copy of the last backup on the PC (in `hestia_backups`) even when Drive works? Default: no,
-   only while Drive is unreachable.
+## 10. Decisions (Marko 2026-10-20)
+1. Restore: in the settings, a bit hidden, as a history of backups to roll back to (not only a terminal command).
+2. One backup per day; how many are kept is configurable (defaults lowered to 3 daily + 3 monthly).
+3. No permanent local copy: only while Drive is unreachable.

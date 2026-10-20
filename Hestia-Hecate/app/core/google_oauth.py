@@ -48,6 +48,7 @@ DEFAULT_SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/drive.file",   # only the files Hestia creates (.hestia folder: backups)
 ]
 DEFAULT_REDIRECT_URI = "http://localhost:19003/api/gateway/auth/callback/google"
 PENDING_TTL_SECONDS = 15 * 60

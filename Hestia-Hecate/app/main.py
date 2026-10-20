@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from providers.registry import CalendarProviderRegistry
 from providers.mail import mail_gateway, MailUnavailable
+from providers.drive import DriveError, drive_files
 from schemas.calendar_events import CalendarEvent
 
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
@@ -1010,6 +1011,84 @@ MAIL_WATCH_JOB = "hecate.mail_watch"
 MAIL_RENEW_JOB = "hecate.mail_watch_renew"
 
 
+# ── Google Drive: files in Hestia's own `.hestia` folder (scope drive.file) ──
+# SPEC docs/work/2026-10-20-backup-drive §3.1. Generic: callers name a subfolder (backup, export…).
+class DriveUploadStart(BaseModel):
+    folder: str
+    name: str = Field(..., min_length=1, max_length=200)
+    size: int = Field(..., gt=0)
+    mime: str = "application/octet-stream"
+    app_properties: dict = Field(default_factory=dict)
+
+
+class DriveChunk(BaseModel):
+    offset: int = Field(..., ge=0)
+    data_b64: str
+
+
+class DriveUpdate(BaseModel):
+    app_properties: dict = Field(default_factory=dict)
+
+
+_DRIVE_CHUNK_MAX = 8 * 1024 * 1024
+
+
+def _drive_call(fn, *args):
+    try:
+        return fn(*args)
+    except DriveError as exc:   # the caller (e.g. the backup) tells the user, with its own words
+        logger.warning("[🔄] event=drive_error code=%s error=%s", exc.code, exc)
+        raise HTTPException(status_code=exc.status, detail={"error": exc.code, "message": str(exc)})
+
+
+@app.get("/api/gateway/drive/status")
+def gateway_drive_status():
+    """Drive reachable with the drive.file scope? (``connected``, ``scope_ok``, ``error``)."""
+    return {"status": "ok", **drive_files.status()}
+
+
+@app.get("/api/gateway/drive/files")
+def gateway_drive_files(folder: str):
+    return {"status": "ok", "folder": folder, "files": _drive_call(drive_files.list, folder)}
+
+
+@app.post("/api/gateway/drive/upload/start")
+def gateway_drive_upload_start(req: DriveUploadStart):
+    upload_id = _drive_call(drive_files.upload_start, req.folder, req.name, req.size, req.mime, req.app_properties)
+    return {"status": "ok", "upload_id": upload_id}
+
+
+@app.post("/api/gateway/drive/upload/{upload_id}/chunk")
+def gateway_drive_upload_chunk(upload_id: str, req: DriveChunk):
+    import base64
+    try:
+        data = base64.b64decode(req.data_b64, validate=True)
+    except Exception:
+        raise HTTPException(status_code=422, detail={"error": "bad_base64"})
+    if len(data) > _DRIVE_CHUNK_MAX:
+        raise HTTPException(status_code=413, detail={"error": "chunk_too_big", "max": _DRIVE_CHUNK_MAX})
+    return {"status": "ok", **_drive_call(drive_files.upload_chunk, upload_id, req.offset, data)}
+
+
+@app.get("/api/gateway/drive/files/{file_id}/chunk")
+def gateway_drive_file_chunk(file_id: str, offset: int = 0, length: int = 2 * 1024 * 1024):
+    import base64
+    data, size = _drive_call(drive_files.read, file_id, max(0, offset), max(1, min(length, _DRIVE_CHUNK_MAX)))
+    return {"status": "ok", "data_b64": base64.b64encode(data).decode("ascii"), "size": size,
+            "eof": offset + len(data) >= size}
+
+
+@app.patch("/api/gateway/drive/files/{file_id}")
+def gateway_drive_file_update(file_id: str, req: DriveUpdate):
+    return {"status": "ok", "file": _drive_call(drive_files.update, file_id, req.app_properties)}
+
+
+@app.delete("/api/gateway/drive/files/{file_id}")
+def gateway_drive_file_delete(file_id: str):
+    _drive_call(drive_files.trash, file_id)
+    return {"status": "ok", "trashed": file_id}
+
+
 def _push_to_iris(messages: list[dict], source: str) -> bool:
     """Hand new mail headers to Iris (email domain owner), which matches subscriptions."""
     hub = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -1518,6 +1597,7 @@ def _apply_google_token(token_data: dict) -> dict:
     _pending_auth.pop("google", None)
     refreshed = _refresh_calendar_registry()
     mail_gateway.reset()  # rebuild Gmail with the new scopes
+    drive_files.reset()   # Drive folders are found again with the new token
     active = refreshed.get("active", [])
     granted = list(token_data.get("scopes") or [])
     ok = "google" in active
