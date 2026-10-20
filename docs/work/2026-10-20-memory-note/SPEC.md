@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via Project thread (brainstorm 2026-10-19 item 10: «MCP diretto + tool `memory_note` perché quelle conversazioni finiscano nella memoria di Hestia»; Marko 2026-10-20: «voglio che venga fatto tutto») |
-| **Status** | Draft, waiting for Marko's approval |
+| **Status** | Approved by Marko 2026-10-20 («ok»), implemented |
 
 ## Goal
 When Marko talks to an external AI (Claude, ChatGPT) connected to Hestia's MCP, that conversation never reaches
@@ -15,7 +15,7 @@ from then on in every client.
 ## Scope
 1. **Tool `memory_note`** (declared by Oracle, the memory owner; executed through Hestia-MCP like every tool).
    - Clients: `external` plus `ui`/`telegram` (hidden in the Telegram menu), so the same tool works everywhere.
-   - Input: `facts` (list of short sentences, required, max 10, each max 300 chars), `topic` (optional, a few words
+   - Input: `facts` (string, one fact per line, or a list; required, max 10, each max 300 chars), `topic` (optional, a few words
      on what the conversation was about). The description tells the external AI to send only durable facts about
      Marko (preferences, constraints, decisions, personal details), already distilled, never a transcript.
    - It is a write tool: only accesses with write scope can call it (existing rule of the external door), and every
@@ -26,13 +26,13 @@ from then on in every client.
      in its own chats.
    - Origin kept in `extra_data`: `{source:"external", access:<X-Hestia-Access name>, topic, noted_at}`
      (`source:"chat"` for Oracle's own saves from now on).
-   - Duplicates skipped: a fact equal (case/space-insensitive) to an active memory, or above a similarity
-     threshold when embeddings are available, is returned in `skipped` with the existing one.
+   - Duplicates skipped: a fact with the same words as an active memory (case and punctuation ignored) is returned
+     in `skipped` with the existing one's id.
    - No LLM call: the external AI already distilled the facts, so a note is saved even when the local model is down.
 3. **Tool `memory_recall`** (read-only, `external` too): the external AI can ask what Hestia already knows on a
    topic before answering, so the two memories do not diverge. Same keyword search as `memory.search`, max 20 rows,
-   only `durable_user_preference`. Per-access tool allow-lists (Accessi AI) can switch it off for a given AI.
-4. **Memoria page** in the Oracle plugin (Sistema section, next to Cervello and Documenti): list of active memories
+   only `durable_user_preference` (compact rows: fact, domains, since). Per-access tool allow-lists (Accessi AI) can switch it off for a given AI.
+4. **Memoria page** in the Oracle plugin (Sistema section, next to Cervello and Documenti, icon `bookmark`): list of active memories
    with text, domains, origin (in chat / which external AI) and date; search box; filter by origin; delete
    (deactivate, `PATCH /api/memory/{id}` `is_active=false` in Archive). This is where Marko checks what an external
    AI wrote. Icons, no emoji.

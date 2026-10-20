@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-20
+- Conversations with external AIs end up in Hestia's memory: tool `memory_note` (Claude/ChatGPT send the durable facts, saved with their origin, duplicates skipped, no LLM call) and `memory_recall` (what Hestia already knows), new page Memoria (list, search, filter by origin, forget) → `docs/work/2026-10-20-memory-note/` [ext-chat]
 - Fix: Codespaces automatic start could stop at once with «Docker is not running» when it ran before Docker was up; it now waits up to 120 s and writes its output to `.cloud-test/start.log` → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Web clients use minimal stroke icons coloured by intent instead of emoji (WebUI and every module plugin; one icon set shared by `hx-icon` and `hxk-icon`, `tone` input; presence states carry `icon` + `tone`; notices show the level icon); Telegram keeps emoji; CI check `tools/governance/check_icons.py` → `docs/work/2026-10-20-icone-nei-client/` [ext-chat]
 - Codespaces in one click: the create page asks for the optional test secrets (Gemini, test Telegram bot, temporary Google client), every start brings the stack up and leaves the WebUI login link in `.cloud-test/login.txt` (`python tools/cloud_test.py start`) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
