@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via Project thread (Marko 2026-10-20: «funzione di importazione ed esportazione configurazioni e dati per modulo … esportare quello che configuro e quello che aggiungo e le mie info … in modo granulare … da casa importarlo nella mia originale, ma non intendo api e secrets … opzioni tipo appendere o sovrascrittura … semplice minimalista ma mantenere la granularità e dettagli») |
 | **Status** | Draft — waiting for Marko's approval |
 
@@ -116,4 +116,9 @@ Other options: «Solo modifiche dal …» on export (incremental), item-level se
 
 ## 10. Open questions for Marko
 1. P5: which of Oracle (memoria, documenti, chat), Scout, Hephaestus, Athena, Hermes do you want?
-2. Password on the file (encrypted)? Default no; the Drive backup will need encryption anyway and can reuse it.
+2. Password on the file (encrypted)? Default no. If yes, it reuses `hestia_common.crypto` (owned by the Drive backup
+   dossier: passphrase → scrypt → AES-256-GCM, header `HESTIA-ENC1`).
+
+## 11. Relation with the Drive backup
+The backup (dossier «Backup su Drive») is a whole-DB encrypted `pg_dump` for disaster recovery; `.hestia` stays the
+only per-module transfer format. A later «Salva su Drive» can write exports into the Hecate Drive folder `.hestia/export/`.
