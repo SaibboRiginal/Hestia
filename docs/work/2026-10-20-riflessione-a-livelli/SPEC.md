@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | User via external chat (brainstorm 2026-10-19, item 5 of the final list in `/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md`, sections 0, 4 and 5) → project thread «Riflessione a livelli» |
-| **Status** | Draft, waiting for Marko's approval (no code before it) |
+| **Status** | Approved by Marko (card, 2026-10-20 09:40) with «Ok, solo recap»: observations reach him only in the daily recap (v1.1) · in progress |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -16,7 +16,8 @@ Not everything in Athena. Reflection works in layers, like a coordinator with th
    data), looks for the **links between domains** («weeks with 3 workouts → better diary scores») and asks a module for
    details when a signal deserves it (extension of `/api/module/context`); every thought goes through Oracle;
 3. Hestia's observation of itself (system health) stays a **separate track**, so it never mixes with Marko's life.
-Athena only proposes: observations to Marko through Hermes, setting changes through Themis. Nothing acts by itself.
+Athena only proposes: observations reach Marko **only inside the daily recap** (his choice, 2026-10-20), setting
+changes go through Themis. Nothing acts by itself, and no reflection sends a notification of its own.
 
 ## What exists today (checked on main 0ca846d)
 - Athena has one loop (`runtime.py`): observe (Hub services, Argus health and errors, Archive entity counts per domain,
@@ -61,8 +62,8 @@ When modules publish (**push, never poll**):
 - once a day for time-based facts (missed days, nothing worn for 60 days, week closed → weekly metrics), with an agenda
   job `<module>.signals` registered through `register_evaluation` (default evening, editable in the agenda like every
   job; Chronos rings `POST /api/<prefix>/signals/run`).
-- A signal with `severity=alta` also rings Athena (`POST route/athena/api/athena/signals/ring`): the life track runs at
-  the next moment the agenda window and presence allow, instead of waiting for the evening.
+- No ring to Athena: since observations only travel inside the evening recap, an urgent signal would not reach Marko
+  sooner anyway. `severity` only ranks topics. (A module that needs to warn now already has its own reminders/alerts.)
 
 ### B. Details on demand (extension of `/api/module/context`)
 `GET /api/module/context?budget=<chars>&topic=<signal key>` → same response `{module, domain, updated_at, text}`, but
@@ -82,13 +83,22 @@ New cycle in Athena, separate from the system loop:
    links with numbers, details → at most `max_per_day` observations in the existing `AZIONE/TIPO/...` format, kinds
    `observation` (a fact + why it matters, never an order) or `setting` (one personal module setting, e.g. weekly
    workout goal, proposed through Themis as today).
-6. **Gate** with the same relevance score and threshold; accepted observations go to Hermes as
-   `athena.focus_brief` with `_link` to the module page the topic belongs to (user text names the domain:
-   «Allenamento», «Spese», never the module).
+6. **Gate** with the same relevance score and threshold; accepted observations are **stored** (Archive, Athena's
+   `cognition` domain, kind `observation`: text, domains, signal keys / link used, `_link` to the module page) and are
+   **not** sent to Hermes. User text names the domain («Allenamento», «Spese»), never the module.
+   `setting` candidates go to Themis as today (Themis asks Marko to confirm, as for every proposal).
+6b. **Into the recap**: Athena registers `recap_endpoint` like any module and serves its piece through the recap
+   contract (sibling dossier `2026-10-20-recap-giornaliero` §3.2): `GET /api/module/recap?day=` →
+   `{module: "athena", title: "Da tenere d'occhio", icon, emoji, order: 900, done: [{text, tone}]}` with the
+   observations of that day not yet shown (marked `shown_in_recap` once served for the delivered recap), or
+   `{empty: true}`. The recap's collector (`app/core/recap.py`, owned by the recap thread) is not touched: Athena's
+   piece is discovered from the Hub registry like the others. Until the recap ships, observations are visible in
+   «Pensieri» and through `athena_signals` / `athena_thinking`.
 7. **Record**: thinking record with `track: "vita"`, the signals and links used, so «Pensieri» shows why.
 
-When: agenda window `athena.reflection`, default daily 20:00–22:00, editable / skippable / pausable in the agenda
-(pause = Athena silent on life, Marko's decision, no fallback), plus the `alta` ring. Respects presence (`work.light`)
+When: agenda window `athena.reflection`, default daily 18:00–20:00 (ready before the evening recap, default 21:30),
+editable / skippable / pausable in the agenda (pause = Athena silent on life, Marko's decision, no fallback). One life
+cycle per day inside the window; «Pensa ora» on the Vita tab runs one now. Respects presence (`work.light`)
 and the idle gate like today. No on/off setting (rule: no feature switches).
 
 ### D. System track («Sistema») stays as it is, minus domains
@@ -106,7 +116,7 @@ as signals to the life track). Its records get `track: "sistema"`. Nothing else 
 ### F. Settings (Themis, `athena.reflection.*`, all live)
 | Key | Default | Notes |
 |---|---|---|
-| `athena.reflection.max_per_day` | 2 | observations sent per day |
+| `athena.reflection.max_per_day` | 2 | observations per day (they all go in that evening's recap) |
 | `athena.reflection.max_topics` | 4 | topics per cycle |
 | `athena.reflection.min_weeks` | 6 | paired weeks before a link counts |
 | `athena.reflection.min_correlation` | 0.6 | minimum |r| (advanced) |
@@ -137,10 +147,10 @@ Scout and the rest: none in v1 (can add later with the same helper).
 1. Logging a workout that makes an exercise stall publishes one `stall:<exercise>` signal; logging a better set
    retracts it. Republishing never duplicates rows.
 2. With 8 weeks of fake data where workouts and adherence move together, the life cycle finds the link (r and weeks in
-   the record), asks both modules for details, and sends at most `max_per_day` observations through Hermes; the same
-   link is not sent again within `repeat_days`.
-3. An `alta` signal makes a life cycle run inside the window without waiting for the evening; outside the window or
-   with the window paused it waits / stays silent.
+   the record), asks both modules for details, and stores at most `max_per_day` observations; the same link is not
+   proposed again within `repeat_days`. Nothing is sent through Hermes.
+3. Athena's recap piece (`/api/module/recap?day=`) lists that day's observations under «Da tenere d'occhio», or is
+   empty; the life cycle runs only inside its agenda window (paused window = silent).
 4. The system cycle prompt contains no domain data; life cycle prompt contains no service / error data.
 5. Athena never writes to a module and never changes a setting: only Hermes notices and Themis proposals.
 6. Oracle down → life cycle recorded with outcome `failed`, nothing sent, no static fallback text.
@@ -150,8 +160,8 @@ Scout and the rest: none in v1 (can add later with the same helper).
 ## Phases
 - **P1** `hestia_common.signals_client`, Archive `signals-store`, `topic` on `/api/module/context`, swagger, ARCHITECTURE rule.
 - **P2** Signals + weekly metrics + `<module>.signals` job in Hercules, Hygieia, Plutus, Wardrobe (+ `topic` details).
-- **P3** Athena life track (read, correlate, topics, details, `athena.riflessione`, gate, Hermes, records, ring) and
-  system track cleanup.
+- **P3** Athena life track (read, correlate, topics, details, `athena.riflessione`, gate, stored observations, recap
+  piece, records) and system track cleanup.
 - **P4** Plugin: Pensieri Vita/Sistema, page Segnali, MCP `athena_signals`.
 - **P5** Docs (athena + 4 module md, shared md, swagger, ARCHITECTURE, AI-GUIDE, readme), bench run, PR, merge.
 
