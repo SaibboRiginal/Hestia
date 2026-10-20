@@ -35,15 +35,15 @@ on tomorrow, written by the model from facts the modules give, delivered by Herm
 
 Marko's answers to v1.0 (2026-10-20, thread «Recap giornaliero»):
 1. «prima ma configurabile o magari anche dinamico»: evening by default, and the assistant should be smart about the
-   time, moving it before or after his calendar events → §3.9 (generic for every module's jobs, not only the recap).
+   time, moving it before or after his calendar events → §3.8 (generic for every module's jobs, not only the recap).
 2. Morning recap only when he plans it, **and** generally: module activities he deletes from the calendar must be
-   trivially recreatable (templates / standard activities, nothing to rebuild or remember) → §3.10 (generic).
+   trivially recreatable (templates / standard activities, nothing to rebuild or remember) → §3.9 (generic).
 3. Quiet day: nothing. Proposals instead are welcome but «in un altro momento» → not in the recap (§2 out of scope).
 
 Out of scope: proposals on quiet days (Marko wants them at another moment: they belong to the proactive layer,
 sibling thread «Riflessione a livelli» / coaches, item 9; the recap only records `event=recap_empty` so they can use it);
 a broader «smart calendar» that proposes to rearrange the user's own events (suggested to the coordinator as its own
-item; this dossier only places Hestia's flexible activities, §3.9); weekly/monthly reports (later, same contract with `span`), voice reading of the recap (Voce module will
+item; this dossier only places Hestia's flexible activities, §3.8); weekly/monthly reports (later, same contract with `span`), voice reading of the recap (Voce module will
 be able to read any notification), coaching advice (item 9: coaches can add a piece later through the same contract).
 
 ## 3. Design
@@ -52,7 +52,7 @@ be able to read any notification), coaching advice (item 9: coaches can add a pi
 
 | Step | Owner | Why |
 |---|---|---|
-| When | **Chronos**: agenda job `athena.recap.evening` (default 21:30, daily, flexible 20:00–23:30 around the user's events, §3.9), visible and movable in the calendar | Scheduling = agenda, never a timer |
+| When | **Chronos**: agenda job `athena.recap.evening` (default 21:30, daily, flexible 20:00–23:30 around the user's events, §3.8), visible and movable in the calendar | Scheduling = agenda, never a timer |
 | Facts of each domain | **each module**, deterministic, no LLM: `GET /api/module/recap` | each module only knows its own data |
 | Collect + ask the text | **Athena** (new file `app/core/recap.py`, independent from the reflection loop) | Athena is already the proactive layer that gathers from modules and speaks through Hermes; no new service |
 | Write the text | **Oracle**, `POST /api/llm/generate` with use case `athena.recap` (chain *veloce*) | only Oracle calls models |
@@ -122,7 +122,7 @@ Sibling dossiers plug in through the same endpoint: **weather** (Hecate, tomorro
 | `athena.recap.piece_timeout_seconds` | float 5 | per-module wait |
 
 The time is the agenda job (move it in the calendar or change its flexible range there); stopping the recap = pausing
-or deleting the job (user decision, no fallback; one click brings it back, §3.10).
+or deleting the job (user decision, no fallback; one click brings it back, §3.9).
 
 ### 3.7 Morning variant and on-demand
 
@@ -133,7 +133,7 @@ or deleting the job (user decision, no fallback; one click brings it back, §3.1
 - WebUI quick action «Recap adesso» and Athena plugin page **Recap**: the history (day, text, pieces collapsible),
   stroke icons only, no emoji.
 
-### 3.9 Smart timing: flexible activities (Chronos, generic)
+### 3.8 Smart timing: flexible activities (Chronos, generic)
 
 Marko: the assistant should decide whether to anticipate or postpone around his events. Generic in Chronos, so every
 module's job can use it (recap, reminders, reflection…), not a recap special case.
@@ -149,7 +149,7 @@ module's job can use it (recap, reminders, reflection…), not a recap special c
   calendar shows «spostato alle 22:40, dopo Cena con Luca». Deterministic, no LLM, no notification.
 - A user move of a single occurrence wins over flex (it is a fixed time).
 
-### 3.10 Standard activities: deleted, one click to bring back (Chronos + WebUI, generic)
+### 3.9 Standard activities: deleted, one click to bring back (Chronos + WebUI, generic)
 
 Marko: deleting a module's activity must never mean rebuilding it from scratch or remembering how.
 
@@ -163,7 +163,7 @@ Marko: deleting a module's activity must never mean rebuilding it from scratch o
   generic titles, a «Ripristina» button on deleted/changed ones and «Aggiungi» on templates. Stroke icons, no emoji.
 - Telegram/chat: tool `agenda_standard` (list + restore), so «rimetti il recap della sera» works by voice/text too.
 
-### 3.8 API changes
+### 3.10 API changes
 
 - New on each piece module: `GET /api/module/recap` (+ capability `recap_endpoint`).
 - Athena: `POST /api/athena/recap` `{day?, momento?, deliver?}` → `{text, pieces, delivered}` (agenda job, tool,
@@ -192,12 +192,12 @@ Marko: deleting a module's activity must never mean rebuilding it from scratch o
   rows, Hermes delivery, agenda job, use case `athena.recap`, settings.
 - **R2** — pieces: Chronos, Hermes, Hercules, Hygieia, Plutus, Wardrobe, Scout.
 - **R3** — tool `recap_today`, agenda template (morning), quick action, Athena plugin page «Recap».
-- **R3b** — Chronos flexible activities (§3.9) and standard activities with restore (§3.10), WebUI calendar panel,
+- **R3b** — Chronos flexible activities (§3.8) and standard activities with restore (§3.9), WebUI calendar panel,
   tool `agenda_standard`.
 - **R4** — docs sync, tests, cloud bench run, PR.
 
 ## 6. Decisions (Marko 2026-10-20)
 
-1. Evening recap, default 21:30, flexible 20:00–23:30 around his events (§3.9).
-2. Morning recap only when he plans it from the calendar template; deleted activities restorable in one click (§3.10).
+1. Evening recap, default 21:30, flexible 20:00–23:30 around his events (§3.8).
+2. Morning recap only when he plans it from the calendar template; deleted activities restorable in one click (§3.9).
 3. Quiet day: no message; proposals belong elsewhere (out of scope).
