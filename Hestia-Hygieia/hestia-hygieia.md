@@ -20,7 +20,9 @@ usage over time, history of changes, optional diary per body area
   `target` (at least N times per week/month), `as_needed`. The planner proposes, the user decides.
 - **Conflicts are advisory**: active families (retinoid, aha, bha, vitc, bpo…) with seeded rules. Routines whose
   core steps conflict never land on the same day; steps with their own cadence alternate (the most behind wins,
-  the other shows "non oggi: X"). Paused steps (`paused_until`) are skipped with their reason.
+  the other shows "non oggi: X"). A step already done today is a fact and is placed first, so after a retinol
+  evening the acid step says "non oggi: <retinolo>" instead of coming back as suggested; when the clash comes from
+  another routine done today, X is the product that clashes. Paused steps (`paused_until`) are skipped with their reason.
 - Does not call models (Oracle is the brain) and has no database (Archive `selfcare-store`).
 
 ## Storage

@@ -8,3 +8,4 @@
 - [x] P4 Docs + swagger + ARCHITECTURE; Self care / Guardaroba / Coach threads told via channel session
 - [x] Root CHANGELOG line
 - [ ] Marko: real run (up-all.bat --build), then a module using `replaces` (Self care / Guardaroba / Coach)
+- [x] Real run on the cloud bench (2026-10-19) with Self care: same reminder 3 days → one live notification «Saltato 2 volte · dal 19 ott», the replaced one answers 409, «Fatto» closes the chain and logs the routine, the next one starts from zero → `docs/work/2026-10-19-prove-reali-banco/`. Telegram delete/edit not testable from the cloud

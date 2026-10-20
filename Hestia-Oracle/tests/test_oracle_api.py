@@ -186,6 +186,19 @@ class TestOracleChatEndpoint:
         )
         assert mock_engine.chat.called
 
+    def test_webui_chat_counts_as_user_activity(self, oracle_client, monkeypatch):
+        """Bench run 2026-10-19: the WebUI sends only client="webui" (no notify_target), so chatting there never
+        woke the assistant presence; internal callers send neither and must not count."""
+        client, mock_engine = oracle_client
+        import main
+        pings = []
+        monkeypatch.setattr(main._presence, "get", lambda *a, **k: {"base": "idle"})
+        monkeypatch.setattr(main._presence, "ping", lambda *a, **k: pings.append(a))
+        for body in ({"message": "ciao", "client": "webui"}, {"message": "narrazione interna"}):
+            mock_engine.chat.return_value = iter([json.dumps({"type": "done", "signals": []}).encode()])
+            client.post("/api/chat", json=body)
+        assert pings == [("webui", "chat")]
+
     def test_chat_adds_personal_settings_of_the_client(self, oracle_client, monkeypatch):
         """Tone/instructions are central settings (oracle.chat.*) applied by Oracle itself."""
         client, mock_engine = oracle_client

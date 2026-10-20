@@ -14,6 +14,9 @@ DEFAULT_INCREMENTS = {"barbell": 2.5, "dumbbell": 2.0, "machine": 5.0, "cable": 
                       "ez_bar": 2.5, "trap_bar": 2.5, "kettlebell": 4.0, "band": 0.0, "bodyweight": 2.5, "other": 2.5}
 
 
+LOAD_KINDS = ("weight_reps", "weight_duration")   # the typed weight is the load (records.load_of)
+
+
 def increment_for(exercise: dict, increments: dict | None = None) -> float:
     if exercise.get("increment_kg"):
         return float(exercise["increment_kg"])
@@ -58,7 +61,15 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
     last_work = [s for s in last["detail"] if s.get("type") in ("normal", "drop", "failure", None)]
     out["last"] = {"date": last["date"], "sets": last["detail"], "top_weight": last["top_weight"],
                    "top_reps": last["top_reps"], "best_e1rm": last["best_e1rm"]}
-    last_w = last["top_weight"] if last["top_weight"] is not None else (last_work[0].get("weight_kg") if last_work else None)
+    kind = exercise.get("kind") or "weight_reps"
+    if kind in LOAD_KINDS:
+        last_w = last["top_weight"] if last["top_weight"] is not None else (last_work[0].get("weight_kg") if last_work else None)
+    else:
+        # Bodyweight kinds: the plan holds what is typed (extra load or assistance), never the bodyweight-based load.
+        typed = [s["weight_kg"] for s in last_work if s.get("weight_kg") is not None]
+        last_w = (min(typed) if kind == "assisted_bodyweight" else max(typed)) if typed else None
+        if kind != "weighted_bodyweight":
+            inc = 0.0     # no automatic +kg: more reps (assisted: less help is the user's call)
     blocked = _feedback_blocks(feedback or [], exercise["id"], last["date"])
 
     def apply(weight, reps_for, reason, action):
@@ -77,7 +88,7 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
     if rule == "none":
         return apply(last_w, lambda p, i: _last_reps(last_work, i) or p.get("reps_max"), "Come l'ultima volta.", "same")
 
-    if rule == "rpe" and last["best_e1rm"]:
+    if rule == "rpe" and last["best_e1rm"] and kind in LOAD_KINDS:
         def w_for(p):
             return round_to(_rpe_weight(last["best_e1rm"], p.get("reps_max") or p.get("reps_min") or 5, p.get("rpe") or 8), inc)
         sets, wi = [], 0
@@ -101,11 +112,11 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
 
     if rule == "linear":
         fails = _consecutive_misses(history, reps_min or 1)
-        if fails >= 2 and last_w:
+        if fails >= 2 and last_w and inc:
             new_w = round_to(last_w * 0.9, inc)
             return apply(new_w, lambda p, i: p.get("reps_max") or p.get("reps_min"),
                          f"Due sedute sotto le ripetizioni: si riparte da {fmt_kg(new_w)} kg (-10%).", "reset")
-        if hit_min and rpe_ok and not blocked and last_w is not None:
+        if hit_min and rpe_ok and not blocked and last_w is not None and inc:
             new_w = round_to(last_w + inc, inc)
             return apply(new_w, lambda p, i: p.get("reps_max") or p.get("reps_min"),
                          f"Riuscito: +{fmt_kg(inc)} kg.", "increase")

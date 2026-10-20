@@ -14,6 +14,8 @@
   outfits (pieces by slot base/top/mid/outer/bottom/onepiece/shoes/accessory, occasions, styles, seasons, rating,
   favourite, worn photos), «Indossato» marks, collections (capsule, packing list, shopping list) and the user's own
   vocabularies (categories with default slot, styles, occasions, colours with hex, patterns, fits, places).
+  Styles and occasions typed as labels («Ufficio», «Elegante», from chat or the UI) are stored as their vocabulary
+  key (`office`, `formal`); unknown words stay free tags. Suggestions and packing map them the same way.
 - Status is the daily tool: Nell'armadio · In lavanderia · Prestato · Messo via · Da riparare · Da donare · Donato ·
   Venduto · Desiderato · Archiviato. Only «Nell'armadio» pieces are suggested.
 - «Indossato» is **occasional**, never assumed daily: usage numbers (most worn, cost per wear, forgotten) are hints.

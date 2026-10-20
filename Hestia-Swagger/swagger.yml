@@ -410,7 +410,7 @@ components:
           type: string
         client:
           type: string
-          description: "Client name (telegram, webui…): Oracle adds the personal chat settings oracle.chat.* (Themis, session → client → profile)"
+          description: "Client name (telegram, webui…): Oracle adds the personal chat settings oracle.chat.* (Themis, session → client → profile); a chat with client or notify_target counts as user activity for the assistant presence (ping <client>)"
         mode:
           type: string
           enum: [auto, quick, thinking, cot, ""]

@@ -61,3 +61,4 @@ Spec: `SPEC.md` v2.1 · resume from the first unchecked box.
 - [x] v2.3 Impostazioni VS Code-like (2026-10-11): one search over everything (local, instant), sidebar
   Personali + Sistema with match counts, resizable; Personali rows = `<hx-setting-shell>`; user-scope settings
   only in Personali. "Themis non risponde" was the Hub registration 422 fixed in 9c8ebc8 (rebuild hub + themis).
+- [x] Real run on the cloud bench (2026-10-19): value changed from the WebUI is used at once by the module (PAO 18 → expiry 547 days), history, Annulla, out-of-range 422, 15 modules in the panel → `docs/work/2026-10-19-prove-reali-banco/`

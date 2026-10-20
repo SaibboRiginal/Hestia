@@ -22,3 +22,4 @@ Spec: `SPEC.md` v2.2 · resume from the first unchecked box.
 - [x] v2.3 feedback: popover explains state, effects, dnd; history tab (2026-10-11)
 - [x] Fix: state popover was clipped by the sidebar (overflow hidden) → fixed positioning (2026-10-11)
 - [ ] User test: .NET WebUI build + real run (`up-all.bat --build`); pytest suites not run here (smoke-checked only) — .NET build, Angular build and all pytest suites verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left
+- [x] Real run on the cloud bench (2026-10-19): chat → Sveglio, DND from the WebUI (only urgent) and off, idle threshold from the panel applies live, WebUI chat wakes it, `stato` tool from chat; fix found: WebUI chats never counted as activity (Oracle pinged only with `notify_target`) → `docs/work/2026-10-19-prove-reali-banco/`

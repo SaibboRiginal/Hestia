@@ -117,6 +117,21 @@ def test_live_session_prs_and_double_progression(hc):
     assert sug[catalog.exercise_id("back_squat")]["sets"][0]["weight_kg"] == 102.5
 
 
+def test_bodyweight_exercise_never_suggests_the_bodyweight_as_load(hc):
+    """Bench run 2026-10-19: an inverted row (bodyweight) got «67,5 kg» planned — the bodyweight-based load."""
+    row = _ex(hc, "inverted_row")
+    hc.log_measurement("bodyweight", 78)
+    t = hc.save_template({"name": "Corpo", "items": [
+        {"exercise_id": row["id"], "sets": [{"reps_min": 8, "reps_max": 12}] * 2}]})
+    s = hc.start_session(t["id"])
+    for _ in range(2):
+        hc.log_set(s["id"], {"session_exercise_id": s["blocks"][0]["id"], "reps": 12})
+    hc.finish_session(s["id"])
+    sug = hc.template_detail(t["id"])["items"][0]["suggestion"]
+    assert sug["sets"][0]["weight_kg"] is None           # no load to type on a bodyweight exercise
+    assert sug["action"] == "reps"
+
+
 def test_adaptation_for_pain_removes_pressing(hc):
     t = _template(hc)
     a = hc.adapt_today({"energy": 2, "time_minutes": 30, "pain_areas": ["spalla"]}, template_id=t["id"])

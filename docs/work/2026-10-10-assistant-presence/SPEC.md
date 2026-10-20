@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | User via external chat (Claude Code cloud session, project thread "Stato di attività dell'assistente") · 2026-10-10 |
 | **Status** | Draft — waiting for user approval; central-settings foundation (Themis, P1–P5) is on main, so the hold is lifted; code starts on approval |
 
@@ -122,7 +122,7 @@ restrictive wins. `presence_client.effect("work.heavy")` returns value + which s
 ### 4.6 Who uses it
 - **Oracle**: one short line in the system context, e.g. `Stato: Sveglio · occupato in Forge · ultima interazione
   2 h fa (Telegram)` (computed before the ping, so it can say "bentornato"); applies `chat.style`/`chat.notice`/
-  `llm.claude`; tool `assistant_state` for details/history. `/api/activity` stays as a thin alias.
+  `llm.claude`; tool `stato` (Chronos MCP) for details/history. `/api/activity` stays as a thin alias.
 - **Athena**: `effect("work.light")` replaces `_user_idle_seconds`; state in its observation context; reports
   `athena.thinking` as an activity.
 - **Forge**: autonomous tasks need `work.heavy` and `llm.claude` allowed, on top of the budget windows; reports
@@ -166,7 +166,7 @@ module in its own group the same way.
 - Athena thinks only with `work.light` allowed; Forge autonomous tasks and Metis trainings only with `work.heavy`.
 - A new state added from the panel (or declared by a module) changes behaviour through its effects with no change
   to Athena/Forge/Metis/Oracle/Hermes code.
-- Oracle's answer can refer to the last interaction (context line); `assistant_state` tool returns the state.
+- Oracle's answer can refer to the last interaction (context line); `stato` tool (Chronos MCP) returns the state.
 - `/stato` on Telegram and the WebUI badge show the same state.
 - Every threshold/switch in 4.5 is changeable from the settings panel and applies live.
 - Chronos down → modules log `[🔄]` and fall back as in 4.3; nothing stops.

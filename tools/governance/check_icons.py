@@ -19,18 +19,24 @@ SUFFIXES = {".ts", ".html", ".scss", ".css"}
 # Emoji / pictographs and the dingbat stars, ticks and crosses that read as emoji (arrows and math are fine).
 GLYPH = re.compile("[\U0001F300-\U0001FAFF☀-➿⭐⭕⏩-⏺⌚⌛™ℹ️]")
 COMMENT = re.compile(r"^\s*(//|\*|/\*)")
+DUPLICATES: list[str] = []
 
 
 def icon_set(path: Path) -> dict[str, str]:
     text = path.read_text(encoding="utf-8")
     start = text.index("const ICONS")
     block = text[text.index("{", start): text.index("\n};", start)]
-    return dict(re.findall(r"^\s*'?([a-z0-9-]+)'?\s*:\s*'([^']*)',", block, re.M))
+    pairs = re.findall(r"^\s*'?([a-z0-9-]+)'?\s*:\s*'([^']*)',", block, re.M)
+    names = [n for n, _ in pairs]
+    for name in sorted({n for n in names if names.count(n) > 1}):
+        DUPLICATES.append(f"{path.relative_to(ROOT)}: icon '{name}' defined twice")
+    return dict(pairs)
 
 
 def main() -> int:
     errors: list[str] = []
     web, sdk = icon_set(WEBUI_ICONS), icon_set(SDK_ICONS)
+    errors.extend(DUPLICATES)
     for name in sorted(set(web) | set(sdk)):
         if web.get(name) != sdk.get(name):
             errors.append(f"icon '{name}' differs between hx-icon and hxk-icon (add it to both, same path)")

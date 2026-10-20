@@ -154,6 +154,16 @@ def test_suggest_skips_laundry_and_recent(wd):
     assert "hint" in wd.suggest(day="2026-07-10", temp_c=28)
 
 
+@pytest.mark.unit
+def test_italian_labels_become_vocabulary_keys(wd):
+    """Bench run 2026-10-19: chat said «ufficio», the UI stores «office» — tags and the suggester must agree."""
+    shirt = wd.save_piece({"name": "Camicia", "category": "shirt", "occasions": ["Ufficio", "gita"], "styles": "Elegante"})
+    assert shirt["occasions"][0] == "office" and "gita" in shirt["occasions"]
+    assert wd.vocab_keys("occasion", ["ufficio"]) == ["office"]
+    _basics(wd)
+    assert wd.suggest(day="2026-01-10", temp_c=3, occasion="Ufficio")["occasion"] == "office"
+
+
 # ── service ─────────────────────────────────────────────────────────────────
 @pytest.mark.unit
 def test_search_and_filters(wd):

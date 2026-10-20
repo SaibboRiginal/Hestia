@@ -20,3 +20,4 @@ Spec: `SPEC.md` v1.10 · resume from the first unchecked box.
 - [ ] Telegram photo draft (send a photo → proposed piece → confirm): follow-up, needs a Telegram change
 - [ ] W6 Outfit board / photo composition (later)
 - [ ] W7 Mirror check-in: photo before going out → recognised pieces → wear entry (far future)
+- [x] Real run on the cloud bench (2026-10-19, fake LLM): 9 pieces with photo + thumbnail, filters, chat `wardrobe_search`, «Cosa mi metto» (8°, rain, office) API + chat, outfit by slots, «Indossato» from Home, donate → outfit «da rivedere», stats, packing, module context all pass; fix found: Italian labels («ufficio») did not match vocabulary keys, so the occasion was ignored → `docs/work/2026-10-19-prove-reali-banco/`. Not judgeable with the fake LLM: semantic search quality

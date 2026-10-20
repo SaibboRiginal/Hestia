@@ -95,6 +95,22 @@ def test_conflicting_steps_alternate(hy):
     assert any("alterna" in n["text"] for n in r["check"])
 
 
+def test_after_a_retinol_evening_the_aha_says_not_today(hy):
+    """Bench run 2026-10-19: once the retinol step was done, the AHA step went back to «suggested» the same evening."""
+    r, _, ret, aha = _evening(hy)
+    hy.log_routine(r["id"], None, "done", None, "")
+    plan = hy.routine_plan(r["id"])
+    steps = {s["label"]: s for s in plan["steps"]}
+    done = "Retinolo 0.3" if steps["Retinolo 0.3"]["done"] else "Tonico glicolico"
+    other = "Tonico glicolico" if done == "Retinolo 0.3" else "Retinolo 0.3"
+    assert steps[done]["include"] and steps[done]["done"]
+    assert not steps[other]["include"] and steps[other]["reason"] == f"non oggi: {done}"
+    # another evening routine the same day names the product that clashes, not a generic «conflitto»
+    r2 = hy.save_routine({"name": "Viso sera bis", "cadence": {"mode": "daily"}, "steps": [
+        {"product_id": ret["id"] if done == "Tonico glicolico" else aha["id"], "cadence": {"mode": "target", "times": 3}}]})
+    assert hy.routine_plan(r2["id"])["steps"][0]["reason"] == f"non oggi: {done}"
+
+
 def test_step_pause(hy):
     r, _, ret, _ = _evening(hy)
     steps = [dict(s) for s in hy.get("routine", r["id"])["steps"]]
