@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 6 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0 and §4 «Digest = recap della giornata»); routed by the project coordinator 2026-10-20 |
 | **Status** | Draft v2.0 after Marko's answers (2026-10-20), waiting for his ok (no code before it) |
 
@@ -94,7 +94,10 @@ speak" job (organ model rule 10).
 | Scout | new listings evaluated, best match | viewings in the calendar come from Chronos |
 
 Sibling dossiers plug in through the same endpoint: **weather** (Hecate, tomorrow's forecast) and **reflection**
-(Athena may add one «da tenere d'occhio» line from the module signals). Coordinated through the project coordinator.
+(agreed 2026-10-20 with «Riflessione a livelli», dossier `docs/work/2026-10-20-riflessione-a-livelli`: Athena serves
+its own piece `GET /api/module/recap` → `{module: "athena", title: "Da tenere d'occhio", order: 900, done: [...]}` or
+`{empty: true}`, reflection window 18:00–20:00 before the recap; that thread never touches `app/core/recap.py`). The
+collector discovers pieces from the Hub registry **including Athena's own** (called through Hub like any other).
 
 ### 3.4 Writing the text
 
