@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
-from .. import models, database
+from .. import database, maintenance, models
 
 router = APIRouter(prefix="/api/wardrobe-store", tags=["wardrobe"])
 
@@ -82,7 +82,7 @@ def _cursor(db: Session) -> int:
 
 @router.get("/cursor")
 def read_cursor(db: Session = Depends(database.get_db)):
-    return {"cursor": _cursor(db)}
+    return {"cursor": _cursor(db), "epoch": maintenance.epoch()}
 
 
 @router.get("/records")
@@ -113,4 +113,4 @@ def list_records(kind: Optional[str] = None, parent_id: Optional[str] = None, re
     col = {"at": models.WardrobeRecord.at.asc().nulls_first(), "-at": models.WardrobeRecord.at.desc().nulls_last()
            }.get(order, models.WardrobeRecord.seq.asc())
     rows = q.order_by(col).limit(max(1, min(int(limit), _MAX_LIMIT))).all()
-    return {"rows": [view(r) for r in rows], "cursor": _cursor(db)}
+    return {"rows": [view(r) for r in rows], "cursor": _cursor(db), "epoch": maintenance.epoch()}

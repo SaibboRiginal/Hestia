@@ -44,6 +44,7 @@ class Store:
         self.rows: dict[tuple[str, str], dict] = {}
         self.cursor = 0
         self.loaded = False
+        self.epoch: str | None = None   # Archive data epoch (changes on a backup rollback)
         self.revision = 0              # bumps on every local change (statistics cache key)
         self._lock = threading.RLock()
         self._last_refresh = 0.0
@@ -60,6 +61,16 @@ class Store:
                                                                                      "limit": 20000}
                 while True:
                     data = self.hub.ok("archive", "GET", "api/hercules-store/records", query=query, timeout=15)
+                    epoch = (data or {}).get("epoch")
+                    if epoch and self.epoch and epoch != self.epoch:
+                        # Archive's database was replaced (backup rollback): drop the mirror and reload it all.
+                        logger.warning("[🔄] event=hercules_mirror_reset reason=data_epoch")
+                        self.rows.clear()
+                        self.cursor, self.loaded, self.epoch = 0, False, epoch
+                        self.revision += 1
+                        query = {"include_deleted": "true", "limit": 20000}
+                        continue
+                    self.epoch = epoch or self.epoch
                     rows = (data or {}).get("rows") or []
                     for r in rows:
                         self._put(r)

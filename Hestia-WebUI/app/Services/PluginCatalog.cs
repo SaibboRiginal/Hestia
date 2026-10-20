@@ -10,7 +10,7 @@ using System.Text.Json;
 public class PluginCatalog
 {
     public const string Client = "webui";
-    public const string Types = "page,widget,quick_action";
+    public const string Types = "page,widget,quick_action,settings_panel";
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(15);
 
     private readonly IServiceScopeFactory _scopes;
