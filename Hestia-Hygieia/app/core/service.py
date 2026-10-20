@@ -1004,6 +1004,40 @@ class Hygieia:
                 "today": [{"name": p["name"], "state": p["state"], "hint": p["hint"], "reason": p["reason"],
                            "steps": [x["label"] for x in p["steps"] if x["include"]]} for p in s["plan"]["routines"]]}
 
+    def recap(self, day: date, nxt: date) -> dict:
+        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): routines done, skipped or left
+        due on ``day``, products used, routines due on ``nxt``, product alerts. Plain data, no LLM."""
+        routines = {r["id"]: r for r in self.items("routine")}
+        products = {p["id"]: p for p in self.items("product")}
+        logs = [l for l in self.items("log") if l.get("date") == day.isoformat()]
+        done, missed, upcoming = [], [], []
+        done_names = [routines.get(l.get("routine_id") or "", {}).get("name") for l in logs
+                      if l.get("routine_id") and l.get("status") in DONE_STATUSES]
+        done_names = [n for n in dict.fromkeys(done_names) if n]
+        if done_names:
+            done.append({"text": "Fatte: " + ", ".join(done_names), "tone": "success"})
+        used = [(products.get((l.get("steps") or [{}])[0].get("product_id") or "") or {}).get("name")
+                for l in logs if not l.get("routine_id") and l.get("status") in DONE_STATUSES]
+        used = [n for n in dict.fromkeys(used) if n]
+        if used:
+            done.append({"text": "Usati: " + ", ".join(used)})
+        skipped = [routines.get(l.get("routine_id") or "", {}).get("name") for l in logs
+                   if l.get("routine_id") and l.get("status") == "skipped"]
+        skipped = [n for n in dict.fromkeys(skipped) if n and n not in done_names]
+        if day <= self.today():
+            # only daily routines: a weekly one still «due» is not missed yet
+            left = [p["name"] for p in self.day(day).plan() if p["state"] == "due" and p["name"] not in done_names
+                    and p["name"] not in skipped and (p.get("goal") or {}).get("per") == "day"]
+            if left:
+                missed.append({"text": "Non fatte: " + ", ".join(left), "tone": "warning"})
+        if skipped:
+            missed.append({"text": "Saltate: " + ", ".join(skipped), "tone": "warning"})
+        due = [p["name"] for p in self.day(nxt).plan() if p["state"] == "due"]
+        if due:
+            upcoming.append({"text": "Da fare: " + ", ".join(due)})
+        alerts = [a["text"] for a in self.alerts()[:2]]
+        return {"done": done, "missed": missed, "next": upcoming, "note": " · ".join(alerts)}
+
     def context_text(self, budget: int = 400) -> str:
         s = self.summary()
         text = "Self care: " + s["text"]

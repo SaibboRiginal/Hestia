@@ -263,3 +263,23 @@ def test_store_unavailable(hy):
     hy.store.hub.down = True
     with pytest.raises(StoreUnavailable):
         hy.save_product({"name": "x"})
+
+
+# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ──────────────
+def test_recap_daily_routine_due_then_done(hy):
+    r, *_ = _evening(hy)
+    today = hy.today()
+    facts = hy.recap(today, today + timedelta(days=1))
+    assert facts["missed"] and "Viso sera" in facts["missed"][0]["text"]
+    assert facts["next"] and "Viso sera" in facts["next"][0]["text"]
+    hy.log_routine(r["id"])
+    facts = hy.recap(today, today + timedelta(days=1))
+    assert facts["done"][0]["text"] == "Fatte: Viso sera" and facts["missed"] == []
+
+
+def test_recap_skipped_routine(hy):
+    r, *_ = _evening(hy)
+    today = hy.today()
+    hy.log_routine(r["id"], status="skipped")
+    facts = hy.recap(today, today + timedelta(days=1))
+    assert facts["missed"] == [{"text": "Saltate: Viso sera", "tone": "warning"}]

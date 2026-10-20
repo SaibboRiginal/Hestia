@@ -402,3 +402,27 @@ def test_api_chat_attachment_handoff(api):
     assert c.post("/api/finance/attachments", json={"blob_id": "missing"}).json()["handled"] is False
     caps = main._registration()["capabilities"]
     assert caps["attachment_handlers"][0]["path"] == "/api/finance/attachments"
+
+
+# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+def test_recap_spent_today_by_category_and_budget(pl):
+    pl.add_tx({"amount": "12,50", "merchant": "Esselunga", "category": "spesa"})
+    pl.add_tx({"amount": 30, "merchant": "Esselunga", "category": "spesa"})
+    pl.set_budget("total", "500")
+    today = pl.today()
+    facts = pl.recap(today, today + timedelta(days=1))
+    assert facts["done"][0]["text"].startswith("Spesi 42,50 ")
+    assert "Spesa" in facts["done"][0]["text"] and "su 500" in facts["note"]
+
+
+def test_recap_quiet_day(pl):
+    today = pl.today()
+    assert pl.recap(today, today + timedelta(days=1)) == {"done": [], "next": [], "note": ""}
+
+
+@pytest.mark.api
+def test_api_recap_piece(api):
+    c, *_ = api
+    c.post("/api/finance/quick/expense/ristoranti", json={"amount": "3,20"})
+    body = c.get("/api/module/recap").json()
+    assert body["module"] == "plutus" and body["title"] == "Spese" and "3,20" in body["done"][0]["text"]

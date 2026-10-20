@@ -615,6 +615,47 @@ class Plutus:
                 "new_recurring": [r["merchant"] for r in self.recurring() if r.get("status") == "suggested"][:5],
                 "to_review": last["to_review"]}
 
+    def recap(self, day: date, nxt: date) -> dict:
+        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): spent and earned on ``day`` by
+        category, movements to review, confirmed recurring payments due on ``nxt``, month budget. No LLM."""
+        cats, cur = self.category_map(), self.currency()
+
+        def money(v: float) -> str:
+            return (f"{v:.0f}" if abs(v - round(v)) < 0.005 else f"{v:.2f}").replace(".", ",") + f" {cur}"
+
+        rows = [t for t in self._tx_rows() if t["date"] == day.isoformat()]
+        counted = [t for t in rows if self.counted(t, cats)]
+        by_cat: dict[str, float] = defaultdict(float)
+        for t in counted:
+            if t["amount"] < 0 and cats.get(t.get("category"), {}).get("kind") != "income":
+                by_cat[t.get("category")] += -t["amount"]
+        done, upcoming = [], []
+        spent = sum(by_cat.values())
+        if spent:
+            top = sorted(by_cat.items(), key=lambda kv: -kv[1])[:3]
+            done.append({"text": f"Spesi {money(spent)} ("
+                                 + ", ".join(f"{(cats.get(c) or {}).get('label') or c or 'altro'} {money(v)}" for c, v in top)
+                                 + ")"})
+        income = sum(t["amount"] for t in counted if t["amount"] > 0)
+        if income:
+            done.append({"text": f"Entrate {money(income)}", "tone": "success"})
+        review = sum(1 for t in rows if t.get("status") == "to_review")
+        if review:
+            done.append({"text": f"{review} moviment{'o' if review == 1 else 'i'} da rivedere", "tone": "warning"})
+        for r in self.recurring():
+            if r.get("status") == "confirmed" and r.get("next") == nxt.isoformat():
+                upcoming.append({"text": f"{r['merchant']} {money(float(r.get('amount') or 0))}"})
+        note = ""
+        if done or upcoming:
+            alerts = [a["text"] for a in self.budget_alerts()]
+            if alerts:
+                note = alerts[0]
+            else:
+                s = self.summary()
+                if s.get("budget"):
+                    note = f"{s['label']}: {money(s['spent'])} su {money(s['budget'])}"
+        return {"done": done, "next": upcoming, "note": note}
+
     def context_text(self, budget: int = 400) -> str:
         s = self.summary()
         cur = s["currency"]

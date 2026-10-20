@@ -311,3 +311,13 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
     assert wd._local_day("2026-10-18T22:20:00+00:00") == "2026-10-19"
     assert wd._local_day("2026-10-18T12:00:00+00:00") == "2026-10-18"
     assert wd._local_day("2026-10-18") == "2026-10-18"
+
+
+# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+def test_recap_lists_what_was_worn(wd):
+    tee, jeans, *_ = _basics(wd)
+    today = wd.today()
+    assert wd.recap(today, today + timedelta(days=1)) == {"done": [], "note": ""}
+    wd.mark_worn({"piece_ids": [tee["id"], jeans["id"]]})
+    facts = wd.recap(today, today + timedelta(days=1))
+    assert facts["done"][0]["text"].startswith("Indossato: ") and tee["name"] in facts["done"][0]["text"]

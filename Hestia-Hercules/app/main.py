@@ -24,6 +24,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
+from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
@@ -405,6 +406,15 @@ def goal_delete(id: str):
 @app.get(f"{API}/summary")
 def summary():
     return hercules.summary()
+
+
+def _recap_piece(day, nxt) -> dict:
+    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    facts = hercules.recap(day, nxt)
+    return recap.piece("hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30, **facts)
+
+
+app.include_router(recap.recap_router("hercules", _recap_piece))
 
 
 @app.get("/api/module/context")
@@ -863,7 +873,7 @@ except NameError:
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["fitness"],
-            "context_endpoint": "/api/module/context"}
+            "context_endpoint": "/api/module/context", **recap.capabilities()}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:
