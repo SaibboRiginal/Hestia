@@ -334,7 +334,21 @@ def api(monkeypatch):
     monkeypatch.setattr(main, "plutus", p)
     monkeypatch.setattr(main, "statements", Statements(p, fake))
     monkeypatch.setattr(main, "_llm", lambda prompt: None)
+    monkeypatch.setattr(main, "signals", _QuietSignals())
     return TestClient(main.app), main, fake
+
+
+class _QuietSignals:
+    """Stands in for the Signals publisher in API tests: counts ``changed()``, never touches the network."""
+
+    def __init__(self):
+        self.changes = 0
+
+    def changed(self):
+        self.changes += 1
+
+    def run(self):
+        return {"written": 0, "retracted": 0}
 
 
 @pytest.mark.api
@@ -402,3 +416,90 @@ def test_api_chat_attachment_handoff(api):
     assert c.post("/api/finance/attachments", json={"blob_id": "missing"}).json()["handled"] is False
     caps = main._registration()["capabilities"]
     assert caps["attachment_handlers"][0]["path"] == "/api/finance/attachments"
+
+
+# ── reflection signals (hestia_common.signals_client) ────────────────────────
+def _at(pl, day):
+    pl.today = lambda: day                       # fixed «today» (month pace and ISO weeks are date-driven)
+    return day
+
+
+def test_signals_budget_week_subscription_review(pl):
+    today = _at(pl, date(2026, 10, 14))           # Wednesday, day 14 of 31
+    for i in range(1, 9):                          # 8 previous weeks: 50 € each
+        pl.add_tx({"amount": 50, "merchant": "Lidl", "date": (today - timedelta(weeks=i)).isoformat()})
+    pl.add_tx({"amount": 200, "merchant": "Pizzeria Esempio", "date": today.isoformat()})
+    pl.set_budget("ristoranti", 150)               # over → alta
+    pl.set_budget("spesa", 100)                    # 50 € by day 14 → pace ~111 > 100 → attenzione
+    for i in range(3):                             # monthly subscription, first seen today
+        pl.add_tx({"amount": 9.99, "merchant": "Spotify", "date": (today - timedelta(days=60 - 30 * i)).isoformat()})
+    for i in range(5):
+        pl.add_tx({"amount": -3, "merchant": f"Boh {i}", "date": today.isoformat(), "status": "to_review"})
+    sigs, mets = pl.signals()
+    by = {s["key"]: s for s in sigs}
+    assert by["budget_pace:ristoranti"]["severity"] == "alta" and by["budget_pace:ristoranti"]["page"] == "budget"
+    assert by["budget_pace:spesa"]["severity"] == "attenzione"
+    assert by["unusual_week"]["severity"] == "attenzione" and by["unusual_week"]["metrics"]["median_8w"] == 50
+    assert any(k.startswith("new_subscription:rec_") for k in by)
+    assert by["to_review"]["metrics"]["count"] == 5
+    assert all("Plutus" not in s["text"] for s in sigs)
+    spent = [m for m in mets if m["name"] == "finance.spent"]
+    assert len(spent) == 12 and spent[-1]["week"] == "2026-W42" and spent[-1]["label"] == "Spesa settimanale"
+    assert spent[-1]["value"] == round(200 + 9.99 + 5 * 3, 4)
+    names = {m["name"] for m in mets}
+    assert "finance.spent.ristoranti" in names and len(names) <= 5
+    assert next(m for m in mets if m["name"] == "finance.spent.ristoranti")["label"] == "Ristoranti e bar"
+    assert all(m["name"] != "finance.spent.entrate" for m in mets)          # expenses only
+
+
+def test_signals_quiet_when_nothing_to_say(pl):
+    _at(pl, date(2026, 10, 14))
+    pl.add_tx({"amount": 10, "merchant": "Lidl", "date": "2026-10-13"})
+    pl.add_tx({"amount": 1000, "merchant": "Stipendio", "type": "income", "date": "2026-10-13"})
+    sigs, mets = pl.signals()
+    assert sigs == []                              # no budget, no history for a median, nothing to review
+    assert len([m for m in mets if m["name"] == "finance.spent"]) == 12
+    assert [m["value"] for m in mets if m["name"] == "finance.spent"][-1] == 10
+
+
+def test_topic_details(pl):
+    today = _at(pl, date(2026, 10, 14))
+    for i in range(1, 9):
+        pl.add_tx({"amount": 50, "merchant": "Lidl", "date": (today - timedelta(weeks=i)).isoformat()})
+    pl.add_tx({"amount": 200, "merchant": "Pizzeria Esempio", "date": today.isoformat()})
+    pl.set_budget("ristoranti", 150)
+    pl.set_budget("total", 300)
+    t = pl.topic_text("budget_pace:ristoranti")
+    assert "Ristoranti" in t and "200/150" in t and "Pizzeria Esempio" in t
+    assert "Budget mese" in pl.topic_text("budget_pace:month")
+    w = pl.topic_text("unusual_week")
+    assert "2026-W42" in w and "mediana" in w and "Pizzeria Esempio" in w
+    assert pl.topic_text("nope") is None and len(pl.topic_text("unusual_week", budget=40)) <= 40
+
+
+@pytest.mark.api
+def test_api_context_topic_and_signals_run(api, monkeypatch):
+    c, main, fake = api
+    c.post("/api/finance/transactions", json={"amount": 120, "merchant": "Pizzeria Esempio"})
+    assert main.signals.changes == 1               # a write asks for a re-evaluation
+    c.put("/api/finance/budgets/ristoranti", json={"amount": 100})
+    normal = c.get("/api/module/context").json()
+    assert set(normal) == {"module", "domain", "updated_at", "text"} and normal["text"].startswith("Spese ")
+    detail = c.get("/api/module/context", params={"topic": "budget_pace:ristoranti", "budget": 300}).json()
+    assert "120/100" in detail["text"] and detail["domain"] == "finance"
+    assert c.get("/api/module/context", params={"topic": "boh"}).json()["text"] == normal["text"]
+    # /signals/run → evaluate + sync through the (mocked) signals-store transport
+    from hestia_common.signals_client import Signals
+    calls = []
+
+    def fake_call(self, method, path, *, body=None, query=None, timeout=10):
+        calls.append((method, path, body))
+        return {"rows": []} if method == "GET" else {"applied": []}
+    monkeypatch.setattr(Signals, "_call", fake_call)
+    monkeypatch.setattr(main, "signals", Signals("plutus", "finance", evaluate=main.plutus.signals))
+    out = c.post("/api/finance/signals/run").json()
+    assert out["signals"] >= 1 and out["metrics"] >= 12 and out["written"] == out["signals"] + out["metrics"]
+    put = [b for m, _, b in calls if m == "PUT"][0]
+    assert any(r["id"] == "plutus:budget_pace:ristoranti" for r in put["rows"])
+    job = next(r for r in main._agenda_rules() if r["key"] == "plutus.signals")
+    assert "/api/finance/signals/run" in str(job)

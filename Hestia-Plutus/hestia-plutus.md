@@ -51,6 +51,27 @@ finance_summary, finance_search (with total), finance_add, finance_update (`alwa
 finance_budget, finance_set_budget, finance_categories, finance_import_statement (preview by blob id, then commit by
 import id), finance_recurring, finance_stats. Each has a REST twin `/api/finance/tools/<name>`. Context line for the
 assistant: `GET /api/module/context` (month spent/budget, pace, high budgets, top categories, to review, coming).
+`&topic=<signal key>` → the detail behind a reflection signal (`budget_pace:<cat>|month`: spent vs budget, pace,
+biggest movements; `unusual_week`: week vs 8-week median, top categories and merchants; `new_subscription:<id>`;
+`to_review`); unknown topic → the normal line.
+
+## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
+
+Deterministic, no LLM; texts say «Spese», never the module name. Stored in Archive `signals-store` through
+`Signals("plutus", "finance").sync()` (only changes written, signals gone are retracted).
+
+| Key | Severity | When | Page |
+|---|---|---|---|
+| `budget_pace:<category>` / `budget_pace:month` | alta / attenzione | budget reached / month pace (spent ÷ days gone × days, from day 5) above budget | budget |
+| `unusual_week` | attenzione | this ISO week's spending > 1.5 × median of the previous 8 weeks | statistiche |
+| `new_subscription:<rec id>` | info | recurring payment first detected in the last 7 days (`found_at` on the recurring row) | abbonamenti |
+| `to_review` | info | ≥ 5 movements to review | movimenti |
+
+Weekly metrics (12 ISO weeks, current included, expenses only): `finance.spent` «Spesa settimanale» and
+`finance.spent.<category>` for the top 4 categories of the period (label = category label). Re-evaluated after every
+write (transactions, quick expense, budget, import commit/undo, PayPal mails, MCP writes; `signals.changed()`,
+debounced), once after warm-up and by the agenda job `plutus.signals` (daily 17:30, editable) →
+`POST /api/finance/signals/run`.
 
 ## Notifications (agenda → Hermes)
 
@@ -58,6 +79,7 @@ assistant: `GET /api/module/context` (month spent/budget, pace, high budgets, to
 |---|---|---|
 | `plutus.daily` | every day 21:00 | budget alerts at `plutus.alerts.threshold` and at 100 % (switch `plutus.alerts.enabled`), recurring detection |
 | `plutus.review` | 1st of the month 09:00 | last month vs budget and the month before, text by Oracle (fallback: plain numbers), only if `plutus.review.enabled` |
+| `plutus.signals` | every day 17:30 | reflection signals + weekly metrics → Archive `signals-store` (no notification) |
 | `plutus.statement_reminder` | days 3, 6, 9 at 10:00 | last month's statement missing → one reminder (max per week), «Non questo mese» skips it, only if `plutus.reminder.enabled` |
 
 ## Client UI (plugin contract)
@@ -83,7 +105,7 @@ review.enabled (false), reminder.enabled / reminder.max_per_week (from `hestia_c
 
 See `Hestia-Swagger/swagger.yml` tag *Plutus*. Groups under `/api/finance`: meta, categories, rules, accounts,
 budgets, transactions, summary, stats, recurring, export, imports (+commit, undo), attachments, mail (+check),
-quick, alerts/run, review/run, reminders/run|skip, tools.
+quick, alerts/run, review/run, reminders/run|skip, signals/run, tools.
 
 ## Configuration (infrastructure only)
 
@@ -91,5 +113,5 @@ quick, alerts/run, review/run, reminders/run|skip, tools.
 
 ## Tests
 
-`python -m pytest -q -m "unit or api" Hestia-Plutus/tests` (fake Archive in memory, synthetic receipts and a
+`python -m pytest -q -m "unit or api or format" Hestia-Plutus/tests` (fake Archive in memory, synthetic receipts and a
 generated PDF, no network).

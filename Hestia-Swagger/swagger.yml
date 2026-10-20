@@ -7736,6 +7736,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hercules/signals/run:
+    post:
+      tags: [Hercules]
+      summary: "Agenda job hercules.signals: re-evaluate reflection signals (stall:<exercise>, deload, missed_streak, pr:<exercise>, week_goal) and weekly metrics (fitness.sessions, fitness.volume, fitness.energy), sync to Archive signals-store → {written, retracted, signals, metrics}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
   /api/wardrobe/meta:
     get:
       tags: [Wardrobe]
@@ -8119,12 +8128,24 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/wardrobe/signals/run:
+    post:
+      tags: [Wardrobe]
+      summary: "Agenda job wardrobe.signals (daily 17:30): reflection signals forgotten, laundry_backlog, to_repair + weekly metric wardrobe.worn (12 weeks) → Archive signals-store {written, retracted, signals, metrics, error?}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
   /api/module/context:
     get:
       tags: [Wardrobe]
-      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract)"
+      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract). ?topic=<signal key> → the detail behind that reflection signal; unknown topic → the normal line"
       servers:
         - url: http://localhost:19017
+      parameters:
+        - {name: budget, in: query, schema: {type: integer, default: 400}}
+        - {name: topic, in: query, required: false, schema: {type: string}, description: "Signal key (e.g. budget_pace:ristoranti, unusual_week, forgotten)"}
       responses:
         "200": {description: OK}
 
@@ -8499,6 +8520,15 @@ paths:
     post:
       tags: [Plutus]
       summary: "Agenda job plutus.review (1st of the month, off by default; {force: true} overrides): last month vs budget and month before {sent, text?, review?, why?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/signals/run:
+    post:
+      tags: [Plutus]
+      summary: "Agenda job plutus.signals (daily 17:30): reflection signals budget_pace:<cat>|month, unusual_week, new_subscription:<id>, to_review + weekly metrics finance.spent, finance.spent.<category> (12 weeks) → Archive signals-store {written, retracted, signals, metrics, error?}"
       servers:
         - url: http://localhost:19020
       responses:
@@ -9217,6 +9247,15 @@ paths:
     post:
       tags: [Hygieia]
       summary: "Agenda job hygieia.alerts: weekly notice per expiring / running out product"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/signals/run:
+    post:
+      tags: [Hygieia]
+      summary: "Agenda job hygieia.signals: re-evaluate reflection signals (adherence_drop, goal:<routine>, streak:<routine>) and weekly metrics (selfcare.adherence, selfcare.journal.<area>.<metric>), sync to Archive signals-store → {written, retracted, signals, metrics}"
       servers:
         - url: http://localhost:19018
       responses:

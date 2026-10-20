@@ -34,6 +34,7 @@ from hestia_common.oracle_usecases import capabilities as llm_capabilities, usec
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
+from hestia_common.signals_client import Signals, signals_rule
 
 from .core.hub import Hub
 from .core.service import Invalid, NotFound, Plutus
@@ -109,6 +110,9 @@ plutus = Plutus(store, settings.get, tz_name=TZ, llm=_llm)
 statements = Statements(plutus, hub)
 agenda = AgendaClient("plutus", HUB_API_URL)
 mail = MailClient("plutus", HUB_API_URL)
+# Reflection signals (budget pace, unusual week, new subscriptions + weekly spent) → Archive signals-store.
+# evaluate goes through the module global so tests can swap ``plutus``.
+signals = Signals("plutus", DOMAIN, evaluate=lambda: plutus.signals(), hub_api_url=HUB_API_URL)
 
 app = FastAPI(title="Hestia-Plutus", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -204,7 +208,9 @@ def budgets(month: str = ""):
 
 @app.put(f"{API}/budgets/{{category}}")
 def budget_set(category: str, body: dict = Body(...)):
-    return plutus.set_budget(category, body.get("amount"))
+    out = plutus.set_budget(category, body.get("amount"))
+    signals.changed()
+    return out
 
 
 # ── transactions ─────────────────────────────────────────────────────────────
@@ -218,7 +224,9 @@ def transactions(month: str = "", since: str = "", until: str = "", category: st
 
 @app.post(f"{API}/transactions")
 def transaction_create(body: dict = Body(...)):
-    return plutus.add_tx(body, source=body.get("source") or "manual")
+    out = plutus.add_tx(body, source=body.get("source") or "manual")
+    signals.changed()
+    return out
 
 
 @app.get(f"{API}/transactions/{{id}}")
@@ -233,12 +241,16 @@ def transaction_get(id: str):
 
 @app.put(f"{API}/transactions/{{id}}")
 def transaction_update(id: str, body: dict = Body(...)):
-    return plutus.update_tx(id, body, learn=bool(body.get("learn")))
+    out = plutus.update_tx(id, body, learn=bool(body.get("learn")))
+    signals.changed()
+    return out
 
 
 @app.delete(f"{API}/transactions/{{id}}")
 def transaction_delete(id: str):
-    return plutus.delete_tx(id)
+    out = plutus.delete_tx(id)
+    signals.changed()
+    return out
 
 
 # ── summaries ────────────────────────────────────────────────────────────────
@@ -270,9 +282,18 @@ def export():
 
 
 @app.get("/api/module/context")
-def module_context(budget: int = 400):
-    """Shared contract of the modules: a short caveman line the assistant may include."""
-    return {"module": "plutus", "domain": DOMAIN, "updated_at": now_iso(), "text": plutus.context_text(budget)}
+def module_context(budget: int = 400, topic: str = ""):
+    """Shared contract of the modules: a short caveman line the assistant may include. ``topic`` = a signal key
+    (``budget_pace:<cat>``, ``unusual_week``, ``new_subscription:<id>``, ``to_review``) → the detail behind it;
+    unknown topic → the normal line."""
+    text = (plutus.topic_text(topic, budget) if topic else None) or plutus.context_text(budget)
+    return {"module": "plutus", "domain": DOMAIN, "updated_at": now_iso(), "text": text}
+
+
+@app.post(f"{API}/signals/run")
+def signals_run():
+    """Agenda job ``plutus.signals``: re-evaluate the reflection signals and weekly metrics, sync to Archive."""
+    return signals.run()
 
 
 # ── statements (Hype PDF): preview → commit → undo ───────────────────────────
@@ -296,12 +317,16 @@ def import_get(id: str):
 
 @app.post(f"{API}/imports/{{id}}/commit")
 def import_commit(id: str):
-    return statements.commit(id)
+    out = statements.commit(id)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/imports/{{id}}/undo")
 def import_undo(id: str):
-    return statements.undo(id)
+    out = statements.undo(id)
+    signals.changed()
+    return out
 
 
 # Chat attachments (Oracle hand-off): a PDF whose text has these words is offered to Plutus (Hub capability).
@@ -380,6 +405,7 @@ def process_pending_mail() -> dict:
                            added=_mail_stats["added"] + added, last_error=None)
         if added:
             plutus.detect_recurring()
+            signals.changed()
         return {"status": "ok", "processed": len(pending or []), "added": added}
     finally:
         _mail_lock.release()
@@ -428,6 +454,7 @@ def quick_expense(id: str, body: dict = Body(default={})):
     out = plutus.add_tx({"amount": body.get("amount"), "category": id, "date": body.get("date"),
                          "merchant": body.get("merchant") or body.get("note") or "", "type": "expense",
                          "account": body.get("account") or "contanti"}, source="quick")
+    signals.changed()
     return {**out, "label": f"{out['category_label']}: {abs(out['amount']):.2f} {out['currency']}"}
 
 
@@ -439,7 +466,9 @@ def quick_expense_undo(id: str, date: str = ""):
     if not rows:
         raise NotFound("nessuna spesa veloce da annullare")
     last = max(rows, key=lambda t: t.get("created_at") or "")
-    return plutus.delete_tx(last["id"])
+    out = plutus.delete_tx(last["id"])
+    signals.changed()
+    return out
 
 
 # ── alerts, review, statement reminder (agenda jobs → Hermes) ────────────────
@@ -551,6 +580,7 @@ def _agenda_rules() -> list[dict]:
         job_rule("plutus.statement_reminder", "Spese: promemoria estratto conto", service="plutus",
                  path=f"{API}/reminders/run", recurrence="FREQ=MONTHLY;BYMONTHDAY=3,6,9", start_at="2026-01-01T10:00:00",
                  tz=TZ, description="Solo se il promemoria è attivo e manca l'estratto del mese passato."),
+        signals_rule("plutus", "Spese", path=f"{API}/signals/run", tz=TZ),
     ]
 
 
@@ -626,6 +656,7 @@ try:
         out = plutus.add_tx({"amount": amount, "category": category, "merchant": merchant, "date": date,
                              "account": account or "contanti", "notes": note, "type": "income" if income else "expense"},
                             source="chat")
+        signals.changed()
         return {"saved": True, **_short(out), "undo": "finance_delete"}
 
     def _update(id: str = "", category: str = "", amount: float | None = None, date: str = "", merchant: str = "",
@@ -634,10 +665,14 @@ try:
                                   "notes": note}.items() if v not in (None, "")}
         if not body:
             return {"error": "nessuna modifica indicata"}
-        return {"saved": True, **_short(plutus.update_tx(id, body, learn=always))}
+        out = plutus.update_tx(id, body, learn=always)
+        signals.changed()
+        return {"saved": True, **_short(out)}
 
     def _delete(id: str = "") -> dict:
-        return plutus.delete_tx(id)
+        out = plutus.delete_tx(id)
+        signals.changed()
+        return out
 
     def _budget(month: str = "") -> dict:
         b = budgets(month)
@@ -646,7 +681,9 @@ try:
                                for c in b["categories"]]}
 
     def _set_budget(category: str = "", amount: float | None = None) -> dict:
-        return {"saved": True, **plutus.set_budget(category or "total", amount)}
+        out = plutus.set_budget(category or "total", amount)
+        signals.changed()
+        return {"saved": True, **out}
 
     def _categories() -> dict:
         return {"items": [f"{c['id']} = {c['label']} ({c.get('kind')})" for c in plutus.categories()]}
@@ -654,6 +691,7 @@ try:
     def _import(blob_id: str = "", account: str = "hype", commit: bool = False, import_id: str = "") -> dict:
         if import_id and commit:
             v = statements.commit(import_id)
+            signals.changed()
             return {"committed": True, "added": v.get("added"), "linked": v.get("linked"), "period": v.get("period")}
         v = statements.preview(blob_id=blob_id, account=account, source="chat")
         return {"import_id": v["id"], "period": v["period"], "counts": v["counts"], "how": v["how"],
@@ -798,6 +836,7 @@ def _warm_up() -> None:
             if store.refresh(force=True):
                 plutus.ensure_seed()
                 process_pending_mail()
+                signals.changed()
                 return
         except Exception as exc:
             logger.warning("[🔄] event=plutus_warmup_failed attempt=%d error=%s", attempt, exc)

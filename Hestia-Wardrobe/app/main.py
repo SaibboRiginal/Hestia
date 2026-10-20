@@ -29,6 +29,7 @@ from hestia_common.oracle_usecases import capabilities as llm_capabilities, usec
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
+from hestia_common.signals_client import Signals, signals_rule
 
 from .core import domain
 from .core.hub import Hub, HubError
@@ -74,6 +75,9 @@ hub = Hub(HUB_API_URL)
 store = Store(hub)
 wardrobe = Wardrobe(store, hub, settings.get, TZ)
 agenda = AgendaClient("wardrobe", HUB_API_URL)
+# Reflection signals (forgotten pieces, laundry backlog, to repair + weekly worn count) → Archive signals-store.
+# evaluate goes through the module global so tests can swap ``wardrobe``.
+signals = Signals("wardrobe", "wardrobe", evaluate=lambda: wardrobe.signals(), hub_api_url=HUB_API_URL)
 
 app = FastAPI(title="Hestia-Wardrobe", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -160,7 +164,9 @@ def piece_create(body: dict = Body(...)):
 
 @app.post(f"{API}/pieces/bulk")
 def pieces_bulk(body: dict = Body(...)):
-    return wardrobe.bulk([str(i) for i in body.get("ids") or []], body.get("changes") or {})
+    out = wardrobe.bulk([str(i) for i in body.get("ids") or []], body.get("changes") or {})
+    signals.changed()
+    return out
 
 
 @app.get(f"{API}/pieces/{{id}}")
@@ -171,12 +177,16 @@ def piece_get(id: str):
 
 @app.patch(f"{API}/pieces/{{id}}")
 def piece_update(id: str, body: dict = Body(...)):
-    return wardrobe.save_piece(body, id, partial=True)
+    out = wardrobe.save_piece(body, id, partial=True)
+    signals.changed()
+    return out
 
 
 @app.delete(f"{API}/pieces/{{id}}")
 def piece_delete(id: str, hard: bool = False):
-    return wardrobe.delete_piece(id, hard=hard)
+    out = wardrobe.delete_piece(id, hard=hard)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/pieces/{{id}}/photos")
@@ -242,12 +252,16 @@ def outfit_photo_remove(id: str, photo_id: str):
 
 @app.post(f"{API}/outfits/{{id}}/worn")
 def outfit_worn(id: str, body: dict = Body(default={})):
-    return wardrobe.mark_worn({**(body or {}), "outfit_id": id})
+    out = wardrobe.mark_worn({**(body or {}), "outfit_id": id})
+    signals.changed()
+    return out
 
 
 @app.delete(f"{API}/outfits/{{id}}/worn/today")
 def outfit_unworn(id: str, date: str = ""):
-    return wardrobe.unmark_outfit(id, date)
+    out = wardrobe.unmark_outfit(id, date)
+    signals.changed()
+    return out
 
 
 # ── "Indossato" marks ────────────────────────────────────────────────────────
@@ -259,12 +273,16 @@ def wears(date_from: str = "", date_to: str = "", limit: int = 200):
 
 @app.post(f"{API}/wears")
 def wear_create(body: dict = Body(...)):
-    return wardrobe.mark_worn(body)
+    out = wardrobe.mark_worn(body)
+    signals.changed()
+    return out
 
 
 @app.delete(f"{API}/wears/{{id}}")
 def wear_delete(id: str):
-    return wardrobe.delete_wear(id)
+    out = wardrobe.delete_wear(id)
+    signals.changed()
+    return out
 
 
 # ── suggestions & stats ──────────────────────────────────────────────────────
@@ -296,10 +314,18 @@ def summary():
 
 
 @app.get("/api/module/context")
-def module_context(budget: int = 400):
-    """Assistant context contract (SPEC §6.2): a short caveman line Oracle may include."""
+def module_context(budget: int = 400, topic: str = ""):
+    """Assistant context contract (SPEC §6.2): a short caveman line Oracle may include. ``topic`` = a signal key
+    (``forgotten``, ``laundry_backlog``, ``to_repair``) → the detail behind it; unknown topic → the normal line."""
     _refresh()
-    return wardrobe.context(budget)
+    return wardrobe.context(budget, topic)
+
+
+@app.post(f"{API}/signals/run")
+def signals_run():
+    """Agenda job ``wardrobe.signals``: re-evaluate the reflection signals and the weekly worn count, sync to Archive."""
+    _refresh()
+    return signals.run()
 
 
 # ── collections (capsule, packing lists, shopping) ───────────────────────────
@@ -357,7 +383,9 @@ def export():
 
 @app.post(f"{API}/import")
 def import_json(body: dict = Body(...)):
-    return wardrobe.import_json(str(body.get("text") or ""))
+    out = wardrobe.import_json(str(body.get("text") or ""))
+    signals.changed()
+    return out
 
 
 # ── quick actions (WebUI Home) ───────────────────────────────────────────────
@@ -370,12 +398,16 @@ def quick_outfits():
 @app.post(f"{API}/quick/{{id}}")
 def quick_mark(id: str, body: dict = Body(default={})):
     b = body or {}
-    return wardrobe.quick_mark(id, b.get("date"), b.get("note") or "", b.get("source") or "webui")
+    out = wardrobe.quick_mark(id, b.get("date"), b.get("note") or "", b.get("source") or "webui")
+    signals.changed()
+    return out
 
 
 @app.delete(f"{API}/quick/{{id}}")
 def quick_undo(id: str, date: str = ""):
-    return wardrobe.quick_undo(id, date)
+    out = wardrobe.quick_undo(id, date)
+    signals.changed()
+    return out
 
 
 # ── notifications through Hermes (agenda jobs; both off by default) ──────────
@@ -455,7 +487,8 @@ def _agenda_rules() -> list[dict]:
             job_rule("wardrobe.review", "Revisione mensile del guardaroba", service="wardrobe", path=f"{API}/review/run",
                      recurrence="FREQ=MONTHLY;BYDAY=1SU", start_at="2026-01-04T10:00:00", tz=TZ,
                      description="Capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere. "
-                                 "Solo se la revisione mensile è accesa nelle impostazioni.")]
+                                 "Solo se la revisione mensile è accesa nelle impostazioni."),
+            signals_rule("wardrobe", "Guardaroba", path=f"{API}/signals/run", tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
@@ -556,6 +589,7 @@ try:
         if location:
             upd["location"] = location
         d = wardrobe.save_piece(upd, p["id"], partial=True)
+        signals.changed()
         return {"saved": True, **_brief_piece(d)}
 
     def _outfits(query: str = "", season: str = "", occasion: str = "", favorite: bool | None = None, limit: int = 15) -> dict:
@@ -601,6 +635,7 @@ try:
         if ids:
             body["piece_ids"] = ids
         w = wardrobe.mark_worn(body)
+        signals.changed()
         return {"saved": True, "date": w["date"], "label": w["label"], "goal": wardrobe.goal_progress()}
 
     def _stats() -> dict:
@@ -781,6 +816,7 @@ def _warm_up() -> None:
         try:
             if store.refresh(force=True):
                 wardrobe.ensure_vocabularies()
+                signals.changed()
                 return
         except Exception as exc:
             logger.warning("[🔄] event=wardrobe_warmup_failed attempt=%d error=%s", attempt, exc)

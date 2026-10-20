@@ -311,10 +311,11 @@ def athena_thinking(
 
 
 @app.get("/api/athena/thinking/summary")
-def athena_thinking_summary(limit: int = 10) -> dict[str, Any]:
+def athena_thinking_summary(limit: int = 10, track: str | None = None) -> dict[str, Any]:
     """Compact cycles (newest first) for the Pensieri page and the MCP tool ``athena_thinking``: observation
-    counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome."""
-    return runtime.thinking_summary(limit=limit)
+    counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome.
+    ``track`` = ``vita`` | ``sistema`` (both when omitted)."""
+    return runtime.thinking_summary(limit=limit, track=track or None)
 
 
 @app.post("/api/athena/think")
