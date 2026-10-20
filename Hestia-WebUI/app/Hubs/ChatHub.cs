@@ -187,7 +187,7 @@ public class ChatHub : Hub
                 if (evt.Type == OracleStreamService.UnavailableType)
                 {
                     await Clients.Caller.SendAsync("ReceiveEvent",
-                        new { type = "error", content = "Oracle è offline: riprova appena torna." }, cts.Token);
+                        new { type = "error", content = "Non posso rispondere adesso: riprova più tardi." }, cts.Token);
                     break;
                 }
                 await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);

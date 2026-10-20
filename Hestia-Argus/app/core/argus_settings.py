@@ -102,8 +102,8 @@ settings.declare([
             order=34, help="Dopo quanto ricontrollo un modulo fermo (poi il tempo raddoppia a ogni tentativo)."),
     setting(REPAIR_RECHECK_MAX, "Ricontrollo massimo", "int", 360, group="Riparazione", min=1, max=10080,
             unit="min", order=35, help="Tempo massimo tra due ricontrolli di un modulo che resta fermo."),
-    setting(ORACLE_GRACE, "Oracle offline dopo", "int", 60, group="Riparazione", min=0, max=3600, unit="s",
-            order=36, help="Secondi senza Oracle prima dello stato «Oracle offline» e dell'avviso: un riavvio "
+    setting(ORACLE_GRACE, "Non disponibile dopo", "int", 60, group="Riparazione", min=0, max=3600, unit="s",
+            order=36, help="Secondi senza Oracle prima dello stato «Non disponibile» e dell'avviso: un riavvio "
                            "normale più breve non dice nulla. I messaggi in chat vanno in coda comunque."),
     # ── Proposte di correzione a Forge (acts without the user → read only) ─
     setting(FORGE_ENABLED, "Proposte di correzione", "bool", True, group="Proposte di correzione",

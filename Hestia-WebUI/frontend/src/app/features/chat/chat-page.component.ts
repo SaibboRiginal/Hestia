@@ -86,8 +86,8 @@ import { PresenceService } from '../../services/presence.service';
     <div class="composer-wrap">
       @if (presence.chatQueued()) {
         <div class="offline hx-fade-in" role="status">
-          <span class="oe">⚠️</span>
-          <span><b>Oracle offline</b> · i messaggi restano in coda e avranno risposta appena torna.</span>
+          <span class="oe">⏳</span>
+          <span><b>Non disponibile</b> · i messaggi restano in coda e avranno risposta appena possibile.</span>
         </div>
       }
       @if (chat.pendingQuestion(); as q) {

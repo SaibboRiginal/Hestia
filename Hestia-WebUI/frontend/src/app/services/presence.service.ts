@@ -43,7 +43,7 @@ const EFFECT_LABELS: Record<string, Record<string, string>> = {
   },
   'chat.reply': {
     live: '',
-    queued: 'Oracle è offline: i messaggi in chat restano in coda e avranno risposta appena torna',
+    queued: 'Non posso rispondere adesso: i messaggi in chat restano in coda e avranno risposta appena possibile',
   },
   'notify.level': {
     all: 'Ti arrivano tutte le notifiche',
@@ -68,7 +68,7 @@ export function reasonLabel(r?: string): string {
     case 'signal': case 'clear':
       if (a?.startsWith('resource.claude')) return 'quota Claude';
       if (a?.startsWith('health.')) return 'moduli in errore';
-      if (a?.startsWith('oracle.offline')) return 'Oracle offline o tornato';
+      if (a?.startsWith('oracle.offline')) return 'non disponibile o di nuovo disponibile';
       if (a?.startsWith('manual.dnd')) return 'Non disturbare scaduto';
       return '';
     default: return '';

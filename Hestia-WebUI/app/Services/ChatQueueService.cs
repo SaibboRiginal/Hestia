@@ -15,7 +15,7 @@ using Hestia.WebUI.Hubs;
 public class ChatQueueService
 {
     public const string Client = "webui";
-    public const string QueuedText = "⚠️ Oracle è offline: messaggio in coda, ti rispondo appena torna.";
+    public const string QueuedText = "⏳ Non posso rispondere adesso: messaggio in coda, ti rispondo appena possibile.";
 
     private readonly IServiceScopeFactory _scopes;
     private readonly IHubContext<ChatHub> _browsers;

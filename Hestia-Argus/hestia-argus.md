@@ -165,10 +165,10 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v2.0), code `app/services/oracle_wat
 `recheck/oracle` (no loop of its own).
 - Oracle unhealthy or missing from the Hub registry for `argus.oracle.grace` s (60) → presence signal
   `oracle.offline = true` (meta `reason` unreachable/unhealthy/unregistered, `since`; refreshed every 10 min, TTL 30
-  min) → Chronos overlay «⚠️ Oracle offline» (effect `chat.reply = queued`, proactive work deferred).
+  min) → Chronos overlay «⏳ Non disponibile» (effect `chat.reply = queued`, proactive work deferred).
 - Same moment, one Hermes notice with fixed text (event `service.action_required`, the system subscription every
   client always has, unlike the opt-in `service.health` alerts; `replaces: "system.oracle"`, one live notice). Oracle back → signal
-  cleared and the notice closed (`closes: "system.oracle"`) with «✅ Oracle di nuovo online dopo N min». Chronos then asks
+  cleared and the notice closed (`closes: "system.oracle"`) with «✅ Di nuovo disponibile dopo N min». Chronos then asks
   the chat clients to answer the messages they queued (`chat_queue_drain`).
 - Oracle's generic `service.health` alert/recovery is not sent (the Oracle notice replaces it); repair requests and
   agenda rechecks stay as for any service. A shorter outage (restart, deploy) says nothing.
@@ -210,4 +210,4 @@ recovered → entry completed and recovery notice. Visible/movable/cancellable f
 
 ## Assistant presence
 
-Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Oracle offline».
+Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Non disponibile».

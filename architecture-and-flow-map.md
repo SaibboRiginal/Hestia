@@ -209,7 +209,7 @@ Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
 
 ### Oracle offline flow (Oracle down)
 1. Argus' monitor cycle sees Oracle down past `argus.oracle.grace` (60 s) → presence signal `oracle.offline` (Chronos
-   overlay «⚠️ Oracle offline», effect `chat.reply = queued`) + one Hermes notice to every client.
+   overlay «⏳ Non disponibile», effect `chat.reply = queued`) + one Hermes notice to every client.
 2. Telegram/WebUI: a chat message Oracle does not accept → Archive `/api/chat-queue` + fixed «in coda» reply.
 3. Oracle healthy → Argus clears the signal and closes the notice; Chronos sees `chat.reply` back to `live` and calls each
    client's `capabilities.chat_queue_drain` via Hub; each client replays its queue to Oracle, oldest first.

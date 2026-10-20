@@ -21,8 +21,8 @@ logger = logging.getLogger("hestia_telegram.chat_queue")
 
 CLIENT = "telegram"
 DRAIN_PATH = "/api/chat-queue/drain"
-FILE_OFFLINE_TEXT = ("⚠️ <b>Oracle è offline</b>: non posso leggere il file adesso. "
-                     "Rimandamelo quando torna online.")
+FILE_OFFLINE_TEXT = ("⏳ <b>Non posso rispondere adesso</b>: non riesco a leggere il file. "
+                     "Rimandamelo più tardi.")
 _drain_lock = threading.Lock()
 
 
@@ -60,8 +60,8 @@ def enqueue(chat_id, session_id: str, text: str, message_id: int | None, error: 
 def queued_text(item: dict) -> str:
     position = int(item.get("position") or 1)
     where = f" (n° {position})" if position > 1 else ""
-    return (f"⚠️ <b>Oracle è offline</b>: messaggio in coda{where}, "
-            "ti rispondo appena torna.")
+    return (f"⏳ <b>Non posso rispondere adesso</b>: messaggio in coda{where}, "
+            "ti rispondo appena possibile.")
 
 
 def _note(item: dict) -> str:
@@ -108,7 +108,7 @@ def drain(reason: str = "") -> dict:
                 headed.add(target)
                 try:
                     core.bot.send_message(int(target), f"✅ Rispondo ai {per_chat[target]} messaggi arrivati "
-                                                       "mentre ero offline.", parse_mode="HTML")
+                                                       "mentre non potevo rispondere.", parse_mode="HTML")
                 except Exception:
                     pass
             ok, detail = _answer(item)
@@ -142,7 +142,7 @@ def _answer(item: dict) -> tuple[bool, str]:
         send_oracle_questions(chat_id, str(item["session_id"]), result.signals, result.questions)
         return True, ""
     except OracleUnavailable as exc:
-        core.bot.edit_message_text(f"⚠️ Oracle non risponde ancora: resto in coda.\n<code>{escape(str(exc))}</code>",
+        core.bot.edit_message_text("⏳ Non posso ancora rispondere: resto in coda.",
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]
     except Exception as exc:

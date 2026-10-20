@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-20
+- Assistant unavailable state: user-facing texts are generic and name no module («⏳ Non disponibile», «Non posso rispondere adesso: messaggio in coda…», «✅ Di nuovo disponibile») → `docs/work/2026-10-19-oracle-offline/` [ext-chat]
+
 ## 2026-10-19
 - Oracle a blocchi: named providers (keys only in env `ORACLE_KEY_<NAME>`), reusable model chains that skip a model out of quota until its reset, use cases declared by every module and chosen in one place (Oracle → Cervello → **Modelli**), Forge on the chain of `forge.codice`, brain mode **Esterna** where Claude Code or Codex run the loop with Hestia's tools over MCP, and a **Uso** panel (calls, tokens, cache, cost per module and conversation, kept in Archive) → `docs/work/2026-10-19-oracle-a-blocchi/` [ext-chat]
 - Email in push + Spese (Plutus, port 19020): Hecate watches Gmail with the history API (agenda job `hecate.mail_watch`, every 15 min, «Controlla ora» anytime; Gmail Pub/Sub streaming written and off until Google Cloud is set up) and pushes new mail to Iris; modules subscribe (`hestia_common.mail_client`), Iris stores each matching mail in Archive under the module's domain and then rings it, WebUI page *Email* shows watcher, subscriptions and deliveries; Scout moved to a subscription (30-minute poll retired with the new Chronos `retire`); new module Spese: PayPal receipts by email, bank statement PDF (Hype) from the plugin or sent in chat (Oracle hands chat attachments to the module that declares them), quick entry, categories that learn, budgets with alerts, subscriptions found by themselves, PayPal↔bank rows counted once, monthly review and statement reminder, 11 `finance_*` tools, plugin with 8 pages and 2 widgets → `docs/work/2026-10-19-email-push-spese/` [ext-chat]

@@ -45,7 +45,7 @@ def test_offline_after_grace_one_notice_then_online(watch):
     assert oracle_watch.is_offline()
     assert oracle_watch.observe(None, now=1120) is None          # still offline: no second notice
     assert len(events) == 1 and events[0]["payload"]["replaces"] == "system.oracle"
-    assert "Oracle offline" in events[0]["payload"]["_message"]
+    assert "Non disponibile" in events[0]["payload"]["_message"]
     assert presence.calls[0][:3] == ("signal", "oracle.offline", True)
     assert presence.calls[0][3]["meta"]["reason"] == "unreachable"
     assert oracle_watch.observe("up", now=1000 + 14 * 60) == "online"
