@@ -314,6 +314,7 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
 
 
 # ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+@pytest.mark.unit
 def test_recap_lists_what_was_worn(wd):
     tee, jeans, *_ = _basics(wd)
     today = wd.today()

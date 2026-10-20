@@ -222,15 +222,21 @@ _RUNS_KEEP = 50
 def _run_view(run: dict | None) -> dict | None:
     if not run:
         return None
-    return {"ok": bool(run.get("ok")), "detail": run.get("detail"), "at": run.get("at"),
-            "duration_ms": run.get("duration_ms")}
+    out = {"ok": bool(run.get("ok")), "detail": run.get("detail"), "at": run.get("at"),
+           "duration_ms": run.get("duration_ms")}
+    if run.get("flex"):
+        out["flex"] = run["flex"]
+    return out
 
 
 def _record_run(item: dict, occurrence: str | None, ok: bool, detail: str, at: str, by: str,
-                duration_ms: int | None = None) -> None:
-    """Per-occurrence run log (capped): the calendar shows ok/failed per occurrence."""
+                duration_ms: int | None = None, flex: dict | None = None) -> None:
+    """Per-occurrence run log (capped): the calendar shows ok/failed per occurrence.
+    ``flex``: ``{from, reason}`` when a flexible job fired away from its nominal time."""
     run = {"occurrence": occurrence or f"manual:{at}", "ok": ok, "detail": detail, "at": at, "by": by,
            "duration_ms": duration_ms}
+    if flex:
+        run["flex"] = flex
     item["runs"] = ([r for r in (item.get("runs") or []) if isinstance(r, dict)] + [run])[-_RUNS_KEEP:]
 
 
@@ -299,10 +305,18 @@ def create(*, title: str, type_: str = "event", owner: str = "user", start_at: s
         return _save(item)
 
 
+# Latest declaration of every module's default rules (in memory, re-asserted hourly by ``register_async``):
+# what «Ripristina» brings a deleted or changed standard activity back to (§3.9 recap dossier).
+_DECLARED: dict[str, dict[str, dict]] = {}
+
+
 def register_rules(owner: str, rules: list[dict]) -> list[dict]:
     """Module defaults, idempotent by key. User-edited rules are left untouched."""
     existing = {i["key"]: i for i in list_items(include_cancelled=True)}
     saved: list[dict] = []
+    with _lock:
+        _DECLARED.setdefault(owner, {}).update(
+            {str(r.get("key")).strip(): dict(r) for r in rules if str(r.get("key") or "").strip()})
     for rule in rules:
         key = str(rule.get("key") or "").strip()
         if not key:
@@ -330,6 +344,62 @@ def register_rules(owner: str, rules: list[dict]) -> list[dict]:
                                 action=rule.get("action"), key=key, params=rule.get("params"),
                                 tz=rule.get("tz"), created_by=owner))
     logger.info("event=agenda_rules_registered owner=%s count=%d", owner, len(saved))
+    return saved
+
+
+def _standard_state(item: dict) -> str:
+    if item["status"] == "cancelled":
+        return "eliminata"
+    if item["status"] == "paused":
+        return "in pausa"
+    if item["status"] == "failed":
+        return "fallita"
+    if item["user_modified"]:
+        return "modificata"
+    return "attiva"
+
+
+def standard(owner: str | None = None) -> dict:
+    """Standard activities: every default rule a module declared (deleted, paused and changed ones included) and
+    every template, so the user brings any of them back in one click instead of rebuilding it (§3.9)."""
+    rows = []
+    for item in list_items(owner=owner, include_cancelled=True):
+        if item["created_by"] in {"user", ""} or item["created_by"] != item["owner"] \
+                or (item.get("params") or {}).get("retired_by_module") or item["status"] == "completed":
+            continue
+        state = _standard_state(item)
+        rows.append({"key": item["key"], "owner": item["owner"], "type": item["type"], "title": item["title"],
+                     "description": item.get("description") or "", "start_at": item["start_at"],
+                     "end_at": item.get("end_at"), "recurrence": item.get("recurrence"),
+                     "flex": (item.get("params") or {}).get("flex"), "state": state,
+                     "can_restore": state != "attiva"})
+    order = {"eliminata": 0, "fallita": 1, "in pausa": 2, "modificata": 3, "attiva": 4}
+    rows.sort(key=lambda r: (order[r["state"]], r["owner"], r["title"] or ""))
+    templates = [t for t in list_templates() if not owner or t.get("owner") == owner]
+    return {"activities": rows, "templates": templates,
+            "counts": {k: sum(1 for r in rows if r["state"] == k) for k in order}}
+
+
+def restore(key: str, by: str = "user") -> dict:
+    """A standard activity back to its module's declaration: active and no longer user-modified (past skips and
+    moved occurrences stay: they are history)."""
+    with _lock:
+        item = get(key)
+        if item["created_by"] != item["owner"] or item["created_by"] in {"user", ""}:
+            raise AgendaError("solo le attività standard di un modulo si ripristinano", 400)
+        declared = (_DECLARED.get(item["owner"]) or {}).get(item["key"]) or {}
+        for f in ("title", "description", "start_at", "end_at", "recurrence", "action", "params"):
+            if f in declared:
+                item[f] = declared[f]
+        if declared.get("start_at"):
+            item["start_at"] = _parse(declared["start_at"], item["tz"]).isoformat()
+        if declared.get("end_at"):
+            item["end_at"] = _parse(declared["end_at"], item["tz"]).isoformat()
+        item["recurrence"] = _norm_rrule(item.get("recurrence"))
+        item.update(status="confirmed", user_modified=False, attempts=0)
+        saved = _save(item)
+    logger.info("event=agenda_standard_restored key=%s owner=%s by=%s declared=%s", key, saved["owner"], by,
+                bool(declared))
     return saved
 
 
@@ -566,6 +636,47 @@ def run_now(ref: str | int, by: str = "user") -> dict:
     return {"ok": ok, "detail": detail, "reactivated": reactivated}
 
 
+def _flex_gap() -> timedelta:
+    try:
+        return timedelta(minutes=max(0, int(CS.settings.get(CS.FLEX_GAP))))
+    except (TypeError, ValueError):
+        return timedelta(minutes=15)
+
+
+def _flex_due(item: dict, since: datetime, now: datetime) -> tuple[list[dict], dict | None]:
+    """Due occurrences of a flexible job (``params.flex``): each fires at the time ``flex.plan`` picks around the
+    user's events (§3.8 recap dossier). An occurrence the user moved keeps its time. Latest due one only."""
+    from services import day_view, flex as F
+    rule = (item.get("params") or {}).get("flex")
+    tz = ZoneInfo(item.get("tz") or _TZ_DEFAULT)
+    gap = _flex_gap()
+    ran = {r.get("occurrence") for r in item.get("runs") or [] if isinstance(r, dict)}
+    picked: tuple[dict, dict | None] | None = None
+    for o in occurrences(item, now - timedelta(days=1), now + timedelta(days=1)):
+        if o["skipped"] or o["occurrence"] in ran:
+            continue
+        nominal = _parse(o["start"], item.get("tz") or _TZ_DEFAULT).astimezone(tz)
+        fire, reason = nominal, ""
+        rng = None if o["moved"] else F.flex_range(nominal, rule)
+        if rng and rng[0] <= now and rng[1] > since:
+            try:
+                busy = day_view.busy(rng[0] - gap - timedelta(hours=6), rng[1] + gap)
+            except Exception as exc:
+                logger.warning("[🔄] event=agenda_flex_calendar_failed item=%s error=%s fallback=nominal",
+                               item["key"], exc)
+                busy = []
+            fire, reason = F.plan(nominal, rule, busy, gap)
+        if since < fire <= now:
+            info = {"from": nominal.isoformat(), "at": fire.isoformat(), "reason": reason} if reason else None
+            picked = (o, info)
+    if not picked:
+        return [], None
+    if picked[1]:
+        logger.info("event=agenda_flex_moved item=%s from=%s at=%s reason=%s", item["key"], picked[1]["from"],
+                    picked[1]["at"], picked[1]["reason"])
+    return [picked[0]], picked[1]
+
+
 def tick(now: datetime | None = None) -> dict:
     """Execute due actions. Recurring jobs fire their latest due occurrence once
     (no storm after downtime); one-off tasks retry up to max_attempts."""
@@ -576,8 +687,12 @@ def tick(now: datetime | None = None) -> dict:
             continue
         try:
             since = _parse(item["last_fired"], "UTC") if item.get("last_fired") else now - timedelta(seconds=_tick_seconds() * 2)
-            due = [o for o in occurrences(item, since, now + timedelta(seconds=1))
-                   if not o["skipped"] and since < _parse(o["start"], "UTC") <= now]
+            flex_info = None
+            if item.get("recurrence") and (item.get("params") or {}).get("flex"):
+                due, flex_info = _flex_due(item, since, now)
+            else:
+                due = [o for o in occurrences(item, since, now + timedelta(seconds=1))
+                       if not o["skipped"] and since < _parse(o["start"], "UTC") <= now]
             if not item.get("recurrence"):
                 start = _parse(item["start_at"], item["tz"])
                 due = [] if start > now or item["last_fired"] else [{"occurrence": start.astimezone(timezone.utc).isoformat()}]
@@ -589,7 +704,8 @@ def tick(now: datetime | None = None) -> dict:
             with _lock:
                 fresh = get(item["id"])
                 fresh["last_result"] = {"ok": ok, "detail": detail, "at": now.isoformat()}
-                _record_run(fresh, str(due[-1].get("occurrence") or ""), ok, detail, now.isoformat(), "agenda", ms)
+                _record_run(fresh, str(due[-1].get("occurrence") or ""), ok, detail, now.isoformat(), "agenda", ms,
+                            flex=flex_info)
                 if ok or fresh.get("recurrence"):
                     fresh["last_fired"] = now.isoformat()
                     fresh["attempts"] = 0
