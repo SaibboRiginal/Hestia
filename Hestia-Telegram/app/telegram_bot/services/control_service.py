@@ -86,6 +86,11 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if self.path == "/api/chat-queue/drain":
+            # Oracle back (Chronos presence relax): answer queued chat messages in the background.
+            from telegram_bot.services.chat_queue import drain_async
+            self._send_json(202, {"status": "started" if drain_async("chronos") else "busy"})
+            return
         if self.path == "/api/notify":
             # Hermes notification client contract (notification / update / retract).
             from telegram_bot.services.notifications import handle_notify

@@ -22,6 +22,9 @@ os.environ.setdefault("STARTUP_WAIT_TIMEOUT_SECONDS", "0")
 import tempfile as _tempfile
 _TOKEN_DIR = _tempfile.mkdtemp(prefix="hecate-test-")
 os.environ["GOOGLE_TOKEN_FILE"] = os.path.join(_TOKEN_DIR, "google_token.json")
+os.environ["HECATE_MAIL_WATCH_STATE"] = os.path.join(_TOKEN_DIR, "mail_watch.json")
+for _key in ("HECATE_GMAIL_PUBSUB_TOPIC", "HECATE_GMAIL_PUBSUB_SUBSCRIPTION"):
+    os.environ[_key] = ""
 # Blank out credential env vars BEFORE load_dotenv() runs so .env values
 # don't leak into the test environment (load_dotenv respects existing vars).
 for _key in (

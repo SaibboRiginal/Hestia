@@ -41,6 +41,10 @@ const EFFECT_LABELS: Record<string, Record<string, string>> = {
     save: 'Claude solo per le tue richieste: niente consumi automatici',
     deny: 'Claude non viene usato',
   },
+  'chat.reply': {
+    live: '',
+    queued: 'Oracle è offline: i messaggi in chat restano in coda e avranno risposta appena torna',
+  },
   'notify.level': {
     all: 'Ti arrivano tutte le notifiche',
     important: 'Solo notifiche importanti, le altre in un riepilogo dopo',
@@ -64,6 +68,7 @@ export function reasonLabel(r?: string): string {
     case 'signal': case 'clear':
       if (a?.startsWith('resource.claude')) return 'quota Claude';
       if (a?.startsWith('health.')) return 'moduli in errore';
+      if (a?.startsWith('oracle.offline')) return 'Oracle offline o tornato';
       if (a?.startsWith('manual.dnd')) return 'Non disturbare scaduto';
       return '';
     default: return '';
@@ -98,8 +103,11 @@ export class PresenceService {
   });
   readonly effects = computed(() => {
     const e = this.state()?.effects ?? {};
-    return Object.keys(EFFECT_LABELS).filter(k => e[k]).map(k => EFFECT_LABELS[k][e[k]] ?? `${k}: ${e[k]}`);
+    return Object.keys(EFFECT_LABELS).filter(k => e[k]).map(k => EFFECT_LABELS[k][e[k]] ?? `${k}: ${e[k]}`)
+      .filter(Boolean);
   });
+  /** Oracle offline (presence overlay, SPEC oracle-offline): chat messages wait in a queue. */
+  readonly chatQueued = computed(() => this.state()?.effects?.['chat.reply'] === 'queued');
 
   start(): void {
     if (this.timer) return;

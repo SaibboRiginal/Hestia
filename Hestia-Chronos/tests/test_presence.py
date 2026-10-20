@@ -13,7 +13,7 @@ import pytest
 def engine():
     from services import presence as P
 
-    calls: dict[str, list] = {"emit": [], "release": []}
+    calls: dict[str, list] = {"emit": [], "release": [], "drain": []}
     window = {"open": False}
 
     def store(method, path, body=None, query=None, timeout=8):
@@ -24,6 +24,7 @@ def engine():
     eng = P.PresenceEngine(window_status=lambda key: {"active": window["open"]}, store=store,
                            emit=lambda event, payload: calls["emit"].append(payload["base"]))
     eng._release_held = lambda level: calls["release"].append(level)
+    eng._drain_chat_queues = lambda: calls["drain"].append(True)
     eng._async = lambda fn, *args: fn(*args)        # synchronous for tests
     eng.load()
     eng.window, eng.calls = window, calls
@@ -114,3 +115,18 @@ class TestPresence:
         before = list(engine.calls["emit"])
         engine.ping("telegram")
         assert engine.calls["emit"] == before
+
+
+@pytest.mark.unit
+def test_oracle_offline_overlay_queues_chat_and_drains_when_back(engine):
+    engine.ping("telegram")
+    engine.set_signal("oracle.offline", True)
+    state = engine.view()
+    assert [o["key"] for o in state["overlays"]] == ["oracle_offline"]
+    assert state["effects"]["chat.reply"] == "queued" and state["effects"]["work.light"] == "defer"
+    assert "offline" in state["effects"]["chat.notice"]
+    assert engine.calls["drain"] == []
+    engine.clear_signal("oracle.offline")
+    state = engine.view()
+    assert state["effects"]["chat.reply"] == "live" and state["overlays"] == []
+    assert engine.calls["drain"] == [True]

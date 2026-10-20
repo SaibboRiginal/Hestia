@@ -122,6 +122,11 @@ Provider access model (single entry point):
 - Google/Outlook provider runtime and OAuth ownership are centralized in Hecate.
 - Domain modules do not open direct provider SDK sessions in their own runtime.
 - Domain-level email business APIs are owned by Iris; Hecate can proxy/provider-orchestrate calls through Hub-routed contracts.
+- **Mail watcher (one per mailbox):** Chronos job `hecate.mail_watch` (default every 15 min, Themis
+  `hecate.mail.watch_interval`) → Gmail history API (`historyId` cursor in `data/mail_watch.json`; expired → `[🔄]`
+  search fallback). Optional real push: Gmail `users.watch` + Pub/Sub **streaming pull** (no public URL needed, env
+  `HECATE_GMAIL_PUBSUB_*`, renewed by `hecate.mail_watch_renew`); then the check slows to a safety net
+  (`hecate.mail.safety_interval`). New mails go to Iris `POST /api/email/incoming`. Hecate never decides who gets a mail.
 - Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
 - Google OAuth uses loopback redirect + PKCE (the old OOB flow is blocked by Google since 2023). Setup and troubleshooting: `Hestia-Hecate/hestia-hecate.md` → *Google setup*. From the phone: ask Telegram "collega Google Calendar", open the link, paste back the final `localhost` URL.
 
@@ -152,13 +157,18 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   register their rules as data — `event`, `task` (one-off action), `job` (recurring action), `window` (period when
   something is allowed). You can see, move, pause, skip (dismiss), cancel or run them from Telegram; user edits are
   never overwritten. Modules ask `GET /api/agenda/windows/{key}` instead of hardcoding schedules.
-  Planned there today: Scout email cycle and calendar sync (jobs), Athena consolidation / skill curation /
+  Planned there today: Hecate mail watch and calendar sync (jobs), Athena consolidation / skill curation /
   thinking and Metis training (windows), Claude Pro nights (windows), every Forge task, Hephaestus repair retries
   and Argus rechecks of a service that stays down (tasks). Shared client: `hestia_common.agenda_client`.
+  A module retires default rules it no longer declares with `POST /api/agenda/retire {owner, keys}`
+  (`AgendaClient.retire`): only rules the module itself created are cancelled, user items stay.
 - **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
   profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
   `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
-  Night = agenda window `assistant.sleep`. WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
+  Night = agenda window `assistant.sleep`. **Oracle offline** (Oracle down past `argus.oracle.grace`): Argus sets
+  signal `oracle.offline` → overlay «⚠️ Oracle offline» (`chat.reply = queued`) + one Hermes notice; chat clients
+  queue what Oracle cannot take in Archive (`/api/chat-queue`) and answer it when Chronos says Oracle is back
+  (`capabilities.chat_queue_drain`). SPEC `docs/work/2026-10-19-oracle-offline`. WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -176,6 +186,10 @@ Scope boundary:
 Email domain module.
 - Provides inbox/message/thread domain APIs.
 - Registers `email_search`, `email_send`, and `email_thread` commands to Hub discovery.
+- **Mail dispatcher:** receives every new mail from Hecate (`POST /api/email/incoming`), matches it against module
+  subscriptions (`/api/email/subscriptions`, declared with `hestia_common.mail_client`), stores the full mail in
+  Archive as a raw record under the subscriber's domain (durable, deduped), then rings the module
+  (`POST route/<module>/<path> {owner, key, domain, count, reference_ids}`). Page «Email» shows subscriptions and dispatch log.
 
 Scope boundary:
 - Iris owns email-domain business logic (search, threading, send abstractions).
@@ -253,6 +267,8 @@ Hestia's one MCP server (`POST /mcp`, standard MCP over Streamable HTTP).
 
 ### Hestia-Scout 🏠
 Real-estate domain module.
+- **Mail by push:** subscription `scout:listings` (mail_client); Iris rings `/api/scout/mail`. The old poll job
+  `scout.email_cycle` is retired.
 - **Pre-parse pipeline:** extracts property URLs from all emails first (zero LLM calls), deduplicates against Archive, then splits into an existing-entity path and a new-entity path.
 - **Status update path:** keyword regex scan updates `listing_status` for known entities without LLM.
 - **LLM path:** only the minimal representative email set per new URL is sent to the LLM extractor.
@@ -278,6 +294,13 @@ Wardrobe domain module (port 19017): pieces, accessories, outfits, deterministic
 status (laundry, lent…), occasional «Indossato» marks with an optional goal, packing lists, stats. Rows in Archive
 `wardrobe-store`, photo bytes in Archive `blobs`; photo recognition only through Oracle; reminders through the agenda
 and Hermes (off by default). Details: `Hestia-Wardrobe/hestia-wardrobe.md`.
+
+### Hestia-Plutus 💶
+Expenses module «Spese» (port 19020, domain `finance`, `finance_*` tools): transactions, categories and learned rules,
+budgets with alerts, recurring payments, monthly summary. Sources: PayPal receipt mails by push (mail_client
+subscription), bank statement PDF (Hype) from the plugin *Importa* or sent in chat (Oracle `attachment_handlers`),
+preview → commit, PayPal↔bank linking, quick manual entry. Rows in Archive `finance-store`; reminders through the
+agenda and Hermes. Details: `Hestia-Plutus/hestia-plutus.md`.
 
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
@@ -377,7 +400,7 @@ No code-only behavior changes are considered complete without synchronized docs.
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
-   Wardrobe 50s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
+   Wardrobe 50s, Plutus 60s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
    hundreds (Hub 100, Argus 110, Oracle 120, Athena 130, Hermes 140, Chronos 150, Themis 160, Hephaestus 170,
    Metis 180, Hestia-MCP 190); the WebUI groups them under *Sistema* and builds a ready-made *Sistema* dashboard from their `auto` widgets (Home takes the domain ones); Hub, which never registers with itself, folds its own manifest into the catalog and answers its plugin routes locally (`docs/work/2026-10-18-moduli-core-e-mcp-esterno/`). Module notifications carry `_link: {module, page}` so a
    client can open the plugin page.
@@ -387,6 +410,15 @@ No code-only behavior changes are considered complete without synchronized docs.
    saying; Oracle decides when to include it.
 6. **Module files**: bytes (photos, attachments) go to Archive `/api/blobs` (`owner_module`, deduplicated by sha256);
    the module keeps the blob ids in its own rows and serves images to clients as `{mime, data_b64}`.
+7. **Chat attachments for a module**: a module that can take a file sent in chat declares in its Hub capabilities
+   `attachment_handlers: [{mime, match, min_hits, path, label}]`. On a match (mime + words in the file text or message)
+   Oracle stores the file as an Archive blob (`owner_module=chat`) and calls `POST route/<module>/<path>` with the blob
+   id; the module answers `{handled, text}` (the chat reply). No match or failure → normal document analysis.
+8. **Mail is push, never poll**: a module that wants emails subscribes with `hestia_common.mail_client`
+   (`MailClient(owner).subscribe_async(rules)`, idempotent by key) and exposes the `path` Iris rings. Hecate is the
+   only mailbox watcher, Iris the only dispatcher; each mail is stored in Archive (subscriber's domain) **before** the
+   module is rung, so a module that is down loses nothing (it processes `/api/archive/<domain>/unevaluated` at startup).
+   No module polls Gmail or schedules its own mail job.
 
 ## Governance Automation (Mandatory)
 
@@ -472,7 +504,6 @@ This creates:
 - Metis `benchmark_run` returns `not_implemented`; LoRA training launches your external script (`Hestia-Metis/TODO.md`).
 - Embedding model must produce 768-dim vectors (Archive `Vector(768)`); other sizes are stored/searched without vectors (logged).
 - Iris threads are grouped by normalized subject (Gmail thread ids are matched when present).
-- Argus direct-Telegram fallback when Oracle is down is not implemented (alerts still go via Hermes with plain text).
 - Hub registry is in memory: every service (Python ones, Hermes, the .NET WebUI) re-registers every 60 s, so it comes
   back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
   missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).

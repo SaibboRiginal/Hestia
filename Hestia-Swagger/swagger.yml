@@ -22,6 +22,7 @@ info:
     | Themis    | 19016 |
     | Hygieia   | 19018 |
     | Hercules  | 19019 |
+    | Plutus    | 19020 |
   version: 1.0.0
 
 servers:
@@ -66,7 +67,7 @@ tags:
   - name: Argus
     description: System health monitoring and log analysis
   - name: Iris
-    description: Email domain APIs
+    description: Email domain — mail APIs and PUSH dispatch (modules subscribe, Hecate's watcher hands new mail, Iris delivers)
   - name: Hephaestus
     description: Guarded self-healing remediation workflows
   - name: Dummy
@@ -89,6 +90,12 @@ tags:
     description: Wardrobe — pieces, accessories, outfits, «Cosa mi metto», «Indossato», packing lists, stats, photos
   - name: Archive — Wardrobe store
     description: Same (kind,id) last-write-wins records as the Hercules store, for Wardrobe only
+  - name: Plutus
+    description: Expenses (domain finance) — PayPal mails by push, bank statements (PDF), quick entry, categories that learn, budgets, recurring, stats
+  - name: Archive — Finance store
+    description: Same (kind,id) last-write-wins records and cursor as the other module stores, for Plutus only
+  - name: Archive — Iris store
+    description: Same (kind,id) last-write-wins records and cursor, for Iris only (mail subscriptions, delivery state)
   - name: Archive — MCP accesses
     description: Who may use Hestia's MCP from outside (Hestia-MCP only); tokens only as sha256
   - name: Archive — Blobs
@@ -3133,6 +3140,48 @@ paths:
         "200": {description: "{status, sent}"}
         "503": {description: Provider not configured or SMTP error}
 
+  /api/gateway/mail/watch/run:
+    post:
+      tags: [Hecate]
+      summary: "Check the mailbox once (Gmail history API) and push new mail headers to Iris (agenda job hecate.mail_watch)"
+      description: |
+        The one look at the mailbox for the whole of Hestia. New headers since the stored history cursor go to
+        Iris (`POST /route/iris/api/email/incoming`); when Iris answers an error the cursor is kept and the batch is
+        offered again. Also fired by Gmail Pub/Sub push when configured (then the agenda job is only a safety net).
+      servers:
+        - url: http://localhost:19003
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger: {type: string, default: api, description: "agenda | webui | pubsub | api"}
+      responses:
+        "200":
+          description: "{status: ok|initialized|busy|skipped|error, new, source?, reason?, action_required?: reauth_google, error?}"
+
+  /api/gateway/mail/watch:
+    get:
+      tags: [Hecate]
+      summary: Mail watcher state
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200":
+          description: "{status, agenda_job, interval_seconds, watcher: {history_id, last_check, last_ok, last_new, last_source, last_trigger, last_error, pushed_total, pending}, push: {configured, topic, ...}}"
+
+  /api/gateway/mail/watch/renew:
+    post:
+      tags: [Hecate]
+      summary: "Renew Gmail push (Pub/Sub watch, expires after 7 days) — agenda job hecate.mail_watch_renew; inactive until configured"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200":
+          description: "{status: ok|inactive|error, reason?: not_configured, error?, ...watch state}"
+
   /api/gateway/auth/callback/google:
     get:
       tags: [Hecate]
@@ -3228,6 +3277,124 @@ paths:
       responses:
         "200":
           description: "{status, sent}"
+
+  /api/email/subscriptions:
+    post:
+      tags: [Iris]
+      summary: "A module declares its full mail rule set (hestia_common.mail_client); new/changed rules get a backfill"
+      servers:
+        - url: http://localhost:19012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner]
+              properties:
+                owner: {type: string, example: scout}
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    required: [key, title, path, domain]
+                    properties:
+                      key: {type: string, example: listings}
+                      title: {type: string}
+                      path: {type: string, description: "module endpoint Iris rings via Hub after storing matching mails, e.g. /api/scout/mail"}
+                      domain: {type: string, description: "Archive domain the mails are stored under (real_estate, finance…)"}
+                      senders: {type: array, items: {type: string}, description: "addresses or domains (OR)"}
+                      subject_contains: {type: array, items: {type: string}, description: "words (OR)"}
+                      labels: {type: array, items: {type: string}, description: "Gmail label ids (OR)"}
+                      queries: {type: array, items: {type: string}, description: "Gmail searches evaluated by Hecate (any)"}
+                      description: {type: string}
+                      backfill_days: {type: integer}
+                  description: "Filled groups are AND-ed, values inside a group OR-ed"
+      responses:
+        "200": {description: "{status, owner, rules, changed, backfill[keys]}"}
+        "422": {description: invalid rule}
+    get:
+      tags: [Iris]
+      summary: List subscriptions
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - {name: owner, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{status, count, subscriptions[]}"}
+
+  /api/email/subscriptions/{owner}/{key}:
+    delete:
+      tags: [Iris]
+      summary: Remove one subscription
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - {name: owner, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: ok}"}
+        "404": {description: subscription not found}
+
+  /api/email/subscriptions/{owner}/{key}/backfill:
+    post:
+      tags: [Iris]
+      summary: "Deliver the matching mails of the last days again (the module's «controlla ora»; Archive dedupes)"
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - {name: owner, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days: {type: integer, description: "default: the rule's backfill_days"}
+      responses:
+        "200": {description: "{status: ok|error, found, stored, days, error?}"}
+
+  /api/email/incoming:
+    post:
+      tags: [Iris]
+      summary: "New mail headers from Hecate's watcher → match subscriptions, store in Archive, ring the modules"
+      servers:
+        - url: http://localhost:19012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages: {type: array, items: {type: object}, description: "mail headers {id, thread_id, from, to, subject, labels, created_at…}"}
+                source: {type: string, default: watch}
+      responses:
+        "200": {description: "{status: ok, ok: true, received, delivered[{owner, key, count, …}], unmatched}"}
+        "503": {description: "A matched mail could not be stored: Hecate keeps its cursor and offers the batch again"}
+
+  /api/email/dispatch:
+    get:
+      tags: [Iris]
+      summary: "Everything the «Email» page shows: subscriptions, last deliveries, counters, Hecate's watcher (MCP tool email_subscriptions)"
+      servers:
+        - url: http://localhost:19012
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 50, minimum: 1, maximum: 200}}
+      responses:
+        "200": {description: "{status, subscriptions[], deliveries[], stats, watcher|null}"}
+
+  /api/email/check:
+    post:
+      tags: [Iris]
+      summary: "«Controlla ora»: ask Hecate's watcher for one check (same as the agenda job)"
+      servers:
+        - url: http://localhost:19012
+      responses:
+        "200": {description: "the watcher result {status, new, …}"}
+        "503": {description: Hecate not reachable}
 
   /api/email/threads/{thread_id}:
     get:
@@ -3971,6 +4138,25 @@ paths:
         - url: http://localhost:19007
       responses:
         "200": {description: "{status, count, items}"}
+
+  /api/agenda/retire:
+    post:
+      tags: [Chronos]
+      summary: "A module cancels default rules it no longer declares (only rules it created; user items stay)"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner, keys]
+              properties:
+                owner: {type: string, example: scout}
+                keys: {type: array, items: {type: string}, example: [scout.email_cycle]}
+      responses:
+        "200": {description: "{status, retired[keys]}"}
 
   /api/agenda/items/{ref}:
     patch:
@@ -4807,6 +4993,17 @@ paths:
         "200":
           description: "{delivered, ref?} · {delivered: false, skipped: true} (silent on Telegram)"
 
+  /api/chat-queue/drain:
+    post:
+      tags: [Clients]
+      summary: Answer the chat messages queued while Oracle was offline — Chronos via Hub only
+      description: Declared by each chat client as capabilities.chat_queue_drain; Chronos calls it when the presence effect chat.reply goes back to live. Runs in the background. WebUI accepts it from the internal network only. SPEC docs/work/2026-10-19-oracle-offline.
+      servers:
+        - url: http://localhost:19006
+        - url: http://localhost:19015
+      responses:
+        "202": {description: "{status: started | busy}"}
+
   /api/outbound-events/state:
     post:
       tags: [Hermes]
@@ -4898,7 +5095,7 @@ paths:
   /api/scout/cycle:
     post:
       tags: [Scout]
-      summary: Run the email to listings cycle (agenda job scout.email_cycle)
+      summary: "Process the pending listing mails stored in Archive (mails arrive by push from Iris; the old agenda job scout.email_cycle is retired)"
       servers:
         - url: http://localhost:19006
       requestBody:
@@ -4917,6 +5114,45 @@ paths:
       responses:
         "200":
           description: "{status: started|busy|ok|error, trigger}"
+    get:
+      tags: [Scout]
+      summary: Cycle state
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200":
+          description: "{status, mail: push, subscription: scout:listings, running, last_started, last_finished, last_trigger, last_error}"
+
+  /api/scout/mail:
+    post:
+      tags: [Scout]
+      summary: "Iris rang (subscription scout:listings): new listing mails wait in Archive → run the cycle (async)"
+      servers:
+        - url: http://localhost:19006
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                owner: {type: string, default: scout}
+                key: {type: string, default: listings}
+                domain: {type: string, default: real_estate}
+                count: {type: integer}
+                reference_ids: {type: array, items: {type: string}}
+                source: {type: string, default: watch}
+      responses:
+        "200": {description: "{status: started|busy, trigger: mail:<source>}"}
+
+  /api/scout/check:
+    post:
+      tags: [Scout]
+      summary: "«Controlla email» (MCP tool scout_fetch): Iris backfill of the last day + cycle (async)"
+      servers:
+        - url: http://localhost:19006
+      responses:
+        "200": {description: "{status: started, trigger: user}"}
 
   /api/ui/listings:
     get:
@@ -5012,7 +5248,7 @@ paths:
   /api/ui/cycle:
     post:
       tags: [Scout]
-      summary: Start the email cycle from the plugin (async)
+      summary: "«Controlla email» from the plugin: Iris backfill of the last day + cycle (async)"
       servers:
         - url: http://localhost:19006
       responses:
@@ -7687,7 +7923,7 @@ paths:
   /api/module/context:
     get:
       tags: [Wardrobe]
-      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules: same contract)"
+      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract)"
       servers:
         - url: http://localhost:19017
       responses:
@@ -7712,6 +7948,441 @@ paths:
   /api/wardrobe-store/cursor:
     get:
       tags: [Archive — Wardrobe store]
+      summary: "Current sync cursor"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  PLUTUS — 19020  (expenses, domain finance — docs/work/2026-10-19-email-push-spese §4)
+  #  Errors on every /api/finance path: 422 invalid input {detail}, 404 not found {detail},
+  #  503 Archive unreachable {detail}. GET /api/module/context: shared contract, see Wardrobe.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /plutus/health:
+    get:
+      tags: [Plutus]
+      summary: "Plutus health check (served at /health): {status, service, version, mirror_loaded, rows, cursor}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/meta:
+    get:
+      tags: [Plutus]
+      summary: "Currency, categories, accounts, budgets, month_start_day, current month"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/categories:
+    get:
+      tags: [Plutus]
+      summary: "Categories (?archived=true includes archived) → {items}"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: archived, in: query, schema: {type: boolean}}
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Plutus]
+      summary: "Create a category {label, kind expense|income, icon?, color?, parent?…}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/categories/{id}:
+    put:
+      tags: [Plutus]
+      summary: "Update a category"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/rules:
+    get:
+      tags: [Plutus]
+      summary: "Learned merchant → category rules {items}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Plutus]
+      summary: "Add a rule {pattern (≥3 letters), category}; 422 when invalid"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/rules/{id}:
+    delete:
+      tags: [Plutus]
+      summary: "Delete a rule"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/accounts:
+    get:
+      tags: [Plutus]
+      summary: "Accounts (contanti, hype, paypal…) {items}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Plutus]
+      summary: "Create (or resolve) an account {name}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/budgets:
+    get:
+      tags: [Plutus]
+      summary: "Month budgets with spent per category {month, label, currency, total, spent, budgets, categories, all_categories}"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: month, in: query, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/budgets/{category}:
+    put:
+      tags: [Plutus]
+      summary: "Set the monthly budget of a category (or total) {amount}; 0/null removes"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: category, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/transactions:
+    get:
+      tags: [Plutus]
+      summary: "Transactions filtered by month or since/until (YYYY-MM-DD), category, account, q, status (to_review…), source, import_id, limit (500) → {count, items}"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: month, in: query, schema: {type: string}}
+        - {name: since, in: query, schema: {type: string}}
+        - {name: until, in: query, schema: {type: string}}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: account, in: query, schema: {type: string}}
+        - {name: q, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string}}
+        - {name: source, in: query, schema: {type: string}}
+        - {name: import_id, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer}}
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Plutus]
+      summary: "Add a transaction {amount, date?, merchant?, category?, account?, type expense|income, notes?, source?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/transactions/{id}:
+    get:
+      tags: [Plutus]
+      summary: "One transaction + linked (PayPal ⇄ bank) + similar"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Plutus]
+      summary: "Update a transaction; learn=true → same category for that merchant from now on"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Plutus]
+      summary: "Delete a transaction"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/summary:
+    get:
+      tags: [Plutus]
+      summary: "Month summary: spent, income, budget, left, pace, categories, top merchants, recurring next, to_review"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: month, in: query, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/stats:
+    get:
+      tags: [Plutus]
+      summary: "Last months: totals, per category, merchants (?months=6)"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: months, in: query, schema: {type: integer}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/recurring:
+    get:
+      tags: [Plutus]
+      summary: "Recurring payments / subscriptions (?detect=true runs detection first) {items, currency}"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: detect, in: query, schema: {type: boolean}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/recurring/{id}:
+    post:
+      tags: [Plutus]
+      summary: "Set a recurring item status {status} (confirm / ignore…)"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/export:
+    get:
+      tags: [Plutus]
+      summary: "Everything as JSON {filename, data}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/imports:
+    get:
+      tags: [Plutus]
+      summary: "Statement imports + mail state {items, mail: {last_run, processed, added, last_error, subscription, senders}}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Plutus]
+      summary: "Statement preview (nothing saved): {name, mime, data_b64} (plugin) or {blob_id} (chat attachment) or {text}; account (hype), source → rows with state new|duplicate|link, counts, period, total_new_spent"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/imports/{id}:
+    get:
+      tags: [Plutus]
+      summary: "One import preview / result"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/imports/{id}/commit:
+    post:
+      tags: [Plutus]
+      summary: "Commit a previewed import (adds new rows, links PayPal duplicates)"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/imports/{id}/undo:
+    post:
+      tags: [Plutus]
+      summary: "Undo a committed import {id, status: undone, removed}"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/attachments:
+    post:
+      tags: [Plutus]
+      summary: "Oracle hand-off (Hub capability attachment_handlers): statement PDF sent in chat {blob_id, filename} → preview + reply text {handled, text, import_id, counts} or {handled: false, reason}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/mail:
+    post:
+      tags: [Plutus]
+      summary: "Iris rang (subscription plutus:paypal): PayPal mails wait in Archive (domain finance) → process them (async) {status: started}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/mail/check:
+    post:
+      tags: [Plutus]
+      summary: "«Controlla email PayPal»: Iris backfill of the last {days (7)} days, then process (async) {status: started, days}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/quick/categories:
+    get:
+      tags: [Plutus]
+      summary: "Home chips for the «Spesa veloce» quick action"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/quick/expense/{id}:
+    post:
+      tags: [Plutus]
+      summary: "One-tap quick expense in category id {amount, note?|merchant?, date?, account? (contanti)} → transaction + label"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Plutus]
+      summary: "Undo of the toast: last quick expense of that category today (or ?date=)"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: date, in: query, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/finance/alerts/run:
+    post:
+      tags: [Plutus]
+      summary: "Agenda job plutus.daily: budget alerts through Hermes (one per category per level per month) + recurring detection {items}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/review/run:
+    post:
+      tags: [Plutus]
+      summary: "Agenda job plutus.review (1st of the month, off by default; {force: true} overrides): last month vs budget and month before {sent, text?, review?, why?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/reminders/run:
+    post:
+      tags: [Plutus]
+      summary: "Agenda job plutus.statement_reminder: last month's statement missing → one Hermes reminder (max per week, off by default) {sent, why?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/reminders/skip:
+    post:
+      tags: [Plutus]
+      summary: "«Non questo mese» answer {month}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/tools/{name}:
+    post:
+      tags: [Plutus]
+      summary: "REST route of each MCP tool finance_<name> (arguments = the tool's schema, strings coerced): summary, search, add, update, delete, budget, set_budget, categories, import_statement, recurring, stats"
+      servers:
+        - url: http://localhost:19020
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [summary, search, add, update, delete, budget, set_budget, categories, import_statement, recurring, stats]
+      responses:
+        "200": {description: "tool result, or {error} for invalid input / not found"}
+
+  /api/finance-store/records:
+    put:
+      tags: [Archive — Finance store]
+      summary: "Upsert rows {kind,id,parent_id,ref_id,at,data,updated_at,deleted} (max 5000, else 413); newer stored rows come back in stale → {applied, stale, cursor}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Archive — Finance store]
+      summary: "Rows by kind/parent_id/ref_id/ids/at_from/at_to/since_seq, include_deleted, order seq|at|-at, limit (tombstones included with since_seq) → {rows, cursor}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/finance-store/cursor:
+    get:
+      tags: [Archive — Finance store]
+      summary: "Current sync cursor"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/iris-store/records:
+    put:
+      tags: [Archive — Iris store]
+      summary: "Upsert rows {kind,id,parent_id,ref_id,at,data,updated_at,deleted} (max 5000, else 413); newer stored rows come back in stale → {applied, stale, cursor}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Archive — Iris store]
+      summary: "Rows by kind/parent_id/ref_id/ids/at_from/at_to/since_seq, include_deleted, order seq|at|-at, limit (tombstones included with since_seq) → {rows, cursor}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/iris-store/cursor:
+    get:
+      tags: [Archive — Iris store]
       summary: "Current sync cursor"
       servers:
         - url: http://localhost:19002
@@ -8433,6 +9104,79 @@ paths:
         - {name: limit, in: query, schema: {type: integer, default: 50}}
       responses:
         "200": {description: "[{base, overlays, label, reason, from, from_label, at}]"}
+
+  /api/chat-queue:
+    post:
+      tags: [Archive — Chat queue]
+      summary: Queue a chat message written while Oracle was offline
+      description: SPEC docs/work/2026-10-19-oracle-offline. Each chat client queues its own and answers them when Chronos says Oracle is back.
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client, session_id, text]
+              properties:
+                client: {type: string, example: telegram}
+                session_id: {type: string}
+                text: {type: string}
+                target: {type: string, description: "Client-side destination (Telegram chat id)"}
+                client_ref: {type: string, description: "Client-side message to reply to"}
+                meta: {type: object}
+      responses:
+        "200": {description: "{id, client, session_id, target, client_ref, text, meta, state: queued, attempts, created_at, position}"}
+    get:
+      tags: [Archive — Chat queue]
+      summary: Queued items, oldest first
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: client, in: query, schema: {type: string}}
+        - {name: state, in: query, schema: {type: string, enum: [queued, answering, answered, failed], default: queued}}
+        - {name: limit, in: query, schema: {type: integer, default: 100}}
+      responses:
+        "200": {description: "{items: [item]}"}
+
+  /api/chat-queue/counts:
+    get:
+      tags: [Archive — Chat queue]
+      summary: Waiting messages (queued + answering) per client
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{waiting: {client: n}, total}"}
+
+  /api/chat-queue/{id}/claim:
+    post:
+      tags: [Archive — Chat queue]
+      summary: Compare-and-set queued → answering (one drain per message)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+        - {name: stale_seconds, in: query, schema: {type: integer, default: 600}, description: "An older claim is free again"}
+      responses:
+        "200": {description: item}
+        "409": {description: already_claimed}
+
+  /api/chat-queue/{id}/done:
+    post:
+      tags: [Archive — Chat queue]
+      summary: "ok → answered; not ok → queued again (failed after 5 attempts)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {ok: {type: boolean, default: true}, detail: {type: string}}}
+      responses:
+        "200": {description: item}
 
   /api/hephaestus/tasks/{task_id}:
     get:

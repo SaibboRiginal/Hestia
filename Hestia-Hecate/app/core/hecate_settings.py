@@ -21,6 +21,8 @@ ARCHIVE_ROUTE_TIMEOUT = "hecate.archive.route_timeout"
 CALENDAR_WRITE_TIMEOUT = "hecate.archive.calendar_write_timeout"
 AUTH_RECHECK_INTERVAL = "hecate.auth.recheck_interval"
 ACTION_NOTIFY_COOLDOWN = "hecate.auth.notify_cooldown"
+MAIL_WATCH_INTERVAL = "hecate.mail.watch_interval"
+MAIL_SAFETY_INTERVAL = "hecate.mail.safety_interval"
 
 settings = SettingsClient("hecate")
 settings.declare([
@@ -41,4 +43,12 @@ settings.declare([
     setting(ACTION_NOTIFY_COOLDOWN, "Pausa tra avvisi uguali", "int", 300, group="Account",
             min=0, max=86400, unit="s", advanced=True,
             help="Tempo minimo tra due avvisi uguali (es. 'ricollega Google'), per non ricevere doppioni."),
+    setting(MAIL_WATCH_INTERVAL, "Controllo nuove email", "int", 900, group="Email", min=60, max=86400,
+            unit="s",
+            help="Ogni quanto guardo se sono arrivate email nuove (un solo controllo leggero per tutta Hestia: "
+                 "poi Iris le passa ai moduli interessati). È la ricorrenza predefinita del lavoro in agenda."),
+    setting(MAIL_SAFETY_INTERVAL, "Controllo di sicurezza con Gmail push", "int", 21600, group="Email",
+            min=300, max=86400, unit="s", advanced=True,
+            help="Quando le notifiche push di Gmail (Pub/Sub) sono attive, il controllo periodico serve solo "
+                 "da rete di sicurezza e passa a questo intervallo."),
 ]).declare_log_level()

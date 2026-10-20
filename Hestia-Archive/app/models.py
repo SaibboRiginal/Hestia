@@ -404,6 +404,27 @@ class PresenceChange(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+# ── Chat queue (Oracle offline) — owner of the semantics: each chat client ─────
+
+class ChatQueueItem(Base):
+    """A chat message written while Oracle was offline; its client answers it when Oracle returns
+    (SPEC docs/work/2026-10-19-oracle-offline). ``state``: queued → answering → answered | failed."""
+    __tablename__ = "chat_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client = Column(String, index=True, nullable=False)
+    session_id = Column(String, nullable=False)
+    target = Column(String, nullable=True)
+    client_ref = Column(String, nullable=True)
+    text = Column(String, nullable=False)
+    meta = Column(JSONB, nullable=True)
+    state = Column(String, index=True, nullable=False, default="queued")
+    attempts = Column(Integer, nullable=False, default=0)
+    detail = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    answered_at = Column(DateTime(timezone=True), nullable=True)
+
+
 # ── Hercules (gym coach) storage — owner of the semantics: Hestia-Hercules ───
 
 HERCULES_SEQ = Sequence("hercules_records_seq", metadata=Base.metadata)
@@ -559,3 +580,38 @@ class MCPOAuthCode(Base):
     used_at = Column(DateTime(timezone=True), nullable=True)
     access_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ── Generic module stores (same shape and protocol as the Hercules/self care/wardrobe stores) ────
+# One table per owner module; Archive only stores, the owner module gives every kind its meaning.
+
+def _module_record_model(class_name: str, table: str, doc: str):
+    seq = Sequence(f"{table}_seq", metadata=Base.metadata)
+    attrs = {
+        "__doc__": doc,
+        "__tablename__": table,
+        "kind": Column(String, primary_key=True),
+        "id": Column(String, primary_key=True),
+        "parent_id": Column(String, nullable=True, index=True),
+        "ref_id": Column(String, nullable=True, index=True),
+        "at": Column(DateTime(timezone=True), nullable=True),
+        "data": Column(JSONB, nullable=False, default=dict),
+        "updated_at": Column(DateTime(timezone=True), nullable=False),
+        "deleted": Column(Boolean, nullable=False, default=False),
+        "seq": Column(BigInteger, seq, nullable=False, index=True),
+        "__table_args__": (Index(f"ix_{table}_kind_at", "kind", "at"),
+                           Index(f"ix_{table}_kind_ref", "kind", "ref_id")),
+    }
+    model = type(class_name, (Base,), attrs)
+    model.SEQ_NAME = f"{table}_seq"
+    return model
+
+
+FinanceRecord = _module_record_model(
+    "FinanceRecord", "finance_records",
+    "One row of the expenses module Hestia-Plutus (transaction, category, rule, budget, account, import, "
+    "recurring). Owner of the semantics: Hestia-Plutus.")
+
+IrisRecord = _module_record_model(
+    "IrisRecord", "iris_records",
+    "One row of Hestia-Iris (mail subscription, delivery log). Owner of the semantics: Hestia-Iris.")

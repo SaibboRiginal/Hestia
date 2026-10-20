@@ -44,6 +44,12 @@ public class NotificationsController : ControllerBase
         return Ok(new { delivered = true });
     }
 
+    /// <summary>Oracle back (Chronos presence, SPEC oracle-offline): answer the queued chat messages.</summary>
+    [HttpPost("api/chat-queue/drain")]
+    [InternalNetworkGuard]
+    public IActionResult DrainChatQueue([FromServices] ChatQueueService queue)
+        => StatusCode(202, new { status = queue.DrainInBackground("chronos") ? "started" : "busy" });
+
     [HttpGet("api/webui/notifications")]
     public Task<IActionResult> List([FromQuery] string filter = "all", [FromQuery] string? source = null,
         [FromQuery] string? before = null, [FromQuery] int limit = 50)

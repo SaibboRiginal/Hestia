@@ -17,7 +17,8 @@ SPEC docs/work/2026-10-10-assistant-presence (v2.2).
 
 Evaluation runs on every signal change and on the agenda worker tick (no loop of its own).
 A change is stored (snapshot + history) and published to Hermes as ``assistant.state_changed``;
-when the notification level opens again Hermes is asked to release the held notifications.
+when the notification level opens again Hermes is asked to release the held notifications, and when
+``chat.reply`` goes back to ``live`` (Oracle online again) every chat client answers its queued messages.
 """
 from __future__ import annotations
 
@@ -416,6 +417,9 @@ class PresenceEngine:
         after = snapshot["effects"].get("notify.level", "all")
         if before in order and after in order and order.index(after) < order.index(before):
             self._release_held(after)
+        if (prev.get("effects") or {}).get("chat.reply") == "queued" and \
+                snapshot["effects"].get("chat.reply", "live") == "live":
+            self._drain_chat_queues()
 
     def _emit_default(self, event_type: str, payload: dict) -> None:
         publish_event("assistant", event_type, "presence", {**payload, "_source": "chronos"})
@@ -428,6 +432,27 @@ class PresenceEngine:
                                 "timeout_seconds": 20}, timeout=25)
         except Exception as exc:
             logger.warning("[🔄] event=presence_release_held_failed error=%s", exc)
+
+    def _drain_chat_queues(self) -> None:
+        """Oracle back: every Hub service declaring ``capabilities.chat_queue_drain`` (its path) answers the
+        chat messages it queued while Oracle was offline. No client is hardcoded."""
+        try:
+            services = (requests.get(f"{_HUB}/registry/services", timeout=6).json() or {}).get("services") or []
+        except Exception as exc:
+            logger.warning("[🔄] event=presence_chat_drain_discovery_failed error=%s", exc)
+            return
+        for svc in services if isinstance(services, list) else []:
+            path = str(((svc or {}).get("capabilities") or {}).get("chat_queue_drain") or "").strip("/")
+            name = str((svc or {}).get("name") or "").strip()
+            if not path or not name:
+                continue
+            try:
+                requests.post(f"{_HUB}/route/{name}/{path}",
+                              json={"method": "POST", "headers": {}, "query": {}, "body": {"reason": "oracle_online"},
+                                    "timeout_seconds": 10}, timeout=15)
+                logger.info("event=presence_chat_drain_requested client=%s", name)
+            except Exception as exc:
+                logger.warning("[🔄] event=presence_chat_drain_failed client=%s error=%s", name, exc)
 
     # ── reading ─────────────────────────────────────────────────────────────
     def view(self) -> dict:

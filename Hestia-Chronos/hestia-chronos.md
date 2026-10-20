@@ -209,7 +209,7 @@ A second calendar, owned by Chronos, where **Hestia and its modules plan their o
 |---|---|---|
 | `event` | informational / planned | "Forge: sviluppo X" (scheduled Claude task) |
 | `task` | one-off action executed at `start_at` (retried up to `chronos.agenda.max_attempts`, then `failed`) | a repair Argus/Hephaestus planned for tonight |
-| `job` | recurring action (RRULE) | "Scout: controlla le email ogni 30 min" |
+| `job` | recurring action (RRULE) | "Hecate: controlla nuove email ogni 15 min" |
 | `window` | recurring period in which something is allowed (RRULE + duration) | "Claude Pro: notti prima del reset" |
 
 Actions are `{service, method, path, body, query, timeout_seconds}` executed **through Hub** by the agenda worker
@@ -235,6 +235,7 @@ Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST
 | GET | `/api/agenda/items` | Raw items (`include_cancelled`) |
 | POST | `/api/agenda/items` | Create (on demand) `{title, type, owner, start_at, end_at, recurrence, description, action, key, params, tz, parent?}` |
 | POST | `/api/agenda/register` | Module defaults (idempotent, user edits preserved) |
+| POST | `/api/agenda/retire` | `{owner, keys}` → `{retired}`: a module cancels default rules it no longer declares. Only rules with that `owner` **and** `created_by` = the module; marked `params.retired_by_module=true` and cancelled (`by=module:<owner>`); user-created items and already-cancelled ones untouched (`hestia_common.agenda_client.AgendaClient.retire`) |
 | PATCH | `/api/agenda/items/{ref}` | Move/change (`start_at` keeps duration), pause (`status=paused`), `by` |
 | DELETE | `/api/agenda/items/{ref}` | Cancel (cascades to linked children; `PATCH status=cancelled` does the same) |
 | POST | `/api/agenda/items/{ref}/skip` | Dismiss one occurrence (default: current/next); a one-off is cancelled |
@@ -274,10 +275,16 @@ successful write of these into an `agenda.planned` notice (calendar pages reload
 Every module registers its defaults at boot (and re-asserts them hourly, idempotent) with the shared client
 `hestia_common/agenda_client.py`. Missing rule or Chronos down → the module falls back to its env schedule, so
 nothing stops; a rule the user **paused/cancelled** is a decision and is respected (no fallback).
+A rule a module no longer needs is removed with `retire` (e.g. Scout's old `scout.email_cycle`, retired 2026-10-19
+when mail moved to push). No module polls mail: they subscribe to Iris.
 
 | Key | Type | Owner | Default | What happens |
 |---|---|---|---|---|
-| `scout.email_cycle` | job | scout | every `SCOUT_POLL_INTERVAL_SECONDS` (30 min) | `POST scout /api/scout/cycle` — email → listings cycle |
+| `hecate.mail_watch` | job | hecate | every `hecate.mail.watch_interval` (15 min; `hecate.mail.safety_interval` 6 h with Gmail Pub/Sub) | `POST hecate /api/gateway/mail/watch/run` — the one mailbox check; new mail → Iris → subscribed modules |
+| `hecate.mail_watch_renew` | job | hecate | daily 04:10, only when Gmail Pub/Sub is configured | `POST hecate /api/gateway/mail/watch/renew` — renews Gmail push (expires after 7 days) |
+| `plutus.daily` | job | plutus | daily 21:00 | `POST plutus /api/finance/alerts/run` — budget alerts + recurring detection |
+| `plutus.review` | job | plutus | 1st of the month 09:00 | `POST plutus /api/finance/review/run` — monthly review (only if `plutus.review.enabled`) |
+| `plutus.statement_reminder` | job | plutus | days 3, 6, 9 of the month 10:00 | `POST plutus /api/finance/reminders/run` — «carica l'estratto» if last month's statement is missing (only if enabled) |
 | `chronos.calendar_sync` | job | chronos | every 15 min (edit/pause in the agenda) | `POST chronos /api/calendar/sync` — Hecate → Archive sync |
 | `athena.consolidation` | window | athena | daily 03–05 | memory consolidation, once a day inside the window |
 | `athena.skill_curation` | window | athena | daily 05–07 | skill curation, once a day inside the window |
@@ -328,14 +335,19 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   `label`, `emoji`, `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
   `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
-  `eating`, `tired`. Modules may add their own with `POST /api/presence/states/register`.
+  `eating`, `tired`, `oracle_offline` («⚠️ Oracle offline», signal `oracle.offline` from Argus when Oracle is down past
+  `argus.oracle.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
+  `docs/work/2026-10-19-oracle-offline`). Modules may add their own with `POST /api/presence/states/register`.
 - **Effects**: `work.light`/`work.heavy` (allow < local < defer), `llm.claude` (allow < save < deny),
-  `notify.level` (all < important < urgent), `chat.style` (normal < brief), `chat.notice` (text). Overlays combine
+  `notify.level` (all < important < urgent), `chat.style` (normal < brief), `chat.reply` (live < queued: chat
+  clients queue what Oracle cannot answer), `chat.notice` (text). Overlays combine
   "most restrictive wins".
 - **Night** = agenda window `assistant.sleep` (owner chronos, daily 01–07): move/skip it from the calendar.
 - **Evaluation** on every signal change, setting change and agenda tick. A change stores snapshot + history in
   Archive (`/api/presence-store`), emits Hermes event `assistant.state_changed` (only to subscribers) and, when
-  `notify.level` relaxes, asks Hermes to release held notifications as one digest.
+  `notify.level` relaxes, asks Hermes to release held notifications as one digest; when `chat.reply` goes back to
+  `live` (Oracle online again) it calls every Hub service declaring `capabilities.chat_queue_drain` (its path, via Hub
+  route) so each chat client answers its queued messages.
 - **Settings** (group Presenza): `enabled`, `idle_after` 5, `nap_after` 45, `sleep_after` 180 (0 = night only),
   `use_sleep_window`, `dnd_default_duration` 120, `tired_quota` 25 %, `tired_degraded` 2, `count_ui_actions`,
   `oracle_context_line`, `states` (advanced).

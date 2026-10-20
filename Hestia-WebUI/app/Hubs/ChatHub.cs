@@ -25,6 +25,8 @@ using Hestia.WebUI.Services;
 ///   {"type":"question","question_id":"...","header":"...","prompt":"..."}
 ///   {"type":"final","reply":"...","session_id":"...","domain":"..."}
 ///   {"type":"error","content":"..."}
+///   {"type":"queued","queue_id":N,"position":N,"content":"..."}   Oracle offline: message queued
+///   {"type":"queued_answer","queue_id":N,"session_id":"...","message":"...","reply":"..."}  (to every tab)
 /// </summary>
 public class ChatHub : Hub
 {
@@ -33,6 +35,7 @@ public class ChatHub : Hub
     private readonly SessionManager _sessionManager;
     private readonly OracleStreamService _oracleStream;
     private readonly HubClient _hubClient;
+    private readonly ChatQueueService _chatQueue;
     private readonly ILogger<ChatHub> _logger;
 
     // Track active cancellation tokens per connection
@@ -44,6 +47,7 @@ public class ChatHub : Hub
         SessionManager sessionManager,
         OracleStreamService oracleStream,
         HubClient hubClient,
+        ChatQueueService chatQueue,
         ILogger<ChatHub> logger)
     {
         _tokenManager = tokenManager;
@@ -51,6 +55,7 @@ public class ChatHub : Hub
         _sessionManager = sessionManager;
         _oracleStream = oracleStream;
         _hubClient = hubClient;
+        _chatQueue = chatQueue;
         _logger = logger;
     }
 
@@ -160,6 +165,31 @@ public class ChatHub : Hub
             await foreach (var evt in _oracleStream.StreamChatAsync(
                 userMessage, sessionId, mode, model, clientInstructions, cts.Token))
             {
+                if (evt.Type == OracleStreamService.UnavailableType && pageContext.Length == 0)
+                {
+                    // Oracle offline: queue it, answered when Oracle is back (SPEC oracle-offline §3).
+                    var queued = await _chatQueue.EnqueueAsync(_hubClient, sessionId, userMessage, clientInstructions,
+                        mode, model, evt.Content ?? "");
+                    if (queued is { } q)
+                    {
+                        await Clients.Caller.SendAsync("ReceiveEvent", new
+                        {
+                            type = "queued", queue_id = q.TryGetProperty("id", out var qid) ? qid.GetInt32() : 0,
+                            position = q.TryGetProperty("position", out var p) ? p.GetInt32() : 1,
+                            session_id = sessionId, content = ChatQueueService.QueuedText,
+                        }, cts.Token);
+                        break;
+                    }
+                    await Clients.Caller.SendAsync("ReceiveEvent",
+                        new { type = "error", content = evt.Content }, cts.Token);
+                    break;
+                }
+                if (evt.Type == OracleStreamService.UnavailableType)
+                {
+                    await Clients.Caller.SendAsync("ReceiveEvent",
+                        new { type = "error", content = "Oracle è offline: riprova appena torna." }, cts.Token);
+                    break;
+                }
                 await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);
             }
 

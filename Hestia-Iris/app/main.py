@@ -26,6 +26,9 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
 
+from dispatch import Dispatcher
+from hestia_common.plugin_client import PluginClient, page, quick_action
+
 logger, log_buffer = setup_service_logging("hestia_iris")
 
 app = FastAPI(title="Hestia-Iris", version="1.0.0")
@@ -89,6 +92,15 @@ try:
             telegram_visible=True, telegram_group="notifiche",
         ),
         MCPTool(
+            name="email_subscriptions",
+            description="Mostra quali moduli ricevono quali email (iscrizioni a Iris) e le ultime consegne",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "email_subscriptions", "params": kw},
+            title="\U0001f4ec Iscrizioni email", method="GET", path="/api/email/dispatch",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="notifiche",
+        ),
+        MCPTool(
             name="iris_reconcile",
             description="Esegue manutenzione di riconciliazione nel modulo Iris",
             parameters={
@@ -110,6 +122,20 @@ except ModuleNotFoundError:
     logger.info("event=mcp_router_skipped service=iris reason=hestia_common_not_available")
 
 app.include_router(create_log_control_router("hestia_iris"))
+
+# ── WebUI plugin «Email» (core): subscriptions, last deliveries, watcher state — no need to read logs ──
+UI_DIST = os.getenv("IRIS_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
+ui = PluginClient("iris", title="Iris", icon="mail", color="blue", kind="core", dist=UI_DIST,
+                  description="Le email di Hestia: chi riceve cosa, le ultime consegne ai moduli, il controllo della casella.",
+                  version=os.getenv("IRIS_SERVICE_VERSION", "1.0.0"))
+ui.webui(entry="iris.js", api_prefix="/api/email/",
+         pages=[page("email", "Email", element="iris-email", icon="mail", order=145,
+                     help="Un solo controllo della casella per tutta Hestia: Iris passa a ogni modulo le email che "
+                          "ha chiesto (Scout gli annunci, Spese le ricevute PayPal). Qui vedi iscrizioni, ultime "
+                          "consegne e lo stato del controllo, e puoi controllare subito.")],
+         quick_actions=[quick_action("controlla", "Controlla email", "POST", "/api/email/check", icon="refresh",
+                                     group="Sistema", order=145)])
+app.include_router(ui.router())
 
 def _hecate(method: str, path: str, *, query: dict | None = None, body: dict | None = None,
             timeout: float = 30) -> dict[str, Any]:
@@ -190,6 +216,8 @@ def register_on_hub_startup() -> None:
         "capabilities": {
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["email"],
+            "mail_dispatch": "/api/email/incoming",
+            **ui.capabilities(service_base_url),
         },
     }
 
@@ -224,6 +252,11 @@ def register_on_hub_startup() -> None:
 
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
+
+    def _load_subscriptions() -> None:
+        while not dispatcher.load():
+            time.sleep(30)
+    threading.Thread(target=_load_subscriptions, daemon=True, name="iris-subscriptions-load").start()
 
 
 @app.get("/health")
@@ -275,17 +308,6 @@ def email_messages(q: str = "", since: str | None = None,
     return {"status": "ok", "query": q, "backend": data.get("backend"), "count": len(rows), "messages": rows}
 
 
-@app.post("/api/email/ingest")
-def email_ingest(body: dict[str, Any]) -> dict[str, Any]:
-    """Trigger a provider mail fetch through Hecate (``/api/ingest/trigger``).
-    Domain modules (Scout) call Iris — Iris owns the email domain."""
-    try:
-        return _hecate("POST", "api/ingest/trigger", body=body, timeout=120) or {"status": "ok"}
-    except HTTPException as exc:
-        logger.warning("[🔄] event=iris_ingest_failed status=%s detail=%s", exc.status_code, exc.detail)
-        return {"status": "error", "detail": str(exc.detail)[:300]}
-
-
 @app.post("/api/email/send")
 def email_send(req: EmailSendRequest) -> dict[str, Any]:
     t0 = time.perf_counter()
@@ -297,6 +319,101 @@ def email_send(req: EmailSendRequest) -> dict[str, Any]:
     sent["thread_id"] = req.thread_id or subject.lower()
     logger.info("event=email_send_done ms=%d", int((time.perf_counter() - t0) * 1000))
     return {"status": "ok", "sent": sent}
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Mail dispatch (PUSH): modules subscribe, Hecate's watcher hands new mail, Iris delivers
+# ─────────────────────────────────────────────────────────────────────
+
+def _hub_call(service: str, method: str, path: str, *, body: Any = None, query: dict | None = None,
+              timeout: float = 15) -> tuple[int, Any]:
+    """Any service via Hub (the only door). Transport failure → ``(0, error)``, never raises."""
+    try:
+        resp = requests.post(
+            f"{HUB_API_URL}/route/{service}/{path.lstrip('/')}",
+            json={"method": method, "headers": {}, "query": {k: v for k, v in (query or {}).items() if v is not None},
+                  "body": body, "timeout_seconds": timeout},
+            timeout=timeout + 5)
+        resp.raise_for_status()
+        routed = resp.json() or {}
+        return int(routed.get("status_code", 500)), routed.get("payload")
+    except Exception as exc:
+        logger.warning("[🔄] event=iris_hub_call_failed service=%s path=%s error=%s", service, path, exc)
+        return 0, str(exc)
+
+
+dispatcher = Dispatcher(_hub_call)
+
+
+class SubscriptionsRequest(BaseModel):
+    owner: str
+    rules: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class IncomingRequest(BaseModel):
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    source: str = "watch"
+
+
+class BackfillRequest(BaseModel):
+    days: int | None = None
+
+
+@app.post("/api/email/subscriptions")
+def email_subscribe(req: SubscriptionsRequest) -> dict[str, Any]:
+    """A module declares its full rule set (``hestia_common.mail_client``); new/changed rules get a backfill."""
+    try:
+        return dispatcher.register(req.owner, req.rules)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/email/subscriptions")
+def email_subscriptions(owner: str | None = None) -> dict[str, Any]:
+    subs = dispatcher.list(owner)
+    return {"status": "ok", "count": len(subs), "subscriptions": subs}
+
+
+@app.delete("/api/email/subscriptions/{owner}/{key}")
+def email_unsubscribe(owner: str, key: str) -> dict[str, Any]:
+    if not dispatcher.remove(owner, key):
+        raise HTTPException(status_code=404, detail="subscription not found")
+    return {"status": "ok"}
+
+
+@app.post("/api/email/subscriptions/{owner}/{key}/backfill")
+def email_backfill(owner: str, key: str, req: BackfillRequest | None = None) -> dict[str, Any]:
+    """Deliver the matching mails of the last days again (the module's «controlla ora»; Archive dedupes)."""
+    return dispatcher.backfill(f"{owner}:{key}", (req or BackfillRequest()).days)
+
+
+@app.post("/api/email/incoming")
+def email_incoming(req: IncomingRequest):
+    """New mail headers from Hecate's watcher. 503 when a matched mail could not be stored, so Hecate keeps its
+    cursor and offers the batch again (Archive dedupes what was already stored)."""
+    out = dispatcher.incoming(req.messages, req.source)
+    if not out["ok"]:
+        raise HTTPException(status_code=503, detail=out)
+    return out
+
+
+@app.get("/api/email/dispatch")
+def email_dispatch_status(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
+    """Everything the «Email» page shows: subscriptions, last deliveries, counters, the watcher in Hecate."""
+    watch_status, watch = _hub_call("hecate", "GET", "api/gateway/mail/watch", timeout=8)
+    return {"status": "ok", "subscriptions": dispatcher.list(), "deliveries": list(dispatcher.log)[:limit],
+            "stats": dispatcher.stats,
+            "watcher": watch if watch_status and watch_status < 400 and isinstance(watch, dict) else None}
+
+
+@app.post("/api/email/check")
+def email_check_now() -> dict[str, Any]:
+    """«Controlla ora»: ask Hecate's watcher for one check (same as the agenda job)."""
+    status, payload = _hub_call("hecate", "POST", "api/gateway/mail/watch/run", body={"trigger": "webui"},
+                                timeout=100)
+    if not status or status >= 400:
+        raise HTTPException(status_code=503, detail="Hecate non raggiungibile")
+    return payload if isinstance(payload, dict) else {"status": "ok"}
 
 
 @app.get("/api/email/threads/{thread_id}")

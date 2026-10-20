@@ -20,6 +20,7 @@ from core.archive_client import ArchiveClient
 from core.state_manager import StateManager
 from core import google_oauth
 from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
+from core.mail_watch import MailWatcher
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
                                   settings as hecate_settings)
 
@@ -28,6 +29,7 @@ load_dotenv()
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import wait_for_hub_services
+    from hestia_common.agenda_client import AgendaClient, job_rule
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -35,6 +37,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import wait_for_hub_services
+    from hestia_common.agenda_client import AgendaClient, job_rule
 
 logger, log_buffer = setup_service_logging("hestia_hecate")
 
@@ -506,6 +509,7 @@ def _route_via_hub(
 @app.on_event("startup")
 def register_on_hub_startup():
     hecate_settings.start()
+    start_mail_watch()
     hub_api_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
     service_base_url = os.getenv(
@@ -994,6 +998,107 @@ def gateway_email_send(req: MailSendRequest):
     except MailUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     return {"status": "ok", "backend": backend, "sent": sent}
+
+
+# ---------------------------------------------------------------------------
+# Mail watcher — the one look at the mailbox; Iris dispatches (PUSH to modules)
+# ---------------------------------------------------------------------------
+from core import gmail_pubsub
+from core.hecate_settings import MAIL_SAFETY_INTERVAL, MAIL_WATCH_INTERVAL
+
+MAIL_WATCH_JOB = "hecate.mail_watch"
+MAIL_RENEW_JOB = "hecate.mail_watch_renew"
+
+
+def _push_to_iris(messages: list[dict], source: str) -> bool:
+    """Hand new mail headers to Iris (email domain owner), which matches subscriptions."""
+    hub = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    try:
+        resp = requests.post(f"{hub}/route/iris/api/email/incoming",
+                             json={"method": "POST", "headers": {}, "query": {},
+                                   "body": {"messages": messages, "source": source}, "timeout_seconds": 100},
+                             timeout=110)
+        resp.raise_for_status()
+        status = int((resp.json() or {}).get("status_code", 500))
+        return status < 400
+    except Exception as exc:
+        logger.warning("[🔄] event=mail_push_iris_failed count=%d error=%s", len(messages), exc)
+        return False
+
+
+mail_watcher = MailWatcher(os.getenv("HECATE_MAIL_WATCH_STATE", "/code/data/mail_watch.json"), mail_gateway,
+                           _push_to_iris)
+gmail_push = gmail_pubsub.PubSubListener(lambda: mail_watcher.run("pubsub"))
+
+
+def _mail_watch_seconds() -> int:
+    key = MAIL_SAFETY_INTERVAL if gmail_pubsub.configured() else MAIL_WATCH_INTERVAL
+    return max(60, int(hecate_settings.get(key) or 900))
+
+
+def _mail_agenda_rules() -> list[dict]:
+    minutes = max(1, _mail_watch_seconds() // 60)
+    rules = [job_rule(
+        MAIL_WATCH_JOB, "Hecate: controlla nuove email", service="hecate", path="/api/gateway/mail/watch/run",
+        body={"trigger": "agenda"}, recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
+        description="Un solo controllo leggero della casella per tutta Hestia: le email nuove vanno a Iris, "
+                    "che le passa ai moduli iscritti (Scout, Spese…). Con Gmail push attivo è solo una rete "
+                    "di sicurezza.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
+    if gmail_pubsub.configured():
+        rules.append(job_rule(
+            MAIL_RENEW_JOB, "Hecate: rinnova notifiche Gmail", service="hecate",
+            path="/api/gateway/mail/watch/renew", body={}, recurrence="FREQ=DAILY",
+            start_at="2026-01-01T04:10:00", description="Gmail push scade dopo 7 giorni: lo rinnovo ogni giorno.",
+            timeout_seconds=30))
+    return rules
+
+
+mail_agenda = AgendaClient("hecate")
+
+
+def _on_mail_settings(changed: dict) -> None:
+    if MAIL_WATCH_INTERVAL in changed or MAIL_SAFETY_INTERVAL in changed:
+        threading.Thread(target=lambda: mail_agenda.register(_mail_agenda_rules()), daemon=True,
+                         name="hecate-mail-agenda").start()
+
+
+hecate_settings.on_change(_on_mail_settings)
+
+
+def start_mail_watch() -> None:
+    """Startup: agenda rules (+ retire the renew job when push is not configured), Gmail push listener."""
+    mail_agenda.register_async(_mail_agenda_rules)
+    if not gmail_pubsub.configured():
+        threading.Thread(target=lambda: mail_agenda.retire([MAIL_RENEW_JOB]), daemon=True,
+                         name="hecate-mail-retire").start()
+    elif gmail_push.start():
+        threading.Thread(target=lambda: gmail_push.renew(mail_gateway.gmail()), daemon=True,
+                         name="gmail-watch-renew").start()
+
+
+class MailWatchRun(BaseModel):
+    trigger: str = "api"
+
+
+@app.post("/api/gateway/mail/watch/run")
+def gateway_mail_watch_run(req: MailWatchRun | None = None):
+    """Check the mailbox once (history API) and push new mail headers to Iris."""
+    return mail_watcher.run((req or MailWatchRun()).trigger)
+
+
+@app.get("/api/gateway/mail/watch")
+def gateway_mail_watch_status():
+    return {"status": "ok", "agenda_job": MAIL_WATCH_JOB, "interval_seconds": _mail_watch_seconds(),
+            "watcher": mail_watcher.status(), "push": gmail_push.status()}
+
+
+@app.post("/api/gateway/mail/watch/renew")
+def gateway_mail_watch_renew():
+    """Renew Gmail push (Pub/Sub) — inactive until configured."""
+    out = gmail_push.renew(mail_gateway.gmail())
+    if out.get("status") == "ok":
+        gmail_push.start()
+    return out
 
 
 # ---------------------------------------------------------------------------

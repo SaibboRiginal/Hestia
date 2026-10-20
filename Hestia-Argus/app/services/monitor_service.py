@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 from core import argus_settings as cfg
 from core import docker_client, forge_proposer, health_poller, hub_client
-from services import health_history
+from services import oracle_watch, health_history
 
 try:
     from hestia_common.agenda_client import AgendaClient, template as agenda_template
@@ -101,10 +101,14 @@ def recheck(service: str) -> dict:
         _close_repair(service)
         with _unhealthy_lock:
             was = _unhealthy.pop(service, None)
-        if was:
+        if service == oracle_watch.ORACLE:
+            oracle_watch.observe("up")
+        elif was:
             send_recovery(service)
         return {"status": "ok", "service": service, "health": "up", "message": f"{service} risponde ✓"}
     health_history.note_unhealthy(service, report_status, error)
+    if service == oracle_watch.ORACLE:
+        oracle_watch.observe(report_status if target is not None else None, error)
     ok, response = (False, {"skipped": "auto_remediate_disabled"})
     if cfg.get_bool(cfg.REMEDIATE_ENABLED):
         ok, response = hub_client.request_hephaestus_remediation(
@@ -327,6 +331,11 @@ def _run_once() -> None:
         if _monitor_cycle_count % cfg.get_int(cfg.AUTH_CHECK_EVERY, 1) == 0:
             _check_provider_auth()
 
+    # --- Oracle watch: its own notice replaces the generic one below ---
+    oracle = health.get(oracle_watch.ORACLE)
+    if oracle is not None or services:  # empty registry = Hub down: say nothing about Oracle
+        oracle_watch.observe(oracle.status if oracle else None, oracle.error if oracle else "not registered on Hub")
+
     # --- Health alerts & recovery ---
     for name, report in health.items():
         with _unhealthy_lock:
@@ -336,18 +345,20 @@ def _run_once() -> None:
             with _unhealthy_lock:
                 _unhealthy[name] = report.status
             if health_history.note_unhealthy(name, report.status, report.error):
-                health_history.note_action(name, "alert", "Avviso a Hermes")
-            send_alert(
-                ServiceAlert(
-                    service=name,
-                    kind="health",
-                    level="CRITICAL" if report.status == "down" else "WARNING",
-                    message=(
-                        f"Service '{name}' is {report.status}. "
-                        f"Error: {report.error or 'unknown'}"
-                    ),
+                health_history.note_action(name, "alert", "Avviso a Hermes" if name != oracle_watch.ORACLE
+                                           else "Stato «Oracle offline» dopo l'attesa")
+            if name != oracle_watch.ORACLE:
+                send_alert(
+                    ServiceAlert(
+                        service=name,
+                        kind="health",
+                        level="CRITICAL" if report.status == "down" else "WARNING",
+                        message=(
+                            f"Service '{name}' is {report.status}. "
+                            f"Error: {report.error or 'unknown'}"
+                        ),
+                    )
                 )
-            )
             if cfg.get_bool(cfg.REMEDIATE_ENABLED) and not was_unhealthy:
                 dry_run = cfg.get_bool(cfg.REMEDIATE_DRY_RUN)
                 ok, response = hub_client.request_hephaestus_remediation(
@@ -381,7 +392,8 @@ def _run_once() -> None:
                 _unhealthy.pop(name, None)
             _close_repair(name)
             health_history.note_recovered(name)
-            send_recovery(name)
+            if name != oracle_watch.ORACLE:
+                send_recovery(name)
 
     _report_degraded()
 

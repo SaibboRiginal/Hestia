@@ -28,6 +28,7 @@ builder.Services.AddSingleton<PresencePinger>();
 builder.Services.AddSingleton<WebUISettings>();
 builder.Services.AddSingleton<LocalAccess>();
 builder.Services.AddSingleton<PluginCatalog>();
+builder.Services.AddSingleton<ChatQueueService>();
 builder.Services.AddHostedService<WebUISettingsRegistrar>();
 
 builder.Services.AddHttpClient<HubClient>(client =>
@@ -144,6 +145,8 @@ using (var scope = app.Services.CreateScope())
             swagger_endpoint = $"{hestiaOpts.ServiceBaseUrl}/swagger",
             // Hermes delivers every notification here (SPEC hermes-global-notifications).
             notify_endpoint = "/api/notify",
+            // Chronos calls it when Oracle is back (SPEC oracle-offline): answer the queued chat messages.
+            chat_queue_drain = "/api/chat-queue/drain",
             // Assistant tools: widget catalog + dashboards (client plugins SPEC §4.6), next to Themis'.
             // /api/ai/mcp: the WebUI's own module tools. /mcp is the public door for external AIs.
             mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/api/ai/mcp",
@@ -171,6 +174,8 @@ using (var scope = app.Services.CreateScope())
 
     if (await RegisterOnHubAsync())
         logger.LogInformation("event=registered_on_hub hub={Hub} service={Svc}", hestiaOpts.HubApiUrl, hestiaOpts.ServiceName);
+    // Messages queued while Oracle was offline (and the WebUI was down too) get their answer now.
+    app.Services.GetRequiredService<ChatQueueService>().DrainInBackground("startup");
 
     // Keepalive like the Python services: the Hub marks a service offline after 180 s without a registration
     // and forgets it on restart. The WebUI registered only once (found by the cloud test bench, 2026-10-19).

@@ -30,13 +30,23 @@ It stores and serves all persistent state through generic APIs.
   store. Pure storage for Hygieia.
 - **Wardrobe store** (`/api/wardrobe-store/*`): table `wardrobe_records`, same shape and rules as the Hercules store.
   Pure storage for Wardrobe.
+- **Finance store** (`/api/finance-store/*`): table `finance_records`, same shape and protocol as the Hercules store.
+  Pure storage for Plutus (expenses: transactions, categories, rules, budgets, accounts, imports, recurring).
+- **Iris store** (`/api/iris-store/*`): table `iris_records`, same shape and protocol. Pure storage for Iris (mail
+  subscriptions, kind `subscription`, id `<owner>:<key>`).
+  Both are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
+  own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
-  deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos first).
+  deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos, Plutus
+  statement PDFs; owner `chat` = chat attachments stored by Oracle for a module's attachment handler).
 - **MCP access store** (`/api/mcp-access-store/*`): table `mcp_accesses` (access_id, name, kind token|oauth,
   scope read|write, tools, token_hash (sha256, unique), expires_at, revoked_at, last_used_at, calls_day/date/total,
   meta; OAuth grants also client_id, refresh_hash, prev_refresh_hash, token_expires_at), `mcp_oauth_clients`
   (client_id, name, redirect_uris, auth_method, secret_hash) and `mcp_oauth_codes` (code_hash, PKCE challenge, consent
   choices, used_at). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
+- **Chat queue** (`/api/chat-queue/*`, table `chat_queue`): chat messages Oracle could not take while Oracle was
+  offline; each chat client (Telegram, WebUI) queues its own and answers them when Chronos says Oracle is back
+  (SPEC `docs/work/2026-10-19-oracle-offline`).
 - **Presence store** (`/api/presence-store/*`): tables `presence_signals` (key, value, meta, expires_at),
   `presence_snapshot` (one row), `presence_changes` (last 100). Pure storage for Chronos' presence engine.
 
@@ -66,6 +76,8 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/selfcare-store/cursor` | Current cursor |
 | `PUT`/`GET` | `/api/wardrobe-store/records` | Wardrobe rows (same contract as hercules-store) (Wardrobe only) |
 | `GET` | `/api/wardrobe-store/cursor` | Current sync cursor |
+| `PUT`/`GET` | `/api/finance-store/records` · `GET /api/finance-store/cursor` | Plutus rows (same contract as hercules-store) (Plutus only) |
+| `PUT`/`GET` | `/api/iris-store/records` · `GET /api/iris-store/cursor` | Iris rows (same contract) (Iris only) |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
@@ -83,6 +95,9 @@ It stores and serves all persistent state through generic APIs.
 | `PUT`/`DELETE` | `/api/presence-store/signals/{key}` | Presence signal |
 | `PUT` | `/api/presence-store/snapshot` | Snapshot + optional change appended to history |
 | `GET` | `/api/presence-store/history` | Presence state changes |
+| `POST` | `/api/chat-queue` | Queue a chat message written while Oracle was offline `{client, session_id, text, target?, client_ref?, meta?}` → item + `position` |
+| `GET` | `/api/chat-queue` · `/counts` | Items oldest first (`client`, `state` default `queued`) · waiting per client |
+| `POST` | `/api/chat-queue/{id}/claim` · `/done` | Compare-and-set `queued → answering` (409 = someone else; a claim older than `stale_seconds` 600 is free again) · `{ok, detail}`: answered, or back to queued (failed after 5 attempts) |
 | `GET` | `/health` | Archive health |
 
 ---
@@ -115,3 +130,5 @@ It stores and serves all persistent state through generic APIs.
 - Session summaries for Athena skills are stored as entities with `domain=session_summary`.
 - Startup waits for Postgres (`ARCHIVE_DB_WAIT_SECONDS`, 0 = forever) and re-registers on Hub every
   `HUB_KEEPALIVE_SECONDS` (Hub restarts no longer drop Archive).
+- 2026-10-19: generic `module_store` router → `/api/finance-store` (Plutus) and `/api/iris-store` (Iris); raw mail
+  records delivered by Iris land in `/api/archive` under the subscriber's domain (`reference_id = mail:<domain>:<gmail id>`).
