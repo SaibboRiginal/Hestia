@@ -128,8 +128,10 @@ Scout and the rest: none in v1 (can add later with the same helper).
   owner: later, own small SPEC).
 - Sleep / mood tracking: not tracked anywhere today (Hygieia's journal is per body area). Links appear as soon as a
   module publishes such a series.
-- Daily recap (sibling thread «Recap della giornata») and coaches (sibling thread): they may read the same signals; the
-  contract is shared, the features are theirs.
+- Daily recap (sibling thread «Recap della giornata») owns Athena's `app/core/recap.py` and the per-module contract
+  `GET /api/module/recap` (`hestia_common.recap`); this work does not touch them. Later the life track may add a
+  «da tenere d'occhio» line to the recap through that contract. Coaches (sibling thread) may read the same signals;
+  the contract is shared, the features are theirs.
 
 ## Acceptance criteria
 1. Logging a workout that makes an exercise stall publishes one `stall:<exercise>` signal; logging a better set
