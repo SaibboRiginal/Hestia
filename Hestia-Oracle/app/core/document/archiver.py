@@ -7,7 +7,7 @@ Archive upsert) in a background thread.
 This class depends on:
   - HubClient: for Archive API access
   - embed_fn: callable (text → list[float])
-  - analyst / fallback_analyst: UniversalAgent instances for LLM-assisted extraction
+  - analyst: use case chain (llm_chains.ChainAgent) for LLM-assisted extraction
   - Extractor module: pure static text extractors
   - LocalModels module: CLIP/YOLO/WhisperX inference
   - Capabilities module: model capability flags
@@ -55,12 +55,10 @@ class DocumentArchiver:
         hub_client: HubClient,
         embed_fn: Callable[[str], list[float]],
         analyst,
-        fallback_analyst,
     ) -> None:
         self._hub = hub_client
         self._embed = embed_fn
         self._analyst = analyst
-        self._fallback = fallback_analyst
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -323,21 +321,14 @@ class DocumentArchiver:
         return {}
 
     def _llm_with_attachment(self, file_bytes: bytes, mime_type: str, prompt: str) -> str:
-        """Call analyst (then fallback) with a file attachment. Returns raw text."""
+        """Call the analyst chain with a file attachment. Returns raw text ("" when every step failed)."""
         try:
             return self._analyst.ask_with_attachment(
                 file_bytes=file_bytes, mime_type=mime_type, user_message=prompt
             )
         except Exception as exc1:
             logger.warning(
-                "event=archiver_primary_llm_attachment_call [ARCHIVER] Primary LLM attachment call failed: %s", exc1)
-        try:
-            return self._fallback.ask_with_attachment(
-                file_bytes=file_bytes, mime_type=mime_type, user_message=prompt
-            )
-        except Exception as exc2:
-            logger.warning(
-                "event=archiver_fallback_llm_attachment_call [ARCHIVER] Fallback LLM attachment call failed: %s", exc2)
+                "event=archiver_primary_llm_attachment_call [ARCHIVER] Analyst chain attachment call failed: %s", exc1)
         return ""
 
     def _enrich_metadata(

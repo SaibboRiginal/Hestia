@@ -65,9 +65,9 @@ Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archiv
 (they were appended to the URL and dropped).
 
 `metis_benchmark_run` returns `status: not_implemented` (honest placeholder, no LLM call).
-Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `generic` use case,
-read via Hub from Oracle `GET /api/settings/effective` (`oracle.models.generic.model`); Oracle unreachable →
-`[🔄]` fallback to Oracle's declared default `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
+Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `oracle.generale` use case
+(first usable step of its chain), read via Hub from Oracle `GET /api/llm/usecases/oracle.generale`; Oracle unreachable →
+`[🔄]` fallback to the first step of Oracle's default «veloce» chain, `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
 `metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
 (dataset + log in `METIS_DATA_DIR`, default `/code/data` = `Hestia-Metis/data` volume); it used to report "triggered" without starting anything.
 

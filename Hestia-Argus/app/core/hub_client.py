@@ -65,6 +65,10 @@ def register(*, quiet_success: bool = False) -> bool:
             "module_tool_domains": ["system"],
             # WebUI plugin (Salute page, Stato sistema widget): manifest URL + version for the Hub catalog.
             **ui.capabilities(ARGUS_SERVICE_BASE_URL),
+            # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Modelli.
+            "llm_usecases": [{"id": "argus.analisi", "label": "Argus · analisi allarmi", "chain": "veloce",
+                              "help": "Racconta e analizza gli allarmi di salute dei servizi.",
+                              "thinking": "auto", "mode": "segui"}],
         },
     }
     try:

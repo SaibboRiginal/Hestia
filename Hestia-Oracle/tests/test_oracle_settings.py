@@ -59,10 +59,6 @@ EXPECTED = {
     "ORACLE_PROMPT_AB_PLANNER_VARIANTS": ("oracle.prompt_ab.planner.variants", ["control", "experimental"]),
     "ORACLE_PROMPT_AB_PLANNER_DEFAULT": ("oracle.prompt_ab.planner.default", "control"),
     "ORACLE_PROMPT_AB_PLANNER_FORCE": ("oracle.prompt_ab.planner.force", ""),
-    "ORACLE_CLAUDE_MODEL": ("oracle.models.claude_code.model", ""),
-    "SCOUT_LLM_PROVIDER": ("oracle.models.scout_extraction.provider", "gemini"),
-    "ATHENA_STRATEGIST_PROVIDER": ("oracle.models.athena_strategist.provider", ""),
-    "ATHENA_AUDITOR_PROVIDER": ("oracle.models.athena_auditor.provider", ""),
 }
 
 
@@ -112,13 +108,11 @@ class TestLiveReads:
         monkeypatch.setitem(o.settings._effective, "oracle.prompt_ab.alert.force", "experimental")
         assert prompt_config.select_variant("alert_formatter", seed="x") == "experimental"
 
-    def test_service_use_case_follows_generic_until_set(self, monkeypatch):
-        monkeypatch.setitem(o.settings._effective, "oracle.models.generic.model", "g-model")
-        assert o.usecase("athena_strategist")["mod"] == "g-model"
-        monkeypatch.setitem(o.settings._effective, "oracle.models.athena_strategist.provider", "gemini")
-        monkeypatch.setitem(o.settings._effective, "oracle.models.athena_strategist.model", "gemini-2.5-pro")
-        assert (o.usecase("athena_strategist")["prov"], o.usecase("athena_strategist")["mod"]) == \
-            ("gemini", "gemini-2.5-pro")
+    def test_models_are_three_objects_plus_brain_mode_and_the_rest_is_advanced(self):
+        visible = [k for k, d in o.settings._defs.items() if not d["advanced"] and d["scope"] == "system"]
+        assert sorted(visible) == sorted([o.PROVIDERS_KEY, o.CHAINS_KEY, o.USECASES_KEY, o.BRAIN_MODE, o.BRAIN_AGENT,
+                                          o.BRAIN_MODEL, o.BRAIN_FALLBACK])
+        assert not any(k.startswith("oracle.models.") for k in o.settings._defs)
 
     def test_vision_prefixes_live(self, monkeypatch):
         from core.document import capabilities
@@ -134,9 +128,9 @@ class TestLiveReads:
         assert cb.max_history_messages == 10
         assert ContextBuilder(3, 500, 5, 100).max_history_messages == 3
 
-    def test_gemini_without_key_remaps_to_local_model(self, monkeypatch):
-        monkeypatch.setenv("GEMINI_API_KEY", "")
-        from core.services.agent_factory import AgentFactory
-        cfg = {"code_fallback": {"prov": "gemini", "mod": "gemini-2.0-flash"}}
-        AgentFactory._remap_gemini_when_no_api_key(cfg)
-        assert cfg["code_fallback"] == {"prov": "ollama", "mod": o.USECASES["code"][2]}
+    def test_old_provider_env_vars_are_gone(self):
+        app = Path(__file__).resolve().parents[1] / "app"
+        source = "\n".join(p.read_text(encoding="utf-8") for p in app.rglob("*.py"))
+        for env_name in ("GEMINI_API_KEY", "ORACLE_OPENAI_BASE_URL", "ORACLE_OPENAI_API_KEY",
+                         "ORACLE_ANTHROPIC_API_KEY", "ORACLE_LLM_PROFILE_"):
+            assert env_name not in source, env_name

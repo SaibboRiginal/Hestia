@@ -14,18 +14,57 @@ The conversational AI brain of Hestia. Receives messages from interface services
 
 ## Core Features
 
-### Universal LLM Connector
-- Abstracts cloud LLM providers (Gemini, Claude) and local Ollama behind a single `UniversalAgent` interface. Provider types `anthropic` and `claude_cli` live in `app/agents/providers/` (one class per type, config dict in, no env reads); `app/agents/llm_config.py` `load_llm_config()` is the only place reading their infrastructure env.
-- **Use-case model config** via central settings `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model,thinking}` (Themis; WebUI → Impostazioni → Oracle, presets Economico/Bilanciato/Qualità; declared in `app/core/services/oracle_settings.py`; live: `AgentFactory.reconfigure` updates the agents in place): `generic` (chat, classify, tools, memory, format), `reasoning` (deep thinking, loaded on demand), `code` (code generation), `embedding` (vectors). Each use case has primary + fallback provider/model pair. Mode (quick/auto/thinking) controls orchestration process; use case controls which brain.
-- **Module use cases** (other modules' LLM choices live here, not in their env): `scout_extraction` (Scout listing
-  extraction, default `gemini-2.5-flash` → reserve `gemini-2.5-flash-lite`, i.e. the old quota hop),
-  `athena_strategist` (strategist + memory consolidation), `athena_auditor` (answer audit). Keys
-  `oracle.models.<use case>.{provider,model,fallback_provider,fallback_model}`; provider `""` («Come Uso generale»,
-  default for Athena) = same models as `generic`. Modules call `/api/llm/generate` with `{"prompt", "use_case"}`.
-- `oracle.models.claude_code.model`: model of Claude Code for Forge (`/api/llm/code`), `""` = CLI default.
-- No Gemini key: a Gemini use case runs on its local model (its own Ollama model, else the declared Ollama default).
-- If primary (Ollama) is unavailable, falls back to the assigned Gemini model automatically at runtime.
+### Universal LLM Connector — providers, chains, use cases (dossier `docs/work/2026-10-19-oracle-a-blocchi`)
+Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello → Modelli**):
+- **Providers** `oracle.providers` = `{name: {type, label, url}}`. Type = the standard it speaks: `ollama`,
+  `openai` (any OpenAI-compatible server: llama-server, vLLM, DeepSeek, OpenRouter), `anthropic` (Anthropic API or a
+  compatible endpoint), `gemini`, `claude_cli` (Claude subscription through the `claude` CLI). Defaults: `ollama`
+  (address from infra `OLLAMA_URL`), `llamacpp` (llama-server `http://host.docker.internal:8080/v1`), `gemini`,
+  `deepseek`, `claude-api`, `claude`. **Keys only in env** as `ORACLE_KEY_<NAME>` (upper-case, non-alphanumerics → `_`,
+  e.g. `ORACLE_KEY_CLAUDE_API`); a cloud provider without its key, or `claude` without a login, is skipped.
+  Code: `core/services/llm_providers.py`; one class per type in `app/agents/providers/`, config dict in, no env reads.
+- **Chains** `oracle.chains` = `{name: {label, steps: [{provider, model, thinking?}]}}`, reusable like a CSS
+  font-family: the first usable step answers; a **quota** error (429, `RESOURCE_EXHAUSTED`, «quota», «usage limit»)
+  marks that provider/model pair exhausted until its reset (Retry-After, `retryDelay`, midnight Pacific for Gemini per-day
+  quotas, else `oracle.quota.cooldown_minutes` = 60) and every chain skips it until then; any other error just moves
+  to the next step. All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `veloce`, `potente`,
+  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable). Code: `core/services/llm_chains.py`.
+- **Use cases** `oracle.usecases` = `{use case: {chain, mode, thinking}}` overrides. Oracle's own: `oracle.generale`
+  (chat, classify, tools, memory, format), `oracle.ragionamento`, `oracle.codice`, `oracle.documenti` (vision),
+  `oracle.embedding`. Modules **declare** theirs in the Hub registration (`capabilities.llm_usecases`, helper
+  `hestia_common.oracle_usecases`): `scout.annunci`, `athena.strategia`, `athena.revisione`, `argus.analisi`,
+  `chronos.agenda`, `wardrobe.foto`, `forge.codice`… with a suggested chain; Marko picks chain/mode/thinking in one
+  place. A use case nobody declared runs like `oracle.generale` and is listed as «non dichiarato».
+- `ChainAgent` (same interface as `UniversalAgent`) walks the chain at every call, reading settings live (no restart,
+  no reconfigure); `AgentFactory.create()` builds one per Oracle use case (`generic`, `reasoning`, `code`,
+  `documents`, `embedding` slots). Streams fall back only before the first token.
+- One-time migration: old `oracle.models.*` values (before 2026-10-19) become chains `<use case>-personale` when neither
+  `oracle.chains` nor `oracle.usecases` was ever stored (`core/services/llm_migration.py`).
+- Claude Code for Forge (`/api/llm/code`) uses the first `claude_cli` step of use case `forge.codice` (none → CLI default).
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
+
+### Brain mode: interna / esterna (§D)
+- `oracle.brain.mode` = `interna` (default: classifier, Rapida/Pensata/CoT, agent loop, chains) or `esterna`: an agent
+  CLI runs the tool loop — `oracle.brain.agent` = `claude` (Claude Code, subscription login `CLAUDE_CODE_OAUTH_TOKEN`)
+  or `codex` (Codex, `codex login`, image built with `ORACLE_INSTALL_CODEX=1`, login mounted in `/root/.codex`),
+  `oracle.brain.model` (e.g. `sonnet`), `oracle.brain.fallback` = `interna` (redo the turn with the chains) or `nessuno`.
+  A use case can override the mode (Modelli).
+- In esterna Oracle keeps the door work: history, classification (domain filter), context, tools, saving to Archive,
+  memory, usage rows; quick shortcuts are skipped (the agent answers every turn). Code: `core/services/external_agent.py`.
+- Tools: the CLI starts `python -m core.services.mcp_bridge` (stdio MCP, standard library only), which forwards
+  `tools/list` / `tools/call` to Oracle's loopback `/api/agent-bridge/<token>` (one random token per turn, loopback only):
+  the same tool handlers, approval gate, logs and Hub routing as the internal loop. Built-in file/shell tools stay off.
+- Sessions: Archive is the source of truth; the agent session id is an in-memory cache keyed by (session, agent, model),
+  dropped when a turn of that session is answered in interna. A new agent session is primed with Oracle's context.
+- `/api/llm/generate` of a use case in esterna asks the agent one shot without tools.
+
+### Usage rows (§E)
+Every LLM call (chain step, Forge chat, external agent, Claude Code) becomes one row pushed to Archive store
+`llm-usage` (one background worker started by the first row, batches of 200, a failed send is dropped): time, module
+(prefix of the use case), client and session, use case, chain, step, provider, model, tokens in/cached/out, context window,
+duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`, `locale`, `sconosciuto`), outcome
+(`ok`/`quota`/`error`). Archive deletes rows older than `oracle.usage.retention_days` (90) on each write.
+`GET /api/llm/usage` sums them. Code: `core/services/llm_usage.py`; `llm_stats` keeps the in-memory live gauge.
 
 ### Personal chat settings (Themis, scope user)
 - `oracle.chat.tone` (warm · neutral · direct · formal) and `oracle.chat.instructions` (text) are declared by
@@ -156,8 +195,14 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
-| `POST` | `/api/llm/generate` | Raw LLM call for internal service use `{prompt, use_case?, model?, provider?}` — primary/fallback chain follows the settings `oracle.models.<use_case>.*` (default `generic`; unknown use case → `generic`; explicit model/provider win) → `{response, model, provider}` |
-| `GET` | `/api/llm/models?provider=` | Model choices for a provider (`ollama` = installed models from `/api/tags`, `gemini` = curated list, `anthropic` = Models API or built-in list, `claude_cli` = haiku/sonnet/opus) → `{options:[{value,label}]}`; used by the settings panel |
+| `POST` | `/api/llm/generate` | Plain generation for services `{prompt, use_case?}` — the use case's chain (default `oracle.generale`; esterna → external agent one shot) → `{response, model, provider, use_case, chain}`; every step failing → 503 |
+| `GET` | `/api/llm/models?provider=` | Model choices of a named provider (Ollama installed models, Gemini curated list, Anthropic Models API, OpenAI-compatible `/models`, Claude CLI haiku/sonnet/opus) → `{options:[{value,label}]}` |
+| `GET` | `/api/llm/providers` | Named providers: type, address, `key_env`, `key_set`, available, exhausted models (never a key) |
+| `GET` | `/api/llm/chains` | Chains with each step's state (available, out of quota until) |
+| `GET` | `/api/llm/usecases` · `/api/llm/usecases/{id}` | Every use case (Oracle's, declared by modules, undeclared seen) with effective chain/mode/thinking · what one would use now (first usable step, window, billed) — Forge engine `oracle` |
+| `GET` | `/api/llm/usage?group=module\|session\|usecase\|model\|step\|day&days=&module=&session_id=&use_case=` | Sums of the usage rows kept in Archive |
+| `GET` | `/api/llm/usage/calls?session_id=&days=&limit=` | Latest single calls (detail of a session) |
+| `GET` · `POST` | `/api/agent-bridge/{token}/tools` · `/call` | Loopback only: tools of the external agent's running turn (stdio MCP bridge) |
 | `GET` | `/api/settings/effective` · `POST /api/settings/reload` | Central settings: effective values / reload (called by Themis) |
 | `POST` | `/api/athena/hints` | Ingest Athena advisory hint payload |
 | `GET` | `/api/athena/hints` | List non-expired Athena hints (optional `session_id`) |
@@ -169,6 +214,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `GET` | `/api/ui/activity?limit=` | Recent chat turns, newest first (route, domains, tools ok/failed, model/provider, ms, LLM usage of the turn) + last user activity |
 | `GET` | `/api/ui/stats?days=` | LLM use: tokens/cost per day (≤31), today per use case × provider × model, rolling averages per use case |
 | `GET` | `/api/ui/code` | Claude Code status (`/api/llm/code/status`) + recent runs (`running`, `runs[]`: task folder, state, ok, ms, turns, cost) |
+| `GET` | `/api/ui/models` · `/api/ui/models/list?provider=` | Tab Modelli: providers (no keys), standards, chains with step state, use cases, overrides, modes · model names of a provider |
+| `PUT` | `/api/ui/models/{providers\|chains\|usecases}` | `{value}` → stored through Themis (actor user); 400 invalid, 502 Themis refused |
+| `POST` | `/api/ui/models/quota/reset?provider=&model=` | «Riprova adesso»: forget a quota state |
+| `GET` | `/api/ui/usage` · `/api/ui/usage/calls` | Tab Uso: same as `/api/llm/usage` · `/api/llm/usage/calls` |
 | `GET` | `/api/ui/documents?limit=&domain=&permanent=` | Documenti page: documents from Archive (via Hub) `{documents, count, domains}`; Archive down → 502 |
 | `GET` | `/api/ui/documents/search?query=&limit=` | Semantic search over passages (same as the chat, threshold `oracle.documents.search_threshold`) |
 | `POST` | `/api/ui/documents` | Add a file `{name, mime, data_b64}` → `{status: ingesting, document_id}`; archiving (extract → chunks → embeddings → Archive) runs in background, session `webui-documenti`; 415 type, 413 too big |
@@ -208,8 +257,9 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 | `cot` (CoT) | "deep" | Yes, no quick-chat shortcut | Deep reasoning, ≥50 turns, prompt line asking a step-by-step plan and a «Passi:» recap |
 | `""` | — | — | Use the setting `oracle.chat.mode` (session → client → profile) |
 
-Mode and model are independent — any mode works with any model (`generic`/`reasoning`/`code`).
-Model names come from the settings `oracle.models.*` — no hardcoded models outside the declared defaults.
+Mode and model are independent — any mode works with any use case (`generic`/`reasoning`/`code` slots).
+Model names come from the chains (`oracle.chains`) — no hardcoded models outside the declared defaults. In brain mode
+esterna the external agent answers every turn (no quick shortcut).
 
 ### `POST /chat` payload
 ```json
@@ -239,14 +289,16 @@ This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI 
 ## Settings (Themis, all live)
 
 Declared in `app/core/services/oracle_settings.py`, read at use time (no restart). Env keeps only infrastructure:
-endpoints/keys (`OLLAMA_URL`, `GEMINI_API_KEY`, `ORACLE_OPENAI_*`, `ORACLE_ANTHROPIC_API_KEY`,
-`ORACLE_LLM_PROFILE_*`), binaries/paths (`ORACLE_CLAUDE_BIN`, `ORACLE_CODE_WORKDIR_ROOT`, `ORACLE_PROMPTS_FILE`, `ORACLE_UI_DIST` — WebUI bundle, set in the Dockerfile),
+endpoints/keys (`OLLAMA_URL`, provider keys `ORACLE_KEY_<NAME>`, `CLAUDE_CODE_OAUTH_TOKEN`), binaries/paths
+(`ORACLE_CLAUDE_BIN`, `ORACLE_CODEX_BIN`, `ORACLE_CODE_WORKDIR_ROOT`, `ORACLE_PROMPTS_FILE`, `ORACLE_UI_DIST` — WebUI bundle, set in the Dockerfile),
 `ORACLE_EMBED_DIM` (tied to Archive `Vector(768)`), `TZ`, Hub/Archive URLs, `MODULE_TOOLS_URL(S)`, version,
 `ORACLE_NOTIFY_DEFAULT_TARGET` (identity of the owner). Prompt text (persona, action-tool policy) is in the prompt
 map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 
 | Group | Keys (default) |
 |---|---|
+| Modelli | `oracle.providers`, `oracle.chains`, `oracle.usecases` (object, editor Cervello → Modelli), `oracle.quota.cooldown_minutes` (60), `oracle.brain.mode` (interna), `.agent` (claude), `.model` (sonnet), `.fallback` (interna) |
+| Uso | `oracle.usage.retention_days` (90), `oracle.pricing` (`{"provider/model": {in, out, cached}}` $ per Mtok, `{}`) |
 | Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8) |
 | Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…) |
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
@@ -286,20 +338,18 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/llm/profiles` | Profiles with model + availability (`check=false` skips probing). No secrets. |
-| POST | `/api/llm/chat` | OpenAI-compatible chat on a profile: `{profile, messages, tools?, temperature?, model?}` → provider JSON |
-| POST | `/api/llm/generate` | Plain prompt → `{response}` (Athena, Metis) |
+| POST | `/api/llm/chat` | OpenAI-compatible chat along a use case's chain: `{use_case?, messages, tools?, temperature?, max_tokens?, tool_choice?}` (default `forge.codice`) → provider JSON + `hestia_step` (use case, chain, step, provider, model) |
+| POST | `/api/llm/generate` | Plain prompt `{prompt, use_case?}` → `{response, model, provider, use_case, chain}` (Athena, Scout, Argus, Chronos, Metis) |
+| GET | `/api/llm/usecases/{id}` | What a chat on that use case would use now: first usable step, `context_window`, `billed` (Forge engine `oracle`) |
 | GET | `/api/llm/code/status` | Claude Code ready? (CLI installed, token, worktree root mounted) |
 | POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd, transcript_path}`. Runs `claude -p --output-format stream-json --verbose`; every line is written live to `<ORACLE_CODE_WORKDIR_ROOT>/.transcripts/<task>.jsonl` (outside the worktree) for the WebUI Sviluppo page |
 
-Profiles: `ORACLE_LLM_PROFILE_<NAME>_BASE_URL` / `_MODEL` / `_API_KEY` (OpenAI-compatible base, e.g. `…/v1`).
-`local` defaults to Ollama (host of `OLLAMA_API_URL` or `OLLAMA_URL`, model = setting `oracle.models.code.model`).
-The built-in `local` profile is served through Ollama's native `/api/chat` with the same `num_ctx` + `keep_alive`
-as every other Oracle call (Ollama's `/v1` ignores `num_ctx`: it reloaded the model with a tiny default window and
-long Forge prompts were cut silently). Request/response are translated to the OpenAI shape (`reasoning_content`,
-`tool_calls`, `finish_reason=length` when the window is full); `/api/llm/profiles` reports its `context_window`.
-Example cloud: `ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1`, `_MODEL=qwen/qwen3-coder`, `_API_KEY=sk-or-…`.
-Timeout per call: setting `oracle.timeouts.gateway_chat` (600 s). Used by Hephaestus Forge engines `local`/`cloud`.
+`/api/llm/chat` walks the chain like every other call (quota skip, next step on error). An Ollama step is served
+through Ollama's native `/api/chat` with the same `num_ctx` + `keep_alive` as every other Oracle call (Ollama's `/v1`
+ignores `num_ctx`: long Forge prompts were cut silently); request/response are translated to the OpenAI shape
+(`reasoning_content`, `tool_calls`, `finish_reason=length` when the window is full). Other steps go to the provider's
+OpenAI-compatible endpoint (Gemini `…/v1beta/openai`, Anthropic `…/v1`, any `openai` provider) with its
+`ORACLE_KEY_<NAME>`. Timeout per call: setting `oracle.timeouts.gateway_chat` (600 s). Used by Forge engine `oracle`.
 
 ## Prompts (caveman style, single source)
 
@@ -324,15 +374,17 @@ agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps paralle
 ### Claude Code ("code" use case on the Pro/Max subscription)
 
 - Build Oracle with `--build-arg INSTALL_CLAUDE_CODE=1`; put `CLAUDE_CODE_OAUTH_TOKEN` (run `claude setup-token` on
-  your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Model: setting `oracle.models.claude_code.model` (empty = CLI default).
+  your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Model: the first `claude_cli` step of use
+  case `forge.codice` (none = CLI default).
 - Code tasks run inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus). The CLI never sees
-  `ORACLE_ANTHROPIC_API_KEY`.
+  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or any `ORACLE_KEY_*` (`agents.llm_config.cli_env`).
 
 ### Claude for chat (provider types `anthropic` and `claude_cli`)
 
-Pick them per use case in Impostazioni → Modelli (`oracle.models.<uc>.provider`); offered only when configured.
-- **`anthropic` — "Claude (chiave API)"**: official `anthropic` SDK, key `ORACLE_ANTHROPIC_API_KEY` (never
-  `ANTHROPIC_API_KEY`, which would switch Forge's Claude Code to paid API billing). Default model `claude-haiku-5-5`.
+Put them as steps of a chain (Cervello → Modelli); skipped while not configured.
+- **`anthropic` — default provider `claude-api` "Claude (chiave API)"**: official `anthropic` SDK, key
+  `ORACLE_KEY_CLAUDE_API` (never `ANTHROPIC_API_KEY`, which would switch Forge's Claude Code to paid API billing); its
+  address can point at any Anthropic-compatible endpoint (e.g. DeepSeek's).
   Native tools (the domain-filtered list built by Oracle), prompt caching on system prompt, tool list and the static
   part of the agent-loop prompt (`SYSTEM_PROMPT_DYNAMIC_BOUNDARY`), images/PDF natively. Log `event=anthropic_usage`
   (input/output/cache_read/cache_write tokens).
@@ -343,7 +395,7 @@ Pick them per use case in Impostazioni → Modelli (`oracle.models.<uc>.provider
   cwd); Oracle's loop stays in charge: the filtered tools are written in the prompt and Claude answers
   `<tool_call>{"name","params"}</tool_call>` blocks, parsed into tool calls. API keys are stripped from its env.
 - **Thinking**: chat mode quick → off, auto/thinking → low (CLI: medium), cot → high effort; the use-case setting
-  `thinking = Mai` keeps it off. Claude's summarized reasoning is shown as `reasoning_content` (CoT also adds
+  `thinking = false` keeps it off. Claude's summarized reasoning is shown as `reasoning_content` (CoT also adds
   one prompt line asking a short «Passi:» recap). No embeddings on these providers.
 
 ### Local models: real context window, prompt cache, OpenAI-compatible servers
@@ -373,24 +425,22 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   (`ContextBuilder.stable_window`, per session, in memory) instead of sliding every turn.
 - **Context editing**: when a loop prompt passes 50 % of the window, tool results older than
   `oracle.context.tool_result_stub_after_turns` (2, 0 = off) become a one-line stub (no LLM call).
-- **Provider `openai`** — "Server compatibile OpenAI (llama-server, vLLM)": endpoint `ORACLE_OPENAI_BASE_URL`
-  (…/v1, infrastructure) and optional `ORACLE_OPENAI_API_KEY`; offered in the use-case table when set. Static prompt
+- **Type `openai`** — "Compatibile OpenAI" (llama-server, vLLM, DeepSeek, OpenRouter): address in the provider
+  (`…/v1`, default `llamacpp` = `http://host.docker.internal:8080/v1`), optional key `ORACLE_KEY_<NAME>`. Static prompt
   part goes in the system message; `cache_prompt` (setting `oracle.provider.openai.cache_prompt`) for llama-server;
   quick mode sends `chat_template_kwargs.enable_thinking=false`; native tools, SSE stream, images, `/embeddings`.
 
 Host tips (Ollama env on the PC, infrastructure, not managed by Hestia): `OLLAMA_FLASH_ATTENTION=1` +
 `OLLAMA_KV_CACHE_TYPE=q8_0` (about half the KV memory → bigger context in the same VRAM); `OLLAMA_NUM_PARALLEL=2`
 gives the classifier/memory calls their own slot so they stop evicting the chat prefix (costs VRAM per slot);
-`OLLAMA_CONTEXT_LENGTH` = the same num_ctx for Forge's `local` profile, which uses Ollama's `/v1` endpoint (no
-per-request num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa --cache-reuse 256
+`OLLAMA_CONTEXT_LENGTH` = the same num_ctx for any client that uses Ollama's `/v1` endpoint directly (no per-request
+num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa --cache-reuse 256
 --port 8080` (+ `-md draft.gguf` for speculative decoding); vLLM: `vllm serve <model> --enable-prefix-caching`.
 
-## LLM gateway profiles (Forge engines)
+## Claude Code / Codex CLIs in the image
 
-Built-in profiles, no extra env: `local` = Ollama + setting `oracle.models.code.model`; `cloud` = Gemini (OpenAI-compatible
-endpoint) + the first Gemini model among the code/reasoning/generic settings (primary, then fallback) + `GEMINI_API_KEY`. `ORACLE_LLM_PROFILE_<NAME>_BASE_URL/_MODEL/_API_KEY`
-only override them or add another provider. Claude Code CLI is installed by default
-(`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when `CLAUDE_CODE_OAUTH_TOKEN` is set.
+Claude Code CLI is installed by default (`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when
+`CLAUDE_CODE_OAUTH_TOKEN` is set; Codex only with `ORACLE_INSTALL_CODEX=1` (external brain mode, `codex login`).
 
 ## WebUI plugin: Cervello (core module, Sistema section)
 
@@ -402,11 +452,12 @@ small `/api/ui/*` views instead of calling them directly). The Hub registration 
 
 | Kind | Id | What |
 |---|---|---|
-| page (order 120) | `cervello` → `<oracle-brain>` | KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
+| page (order 120) | `cervello` → `<oracle-brain>` | Tabs **Attività** · **Uso** (`<oracle-usage>`: rows from Archive per module — calls, calls/hour, tokens, cache %, largest prompt vs window, avg time, cost, fallbacks/errors/quota —, calls per day, conversations → their calls, which chain step answered) · **Modelli** (`<oracle-models>`: use cases by module → chain/mode/thinking, chains with steps ↑↓, model picker, quota badge + «Riprova adesso», providers with standard, address and key status; saves through Themis). Attività: KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
 | widget | `uso-oggi` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
 | page (order 121) | `documenti` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle non raggiungibile» |
 
-Data sources (all in memory, reset when Oracle restarts — an inside view, not an audit log):
+Data sources of the Attività tab (all in memory, reset when Oracle restarts — an inside view, not an audit log; the
+Uso tab reads the rows kept in Archive):
 - `core/services/activity_log.py` — ring of the last 200 finished chat turns, written at the three `chat_done_summary`
   points of `OracleEngine.chat` (the turn's usage = delta of `llm_stats.session_usage`). Message preview ≤ 80 chars.
 - `core/services/llm_stats.py` — besides the rolling window per use case, daily totals per (use case, provider, model)

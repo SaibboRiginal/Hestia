@@ -4,6 +4,20 @@ from typing import Any
 
 from .models import ConsentTier
 
+try:
+    from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
+except ModuleNotFoundError:  # local runs without PYTHONPATH
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "Hestia-Shared"))
+    from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
+
+# What Forge asks Oracle for: the built-in engine ``oracle`` walks this use case's chain
+# (chosen by Marko in Oracle → Cervello → Modelli; a ``claude`` step there also sets Claude Code's model).
+FORGE_USECASE = "forge.codice"
+LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · sviluppo", chain="codice",
+                            help="Il modello che scrive il codice quando Forge usa il motore Oracle.")]
+
 
 def build_capabilities() -> dict[str, Any]:
     return {
@@ -31,4 +45,5 @@ def build_capabilities() -> dict[str, Any]:
             "forge_approve": "/api/hephaestus/forge/tasks/{task_id}/approve",
         },
         "self_development": True,
+        **llm_capabilities(LLM_USECASES),
     }

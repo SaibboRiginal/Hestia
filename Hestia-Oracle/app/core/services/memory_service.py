@@ -47,9 +47,7 @@ class MemoryService:
     hub_api_url:
         Hestia-Hub base URL. All Archive requests are routed via Hub.
     scribe_agent:
-        Primary LLM agent with an ``ask(prompt) -> str`` interface.
-    fallback_scribe_agent:
-        Fallback LLM agent used when *scribe_agent* raises.
+        LLM agent with an ``ask(prompt) -> str`` interface (a use case chain: fallback is in the chain).
     context_builder:
         Object exposing ``max_history_messages``, ``max_history_chars``, and
         ``truncate(text, max_chars) -> str``.
@@ -64,14 +62,12 @@ class MemoryService:
         archive_url: str,
         hub_api_url: str,
         scribe_agent,
-        fallback_scribe_agent,
         context_builder,
         pref_domain_classifier=None,
     ) -> None:
         self.archive_url = archive_url
         self.hub_api_url = hub_api_url.rstrip("/")
         self.scribe = scribe_agent
-        self.fallback_scribe = fallback_scribe_agent
         self.context_builder = context_builder
         self.pref_domain_classifier = pref_domain_classifier
 
@@ -187,14 +183,11 @@ class MemoryService:
     # ── LLM interaction helpers ───────────────────────────────────────────────
 
     def _ask(self, prompt: str) -> str:
-        """Query primary scribe; fall back to fallback_scribe on any exception."""
+        """Query the scribe (its chain already falls back); "NONE" when every step failed."""
         try:
             return self.scribe.ask(prompt).strip()
         except Exception:
-            try:
-                return self.fallback_scribe.ask(prompt).strip()
-            except Exception:
-                return "NONE"
+            return "NONE"
 
     # ── Preference extraction ─────────────────────────────────────────────────
 

@@ -52,7 +52,7 @@ def test_run_stores_blob_and_hands_id():
 def _analyser(hub):
     analyst = MagicMock()
     analyst.ask_with_attachment.return_value = "analisi normale"
-    return DocumentAnalyser(hub_client=hub, archiver=MagicMock(), analyst=analyst, fallback_analyst=MagicMock(),
+    return DocumentAnalyser(hub_client=hub, archiver=MagicMock(), analyst=analyst,
                             style_contract_fn=lambda: ""), analyst
 
 

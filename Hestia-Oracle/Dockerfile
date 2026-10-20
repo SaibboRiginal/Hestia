@@ -20,13 +20,17 @@ WORKDIR /code
 # Install system dependencies required for psycopg2 (Postgres client).
 # Optional Claude Code CLI for the "code" use case (Forge engine `claude`,
 # Claude Pro/Max subscription). Default on; ORACLE_INSTALL_CLAUDE_CODE=0 in the root .env to skip.
+# Optional Codex CLI for the external brain mode (oracle.brain.agent = codex, ChatGPT login): off by default,
+# ORACLE_INSTALL_CODEX=1 in the root .env to bake it in.
 ARG INSTALL_CLAUDE_CODE=1
+ARG INSTALL_CODEX=0
 RUN apt-get update && apt-get install -y libpq-dev gcc git curl ca-certificates \
-    && if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then \
+    && if [ "$INSTALL_CLAUDE_CODE" = "1" ] || [ "$INSTALL_CODEX" = "1" ]; then \
          curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-         && apt-get install -y --no-install-recommends nodejs \
-         && npm install -g @anthropic-ai/claude-code; \
+         && apt-get install -y --no-install-recommends nodejs; \
        fi \
+    && if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then npm install -g @anthropic-ai/claude-code; fi \
+    && if [ "$INSTALL_CODEX" = "1" ]; then npm install -g @openai/codex; fi \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (cached independently of code changes)

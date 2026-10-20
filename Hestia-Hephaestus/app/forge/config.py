@@ -21,10 +21,22 @@ def _bool(name: str, default: bool) -> bool:
     return raw in {"1", "true", "yes", "on"}
 
 
-ENGINE_ALIASES = {"builtin": "local", "ollama": "local", "claude_code": "claude"}
+# ``local``/``cloud`` were two Oracle profiles before 2026-10-19: now one engine ``oracle`` on the chain of the
+# use case ``forge.codice`` (dossier docs/work/2026-10-19-oracle-a-blocchi).
+ENGINE_ALIASES = {"builtin": "oracle", "ollama": "oracle", "local": "oracle", "cloud": "oracle",
+                  "claude_code": "claude"}
 
-# Engine → permission group. Cloud-billed engines share the "cloud" mode.
-ENGINE_GROUP = {"local": "local", "cloud": "cloud", "claude": "cloud"}
+# Engine → permission group. Cloud-billed engines share the "cloud" mode; ``oracle`` is "local" only while
+# every usable step of its chain is free (BuiltinEngine.group, from Oracle).
+ENGINE_GROUP = {"oracle": "local", "claude": "cloud"}
+
+
+def engine_group(engine) -> str:
+    """Permission group of an engine instance (or name): its own ``group`` when it knows it."""
+    group = getattr(engine, "group", "")
+    if group:
+        return group
+    return ENGINE_GROUP.get(normalize_engine(getattr(engine, "name", engine) or ""), "cloud")
 
 
 def normalize_engine(name: str) -> str:

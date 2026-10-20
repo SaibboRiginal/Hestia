@@ -24,8 +24,8 @@ from .athena_settings import get_float, get_int
 logger = logging.getLogger("hestia_athena.auditor")
 
 # Timeout / default turns: central settings athena.audit.* (read at use time).
-# Model choice belongs to Oracle: use case ``athena_auditor`` (oracle.models.athena_auditor.*).
-AUDITOR_USE_CASE = "athena_auditor"
+# Model choice belongs to Oracle: use case ``athena.revisione`` (declared in main.LLM_USECASES).
+AUDITOR_USE_CASE = "athena.revisione"
 
 _JUDGE_PROMPT = (
     "Sei un valutatore di qualità per un assistente AI chiamato Hestia.\n"

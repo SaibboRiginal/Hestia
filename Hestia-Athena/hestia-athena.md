@@ -212,10 +212,9 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
 | `ATHENA_UI_DIST` | `/ui/dist` | WebUI bundle folder (set in the Dockerfile, infrastructure) |
 
-Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena_strategist`
-(strategist + memory consolidation) or `athena_auditor` (answer audit); the models are the Oracle settings
-`oracle.models.athena_strategist.*` / `oracle.models.athena_auditor.*` (default «Come Uso generale» = Oracle's
-generic models).
+Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategia`
+(strategist + memory consolidation) or `athena.revisione` (answer audit), both declared in its Hub registration
+(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `potente`).
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)

@@ -115,12 +115,12 @@ BUILTIN_STATES: dict[str, dict] = {
     # Oracle down longer than argus.oracle.grace (signal from Argus, SPEC docs/work/2026-10-19-oracle-offline).
     # Back to chat.reply=live → Chronos asks the chat clients to answer their queues.
     "oracle_offline": {
-        "kind": "overlay", "priority": 95, "label": "Oracle offline", "emoji": "⚠️",
-        "help": "Oracle non risponde: comandi, notifiche e agenda funzionano; i messaggi in chat restano in coda "
-                "e avranno risposta appena torna. I lavori che usano Oracle aspettano.",
+        "kind": "overlay", "priority": 95, "label": "Non disponibile", "emoji": "⏳",
+        "help": "Non posso rispondere adesso: comandi, notifiche e agenda funzionano; i messaggi in chat restano in coda "
+                "e avranno risposta appena possibile. I lavori proattivi aspettano.",
         "when": [[_c("oracle.offline", "true")]],
         "effects": {"work.light": "defer", "work.heavy": "defer", "chat.reply": "queued"},
-        "notice": "Oracle è offline, ti rispondo appena torna",
+        "notice": "non posso rispondere adesso, ti rispondo appena possibile",
     },
 }
 CORE_STATES = tuple(k for k, v in BUILTIN_STATES.items() if v.get("core"))

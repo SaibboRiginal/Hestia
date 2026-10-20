@@ -346,7 +346,7 @@ def _run_once() -> None:
                 _unhealthy[name] = report.status
             if health_history.note_unhealthy(name, report.status, report.error):
                 health_history.note_action(name, "alert", "Avviso a Hermes" if name != oracle_watch.ORACLE
-                                           else "Stato «Oracle offline» dopo l'attesa")
+                                           else "Stato «Non disponibile» dopo l'attesa")
             if name != oracle_watch.ORACLE:
                 send_alert(
                     ServiceAlert(

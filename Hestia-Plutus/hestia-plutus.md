@@ -22,8 +22,8 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
   (`learn`) saves a user rule.
 - **Recurring**: same merchant, ±15 % amount, weekly/monthly/yearly interval, 3+ times (2 for yearly) → suggestion;
   the user confirms or dismisses (dismissed ones are not proposed again).
-- Does not read mail itself (Iris pushes it), does not call models directly (Oracle `/api/llm/chat`, profile from
-  `plutus.ai.profile`, only as a fallback), has no database (Archive `finance-store` + blobs).
+- Does not read mail itself (Iris pushes it), does not call models directly (Oracle `/api/llm/chat` with use case
+  `plutus.lettura`, chain chosen in Oracle → Cervello → Modelli, only as a fallback), has no database (Archive `finance-store` + blobs).
 
 ## Inputs (every input works automatic and manual)
 
@@ -74,7 +74,7 @@ spesa (category chips from `/quick/categories`, params amount + note, undo). A U
 
 month_start_day (1; e.g. 27 to count salary to salary), alerts.enabled (true), alerts.threshold (80 %),
 review.enabled (false), reminder.enabled / reminder.max_per_week (from `hestia_common.reminders`), mail.senders
-(paypal.it, paypal.com), link.window_days (3, advanced), ai.profile (local). Currency is the personal setting
+(paypal.it, paypal.com), link.window_days (3, advanced). Currency is the personal setting
 `themis.personal.currency` (`follow_personal()`).
 
 ## API (via Hub `/route/plutus/...`)

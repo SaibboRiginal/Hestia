@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { SegmentedComponent, SegmentOption, TimeFieldComponent, ToastService, ToggleComponent } from '../../ui';
 import { CentralSettingsApi, SettingItem, SettingOption } from './central-settings.api';
 
@@ -11,7 +12,7 @@ import { CentralSettingsApi, SettingItem, SettingOption } from './central-settin
  */
 @Component({
   selector: 'hx-setting-control',
-  imports: [NgTemplateOutlet, ToggleComponent, SegmentedComponent, TimeFieldComponent],
+  imports: [NgTemplateOutlet, RouterLink, ToggleComponent, SegmentedComponent, TimeFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let it = item();
@@ -56,6 +57,9 @@ import { CentralSettingsApi, SettingItem, SettingOption } from './central-settin
                   (change)="commitList($any($event.target).value)"></textarea>
       }
       @case ('object') {
+        @if (editorLink(it.editor); as link) {
+          <a class="editor" [routerLink]="link.path">{{ link.label }}</a>
+        }
         <textarea class="hx-textarea mono" rows="5" [value]="json(it.value)" [disabled]="disabled()"
                   [attr.aria-label]="it.label" (change)="commitJson($any($event.target).value)"></textarea>
       }
@@ -78,6 +82,8 @@ import { CentralSettingsApi, SettingItem, SettingOption } from './central-settin
     .num { display: inline-flex; align-items: center; gap: 8px; }
     .num .hx-input { width: 130px; }
     .unit, .hint { font-size: 12px; color: var(--text-3); }
+    .editor { font-size: 13px; color: var(--accent); text-decoration: none; }
+    .editor:hover { text-decoration: underline; }
     hx-segmented { align-self: flex-start; flex-wrap: wrap; }
     hx-segmented.off { opacity: .5; pointer-events: none; }
   `],
@@ -120,6 +126,11 @@ export class SettingControlComponent {
     this.commit.emit(n);
   }
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
+  /** Object values with a dedicated editor: link to it (the JSON stays editable below). */
+  editorLink(editor?: string): { path: string; label: string } | null {
+    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: 'Modifica in Oracle · Cervello · Modelli' } : null;
+  }
+
   commitJson(v: string) {
     try { this.commit.emit(JSON.parse(v)); } catch { this.toast.error('JSON non valido'); }
   }

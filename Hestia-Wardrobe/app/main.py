@@ -25,6 +25,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
@@ -67,9 +68,6 @@ settings.declare([
                                         "alla volta; l'orario si cambia nell'agenda (Promemoria guardaroba)."),
     setting("wardrobe.review.enabled", "Revisione mensile", "bool", False, group="Notifiche",
             help="Una volta al mese: capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere."),
-    setting("wardrobe.ai.profile", "AI per le foto", "enum", "cloud", group="AI",
-            options=[("cloud", "Cloud (Gemini)"), ("local", "Locale (Ollama)")],
-            help="Quale modello di Oracle descrive la foto di un nuovo capo. Serve un modello che vede le immagini."),
 ]).follow_personal()                                       # week start, currency: personal settings shared by every module
 
 hub = Hub(HUB_API_URL)
@@ -751,9 +749,14 @@ except NameError:
 
 
 # ── Hub registration ─────────────────────────────────────────────────────────
+# LLM use cases: the chain (it must see images) is chosen in Oracle → Cervello → Modelli.
+LLM_USECASES = [llm_usecase("wardrobe.foto", "Guardaroba · foto dei capi", chain="visione",
+                            help="Descrive la foto di un nuovo capo (nome, categoria, colori, stile).")]
+
+
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["wardrobe"],
-            "context_endpoint": "/api/module/context"}
+            "context_endpoint": "/api/module/context", **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:

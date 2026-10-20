@@ -706,7 +706,7 @@ class Wardrobe:
                   "\"pattern\", \"materials\": [nomi], \"styles\": [chiavi], \"seasons\": [spring|summer|autumn|winter], "
                   "\"warmth\": 1-5, \"formality\": 1-5, \"fit\", \"brand\": se leggibile o \"\"}. Valori ammessi: "
                   + json.dumps(catalog, ensure_ascii=False))
-        body = {"profile": str(self.cfg("ai.profile", "cloud")), "temperature": 0.1, "max_tokens": 500,
+        body = {"use_case": "wardrobe.foto", "temperature": 0.1, "max_tokens": 500,
                 "messages": [{"role": "user", "content": [
                     {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{base64.b64encode(raw).decode()}"}}]}]}

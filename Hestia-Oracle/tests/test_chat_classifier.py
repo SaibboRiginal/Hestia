@@ -17,12 +17,10 @@ from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _make_classifier(router_response: str, fallback_response: str | None = None) -> ChatClassifier:
+def _make_classifier(router_response: str) -> ChatClassifier:
     router = MagicMock()
     router.ask.return_value = router_response
-    fallback = MagicMock()
-    fallback.ask.return_value = fallback_response or router_response
-    return ChatClassifier(router, fallback)
+    return ChatClassifier(router)
 
 
 def _quick_chat_json(confidence: float = 0.9, action_intent: bool = False) -> str:
@@ -134,22 +132,10 @@ class TestChatClassifier:
         assert sort_by == "price"
         assert sort_order == "asc"
 
-    def test_primary_router_fails_uses_fallback(self):
+    def test_router_chain_fails_returns_defaults(self):
         router = MagicMock()
-        router.ask.side_effect = RuntimeError("LLM down")
-        fallback = MagicMock()
-        fallback.ask.return_value = _quick_chat_json(0.9)
-        clf = ChatClassifier(router, fallback)
-        mode, *_ = clf.classify("Ciao", "", SAMPLE_DOMAINS)
-        assert mode == "quick_chat"
-        fallback.ask.assert_called_once()
-
-    def test_both_routers_fail_returns_defaults(self):
-        router = MagicMock()
-        router.ask.side_effect = RuntimeError("LLM down")
-        fallback = MagicMock()
-        fallback.ask.side_effect = RuntimeError("Fallback down")
-        clf = ChatClassifier(router, fallback)
+        router.ask.side_effect = RuntimeError("every step of the chain failed")
+        clf = ChatClassifier(router)
         mode, domain, confidence, valid_domains, * \
             _ = clf.classify("Ciao", "", SAMPLE_DOMAINS)
         # defaults: domain_query, None, 0.0, ['general']
@@ -193,9 +179,7 @@ class TestChatClassifier:
     def test_current_datetime_context_is_included_in_router_prompt(self):
         router = MagicMock()
         router.ask.return_value = _quick_chat_json(0.8)
-        fallback = MagicMock()
-        fallback.ask.return_value = _quick_chat_json(0.8)
-        clf = ChatClassifier(router, fallback)
+        clf = ChatClassifier(router)
 
         clf.classify(
             "Cosa ho domani?",

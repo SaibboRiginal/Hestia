@@ -27,9 +27,7 @@ def _make_service(rows: list[dict] | None = None) -> UserControlService:
     hub.post.return_value = {"ok": True}
     scribe = MagicMock()
     scribe.ask.return_value = "NONE"
-    fallback = MagicMock()
-    fallback.ask.return_value = "NONE"
-    return UserControlService(hub, scribe, fallback)
+    return UserControlService(hub, scribe)
 
 
 def _control_row(data: dict, row_id: int = 1) -> dict:

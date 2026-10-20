@@ -111,6 +111,22 @@ warning · error`. `level` = `info|success|warning|error`; `icon` = WebUI `hx-ic
 clients. Notices may arrive **after** `final` (background memory) — attach them to the last answer.
 Add a kind: one line in `NOTICE_KINDS` (+ `_SIGNAL_TO_NOTICE` if it mirrors a signal); clients need no change.
 
+## Oracle use cases (`hestia_common.oracle_usecases`)
+
+A module that asks Oracle for text declares each kind of task as a **use case** `<module>.<task>` with a suggested
+chain (`veloce`, `potente`, `codice`, `visione`); Marko picks chain, mode (interna/esterna) and thinking for all of them
+in Oracle → Cervello → Modelli. The module never names a provider or a model (dossier
+`docs/work/2026-10-19-oracle-a-blocchi`).
+
+```python
+from hestia_common.oracle_usecases import usecase, capabilities as llm_capabilities
+
+LLM_USECASES = [usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
+                        help="Estrae i dati degli annunci dalle mail.")]
+payload["capabilities"].update(llm_capabilities(LLM_USECASES))   # Hub registration (re-sent by the keepalive)
+# call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.annunci"}
+```
+
 ## Settings client (`hestia_common.settings_client`)
 
 Every tunable knob is a setting declared to **Themis** (never a new env var; env = secrets + infrastructure):

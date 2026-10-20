@@ -19,7 +19,7 @@ What it adapts, and only here (docker-compose.cloud-test.yml + this script; up-a
   official images, untouched.
 - TLS proxy: when a proxy CA exists (HESTIA_CLOUD_TEST_CA, or the Claude session's one) it is layered into
   the base images so pip, npm, NuGet and the services trust it. Nothing of this reaches the real images.
-- LLM: GEMINI_API_KEY in the environment → Oracle's models switch to Gemini (Themis); otherwise a
+- LLM: GEMINI_API_KEY in the environment → Oracle's chat use cases use a Gemini chain (Themis); otherwise a
   deterministic fake Ollama answers "[LLM finto] …" and the report says so.
 Generated .env files hold no personal data and are git-ignored; existing ones are never overwritten.
 SPEC: docs/work/2026-10-19-banco-prova-cloud/SPEC.md
@@ -58,7 +58,10 @@ BASE_IMAGES = {
     "swaggerapi/swagger-ui": f"{MIRROR}/swaggerapi/swagger-ui",
 }
 NEEDS_CA = ("node:22-alpine", "mcr.microsoft.com/dotnet/sdk:9.0")  # build stages that download packages
-GEMINI_MODELS = {"generic": "gemini-2.5-flash", "reasoning": "gemini-2.5-flash"}
+# Gemini chain for the bench (Oracle a blocchi: chains + use cases, key ORACLE_KEY_GEMINI from GEMINI_API_KEY).
+GEMINI_CHAIN = {"label": "Gemini (banco)", "steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
+                                                     {"provider": "gemini", "model": "gemini-2.5-flash-lite"}]}
+GEMINI_USECASES = ("oracle.generale", "oracle.ragionamento", "oracle.documenti")
 WEBUI = "http://localhost:19015"
 
 
@@ -278,13 +281,17 @@ def wait_healthy(names: list[str], timeout: int = 240) -> dict[str, int]:
 
 
 def use_gemini() -> None:
-    """Point Oracle's chat models at Gemini through Themis (the key comes from the environment)."""
-    for use_case, model in GEMINI_MODELS.items():
-        for field, value in (("provider", "gemini"), ("model", model)):
-            key = f"oracle.models.{use_case}.{field}"
-            code, _ = http("PUT", f"http://localhost:{ports().get('themis', 19016)}/api/settings/key/{key}",
-                           {"value": value, "actor": "cloud-test"})
-            log("setting_set", key=key, status=code)
+    """Point Oracle's chat use cases at a Gemini chain through Themis (the key comes from the environment)."""
+    themis = f"http://localhost:{ports().get('themis', 19016)}/api/settings/key"
+    code, body = http("GET", f"http://localhost:{ports().get('oracle', 19004)}/api/llm/chains")
+    chains = {name: {"label": c.get("label", name), "steps": [{"provider": st["provider"], "model": st["model"]}
+                                                           for st in c.get("steps", [])]}
+              for name, c in ((body or {}).get("chains") or {}).items()} if code == 200 and isinstance(body, dict) else {}
+    chains["gemini-banco"] = GEMINI_CHAIN
+    for key, value in (("oracle.chains", chains),
+                       ("oracle.usecases", {uc: {"chain": "gemini-banco"} for uc in GEMINI_USECASES})):
+        code, _ = http("PUT", f"{themis}/{key}", {"value": value, "actor": "cloud-test"})
+        log("setting_set", key=key, status=code)
 
 
 # ── check ────────────────────────────────────────────────────────────────────

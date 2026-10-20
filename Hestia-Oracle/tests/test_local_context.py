@@ -141,13 +141,14 @@ def _openai() -> OpenAICompatProvider:
 
 @pytest.mark.unit
 class TestOpenAIProvider:
-    def test_registered_and_configured_from_env(self, monkeypatch):
+    def test_named_provider_address_from_settings_key_from_env(self, monkeypatch):
         assert PROVIDER_TYPES["openai"] is OpenAICompatProvider
-        monkeypatch.delenv("ORACLE_OPENAI_BASE_URL", raising=False)
-        assert get_provider("openai").available()[0] is False
-        monkeypatch.setenv("ORACLE_OPENAI_BASE_URL", "http://h:8080/v1")
-        prov = get_provider("openai")
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.PROVIDERS_KEY,
+                            {"deepseek": {"type": "openai", "url": "https://api.deepseek.com/v1"}})
+        monkeypatch.setenv("ORACLE_KEY_DEEPSEEK", "sk-test")
+        prov = get_provider("deepseek")
         assert prov.available()[0] and prov.config["cache_prompt"] is True
+        assert prov.config["base_url"] == "https://api.deepseek.com/v1" and prov.config["api_key"] == "sk-test"
 
     def test_static_prefix_in_system_and_tool_calls(self):
         prompt = prompt_config.compose_with_dynamic_boundary(["STATIC"], ["DYN"])
@@ -192,7 +193,7 @@ class TestOpenAIProvider:
 @pytest.mark.unit
 class TestGatewayOllamaNative:
     def _body(self) -> dict:
-        return {"profile": "local", "temperature": 0.2, "tools": [{"type": "function", "function": {"name": "read_file"}}],
+        return {"use_case": "forge.codice", "temperature": 0.2, "tools": [{"type": "function", "function": {"name": "read_file"}}],
                 "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"},
                              {"role": "assistant", "content": "", "tool_calls": [
                                  {"id": "c1", "type": "function",
@@ -201,7 +202,6 @@ class TestGatewayOllamaNative:
 
     def test_native_request_and_openai_response(self, monkeypatch):
         from core.services import llm_gateway
-        monkeypatch.delenv("ORACLE_LLM_PROFILE_LOCAL_BASE_URL", raising=False)
         monkeypatch.setenv("OLLAMA_URL", "http://ollama:11434/api/generate")
         reply = {"model": "m1", "done_reason": "stop", "prompt_eval_count": 100, "eval_count": 5,
                  "message": {"role": "assistant", "content": "", "thinking": "hmm",
@@ -224,7 +224,9 @@ class TestGatewayOllamaNative:
         out = _openai_response({"done_reason": "length", "message": {"content": "cut"}}, "m1")
         assert out["choices"][0]["finish_reason"] == "length"
 
-    def test_profile_reports_window(self, monkeypatch):
+    def test_usecase_status_reports_window(self):
         from core.services import llm_gateway
-        monkeypatch.delenv("ORACLE_LLM_PROFILE_LOCAL_BASE_URL", raising=False)
-        assert llm_gateway.list_profiles(check=False)["local"]["context_window"] == oracle_settings.context_window()
+        status = llm_gateway.usecase_status("forge.codice")
+        assert status["available"] and status["provider"] == "ollama"
+        assert status["context_window"] == oracle_settings.context_window()
+        assert status["billed"] is False   # no keys in tests: only the local step is usable

@@ -208,9 +208,9 @@ Every allowed command, file and chat message pings Chronos presence (`telegram`,
 
 SPEC `docs/work/2026-10-19-oracle-offline`, code `telegram_bot/services/chat_queue.py`. A text message Oracle does not
 accept (connection refused, timeout before the answer, HTTP 502/503/504) is stored in Archive (`/api/chat-queue`,
-client `telegram`, the message id as `client_ref`) and the reply is «⚠️ Oracle è offline: messaggio in coda,
-ti rispondo appena torna.» A file while offline gets «rimandamelo appena torno» (not queued). Archive down too → the
+client `telegram`, the message id as `client_ref`) and the reply is «⏳ Non posso rispondere adesso: messaggio in coda,
+ti rispondo appena possibile.» A file while offline gets «rimandamelo più tardi» (not queued). Archive down too → the
 usual error. `POST /api/chat-queue/drain` (capability `chat_queue_drain`, called by Chronos when Oracle is back) and
 startup answer the queue oldest first, each as a reply to the original message, with a note to Oracle about when it
 was written; one header line when a chat had more than one; the first Oracle failure stops the drain. The Hermes
-notice «Oracle offline» and `/stato` show the state.
+notice «Non disponibile» and `/stato` show the state.

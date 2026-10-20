@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
-| **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.2: «togli proprio cervello come nome e icona»; v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
-| **Status** | Approved 2026-10-19 (v2.0 = Marko's simplification on top of the approved v1.0); merged (PR #6); v2.2 rename |
+| **Version** | 2.3 |
+| **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.2: «togli proprio cervello come nome e icona»; v2.3: «metti qualcosa di generico, chi lo legge non deve sapere chi o che cosa»; v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
+| **Status** | Approved 2026-10-19 (v2.0 = Marko's simplification on top of the approved v1.0); merged (PR #6); v2.2 rename; v2.3 generic texts |
 
 ## Goal
 Oracle is the only LLM core. When it is down the rest of Hestia keeps working and says so: the user is told once,
 the clients show it, nothing written in the chat is lost, and every queued message is answered when Oracle
-returns. No «cervello» name or 🧠 icon: the state is «Oracle offline» ⚠️ (v2.2). Built **on the assistant presence that already exists** (Chronos: signals → states → effects), not as a
+returns. User-facing texts are generic and never name a module (v2.3): state «⏳ Non disponibile», replies «Non posso rispondere adesso: messaggio in coda, ti rispondo appena possibile», back «✅ Di nuovo disponibile dopo N min». Internal names stay `oracle.*` (v2.2). Built **on the assistant presence that already exists** (Chronos: signals → states → effects), not as a
 parallel state.
 
 ## Facts checked in the code (2026-10-19)

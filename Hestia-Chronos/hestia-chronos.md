@@ -249,7 +249,7 @@ Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST
 | GET | `/api/agenda/items/{ref}/links` | Parent + children of an item |
 | POST | `/api/agenda/items/{ref}/link` | Link to a parent `{parent}` (empty = unlink; cycles refused) |
 | POST | `/api/agenda/items/{ref}/fail` | A module reports the work behind the item failed `{detail}` → `failed` + parent marked |
-| POST | `/api/agenda/parse` | Natural-language quick add `{text, tz?}` → `draft {title, type, start_at, end_at, recurrence, description}` (Oracle `/api/llm/generate` through Hub, Chronos validates; nothing created) |
+| POST | `/api/agenda/parse` | Natural-language quick add `{text, tz?}` → `draft {title, type, start_at, end_at, recurrence, description}` (Oracle `/api/llm/generate` through Hub, use case `chronos.agenda` declared in the Hub registration; Chronos validates; nothing created) |
 | GET | `/api/agenda/ics?days=60&past_days=7&owner=&types=event,task,window` | Read-only iCalendar feed (expanded occurrences, skips/moves applied; jobs excluded by default) |
 | GET | `/api/agenda/runs?owner=&status=ok\|failed\|skipped&since=\|hours=&limit=100` | Every recorded run of jobs/tasks (from `meta.runs`) + skipped past occurrences, newest first, with `summary {ok, failed, skipped, avg_ms, failed_items}` and `owners` (rules registered per module: active / paused / failed / changed by the user, per type) — plugin page *Esecuzioni* |
 | GET | `/api/agenda/logs?service=&at=&minutes=5&level=&contains=` | A module's logs around an occurrence: Chronos reads `{service}/api/logs` through Hub (its in-memory buffer, last 2000 lines) and keeps `at ± minutes` (1–120); `{service, from, to, count, oldest, logs}`; module unreachable → 502 (`[🔄] event=agenda_logs_failed`) — Agenda *Log del modulo* |
@@ -335,7 +335,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   `label`, `emoji`, `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
   `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
-  `eating`, `tired`, `oracle_offline` («⚠️ Oracle offline», signal `oracle.offline` from Argus when Oracle is down past
+  `eating`, `tired`, `oracle_offline` («⏳ Non disponibile», signal `oracle.offline` from Argus when Oracle is down past
   `argus.oracle.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
   `docs/work/2026-10-19-oracle-offline`). Modules may add their own with `POST /api/presence/states/register`.
 - **Effects**: `work.light`/`work.heavy` (allow < local < defer), `llm.claude` (allow < save < deny),

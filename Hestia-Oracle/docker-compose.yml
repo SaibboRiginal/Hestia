@@ -22,9 +22,8 @@ services:
       - PYTHONUNBUFFERED=1                                   # flush stdout/stderr immediately (required for Docker log streaming)
       - TZ=${TZ:-Europe/Rome}                                # Local time for the assistant (today, agenda)
       # Agent loop, context, timeouts, memory, approvals, documents: Themis settings oracle.* (Impostazioni → Sistema → Oracle).
-      # ORACLE_OPENAI_BASE_URL=http://host.docker.internal:8080/v1  OpenAI-compatible server (llama-server, vLLM) → provider `openai`
-      # ORACLE_OPENAI_API_KEY=            only if that server wants a key (put it in app/.env)
-      # Models per use case (provider, model, fallback, thinking) are settings: Impostazioni → Oracle → Modelli.
+      # Models: named providers, chains and use cases are settings (Oracle → Cervello → Modelli);
+      # keys only in app/.env as ORACLE_KEY_<NAME>.
     env_file:
       - ./app/.env
     networks:

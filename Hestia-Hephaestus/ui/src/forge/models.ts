@@ -85,9 +85,11 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
 };
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
 
-export const ENGINES = ['', 'local', 'cloud', 'claude'];
+export const ENGINES = ['', 'oracle', 'claude'];
+// oracle = Oracle's chain of use case forge.codice (Cervello → Modelli); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
-  '': 'Predefinito', auto: 'Predefinito', local: 'Locale (Ollama)', cloud: 'Cloud', claude: 'Claude Code',
+  '': 'Predefinito', auto: 'Predefinito', oracle: 'Catena di Oracle', local: 'Catena di Oracle', cloud: 'Catena di Oracle',
+  claude: 'Claude Code',
 };
 export const engineLabel = (e: string) => ENGINE_LABEL[e] ?? e;
 export const engineOf = (t: ForgeTask) => ENGINE_LABEL[t.engine || t.engine_requested || ''] ?? t.engine ?? '—';

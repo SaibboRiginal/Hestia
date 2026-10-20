@@ -13,46 +13,47 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class UniversalAgent:
+    """One provider + model. *provider* is a named provider (``core.services.llm_providers``: ``ollama``,
+    ``gemini``, ``deepseek``…); ``self.provider`` is its type (standard), ``self.provider_name`` its name.
+    Fallback across models is not here: ``llm_chains.ChainAgent`` tries the steps of a chain."""
+
     def __init__(self, role_prompt: str = "", provider: str = "", model_name: str = "", thinking: bool = True,
                  label: str = ""):
+        from core.services import llm_providers
         self.role_prompt = role_prompt
         self.label = label or "generic"  # use case, for runtime stats
-        self.provider = provider.lower()
+        self.provider_name = str(provider or "").strip().lower()
+        self.provider = llm_providers.type_of(self.provider_name) or self.provider_name
         self.model_name = model_name
         self.thinking = thinking
-        # Provider types in agents/providers (anthropic, claude_cli): every call is delegated.
+        self.client = None
+        # Provider types in agents/providers (openai, anthropic, claude_cli): every call is delegated.
         self._impl = None
 
-        if is_provider_type(self.provider):
-            self._impl = get_provider(self.provider)
+        if is_provider_type(self.provider_name):
+            self._impl = get_provider(self.provider_name)
             self._impl.label = self.label
             ok, detail = self._impl.available()
             if not ok:
-                logger.warning("[🔄] event=llm_provider_unavailable provider=%s model=%s detail=%s "
-                               "— calls will fail until it is configured", self.provider, self.model_name, detail)
+                logger.debug("event=llm_provider_unavailable provider=%s model=%s detail=%s",
+                             self.provider_name, self.model_name, detail)
 
         elif self.provider == "gemini":
-            api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
-            if not api_key:
-                logger.warning(
-                    "event=gemini_api_key_missing_model_auto_fallback GEMINI_API_KEY missing for model '%s'; auto-fallback to Ollama.",
-                    self.model_name,
-                )
-                self.provider = "ollama"
-                # Preserve explicit model when it already targets local Ollama.
-                if "gemini" in (self.model_name or "").lower() or "models/" in (self.model_name or "").lower():
-                    from core.services import oracle_settings
-                    self.model_name = oracle_settings.local_default_model(self.label)
-                self._init_ollama_defaults()
-            else:
+            api_key = llm_providers.api_key(self.provider_name)
+            if api_key:
                 self.client = genai.Client(api_key=api_key)
 
         elif self.provider == "ollama":
             self._init_ollama_defaults()
 
+    def available(self) -> tuple[bool, str]:
+        """Can this provider be called now (key, login, address)? No network probe."""
+        from core.services import llm_providers
+        return llm_providers.available(self.provider_name)
+
     def _init_ollama_defaults(self) -> None:
-        self.ollama_url = os.getenv(
-            "OLLAMA_URL", "http://host.docker.internal:11434/api/generate")
+        from core.services import llm_providers
+        self.ollama_url = f"{llm_providers.url(self.provider_name or 'ollama')}/api/generate"
 
     # Timeouts / tool-call mode: central settings, read at every call (live).
     @property
@@ -102,12 +103,15 @@ class UniversalAgent:
         from core.services import oracle_settings
         max_retries = oracle_settings.get_int(oracle_settings.LLM_RETRIES, 1)
         base_delay = oracle_settings.get_float(oracle_settings.LLM_RETRY_DELAY, 0.0)
+        from core.services import llm_chains
         last_exc = None
         for attempt in range(max_retries):
             try:
                 return fn(*args, **kwargs)
             except Exception as exc:
                 last_exc = exc
+                if llm_chains.is_quota_error(exc):  # out of quota: retrying is useless, the chain moves on
+                    raise
                 if attempt < max_retries - 1:
                     delay = base_delay * (2 ** attempt)
                     time.sleep(delay)

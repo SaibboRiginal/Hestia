@@ -34,7 +34,7 @@ REMEDIATE_AUTO_APPROVE_NON_PROD = "hephaestus.remediate.auto_approve_non_prod"
 REPAIR_RETRY_MINUTES = "hephaestus.remediate.retry_minutes"
 REPAIR_MAX_ATTEMPTS = "hephaestus.remediate.max_attempts"
 
-_ENGINES = [("local", "Locale (Ollama)"), ("cloud", "Cloud (Gemini)"), ("claude", "Claude Code")]
+_ENGINES = [("oracle", "Oracle (catena «Forge · sviluppo»)"), ("claude", "Claude Code")]
 _MODES = [("ask", "Chiedi sempre"), ("auto", "Sviluppa da solo, il merge chiede"),
           ("full_auto", "Tutto da solo se i test passano")]
 _FORGE = "Sviluppo (Forge)"
@@ -51,19 +51,20 @@ settings.declare([
             order=-1,
             help="Se un modulo propone un task uguale o molto simile a uno degli ultimi giorni (anche "
                  "rifiutato) non ne creo un altro. 0 = controllo spento. Le tue richieste non sono filtrate."),
-    setting(ENGINE, "Motore di sviluppo predefinito", "enum", "local", group=_FORGE,
+    setting(ENGINE, "Motore di sviluppo predefinito", "enum", "oracle", group=_FORGE,
             options=_ENGINES, order=0,
-            help="Chi scrive il codice quando chiedi una modifica. Se non è disponibile si usa il successivo."),
+            help="Chi scrive il codice quando chiedi una modifica. Oracle usa la catena dell'uso «Forge · "
+                 "sviluppo» (Oracle → Modelli). Se non è disponibile si usa il successivo."),
     # Safety switches: the assistant can read them but never propose a change.
     setting(MODE["local"], "Permessi · motore locale", "enum", "auto", group=_FORGE,
             options=_MODES, order=1, oracle="read",
-            help="Quanta autonomia ha Forge quando usa il modello locale (gratis)."),
+            help="Quanta autonomia ha Forge quando la catena di Forge usa solo modelli locali (gratis)."),
     setting(MODE["cloud"], "Permessi · cloud e Claude", "enum", "ask", group=_FORGE,
             options=_MODES, order=2, oracle="read",
             help="Quanta autonomia ha Forge quando usa motori a pagamento o a consumo."),
-    setting(FALLBACK, "Ordine dei motori di riserva", "list", ["local", "cloud", "claude"], group=_FORGE,
+    setting(FALLBACK, "Ordine dei motori di riserva", "list", ["oracle", "claude"], group=_FORGE,
             order=3, advanced=True,
-            help="Se il motore predefinito non è disponibile provo questi, in ordine (local, cloud, claude)."),
+            help="Se il motore predefinito non è disponibile provo questi, in ordine (oracle, claude)."),
     setting(MAX_TURNS, "Passi massimi per task", "int", 40, group=_FORGE, min=5, max=300, order=4,
             help="Quante azioni (letture, modifiche, test) può fare il motore prima di fermarsi."),
     setting(LLM_TIMEOUT, "Attesa massima per risposta del modello", "int", 600, group=_FORGE,

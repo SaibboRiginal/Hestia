@@ -13,6 +13,7 @@
 - [x] PR #6, CI green
 - [x] Merge (PR #6, 5c2485e)
 - [x] v2.2: name «Cervello offline» 🧠 → «Oracle offline» ⚠️ everywhere (texts, signal, overlay, setting, notice key, Argus module, dossier folder)
+- [x] v2.3: generic user-facing texts «⏳ Non disponibile» (no module named)
 - [ ] Marko's real run with Telegram (the bench has no bot token)
 
 ## Cloud bench run 2026-10-19 12:04 (fake LLM)
