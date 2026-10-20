@@ -94,6 +94,26 @@ class Wardrobe:
     def vocab_map(self, name: str) -> dict[str, dict]:
         return {v["key"]: v for v in self.vocab(name)}
 
+    def vocab_keys(self, name: str, values: Any) -> list[str] | Any:
+        """Labels typed by people or the assistant ("Ufficio") → the vocabulary key ("office"); unknown words stay
+        free tags. Without this a piece tagged in chat never matched one tagged from the UI, nor the suggester."""
+        if values is None:
+            return values
+        items = re.split(r"[,;]", values) if isinstance(values, str) else list(values)
+        by_label = {domain.slug(v.get("label")): v["key"] for v in self.vocab(name)}
+        keys = {v["key"] for v in self.vocab(name)}
+        out = []
+        for v in items:
+            k = domain.slug(v)
+            k = k if k in keys else by_label.get(k, k)
+            if k and k not in out:
+                out.append(k)
+        return out
+
+    def _tag_keys(self, data: dict) -> dict:
+        return {**data, **{f: self.vocab_keys(n, data[f]) for f, n in (("occasions", "occasion"), ("styles", "style"))
+                           if data.get(f) is not None}}
+
     def vocabularies(self) -> dict:
         return {n: self.vocab(n) for n in domain.DEFAULT_VOCABULARIES}
 
@@ -233,6 +253,7 @@ class Wardrobe:
         current = self.store.data("piece", id) if id else None
         if id and partial and not current:
             raise NotFound("capo non trovato")
+        data = self._tag_keys(data)
         merged = {**(current or {}), **{k: v for k, v in data.items() if v is not None}} if partial else data
         if partial and "purchase" in data and isinstance(data["purchase"], dict):
             merged["purchase"] = {**(current or {}).get("purchase", {}), **data["purchase"]}
@@ -361,6 +382,7 @@ class Wardrobe:
         current = self.store.data("outfit", id) if id else None
         if id and partial and not current:
             raise NotFound("outfit non trovato")
+        data = self._tag_keys(data)
         merged = {**(current or {}), **{k: v for k, v in data.items() if v is not None}} if partial else data
         pieces = {p["id"]: p for p in self._pieces_raw()}
         clean = domain.outfit(merged, pieces)
@@ -476,9 +498,9 @@ class Wardrobe:
                 temp_c: float | None = None, rain: bool = False, count: int | None = None,
                 exclude_recent_days: int | None = None) -> dict:
         d = date.fromisoformat(domain.iso_date(day)) if day else self.today()
-        if isinstance(styles, str):
-            styles = [s for s in (domain.slug(x) for x in styles.split(",")) if s]
-        out = self.suggester().suggest(day=d, occasion=domain.slug(occasion), styles=styles or [], temp_c=temp_c,
+        styles = self.vocab_keys("style", styles) or []
+        occasion = (self.vocab_keys("occasion", [occasion]) or [""])[0] if occasion else ""
+        out = self.suggester().suggest(day=d, occasion=occasion, styles=styles, temp_c=temp_c,
                                        rain=bool(rain), count=int(count or self.cfg("suggest.count", 3)),
                                        recent_days=int(exclude_recent_days if exclude_recent_days is not None
                                                        else self.cfg("suggest.exclude_recent_days", 4)))
@@ -785,7 +807,8 @@ class Wardrobe:
         if d1 < d0:
             raise Invalid("la fine viaggio è prima dell'inizio")
         days = min(7, (d1 - d0).days + 1)
-        sug = self.suggester().suggest(day=d0, occasion=domain.slug(occasion), temp_c=temp_c, rain=rain, count=days,
+        occasion = (self.vocab_keys("occasion", [occasion]) or [""])[0] if occasion else ""
+        sug = self.suggester().suggest(day=d0, occasion=occasion, temp_c=temp_c, rain=rain, count=days,
                                        recent_days=0)
         outfit_ids, piece_ids = [], []
         for s in sug["items"]:

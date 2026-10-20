@@ -168,7 +168,7 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   Night = agenda window `assistant.sleep`. **Oracle offline** (Oracle down past `argus.oracle.grace`): Argus sets
   signal `oracle.offline` → overlay «⏳ Non disponibile» (`chat.reply = queued`) + one Hermes notice; chat clients
   queue what Oracle cannot take in Archive (`/api/chat-queue`) and answer it when Chronos says Oracle is back
-  (`capabilities.chat_queue_drain`). SPEC `docs/work/2026-10-19-oracle-offline`. WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Client: `hestia_common.presence_client`; storage in Archive.
+  (`capabilities.chat_queue_drain`). SPEC `docs/work/2026-10-19-oracle-offline`. WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.

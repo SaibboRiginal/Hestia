@@ -15,3 +15,4 @@ Read SPEC.md first. Resume from the first unchecked box.
 - [x] Docs: hestia-hygieia.md, swagger, Archive doc, AI-GUIDE table, root CHANGELOG, compose, CI
 - [ ] Marko: `up-all.bat --build hygieia archive` and a real run (Docker build of the UI bundle, Themis/agenda registration, Hermes buttons)
 - [x] Journal: always available, no on/off setting (Marko 2026-10-18, SPEC v2.5)
+- [x] Real run on the cloud bench (2026-10-19, fake LLM): products with PAO, routine with retinol/AHA conflict warning, versions + undo, Home chips + Annulla, chat `selfcare_today` / `selfcare_product_update` → UI + shopping list, reminder once a day in the WebUI inbox, Hermes chain «Saltato 2 volte» + «Fatto» all pass; fixes found: after a retinol evening the AHA came back «suggested», the clash reason did not name the product → `docs/work/2026-10-19-prove-reali-banco/`. Left for Marko: Telegram buttons, real model

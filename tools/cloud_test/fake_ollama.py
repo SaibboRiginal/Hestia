@@ -5,6 +5,11 @@ Speaks the Ollama API Oracle uses (/api/chat, /api/generate, /api/tags, /api/sho
 /api/embed, /api/embeddings) and the OpenAI-compatible /v1 endpoints. Every answer is a fixed
 "[LLM finto]" text that echoes the last user message, so flows that need no real reasoning run end
 to end and the report can say plainly that the brain was fake. Stdlib only.
+
+Scripted tools: a user message with `#tool <name> {json args}` (one or more) makes the fake answer with that
+tool call (native `tool_calls` when tools are offered, else a `<tool_call>` block), one per turn, until the
+prompt shows the tool's result (`[TOOL]: [<name>] →`); then it answers with the last result. This lets the
+bench drive chat → Oracle → Hestia-MCP → module flows without a real model.
 """
 from __future__ import annotations
 
@@ -12,6 +17,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -43,6 +49,39 @@ def _last_user(messages: list) -> str:
                 content = " ".join(p.get("text", "") for p in content if isinstance(p, dict))
             return str(content or "")
     return ""
+
+
+_DIRECTIVE = re.compile(r"#tool\s+([a-z0-9_]+)\s*(\{.*?\})?(?=\s*(?:#tool|$|\n))", re.DOTALL)
+
+
+def _current_turn(text: str) -> str:
+    """The prompt from the last «USER:» line on: directives in the conversation history are already done."""
+    cut = (text or "").rfind("USER: ")
+    return text[cut:] if cut >= 0 else (text or "")
+
+
+def _pending_tool(text: str) -> dict | None:
+    """First scripted `#tool name {args}` of this turn whose result is not yet in the prompt."""
+    text = _current_turn(text)
+    for name, raw in _DIRECTIVE.findall(text):
+        if f"[TOOL]: [{name}] →" in text:
+            continue
+        try:
+            args = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            args = {}
+        return {"name": name, "arguments": args}
+    return None
+
+
+def _scripted_answer(text: str) -> str | None:
+    """After scripted tools ran: answer with the last tool result, so the reply shows what the module said."""
+    text = _current_turn(text)
+    if not _DIRECTIVE.search(text):
+        return None
+    results = re.findall(r"\[TOOL\]: (\[[a-z0-9_]+\] → .*?)(?=\n\[[A-Z]+\]:|\nNow provide|\nAnswer:|\Z)", text, re.DOTALL)
+    last = " ".join(results[-1].split())[:600] if results else "nessun risultato"
+    return f"[LLM finto] Strumenti eseguiti. Ultimo risultato: {last}"
 
 
 def _answer(user_text: str, wants_json: bool) -> str:
@@ -112,10 +151,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._send({"object": "list", "data": [{"object": "embedding", "index": i, "embedding": v}
                                                           for i, v in enumerate(vectors)]})
         if path == "/api/generate":
+            prompt = str(body.get("prompt", ""))
+            pending = _pending_tool(prompt)
+            if pending:
+                block = json.dumps({"name": pending["name"], "params": pending["arguments"]})
+                return self._ollama(model, {"response": f"<tool_call>{block}</tool_call>"}, body.get("stream", True),
+                                    key="response")
+            scripted = _scripted_answer(prompt)
+            if scripted:
+                return self._ollama(model, {"response": scripted}, body.get("stream", True), key="response")
             text = _answer(str(body.get("prompt", "")), _wants_json(body, str(body.get("prompt", ""))))
             return self._ollama(model, {"response": text}, body.get("stream", True), key="response")
         if path == "/api/chat":
             user = _last_user(body.get("messages"))
+            pending = _pending_tool(user)
+            if pending:
+                if body.get("tools"):
+                    msg = {"role": "assistant", "content": "", "tool_calls": [{"function": pending}]}
+                else:
+                    block = json.dumps({"name": pending["name"], "params": pending["arguments"]})
+                    msg = {"role": "assistant", "content": f"<tool_call>{block}</tool_call>"}
+                return self._ollama(model, {"message": msg}, body.get("stream", True), key="message")
+            scripted = _scripted_answer(user)
+            if scripted:
+                return self._ollama(model, {"message": {"role": "assistant", "content": scripted}},
+                                    body.get("stream", True), key="message")
             text = _answer(user, _wants_json(body, json.dumps(body.get("messages") or [])[-600:]))
             return self._ollama(model, {"message": {"role": "assistant", "content": text}},
                                 body.get("stream", True), key="message")
