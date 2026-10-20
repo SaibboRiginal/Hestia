@@ -22,6 +22,4 @@ beautifulsoup4       # HTML text extraction
 # ultralytics          # YOLOv8 (auto-downloads yolov8n.pt on first use)
 # Pillow               # required by both CLIP and YOLO image loaders
 
-# ── Audio / video transcription: WhisperX (optional, graceful fallback) ───────
-# Install these to enable offline transcription for audio/video messages.
-# whisperx             # WhisperX (installs torch, faster-whisper, etc.)
+# Audio / video transcription: the voice module Hestia-Echo (Oracle only calls LLMs).

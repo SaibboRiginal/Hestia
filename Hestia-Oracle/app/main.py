@@ -295,6 +295,7 @@ def ui_usage_calls(days: int = 7, module: str = "", session_id: str = "", use_ca
 
 # ── Documenti page (SPEC §A4): documents in Archive, same search and archiving pipeline as the chat ─────────
 from core.services import ui_documents  # noqa: E402
+from core.document.transcription import capabilities as _voice_capabilities  # noqa: E402
 
 
 class UiDocumentUpload(BaseModel):
@@ -494,6 +495,7 @@ def _register_on_hub():
             "chat_endpoint": "/api/chat",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             **ui.capabilities(service_base_url),
+            **_voice_capabilities(),
         },
     }
     try:

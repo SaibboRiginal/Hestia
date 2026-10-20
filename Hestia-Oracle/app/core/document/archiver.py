@@ -9,7 +9,7 @@ This class depends on:
   - embed_fn: callable (text → list[float])
   - analyst: use case chain (llm_chains.ChainAgent) for LLM-assisted extraction
   - Extractor module: pure static text extractors
-  - LocalModels module: CLIP/YOLO/WhisperX inference
+  - LocalModels module: CLIP/YOLO inference; transcription: audio via Echo
   - Capabilities module: model capability flags
 """
 import hashlib
@@ -20,7 +20,7 @@ import time
 from typing import Callable
 
 from core.services.hub_client import HubClient
-from core.document import capabilities, extractor as file_extractor, local_models
+from core.document import capabilities, extractor as file_extractor, local_models, transcription
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -193,8 +193,8 @@ class DocumentArchiver:
         domain = "documents"
         tags: list[str] = []
 
-        # WhisperX first (offline, accurate)
-        transcribed = local_models.transcribe_audio(file_bytes, mime_type)
+        # Voice module first (its listening chain), then a model that hears audio natively
+        transcribed = transcription.transcribe_audio(file_bytes, mime_type)
 
         if not transcribed and model_has_audio:
             prompt = self._extraction_prompt(

@@ -182,7 +182,6 @@ DOC_MAX_ARCHIVE_MB = "oracle.documents.max_archive_mb"
 DOC_SEARCH_THRESHOLD = "oracle.documents.search_threshold"
 VISION_MODELS = "oracle.documents.vision_models"
 AUDIO_MODELS = "oracle.documents.audio_models"
-WHISPER_MODEL = "oracle.documents.whisper_model"
 # Prompt A/B experiments: surface → key prefix
 AB_SURFACES = {"alert_formatter": ("oracle.prompt_ab.alert", "Notifiche"),
                "planner_behavior": ("oracle.prompt_ab.planner", "Pianificatore")}
@@ -203,8 +202,6 @@ _DEFAULT_THINKING_FAMILIES = ["gemma4", "gemma3", "gemma", "qwen3", "deepseek-r1
                               "llama2", "llama3"]
 _DEFAULT_VISION = ["gemma-3", "gemma4", "gemma3", "gemini", "gpt-4o", "gpt-4-vision", "claude-3", "llava", "bakllava",
                    "moondream", "minicpm-v", "phi-3-vision", "phi3v", "qwen2-vl", "qwen-vl", "internvl"]
-_WHISPER = [("tiny", "Minimo (più veloce)"), ("base", "Base"), ("small", "Piccolo"), ("medium", "Medio"),
-            ("large-v3", "Grande (più preciso)")]
 _TOOL_MODES = [("auto", "Automatico"), ("native", "Nativo"), ("text", "Testo")]
 
 _AGENT = [
@@ -322,9 +319,6 @@ _DOCUMENTS = [
     setting(DOC_SEARCH_THRESHOLD, "Distanza massima nella ricerca documenti", "float", 1.2, group="Documenti",
             min=0.1, max=2.0, order=1, advanced=True,
             help="Più basso = solo documenti molto pertinenti; più alto = più risultati."),
-    setting(WHISPER_MODEL, "Trascrizione audio locale · modello", "enum", "base", group="Documenti",
-            options=_WHISPER, order=2, advanced=True,
-            help="Modello WhisperX per trascrivere l'audio in locale. Più grande = più preciso e più lento."),
     setting(VISION_MODELS, "Modelli che leggono immagini", "list", _DEFAULT_VISION, group="Documenti",
             order=3, advanced=True, help="Inizio del nome dei modelli che possono guardare immagini e PDF."),
     setting(AUDIO_MODELS, "Modelli che ascoltano l'audio", "list", ["gemini-1.5", "gemini-2"], group="Documenti",

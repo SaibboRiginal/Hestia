@@ -49,7 +49,6 @@ EXPECTED = {
     "ORACLE_TASK_STORE_MAX": ("oracle.tasks.max_kept", 500),
     "DOC_MAX_ARCHIVE_BYTES": ("oracle.documents.max_archive_mb", 10),
     "DOC_SEARCH_THRESHOLD": ("oracle.documents.search_threshold", 1.2),
-    "WHISPER_MODEL": ("oracle.documents.whisper_model", "base"),
     "ORACLE_AUDIO_MODEL_PREFIXES": ("oracle.documents.audio_models", ["gemini-1.5", "gemini-2"]),
     "ORACLE_PROMPT_AB_ALERT_ENABLED": ("oracle.prompt_ab.alert.enabled", False),
     "ORACLE_PROMPT_AB_ALERT_VARIANTS": ("oracle.prompt_ab.alert.variants", ["control", "experimental"]),

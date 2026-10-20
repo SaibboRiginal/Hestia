@@ -6,7 +6,7 @@ document for future RAG retrieval.
 
 This module composes:
   - Extractor: local text extraction fallback
-  - LocalModels: offline audio transcription
+  - transcription: audio → text by the voice module Echo
   - DocumentArchiver: background persistence
   - stream_emitter: NDJSON event formatting
 """
@@ -17,7 +17,7 @@ import uuid
 from typing import Generator, Callable
 
 from core.services import stream_emitter
-from core.document import capabilities, local_models
+from core.document import capabilities, local_models, transcription
 from core.document.archiver import DocumentArchiver
 from core.document.extractor import extract_text
 from core.document.handoff import AttachmentHandoff
@@ -166,9 +166,9 @@ class DocumentAnalyser:
         user_message: str,
         client_instructions: str | None,
     ) -> Generator[str, None, str]:
-        """Transcribe audio locally then answer via text LLM. Yields status lines."""
-        yield stream_emitter.emit_status("🔊 Trascrizione con WhisperX...")
-        transcript = local_models.transcribe_audio(file_bytes, mime_type)
+        """Transcribe audio (voice module) then answer via text LLM. Yields status lines."""
+        yield stream_emitter.emit_status("🔊 Trascrizione...")
+        transcript = transcription.transcribe_audio(file_bytes, mime_type)
         if not transcript:
             return "⚠️ Non riesco a trascrivere l'audio. Prova a inviare un file in un formato supportato (mp3, wav, ogg, m4a)."
 
