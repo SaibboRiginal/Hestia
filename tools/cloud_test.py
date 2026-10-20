@@ -128,7 +128,16 @@ def restricted_network() -> bool:
 def ensure_docker() -> None:
     if ok(["docker", "info"]):
         return
-    if not shutil.which("dockerd") or os.geteuid() != 0:
+    if os.geteuid() != 0:
+        # Codespaces (docker-in-docker): the daemon is started by the container entrypoint and can still be
+        # coming up when postStartCommand runs, so wait for it instead of giving up.
+        log("docker_wait")
+        for _ in range(120):
+            if ok(["docker", "info"]):
+                return
+            time.sleep(1)
+        raise SystemExit("[cloud-test] Docker is not running and cannot be started here (waited 120 s).")
+    if not shutil.which("dockerd"):
         raise SystemExit("[cloud-test] Docker is not running and cannot be started here.")
     log("dockerd_start")
     subprocess.Popen(["dockerd"], stdout=open("/tmp/hestia-dockerd.log", "ab"), stderr=subprocess.STDOUT,
