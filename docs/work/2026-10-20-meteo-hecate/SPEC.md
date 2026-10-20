@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 7 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0 and §3 «Meteo?»); routed by the project coordinator |
-| **Status** | Draft v2.0 after Marko's first answer (2026-10-20), waiting for his ok (§9) |
+| **Status** | Approved by Marko 2026-10-20 («ok» + v2.1 additions); implementation started |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -85,20 +85,39 @@ In:
      daylight, comfortable temperature), with reasons. Nothing is saved until Marko confirms →
      `fitness_confirm_activity` stores the weekly intention (kind, times, chosen slots).
    - `fitness_log_activity(kind, date?, minutes?, km?, note?)`: «ho corso 5 km» marks one done (partial data is fine).
+   - **Calendar «Allenamenti»** (Marko: «si appoggia al Calendario vero con nuovo calendario per vedere quando mi
+     alleno come storico»): Hecate gets a generic, idempotent `POST /api/gateway/calendar/calendars {name}` (Google
+     `calendars.insert`, found again by name, id cached; the existing `calendar` scope covers it). Hercules owns one
+     calendar named «Allenamenti»: a confirmed activity slot becomes an event there (title «Corsa», place, forecast in
+     the description); a finished gym session becomes an event too (title = template, real start/end), so the
+     calendar is the training history. Edits/deletes follow (skip → event deleted, moved → event moved). Marko's other
+     calendars are never touched. Google not connected → everything works in Hestia, the event sync is retried by the
+     next write (`[🔄] event=hercules_calendar_sync_failed`).
+   - **Feedback** («richiedere da me il feedback se l'ho fatto veramente»): each confirmed slot plans a one-off agenda
+     task (Chronos `plan`, at slot end + 30 min) → Hercules asks through Hermes «Hai fatto la corsa delle 18?» with
+     buttons **Fatto** / **Non fatto** / **Spostato**; the answer updates the log and the calendar event (title
+     «Corsa ✓»/«Corsa ✗» in Google, where emoji are fine; Hestia clients use icons). One question per slot, `replaces`
+     so they never pile up; no answer = stays «da confermare».
+   - **Morning coach** («una mattina mi dice: ottimo giorno per…»): agenda job `hercules.activity_morning` (daily
+     07:30, editable/pausable in the agenda) → Hercules checks open weekly intentions; if today has a good window
+     (dry, comfortable, daylight, free in the calendar) and the week is behind, Hermes sends «Ottimo giorno per
+     correre: 18–19, 16°, asciutto» with **Pianifica** (creates the slot + event) / **Non oggi**. Max one a day, only
+     when an intention is open (asked by Marko, so it is the intention itself that turns it on, not a switch).
+     A planned slot whose forecast turned bad gets «Pioggia alle 18, meglio domani 17–18?» with **Sposta** / **Tengo**.
+     The daily recap does not repeat it (no duplicates). The common coach model of brainstorm item 9 can absorb this
+     later; the coaches thread is told through the coordinator.
    - Hercules plugin: the week widget shows «Corsa 1/2» next to gym goals; quick action «Ho corso».
-   - No polling of the forecast: the morning recap (item 9) carries «oggi buona finestra per correre 18–19» or «pioggia
-     nello slot di oggi, meglio giovedì»; nothing else is sent.
 9. **Daily recap**: Hecate implements the per-module recap contract of the *Recap giornaliero* thread
    (`GET /api/module/recap?day=&next=`, capability `recap_endpoint`, helper `hestia_common.recap`): one fact
    `{title: "Meteo", icon, next: "<next day>: 12–19°, pioggia dal pomeriggio", note}` for home (plus the place of the
-   first located event of that day when it differs); no home or no forecast → no fact. Hercules adds its activity
-   line (planned slot and its forecast) through the same contract. Built on that thread's helper; whichever lands first on main,
+   first located event of that day when it differs); no home or no forecast → no fact. Hercules adds what was done /
+   missed through the same contract (not the morning nudge, which it already sent). Built on that thread's helper; whichever lands first on main,
    the other adapts (coordinated through the coordinator).
 10. **Docs**: `hestia-hecate.md`, `hestia-wardrobe.md`, `hestia-hercules.md`, `hestia-chronos.md`, `hestia-themis.md` (personal keys), swagger, AI-GUIDE,
    ARCHITECTURE (provider list), root CHANGELOG, `.env.example` only if a host goes there (it does not: no key).
 
 Out (and why):
-- Writing weather into Google/Outlook events (would touch Marko's provider data; Hestia shows it instead).
+- Writing weather into Marko's existing Google/Outlook events (only the «Allenamenti» calendar Hestia owns gets it).
 - Importing runs from Garmin/Strava (activities are logged by hand or by chat for now).
 - No weather alerts, no scheduled job, no periodic fetch: weather is read **on demand** when someone asks (push/poll
   rule: no poll at all); the recap asks Hecate through its contract (item 7 above), coaches (item 9) call the tools.
@@ -132,8 +151,10 @@ Out (and why):
 7. *Impostazioni → Personali → Luoghi*: add Casa/Lavoro/Palestra, «Verifica» shows the resolved place; changing
    Casa moves the next answer.
 9. Agenda page: next 14 days show the day chip; an event at «Palestra» shows the weather at its hour.
-10. «Ho voglia di correre 2 volte questa settimana» → two proposed slots with reasons; confirmed → widget «Corsa 0/2»;
-    «ho corso 5 km» → 1/2; recap line about today's slot.
+10. «Ho voglia di correre 2 volte questa settimana» → two proposed slots with reasons; confirmed → widget «Corsa 0/2»
+    and two events in Google calendar «Allenamenti»; «ho corso 5 km» → 1/2; finished gym session → event.
+11. After a slot: one Hermes question with Fatto / Non fatto / Spostato; the answer updates log and event.
+12. Morning job with an open intention and a good window → one «Ottimo giorno per…» with Pianifica / Non oggi.
 8. Unit tests (no network, recorded Open-Meteo JSON): Hecate provider + endpoints + tools + place resolution,
    Wardrobe fallback paths, Hercules activities, personal setting declared. CI green.
 
@@ -143,7 +164,8 @@ Out (and why):
   `themis.personal.places` + Luoghi editor, `hestia_common.weather_client`, tests.
 - **P2** Wardrobe: forecast fallback in suggest/packing, tool descriptions, UI pre-fill, tests.
 - **P3** Agenda: weather chips in the Chronos calendar view.
-- **P4** Hercules activities: plan (weather + free time) / confirm / log, widget + quick action, tests.
+- **P4** Hercules activities: plan (weather + free time) / confirm / log, «Allenamenti» calendar (+ Hecate
+  `calendars` endpoint), feedback question, morning nudge, widget + quick action, tests.
 - **P5** Recap facts (Hecate weather, Hercules activity) on the recap thread's contract.
 - **P6** Docs, swagger, root CHANGELOG, cloud bench check (recorded data if the hosts stay blocked), PR, CI green.
 
@@ -159,6 +181,6 @@ Oracle (only gains tools through the Hub), Hermes, Chronos backend (no job; only
 
 ## 9. Questions for Marko
 
-v1.0 asked about the city (now: several places) and Hercules (now: outdoor activities, Marko's idea). Left:
-1. Agenda horizon 14 days (Open-Meteo gives 16, the last days are rough). OK? *(Default: yes.)*
-2. Weather only shown in Hestia's agenda, not written into Google Calendar events. OK? *(Default: yes.)*
+All answered 2026-10-20: several places; weather shown in Hestia's agenda for 14 days, Marko's own events untouched;
+outdoor activities with their own Google calendar «Allenamenti» as history, feedback question and morning coach
+nudge. Marko: «ok».
