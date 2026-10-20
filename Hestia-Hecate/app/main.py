@@ -1043,7 +1043,8 @@ def gateway_weather_places():
         logger.warning("[🔄] event=weather_places_failed error=%s", exc)
         rows = []
     return {"status": "ok", "places": rows,
-            "options": [{"value": r["id"], "label": r.get("resolved") or r.get("error") or ""} for r in rows]}
+            "options": [{"value": r["id"], "label": r.get("resolved") or r.get("error") or "", "ok": bool(r.get("ok"))}
+                        for r in rows]}
 
 
 _REAUTH_ACTIONS = [{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}]
