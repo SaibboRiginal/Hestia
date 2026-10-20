@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-20
+- Codespaces in one click: the create page asks for the optional test secrets (Gemini, test Telegram bot, temporary Google client), every start brings the stack up and leaves the WebUI login link in `.cloud-test/login.txt` (`python tools/cloud_test.py start`) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Assistant unavailable state: user-facing texts are generic and name no module («⏳ Non disponibile», «Non posso rispondere adesso: messaggio in coda…», «✅ Di nuovo disponibile») → `docs/work/2026-10-19-oracle-offline/` [ext-chat]
 
 ## 2026-10-19

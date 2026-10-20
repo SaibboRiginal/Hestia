@@ -13,5 +13,5 @@
 - [x] PROGRESS of every pending dossier updated with what the bench verified
 - [x] Docs: module md (hercules, hygieia, wardrobe, oracle, webui), DESIGN-SYSTEM, TESTING.md, root CHANGELOG
 - [x] Full run: 47/47 green (report `cloud-test/2026-10-19/prove-reali.md` in the project files)
-- [ ] PR merged with CI green
+- [x] PR #7 merged with CI green (2026-10-20)
 - [ ] Left for Marko (not possible from the cloud): Telegram, a real model (Gemini key or Ollama), claude.ai connector over the tunnel, his own real use

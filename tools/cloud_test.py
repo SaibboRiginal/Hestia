@@ -3,6 +3,7 @@
 
 Usage (from the repo root, Linux, Docker):
   python tools/cloud_test.py all        # prepare + up + check (the usual one-shot)
+  python tools/cloud_test.py start      # up + login link in .cloud-test/login.txt (Codespaces runs it on every start)
   python tools/cloud_test.py prepare    # docker daemon, network, base images, .env files
   python tools/cloud_test.py up         # build and start every service (Telegram only with a bot token)
   python tools/cloud_test.py check      # health, Hub registry, smoke calls, WebUI screenshots → .cloud-test/
@@ -19,6 +20,8 @@ What it adapts, and only here (docker-compose.cloud-test.yml + this script; up-a
   official images, untouched.
 - TLS proxy: when a proxy CA exists (HESTIA_CLOUD_TEST_CA, or the Claude session's one) it is layered into
   the base images so pip, npm, NuGet and the services trust it. Nothing of this reaches the real images.
+- Test credentials (Codespaces secrets → environment, never files): GEMINI_API_KEY, TELEGRAM_BOT_TOKEN +
+  ALLOWED_USER_ID (test bot), GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (temporary "Desktop app" client; Google on).
 - LLM: GEMINI_API_KEY in the environment → Oracle's chat use cases use a Gemini chain (Themis); otherwise a
   deterministic fake Ollama answers "[LLM finto] …" and the report says so.
 Generated .env files hold no personal data and are git-ignored; existing ones are never overwritten.
@@ -236,7 +239,8 @@ def env_value(rel: str, key: str) -> str:
 def cmd_up() -> None:
     ensure_docker()
     names = services()
-    env = {**os.environ, "COMPOSE_PARALLEL_LIMIT": os.getenv("COMPOSE_PARALLEL_LIMIT", "4")}
+    env = {**os.environ, "COMPOSE_PARALLEL_LIMIT": os.getenv("COMPOSE_PARALLEL_LIMIT", "4"),
+           "HESTIA_BENCH_GOOGLE": "true" if os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET") else "false"}
     run(COMPOSE + ["build"] + names, env=env)
     run(COMPOSE + ["up", "-d", "--no-build"] + names, env=env)
     wait_healthy(names)
@@ -441,7 +445,21 @@ def cmd_token() -> None:
         raise SystemExit(f"[cloud-test] no token: {proc.stdout[:200]} {proc.stderr[:200]}")
     base = os.getenv("CODESPACE_NAME") and \
         f"https://{os.environ['CODESPACE_NAME']}-19015.{os.getenv('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN', 'app.github.dev')}"
-    print(f"Login: {base or WEBUI}/login?token={token}")
+    link = f"{base or WEBUI}/login?token={token}"
+    OUT.mkdir(exist_ok=True)
+    (OUT / "login.txt").write_text(link + "\n", encoding="utf-8")
+    print(f"Login: {link}")
+
+
+def cmd_start() -> None:
+    """Codespaces start: bring the stack up (first time: prepare too) and leave the login link ready."""
+    if not (ROOT / ".env").exists():
+        cmd_prepare()
+    cmd_up()
+    cmd_token()
+    used = [k for k in ("GEMINI_API_KEY", "TELEGRAM_BOT_TOKEN", "GOOGLE_CLIENT_ID") if os.getenv(k)]
+    print(f"Hestia è pronto. Secret in uso: {', '.join(used) or 'nessuno (LLM finto, niente Telegram/Google)'}. "
+          f"Apri il link qui sopra (anche in .cloud-test/login.txt).")
 
 
 def main(argv: list[str]) -> int:
@@ -463,6 +481,8 @@ def main(argv: list[str]) -> int:
         return flows.main(argv[2:])
     elif cmd == "token":
         cmd_token()
+    elif cmd == "start":
+        cmd_start()
     elif cmd == "logs":
         run(COMPOSE + ["logs", "--tail", "120", argv[2]] if len(argv) > 2 else COMPOSE + ["logs", "--tail", "40"])
     elif cmd == "down":

@@ -44,6 +44,7 @@ then checks it like a user. Dossier: `docs/work/2026-10-19-banco-prova-cloud/`.
 ```
 python tools/cloud_test.py all      # prepare (Docker, base images, .env) + up (build, start) + check
 python tools/cloud_test.py check    # again: health, Hub registry, smoke calls, WebUI screenshots
+python tools/cloud_test.py start    # up + login link in .cloud-test/login.txt (Codespaces: automatic on every start)
 python tools/cloud_test.py token    # login link (Codespaces forwards the port through a proxy → token needed)
 python tools/cloud_test.py logs oracle · down
 python tools/cloud_test.py flows [area…]   # real user flows end to end (after `all`)
@@ -60,7 +61,10 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   The script takes images from `mirror.gcr.io`, builds Ubuntu 24.04 stand-ins for `python:3.12-slim` and
   `dotnet/aspnet:9.0` (same Python 3.12, same .NET runtime) and layers the session's interception CAs
   (`/root/.ccr/ca-bundle.crt`) into the base images. Codespaces: official images, untouched.
-- Start a Codespace: *Code → Codespaces → New* (4-core, `.devcontainer/devcontainer.json`); ports stay private.
+- Start a Codespace: *Code → Codespaces → «…» → New with options* (4-core, `.devcontainer/devcontainer.json`); the
+  page asks for the optional test secrets `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN` + `ALLOWED_USER_ID`, `GOOGLE_CLIENT_ID` +
+  `GOOGLE_CLIENT_SECRET` (or set them once on GitHub → *Settings → Codespaces → Secrets*). Every start runs
+  `cloud_test.py start`; open the link in `.cloud-test/login.txt`. Ports stay private.
 
 ## Critical Regressions Log
 
