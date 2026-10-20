@@ -335,7 +335,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   `label`, `emoji`, `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
   `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
-  `eating`, `tired`, `oracle_offline` («⚠️ Oracle offline», signal `oracle.offline` from Argus when Oracle is down past
+  `eating`, `tired`, `oracle_offline` («⏳ Non disponibile», signal `oracle.offline` from Argus when Oracle is down past
   `argus.oracle.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
   `docs/work/2026-10-19-oracle-offline`). Modules may add their own with `POST /api/presence/states/register`.
 - **Effects**: `work.light`/`work.heavy` (allow < local < defer), `llm.claude` (allow < save < deny),

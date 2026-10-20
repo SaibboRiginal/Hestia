@@ -370,6 +370,6 @@ when the Hub answers 404/502/503/504 or is unreachable before the stream starts;
 in Archive (`ChatQueueService`, client `webui`, with mode/model/instructions in `meta`) and sends `queued` (bubble
 «🕒 In coda»). `POST /api/chat-queue/drain` (internal network only, capability `chat_queue_drain`, called by Chronos
 when Oracle is back) and startup replay the queue server-side (no browser needed; Oracle saves the history) and
-push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⚠️ Oracle offline» while
+push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Non disponibile» while
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Crea con Hestia» drawer does
 not queue (it answers «riprova appena torna»).
