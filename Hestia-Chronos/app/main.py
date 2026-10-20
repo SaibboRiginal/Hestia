@@ -110,6 +110,13 @@ app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/chronos.js
 
+# ── export / import (hestia_common.transfer): the user's own agenda decisions ────────────────────────────
+from hestia_common.transfer import Transfer
+from services.agenda_transfer import AgendaSection
+
+transfer = Transfer("chronos", sections=[AgendaSection()])
+app.include_router(transfer.router())
+
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools
 # ─────────────────────────────────────────────────────────────────────
@@ -518,7 +525,7 @@ def on_startup() -> None:
         logger=logger,
     )
 
-    register_on_hub(hub_api_url, service_base_url, extra_capabilities=ui.capabilities(service_base_url))
+    register_on_hub(hub_api_url, service_base_url, extra_capabilities={**ui.capabilities(service_base_url), **transfer.capabilities()})
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
     def _hub_keepalive():
@@ -530,7 +537,7 @@ def on_startup() -> None:
                     service_base_url,
                     max_attempts=1,
                     quiet_success=True,
-                    extra_capabilities=ui.capabilities(service_base_url),
+                    extra_capabilities={**ui.capabilities(service_base_url), **transfer.capabilities()},
                 )
             except Exception as error:
                 logger.warning(

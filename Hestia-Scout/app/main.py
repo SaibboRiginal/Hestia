@@ -235,6 +235,46 @@ api_app.include_router(ui_plugin.router())
 api_app.include_router(build_ui_router(
     ui_store, run_cycle=check_now, cycle_status=scout_cycle_status))
 
+# ── export / import (hestia_common.transfer): the listings with the user's own marks ─────────────────────
+from hestia_common.transfer import Section, Transfer
+from ui_api import to_view as _listing_view
+
+
+class ListingsSection(Section):
+    """Archive entities of Scout's domain. Import upserts (Archive merges the payload); Sostituisci never
+    deletes: listings come back from the mail cycle anyway."""
+
+    def __init__(self, store: ListingStore):
+        super().__init__("annunci", "Annunci", icon="home", deletes=False)
+        self.store = store
+
+    def records(self, *, deleted: bool = False) -> list[dict]:
+        return [{"key": str(r.get("entity_id")), "status": r.get("status") or "active",
+                 "payload": r.get("payload") or {}, "updated_at": r.get("updated_at")}
+                for r in self.store.records(fresh=True) if r.get("entity_id")]
+
+    def title(self, rec: dict) -> str:
+        return _listing_view({"entity_id": rec["key"], "payload": rec.get("payload") or {}})["title"]
+
+    def subtitle(self, rec: dict) -> str:
+        v = _listing_view({"entity_id": rec["key"], "payload": rec.get("payload") or {}})
+        return " · ".join(str(x) for x in (v.get("city"), v.get("price") and f"{v['price']} €") if x)
+
+    def same(self, a: dict, b: dict) -> bool:
+        return a.get("payload") == b.get("payload") and a.get("status") == b.get("status")
+
+    def write(self, records: list[dict], deletes: list[dict], *, mode: str) -> None:
+        for r in records:
+            if not self.store.archive.upsert_entity({"entity_id": r["key"], "domain": self.store.domain,
+                                                     "status": r.get("status") or "active",
+                                                     "payload": r.get("payload") or {}}):
+                raise RuntimeError("archivio non raggiungibile")
+        self.store.records(fresh=True)
+
+
+transfer = Transfer("scout", sections=[ListingsSection(ui_store)])
+api_app.include_router(transfer.router())
+
 
 @api_app.post("/api/scout/check")
 def scout_check():
@@ -482,6 +522,7 @@ def _register_with_hub(port: int):
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             **ui_plugin.capabilities(service_base_url),
             **llm_capabilities(LLM_USECASES),
+            **transfer.capabilities(),
         },
     }
     try:

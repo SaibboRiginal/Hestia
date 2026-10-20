@@ -28,6 +28,7 @@ except ModuleNotFoundError:
 
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
@@ -474,6 +475,22 @@ ui.webui(
 app.include_router(ui.router())
 app.include_router(settings.router())
 
+# ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
+transfer = Transfer("hygieia", hub, sections=[
+    StoreSection("prodotti", "Prodotti", store, ["product", "event"], item_kinds=["product"], icon="drop",
+                 subtitle=lambda r: r["data"].get("brand") or ""),
+    StoreSection("routine", "Routine", store, ["routine", "version"], item_kinds=["routine"], icon="repeat",
+                 subtitle=lambda r: r["data"].get("slot") or "", depends_on=["prodotti", "liste"]),
+    StoreSection("registro", "Registro", store, ["log"], icon="history",
+                 title=lambda r: f"{r['data'].get('date')} · {r['data'].get('status') or 'fatto'}",
+                 subtitle=lambda r: r["data"].get("note") or "", depends_on=["routine", "prodotti"]),
+    StoreSection("diario", "Diario", store, ["journal"], icon="note",
+                 title=lambda r: f"{r['data'].get('date')} · {r['data'].get('area') or ''}",
+                 subtitle=lambda r: r["data"].get("note") or ""),
+    StoreSection("liste", "Liste personali", store, ["option"], icon="list"),
+])
+app.include_router(transfer.router())
+
 
 # ── MCP tools (domain selfcare; Oracle calls them, the logic stays here) ─────
 def _t(fn):
@@ -858,6 +875,7 @@ def _registration() -> dict:
             "context_endpoint": "/api/module/context"}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
+        caps.update(transfer.capabilities())
     except Exception as exc:
         logger.warning("[🔄] event=hygieia_ui_manifest_failed error=%s fallback=no_ui", exc)
     return {"name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",
