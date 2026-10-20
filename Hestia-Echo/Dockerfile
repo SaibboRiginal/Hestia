@@ -1,0 +1,36 @@
+# Build from the repo root (docker-compose.global.yml: context ".") so the
+# shared hestia_common package and the WebUI SDK are available.
+
+# ── UI bundle (plugin contract): Hestia-Echo/ui → /ui/dist/webui/echo.js ──
+FROM node:22-alpine AS ui-build
+WORKDIR /sdk
+COPY Hestia-Shared/webui-sdk/package.json Hestia-Shared/webui-sdk/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY Hestia-Shared/webui-sdk/src ./src
+COPY Hestia-Shared/webui-sdk/build.mjs ./
+COPY Hestia-Echo/ui/ /ui/
+RUN node build.mjs plugin /ui/src/index.ts /ui/dist/webui/echo.js
+
+FROM python:3.12-slim
+
+# ffmpeg: every conversion (ogg/webm/m4a/mp3 ↔ 16 kHz WAV, Telegram ogg/opus, kept recordings at 16 kbps)
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /code
+
+COPY Hestia-Echo/requirements.txt /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+
+COPY Hestia-Shared/hestia_common /code/hestia_common
+COPY Hestia-Echo/app /code/app
+COPY --from=ui-build /ui/dist /code/ui/dist
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/code
+ENV ECHO_UI_DIST=/code/ui/dist
+ENV ECHO_MODELS_DIR=/models
+ENV HF_HOME=/models/hf
+
+EXPOSE 19021
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "19021"]
