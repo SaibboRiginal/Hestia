@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 7 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0 and §3 «Meteo?»); routed by the project coordinator |
 | **Status** | Draft, waiting for Marko's approval (§9) |
 
@@ -65,14 +65,18 @@ In:
    win. Forecast missing (no city, out of range, provider down) → today's behaviour, nothing breaks. UI: the two forms
    show «Previsione: 18° · pioggia, Milano» pre-filled and still editable, with a toned icon, no emoji.
    The tools `wardrobe_suggest` / `wardrobe_packing` make `temp_c`/`rain` optional («lascia vuoto: uso la previsione»).
-7. **Docs**: `hestia-hecate.md`, `hestia-wardrobe.md`, `hestia-themis.md` (personal keys), swagger, AI-GUIDE,
+7. **Daily recap**: Hecate implements the per-module recap contract of the *Recap giornaliero* thread
+   (`GET /api/module/recap?day=&next=`, capability `recap_endpoint`, helper `hestia_common.recap`): one fact
+   `{title: "Meteo", icon, next: "<next day>: 12–19°, pioggia dal pomeriggio", note}` from the forecast of the personal
+   city; no city or no forecast → no fact (empty answer). Built on that thread's helper; whichever lands first on main,
+   the other adapts (coordinated through the coordinator).
+8. **Docs**: `hestia-hecate.md`, `hestia-wardrobe.md`, `hestia-themis.md` (personal keys), swagger, AI-GUIDE,
    ARCHITECTURE (provider list), root CHANGELOG, `.env.example` only if a host goes there (it does not: no key).
 
 Out (and why):
 - **Hercules**: nothing to use weather for today (gym only). See question §9.2.
 - No weather alerts, no scheduled job, no periodic fetch: weather is read **on demand** when someone asks (push/poll
-  rule: no poll at all). A morning line with the weather belongs to the *daily recap* thread (brainstorm item 6),
-  which will call `weather_forecast`; coaches (item 9) likewise.
+  rule: no poll at all); the recap asks Hecate through its contract (item 7 above), coaches (item 9) call the tools.
 - No Home widget / no dedicated plugin page (can come later as a Hecate plugin widget if wanted).
 - No other provider for now; `providers/weather.py` keeps one small interface so another one could be added.
 
@@ -103,6 +107,7 @@ Out (and why):
 ## 6. Phases
 
 - **P1** Hecate provider, cache, endpoints, tools, `themis.personal.city`, `hestia_common.weather_client`, tests.
+- **P2** Hecate recap endpoint (contract from the daily recap thread).
 - **P2** Wardrobe: forecast fallback in suggest/packing, tool descriptions, UI pre-fill, tests.
 - **P3** Docs, swagger, root CHANGELOG, cloud bench check (with recorded data if the hosts stay blocked), PR, CI green.
 
