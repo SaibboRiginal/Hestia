@@ -4,7 +4,7 @@
  * <hygieia-product-form> — add / edit sheet (only the name is required; the rest when you want).
  */
 import { HestiaElement, LitElement, html, css, nothing } from '@hestia/webui-sdk';
-import { API, AREA_EMOJI, STATUS_TONE, call, dayLabel, dropMeta, hygieiaStyles, inDays, label, meta, money, productName, relDays } from './util';
+import { API, STATUS_TONE, call, dayLabel, dropMeta, eventIcon, hygieiaStyles, icon, inDays, label, meta, money, productName, relDays } from './util';
 
 const EMPTY = { name: '', brand: '', line: '', category: '', areas: [] as string[], actives: [] as any[], size: null, unit: 'ml', price: null,
   shop: '', url: '', status: 'in_use', purchased_at: '', opened_at: '', pao_months: null, expires_at: '', level: '', rating: null, verdict: '',
@@ -69,7 +69,7 @@ export class HygieiaProductForm extends LitElement {
       </div>
       <h3>Zone</h3>
       <div class="chips">${(m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${v.areas.includes(a.value)}
-        @click=${() => this.set('areas', v.areas.includes(a.value) ? v.areas.filter((x: string) => x !== a.value) : [...v.areas, a.value])}>${AREA_EMOJI[a.value] || ''} ${a.label}</button>`)}</div>
+        @click=${() => this.set('areas', v.areas.includes(a.value) ? v.areas.filter((x: string) => x !== a.value) : [...v.areas, a.value])}>${a.label}</button>`)}</div>
       <div class="form">
         <hxk-field label="Tipo" type="enum" .options=${[{ value: '', label: '—' }, ...cats.map((c: any) => ({ value: c.value, label: c.label }))]} .value=${v.category || ''}
           @change=${(e: CustomEvent) => this.set('category', e.detail)}></hxk-field>
@@ -78,7 +78,7 @@ export class HygieiaProductForm extends LitElement {
       </div>
       <h3>Attivi</h3>
       <div class="chips">${v.actives.map((a: any) => html`<button class="chip" aria-pressed="true" title="Togli"
-        @click=${() => this.set('actives', v.actives.filter((x: any) => x.name !== a.name))}>${label(m?.actives, a.name)}${a.percent ? ` ${a.percent}%` : ''} ✕</button>`)}</div>
+        @click=${() => this.set('actives', v.actives.filter((x: any) => x.name !== a.name))}>${label(m?.actives, a.name)}${a.percent ? ` ${a.percent}%` : ''} ${icon('x', 12)}</button>`)}</div>
       <div class="row"><input class="in grow" placeholder="Aggiungi attivo (retinolo, niacinamide…)" .value=${this.activeQ}
         @input=${(e: any) => (this.activeQ = e.target.value)} @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addActive()}>
         <hxk-button size="sm" icon="plus" @click=${() => this.addActive()}>Aggiungi</hxk-button></div>
@@ -127,7 +127,6 @@ export class HygieiaProducts extends HestiaElement {
   declare form: boolean;
   private qTimer: any = null;
   static styles = [...HestiaElement.styles, hygieiaStyles, css`
-    .star { color: var(--warning); }
     .lvl { width: 38px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; flex: none; }
     .lvl > span { display: block; height: 100%; background: var(--accent); }
     .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -151,11 +150,11 @@ export class HygieiaProducts extends HestiaElement {
     const exp = p.expires_in;
     return html`<div class="li" @click=${() => this.host.navigate('prodotti/' + p.id)}>
       <div class="grow">
-        <div class="truncate">${p.favorite ? html`<span class="star">★ </span>` : nothing}<b>${p.name}</b>${p.brand ? html`<span class="muted"> · ${p.brand}</span>` : nothing}</div>
+        <div class="truncate">${p.favorite ? html`${icon('star', 13, 'warning')} ` : nothing}<b>${p.name}</b>${p.brand ? html`<span class="muted"> · ${p.brand}</span>` : nothing}</div>
         <div class="small muted truncate">${[label(this.m?.categories, p.category), p.uses ? `${p.uses} usi` : '', p.last_used ? `ultimo ${relDays(p.last_used)}` : '',
           (p.routines || []).map((r: any) => r.name).join(', ')].filter(Boolean).join(' · ')}</div>
       </div>
-      ${exp !== null && exp !== undefined && exp <= 60 && ['in_use', 'stock'].includes(p.status) ? html`<span class="pill ${exp < 0 ? 'bad' : 'warn'}">⏳ ${inDays(exp)}</span>` : nothing}
+      ${exp !== null && exp !== undefined && exp <= 60 && ['in_use', 'stock'].includes(p.status) ? html`<span class="pill ${exp < 0 ? 'bad' : 'warn'}">${icon('hourglass', 12)} ${inDays(exp)}</span>` : nothing}
       ${level !== undefined && p.status === 'in_use' ? html`<span class="lvl" title=${this.m?.levels?.[p.level] || ''}><span style="width:${level * 100}%"></span></span>` : nothing}
       <hxk-badge tone=${STATUS_TONE[p.status] || 'neutral'}>${p.status_label}</hxk-badge>
     </div>`;
@@ -172,7 +171,7 @@ export class HygieiaProducts extends HestiaElement {
       </div>
       <div class="tabs">${VIEWS.map(([v, l]) => html`<button class="tab" aria-pressed=${this.view === v} @click=${() => { this.view = v; this.load(); }}>${l}</button>`)}</div>
       <div class="chips">${(this.m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${this.area === a.value}
-        @click=${() => { this.area = this.area === a.value ? '' : a.value; this.load(); }}>${AREA_EMOJI[a.value] || ''} ${a.label}</button>`)}</div>
+        @click=${() => { this.area = this.area === a.value ? '' : a.value; this.load(); }}>${a.label}</button>`)}</div>
       ${this.items === undefined ? html`<hxk-state kind="loading"></hxk-state>`
         : this.items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`
         : this.items.length ? html`<div class="card list">${this.items.map(p => this.row(p))}</div>`
@@ -183,7 +182,6 @@ export class HygieiaProducts extends HestiaElement {
   }
 }
 
-const EVENT_ICON: Record<string, string> = { bought: '🛍️', opened: '🔓', level_changed: '📉', finished: '✅', discarded: '🗑️', rated: '⭐', replaced: '🔁', note: '📝', status: '•' };
 
 export class HygieiaProduct extends HestiaElement {
   static properties = { ...HestiaElement.properties, p: { state: true }, m: { state: true }, form: { state: true } };
@@ -228,7 +226,7 @@ export class HygieiaProduct extends HestiaElement {
     return html`<div class="page">
       ${back}
       <div class="between wrap">
-        <div class="col" style="gap:2px"><h1>${p.favorite ? html`<span style="color:var(--warning)">★ </span>` : nothing}${p.name}</h1>
+        <div class="col" style="gap:2px"><h1>${p.favorite ? html`${icon('star', 20, 'warning')} ` : nothing}${p.name}</h1>
           <div class="muted">${[p.brand, p.line, label(m?.categories, p.category), (p.areas || []).map((a: string) => label(m?.areas, a)).join(', ')].filter(Boolean).join(' · ')}</div></div>
         <div class="row"><hxk-badge tone=${STATUS_TONE[p.status] || 'neutral'}>${p.status_label}</hxk-badge>
           <hxk-button size="sm" icon="edit" @click=${() => (this.form = true)}>Modifica</hxk-button></div>
@@ -257,14 +255,14 @@ export class HygieiaProduct extends HestiaElement {
       ${(p.usage_weeks || []).length > 1 ? html`<div class="card sec"><h2>Uso per settimana</h2>
         <hxk-chart type="bar" height="120" .labels=${p.usage_weeks.map((w: any) => dayLabel(w.week, false))} .series=${[{ name: 'Usi', values: p.usage_weeks.map((w: any) => w.uses) }]}></hxk-chart></div>` : nothing}
       ${p.rating || p.verdict || p.notes ? html`<div class="card sec"><h2>Giudizio</h2>
-        ${p.rating ? html`<div>${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5 - Math.round(p.rating))}</div>` : nothing}
+        ${p.rating ? html`<div class="row" style="gap:2px" title=${`${p.rating}/5`}>${[1, 2, 3, 4, 5].map(i => icon('star', 16, i <= Math.round(p.rating) ? 'warning' : 'muted'))}</div>` : nothing}
         ${p.verdict ? html`<div>${m?.verdicts?.[p.verdict] || p.verdict}</div>` : nothing}
         ${p.notes ? html`<div class="small" style="white-space:pre-wrap">${p.notes}</div>` : nothing}</div>` : nothing}
       ${(p.siblings || []).length ? html`<div class="card sec"><h2>Altre confezioni</h2><div class="list">${p.siblings.map((s: any) => html`
         <div class="li" @click=${() => this.host.navigate('prodotti/' + s.id)}><div class="grow"><div>${s.status_label}${s.purchased_at ? ` · comprato ${dayLabel(s.purchased_at, false)}` : ''}</div>
           <div class="small muted">${s.days_open !== null && s.days_open !== undefined ? `durato ${s.days_open} giorni` : ''}${s.price ? ` · ${money(s.price, s.currency)}` : ''}</div></div></div>`)}</div></div>` : nothing}
       <div class="card sec"><h2>Storia</h2>
-        ${(p.events || []).map((e: any) => html`<div class="ev"><span>${EVENT_ICON[e.type] || '•'}</span><span class="muted tnum" style="min-width:70px">${dayLabel(e.date, false)}</span><span>${e.text}</span></div>`)}
+        ${(p.events || []).map((e: any) => html`<div class="ev"><span>${eventIcon(e.type)}</span><span class="muted tnum" style="min-width:70px">${dayLabel(e.date, false)}</span><span>${e.text}</span></div>`)}
         ${p.url ? html`<a class="link small" href=${p.url} target="_blank" rel="noopener">Pagina del prodotto ›</a>` : nothing}
         ${p.inci ? html`<details><summary class="small muted">INCI</summary><div class="small" style="white-space:pre-wrap">${p.inci}</div></details>` : nothing}
       </div>

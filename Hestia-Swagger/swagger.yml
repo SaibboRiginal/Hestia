@@ -4583,7 +4583,7 @@ paths:
       servers:
         - url: http://localhost:19007
       responses:
-        "200": {description: "{base, base_label, emoji, help, overlays[{key,label,emoji}], label, effects{}, decided_by{}, enabled, show_in_chat, since, changed_at, reason, last_interaction_at, last_interaction_client, last_interaction_kind, idle_minutes, dnd_until, dnd_minutes, activities[], evaluated_at}"}
+        "200": {description: "{base, base_label, emoji, icon, tone, help, overlays[{key,label,emoji,icon,tone}], label, effects{}, decided_by{}, enabled, show_in_chat, since, changed_at, reason, last_interaction_at, last_interaction_client, last_interaction_kind, idle_minutes, dnd_until, dnd_minutes, activities[], evaluated_at}"}
 
   /api/presence/ping:
     post:
@@ -4684,7 +4684,7 @@ paths:
       servers:
         - url: http://localhost:19007
       responses:
-        "200": {description: "{setting, core[], effects{}, states{key: {kind, priority, label, emoji, when, effects, notice?, core?}}}"}
+        "200": {description: "{setting, core[], effects{}, states{key: {kind, priority, label, emoji, icon, tone, when, effects, notice?, core?}}}"}
 
   /api/presence/states/register:
     post:

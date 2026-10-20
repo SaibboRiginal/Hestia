@@ -4,10 +4,7 @@
  * <hygieia-shopping> — what to buy: wishlist, running out, finished and worth buying again.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
-import { API, STATUS_TONE, WEEKDAYS, addDays, call, dayLabel, hygieiaStyles, meta, money, productName, relDays, today } from './util';
-
-const TL_ICON: Record<string, string> = { version: '🔧', bought: '🛍️', opened: '🔓', level_changed: '📉', finished: '✅', discarded: '🗑️',
-  rated: '⭐', replaced: '🔁', note: '📝', status: '•', journal: '📓' };
+import { API, STATUS_TONE, WEEKDAYS, addDays, call, dayLabel, eventIcon, hygieiaStyles, icon, meta, money, productName, relDays, today } from './util';
 
 export class HygieiaStats extends HestiaElement {
   static properties = { ...HestiaElement.properties, tab: { state: true }, days: { state: true }, st: { state: true }, tl: { state: true },
@@ -69,7 +66,7 @@ export class HygieiaStats extends HestiaElement {
       <div class="card col"><h2>Calendario</h2>${this.heat(s.heatmap || [])}</div>
       <div class="card col"><h2>Routine</h2>
         ${(s.routines || []).length ? html`<div class="list">${s.routines.map((r: any) => html`<div class="li" @click=${() => this.host.navigate('routine/' + r.routine_id)}>
-          <div class="grow"><div class="truncate"><b>${r.name}</b></div><div class="small muted">${r.cadence} · ${r.total} volte${r.streak ? ` · ${r.streak} ${r.per === 'month' ? 'mesi' : 'settimane'} di fila 🔥` : ''} · ultima ${relDays(r.last_done)}</div></div>
+          <div class="grow"><div class="truncate"><b>${r.name}</b></div><div class="small muted">${r.cadence} · ${r.total} volte${r.streak ? html` · ${r.streak} ${r.per === 'month' ? 'mesi' : 'settimane'} di fila ${icon('flame', 12, 'warning')}` : ''} · ultima ${relDays(r.last_done)}</div></div>
           ${r.adherence !== null && r.adherence !== undefined ? html`<span class="adh"><span style="width:${r.adherence}%"></span></span><span class="small tnum">${r.adherence}%</span>` : nothing}
         </div>`)}</div>` : html`<div class="empty">Nessuna routine.</div>`}
       </div>
@@ -99,7 +96,7 @@ export class HygieiaStats extends HestiaElement {
     return html`${Object.entries(months).map(([mo, list]) => html`<h3 class="month">${new Date(mo + '-15').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}</h3>
       <div class="card list">${list.map(t => html`<div class="tl ${t.product_id || t.routine_id ? 'click' : ''}"
         @click=${() => t.product_id ? this.host.navigate('prodotti/' + t.product_id) : t.routine_id ? this.host.navigate('routine/' + t.routine_id) : null}>
-        <span>${TL_ICON[t.type] || '•'}</span><span class="muted tnum" style="min-width:60px">${dayLabel(t.date, false)}</span>
+        <span>${eventIcon(t.type)}</span><span class="muted tnum" style="min-width:60px">${dayLabel(t.date, false)}</span>
         <div class="grow"><b>${t.title}</b>${t.text ? html`<span class="muted"> — ${t.text}</span>` : nothing}</div></div>`)}</div>`)}`;
   }
   private pastDay() {

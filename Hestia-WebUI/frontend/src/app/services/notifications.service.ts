@@ -154,7 +154,7 @@ export class NotificationsService {
       const res = await firstValueFrom(this.http.post<{ status: string; answer: NotificationAnswer }>(
         `${this.base}/${n.id}/answer`, { actionId: action.id }));
       this.applyAnswer(n.id, res?.answer ?? { label: action.label, by: CLIENT, status: 'done' });
-      this.toast.success(res?.answer?.outcome_text || `${action.label} ✓`);
+      this.toast.success(res?.answer?.outcome_text || action.label);
     } catch (err) {
       const e = err as HttpErrorResponse;
       if (e.status === 409) {
@@ -209,7 +209,7 @@ export class NotificationsService {
     const mode = this.toastMode();
     const important = n.pending || n.level === 'warning' || n.level === 'error';
     if (mode === 'none' || (mode === 'important' && !important)) return;
-    const base = n.title || plain(n.message).slice(0, 140) || 'Nuova notifica';
+    const base = noEmoji(n.title || '') || plain(n.message).slice(0, 140) || 'Nuova notifica';
     const text = n.repeat ? `${base} · ${n.repeat.text}` : base;
     this.toast.show(text, toneOf(n.level), {
       label: n.pending ? 'Rispondi' : 'Apri',
@@ -258,5 +258,10 @@ export function plain(html: string): string {
   if (typeof DOMParser === 'undefined') return html;
   // DOMParser runs no scripts/handlers (unlike innerHTML on a detached element).
   const doc = new DOMParser().parseFromString(html.replace(/<br\s*\/?>/gi, ' '), 'text/html');
-  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+  return noEmoji(doc.body.textContent || '');
+}
+
+/** Modules write emoji for Telegram; the WebUI draws icons by level instead (DESIGN-SYSTEM: no emoji). */
+export function noEmoji(text: string): string {
+  return text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}]/gu, '').replace(/\s+/g, ' ').trim();
 }

@@ -4,7 +4,7 @@
  * <wardrobe-piece>       — one piece: photos, details, status in one tap, outfits, «Indossato», edit, archive/delete.
  */
 import { css, html, nothing } from '@hestia/webui-sdk';
-import { API, STATUS_TONE, SEASON_ICON, WardrobeElement, call, dayLabel, dots, img, label, money, photo, relDays, vocabOptions, wardrobeStyles } from './util';
+import { API, STATUS_TONE, seasonIcon, WardrobeElement, call, dayLabel, dots, img, label, money, photo, relDays, vocabOptions, wardrobeStyles } from './util';
 
 const SORTS: Record<string, string> = { recent: 'Aggiunti di recente', name: 'Nome', least_worn: 'Meno usati', last_worn: 'Usati di recente', worn: 'Più usati' };
 const QUICK_STATUS = ['active', 'laundry', 'lent', 'to_repair', 'stored', 'to_donate'];
@@ -78,8 +78,8 @@ export class WardrobePieces extends WardrobeElement {
         ${this.fixedKind ? nothing : html`<button class="chip soft" aria-pressed=${!this.f.kind} @click=${() => { this.f = { ...this.f, kind: '' }; this.load(); }}>Tutto</button>
           <button class="chip soft" aria-pressed=${this.f.kind === 'garment'} @click=${() => this.filter('kind', 'garment')}>Capi</button>
           <button class="chip soft" aria-pressed=${this.f.kind === 'shoes'} @click=${() => this.filter('kind', 'shoes')}>Scarpe</button>`}
-        <button class="chip soft" aria-pressed=${this.f.favorite === 'true'} @click=${() => this.filter('favorite', 'true')}>★</button>
-        ${m ? Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" title=${v} aria-pressed=${this.f.season === k} @click=${() => this.filter('season', k)}>${SEASON_ICON[k]}</button>`) : nothing}
+        <button class="chip soft" aria-pressed=${this.f.favorite === 'true'} title="Preferiti" @click=${() => this.filter('favorite', 'true')}><hxk-icon name="star" size=${14} tone="warning"></hxk-icon></button>
+        ${m ? Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" title=${v} aria-pressed=${this.f.season === k} @click=${() => this.filter('season', k)}>${seasonIcon(k)}</button>`) : nothing}
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, category: e.target.value }; this.load(); }}>
           <option value="">Ogni categoria</option>${kindCats.map(c => html`<option value=${c.key} ?selected=${this.f.category === c.key}>${c.label}</option>`)}</select>
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, color: e.target.value }; this.load(); }}>
@@ -95,7 +95,7 @@ export class WardrobePieces extends WardrobeElement {
             @click=${() => (this.selecting ? this.toggleSel(p.id) : this.host.navigate('capi/' + p.id))}>
           <div class="ph">${img(this.host, p.photos?.[0], p.name)}</div>
           ${p.status !== 'active' ? html`<hxk-badge class="badge" tone=${STATUS_TONE[p.status] || 'neutral'}>${p.status_label}</hxk-badge>` : nothing}
-          ${this.selecting && this.sel.includes(p.id) ? html`<span class="check"><hxk-icon name="check" size="14"></hxk-icon></span>` : p.favorite ? html`<span class="fav">★</span>` : nothing}
+          ${this.selecting && this.sel.includes(p.id) ? html`<span class="check"><hxk-icon name="check" size="14"></hxk-icon></span>` : p.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}
           <div class="tx"><span class="nm">${p.name}</span>
             <span class="small muted row" style="gap:6px">${dots(p.colors, 10)}<span class="truncate">${p.subcategory_label || p.category_label}${p.brand ? ' · ' + p.brand : ''}</span></span></div>
         </div>`)}</div>`}
@@ -195,7 +195,7 @@ export class WardrobePiece extends WardrobeElement {
       ['Fantasia', p.pattern && p.pattern !== 'plain' ? label(m, 'pattern', p.pattern) : ''],
       ['Materiali', (p.materials || []).map((x: any) => x.percent ? `${x.name} ${x.percent}%` : x.name).join(', ')],
       ['Vestibilità', p.fit ? label(m, 'fit', p.fit) : ''],
-      ['Stagioni', (p.seasons || []).length === 4 ? 'tutte' : (p.seasons || []).map((s: string) => `${SEASON_ICON[s]} ${m?.seasons[s] || s}`).join(' ')],
+      ['Stagioni', (p.seasons || []).length === 4 ? 'tutte' : html`${(p.seasons || []).map((s: string) => html`${seasonIcon(s, 13)} ${m?.seasons[s] || s} `)}`],
       ['Stile', (p.styles || []).map((s: string) => label(m, 'style', s)).join(', ')],
       ['Occasioni', (p.occasions || []).map((s: string) => label(m, 'occasion', s)).join(', ')],
       ['Calore · formalità', `${p.warmth}/5 · ${p.formality}/5`],
@@ -217,7 +217,7 @@ export class WardrobePiece extends WardrobeElement {
         </div>
         <div class="col" style="gap:14px">
           <div class="between"><div><h1>${p.name}</h1><div class="small muted">${p.subcategory_label || p.category_label}${p.brand ? ' · ' + p.brand : ''}</div></div>
-            <button class="chip" title="Preferito" aria-pressed=${!!p.favorite} @click=${() => this.patch({ favorite: !p.favorite })}>★</button></div>
+            <button class="chip" title="Preferito" aria-pressed=${!!p.favorite} @click=${() => this.patch({ favorite: !p.favorite })}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
           <div class="chips">${QUICK_STATUS.map(s => html`<button class="chip soft" aria-pressed=${p.status === s} @click=${() => p.status !== s && this.patch({ status: s }, m?.statuses[s])}>${m?.statuses[s] || s}</button>`)}
             ${QUICK_STATUS.includes(p.status) ? nothing : html`<hxk-badge tone="neutral">${p.status_label}</hxk-badge>`}</div>
           <hxk-stat .items=${[
@@ -236,7 +236,7 @@ export class WardrobePiece extends WardrobeElement {
               <dl>${info.filter(([, v]) => v).map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl></div>`}
           ${p.outfits?.length ? html`<div class="card col"><h3>Negli outfit</h3><div class="tiles" style="--tile:120px">${p.outfits.map((o: any) => html`
               <div class="tile" @click=${() => this.host.navigate('outfit/' + o.id)}><div class="ph">${img(this.host, o.photo, o.name)}</div>
-                ${o.favorite ? html`<span class="fav">★</span>` : nothing}<div class="tx"><span class="nm">${o.name}</span></div></div>`)}</div></div>` : nothing}
+                ${o.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}<div class="tx"><span class="nm">${o.name}</span></div></div>`)}</div></div>` : nothing}
           ${p.wears?.length ? html`<div class="card col"><h3>Segnato indossato</h3><div class="chips">${p.wears.map((w: any) => html`<span class="pill">${dayLabel(w.date)}</span>`)}</div></div>` : nothing}
           <div class="row wrap"><span class="grow"></span>
             ${p.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, 'Ripristinato')}>Ripristina</hxk-button>`

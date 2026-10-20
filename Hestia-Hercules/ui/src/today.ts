@@ -449,7 +449,7 @@ export class HerculesToday extends HestiaElement {
 
       ${others.length ? html`<div class="card col"><h3>Altre schede</h3><div class="list">
         ${others.map(o => html`<div class="li" @click=${() => this.host.navigate('schede/' + o.id)}>
-          <div class="grow"><div class="truncate">${o.favorite ? html`<span style="color:var(--warning)">★</span> ` : ''}${o.name}</div>
+          <div class="grow"><div class="truncate">${o.favorite ? html`<hxk-icon name="star" size=${13} tone="warning"></hxk-icon> ` : ''}${o.name}</div>
             <div class="small muted truncate">${(o.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ')}</div></div>
           <hxk-button size="sm" icon="play" @click=${(e: Event) => { e.stopPropagation(); this.start(o); }}>Inizia</hxk-button></div>`)}
         <div class="li" @click=${() => this.start(null)}><div class="grow muted">Allenamento libero</div><hxk-icon name="play"></hxk-icon></div>
@@ -464,7 +464,7 @@ export class HerculesToday extends HestiaElement {
     return html`<div class="card col">
       <div class="between"><h2>Come stai oggi?</h2><span class="small muted">facoltativo</span></div>
       <div class="col"><span class="small muted">Energia</span><div class="chips">
-        ${[1, 2, 3, 4, 5].map(v => html`<button class="chip" aria-pressed=${c.energy === v} @click=${() => set({ energy: c.energy === v ? null : v })}>${['😩', '😕', '😐', '🙂', '💪'][v - 1]} ${v}</button>`)}</div></div>
+        ${[1, 2, 3, 4, 5].map(v => html`<button class="chip" aria-pressed=${c.energy === v} @click=${() => set({ energy: c.energy === v ? null : v })} title=${['Esausto', 'Stanco', 'Normale', 'Bene', 'Al top'][v - 1]}>${v === 1 ? html`<hxk-icon name="battery-low" size=${14}></hxk-icon> ` : ''}${v}</button>`)}</div></div>
       <div class="col"><span class="small muted">Tempo a disposizione</span><div class="chips">
         ${[20, 30, 45, 60, 90].map(v => html`<button class="chip" aria-pressed=${c.time === v} @click=${() => set({ time: c.time === v ? null : v })}>${v} min</button>`)}</div></div>
       <div class="col"><span class="small muted">Fastidi o dolori</span><div class="chips">
@@ -479,7 +479,7 @@ export class HerculesToday extends HestiaElement {
       ${a ? html`<div class="sep"></div>
         <div class="between"><h2>Piano adattato: ${a.name}</h2><span class="pill tnum">${minutes(a.minutes_before)} → ${minutes(a.minutes_after)}</span></div>
         <ul style="margin:0;padding-left:18px">${(a.trace || []).map((x: string) => html`<li class="small">${x}</li>`)}</ul>
-        ${(a.warnings || []).map((w: string) => html`<div class="warn">⚠ ${w}</div>`)}
+        ${(a.warnings || []).map((w: string) => html`<div class="warn"><hxk-icon name="alert" size=${13} tone="warning"></hxk-icon> ${w}</div>`)}
         <div class="plan">${(a.exercises || []).map((e: any) => html`<div class="it" style=${e.skipped ? 'text-decoration:line-through;opacity:.6' : ''}>
           <span class="truncate">${exs.get(e.exercise_id)?.name || '?'}</span>
           <span class="x tnum">${(e.planned || []).filter((p: any) => p.type !== 'warmup').length} serie · ${plannedLabel((e.planned || []).find((p: any) => p.type !== 'warmup') || {}, exs.get(e.exercise_id)?.kind)}</span></div>`)}</div>
@@ -626,13 +626,13 @@ export class HerculesToday extends HestiaElement {
     const sm = r.summary || {};
     const prs = (r.prs || []).filter((p: any) => !p.first);
     return html`<div class="card col">
-      <div class="between"><h1>Fatto! 💪</h1>${r.offline ? html`<span class="offline">salvato sul dispositivo</span>` : nothing}</div>
+      <div class="between"><h1><hxk-icon name="check-circle" size=${24} tone="success"></hxk-icon> Fatto!</h1>${r.offline ? html`<span class="offline">salvato sul dispositivo</span>` : nothing}</div>
       <div class="row wrap" style="gap:18px">
         ${sm.duration_min !== undefined ? html`<div><div class="big tnum">${minutes(sm.duration_min)}</div><div class="small muted">durata</div></div>` : nothing}
         ${sm.sets !== undefined ? html`<div><div class="big tnum">${sm.sets}</div><div class="small muted">serie</div></div>` : nothing}
         ${sm.volume !== undefined ? html`<div><div class="big tnum">${kg(sm.volume)}</div><div class="small muted">kg sollevati</div></div>` : nothing}
       </div>
-      ${prs.length ? html`<h3>Record 🏆</h3>${prs.map((p: any) => html`<div class="pr"><hxk-badge tone="success">PR</hxk-badge>
+      ${prs.length ? html`<h3><hxk-icon name="trophy" size=${16} tone="warning"></hxk-icon> Record</h3>${prs.map((p: any) => html`<div class="pr"><hxk-badge tone="success">PR</hxk-badge>
         <span class="grow">${p.exercise}: ${p.label}</span><span class="tnum">${typeof p.value === 'number' ? kg(p.value) : p.value}${p.unit ? ' ' + p.unit : ''}</span></div>`)}` : nothing}
       <h3>Com'è andata?</h3>
       <div class="chips">${Object.entries(FEEDBACK_TAGS).map(([k, v]) => html`<button class="chip" @click=${() => this.feedback(r.id, k)}>${v}</button>`)}</div>

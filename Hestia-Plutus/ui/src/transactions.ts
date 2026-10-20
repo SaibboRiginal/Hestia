@@ -119,7 +119,7 @@ export class PlutusTransactions extends HestiaElement {
         <input class="in grow" type="search" placeholder="Cerca esercente o nota" .value=${this.q} @input=${(e: any) => this.search(e.target.value)}>
       </div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`
-        : !items.length ? html`<div class="card"><hxk-state kind="empty" text=${this.review ? 'Niente da rivedere 👍' : 'Nessun movimento.'}></hxk-state></div>` : html`
+        : !items.length ? html`<div class="card"><hxk-state kind="empty" text=${this.review ? 'Niente da rivedere' : 'Nessun movimento.'}></hxk-state></div>` : html`
         <div class="small muted">${items.length} movimenti · saldo ${money(total, cur, true)}</div>
         ${Object.entries(days).map(([d, list]) => html`<h3 style="margin-top:6px">${dayLabel(d)}</h3>
           <div class="card list">${list.map(t => txRow(this.host, t, cur))}</div>`)}`}

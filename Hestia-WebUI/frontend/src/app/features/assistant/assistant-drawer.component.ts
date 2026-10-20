@@ -63,13 +63,14 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
           }
           @for (m of chat.messages(); track m.id) {
             @if (m.role === 'user') {
-              <div class="msg user"><div class="bubble">{{ m.content }}</div></div>
+              <div class="msg user"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}</div></div>
             } @else {
               <div class="msg asst">
                 @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
                   <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
                 }
-                @if (m.content) { <div class="hx-prose" [innerHTML]="m.content"></div> }
+                @if (m.error) { <div class="err"><hx-icon name="alert" tone="danger" [size]="15" /><span>{{ m.content }}</span></div> }
+              @else if (m.content) { <div class="hx-prose" [innerHTML]="m.content"></div> }
                 @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
                 @if (m.notices?.length) {
                   <div class="hx-notices">
@@ -143,6 +144,9 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
                     font-size: 13px; color: var(--text-2); background: var(--surface); }
     .chips button:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
     .msg.user { display: flex; justify-content: flex-end; }
+    .bubble .bi { vertical-align: -2px; margin-right: 6px; opacity: .8; }
+    .err { display: flex; gap: 8px; align-items: flex-start; color: var(--text-2); }
+    .err hx-icon { margin-top: 2px; }
     .bubble { background: var(--user-bubble); color: var(--user-bubble-text); padding: 8px 12px; border-radius: var(--radius-lg);
               max-width: 88%; white-space: pre-wrap; word-wrap: break-word; font-size: 14px; }
     .msg.asst .hx-prose { font-size: 14px; }

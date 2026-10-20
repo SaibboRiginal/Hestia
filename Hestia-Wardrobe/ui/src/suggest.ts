@@ -3,7 +3,7 @@
  * reasons; save one, mark it worn, ask the assistant. Deterministic engine in the module (no LLM).
  */
 import { css, html, nothing } from '@hestia/webui-sdk';
-import { API, SEASON_ICON, WardrobeElement, call, dots, img, localDay, vocabOptions, wardrobeStyles } from './util';
+import { API, seasonIcon, WardrobeElement, call, dots, img, localDay, vocabOptions, wardrobeStyles } from './util';
 
 export class WardrobeSuggest extends WardrobeElement {
   static properties = { ...WardrobeElement.properties, res: { state: true }, occasion: { state: true }, temp: { state: true }, rain: { state: true },
@@ -53,12 +53,12 @@ export class WardrobeSuggest extends WardrobeElement {
   render() {
     const m = this.m, res = this.res;
     return html`<div class="page">
-      <div class="head"><h1>Cosa mi metto</h1>${res ? html`<span class="sub">${SEASON_ICON[res.season] || ''} ${m?.seasons[res.season] || ''} · ${res.available_pieces} capi disponibili</span>` : nothing}
+      <div class="head"><h1>Cosa mi metto</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${res.available_pieces} capi disponibili</span>` : nothing}
         <span class="grow"></span><hxk-button variant="ghost" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>Altre idee</hxk-button></div>
       <div class="chips">${vocabOptions(m, 'occasion').map(o => html`<button class="chip" aria-pressed=${this.occasion === o.key} @click=${() => this.setOcc(o.key)}>${o.label}</button>`)}</div>
       <div class="opts">
         <label class="row small">Temperatura <input class="in num" inputmode="decimal" placeholder="°C" .value=${this.temp} @change=${(e: any) => { this.temp = e.target.value; this.load(); }}> °C</label>
-        <button class="chip soft" aria-pressed=${this.rain} @click=${() => { this.rain = !this.rain; this.load(); }}>☔ Pioggia</button>
+        <button class="chip soft" aria-pressed=${this.rain} @click=${() => { this.rain = !this.rain; this.load(); }}><hxk-icon name="umbrella" size=${14} tone="info"></hxk-icon> Pioggia</button>
         <select class="in" @change=${(e: any) => { this.styleKey = e.target.value; this.load(); }}><option value="">Ogni stile</option>
           ${vocabOptions(m, 'style').map(s => html`<option value=${s.key} ?selected=${this.styleKey === s.key}>${s.label}</option>`)}</select>
         <label class="row small">Giorno <input class="in" type="date" min=${localDay()} .value=${this.day || localDay()} @change=${(e: any) => { this.day = e.target.value === localDay() ? '' : e.target.value; this.load(); }}></label>

@@ -43,7 +43,7 @@ export class HerculesNextWidget extends Widget {
     const done = (n.done_today || []).length > 0;
     const exs = this.L.exercises();
     return html`<div class="w">
-      <span class="small muted">${done ? 'Fatto oggi ✓ · prossimo' : n.reason || 'Prossimo allenamento'}</span>
+      <span class="small muted">${done ? html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> Fatto oggi · prossimo` : n.reason || 'Prossimo allenamento'}</span>
       <div class="big truncate click" @click=${() => this.host.navigate('schede/' + t.id)}>${t.name}</div>
       <div class="small muted">${(t.items || []).length} esercizi${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
       ${this.size !== 's' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
@@ -70,7 +70,7 @@ export class HerculesWeekWidget extends Widget {
       <div class="row" style="gap:4px">${days.map((d, i) => html`<div class="col" style="align-items:center;gap:2px;flex:1">
         <span style="width:100%;max-width:26px;height:26px;border-radius:7px;display:block;background:${doneDays.has(d) ? 'var(--success)' : d === localDay(now) ? 'var(--accent-soft)' : 'var(--surface-3)'}"></span>
         <span class="small muted">${WEEKDAYS[i][0]}</span></div>`)}</div>
-      ${this.size !== 's' && this.sum?.week ? html`<div class="small muted">${num(this.sum.week.volume)} kg · ${this.sum.week.sets} serie${goal?.streak ? ` · ${goal.streak} settimane di fila 🔥` : ''}</div>` : nothing}
+      ${this.size !== 's' && this.sum?.week ? html`<div class="small muted">${num(this.sum.week.volume)} kg · ${this.sum.week.sets} serie${goal?.streak ? html` · <hxk-icon name="flame" size=${12} tone="warning"></hxk-icon> ${goal.streak} settimane di fila` : ''}</div>` : nothing}
     </div>`;
   }
 }
@@ -92,7 +92,7 @@ export class HerculesPrsWidget extends Widget {
     if (this.prs === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.prs === null) return html`<hxk-state kind="offline"></hxk-state>`;
     if (!this.prs.length) return html`<div class="w"><span class="small muted">Record recenti</span><div class="muted">Nessun record negli ultimi 30 giorni.</div></div>`;
-    return html`<div class="w"><span class="small muted">Record recenti 🏆</span><div class="list">
+    return html`<div class="w"><span class="small muted"><hxk-icon name="trophy" size=${12} tone="warning"></hxk-icon> Record recenti</span><div class="list">
       ${this.prs.slice(0, this.size === 'l' || this.size === 'xl' ? 8 : 4).map(p => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('esercizi/' + p.exercise_id)}>
         <div class="grow"><div class="truncate">${p.exercise}</div><div class="small muted">${p.label} · ${dayLabel(p.date, false)}</div></div><b class="tnum">${kg(p.value)}</b></div>`)}</div></div>`;
   }
@@ -191,7 +191,7 @@ export class HerculesLiveWidget extends Widget {
       <div class="between"><b class="truncate">${act.name}</b><span class="small muted tnum">${dur((Date.now() - Date.parse(act.started_at)) / 1000)}</span></div>
       <div class="small muted">${sets.length}/${total} serie · ${doneBlocks.size}/${(act.exercises || []).length} esercizi</div>
       ${current ? html`<div class="truncate">Ora: <b>${exs.get(current.exercise_id)?.name || '?'}</b></div>` : nothing}
-      ${rest.until ? html`<div class="pill tnum" style="font-size:15px">⏱ ${left > 0 ? dur(left) : 'recupero finito'}</div>` : nothing}
+      ${rest.until ? html`<div class="pill tnum" style="font-size:15px"><hxk-icon name="timer" size=${14}></hxk-icon> ${left > 0 ? dur(left) : 'recupero finito'}</div>` : nothing}
     </div>`;
   }
 }

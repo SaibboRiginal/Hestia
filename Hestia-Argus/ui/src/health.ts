@@ -10,7 +10,9 @@ const WINDOWS = [{ value: 60, label: '1 ora' }, { value: 360, label: '6 ore' }, 
 const LEVELS = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'];
 const SINCE = [{ value: '30m', label: '30 min' }, { value: '1h', label: '1 ora' }, { value: '6h', label: '6 ore' }, { value: '24h', label: '24 ore' }];
 const LEVEL_TONE: Record<string, string> = { INFO: 'info', WARNING: 'warning', ERROR: 'danger', CRITICAL: 'danger' };
-const ACTION_ICON: Record<string, string> = { detected: '⚠️', status: '↕️', alert: '🔔', remediation: '🔧', recheck_planned: '🗓️', recheck: '🩺', recovered: '✅' };
+/** Incident timeline: action kind → [kit icon, tone] (tone '' = inherit). */
+const ACTION_ICON: Record<string, [string, string]> = { detected: ['alert', 'warning'], status: ['arrows-v', 'info'], alert: ['bell', 'warning'],
+  remediation: ['wrench', 'accent'], recheck_planned: ['calendar', 'muted'], recheck: ['pulse', 'info'], recovered: ['check-circle', 'success'] };
 
 export class ArgusHealth extends HestiaElement {
   static properties = { ...HestiaElement.properties, ov: { state: true }, hist: { state: true }, inc: { state: true },
@@ -112,7 +114,7 @@ export class ArgusHealth extends HestiaElement {
         ${open ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === i.service} @click=${() => this.recheck(i.service, true)}>Ricontrolla</hxk-button>` : nothing}</div>
       ${open && i.error ? html`<div class="small muted">${i.error}</div>` : nothing}
       <ul class="acts">${(i.actions || []).map((a: any) => html`<li><span class="t tnum">${when(a.at)}</span>
-        <span>${ACTION_ICON[a.kind] || '•'}</span><span class=${a.ok === false ? 'ko' : ''}>${a.text}${a.ok === false ? ' — non riuscito' : ''}</span></li>`)}</ul>
+        ${((ic: [string, string]) => html`<hxk-icon name=${ic[0]} size=${14} tone=${ic[1]}></hxk-icon>`)(a.ok === false ? ['x-circle', 'danger'] : ACTION_ICON[a.kind] || ['check-circle', 'success'])}<span class=${a.ok === false ? 'ko' : ''}>${a.text}${a.ok === false ? ' — non riuscito' : ''}</span></li>`)}</ul>
     </div>`;
   }
 

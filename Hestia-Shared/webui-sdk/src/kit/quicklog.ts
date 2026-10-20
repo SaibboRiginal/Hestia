@@ -75,7 +75,7 @@ export class HxkQuicklog extends LitElement {
     if (!r.ok) { this.host.toast(r.error === 'offline' ? 'Sei offline: riprova quando torni in linea' : 'Non sono riuscito a segnarlo', 'danger'); return; }
     this.setState(chip, 'done');
     const undo = this.action.undo;
-    this.host.toast(`${chip.label} ✓`, 'success', undo ? { label: 'Annulla', run: () => this.undo(chip, prev) } : undefined);
+    this.host.toast(chip.label, 'success', undo ? { label: 'Annulla', run: () => this.undo(chip, prev) } : undefined);
     this.dispatchEvent(new CustomEvent('logged', { detail: { chip, undone: false }, bubbles: true, composed: true }));
     this.reload();
   }

@@ -24,7 +24,7 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
             @if (c.state === 'done') { <hx-icon name="check" [size]="16" /> } @else if (c.icon) { <hx-icon [name]="c.icon" [size]="16" /> }
             <span class="txt"><span class="lab">{{ c.label }}</span>@if (c.hint) {<span class="hint">{{ c.hint }}</span>}</span>
             <button class="mini" [class.pinned]="isPinned(c)" (click)="$event.stopPropagation(); plugins.togglePin(c.key)"
-                    [attr.aria-label]="isPinned(c) ? 'Togli dalla Home' : 'Fissa in Home'" [attr.title]="isPinned(c) ? 'Fissata (★)' : 'Fissa in Home'">
+                    [attr.aria-label]="isPinned(c) ? 'Togli dalla Home' : 'Fissa in Home'" [attr.title]="isPinned(c) ? 'Fissata' : 'Fissa in Home'">
               <hx-icon name="star" [size]="13" />
             </button>
             <button class="mini" (click)="openMore($event, c)" aria-label="Altro giorno o dettagli" title="Altro giorno o dettagli">

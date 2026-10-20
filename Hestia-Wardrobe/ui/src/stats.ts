@@ -36,7 +36,7 @@ export class WardrobeStats extends WardrobeElement {
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: 'Guardaroba', prompt: 'Guarda il mio guardaroba: cosa mi manca e cosa potrei dare via?' })}>Chiedi un parere</hxk-button></div>
       <hxk-stat .items=${s.kpi.items}></hxk-stat>
       ${g ? html`<div class="card between"><div><h3>Obiettivo «Indossato»</h3><div class="big">${g.done}<span class="muted" style="font-size:15px"> / ${g.times}</span></div>
-          <div class="small muted">${g.hint}${g.met ? ' · fatto ✓' : g.behind ? ' · un po\' indietro' : ''}</div></div>
+          <div class="small muted">${g.hint}${g.met ? html` · <hxk-icon name="check" size=${12} tone="success"></hxk-icon> fatto` : g.behind ? ' · un po\' indietro' : ''}</div></div>
           <hxk-button icon="check" @click=${() => this.host.navigate('outfit')}>Segna un outfit</hxk-button></div>` : nothing}
       <div class="grid" style="--min:300px">
         <div class="card col"><h3>Per categoria</h3>${this.bars(s.by_category)}</div>

@@ -165,9 +165,12 @@ def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[
         "base": base["key"] if base else "idle",
         "base_label": labels[0] if labels else "In attesa",
         "emoji": (base or {}).get("emoji") or "",
+        "icon": (base or {}).get("icon") or "",
+        "tone": (base or {}).get("tone") or "",
         "help": (base or {}).get("help") or "",
         "overlays": [{"key": s["key"], "label": render(s.get("label") or s["key"], activities),
-                      "emoji": s.get("emoji") or ""} for s in overlays],
+                      "emoji": s.get("emoji") or "", "icon": s.get("icon") or "", "tone": s.get("tone") or ""}
+                     for s in overlays],
         "label": " · ".join(labels),
         "effects": effects,
         "decided_by": decided,

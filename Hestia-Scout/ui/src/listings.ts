@@ -177,7 +177,7 @@ export class ScoutListings extends HestiaElement {
       return html`<hxk-state kind=${this.error === 'offline' ? 'offline' : 'error'} @retry=${() => this.load()}></hxk-state>`;
     if (this.loading && !this.items.length) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!this.items.length)
-      return html`<hxk-state kind="empty" text=${this.f.flag === 'favorite' ? 'Nessuna preferita: tocca ☆ su una casa per salvarla' : 'Nessuna casa con questi filtri'}></hxk-state>`;
+      return html`<hxk-state kind="empty" text=${this.f.flag === 'favorite' ? 'Nessuna preferita: tocca la stella su una casa per salvarla' : 'Nessuna casa con questi filtri'}></hxk-state>`;
     return html`<div class="count">${num(this.total)} case</div>
       <div class="grid">${this.items.map(l => this.card(l))}</div>
       ${this.more ? html`<hxk-button class="moreb" variant="ghost" ?loading=${this.loading} @click=${() => this.load(true)}>Mostra altre</hxk-button>` : nothing}`;

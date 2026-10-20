@@ -4,7 +4,7 @@
  */
 import { HestiaElement, css, html, nothing } from '@hestia/webui-sdk';
 import type { HestiaHost, Upload } from '@hestia/webui-sdk';
-import { API, Meta, SEASON_ICON, vocabOptions, wardrobeStyles } from './util';
+import { API, Meta, seasonIcon, vocabOptions, wardrobeStyles } from './util';
 
 export class WardrobePieceForm extends HestiaElement {
   static properties = { ...HestiaElement.properties, meta: { attribute: false }, value: { attribute: false }, kind: {},
@@ -122,7 +122,7 @@ export class WardrobePieceForm extends HestiaElement {
               style="background:${c.hex || 'var(--surface-3)'}" @click=${() => this.toggle('colors', c.key)}></button>`)}</div>
             ${d.colors.length ? html`<span class="small">${d.colors.map((k: string) => colors.find(c => c.key === k)?.label || k).join(', ')}</span>` : nothing}</div>
           <div class="col" style="gap:4px"><span class="small muted">Stagioni (nessuna = tutte)</span>
-            <div class="chips">${Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" aria-pressed=${d.seasons.includes(k)} @click=${() => this.toggle('seasons', k)}>${SEASON_ICON[k]} ${v}</button>`)}</div></div>
+            <div class="chips">${Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" aria-pressed=${d.seasons.includes(k)} @click=${() => this.toggle('seasons', k)}>${seasonIcon(k)} ${v}</button>`)}</div></div>
         </div>
       </div>
       <div class="form">
@@ -160,7 +160,7 @@ export class WardrobePieceForm extends HestiaElement {
         ${this.editing ? nothing : html`<hxk-button icon="plus" @click=${() => this.emitSave(true)}>Salva e aggiungi un altro</hxk-button>`}
         <hxk-button variant="ghost" @click=${() => this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }))}>Annulla</hxk-button>
         <span class="grow"></span>
-        <label class="row small"><input type="checkbox" .checked=${d.favorite} @change=${(e: any) => this.set('favorite', e.target.checked)}> ★ preferito</label>
+        <label class="row small"><input type="checkbox" .checked=${d.favorite} @change=${(e: any) => this.set('favorite', e.target.checked)}> <hxk-icon name="star" size=${14} tone="warning"></hxk-icon> preferito</label>
       </div>
     </div>`;
   }

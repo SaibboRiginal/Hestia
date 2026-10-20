@@ -66,7 +66,7 @@ export class HerculesProgress extends LocalPage {
       ]}></hxk-stat>
 
       ${this.goals?.length ? html`<div class="card col"><h3>Obiettivi</h3>${this.goals.map(g => html`<div class="between">
-          <div><div>${g.progress.label}</div><div class="small muted">${g.progress.hint}${g.progress.streak ? ` · ${g.progress.streak} di fila 🔥` : ''}</div></div>
+          <div><div>${g.progress.label}</div><div class="small muted">${g.progress.hint}${g.progress.streak ? html` · <hxk-icon name="flame" size=${12} tone="warning"></hxk-icon> ${g.progress.streak} di fila` : ''}</div></div>
           ${g.progress.met ? html`<hxk-badge tone="success">Fatto</hxk-badge>` : g.progress.behind ? html`<hxk-badge tone="warning">Indietro</hxk-badge>` : html`<hxk-badge>In corso</hxk-badge>`}</div>
           <hxk-chart type="bar" height="90" .labels=${(g.progress.history || []).map((h: any) => periodLabel(h.start, g.per))} .series=${[{ name: 'Fatti', values: (g.progress.history || []).map((h: any) => h.done) }]}></hxk-chart>`)}</div>` : nothing}
 

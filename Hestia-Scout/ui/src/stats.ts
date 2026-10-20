@@ -126,7 +126,7 @@ abstract class ListWidget extends HestiaElement {
     if (!this.items) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!this.items.length) return html`<hxk-state kind="empty" text=${this.emptyText()}></hxk-state>`;
     return html`<hxk-list .items=${this.items.map(l => ({ id: l.id, title: euro(l.price) + ' · ' + l.title, subtitle: facts(l), image: l.image || undefined,
-        icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: '★', tone: 'warning' } : undefined }))}
+        icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: 'preferita', tone: 'warning' } : undefined }))}
       @item-click=${(e: CustomEvent) => this.host.navigate('case/' + e.detail.id)}></hxk-list>
       ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('case', this.openQuery())}>Altre ${this.total - this.items.length} →</button>` : nothing}`;
   }
@@ -143,6 +143,6 @@ export class ScoutNewWidget extends ListWidget {
 
 export class ScoutFavoritesWidget extends ListWidget {
   query() { return { flag: 'favorite', sort: 'new' }; }
-  emptyText() { return 'Nessuna preferita: tocca ☆ su una casa per salvarla qui'; }
+  emptyText() { return 'Nessuna preferita: tocca la stella su una casa per salvarla qui'; }
   openQuery(): Record<string, string> { return { flag: 'favorite' }; }
 }

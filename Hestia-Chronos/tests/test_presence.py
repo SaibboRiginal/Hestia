@@ -123,6 +123,8 @@ def test_oracle_offline_overlay_queues_chat_and_drains_when_back(engine):
     engine.set_signal("oracle.offline", True)
     state = engine.view()
     assert [o["key"] for o in state["overlays"]] == ["oracle_offline"]
+    assert state["overlays"][0]["icon"] == "hourglass" and state["overlays"][0]["tone"] == "warning"
+    assert state["icon"] == "sun" and state["tone"] == "success"      # base awake: WebUI icon, Telegram keeps emoji
     assert state["effects"]["chat.reply"] == "queued" and state["effects"]["work.light"] == "defer"
     assert "appena possibile" in state["effects"]["chat.notice"]
     assert engine.calls["drain"] == []

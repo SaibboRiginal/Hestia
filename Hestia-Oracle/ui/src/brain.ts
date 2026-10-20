@@ -122,7 +122,7 @@ export class OracleBrain extends HestiaElement {
         <span class="grow"></span><span class="small muted num">${ms(t.ms)}</span></div>
       ${t.preview ? html`<div class="preview" title=${t.preview}>${t.preview}</div>` : nothing}
       ${(t.tools || []).length ? html`<div class="line">${t.tools.map((x: any) => html`<span class=${x.ok ? (x.writes ? 'chip w' : 'chip') : 'chip ko'}
-          title=${x.ok ? (x.writes ? 'ha modificato qualcosa' : 'lettura') : 'non riuscito'}>${x.ok ? '' : '✕ '}${x.tool}</span>`)}</div>` : nothing}
+          title=${x.ok ? (x.writes ? 'ha modificato qualcosa' : 'lettura') : 'non riuscito'}>${x.ok ? '' : html`<hxk-icon name="x" size=${11}></hxk-icon> `}${x.tool}</span>`)}</div>` : nothing}
       <div class="small muted">${t.provider} · ${t.model}${t.usage?.calls ? ` · ${t.usage.calls} chiamate · ${num(t.usage.input_tokens)} / ${num(t.usage.output_tokens)} token` : ''}${t.usage?.cost_usd ? ` · ${cost(t.usage.cost_usd)}` : ''}</div>
     </div>`;
   }

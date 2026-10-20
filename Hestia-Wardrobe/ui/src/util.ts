@@ -37,7 +37,9 @@ export const vocabOptions = (m: Meta | null, name: string, withHidden = false) =
 export const label = (m: Meta | null, name: string, key: string) =>
   (m?.vocabularies?.[name] || []).find(v => v.key === key)?.label || key;
 
-export const SEASON_ICON: Record<string, string> = { spring: '🌱', summer: '☀️', autumn: '🍂', winter: '❄️' };
+export const SEASON_ICON: Record<string, [string, string]> = { spring: ['leaf', 'success'], summer: ['sun', 'warning'], autumn: ['leaf', 'warning'], winter: ['snowflake', 'info'] };
+/** Season as a stroke icon coloured by season (spring green, summer/autumn amber, winter blue). */
+export const seasonIcon = (k: string, size = 14) => SEASON_ICON[k] ? html`<hxk-icon name=${SEASON_ICON[k][0]} size=${size} tone=${SEASON_ICON[k][1]}></hxk-icon>` : nothing;
 export const STATUS_TONE: Record<string, string> = { active: 'success', laundry: 'info', lent: 'warning', stored: 'neutral', to_repair: 'warning', to_donate: 'neutral', wishlist: 'accent' };
 
 export function localDay(d = new Date()): string {
@@ -120,7 +122,8 @@ export const wardrobeStyles = css`
   .tile .ph img { width: 100%; height: 100%; object-fit: cover; }
   .tile .tx { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .tile .nm { font-weight: 550; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tile .fav { position: absolute; top: 6px; right: 6px; color: var(--warning); text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .tile .fav { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface);
+    box-shadow: 0 1px 3px rgba(0,0,0,.25); display: grid; place-items: center; }
   .tile .badge { position: absolute; top: 6px; left: 6px; }
   .tile .check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent);
     color: var(--accent-contrast); display: grid; place-items: center; }
