@@ -77,7 +77,7 @@ export class QuickActionsService {
         : r.error === 'unreachable' ? `${this.plugins.modules().get(a.module)?.title ?? a.module} non raggiungibile` : 'Non sono riuscito a farlo');
       return false;
     }
-    const msg = (r.data as { message?: string } | null)?.message || `${chip.label} ✓`;
+    const msg = (r.data as { message?: string } | null)?.message || chip.label;
     const prev = chip.state;
     this.chips.update(list => list.map(c => c.key === chip.key && c.chipId ? { ...c, state: 'done' } : c));
     this.toasts.show(msg, 'success', a.undo ? { label: 'Annulla', run: () => void this.undo(chip, prev) } : undefined, a.undo ? 7000 : 4500);

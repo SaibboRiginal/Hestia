@@ -52,7 +52,7 @@ def _c(signal: str, op: str, value=None) -> dict:
 # when = list of groups (OR); each group = list of clauses (AND). Empty → never matches.
 BUILTIN_STATES: dict[str, dict] = {
     "awake": {
-        "kind": "base", "core": True, "priority": 90, "label": "Sveglio", "emoji": "🟢",
+        "kind": "base", "core": True, "priority": 90, "label": "Sveglio", "emoji": "🟢", "icon": "sun", "tone": "success",
         "help": "Mi stai usando: Forge e i lavori pesanti aspettano che tu vada via, così resto veloce "
                 "e Claude non si consuma in automatico.",
         "when": [[_c("user.idle_minutes", "<", "$idle_after")]],
@@ -60,7 +60,7 @@ BUILTIN_STATES: dict[str, dict] = {
                     "notify.level": "all", "chat.style": "normal"},
     },
     "idle": {
-        "kind": "base", "core": True, "priority": 10, "label": "In attesa", "emoji": "🟡",
+        "kind": "base", "core": True, "priority": 10, "label": "In attesa", "emoji": "🟡", "icon": "clock", "tone": "warning",
         "help": "Nessuna interazione da qualche minuto: partono i lavori leggeri (Athena riflette), "
                 "i pesanti aspettano ancora.",
         "when": [[_c("user.idle_minutes", ">=", "$idle_after")]],
@@ -68,7 +68,7 @@ BUILTIN_STATES: dict[str, dict] = {
                     "notify.level": "all"},
     },
     "dnd": {
-        "kind": "base", "core": True, "priority": 100, "label": "Non disturbare", "emoji": "🔕",
+        "kind": "base", "core": True, "priority": 100, "label": "Non disturbare", "emoji": "🔕", "icon": "bell-off", "tone": "danger",
         "help": "L'hai attivato tu: ti arrivano solo le notifiche urgenti, le altre in un riepilogo quando "
                 "lo spegni o scade.",
         "when": [[_c("manual.dnd", "true")]],
@@ -76,14 +76,14 @@ BUILTIN_STATES: dict[str, dict] = {
                     "notify.level": "urgent"},
     },
     "nap": {
-        "kind": "base", "priority": 60, "label": "Pisolino", "emoji": "😴",
+        "kind": "base", "priority": 60, "label": "Pisolino", "emoji": "😴", "icon": "moon", "tone": "muted",
         "help": "Assente da un po' di giorno: anche lavori pesanti locali, Claude no.",
         "when": [[_c("user.idle_minutes", ">=", "$nap_after"), _c(f"agenda.window.{SLEEP_WINDOW}", "false")]],
         "effects": {"work.light": "allow", "work.heavy": "local", "llm.claude": "save",
                     "notify.level": "important"},
     },
     "deep_sleep": {
-        "kind": "base", "priority": 70, "label": "Sonno profondo", "emoji": "🌙",
+        "kind": "base", "priority": 70, "label": "Sonno profondo", "emoji": "🌙", "icon": "moon", "tone": "accent",
         "help": "Notte o assenza lunga: tutto permesso, anche Forge con Claude; solo notifiche urgenti, "
                 "le altre in un riepilogo al risveglio.",
         "when": [[_c(f"agenda.window.{SLEEP_WINDOW}", "true"), _c("setting.use_sleep_window", "true")],
@@ -92,21 +92,21 @@ BUILTIN_STATES: dict[str, dict] = {
                     "notify.level": "urgent"},
     },
     "busy": {
-        "kind": "overlay", "priority": 50, "label": "Occupato: {activities}", "emoji": "🔨",
+        "kind": "overlay", "priority": 50, "label": "Occupato: {activities}", "emoji": "🔨", "icon": "wrench", "tone": "accent",
         "help": "C'è un lavoro pesante in corso: ne parte uno alla volta.",
         "when": [[_c("activity.heavy_count", ">", 0)]],
         "effects": {"work.heavy": "defer"},
         "notice": "sto lavorando ({activities}), rispondo un po' più lento",
     },
     "eating": {
-        "kind": "overlay", "priority": 55, "label": "Sto mangiando", "emoji": "🍝",
+        "kind": "overlay", "priority": 55, "label": "Sto mangiando", "emoji": "🍝", "icon": "refresh", "tone": "info",
         "help": "Manutenzione: deploy, riavvii, modello in caricamento.",
         "when": [[_c("activity.maintenance_count", ">", 0)]],
         "effects": {"work.heavy": "defer"},
         "notice": "mi sto aggiornando, la risposta può tardare",
     },
     "tired": {
-        "kind": "overlay", "priority": 40, "label": "Stanco", "emoji": "🥱",
+        "kind": "overlay", "priority": 40, "label": "Stanco", "emoji": "🥱", "icon": "battery-low", "tone": "warning",
         "help": "Quota Claude bassa o moduli in errore: risparmia Claude, risposte più brevi.",
         "when": [[_c("resource.claude_quota_left", "<", "$tired_quota")],
                  [_c("health.degraded_services", ">=", "$tired_degraded")]],
@@ -115,7 +115,7 @@ BUILTIN_STATES: dict[str, dict] = {
     # Oracle down longer than argus.oracle.grace (signal from Argus, SPEC docs/work/2026-10-19-oracle-offline).
     # Back to chat.reply=live → Chronos asks the chat clients to answer their queues.
     "oracle_offline": {
-        "kind": "overlay", "priority": 95, "label": "Non disponibile", "emoji": "⏳",
+        "kind": "overlay", "priority": 95, "label": "Non disponibile", "emoji": "⏳", "icon": "hourglass", "tone": "warning",
         "help": "Non posso rispondere adesso: comandi, notifiche e agenda funzionano; i messaggi in chat restano in coda "
                 "e avranno risposta appena possibile. I lavori proattivi aspettano.",
         "when": [[_c("oracle.offline", "true")]],

@@ -181,6 +181,8 @@ module domain travels in the payload) with `target: owner`, `replaces: <key>` (o
 
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
+`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji.
+
 A module with a UI ships it inside the module and advertises it to the clients (contract:
 `docs/work/2026-10-17-client-plugins/SPEC.md` §4):
 

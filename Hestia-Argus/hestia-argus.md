@@ -65,6 +65,8 @@ Hub Monitor Logs / Docker Tails │
 
 ## WebUI plugin (core, *Sistema*)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Action history icons: detected alert, status arrows-v, alert bell, remediation wrench, recheck pulse, recovered check-circle; a failed action shows x-circle (danger).
+
 Argus ships its "inside view" on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`, order
 110; SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A6). Manifest: `app/core/ui_plugin.py` (its
 `ui_manifest`/`ui_version` go in the Hub registration capabilities). Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in

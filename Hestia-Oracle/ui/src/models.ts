@@ -111,7 +111,7 @@ export class OracleModels extends HestiaElement {
       </div>
       <div class="state" style="margin-top:8px">
         <hxk-badge tone=${live.available ? 'success' : 'warning'}>${live.available ? 'pronto' : 'non pronto'}</hxk-badge>
-        ${live.needs_key || live.key_set ? html`<span>Chiave in .env: <span class="key">${live.key_env}</span> ${live.key_set ? '✓' : '— manca'}</span>` : nothing}
+        ${live.needs_key || live.key_set ? html`<span>Chiave in .env: <span class="key">${live.key_env}</span> ${live.key_set ? html`<hxk-icon name="check" size=${13} tone="success" title="impostata"></hxk-icon>` : '— manca'}</span>` : nothing}
         ${!live.available && live.detail ? html`<span class="muted">${live.detail}</span>` : nothing}
       </div>
     </hxk-card>`;

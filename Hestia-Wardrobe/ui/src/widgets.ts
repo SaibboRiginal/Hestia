@@ -24,7 +24,7 @@ export class WardrobeTodayWidget extends Widget {
     const action: QuickAction = { method: 'POST', path: `${API}/quick/{id}`, undo: { method: 'DELETE', path: `${API}/quick/{id}` } };
     const g = this.goal;
     return html`<div class="w">
-      ${g ? html`<div class="between"><span class="small muted">${g.hint}${g.met ? ' ✓' : ''}</span>${g.behind ? html`<hxk-badge tone="warning">indietro</hxk-badge>` : nothing}</div>` : nothing}
+      ${g ? html`<div class="between"><span class="small muted">${g.hint}${g.met ? html` <hxk-icon name="check" size=${12} tone="success"></hxk-icon>` : ''}</span>${g.behind ? html`<hxk-badge tone="warning">indietro</hxk-badge>` : nothing}</div>` : nothing}
       <hxk-quicklog .host=${this.host} ?compact=${this.size === 's'} source=${`${API}/quick/outfits`} .action=${action}
         @logged=${() => this.reload(true)}></hxk-quicklog>
       <div class="row small"><button class="link" @click=${() => this.host.navigate('outfit')}>Tutti gli outfit</button><span class="grow"></span>
@@ -79,12 +79,12 @@ export class WardrobeLaundryWidget extends Widget {
     const items = this.items;
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.size === 's') return html`<div class="w click" @click=${() => this.host.navigate('capi', { status: 'laundry' })}>
-      <span class="small muted">In lavanderia</span><div class="big">${items.length}</div><span class="small muted">${items.length ? 'capi' : 'tutto pulito ✓'}</span></div>`;
+      <span class="small muted">In lavanderia</span><div class="big">${items.length}</div><span class="small muted">${items.length ? 'capi' : html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> tutto pulito`}</span></div>`;
     return html`<div class="w">${items.length ? html`<div class="list">${items.slice(0, 6).map(p => html`<div class="li" style="cursor:default">
         <span class="thumb">${img(this.host, p.photos?.[0], p.name)}</span><span class="grow truncate">${p.name}</span>
         <hxk-button size="sm" @click=${() => this.clean(p)}>Pulito</hxk-button></div>`)}</div>
         ${items.length > 6 ? html`<button class="link small" @click=${() => this.host.navigate('capi', { status: 'laundry' })}>Altri ${items.length - 6}</button>` : nothing}`
-      : html`<span class="muted">Niente in lavanderia ✓</span>`}</div>`;
+      : html`<span class="muted"><hxk-icon name="check" size=${14} tone="success"></hxk-icon> Niente in lavanderia</span>`}</div>`;
   }
 }
 

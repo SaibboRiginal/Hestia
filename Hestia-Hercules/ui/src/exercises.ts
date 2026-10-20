@@ -70,7 +70,7 @@ export class HerculesExercises extends LocalPage {
         <select class="in" .value=${this.equip} @change=${(e: any) => (this.equip = e.target.value)}><option value="">Ogni attrezzo</option>${Object.entries(EQUIPMENT).map(([k, v]) => html`<option value=${k}>${v}</option>`)}</select>
       </div>
       <div class="card list">${items.slice(0, 200).map(e => html`<div class="li" @click=${() => this.host.navigate('esercizi/' + e.id)}>
-          <div class="grow"><div class="truncate">${e.favorite ? '★ ' : ''}${e.name}${e.is_custom ? html` <span class="pill">tuo</span>` : nothing}</div>
+          <div class="grow"><div class="truncate">${e.favorite ? html`<hxk-icon name="star" size=${13} tone="warning"></hxk-icon> ` : ''}${e.name}${e.is_custom ? html` <span class="pill">tuo</span>` : nothing}</div>
             <div class="small muted truncate">${muscleText(e)} · ${EQUIPMENT[e.equipment] || e.equipment}</div></div>
           <div class="small muted" style="text-align:right">${e.times ? html`${e.times}×<br>${relDays(e.last)}` : ''}</div></div>`)}
         ${items.length ? nothing : html`<div class="empty" style="padding:12px">Nessun risultato. «Nuovo» per crearlo.</div>`}
@@ -118,7 +118,7 @@ export class HerculesExercise extends LocalPage {
     return html`<div class="page">
       <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('esercizi')}>‹ Esercizi</hxk-button></div>
       <div class="between"><div><h1>${e.name}</h1><div class="small muted">${muscleText(e)}${(e.secondary_muscles || []).length ? ' · anche ' + e.secondary_muscles.map((m: string) => MUSCLES[m] || m).join(', ') : ''} · ${EQUIPMENT[e.equipment] || e.equipment}</div></div>
-        <button class="chip" aria-pressed=${!!e.favorite} @click=${() => this.save({ favorite: !e.favorite })}>★</button></div>
+        <button class="chip" aria-pressed=${!!e.favorite} title="Preferito" @click=${() => this.save({ favorite: !e.favorite })}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
       ${d === undefined ? html`<hxk-state kind="loading"></hxk-state>` : d === null ? html`<div class="offline">Statistiche disponibili quando sei online.</div>` : nothing}
       ${d?.stall ? html`<div class="card" style="border-color:var(--warning)"><b>Stallo</b> · nessun progresso nelle ultime ${d.stall.exposures} sessioni.
         <button class="link" @click=${() => this.host.assistant({ label: `Stallo su ${e.name}`, hints: { exercise_id: e.id }, prompt: `Sono fermo su ${e.name}: cosa cambio?` })}>Chiedi al coach</button></div>` : nothing}

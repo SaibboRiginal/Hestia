@@ -62,6 +62,8 @@ assistant: `GET /api/module/context` (month spent/budget, pace, high budgets, to
 
 ## Client UI (plugin contract)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Empty states without emoji.
+
 Bundle `ui/src/index.ts` → `/ui/webui/plutus.js` (built in the Dockerfile). Pages: panoramica (month: spent, income,
 left, pace, budget bar, categories, donut, latest, coming payments, top merchants, ricontrolla PayPal, chiedi),
 movimenti (by month or «da rivedere», category, account, search; new), movimenti/:id (category chips, «usa sempre»,

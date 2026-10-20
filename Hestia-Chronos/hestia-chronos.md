@@ -332,7 +332,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   `resource.claude_quota_left` (Forge) and `health.degraded_services` (Argus). Derived: `user.idle_minutes`,
   `activity.heavy_count`, `activity.maintenance_count`, `agenda.window.<key>`, `setting.<name>`, `clock.*`.
 - **States** = Themis setting `chronos.presence.states` (object keyed by state): `kind` base/overlay, `priority`,
-  `label`, `emoji`, `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
+  `label`, `emoji` (Telegram), `icon` + `tone` (WebUI stroke icon and colour: success · warning · danger · info · accent · muted), `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
   `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
   `eating`, `tired`, `oracle_offline` («⏳ Non disponibile», signal `oracle.offline` from Argus when Oracle is down past

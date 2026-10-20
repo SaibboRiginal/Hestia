@@ -10,7 +10,10 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
    already exist (`src/app/ui`). New generic widget → add it to the kit (+ this file), not inside a feature.
 3. One feature = one folder `src/app/features/<name>/` + one line in `src/app/app.modules.ts`.
 4. Data comes from the WebUI backend (`/api/webui/...`), which talks to services **only via Hub**.
-5. Italian UI copy, short and concrete. Icons from `<hx-icon>`. Times always 24h (`fmt.time`).
+5. Italian UI copy, short and concrete. Icons from `<hx-icon>`, **never emoji** (also not ★ ✓ ⚠): a stroke icon
+   coloured by intent with `tone` (success · warning · danger · info · accent · muted). Telegram keeps emoji (no icons
+   there); data meant for both carries `emoji` for Telegram and `icon` + `tone` for the WebUI. Checked by
+   `tools/governance/check_icons.py`. Times always 24h (`fmt.time`).
 6. Must work at 390 px (phone) and in light + dark themes. Check both.
 7. `npx ng build` must pass with **no warnings** before committing.
 8. No build-time network: web fonts are a `<link>` in `index.html` and `fonts.inline=false` in
@@ -41,7 +44,7 @@ Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
 
 | Component | Usage |
 |---|---|
-| `<hx-icon name size stroke>` | stroke icons; list in `icon.component.ts` (add paths there). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the sidebar shows «info» — `python tools/cloud_test.py flows plugins` checks it |
+| `<hx-icon name size stroke tone>` | stroke icons; list in `icon.component.ts`. Add an icon to it **and** to the SDK `kit/basics.ts` (same name and path). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the sidebar shows «info» — `python tools/cloud_test.py flows plugins` checks it |
 | `<button hx-btn variant size icon iconRight iconOnly block loading>` | variants `primary · secondary · ghost · subtle · danger`; sizes `sm · md · lg` |
 | `.hx-input`, `.hx-select`, `.hx-textarea`, `.hx-check` (+ `.mono`) | global form classes |
 | `<hx-field label hint error required>` | label/hint/error wrapper around a control |
@@ -147,7 +150,7 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
 `Hestia-Shared/webui-sdk` (`node build.mjs plugin src/index.ts ui/dist/webui/index.js`) and declares them with
 `hestia_common.plugin_client`; the WebUI loads them from the Hub catalog at runtime.
 
-- Element names `<module>-…`; extend `HestiaElement`; use the `hxk-*` kit (icon, button, badge, card, stat, state,
+- Element names `<module>-…`; extend `HestiaElement`; no emoji: `<hxk-icon name tone>` (same names as `hx-icon`); use the `hxk-*` kit (icon, button, badge, card, stat, state,
   list, chart, field, image-picker, quicklog). It reads the same CSS tokens, so plugins follow the theme. `hx-*` stays
   the Angular kit.
 - Call only your module: `this.host.api('GET', '/api/ui/...')`. Navigate with `host.navigate(page, params)`;

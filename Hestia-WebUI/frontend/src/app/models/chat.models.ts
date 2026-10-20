@@ -13,6 +13,10 @@ export interface ChatMessage {
   notices?: ChatNotice[];
   /** Oracle offline: id of the queued message this placeholder waits for (SPEC oracle-offline). */
   queuedId?: number;
+  /** hx-icon drawn before a user bubble (paperclip = file, zap = command); never an emoji in the text. */
+  icon?: string;
+  /** The answer failed: drawn with an alert icon in the danger colour. */
+  error?: boolean;
 }
 
 /** Standard Oracle `notice` packet — see Hestia-Shared/hestia-shared.md § Response packets. */

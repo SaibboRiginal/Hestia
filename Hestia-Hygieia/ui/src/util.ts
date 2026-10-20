@@ -1,5 +1,5 @@
 /** Hygieia UI helpers: API calls, labels, formatting and shared styles of pages and widgets. */
-import { css } from '@hestia/webui-sdk';
+import { css, html } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod, Tone } from '@hestia/webui-sdk';
 
 export const API = '/api/selfcare';
@@ -36,15 +36,25 @@ export const STEP_STATE: Record<string, string> = {
   due: 'tocca oggi', suggested: 'consigliato oggi', wait: 'non serve oggi', ok: 'obiettivo raggiunto', blocked: 'non oggi',
   paused: 'in pausa', off: 'non oggi', rest: 'se vuoi', always: '',
 };
-export const SLOT_ICON: Record<string, string> = { morning: '☀️', evening: '🌙', anytime: '✨' };
+/** Kit stroke icon coloured by intent (tone: success|warning|danger|info|accent|muted; '' = text colour). */
+export const icon = (name: string, size = 14, tone = '') => html`<hxk-icon name=${name} size=${size} tone=${tone}></hxk-icon>`;
+/** [icon, tone] per slot: morning sun, evening moon, anytime sparkle. */
+export const SLOT_ICON: Record<string, [string, string]> = { morning: ['sun', 'warning'], evening: ['moon', 'accent'], anytime: ['sparkle', 'accent'] };
+export const slotIcon = (slot: string, size = 14) => { const [n, t] = SLOT_ICON[slot] || SLOT_ICON.anytime; return icon(n, size, t); };
+/** [icon, tone] per product event / timeline entry. */
+export const EVENT_ICON: Record<string, [string, string]> = {
+  version: ['wrench', 'muted'], bought: ['bag', 'info'], opened: ['unlock', 'accent'], level_changed: ['trend-down', 'warning'],
+  finished: ['check', 'success'], discarded: ['trash', 'danger'], rated: ['star', 'warning'], replaced: ['repeat', 'info'],
+  note: ['note', 'muted'], journal: ['book', 'accent'],
+};
+export const eventIcon = (type: string, size = 14) => { const e = EVENT_ICON[type]; return e ? icon(e[0], size, e[1]) : '•'; };
+/** Alert kinds (expiry, restock, other) → icon; expired = danger. */
+export const alertIcon = (a: any, size = 14) => a.type === 'expiry' ? icon('hourglass', size, (a.days ?? 0) < 0 ? 'danger' : 'warning')
+  : a.type === 'restock' ? icon('cart', size, 'info') : icon('alert', size, 'warning');
 export const STATUS_TONE: Record<string, Tone> = {
   in_use: 'success', stock: 'info', paused: 'neutral', wishlist: 'accent', finished: 'neutral', discarded: 'danger',
 };
 export const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-export const AREA_EMOJI: Record<string, string> = {
-  viso: '🧴', occhi: '👁️', labbra: '👄', capelli: '💇', cuoio_capelluto: '💆', barba: '🧔', corpo: '🛁', mani: '🤲',
-  piedi: '🦶', unghie: '💅', denti: '🦷', profumo: '🌸',
-};
 
 export function localDay(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

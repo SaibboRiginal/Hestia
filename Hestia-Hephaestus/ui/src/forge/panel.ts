@@ -89,7 +89,7 @@ export class HephaestusTaskPanel extends LitElement {
         ${t.cost_usd != null ? html`<dt>Costo</dt><dd>$${t.cost_usd.toFixed(3)}</dd>` : nothing}
         ${t.engine_ms ? html`<dt>Durata</dt><dd>${duration(t.engine_ms)}</dd>` : nothing}
         ${tot ? html`<dt>Modifiche</dt><dd><button class="lnk" @click=${() => s.setPanel('files')}>${tot.files} file</button> · <b class="a">+${tot.added}</b> <b class="d">−${tot.deleted}</b></dd>` : nothing}
-        ${t.tests ? html`<dt>Test</dt><dd><button class="lnk" @click=${() => s.setPanel('tests')}>${t.tests.ok === true ? '✅ passati' : t.tests.ok === false ? '❌ falliti' : '➖ nessun test'}</button></dd>` : nothing}
+        ${t.tests ? html`<dt>Test</dt><dd><button class="lnk" @click=${() => s.setPanel('tests')}>${t.tests.ok === true ? html`<hxk-icon name="check" size=${14} tone="success"></hxk-icon> passati` : t.tests.ok === false ? html`<hxk-icon name="x" size=${14} tone="danger"></hxk-icon> falliti` : html`<hxk-icon name="minus" size=${14} tone="muted"></hxk-icon> nessun test`}</button></dd>` : nothing}
         ${t.branch ? html`<dt>Ramo</dt><dd><button class="lnk mono" @click=${() => s.setPanel('branch')}>${t.branch}</button></dd>` : nothing}
         ${t.external?.branch ? html`<dt>Consegnato</dt><dd><span class="mono">${t.external.branch}</span> <span class="muted">da ${t.external.by || '?'}</span></dd>` : nothing}
         ${t.merge_sha ? html`<dt>Merge</dt><dd><button class="lnk mono" @click=${() => this.openRepo({ view: 'commit', sha: t.merge_sha! })}>${t.merge_sha.slice(0, 8)}</button></dd>` : nothing}
@@ -135,7 +135,7 @@ export class HephaestusTaskPanel extends LitElement {
     if (!w.docs.length) return html`<hxk-state kind="empty" text="Questo task non ha (ancora) un dossier in docs/work."></hxk-state>`;
     const cur = w.docs.find(d => d.path === this.doc) ?? w.docs[0];
     return html`<div class="docnav">${w.docs.map(d => html`<button class=${d === cur ? 'on' : ''} title=${d.path}
-        @click=${() => (this.doc = d.path)}>${d.group === 'changed' ? '✎ ' : ''}${d.name}</button>`)}</div>
+        @click=${() => (this.doc = d.path)}>${d.group === 'changed' ? html`<hxk-icon name="edit" size=${12} tone="accent" title="modificato"></hxk-icon> ` : ''}${d.name}</button>`)}</div>
       <div class="docpath mono">${cur.path}</div><hephaestus-md .text=${cur.content}></hephaestus-md>`;
   }
 

@@ -13,10 +13,13 @@ export interface PresenceState {
   base: string;
   base_label: string;
   emoji: string;
+  /** WebUI stroke icon + intent colour (the emoji is for Telegram). */
+  icon?: string;
+  tone?: string;
   label: string;
   help?: string;
   dnd_minutes?: number;
-  overlays: { key: string; label: string; emoji: string }[];
+  overlays: { key: string; label: string; emoji: string; icon?: string; tone?: string }[];
   effects: Record<string, string>;
   enabled: boolean;
   since?: string;
@@ -100,6 +103,12 @@ export class PresenceService {
     if (s.base === 'dnd') return 'dnd';
     if (s.base === 'deep_sleep' || s.base === 'nap') return 'sleep';
     return 'idle';
+  });
+  /** Icon of the state that matters most: the first overlay, else the base. */
+  readonly icon = computed(() => {
+    const s = this.state();
+    const top = s?.overlays?.find(o => o.icon) ?? s;
+    return { name: top?.icon || 'pulse', tone: top?.tone || '' };
   });
   readonly effects = computed(() => {
     const e = this.state()?.effects ?? {};

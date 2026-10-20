@@ -1,7 +1,7 @@
 /** Hygieia widgets for Home and dashboards: today in one tap, next routine, expiring / running out, the week. */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
 import type { QuickAction } from '@hestia/webui-sdk';
-import { API, STATE, WEEKDAYS, call, hygieiaStyles, localDay } from './util';
+import { API, STATE, WEEKDAYS, alertIcon, call, hygieiaStyles, icon, localDay } from './util';
 
 abstract class Widget extends HestiaElement {
   static styles = [...HestiaElement.styles, hygieiaStyles, css`
@@ -35,7 +35,7 @@ export class HygieiaTodayWidget extends Widget {
     const c = this.plan?.counts;
     return html`<div class="w">
       <div class="between click" @click=${() => this.host.navigate('oggi')}><span class="small muted">Self care di oggi</span>
-        ${c ? html`<span class="small muted">${c.done ? `✓ ${c.done}` : ''}${c.done && c.due ? ' · ' : ''}${c.due ? `${c.due} da fare` : ''}</span>` : nothing}</div>
+        ${c ? html`<span class="small muted">${c.done ? html`${icon('check', 12, 'success')} ${c.done}` : ''}${c.done && c.due ? ' · ' : ''}${c.due ? `${c.due} da fare` : ''}</span>` : nothing}</div>
       ${this.plan === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${[this.n].map(() => html`<hxk-quicklog .host=${this.host} source=${`${API}/quick/routines`} .action=${ROUTINE_ACTION} @logged=${() => this.load()}></hxk-quicklog>`)}
         ${this.plan && !this.plan.routines.length ? html`<div class="muted small">Nessuna routine ancora. <button class="link" @click=${() => this.host.navigate('routine', { nuova: '1' })}>Creane una</button></div>` : nothing}
@@ -66,7 +66,7 @@ export class HygieiaNextWidget extends Widget {
     if (!n) {
       const done = p.counts?.done || 0;
       return html`<div class="w click" @click=${() => this.host.navigate('oggi')}><span class="small muted">Self care</span>
-        <div class="big">${done ? 'Tutto fatto ✓' : 'Niente da fare'}</div><div class="small muted">${done ? `${done} routine oggi` : 'Nessuna routine in programma oggi'}</div></div>`;
+        <div class="big">${done ? html`Tutto fatto ${icon('check', 18, 'success')}` : 'Niente da fare'}</div><div class="small muted">${done ? `${done} routine oggi` : 'Nessuna routine in programma oggi'}</div></div>`;
     }
     const st = STATE[n.state] || STATE.rest;
     const steps = n.steps.filter((s: any) => s.include);
@@ -96,9 +96,9 @@ export class HygieiaAlertsWidget extends Widget {
     const max = this.size === 'l' || this.size === 'xl' ? 8 : 4;
     return html`<div class="w">
       <div class="between click" @click=${() => this.host.navigate('spesa')}><span class="small muted">Prodotti</span>
-        ${this.shop ? html`<span class="pill">🛒 ${this.shop} da comprare</span>` : nothing}</div>
+        ${this.shop ? html`<span class="pill">${icon('cart', 12, 'info')} ${this.shop} da comprare</span>` : nothing}</div>
       ${this.items.length ? html`<div class="list">${this.items.slice(0, max).map(a => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('prodotti/' + a.product_id)}>
-        <span>${a.type === 'expiry' ? '⏳' : a.type === 'restock' ? '🛒' : '⚠️'}</span><span class="grow truncate small">${a.text}</span></div>`)}</div>`
+        <span>${alertIcon(a)}</span><span class="grow truncate small">${a.text}</span></div>`)}</div>`
         : html`<div class="muted small">Niente in scadenza o in esaurimento.</div>`}
     </div>`;
   }
@@ -126,7 +126,7 @@ export class HygieiaWeekWidget extends Widget {
         <span style="width:100%;max-width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:11px;color:var(--accent-contrast);background:${counts[d] ? 'var(--success)' : d === localDay(now) ? 'var(--accent-soft)' : 'var(--surface-3)'}">${counts[d] > 1 ? counts[d] : ''}</span>
         <span class="small muted">${WEEKDAYS[i][0]}</span></div>`)}</div>
       ${this.size === 'l' || this.size === 'xl' ? html`<div class="list">${goals.slice(0, 5).map((r: any) => { const h = r.history[r.history.length - 1];
-        return html`<div class="between small" style="padding:3px 0"><span class="truncate">${r.name}</span><span class="tnum ${h.met ? '' : 'muted'}">${h.done}/${h.need}${h.met ? ' ✓' : ''}</span></div>`; })}</div>` : nothing}
+        return html`<div class="between small" style="padding:3px 0"><span class="truncate">${r.name}</span><span class="tnum ${h.met ? '' : 'muted'}">${h.done}/${h.need}${h.met ? html` ${icon('check', 12, 'success')}` : nothing}</span></div>`; })}</div>` : nothing}
     </div>`;
   }
 }

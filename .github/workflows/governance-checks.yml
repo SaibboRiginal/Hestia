@@ -31,3 +31,6 @@ jobs:
           python tools/governance/check_command_contracts.py \
             --base "${{ github.event.pull_request.base.sha || github.sha }}" \
             --head "${{ github.sha }}"
+
+      - name: Icons, not emoji, in the web clients
+        run: python tools/governance/check_icons.py

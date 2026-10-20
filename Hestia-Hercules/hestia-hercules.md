@@ -53,6 +53,8 @@ Sends only when enabled, a goal is behind, nothing done or skipped today, no liv
 
 ## Client UI (plugin contract)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Favourites star (warning), streaks flame, records trophy, rest timer; energy 1–5 as numbers (1 with battery-low).
+
 Bundle `ui/src/index.ts` → `/ui/webui/hercules.js` (built in the Dockerfile). Pages: allenamento (today / live),
 schede, schede/:id, esercizi, esercizi/:id, storico, storico/:id, progressi, corpo. Widgets: prossimo, settimana,
 fatto, record, esercizio, muscoli, peso, live. Quick actions: fatto (one tap per template, undo), inizia, peso, salta.

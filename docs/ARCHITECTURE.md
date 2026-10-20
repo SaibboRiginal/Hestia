@@ -431,6 +431,8 @@ No code-only behavior changes are considered complete without synchronized docs.
 
 ## Messaging Contract (Global UX Rules)
 
+- Web clients (WebUI, plugins) draw minimal stroke icons coloured by intent, never emoji; Telegram keeps emoji. Data shown by both carries `emoji` (Telegram) and `icon` + `tone` (WebUI). Check: `tools/governance/check_icons.py`.
+
 Applies to every user-facing Telegram delivery path (chat replies, command outputs, proactive alerts):
 
 1. **Human-readable first**: dedicated formatters for known commands; Oracle/LLM formatting only for unknown payloads. Never show raw JSON to users.

@@ -47,13 +47,14 @@ import { PresenceService } from '../../services/presence.service';
         }
         @for (m of chat.messages(); track m.id) {
           @if (m.role === 'user') {
-            <div class="msg user hx-fade-in"><div class="bubble">{{ m.content }}</div></div>
+            <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}</div></div>
           } @else {
             <div class="msg asst hx-fade-in">
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
                 <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
               }
-              @if (m.content) { <div class="hx-prose" [class.queued]="m.queuedId" [innerHTML]="m.content"></div> }
+              @if (m.error) { <div class="err"><hx-icon name="alert" tone="danger" [size]="15" /><span>{{ m.content }}</span></div> }
+              @else if (m.content) { <div class="hx-prose" [class.queued]="m.queuedId" [innerHTML]="m.content"></div> }
               @if (m.queuedId) { <div class="inq"><hx-icon name="clock" [size]="14" /> In coda</div> }
               @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
               @if (m.isStreaming && m.content) { <span class="caret"></span> }
@@ -86,7 +87,7 @@ import { PresenceService } from '../../services/presence.service';
     <div class="composer-wrap">
       @if (presence.chatQueued()) {
         <div class="offline hx-fade-in" role="status">
-          <span class="oe">⏳</span>
+          <hx-icon class="oe" name="hourglass" tone="warning" [size]="16" />
           <span><b>Non disponibile</b> · i messaggi restano in coda e avranno risposta appena possibile.</span>
         </div>
       }
@@ -138,6 +139,9 @@ import { PresenceService } from '../../services/presence.service';
     .chips button { border: 1px solid var(--border-strong); border-radius: var(--radius-full); padding: 7px 14px; font-size: 13.5px; color: var(--text-2); background: var(--surface); }
     .chips button:hover { background: var(--surface-2); color: var(--text); }
     .msg.user { display: flex; justify-content: flex-end; }
+    .bubble .bi { vertical-align: -2px; margin-right: 6px; opacity: .8; }
+    .err { display: flex; gap: 8px; align-items: flex-start; color: var(--text-2); }
+    .err hx-icon { margin-top: 2px; }
     .bubble { background: var(--user-bubble); color: var(--user-bubble-text); padding: 10px 15px; border-radius: var(--radius-xl);
               max-width: 80%; white-space: pre-wrap; word-wrap: break-word; font-size: 15px; }
     .msg.asst { position: relative; }

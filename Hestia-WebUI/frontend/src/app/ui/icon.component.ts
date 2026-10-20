@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /**
- * <hx-icon name="calendar" [size]="18" />
+ * <hx-icon name="calendar" [size]="18" tone="success" />
  * Stroke icons (24×24, currentColor). Add one: put its SVG path(s) in ICONS.
  */
 const ICONS: Record<string, string> = {
+  // Same names and paths as Hestia-Shared/webui-sdk kit/basics.ts (checked by tools/governance/check_icons.py).
   chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0',
   'bell-off': 'M6 16V11a6 6 0 0 1 .6-2.6M9 5.6A6 6 0 0 1 18 11v5l1.5 2H6M10 20a2 2 0 0 0 4 0M3 3l18 18',
@@ -71,7 +72,6 @@ const ICONS: Record<string, string> = {
   'arrow-left': 'M19 12H5M12 19l-7-7 7-7',
   external: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3',
   diff: 'M12 3v8M8 7h8M8 17h8M5 21h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z',
-  // plugin manifests (module icons, quick actions)
   home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   pulse: 'M2 12h4l3-8 4 16 3-8h6',
@@ -92,12 +92,42 @@ const ICONS: Record<string, string> = {
   puzzle: 'M10 4a2 2 0 1 1 4 0v2h4v4h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H6v-4H4a2 2 0 1 1 0-4h2V6h4z',
   offline: 'M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.2-2.8M19 13a10 10 0 0 0-2.4-1.7M12 20h.01',
   command: 'M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z',
+  'eye-off': 'M3 3l18 18M10.6 6.1A10 10 0 0112 6c5 0 9 6 9 6a17 17 0 01-2.7 3.3M6.4 7.4C4.2 8.9 3 12 3 12s4 6 9 6c1.5 0 2.9-.4 4.1-1M9.9 9.9a3 3 0 004.2 4.2',
+  link: 'M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1',
+  flame: 'M12 22a7 7 0 0 0 7-7c0-4-3-6.5-4.5-10-1 2.5-2.2 3.6-3.5 4C10.5 7 10 5 10 2.5 7 4.5 5 8 5 11.5V15a7 7 0 0 0 7 7z',
+  hourglass: 'M6 2h12M6 22h12M7 2v4l5 6-5 6v4M17 2v4l-5 6 5 6v4',
+  bag: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0',
+  leaf: 'M11 20A7 7 0 0 1 4 13c0-6 5-9 16-10-1 11-4 16-9 17zM4 21c3-5 6-8 10-10',
+  snowflake: 'M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 2 3-2M9 20l3-2 3 2',
+  umbrella: 'M22 12a10 10 0 0 0-20 0zM12 12v7a2 2 0 0 0 4 0M12 2v1',
+  droplet: 'M12 2.7l5.7 5.6a8 8 0 1 1-11.3 0z',
+  unlock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 7.8-1.2',
+  'trend-down': 'M22 17l-8.5-8.5-5 5L2 7M16 17h6v-6',
+  'trend-up': 'M22 7l-8.5 8.5-5-5L2 17M16 7h6v6',
+  'check-circle': 'M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3',
+  'x-circle': 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6',
+  wrench: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z',
+  book: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5',
+  'arrows-v': 'M8 3v18M4 7l4-4 4 4M16 21V3M12 17l4 4 4-4',
+  coffee: 'M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v3M10 2v3M14 2v3',
+  'battery-low': 'M2 7h16v10H2zM22 11v2M6 11v2',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  scissors: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12',
+  smile: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
+  'map-pin': 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  note: 'M4 4h16v16H4zM8 9h8M8 13h8M8 17h5',
+};
+
+const TONES: Record<string, string> = {
+  success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)', info: 'var(--info)',
+  accent: 'var(--accent)', muted: 'var(--text-2)',
 };
 
 @Component({
   selector: 'hx-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'hx-icon', '[style.width.px]': 'size()', '[style.height.px]': 'size()', 'aria-hidden': 'true' },
+  host: { class: 'hx-icon', '[style.width.px]': 'size()', '[style.height.px]': 'size()', '[style.color]': 'color()',
+          'aria-hidden': 'true' },
   template: `
     <svg viewBox="0 0 24 24" [attr.width]="size()" [attr.height]="size()" fill="none"
          stroke="currentColor" [attr.stroke-width]="stroke()" stroke-linecap="round" stroke-linejoin="round">
@@ -109,7 +139,10 @@ export class IconComponent {
   name = input.required<string>();
   size = input(18);
   stroke = input(1.8);
+  /** Intent colour: success | warning | danger | info | accent | muted; empty = inherit the text colour. */
+  tone = input<string | null | undefined>('');
   path = computed(() => ICONS[this.name()] ?? ICONS['info']);
+  color = computed(() => TONES[this.tone() || ''] ?? null);
 }
 
 export const ICON_NAMES = Object.keys(ICONS);

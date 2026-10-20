@@ -57,9 +57,12 @@ function dayLabel(iso: string): string {
 /** Hermes messages are Telegram-style HTML: keep the few formatting tags, drop everything else (no scripts,
  *  no handlers, links only http(s)). DOMParser runs nothing; the result is plain DOM nodes Lit can render. */
 const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'INS', 'S', 'DEL', 'STRIKE', 'CODE', 'PRE', 'A', 'BR', 'BLOCKQUOTE', 'SPAN', 'P']);
+/** Modules write emoji for Telegram; here the level icon says it (DESIGN-SYSTEM: no emoji in the WebUI). */
+export const noEmoji = (t: string) => (t || '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}]/gu, '').replace(/^\s+/, '');
+
 export function richText(htmlText: string): DocumentFragment {
   const out = document.createDocumentFragment();
-  const doc = new DOMParser().parseFromString(`<body>${htmlText || ''}</body>`, 'text/html');
+  const doc = new DOMParser().parseFromString(`<body>${noEmoji(htmlText)}</body>`, 'text/html');
   const copy = (from: Node, to: Node) => {
     for (const child of Array.from(from.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) { to.appendChild(document.createTextNode(child.textContent || '')); continue; }
@@ -238,7 +241,7 @@ export class HermesInbox extends HestiaElement {
     this.busy = '';
     if (r.ok) {
       this.applyAnswer(n.id, r.data?.answer ?? { label: a.label, by: 'webui', status: 'done' });
-      this.host.toast(r.data?.answer?.outcome_text || `${a.label} ✓`, 'success');
+      this.host.toast(r.data?.answer?.outcome_text || a.label, 'success');
     } else if (r.status === 409) {
       const answer = r.data?.answer ?? {};
       this.applyAnswer(n.id, answer);
@@ -305,7 +308,7 @@ export class HermesInbox extends HestiaElement {
           <span class="time tnum">${time(n.created_at)}</span>
           ${!n.read ? html`<span class="dot" title="Da leggere"></span>` : nothing}
         </div>
-        ${n.title ? html`<div class="title">${n.title}</div>` : nothing}
+        ${n.title ? html`<div class="title">${noEmoji(n.title)}</div>` : nothing}
         <div class="msg">${richText(n.message)}</div>
         ${n.link?.page ? html`<div class="actions"><hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>Apri</hxk-button></div>` : nothing}
         ${n.pending && n.actions?.length ? html`<div class="actions">

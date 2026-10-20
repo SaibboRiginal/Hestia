@@ -3,7 +3,7 @@
  * quick 1–5 scores, tags and a note; trends per metric with the routine/product changes around them.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
-import { API, AREA_EMOJI, call, dayLabel, hygieiaStyles, label, meta, today } from './util';
+import { API, call, dayLabel, hygieiaStyles, label, meta, today } from './util';
 
 export class HygieiaJournal extends HestiaElement {
   static properties = { ...HestiaElement.properties, m: { state: true }, data: { state: true }, area: { state: true },
@@ -48,7 +48,7 @@ export class HygieiaJournal extends HestiaElement {
       ${back}
       <div class="head"><h1>Diario</h1></div>
       <div class="chips">${(this.m.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${this.area === a.value}
-        @click=${() => { this.area = a.value; this.scores = {}; this.data = undefined; this.load(); }}>${AREA_EMOJI[a.value] || ''} ${a.label}</button>`)}</div>
+        @click=${() => { this.area = a.value; this.scores = {}; this.data = undefined; this.load(); }}>${a.label}</button>`)}</div>
       <div class="card col">
         <div class="between"><h2>Com'è oggi</h2><input class="in" type="date" .value=${this.date} max=${today()} @change=${(e: any) => (this.date = e.target.value)}></div>
         ${ms.map(mt => html`<div class="metric"><span class="lab">${mt.label}${mt.lower_better ? html`<span class="small muted"> (1 = poco)</span>` : nothing}</span>

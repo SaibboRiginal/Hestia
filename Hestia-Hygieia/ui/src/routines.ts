@@ -5,7 +5,7 @@
  * <hygieia-cadence>  — goal picker shared by routines and steps.
  */
 import { HestiaElement, LitElement, html, css, nothing } from '@hestia/webui-sdk';
-import { API, AREA_EMOJI, SLOT_ICON, STATE, WEEKDAYS, addDays, cadenceText, call, dayLabel, hygieiaStyles, label, meta, productName, relDays, search, today } from './util';
+import { API, STATE, WEEKDAYS, addDays, cadenceText, call, dayLabel, hygieiaStyles, icon, label, meta, productName, relDays, search, slotIcon, today } from './util';
 
 /** Goal of a routine or step: every day · fixed weekdays · at least N per week/month · when it happens. */
 export class HygieiaCadence extends LitElement {
@@ -45,8 +45,7 @@ export class HygieiaRoutines extends HestiaElement {
   declare m: any;
   static styles = [...HestiaElement.styles, hygieiaStyles, css`
     .ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); font-size: 18px; flex: none; }
-    .star { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text-3); padding: 4px; }
-    .star.on { color: var(--warning); }
+    .star { background: none; border: none; cursor: pointer; padding: 4px; display: inline-flex; }
   `];
   constructor() { super(); this.items = undefined; this.archived = false; this.creating = null; this.m = null; }
   connectedCallback() {
@@ -80,10 +79,10 @@ export class HygieiaRoutines extends HestiaElement {
         @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.create()} autofocus>
       <h3>Quando</h3>
       <div class="chips">${Object.entries(this.m?.slots || { morning: 'Mattina', evening: 'Sera', anytime: 'Quando capita' }).map(([k, l]) => html`
-        <button class="chip" aria-pressed=${c.slot === k} @click=${() => (this.creating = { ...c, slot: k })}>${SLOT_ICON[k]} ${l}</button>`)}</div>
+        <button class="chip" aria-pressed=${c.slot === k} @click=${() => (this.creating = { ...c, slot: k })}>${slotIcon(k)} ${l}</button>`)}</div>
       <h3>Zone</h3>
       <div class="chips">${(this.m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${c.areas.includes(a.value)}
-        @click=${() => this.creating = { ...c, areas: c.areas.includes(a.value) ? c.areas.filter((x: string) => x !== a.value) : [...c.areas, a.value] }}>${AREA_EMOJI[a.value] || ''} ${a.label}</button>`)}</div>
+        @click=${() => this.creating = { ...c, areas: c.areas.includes(a.value) ? c.areas.filter((x: string) => x !== a.value) : [...c.areas, a.value] }}>${a.label}</button>`)}</div>
       <h3>Obiettivo</h3>
       <hygieia-cadence .value=${c.cadence} @change=${(e: CustomEvent) => (this.creating = { ...c, cadence: e.detail })}></hygieia-cadence>
       <div class="row"><span class="grow"></span><hxk-button variant="primary" icon="check" @click=${() => this.create()}>Crea e aggiungi i passi</hxk-button></div>
@@ -96,11 +95,11 @@ export class HygieiaRoutines extends HestiaElement {
     if (this.items === null) return html`<div class="page">${head}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
     const active = this.items.filter(r => r.status === 'active'), other = this.items.filter(r => r.status !== 'active');
     const row = (r: any) => { const st = STATE[r.state] || STATE.rest; return html`<div class="li" @click=${() => this.host.navigate('routine/' + r.id)}>
-      <div class="ico">${(r.areas || []).map((a: string) => AREA_EMOJI[a]).filter(Boolean)[0] || SLOT_ICON[r.slot] || '✨'}</div>
+      <div class="ico">${(r.areas || []).length ? icon('droplet', 18, 'info') : slotIcon(r.slot, 18)}</div>
       <div class="grow"><div class="truncate"><b>${r.name}</b></div>
-        <div class="small muted truncate">${SLOT_ICON[r.slot] || ''} ${r.cadence_label} · ${r.step_count} passi${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? ' · 🔔' : ''}</div></div>
+        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count} passi${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
       ${r.status === 'active' ? html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>` : html`<hxk-badge>${r.status === 'paused' ? 'In pausa' : 'Archiviata'}</hxk-badge>`}
-      <button class="star ${r.favorite ? 'on' : ''}" title="Preferita (in Home)" @click=${(e: Event) => this.fav(r, e)}>${r.favorite ? '★' : '☆'}</button>
+      <button class="star ${r.favorite ? 'on' : ''}" title="Preferita (in Home)" @click=${(e: Event) => this.fav(r, e)}>${icon('star', 18, r.favorite ? 'warning' : 'muted')}</button>
     </div>`; };
     return html`<div class="page">${head}
       ${this.items.length ? nothing : html`<div class="card muted">Nessuna routine. Creane una: niente orari fissi, solo quante volte vuoi farla.</div>`}
@@ -274,8 +273,8 @@ export class HygieiaRoutine extends HestiaElement {
       ${back}
       <div class="head">
         <input class="title" .value=${r.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })} aria-label="Nome">
-        <button class="link" style="font-size:22px;color:${r.favorite ? 'var(--warning)' : 'var(--text-3)'}" title="Preferita"
-          @click=${() => this.patch({ favorite: !r.favorite })}>${r.favorite ? '★' : '☆'}</button>
+        <button class="link" title="Preferita"
+          @click=${() => this.patch({ favorite: !r.favorite })}>${icon('star', 22, r.favorite ? 'warning' : 'muted')}</button>
       </div>
       <div class="row wrap">
         <hxk-badge tone=${s.tone}>${s.text}</hxk-badge><span class="small muted">${plan.state === 'blocked' || plan.state === 'paused' ? plan.reason : plan.hint}</span>
@@ -289,7 +288,7 @@ export class HygieiaRoutine extends HestiaElement {
         <h2>Passi</h2>
         ${this.steps.length ? html`<div>${this.steps.map((x, i) => this.stepEditor(x, i))}</div>` : html`<div class="empty">Nessun passo. Aggiungi i prodotti nell'ordine in cui li usi.</div>`}
         <div><hxk-button icon="plus" @click=${() => (this.picking = true)}>Aggiungi passo</hxk-button></div>
-        ${(r.check || []).map((n: any) => html`<div class="note ${n.level}">${n.level === 'warning' ? '⚠ ' : 'ℹ '}${n.text}</div>`)}
+        ${(r.check || []).map((n: any) => html`<div class="note ${n.level}">${n.level === 'warning' ? icon('alert', 13, 'warning') : icon('info', 13, 'info')} ${n.text}</div>`)}
       </div>
       ${this.dirty ? html`<div class="save">
         <input class="in grow" placeholder="Perché la cambi? (facoltativo, es. pelle irritata)" .value=${this.reason} @input=${(e: any) => (this.reason = e.target.value)}>
@@ -300,7 +299,7 @@ export class HygieiaRoutine extends HestiaElement {
       <div class="card sec">
         <h2>Quando</h2>
         <div class="chips">${Object.entries(this.m?.slots || {}).map(([k, l]) => html`<button class="chip" aria-pressed=${r.slot === k}
-          @click=${() => this.patch({ slot: k })}>${SLOT_ICON[k]} ${l}</button>`)}</div>
+          @click=${() => this.patch({ slot: k })}>${slotIcon(k)} ${l}</button>`)}</div>
         <h3>Obiettivo</h3>
         <hygieia-cadence .value=${r.cadence} @change=${(e: CustomEvent) => this.patch({ cadence: e.detail })}></hygieia-cadence>
         <div class="row wrap"><span class="small">Al massimo</span>
@@ -308,7 +307,7 @@ export class HygieiaRoutine extends HestiaElement {
           <span class="small">volte al giorno</span></div>
         <h3>Zone</h3>
         <div class="chips">${(this.m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${(r.areas || []).includes(a.value)}
-          @click=${() => this.patch({ areas: (r.areas || []).includes(a.value) ? r.areas.filter((x: string) => x !== a.value) : [...(r.areas || []), a.value] })}>${AREA_EMOJI[a.value] || ''} ${a.label}</button>`)}</div>
+          @click=${() => this.patch({ areas: (r.areas || []).includes(a.value) ? r.areas.filter((x: string) => x !== a.value) : [...(r.areas || []), a.value] })}>${a.label}</button>`)}</div>
         ${this.others.length ? html`<h3>Mai nello stesso giorno di</h3>
           <div class="chips">${this.others.filter(o => o.status !== 'archived').map(o => html`<button class="chip" aria-pressed=${(r.not_same_day_as || []).includes(o.id)}
             @click=${() => this.patch({ not_same_day_as: (r.not_same_day_as || []).includes(o.id) ? r.not_same_day_as.filter((x: string) => x !== o.id) : [...(r.not_same_day_as || []), o.id] })}>${o.name}</button>`)}</div>

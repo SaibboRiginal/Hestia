@@ -92,8 +92,9 @@ export class HerculesTemplates extends LocalPage {
         const muscles = new Set<string>();
         (t.items || []).forEach((i: any) => (exs.get(i.exercise_id)?.primary_muscles || []).forEach((m: string) => muscles.add(m)));
         const groups = Object.entries(GROUP_LABEL).filter(([g]) => GROUPS[g].some(m => muscles.has(m))).map(([, l]) => l);
-        return html`<hxk-card clickable heading=${(t.favorite ? '★ ' : '') + t.name} subtitle=${`${(t.items || []).length} esercizi · ultima ${relDays(last?.started_at)}`}
+        return html`<hxk-card clickable heading=${t.name} subtitle=${`${(t.items || []).length} esercizi · ultima ${relDays(last?.started_at)}`}
             @click=${() => this.host.navigate('schede/' + t.id)}>
+          ${t.favorite ? html`<hxk-icon slot="actions" name="star" size=${14} tone="warning" title="Preferita"></hxk-icon>` : nothing}
           <div class="tpl"><div class="small muted truncate">${(t.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ') || 'Vuota'}</div>
             ${groups.length ? html`<div class="chips">${groups.map(g => html`<span class="pill">${g}</span>`)}</div>` : nothing}</div>
         </hxk-card>`;
@@ -130,7 +131,7 @@ export class HerculesTemplates extends LocalPage {
       <div class="card col">
         <div class="between"><h2>Obiettivi</h2><span class="small muted">es. 3 volte a settimana</span></div>
         ${this.goals === null ? html`<hxk-state kind="loading"></hxk-state>` : this.goals.length ? this.goals.map(g => html`<div class="goal">
-            <div class="grow"><div>${g.progress?.label || g.label}</div><div class="small muted">${g.progress?.hint || ''}${g.progress?.streak ? ` · serie di ${g.progress.streak} 🔥` : ''}</div></div>
+            <div class="grow"><div>${g.progress?.label || g.label}</div><div class="small muted">${g.progress?.hint || ''}${g.progress?.streak ? html` · <hxk-icon name="flame" size=${12} tone="warning"></hxk-icon> serie di ${g.progress.streak}` : ''}</div></div>
             <div class="dots">${Array.from({ length: g.times }, (_, i) => html`<span class="dot ${i < (g.progress?.done || 0) ? 'on' : ''}"></span>`)}</div>
             <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.removeGoal(g)}></hxk-button></div>`)
           : html`<div class="muted small">Nessun obiettivo: aggiungine uno generico e poi, se vuoi, più specifico (una scheda o un muscolo).</div>`}
@@ -230,7 +231,7 @@ export class HerculesTemplate extends LocalPage {
       <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('schede')}>‹ Schede</hxk-button></div>
       <div class="row wrap">
         <input class="in grow" style="font-size:20px;font-weight:600" .value=${t.name} @change=${(e: any) => this.save({ name: e.target.value || 'Scheda' })}>
-        <button class="chip" aria-pressed=${!!t.favorite} title="Preferita: compare in Home per «Segna fatto»" @click=${() => this.save({ favorite: !t.favorite })}>★ Preferita</button>
+        <button class="chip" aria-pressed=${!!t.favorite} title="Preferita: compare in Home per «Segna fatto»" @click=${() => this.save({ favorite: !t.favorite })}><hxk-icon name="star" size=${14}></hxk-icon> Preferita</button>
       </div>
       <div class="row wrap small muted">${(t.items || []).length} esercizi · circa ${minutes(est)}
         ${t.changed_by === 'assistant' ? html`· modificata dall'assistente <button class="link" @click=${() => this.undo()}>Annulla modifica</button>` : nothing}</div>

@@ -102,7 +102,7 @@ export class ScoutListing extends HestiaElement {
             ${l.price_per_m2 ? html`<div class="ppm">${num(l.price_per_m2)} €/m²</div>` : nothing}
           </div>
           <h2>${l.title}</h2>
-          ${l.address ? html`<div class="addr"><hxk-icon name="pin"></hxk-icon><span class="grow">${l.address}</span>
+          ${l.address ? html`<div class="addr"><hxk-icon name="map-pin"></hxk-icon><span class="grow">${l.address}</span>
             ${map ? html`<a href=${map} target="_blank" rel="noopener">Mappa</a>` : nothing}</div>` : nothing}
           <div class="row wrap">
             <hxk-badge tone=${statusTone(l.status)}>${l.status_label}</hxk-badge>

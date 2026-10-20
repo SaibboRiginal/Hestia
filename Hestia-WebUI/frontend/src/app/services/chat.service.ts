@@ -82,7 +82,7 @@ export class ChatService {
     } catch (err: any) {
       // Do not leave the placeholder "streaming" forever.
       this.messages.update(msgs => msgs.map(m => m.id === streamId
-        ? { ...m, isStreaming: false, content: `⚠️ ${err?.message || 'Invio non riuscito'}` } : m));
+        ? { ...m, isStreaming: false, error: true, content: err?.message || 'Invio non riuscito' } : m));
       this.currentStreamingId.set(null);
       this.isStreaming.set(false);
     }
@@ -98,7 +98,7 @@ export class ChatService {
     this.currentStreamingId.set(streamId);
     this.lastAssistantId = streamId;
     this.messages.update(msgs => [...msgs,
-      { id: uid(), role: 'user', content: `📎 ${file.name}${text ? ' — ' + text : ''}`, timestamp: new Date() },
+      { id: uid(), role: 'user', icon: 'paperclip', content: `${file.name}${text ? ' — ' + text : ''}`, timestamp: new Date() },
       { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
 
     const form = new FormData();
@@ -132,7 +132,7 @@ export class ChatService {
       }
       if (this.currentStreamingId() === streamId) this.finalizeStreaming(streamId, null);
     } catch (err: any) {
-      this.finalizeStreaming(streamId, `⚠️ ${err?.message || 'Upload non riuscito'}`);
+      this.finalizeStreaming(streamId, err?.message || 'Upload non riuscito', undefined, undefined, true);
     }
   }
 
@@ -154,7 +154,7 @@ export class ChatService {
     this.messages.update(msgs => [...msgs,
       { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
     this.signalR.send({ type: 'retry' }).catch((err: any) =>
-      this.finalizeStreaming(streamId, `⚠️ ${err?.message || 'Invio non riuscito'}`));
+      this.finalizeStreaming(streamId, err?.message || 'Invio non riuscito', undefined, undefined, true));
   }
 
   answerQuestion(questionId: string, answer: string): void {
@@ -166,7 +166,7 @@ export class ChatService {
   /** Show the result of a command (palette) in the conversation. */
   addSystemReply(title: string, html: string): void {
     this.messages.update(msgs => [...msgs,
-      { id: uid(), role: 'user', content: `⚡ ${title}`, timestamp: new Date() },
+      { id: uid(), role: 'user', icon: 'zap', content: title, timestamp: new Date() },
       { id: uid(), role: 'assistant', content: html, timestamp: new Date() }]);
   }
 
@@ -198,7 +198,7 @@ export class ChatService {
 
       case 'error':
         if (streamId && event.content) {
-          this.finalizeStreaming(streamId, `⚠️ ${event.content}`, undefined, undefined);
+          this.finalizeStreaming(streamId, event.content, undefined, undefined, true);
         }
         break;
 
@@ -322,13 +322,14 @@ export class ChatService {
     ));
   }
 
-  private finalizeStreaming(streamId: string, content: string | null, domain?: string, sessionId?: string): void {
+  private finalizeStreaming(streamId: string, content: string | null, domain?: string, sessionId?: string, error = false): void {
     this.messages.update(msgs => msgs.map(m =>
       m.id === streamId
         ? {
             ...m,
             content: content ?? m.content,
             isStreaming: false,
+            ...(error ? { error: true } : {}),
             domain: domain || m.domain,
             sessionId: sessionId || m.sessionId,
             thinkingSteps: [...this.thinkingBuffer]

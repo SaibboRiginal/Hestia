@@ -34,6 +34,8 @@ Execution endpoints above are implemented as policy-gated remediation flows (tas
 
 ### WebUI plugin (Sistema)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Forge panel: tests passed check (success), failed x (danger), skipped minus; changed docs edit.
+
 Hephaestus ships its own inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
 (WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it).

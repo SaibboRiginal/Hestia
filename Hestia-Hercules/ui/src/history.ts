@@ -150,7 +150,7 @@ export class HerculesSession extends LocalPage {
       <div><h1>${s.name}</h1><div class="small muted">${dayLabel(s.started_at)} · ${timeLabel(s.started_at)}${s.ended_at ? '–' + timeLabel(s.ended_at) : ''}</div></div>
       <hxk-stat .items=${[{ label: 'Durata', value: minutes(sm.minutes) }, { label: 'Serie', value: sm.sets }, { label: 'Volume', value: num(sm.volume), unit: 'kg' },
         ...(s.perceived_effort ? [{ label: 'Fatica', value: s.perceived_effort, unit: '/10' }] : [])]}></hxk-stat>
-      ${prs.length ? html`<div class="card col"><h3>Record 🏆</h3>${prs.map(p => html`<div class="row"><hxk-badge tone="success">PR</hxk-badge><span class="grow">${p.exercise}: ${p.label}</span>
+      ${prs.length ? html`<div class="card col"><h3><hxk-icon name="trophy" size=${16} tone="warning"></hxk-icon> Record</h3>${prs.map(p => html`<div class="row"><hxk-badge tone="success">PR</hxk-badge><span class="grow">${p.exercise}: ${p.label}</span>
         <span class="tnum">${kg(p.value)}${p.previous ? html` <span class="muted small">(prima ${kg(p.previous)})</span>` : nothing}</span></div>`)}</div>` : nothing}
       ${this.editing ? html`<div class="card row wrap"><label class="small row">Data
           <input class="in" type="date" .value=${s.started_at.slice(0, 10)} @change=${(e: any) => this.moveDate(e.target.value)}></label>

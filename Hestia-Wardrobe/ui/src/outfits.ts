@@ -1,10 +1,10 @@
 /**
- * <wardrobe-outfits>        — saved outfits as tiles: search, filters, «✓ oggi» in one tap, new outfit builder.
+ * <wardrobe-outfits>        — saved outfits as tiles: search, filters, «oggi» (check) in one tap, new outfit builder.
  * <wardrobe-outfit>         — one outfit: pieces by slot, «Indossato» (today or another day), rating, tags, photos, history.
  * <wardrobe-outfit-builder> — pick pieces (tap = added in its usual slot), change slot, name it, save.
  */
 import { HestiaElement, css, html, nothing } from '@hestia/webui-sdk';
-import { API, Meta, SEASON_ICON, WardrobeElement, call, dayLabel, dots, img, localDay, norm, photo, relDays, vocabOptions, wardrobeStyles } from './util';
+import { API, Meta, seasonIcon, WardrobeElement, call, dayLabel, dots, img, localDay, norm, photo, relDays, vocabOptions, wardrobeStyles } from './util';
 
 /** 2×2 collage of the pieces when the outfit has no photo of its own. */
 function collage(host: any, o: any) {
@@ -127,8 +127,8 @@ export class WardrobeOutfits extends WardrobeElement {
           @save=${this.create} @cancel=${() => { this.building = false; this.seed = []; }}></wardrobe-outfit-builder></div>` : nothing}
       <input class="in" placeholder="Cerca per nome o capo…" .value=${this.q} @input=${(e: any) => { this.q = e.target.value; clearTimeout(this._t); this._t = setTimeout(() => this.load(), 220); }}>
       <div class="chips">
-        <button class="chip soft" aria-pressed=${this.f.favorite === 'true'} @click=${() => this.filter('favorite', 'true')}>★ Preferiti</button>
-        ${m ? Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" title=${v} aria-pressed=${this.f.season === k} @click=${() => this.filter('season', k)}>${SEASON_ICON[k]}</button>`) : nothing}
+        <button class="chip soft" aria-pressed=${this.f.favorite === 'true'} @click=${() => this.filter('favorite', 'true')}><hxk-icon name="star" size=${14} tone="warning"></hxk-icon> Preferiti</button>
+        ${m ? Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" title=${v} aria-pressed=${this.f.season === k} @click=${() => this.filter('season', k)}>${seasonIcon(k)}</button>`) : nothing}
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, occasion: e.target.value }; this.load(); }}>
           <option value="">Ogni occasione</option>${vocabOptions(m, 'occasion').map(o => html`<option value=${o.key} ?selected=${this.f.occasion === o.key}>${o.label}</option>`)}</select>
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, sort: e.target.value }; this.load(); }}>
@@ -139,7 +139,7 @@ export class WardrobeOutfits extends WardrobeElement {
           text="Nessun outfit. Creane uno da «Nuovo outfit», da «Cosa mi metto» o selezionando dei capi nel Guardaroba."></hxk-state>` : html`
         <div class="tiles">${items.map(o => html`<div class="tile" @click=${() => this.host.navigate('outfit/' + o.id)}>
           <div class="ph">${collage(this.host, o)}</div>
-          ${o.favorite ? html`<span class="fav">★</span>` : nothing}
+          ${o.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}
           ${!o.complete ? html`<hxk-badge class="badge" tone="warning">da rivedere</hxk-badge>` : !o.available ? html`<hxk-badge class="badge" tone="info">non disponibile</hxk-badge>` : nothing}
           <hxk-button class="today" size="sm" variant=${o.last_worn === today ? 'primary' : 'default'} icon="check" title="Indossato oggi"
             @click=${(e: Event) => { e.stopPropagation(); markWorn(this.host, o, '', () => this.load()); }}>${o.last_worn === today ? 'Oggi' : ''}</hxk-button>
@@ -155,7 +155,7 @@ export class WardrobeOutfit extends WardrobeElement {
   static styles = [...WardrobeElement.styles, wardrobeStyles, css`
     .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
     .slot .lab { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
-    .stars button { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--border-strong); padding: 0 2px; }
+    .stars button { background: none; border: none; line-height: 0; cursor: pointer; color: var(--border-strong); padding: 0 2px; }
     .stars button[aria-pressed=true] { color: var(--warning); }
     .photos { display: flex; gap: 8px; flex-wrap: wrap; } .photos .ph { width: 120px; height: 150px; border-radius: var(--radius-md); overflow: hidden; position: relative; background: var(--surface-2); }
     .photos img { width: 100%; height: 100%; object-fit: cover; }
@@ -206,10 +206,10 @@ export class WardrobeOutfit extends WardrobeElement {
       <div class="between"><div class="grow"><input class="in" style="font-size:20px;font-weight:650;width:100%;background:transparent;border-color:transparent"
           .value=${o.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })}>
           <div class="small muted" style="padding-left:10px">${o.wear_count ? `segnato ${o.wear_count} volte · ultima ${relDays(o.last_worn)}` : 'mai segnato'}${o.source === 'assistant' ? ' · proposto dall\'assistente' : ''}</div></div>
-        <button class="chip" aria-pressed=${!!o.favorite} title="Preferito (compare nella Home)" @click=${() => this.patch({ favorite: !o.favorite }, o.favorite ? '' : 'Tra i preferiti: lo trovi nella Home')}>★</button></div>
+        <button class="chip" aria-pressed=${!!o.favorite} title="Preferito (compare nella Home)" @click=${() => this.patch({ favorite: !o.favorite }, o.favorite ? '' : 'Tra i preferiti: lo trovi nella Home')}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
       ${!o.complete ? html`<div class="card" style="border-color:var(--warning)">Alcuni capi non ci sono più o sono stati dati via: modifica i capi dell'outfit.</div>` : nothing}
       <div class="row wrap">
-        <hxk-button variant=${wornToday ? 'default' : 'primary'} icon="check" @click=${() => markWorn(this.host, o, '', () => this.load())}>${wornToday ? 'Indossato oggi ✓' : 'Indossato oggi'}</hxk-button>
+        <hxk-button variant=${wornToday ? 'default' : 'primary'} icon="check" @click=${() => markWorn(this.host, o, '', () => this.load())}>Indossato oggi</hxk-button>
         <input class="in" type="date" max=${localDay()} .value=${this.day} @change=${(e: any) => (this.day = e.target.value)}>
         ${this.day ? html`<hxk-button size="sm" @click=${() => { markWorn(this.host, o, this.day, () => this.load()); this.day = ''; }}>Segna ${dayLabel(this.day)}</hxk-button>` : nothing}
         <span class="grow"></span>
@@ -224,10 +224,10 @@ export class WardrobeOutfit extends WardrobeElement {
             <div class="tx"><span class="lab">${p.slot_label}</span><span class="nm">${p.name}</span>${dots(p.colors, 10)}</div></div>`)}</div></div>`}
       <div class="card col">
         <div class="row wrap" style="gap:14px"><span class="small muted">Voto</span>
-          <span class="stars">${[1, 2, 3, 4, 5].map(n => html`<button aria-pressed=${(o.rating || 0) >= n} @click=${() => this.patch({ rating: o.rating === n ? null : n })}>★</button>`)}</span></div>
+          <span class="stars">${[1, 2, 3, 4, 5].map(n => html`<button aria-pressed=${(o.rating || 0) >= n} title=${`${n}/5`} @click=${() => this.patch({ rating: o.rating === n ? null : n })}><hxk-icon name="star" size=${20}></hxk-icon></button>`)}</span></div>
         <div class="col" style="gap:4px"><span class="small muted">Occasioni</span><div class="chips">${vocabOptions(m, 'occasion').map(v => html`<button class="chip soft" aria-pressed=${(o.occasions || []).includes(v.key)} @click=${() => this.toggle('occasions', v.key)}>${v.label}</button>`)}</div></div>
         <div class="col" style="gap:4px"><span class="small muted">Stile</span><div class="chips">${vocabOptions(m, 'style').map(v => html`<button class="chip soft" aria-pressed=${(o.styles || []).includes(v.key)} @click=${() => this.toggle('styles', v.key)}>${v.label}</button>`)}</div></div>
-        <div class="col" style="gap:4px"><span class="small muted">Stagioni</span><div class="chips">${Object.entries(m?.seasons || {}).map(([k, v]) => html`<button class="chip soft" aria-pressed=${(o.seasons || []).includes(k)} @click=${() => this.toggle('seasons', k)}>${SEASON_ICON[k]} ${v}</button>`)}</div></div>
+        <div class="col" style="gap:4px"><span class="small muted">Stagioni</span><div class="chips">${Object.entries(m?.seasons || {}).map(([k, v]) => html`<button class="chip soft" aria-pressed=${(o.seasons || []).includes(k)} @click=${() => this.toggle('seasons', k)}>${seasonIcon(k)} ${v}</button>`)}</div></div>
         <textarea class="in" rows="2" placeholder="Note (es. con la cintura marrone)" .value=${o.notes || ''} @change=${(e: any) => this.patch({ notes: e.target.value })}></textarea>
       </div>
       <div class="card col"><div class="between"><h3>Foto indossato</h3><hxk-button size="sm" icon="camera" ?loading=${this.busy === 'photo'} @click=${() => this.addPhoto()}>Aggiungi</hxk-button></div>

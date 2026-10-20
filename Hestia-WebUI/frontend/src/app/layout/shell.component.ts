@@ -93,7 +93,7 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
               <div class="presence-pop" role="dialog" aria-label="Stato dell'assistente"
                    [style.left.px]="presencePos().left" [style.bottom.px]="presencePos().bottom"
                    [style.max-height.px]="presencePos().maxHeight">
-                <div class="ptitle">{{ p.emoji }} {{ p.label }}</div>
+                <div class="ptitle"><hx-icon [name]="presence.icon().name" [tone]="presence.icon().tone" [size]="15" />{{ p.label }}</div>
                 @if (p.help) { <div class="pline">{{ p.help }}</div> }
                 <div class="pline dim">Ultima interazione: {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
                 @if (p.dnd_until) { <div class="pline">Non disturbare fino alle {{ p.dnd_until | date:'HH:mm' }}</div> }
@@ -209,7 +209,7 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
     .presence-pop { position: fixed; width: min(300px, calc(100vw - 16px)); z-index: 900; padding: 12px; overflow-y: auto;
                     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 10px);
                     box-shadow: var(--shadow-3); display: flex; flex-direction: column; gap: 4px; }
-    .ptitle { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
+    .ptitle { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
     .pline { font-size: 12.5px; color: var(--text-2); }
     .pline.dim { color: var(--text-3); }
     .pactions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
