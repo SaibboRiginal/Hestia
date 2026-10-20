@@ -14,4 +14,6 @@
 - [ ] Marko tries a Codespace himself
 - [x] Real flows: `python tools/cloud_test.py flows [area…]` (fake LLM scripted tools `#tool name {args}`), first full run 47 steps → `docs/work/2026-10-19-prove-reali-banco/`
 - [x] v1.2 Codespaces in one click (`start`, recommended secrets, compose overlay for Telegram/Google test credentials); `start` tried on the Claude bench (2026-10-20)
+- [x] Fix 2026-10-20: `start` in Codespaces waits up to 120 s for the docker-in-docker daemon (postStartCommand can run before it is up) and logs to `.cloud-test/start.log`
+- [x] Fix 2026-10-20: no docker CLI in the container (Codespace not built from the devcontainer) → clear message with «Full Rebuild Container» instead of a traceback
 - [ ] Marko opens a Codespace with his test secrets
