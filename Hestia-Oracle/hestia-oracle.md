@@ -442,6 +442,8 @@ Claude Code CLI is installed by default (`ORACLE_INSTALL_CLAUDE_CODE=0` for a sl
 
 ## WebUI plugin: Cervello (core module, Sistema section)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Tool chips: failed x; key set check (success).
+
 Oracle ships its inside view on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`; SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2). Declared in `app/main.py`, bundle `ui/` (Lit, SDK kit) built in
 the Docker image (Node stage → `/ui/dist/webui/oracle.js`, outside `/code` because of the dev mount; infra env

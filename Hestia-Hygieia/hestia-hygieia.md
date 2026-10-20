@@ -66,6 +66,8 @@ with something already done or due today) · `paused`. A target routine is behin
 
 ## Client UI (plugin contract)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Slots sun/moon/sparkle, events (bag, unlock, trend-down, check, trash, star, repeat, note, book), alerts hourglass/cart/alert; body areas are labels only.
+
 Bundle `ui/src/index.ts` → `/ui/webui/hygieia.js` (built in the Dockerfile). Pages: oggi (today: one tap per
 routine, steps with reasons, wait timers, "ho usato un prodotto"), routine, routine/:id (editor: steps, order,
 own cadence, pause, goal, zones, never-same-day, reminder, favorite, adherence, versions), prodotti,

@@ -114,6 +114,8 @@ deactivated so alerts are not sent twice.
 
 ## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. The inbox shows the level icon and hides the emoji that module texts carry for Telegram.
+
 Core module (`kind: "core"`, WebUI *Sistema* section, order 140), `api_prefix` `/api/ui/` (Hermes' own routes
 are spread over `/api/notifications`, `/api/events`…, so the pages use small `/api/ui/*` doors instead):
 - page **Notifiche** (`hermes-inbox`, order 140, P6 — ported from the WebUI built-in page, which redirects here):

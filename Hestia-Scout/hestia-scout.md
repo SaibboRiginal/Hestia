@@ -133,6 +133,8 @@ Provider keys live only in Oracle (`ORACLE_KEY_<NAME>`). (Previously Scout embed
 
 ### WebUI plugin (2026-10-17, dossier `docs/work/2026-10-17-client-plugins/`)
 
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Favourite badge text «preferita»; address map-pin.
+
 `app/ui_api.py` declares the plugin and serves its data; `ui/src/` is the Lit bundle (built with the shared SDK in
 the Node stage of the Dockerfile; `ui/dist/` is git-ignored). The image keeps the bundle in `/ui/dist`
 (`SCOUT_UI_DIST`), outside `/code`, because compose mounts `Hestia-Scout/app` over `/code`.

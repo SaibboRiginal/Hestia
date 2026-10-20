@@ -376,3 +376,10 @@ when Oracle is back) and startup replay the queue server-side (no browser needed
 push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Non disponibile» while
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Crea con Hestia» drawer does
 not queue (it answers «riprova appena torna»).
+
+## Icons, not emoji
+
+SPEC `docs/work/2026-10-20-icone-nei-client`. The WebUI and plugins draw `<hx-icon>` / `<hxk-icon>` (one shared set) with a
+`tone` colour, never emoji. Presence popover: the `icon` + `tone` of the top overlay, else of the base state. Chat:
+`ChatMessage.icon` (paperclip = file, zap = command) and `error` (alert icon, danger). Toasts and the Hermes inbox hide the
+emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
