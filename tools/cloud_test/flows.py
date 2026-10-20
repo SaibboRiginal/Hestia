@@ -943,8 +943,128 @@ def flow_webui(ctx: dict) -> None:
     pw.stop()
 
 
+# ── Esporta e importa (docs/work/2026-10-20-import-export) ──────────────────
+
+def flow_transfer(ctx: dict) -> None:
+    A = "Esporta e importa"
+    T = f"{WEBUI}/api/webui/transfer"
+    state: dict = {}
+
+    def modules():
+        code, out = http("GET", f"{T}/modules")
+        need(code == 200, f"modules → {code} {str(out)[:200]}")
+        names = {m["module"] for m in out["modules"]}
+        want = {"hercules", "hygieia", "wardrobe", "plutus", "scout", "oracle", "chronos", "themis"}
+        need(want <= names, f"moduli senza esporta/importa: {sorted(want - names)}")
+        counts = {}
+        for m in sorted(names):
+            code, d = http("GET", f"{T}/{m}/describe")
+            need(code == 200, f"{m}/describe → {code} {str(d)[:200]}")
+            counts[m] = sum(s.get("count") or 0 for s in d["sections"])
+        state["modules"] = sorted(names)
+        return ", ".join(f"{m} {n}" for m, n in counts.items())
+    step(A, "Ogni modulo dice cosa può esportare")(modules)
+
+    def export_all():
+        file = {"hestia": "transfer", "format": 1, "modules": {}, "files": {}}
+        for m in state.get("modules") or []:
+            code, out = http("POST", f"{T}/{m}/export", {"sections": None, "include_files": True}, timeout=120)
+            need(code == 200, f"{m}/export → {code} {str(out)[:200]}")
+            file["modules"][m] = out
+            for fid in out.get("files") or []:
+                code, f = http("GET", f"{T}/{m}/files/{fid}")
+                need(code == 200 and f.get("data_b64"), f"{m}/files/{fid} → {code}")
+                file["files"].setdefault(m, {})[fid] = f
+        text = json.dumps(file).lower()
+        for word in ("api_key", "password", "access_token", "refresh_token", "client_secret"):
+            need(word not in text, f"nel file c'è «{word}»")
+        state["file"] = file
+        OUT.mkdir(exist_ok=True)
+        (OUT / "banco.hestia.json").write_text(json.dumps(file), encoding="utf-8")
+        recs = sum(len(b["records"]) for m in file["modules"].values() for b in m["sections"].values())
+        return f"{recs} record, {sum(len(v) for v in file['files'].values())} file, nessuna chiave o password"
+    step(A, "Esporta tutto (con le foto), senza segreti")(export_all)
+
+    def preview_same():
+        file = state["file"]
+        changed = []
+        for m, payload in file["modules"].items():
+            code, rep = http("POST", f"{T}/{m}/import", {"data": payload, "mode": "merge", "dry_run": True}, timeout=120)
+            need(code == 200, f"{m}/import → {code} {str(rep)[:200]}")
+            t = rep["totals"]
+            if t["added"] or t["updated"] or t["deleted"]:
+                changed.append(f"{m}: {t}")
+        need(not changed, f"lo stesso file sullo stesso Hestia cambierebbe qualcosa: {changed[:3]}")
+        return "anteprima Unisci dello stesso file: nessuna modifica"
+    step(A, "Anteprima sullo stesso Hestia: niente da cambiare")(preview_same)
+
+    def settings_roundtrip():
+        key = "hygieia.default_pao_months"
+        setting(key, 15)
+        code, exp = http("POST", f"{T}/themis/export", {"sections": {"hygieia": {}}})
+        need(code == 200 and exp["sections"].get("hygieia"), f"export impostazioni → {code} {str(exp)[:200]}")
+        setting(key, 20)
+        merge = http("POST", f"{T}/themis/import", {"data": exp, "mode": "merge", "dry_run": True})[1]
+        need(merge["sections"]["hygieia"]["skipped"] >= 1, f"Unisci non ignora il valore più recente: {merge['totals']}")
+        rep = http("POST", f"{T}/themis/import", {"data": exp, "mode": "replace", "dry_run": False})[1]
+        items = http("GET", f"{WEBUI}/api/webui/central-settings/items?module=hygieia")[1]["items"]
+        val = next(i for i in items if i["key"] == key)
+        setting(key, 12)
+        need(val["value"] == 15 and val.get("updated_by") == "import", f"dopo Sostituisci: {val['value']} da {val.get('updated_by')}")
+        return f"15 esportato, 20 qui: Unisci lo lascia, Sostituisci rimette 15 (autore «import»); {rep['totals']}"
+    step(A, "Impostazioni: Unisci tiene il valore più recente, Sostituisci rimette quello del file")(settings_roundtrip)
+
+    def restore_points():
+        file = {"hestia": "transfer", "format": 1, "exported_at": datetime.now().isoformat(), "modules": {}}
+        code, out = http("POST", f"{T}/restore-points", {"label": f"Banco {RUN}", "modules": ["themis"], "file": file})
+        need(code == 200 and out.get("id"), f"salvataggio → {code} {str(out)[:200]}")
+        lst = http("GET", f"{T}/restore-points")[1]
+        need(any(p["id"] == out["id"] for p in lst["items"]), "il punto non è nella lista")
+        back = http("GET", f"{T}/restore-points/{out['id']}")[1]
+        need(isinstance(back, dict) and back.get("hestia") == "transfer", f"riletto: {str(back)[:200]}")
+        code, _ = http("DELETE", f"{T}/restore-points/{out['id']}")
+        need(code == 200, f"eliminazione → {code}")
+        return f"salvato, elencato (ne tiene {lst['keep']}), riletto ed eliminato"
+    step(A, "Punti di ripristino: salva, elenca, rileggi, elimina")(restore_points)
+
+    def page():
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        pw, br = browser()
+        try:
+            pg = br.new_page(viewport={"width": 1280, "height": 900})
+            js: list[str] = []
+            pg.on("pageerror", lambda e: js.append(str(e)[:160]))
+            pg.goto(f"{WEBUI}/settings?tab=transfer", wait_until="networkidle", timeout=60000)
+            pg.wait_for_timeout(2500)
+            first = pg.locator(".mod .name").first
+            need(first.count(), "nessun modulo nella pagina Esporta")
+            first.click()
+            pg.wait_for_timeout(800)
+            pg.screenshot(path=str(SHOTS / "desk-transfer-esporta.png"), full_page=True)
+            pg.get_by_text("Importa", exact=True).first.click()
+            pg.wait_for_timeout(500)
+            pg.locator("input[type=file]").set_input_files(str(OUT / "banco.hestia.json"))
+            pg.wait_for_timeout(1500)
+            pg.get_by_text("Anteprima", exact=True).first.click()
+            pg.wait_for_timeout(8000)
+            pg.screenshot(path=str(SHOTS / "desk-transfer-anteprima.png"), full_page=True)
+            phone = br.new_page(viewport={"width": 360, "height": 780}, color_scheme="dark")
+            phone.goto(f"{WEBUI}/settings?tab=transfer", wait_until="networkidle", timeout=60000)
+            phone.wait_for_timeout(2000)
+            wide = phone.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+            phone.screenshot(path=str(SHOTS / "phone-dark-transfer.png"), full_page=True)
+            need(not js, f"errori JS: {js[:3]}")
+            need(wide <= 4, f"sul telefono scorre in orizzontale di {wide}px")
+            return "Esporta, Importa con anteprima, telefono: screenshot desk-transfer-*.png, phone-dark-transfer.png"
+        finally:
+            br.close()
+            pw.stop()
+    step(A, "Pagina Impostazioni → Esporta e importa nel browser")(page)
+
+
 AREAS = {"hercules": flow_hercules, "hygieia": flow_hygieia, "wardrobe": flow_wardrobe, "agenda": flow_agenda,
-         "presence": flow_presence, "settings": flow_settings, "plugins": flow_plugins, "mcp": flow_mcp, "webui": flow_webui}
+         "presence": flow_presence, "settings": flow_settings, "plugins": flow_plugins, "mcp": flow_mcp, "webui": flow_webui,
+         "transfer": flow_transfer}
 
 
 def main(argv: list[str]) -> int:
