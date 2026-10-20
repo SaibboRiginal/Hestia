@@ -12,3 +12,4 @@
 
 ## Notes
 - Format alignment with «Importa ed esporta dati»: backup = encrypted pg_dump, transfer = per-module JSON `.hestia`; shared crypto helper and Drive `.hestia` root.
+- 2026-10-20: «Importa ed esporta dati» agreed (its SPEC v1.1): this dossier owns `hestia_common.crypto` and Hecate's Drive API; transfer reuses crypto for its file password and writes to `.hestia/export/` later.
