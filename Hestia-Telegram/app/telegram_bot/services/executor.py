@@ -463,6 +463,11 @@ def execute_local_command(command_name: str, chat_id: int, raw_args_text: str):
         prompt_set_parameter_picker(chat_id)
         return
 
+    if normalized in ("live", "chat"):
+        from telegram_bot.services import voice_service
+        core.bot.send_message(chat_id, voice_service.set_live(chat_id, normalized == "live"), parse_mode="HTML")
+        return
+
     if normalized == "reset_settings":
         core.reset_session_settings(str(chat_id))
         core.bot.send_message(chat_id, "🧹 Impostazioni sessione resettate.")
