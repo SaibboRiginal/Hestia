@@ -20,7 +20,9 @@ export class WardrobeCollections extends WardrobeElement {
     const t = this.trip;
     if (!t.from) { this.host.toast('Indica quando parti', 'warning'); return; }
     this.busy = true;
-    const r = await call(this.host, 'POST', '/collections/packing', { ...t, temp_c: t.temp_c === '' ? null : t.temp_c });
+    const body: any = { ...t, temp_c: t.temp_c === '' ? null : t.temp_c };
+    if (t.rain === null) delete body.rain;   // empty = the forecast at the place for those days
+    const r = await call(this.host, 'POST', '/collections/packing', body);
     this.busy = false;
     if (r.ok) this.host.navigate('liste/' + r.data.id);
   }
@@ -35,14 +37,14 @@ export class WardrobeCollections extends WardrobeElement {
     return html`<div class="page">
       <div class="head"><h1>Valigie e liste</h1><span class="grow"></span>
         <hxk-button icon="plus" @click=${() => (this.creating = c ? null : { name: '', type: 'capsule' })}>Nuova lista</hxk-button>
-        <hxk-button variant="primary" icon="calendar" @click=${() => (this.trip = t ? null : { place: '', from: localDay(), to: '', occasion: '', temp_c: '', rain: false })}>Prepara valigia</hxk-button></div>
+        <hxk-button variant="primary" icon="calendar" @click=${() => (this.trip = t ? null : { place: '', from: localDay(), to: '', occasion: '', temp_c: '', rain: null })}>Prepara valigia</hxk-button></div>
       ${t ? html`<div class="card col"><h2>Valigia</h2><div class="form">
           <input class="in" placeholder="Dove (es. Milano)" .value=${t.place} @input=${(e: any) => (this.trip = { ...t, place: e.target.value })}>
           <label class="row small">Dal <input class="in" type="date" .value=${t.from} @change=${(e: any) => (this.trip = { ...t, from: e.target.value })}></label>
           <label class="row small">Al <input class="in" type="date" .value=${t.to} min=${t.from} @change=${(e: any) => (this.trip = { ...t, to: e.target.value })}></label>
           <select class="in" @change=${(e: any) => (this.trip = { ...t, occasion: e.target.value })}><option value="">Occasione…</option>${vocabOptions(m, 'occasion').map(o => html`<option value=${o.key}>${o.label}</option>`)}</select>
-          <input class="in" inputmode="decimal" placeholder="Temperatura prevista °C" .value=${t.temp_c} @input=${(e: any) => (this.trip = { ...t, temp_c: e.target.value })}>
-          <label class="row small"><input type="checkbox" .checked=${t.rain} @change=${(e: any) => (this.trip = { ...t, rain: e.target.checked })}> pioggia</label>
+          <input class="in" inputmode="decimal" placeholder="Temperatura °C (vuoto = previsione)" .value=${t.temp_c} @input=${(e: any) => (this.trip = { ...t, temp_c: e.target.value })}>
+          <label class="row small"><input type="checkbox" .checked=${!!t.rain} .indeterminate=${t.rain === null} @change=${(e: any) => (this.trip = { ...t, rain: e.target.checked })}> pioggia${t.rain === null ? ' (dalla previsione)' : ''}</label>
         </div><div class="row"><hxk-button variant="primary" icon="sparkle" ?loading=${this.busy} @click=${() => this.pack()}>Proponi cosa portare</hxk-button>
           <span class="small muted">Un outfit al giorno dai capi disponibili; poi la modifichi.</span></div></div>` : nothing}
       ${c ? html`<div class="card row wrap"><input class="in grow" placeholder="Nome (es. Capsule estate)" .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}>
@@ -52,6 +54,7 @@ export class WardrobeCollections extends WardrobeElement {
         <div class="grid" style="--min:260px">${items.map(l => html`<div class="card col" style="cursor:pointer" @click=${() => this.host.navigate('liste/' + l.id)}>
           <div class="between"><h2 class="truncate">${l.name}</h2><hxk-badge tone=${l.type === 'packing' ? 'info' : l.type === 'shopping' ? 'accent' : 'neutral'}>${l.type_label}</hxk-badge></div>
           ${l.trip?.from ? html`<span class="small muted">${dayLabel(l.trip.from)}${l.trip.to && l.trip.to !== l.trip.from ? ' → ' + dayLabel(l.trip.to) : ''}${l.trip.place ? ' · ' + l.trip.place : ''}</span>` : nothing}
+          ${l.trip?.weather ? html`<span class="small muted row"><hxk-icon name=${l.trip.weather.icon || 'cloud'} size=${14} tone=${l.trip.weather.rain ? 'info' : 'warning'}></hxk-icon> ${l.trip.weather.min_c != null ? `${l.trip.weather.min_c}–` : ''}${l.trip.weather.temp_c}°${l.trip.weather.rain ? ', pioggia' : ''}</span>` : nothing}
           <span class="small muted">${l.progress.checked}/${l.progress.total} pronti</span>
           <div class="prog"><span style="width:${l.progress.total ? (l.progress.checked / l.progress.total) * 100 : 0}%"></span></div></div>`)}</div>`}
     </div>`;
