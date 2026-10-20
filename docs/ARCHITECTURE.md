@@ -366,6 +366,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 1. Current default: local build/deploy orchestration.
    Test bench without the local PC: `tools/cloud_test.py` (Claude cloud session or GitHub Codespace); test
    credentials come only from the environment (Codespaces secrets) through `docker-compose.cloud-test.yml`, never files.
+   In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`; no Docker = rebuild the container).
 2. Future target: multi-node/cluster delivery with shared Hub discovery.
 3. Required for remote rollout:
    - deployment controller contract,
