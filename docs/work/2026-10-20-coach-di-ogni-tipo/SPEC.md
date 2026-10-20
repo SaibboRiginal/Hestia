@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 9 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator 2026-10-20 («iniziamo intanto, voglio che venga fatto tutto») |
-| **Status** | Draft — waiting for Marko's approval (§12). No code before it |
+| **Status** | Approved by Marko 2026-10-20 (answers in §12, v1.1); implementation C1 → C4 |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -40,8 +40,10 @@ Earlier in the brainstorm: «giornata piena → allenamento corto o spostato nel
 2. A **weekly plan** built by Chronos (scheduling is its job) that fits every coach's needs into my real free time
    (calendar, sleep, presence), keeps it up to date when things change (push, not poll), and is delivered by Hermes
    with a short text written by Oracle.
-3. **Coaches for every kind**: Hercules (training), Hygieia (self care), Plutus (finance), a new **nutrition module**
-   (diet + supplements), and a small **goals module** for coaches without a data module (study, reading, languages…).
+3. **Coaches for every kind** that have data today: Hercules (training), Hygieia (self care, supplements included as
+   products), Plutus (finance). Any later module joins with the same few lines. Nutrition tracking and a goals module
+   are **out** for now (Marko v1.1: manual logging would not be followed); §8 is a study of how food data could arrive
+   by itself instead.
 4. The plan is discussed and changed **in conversation** with the assistant (same rule as Hercules: no proposal cards).
 
 Vision check (open Jarvis): the contract is plain HTTP + JSON through Hub, so any external brain (Claude Code via MCP,
@@ -52,11 +54,10 @@ Codex…) sees the same needs and plan through tools; the planner is determinist
 
 | Step | Owner | Why |
 |---|---|---|
-| Know my goals, state, rules, what is due, shorter variants | each **domain module** (Hercules, Hygieia, Plutus, Demeter, Goals) | domain logic stays in domain modules |
+| Know my goals, state, rules, what is due, shorter variants | each **domain module** (Hercules, Hygieia, Plutus) | domain logic stays in domain modules |
 | Turn needs + free time into a week (generic constraint placement) | **Chronos** | scheduling = assistant agenda; Chronos already owns calendar, agenda and presence; it learns nothing about domains |
 | Write the weekly message, answer "spostiamo gambe a giovedì" | **Oracle** (use case `chronos.coach`, tools) | Oracle is only the brain: it reasons and calls tools |
 | Deliver the weekly message and change notices | **Hermes** | only outbound messenger |
-| Food facts by barcode (later phase) | **Hecate** | owns external providers |
 | Weather for outdoor needs (when the weather dossier lands) | **Hecate** | idem |
 | Cross-domain patterns over weeks ("after <6h sleep you skip the gym") | **Athena** (reflection dossier) | retrospective proposals, not planning |
 | Settings | **Themis** | `chronos.coach.*`, `<module>.coach.*` |
@@ -145,10 +146,9 @@ kind, need_id, domain, minutes, variant, reason, link}`; status planned/done/ski
 The week's summary (targets, unplaced, last week's review, Oracle text) is `meta` of the parent item.
 
 ### 5.5 My own calendar
-Plan blocks are mirrored to **my Google calendar** in a separate calendar «Piano Hestia» (through Hecate, which owns
-the provider), so I see them on the phone next to everything else. Moving one there comes back with the normal sync
-and counts as my edit. Setting `chronos.coach.calendar` (`google` · `none`). Slots and targets are not mirrored
-(not time on the calendar). *(Decision D3 in §12.)*
+v1.1: the plan lives **only in Hestia** (page «Settimana», Telegram, chat). Mirroring blocks to a separate Google
+calendar «Piano Hestia» (through Hecate, edits syncing back as my edits) stays a possible later step (Marko: «forse»);
+nothing in C1–C3 depends on it.
 
 ## 6. Delivery and conversation
 
@@ -158,7 +158,7 @@ and counts as my edit. Setting `chronos.coach.calendar` (`google` · `none`). Sl
   target `owner`, `replaces: coach.week`, `_link` to the plan page; button **Apri il piano**. Oracle down → Chronos
   sends a fixed text built from the plan (`[🔄] event=coach_text_fallback`); the plan never waits for the brain.
 - **Change notices**: only when a re-plan moves something of **today or tomorrow** that I did not move myself; one live
-  message (`replaces: coach.change`). Everything else changes silently (it is on the page and in Google).
+  message (`replaces: coach.change`). Everything else changes silently (it is on the page and in chat).
 - **No new reminders**: the modules' own reminders (off by default, max per week) stay the only nudges; when on, they
   use the plan time ("Oggi alle 18:30: Push A").
 - **Chat tools** (Chronos, domain `coach`, `<domain>_<verb>`): `coach_week` (plan + targets + unplaced),
@@ -185,67 +185,44 @@ and counts as my edit. Setting `chronos.coach.calendar` (`google` · `none`). Sl
   goal, `min_gap_days` from its spacing, `not_same_day` from conflict families), `daily` routines as `per: day` slots.
 - `fit`: not needed (slots take no reserved time). `coach.done` from logs, `skipped` from Salta.
 - Its own planner keeps deciding *today*; the coach only spreads the week so conflicts and spacing are visible ahead.
+- **Supplements** (v1.1): they are Hygieia products of the existing category `integratore` (stock, finish prediction,
+  shopping list, price already exist). What I take is **information for the assistant** (`selfcare_products`, module
+  context line «Integratori: creatina, vitamina D»); nothing asks me to log each dose. A supplement put in a routine
+  (e.g. «Mattina: vitamina D») becomes a `slot` like any routine; `with: workout same_day` is available for
+  training-day-only ones.
 
 ### 7.3 Plutus — finance
 - Targets: weekly budget left per category with a budget ("Svago: 40 € rimasti"). One optional `block`
   "Rivedi spese" (15') when uncategorized movements > `plutus.coach.review_threshold` (10). Review: budget kept/over.
 
-### 7.4 Demeter — nutrition and supplements (new module, §8)
-- Slots: each supplement at its moment (`with: workout same_day` for training-day-only supplements), meal prep block
-  if I set one (`demeter.coach.meal_prep_minutes`, 0 = none). Targets: kcal/protein per day (training-day vs rest-day
-  value read from the plan: a day with a `workout` item is a training day).
+### 7.4 Later coaches
+Any future module (nutrition if food data ever arrives by itself, study, Scout visits…) is a coach by mounting
+`CoachRouter`; nothing changes in Chronos.
 
-### 7.5 Goals — study, reading, languages, anything without a module (new module, §9)
-- Each goal is a `block` (study 3×45'/week, evenings) or a `slot` (read 20' a day).
+## 8. Study: can food data arrive by itself? (no code)
 
-### 7.6 Later coaches
-Any future module (Voce? Scout visits?) is a coach by mounting `CoachRouter`; nothing changes in Chronos.
+Marko v1.1: «finché non riesco ad automatizzare la mia vita stile grande fratello non credo di seguirlo manualmente».
+So no food diary. Deliverable of phase C4: a short evaluation (`/mnt/project-files/valutazioni/spesa-automatica.md`)
+of the sources that need no daily effort, each judged on effort for Marko, data quality and module boundaries:
+- grocery e-receipts and online orders by mail (supermarket apps, delivery) → already possible with the Iris push
+  subscriptions (as Plutus does for PayPal);
+- card payments already in Plutus (where, how much — not what);
+- loyalty-card apps / digital receipts exports, if any Italian chain offers them;
+- photo of the paper receipt in chat (one photo per shopping trip, Oracle reads it, as the Hype PDF).
+Outcome: a recommendation for a future nutrition/pantry module, or "not worth it yet".
 
-## 8. New module: Hestia-Demeter «Alimentazione» (domain `nutrition`)
-
-Complete like the other modules (same patterns: Archive store, mirror, tools, plugin, reminders helper).
-
-- **Port** 19021 (first free; to confirm with the Voce dossier started the same day) · plugin decade **70** · tools
-  `nutrition_*` · Archive `nutrition-store` (`nutrition_records (kind,id)`, same protocol as `hercules-store`).
-- **Food diary**: meals (colazione, pranzo, cena, spuntino) with items `{name, qty, unit, kcal, protein, carbs, fat,
-  fiber, source: estimate|label|barcode|recipe}`. Input both automatic and manual (Marko's rule):
-  - chat: «pranzo: pasta al pesto 100 g e insalata» → Oracle estimates and calls `nutrition_log` with structured items
-    (marked `estimate`); a **meal photo** in chat goes through Oracle `attachment_handlers` (as Plutus does for PDFs)
-    and Oracle's vision chain estimates it;
-  - plugin: quick add, favourite meals and recipes (sum of items), «come ieri», one-tap from the WebUI Home.
-- **Supplements**: products with dose, moment (breakfast/lunch/dinner/before or after training/bedtime), cadence
-  (daily, training days, N per week), stock and finish prediction, «preso» in one tap, shopping list. Kept here, not in
-  Hygieia (they are nutrition, not body care) *(Decision D2)*.
-- **Targets** (optional, never on by default): kcal and protein per day, training/rest day values; a floor
-  `demeter.kcal_floor` (1500) under which Demeter refuses a target and says to ask a professional. **No medical or
-  diet prescriptions**: Demeter tracks and the assistant comments, like Hercules never "pushes through pain".
-- **Meal plan on request**: «fammi un piano pasti per la settimana» → Oracle proposes from targets + favourites +
-  plan days, I agree in chat, `nutrition_meal_plan_set` stores it; its meals appear as `slot` needs.
-- **Statistics**: daily/weekly averages, adherence to targets, protein on training days, trend next to bodyweight
-  (read from Hercules through Hub, `fitness_*` data stays in Hercules).
-- **Plugin pages**: Oggi · Diario · Integratori · Ricette e preferiti · Statistiche. Widgets: oggi (kcal/protein ring),
-  integratori di oggi. Quick actions: «registra pasto» (favourites), «preso» (supplements). Icons, never emoji.
-- **Reminders**: `hestia_common.reminders` (off by default, max per week): only supplements not taken by their moment.
-- **Later (N3)**: barcode → Open Food Facts through a Hecate provider (free, no key); offline cache.
-
-## 9. New module: Hestia-Mentor «Obiettivi» (domain `goals`)
-
-Small: personal goals that have no data module. Port 19022 · decade 80 · tools `goals_*` · Archive `goals-store`.
-- A goal: title, kind (time block or daily slot), `{times, per}`, minutes, time of day, optional end date, notes.
-- Log «fatto» (with an optional note: "capitolo 3"), progress and streaks like the other modules, history.
-- Plugin page «Obiettivi» (list, progress, log), widget, quick action «fatto». Coach adapter §7.5.
-- A goal that grows a real data set later (e.g. language flashcards) becomes its own module on the same contract.
-*(Decision D4.)*
+## 9. Dropped in v1.1
+Hestia-Demeter (food diary, targets, meal plans) and Hestia-Mentor «Obiettivi» (study/reading goals): Marko
+«troppo per il momento» / «lascia perdere». Ports 19021/19022 stay free.
 
 ## 10. Settings (Themis, declared with `settings_client.setting(...)`, no env)
 
 `chronos.coach.day_start` (07:00) · `chronos.coach.day_end` (22:00) · `chronos.coach.buffer_minutes` (15) ·
-`chronos.coach.max_blocks_per_day` (2) · `chronos.coach.max_minutes_per_day` (120) · `chronos.coach.calendar`
-(google | none) · `hercules.coach.time_of_day` (evening) · `hercules.coach.min_minutes` (30) ·
-`plutus.coach.review_threshold` (10) · `demeter.*` (targets, floor, meal prep minutes, reminder via the common helper) ·
-`mentor.*` (reminder via the common helper). Week start = `themis.personal.week_start`.
+`chronos.coach.max_blocks_per_day` (2) · `chronos.coach.max_minutes_per_day` (120) ·
+`hercules.coach.time_of_day` (evening) · `hercules.coach.min_minutes` (30) · `plutus.coach.review_threshold` (10).
+Week start = `themis.personal.week_start`.
 No on/off switch for the coach: pausing the agenda job stops the weekly plan; a module with no goals emits no needs.
-Env: only `DEMETER_PORT`, `MENTOR_PORT` and Hub URL (infrastructure).
+No new env variable.
 
 ## 11. Clients
 
@@ -255,31 +232,30 @@ Env: only `DEMETER_PORT`, `MENTOR_PORT` and Hub URL (infrastructure).
   «Aggiungi impegno» (busy block). Widget **«Oggi nel piano»** for Home. Each module's Oggi page shows its next plan
   item ("Nel piano: giovedì 18:30"). Icons, never emoji; texts never name modules.
 - **Telegram**: the weekly message with **Apri il piano**, command «settimana», and chat for changes.
-- Swagger: coach contract (once, as a shared schema), Chronos `/api/coach/*`, Demeter, Mentor.
+- Swagger: coach contract (once, as a shared schema), Chronos `/api/coach/*`, module `/api/coach/*`.
 - Siblings: reflection reads `GET /api/coach/review` as module signals (or the coach adopts their signal shape if it
   lands first — one format, decided by whichever SPEC Marko approves first); recap reads plan items; weather adds
   the `outdoor` rule in 5.3 when `weather_*` exists.
 
-## 12. Decisions for Marko (recommendation first)
+## 12. Decisions (Marko, 2026-10-20)
 
-| # | Question | Recommended | Alternative |
-|---|---|---|---|
-| D1 | Who builds the week | **Chronos** (already owns calendar, agenda, presence; stays generic) | a new core "coach" module |
-| D2 | Where supplements live | **Demeter** (nutrition) | Hygieia (they are "products" there too) |
-| D3 | Plan visible in Google Calendar | **Yes, separate calendar «Piano Hestia»** (edits sync back) | only in Hestia (page + Telegram) |
-| D4 | Study/reading/other goals | **Small module «Obiettivi» now** (§9) | later, each as its own module |
-| D5 | Nutrition depth in v1 | **Chat text + photo estimates, favourites, supplements, targets; barcode later** | barcode/Open Food Facts in v1 too |
+| # | Question | Answer |
+|---|---|---|
+| D1 | Who builds the week | **Chronos** («ok?» — taken as yes; a new core module was the alternative) |
+| D2 | Where supplements live | Nutrition is dropped, so supplements stay where products already are: **Hygieia**, category `integratore`, as information (§7.2). Reversible if a nutrition module comes later |
+| D3 | Plan in Google Calendar | «forse?» → **not now**, plan only in Hestia (§5.5) |
+| D4 | Study/reading goals module | «lascia perdere» → **dropped** |
+| D5 | Nutrition depth | «troppo per il momento» → **no food diary**; study automatic food data instead (§8) |
 
 ## 13. Phases (each shippable alone)
 
 | Phase | Content |
 |---|---|
-| **C1** | `hestia_common.coach` (Need, CoachRouter, done/skipped/changed client) + Hub tag `coach` + swagger; Chronos planner, `/api/coach/*`, plan items, job `chronos.coach_week`, weekly message (Oracle text + fallback) via Hermes, tools `coach_*`, `coach` domain in Oracle classifier; adapters Hercules + Hygieia |
-| **C2** | Re-plan triggers (calendar sync overlap, skipped/missed, needs-changed), change notices, Google mirror «Piano Hestia» (if D3), WebUI page «Settimana» + widget, module Oggi pages show their plan item |
-| **C3** | Hestia-Demeter: service, Archive store, diary, supplements, targets, meal photo/text via Oracle, tools, coach adapter, plugin, reminders, compose + CI |
-| **C4** | Plutus adapter; Hestia-Mentor «Obiettivi» (if D4) with adapter and plugin |
-| **C5** | Weather `outdoor` rule (after the weather dossier), barcode via Hecate (if D5 later), signal format alignment with reflection |
-| **C6** | Cloud bench run of the whole chain, docs everywhere, root CHANGELOG, PR merged when CI is green |
+| **C1** | `hestia_common.coach` (Need, CoachRouter, done/skipped/changed client) + Hub tag `coach` + swagger; Chronos planner, `/api/coach/*`, plan items, job `chronos.coach_week`, weekly message (Oracle text + fallback) via Hermes, tools `coach_*`, `coach` domain in Oracle classifier; adapters Hercules + Hygieia (supplements as information) |
+| **C2** | Re-plan triggers (calendar sync overlap, skipped/missed, needs-changed), change notices, WebUI page «Settimana» + widget, module Oggi pages show their plan item |
+| **C3** | Plutus adapter; weather `outdoor` rule if the weather dossier is on main; signal format aligned with reflection |
+| **C4** | Study §8 (automatic food data) — document only |
+| **C5** | Tests green, cloud bench run of the chain, docs everywhere, root CHANGELOG, PR merged when CI is green |
 
 ## 14. Acceptance criteria
 
@@ -290,10 +266,9 @@ Env: only `DEMETER_PORT`, `MENTOR_PORT` and Hub URL (infrastructure).
 3. A new calendar event over Thursday's workout (after the 15-min sync) moves it to the next free allowed day; if it
    is today or tomorrow I get one Hermes notice, otherwise nothing.
 4. Finishing a session in Hercules marks the plan item done with no polling; skipping re-plans the rest of the week.
-5. A block I move by hand (WebUI or Google) is never moved back by a later re-plan.
+5. A block I move by hand (WebUI or chat) is never moved back by a later re-plan.
 6. Oracle down → the weekly message still arrives with the fixed text.
-7. «pranzo pasta al pesto 100 g» in chat → a Demeter meal with estimated macros; a supplement taken only on training
-   days shows on the days the plan has a workout.
-8. A study goal 3×45' lands in free evenings and its «fatto» counts towards the week.
-9. Chronos code contains no domain words (test: the planner runs on synthetic needs only).
-10. Pytest (unit/api) for the contract helper, the planner rules, every adapter, Demeter and Mentor; CI green.
+7. A supplement in a routine with `with: workout same_day` shows on the days the plan has a workout; the assistant
+   answers «che integratori prendo?» from Hygieia without any logging.
+8. Chronos code contains no domain words (test: the planner runs on synthetic needs only).
+9. Pytest (unit/api) for the contract helper, the planner rules and every adapter; CI green.
