@@ -27,11 +27,13 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
 from .core import catalog
+from .core.coach import HygieiaCoach
 from .core.hub import Hub
 from .core.planner import cadence_label
 from .core.service import Conflict, Hygieia, Invalid, NotFound
@@ -70,10 +72,28 @@ settings.declare([
 hub = Hub(HUB_API_URL)
 store = Store(hub)
 hygieia = Hygieia(store, settings.get, tz_name=TZ)
+coach = HygieiaCoach(hygieia)
+coach_client = CoachClient("hygieia", HUB_API_URL)
+
+
+def _coach_event(event: str, data: dict) -> None:
+    """Tell the weekly plan (Chronos) in the background."""
+    def _send():
+        if event == "done":
+            coach_client.done(data.get("need_id") or "routine", data.get("at"))
+        elif event == "skipped":
+            coach_client.skipped(data.get("need_id") or "routine", data.get("at"))
+        else:
+            coach_client.changed()
+    threading.Thread(target=_send, daemon=True, name=f"hygieia-coach-{event}").start()
+
+
+hygieia.on_event = _coach_event
 agenda = AgendaClient("hygieia", HUB_API_URL)
 
 app = FastAPI(title="Hestia-Hygieia", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(CoachRouter("hygieia", "selfcare", "Self care", needs=coach.needs, review=coach.review).router)
 
 
 @app.exception_handler(Invalid)
@@ -615,7 +635,7 @@ try:
                       pause_days: int | None = None, amount: str = "", wait_minutes: int | None = None,
                       name: str = "", cadence_mode: str = "", times: int | None = None, per: str = "",
                       days: list | None = None, status: str = "", reminder: bool | None = None,
-                      favorite: bool | None = None) -> dict:
+                      favorite: bool | None = None, plan_with: str = "") -> dict:
         r = _need_routine(routine)
         steps = [dict(s) for s in r.get("steps") or []]
 
@@ -665,6 +685,8 @@ try:
             body["reminder"] = reminder
         if favorite is not None:
             body["favorite"] = favorite
+        if plan_with:
+            body["plan_with"] = "" if catalog.slug(plan_with) in ("nessuno", "no", "none") else plan_with
         if not body:
             return {"error": "nessuna modifica indicata"}
         d = hygieia.save_routine(body, id=r["id"], reason=reason or "modificata dall'assistente", source="assistant")
@@ -773,11 +795,14 @@ try:
                 "add_step (+position, amount, wait_minutes), remove_step, step + step_times/step_per (frequenza propria "
                 "del passo, 0 = sempre) o pause_days (es. 'niente retinolo per una settimana' = step retinolo, "
                 "pause_days 7; 0 = riprendi), cadence_mode/times/per/days della routine, status active|paused, "
-                "reminder, favorite. reason = perché (finisce nella storia).",
+                "reminder, favorite, plan_with = metti la routine nel piano della settimana solo nei giorni con "
+                "questa cosa (es. 'workout' = giorni di allenamento; 'nessuno' toglie). reason = perché (finisce "
+                "nella storia).",
                 parameters={"type": "object", "properties": {
                     "routine": S, "reason": S, "add_step": S, "position": I, "remove_step": S, "step": S, "step_times": I,
                     "step_per": S, "pause_days": I, "amount": S, "wait_minutes": I, "name": S, "cadence_mode": S,
-                    "times": I, "per": S, "days": L, "status": S, "reminder": B, "favorite": B}, "required": ["routine"]},
+                    "times": I, "per": S, "days": L, "status": S, "reminder": B, "favorite": B, "plan_with": S},
+                    "required": ["routine"]},
                 handler=_t(_routine_edit), title="✨ Modifica routine", method="PUT", path=f"{API}/routines/{{id}}",
                 clients=["ui"], telegram_visible=False, telegram_group=G),
         MCPTool(name="selfcare_undo_routine", description="Annulla l'ultima modifica dei passi di una routine.",
