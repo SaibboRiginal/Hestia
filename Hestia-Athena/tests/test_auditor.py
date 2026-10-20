@@ -135,12 +135,12 @@ class TestConversationAuditor:
 
 @pytest.mark.unit
 def test_oracle_calls_send_use_case_not_model():
-    """Model choice lives in Oracle (oracle.models.athena_*): Athena sends only the use case."""
+    """Model choice lives in Oracle (use cases athena.*): Athena sends only the use case."""
     from core.strategist import Strategist
 
     for obj, call, use_case in (
-        (ConversationAuditor("http://hub/api"), "_call_oracle_llm", "athena_auditor"),
-        (Strategist("http://hub/api"), "_call_oracle", "athena_strategist"),
+        (ConversationAuditor("http://hub/api"), "_call_oracle_llm", "athena.revisione"),
+        (Strategist("http://hub/api"), "_call_oracle", "athena.strategia"),
     ):
         resp = MagicMock(status_code=200, content=b"{}")
         resp.json.return_value = {"payload": {"response": "ok"}}

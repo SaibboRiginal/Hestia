@@ -100,8 +100,8 @@ Conversational reasoning layer with unified agentic tool calling.
 - Compiles user intents into generic subscription requests written to Archive.
 - Injects timezone-aware current datetime context in each turn.
 - Accepts file attachments (images, PDFs) via `POST /api/chat/document` with multimodal reasoning.
-- **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools, profiles `local`/`cloud`) via Hub — never provider URLs/keys of their own.
-- LLM roles: primary via Ollama (`gemma4:e4b`), cloud fallback via Gemini (Flash Lite for router, Flash for scribe, 2.5 Flash for analyst). Fallback chain at every call site — if local model fails, cloud takes over transparently.
+- **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools) via Hub with a `use_case` `<module>.<task>` they declare in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`) — never provider URLs/keys/model names of their own.
+- **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset, any error moves to the next step) → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `veloce` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
 
 ### Hestia-Hermes 📨
 Proactive dispatch core — the only outbound messenger to the user's clients.
@@ -209,7 +209,7 @@ Guarded remediation and coding executor.
 - Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
 - May execute local build/deploy workflows according to policy tiers.
 - Claude Pro budget windows are agenda windows (`forge.claude_nights`, `forge.claude_final`): skip a night to block autonomous Claude work.
-- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`local`/`cloud` LLM profiles served by Oracle, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
+- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`oracle` = Oracle's chain of use case `forge.codice`, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
 
 ### Hestia-Athena 🧭
 Proactive cognition and advisory strategy engine.

@@ -109,6 +109,7 @@ services:
       dockerfile: Hestia-Oracle/Dockerfile
       args:
         INSTALL_CLAUDE_CODE: "${ORACLE_INSTALL_CLAUDE_CODE:-1}"   # Claude Code CLI (used only if CLAUDE_CODE_OAUTH_TOKEN is set); 0 = slimmer image
+        INSTALL_CODEX: "${ORACLE_INSTALL_CODEX:-0}"               # Codex CLI for the external brain mode (agent codex); 1 = install
     container_name: hestia_oracle
     restart: unless-stopped
     ports:
@@ -126,12 +127,8 @@ services:
       # Claude Code for Forge engine `claude` (Pro/Max): build with --build-arg INSTALL_CLAUDE_CODE=1,
       # put CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) in Hestia-Oracle/app/.env
       - ORACLE_CODE_WORKDIR_ROOT=/forge/worktrees
-      # Optional OpenAI-compatible server (llama-server, vLLM, LM Studio) → provider `openai` in Impostazioni → Modelli.
-      # - ORACLE_OPENAI_BASE_URL=http://host.docker.internal:8080/v1   # key (if any): ORACLE_OPENAI_API_KEY in Hestia-Oracle/app/.env
-      # LLM gateway profiles (Forge engines local/cloud). local defaults to the Ollama host above.
-      # - ORACLE_LLM_PROFILE_LOCAL_MODEL=qwen2.5-coder:14b
-      # - ORACLE_LLM_PROFILE_CLOUD_BASE_URL=https://openrouter.ai/api/v1   # keys go in Hestia-Oracle/app/.env
-      # - ORACLE_LLM_PROFILE_CLOUD_MODEL=qwen/qwen3-coder
+      # Models: named providers (name, standard, address), chains and use cases are Themis settings
+      # (WebUI → Oracle → Cervello → Modelli). Keys only in Hestia-Oracle/app/.env as ORACLE_KEY_<NAME>.
       - LOG_LEVEL=TRACE                                      # Logging verbosity: TRACE | DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONPATH=/code                                     # Ensure shared package /code/hestia_common is importable
@@ -145,6 +142,8 @@ services:
       # same absolute paths as in Hephaestus so git worktree links resolve.
       - ./:/repo
       - ./Hestia-Hephaestus/data/forge/worktrees:/forge/worktrees
+      # Codex external agent (ORACLE_INSTALL_CODEX=1): its login from `codex login`, e.g.
+      # - ${USERPROFILE}/.codex:/root/.codex
     depends_on:
       hub:
         condition: service_started

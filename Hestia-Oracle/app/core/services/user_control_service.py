@@ -25,10 +25,9 @@ _DEFAULT_CATEGORIES = ["alerts", "tasks", "reminders", "insights"]
 class UserControlService:
     """Durable control storage and extraction."""
 
-    def __init__(self, hub_client, scribe_agent, fallback_scribe_agent) -> None:
+    def __init__(self, hub_client, scribe_agent) -> None:
         self._hub = hub_client
         self._scribe = scribe_agent
-        self._fallback_scribe = fallback_scribe_agent
 
     @staticmethod
     def _defaults() -> dict:
@@ -48,11 +47,8 @@ class UserControlService:
     def _ask(self, prompt: str) -> str:
         try:
             return self._scribe.ask(prompt).strip()
-        except Exception:
-            try:
-                return self._fallback_scribe.ask(prompt).strip()
-            except Exception:
-                return "NONE"
+        except Exception:  # every step of the chain failed
+            return "NONE"
 
     def _list_control_rows(self) -> list[dict]:
         rows = self._hub.get(

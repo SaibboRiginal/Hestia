@@ -1,10 +1,9 @@
 """Oracle settings declared to Themis (central settings).
 
-Models per use case replace the old ``MODEL_USECASE_*`` env vars; the per-module LLM choices
-(Scout extraction, Athena strategist/auditor) are use cases here too: modules send ``use_case``.
-Endpoints, keys, binaries/paths, ``ORACLE_EMBED_DIM`` (Archive ``Vector(768)``) and ``TZ`` are
-infrastructure and stay in env. Every tunable is read at use time (``apply="live"``):
-model changes go through ``AgentFactory.reconfigure`` (agents updated in place).
+Models are three object settings (providers, chains, use cases — ``llm_providers`` / ``llm_chains``):
+modules send ``use_case`` and declare theirs in the Hub registration. Provider keys
+(``ORACLE_KEY_<NAME>``), binaries/paths, ``OLLAMA_URL``, ``ORACLE_EMBED_DIM`` (Archive ``Vector(768)``) and
+``TZ`` are secrets/infrastructure and stay in env. Every tunable is read at use time (``apply="live"``).
 """
 from __future__ import annotations
 
@@ -19,115 +18,63 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
         sys.path.insert(0, str(_shared))
     from hestia_common.settings_client import SettingsClient, preset, setting
 
-# Provider types implemented in UniversalAgent (new types add a value here). Claude types
-# (agents/providers) are offered only when their key / login is configured.
-from agents.providers import available_types
-
-PROVIDERS = [("ollama", "Ollama (locale)"), ("gemini", "Gemini (cloud)")] + available_types()
-THINKING = [("auto", "Automatico"), ("true", "Sempre"), ("false", "Mai")]
-
-USECASES = {
-    #  use case    label                       provider  model                  fb provider fb model                  thinking
-    "generic":   ("Uso generale",             "ollama", "gemma4:e4b",          "gemini", "gemini-2.0-flash-lite", "auto"),
-    "reasoning": ("Ragionamento",             "ollama", "gemma4:e4b",          "gemini", "gemini-2.5-flash",      "true"),
-    "code":      ("Codice",                   "ollama", "gemma4:e4b",          "gemini", "gemini-2.0-flash",      "auto"),
-    "embedding": ("Embedding (ricerca)",      "ollama", "qwen3-embedding:0.6b", "gemini", "gemini-embedding-001", None),
-}
-# Use cases of other modules (they send ``use_case`` to /api/llm/generate). Provider "" = same
-# provider/model as «Uso generale» (Oracle default), so nothing to keep in sync.
-FOLLOW = ("", "Come «Uso generale»")
-SERVICE_USECASES = {
-    #  use case            label                          provider  model              fb provider fb model
-    "scout_extraction":  ("Scout · lettura annunci",      "gemini", "gemini-2.5-flash", "gemini", "gemini-2.5-flash-lite"),
-    "athena_strategist": ("Athena · strategia e memoria", "",       "",                 "",       ""),
-    "athena_auditor":    ("Athena · revisione risposte",  "",       "",                 "",       ""),
-}
-_SERVICE_HELP = {
-    "scout_extraction": "Estrae i dati degli annunci dalle mail di Scout. Se il principale finisce la quota "
-                        "passa a quello di riserva.",
-    "athena_strategist": "Ragionamenti di Athena (proposte, consolidamento della memoria).",
-    "athena_auditor": "Valuta la qualità delle risposte dell'assistente.",
-}
-CLAUDE_CODE_MODEL = "oracle.models.claude_code.model"
-
-_HELP = {
-    "generic": "Chat, classificazione, scelta degli strumenti, memoria.",
-    "reasoning": "Analisi lunghe e ragionamenti complessi (caricato quando serve).",
-    "code": "Generazione e correzione di codice; usato anche da Forge (motore locale/cloud).",
-    "embedding": "Vettori per memoria e documenti. Attenzione: cambiarlo rende diversi i vettori già salvati.",
-}
+# ── Models: providers · chains · use cases (dossier docs/work/2026-10-19-oracle-a-blocchi) ─────────
+# Three object settings edited by the WebUI page Modelli (Oracle → Cervello): named providers (keys stay in env
+# ORACLE_KEY_<NAME>), reusable chains of provider/model steps, use case → chain/mode overrides.
+PROVIDERS_KEY = "oracle.providers"
+CHAINS_KEY = "oracle.chains"
+USECASES_KEY = "oracle.usecases"
+CHAIN_COOLDOWN = "oracle.quota.cooldown_minutes"
+USAGE_RETENTION = "oracle.usage.retention_days"
+PRICING_KEY = "oracle.pricing"
+BRAIN_MODE = "oracle.brain.mode"
+BRAIN_AGENT = "oracle.brain.agent"
+BRAIN_MODEL = "oracle.brain.model"
+BRAIN_FALLBACK = "oracle.brain.fallback"
+BRAIN_MODES = [("interna", "Interna"), ("esterna", "Esterna")]
+BRAIN_AGENTS = [("claude", "Claude Code (abbonamento)"), ("codex", "Codex (ChatGPT)")]
+BRAIN_FALLBACKS = [("interna", "Rifai il turno in modalità interna"), ("nessuno", "Nessuno: dimmi che non ha risposto")]
 
 settings = SettingsClient("oracle")
 
 
-def key(usecase: str, field: str) -> str:
-    return f"oracle.models.{usecase}.{field}"
-
-
 def _definitions() -> list[dict]:
-    defs: list[dict] = []
-    for i, (uc, (label, prov, model, fb_prov, fb_model, thinking)) in enumerate(USECASES.items()):
-        advanced = uc == "embedding"
-        base = i * 10
-        defs += [
-            setting(key(uc, "provider"), f"{label} · fornitore", "enum", prov, group="Modelli", options=PROVIDERS,
-                    help=_HELP[uc], order=base, advanced=advanced, row=label, column="Fornitore"),
-            setting(key(uc, "model"), f"{label} · modello", "model", model, group="Modelli",
-                    options_source=f"/api/llm/models?provider={{{key(uc, 'provider')}}}",
-                    help="Nome del modello del fornitore scelto.", order=base + 1, advanced=advanced,
-                    row=label, column="Modello"),
-            setting(key(uc, "fallback_provider"), f"{label} · fornitore di riserva", "enum", fb_prov,
-                    group="Modelli", options=PROVIDERS, order=base + 2, advanced=True,
-                    help="Usato se il principale non risponde.", row=label, column="Riserva · fornitore"),
-            setting(key(uc, "fallback_model"), f"{label} · modello di riserva", "model", fb_model, group="Modelli",
-                    options_source=f"/api/llm/models?provider={{{key(uc, 'fallback_provider')}}}",
-                    order=base + 3, advanced=True, row=label, column="Riserva · modello"),
-        ]
-        if thinking is not None:
-            defs.append(setting(key(uc, "thinking"), f"{label} · ragionamento del modello", "enum", thinking,
-                                group="Modelli", options=THINKING, order=base + 4, advanced=True,
-                                help="Automatico = attivo se il modello lo supporta.", row=label,
-                                column="Ragionamento"))
-    for i, (uc, (label, prov, model, fb_prov, fb_model)) in enumerate(SERVICE_USECASES.items()):
-        base = 100 + i * 10
-        defs += [
-            setting(key(uc, "provider"), f"{label} · fornitore", "enum", prov, group="Modelli",
-                    options=[FOLLOW] + PROVIDERS, help=_SERVICE_HELP[uc], order=base, advanced=True,
-                    row=label, column="Fornitore"),
-            setting(key(uc, "model"), f"{label} · modello", "model", model, group="Modelli",
-                    options_source=f"/api/llm/models?provider={{{key(uc, 'provider')}}}",
-                    help="Vuoto = modello di «Uso generale».", order=base + 1, advanced=True,
-                    row=label, column="Modello"),
-            setting(key(uc, "fallback_provider"), f"{label} · fornitore di riserva", "enum", fb_prov,
-                    group="Modelli", options=[FOLLOW] + PROVIDERS, order=base + 2, advanced=True,
-                    help="Usato se il principale non risponde.", row=label, column="Riserva · fornitore"),
-            setting(key(uc, "fallback_model"), f"{label} · modello di riserva", "model", fb_model,
-                    group="Modelli", options_source=f"/api/llm/models?provider={{{key(uc, 'fallback_provider')}}}",
-                    order=base + 3, advanced=True, row=label, column="Riserva · modello"),
-        ]
-    defs.append(setting(CLAUDE_CODE_MODEL, "Forge · Claude Code · modello", "model", "", group="Modelli",
-                        options_source="/api/llm/models?provider=claude_cli", order=200, advanced=True,
-                        help="Modello usato da Claude Code quando Forge lavora con il motore Claude. "
-                             "Vuoto = predefinito di Claude Code."))
-    return defs
-
-
-def _presets() -> list[dict]:
-    local = {key(uc, "provider"): "ollama" for uc in ("generic", "reasoning", "code")}
-    local.update({key(uc, "model"): USECASES[uc][2] for uc in ("generic", "reasoning", "code")})
-    cloud = {key("generic", "provider"): "gemini", key("generic", "model"): "gemini-2.5-flash",
-             key("reasoning", "provider"): "gemini", key("reasoning", "model"): "gemini-2.5-pro",
-             key("code", "provider"): "gemini", key("code", "model"): "gemini-2.5-flash"}
-    balanced = {key("generic", "provider"): "ollama", key("generic", "model"): USECASES["generic"][2],
-                key("reasoning", "provider"): "gemini", key("reasoning", "model"): "gemini-2.5-flash",
-                key("code", "provider"): "gemini", key("code", "model"): "gemini-2.5-flash"}
+    from core.services.llm_chains import DEFAULT_CHAINS
+    from core.services.llm_providers import DEFAULT_PROVIDERS
     return [
-        preset("economico", "Economico", group="Modelli", values=local,
-               help="Tutto sui modelli locali (Ollama): gratis e privato, più lento sulle cose difficili."),
-        preset("bilanciato", "Bilanciato", group="Modelli", values=balanced,
-               help="Chat in locale, ragionamento e codice nel cloud (Gemini)."),
-        preset("qualita", "Qualità", group="Modelli", values=cloud,
-               help="Tutto nel cloud (Gemini): risposte migliori, serve la chiave API."),
+        setting(PROVIDERS_KEY, "Fornitori", "object", DEFAULT_PROVIDERS, group="Modelli", order=0,
+                editor="llm_providers",
+                help="Dove stanno i modelli: nome, standard (Ollama, compatibile OpenAI, compatibile Anthropic, "
+                     "Gemini, Claude abbonamento) e indirizzo. La chiave sta solo nel file .env come "
+                     "ORACLE_KEY_<NOME>."),
+        setting(CHAINS_KEY, "Catene di modelli", "object", DEFAULT_CHAINS, group="Modelli", order=1,
+                editor="llm_chains",
+                help="Liste ordinate fornitore/modello, come font-family: se un modello finisce la quota passo "
+                     "al successivo e lo salto finché la quota non si ricarica."),
+        setting(USECASES_KEY, "Usi dei moduli", "object", {}, group="Modelli", order=2, editor="llm_usecases",
+                help="Per ogni uso dichiarato da un modulo: catena, modalità e ragionamento. Vuoto = la scelta "
+                     "suggerita dal modulo."),
+        setting(CHAIN_COOLDOWN, "Pausa di un modello senza quota", "int", 60, group="Modelli", order=3,
+                min=1, max=1440, unit="min", advanced=True,
+                help="Quando il fornitore non dice quando si ricarica la quota (Gemini giornaliero: mezzanotte "
+                     "del Pacifico)."),
+        setting(BRAIN_MODE, "Modalità del cervello", "enum", "interna", group="Modelli", order=4, options=BRAIN_MODES,
+                help="Interna: Oracle ragiona con le catene di modelli (classificatore, Rapida/Pensata/CoT, ciclo "
+                     "agente). Esterna: un agente (Claude Code, Codex) fa il ciclo con gli strumenti di Hestia; "
+                     "Oracle prepara il contesto, salva i messaggi e la memoria. Ogni uso può scegliere la sua."),
+        setting(BRAIN_AGENT, "Agente esterno", "enum", "claude", group="Modelli", order=5, options=BRAIN_AGENTS,
+                help="Serve il suo login: Claude Code con CLAUDE_CODE_OAUTH_TOKEN, Codex con `codex login` "
+                     "(immagine con ORACLE_INSTALL_CODEX=1)."),
+        setting(BRAIN_MODEL, "Modello dell'agente esterno", "string", "sonnet", group="Modelli", order=6,
+                help="Es. sonnet, opus (Claude Code) o gpt-5-codex (Codex). Vuoto = quello predefinito dell'agente."),
+        setting(BRAIN_FALLBACK, "Se l'agente esterno non risponde", "enum", "interna", group="Modelli", order=7,
+                options=BRAIN_FALLBACKS),
+        setting(USAGE_RETENTION, "Conserva l'uso dei modelli per", "int", 90, group="Uso", order=0, min=1,
+                max=3650, unit="giorni", help="Ogni chiamata a un modello resta nel pannello Uso per questi giorni."),
+        setting(PRICING_KEY, "Prezzi dei modelli", "object", {}, group="Uso", order=1,
+                help="Dollari per milione di token, per «fornitore/modello» (o solo il modello): "
+                     "{\"gemini/gemini-2.5-flash\": {\"in\": 0.3, \"out\": 2.5, \"cached\": 0.075}}. "
+                     "Serve solo dove il fornitore non dice il costo; i modelli locali costano 0."),
     ]
 
 
@@ -299,7 +246,7 @@ _TIMEOUTS = [
 ] + [
     setting(GATEWAY_CHAT_TIMEOUT, "Tempo massimo · richieste di Forge al modello", "int", 600, group="Tempi",
             min=30, max=3600, unit="s", order=20, advanced=True,
-            help="Una richiesta di Forge (profili locale/cloud) che supera questo tempo fallisce."),
+            help="Una richiesta di Forge al modello (uso forge.codice) che supera questo tempo fallisce."),
     setting(OLLAMA_TIMEOUT, "Tempo massimo · risposta di Ollama", "int", 120, group="Tempi", min=10, max=1800,
             unit="s", order=21, help="Quanto aspetto una risposta del modello locale."),
     setting(OLLAMA_EMBED_TIMEOUT, "Tempo massimo · embedding di Ollama", "int", 60, group="Tempi", min=5,
@@ -399,8 +346,16 @@ for _i, (_surface, (_prefix, _label)) in enumerate(AB_SURFACES.items()):
                 help="Se indicata, usata sempre (anche a esperimento spento)."),
     ]
 
-settings.declare(_definitions() + _CHAT + _CONTEXT + _AGENT + _TIMEOUTS + _PROVIDER + _MEMORY + _APPROVAL
-                 + _RUNTIME + _DOCUMENTS + _AB, presets=_presets()).declare_log_level()
+def _advanced_except_models(defs: list[dict]) -> list[dict]:
+    """Only Modelli (and the personal Chat settings) stay in view; Oracle's other tunables go under *avanzate*."""
+    for d in defs:
+        if d.get("group") not in ("Modelli", "Chat"):
+            d["advanced"] = True
+    return defs
+
+
+settings.declare(_advanced_except_models(_definitions() + _CHAT + _CONTEXT + _AGENT + _TIMEOUTS + _PROVIDER
+                                         + _MEMORY + _APPROVAL + _RUNTIME + _DOCUMENTS + _AB)).declare_log_level()
 
 
 # ── Typed readers (live; a bad stored value falls back to the declared default) ──────────────
@@ -471,18 +426,6 @@ def prompt_ab(surface: str) -> dict:
             "forced": str(settings.get(f"{prefix}.force") or "").strip()}
 
 
-def local_default_model(uc: str) -> str:
-    """Local (Ollama) model for a use case when a cloud one cannot run (no key): its own model if it is
-    already on Ollama, else the declared Ollama default."""
-    base = uc.removesuffix("_fallback")
-    if base not in USECASES:
-        base = "generic"
-    current = usecase(base)
-    if current["prov"] == "ollama" and current["mod"]:
-        return current["mod"]
-    return USECASES[base][2]
-
-
 def context_window() -> int:
     """Real context window (tokens) sent to Ollama and used for budgeting/compaction."""
     try:
@@ -546,26 +489,3 @@ def chat_mode(requested: str | None, *, client: str = "", session: str = "") -> 
         return explicit
     # user_values never raises: Themis down → declared defaults ([🔄] logged there).
     return normalize_mode(settings.user_values(client=client, session=session).get(MODE)) or "auto"
-
-
-def usecase(uc: str) -> dict[str, str]:
-    """Current config of one use case: provider, model, thinking, fallback provider/model.
-
-    Module use cases (``SERVICE_USECASES``) with an empty provider follow «Uso generale»."""
-    if uc in SERVICE_USECASES:
-        generic = usecase("generic")
-        prov = str(settings.get(key(uc, "provider")) or "")
-        fb_prov = str(settings.get(key(uc, "fallback_provider")) or "")
-        out = dict(generic)
-        if prov:
-            out["prov"], out["mod"] = prov, str(settings.get(key(uc, "model")) or "").strip()
-        if fb_prov:
-            out["fb_prov"], out["fb_mod"] = fb_prov, str(settings.get(key(uc, "fallback_model")) or "").strip()
-        return out
-    return {
-        "prov": str(settings.get(key(uc, "provider")) or "ollama"),
-        "mod": str(settings.get(key(uc, "model")) or "").strip(),
-        "thinking_raw": str(settings.get(key(uc, "thinking"), "auto") or "auto").strip().lower(),
-        "fb_prov": str(settings.get(key(uc, "fallback_provider")) or "gemini"),
-        "fb_mod": str(settings.get(key(uc, "fallback_model")) or "").strip(),
-    }

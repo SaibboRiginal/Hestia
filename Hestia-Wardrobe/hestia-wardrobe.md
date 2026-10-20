@@ -23,7 +23,7 @@
   (≤ 1 accent colour), pattern clash, recently worn (`suggest.exclude_recent_days`), rotation of forgotten pieces,
   favourites and rating. Every result carries its reasons. The assistant adds taste on top.
 - Photos: orientation fixed, metadata (GPS) dropped by re-encoding, three sizes (original JPEG/WebP, medium 768,
-  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (profile `wardrobe.ai.profile`)
+  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.foto`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
   and only **proposes** fields; the user saves.
 - Does not call models directly, has no database: rows in Archive `wardrobe-store`, bytes in Archive `blobs`.
 
@@ -69,7 +69,7 @@ Crea outfit / Da donare. A UI change needs `up-all.bat --build wardrobe`.
 
 forgotten_days (180), photo.max_mb (10), suggest.count (3), suggest.exclude_recent_days (4),
 tracking.goal_times (0 = no goal), tracking.goal_per (week), reminder.enabled (false), reminder.max_per_week (2),
-review.enabled (false), ai.profile (cloud). Reminder settings come from `hestia_common.reminders`; currency and
+review.enabled (false). Reminder settings come from `hestia_common.reminders`; currency and
 week start (weekly goal) are the personal settings `themis.personal.*`.
 
 ## API (via Hub `/route/wardrobe/...`)

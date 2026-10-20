@@ -1,7 +1,6 @@
-"""Tests — AgentFactory + UniversalAgent (Phase 1.6)
+"""Tests — AgentFactory + UniversalAgent.
 
-Tests for env-based agent construction, provider fallback logic,
-and UniversalAgent.ask / ask_with_tools stub behaviour.
+Named providers, one chain agent per Oracle use case, UniversalAgent.ask / ask_with_tools stub behaviour.
 All network calls mocked.
 """
 from __future__ import annotations
@@ -21,26 +20,19 @@ from core.services.agent_factory import AgentBundle, AgentFactory
 
 
 @pytest.mark.unit
-class TestUniversalAgentOllamaFallback:
-    def test_missing_gemini_key_falls_back_to_ollama(self, monkeypatch):
-        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        agent = UniversalAgent(
-            role_prompt="Test prompt",
-            provider="gemini",
-            model_name="gemini-2.5-flash",
-            thinking=False,
-        )
-        assert agent.provider == "ollama"
+class TestUniversalAgentProviders:
+    def test_gemini_without_key_is_unavailable(self, monkeypatch):
+        monkeypatch.delenv("ORACLE_KEY_GEMINI", raising=False)
+        agent = UniversalAgent(role_prompt="t", provider="gemini", model_name="gemini-2.5-flash", thinking=False)
+        assert agent.provider == "gemini" and agent.available() == (False, "ORACLE_KEY_GEMINI not set")
 
-    def test_empty_gemini_key_falls_back_to_ollama(self, monkeypatch):
-        monkeypatch.setenv("GEMINI_API_KEY", "")
-        agent = UniversalAgent(
-            role_prompt="Test prompt",
-            provider="gemini",
-            model_name="gemini-2.5-flash",
-            thinking=False,
-        )
-        assert agent.provider == "ollama"
+    def test_named_openai_provider_resolves_type(self, monkeypatch):
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.PROVIDERS_KEY,
+                            {"lmstudio": {"type": "openai", "url": "http://h:1234/v1"}})
+        agent = UniversalAgent(role_prompt="t", provider="lmstudio", model_name="qwen", thinking=False)
+        assert (agent.provider, agent.provider_name) == ("openai", "lmstudio")
+        assert agent.available()[0]
 
     def test_ollama_provider_explicit(self, monkeypatch):
         monkeypatch.setenv("OLLAMA_URL", "http://localhost:11434/api/generate")
@@ -107,40 +99,18 @@ class TestUniversalAgentOllamaFallback:
 
 @pytest.mark.unit
 class TestAgentFactory:
-    def _patch_agent_init(self, monkeypatch):
-        """Patch UniversalAgent so no real Ollama/Gemini clients are created."""
-        mock_agent = MagicMock(spec=UniversalAgent)
-        mock_agent.provider = "ollama"
-        mock_agent.model_name = "test-model"
-        monkeypatch.setattr(
-            "core.services.agent_factory.UniversalAgent",
-            lambda *a, **kw: MagicMock(provider="ollama", model_name="mock"),
-        )
-
-    def test_create_returns_agent_bundle(self, monkeypatch):
-        self._patch_agent_init(monkeypatch)
+    def test_bundle_has_one_chain_agent_per_oracle_use_case(self):
+        from core.services.llm_chains import ChainAgent
         bundle = AgentFactory.create()
         assert isinstance(bundle, AgentBundle)
+        assert {(slot, getattr(bundle, slot).use_case) for slot in
+                ("generic", "reasoning", "code", "documents", "embedding")} == {
+            ("generic", "oracle.generale"), ("reasoning", "oracle.ragionamento"), ("code", "oracle.codice"),
+            ("documents", "oracle.documenti"), ("embedding", "oracle.embedding")}
+        assert all(isinstance(getattr(bundle, s), ChainAgent) for s in ("generic", "embedding"))
 
-    def test_bundle_has_all_agents(self, monkeypatch):
-        self._patch_agent_init(monkeypatch)
+    def test_generic_model_name_is_first_usable_step(self, monkeypatch):
+        from core.services import llm_chains
+        monkeypatch.setattr(llm_chains, "step_thinking", lambda step, raw: False)
         bundle = AgentFactory.create()
-        assert bundle.generic is not None
-        assert bundle.generic_fallback is not None
-        assert bundle.reasoning is not None
-        assert bundle.reasoning_fallback is not None
-        assert bundle.code is not None
-        assert bundle.code_fallback is not None
-        assert bundle.embedding is not None
-        assert bundle.embedding_fallback is not None
-
-    def test_ollama_fallback_when_no_gemini_key(self, monkeypatch):
-        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-        self._patch_agent_init(monkeypatch)
-        bundle = AgentFactory.create()
-        assert bundle is not None
-
-    def test_generic_model_name_property(self, monkeypatch):
-        self._patch_agent_init(monkeypatch)
-        bundle = AgentFactory.create()
-        assert isinstance(bundle.generic_model_name, str)
+        assert bundle.generic_model_name == "gemma4:e4b"     # gemini steps need ORACLE_KEY_GEMINI

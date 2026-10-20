@@ -23,8 +23,6 @@ def engine():
         bundle = MagicMock()
         bundle.generic.ask.return_value = "Generic response."
         bundle.generic.ask_with_tools.return_value = {"tool_call": None, "text": "Generic."}
-        bundle.generic_fallback.ask.return_value = "Fallback."
-        bundle.generic_fallback.ask_with_tools.return_value = {"tool_call": None, "text": "FB."}
         bundle.reasoning.ask.return_value = "Reasoning."
         bundle.reasoning.ask_with_tools.return_value = {"tool_call": None, "text": "R."}
         bundle.code.ask.return_value = "Code."

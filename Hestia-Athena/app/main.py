@@ -18,6 +18,16 @@ create_log_control_router = import_shared_symbol(
 )
 logger, log_buffer = setup_service_logging("hestia_athena")
 plugin_client = import_shared_symbol("hestia_common.plugin_client", "PluginClient")
+llm_usecase = import_shared_symbol("hestia_common.oracle_usecases", "usecase")
+llm_capabilities = import_shared_symbol("hestia_common.oracle_usecases", "capabilities")
+
+# What Athena asks Oracle for (chains chosen by Marko in Oracle → Cervello → Modelli).
+LLM_USECASES = [
+    llm_usecase("athena.strategia", "Athena · strategia e memoria", chain="potente",
+                help="Ragionamenti di Athena (proposte, consolidamento della memoria)."),
+    llm_usecase("athena.revisione", "Athena · revisione risposte", chain="veloce",
+                help="Valuta la qualità delle risposte dell'assistente."),
+]
 plugin_page = import_shared_symbol("hestia_common.plugin_client", "page")
 plugin_widget = import_shared_symbol("hestia_common.plugin_client", "widget")
 plugin_quick_action = import_shared_symbol("hestia_common.plugin_client", "quick_action")
@@ -59,6 +69,7 @@ class AthenaService(HestiaServiceBase):
             "think_now_endpoint": "/api/athena/think",
             "observation_endpoint": "/api/athena/observation",
             **ui.capabilities(SERVICE_BASE_URL),
+            **llm_capabilities(LLM_USECASES),
         }
 
 

@@ -87,13 +87,13 @@ _JOBS_FILE = _DATA_DIR / "lora_jobs.json"
 _jobs_lock = threading.Lock()
 
 
-# Oracle's declared default for oracle.models.generic.model: used only when Oracle does not answer.
+# Model of Oracle's default «veloce» chain: used only when Oracle does not answer.
 _ORACLE_GENERIC_DEFAULT = "gemma4:e4b"
 
 
 def _oracle_generic_model() -> str:
     """Model choice belongs to Oracle: ask it (via Hub) which generic model is in use."""
-    model = hub.oracle_model("generic")
+    model = hub.oracle_model("oracle.generale")
     if model:
         return model
     logger.warning("[🔄] event=metis_oracle_model_unknown fallback=%s", _ORACLE_GENERIC_DEFAULT)

@@ -30,6 +30,7 @@ except ModuleNotFoundError:
 
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.mail_client import MailClient, mail_rule
+from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
@@ -76,19 +77,22 @@ settings.declare([
             unit="giorni", advanced=True,
             help="Un pagamento PayPal pagato con la carta compare due volte: le due righe con lo stesso importo "
                  "entro questi giorni vengono collegate e contate una volta sola."),
-    setting("plutus.ai.profile", "AI per email ed estratti", "enum", "local", group="AI",
-            options=[("local", "Locale (Ollama)"), ("cloud", "Cloud")],
-            help="Quale modello di Oracle legge le email o gli estratti che il lettore automatico non capisce e "
-                 "propone le categorie. Locale = i tuoi dati restano in casa."),
 ]).follow_personal()                                       # currency, week start: personal settings shared by every module
 
 hub = Hub(HUB_API_URL)
 store = Store(hub)
 
 
+# What Spese asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
+LLM_USECASE = "plutus.lettura"
+LLM_USECASES = [llm_usecase(LLM_USECASE, "Spese · email ed estratti", chain="veloce",
+                            help="Legge le email o gli estratti che il lettore automatico non capisce e propone le "
+                                 "categorie.")]
+
+
 def _llm(prompt: str) -> str | None:
     """Oracle (the only door to models), compact prompt, JSON answers; failure → None (caller has a fallback)."""
-    body = {"profile": str(settings.get("plutus.ai.profile") or "local"), "temperature": 0, "max_tokens": 1500,
+    body = {"use_case": LLM_USECASE, "temperature": 0, "max_tokens": 1500,
             "messages": [{"role": "user", "content": prompt}]}
     try:
         out = hub.ok("oracle", "POST", "api/llm/chat", body=body, timeout=120)
@@ -767,7 +771,8 @@ except NameError:
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": [DOMAIN],
-            "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS}
+            "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS,
+            **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:

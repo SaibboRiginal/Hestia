@@ -44,6 +44,10 @@ It stores and serves all persistent state through generic APIs.
   meta; OAuth grants also client_id, refresh_hash, prev_refresh_hash, token_expires_at), `mcp_oauth_clients`
   (client_id, name, redirect_uris, auth_method, secret_hash) and `mcp_oauth_codes` (code_hash, PKCE challenge, consent
   choices, used_at). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
+- **LLM usage store** (`/api/llm-usage-store/*`, Oracle only, dossier `docs/work/2026-10-19-oracle-a-blocchi` §E):
+  table `llm_usage`, one row per LLM call (at, module, use_case, chain, step, provider, model, client, session_id,
+  input/cached/output tokens, context_window, duration_ms, cost_usd, cost_kind, outcome, detail). Oracle sends its
+  retention with each write and older rows are deleted then (no timer).
 - **Chat queue** (`/api/chat-queue/*`, table `chat_queue`): chat messages Oracle could not take while Oracle was
   offline; each chat client (Telegram, WebUI) queues its own and answers them when Chronos says Oracle is back
   (SPEC `docs/work/2026-10-19-oracle-offline`).
@@ -82,6 +86,9 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
 | `DELETE` | `/api/blobs/{id}` | Delete a blob |
+| `POST` | `/api/llm-usage-store/rows` | `{rows: [...], retention_days}` (≤ 500 rows) → `{written, removed}` (Oracle only) |
+| `GET` | `/api/llm-usage-store/summary?group=module\|session\|usecase\|model\|step\|day&days=&module=&session_id=&use_case=` | Sums per group: calls, ok, errors, quota, fallbacks, tokens, cost, avg duration, largest prompt, window, first/last |
+| `GET` | `/api/llm-usage-store/rows?session_id=&days=&limit=` | Latest single calls, newest first |
 | `GET`/`POST` | `/api/mcp-access-store/accesses` | MCP accesses (Hestia-MCP only): list · create `{access_id, name, kind, scope, tools, token_hash, expires_at}` |
 | `GET` | `/api/mcp-access-store/accesses/by-hash/{sha256}` | Access of a token (404 = unknown) |
 | `PATCH`/`DELETE` | `/api/mcp-access-store/accesses/{id}` | Change (name, scope, tools, token_hash, expiry, `revoked`) · delete |

@@ -2,14 +2,16 @@
  * <oracle-brain> — "Cervello": what Oracle does inside. Recent turns (route, domains, tools, model/provider, ms,
  * tokens), LLM use today per use case/model, tokens and cost per day, rolling stats per use case, Claude Code.
  * Reads GET /api/ui/activity · /api/ui/stats · /api/ui/code. Numbers are counted since Oracle started (in memory).
+ * Tabs «Uso» (<oracle-usage>, calls kept in Archive) and «Modelli» (<oracle-models>, providers/chains/use cases).
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
 import { API, ROUTES, ago, cost, dayLabel, ms, num, when } from './util';
 
 export class OracleBrain extends HestiaElement {
   static properties = { ...HestiaElement.properties, activity: { state: true }, stats: { state: true },
-                        code: { state: true }, error: { state: true }, loading: { state: true } };
+                        code: { state: true }, error: { state: true }, loading: { state: true }, tab: { state: true } };
   declare activity: any; declare stats: any; declare code: any; declare error: string; declare loading: boolean;
+  declare tab: string;
   private timer: number | undefined;
 
   static styles = [...HestiaElement.styles, css`
@@ -28,16 +30,20 @@ export class OracleBrain extends HestiaElement {
     .num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
     .preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .note { font-size: 12px; color: var(--text-3); }
+    .tabs { display: flex; gap: 4px; margin: 4px 0 14px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tabs button { font: inherit; background: none; border: 0; padding: 8px 12px; color: var(--text-2); cursor: pointer;
+      border-bottom: 2px solid transparent; white-space: nowrap; }
+    .tabs button[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   `];
 
-  constructor() { super(); this.activity = null; this.stats = null; this.code = null; this.error = ''; this.loading = false; }
+  constructor() { super(); this.activity = null; this.stats = null; this.code = null; this.error = ''; this.loading = false; this.tab = 'attivita'; }
 
   connectedCallback() {
     super.connectedCallback();
     this.load();
     this.onHost('refresh', () => this.load());
     this.onHost('visible', () => this.load());
-    this.timer = window.setInterval(() => { if (!document.hidden) this.load(); }, 30000);
+    this.timer = window.setInterval(() => { if (!document.hidden && this.tab === 'attivita') this.load(); }, 30000);
   }
   disconnectedCallback() { super.disconnectedCallback(); window.clearInterval(this.timer); }
 
@@ -150,18 +156,30 @@ export class OracleBrain extends HestiaElement {
     </hxk-card>`;
   }
 
-  render() {
-    if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
-    if (!this.activity && !this.stats) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
-    return html`<div class="page">
-      <div class="head"><h1>Cervello</h1><span class="sub">Cosa fa Oracle: richieste, modelli, token</span><span class="grow"></span>
-        <hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>Aggiorna</hxk-button></div>
-      ${this.stats ? this.kpis() : nothing}
+  private tabs() {
+    const items = [['attivita', 'Attività'], ['uso', 'Uso'], ['modelli', 'Modelli']];
+    return html`<div class="tabs" role="tablist">${items.map(([id, label]) => html`<button role="tab" aria-selected=${this.tab === id}
+      @click=${() => { this.tab = id; }}>${label}</button>`)}</div>`;
+  }
+
+  private activityTab() {
+    if (this.error) return html`<hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state>`;
+    if (!this.activity && !this.stats) return html`<hxk-state kind="loading"></hxk-state>`;
+    return html`${this.stats ? this.kpis() : nothing}
       <div class="cols">
         <div class="col" style="gap:16px">${this.renderActivity()}</div>
         <div class="col" style="gap:16px">${this.renderDays()}${this.stats ? this.renderToday() : nothing}${this.renderUseCases()}${this.renderCode()}</div>
       </div>
-      <p class="note">I numeri sono in memoria: si azzerano quando Oracle riparte.</p>
+      <p class="note">I numeri di questa scheda sono in memoria: si azzerano quando Oracle riparte. La scheda Uso li conserva.</p>`;
+  }
+
+  render() {
+    return html`<div class="page">
+      <div class="head"><h1>Cervello</h1><span class="sub">Cosa fa Oracle: richieste, modelli, token</span><span class="grow"></span>
+        ${this.tab === 'attivita' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>Aggiorna</hxk-button>` : nothing}</div>
+      ${this.tabs()}
+      ${this.tab === 'uso' ? html`<oracle-usage .host=${this.host}></oracle-usage>`
+        : this.tab === 'modelli' ? html`<oracle-models .host=${this.host}></oracle-models>` : this.activityTab()}
     </div>`;
   }
 }

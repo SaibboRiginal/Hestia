@@ -1,9 +1,8 @@
 """LLM extraction via Oracle (single owner of LLM provider access).
 
 Scout holds no API key and no model choice: it calls Oracle's ``/api/llm/generate`` via Hub
-with ``use_case: scout_extraction``. Provider/model and the model to try when the first one is
-out of quota (429) are Oracle settings ``oracle.models.scout_extraction.*`` (Oracle falls back
-to the reserve model by itself).
+with ``use_case: scout.annunci`` (declared in Scout's Hub registration, ``LLM_USECASES``). The chain of models
+(and the skip of models out of quota) is Oracle's: Oracle → Cervello → Modelli.
 """
 from __future__ import annotations
 
@@ -19,7 +18,7 @@ logger = logging.getLogger("hestia_scout.evaluator")
 
 
 class OracleEvaluator(BaseEvaluator):
-    USE_CASE = "scout_extraction"   # Oracle settings oracle.models.scout_extraction.*
+    USE_CASE = "scout.annunci"   # declared in main.LLM_USECASES; chain chosen in Oracle → Modelli
 
     def __init__(self, system_prompt: str, hub_api_url: str | None = None):
         super().__init__(system_prompt)

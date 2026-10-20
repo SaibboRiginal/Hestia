@@ -19,9 +19,8 @@ _CONFIDENCE_THRESHOLD = 0.55  # Minimum confidence to accept quick_chat classifi
 class ChatClassifier:
     """Classifies a user message and returns routing parameters including action intent."""
 
-    def __init__(self, router_agent, fallback_router_agent) -> None:
-        self._router = router_agent
-        self._fallback = fallback_router_agent
+    def __init__(self, router_agent) -> None:
+        self._router = router_agent  # use case chain: fallback models are in the chain
 
     def classify(
         self,
@@ -53,10 +52,7 @@ class ChatClassifier:
         try:
             raw = self._router.ask(prompt, thinking=False).strip()
         except Exception:
-            try:
-                raw = self._fallback.ask(prompt, thinking=False).strip()
-            except Exception:
-                return defaults
+            return defaults
 
         return self._parse(raw, available_domains, defaults)
 

@@ -172,8 +172,9 @@ ui = PluginClient("oracle", title="Oracle", icon="brain", color="purple", kind="
                   version=os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="oracle.js", api_prefix="/api/ui/",
          pages=[page("cervello", "Cervello", element="oracle-brain", icon="brain", order=120,
-                     help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), uso dei modelli "
-                          "per caso d'uso, token e costi per giorno, stato di Claude Code."),
+                     help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), stato di Claude "
+                          "Code; scheda Uso (chiamate, token, cache e costi per modulo e conversazione) e scheda "
+                          "Modelli (fornitori, catene di modelli, uso scelto da ogni modulo)."),
                 page("documenti", "Documenti", element="oracle-documents", icon="file", order=121,
                      help="I file che hai condiviso con Hestia (in chat o da qui): cercali come fa la chat, "
                           "aggiungine di nuovi, tienili per sempre o eliminali.")],
@@ -205,11 +206,13 @@ def ui_stats(days: int = 14):
 
 
 def _use_case_label(use_case: str) -> str:
-    """Italian name of a use case (the same labels as the oracle.models.* settings)."""
+    """Italian name of a use case (declared by Oracle or by its module) or of an agent slot."""
+    from core.services import llm_chains
     if use_case == "claude_code":
         return "Claude Code (Forge)"
-    entry = _oracle_settings.USECASES.get(use_case) or _oracle_settings.SERVICE_USECASES.get(use_case)
-    return entry[0] if entry else use_case
+    use_case = llm_chains.SLOTS.get(use_case, use_case)
+    entry = llm_chains.declared_usecases().get(use_case)
+    return entry["label"] if entry else use_case
 
 
 @app.get("/api/ui/code")
@@ -217,6 +220,77 @@ def ui_code():
     """Claude Code ("code" use case): ready or why not, plus the recent Forge runs."""
     from core.services.claude_code_runner import runs, status
     return {"status": "ok", **status(), **runs()}
+
+
+# ── Cervello → Modelli and Uso tabs (dossier docs/work/2026-10-19-oracle-a-blocchi §D-E) ──────────────────
+_MODEL_PARTS = {"providers": _oracle_settings.PROVIDERS_KEY, "chains": _oracle_settings.CHAINS_KEY,
+                "usecases": _oracle_settings.USECASES_KEY}
+
+
+class UiModelsWrite(BaseModel):
+    value: dict
+
+
+@app.get("/api/ui/models")
+def ui_models():
+    """Providers (no keys), standards, chains with each step's state, use cases by module, modes."""
+    from core.services import llm_chains, llm_providers
+    return {"status": "ok", "providers": llm_providers.public_view(),
+            "types": [{"value": k, "label": v} for k, v in llm_providers.TYPES.items()],
+            "chains": llm_chains.chains_view(), "usecases": llm_chains.usecases_view(),
+            "overrides": _oracle_settings.settings.get(_oracle_settings.USECASES_KEY, {}) or {},
+            "modes": [{"value": m, "label": label} for m, label in llm_chains.MODES]}
+
+
+@app.get("/api/ui/models/list")
+def ui_models_list(provider: str):
+    """Model names a provider offers (picker of the chain editor)."""
+    from core.services import llm_providers
+    if not llm_providers.get(provider):
+        raise HTTPException(status_code=404, detail="unknown provider")
+    return {"status": "ok", "provider": provider, "models": llm_providers.list_models(provider)}
+
+
+@app.put("/api/ui/models/{part}")
+def ui_models_write(part: str, req: UiModelsWrite):
+    """Marko's edit from the page Modelli (providers | chains | usecases): stored through Themis."""
+    from core.services import llm_providers
+    key = _MODEL_PARTS.get(part)
+    if not key:
+        raise HTTPException(status_code=404, detail="part must be providers | chains | usecases")
+    value = req.value
+    if part == "providers":
+        bad = [n for n, p in value.items() if not isinstance(p, dict) or p.get("type") not in llm_providers.TYPES]
+        if bad or not value:
+            raise HTTPException(status_code=400, detail=f"unknown standard for: {', '.join(bad) or 'empty'}")
+    elif part == "chains":
+        if not value or any(not isinstance(c, dict) or not isinstance(c.get("steps"), list) for c in value.values()):
+            raise HTTPException(status_code=400, detail="every chain needs a list of steps")
+    elif part == "usecases":
+        if any(not isinstance(v, dict) for v in value.values()):
+            raise HTTPException(status_code=400, detail="every use case needs an object")
+    if not _oracle_settings.settings.put(key, value, actor="user", reason="WebUI Cervello → Modelli"):
+        raise HTTPException(status_code=502, detail="Themis did not accept the change")
+    return {"status": "ok", "key": key}
+
+
+@app.post("/api/ui/models/quota/reset")
+def ui_models_quota_reset(provider: str = "", model: str = ""):
+    """«Riprova adesso»: forget a model's quota state (all when no provider)."""
+    from core.services import llm_chains
+    llm_chains.clear_exhausted(provider, model)
+    return {"status": "ok"}
+
+
+@app.get("/api/ui/usage")
+def ui_usage(group: str = "module", days: int = 7, module: str = "", session_id: str = "", use_case: str = ""):
+    """Tab Uso: same as ``GET /api/llm/usage``."""
+    return llm_usage_endpoint(group=group, days=days, module=module, session_id=session_id, use_case=use_case)
+
+
+@app.get("/api/ui/usage/calls")
+def ui_usage_calls(days: int = 7, module: str = "", session_id: str = "", use_case: str = "", limit: int = 100):
+    return llm_usage_calls_endpoint(days=days, module=module, session_id=session_id, use_case=use_case, limit=limit)
 
 
 # ── Documenti page (SPEC §A4): documents in Archive, same search and archiving pipeline as the chat ─────────
@@ -275,9 +349,100 @@ def ui_documents_delete(document_id: str):
 
 @app.get("/api/llm/models")
 def llm_models_endpoint(provider: str = "ollama"):
-    """Model choices for the settings panel (options_source of oracle.models.*.model)."""
-    from core.services.llm_gateway import list_models
-    return {"provider": provider, "options": list_models(provider)}
+    """Model choices of a named provider (chain editor in Modelli)."""
+    from core.services import llm_providers
+    return {"provider": provider, "options": [{"value": m, "label": m} for m in llm_providers.list_models(provider)]}
+
+
+@app.get("/api/llm/providers")
+def llm_providers_endpoint(check: bool = False):
+    """Named providers (setting oracle.providers): type, address, key set (never the key), availability,
+    models out of quota; ``check`` also lists each available provider's models."""
+    from core.services import llm_providers
+    from agents.providers import PROVIDER_TYPES
+    types = [{"value": t, "label": label} for t, label in llm_providers.TYPES.items()]
+    return {"status": "ok", "providers": llm_providers.public_view(check=check), "types": types,
+            "class_types": sorted(PROVIDER_TYPES)}
+
+
+@app.get("/api/llm/chains")
+def llm_chains_endpoint():
+    """Chains (setting oracle.chains) with each step's state (available, out of quota until)."""
+    from core.services import llm_chains
+    return {"status": "ok", "chains": llm_chains.chains_view()}
+
+
+@app.get("/api/llm/usecases")
+def llm_usecases_endpoint():
+    """Every use case — Oracle's, the ones modules declare in their Hub registration, undeclared ones seen —
+    with its effective chain, mode and thinking (overrides: setting oracle.usecases)."""
+    from core.services import llm_chains
+    return {"status": "ok", "usecases": llm_chains.usecases_view(), "modes": [
+        {"value": v, "label": label} for v, label in llm_chains.MODES]}
+
+
+@app.get("/api/llm/usecases/{use_case}")
+def llm_usecase_status_endpoint(use_case: str):
+    """What an OpenAI-compatible chat on *use_case* uses now (Forge engine ``oracle``): first usable step,
+    context window, whether any usable step is billed."""
+    from core.services.llm_gateway import usecase_status
+    return {"status": "ok", **usecase_status(use_case)}
+
+
+# ── External agent MCP bridge (dossier 2026-10-19-oracle-a-blocchi §D): loopback only, one token per turn ─────
+def _bridge_guard(request: Request) -> None:
+    host = (request.client.host if request.client else "") or ""
+    if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
+        raise HTTPException(status_code=403, detail="bridge is loopback only")
+
+
+@app.get("/api/agent-bridge/{token}/tools")
+def agent_bridge_tools(token: str, request: Request):
+    """Tools of the external agent's running turn (the stdio MCP bridge's tools/list)."""
+    from core.services import external_agent
+    _bridge_guard(request)
+    try:
+        return {"tools": external_agent.list_tools(token)}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown or finished turn")
+
+
+@app.post("/api/agent-bridge/{token}/call")
+def agent_bridge_call(token: str, body: dict, request: Request):
+    """Run one tool for the external agent (same handler, approval gate and logs as the internal loop)."""
+    from core.services import external_agent
+    _bridge_guard(request)
+    try:
+        return external_agent.call_tool(token, str(body.get("name") or ""), body.get("params") or {})
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown or finished turn")
+
+
+@app.get("/api/llm/usage")
+def llm_usage_endpoint(group: str = "module", days: int = 7, module: str = "", session_id: str = "",
+                       use_case: str = ""):
+    """Usage of the models (panel Cervello → Uso): sums of the calls of the last *days* grouped by
+    module | session | usecase | model | step | day (rows kept in Archive, store ``llm-usage``)."""
+    from core.services import llm_usage
+    try:
+        data = llm_usage.query("summary", {"group": group, "days": days, "module": module,
+                                           "session_id": session_id, "use_case": use_case})
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=f"usage not readable: {exc}")
+    return {"status": "ok", **(data if isinstance(data, dict) else {"rows": []})}
+
+
+@app.get("/api/llm/usage/calls")
+def llm_usage_calls_endpoint(days: int = 7, module: str = "", session_id: str = "", use_case: str = "",
+                             limit: int = 100):
+    """Latest single calls (newest first), e.g. the detail of one session."""
+    from core.services import llm_usage
+    try:
+        data = llm_usage.query("rows", {"days": days, "module": module, "session_id": session_id,
+                                        "use_case": use_case, "limit": limit})
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=f"usage not readable: {exc}")
+    return {"status": "ok", **(data if isinstance(data, dict) else {"rows": []})}
 
 
 @app.on_event("startup")
@@ -581,7 +746,7 @@ def chat_endpoint(req: ChatRequest):
                 save_history=req.save_history,
                 mode=mode,
                 model=req.model,
-                client=req.client or "")),
+                client=req.client or ""), client=req.client or ""),
             media_type="application/x-ndjson"
         )
     except Exception as e:
@@ -957,17 +1122,10 @@ def documents_search_endpoint(query: str):
     return {"count": len(chunks), "chunks": chunks}
 
 
-@app.get("/api/llm/profiles")
-def llm_profiles_endpoint(check: bool = True):
-    """LLM profiles Oracle can serve (no secrets).  Used by Forge."""
-    from core.services.llm_gateway import list_profiles
-    return {"status": "ok", "profiles": list_profiles(check=check)}
-
-
 @app.post("/api/llm/chat")
 def llm_chat_endpoint(req: dict):
-    """OpenAI-compatible chat (messages + tools) on a named profile.
-    Body: {profile: local|cloud|..., messages, tools?, temperature?, model?}"""
+    """OpenAI-compatible chat (messages + tools) along a use case's chain (Forge engine ``oracle``).
+    Body: {use_case?: forge.codice, messages, tools?, temperature?, max_tokens?}"""
     from core.services.llm_gateway import LLMGatewayError, chat
     try:
         return chat(req or {})
@@ -1004,74 +1162,39 @@ def llm_code_endpoint(req: CodeTaskRequest):
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """
-    Ollama-compatible LLM endpoint for services.
-    Accepts: {"prompt": "...", "use_case": "...", "model": "...", "provider": "..."}
-    ``use_case`` (e.g. scout_extraction, athena_auditor) picks the module's model settings
-    (``oracle.models.<use_case>.*``); default = generic. Explicit model/provider still win.
-    Returns: {"response": "...", "model": "...", "provider": "..."}
+    Plain generation for services: {"prompt": "...", "use_case": "scout.annunci"}.
+    ``use_case`` (declared by the module in its Hub registration) picks the chain (setting oracle.usecases,
+    default «Uso generale»); the chain tries its steps in order and skips the ones out of quota.
+    Returns: {"response": "...", "model": "...", "provider": "...", "use_case": "...", "chain": "..."}
     """
-    from agents.universal_agent import UniversalAgent
+    from core.services import llm_chains
+    prompt = str(req.get("prompt") or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt required")
+    use_case = str(req.get("use_case") or llm_chains.GENERAL).strip().lower()
+    from core.services import external_agent
+    if external_agent.mode_for(use_case) == "esterna":
+        try:   # external agent, one shot without tools
+            text = external_agent.ask(prompt, use_case=use_case)
+            cfg = external_agent.brain()
+            return {"response": text, "model": cfg["model"], "provider": cfg["agent"], "use_case": use_case,
+                    "chain": f"agente:{cfg['agent']}"}
+        except external_agent.AgentError as exc:
+            if external_agent.brain()["fallback"] != "interna":
+                raise HTTPException(status_code=503, detail=f"external agent: {exc}")
+            logger.warning("[🔄] event=llm_generate_external_failed use_case=%s fallback=interna error=%s",
+                           use_case, str(exc)[:200])
+    agent = llm_chains.agent_for(use_case)
     try:
-        prompt = req.get("prompt", "").strip()
-        if not prompt:
-            raise HTTPException(status_code=400, detail="prompt required")
-
-        # Same source as AgentFactory: settings oracle.models.<use case>.* (Themis).
-        from core.services import oracle_settings
-        use_case = str(req.get("use_case") or "").strip().lower()
-        if use_case not in oracle_settings.SERVICE_USECASES and use_case not in oracle_settings.USECASES:
-            if use_case:
-                logger.warning("[🔄] event=llm_generate_unknown_use_case use_case=%s fallback=generic", use_case)
-            use_case = "generic"
-        generic = oracle_settings.usecase(use_case)
-        default_provider, default_model = generic["prov"], generic["mod"]
-
-        model = req.get("model") or default_model
-        provider = req.get("provider") or default_provider
-
-        agent = UniversalAgent(
-            role_prompt="", provider=provider, model_name=model)
-        agent.label = "api_generate"  # runtime stats
-        try:
-            response_text = agent.ask(prompt)
-            return {"response": response_text, "model": model, "provider": provider}
-        except Exception as primary_exc:
-            logger.warning(
-                "event=llm_generate_primary_failed "
-                "provider=%s model=%s error=%s — trying fallback",
-                provider, model, primary_exc)
-            # Fallback: same source of truth as AgentFactory (the use case's fallback settings).
-            fallback_provider, fallback_model = generic["fb_prov"], generic["fb_mod"]
-            try:
-                fallback_agent = UniversalAgent(
-                    role_prompt="", provider=fallback_provider,
-                    model_name=fallback_model)
-                fallback_agent.label = "api_generate"
-                response_text = fallback_agent.ask(prompt)
-                logger.info(
-                    "event=llm_generate_fallback_success "
-                    "fallback_provider=%s fallback_model=%s",
-                    fallback_provider, fallback_model)
-                return {
-                    "response": response_text,
-                    "model": fallback_model,
-                    "provider": fallback_provider,
-                }
-            except Exception as fallback_exc:
-                logger.exception(
-                    "event=llm_generate_fallback_failed "
-                    "fallback_provider=%s fallback_model=%s",
-                    fallback_provider, fallback_model)
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Primary ({provider}/{model}): {primary_exc} | "
-                           f"Fallback ({fallback_provider}/{fallback_model}): {fallback_exc}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(
-            "event=unhandled_error_llm_generate_endpoint Unhandled error in llm/generate endpoint")
-        raise HTTPException(status_code=500, detail=str(e))
+        text = agent.ask(prompt)
+    except llm_chains.ChainExhausted as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        logger.exception("event=unhandled_error_llm_generate_endpoint use_case=%s", use_case)
+        raise HTTPException(status_code=500, detail=str(exc))
+    step = llm_chains.last_answered() or {}
+    return {"response": text, "model": step.get("model", ""), "provider": step.get("provider", ""),
+            "use_case": use_case, "chain": step.get("chain", "")}
 
 
 @app.delete("/api/chat/{session_id}")

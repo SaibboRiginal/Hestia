@@ -155,7 +155,7 @@ class TestScoutHealth:
 
 @pytest.mark.unit
 def test_oracle_evaluator_sends_use_case_not_model(monkeypatch):
-    """Model choice lives in Oracle (oracle.models.scout_extraction.*): Scout sends only the use case."""
+    """Model choice lives in Oracle (use case scout.annunci → chain): Scout sends only the use case."""
     from evaluators.oracle_evaluator import OracleEvaluator
     sent = {}
 
@@ -173,6 +173,6 @@ def test_oracle_evaluator_sends_use_case_not_model(monkeypatch):
     monkeypatch.setattr("evaluators.oracle_evaluator.requests.post", _post)
     out = OracleEvaluator("SYS", hub_api_url="http://hub/api").evaluate("annuncio")
     assert sent["url"] == "http://hub/api/route/oracle/api/llm/generate"
-    assert sent["body"]["use_case"] == "scout_extraction"
+    assert sent["body"]["use_case"] == "scout.annunci"
     assert "model" not in sent["body"] and "provider" not in sent["body"]
     assert out == {"raw_response": "{}", "model_used": "gemini-2.5-flash", "error": None}

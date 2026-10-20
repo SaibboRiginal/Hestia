@@ -64,3 +64,18 @@ class TestEngineWindow:
         assert "context full (8192 token)" in eng._stop_reason(3, 40, "length")
         assert eng._stop_reason(40, 40, "stop").startswith("turn limit reached (40)")
         assert eng._stop_reason(5, 40, "stop") == "model stopped calling tools without finish"
+
+
+@pytest.mark.unit
+def test_engines_import_like_the_container():
+    """Regression: the container has only /code (app + hestia_common) on sys.path, no bare ``core``."""
+    import subprocess, sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    shared = root.parent / "Hestia-Shared"
+    code = ("import sys; sys.path[:0]=[sys.argv[1], sys.argv[2]];"
+            "from app.forge.engines import BuiltinEngine; from app.forge.config import load_forge_config;"
+            "BuiltinEngine(load_forge_config())")
+    res = subprocess.run([sys.executable, "-c", code, str(root), str(shared)], capture_output=True, text=True,
+                         cwd="/", env={"PATH": "/usr/bin:/bin", "LOG_LEVEL": "WARNING"})
+    assert res.returncode == 0, res.stderr[-800:]

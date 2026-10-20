@@ -1,6 +1,6 @@
-"""Provider ``openai`` — any OpenAI-compatible server: llama.cpp ``llama-server``, vLLM, LM Studio…
-
-Endpoint is infrastructure (``ORACLE_OPENAI_BASE_URL``, optional ``ORACLE_OPENAI_API_KEY``).
+"""Provider type ``openai`` — any OpenAI-compatible server: llama.cpp ``llama-server``, vLLM, LM Studio,
+DeepSeek, OpenRouter, Groq…  Address and key come from the named provider (setting ``oracle.providers``,
+key ``ORACLE_KEY_<NAME>``, optional for local servers).
 Prompt cache: the static part of the prompt (before ``SYSTEM_PROMPT_DYNAMIC_BOUNDARY``) goes in the
 system message so every request starts with the same prefix; llama-server reuses it with
 ``cache_prompt`` (setting), vLLM with automatic prefix caching (server flag).
@@ -22,11 +22,11 @@ logger = logging.getLogger("hestia_oracle.providers.openai")
 
 class OpenAICompatProvider(LLMProvider):
     TYPE = "openai"
-    LABEL = "Server compatibile OpenAI (llama-server, vLLM)"
+    LABEL = "Compatibile OpenAI"
     BILLING = "Server locale · gratis"
     CONFIG_FIELDS = (
-        {"key": "base_url", "type": "string", "label": "Indirizzo (…/v1)", "env": "ORACLE_OPENAI_BASE_URL"},
-        {"key": "api_key", "type": "secret_ref", "label": "Chiave API", "env": "ORACLE_OPENAI_API_KEY"},
+        {"key": "base_url", "type": "string", "label": "Indirizzo (…/v1)"},
+        {"key": "api_key", "type": "secret_ref", "label": "Chiave API (ORACLE_KEY_<NOME>)"},
         {"key": "cache_prompt", "type": "bool", "label": "Riusa la cache del prompt", "default": True},
         {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 180},
     )
@@ -35,7 +35,7 @@ class OpenAICompatProvider(LLMProvider):
     # ── Introspection ─────────────────────────────────────────────────────
     def available(self) -> tuple[bool, str]:
         if not self.config.get("base_url"):
-            return False, "ORACLE_OPENAI_BASE_URL not set"
+            return False, "address not set"
         return True, "ok"
 
     def _url(self, path: str) -> str:

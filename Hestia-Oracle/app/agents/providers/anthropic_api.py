@@ -1,4 +1,5 @@
-"""Provider ``anthropic`` — Claude through the Anthropic API (key ``ORACLE_ANTHROPIC_API_KEY``).
+"""Provider type ``anthropic`` — the Anthropic Messages standard: Claude API, or any compatible endpoint
+(e.g. DeepSeek's). Address and key come from the named provider (``ORACLE_KEY_<NAME>``).
 
 Thinking: the chat mode level maps to ``thinking_by_mode`` (off → thinking disabled + effort
 low; otherwise adaptive thinking with that effort, summarized reasoning returned as
@@ -20,11 +21,12 @@ _EPHEMERAL = {"type": "ephemeral"}
 
 class AnthropicProvider(LLMProvider):
     TYPE = "anthropic"
-    LABEL = "Claude (chiave API)"
+    LABEL = "Compatibile Anthropic"
     CONTEXT_WINDOW = 200_000
     BILLING = "API Anthropic · a consumo"
     CONFIG_FIELDS = (
-        {"key": "api_key", "type": "secret_ref", "label": "Chiave API", "env": "ORACLE_ANTHROPIC_API_KEY"},
+        {"key": "base_url", "type": "string", "label": "Indirizzo (vuoto = Anthropic)", "default": ""},
+        {"key": "api_key", "type": "secret_ref", "label": "Chiave API (ORACLE_KEY_<NOME>)"},
         {"key": "thinking_by_mode", "type": "object", "label": "Ragionamento per modalità",
          "default": {"fast": "off", "normal": "low", "deep": "high"}},
         {"key": "prompt_cache", "type": "bool", "label": "Cache del prompt", "default": True},
@@ -41,7 +43,7 @@ class AnthropicProvider(LLMProvider):
     # ── Introspection ─────────────────────────────────────────────────────
     def available(self) -> tuple[bool, str]:
         if not self.config.get("api_key"):
-            return False, "ORACLE_ANTHROPIC_API_KEY not set"
+            return False, "API key not set (ORACLE_KEY_<NAME>)"
         return True, "ok"
 
     def list_models(self) -> list[str]:
@@ -63,6 +65,7 @@ class AnthropicProvider(LLMProvider):
             if not ok:
                 raise RuntimeError(f"anthropic provider unavailable: {detail}")
             self._client = anthropic.Anthropic(api_key=self.config["api_key"],
+                                               base_url=self.config.get("base_url") or None,
                                                timeout=float(self.config["timeout_sec"]))
         return self._client
 

@@ -48,9 +48,10 @@ def _workdir_root() -> Path:
 
 
 def _model() -> str:
-    """Claude Code model for Forge: setting ``oracle.models.claude_code.model`` ("" = CLI default)."""
-    from core.services import oracle_settings
-    return str(oracle_settings.settings.get(oracle_settings.CLAUDE_CODE_MODEL) or "").strip()
+    """Claude Code model for Forge: the ``claude`` (subscription) step of the «forge.codice» chain, "" = CLI
+    default."""
+    from core.services import llm_chains
+    return llm_chains.claude_code_model()
 
 
 def status() -> dict[str, Any]:
@@ -146,7 +147,8 @@ def _run(workdir: str, prompt: str, append_system_prompt: str = "",
     with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as err, \
             tpath.open("w", encoding="utf-8") as out:
         # Oracle's own Anthropic API key (chat provider) is never visible to the coding agent.
-        env = {k: v for k, v in os.environ.items() if k != "ORACLE_ANTHROPIC_API_KEY"}
+        from agents.llm_config import cli_env
+        env = cli_env()  # no API key reaches Claude Code (subscription billing only)
         proc = subprocess.Popen(cmd, cwd=str(target), stdout=subprocess.PIPE, stderr=err, env=env,
                                 text=True, encoding="utf-8", errors="replace", bufsize=1)
         def _kill() -> None:

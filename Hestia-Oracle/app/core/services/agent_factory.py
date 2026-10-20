@@ -1,26 +1,23 @@
-"""LLM agent factory — use-case model config and UniversalAgent wiring.
+"""LLM agent factory — one chain agent per Oracle use case.
 
-Single responsibility: read the use-case model settings (Themis, ``oracle.models.*``),
-validate model/provider pairs, and construct UniversalAgent instances used by Oracle.
+Single responsibility: build the ``AgentBundle`` Oracle's services use. Each slot is an
+``llm_chains.ChainAgent`` for one of Oracle's use cases; the chain (ordered provider/model steps,
+quota skip, fallback) and the providers are read live from settings at every call, so a change
+from any client needs no restart and no reconfiguration.
 
-Four use cases — each with primary + fallback:
-  generic   → chat, classify, tool selection, memory extraction, formatting
-  reasoning → deep thinking, complex multi-step analysis (loaded on demand)
-  code      → code generation, debugging, technical tasks
-  embedding → vector embeddings (must output 768-dim vectors)
+  generic   → oracle.generale     chat, classify, tool selection, memory extraction, formatting
+  reasoning → oracle.ragionamento deep thinking, complex multi-step analysis
+  code      → oracle.codice       code generation, debugging, technical tasks
+  documents → oracle.documenti    documents, images, audio (vision-capable chain)
+  embedding → oracle.embedding    vector embeddings (one model: vectors must stay comparable)
 
-Consumers receive an AgentBundle dataclass keyed by use case.
 Mode (quick/auto/thinking) controls orchestration; use case controls which brain.
 """
 import logging
-import os
 from dataclasses import dataclass
 
-import requests
-
-from agents.providers import is_provider_type
-from agents.universal_agent import UniversalAgent
-from core.services import oracle_settings, prompt_config
+from core.services import prompt_config
+from core.services.llm_chains import SLOTS, ChainAgent
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -36,22 +33,13 @@ _CODE_SYSTEM_PROMPT = (
 
 @dataclass
 class AgentBundle:
-    """LLM agents keyed by USE CASE, not internal role name.
+    """LLM agents keyed by USE CASE slot (each a chain of models)."""
 
-    generic   → daily driver: chat, classify, tool selection, memory, formatting
-    reasoning → heavy lifter: deep thinking, complex analysis (loaded on demand)
-    code      → specialist: code generation, debugging, technical tasks
-    embedding → vector embeddings (tiny model, always loaded, 768-dim output)
-    """
-
-    generic: UniversalAgent
-    generic_fallback: UniversalAgent
-    reasoning: UniversalAgent
-    reasoning_fallback: UniversalAgent
-    code: UniversalAgent
-    code_fallback: UniversalAgent
-    embedding: UniversalAgent
-    embedding_fallback: UniversalAgent
+    generic: ChainAgent
+    reasoning: ChainAgent
+    code: ChainAgent
+    documents: ChainAgent
+    embedding: ChainAgent
 
     @property
     def generic_model_name(self) -> str:
@@ -59,240 +47,16 @@ class AgentBundle:
 
 
 class AgentFactory:
-    """Reads the ``oracle.models.*`` settings and constructs an AgentBundle.
-
-    Models come from settings (defaults declared in ``oracle_settings``), changed live
-    from any client: ``reconfigure`` updates the existing agents in place.
-    """
-
-    # Four architectural use cases.  The MODEL for each comes from settings.
-    _USECASES: tuple[str, ...] = ("generic", "reasoning", "code", "embedding")
-
-    # Per-model cache: model_name → Ollama family (the family set is a live setting,
-    # oracle.provider.ollama.thinking_families, checked at every resolution).
-    _family_cache: dict[str, str] = {}
-
-    @staticmethod
-    def _thinking_families() -> frozenset[str]:
-        return frozenset(oracle_settings.get_list(oracle_settings.THINKING_FAMILIES, lower=True))
-
-    @staticmethod
-    def _prepared_config() -> dict[str, dict[str, str]]:
-        cfg = AgentFactory._read_config()
-        AgentFactory._validate_config(cfg)
-        AgentFactory._normalize_gemini_models(cfg)
-        AgentFactory._remap_gemini_when_no_api_key(cfg)
-        AgentFactory._resolve_thinking_flags(cfg)
-        AgentFactory._log_config(cfg)
-        return cfg
+    """Builds the AgentBundle (chains are resolved live at call time)."""
 
     @staticmethod
     def create() -> AgentBundle:
-        return AgentFactory._build_bundle(AgentFactory._prepared_config())
-
-    @staticmethod
-    def reconfigure(bundle: AgentBundle) -> None:
-        """Apply changed model settings to an existing bundle IN PLACE.
-
-        Every Oracle service holds references to these agent objects, so re-initialising
-        them (instead of replacing them) switches models everywhere without a restart.
-        """
-        try:
-            cfg = AgentFactory._prepared_config()
-        except Exception as exc:
-            logger.warning("[🔄] event=oracle_agents_reconfigure_failed error=%s keeping=previous", exc)
-            return
-        for slot, entry in cfg.items():
-            agent = getattr(bundle, slot, None)
-            if agent is None:
-                continue
-            agent.__init__(role_prompt=agent.role_prompt, provider=entry["prov"],
-                           model_name=entry["mod"], thinking=entry.get("thinking", False), label=slot)
-        logger.info("event=oracle_agents_reconfigured generic=%s/%s reasoning=%s/%s code=%s/%s embedding=%s/%s",
-                    cfg["generic"]["prov"], cfg["generic"]["mod"], cfg["reasoning"]["prov"],
-                    cfg["reasoning"]["mod"], cfg["code"]["prov"], cfg["code"]["mod"],
-                    cfg["embedding"]["prov"], cfg["embedding"]["mod"])
-
-    # ── Config reading ──────────────────────────────────────────────────────
-
-    @staticmethod
-    def _read_config() -> dict[str, dict[str, str]]:
-        """Read settings ``oracle.models.<usecase>.{provider,model,thinking,fallback_*}``."""
-        result: dict[str, dict[str, str]] = {}
-        for usecase in AgentFactory._USECASES:
-            uc = oracle_settings.usecase(usecase)
-            result[usecase] = {"prov": uc["prov"], "mod": uc["mod"], "thinking_raw": uc["thinking_raw"]}
-            result[f"{usecase}_fallback"] = {"prov": uc["fb_prov"], "mod": uc["fb_mod"]}
-        return result
-
-    # ── Validation ──────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _validate_config(cfg: dict[str, dict[str, str]]) -> None:
-        """Refuse to start if any primary use case has no model configured."""
-        missing: list[str] = []
-        for usecase in AgentFactory._USECASES:
-            if not cfg[usecase]["mod"]:
-                missing.append(oracle_settings.key(usecase, "model"))
-        if missing:
-            msg = (
-                "event=agent_factory_missing_models "
-                "Empty model settings: %s. "
-                "Set them in Impostazioni → Oracle → Modelli."
-            ) % ", ".join(missing)
-            logger.critical(msg)
-            raise RuntimeError(msg)
-
-    # ── Thinking auto-detection ───────────────────────────────────────────────
-
-    @staticmethod
-    def _detect_thinking_support(model_name: str) -> bool:
-        """Check whether *model_name* supports the Ollama ``think`` parameter.
-
-        Queries ``POST /api/show`` and inspects ``details.family`` against
-        the known-thinking-families set.  Cached per model name.
-        """
-        if model_name not in AgentFactory._family_cache:
-            ollama_url = str(
-                os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-            ).replace("/api/generate", "").replace("/api/chat", "").rstrip("/")
-            try:
-                resp = requests.post(f"{ollama_url}/api/show", json={"name": model_name}, timeout=5)
-                resp.raise_for_status()
-                info = resp.json() or {}
-                details = info.get("details") if isinstance(info.get("details"), dict) else {}
-                AgentFactory._family_cache[model_name] = str(details.get("family", "") or "").strip().lower()
-            except Exception as exc:
-                logger.debug(
-                    "event=thinking_auto_detect_failed model=%s error=%s — assuming False",
-                    model_name, exc,
-                )
-                return False
-        family = AgentFactory._family_cache[model_name]
-        supports = bool(family) and family in AgentFactory._thinking_families()
-        logger.info(
-            "event=thinking_auto_detect model=%s family=%s supports=%s",
-            model_name, family or "unknown", supports,
-        )
-        return supports
-
-    @staticmethod
-    def _resolve_thinking_flag(usecase: str, model_name: str, thinking_raw: str) -> bool:
-        """Resolve the thinking flag for *usecase*.
-
-        - ``"true"``  → always on
-        - ``"false"`` → always off
-        - ``"auto"``  → detect via Ollama /api/show (family-based heuristic)
-        """
-        if thinking_raw == "true":
-            return True
-        if thinking_raw == "false":
-            return False
-        # "auto" — detect from model architecture
-        return AgentFactory._detect_thinking_support(model_name)
-
-    @staticmethod
-    def _resolve_thinking_flags(cfg: dict[str, dict[str, str]]) -> None:
-        """Add resolved ``thinking`` bool to each use-case entry in *cfg*."""
-        for key, entry in cfg.items():
-            if key.endswith("_fallback"):
-                entry["thinking"] = False  # fallbacks never think
-            elif is_provider_type(entry.get("prov", "")):
-                # Claude providers always support thinking: only "false" (Mai) turns it off.
-                entry["thinking"] = entry.pop("thinking_raw", "auto") != "false"
-            else:
-                entry["thinking"] = AgentFactory._resolve_thinking_flag(
-                    key, entry["mod"], entry.pop("thinking_raw", "auto"),
-                )
-
-    # ── Gemini model name validation ─────────────────────────────────────────
-
-    _GEMINI_TEXT_DEFAULT = "gemini-2.5-flash"
-    _GEMINI_EMBED_DEFAULT = "models/embedding-001"
-
-    @staticmethod
-    def _normalize_gemini_models(cfg: dict[str, dict[str, str]]) -> None:
-        """Replace invalid Gemini model names with safe defaults."""
-        for key, entry in cfg.items():
-            if str(entry.get("prov", "")).strip().lower() != "gemini":
-                continue
-            name = str(entry.get("mod", "")).strip()
-            lower = name.lower()
-            if not (lower.startswith("gemma") or ":" in lower):
-                continue
-            replacement = (
-                AgentFactory._GEMINI_EMBED_DEFAULT if "embed" in key
-                else AgentFactory._GEMINI_TEXT_DEFAULT
-            )
-            logger.warning(
-                "event=invalid_gemini_model_switching key=%s from=%s to=%s",
-                key, name, replacement,
-            )
-            entry["mod"] = replacement
-
-    # ── Gemini → Ollama fallback when no API key ─────────────────────────────
-
-    @staticmethod
-    def _remap_gemini_when_no_api_key(cfg: dict[str, dict[str, str]]) -> None:
-        """If GEMINI_API_KEY is missing and a use case uses Gemini, remap it to Ollama.
-
-        Target = the use case's local model (its own if already on Ollama, else the declared
-        Ollama default, ``oracle_settings.local_default_model``).
-        """
-        api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
-        if api_key:
-            return
-        for key, entry in cfg.items():
-            if str(entry.get("prov", "")).strip().lower() != "gemini":
-                continue
-            fb = oracle_settings.local_default_model(key)
-            logger.warning(
-                "[🔄] event=gemini_key_missing_remapping key=%s from=%s to=ollama/%s",
-                key, entry.get("mod", ""), fb,
-            )
-            entry["prov"] = "ollama"
-            entry["mod"] = fb
-
-    # ── Build ────────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _build_bundle(cfg: dict[str, dict[str, str]]) -> AgentBundle:
-        def _make(key: str, prompt: str) -> UniversalAgent:
-            return UniversalAgent(
-                role_prompt=prompt,
-                provider=cfg[key]["prov"],
-                model_name=cfg[key]["mod"],
-                thinking=cfg[key].get("thinking", False),
-                label=key,
-            )
-
-        return AgentBundle(
-            generic=_make("generic", _GENERIC_SYSTEM_PROMPT),
-            generic_fallback=_make("generic_fallback", _GENERIC_SYSTEM_PROMPT),
-            reasoning=_make("reasoning", _GENERIC_SYSTEM_PROMPT),
-            reasoning_fallback=_make(
-                "reasoning_fallback", _GENERIC_SYSTEM_PROMPT),
-            code=_make("code", _CODE_SYSTEM_PROMPT),
-            code_fallback=_make("code_fallback", _CODE_SYSTEM_PROMPT),
-            embedding=_make("embedding", ""),
-            embedding_fallback=_make("embedding_fallback", ""),
-        )
-
-    # ── Logging ──────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _log_config(cfg: dict[str, dict[str, str]]) -> None:
-        logger.info(
-            "event=oracle_agents_configured "
-            "generic=%s generic_thinking=%s "
-            "reasoning=%s reasoning_thinking=%s "
-            "code=%s code_thinking=%s "
-            "embedding=%s",
-            cfg["generic"]["mod"], cfg["generic"].get("thinking", False),
-            cfg["reasoning"]["mod"], cfg["reasoning"].get("thinking", False),
-            cfg["code"]["mod"], cfg["code"].get("thinking", False),
-            cfg["embedding"]["mod"],
-        )
+        prompts = {"generic": _GENERIC_SYSTEM_PROMPT, "reasoning": _GENERIC_SYSTEM_PROMPT,
+                   "code": _CODE_SYSTEM_PROMPT, "documents": _GENERIC_SYSTEM_PROMPT, "embedding": ""}
+        bundle = AgentBundle(**{slot: ChainAgent(SLOTS[slot], role_prompt=prompts[slot], label=slot)
+                                for slot in prompts})
+        logger.info("event=oracle_agents_configured use_cases=%s", ",".join(SLOTS.values()))
+        return bundle
 
 
 def conversation_style_contract() -> str:

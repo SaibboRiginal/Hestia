@@ -112,18 +112,11 @@ def engine():
         bundle.generic.ask.return_value = "Generic response."
         bundle.generic.ask_with_tools.return_value = {"tool_call": None, "text": "Generic response."}
         bundle.generic.ask_stream.return_value = iter(["Streamed ", "response."])
-        bundle.generic_fallback.ask.return_value = "Fast fallback response."
-        bundle.generic_fallback.ask_with_tools.return_value = {"tool_call": None, "text": "Fast fallback."}
-        bundle.generic_fallback.ask_stream.return_value = iter(["Fallback ", "stream."])
         bundle.reasoning.ask.return_value = "Reasoning response."
         bundle.reasoning.ask_with_tools.return_value = {"tool_call": None, "text": "Reasoning."}
         bundle.reasoning.ask_stream.return_value = iter(["Reasoning ", "stream."])
-        bundle.reasoning_fallback.ask.return_value = "Fallback reasoning."
-        bundle.reasoning_fallback.ask_with_tools.return_value = {"tool_call": None, "text": "FR."}
         bundle.code.ask.return_value = "Code response."
-        bundle.code_fallback.ask.return_value = "Code fallback."
         bundle.embedding.embed.return_value = [0.1] * 768
-        bundle.embedding_fallback.embed.return_value = [0.1] * 768
         bundle.generic_model_name = "mock-generic"
         mock_create.return_value = bundle
 
@@ -822,15 +815,13 @@ class TestFormatPayload:
 
 @pytest.mark.unit
 class TestErrorHandling:
-    def test_quick_chat_fallback_on_primary_failure(self, engine):
-        """When primary fails, fallback should be used."""
+    def test_quick_chat_answer_comes_from_generic_chain(self, engine):
+        """The quick answer is one call to the generic chain (its fallback steps live in the chain)."""
         engine._hub.get.return_value = _SAMPLE_DOMAINS
-        # Classifier succeeds, then _quick_answer primary fails, fallback recovers
         engine._agents.generic.ask.side_effect = [
             _quick_chat_json(),          # classifier call
-            Exception("Primary dead"),   # _quick_answer: primary fails
+            "Recovered answer.",         # _quick_answer: the chain answered (any step)
         ]
-        engine._agents.generic_fallback.ask.return_value = "Recovered answer."
 
         lines = _collect_ndjson_lines(engine.chat("Ciao", "test-session"))
         answers = [l for l in lines if l.get("type") == "final"]
@@ -853,7 +844,6 @@ class TestErrorHandling:
     def test_classifier_failure_falls_back_to_defaults(self, engine):
         """When both router and fallback fail, use default classification."""
         engine._agents.generic.ask.side_effect = RuntimeError("Primary dead")
-        engine._agents.generic_fallback.ask.side_effect = RuntimeError("Fallback dead")
         engine._hub.get.return_value = _SAMPLE_DOMAINS
 
         lines = _collect_ndjson_lines(engine.chat("Ciao", "test-session"))
@@ -864,9 +854,7 @@ class TestErrorHandling:
         engine._agents.generic.ask.return_value = _domain_query_json("scout")
         engine._hub.get_commands.return_value = _SAMPLE_COMMANDS
         engine._agents.generic.ask.side_effect = RuntimeError("Ollama crashed")
-        engine._agents.generic_fallback.ask.side_effect = RuntimeError("Gemini down")
         engine._agents.generic.ask_with_tools.side_effect = RuntimeError("Ollama crashed")
-        engine._agents.generic_fallback.ask_with_tools.side_effect = RuntimeError("Gemini down")
 
         lines = _collect_ndjson_lines(engine.chat("Cerca case", "test-session"))
         answers = [l for l in lines if l.get("type") == "final"]
@@ -1300,3 +1288,46 @@ class TestEndToEndTelegramCalendarFlow:
 
         finals = [l for l in lines if l.get("type") == "final"]
         assert len(finals) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Brain mode esterna (dossier 2026-10-19-oracle-a-blocchi §D)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+class TestChatExternalBrain:
+    def _external(self, monkeypatch, fallback="interna"):
+        from core.services import oracle_settings
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_MODE, "esterna")
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_FALLBACK, fallback)
+
+    def test_agent_answers_even_a_quick_chat(self, engine, monkeypatch):
+        from core.services import external_agent
+        self._external(monkeypatch)
+        engine._agents.generic.ask.return_value = _quick_chat_json()
+        engine._hub.get.return_value = _SAMPLE_DOMAINS
+        seen = {}
+
+        def run_turn(**kw):
+            seen.update(kw)
+            return "risposta dell'agente", [{"tool": "t", "ok": True, "result_preview": "", "turn": 1}]
+        monkeypatch.setattr(external_agent, "run_turn", run_turn)
+        lines = _collect_ndjson_lines(engine.chat("Ciao", "s-ext"))
+        final = [l for l in lines if l.get("type") == "final"]
+        assert final and "risposta dell'agente" in json.dumps(final[0], ensure_ascii=False)
+        assert seen["session_id"] == "s-ext" and seen["user_message"] == "Ciao"
+
+    def test_failure_falls_back_to_internal_loop(self, engine, monkeypatch):
+        from core.services import external_agent
+        self._external(monkeypatch)
+        engine._agents.generic.ask.return_value = _domain_query_json("scout")
+        engine._hub.get.return_value = _SAMPLE_DOMAINS
+
+        def boom(**kw):
+            raise external_agent.AgentError("no login")
+        monkeypatch.setattr(external_agent, "run_turn", boom)
+        lines = _collect_ndjson_lines(engine.chat("Cerca case", "s-ext2"))
+        statuses = [l.get("content", "") for l in lines if l.get("type") == "status"]
+        assert any("rispondo io" in s for s in statuses) and any(l["type"] == "final" for l in lines)
+        assert external_agent._internal_at.get("s-ext2")

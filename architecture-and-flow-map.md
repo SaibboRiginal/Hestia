@@ -194,9 +194,12 @@ flowchart LR
    (only rules it created; user items stay). Example: Scout retired `scout.email_cycle`.
 
 ### LLM access rule
-Only Oracle talks to LLM providers. Athena/Metis/Scout use `/api/llm/generate`, Forge uses `/api/llm/chat` — always
-via Hub. Callers name a `use_case` (e.g. `scout_extraction`, `athena_strategist`, `athena_auditor`); the model and its
-fallback are Oracle settings `oracle.models.<use_case>.*` (Impostazioni → Modelli), never env in the caller.
+Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate`, Forge and Wardrobe use
+`/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.annunci`, `athena.strategia`,
+`forge.codice`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
+Oracle maps each use case to a named chain of provider/model steps (quota skip) and a brain mode (interna / esterna =
+Claude Code or Codex with Hestia's tools over MCP), all chosen in Oracle → Cervello → Modelli, never env in the caller.
+Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
 
 ### Module reminder flow
 1. Agenda job (Chronos) calls the module's reminder check; the module decides (enabled, goal behind, once a day,

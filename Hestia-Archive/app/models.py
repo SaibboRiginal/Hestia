@@ -582,6 +582,35 @@ class MCPOAuthCode(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+# ── LLM usage — owner of the semantics: Hestia-Oracle (docs/work/2026-10-19-oracle-a-blocchi §E) ───
+
+class LLMUsage(Base):
+    """One LLM call made by Oracle (a chain step, Forge's chat, an agent run): who asked (module from the use case
+    prefix, client, session), which step of which chain answered, tokens, duration, cost and outcome. Pushed by
+    Oracle in small batches; rows older than Oracle's retention are removed on write."""
+    __tablename__ = "llm_usage"
+
+    id = Column(Integer, primary_key=True)
+    at = Column(DateTime(timezone=True), nullable=False, index=True)
+    module = Column(String, nullable=False, index=True)
+    use_case = Column(String, nullable=False, index=True)
+    chain = Column(String, nullable=True)
+    step = Column(Integer, nullable=False, default=0)
+    provider = Column(String, nullable=True)
+    model = Column(String, nullable=True)
+    client = Column(String, nullable=True)
+    session_id = Column(String, nullable=True, index=True)
+    input_tokens = Column(Integer, nullable=False, default=0)
+    cached_tokens = Column(Integer, nullable=False, default=0)
+    output_tokens = Column(Integer, nullable=False, default=0)
+    context_window = Column(Integer, nullable=False, default=0)
+    duration_ms = Column(Integer, nullable=False, default=0)
+    cost_usd = Column(Float, nullable=False, default=0.0)
+    cost_kind = Column(String, nullable=True)          # api | abbonamento | locale | sconosciuto
+    outcome = Column(String, nullable=False, default="ok")   # ok | quota | error
+    detail = Column(String, nullable=True)
+
+
 # ── Generic module stores (same shape and protocol as the Hercules/self care/wardrobe stores) ────
 # One table per owner module; Archive only stores, the owner module gives every kind its meaning.
 

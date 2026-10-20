@@ -3,7 +3,7 @@
 # The normal local run (up-all.bat) never reads this file. Dossier: docs/work/2026-10-19-banco-prova-cloud/
 #
 # - fake_llm: deterministic stand-in for Ollama (no GPU in the cloud); every answer starts with "[LLM finto]".
-#   With GEMINI_API_KEY in the environment the script switches Oracle's models to Gemini instead.
+#   With GEMINI_API_KEY in the environment the script points Oracle's chat use cases at a Gemini chain instead.
 # - Oracle: Ollama URL → fake_llm, Claude Code CLI not installed (no subscription token in a test bench).
 
 services:
@@ -27,7 +27,7 @@ services:
         INSTALL_CLAUDE_CODE: "0"
     environment:
       - OLLAMA_URL=http://hestia_fake_llm:11434/api/generate
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - ORACLE_KEY_GEMINI=${GEMINI_API_KEY:-}   # provider «gemini» key (Oracle a blocchi)
     depends_on:
       fake_llm:
         condition: service_started

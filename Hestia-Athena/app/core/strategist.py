@@ -24,7 +24,7 @@ from .schemas import ActionCandidate, ObservationSnapshot, RelevanceSignals
 logger = logging.getLogger("hestia_athena.strategist")
 
 # Enabled / timeout / max candidates: central settings athena.strategist.* (read at use time).
-# Model choice belongs to Oracle: use case ``athena_strategist`` (oracle.models.athena_strategist.*).
+# Model choice belongs to Oracle: use case ``athena.strategia`` (declared in main.LLM_USECASES).
 
 
 def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
@@ -253,7 +253,7 @@ class Strategist:
         timeout = get_float(S.STRATEGIST_TIMEOUT)
         body = {
             "prompt": prompt,
-            "use_case": "athena_strategist",   # Oracle settings oracle.models.athena_strategist.*
+            "use_case": "athena.strategia",   # chain chosen in Oracle → Modelli
         }
         envelope = {
             "method": "POST",
