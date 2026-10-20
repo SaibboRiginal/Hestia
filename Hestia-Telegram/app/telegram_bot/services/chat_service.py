@@ -69,7 +69,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
 
 class OracleUnavailable(Exception):
     """Oracle never accepted the request (down, unreachable, not registered): the message can be queued
-    (SPEC docs/work/2026-10-19-cervello-offline §3). An error inside an answer is not this."""
+    (SPEC docs/work/2026-10-19-oracle-offline §3). An error inside an answer is not this."""
 
 
 @dataclass
@@ -999,7 +999,7 @@ def handle_file_message(message):
         down = isinstance(error, (requests.ConnectionError, requests.Timeout)) or (
             isinstance(error, requests.HTTPError) and getattr(error.response, "status_code", 0) in _DOWN_STATUSES)
         if down and not accepted:
-            # Files are not queued (large, read in the same turn): SPEC cervello-offline §3.
+            # Files are not queued (large, read in the same turn): SPEC oracle-offline §3.
             core.bot.edit_message_text(chat_queue.FILE_OFFLINE_TEXT, chat_id=chat_id,
                                        message_id=status_msg.message_id, parse_mode="HTML")
             return

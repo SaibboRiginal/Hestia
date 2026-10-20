@@ -368,11 +368,11 @@ Built Angular app served as static files from `wwwroot/`.
 
 Backend: `PresencePinger` (60 s debounce) pings Chronos on authenticated non-GET `/api/webui/*` actions (setting `chronos.presence.count_ui_actions`); `PresenceController` exposes `GET /api/webui/presence`, `GET /api/webui/presence/history`, `POST`/`DELETE /api/webui/presence/dnd`. Frontend: presence badge in the shell sidebar (polled every 60 s and on tab focus) with a popover: state and its plain explanation, last interaction, activities, tab «Cosa cambia» (effects in plain words), tab «Storico» (last 15 state changes with the reason), Non disturbare on/off with what it does, link to Impostazioni. The popover is `position: fixed` (computed from the badge) because the sidebar clips its overflow; Esc or a window resize closes it.
 
-**Brain offline** (SPEC `docs/work/2026-10-19-cervello-offline`): `OracleStreamService` yields `oracle_unavailable`
+**Oracle offline** (SPEC `docs/work/2026-10-19-oracle-offline`): `OracleStreamService` yields `oracle_unavailable`
 when the Hub answers 404/502/503/504 or is unreachable before the stream starts; `ChatHub` queues the Chat-page message
 in Archive (`ChatQueueService`, client `webui`, with mode/model/instructions in `meta`) and sends `queued` (bubble
 «🕒 In coda»). `POST /api/chat-queue/drain` (internal network only, capability `chat_queue_drain`, called by Chronos
-when the brain is back) and startup replay the queue server-side (no browser needed; Oracle saves the history) and
-push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «🧠 Cervello offline» while
+when Oracle is back) and startup replay the queue server-side (no browser needed; Oracle saves the history) and
+push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⚠️ Oracle offline» while
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Crea con Hestia» drawer does
 not queue (it answers «riprova appena torna»).

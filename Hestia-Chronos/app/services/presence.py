@@ -18,7 +18,7 @@ SPEC docs/work/2026-10-10-assistant-presence (v2.2).
 Evaluation runs on every signal change and on the agenda worker tick (no loop of its own).
 A change is stored (snapshot + history) and published to Hermes as ``assistant.state_changed``;
 when the notification level opens again Hermes is asked to release the held notifications, and when
-``chat.reply`` goes back to ``live`` (brain online again) every chat client answers its queued messages.
+``chat.reply`` goes back to ``live`` (Oracle online again) every chat client answers its queued messages.
 """
 from __future__ import annotations
 
@@ -434,7 +434,7 @@ class PresenceEngine:
             logger.warning("[🔄] event=presence_release_held_failed error=%s", exc)
 
     def _drain_chat_queues(self) -> None:
-        """Brain back: every Hub service declaring ``capabilities.chat_queue_drain`` (its path) answers the
+        """Oracle back: every Hub service declaring ``capabilities.chat_queue_drain`` (its path) answers the
         chat messages it queued while Oracle was offline. No client is hardcoded."""
         try:
             services = (requests.get(f"{_HUB}/registry/services", timeout=6).json() or {}).get("services") or []
@@ -448,7 +448,7 @@ class PresenceEngine:
                 continue
             try:
                 requests.post(f"{_HUB}/route/{name}/{path}",
-                              json={"method": "POST", "headers": {}, "query": {}, "body": {"reason": "brain_online"},
+                              json={"method": "POST", "headers": {}, "query": {}, "body": {"reason": "oracle_online"},
                                     "timeout_seconds": 10}, timeout=15)
                 logger.info("event=presence_chat_drain_requested client=%s", name)
             except Exception as exc:

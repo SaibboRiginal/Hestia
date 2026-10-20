@@ -167,7 +167,7 @@ public class ChatHub : Hub
             {
                 if (evt.Type == OracleStreamService.UnavailableType && pageContext.Length == 0)
                 {
-                    // Brain offline: queue it, answered when Oracle is back (SPEC cervello-offline §3).
+                    // Oracle offline: queue it, answered when Oracle is back (SPEC oracle-offline §3).
                     var queued = await _chatQueue.EnqueueAsync(_hubClient, sessionId, userMessage, clientInstructions,
                         mode, model, evt.Content ?? "");
                     if (queued is { } q)
@@ -187,7 +187,7 @@ public class ChatHub : Hub
                 if (evt.Type == OracleStreamService.UnavailableType)
                 {
                     await Clients.Caller.SendAsync("ReceiveEvent",
-                        new { type = "error", content = "Il cervello è offline: riprova appena torna." }, cts.Token);
+                        new { type = "error", content = "Oracle è offline: riprova appena torna." }, cts.Token);
                     break;
                 }
                 await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);

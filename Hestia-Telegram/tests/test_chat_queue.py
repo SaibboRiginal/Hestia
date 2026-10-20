@@ -1,4 +1,4 @@
-"""Brain offline chat queue (docs/work/2026-10-19-cervello-offline §3)."""
+"""Oracle offline chat queue (docs/work/2026-10-19-oracle-offline §3)."""
 from __future__ import annotations
 
 import json

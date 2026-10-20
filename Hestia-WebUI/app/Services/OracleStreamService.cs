@@ -49,7 +49,7 @@ public class OracleStreamService
 
     public bool IsReady => _oracleReady;
 
-    /// <summary>Event type yielded when Oracle never accepted the request (brain offline).</summary>
+    /// <summary>Event type yielded when Oracle never accepted the request (Oracle offline).</summary>
     public const string UnavailableType = "oracle_unavailable";
 
     public async Task<bool> DiscoverAsync(HubClient hub)
@@ -172,7 +172,7 @@ public class OracleStreamService
                                                   or System.Net.HttpStatusCode.GatewayTimeout)
         {
             // Oracle did not accept the request (not registered / down): the caller may queue the message
-            // (SPEC docs/work/2026-10-19-cervello-offline §3).
+            // (SPEC docs/work/2026-10-19-oracle-offline §3).
             _logger.LogWarning("[🔄] event=oracle_unavailable url={Url} status={Status} error={Error}",
                 url, (int?)ex.StatusCode, ex.Message);
             fatalEvent = new OracleEvent(UnavailableType, Content: ex.Message);

@@ -335,9 +335,9 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   `label`, `emoji`, `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
   `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
-  `eating`, `tired`, `brain_offline` («🧠 Cervello offline», signal `brain.offline` from Argus when Oracle is down past
-  `argus.brain.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
-  `docs/work/2026-10-19-cervello-offline`). Modules may add their own with `POST /api/presence/states/register`.
+  `eating`, `tired`, `oracle_offline` («⚠️ Oracle offline», signal `oracle.offline` from Argus when Oracle is down past
+  `argus.oracle.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
+  `docs/work/2026-10-19-oracle-offline`). Modules may add their own with `POST /api/presence/states/register`.
 - **Effects**: `work.light`/`work.heavy` (allow < local < defer), `llm.claude` (allow < save < deny),
   `notify.level` (all < important < urgent), `chat.style` (normal < brief), `chat.reply` (live < queued: chat
   clients queue what Oracle cannot answer), `chat.notice` (text). Overlays combine
@@ -346,7 +346,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
 - **Evaluation** on every signal change, setting change and agenda tick. A change stores snapshot + history in
   Archive (`/api/presence-store`), emits Hermes event `assistant.state_changed` (only to subscribers) and, when
   `notify.level` relaxes, asks Hermes to release held notifications as one digest; when `chat.reply` goes back to
-  `live` (brain online again) it calls every Hub service declaring `capabilities.chat_queue_drain` (its path, via Hub
+  `live` (Oracle online again) it calls every Hub service declaring `capabilities.chat_queue_drain` (its path, via Hub
   route) so each chat client answers its queued messages.
 - **Settings** (group Presenza): `enabled`, `idle_after` 5, `nap_after` 45, `sleep_after` 180 (0 = night only),
   `use_sleep_window`, `dnd_default_duration` 120, `tired_quota` 25 %, `tired_degraded` 2, `count_ui_actions`,
