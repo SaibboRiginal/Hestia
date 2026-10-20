@@ -60,6 +60,10 @@ SKILLS_CORE_USE_COUNT = "athena.skills.core_use_count"
 AUDIT_TIMEOUT = "athena.audit.timeout"
 AUDIT_MAX_TURNS = "athena.audit.max_turns"
 
+RECAP_STYLE = "athena.recap.style"
+RECAP_MAX_CHARS = "athena.recap.max_chars"
+RECAP_PIECE_TIMEOUT = "athena.recap.piece_timeout_seconds"
+
 _G_LOOP = "Pensiero proattivo"
 _G_RETRO = "Retrospettiva"
 _G_HINTS = "Suggerimenti a Oracle"
@@ -69,6 +73,7 @@ _G_FORGE = "Miglioramenti (Forge)"
 _G_MEMORY = "Consolidamento memoria"
 _G_SKILLS = "Cura delle skill"
 _G_AUDIT = "Audit conversazioni"
+_G_RECAP = "Recap della giornata"
 
 _ON_LOOP = {"key": LOOP_ENABLED, "equals": True}
 _ON_HINTS = {"key": HINTS_ENABLED, "equals": True}
@@ -190,6 +195,16 @@ settings.declare([
             advanced=True, help="Quanto aspettare il modello che valuta le risposte."),
     setting(AUDIT_MAX_TURNS, "Risposte per audit", "int", 20, group=_G_AUDIT, min=1, max=100,
             help="Quante risposte recenti valuta un audit se non indichi altro."),
+
+    # ── Daily recap (docs/work/2026-10-20-recap-giornaliero). WHEN = agenda job, not a setting ──
+    setting(RECAP_STYLE, "Tono del recap", "enum", "amichevole", group=_G_RECAP,
+            options=["amichevole", "asciutto"],
+            help="Come ti scrive il recap della giornata: amichevole (qualche parola in più) o asciutto (solo i "
+                 "fatti). L'orario lo sposti nel calendario."),
+    setting(RECAP_MAX_CHARS, "Lunghezza massima del recap", "int", 900, group=_G_RECAP, min=200, max=4000,
+            unit="caratteri", help="Il recap resta sotto questa lunghezza."),
+    setting(RECAP_PIECE_TIMEOUT, "Attesa per ogni area", "float", 5.0, group=_G_RECAP, min=1, max=30, unit="s",
+            advanced=True, help="Quanto aspettare ogni area (allenamento, spese…) prima di fare il recap senza."),
 ]).declare_log_level()
 
 

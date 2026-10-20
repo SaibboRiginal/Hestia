@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 2.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 6 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0 and §4 «Digest = recap della giornata»); routed by the project coordinator 2026-10-20 |
-| **Status** | Draft v2.0 after Marko's answers (2026-10-20), waiting for his ok (no code before it) |
+| **Status** | Approved by Marko 2026-10-20 (v2.1); implementation in progress |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
