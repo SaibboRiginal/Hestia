@@ -32,6 +32,7 @@ try:
     from hestia_common.agenda_client import AgendaClient
     from hestia_common.mail_client import MailClient, mail_rule
     from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
+    from hestia_common import recap
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -46,6 +47,7 @@ except ModuleNotFoundError:
     from hestia_common.agenda_client import AgendaClient
     from hestia_common.mail_client import MailClient, mail_rule
     from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
+    from hestia_common import recap
 
 logger, log_buffer = setup_service_logging("hestia_scout")
 
@@ -227,13 +229,16 @@ api_app.include_router(scout_central_settings.router())  # Themis: /api/settings
 
 # ── WebUI plugin (client plugins SPEC §5): /api/ui/* data + manifest + bundle files ──
 from core.archive_client import ArchiveClient
-from ui_api import ListingStore, build_router as build_ui_router, plugin as ui_plugin
+from ui_api import ListingStore, build_router as build_ui_router, plugin as ui_plugin, recap_facts
 
 ui_store = ListingStore(ArchiveClient(api_url="", hub_api_url=os.getenv("HUB_API_URL", "http://hestia_hub:19001/api")),
                         TARGET_DOMAIN)
 api_app.include_router(ui_plugin.router())
 api_app.include_router(build_ui_router(
     ui_store, run_cycle=check_now, cycle_status=scout_cycle_status))
+api_app.include_router(recap.recap_router(
+    "scout", lambda day, nxt: recap.piece("scout", "Case", icon="home", emoji="🏠", order=20,
+                                         **recap_facts(ui_store.views(), day))))
 
 
 @api_app.post("/api/scout/check")
@@ -482,6 +487,7 @@ def _register_with_hub(port: int):
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             **ui_plugin.capabilities(service_base_url),
             **llm_capabilities(LLM_USECASES),
+            **recap.capabilities(),
         },
     }
     try:

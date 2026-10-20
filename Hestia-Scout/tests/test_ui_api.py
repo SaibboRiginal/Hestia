@@ -101,3 +101,12 @@ def test_bundle_dir_outside_mounted_code(tmp_path, monkeypatch):
     (tmp_path / "webui" / "scout.js").write_text("export {}")
     monkeypatch.setenv("SCOUT_UI_DIST", str(tmp_path))
     assert ui_api._dist_dir() == tmp_path
+
+
+def test_recap_facts_new_listings_of_the_day():
+    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    views = [ui_api.to_view(r) for r in _records()]
+    day = datetime.fromisoformat(views[0]["created_at"]).astimezone().date()
+    facts = ui_api.recap_facts(views, day)
+    assert facts["done"][0]["text"].startswith("1 nuovo annuncio: Trilocale, Milano, € 320.000")
+    assert ui_api.recap_facts(views, day - timedelta(days=100)) == {"done": []}

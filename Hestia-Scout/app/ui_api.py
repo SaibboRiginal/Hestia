@@ -340,6 +340,28 @@ class ListingPatch(BaseModel):
     status: str | None = None        # ListingStatus value
 
 
+def recap_facts(views: list[dict], day) -> dict:
+    """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): listings that arrived on ``day``
+    (local date), the first ones named. Viewings live in the calendar, so they come from the agenda piece."""
+    new = []
+    for v in views:
+        ts = _ts(v.get("created_at"))
+        if ts and (ts.astimezone() if ts.tzinfo else ts).date() == day:
+            new.append(v)
+    if not new:
+        return {"done": []}
+    new.sort(key=lambda v: (v.get("price") is None, v.get("price") or 0))
+    names = []
+    for v in new[:2]:
+        bits = [str(v.get("title") or "Annuncio")[:48], v.get("city") or "",
+                f"€ {v['price']:,}".replace(",", ".") if v.get("price") else ""]
+        names.append(", ".join(b for b in bits if b))
+    text = f"{len(new)} nuov{'o annuncio' if len(new) == 1 else 'i annunci'}: " + "; ".join(names)
+    if len(new) > 2:
+        text += f" e altri {len(new) - 2}"
+    return {"done": [{"text": text}]}
+
+
 def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_status: Callable[[], dict]) -> APIRouter:
     router = APIRouter(prefix="/api/ui", tags=["scout-ui"])
 
