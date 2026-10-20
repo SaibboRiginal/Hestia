@@ -1004,7 +1004,21 @@ class Hygieia:
                 "today": [{"name": p["name"], "state": p["state"], "hint": p["hint"], "reason": p["reason"],
                            "steps": [x["label"] for x in p["steps"] if x["include"]]} for p in s["plan"]["routines"]]}
 
-    def context_text(self, budget: int = 400) -> str:
+    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    def signals(self) -> tuple[list[dict], list[dict]]:
+        """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
+        from . import signals as signals_engine
+        return signals_engine.evaluate(self)
+
+    def signal_detail(self, topic: str) -> str | None:
+        """Facts behind one signal key, for ``/api/module/context?topic=`` (``None`` = unknown topic)."""
+        from . import signals as signals_engine
+        return signals_engine.detail(self, topic)
+
+    def context_text(self, budget: int = 400, topic: str = "") -> str:
+        detail = self.signal_detail(topic) if topic else None
+        if detail:
+            return detail if len(detail) <= budget else detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
         s = self.summary()
         text = "Self care: " + s["text"]
         if len(text) > budget:

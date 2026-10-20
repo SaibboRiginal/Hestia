@@ -28,6 +28,7 @@ from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
+from hestia_common.signals_client import Signals, signals_rule
 
 from .core import catalog, domain
 from .core.hub import Hub
@@ -46,6 +47,7 @@ SERVICE_TOPOLOGY_TAGS = [t.strip().lower() for t in os.getenv(
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 UI_DIST = os.getenv("HERCULES_UI_DIST", "/code/ui/dist")
 API = "/api/hercules"
+TZ = os.getenv("TZ") or "Europe/Rome"
 
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("hercules")
@@ -80,6 +82,8 @@ hub = Hub(HUB_API_URL)
 store = Store(hub)
 hercules = Hercules(store, settings.get)
 agenda = AgendaClient("hercules", HUB_API_URL)
+# reflection signals (Archive signals-store): re-evaluated after the natural writes and by the daily agenda job
+signals = Signals("hercules", "fitness", evaluate=hercules.signals, hub_api_url=HUB_API_URL)
 
 app = FastAPI(title="Hestia-Hercules", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -125,7 +129,10 @@ def bootstrap(days: int = 120):
 
 @app.post(f"{API}/sync")
 def sync(body: dict = Body(...)):
-    return hercules.sync(str(body.get("device_id") or ""), int(body.get("cursor") or 0), body.get("ops") or [])
+    out = hercules.sync(str(body.get("device_id") or ""), int(body.get("cursor") or 0), body.get("ops") or [])
+    if body.get("ops"):
+        signals.changed()
+    return out
 
 
 @app.get(f"{API}/meta")
@@ -277,13 +284,17 @@ def session_patch(id: str, body: dict = Body(...)):
 
 @app.delete(f"{API}/sessions/{{id}}")
 def session_delete(id: str):
-    return hercules.delete("session", id)
+    out = hercules.delete("session", id)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/sessions/{{id}}/finish")
 def session_finish(id: str, body: dict = Body(default={})):
-    return hercules.finish_session(id, notes=body.get("notes"), perceived_effort=body.get("perceived_effort"),
-                                   ended_at=body.get("ended_at"), update_template=bool(body.get("update_template")))
+    out = hercules.finish_session(id, notes=body.get("notes"), perceived_effort=body.get("perceived_effort"),
+                                  ended_at=body.get("ended_at"), update_template=bool(body.get("update_template")))
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/sessions/{{id}}/discard")
@@ -304,7 +315,9 @@ def session_log_set(id: str, body: dict = Body(...)):
 
 @app.delete(f"{API}/sets/{{id}}")
 def set_delete(id: str):
-    return hercules.delete("set", id)
+    out = hercules.delete("set", id)
+    signals.changed()
+    return out
 
 
 # ── days, how I feel, adaptation ─────────────────────────────────────────────
@@ -331,7 +344,9 @@ def day_postpone(body: dict = Body(...)):
 
 @app.post(f"{API}/checkin")
 def checkin(body: dict = Body(...)):
-    return hercules.checkin(body)
+    out = hercules.checkin(body)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/feedback")
@@ -408,8 +423,14 @@ def summary():
 
 
 @app.get("/api/module/context")
-def module_context(budget: int = 400):
-    """Shared contract (SPEC §9): a short caveman line the assistant may include."""
+def module_context(budget: int = 400, topic: str = ""):
+    """Shared contract (SPEC §9): a short caveman line the assistant may include. ``topic`` = a signal key
+    (``stall:<exercise>``, ``missed_streak``…): the facts behind that signal; unknown topic → the normal line."""
+    detail = hercules.signal_detail(topic) if topic else None
+    if detail:
+        if len(detail) > budget:
+            detail = detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
+        return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": detail}
     text = "Allenamento: " + hercules.summary()["text"]
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
@@ -429,6 +450,7 @@ def quick_done(id: str, body: dict = Body(default={})):
         return {"session_id": act["id"] if act else None, "resumed": bool(act),
                 "label": f"Ripreso {act.get('name')}" if act else "Nessun allenamento in corso"}
     out = hercules.quick_done(id, day=body.get("date"))
+    signals.changed()
     return {**out, "label": f"{out['name']} segnato fatto"}
 
 
@@ -442,7 +464,9 @@ def quick_undo(id: str, date: str = ""):
     if not rows:
         raise NotFound("niente da annullare")
     rows.sort(key=lambda s: s.get("started_at") or "")
-    return hercules.delete("session", rows[-1]["id"])
+    out = hercules.delete("session", rows[-1]["id"])
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/quick-bodyweight")
@@ -461,7 +485,9 @@ def import_preview(body: dict = Body(...)):
 
 @app.post(f"{API}/import/commit")
 def import_commit(body: dict = Body(...)):
-    return hercules.import_commit(str(body.get("text") or ""), body.get("mapping") or {}, body.get("unit") or "kg")
+    out = hercules.import_commit(str(body.get("text") or ""), body.get("mapping") or {}, body.get("unit") or "kg")
+    signals.changed()
+    return out
 
 
 @app.get(f"{API}/export")
@@ -503,12 +529,20 @@ def reminder_check():
     return {"send": True, "text": text}
 
 
+# ── reflection signals (agenda job hercules.signals) ─────────────────────────
+@app.post(f"{API}/signals/run")
+def signals_run():
+    """Agenda job ``hercules.signals``: re-evaluate the training signals and weekly metrics, sync to Archive."""
+    return signals.run()
+
+
 def _agenda_rules() -> list[dict]:
-    return [job_rule("hercules.reminder", "Promemoria allenamento (Hercules)", service="hercules",
+    return [signals_rule("hercules", "Allenamento", path=f"{API}/signals/run", tz=TZ),
+            job_rule("hercules.reminder", "Promemoria allenamento (Hercules)", service="hercules",
                      path=f"{API}/reminder/check", recurrence="FREQ=DAILY", start_at="2026-01-01T18:30:00",
                      description="Controlla se sei indietro con l'obiettivo di allenamento. Non invia nulla se il "
                                  "promemoria è spento nelle impostazioni (default) o se oggi ti sei già allenato.",
-                     tz=os.getenv("TZ") or "Europe/Rome")]
+                     tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
@@ -635,12 +669,14 @@ try:
         if not act:
             return {"error": "nessun allenamento in corso"}
         d = hercules.finish_session(act["id"], notes=notes or None, perceived_effort=effort)
+        signals.changed()
         return {"summary": d.get("summary"), "prs": d.get("prs")}
 
     def _checkin(energy: int | None = None, sleep: int | None = None, soreness: list | None = None,
                  pain_areas: list | None = None, time_minutes: int | None = None, free_text: str = "") -> dict:
         row = hercules.checkin({"energy": energy, "sleep": sleep, "soreness": soreness or [], "pain_areas": pain_areas or [],
                                 "time_minutes": time_minutes, "free_text": free_text})
+        signals.changed()
         return {"saved": True, "checkin": row}
 
     def _adapt(energy: int | None = None, time_minutes: int | None = None, pain_areas: list | None = None,
@@ -888,6 +924,7 @@ def _warm_up() -> None:
         try:
             if store.refresh(force=True):
                 hercules.ensure_catalog()
+                signals.changed()           # time-based facts may have moved while the service was down
                 return
         except Exception as exc:
             logger.warning("[🔄] event=hercules_warmup_failed attempt=%d error=%s", attempt, exc)

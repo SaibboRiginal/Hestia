@@ -40,8 +40,32 @@
   (natural text: "panca 80x8, 80x8; trazioni 8, 7"), `finish_session`, `checkin`, `adapt_today`,
   `apply_adaptation`, `restore_today`, `skip_day`, `postpone`, `feedback`, `edit_template`, `undo_template`,
   `log_measurement`, `set_goal` (all prefixed `hercules_`).
-- `GET /api/module/context`: short lines (next workout, week vs goal, recent PRs, stalls, feedback to discuss).
+- `GET /api/module/context?budget=&topic=`: short lines (next workout, week vs goal, recent PRs, stalls, feedback to
+  discuss). With `topic=<signal key>` the text explains that signal (`stall:<exercise>` → last 4 exposures,
+  `pr:<exercise>` → records of the last 14 days, `missed_streak` → which days, `deload` → the low check-ins,
+  `week_goal` → goal hint and days left); an unknown topic answers the normal line. Same shape `{module, domain,
+  updated_at, text}`, cut to `budget`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
+
+## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
+
+Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hercules`,
+domain `fitness`); texts say «Allenamento» things, never the module name. No LLM, no new judging logic.
+
+| Key | Kind · severity | When | Page |
+|---|---|---|---|
+| `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `esercizi/<id>` |
+| `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `allenamento` |
+| `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `allenamento` |
+| `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `esercizi/<id>` |
+| `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progressi` |
+
+Weekly metrics (last 12 ISO weeks, current included; weeks before the first workout left out): `fitness.sessions`
+«Allenamenti», `fitness.volume` «Volume (kg)», `fitness.energy` «Energia media» (only weeks with check-ins).
+
+When: `signals.changed()` (debounced re-evaluation) after sync with ops, session finish/delete, set delete, check-in,
+quick done/undo, import, the MCP finish/check-in tools and once after warm-up; agenda job `hercules.signals` (daily
+17:30, editable in the agenda) → `POST /api/hercules/signals/run` → `{written, retracted, signals, metrics}`.
 
 ## Reminders (off by default)
 
@@ -72,7 +96,7 @@ reminder.max_per_week (2) from `hestia_common.reminders`. Week start is the pers
 See `Hestia-Swagger/swagger.yml` tag *Hercules*. Main groups: bootstrap/sync, exercises, templates (+undo),
 programs, next, sessions (start, start-next, log-text, sets, finish, discard), plans/days (skip, postpone),
 checkin, feedback, adapt (+apply, restore), measurements, stats, records, goals, summary, quick (Home chips),
-import (Strong/Hevy CSV preview + commit, idempotent), export (csv/json), reminder/check.
+import (Strong/Hevy CSV preview + commit, idempotent), export (csv/json), reminder/check, signals/run.
 
 ## Configuration (infrastructure only)
 
@@ -80,4 +104,5 @@ import (Strong/Hevy CSV preview + commit, idempotent), export (csv/json), remind
 
 ## Tests
 
-`python -m pytest -q -m unit Hestia-Hercules/tests` (fake Archive in memory, no network).
+`python -m pytest -q -m "unit or api" Hestia-Hercules/tests` (fake Archive in memory, no network; `test_signals.py`
+mocks the signals transport).
