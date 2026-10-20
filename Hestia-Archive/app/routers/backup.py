@@ -25,7 +25,7 @@ class UndoReq(BaseModel):
     confirm: bool = False
 
 
-def build_router(service: BackupService, *, passphrase_set, drive_status, settings_view) -> APIRouter:
+def build_router(service: BackupService, *, passphrase_set, drive_status, settings_view, drive_connect) -> APIRouter:
     router = APIRouter(prefix="/api/backup", tags=["backup"])
     cache: dict = {"at": 0.0, "drive": None}
 
@@ -49,6 +49,13 @@ def build_router(service: BackupService, *, passphrase_set, drive_status, settin
                 "passphrase_set": bool(passphrase_set()), "drive": _drive(fresh),
                 "undo_available": service.undo_available() if service.job() is None else False,
                 "settings": settings_view()}
+
+    @router.post("/drive/connect")
+    def connect_drive():
+        """Starts Google's authorization (owned by the provider gateway) so the panel can open the link."""
+        out = drive_connect()
+        cache["drive"] = None
+        return out
 
     @router.get("/list")
     def history():

@@ -216,7 +216,7 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `GOOGLE_TOKEN_JSON` | — | Bundled alternative — refresh_token extracted from here if `GOOGLE_REFRESH_TOKEN` not set |
 | `GOOGLE_TOKEN_FILE` | `/code/data/google_token.json` | Persistent token cache (volume-mounted `data/` dir) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Loopback redirect used by the OAuth flow |
-| `GOOGLE_OAUTH_SCOPES` | `calendar gmail.readonly gmail.send` (full URLs) | Space/comma separated scopes |
+| `GOOGLE_OAUTH_SCOPES` | `calendar gmail.readonly gmail.send drive.file` (full URLs) | Space/comma separated scopes |
 | `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
 | `OUTLOOK_CLIENT_ID` | — | Microsoft OAuth app client ID |

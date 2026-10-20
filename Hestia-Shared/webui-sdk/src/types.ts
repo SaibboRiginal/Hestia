@@ -28,7 +28,7 @@ export interface Upload {
 
 export interface PluginContext {
   module: string;                    // 'scout'
-  surface: 'page' | 'widget';
+  surface: 'page' | 'widget' | 'settings_panel';   // settings_panel: inside the module's own settings
   id: string;                        // local surface id ('case', 'nuove')
   params: Record<string, string>;    // route params (':id') for pages, configured params for widgets
   query: Record<string, string>;     // page query string

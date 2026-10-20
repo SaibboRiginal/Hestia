@@ -57,9 +57,13 @@ services:
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-Europe/Rome}                                # Local time for backup names and the agenda rules
+      - HESTIA_BACKUP_PASSPHRASE=${HESTIA_BACKUP_PASSPHRASE:-}  # from .env (secret): encrypts the Drive backups; lost = backups unreadable
+      - ARCHIVE_BACKUP_DIR=/code/backups                      # job state, data epoch, copies waiting for Drive
     volumes:
       - ./Hestia-Archive/app:/code/app
       - ./Hestia-Shared/hestia_common:/code/hestia_common
+      - hestia_archive_backups:/code/backups                  # survives rebuilds; never inside the database it backs up
     depends_on:
       archive_db:
         condition: service_healthy
@@ -732,4 +736,5 @@ networks:
 
 volumes:
   hestia_archive_pgdata:
+  hestia_archive_backups:
   hestia_webui_data:

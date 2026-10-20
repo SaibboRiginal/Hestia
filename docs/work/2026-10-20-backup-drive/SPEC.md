@@ -78,7 +78,7 @@ the backup it protects). **If it is lost, the backups cannot be opened**: docs a
   `pg_dump --snapshot`), so they match exactly.
 - `POST /api/backup/run` (agenda job `archive.backup`, daily 03:30; returns at once, works in background):
   dump → encrypt into the volume `hestia_backups` → upload in chunks to `.hestia/backup/` as
-  `hestia-backup-AAAA-MM-GG-HHMM.enc` with `appProperties {hestia: backup, sha256, created_at}` → retention →
+  `hestia-backup-AAAA-MM-GG-HHMMSS.enc` with `appProperties {hestia: backup, sha256, created_at}` → retention →
   local file deleted.
 - The **history is Drive itself** (list of `backup/`), not a table: a rollback replaces every table, a list kept in
   the database would roll back with it. Job state and last results live in `hestia_backups/state.json`.

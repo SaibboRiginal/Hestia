@@ -55,13 +55,21 @@ export interface QuickActionDef extends Contribution {
   order: number;
 }
 
+/** A panel shown inside the module's own settings (Impostazioni → Sistema → <module>), e.g. the backup history. */
+export interface PluginSettingsPanel extends Contribution {
+  element: string;
+  order: number;
+  help?: string;
+}
+
 export interface PluginBundle { id: string; module: string; entry: string; api_prefix: string; sdk: string; version: string; online: boolean; }
 
 export interface PluginCatalog {
   revision: number;
   ui_revision: string;
   modules: PluginModule[];
-  contributions: { webui?: { page?: PluginPage[]; widget?: PluginWidget[]; quick_action?: QuickActionDef[]; bundle?: PluginBundle[] } };
+  contributions: { webui?: { page?: PluginPage[]; widget?: PluginWidget[]; quick_action?: QuickActionDef[];
+                             settings_panel?: PluginSettingsPanel[]; bundle?: PluginBundle[] } };
 }
 
 /** One placed widget on a dashboard (WebUI setting webui.dashboards). */

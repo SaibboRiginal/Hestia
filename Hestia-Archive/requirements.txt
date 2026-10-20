@@ -4,4 +4,4 @@ sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
 pydantic==2.6.1
 pgvector==0.2.5
-requests==2.32.3
+requests==2.32.3cryptography>=42

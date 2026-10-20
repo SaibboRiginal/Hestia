@@ -74,6 +74,23 @@ def _notify(ev: dict) -> None:
         logger.warning("[🔄] event=backup_notify_failed key=%s error=%s", ev.get("key"), exc)
 
 
+def _drive_connect() -> dict:
+    """Google authorization link from the provider gateway (Hecate owns OAuth), for «Collega Google Drive»."""
+    try:
+        resp = requests.post(f"{HUB_API_URL}/route/hecate/api/gateway/auth/initiate/google",
+                             json={"method": "POST", "headers": {}, "query": {}, "body": {}, "timeout_seconds": 20},
+                             timeout=25)
+        routed = resp.json() or {}
+        payload = routed.get("payload") or {}
+        if int(routed.get("status_code", 500)) >= 400:
+            return {"ok": False, "message": str(payload.get("detail") or payload)[:300]}
+        return {"ok": True, "auth_url": payload.get("auth_url") or payload.get("verification_url"),
+                "user_code": payload.get("user_code"), "instructions": payload.get("instructions")}
+    except Exception as exc:
+        logger.warning("[🔄] event=backup_drive_connect_failed error=%s", exc)
+        return {"ok": False, "message": "collegamento a Google non disponibile ora, riprova"}
+
+
 def setup(app, engine, database_url: str) -> BackupService | None:
     """Mount gate, endpoints, panel and settings. Not Postgres (tests on SQLite) → only the gate."""
     app.middleware("http")(maintenance.gate.middleware)
@@ -111,7 +128,7 @@ def setup(app, engine, database_url: str) -> BackupService | None:
         migrate=migrate, before_swap=before_swap, after_swap=after_swap, tz=TZ)
     app.include_router(build_router(
         service, passphrase_set=lambda: bool(os.getenv("HESTIA_BACKUP_PASSPHRASE", "").strip()),
-        drive_status=remote.status,
+        drive_status=remote.status, drive_connect=_drive_connect,
         settings_view=lambda: {"keep_daily": settings.get("archive.backup.keep_daily", 3),
                                "keep_monthly": settings.get("archive.backup.keep_monthly", 3)}))
     return service

@@ -199,11 +199,15 @@ class BackupService:
             counts = self.pg.dump(dump)
             created = now_iso()
             local = datetime.now(self.tz)
-            name = f"hestia-backup-{local:%Y-%m-%d-%H%M}.enc"
+            name = f"hestia-backup-{local:%Y-%m-%d-%H%M%S}.enc"
             manifest = {"format": FORMAT, "created_at": created, "server_version": self.pg.server_version(),
                         "database": self.live, "counts": counts}
             self._step("encrypt")
-            enc = self.pending_dir / name
+            enc, n = self.pending_dir / name, 1
+            while enc.exists():                                   # two runs in the same second
+                n += 1
+                name = f"hestia-backup-{local:%Y-%m-%d-%H%M%S}-{n}.enc"
+                enc = self.pending_dir / name
             sha = seal(dump, manifest, enc, pw)
             dump.unlink(missing_ok=True)
             meta = {"hestia": "backup", "sha256": sha, "created_at": created, "format": str(FORMAT)}
@@ -312,6 +316,7 @@ class BackupService:
         f = next((x for x in files if x["id"] == file_id), None) if file_id else (files[0] if files else None)
         if not f:
             raise BackupFailed("download", "backup non trovato su Google Drive")
+        self._fetching = f
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
         enc = self.tmp_dir / "fetch.enc"
         self.remote.download(f["id"], enc)
@@ -333,7 +338,7 @@ class BackupService:
 
     # ── verification ────────────────────────────────────────────────────────
     def verify(self, file_id: str | None = None) -> dict:
-        f = None
+        f, self._fetching = None, None
         try:
             pw = self._secret()
             f, manifest, dump = self._fetch(file_id, pw)
@@ -351,10 +356,10 @@ class BackupService:
                 raise BackupFailed("compare", "righe diverse in " + ", ".join(bad[:5]))
         except BackupFailed as exc:
             if exc.step != "passphrase":
-                self._verify_failed(f, str(exc))
+                self._verify_failed(f or self._fetching, str(exc))
             raise
         except (RemoteError, PgError, OSError) as exc:
-            self._verify_failed(f, _short(exc))
+            self._verify_failed(f or self._fetching, _short(exc))
             raise
         result = {"name": f["name"], "created_at": created_at(f).isoformat(), "verified_at": now_iso(), "ok": True,
                   "tables": len(manifest.get("counts") or {}), "rows": sum((manifest.get("counts") or {}).values())}
