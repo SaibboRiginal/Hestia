@@ -42,3 +42,7 @@ class AbstractCalendarProvider(ABC):
     def refresh(self) -> bool:
         """Re-acquire credentials / access tokens. Returns True if provider is still available after refresh."""
         pass
+
+    def ensure_calendar(self, name: str) -> str:
+        """Id of the calendar called ``name``, created when missing (Hestia-owned calendars, e.g. «Allenamenti»)."""
+        raise NotImplementedError(f"{self.name}: secondary calendars not supported")

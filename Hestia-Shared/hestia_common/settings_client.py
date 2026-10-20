@@ -62,7 +62,7 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
     """Build one setting definition (validated by Themis against its type).
 
     ``options``: for ``enum`` a list of values or ``(value, label)`` pairs.
-    ``options_source``: GET path on the owning module returning dynamic options
+    ``options_source``: GET path on the owning module (or ``<module>:/path`` on another one) returning dynamic options
     (e.g. models of a provider) as ``{"options": [{"value", "label"}]}``.
     ``fields``: for ``object`` the sub-fields (each a ``setting``-like dict without key).
     ``row``/``column``: optional table layout hint — settings of one group sharing rows and columns are
@@ -105,7 +105,22 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
     setting("themis.personal.currency", "Valuta", "enum", "EUR", group="Personali",
             options=[("EUR", "Euro (€)"), ("CHF", "Franco svizzero"), ("USD", "Dollaro"), ("GBP", "Sterlina")],
             help="Prezzi e spese in tutti i moduli."),
+    setting("themis.personal.places", "Luoghi", "list", [], group="Personali", editor="places",
+            options_source="hecate:/api/gateway/weather/places",
+            help="I tuoi posti (Casa, Lavoro, Palestra…): uno è Casa, il luogo predefinito per il meteo; "
+                 "l'agenda e gli allenamenti riconoscono gli eventi in questi posti. Basta la città, "
+                 "o l'indirizzo con la città."),
 )}
+PERSONAL["themis.personal.places"]["item"] = {
+    "type": "object", "label": "Luogo",
+    "fields": {"id": {"type": "string", "label": "Id"}, "name": {"type": "string", "label": "Nome"},
+               "address": {"type": "string", "label": "Indirizzo o città"},
+               "kind": {"type": "enum", "label": "Tipo", "options": [{"value": "home", "label": "Casa"},
+                                                                    {"value": "work", "label": "Lavoro"},
+                                                                    {"value": "other", "label": "Altro"}]},
+               "lat": {"type": "float", "label": "Latitudine", "min": -90, "max": 90},
+               "lon": {"type": "float", "label": "Longitudine", "min": -180, "max": 180}},
+}
 
 
 def week_start_index(value: Any) -> int:
