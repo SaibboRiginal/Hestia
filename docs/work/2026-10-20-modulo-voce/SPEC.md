@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 3.0 |
+| **Version** | 3.1 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 4 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator 2026-10-20 |
-| **Status** | Draft — waiting for Marko's approval (§10) before any code |
+| **Status** | Approved by Marko 2026-10-20 (v3.1, answers in §10); implementation started |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -135,9 +135,9 @@ Oracle document with audio ─▶ Hub ▶ Echo transcribe ─▶ transcript ─�
   are (the engine does its own chunking, VAD and sentence handling) and only keeps the door work: Hub contract,
   format fit for the client (e.g. ogg/opus for Telegram), text cleaning, logs, usage rows, and the fallback to
   `interna` when the engine fails. Clients never notice the difference.
-- Boundary kept: an engine reached in `esterna` must be a speech engine (sound ↔ text). Speech-to-speech models that
-  also *think* (OpenAI Realtime, Gemini Live) are brains: if wanted later they go under Oracle's external mode, with
-  Echo only carrying the audio.
+- Boundary kept: an engine reached in `esterna` must be a speech engine (sound ↔ text). **No external live / speech-to-
+  speech services** (OpenAI Realtime, Gemini Live…), now or later (Marko 2026-10-20): live is rebuilt with Oracle (only
+  the LLMs it already uses, no change to its architecture) + Echo.
 
 ## 5. Other settings (Themis, declared by Echo)
 
@@ -152,7 +152,7 @@ Oracle document with audio ─▶ Hub ▶ Echo transcribe ─▶ transcript ─�
 | `echo.audio.space_mb` | number | `2048` | space for kept audio; over it, generated audio goes first (§7.4) |
 | `echo.audio.generated_days` | number | `30` | how long a generated reply audio is kept after its last listen |
 
-No env tunables besides keys. Hermes declares its own `hermes.voice.level` (§7.3).
+No env tunables besides keys. Voice in notifications is decided by each module (§7.3).
 
 ## 6. API (Echo, all through the Hub; `Hestia-Swagger/swagger.yml` updated)
 
@@ -193,9 +193,11 @@ No MCP tools in this version: audio is not useful to an LLM, and the chat alread
   «Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?» (no module names).
 
 **WebUI** (Angular, `DESIGN-SYSTEM.md`, stroke icons, no emoji)
-- Composer microphone (tap to start/stop; hold on phone). `MediaRecorder` sends 2–3 s chunks to the WebUI backend →
-  Hub → `listen` stream (`webui.dettatura`): the partial text appears while speaking; on stop the final text is **sent
-  automatically** after 2 s with an «annulla» chip (cancel keeps it in the composer). The reply is text.
+- Voice messages **like WhatsApp / Telegram / the Claude app**: on the phone hold the microphone to record, release to
+  send, slide to cancel; on desktop click to record, click send (or the bin to cancel). While recording, chunks go to
+  a `listen` stream (`webui.dettatura`) so the text is ready when you release. The message appears in the chat as an
+  **audio bubble** (play, duration) with its transcript under it; the transcript is what goes to Oracle. The reply
+  is text.
 - Every assistant reply gets «ascolta» (`webui.risposta`, played in blocks).
 - .NET `VoiceController` only forwards to the Hub route `echo` (no audio logic in the WebUI).
 
@@ -209,9 +211,13 @@ No MCP tools in this version: audio is not useful to an LLM, and the chat alread
 - Live is a mode Marko enters and leaves, not a setting.
 
 ### 7.3 Voice in notifications (Hermes)
-- Hermes stays the only messenger: when it delivers a notification at or above `hermes.voice.level`
-  (`nessuna` | `importanti` (default) | `tutte`, declared by Hermes), it asks Echo (`hermes.notifica`) for the audio
-  and attaches it: Telegram sends the voice message right after the text; the WebUI notification gets a play button.
+- **Each module decides** (Marko 2026-10-20): a module marks a notification `voice: true` when it reads well aloud,
+  and declares its own setting `<module>.notifiche.voce` (helper in `hestia_common.reminders`) with its own default:
+  e.g. Hygieia/Hercules reminders and the daily recap **on**, Scout listings and Plutus movements **off**. A setting is
+  allowed here because the feature acts on its own (it sends something).
+- Hermes stays the only messenger: for a notification with `voice: true` it asks Echo (`hermes.notifica`) for the
+  audio and attaches it: Telegram sends the voice message right after the text; the WebUI notification gets a play
+  button.
 - The written notification never changes; no audio (Echo down, chain exhausted) = the notification as today.
 - The notification audio belongs to the notification: it is removed when the notification is removed or retracted.
 
@@ -255,8 +261,8 @@ Everything writes through Themis. Icons mic, speaker, waveform added to the WebU
 - **V4 Oracle without Whisper** — analyser/archiver call Echo; WhisperX code and setting removed; tests.
 - **V5 Keeping audio** — blobs with meta, opus re-encode, `echo.audio_cleanup` agenda job, space rule, tests.
 - **V6 Telegram** — voice note → chat, «Ascolta» button, `/live`, fallback, queue while unavailable; tests.
-- **V7 WebUI** — `VoiceController`, composer mic with live text, auto-send + «annulla», «ascolta», live view «Parla».
-- **V8 Notifications** — Hermes `hermes.voice.level`, audio attached on Telegram and WebUI, removed with the notification.
+- **V7 WebUI** — `VoiceController`, composer mic with live text, WhatsApp-style voice messages (hold/release/slide, audio bubble + transcript), «ascolta», live view «Parla».
+- **V8 Notifications** — `voice` flag + `<module>.notifiche.voce` helper, modules set their defaults, Hermes attaches audio on Telegram and WebUI, removed with the notification.
 - **V9 Plugin «Voce»** — tabs of §8, plus «Registrazioni» (Marko's recordings: play, delete, export).
 - **V10 Docs** — `CLAUDE.md` rule, `docs/ARCHITECTURE.md`, `docs/AI-GUIDE.md`, `readme.md`, `architecture-and-flow-map.md`,
   module docs (Echo, Oracle, Telegram, WebUI, Shared), root `CHANGELOG.md`; PR, CI green, merge.
@@ -277,12 +283,12 @@ Everything writes through Themis. Icons mic, speaker, waveform added to the WebU
 8. An audio file attached in chat is still transcribed and summarized, with no Whisper code left in Oracle.
 9. Echo down: Telegram falls back or says it cannot listen right now; nothing is lost or silent.
 
-## 10. Choices for Marko (defaults in **bold**, used if you just say ok)
+## 10. Decisions (Marko 2026-10-20)
 
-1. Name: **Hestia-Echo**, port **19021**.
-2. Default local voice: **Kokoro** (more natural; ~1 s per sentence on the PC CPU), with Piper as backup (more
-   robotic but instant, runs on a Raspberry Pi). Changeable any time from «Prova» in the plugin.
-3. Notifications with voice by default: **`importanti`**, or `tutte` / `nessuna`.
-4. WebUI voice message: **sent automatically with «annulla» for 2 s**, or left in the composer.
-5. Speech-to-speech brains (Realtime / Gemini Live): **later, under Oracle's external mode** (Echo carries the audio),
-   or nothing.
+1. Name **Hestia-Echo**, port 19021. Default local voice **Kokoro**, Piper as backup (changeable from «Prova»).
+2. Chat stays text (+ «ascolta»); **live** mode speaks (WebUI «Parla», Telegram `/live`).
+3. Voice in notifications: **each module decides** with its own `<module>.notifiche.voce` setting and default.
+4. WebUI voice messages work **like WhatsApp / Telegram / the Claude app** (hold, release to send, slide to cancel;
+   audio bubble + transcript).
+5. **No external live services**, ever: live = Oracle (its current LLMs, unchanged) + Echo.
+6. Audio kept by the rule of §7.4; external mode of Echo = proxy to speech engines only.

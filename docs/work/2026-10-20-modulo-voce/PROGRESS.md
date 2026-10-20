@@ -4,7 +4,7 @@
 - [x] SPEC v1.0 draft
 - [x] SPEC v2.0 (blocks like Oracle, external mode, streams) after Marko review
 - [x] SPEC v3.0 (chat text + live voice, notification audio, keeping audio) after Marko review
-- [ ] Marko approves SPEC (answers §10)
+- [x] Marko approves SPEC (v3.1, §10 decisions)
 - [ ] V1 Echo core
 - [ ] V2 Streams in blocks
 - [ ] V3 External mode
