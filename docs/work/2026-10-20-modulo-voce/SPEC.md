@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 2.0 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 4 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator 2026-10-20 |
 | **Status** | Draft — waiting for Marko's approval (§10) before any code |
 
@@ -33,15 +33,19 @@ Vision check (Marko): an open personal Jarvis, usable from any client; talking t
 
 1. **Hestia-Echo** (port 19021): one module owns speech. `POST /api/voice/transcribe` (audio → text) and
    `POST /api/voice/speak` (text → audio), reached through the Hub like every service.
-2. **Profiles like Oracle a blocchi**: named providers (local and cloud), an ordered **chain** for listening and one for
-   speaking; a step that fails or has no key is skipped and the next one is tried.
-3. **Telegram**: a voice note is transcribed and then handled **as a normal chat message** (same session, same queue when
+2. **Built in blocks like Oracle a blocchi**: named **providers** (Themis: name, standard, address; env: key only),
+   named reusable **chains** with a direction (*ascolto* = speech→text, *voce* = text→speech), **uses** declared by the
+   callers and pointed at a chain, **per-provider options** declared by each standard, and an **external mode** where
+   Echo is only the door and proxies to an external (or self-hosted) voice engine, exactly like Oracle's brain mode.
+3. **Echo is the audio transport**: it handles whole files and **streams in blocks** (audio chunks in, sentences out),
+   so every client gets live dictation and replies that start speaking after the first sentence.
+4. **Telegram**: a voice note is transcribed and then handled **as a normal chat message** (same session, same queue when
    the assistant is unavailable). The assistant answers by voice according to the reply mode (§5).
-4. **WebUI**: microphone in the chat composer, «ascolta» on every assistant reply, automatic playback in the same reply
+5. **WebUI**: microphone in the chat composer, «ascolta» on every assistant reply, automatic playback in the same reply
    mode; replies are spoken sentence by sentence while they stream.
-5. **Oracle drops Whisper**: audio inside documents is transcribed by asking Echo; Oracle keeps only what is an LLM
+6. **Oracle drops Whisper**: audio inside documents is transcribed by asking Echo; Oracle keeps only what is an LLM
    (models that hear audio natively).
-6. **Plugin «Voce»** (core): try voices, test the microphone, see the chain and the last transcriptions.
+7. **Plugin «Voce»** (core): providers, chains, uses, mode, tests and a usage panel like Oracle's.
 
 Out of scope (later, if wanted): wake word / always-listening, voice notifications from Hermes, speaker
 identification, phone calls, voice cloning.
@@ -61,126 +65,179 @@ Oracle document with audio ─▶ Hub ▶ Echo transcribe ─▶ transcript ─�
   answer. Clients (Telegram, WebUI) decide when to transcribe and when to speak; Oracle stays the brain.
 - **Rule change** in `CLAUDE.md` and `docs/ARCHITECTURE.md`: «Oracle is the only caller of **LLM** providers;
   speech providers (STT/TTS) belong to Echo».
-- **Transport**: JSON through the Hub envelope, audio as base64 (`audio_b64`). Voice notes and spoken sentences are
-  small (a minute of opus ≈ 100 KB); Echo refuses inputs over `echo.stt.max_seconds`. No direct URLs.
+- **Transport**: JSON through the Hub envelope, audio as base64 (`audio_b64`). Files are small (a minute of opus ≈
+  100 KB; limit `echo.ascolto.max_seconds`). Streams are **blocks**, not sockets: a stream is a sequence of Hub calls
+  on one `stream_id` (§6), so the Hub stays the only door and every client (Telegram, WebUI, future ones) uses the
+  same contract. No direct URLs.
 - **Node**: the PC (with Oracle), because local Whisper and Kokoro want CPU/GPU; Piper also runs on a Raspberry Pi.
 - **ffmpeg** in the Echo image converts any input (ogg, webm, m4a, mp3, wav, mp4) to 16 kHz mono for the engines and
   produces the output format the client asks for (`ogg_opus` for Telegram voice, `mp3`/`webm` for browsers).
 
-## 4. Providers and chains
+## 4. Blocks (same shape as Oracle a blocchi)
 
-Same model as Oracle a blocchi, smaller:
+### A. Named providers (Themis = name, standard, address, options · env = key only)
+- **Standards** are what Echo knows how to speak to; providers are named instances of a standard:
 
-| Type | Listens (STT) | Speaks (TTS) | Needs |
-|---|---|---|---|
-| `local` (built in) | faster-whisper (`tiny`…`large-v3`, CPU int8, GPU if present) | Piper (fast, light) and Kokoro (more natural, Italian voices) | nothing; models download on first use into a volume |
-| `openai` (OpenAI-compatible audio API) | `/v1/audio/transcriptions` | `/v1/audio/speech` | URL + key. Covers OpenAI, Groq (free Whisper large-v3-turbo), and self-hosted servers (Speaches, LocalAI) |
-| `google` | Cloud Speech-to-Text (REST, ogg/opus native) | Cloud Text-to-Speech (Italian Neural2/Wavenet/Chirp voices) | API key |
+  | Standard | Directions | Example providers | Per-provider options (declared by the standard) |
+  |---|---|---|---|
+  | `whisper_local` (built in, faster-whisper) | ascolto | `whisper-locale` | model size, beam size, VAD on silence, initial prompt (names, jargon), device cpu/gpu |
+  | `piper` (built in) | voce | `piper` | voice, length scale (speed), noise, sentence silence |
+  | `kokoro` (built in) | voce | `kokoro` | voice, speed |
+  | `openai` (compatible audio API) | ascolto + voce | `openai`, `groq` (free Whisper large-v3-turbo), `speaches` / `kokoro-fastapi` / LocalAI (self-hosted) | prompt, temperature; voice, speed, `instructions` (style, for models that take it) |
+  | `google` (Cloud Speech-to-Text / Text-to-Speech) | ascolto + voce | `google` | recognition model, punctuation; voice, speaking rate, pitch, audio profile |
+  | `elevenlabs` | ascolto + voce | `elevenlabs` | model, voice, stability, similarity, style |
+  | `wyoming` (Home Assistant voice protocol, TCP) | ascolto + voce | any Wyoming whisper/piper server on the LAN | voice |
 
-- Env holds only addresses and keys: `ECHO_PROVIDER_<NAME>=<type>[@<url>]` and `ECHO_KEY_<NAME>` (secrets in
-  `Hestia-Echo/app/.env`, documented in `.env.example`). A provider without its key is skipped by every chain.
-- **Chains** (Themis, declared by Echo):
-  - `echo.stt.chain` — ordered list of `provider:model`, default `["local:small"]`.
-  - `echo.tts.chain` — ordered list of `provider:voice`, default `["local:piper/it_IT-paola-medium"]`.
-  - A step that errors, times out or has no key is skipped (`event=voice_step_skipped`, `[🔄]` on fallback) and the
-    next one is tried; quota errors skip the step until `echo.chain.cooldown_minutes`.
-- `GET /api/voice/voices` lists, per provider, the models/voices available now (local ones installed + downloadable,
-  cloud ones from the provider API), so the Sistema panel and the plugin show choices instead of free text.
+- Setting `echo.providers` (object, live): `{name: {type, label, url, options}}`, edited from the WebUI. Defaults:
+  `whisper-locale`, `piper`, `kokoro` (always present), `groq`, `google`, `openai` (used only once their key exists).
+- **Keys only in env**: `ECHO_KEY_<NAME>` (upper-case, `-` → `_`, e.g. `ECHO_KEY_GROQ`, `ECHO_KEY_GOOGLE`) in
+  `Hestia-Echo/app/.env`. The panel shows only «chiave ✓ / manca».
+- `GET /api/voice/standards` returns each standard's option schema (type, range, options), so the WebUI draws the
+  form and a new standard needs no WebUI change. `GET /api/voice/providers`: state (ready / no key / downloading /
+  unreachable), models and voices (`list_models()` / `list_voices()` per standard), quota state.
 
-## 5. Settings (Themis, declared by Echo with `settings_client.setting`)
+### B. Named reusable chains, each with a direction
+- Setting `echo.chains` (object, live): `{name: {label, direction: ascolto|voce, steps: [{provider, model|voice,
+  options?}]}}`. Step options override the provider's options (e.g. the same Google provider, a slower voice for
+  long readings).
+- Defaults (editable, more can be added):
+
+  | Chain | Direction | Steps (a step whose provider has no key is skipped) |
+  |---|---|---|
+  | `ascolto` | ascolto | whisper-locale `small` → groq `whisper-large-v3-turbo` |
+  | `ascolto-preciso` | ascolto | groq `whisper-large-v3` → whisper-locale `medium` |
+  | `voce` | voce | piper `it_IT-paola-medium` → kokoro `if_sara` |
+  | `voce-naturale` | voce | kokoro `if_sara` → google `it-IT-Chirp3-HD` → piper `it_IT-paola-medium` |
+
+- Fallback exactly like Oracle: on quota/rate limit the provider+model pair is skipped by every chain until its reset
+  (or `echo.chains.cooldown`, 60 min); on other errors the next step for this call only. One
+  `event=voice_chain_step_unavailable` per change; `[🔄]` on fallback; all steps failed → `event=voice_chain_exhausted`
+  and a clear error.
+
+### C. Uses: declared by the callers, configured in one place
+- Each caller declares its uses with `hestia_common.voice_usecases([...])` in its Hub caps (same helper shape as
+  `oracle_usecases`): id `<module>.<task>`, label, direction, suggested chain. First ones: `telegram.vocale` (ascolto),
+  `telegram.risposta` (voce), `webui.dettatura` (ascolto, stream), `webui.risposta` (voce, stream),
+  `oracle.documenti` (ascolto, long files → `ascolto-preciso`), `echo.prova` (the plugin's test box).
+- Setting `echo.usecases` (object, live) keeps only Marko's overrides `{use: {chain, mode}}`; undeclared uses run on
+  the default chain of their direction and are listed too.
+
+### D. External mode (a mode of its own, like Oracle's brain)
+- Setting `echo.mode` = `interna` (default) | `esterna`, `echo.external.provider` (a provider whose standard does the
+  needed direction(s), e.g. a self-hosted Speaches or Wyoming server, or a cloud one) and `echo.external.fallback` =
+  `interna` (default) | `nessuno`. A use can override the mode (`segui` | `interna` | `esterna`).
+- **Interna** = Echo's own machine: ffmpeg conversion, silence detection, cutting audio and text into blocks, chain
+  with fallback, text cleaning before speaking.
+- **Esterna** = Echo is only the door and a **proxy**: it passes files and streams to the external engine as they
+  are (the engine does its own chunking, VAD and sentence handling) and only keeps the door work: Hub contract,
+  format fit for the client (e.g. ogg/opus for Telegram), text cleaning, logs, usage rows, and the fallback to
+  `interna` when the engine fails. Clients never notice the difference.
+- Boundary kept: an engine reached in `esterna` must be a speech engine (sound ↔ text). Speech-to-speech models that
+  also *think* (OpenAI Realtime, Gemini Live) are brains: if wanted later they go under Oracle's external mode, with
+  Echo only carrying the audio.
+
+## 5. Other settings (Themis, declared by Echo)
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `echo.stt.chain` | list | `["local:small"]` | listening chain (§4) |
-| `echo.tts.chain` | list | `["local:piper/it_IT-paola-medium"]` | speaking chain (§4) |
-| `echo.language` | enum | `it` | language for transcription and synthesis (`auto` allowed for STT) |
+| `echo.language` | enum | `it` | language for listening (`auto` allowed) and speaking |
 | `echo.reply.mode` | enum | `mirror` | when the assistant answers by voice: `mirror` (only when I spoke), `always`, `never` |
-| `echo.tts.speed` | number | `1.0` | speaking rate |
-| `echo.tts.max_chars` | number | `1200` | longer replies: voice reads the first part and says the rest is in the text |
-| `echo.stt.max_seconds` | number | `600` | longest audio accepted |
-| `echo.chain.cooldown_minutes` | number | `60` | how long a step that hit its quota is skipped |
+| `echo.voce.max_chars` | number | `1200` | longer replies: voice reads the first part and says the rest is in the text |
+| `echo.ascolto.max_seconds` | number | `600` | longest audio accepted |
+| `echo.chains.cooldown` | number | `60` | minutes a pair that hit its quota is skipped when the provider gives no reset |
+| `echo.pricing` | object | `{}` | `provider/model` → cost per minute heard / per 1M characters spoken, for the usage panel |
 
-`echo.reply.mode` is a preference with three behaviours, not an on/off switch hiding a feature. No new env tunables.
+`echo.reply.mode` is a preference with three behaviours, not an on/off switch. No env tunables besides keys.
 
 ## 6. API (Echo, all through the Hub; `Hestia-Swagger/swagger.yml` updated)
 
-- `POST /api/voice/transcribe` `{audio_b64, mime_type, language?}` → `{text, language, duration_s, provider, model}`;
-  422 on empty/too long audio, 503 when every chain step failed.
-- `POST /api/voice/speak` `{text, format: ogg_opus|mp3|webm|wav, voice?}` → `{audio_b64, mime_type, duration_s,
-  provider, voice}`. Text is cleaned first: markdown, links, code blocks and emoji are not read aloud.
-- `GET /api/voice/voices` → providers, their state (ready / no key / downloading / failed), models and voices.
-- `GET /api/voice/recent` → last 20 operations in memory (kind, provider, duration, ms, ok) for the plugin; transcripts
-  themselves are **not** kept by Echo (they live in the chat session in Archive like any message).
-- `/health`, Hub registration, `hestia_common` startup and logging like every module.
+Files:
+- `POST /api/voice/transcribe` `{audio_b64, mime_type, use_case, language?}` → `{text, language, duration_s,
+  provider, model}`; 422 empty/too long, 503 chain exhausted.
+- `POST /api/voice/speak` `{text, format: ogg_opus|mp3|webm|wav, use_case, voice?}` → `{audio_b64, mime_type,
+  duration_s, provider, voice}`. Markdown, links, code blocks and emoji are not read aloud.
 
-No MCP tools in this version: audio is not useful to an LLM, and the chat already receives the transcript as text.
+Streams in blocks (one `stream_id`, closed by `end` or after 60 s idle):
+- Listening: `POST /api/voice/listen` `{use_case, mime_type}` → `{stream_id}` · `POST /api/voice/listen/{id}/chunk`
+  `{seq, audio_b64}` → `{partial}` · `POST /api/voice/listen/{id}/end` → final `{text, …}`.
+- Speaking: `POST /api/voice/say` `{use_case, format}` → `{stream_id}` · `POST /api/voice/say/{id}/text`
+  `{delta}` → `{blocks: [{seq, audio_b64, text}]}` (Echo cuts complete sentences out of the deltas it has received)
+  · `POST /api/voice/say/{id}/end` → the last blocks. A client forwards the reply deltas as they stream from Oracle.
+
+Blocks: `GET /api/voice/standards`, `GET /api/voice/providers`, `GET /api/voice/chains` (resolved, with step state),
+`GET /api/voice/usecases` (declared + overrides), `GET /api/voice/usage?days=` (from Archive).
+Plus `/health`, Hub registration, `hestia_common` startup and logging.
+
+**Usage** like Oracle's panel: every operation writes a row to Archive `voice_usage` (use, chain, step, provider,
+model/voice, mode, seconds heard / characters spoken, duration, ok, cost). Transcripts are **not** stored by Echo
+(they live in the chat session like any message).
+
+No MCP tools in this version: audio is not useful to an LLM, and the chat already gets the transcript as text.
 
 ## 7. Clients
 
 **Telegram**
-- `voice` and `video_note` messages: download → transcribe → the bot shows «🎙️ <i>testo capito</i>» (edited in place
-  into the status message) → the text goes into the **normal chat path** (`handle_text` flow: session, streaming, queue
-  while unavailable). The transcript is what is saved in the session.
-- `audio` files (music, recordings sent as files) keep the document path (transcribe and summarize), now served by Echo
-  through Oracle.
-- Reply by voice (per `echo.reply.mode`): when the streamed reply is complete, the bot asks Echo for `ogg_opus` and sends
-  it with `sendVoice` under the text reply (the text always stays, so nothing is lost).
-- When transcription fails: `[🔄]` fallback to today's document path (an LLM that hears audio, if the chain has one);
-  if that also fails, a generic message: «Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?» (no module names).
+- `voice` and `video_note`: download → `transcribe` (`telegram.vocale`) → the status message shows «🎙️ <i>testo
+  capito</i>» → the text goes into the **normal chat path** (session, streaming, queue while unavailable).
+- `audio` files keep the document path (transcribe and summarize), now served by Echo through Oracle.
+- Reply by voice (per `echo.reply.mode`): the reply deltas go to a `say` stream (`telegram.risposta`, `ogg_opus`);
+  the blocks are joined and sent with `sendVoice` under the text reply (the text always stays).
+- Transcription fails: `[🔄]` today's document path (an LLM that hears audio, if a chain has one); then a generic
+  «Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?» (no module names).
 
 **WebUI** (Angular, `DESIGN-SYSTEM.md`, stroke icons, no emoji)
-- Composer: microphone button (tap to start, tap to stop; hold on phone). Browser `MediaRecorder` (webm/opus or mp4 on
-  Safari) → WebUI backend `POST /api/voice/transcribe` → Hub → Echo. The text appears in the composer and is **sent
-  automatically** after 2 s with an «annulla» chip (cancel keeps it in the composer to edit), so a voice message
-  behaves like on Telegram.
-- Every assistant reply gets an «ascolta» icon. In `mirror` mode (after a voice message) or `always`, playback starts on
-  its own: the streaming reply is cut into sentences and each sentence is spoken as soon as it is complete
-  (this is the "stream": first sound after the first sentence, not after the whole reply).
-- Live dictation with partial text while speaking: chunks of 3 s sent while recording, partial transcript shown in the
-  composer, final transcript replaces it on stop.
+- Composer microphone (tap to start/stop; hold on phone). `MediaRecorder` sends 2–3 s chunks to the WebUI backend →
+  Hub → `listen` stream (`webui.dettatura`): the partial text appears while speaking; on stop the final text is **sent
+  automatically** after 2 s with an «annulla» chip (cancel keeps it in the composer).
+- Every assistant reply gets «ascolta». In `mirror` (after a voice message) or `always`, the streaming reply feeds a
+  `say` stream (`webui.risposta`) and the browser plays blocks in order: first sound after the first sentence.
+- .NET `VoiceController` only forwards to the Hub route `echo` (no audio logic in the WebUI).
 
 **Oracle**
-- `local_models.transcribe_audio` and the WhisperX code go away; analyser and archiver call Echo through the Hub.
-- `oracle.documents.whisper_model` is removed (its role moves to `echo.stt.chain`); `oracle.documents.audio_models`
-  stays (it is about LLMs).
+- WhisperX code (`local_models.transcribe_audio`) and `oracle.documents.whisper_model` are removed; analyser and
+  archiver call `transcribe` with `oracle.documents`. `oracle.documents.audio_models` stays (it is about LLMs).
 
 ## 8. Plugin «Voce» (core, in Echo's `ui/`)
 
-One page in the Sistema area (core order free between existing core decades, chosen at implementation):
-- **Prova**: text box + voice picker + «parla»; microphone + «trascrivi» to check what the chain understands.
-- **Catena**: the two chains with the state of every step (ready / no key / downloading / failed), editable through the
-  usual Themis settings controls.
-- **Ultime operazioni**: `GET /api/voice/recent`.
-Icons: mic, speaker, waveform (added to the WebUI icon set if missing).
+Same layout as Oracle's «Modelli»: **Fornitori** (add/edit, standard picker, options form from the schema, key
+state), **Catene** (two groups, ascolto and voce; ↑↓ reorder, provider/model/voice pickers, step state), **Usi** (by
+module: chain + mode), **Modalità** (interna/esterna, engine, fallback), **Prova** (microphone → text; text + voice →
+play; shows which step answered), **Uso** (minutes heard, characters spoken, cost, by use/provider, last operations).
+Everything writes through Themis. Icons mic, speaker, waveform added to the WebUI set if missing.
 
 ## 9. Phases (each: tests green, docs updated, PROGRESS ticked)
 
-- **V1 Echo core** — service skeleton (template), providers `local`/`openai`/`google`, chains with cooldown, ffmpeg
-  conversion, text cleaning for TTS, endpoints, settings, Dockerfile with model volume, compose (global + cloud test),
-  CI matrix, `hestia-echo.md`, swagger, `.env.example`, unit/api tests with fake engines.
-- **V2 Oracle without Whisper** — analyser/archiver call Echo; WhisperX code and setting removed; tests.
-- **V3 Telegram** — voice note → chat message; voice reply per mode; fallback; queue while unavailable; tests.
-- **V4 WebUI** — .NET `VoiceController` (Hub route), composer mic, auto-send with «annulla», «ascolta», sentence
-  streaming playback, live dictation; icons.
-- **V5 Plugin «Voce»** — page, recent operations, voice list.
-- **V6 Docs** — `CLAUDE.md` rule, `docs/ARCHITECTURE.md`, `docs/AI-GUIDE.md`, `readme.md`, `architecture-and-flow-map.md`,
-  module docs (Echo, Oracle, Telegram, WebUI), root `CHANGELOG.md`; PR, CI green, merge.
+- **V1 Echo core** — service from the template, standards `whisper_local`/`piper`/`kokoro`/`openai`/`google`, providers +
+  `ECHO_KEY_*`, chains with quota skip, uses (`hestia_common.voice_usecases`), ffmpeg, text cleaning, file endpoints,
+  settings, usage rows (Archive `voice_usage`), Dockerfile with model volume, compose (global + cloud test), CI
+  matrix, `hestia-echo.md`, swagger, `.env.example`, unit/api tests with fake engines.
+- **V2 Streams in blocks** — `listen` / `say` streams, sentence cutting, idle close; standards `elevenlabs`, `wyoming`.
+- **V3 External mode** — `echo.mode`, proxy path, per-use override, fallback; tests with a fake engine.
+- **V4 Oracle without Whisper** — analyser/archiver call Echo; WhisperX code and setting removed; tests.
+- **V5 Telegram** — voice note → chat; voice reply per mode; fallback; queue while unavailable; tests.
+- **V6 WebUI** — `VoiceController`, composer mic with live text, auto-send + «annulla», «ascolta», block playback.
+- **V7 Plugin «Voce»** — tabs of §8.
+- **V8 Docs** — `CLAUDE.md` rule, `docs/ARCHITECTURE.md`, `docs/AI-GUIDE.md`, `readme.md`, `architecture-and-flow-map.md`,
+  module docs (Echo, Oracle, Telegram, WebUI, Shared), root `CHANGELOG.md`; PR, CI green, merge.
 
 **Acceptance**
 1. A Telegram voice note «aggiungi al diario che oggi ho dormito male» is transcribed, shown, and handled exactly like
    the same sentence typed (the diary tool runs).
-2. With `echo.reply.mode = mirror` the reply comes back as text **and** a Telegram voice message; a typed message gets
-   text only.
-3. In the WebUI the microphone sends a voice message; the reply starts speaking after its first sentence.
-4. With `echo.stt.chain = ["groq:whisper-large-v3-turbo", "local:small"]` and no Groq key, transcription works locally
-   and the log shows the skipped step.
-5. An audio file attached in chat is still transcribed and summarized, with no Whisper code left in Oracle.
-6. Echo down: Telegram falls back (document path) or says it cannot listen right now; nothing is lost or silent.
+2. With `echo.reply.mode = mirror` the reply comes back as text **and** a Telegram voice message; typed → text only.
+3. In the WebUI the microphone shows text while speaking and sends it; the reply starts speaking after its first
+   sentence.
+4. A provider is added from the WebUI (name, standard, address, options) + one `ECHO_KEY_<NAME>` line and appears in
+   the chain editor; a step without key is skipped and the log shows it.
+5. With `echo.mode = esterna` on a self-hosted engine, Telegram and WebUI work unchanged; engine down → `interna`.
+6. An audio file attached in chat is still transcribed and summarized, with no Whisper code left in Oracle.
+7. Echo down: Telegram falls back or says it cannot listen right now; nothing is lost or silent.
 
 ## 10. Choices for Marko (defaults in **bold**, used if you just say ok)
 
-1. Name: **Hestia-Echo** (the nymph who is only a voice), port **19021**.
-2. Local voice: **Piper first** (fast, also on a Raspberry Pi) with Kokoro selectable in the chain; or Kokoro first
-   (more natural, slower on CPU).
+1. Name: **Hestia-Echo**, port **19021**.
+2. Default `voce` chain: **Piper first** (fast, also on a Raspberry Pi), Kokoro next; or Kokoro first (more natural,
+   slower on CPU).
 3. Reply by voice default: **`mirror`** (voice only when you spoke), or `always` / `never`.
-4. WebUI voice message: **sent automatically with «annulla» for 2 s**, or put in the composer for you to send.
+4. WebUI voice message: **sent automatically with «annulla» for 2 s**, or left in the composer.
+5. Speech-to-speech brains (Realtime / Gemini Live): **later, under Oracle's external mode** (Echo carries the audio),
+   or nothing.
