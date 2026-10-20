@@ -1,6 +1,7 @@
 // GitHub Codespaces: the whole Hestia stack as a test bench you open from the browser (also phone).
 // Start: Code → Codespaces → «…» → New with options (4-core): the page asks for the secrets below (all optional).
-// On every start it runs `python tools/cloud_test.py start`: build/start the stack, login link in .cloud-test/login.txt.
+// On every start it runs `python tools/cloud_test.py start`: build/start the stack, login link in .cloud-test/login.txt,
+// full output in .cloud-test/start.log (look there if the link does not appear).
 // Ports stay private (only your GitHub account). Docs: TESTING.md «Banco di prova cloud».
 {
   "name": "Hestia — banco di prova",
@@ -24,5 +25,5 @@
     "GOOGLE_CLIENT_SECRET": { "description": "Secret of the same temporary Google OAuth client." }
   },
   "postCreateCommand": "python tools/cloud_test.py prepare",
-  "postStartCommand": "python tools/cloud_test.py start"
+  "postStartCommand": "mkdir -p .cloud-test && python tools/cloud_test.py start 2>&1 | tee .cloud-test/start.log"
 }
