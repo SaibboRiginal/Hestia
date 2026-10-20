@@ -8,6 +8,7 @@ import logging
 import os
 from pathlib import Path
 import sys
+import time
 from typing import Any
 
 import requests
@@ -44,6 +45,7 @@ from .modules.events import RegistryEvents
 from .modules import inside
 from .modules.registry import ServiceRegistry
 from .modules.router import proxy_request
+from .modules.snapshot import RegistrySnapshot
 from .modules.schemas import (
     ALLOWED_TOPOLOGY_DIMENSIONS,
     ALLOWED_TAGS,
@@ -64,6 +66,34 @@ events = RegistryEvents(
     notify_timeout=float(os.getenv("HUB_NOTIFY_TIMEOUT", "2")),
 )
 _health_timeout = float(os.getenv("HUB_HEALTHCHECK_TIMEOUT", "3"))
+snapshot = RegistrySnapshot()
+
+
+def _restore_registry() -> None:
+    """Hub restart: reload the last routing table so routes work before services re-register."""
+    loaded = snapshot.load()
+    if not loaded["services"] and not loaded["revision"]:
+        return
+    restored = registry.restore(loaded["services"])
+    events.restore(loaded["revision"])
+    events.bump(registry.all_services(), reason="restore")
+    saved_at = loaded.get("saved_at")
+    log_event(logger, logging.INFO, "hub_registry_restored", service="hub",
+              services=len({s["name"] for s in registry.all_services()}), instances=restored,
+              dropped=loaded["dropped"], revision=events.revision,
+              age_seconds=round(time.time() - float(saved_at), 1) if saved_at else None)
+
+
+def _save_registry(*, force: bool) -> None:
+    snapshot.save(registry.all_services(), events.revision, force=force)
+
+
+_restore_registry()
+
+
+@app.on_event("shutdown")
+def _save_registry_on_shutdown() -> None:
+    _save_registry(force=True)
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
@@ -96,6 +126,7 @@ def register_service(req: RegisterServiceRequest):
         events.bump(registry.all_services(), reason="register")
         _mcp_commands_cache_invalidate(req.name)
         ui_manifest_cache_invalidate(req.name)
+    _save_registry(force=register_status != "refreshed")
     log_event(
         logger,
         logging.DEBUG if register_status == "refreshed" else logging.INFO,
@@ -112,6 +143,7 @@ def register_service(req: RegisterServiceRequest):
 def deregister_service(req: DeregisterServiceRequest):
     registry.deregister(req.name, req.base_url)
     events.bump(registry.all_services(), reason="deregister")
+    _save_registry(force=True)
     _mcp_commands_cache_invalidate(req.name)
     log_event(
         logger,

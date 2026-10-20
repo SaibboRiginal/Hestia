@@ -44,6 +44,11 @@ class RegistryEvents:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
+    def restore(self, revision: int) -> None:
+        """Continue numbering from a saved revision (Hub restart); call before the first bump."""
+        with self._lock:
+            self._revision = max(self._revision, int(revision))
+
     def bump(self, services: list[dict], reason: str) -> None:
         """Increment the revision counter and fan-out webhooks asynchronously.
 

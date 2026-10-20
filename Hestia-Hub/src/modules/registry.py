@@ -22,12 +22,14 @@ class ServiceRegistry:
                     break
             if existing:
                 # Treat identical keepalive re-registration as a refresh, not a change.
+                # A restored instance re-registering clears ``restored`` without counting as a change.
                 comparable_existing = {
-                    k: v for k, v in existing.items() if k != "updated_at"
+                    k: v for k, v in existing.items() if k not in ("updated_at", "restored")
                 }
                 comparable_incoming = {
-                    k: v for k, v in service.items() if k != "updated_at"
+                    k: v for k, v in service.items() if k not in ("updated_at", "restored")
                 }
+                existing.pop("restored", None)
                 existing.update(service)
                 return "updated" if comparable_existing != comparable_incoming else "refreshed"
             else:
@@ -57,6 +59,23 @@ class ServiceRegistry:
             for items in self._services.values():
                 output.extend(items)
         return output
+
+    def restore(self, instances: list[dict[str, Any]]) -> int:
+        """Load instances from a snapshot (Hub restart). Each gets ``restored: True`` until it
+        re-registers. Instances already registered (same name + base_url) are kept as they are."""
+        count = 0
+        with self._lock:
+            for item in instances:
+                name = str(item.get("name") or "").strip().lower()
+                base_url = item.get("base_url")
+                if not name or not base_url:
+                    continue
+                current = self._services.setdefault(name, [])
+                if any(it.get("base_url") == base_url for it in current):
+                    continue
+                current.append({**item, "name": name, "restored": True})
+                count += 1
+        return count
 
     def get(self, name: str) -> list[dict[str, Any]]:
         """Instances for *name*, most recently refreshed first, so a dead

@@ -23,6 +23,20 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 - `register` / `deregister` service instances.
 - Keep metadata: name, base URL, health endpoint, tags, capabilities.
 
+### Persistent registry (snapshot)
+SPEC `docs/work/2026-10-20-hub-registro-persistente`. Code: `src/modules/snapshot.py`.
+- Hub saves its routing table to `/code/data/registry.json` (volume `./Hestia-Hub/data`), atomically: at once on
+  a real change (created / updated / deregister), heartbeat-only refreshes at most every 30 s (written during the
+  register call, no timer), and on shutdown.
+- At startup it reloads it: instances with a heartbeat older than 24 h are dropped, the rest are routable at once
+  with `restored: true` until they re-register (that clears the flag as a plain refresh). `revision` continues from
+  the saved value and is bumped once (`reason=restore`) so watchers refresh. Log `event=hub_registry_restored`.
+- Missing or corrupt file → `event=hub_registry_restore_failed` `[🔄]`, Hub starts empty like before; a failed
+  write → `event=hub_registry_save_failed` `[🔄]`, the registry stays in memory. Always on, no settings: the file is
+  read before any other service (Themis included) can answer.
+- It is a cache of Hub's own table, not business data, so it does not go to Archive (which is itself found through
+  Hub). Services keep re-registering every 60 s: that stays the source of truth.
+
 ### Discovery
 - Provide service list.
 - Provide module-tools discovery for Oracle (`domain -> endpoint`).
@@ -78,9 +92,9 @@ Hub never registers with itself, so two things are done in-process:
 
 ## Constraints
 
-- No persistence dependency.
+- No database dependency: only the local registry snapshot, and Hub works without it.
 - No domain logic.
-- Stateless restart-safe behavior (services re-register on startup).
+- Restart-safe: the snapshot restores routes at once; services still re-register every 60 s.
 
 
 ## Documentation Synchronization (Required)

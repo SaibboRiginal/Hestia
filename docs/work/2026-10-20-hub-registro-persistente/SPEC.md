@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 1.0 |
 | **Source** | Hestia AI proactive (brainstorm 2026-10-19, item 11 «Registro Hub persistente»), started by Marko 2026-10-20 («voglio che venga fatto tutto») |
-| **Status** | Draft, waiting for Marko's ok |
+| **Status** | Approved by Marko 2026-10-20, implemented |
 
 ## Goal
 When Hub restarts it knows at once where every service is, instead of being blind until each one re-registers
