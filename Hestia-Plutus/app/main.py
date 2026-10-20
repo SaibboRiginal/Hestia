@@ -29,12 +29,14 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
+from .core.coach import REVIEW_NEED, PlutusCoach
 from .core.hub import Hub
 from .core.service import Invalid, NotFound, Plutus
 from .core.statements import Statements
@@ -73,6 +75,10 @@ settings.declare([
                                       "passato non c'è ancora. Uno alla volta."),
     setting("plutus.mail.senders", "Mittenti PayPal", "list", list(DEFAULT_PAYPAL_SENDERS), group="Email", order=0,
             help="Indirizzi o domini delle email di pagamento: Iris le passa a Spese appena arrivano."),
+    setting("plutus.coach.review_threshold", "Movimenti da controllare per proporre un ripasso", "int", 10,
+            group="Piano della settimana", min=1, max=100, unit="movimenti",
+            help="Da questo numero di movimenti da controllare metto nel piano della settimana 15 minuti per "
+                 "rivedere le spese."),
     setting("plutus.link.window_days", "Giorni per collegare PayPal e banca", "int", 3, group="Email", min=0, max=10,
             unit="giorni", advanced=True,
             help="Un pagamento PayPal pagato con la carta compare due volte: le due righe con lo stesso importo "
@@ -109,9 +115,27 @@ plutus = Plutus(store, settings.get, tz_name=TZ, llm=_llm)
 statements = Statements(plutus, hub)
 agenda = AgendaClient("plutus", HUB_API_URL)
 mail = MailClient("plutus", HUB_API_URL)
+coach = PlutusCoach(plutus)
+coach_client = CoachClient("plutus", HUB_API_URL)
+
+
+def _coach_check() -> None:
+    """After movements change, tell the weekly plan (Chronos) in the background if the review is due or done."""
+    def _run():
+        try:
+            event = coach.check()
+        except Exception as exc:
+            logger.warning("[🔄] event=plutus_coach_check_failed error=%s", exc)
+            return
+        if event == "done":
+            coach_client.done(REVIEW_NEED)
+        elif event == "changed":
+            coach_client.changed()
+    threading.Thread(target=_run, daemon=True, name="plutus-coach").start()
 
 app = FastAPI(title="Hestia-Plutus", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(CoachRouter("plutus", DOMAIN, "Spese", needs=coach.needs, review=coach.review).router)
 
 
 @app.exception_handler(Invalid)
@@ -233,7 +257,9 @@ def transaction_get(id: str):
 
 @app.put(f"{API}/transactions/{{id}}")
 def transaction_update(id: str, body: dict = Body(...)):
-    return plutus.update_tx(id, body, learn=bool(body.get("learn")))
+    out = plutus.update_tx(id, body, learn=bool(body.get("learn")))
+    _coach_check()
+    return out
 
 
 @app.delete(f"{API}/transactions/{{id}}")
@@ -296,7 +322,9 @@ def import_get(id: str):
 
 @app.post(f"{API}/imports/{{id}}/commit")
 def import_commit(id: str):
-    return statements.commit(id)
+    out = statements.commit(id)
+    _coach_check()
+    return out
 
 
 @app.post(f"{API}/imports/{{id}}/undo")
@@ -380,6 +408,7 @@ def process_pending_mail() -> dict:
                            added=_mail_stats["added"] + added, last_error=None)
         if added:
             plutus.detect_recurring()
+            _coach_check()
         return {"status": "ok", "processed": len(pending or []), "added": added}
     finally:
         _mail_lock.release()
@@ -634,7 +663,9 @@ try:
                                   "notes": note}.items() if v not in (None, "")}
         if not body:
             return {"error": "nessuna modifica indicata"}
-        return {"saved": True, **_short(plutus.update_tx(id, body, learn=always))}
+        out = plutus.update_tx(id, body, learn=always)
+        _coach_check()
+        return {"saved": True, **_short(out)}
 
     def _delete(id: str = "") -> dict:
         return plutus.delete_tx(id)
