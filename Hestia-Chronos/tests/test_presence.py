@@ -124,7 +124,7 @@ def test_oracle_offline_overlay_queues_chat_and_drains_when_back(engine):
     state = engine.view()
     assert [o["key"] for o in state["overlays"]] == ["oracle_offline"]
     assert state["effects"]["chat.reply"] == "queued" and state["effects"]["work.light"] == "defer"
-    assert "offline" in state["effects"]["chat.notice"]
+    assert "appena possibile" in state["effects"]["chat.notice"]
     assert engine.calls["drain"] == []
     engine.clear_signal("oracle.offline")
     state = engine.view()

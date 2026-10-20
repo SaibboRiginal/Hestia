@@ -83,7 +83,7 @@ def test_offline_message_is_queued_with_fixed_reply(env, fake_message):
         handle_chat_message(fake_message(text="Ci sei?", chat_id=12345, message_id=7))
     assert [(i["text"], i["client_ref"], i["target"]) for i in archive.items] == [("Ci sei?", "7", "12345")]
     text = bot.edit_message_text.call_args[0][0]
-    assert "offline" in text and "in coda" in text
+    assert "Non posso rispondere" in text and "in coda" in text
 
 
 @pytest.mark.unit
