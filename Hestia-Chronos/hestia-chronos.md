@@ -297,6 +297,14 @@ when mail moved to push). No module polls mail: they subscribe to Iris.
 | `assistant.sleep` | window | chronos | daily 01–07 | the night: presence goes to «Sonno profondo» (if `chronos.presence.use_sleep_window`) |
 | `argus.repair.<service>` | task | argus | +10 min, doubling (max 6 h) | `POST argus /api/argus/recheck/{service}`: still down → new repair request + next recheck; recovery closes it |
 
+## Export and import of the agenda (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+One section `agenda` (`services/agenda_transfer.py`): items the user created and module rules the user changed
+(moved, edited, paused, cancelled). Untouched module defaults stay home (every Hestia registers its own); run state
+(last run, attempts, run log) is never exported and the target's is kept. An imported module rule is marked
+`user_modified`, so its module will not overwrite it. «Sostituisci» cancels the user's own items that are only here.
+Calendar items synced from Google/Outlook are not exported. Settings travel through Themis.
+
 ## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
 
 Core module (`kind: "core"`, WebUI *Sistema* section, order 150), `api_prefix` `/api/agenda/` (Chronos' own

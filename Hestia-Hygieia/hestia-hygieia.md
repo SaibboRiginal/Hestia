@@ -92,6 +92,12 @@ See `Hestia-Swagger/swagger.yml` tag *Hygieia*. Groups: meta/options, products (
 use), routines (+undo, plan, done, skip, snooze), today, logs, journal, stats, timeline, period, alerts,
 shopping, check, summary, overview, export, quick (Home chips), reminders/run, alerts/run.
 
+## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Sections over `selfcare-store`: `prodotti` (product + its history events) · `routine` (routine + versions) ·
+`registro` (log) · `diario` (journal) · `liste` (option). A routine pulls its products and options. Reminder chain
+state and alerts are never exported. Settings travel through Themis.
+
 ## Configuration (infrastructure only)
 
 `SERVICE_NAME`, `SERVICE_BASE_URL`, `HUB_API_URL`, `TZ` (local day for goals and reminders), `HYGIEIA_UI_DIST`.

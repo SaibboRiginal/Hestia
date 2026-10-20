@@ -52,7 +52,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
 - `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
-  agenda, presence, settings, plugins, mcp, webui (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
+  agenda, presence, settings, plugins, mcp, webui, transfer (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
   → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».

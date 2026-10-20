@@ -49,6 +49,7 @@ the affected containers and rolls back automatically if the health check fails.
 | 🧭 **Idle cognition** | Athena observes the system when you're not using it, scores ideas for relevance and proposes improvements. |
 | 🦉 **Continuous learning** | Metis turns your feedback into datasets (ChatML/Alpaca/ShareGPT) and orchestrates LoRA training. |
 | 🏠 **Domain modules** | Examples: Scout reads real-estate listing emails, tracks listings and alerts you on matches; Plutus «Spese» tracks expenses from PayPal mails and the monthly bank statement PDF (upload it or send it in chat), with budgets and subscriptions. New domains are new services. |
+| 📦 **Export and import** | Move what you configured and added from one Hestia to another, granularly: modules → sections → single items, as one `.hestia` file. Modes *Aggiungi / Unisci / Sostituisci*, a preview before anything is written, a restore point before every import. Never keys, tokens or passwords. WebUI *Impostazioni → Esporta e importa* or `tools/hestia_transfer.py`. |
 | 🌐 **Two clients** | Telegram bot (fail-closed allow-list) and a themable WebUI: chat, commands, documents, Google-like calendar, Forge "Sviluppo" page with live transcripts and diffs. |
 
 ## 🚀 Quick start

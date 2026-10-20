@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-20
+- Export and import: *Impostazioni → Esporta e importa* (and `tools/hestia_transfer.py`) saves a `.hestia` file with the data of the extra modules (coach, self care, wardrobe, expenses, real estate), the assistant's memories, your own agenda rules and the settings, chosen down to the single item, and imports it elsewhere with *Aggiungi*, *Unisci* (newer wins) or *Sostituisci*, preview first and a restore point before writing; never secrets, chats or sessions; shared contract `hestia_common.transfer` → `docs/work/2026-10-20-import-export/` [ext-chat]
 - Web clients use minimal stroke icons coloured by intent instead of emoji (WebUI and every module plugin; one icon set shared by `hx-icon` and `hxk-icon`, `tone` input; presence states carry `icon` + `tone`; notices show the level icon); Telegram keeps emoji; CI check `tools/governance/check_icons.py` → `docs/work/2026-10-20-icone-nei-client/` [ext-chat]
 - Codespaces in one click: the create page asks for the optional test secrets (Gemini, test Telegram bot, temporary Google client), every start brings the stack up and leaves the WebUI login link in `.cloud-test/login.txt` (`python tools/cloud_test.py start`) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Assistant unavailable state: user-facing texts are generic and name no module («⏳ Non disponibile», «Non posso rispondere adesso: messaggio in coda…», «✅ Di nuovo disponibile») → `docs/work/2026-10-19-oracle-offline/` [ext-chat]

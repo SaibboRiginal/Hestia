@@ -7126,6 +7126,83 @@ paths:
       responses:
         "200": {description: "{owner, applied[], pending_restart[]}"}
 
+  # Export and import (hestia_common.transfer, docs/work/2026-10-20-import-export): every module that advertises the
+  # `transfer` capability (Hercules, Hygieia, Wardrobe, Plutus, Scout, Oracle memories, Chronos agenda, Themis settings).
+  # Never secrets, tokens, chats or sessions. Errors: 400 {detail} bad mode/section/format, 404 unknown file.
+  /api/transfer/describe:
+    get:
+      tags: [Meta]
+      summary: (every module with transfer) sections {id, label, icon, help, count, depends_on, has_files, schema}
+      responses:
+        "200": {description: "{module, format, sections[]}"}
+
+  /api/transfer/items:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) items of one section for the picker
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [section], properties: {section: {type: string}, q: {type: string}, limit: {type: integer, default: 200}, offset: {type: integer, default: 0}}}
+      responses:
+        "200": {description: "{items[{key, title, subtitle, updated_at}], total}"}
+
+  /api/transfer/export:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) export the chosen sections; dependencies and children are pulled in
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sections: {type: object, nullable: true, description: "{section: {keys?: [..]}}; null = every section"}
+                since: {type: string, nullable: true, description: "ISO date: only records changed since (deletions included)"}
+                include_files: {type: boolean, default: false}
+      responses:
+        "200": {description: "{module, format, exported_at, since, sections{id: {schema, label, partial, records[]}}, pulled{section: [keys]}, files[blob ids]}"}
+
+  /api/transfer/files/{blob_id}:
+    get:
+      tags: [Meta]
+      summary: (every module with transfer) one of the module's own files as base64 (blobs of other modules → 404)
+      parameters:
+        - {name: blob_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{id, mime, sha256, meta, data_b64}"}
+
+  /api/transfer/files:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) store a file from an export before the import; returns the id map entry
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [id, data_b64], properties: {id: {type: string}, mime: {type: string}, meta: {type: object}, data_b64: {type: string}}}
+      responses:
+        "200": {description: "{old_id, new_id}"}
+
+  /api/transfer/import:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) preview (dry_run, default) or import a module export
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data: {type: object, description: "the module's block of the .hestia file"}
+                mode: {type: string, enum: [append, merge, replace], default: merge}
+                modes: {type: object, description: "per-section mode override"}
+                dry_run: {type: boolean, default: true}
+                sections: {type: object, nullable: true, description: "{section: {keys?: [..]}}; null = everything in the file"}
+                files_map: {type: object, description: "old blob id → new blob id from POST /api/transfer/files"}
+      responses:
+        "200": {description: "{module, dry_run, sections{id: {mode, added, updated, unchanged, skipped, deleted, problems, related, partial, items{added[], updated[], skipped[], deleted[], problems[]}}}, totals{}}"}
+
   /api/settings-store/values:
     get:
       tags: [Archive — Settings store]
@@ -10111,3 +10188,86 @@ paths:
       responses:
         "200":
           description: "{public_url, detected}"
+
+  /api/webui/transfer/modules:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Modules with the transfer capability (Hub registry)
+      responses:
+        "200": {description: "{modules[{module, settings}]}"}
+        "503": {description: "Hub unreachable"}
+
+  /api/webui/transfer/{module}/describe:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Forward to the module's /api/transfer/describe (only modules with the capability, else 404)
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "see /api/transfer/describe"}
+
+  /api/webui/transfer/{module}/files/{id}:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Forward to the module's /api/transfer/files/{id}
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "see /api/transfer/files/{blob_id}"}
+
+  /api/webui/transfer/{module}/{action}:
+    servers:
+      - url: http://localhost:19015
+    post:
+      tags: [WebUI]
+      summary: Forward items · export · import · files (upload) to the module's /api/transfer/{action}
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: action, in: path, required: true, schema: {type: string, enum: [items, export, import, files]}}
+      responses:
+        "200": {description: "the module's answer, status kept"}
+
+  /api/webui/transfer/restore-points:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Restore points saved before imports (Archive blobs of webui, newest webui.transfer.restore_points kept)
+      responses:
+        "200": {description: "{items[{id, created_at, size, label, modules}], keep}"}
+    post:
+      tags: [WebUI]
+      summary: Save a restore point (gzip in Archive) and prune the oldest
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [file], properties: {label: {type: string}, modules: {type: array, items: {type: string}}, file: {type: object, description: ".hestia JSON"}}}
+      responses:
+        "200": {description: "{id}"}
+
+  /api/webui/transfer/restore-points/{id}:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: The restore point as .hestia JSON (imported with «Sostituisci»)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: ".hestia JSON"}
+        "404": {description: "not a restore point"}
+    delete:
+      tags: [WebUI]
+      summary: Delete a restore point
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "deleted"}
+        "404": {description: "not a restore point"}
