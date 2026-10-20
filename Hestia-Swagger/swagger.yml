@@ -9863,8 +9863,9 @@ paths:
         - url: http://localhost:19009
       parameters:
         - {name: limit, in: query, schema: {type: integer, default: 10, maximum: 50}}
+        - {name: track, in: query, schema: {type: string, enum: [vita, sistema]}, description: "one track only (both when omitted)"}
       responses:
-        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
+        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, track (vita|sistema), life{signals[], links[], topics[], details{}, series} (vita), threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
 
   /api/athena/think:
     post:
@@ -9873,17 +9874,55 @@ paths:
       description: >
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
+        track=vita runs the life reflection instead (signals → links → details → observations for the recap).
       servers:
         - url: http://localhost:19009
+      parameters:
+        - {name: track, in: query, schema: {type: string, enum: [sistema, vita], default: sistema}}
       responses:
-        "200": {description: "{status: started, trace_id} | {status: busy, detail}"}
+        "200": {description: "{status: started, trace_id, track} | {status: busy, detail}"}
+        "422": {description: "unknown track"}
+
+  /api/athena/signals:
+    get:
+      tags: [Athena]
+      summary: What the life reflection reads (page Segnali, MCP tool athena_signals)
+      description: >
+        Active module signals (Archive signals-store, worst first), weekly series of the last `weeks` weeks, the
+        links found between areas (Pearson, closed weeks) and the observations of the last 14 days.
+        SPEC docs/work/2026-10-20-riflessione-a-livelli.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: domain, in: query, schema: {type: string}, description: "one area (fitness, selfcare, finance, wardrobe…)"}
+        - {name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}
+        - {name: weeks, in: query, schema: {type: integer, default: 12, minimum: 4, maximum: 52}}
+      responses:
+        "200": {description: "{status, signals: [{module, domain, key, kind, severity, text, metrics, period, page, topic, expires_at, updated_at}], series: {<name>: {label, module, domain, values{YYYY-Www: n}}}, links: [{key, a, b, a_label, b_label, a_domain, b_domain, lag, r, weeks}], observations: [{id, day, title, text, domains[], topic_key, link, page, module, score, at}]}"}
+        "503": {description: "signals store unreachable"}
+
+  /athena/api/module/recap:
+    get:
+      tags: [Athena]
+      summary: Athena's piece of the daily recap («Da tenere d'occhio») — real path /api/module/recap
+      description: >
+        Recap contract (docs/work/2026-10-20-recap-giornaliero §3.2), advertised as capability recap_endpoint.
+        The life observations stored that day; deterministic, no model call. Observations reach the user only here.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: day, in: query, schema: {type: string, format: date}, description: "default today (local)"}
+        - {name: next, in: query, schema: {type: string, format: date}, description: "unused by Athena"}
+      responses:
+        "200": {description: "{module: athena, title: Da tenere d'occhio, icon: eye, emoji, order: 900, done: [{text, tone}]} | {..., empty: true}"}
 
   /athena/api/ui/manifest:
     get:
       tags: [Athena]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/athena/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130),
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130,
+        tracks Vita/Sistema), page `segnali` (athena-signals, order 131),
         widget `ultimo` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
       servers:
         - url: http://localhost:19009

@@ -409,7 +409,13 @@ No code-only behavior changes are considered complete without synchronized docs.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth
-   saying; Oracle decides when to include it.
+   saying; Oracle decides when to include it. `?topic=<signal key>` asks for details on one of the module's signals
+   (unknown topic → the normal line).
+5b. **Module signals (reflection in layers)**: a domain module judges its own data deterministically and publishes
+   short signals + weekly metrics with `hestia_common.signals_client` (Archive `signals-store`, on write + daily agenda
+   job `<module>.signals`). Athena reads only signals (never raw data), links weekly series of different areas and
+   asks details via `topic`; its life observations reach the user only in the daily recap («Da tenere d'occhio»).
+   System health is a separate Athena track. `docs/work/2026-10-20-riflessione-a-livelli/`.
 6. **Module files**: bytes (photos, attachments) go to Archive `/api/blobs` (`owner_module`, deduplicated by sha256);
    the module keeps the blob ids in its own rows and serves images to clients as `{mime, data_b64}`.
 7. **Chat attachments for a module**: a module that can take a file sent in chat declares in its Hub capabilities

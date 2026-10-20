@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | User via external chat (brainstorm 2026-10-19, item 5 of the final list in `/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md`, sections 0, 4 and 5) → project thread «Riflessione a livelli» |
-| **Status** | Approved by Marko (card, 2026-10-20 09:40) with «Ok, solo recap»: observations reach him only in the daily recap (v1.1) · in progress |
+| **Status** | Approved by Marko (card, 2026-10-20 09:40) with «Ok, solo recap»: observations reach him only in the daily recap (v1.1) · v1.2 = implementation refinements (below), implemented, Marko real run pending |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -47,12 +47,15 @@ A **signal** is a short deterministic fact a module publishes about its own doma
 | `expires_at` | default 7 days; `retract(key)` closes it earlier (e.g. stall solved) |
 
 Plus **weekly metrics**: numeric series a module exposes for correlation, one value per ISO week
-(`fitness.sessions`, `fitness.avg_energy`, `selfcare.adherence`, `selfcare.journal.<metric>`, `finance.spent`,
+(`fitness.sessions`, `fitness.volume`, `fitness.energy`, `selfcare.adherence`, `selfcare.journal.<area>.<metric>`
+(the same metric exists in several areas), `finance.spent`,
 `finance.spent.<category>`, `wardrobe.worn`). Stored as signals of kind `metric` with `period=YYYY-Www`.
 
 Helper API (same style as `mail_client` / `reminders`):
 `Signals(module, domain).publish(key, text, kind, severity, metrics=None, period=None, ttl_days=7)`,
-`.retract(key)`, `.metric(name, week, value)`, `.register_evaluation(path, hour)`.
+`signal(...)` / `metric(name, week, value, label)` builders, `.sync(signals, metrics)` (writes only what changed,
+retracts what is gone), `.run()` (evaluate + sync), `.changed()` (debounced re-evaluation after a write) and
+`signals_rule(module, area, path=, tz=)` (the daily agenda job, default 17:30, before the reflection window).
 
 Where they are stored: Archive `signals-store` (a new instance of the generic module store, no new DB code). Each
 module writes only its own rows; Athena reads with the store cursor (only what changed since last cycle).
@@ -60,8 +63,9 @@ module writes only its own rows; Athena reads with the store cursor (only what c
 When modules publish (**push, never poll**):
 - on write, where it is natural (session logged → PR milestone, stall; expense saved → budget pace);
 - once a day for time-based facts (missed days, nothing worn for 60 days, week closed → weekly metrics), with an agenda
-  job `<module>.signals` registered through `register_evaluation` (default evening, editable in the agenda like every
-  job; Chronos rings `POST /api/<prefix>/signals/run`).
+  job `<module>.signals` built by `signals_rule` (default 17:30, editable in the agenda like every job; Chronos rings
+  `POST /api/<prefix>/signals/run`).
+- Weeks before a module has any data are left out of its series (early all-zero weeks would fake links).
 - No ring to Athena: since observations only travel inside the evening recap, an urgent signal would not reach Marko
   sooner anyway. `severity` only ranks topics. (A module that needs to warn now already has its own reminders/alerts.)
 
@@ -90,7 +94,7 @@ New cycle in Athena, separate from the system loop:
 6b. **Into the recap**: Athena registers `recap_endpoint` like any module and serves its piece through the recap
    contract (sibling dossier `2026-10-20-recap-giornaliero` §3.2): `GET /api/module/recap?day=` →
    `{module: "athena", title: "Da tenere d'occhio", icon, emoji, order: 900, done: [{text, tone}]}` with the
-   observations of that day not yet shown (marked `shown_in_recap` once served for the delivered recap), or
+   observations stored that day (no "shown" marking: the piece is deterministic and can be asked again), or
    `{empty: true}`. The recap's collector (`app/core/recap.py`, owned by the recap thread) is not touched: Athena's
    piece is discovered from the Hub registry like the others. Until the recap ships, observations are visible in
    «Pensieri» and through `athena_signals` / `athena_thinking`.
