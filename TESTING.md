@@ -65,7 +65,8 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   page asks for the optional test secrets `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN` + `ALLOWED_USER_ID`, `GOOGLE_CLIENT_ID` +
   `GOOGLE_CLIENT_SECRET` (or set them once on GitHub → *Settings → Codespaces → Secrets*). Every start runs
   `cloud_test.py start` (output in `.cloud-test/start.log`, it waits up to 120 s for Docker); open the link in
-  `.cloud-test/login.txt`. Ports stay private.
+  `.cloud-test/login.txt`. Ports stay private. «Docker is not installed» = the container was not built from
+  the devcontainer: *Ctrl+Shift+P → Codespaces: Full Rebuild Container*.
 
 ## Critical Regressions Log
 

@@ -84,7 +84,10 @@ def run(cmd: list[str], check: bool = True, quiet: bool = False, **kw) -> subpro
 
 
 def ok(cmd: list[str]) -> bool:
-    return subprocess.run(cmd, cwd=ROOT, capture_output=True).returncode == 0
+    try:
+        return subprocess.run(cmd, cwd=ROOT, capture_output=True).returncode == 0
+    except FileNotFoundError:  # the program itself is missing (e.g. no docker CLI)
+        return False
 
 
 def http(method: str, url: str, body=None, timeout: float = 15.0) -> tuple[int, object]:
@@ -128,6 +131,9 @@ def restricted_network() -> bool:
 def ensure_docker() -> None:
     if ok(["docker", "info"]):
         return
+    if not shutil.which("docker"):
+        raise SystemExit("[cloud-test] Docker is not installed in this container. In a Codespace the container was not "
+                         "built from .devcontainer/devcontainer.json: Ctrl+Shift+P → «Codespaces: Full Rebuild Container».")
     if os.geteuid() != 0:
         # Codespaces (docker-in-docker): the daemon is started by the container entrypoint and can still be
         # coming up when postStartCommand runs, so wait for it instead of giving up.
