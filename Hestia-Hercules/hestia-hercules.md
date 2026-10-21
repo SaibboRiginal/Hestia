@@ -41,6 +41,8 @@
   `apply_adaptation`, `restore_today`, `skip_day`, `postpone`, `feedback`, `edit_template`, `undo_template`,
   `log_measurement`, `set_goal` (all prefixed `hercules_`).
 - `GET /api/module/context`: short lines (next workout, week vs goal, recent PRs, stalls, feedback to discuss).
+- `GET /api/module/recap?day=&next=`: piece «Allenamento» of the daily recap (sessions with sets/minutes, records, a
+  planned day skipped or missed, next workout, goal note). Plain facts, capability `recap_endpoint`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
 
 ## Reminders (off by default)

@@ -67,6 +67,22 @@ Rules are idempotent by `key`; edits made by the user (`user_modified`) are neve
 cancelled rule is a user decision: `is_open` → closed, `should_self_run` → False. Every call fails soft.
 `retire(keys)` cancels only rules the module itself created (user items stay; marked `params.retired_by_module`).
 
+## Daily recap piece (`hestia_common.recap`)
+
+A module with something to say about the user's day serves one piece (contract: `docs/work/2026-10-20-recap-giornaliero/SPEC.md` §3.2):
+
+```python
+from hestia_common import recap
+app.include_router(recap.recap_router("hercules", lambda day, nxt: recap.piece(
+    "hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30,
+    done=[recap.item("Push day: 5 esercizi, 18 serie")], next=[...], note="")))
+capabilities = {**recap.capabilities(), ...}       # recap_endpoint → /api/module/recap
+```
+
+`GET /api/module/recap?day=&next=` → the piece, or `{module, empty: true}` when there are no lines (also when the
+builder raises: logged, never a 500; bad date → 400). Plain facts only, never an LLM call; Athena writes the text.
+`job_rule(..., flex={"earliest": "20:00", "latest": "23:30"})` makes a recurring job fire around the user's events.
+
 ## Mail subscriptions client (`hestia_common.mail_client`)
 
 Modules get mail by **push** from Iris, never by polling (one watcher in Hecate → Iris dispatch):

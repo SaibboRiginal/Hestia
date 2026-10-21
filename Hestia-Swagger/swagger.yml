@@ -4378,7 +4378,7 @@ paths:
                 description: {type: string}
                 action: {type: object, description: "{service, method, path, body, query, timeout_seconds}"}
                 key: {type: string}
-                params: {type: object}
+                params: {type: object, description: "free module params; flex {earliest: HH:MM, latest: HH:MM} = recurring rule fires around the user's events (recap dossier §3.8)"}
                 tz: {type: string}
                 parent: {type: string, description: "key of a linked parent item: cancelling the parent cancels this one; this one failing (or being cancelled by the user) marks the parent"}
       responses:
@@ -4411,6 +4411,31 @@ paths:
                 keys: {type: array, items: {type: string}, example: [scout.email_cycle]}
       responses:
         "200": {description: "{status, retired[keys]}"}
+
+  /api/agenda/standard:
+    get:
+      tags: [Chronos]
+      summary: "Standard activities: every default rule a module declared, with its state (recap dossier §3.9)"
+      description: >
+        Rules created by a module (not by the user), retired ones excluded. state = eliminata | fallita |
+        in pausa | modificata | attiva; can_restore true for every state but attiva. Also lists the modules'
+        templates. Rule fields: key, owner, title, type, recurrence, start_at, flex, state, can_restore, description.
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{status, activities[], templates[], counts{state: n}}"}
+
+  /api/agenda/standard/{key}/restore:
+    post:
+      tags: [Chronos]
+      summary: "Put a standard activity back as its module declares it (reactivate, clear user changes)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}, example: athena.recap.evening}
+      responses:
+        "200": {description: "{status, item}"}
+        "404": {description: "No standard activity with that key (or created by the user)"}
 
   /api/agenda/items/{ref}:
     patch:
@@ -4481,7 +4506,7 @@ paths:
         - {name: hours, in: query, schema: {type: number}, description: "alternative to since: last N hours"}
         - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 500}}
       responses:
-        "200": {description: "{count, runs: [{item_id, key, title, owner, type, item_status, status: ok|failed|skipped, at, occurrence, detail, by, duration_ms, manual, can_run}], summary{ok, failed, skipped, avg_ms, failed_items}, owners: [{owner, rules, active, paused, failed, user_modified, types{}}]}"}
+        "200": {description: "{count, runs: [{item_id, key, title, owner, type, item_status, status: ok|failed|skipped, at, occurrence, detail, by, duration_ms, manual, can_run, flex?{from, at, reason}}], summary{ok, failed, skipped, avg_ms, failed_items}, owners: [{owner, rules, active, paused, failed, user_modified, types{}}]}"}
         "400": {description: bad status or since}
 
   /api/agenda/runs/failed:
@@ -8183,6 +8208,23 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/module/recap:
+    get:
+      tags: [Wardrobe]
+      summary: "Daily recap piece (shared contract, capability recap_endpoint; Chronos, Scout, Hercules, Hygieia, Wardrobe, Plutus, Hermes, Athena, Dummy)"
+      description: >
+        Plain facts of the day, never an LLM call (hestia_common.recap.recap_router). Piece:
+        {module, title, icon, emoji, order, done[{text, tone?, at?}], missed[...], next[...], note} or
+        {module, empty: true}. A failing builder answers an empty piece. Recap dossier §3.2.
+      servers:
+        - url: http://localhost:19017
+      parameters:
+        - {name: day, in: query, schema: {type: string, format: date}, description: "Day to tell (default today)"}
+        - {name: next, in: query, schema: {type: string, format: date}, description: "Day to look ahead to (default day+1)"}
+      responses:
+        "200": {description: "piece"}
+        "400": {description: "day/next must be YYYY-MM-DD"}
+
   /api/wardrobe-store/records:
     put:
       tags: [Archive — Wardrobe store]
@@ -9834,6 +9876,59 @@ paths:
           description: "{status, commitment}"
         "404":
           description: commitment not found
+
+  /api/athena/recap:
+    post:
+      tags: [Athena]
+      summary: "Compose the daily recap (agenda job athena.recap.evening, template «recap»)"
+      description: >
+        Collects every module's recap piece (GET /api/module/recap through Hub), Oracle writes the text (use case
+        athena.recap; deterministic list as fallback), Hermes delivers it (replaces the previous one). A quiet day
+        sends nothing (status empty). deliver false = return the text only, nothing stored.
+      servers:
+        - url: http://localhost:19009
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                momento: {type: string, enum: [sera, mattina], default: sera, description: "sera = day + next day; mattina = previous day + day"}
+                day: {type: string, format: date, description: "Default today (local)"}
+                deliver: {type: boolean, default: true}
+                trigger: {type: string, example: agenda}
+      responses:
+        "200": {description: "{status: ok|empty, momento, day, next, text, fallback, delivered, pieces[]}"}
+        "400": {description: "day must be YYYY-MM-DD"}
+
+  /api/athena/recap/now:
+    post:
+      tags: [Athena]
+      summary: "Quick action «Recap adesso»: evening recap now, delivered"
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "Same as /api/athena/recap plus label"}
+
+  /api/athena/recaps:
+    get:
+      tags: [Athena]
+      summary: "Recap history (Archive domain recap), newest first"
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 20}}
+      responses:
+        "200": {description: "{count, recaps[{id, created_at, momento, day, text, trigger, fallback, delivered, pieces}]}"}
+
+  /api/athena/recap/today:
+    post:
+      tags: [Athena]
+      summary: "MCP tool recap_today: the recap text for chat (not delivered, not stored)"
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{status: ok|empty, momento, day, text}"}
 
   /api/athena/thinking:
     get:

@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-21
+- Daily recap: one message in the evening with how the day went and what comes tomorrow (agenda, training, self care, expenses, wardrobe, houses, notifications), each area gives its facts through `GET /api/module/recap`, the assistant writes the text (plain list if the model is down), nothing on a quiet day; the evening time moves by itself around your events (flexible 20:00–23:30), morning recap from the calendar template, «Recap adesso», chat tool `recap_today`, page Recap; new Chronos «Attività standard» page puts back in one click any module activity you deleted, paused or changed; flexible time available for every recurring job in the calendar editor → `docs/work/2026-10-20-recap-giornaliero/` [ext-chat]
+
 ## 2026-10-20
 - Conversations with external AIs end up in Hestia's memory: tool `memory_note` (Claude/ChatGPT send the durable facts, saved with their origin, duplicates skipped, no LLM call) and `memory_recall` (what Hestia already knows), new page Memoria (list, search, filter by origin, forget) → `docs/work/2026-10-20-memory-note/` [ext-chat]
 - Fix: cloud bench in a Codespace without Docker crashed with a long traceback; it now says the container must be rebuilt (*Codespaces: Full Rebuild Container*) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]

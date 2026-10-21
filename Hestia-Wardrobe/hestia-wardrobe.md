@@ -48,6 +48,8 @@
 - `wardrobe_delete` never deletes: it asks through Hermes with **Elimina / Archivia / Tieni**.
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`: one caveman line (counts, style, laundry,
   forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`.
+- `GET /api/module/recap?day=&next=`: piece «Guardaroba» of the daily recap (what was worn; laundry as note).
+  Capability `recap_endpoint`.
 
 ## Notifications (both off by default, through Hermes, target `owner`)
 

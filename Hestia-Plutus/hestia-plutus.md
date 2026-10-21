@@ -51,6 +51,8 @@ finance_summary, finance_search (with total), finance_add, finance_update (`alwa
 finance_budget, finance_set_budget, finance_categories, finance_import_statement (preview by blob id, then commit by
 import id), finance_recurring, finance_stats. Each has a REST twin `/api/finance/tools/<name>`. Context line for the
 assistant: `GET /api/module/context` (month spent/budget, pace, high budgets, top categories, to review, coming).
+Daily recap piece «Spese»: `GET /api/module/recap?day=&next=` (spent by category, income, to review, confirmed
+recurring payments due next; budget as note). Capability `recap_endpoint`.
 
 ## Notifications (agenda → Hermes)
 

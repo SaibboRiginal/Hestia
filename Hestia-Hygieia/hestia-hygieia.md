@@ -49,6 +49,8 @@ with something already done or due today) · `paused`. A target routine is behin
   status / reminder / favorite, always with a reason), `undo_routine`, `journal_add`,
   `stats`, `timeline`, `period`, `check`, `shopping` (all prefixed `selfcare_`).
 - `GET /api/module/context?budget=`: short caveman lines (left today, goals behind, alerts).
+- `GET /api/module/recap?day=&next=`: piece «Cura di sé» of the daily recap (routines done, products used, daily
+  routines not done, skipped, due next; alerts as note). Capability `recap_endpoint`.
 - Every step change keeps a version; `POST /routines/{id}/undo` goes back.
 
 ## Reminders and alerts (few, never piling up)

@@ -10,6 +10,7 @@ This service exists to provide a safe, deterministic target that can run in Dock
 - GET /api/dummy/status
 - POST /api/module/maintenance/reconcile
 - POST /api/maintenance/reconcile
+- GET /api/module/recap — reference daily recap piece («Prova»: the reconciles of the day), capability `recap_endpoint`
 
 ## Behavior
 - `dry_run=true`: returns a reconciliation preview without mutating internal state.

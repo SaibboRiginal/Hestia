@@ -131,6 +131,9 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.skills.core_use_count` | int | 50 | uses to promote to core |
 | `athena.audit.timeout` | float s | 40 | auditor LLM timeout |
 | `athena.audit.max_turns` | int | 20 | default turns per audit |
+| `athena.recap.style` | enum | amichevole | recap tone (amichevole / asciutto) |
+| `athena.recap.max_chars` | int | 900 | recap length cap |
+| `athena.recap.piece_timeout_seconds` | float s | 5 | wait for each area's piece |
 | `athena.log.level` | enum | `LOG_LEVEL` env | log verbosity |
 
 ### Thinking archive
@@ -162,6 +165,22 @@ Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_pr
 | widget (auto) | `ultimo` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
 | quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
 
+### Daily recap (dossier `docs/work/2026-10-20-recap-giornaliero`)
+One message a day, «com'è andata e cosa c'è domani». `app/core/recap.py` `RecapComposer`:
+1. **Collect**: every module with capability `recap_endpoint` (Hub registry) is asked `GET /api/module/recap?day=&next=`
+   in parallel (`athena.recap.piece_timeout_seconds`); a module down or slow is just left out. Athena's own piece
+   «Da tenere d'occhio» (reflection thread) comes the same way.
+2. **Write**: Oracle use case `athena.recap` (chain veloce, caveman prompt, `athena.recap.style`, `athena.recap.max_chars`);
+   Oracle failing → deterministic list per area (`fallback: true`, `[🔄] event=recap_fallback`).
+3. **Quiet day** (every piece empty) → nothing is sent (`event=recap_empty`); proposals belong to other moments.
+4. **Deliver**: Hermes `service.action_required` (domain system, level info, `replaces: athena.recap`, target `owner`,
+   `_link {module: athena, page: recap}`); stored in Archive entities, domain `recap`.
+
+When: agenda job `athena.recap.evening`, daily 21:30, `flex 20:00–23:30` (Chronos moves it around the user's
+events). Morning recap (previous day + today) = agenda template `recap` with `momento: mattina`, added by the user.
+If the user deletes the evening job, «Attività standard» in the agenda puts it back in one click.
+WebUI: page **Recap** (order 131, text + facts per area), quick action «Recap adesso». Chat: tool `recap_today`.
+
 ### MCP tool `athena_thinking(limit?)`
 Read only (GET `/api/athena/thinking/summary`), clients `ui` + `external` (external AIs with an MCP access may read
 it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
@@ -183,6 +202,10 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | POST | `/api/athena/think` | «Pensa ora»: one full cycle now in background → `{status: started, trace_id}` or `{status: busy}` |
 | GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
+| POST | `/api/athena/recap` | Compose the daily recap `{momento: sera\|mattina, day?, deliver?, trigger?}` (agenda job `athena.recap.evening`, template `recap`) |
+| POST | `/api/athena/recap/now` | Quick action «Recap adesso» (evening, delivered) |
+| GET | `/api/athena/recaps?limit=` | Recap history (page Recap) |
+| POST | `/api/athena/recap/today` | MCP tool `recap_today` (chat: text only, not delivered nor stored) |
 
 ### When Athena works = assistant agenda windows
 
