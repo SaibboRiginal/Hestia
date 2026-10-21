@@ -90,10 +90,12 @@ function readToastMode(): ToastMode {
 export class HermesInbox extends HestiaElement {
   static properties = { ...HestiaElement.properties, items: { state: true }, counts: { state: true }, filter: { state: true },
                         source: { state: true }, others: { state: true }, error: { state: true }, loading: { state: true },
-                        hasMore: { state: true }, busy: { state: true }, toastMode: { state: true } };
+                        hasMore: { state: true }, busy: { state: true }, toastMode: { state: true },
+                        playing: { state: true }, voiceBusy: { state: true } };
   declare items: any[] | null; declare counts: Counts; declare filter: Filter; declare source: string;
   declare others: boolean; declare error: string; declare loading: boolean; declare hasMore: boolean;
-  declare busy: string; declare toastMode: ToastMode;
+  declare busy: string; declare toastMode: ToastMode; declare playing: string; declare voiceBusy: string;
+  private audio: HTMLAudioElement | null = null;
 
   static styles = [...HestiaElement.styles, hermesStyles, css`
     .page { max-width: 860px; }
@@ -141,6 +143,7 @@ export class HermesInbox extends HestiaElement {
     super();
     this.items = null; this.counts = { unread: 0, pending: 0 }; this.filter = 'unread'; this.source = '';
     this.others = false; this.error = ''; this.loading = false; this.hasMore = false; this.busy = '';
+    this.playing = ''; this.voiceBusy = '';
     this.toastMode = readToastMode();
   }
 
@@ -162,6 +165,33 @@ export class HermesInbox extends HestiaElement {
     if (this.seenTimer) clearTimeout(this.seenTimer);
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.seenTimer = this.pollTimer = null;
+    this.stopVoice();
+  }
+
+  // ── voice (a module asked for its notifications also as audio, dossier modulo-voce §7.3) ──
+  private stopVoice() {
+    this.audio?.pause();
+    if (this.audio?.src) URL.revokeObjectURL(this.audio.src);
+    this.audio = null;
+    this.playing = '';
+  }
+
+  private async listen(n: any) {
+    if (this.playing === n.id) { this.stopVoice(); return; }
+    this.stopVoice();
+    this.voiceBusy = n.id;
+    const r = await this.host.api('GET', `${API}/inbox/${encodeURIComponent(n.id)}/voice`, { query: { format: 'mp3' } });
+    this.voiceBusy = '';
+    if (!r.ok || !r.data?.audio_b64) { this.host.toast(r.error || 'Audio non disponibile', 'danger'); return; }
+    const raw = atob(r.data.audio_b64);
+    const buf = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+    const el = new Audio(URL.createObjectURL(new Blob([buf], { type: r.data.mime_type || 'audio/mpeg' })));
+    this.audio = el;
+    this.playing = n.id;
+    el.onended = () => { if (this.audio === el) this.stopVoice(); };
+    el.play().catch(() => this.stopVoice());
+    if (!n.read) void this.markSeen(n);
   }
 
   // ── API ──────────────────────────────────────────────────────────────────
@@ -310,7 +340,10 @@ export class HermesInbox extends HestiaElement {
         </div>
         ${n.title ? html`<div class="title">${noEmoji(n.title)}</div>` : nothing}
         <div class="msg">${richText(n.message)}</div>
-        ${n.link?.page ? html`<div class="actions"><hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>Apri</hxk-button></div>` : nothing}
+        ${n.link?.page || n.voice ? html`<div class="actions">
+          ${n.voice ? html`<hxk-button size="sm" variant="ghost" icon=${this.playing === n.id ? 'stop' : 'volume'}
+            ?loading=${this.voiceBusy === n.id} @click=${() => this.listen(n)}>${this.playing === n.id ? 'Ferma' : 'Ascolta'}</hxk-button>` : nothing}
+          ${n.link?.page ? html`<hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>Apri</hxk-button>` : nothing}</div>` : nothing}
         ${n.pending && n.actions?.length ? html`<div class="actions">
             ${n.actions.map((a: any) => html`<hxk-button size="sm" variant=${this.variant(a.style)} ?loading=${busy} ?disabled=${busy}
               @click=${() => this.answer(n, a)}>${a.label}</hxk-button>`)}</div>`

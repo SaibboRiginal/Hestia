@@ -35,6 +35,7 @@ from .modules.schemas import (
 from .modules.hermes_settings import DELIVERY_RETRY_INTERVAL, settings as hermes_settings
 from .modules.service import HermesService
 from .modules import ui_view
+from .modules.notifications import public_voice as notifications_public_voice
 from hestia_common.plugin_client import PluginClient, page, widget
 from hestia_common.voice_usecases import capabilities as voice_capabilities
 from .modules.notifications import VOICE_USECASES
@@ -500,3 +501,21 @@ def ui_inbox_answer(notification_id: str, req: UiAnswerRequest):
     """First answer wins (409 ``already_handled`` with the winning ``answer``)."""
     return notification_answer(notification_id, NotificationAnswerRequest(action_id=req.action_id,
                                                                           client=req.client or UI_CLIENT))
+
+
+@app.get("/api/ui/inbox/{notification_id}/voice")
+def ui_inbox_voice(notification_id: str, format: str = "mp3"):
+    """Play button of a notification sent also as voice: the kept audio, from the voice module."""
+    row = service.archive.get_outbound_event(notification_id) or {}
+    voice = notifications_public_voice(((row.get("payload") or {}) if isinstance(row.get("payload"), dict) else {}).get("voice"))
+    if not voice:
+        raise HTTPException(status_code=404, detail="questa notifica non ha la voce")
+    try:
+        status, payload = service.notifications.voice.call("GET", f"api/voice/audio/{voice['blob_id']}",
+                                                           query={"format": format}, timeout=60)
+    except Exception as exc:
+        logger.warning("[🔄] event=notification_voice_read_failed notification_id=%s error=%s", notification_id, exc)
+        status, payload = 502, None
+    if status != 200 or not isinstance(payload, dict):
+        raise HTTPException(status_code=502 if status in (0, 502) else status, detail="audio non disponibile")
+    return {"mime_type": payload.get("mime_type"), "audio_b64": payload.get("audio_b64"), **voice}
