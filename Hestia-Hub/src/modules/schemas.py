@@ -23,6 +23,7 @@ ALLOWED_TAGS = {
     "wardrobe",
     "selfcare",
     "finance",
+    "coach",        # serves GET /api/coach/needs (weekly plan contract, hestia_common.coach)
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
