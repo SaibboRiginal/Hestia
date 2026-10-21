@@ -94,13 +94,14 @@ public class TransferController : ControllerBase
     }
 
     /// <summary>items · export · import · files (upload): JSON body forwarded, the module's status kept.</summary>
-    [HttpPost("{module}/{action}")]
-    public async Task<IActionResult> Forward(string module, string action, [FromBody] JsonElement body)
+    /// (The segment is <c>op</c>, not <c>action</c>: <c>{action}</c> is reserved by MVC routing and never matches.)
+    [HttpPost("{module}/{op}")]
+    public async Task<IActionResult> Forward(string module, string op, [FromBody] JsonElement body)
     {
-        if (!Actions.Contains(action)) return NotFound();
+        if (!Actions.Contains(op)) return NotFound();
         if (!await AllowedAsync(module)) return NotFound(new { detail = "modulo senza esporta/importa" });
-        var (status, payload) = await _hub.RouteRawAsync(module, $"/api/transfer/{action}", HttpMethod.Post, body,
-            timeoutSeconds: action == "items" ? 30 : 120, ct: HttpContext.RequestAborted);
+        var (status, payload) = await _hub.RouteRawAsync(module, $"/api/transfer/{op}", HttpMethod.Post, body,
+            timeoutSeconds: op == "items" ? 30 : 120, ct: HttpContext.RequestAborted);
         return StatusCode(status, payload);
     }
 

@@ -232,7 +232,7 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
             border: 1.5px dashed var(--border); border-radius: var(--radius-lg, 12px); color: var(--text-2); }
     .drop:hover { border-color: var(--accent); color: var(--accent); }
     .filebar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .mini { height: 28px; font-size: 12px; width: auto; padding: 0 8px; }
+    .mini { height: 28px; font-size: 12px; width: auto; padding: 0 26px 0 8px; }
     .rep { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 0 6px 50px; align-items: center; }
     .chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); }
     .chip[data-tone=success] { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
@@ -465,6 +465,7 @@ export class TransferSettingsComponent implements OnInit {
     for (const [owner, payload] of Object.entries(file.modules ?? {})) {
       for (const [sid, block] of Object.entries(payload.sections ?? {})) {
         const settings = owner === SETTINGS;
+        if (settings && !block.records?.length) continue;   // a module whose settings were never changed: nothing to show
         node(settings ? sid : owner).sections.push({
           uid: `${owner}/${sid}`, owner, sid, label: block.label || sid, icon: settings ? 'settings' : 'list',
           count: block.records?.length ?? 0, hasFiles: false,

@@ -10222,15 +10222,15 @@ paths:
       responses:
         "200": {description: "see /api/transfer/files/{blob_id}"}
 
-  /api/webui/transfer/{module}/{action}:
+  /api/webui/transfer/{module}/{op}:
     servers:
       - url: http://localhost:19015
     post:
       tags: [WebUI]
-      summary: Forward items · export · import · files (upload) to the module's /api/transfer/{action}
+      summary: Forward items · export · import · files (upload) to the module's /api/transfer/{op}
       parameters:
         - {name: module, in: path, required: true, schema: {type: string}}
-        - {name: action, in: path, required: true, schema: {type: string, enum: [items, export, import, files]}}
+        - {name: op, in: path, required: true, schema: {type: string, enum: [items, export, import, files]}}
       responses:
         "200": {description: "the module's answer, status kept"}
 
