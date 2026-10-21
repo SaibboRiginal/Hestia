@@ -28,7 +28,7 @@ except ModuleNotFoundError:
 
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
-from hestia_common.reminders import reminder_event, reminder_settings
+from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.settings_client import SettingsClient, setting
 
 from .core import catalog
@@ -58,6 +58,7 @@ settings.declare([
             help="Quando il prodotto non indica il PAO (il barattolino «12M»)."),
     *reminder_settings("hygieia", help="Poi scegli su ogni routine se vuoi il promemoria. Al massimo N a settimana "
                                        "per routine; uno solo resta visibile e dice quante volte l'hai saltata."),
+    voice_setting("hygieia", True),
     setting("hygieia.alerts.enabled", "Avvisi prodotti", "bool", True, group="Avvisi",
             help="Scadenze e prodotti che stanno finendo, uno per prodotto."),
     setting("hygieia.alerts.expiry_days", "Avviso scadenza", "int", 30, group="Avvisi", min=1, max=180, unit="giorni",
@@ -364,6 +365,7 @@ def quick_product_undo(id: str, date: str = ""):
 def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "oggi") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="hygieia", domain="selfcare", key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
+        voice=bool(settings.get("hygieia.notifiche.voce", True)),
         actions=actions, page=page, level=level), timeout=8)
 
 
