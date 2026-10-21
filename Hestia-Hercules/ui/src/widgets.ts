@@ -70,6 +70,7 @@ export class HerculesWeekWidget extends Widget {
       <div class="row" style="gap:4px">${days.map((d, i) => html`<div class="col" style="align-items:center;gap:2px;flex:1">
         <span style="width:100%;max-width:26px;height:26px;border-radius:7px;display:block;background:${doneDays.has(d) ? 'var(--success)' : d === localDay(now) ? 'var(--accent-soft)' : 'var(--surface-3)'}"></span>
         <span class="small muted">${WEEKDAYS[i][0]}</span></div>`)}</div>
+      ${(this.sum?.activities || []).length ? html`<div class="row small" style="gap:10px;flex-wrap:wrap">${this.sum.activities.map((a: any) => html`<span class="row" style="gap:4px"><hxk-icon name="run" size=${12} tone=${a.done >= a.times ? 'success' : 'accent'}></hxk-icon><span class="tnum">${a.label} ${a.done}/${a.times}</span></span>`)}</div>` : nothing}
       ${this.size !== 's' && this.sum?.week ? html`<div class="small muted">${num(this.sum.week.volume)} kg · ${this.sum.week.sets} serie${goal?.streak ? html` · <hxk-icon name="flame" size=${12} tone="warning"></hxk-icon> ${goal.streak} settimane di fila` : ''}</div>` : nothing}
     </div>`;
   }
