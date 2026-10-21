@@ -332,6 +332,7 @@ def api(monkeypatch):
     monkeypatch.setattr(main, "hub", fake)
     monkeypatch.setattr(main, "store", store)
     monkeypatch.setattr(main, "plutus", p)
+    monkeypatch.setattr(main.coach, "p", p)
     monkeypatch.setattr(main, "statements", Statements(p, fake))
     monkeypatch.setattr(main, "_llm", lambda prompt: None)
     monkeypatch.setattr(main, "signals", _QuietSignals())
@@ -503,3 +504,37 @@ def test_api_context_topic_and_signals_run(api, monkeypatch):
     assert any(r["id"] == "plutus:budget_pace:ristoranti" for r in put["rows"])
     job = next(r for r in main._agenda_rules() if r["key"] == "plutus.signals")
     assert "/api/finance/signals/run" in str(job)
+
+
+# ── coach of the weekly plan (SPEC 2026-10-20-coach-di-ogni-tipo §7.3) ───────
+def test_coach_budget_targets_and_review_block(pl):
+    from hestia_common.coach import validate_need
+
+    from app.core.coach import REVIEW_NEED, PlutusCoach
+    coach = PlutusCoach(pl)
+    start = pl.today()
+    assert coach.needs(start, start + timedelta(days=7))["needs"] == []       # no budget, nothing to review
+    pl.set_budget("spesa", 100)
+    pl.add_tx({"amount": 40, "merchant": "Lidl"})
+    needs = coach.needs(start, start + timedelta(days=7))["needs"]
+    t = next(n for n in needs if n["id"] == "finance.budget.spesa")
+    assert t["kind"] == "target" and t["progress"] == 0.4 and 0 < t["value"] <= 60 and validate_need(t)
+    SETTINGS["plutus.coach.review_threshold"] = 2
+    for i in range(2):
+        pl.add_tx({"amount": 5, "merchant": f"Sconosciuto {i}", "external_ref": f"r{i}"}, source="statement")
+    assert coach.check() == "changed" and coach.check() is None
+    block = next(n for n in coach.needs(start, start + timedelta(days=7))["needs"] if n["id"] == REVIEW_NEED)
+    assert block["kind"] == "block" and block["minutes"] == 15 and validate_need(block)
+    tx = next(t for t in pl.transactions() if t["status"] == "to_review")
+    pl.update_tx(tx["id"], {"category": "spesa"})
+    assert coach.check() == "done"
+    r = coach.review(*pl.month_range())
+    assert r["done"] == 1 and r["missed"] == 0 and r["adherence"] == 1.0
+
+
+@pytest.mark.api
+def test_api_coach_routes(api):
+    c, *_ = api
+    body = c.get("/api/coach/needs").json()
+    assert body["module"] == "plutus" and body["domain"] == "finance" and body["refused"] == []
+    assert c.get("/api/coach/review").status_code == 200

@@ -302,6 +302,15 @@ subscription), bank statement PDF (Hype) from the plugin *Importa* or sent in ch
 preview → commit, PayPal↔bank linking, quick manual entry. Rows in Archive `finance-store`; reminders through the
 agenda and Hermes. Details: `Hestia-Plutus/hestia-plutus.md`.
 
+### Weekly plan — coaches (contract, 2026-10-20)
+Domain modules that coach (Hercules, Hygieia, Plutus) carry the Hub tag `coach` and serve
+`/api/coach/needs|fit|placed|review` with `hestia_common.coach`: they say **what** is due (blocks, slots, targets,
+with generic constraints), never when. **Chronos** places them in the free time around the user's calendar
+(deterministic planner, plan items = assistant agenda events owned by the module, user moves always win), re-plans
+the rest of the week on pushed events (`/api/agenda/coach/report`, calendar sync, chat) and sends the weekly message
+via Oracle (text) and Hermes (delivery). Chronos reads no domain words; a new coach = one router + the tag.
+Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
 - Trigger source: Argus/Oracle/explicit user command.

@@ -89,6 +89,12 @@ Modules register defaults (idempotent by key) with `hestia_common.agenda_client.
 (`register_async`, `is_open(key, fallback)`, `should_self_run(key, interval)`, `plan`, `show`, `done`).
 Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
 
+### 5.1 Weekly plan (coaches)
+A domain module that knows what is due (workouts, routines, budget review) is a **coach**: Hub tag `coach` +
+`hestia_common.coach.CoachRouter` (needs/fit/placed/review) + `CoachClient` (done/skipped/changed, pushed to Chronos).
+Never schedule the user's own week inside a module: Chronos plans it (`Hestia-Chronos/app/services/coach*.py`,
+endpoints `/api/agenda/coach/*`, page «La tua settimana»). Need fields are generic; Chronos must not learn domain words.
+
 ## 5a. Mail flow (push) — subscribe, never poll
 
 Gmail → Hecate watcher (Chronos job `hecate.mail_watch`, default 15 min, history API; optional Gmail Pub/Sub streaming

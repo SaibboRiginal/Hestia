@@ -110,6 +110,33 @@ tags:
 # ─────────────────────────────────────────────────────────────────────────────
 components:
   schemas:
+    CoachNeed:
+      type: object
+      description: "One need of a coach module (hestia_common.coach.validate_need); Chronos reads only these generic fields"
+      required: [id, title]
+      properties:
+        id: {type: string, example: workout.3}
+        title: {type: string, example: Push A}
+        kind: {type: string, enum: [block, slot, target], default: block}
+        count: {type: integer, minimum: 0, maximum: 21, description: "still to do from start"}
+        per: {type: string, enum: [week, day], default: week}
+        minutes: {type: integer, description: "required for a block"}
+        min_minutes: {type: integer, description: "shortest acceptable (the module's /api/coach/fit gives the variant)"}
+        days: {type: array, items: {type: integer, minimum: 0, maximum: 6}}
+        fixed_dates: {type: array, items: {type: string, format: date}}
+        time_of_day: {type: string, enum: [morning, midday, afternoon, evening, any]}
+        not_before: {type: string, example: "07:00"}
+        not_after: {type: string, example: "21:30"}
+        min_gap_days: {type: integer}
+        not_same_day: {type: array, items: {type: string}, description: "tags that must not share the day"}
+        with: {type: object, properties: {tag: {type: string}, relation: {type: string, enum: [same_day, day_after, before, after]}}}
+        tags: {type: array, items: {type: string}}
+        priority: {type: string, enum: [must, should, could]}
+        reason: {type: string}
+        link: {type: string, description: "plugin page of the module"}
+        value: {}
+        unit: {type: string}
+        progress: {}
     HealthResponse:
       type: object
       properties:
@@ -4392,6 +4419,157 @@ paths:
         - url: http://localhost:19007
       responses:
         "200": {description: "{status, count, items}"}
+
+  /api/agenda/coach/week:
+    get:
+      tags: [Chronos]
+      summary: "Weekly plan of the week containing date (default today)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: date, in: query, schema: {type: string, format: date}}
+      responses:
+        "200": {description: "{week, start, end, planned, updated_at, days[{date, weekday, items[{key, module, label, domain, title, kind, need_id, date, start_at, end_at, minutes, status planned|done|skipped, moved_by_user, variant, reason, link}]}], targets, unplaced, states, text, busy, counts}"}
+  /api/agenda/coach/today:
+    get:
+      tags: [Chronos]
+      summary: "Today's plan items (widget «Oggi nel piano»)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{date, items}"}
+  /api/agenda/coach/review:
+    get:
+      tags: [Chronos]
+      summary: "How the week before date's week went, from every coach (GET /api/coach/review of each)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{start, end, modules[{module, domain, label, done, missed, adherence, notes}]}"}
+  /api/agenda/coach/replan:
+    post:
+      tags: [Chronos]
+      summary: "Re-plan from date to the end of its week (busy periods added first)"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {date: {type: string, format: date}, busy: {type: array, items: {type: object}}}}
+      responses:
+        "200": {description: "{week, items, unplaced, targets, ...}"}
+  /api/agenda/coach/week/run:
+    post:
+      tags: [Chronos]
+      summary: "Agenda job chronos.coach_week: plan the coming week and send the weekly message (Oracle text, fixed fallback, Hermes)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{ok, week, text, ...}"}
+  /api/agenda/coach/report:
+    post:
+      tags: [Chronos]
+      summary: "A coach module pushes an event (hestia_common.coach.CoachClient): done / skipped mark the nearest plan item, changed re-plans"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [module, event]
+              properties:
+                module: {type: string, example: hercules}
+                event: {type: string, enum: [done, skipped, changed]}
+                need_id: {type: string}
+                at: {type: string, format: date-time}
+                reason: {type: string}
+      responses:
+        "200": {description: "{ok, ...}"}
+  /api/agenda/coach/items/{ref}/move:
+    post:
+      tags: [Chronos]
+      summary: "The user moves a plan item (kept, never moved back)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [start_at], properties: {start_at: {type: string}, end_at: {type: string}}}
+      responses:
+        "200": {description: "the plan item"}
+  /api/agenda/coach/items/{ref}/skip:
+    post:
+      tags: [Chronos]
+      summary: "The user skips a plan item; the rest of the week is re-planned"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{ok, key, status}"}
+  /api/agenda/coach/busy:
+    post:
+      tags: [Chronos]
+      summary: "A period the plan must leave free"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [start_at, end_at], properties: {start_at: {type: string}, end_at: {type: string}, title: {type: string}}}
+      responses:
+        "200": {description: "{key, title, start_at, end_at}"}
+  /api/agenda/coach/busy/{ref}:
+    delete:
+      tags: [Chronos]
+      summary: "Remove a busy period"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{ok, key}"}
+  /api/coach/fit:
+    post:
+      tags: [Hercules]
+      summary: "Coach contract: a shorter variant of need_id that fits minutes on date → {ok, minutes, title, note}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "{ok, minutes?, title?, note?}"}
+  /api/coach/placed:
+    post:
+      tags: [Hercules]
+      summary: "Coach contract: Chronos tells the module where its needs landed {week, items[{need_id, key, start_at, end_at, kind, status}]}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "{ok, count}"}
+  /api/coach/review:
+    get:
+      tags: [Hercules]
+      summary: "Coach contract: how a past week went from the module's own data (Hygieia, Plutus too)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "{module, domain, label, start, end, done, missed, adherence, notes}"}
+  /api/coach/needs:
+    get:
+      tags: [Hercules]
+      summary: "Coach contract: what this module needs in the weekly plan (also served by every module with Hub tag coach)"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: start, in: query, schema: {type: string, format: date}}
+        - {name: end, in: query, schema: {type: string, format: date}}
+      responses:
+        "200": {description: "{module, domain, label, start, end, state, needs[CoachNeed], refused[{id, error}]}"}
 
   /api/agenda/retire:
     post:

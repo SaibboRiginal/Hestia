@@ -25,12 +25,14 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
 
 from .core import catalog, domain
+from .core.coach import HerculesCoach
 from .core.hub import Hub
 from .core.service import Conflict, Hercules, NotFound
 from .core.store import Store, StoreUnavailable, now_iso
@@ -41,7 +43,7 @@ SERVICE_NAME = os.getenv("SERVICE_NAME", "hercules")
 SERVICE_BASE_URL = os.getenv("SERVICE_BASE_URL", "http://hestia_hercules:19019")
 SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
 SERVICE_TYPE = os.getenv("SERVICE_TYPE", "module")
-SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "module,fitness,context").split(",") if t.strip()]
+SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "module,fitness,context,coach").split(",") if t.strip()]
 SERVICE_TOPOLOGY_TAGS = [t.strip().lower() for t in os.getenv(
     "SERVICE_TOPOLOGY_TAGS", "layer:domain,domain:fitness,status:alpha").split(",") if t.strip()]
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -75,6 +77,13 @@ settings.declare([
     setting("hercules.skip_mode", "Giorno saltato", "enum", "shift", group="Programma",
             options=[("shift", "La rotazione slitta"), ("keep", "Si passa alla scheda successiva")],
             help="Vale per i programmi a rotazione; quelli settimanali seguono il calendario."),
+    setting("hercules.coach.time_of_day", "Quando allenarmi nel piano", "enum", "evening", group="Piano della settimana",
+            options=[("morning", "Mattina"), ("midday", "Pausa pranzo"), ("afternoon", "Pomeriggio"),
+                     ("evening", "Sera"), ("any", "Quando c'è tempo")],
+            help="Parte del giorno in cui il piano della settimana mette gli allenamenti."),
+    setting("hercules.coach.min_minutes", "Allenamento più corto accettabile", "int", 30, group="Piano della settimana",
+            min=10, max=120, unit="min",
+            help="Se un giorno ha poco tempo libero il piano usa una versione corta, ma non sotto questi minuti."),
     *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo e oggi non ti sei allenato. Uno alla volta."),
 ]).follow_personal()                                       # week start: personal setting shared by every module
 
@@ -84,9 +93,28 @@ hercules = Hercules(store, settings.get)
 agenda = AgendaClient("hercules", HUB_API_URL)
 # reflection signals (Archive signals-store): re-evaluated after the natural writes and by the daily agenda job
 signals = Signals("hercules", "fitness", evaluate=hercules.signals, hub_api_url=HUB_API_URL)
+coach = HerculesCoach(hercules)
+coach_client = CoachClient("hercules", HUB_API_URL)
+
+
+def _coach_event(event: str, data: dict) -> None:
+    """Tell the weekly plan (Chronos) in the background: a workout never waits on the network."""
+    def _send():
+        if event == "done":
+            coach_client.done("workout", data.get("at"))
+        elif event == "skipped":
+            coach_client.skipped("workout", data.get("at"), data.get("reason") or "")
+        else:
+            coach_client.changed()
+    threading.Thread(target=_send, daemon=True, name=f"hercules-coach-{event}").start()
+
+
+hercules.on_event = _coach_event
 
 app = FastAPI(title="Hestia-Hercules", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(CoachRouter("hercules", "fitness", "Allenamento", needs=coach.needs, fit=coach.fit,
+                               placed=coach.on_placed, review=coach.review).router)
 
 
 @app.exception_handler(domain.Invalid)
@@ -417,9 +445,18 @@ def goal_delete(id: str):
     return hercules.delete("goal", id)
 
 
+def _summary_with_plan() -> dict:
+    s = hercules.summary()
+    planned = coach.next_planned()
+    if planned:
+        s["planned"] = planned
+        s["text"] = f"{s['text']} · Nel piano: {planned['label']}"
+    return s
+
+
 @app.get(f"{API}/summary")
 def summary():
-    return hercules.summary()
+    return _summary_with_plan()
 
 
 @app.get("/api/module/context")
@@ -431,7 +468,7 @@ def module_context(budget: int = 400, topic: str = ""):
         if len(detail) > budget:
             detail = detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
         return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": detail}
-    text = "Allenamento: " + hercules.summary()["text"]
+    text = "Allenamento: " + _summary_with_plan()["text"]
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
     return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": text}
@@ -506,7 +543,10 @@ def reminder_check():
         return decision
     goal, nxt = decision["goal"], decision.get("next") or {}
     tpl = nxt.get("template") or {}
+    planned = coach.next_planned()
     text = f"🏋️ Oggi: {tpl.get('name', 'allenamento')}"
+    if planned and planned["label"].startswith("oggi"):
+        text += f" alle {planned['label'].split()[-1]}"
     if nxt.get("estimated_minutes"):
         text += f" · {nxt['estimated_minutes']} min"
     text += f" · {goal['hint']}"
@@ -609,8 +649,8 @@ try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes
 
     def _summary() -> dict:
-        s = hercules.summary()
-        return {"text": s["text"], "goals": s["goals"], "flags": s["flags"], "stalls": s["stalls"],
+        s = _summary_with_plan()
+        return {"text": s["text"], "planned": s.get("planned"), "goals": s["goals"], "flags": s["flags"], "stalls": s["stalls"],
                 "recent_prs": s["recent_prs"], "missed_7d": s["missed_7d"], "active_session": s["active_session"]}
 
     def _next() -> dict:

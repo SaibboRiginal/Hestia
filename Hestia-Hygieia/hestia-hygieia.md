@@ -126,3 +126,14 @@ shopping, check, summary, overview, export, quick (Home chips), reminders/run, a
 
 `python -m pytest -q -m "unit or api" Hestia-Hygieia/tests` (fake Archive in memory, no network; `test_signals.py`
 mocks the signals transport).
+
+
+## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.2)
+
+Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter` (needs + review).
+- **Needs**: each active routine → a `slot` (`routine.<id>`) with its cadence, part of day, `not_same_day` from the
+  known conflicts and `not_same_day_as`, and `with {tag, same_day}` from the routine's new field `plan_with`
+  (e.g. a mask the same day as the scrub). Supplements (category `integratore`) are information only: the summary
+  lists them, no plan item.
+- **Reports**: routine logged → done/skipped for `routine.<id>`; cadence/status/slot/conflict/`plan_with` change →
+  changed (re-plan). Tool `selfcare_routine_edit` takes `plan_with`.

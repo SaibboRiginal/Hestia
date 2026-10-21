@@ -270,6 +270,18 @@ Effects include `chat.reply` (`live` | `queued`: Oracle offline, chat clients qu
 State cached 15 s; Chronos down → `[🔄]` log and `FALLBACK_EFFECTS` (everything allowed, every notification
 delivered), so each module still follows only its own agenda windows.
 
+## Coach contract (`hestia_common.coach`)
+
+A domain module becomes a coach of the weekly plan (Chronos) with the Hub tag `coach` and one router:
+`CoachRouter(module, domain, label, needs=, fit=, placed=, review=).router` serves `GET /api/coach/needs?start=&end=`
+(`{module, domain, label, state, needs, refused}`), `POST /api/coach/fit`, `POST /api/coach/placed`,
+`GET /api/coach/review`. `need(id, title, **fields)` / `validate_need` give the canonical need (kind
+block/slot/target, count still to do, per week|day, minutes/min_minutes, days, fixed_dates, time_of_day,
+not_before/not_after, min_gap_days, not_same_day, with{tag, relation}, tags, priority must|should|could, reason,
+link, value/unit/progress); unknown fields are refused. `CoachClient(module).done(need_id, at)` / `.skipped(...)` /
+`.changed()` push events to `POST /route/chronos/api/agenda/coach/report` (fails soft, `[🔄] event=coach_report_failed`).
+`week_bounds(day, week_start)` → `[start, end)`. Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+
 ## Constraints
 
 - No domain logic — pure library code.

@@ -98,7 +98,8 @@ class TestUiEndpoints:
         assert pages["agenda"]["order"] == 150 and pages["agenda"]["element"] == "chronos-agenda"
         assert pages["agenda"]["parent"] == "" and not pages["agenda"]["detail"]
         assert pages["esecuzioni"]["parent"] == "agenda" and pages["esecuzioni"]["order"] == 151
-        assert web["widget"][0]["id"] == "falliti"
+        assert {w["id"] for w in web["widget"]} == {"falliti", "oggi-nel-piano"}
+        assert pages["settimana"]["element"] == "chronos-week" and pages["settimana"]["parent"] == ""
         qa = web["quick_action"][0]
         assert qa["path"] == "/api/agenda/items/{id}/run" and qa["source"] == "/api/agenda/runs/failed"
 

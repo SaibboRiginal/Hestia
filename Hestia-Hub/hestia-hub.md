@@ -101,5 +101,9 @@ Themis (`settings` tag, `layer:core`, `domain:settings`) and Metis (`improvement
 `tests/test_compose_registration_tags.py` validates every compose service's tags against these lists. Plutus
 (`finance`, 2026-10-19) was the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here.
 
+Tag `coach` (2026-10-20): a module that serves `GET /api/coach/needs` (`hestia_common.coach`) carries it; Chronos
+finds the coaches of the weekly plan with `GET /registry/services` filtered on this tag. `test_coach_modules_carry_the_coach_tag`
+checks Hercules, Hygieia and Plutus.
+
 `capabilities.owns_tool_domains: [...]` lets a non-`layer:domain` service own a tool domain in Oracle's tool
 filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).

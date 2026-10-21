@@ -51,3 +51,25 @@ settings.declare([
              max=3600, unit="s", advanced=True, order=31,
              help="Ogni quanto controllo se c'è un promemoria da mandare."),
 ])
+
+# Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §10). When the plan is built is the agenda job
+# ``chronos.coach_week`` (move or pause it in the agenda), not a setting.
+COACH_DAY_START = "chronos.coach.day_start"
+COACH_DAY_END = "chronos.coach.day_end"
+COACH_BUFFER = "chronos.coach.buffer_minutes"
+COACH_MAX_BLOCKS = "chronos.coach.max_blocks_per_day"
+COACH_MAX_MINUTES = "chronos.coach.max_minutes_per_day"
+
+settings.follow_personal()      # themis.personal.week_start: the plan's week
+settings.declare([
+    _setting(COACH_DAY_START, "Il piano inizia alle", "time", "07:00", group="Piano della settimana", order=40,
+             help="Prima di quest'ora non metto niente nel piano."),
+    _setting(COACH_DAY_END, "Il piano finisce alle", "time", "22:00", group="Piano della settimana", order=41,
+             help="Dopo quest'ora non metto niente nel piano."),
+    _setting(COACH_BUFFER, "Margine attorno agli impegni", "int", 15, group="Piano della settimana", min=0, max=120,
+             unit="min", order=42, help="Tempo libero che lascio prima e dopo ogni evento del tuo calendario."),
+    _setting(COACH_MAX_BLOCKS, "Blocchi al giorno al massimo", "int", 2, group="Piano della settimana", min=1, max=6,
+             order=43, help="Quante attività con un orario (es. allenamento) metto al massimo in un giorno."),
+    _setting(COACH_MAX_MINUTES, "Minuti al giorno al massimo", "int", 120, group="Piano della settimana", min=15,
+             max=600, unit="min", order=44, help="Quanto tempo del piano al massimo in un solo giorno."),
+])
