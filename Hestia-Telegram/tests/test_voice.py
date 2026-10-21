@@ -127,3 +127,20 @@ def test_voice_uses_in_registration():
     from telegram_bot.services.voice_service import capabilities
     ids = {u["id"]: u["direction"] for u in capabilities()["voice_usecases"]}
     assert ids == {"telegram.vocale": "ascolto", "telegram.risposta": "voce"}
+
+
+@pytest.mark.unit
+def test_notification_voice_replies_to_the_text_and_goes_with_it():
+    import telegram_bot.core as core_module
+    from telegram_bot.services import notifications
+    bot = MagicMock()
+    bot.send_voice.return_value = MagicMock(message_id=71)
+    core_module.bot = bot
+    out = notifications.handle_notify({"kind": "update", "notification_id": "n1", "ref": "5:70",
+                                       "voice": {"blob_id": "b1", "duration_s": 2.4, "audio_b64": "T0dH"}})
+    assert out == (200, {"status": "ok", "voice": True})
+    assert bot.send_voice.call_args.args[:2] == ("5", b"OGG")
+    assert bot.send_voice.call_args.kwargs["reply_to_message_id"] == 70
+    notifications.handle_notify({"kind": "update", "notification_id": "n1", "ref": "5:70", "state": "superseded"})
+    deleted = [c.args for c in bot.delete_message.call_args_list]
+    assert ("5", 71) in deleted and ("5", 70) in deleted

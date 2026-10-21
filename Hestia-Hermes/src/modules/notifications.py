@@ -21,6 +21,7 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
 """
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import re
@@ -35,10 +36,15 @@ import requests
 from .clients import ClientRegistry, NotifyClient
 from .hermes_settings import DELIVERY_MAX_ATTEMPTS, REPEAT_RESET_AFTER_DAYS, RETRACT_AFTER, settings
 from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
+from hestia_common.voice_client import VoiceClient
+from hestia_common.voice_usecases import usecase as voice_usecase
 
 logger = logging.getLogger("hestia_hermes.notifications")
 
 CHANNEL = "notification"
+VOICE_USECASE = "hermes.notifica"
+VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Notifiche a voce", direction="voce",
+                                help="Le notifiche che un modulo vuole anche a voce (impostazione del modulo).")]
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
 ANSWERABLE_STATES = ["created", "queued", "delivered", "seen", "failed"]
 CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
@@ -153,6 +159,13 @@ def _replace_client(value: Any, client: str) -> Any:
     return value
 
 
+def public_voice(raw: Any) -> dict[str, Any] | None:
+    """Kept audio of a notification, for a play button (bytes come from the voice module by ``blob_id``)."""
+    if not isinstance(raw, dict) or not raw.get("blob_id"):
+        return None
+    return {"blob_id": str(raw["blob_id"]), "duration_s": raw.get("duration_s")}
+
+
 def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
     """Client-facing shape of a stored notification (WebUI inbox)."""
     stored = row.get("payload") if isinstance(row.get("payload"), dict) else {}
@@ -183,6 +196,7 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
         "deliveries": {k: (v or {}).get("state") for k, v in deliveries.items()},
         "repeat": public_repeat(n.get("repeat")),
         "link": public_link(n.get("link")),
+        "voice": public_voice(stored.get("voice")),
     }
 
 
@@ -194,6 +208,7 @@ class NotificationCenter:
             "HUB_API_URL", "http://hestia_hub:19001/api")).rstrip("/")
         self._pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="hermes-notify")
         self.presence = PresenceClient("hermes", self.hub_api_url)
+        self.voice = VoiceClient(self.hub_api_url)
 
     # ── Hub calls ───────────────────────────────────────────────────────────
 
@@ -247,9 +262,12 @@ class NotificationCenter:
         replaces: str | None = None,
         link: dict[str, Any] | None = None,
         quiet: bool = False,
+        voice: bool = False,
     ) -> dict[str, Any]:
         """Store one notification and fan it out to every client.
-        ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one."""
+        ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one.
+        ``voice``: the sending module wants it also as audio (its ``<module>.notifiche.voce``): the written
+        notification goes out first, the audio follows as an ``update`` with ``voice`` (dossier modulo-voce §7.3)."""
         if replaces:
             dedupe_key = replaces
         elif dedupe_key:
@@ -314,6 +332,8 @@ class NotificationCenter:
                     spec.get("held") or "-", (spec.get("repeat") or {}).get("count", "-"),
                     ",".join(f"{k}:{v.get('state')}" for k, v in deliveries.items()) or "-", delivered)
         result = {"notification_id": notification_id, "deduped": False, "deliveries": delivered}
+        if voice:
+            self._pool.submit(self._add_voice, notification_id, spec)
         if replaces:
             result["repeat"] = spec["repeat"]
         return result
@@ -333,6 +353,8 @@ class NotificationCenter:
                 payload_merge={"superseded_by": new_id}, detail=f"superseded by {new_id}")
             if code == 200 and isinstance(current, dict):
                 self._broadcast(current, {"state": "superseded", "superseded_by": new_id})
+                if (current.get("payload") or {}).get("voice"):
+                    self._pool.submit(self.voice.forget, notification_id=str(row.get("outbound_event_id")))
                 logger.info("event=notification_superseded notification_id=%s by=%s key=%s",
                             row.get("outbound_event_id"), new_id, key)
             elif code == 409 and row is latest:
@@ -349,6 +371,29 @@ class NotificationCenter:
         return {"count": int(previous.get("count") or 1) + 1,
                 "skipped": int(previous.get("skipped") or 0) + 1,
                 "since": previous.get("since") or latest.get("created_at") or now.isoformat()}
+
+    def _add_voice(self, notification_id: str, spec: dict) -> None:
+        """Audio of a notification (kept by the voice module while the notification lives), then an ``update``
+        so clients add a voice message / play button. Failure leaves the written notification as it is."""
+        text = ". ".join(t for t in (str(spec.get("title") or "").strip(), str(spec.get("message") or "").strip()) if t)
+        spoken = self.voice.speak(text, use_case=VOICE_USECASE, fmt="ogg_opus",
+                                  keep={"kind": "notification", "notification_id": notification_id})
+        if not spoken:
+            logger.warning("[🔄] event=notification_voice_failed notification_id=%s fallback=text_only", notification_id)
+            return
+        voice = {"blob_id": spoken.get("blob_id"), "duration_s": spoken.get("duration_s"),
+                 "mime_type": spoken.get("mime_type") or "audio/ogg"}
+        row = self.archive.get_outbound_event(notification_id) or {}
+        state = str(row.get("lifecycle_state") or "")
+        if not state or state in ("superseded", "dead"):
+            self.voice.forget(notification_id=notification_id)
+            return
+        code, current = self.archive.patch_outbound_event(notification_id, state, payload_merge={"voice": voice})
+        if code != 200 or not isinstance(current, dict):
+            return
+        self._broadcast(current, {"voice": {**voice, "audio_b64": base64.b64encode(spoken["audio"]).decode()}})
+        logger.info("event=notification_voice_added notification_id=%s duration_s=%s", notification_id,
+                    voice.get("duration_s"))
 
     def _client_body(self, notification_id: str, spec: dict, client: str,
                      event_payload: dict | None) -> dict[str, Any]:

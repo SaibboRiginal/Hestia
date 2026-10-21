@@ -187,7 +187,7 @@ class HermesService:
             actions=payload.get("_actions"), audience=audience, origin=origin,
             dedupe_key=anchor, dedupe_max_age=max_age, event_payload=payload,
             subscription_id=str(matched_subs[0].get("id")), replaces=replaces,
-            link=payload.get("_link"), quiet=bool(payload.get("_quiet")),
+            link=payload.get("_link"), quiet=bool(payload.get("_quiet")), voice=bool(payload.get("_voice")),
         )
         logger.info(
             "event=event_processed ms=%d domain=%s event_type=%s entity_id=%s subscriptions=%d matched=%d deliveries=%d",

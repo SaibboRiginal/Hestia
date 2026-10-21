@@ -8,6 +8,8 @@ this module renders those notifications as Telegram messages:
 - ``update``: seen elsewhere / answered → the buttons are replaced by a
   status line ("✓ Vista su WebUI", "✅ Approva · da WebUI").
 - ``retract``: delete the message (Hermes asks after the cleanup delay).
+- ``update`` with ``voice``: the module wanted it also as audio → a voice message replying to the
+  notification (deleted together with it).
 - repeat chains: a reminder sent again carries ``repeat.text`` («Saltato 2 volte»),
   shown in italics; the previous one arrives as ``update`` ``superseded`` and is
   deleted (over 48 h Telegram refuses: its buttons become «↻ Sostituito»).
@@ -17,6 +19,7 @@ chat marks the notifications shown here as seen.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import threading
 from html import escape
@@ -35,6 +38,8 @@ _CLIENT_LABELS = {"telegram": "Telegram", "webui": "WebUI"}
 # Notifications shown in this chat and not yet seen (cleared when the user writes).
 _unseen: set[str] = set()
 _unseen_lock = threading.Lock()
+# Voice message sent under a notification: notification id → (chat id, message id), to delete it with the text.
+_voices: dict[str, tuple[str, int]] = {}
 
 
 def _client_label(name: str) -> str:
@@ -125,6 +130,8 @@ def _apply_update(body: dict[str, Any]) -> dict[str, Any]:
     target = _parse_ref(body.get("ref"))
     if not target:
         return {"status": "ok", "edited": False}
+    if isinstance(body.get("voice"), dict) and not body.get("state"):
+        return _send_voice(notification_id, target, body["voice"])
     state = str(body.get("state") or "")
     text = ""
     if state == "superseded":
@@ -157,7 +164,33 @@ def _apply_update(body: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", "edited": False}
 
 
+def _send_voice(notification_id: str, target: tuple[str, int], voice: dict[str, Any]) -> dict[str, Any]:
+    try:
+        audio = base64.b64decode(str(voice.get("audio_b64") or ""))
+    except (ValueError, TypeError):
+        audio = b""
+    if not audio:
+        return {"status": "ok", "voice": False}
+    try:
+        sent = core.bot.send_voice(target[0], audio, reply_to_message_id=target[1],
+                                   duration=int(float(voice.get("duration_s") or 0)) or None)
+    except Exception as exc:
+        logger.info("event=notification_voice_send_failed notification_id=%s error=%s", notification_id, exc)
+        return {"status": "ok", "voice": False}
+    if getattr(sent, "message_id", None):
+        _voices[notification_id] = (target[0], int(sent.message_id))
+        while len(_voices) > 500:
+            _voices.pop(next(iter(_voices)))
+    return {"status": "ok", "voice": True}
+
+
 def _retract(body: dict[str, Any]) -> dict[str, Any]:
+    voice = _voices.pop(str(body.get("notification_id") or ""), None)
+    if voice:
+        try:
+            core.bot.delete_message(voice[0], voice[1])
+        except Exception as exc:
+            logger.info("event=notification_voice_retract_skipped error=%s", exc)
     target = _parse_ref(body.get("ref"))
     if not target:
         return {"status": "ok", "deleted": False}

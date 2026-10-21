@@ -36,6 +36,8 @@ from .modules.hermes_settings import DELIVERY_RETRY_INTERVAL, settings as hermes
 from .modules.service import HermesService
 from .modules import ui_view
 from hestia_common.plugin_client import PluginClient, page, widget
+from hestia_common.voice_usecases import capabilities as voice_capabilities
+from .modules.notifications import VOICE_USECASES
 
 logger, log_buffer = setup_service_logging("hestia_hermes")
 
@@ -170,6 +172,7 @@ def register_on_hub_startup():
             "event_ingest": "/api/events/ingest",
             "notifications": "/api/notifications",
             **ui.capabilities(service_base_url),
+            **voice_capabilities(VOICE_USECASES),
         },
     }
     max_attempts = int(os.getenv("HERMES_HUB_REGISTER_RETRIES", "8"))
