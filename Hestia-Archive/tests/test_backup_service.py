@@ -221,3 +221,33 @@ def test_one_job_at_a_time(env):
     gate.set()
     svc.wait(5)
     assert svc.job() is None
+
+
+def test_restore_from_a_file_copied_in_by_hand(env):
+    svc, pg, remote, notes, hooks, _ = env
+    svc.run()
+    fid = next(iter(remote.files))
+    svc.import_dir.mkdir(parents=True)
+    (svc.import_dir / "hestia-backup-a-mano.enc").write_bytes(remote.data[fid])
+    pg.counts_live = {"diary": 9, "blobs": 1}
+    info = svc.restore(local="../hestia-backup-a-mano.enc")         # only the name counts, no path escapes
+    assert info["ok"] and info["name"] == "hestia-backup-a-mano.enc" and pg.counts_live == {"diary": 3, "blobs": 1}
+    with pytest.raises(BackupFailed):
+        svc.restore(local="manca.enc")
+    with pytest.raises(BackupFailed):
+        svc.restore()
+
+
+def test_cli_restore_needs_the_confirm_word(monkeypatch):
+    from app.backup import cli
+
+    calls = []
+    monkeypatch.setattr(cli, "_call", lambda m, p, b=None: calls.append((m, p, b)) or
+                        {"items": [{"id": "f1", "name": "hestia-backup-2026-10-20-033000.enc"}]})
+    monkeypatch.setattr("builtins.input", lambda _prompt: "si")
+    with pytest.raises(SystemExit):
+        cli.main(["restore", "hestia-backup-2026-10-20-033000.enc"])
+    assert all(p != "/restore" for _, p, _ in calls)
+    monkeypatch.setattr(cli, "_wait", lambda: {"last_restore": {"ok": True, "name": "x"}})
+    cli.main(["restore", "hestia-backup-2026-10-20-033000.enc", "--yes"])
+    assert ("POST", "/restore", {"file_id": "f1", "confirm": True}) in calls

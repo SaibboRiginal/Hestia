@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via Project thread — brainstorm 2026-10-19 item 8 («Backup su Google Drive — cartella `.hestia` (riusabile per tutto), scope `drive.file` nell'app Google di Hecate, job Chronos di backup cifrato di Archive, prova di ripristino»); started by Marko 2026-10-20 («voglio che venga fatto tutto»); v1.1 answers of Marko 2026-10-20 (§10) |
 | **Status** | Approved — in progress |
 
@@ -31,7 +31,8 @@ Not in scope: picking single items to move between two Hestia (that is «Importa
   «Backup non riuscito: …», «Verifica del backup fallita: …», «Backup fermo: manca la passphrase», «Backup in
   attesa: Google Drive non collegato». A fixed problem closes with «Backup di nuovo regolare». A rollback sends
   one «Dati ripristinati al …».
-- **Assistant**: read-only tool `backup_status` («quando è stato l'ultimo backup?»). No tool restores.
+- **Assistant**: no tool (v1.2): Archive serves no assistant tools, and backup state is in the panel and the
+  notices. No tool restores.
 
 ## 3. Architecture (module boundaries kept)
 | Who | Does | Why there |
@@ -90,7 +91,8 @@ the backup it protects). **If it is lost, the backups cannot be opened**: docs a
   backup, check sha256, decrypt, restore into a scratch database `hestia_restore_check`, compare the row counts
   with the manifest, drop the scratch database, write `verified_at`/`verify` into the file's appProperties.
 - `pg_dump`/`pg_restore` in the Archive image: `postgresql-client` from the PGDG repository for the majors
-  15, 16, 17; Archive uses the one matching the server (`SHOW server_version_num`), else the newest.
+  15, 16, 17 (if PGDG is unreachable at build time, the distribution's client: newer than the server, still able to
+  dump and restore it); Archive uses the one matching the server (`SHOW server_version_num`), else the newest.
 - Logs: `event=backup_done name=… bytes=… seconds=…`, `event=backup_failed step=… error=…`,
   `event=backup_verify ok=… tables=… mismatched=…`, `event=backup_restore step=…`.
 
@@ -107,8 +109,10 @@ the backup it protects). **If it is lost, the backups cannot be opened**: docs a
 4. one notice «Dati ripristinati al …».
 
 `POST /api/backup/undo` swaps back with `hestia_memory_prev` (available until the next rollback, which replaces it).
-CLI for a PC without WebUI yet or a file downloaded by hand: `python tools/hestia_backup.py list | restore
-<name|--file path> | undo | decrypt <file>` (runs inside the Archive container, asks to type `RIPRISTINA`).
+CLI for a PC without WebUI yet or a file downloaded by hand: `python tools/hestia_backup.py list | status |
+restore <name|--file path> | undo | decrypt <file>`. It runs `python -m app.backup.cli` in the Archive container,
+which calls Archive's own API (same gate and epoch as the panel) and asks to type `RIPRISTINA`. `--file` copies the
+file into the volume's `import/` folder; `POST /api/backup/restore {local: <name>}` restores it.
 
 ## 4. Settings (Themis, declared by Archive, group «Backup»)
 | Key | Default | |
@@ -128,7 +132,7 @@ Forge worktrees (code is on GitHub).
 - **P1** `hestia_common.crypto` + tests (round trip, wrong passphrase, truncated/tampered file).
 - **P2** Hecate Drive API + tests with a fake Drive; swagger; scope in defaults and `.env.example`.
 - **P3** Archive backup/verify/retention/restore/undo, epoch in store answers, agenda rules, settings,
-  `backup_status` tool, `postgresql-client` in the image, volume `hestia_backups` + tests; module mirrors follow
+  `postgresql-client` in the image, volume `hestia_backups` + tests; module mirrors follow
   the epoch.
 - **P4** plugin contribution `settings_panel` (plugin_client, Hub catalog, WebUI .NET + Angular) + Archive bundle
   `archive-backup-panel`; `tools/hestia_backup.py`.

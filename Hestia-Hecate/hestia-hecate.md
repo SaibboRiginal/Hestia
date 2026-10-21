@@ -73,6 +73,13 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/mail/watch/run` | One mail check (history API) → new headers pushed to Iris; body `{trigger}` (agenda job `hecate.mail_watch`) |
 | `GET` | `/api/gateway/mail/watch` | Watcher state: agenda job, interval, cursor/last check/last error/pending, Pub/Sub push status |
 | `POST` | `/api/gateway/mail/watch/renew` | Renew Gmail push (`users.watch` on the Pub/Sub topic); `inactive` when not configured |
+| `GET` | `/api/gateway/drive/status` | Google Drive state `{connected, scope_ok, error}` (scope `drive.file`) |
+| `GET` | `/api/gateway/drive/files?folder=` | Files of `.hestia/<folder>`: `[{id, name, size, created_at, app_properties}]` |
+| `POST` | `/api/gateway/drive/upload/start` | `{folder, name, mime, size, app_properties}` → `{upload_id}` (Drive resumable upload) |
+| `POST` | `/api/gateway/drive/upload/{upload_id}/chunk` | `{offset, data_b64}` (≤ 2 MB, multiple of 256 KiB except the last) → `{received, done, file?}` |
+| `GET` | `/api/gateway/drive/files/{id}/chunk?offset=&length=` | `{data_b64, eof, size}` |
+| `PATCH` | `/api/gateway/drive/files/{id}` | `{app_properties}` |
+| `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
 | `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy; calendar connectors only — mail goes through the watcher) |
 | `POST` | `/api/ingest/calendar/trigger` | Sync calendar events from providers into Archive |
 
@@ -245,6 +252,17 @@ credentials using only the refresh token, calls Google's token endpoint to get a
 new access token, and caches the result to the persistent file. No access token
 or expiry timestamp is stored in `.env` — the 1‑hour access token is always
 obtained live.
+
+### Google Drive files (`providers/drive.py`)
+Generic file API for other modules (first user: Archive's backup, later «Importa ed esporta dati»). Scope
+`drive.file`: Hestia sees **only the files it created**. Everything lives under one root folder `.hestia`
+(found again by `appProperties.hestia=root`, created on first use); callers name a subfolder (`backup`, `export`…;
+`[a-z0-9_-]`). Bytes travel base64 in ≤ 2 MB chunks so the Hub envelope stays small; uploads are Drive resumable
+sessions kept in memory (`upload_id`). Errors → `{error, message}` with codes `drive_scope_missing` (409, re-authorize
+Google), `no_token`, `drive_api_disabled` (enable *Google Drive API* in the Cloud console), `drive_forbidden`,
+`not_found`, `bad_folder`, `bad_chunk`, `bad_offset`, `unknown_upload`. Hecate sends no notification here: the caller
+does. Logs `event=drive_upload|drive_download|drive_delete …`. Setup: enable *Google Drive API* and add the scope
+`.../auth/drive.file` to the consent screen, then re-authorize Google once.
 
 ### Mail (`providers/mail.py`)
 

@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-21
+- Backup on Google Drive: every night an encrypted copy of the whole database (scrypt + AES-256-GCM, `hestia_common.crypto`, shared with «Importa ed esporta dati») goes to `.hestia/backup` through Hecate's new Drive file API (scope `drive.file`: only Hestia's files), kept 3 recent + 3 monthly (Themis), verified monthly by a restore into a test database; *Impostazioni → Sistema → Archivio → Backup* shows the history with «Ripristina» (restore in a scratch database, then swap) and «Annulla ripristino»; module mirrors reload on the new data epoch; new plugin contribution `settings_panel`; terminal `tools/hestia_backup.py` → `docs/work/2026-10-20-backup-drive/` [ext-chat]
+
 ## 2026-10-20
 - Web clients use minimal stroke icons coloured by intent instead of emoji (WebUI and every module plugin; one icon set shared by `hx-icon` and `hxk-icon`, `tone` input; presence states carry `icon` + `tone`; notices show the level icon); Telegram keeps emoji; CI check `tools/governance/check_icons.py` → `docs/work/2026-10-20-icone-nei-client/` [ext-chat]
 - Codespaces in one click: the create page asks for the optional test secrets (Gemini, test Telegram bot, temporary Google client), every start brings the stack up and leaves the WebUI login link in `.cloud-test/login.txt` (`python tools/cloud_test.py start`) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]

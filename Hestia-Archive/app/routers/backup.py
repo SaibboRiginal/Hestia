@@ -17,7 +17,8 @@ class VerifyReq(BaseModel):
 
 
 class RestoreReq(BaseModel):
-    file_id: str
+    file_id: Optional[str] = None        # a backup on Drive (history)
+    local: Optional[str] = None          # or a file copied into the backup volume's import/ folder (CLI)
     confirm: bool = False
 
 
@@ -74,7 +75,9 @@ def build_router(service: BackupService, *, passphrase_set, drive_status, settin
         if not req.confirm:
             raise HTTPException(status_code=422, detail={"error": "confirm",
                                                          "message": "conferma il ripristino (confirm=true)"})
-        return _start("restore", service.restore, req.file_id)
+        if not (req.file_id or req.local):
+            raise HTTPException(status_code=422, detail={"error": "file", "message": "indica file_id oppure local"})
+        return _start("restore", service.restore, req.file_id, req.local)
 
     @router.post("/undo")
     def undo(req: UndoReq):

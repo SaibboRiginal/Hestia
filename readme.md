@@ -43,6 +43,7 @@ the affected containers and rolls back automatically if the health check fails.
 | 🧠 **Long-term memory** | Selective, Claude-like memory in PostgreSQL + pgvector: the assistant decides what to remember and recalls it semantically. |
 | 📅 **Calendars + its own agenda** | Unified CRUD over Google Calendar and Outlook. Hestia also keeps an *assistant agenda* where every module's schedule lives as data (events, tasks, recurring jobs, windows) that you can move, pause or skip. ICS feed for your phone. |
 | ✉️ **Email** | Gmail via OAuth: search, threads, send. New mail arrives by **push**: one watcher (Hecate) hands it to Iris, which delivers it to the modules that subscribed — no module polls the mailbox. |
+| 💾 **Backup on Google Drive** | Every night an encrypted copy of all data goes to a `.hestia` folder on your Drive (Hestia sees only its own files); once a month it is restored into a test database to prove it works. History and one-click rollback (with undo) in the settings. |
 | 🔔 **Proactive notifications** | Subscriptions ("tell me when…"), deduplicated alerts, reminders, focus briefs. |
 | 👁️ **Self-monitoring** | Argus watches health and logs, raises incidents and proposes fixes; Hephaestus runs guarded remediation. |
 | 🛠️ **Self-development (Forge)** | Natural-language change requests → isolated branch → coding engine (local, cloud or Claude Code) → tests → your approval → merge → restart → auto-rollback. |
@@ -132,6 +133,7 @@ Every `.env` is documented in its `.env.example`, and every compose variable has
 | Different models | WebUI → Oracle → Cervello → **Modelli** | Providers (name, standard, address), chains of models (order = fallback, quota skip) and the chain/mode of every use case each module declares. Usage per module and conversation: tab **Uso**. |
 | Claude Code / Codex as Hestia's brain | Modelli → «Modalità del cervello» = Esterna; `CLAUDE_CODE_OAUTH_TOKEN` (Claude) or `ORACLE_INSTALL_CODEX=1` + `codex login` (Codex) | The agent runs the loop with Hestia's tools over MCP; Hestia keeps history and memory. |
 | Google Calendar + Gmail | `HECATE_ENABLE_PROVIDER_GOOGLE=true` + OAuth client in `Hestia-Hecate/app/.env` | Step by step: [`Hestia-Hecate/hestia-hecate.md`](Hestia-Hecate/hestia-hecate.md) → *Google setup*. From the phone, ask the bot "collega Google Calendar". |
+| Backup on Google Drive | `HESTIA_BACKUP_PASSPHRASE` in the root `.env` (also in a password manager: without it the backups cannot be opened) + *Google Drive API* enabled and scope `drive.file` on the Google OAuth app | Then WebUI → Impostazioni → Sistema → Archivio → Backup → «Collega Google Drive». Terminal: `python tools/hestia_backup.py list / restore / undo`. Details: [`Hestia-Archive/hestia-archive.md`](Hestia-Archive/hestia-archive.md). |
 | Outlook calendar | `HECATE_ENABLE_PROVIDER_MICROSOFT=true` + `OUTLOOK_*` | Same file. |
 | Claude Code as coding engine | `CLAUDE_CODE_OAUTH_TOKEN` in `Hestia-Oracle/app/.env` | From `claude setup-token` (Pro/Max). Forge then can use the `claude` engine. |
 | Forge behaviour | `HEPHAESTUS_FORGE_*` in `Hestia-Hephaestus/app/.env` | Engine order, auto-rollback, deploy command. |
@@ -172,7 +174,7 @@ flowchart LR
 |---|---|---|
 | [Hub](Hestia-Hub/hestia-hub.md) | 19001 | Service registry, the only router, command discovery |
 | [Archive](Hestia-Archive/hestia-archive.md) | 19002 | The only database owner: memory, entities, chat, calendar items, documents, feedback |
-| [Hecate](Hestia-Hecate/hestia-hecate.md) | 19003 | Provider gateway: Google/Microsoft OAuth, Calendar, Gmail |
+| [Hecate](Hestia-Hecate/hestia-hecate.md) | 19003 | Provider gateway: Google/Microsoft OAuth, Calendar, Gmail, Drive files |
 | [Oracle](Hestia-Oracle/hestia-oracle.md) | 19004 | LLM core: chat agent loop, memory, `/api/llm/*`, Claude Code runner |
 | [Hermes](Hestia-Hermes/hestia-hermes.md) | 19005 | Event dispatch and notifications |
 | [Scout](Hestia-Scout/hestia-scout.md) | 19006 | Domain module: real-estate listings from email |

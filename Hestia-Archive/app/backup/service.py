@@ -109,6 +109,11 @@ class BackupService:
     def tmp_dir(self) -> Path:
         return self.workdir / "tmp"
 
+    @property
+    def import_dir(self) -> Path:
+        """Backup files copied in by hand (``tools/hestia_backup.py restore --file``), restored by name."""
+        return self.workdir / "import"
+
     # ── state ───────────────────────────────────────────────────────────────
     def state(self) -> dict:
         try:
@@ -309,8 +314,11 @@ class BackupService:
         return {"items": items, "pending": pending, "error": error}
 
     # ── fetch + open a backup ───────────────────────────────────────────────
-    def _fetch(self, file_id: str | None, pw: str) -> tuple[dict, dict, Path]:
-        """Download (newest when ``file_id`` is None), check sha256, decrypt → (file, manifest, dump path)."""
+    def _fetch(self, file_id: str | None, pw: str, local: str | None = None) -> tuple[dict, dict, Path]:
+        """Download (newest when ``file_id`` is None), check sha256, decrypt → (file, manifest, dump path).
+        ``local`` = name of a file in ``import_dir`` instead of Drive (no checksum: the manifest is authenticated)."""
+        if local:
+            return self._open_local(local, pw)
         self._step("download")
         files = sorted((f for f in self.remote.list() if is_backup(f)), key=created_at, reverse=True)
         f = next((x for x in files if x["id"] == file_id), None) if file_id else (files[0] if files else None)
@@ -331,6 +339,19 @@ class BackupService:
             raise BackupFailed("decrypt", f"non riesco ad aprirlo ({exc}): passphrase diversa o file rovinato")
         enc.unlink(missing_ok=True)
         return f, manifest, dump
+
+    def _open_local(self, name: str, pw: str) -> tuple[dict, dict, Path]:
+        self._step("decrypt")
+        enc = self.import_dir / Path(name).name
+        if not enc.is_file():
+            raise BackupFailed("download", f"file {Path(name).name} non trovato tra quelli importati")
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
+        dump = self.tmp_dir / "fetch.dump"
+        try:
+            manifest = unseal(enc, dump, pw)
+        except (DecryptError, ContainerError) as exc:
+            raise BackupFailed("decrypt", f"non riesco ad aprirlo ({exc}): passphrase diversa o file rovinato")
+        return {"id": None, "name": enc.name, "created_at": manifest.get("created_at")}, manifest, dump
 
     def _compare(self, dbname: str, manifest: dict) -> list[str]:
         got = self.pg.counts(dbname)
@@ -384,10 +405,12 @@ class BackupService:
         self._problem("verify", "Verifica del backup fallita", f"Verifica del backup fallita: {why}.", level="error")
 
     # ── rollback ────────────────────────────────────────────────────────────
-    def restore(self, file_id: str) -> dict:
+    def restore(self, file_id: str | None = None, local: str | None = None) -> dict:
+        if not (file_id or local):
+            raise BackupFailed("download", "indica quale backup ripristinare")
         pw = self._secret()
         try:
-            f, manifest, dump = self._fetch(file_id, pw)
+            f, manifest, dump = self._fetch(file_id, pw, local)
             self._step("restore")
             self.pg.restore_into(self.scratch, dump)
             dump.unlink(missing_ok=True)

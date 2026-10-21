@@ -143,6 +143,10 @@ Details: `Hestia-Themis/hestia-themis.md`.
   the 15-min history check is the push source (Gmail can push only through Pub/Sub).
 - Chat files for a module: declare `attachment_handlers` in Hub capabilities (Plutus: bank statement PDF); Oracle
   stores the file as an Archive blob (`owner_module=chat`) and hands the blob id to the module, else normal analysis.
+- Backup/rollback (Archive, `docs/work/2026-10-20-backup-drive`): a rollback renames databases, so a module that
+  keeps an in-memory mirror of its Archive rows must read `epoch` from store answers and reload when it changes
+  (Hercules, Hygieia, Wardrobe, Plutus do). Archive answers 503 for the few seconds of the swap. Archive's
+  `requirements.txt` must end with a newline (a missing one glued `cryptography` onto `requests`).
 - No Marko PC needed for a real run: `python tools/cloud_test.py all` starts the whole stack in a Claude cloud
   session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Banco di prova cloud».
 

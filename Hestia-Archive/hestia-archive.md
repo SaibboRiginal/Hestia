@@ -110,7 +110,7 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/backup/status` | Backup panel state: `job {kind, step}`, `last_backup`, `last_verify`, `last_restore`, `problem`, `passphrase_set`, `drive {connected, scope_ok}`, `undo_available`, `settings` (`?fresh=true` re-checks Drive). Answers also during the rollback swap |
 | `GET` | `/api/backup/list` | History = the Drive folder `.hestia/backup` (`items` with `verify`/`verified_at`/`monthly`) + `pending` (local copies waiting for Drive) + `error` |
 | `POST` | `/api/backup/run` · `/verify` `{file_id?}` | Start a backup · a verification (newest when no id); answer at once (`started`), 409 `busy` while another job runs. Agenda jobs `archive.backup` (daily 03:30) and `archive.backup_verify` (1st of the month 04:00) |
-| `POST` | `/api/backup/restore` `{file_id, confirm: true}` · `/undo` `{confirm: true}` | Rollback to a backup · swap back with the database kept from before the rollback (404 `nothing_to_undo`) |
+| `POST` | `/api/backup/restore` `{file_id | local, confirm: true}` · `/undo` `{confirm: true}` | Rollback to a backup · swap back with the database kept from before the rollback (404 `nothing_to_undo`) |
 | `POST` | `/api/backup/drive/connect` | Google authorization link from Hecate (panel «Collega Google Drive») |
 
 ---
@@ -146,6 +146,10 @@ It stores and serves all persistent state through generic APIs.
   the WebUI under Archive's settings. Texts name no module.
 - **Not in the backup:** `.env`, Hecate's Google token (`Hestia-Hecate/data`), other volumes, Forge worktrees.
 - **New PC:** install, set `HESTIA_BACKUP_PASSPHRASE`, start, connect Google once, open the Backup panel, «Ripristina».
+- **Terminal** (no WebUI yet, or a file downloaded by hand): `python tools/hestia_backup.py list | status | restore <name>
+  | restore --file <path.enc> | undo | decrypt <path.enc>`. It runs `python -m app.backup.cli` in `hestia_archive`, which
+  calls this same API (gate and epoch as in the panel) and asks to type `RIPRISTINA`; `--file` copies the file to
+  `/code/backups/import/` and restores it with `{local: <name>}`; `decrypt` writes the plain `pg_dump` next to the file.
 - Logs: `event=backup_step kind=… step=…`, `backup_done`, `backup_failed`, `backup_verify ok=…`, `backup_restore ok=…`,
   `[🔄] backup_problem code=…`, `[🔄] backup_upload_retry`.
 - Tests: `tests/test_backup_service.py` (fake Postgres + Drive), `tests/test_crypto.py`, `tests/test_backup_pg_live.py`
