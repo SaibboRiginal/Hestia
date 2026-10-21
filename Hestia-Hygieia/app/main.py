@@ -31,6 +31,7 @@ from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
+from hestia_common.signals_client import Signals, signals_rule
 
 from .core import catalog
 from .core.coach import HygieiaCoach
@@ -90,6 +91,8 @@ def _coach_event(event: str, data: dict) -> None:
 
 hygieia.on_event = _coach_event
 agenda = AgendaClient("hygieia", HUB_API_URL)
+# reflection signals (Archive signals-store): re-evaluated after the natural writes and by the daily agenda job
+signals = Signals("hygieia", "selfcare", evaluate=hygieia.signals, hub_api_url=HUB_API_URL)
 
 app = FastAPI(title="Hestia-Hygieia", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -243,17 +246,21 @@ def routine_plan(id: str, date: str = ""):
 def routine_done(id: str, body: dict = Body(default={})):
     out = hygieia.log_routine(id, body.get("date"), body.get("status") or "done", body.get("steps"), body.get("note") or "",
                               source=body.get("source") or "webui")
+    signals.changed()
     return {**out, "label": f"{out['name']} fatta"}
 
 
 @app.delete(f"{API}/routines/{{id}}/done")
 def routine_undone(id: str, date: str = ""):
-    return hygieia.undo_log(routine_id=id, day=date or None)
+    out = hygieia.undo_log(routine_id=id, day=date or None)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/routines/{{id}}/skip")
 def routine_skip(id: str, body: dict = Body(default={})):
     out = hygieia.log_routine(id, body.get("date"), "skipped", None, body.get("note") or "", source=body.get("source") or "webui")
+    signals.changed()
     return {**out, "label": f"{out['name']} saltata"}
 
 
@@ -275,7 +282,9 @@ def logs(days: int = 30, routine_id: str = "", product_id: str = ""):
 
 @app.delete(f"{API}/logs/{{id}}")
 def log_delete(id: str):
-    return hygieia.delete_log(id)
+    out = hygieia.delete_log(id)
+    signals.changed()
+    return out
 
 
 @app.get(f"{API}/journal")
@@ -285,12 +294,16 @@ def journal(area: str = "", days: int = 120):
 
 @app.post(f"{API}/journal")
 def journal_add(body: dict = Body(...)):
-    return {"items": hygieia.journal_add(body)}
+    out = {"items": hygieia.journal_add(body)}
+    signals.changed()
+    return out
 
 
 @app.delete(f"{API}/journal/{{id}}")
 def journal_delete(id: str):
-    return hygieia.delete_journal(id)
+    out = hygieia.delete_journal(id)
+    signals.changed()
+    return out
 
 
 # ── statistics, history, alerts ──────────────────────────────────────────────
@@ -341,9 +354,11 @@ def export():
 
 
 @app.get("/api/module/context")
-def module_context(budget: int = 400):
-    """Shared contract of the new modules: a short caveman line the assistant may include."""
-    return {"module": "hygieia", "domain": "selfcare", "updated_at": now_iso(), "text": hygieia.context_text(budget)}
+def module_context(budget: int = 400, topic: str = ""):
+    """Shared contract of the new modules: a short caveman line the assistant may include. ``topic`` = a signal key
+    (``adherence_drop``, ``goal:<routine>``…): the facts behind that signal; unknown topic → the normal line."""
+    return {"module": "hygieia", "domain": "selfcare", "updated_at": now_iso(),
+            "text": hygieia.context_text(budget, topic)}
 
 
 # ── quick actions (WebUI Home) ───────────────────────────────────────────────
@@ -356,12 +371,15 @@ def quick_routines():
 def quick_routine(id: str, body: dict = Body(default={})):
     out = hygieia.log_routine(id, body.get("date"), "done", None, body.get("note") or "",
                               source=body.get("source") or "quick")
+    signals.changed()
     return {**out, "label": f"{out['name']} fatta ✓ {out['hint']}".strip()}
 
 
 @app.delete(f"{API}/quick/routine/{{id}}")
 def quick_routine_undo(id: str, date: str = ""):
-    return hygieia.undo_log(routine_id=id, day=date or None)
+    out = hygieia.undo_log(routine_id=id, day=date or None)
+    signals.changed()
+    return out
 
 
 @app.get(f"{API}/quick/products")
@@ -447,8 +465,16 @@ def alerts_run():
     return {"items": sent}
 
 
+# ── reflection signals (agenda job hygieia.signals) ──────────────────────────
+@app.post(f"{API}/signals/run")
+def signals_run():
+    """Agenda job ``hygieia.signals``: re-evaluate the self care signals and weekly metrics, sync to Archive."""
+    return signals.run()
+
+
 def _agenda_rules() -> list[dict]:
     return [
+        signals_rule("hygieia", "Cura di sé", path=f"{API}/signals/run", tz=TZ),
         job_rule("hygieia.planner", "Promemoria self care (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=TZ,
                  description="Controlla le routine con il promemoria attivo che sono indietro con l'obiettivo. Al massimo "
@@ -554,6 +580,7 @@ try:
                      and not any(k in catalog.slug(s["label"]) for k in skip)]
         out = hygieia.log_routine(r["id"], date or None, status if status in ("done", "partial", "skipped") else "done",
                                   steps, note, source="assistant")
+        signals.changed()
         return {"logged": out["name"], "status": out["status"], "date": out["date"], "goal": out["hint"]}
 
     def _products(query: str = "", area: str = "", status: str = "current", active: str = "", category: str = "") -> dict:
@@ -704,6 +731,7 @@ try:
                      date: str = "") -> dict:
         rows = hygieia.journal_add({"date": date or None, "entries": [{"area": area, "scores": scores or {}, "note": note,
                                                                       "tags": tags or []}]}, source="assistant")
+        signals.changed()
         return {"saved": len(rows)}
 
     def _stats(days: int = 90) -> dict:
@@ -904,6 +932,7 @@ def _warm_up() -> None:
     for attempt in range(1, 1000):
         try:
             if store.refresh(force=True):
+                signals.changed()           # time-based facts may have moved while the service was down
                 return
         except Exception as exc:
             logger.warning("[🔄] event=hygieia_warmup_failed attempt=%d error=%s", attempt, exc)
