@@ -291,6 +291,12 @@ def usage(days: int = 30):
             "recent": rows[:50]}
 
 
+@app.get(f"{API}/live")
+def live_config():
+    """What a client needs for live mode («Parla», /live): the pause that closes a turn."""
+    return {"silence_ms": int(settings.get("echo.live.silence_ms", 900) or 900), "language": echo.language()}
+
+
 @app.get(f"{API}/recent")
 def recent():
     return {"items": list(echo.recent)}

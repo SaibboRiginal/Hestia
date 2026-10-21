@@ -13,6 +13,7 @@ using Hestia.WebUI.Services;
 /// <item><c>POST /api/webui/voice/speak</c> — «Ascolta» under a reply (the audio is kept with the reply).</item>
 /// <item><c>POST /api/webui/voice/listen[/{sid}/chunk|end]</c>, <c>say[/{sid}/text|end]</c> — live mode «Parla»:
 /// the microphone in chunks, the answer spoken sentence by sentence while it is written.</item>
+/// <item><c>GET /api/webui/voice/live</c> — live settings (the pause that closes a turn).</item>
 /// <item><c>GET /api/webui/voice/audio-for?ref_id=</c>, <c>/audio/{id}</c> — play a kept audio again.</item>
 /// </list>
 /// The WebUI only picks its own uses (<see cref="UseCases"/>) and adds its session to what is kept.
@@ -76,6 +77,9 @@ public class VoiceController : ControllerBase
             return Task.FromResult<IActionResult>(NotFound(new { detail = "unknown voice stream step" }));
         return Forward(path, body, null, step == "end" ? 120 : 60);
     }
+
+    [HttpGet("live")]
+    public Task<IActionResult> Live() => Raw(HttpMethod.Get, "live", null, null, 10);
 
     [HttpGet("audio-for")]
     public Task<IActionResult> AudioFor([FromQuery(Name = "ref_id")] string refId, [FromQuery] string format = "")
