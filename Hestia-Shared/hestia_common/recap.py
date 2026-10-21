@@ -99,8 +99,10 @@ def hhmm(value: Any) -> str:
     return ts.strftime("%H:%M")
 
 
-def recap_router(module: str, builder: Callable[[date, date], dict], path: str = PATH):
+def recap_router(module: str, builder: Callable[[date, date], dict], path: str = PATH,
+                 today: Callable[[], date] | None = None):
     """FastAPI router serving ``GET path?day=&next=`` from ``builder(day, next)``.
+    ``today``: the module's own local day (its timezone) used when ``day`` is omitted; default the container's.
     A failing builder answers an empty piece (logged): the recap goes on without this module."""
     from fastapi import APIRouter, HTTPException
 
@@ -109,7 +111,7 @@ def recap_router(module: str, builder: Callable[[date, date], dict], path: str =
     @router.get(path)
     def module_recap(day: str = "", next: str = "") -> dict:
         try:
-            d, n = parse_days(day or None, next or None)
+            d, n = parse_days(day or None, next or None, today=today() if today else None)
         except ValueError:
             raise HTTPException(status_code=400, detail="day/next must be YYYY-MM-DD")
         try:

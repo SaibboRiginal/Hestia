@@ -80,7 +80,8 @@ capabilities = {**recap.capabilities(), ...}       # recap_endpoint → /api/mod
 ```
 
 `GET /api/module/recap?day=&next=` → the piece, or `{module, empty: true}` when there are no lines (also when the
-builder raises: logged, never a 500; bad date → 400). Plain facts only, never an LLM call; Athena writes the text.
+builder raises: logged, never a 500; bad date → 400). Pass `today=lambda: svc.today()` so the default day is the module's
+local day, not the container's. Plain facts only, never an LLM call; Athena writes the text.
 `job_rule(..., flex={"earliest": "20:00", "latest": "23:30"})` makes a recurring job fire around the user's events.
 
 ## Mail subscriptions client (`hestia_common.mail_client`)

@@ -414,7 +414,7 @@ def _recap_piece(day, nxt) -> dict:
     return recap.piece("hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30, **facts)
 
 
-app.include_router(recap.recap_router("hercules", _recap_piece))
+app.include_router(recap.recap_router("hercules", _recap_piece, today=lambda: hercules.today()))
 
 
 @app.get("/api/module/context")

@@ -326,7 +326,7 @@ def _recap_piece(day, nxt) -> dict:
     return recap.piece("hygieia", "Cura di sé", icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
 
 
-app.include_router(recap.recap_router("hygieia", _recap_piece))
+app.include_router(recap.recap_router("hygieia", _recap_piece, today=lambda: hygieia.today()))
 
 
 @app.get("/api/module/context")

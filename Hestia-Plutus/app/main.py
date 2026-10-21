@@ -275,7 +275,7 @@ def _recap_piece(day, nxt) -> dict:
     return recap.piece("plutus", "Spese", icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
 
 
-app.include_router(recap.recap_router("plutus", _recap_piece))
+app.include_router(recap.recap_router("plutus", _recap_piece, today=lambda: plutus.today()))
 
 
 @app.get("/api/module/context")

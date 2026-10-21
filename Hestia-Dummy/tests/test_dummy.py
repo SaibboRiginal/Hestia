@@ -87,6 +87,19 @@ class TestRecapHelper:
         assert recap.parse_days("2026-10-20") == (date(2026, 10, 20), date(2026, 10, 21))
         assert recap.parse_days(today=date(2026, 12, 31))[1] == date(2027, 1, 1)
 
+    def test_router_uses_the_module_local_day(self):
+        """Regression: after midnight in Rome the container (UTC) is still on the previous day; the default day
+        must be the module's own local day."""
+        from datetime import date
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from hestia_common import recap
+        app = FastAPI()
+        app.include_router(recap.recap_router(
+            "x", lambda d, n: recap.piece("x", "Area", done=[f"{d}/{n}"]), today=lambda: date(2026, 10, 22)))
+        body = TestClient(app).get("/api/module/recap").json()
+        assert body["done"] == [{"text": "2026-10-22/2026-10-23"}]
+
     def test_capability(self):
         from hestia_common import recap
         assert recap.capabilities() == {"recap_endpoint": "/api/module/recap"}
