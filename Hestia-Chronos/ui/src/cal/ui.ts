@@ -32,6 +32,16 @@ export function ic(name: string, size = 16): TemplateResult {
   return html`<svg class="ic" width=${size} height=${size} viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0">${svg`<path d=${d}></path>`}</svg>`;
 }
 
+/** Weather of a day as a small chip «icon 9–18°» (tooltip: condition, rain hours, located events of the day). */
+export function wxChip(day: { min_c: number | null; max_c: number | null; condition: string; icon: string; rain_hours?: string[] } | undefined,
+                       extra: string[] = []): TemplateResult | typeof nothing {
+  if (!day) return nothing;
+  const rain = day.rain_hours?.length ? `, pioggia ${day.rain_hours[0]}${day.rain_hours.length > 1 ? '–' + day.rain_hours[day.rain_hours.length - 1] : ''}` : '';
+  const title = [`${day.condition}${rain}`, ...extra].join('\n');
+  const wet = ['rain', 'drizzle', 'storm', 'snow'].includes(day.icon);
+  return html`<span class="wx" title=${title}><hxk-icon name=${day.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${day.min_c ?? ''}–${day.max_c ?? ''}°</span>`;
+}
+
 /** Segmented control (one choice of a few). */
 export function segmented<T extends string>(opts: { value: T; label: string; title?: string }[], value: T, pick: (v: T) => void): TemplateResult {
   return html`<div class="seg" role="radiogroup">${opts.map(o => html`<button type="button" role="radio" aria-checked=${o.value === value}
