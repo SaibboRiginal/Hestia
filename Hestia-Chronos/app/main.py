@@ -34,6 +34,7 @@ from schemas.events import (
 )
 from services import agenda as assistant_agenda
 from services import agenda_parse
+from services import agenda_weather
 from services import notification_worker, sync_worker
 from services import presence as assistant_presence
 from core import presence_settings
@@ -849,6 +850,15 @@ def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = N
     (WebUI plugin «Agenda di Hestia») reads its occurrences here."""
     return agenda_view(days=days, owner=owner, type=type, past_hours=past_hours, start=start, end=end,
                        include_done=include_done)
+
+
+@app.post("/api/agenda/weather")
+def agenda_weather_view(body: dict) -> dict:
+    """Weather for the calendar page: Casa per day, located occurrences (``located: [{key, place, at}]``) and
+    Marko's own located calendar events, next 14 days only (``services/agenda_weather.py``)."""
+    b = body or {}
+    located = b.get("located") if isinstance(b.get("located"), list) else []
+    return agenda_weather.build(_route_hecate, str(b.get("start") or ""), str(b.get("end") or ""), located)
 
 
 @app.get("/api/agenda/items")
