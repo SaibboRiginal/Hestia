@@ -48,7 +48,8 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
   (`/api/dispatch/send` with `metadata.quiet`), no push.
 - Tools open to external AIs today: `forge_tasks`, `forge_task`, `forge_task_diff`, `forge_dossier`, `forge_status`,
   `forge_develop`, `forge_task_note`, `forge_submit_branch` (Hephaestus), `system_status`, `system_log` (Argus),
-  `settings_search`, `settings_get`, `settings_propose` (Themis). Approve, reject, merge and rollback never leave.
+  `settings_search`, `settings_get`, `settings_propose` (Themis), `memory_note` (write), `memory_recall` (Oracle:
+  conversations with an external AI end up in Hestia's memory, page Memoria). Approve, reject, merge and rollback never leave.
 
 ## OAuth 2.1 (claude.ai web/mobile, ChatGPT)
 

@@ -2,8 +2,12 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-21
+- Coaches of every kind: one weekly plan built by Chronos from what each coach module needs (training from the goal or weekly program with a short version when time is tight, self care routines with conflicts and pairings, budget targets and a «Rivedi spese» block), placed around the calendar, re-planned when something changes, weekly message, page «La tua settimana» and widget «Oggi nel piano», chat tools `coach_*`; shared contract `hestia_common.coach`, Hub tag `coach`; supplements stay in self care as information; study: automatic food data not worth a module yet → `docs/work/2026-10-20-coach-di-ogni-tipo/` [ext-chat]
+
 ## 2026-10-20
 - Export and import: *Impostazioni → Esporta e importa* (and `tools/hestia_transfer.py`) saves a `.hestia` file with the data of the extra modules (coach, self care, wardrobe, expenses, real estate), the assistant's memories, your own agenda rules and the settings, chosen down to the single item, and imports it elsewhere with *Aggiungi*, *Unisci* (newer wins) or *Sostituisci*, preview first and a restore point before writing; never secrets, chats or sessions; shared contract `hestia_common.transfer` → `docs/work/2026-10-20-import-export/` [ext-chat]
+- Conversations with external AIs end up in Hestia's memory: tool `memory_note` (Claude/ChatGPT send the durable facts, saved with their origin, duplicates skipped, no LLM call) and `memory_recall` (what Hestia already knows), new page Memoria (list, search, filter by origin, forget) → `docs/work/2026-10-20-memory-note/` [ext-chat]
 - Fix: cloud bench in a Codespace without Docker crashed with a long traceback; it now says the container must be rebuilt (*Codespaces: Full Rebuild Container*) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Fix: Codespaces automatic start could stop at once with «Docker is not running» when it ran before Docker was up; it now waits up to 120 s and writes its output to `.cloud-test/start.log` → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Web clients use minimal stroke icons coloured by intent instead of emoji (WebUI and every module plugin; one icon set shared by `hx-icon` and `hxk-icon`, `tone` input; presence states carry `icon` + `tone`; notices show the level icon); Telegram keeps emoji; CI check `tools/governance/check_icons.py` → `docs/work/2026-10-20-icone-nei-client/` [ext-chat]

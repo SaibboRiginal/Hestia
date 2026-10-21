@@ -165,6 +165,9 @@ One `SettingsClient("chronos")` (`app/core/presence_settings.py`); agenda/calend
 | `chronos.sync.calendar_id` (adv.) | `primary` | Calendario | Provider calendar id read by the sync |
 | `chronos.reminders.look_ahead_hours` | 26 h | Promemoria | First reminder ("1d" bucket upper bound; then 2 h and 30 min) |
 | `chronos.reminders.poll_seconds` (adv.) | 300 s | Promemoria | Reminder worker poll |
+| `chronos.coach.day_start` / `day_end` | 07:00 / 22:00 | Piano della settimana | Window where the weekly plan may place blocks |
+| `chronos.coach.buffer_minutes` | 15 | Piano della settimana | Free minutes kept around calendar events |
+| `chronos.coach.max_blocks_per_day` / `max_minutes_per_day` | 2 / 120 | Piano della settimana | Daily load limits of the plan |
 | `chronos.presence.*` | see Assistant presence | Presenza | Presence engine |
 | `chronos.log.level` (adv.) | `LOG_LEVEL` | Diagnostica | Log level |
 
@@ -373,3 +376,41 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
 | `POST` | `/api/presence/states/register` | Module-declared states `{owner, states}` |
 | `GET` | `/api/presence/history` | Last state changes |
 
+
+
+## Weekly plan — coaches (dossier `docs/work/2026-10-20-coach-di-ogni-tipo`)
+
+Chronos builds **one week** from what every coach module needs, in the free time around the user's calendar.
+It never reads domain words: only the generic need fields of `hestia_common.coach` (kind block/slot/target, count,
+minutes/min_minutes, days, time_of_day, gaps, `not_same_day`, `with`, priority).
+
+- **Coaches** = services with Hub tag `coach` (`GET {HUB}/registry/services`), read through Hub
+  (`GET /api/coach/needs`, optional `POST /api/coach/fit` for a shorter variant, `POST /api/coach/placed`,
+  `GET /api/coach/review`). A module that does not answer keeps its last plan (`[🔄] event=coach_needs_failed`).
+- **Planner** `app/services/coach_planner.py` (deterministic, pure): free intervals per day = day window minus
+  user calendar events (Archive, non all-day) and user busy blocks, with the buffer; places must → should → could,
+  full length first, else the module's shorter variant; respects the daily limits. Unplaced needs come back with a
+  reason («non entra»). **Orchestration** `app/services/coach.py`.
+- **Plan items** = assistant agenda `event` items, owner = the module, key
+  `coach.<week>.<module>.<need_id>.<date>`, parent `coach.week.<week>` (week = ISO date of its first day; the parent's
+  params hold targets, unplaced, states, the weekly text). `params.coach_status` planned/done/skipped/replanned.
+  Items the user moved (`user_modified`) are kept and never moved back; a skipped need is not re-placed that day.
+- **Re-plan** of the rest of the week only (never the past), pushed and debounced 5 s: module reports
+  (`POST /api/agenda/coach/report` done/skipped/changed via `hestia_common.coach.CoachClient`), a calendar sync that
+  now overlaps a planned block (`sync_worker` → `on_calendar_synced`), chat/page («Rifai il piano», busy block).
+  A change to today/tomorrow sends one notice through Hermes (`reminder_event`, domain `system`, key `coach.change`).
+- **Weekly job** `chronos.coach_week` (agenda, the day before the week starts, 18:00; pausing it stops the weekly
+  plan — no switch) → plan + Oracle use case `chronos.coach` writes the message (fixed-text fallback) → Hermes
+  (`coach.week`, link to the page).
+
+Endpoints (plugin prefix): `GET /api/agenda/coach/week?date=`, `GET /api/agenda/coach/today`,
+`GET /api/agenda/coach/review?date=`, `POST /api/agenda/coach/replan {date?, busy?}`, `POST /api/agenda/coach/week/run`,
+`POST /api/agenda/coach/report {module, event, need_id?, at?}`, `POST /api/agenda/coach/items/{key}/move {start_at, end_at?}`,
+`POST /api/agenda/coach/items/{key}/skip`, `POST /api/agenda/coach/busy {start_at, end_at, title}`,
+`DELETE /api/agenda/coach/busy/{key}`. MCP tools: `coach_week`, `coach_replan`, `coach_move`, `coach_skip`,
+`coach_add_busy`, `coach_review` (domain `coach`).
+
+WebUI: page **«La tua settimana»** (`settimana`, element `chronos-week`): seven columns (one day at a time on a
+phone), blocks with the area icon, slots as chips, targets with a bar, «Non entra», last week's review; drag a
+block to another day or «Sposta» (= user move), «Salta», «Rifai il piano», «Aggiungi impegno». Widget
+**«Oggi nel piano»** (`chronos-today-widget`). Icons from the kit, never emoji, no module names in texts.

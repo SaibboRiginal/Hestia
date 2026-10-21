@@ -99,3 +99,14 @@ runtime: never exported. Settings travel through Themis.
 
 `python -m pytest -q -m "unit or api" Hestia-Plutus/tests` (fake Archive in memory, synthetic receipts and a
 generated PDF, no network).
+
+
+## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.3)
+
+Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter` (needs + review).
+- **Targets**: one per budget (category or total) — what is left this budget month spread over the weeks still to go
+  (`value`, `unit` = currency, `progress` = spent/budget).
+- **Block** «Rivedi spese» (15', evening, `finance.review`) while movements to review ≥
+  `plutus.coach.review_threshold` (10, group «Piano della settimana»). After a correction, an import commit or new
+  mail payments Plutus tells the plan: changed when the review becomes due, done when it no longer is.
+- **Review**: budgets kept vs over in the budget month.

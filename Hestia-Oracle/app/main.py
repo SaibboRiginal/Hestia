@@ -71,6 +71,42 @@ _oracle_mcp_tools = [
         clients=["telegram", "ui"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="preferenze",
     ),
+    # ── Memory from external AIs (docs/work/2026-10-20-memory-note) ────────
+    MCPTool(
+        name="memory_note",
+        description=("Save in Hestia's long-term memory the durable facts about the user that came out of this "
+                     "conversation: preferences, constraints, decisions, personal details, plans. Send them already "
+                     "distilled, one short sentence per line, max 10 lines; never a transcript or temporary chatter. "
+                     "Facts Hestia already knows are skipped. Hestia uses them from then on in every client."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "facts": {"type": "string", "description": "One durable fact per line (max 10, 300 chars each)"},
+                "topic": {"type": "string", "description": "A few words on what the conversation was about"},
+            },
+            "required": ["facts"],
+        },
+        handler=lambda **kw: engine._memory_service.save_note(
+            facts=kw.get("facts", ""), topic=str(kw.get("topic", "") or "")),
+        title="Annota in memoria", method="POST", path="/api/memory/note",
+        clients=["ui", "telegram", "external"], response_mode="oracle_natural",
+        telegram_visible=False, telegram_group="preferenze",
+    ),
+    MCPTool(
+        name="memory_recall",
+        description=("What Hestia already knows about the user on a topic (keywords), so your answer and Hestia's "
+                     "memory agree. Empty query = the most recent memories. Max 20 rows."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Keywords, e.g. 'palestra' or 'cibo allergie'"},
+            },
+        },
+        handler=lambda **kw: engine._memory_service.recall(query=str(kw.get("query", "") or "")),
+        title="Cosa sa Hestia", method="GET", path="/api/memory/recall",
+        clients=["ui", "telegram", "external"], response_mode="oracle_natural",
+        telegram_visible=False, telegram_group="preferenze",
+    ),
     MCPTool(
         name="documents.search",
         description="Search through uploaded documents and files for relevant content.",
@@ -177,7 +213,10 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
                           "Modelli (fornitori, catene di modelli, uso scelto da ogni modulo)."),
                 page("documenti", "Documenti", element="oracle-documents", icon="file", order=121,
                      help="I file che hai condiviso con Hestia (in chat o da qui): cercali come fa la chat, "
-                          "aggiungine di nuovi, tienili per sempre o eliminali.")],
+                          "aggiungine di nuovi, tienili per sempre o eliminali."),
+                page("memoria", "Memoria", element="oracle-memory", icon="bookmark", order=122,
+                     help="Quello che Hestia ricorda di te: imparato in chat o annotato da un'AI esterna "
+                          "(Claude, ChatGPT) collegata a Hestia. Cerca, filtra per origine, dimentica.")],
          widgets=[widget("uso-oggi", "Uso modelli oggi", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="cervello", icon="chart",
                          help="Chiamate, token e costo di oggi, per modello.")])
@@ -321,6 +360,19 @@ def _ui_doc(fn, *args, **kwargs):
         if exc.status >= 500:
             logger.warning("[🔄] event=ui_documents_archive_failed detail=%s", exc.detail)
         raise HTTPException(status_code=exc.status, detail=exc.detail)
+
+
+@app.get("/api/ui/memory")
+def ui_memory():
+    """Memoria page: what Hestia remembers about the user and where each memory came from."""
+    return {"memories": engine._memory_service.list_memories()}
+
+
+@app.delete("/api/ui/memory/{memory_id}")
+def ui_memory_forget(memory_id: int):
+    if not engine._memory_service.forget(memory_id):
+        raise HTTPException(status_code=502, detail="memory not removed")
+    return {"status": "forgotten", "id": memory_id}
 
 
 @app.get("/api/ui/documents")
@@ -1121,6 +1173,29 @@ def memory_search_endpoint(query: str = ""):
     ok, rows = engine._memory_service.search_memories(query=query)
     if not ok:
         raise HTTPException(status_code=502, detail="memory search failed")
+    return {"count": len(rows), "memories": rows}
+
+
+class MemoryNoteRequest(BaseModel):
+    facts: Any = ""
+    topic: str = ""
+
+
+@app.post("/api/memory/note")
+def memory_note_endpoint(req: MemoryNoteRequest, request: Request):
+    """``memory_note``: durable facts from an external AI's conversation. ``X-Hestia-Access`` names the AI."""
+    access = request.headers.get("x-hestia-access") or ""
+    ok, detail = engine._memory_service.save_note(facts=req.facts, topic=req.topic, access=access)
+    if not ok:
+        raise HTTPException(status_code=422 if "Archive" not in str(detail) else 502, detail=str(detail))
+    return {"status": "saved", **detail}
+
+
+@app.get("/api/memory/recall")
+def memory_recall_endpoint(query: str = ""):
+    ok, rows = engine._memory_service.recall(query=query)
+    if not ok:
+        raise HTTPException(status_code=502, detail="memory recall failed")
     return {"count": len(rows), "memories": rows}
 
 

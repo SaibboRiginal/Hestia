@@ -242,12 +242,22 @@ def run_sync(trigger: str = "api") -> dict:
     try:
         _last_run_ts = time.time()
         _tick()
+        _coach_after_sync()
         return {"status": "ok", "trigger": trigger}
     except Exception as exc:
         logger.error("[🔄] event=sync_tick_failed trigger=%s error=%s", trigger, exc)
         return {"status": "error", "trigger": trigger, "error": str(exc)[:300]}
     finally:
         _tick_lock.release()
+
+
+def _coach_after_sync() -> None:
+    """A new or moved event over a planned block re-plans the week (push from the sync, no extra job)."""
+    try:
+        from services import coach
+        coach.on_calendar_synced()
+    except Exception as exc:
+        logger.warning("[🔄] event=coach_after_sync_failed error=%s", exc)
 
 
 def agenda_rules() -> list[dict]:

@@ -181,7 +181,7 @@ module domain travels in the payload) with `target: owner`, `replaces: <key>` (o
 
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
-`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji.
+`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji. Added 2026-10-20: `bookmark` (Oracle Memoria page).
 
 A module with a UI ships it inside the module and advertises it to the clients (contract:
 `docs/work/2026-10-17-client-plugins/SPEC.md` §4):
@@ -275,6 +275,18 @@ caps.update(transfer.capabilities())        # Hub registration: capabilities.tra
   through Themis. Files only with `include_files` (or the section chosen by hand); `POST /api/transfer/files` stores a
   blob of the module and the import rewrites the ids (`files_map`).
 - Versioning: file `format` and a `schema` per section; newer than this Hestia → refused with «aggiorna Hestia».
+
+## Coach contract (`hestia_common.coach`)
+
+A domain module becomes a coach of the weekly plan (Chronos) with the Hub tag `coach` and one router:
+`CoachRouter(module, domain, label, needs=, fit=, placed=, review=).router` serves `GET /api/coach/needs?start=&end=`
+(`{module, domain, label, state, needs, refused}`), `POST /api/coach/fit`, `POST /api/coach/placed`,
+`GET /api/coach/review`. `need(id, title, **fields)` / `validate_need` give the canonical need (kind
+block/slot/target, count still to do, per week|day, minutes/min_minutes, days, fixed_dates, time_of_day,
+not_before/not_after, min_gap_days, not_same_day, with{tag, relation}, tags, priority must|should|could, reason,
+link, value/unit/progress); unknown fields are refused. `CoachClient(module).done(need_id, at)` / `.skipped(...)` /
+`.changed()` push events to `POST /route/chronos/api/agenda/coach/report` (fails soft, `[🔄] event=coach_report_failed`).
+`week_bounds(day, week_start)` → `[start, end)`. Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
 
 ## Constraints
 
