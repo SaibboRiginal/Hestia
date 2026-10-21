@@ -39,7 +39,9 @@ export interface AgendaItem {
 }
 
 /** Result of the run of one occurrence (Chronos per-occurrence run log). */
-export interface OccurrenceRun { ok: boolean; detail?: string | null; at?: string | null; duration_ms?: number | null; }
+export interface OccurrenceRun { ok: boolean; detail?: string | null; at?: string | null; duration_ms?: number | null;
+  /** A flexible job fired away from its nominal time: when and why (recap dossier §3.8). */
+  flex?: { from: string; at: string; reason: string } | null; }
 
 export interface AgendaOccurrence {
   item_id: number;

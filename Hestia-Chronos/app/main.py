@@ -73,7 +73,12 @@ ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
                           "settimana, mese o elenco. Crea, sposta, salta o annulla; i tuoi cambi vincono sui moduli."),
                 page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=151, parent="agenda",
                      help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
-                          "è durata, e le regole registrate da ogni modulo.")],
+                          "è durata, e le regole registrate da ogni modulo."),
+                page("standard", "Attività standard", element="chronos-standard", icon="undo", order=152,
+                     parent="agenda",
+                     help="Le attività che i moduli mettono in agenda da soli (es. il recap della sera), con lo "
+                          "stato: se ne hai eliminata, messa in pausa o cambiata una, «Ripristina» la rimette come "
+                          "prevista. Sotto, i modelli da aggiungere.")],
          widgets=[widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
                          open_page="esecuzioni", icon="alert",
                          help="Job dell'agenda falliti nelle ultime 24 ore, con «Riprova».")],

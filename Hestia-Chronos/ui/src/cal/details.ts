@@ -75,6 +75,7 @@ export class ChronosCalDetails extends LitElement {
     const rule = describeRRule(e.item?.recurrence);
     const forge = /^forge\.task\.([0-9a-f]{6,})$/.exec(e.occ.key)?.[1] ?? null;
     const lr = e.item?.last_result;
+    const flex = (e.item?.params as any)?.flex as { earliest?: string; latest?: string } | undefined;
     const t = (d: Date) => fmt.time(d);
     return html`
       <div class="top" style="--c:${e.color}">
@@ -104,6 +105,9 @@ export class ChronosCalDetails extends LitElement {
       <dl>
         ${e.occ.recurring ? html`<dt>${ic('repeat', 14)}</dt><dd>${rule}</dd>` : nothing}
         ${e.item?.description ? html`<dt>${ic('list', 14)}</dt><dd class="desc">${e.item.description}</dd>` : nothing}
+        ${flex ? html`<dt>${ic('clock', 14)}</dt><dd>Orario flessibile tra ${flex.earliest || '…'} e ${flex.latest || '…'}:
+          parte prima o dopo i tuoi impegni${e.occ.run?.flex ? html`<span class="detail">Questa volta alle
+          ${fmt.time(new Date(e.occ.run.flex.at))}, ${e.occ.run.flex.reason}</span>` : nothing}</dd>` : nothing}
         ${e.item?.action ? html`<dt>${ic('zap', 14)}</dt><dd><code>${e.item.action.method || 'POST'} ${e.item.action.service}${e.item.action.path}</code></dd>` : nothing}
         ${e.occ.run ? html`<dt>${ic(e.occ.run.ok ? 'check' : 'alert', 14)}</dt>
           <dd class=${e.occ.run.ok ? '' : 'err'}>Questa esecuzione: ${e.occ.run.ok ? 'ok' : 'fallita'}${e.occ.run.duration_ms ? ` · ${e.occ.run.duration_ms} ms` : ''}
