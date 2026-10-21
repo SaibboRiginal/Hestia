@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 import requests
-from fastapi import Body, FastAPI, Request
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -242,6 +242,31 @@ def chains():
 @app.get(f"{API}/usecases")
 def usecases():
     return {"items": blocks.describe_usecases()}
+
+
+_PARTS = {"providers": PROVIDERS_KEY, "chains": CHAINS_KEY, "usecases": USECASES_KEY}
+
+
+@app.put(API + "/blocks/{part}")
+def blocks_write(part: str, body: dict = Body(...)):
+    """Marko's edit from the page Voce (providers | chains | usecases): stored through Themis."""
+    key = _PARTS.get(part)
+    value = body.get("value")
+    if not key:
+        raise NotFound("parte sconosciuta: providers, chains o usecases")
+    if not isinstance(value, dict) or any(not isinstance(v, dict) for v in value.values()):
+        raise Invalid("serve un oggetto nome → impostazioni")
+    if part == "providers":
+        bad = [n for n, p in value.items() if p.get("type") not in STANDARDS]
+        if bad or not value:
+            raise Invalid(f"standard sconosciuto per: {', '.join(bad) or 'nessun fornitore'}")
+    elif part == "chains":
+        if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
+                            for c in value.values()):
+            raise Invalid("ogni catena vuole una direzione (ascolto o voce) e una lista di passi")
+    if not settings.put(key, value, actor="user", reason="WebUI Voce"):
+        raise HTTPException(status_code=502, detail="Le impostazioni non hanno accettato la modifica")
+    return {"status": "ok", "key": key}
 
 
 @app.get(f"{API}/usage")

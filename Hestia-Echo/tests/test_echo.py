@@ -391,3 +391,18 @@ def test_endpoints_and_manifest(monkeypatch):
     assert manifest["kind"] == "core" and manifest["clients"]["webui"]["page"][0]["id"] == "voce"
     caps = main._registration()["capabilities"]
     assert caps["voice"]["api"] == "/api/voice"
+
+
+@pytest.mark.api
+def test_blocks_write_goes_through_settings(monkeypatch):
+    from fastapi.testclient import TestClient
+    import app.main as main
+
+    puts = []
+    monkeypatch.setattr(main.settings, "put", lambda k, v, **kw: puts.append((k, v)) or True)
+    client = TestClient(main.app)
+    ok = client.put("/api/voice/blocks/chains", json={"value": {"veloce": {"direction": "voce", "steps": []}}})
+    assert ok.status_code == 200 and puts == [("echo.chains", {"veloce": {"direction": "voce", "steps": []}})]
+    assert client.put("/api/voice/blocks/chains", json={"value": {"x": {"direction": "boh", "steps": []}}}).status_code == 422
+    assert client.put("/api/voice/blocks/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 422
+    assert client.put("/api/voice/blocks/altro", json={"value": {}}).status_code == 404
