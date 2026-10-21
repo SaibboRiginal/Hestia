@@ -171,6 +171,8 @@ flowchart LR
    `/oauth/register` → `/oauth/authorize` (WebUI → Hub → Hestia-MCP parks the request) → browser to
    `/p/mcp/accessi?oauth=<id>` (WebUI login) → **Consenti** → code to the AI's redirect → `/oauth/token` (PKCE) →
    `hso_…` bearer on `/mcp` exactly like a token access; `refresh_token` rotates, a replay revokes the access.
+6. External AI memory: `memory_note` (write access) → Hestia-MCP → Hub → Oracle `POST /api/memory/note` → Archive
+   `/api/memory` (`durable_user_preference`, origin in `extra_data`); `memory_recall` reads them back. Page Memoria lists/forgets.
 
 ### Plugin flow (module pages and widgets)
 1. A module with a UI declares its pages, widgets and quick actions (`hestia_common.plugin_client`) in its Hub

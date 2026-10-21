@@ -146,7 +146,7 @@ User interface relay for chat, file attachments, and clear session commands.
 Web client (.NET 9 backend + Angular frontend, port 19015).
 - Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, "Crea con Hestia" drawer. Everything
   else is a module plugin page: Agenda (Chronos, Google-like calendar; ICS feed stays a WebUI path), Sviluppo (Hephaestus), Notifiche (Hermes),
-  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti (Oracle) and the core inside views; old routes redirect.
+  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti and Memoria (Oracle) and the core inside views; old routes redirect.
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`/webui_token`).
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
@@ -366,7 +366,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 1. Current default: local build/deploy orchestration.
    Test bench without the local PC: `tools/cloud_test.py` (Claude cloud session or GitHub Codespace); test
    credentials come only from the environment (Codespaces secrets) through `docker-compose.cloud-test.yml`, never files.
-   In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`).
+   In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`; no Docker = rebuild the container).
 2. Future target: multi-node/cluster delivery with shared Hub discovery.
 3. Required for remote rollout:
    - deployment controller contract,

@@ -4090,6 +4090,61 @@ paths:
         "200": {description: "{group, days, rows: [{<group keys>, calls, ok, errors, quota, fallbacks, input_tokens, cached_tokens, output_tokens, cost_usd, avg_duration_ms, max_input_tokens, context_window, first_at, last_at}]}"}
         "400": {description: Unknown group}
 
+  /oracle/api/memory/note:
+    post:
+      tags: [Oracle]
+      summary: "memory_note: durable facts from an external AI's conversation (real path /api/memory/note)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: X-Hestia-Access, in: header, schema: {type: string}, description: "External AI access name (set by Hestia-MCP); absent = chat origin"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [facts]
+              properties:
+                facts: {description: "One fact per line (string) or a list; max 10, 300 chars each"}
+                topic: {type: string}
+      responses:
+        "200": {description: "{status: saved, saved: [{fact, domains}], skipped: [{fact, existing_id}]}"}
+        "422": {description: Empty, too many or too long facts}
+        "502": {description: Archive did not save}
+
+  /oracle/api/memory/recall:
+    get:
+      tags: [Oracle]
+      summary: "memory_recall: what Hestia knows about the user (keyword match, max 20)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: query, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{count, memories: [{fact, domains, since}]}"}
+
+  /oracle/api/ui/memory:
+    get:
+      tags: [Oracle]
+      summary: Memoria page, active user memories with origin (real path /api/ui/memory)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{memories: [{id, fact, domains, source: chat|external, access, topic, created_at}]}"}
+
+  /oracle/api/ui/memory/{memory_id}:
+    delete:
+      tags: [Oracle]
+      summary: Forget a memory (Archive is_active=false)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: memory_id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: "{status: forgotten, id}"}
+        "502": {description: Archive refused}
+
   /oracle/api/ui/documents:
     get:
       tags: [Oracle]
