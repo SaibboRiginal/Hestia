@@ -327,7 +327,11 @@ def replan(day: date | None = None, *, reason: str = "manual", week_start: date 
                                 "params": {**(old.get("params") or {}), "coach_status": "replanned"}}, by=OWNER)
             moved.append(old)
         summary = {"week": week, "start": start.isoformat(), "end": end.isoformat(), "updated_at": current.isoformat(),
-                   "reason": reason, "unplaced": result["unplaced"], "targets": result["targets"],
+                   "reason": reason,
+                   "unplaced": [{**u, "label": labels.get(u["module"], u["module"]), "domain": domains.get(u["module"], "")}
+                                for u in result["unplaced"]],
+                   "targets": [{**t, "label": labels.get(t["module"], t["module"]), "domain": domains.get(t["module"], "")}
+                               for t in result["targets"]],
                    "states": [{"module": m["module"], "label": m["label"], "state": m["state"], "ok": m["ok"]}
                               for m in modules]}
         _update_parent(week, summary)
@@ -407,7 +411,7 @@ def _deliver(key: str, title: str, text: str) -> bool:
 def _item_view(i: dict) -> dict:
     p = i.get("params") or {}
     return {"key": i["key"], "id": i.get("id"), "module": i["owner"], "label": p.get("label") or i["owner"],
-            "title": i.get("title"), "kind": p.get("kind") or "block", "need_id": p.get("need_id"),
+            "domain": p.get("domain") or "", "title": i.get("title"), "kind": p.get("kind") or "block", "need_id": p.get("need_id"),
             "date": (_item_day(i) or date.today()).isoformat(), "start_at": i.get("start_at"),
             "end_at": i.get("end_at"), "minutes": p.get("minutes"), "status": _status(i),
             "moved_by_user": bool(i.get("user_modified")), "variant": p.get("variant"),
