@@ -34,6 +34,9 @@ It stores and serves all persistent state through generic APIs.
   Pure storage for Plutus (expenses: transactions, categories, rules, budgets, accounts, imports, recurring).
 - **Iris store** (`/api/iris-store/*`): table `iris_records`, same shape and protocol. Pure storage for Iris (mail
   subscriptions, kind `subscription`, id `<owner>:<key>`).
+- **Echo store** (`/api/echo-store/*`): table `echo_records`, same shape and protocol. Pure storage for Echo (index of
+  kept audio, kind `audio`, id = blob id, `ref_id` = message/notification; usage rows, kind `usage`). The audio
+  bytes are Archive blobs with `owner_module=echo`.
   Both are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
   own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
@@ -82,6 +85,7 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/wardrobe-store/cursor` | Current sync cursor |
 | `PUT`/`GET` | `/api/finance-store/records` · `GET /api/finance-store/cursor` | Plutus rows (same contract as hercules-store) (Plutus only) |
 | `PUT`/`GET` | `/api/iris-store/records` · `GET /api/iris-store/cursor` | Iris rows (same contract) (Iris only) |
+| `PUT`/`GET` | `/api/echo-store/records` · `GET /api/echo-store/cursor` | Echo rows: kept audio index and usage (same contract) (Echo only) |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |

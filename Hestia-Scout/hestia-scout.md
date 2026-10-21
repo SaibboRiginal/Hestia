@@ -232,6 +232,7 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 | `scout.llm.timeout` | int (s) | `120` | Per-call timeout of the Oracle extraction call |
 | `scout.reconcile.every_cycles` | int | `1` | Reconcile stored entities every N cycles (0 = never) |
 | `scout.enrichment.enabled` | bool | `true` | Listing-page enrichment + retry of pending enrichments |
+| `scout.notifiche.voce` | bool | `false` | New-listing notifications also as voice (event `_voice`, Hermes adds the audio from Echo) |
 | `scout.log.level` | enum | boot `LOG_LEVEL` | Log verbosity (live) |
 
 ## Configuration (env: infrastructure only)

@@ -75,7 +75,8 @@ spesa (category chips from `/quick/categories`, params amount + note, undo). A U
 ## Settings (Themis, `plutus.*`)
 
 month_start_day (1; e.g. 27 to count salary to salary), alerts.enabled (true), alerts.threshold (80 %),
-review.enabled (false), reminder.enabled / reminder.max_per_week (from `hestia_common.reminders`), mail.senders
+review.enabled (false), reminder.enabled / reminder.max_per_week and notifiche.voce (false: amounts read badly
+aloud) (from `hestia_common.reminders`), mail.senders
 (paypal.it, paypal.com), link.window_days (3, advanced). Currency is the personal setting
 `themis.personal.currency` (`follow_personal()`).
 

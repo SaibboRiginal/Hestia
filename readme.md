@@ -43,6 +43,7 @@ the affected containers and rolls back automatically if the health check fails.
 | 🧠 **Long-term memory** | Selective, Claude-like memory in PostgreSQL + pgvector: the assistant decides what to remember and recalls it semantically. |
 | 📅 **Calendars + its own agenda** | Unified CRUD over Google Calendar and Outlook. Hestia also keeps an *assistant agenda* where every module's schedule lives as data (events, tasks, recurring jobs, windows) that you can move, pause or skip. ICS feed for your phone. |
 | ✉️ **Email** | Gmail via OAuth: search, threads, send. New mail arrives by **push**: one watcher (Hecate) hands it to Iris, which delivers it to the modules that subscribed — no module polls the mailbox. |
+| 🎙️ **Voice** | Echo listens and speaks for every client: voice messages in Telegram and in the WebUI chat, «Ascolta» under any reply, a live mode where you talk and Hestia answers by voice (same assistant, no external live service), notifications also as voice where a module wants it. Local engines (Whisper, Kokoro, Piper) or cloud ones in chains with fallback; your recordings are kept. |
 | 🔔 **Proactive notifications** | Subscriptions ("tell me when…"), deduplicated alerts, reminders, focus briefs. |
 | 👁️ **Self-monitoring** | Argus watches health and logs, raises incidents and proposes fixes; Hephaestus runs guarded remediation. |
 | 🛠️ **Self-development (Forge)** | Natural-language change requests → isolated branch → coding engine (local, cloud or Claude Code) → tests → your approval → merge → restart → auto-rollback. |
@@ -166,6 +167,7 @@ flowchart LR
     HUB --> ME[Metis<br/>learning]
     HUB --> SC[Scout<br/>real estate]
     HUB --> PL[Plutus<br/>expenses]
+    HUB --> EC[Echo<br/>voice]
 ```
 
 | Service | Port | Role |
@@ -173,7 +175,7 @@ flowchart LR
 | [Hub](Hestia-Hub/hestia-hub.md) | 19001 | Service registry, the only router, command discovery |
 | [Archive](Hestia-Archive/hestia-archive.md) | 19002 | The only database owner: memory, entities, chat, calendar items, documents, feedback |
 | [Hecate](Hestia-Hecate/hestia-hecate.md) | 19003 | Provider gateway: Google/Microsoft OAuth, Calendar, Gmail |
-| [Oracle](Hestia-Oracle/hestia-oracle.md) | 19004 | LLM core: chat agent loop, memory, `/api/llm/*`, Claude Code runner |
+| [Oracle](Hestia-Oracle/hestia-oracle.md) | 19004 | LLM core: chat agent loop, memory, `/api/llm/*`, Claude Code runner (no speech engines: voice is Echo) |
 | [Hermes](Hestia-Hermes/hestia-hermes.md) | 19005 | Event dispatch and notifications |
 | [Scout](Hestia-Scout/hestia-scout.md) | 19006 | Domain module: real-estate listings from email |
 | [Chronos](Hestia-Chronos/hestia-chronos.md) | 19007 | Calendars and the assistant agenda |
@@ -187,6 +189,7 @@ flowchart LR
 | [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web client |
 | [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings: modules declare, every client and the assistant read/change, you confirm |
 | [Plutus](Hestia-Plutus/hestia-plutus.md) | 19020 | Domain module «Spese»: expenses from PayPal mails (push) and bank statement PDFs, budgets, subscriptions |
+| [Echo](Hestia-Echo/hestia-echo.md) | 19021 | Voice core: speech → text and text → speech, files and live streams, providers and chains like Oracle |
 | [Swagger](Hestia-Swagger/swagger.yml) | 19000 | API contract of every service |
 | [Telegram](Hestia-Telegram/hestia-telegram.md) | — | Main chat client |
 | [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web fetch gateway running outside Docker |

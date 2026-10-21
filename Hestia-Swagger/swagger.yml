@@ -96,6 +96,10 @@ tags:
     description: Same (kind,id) last-write-wins records and cursor as the other module stores, for Plutus only
   - name: Archive — Iris store
     description: Same (kind,id) last-write-wins records and cursor, for Iris only (mail subscriptions, delivery state)
+  - name: Echo
+    description: Voice — speech to text and text to speech, files and streams in blocks, providers/chains/uses, kept audio
+  - name: Archive — Echo store
+    description: Same (kind,id) last-write-wins records and cursor, for Echo only (kept audio index, usage)
   - name: Archive — MCP accesses
     description: Who may use Hestia's MCP from outside (Hestia-MCP only); tokens only as sha256
   - name: Archive — Blobs
@@ -10111,3 +10115,436 @@ paths:
       responses:
         "200":
           description: "{public_url, detected}"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  #  ECHO — 19021  (voice core — docs/work/2026-10-20-modulo-voce)
+  #  Errors: 422 invalid input {detail}, 404 not found {detail}, 503 chain exhausted {detail, tried}.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  /echo/health:
+    get:
+      tags: [Echo]
+      summary: "Echo health (served at /health): {status, service, version, ffmpeg, streams}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/transcribe:
+    post:
+      tags: [Echo]
+      summary: "Speech → text {audio_b64, mime_type, use_case, language?, keep?} → {text, language, duration_s, provider, model, chain, mode, fallback, blob_id?}; 422 bad audio, 503 no step of the chain worked"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/speak:
+    post:
+      tags: [Echo]
+      summary: "Text → speech {text, use_case, format? ogg_opus|mp3|wav|webm, voice?, keep?} → {audio_b64, mime_type, duration_s, provider, voice, blob_id?} (reuses kept audio of the same message and text)"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/listen:
+    post:
+      tags: [Echo]
+      summary: "Open a mic stream {use_case, mime_type, language?, keep?} → {stream_id}"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/listen/{sid}/chunk:
+    post:
+      tags: [Echo]
+      summary: "Mic chunk {seq, audio_b64, partial?} → {partial, silence_ms, duration_s} (retried seq ignored)"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/listen/{sid}/end:
+    post:
+      tags: [Echo]
+      summary: "Close the mic stream {audio_b64?, keep?} → like /transcribe"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/say:
+    post:
+      tags: [Echo]
+      summary: "Open a voice stream {use_case, format?, voice?, keep?} → {stream_id}"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/say/{sid}/text:
+    post:
+      tags: [Echo]
+      summary: "Text while it is written {delta} → {blocks[{seq, text, mime_type, audio_b64}]} (one block per finished sentence)"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/say/{sid}/end:
+    post:
+      tags: [Echo]
+      summary: "Last text {delta?, keep?} → {blocks, failed, blob_id?}"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/live:
+    get:
+      tags: [Echo]
+      summary: "Live mode settings for clients → {silence_ms, language}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/standards:
+    get:
+      tags: [Echo]
+      summary: "Engine standards with directions and options → {items}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/providers:
+    get:
+      tags: [Echo]
+      summary: "Providers with state, key env name (never the key), quota, models, voices → {items, mode, external}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/providers/options:
+    get:
+      tags: [Echo]
+      summary: "Options of «Motore esterno» (Themis options_source) → {options}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/providers/{name}/retry:
+    post:
+      tags: [Echo]
+      summary: "Forget the quota state of a provider"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: name, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/chains:
+    get:
+      tags: [Echo]
+      summary: "Chains with each step's state (ready, no_key, quota until…) → {items}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/usecases:
+    get:
+      tags: [Echo]
+      summary: "Uses declared by modules (voice_usecases) with chosen chain and mode → {items}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/blocks/{part}:
+    put:
+      tags: [Echo]
+      summary: "Page edit of providers | chains | usecases {value} → stored through Themis; 422 invalid, 502 Themis refused"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: part, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/usage:
+    get:
+      tags: [Echo]
+      summary: "Use and cost → {days, totals, by_use, by_provider, recent}"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/recent:
+    get:
+      tags: [Echo]
+      summary: "Last operations since start → {items}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/audio:
+    get:
+      tags: [Echo]
+      summary: "Kept audio → {items, space}"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: kind, in: query, required: false, schema: {type: string}}
+        - {name: limit, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Echo]
+      summary: "Drop regenerable audio of a removed notification or message → {removed}"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: notification_id, in: query, required: false, schema: {type: string}}
+        - {name: message_id, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/audio/{blob_id}:
+    get:
+      tags: [Echo]
+      summary: "One kept audio (?format converts) → {blob_id, mime_type, audio_b64}"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: blob_id, in: path, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Echo]
+      summary: "Delete one kept audio"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: blob_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/audio-for:
+    get:
+      tags: [Echo]
+      summary: "Kept audio of a message or notification → audio + its index data; 404 none"
+      servers:
+        - url: http://localhost:19021
+      parameters:
+        - {name: ref_id, in: query, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/voice/audio/cleanup:
+    post:
+      tags: [Echo]
+      summary: "Agenda job echo.audio_cleanup → {expired, dropped_for_space, total_bytes, limit_bytes, warned}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/echo-store/records:
+    get:
+      tags: [Archive — Echo store]
+      summary: "Echo rows by kind/ref/parent/at range/since_seq (Echo only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Echo store]
+      summary: "Upsert Echo rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/echo-store/cursor:
+    get:
+      tags: [Archive — Echo store]
+      summary: "Current cursor of the Echo store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/transcribe:
+    post:
+      tags: [WebUI]
+      summary: "Voice message of the chat → Echo (use webui.vocale, recording kept with the message)"
+      servers:
+        - url: http://localhost:19015
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/speak:
+    post:
+      tags: [WebUI]
+      summary: "«Ascolta» under a reply → Echo (use webui.ascolta, kept with the reply)"
+      servers:
+        - url: http://localhost:19015
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/listen:
+    post:
+      tags: [WebUI]
+      summary: "Live «Parla»: open the mic stream (use webui.live.ascolto)"
+      servers:
+        - url: http://localhost:19015
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/say:
+    post:
+      tags: [WebUI]
+      summary: "Live «Parla»: open the voice stream (use webui.live.voce)"
+      servers:
+        - url: http://localhost:19015
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/{kind}/{sid}/{step}:
+    post:
+      tags: [WebUI]
+      summary: "Step of an open stream: listen/{sid}/chunk|end, say/{sid}/text|end"
+      servers:
+        - url: http://localhost:19015
+      parameters:
+        - {name: kind, in: path, required: true, schema: {type: string}}
+        - {name: sid, in: path, required: true, schema: {type: string}}
+        - {name: step, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/live:
+    get:
+      tags: [WebUI]
+      summary: "Live settings from Echo → {silence_ms, language}"
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/audio-for:
+    get:
+      tags: [WebUI]
+      summary: "Kept audio of a chat message"
+      servers:
+        - url: http://localhost:19015
+      parameters:
+        - {name: ref_id, in: query, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/webui/voice/audio/{id}:
+    get:
+      tags: [WebUI]
+      summary: "One kept audio"
+      servers:
+        - url: http://localhost:19015
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/ui/inbox/{notification_id}/voice:
+    get:
+      tags: [Hermes]
+      summary: "Audio of a notification sent also as voice (from Echo) → {mime_type, audio_b64, blob_id, duration_s}; 404 without voice"
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - {name: notification_id, in: path, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
