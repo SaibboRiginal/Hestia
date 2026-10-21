@@ -146,7 +146,7 @@ User interface relay for chat, file attachments, and clear session commands.
 Web client (.NET 9 backend + Angular frontend, port 19015).
 - Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, "Crea con Hestia" drawer. Everything
   else is a module plugin page: Agenda (Chronos, Google-like calendar; ICS feed stays a WebUI path), Sviluppo (Hephaestus), Notifiche (Hermes),
-  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti (Oracle) and the core inside views; old routes redirect.
+  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti and Memoria (Oracle) and the core inside views; old routes redirect.
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`/webui_token`).
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
@@ -302,6 +302,15 @@ subscription), bank statement PDF (Hype) from the plugin *Importa* or sent in ch
 preview → commit, PayPal↔bank linking, quick manual entry. Rows in Archive `finance-store`; reminders through the
 agenda and Hermes. Details: `Hestia-Plutus/hestia-plutus.md`.
 
+### Weekly plan — coaches (contract, 2026-10-20)
+Domain modules that coach (Hercules, Hygieia, Plutus) carry the Hub tag `coach` and serve
+`/api/coach/needs|fit|placed|review` with `hestia_common.coach`: they say **what** is due (blocks, slots, targets,
+with generic constraints), never when. **Chronos** places them in the free time around the user's calendar
+(deterministic planner, plan items = assistant agenda events owned by the module, user moves always win), re-plans
+the rest of the week on pushed events (`/api/agenda/coach/report`, calendar sync, chat) and sends the weekly message
+via Oracle (text) and Hermes (delivery). Chronos reads no domain words; a new coach = one router + the tag.
+Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
 - Trigger source: Argus/Oracle/explicit user command.
@@ -366,7 +375,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 1. Current default: local build/deploy orchestration.
    Test bench without the local PC: `tools/cloud_test.py` (Claude cloud session or GitHub Codespace); test
    credentials come only from the environment (Codespaces secrets) through `docker-compose.cloud-test.yml`, never files.
-   In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`).
+   In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`; no Docker = rebuild the container).
 2. Future target: multi-node/cluster delivery with shared Hub discovery.
 3. Required for remote rollout:
    - deployment controller contract,

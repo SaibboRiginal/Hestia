@@ -25,12 +25,14 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 
 from .core import catalog, domain
 from .core.activities import Activities
+from .core.coach import HerculesCoach
 from .core.hub import Hub
 from .core.service import Conflict, Hercules, NotFound
 from .core.store import Store, StoreUnavailable, now_iso
@@ -41,7 +43,7 @@ SERVICE_NAME = os.getenv("SERVICE_NAME", "hercules")
 SERVICE_BASE_URL = os.getenv("SERVICE_BASE_URL", "http://hestia_hercules:19019")
 SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
 SERVICE_TYPE = os.getenv("SERVICE_TYPE", "module")
-SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "module,fitness,context").split(",") if t.strip()]
+SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "module,fitness,context,coach").split(",") if t.strip()]
 SERVICE_TOPOLOGY_TAGS = [t.strip().lower() for t in os.getenv(
     "SERVICE_TOPOLOGY_TAGS", "layer:domain,domain:fitness,status:alpha").split(",") if t.strip()]
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
@@ -74,6 +76,13 @@ settings.declare([
     setting("hercules.skip_mode", "Giorno saltato", "enum", "shift", group="Programma",
             options=[("shift", "La rotazione slitta"), ("keep", "Si passa alla scheda successiva")],
             help="Vale per i programmi a rotazione; quelli settimanali seguono il calendario."),
+    setting("hercules.coach.time_of_day", "Quando allenarmi nel piano", "enum", "evening", group="Piano della settimana",
+            options=[("morning", "Mattina"), ("midday", "Pausa pranzo"), ("afternoon", "Pomeriggio"),
+                     ("evening", "Sera"), ("any", "Quando c'è tempo")],
+            help="Parte del giorno in cui il piano della settimana mette gli allenamenti."),
+    setting("hercules.coach.min_minutes", "Allenamento più corto accettabile", "int", 30, group="Piano della settimana",
+            min=10, max=120, unit="min",
+            help="Se un giorno ha poco tempo libero il piano usa una versione corta, ma non sotto questi minuti."),
     *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo e oggi non ti sei allenato. Uno alla volta."),
 ]).follow_personal()                                       # week start: personal setting shared by every module
 
@@ -82,9 +91,48 @@ store = Store(hub)
 hercules = Hercules(store, settings.get)
 agenda = AgendaClient("hercules", HUB_API_URL)
 activities = Activities(hercules, hub.call, agenda, api=API)
+coach = HerculesCoach(hercules)
+coach_client = CoachClient("hercules", HUB_API_URL)
+
+
+def _coach_event(event: str, data: dict) -> None:
+    """Tell the weekly plan (Chronos) in the background: a workout never waits on the network."""
+    def _send():
+        if event == "done":
+            coach_client.done("workout", data.get("at"))
+        elif event == "skipped":
+            coach_client.skipped("workout", data.get("at"), data.get("reason") or "")
+        else:
+            coach_client.changed()
+    threading.Thread(target=_send, daemon=True, name=f"hercules-coach-{event}").start()
+
+
+hercules.on_event = _coach_event
 
 app = FastAPI(title="Hestia-Hercules", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+def _needs(start, end) -> dict:
+    """Gym needs + open outdoor intentions (tag ``outdoor``: the weekly plan avoids rain for them)."""
+    out = coach.needs(start, end)
+    try:
+        out["needs"] = [*out["needs"], *activities.coach_needs(start, end)]
+    except Exception as exc:
+        logger.warning("[🔄] event=hercules_activity_needs_failed error=%s fallback=gym_only", exc)
+    return out
+
+
+def _activity_event(event: str, need_id: str, at: str | None) -> None:
+    def _send():
+        if event == "done":
+            coach_client.done(need_id, at)
+        else:
+            coach_client.changed()
+    threading.Thread(target=_send, daemon=True, name=f"hercules-activity-{event}").start()
+
+
+activities.on_event = _activity_event
+app.include_router(CoachRouter("hercules", "fitness", "Allenamento", needs=_needs, fit=coach.fit,
+                               placed=coach.on_placed, review=coach.review).router)
 
 
 @app.exception_handler(domain.Invalid)
@@ -416,9 +464,18 @@ def goal_delete(id: str):
     return hercules.delete("goal", id)
 
 
+def _summary_with_plan() -> dict:
+    s = hercules.summary()
+    planned = coach.next_planned()
+    if planned:
+        s["planned"] = planned
+        s["text"] = f"{s['text']} · Nel piano: {planned['label']}"
+    return s
+
+
 @app.get(f"{API}/summary")
 def summary():
-    return {**hercules.summary(), "activities": _activity_hints()}
+    return {**_summary_with_plan(), "activities": _activity_hints()}
 
 
 def _activity_hints() -> list[dict]:
@@ -434,7 +491,7 @@ def _activity_hints() -> list[dict]:
 @app.get("/api/module/context")
 def module_context(budget: int = 400):
     """Shared contract (SPEC §9): a short caveman line the assistant may include."""
-    text = "Allenamento: " + hercules.summary()["text"]
+    text = "Allenamento: " + _summary_with_plan()["text"]
     hints = [a["hint"] for a in _activity_hints()]
     if hints:
         text += " · All'aperto: " + ", ".join(hints)
@@ -507,7 +564,10 @@ def reminder_check():
         return decision
     goal, nxt = decision["goal"], decision.get("next") or {}
     tpl = nxt.get("template") or {}
+    planned = coach.next_planned()
     text = f"🏋️ Oggi: {tpl.get('name', 'allenamento')}"
+    if planned and planned["label"].startswith("oggi"):
+        text += f" alle {planned['label'].split()[-1]}"
     if nxt.get("estimated_minutes"):
         text += f" · {nxt['estimated_minutes']} min"
     text += f" · {goal['hint']}"
@@ -723,8 +783,8 @@ try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes
 
     def _summary() -> dict:
-        s = hercules.summary()
-        return {"text": s["text"], "goals": s["goals"], "flags": s["flags"], "stalls": s["stalls"],
+        s = _summary_with_plan()
+        return {"text": s["text"], "planned": s.get("planned"), "goals": s["goals"], "flags": s["flags"], "stalls": s["stalls"],
                 "recent_prs": s["recent_prs"], "missed_7d": s["missed_7d"], "active_session": s["active_session"]}
 
     def _next() -> dict:

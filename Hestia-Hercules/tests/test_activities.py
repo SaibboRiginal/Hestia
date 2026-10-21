@@ -299,3 +299,25 @@ def test_morning_rain_on_todays_slot_offers_to_move(env):
 def test_morning_silent_without_open_intention(env):
     h, hub, ag, a = env
     assert a.morning() is None
+
+
+# ── weekly plan (coach contract) ────────────────────────────────────────────
+def test_coach_needs_only_for_times_neither_done_nor_planned(env):
+    from hestia_common.coach import validate_need
+    h, hub, ag, a = env
+    events = []
+    a.on_event = lambda ev, need_id, at: events.append((ev, need_id))
+    p = a.propose("corsa", times=3, week="next")
+    a.confirm(p["plan_id"], ["1"])
+    d0, d1 = a._week("next")
+    (n,) = a.coach_needs(d0, d1 + timedelta(days=1))
+    validate_need(n)
+    assert n["id"] == f"activity.{p['plan_id']}" and n["count"] == 2 and "outdoor" in n["tags"]
+    assert ("changed", n["id"]) in events
+    a.confirm(p["plan_id"], [])                              # nothing new: still 2 left
+    plan = h.store.data("activity_plan", p["plan_id"])
+    for s in plan["slots"]:
+        if s["status"] == "planned":
+            a.slot_done(plan["id"], s["id"])
+    assert ("done", n["id"]) in events
+    assert a.coach_needs(d0, d1 + timedelta(days=1))[0]["count"] == 2

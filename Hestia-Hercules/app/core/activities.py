@@ -177,6 +177,14 @@ class Activities:
         self.call = call
         self.agenda = agenda
         self.api = api
+        self.on_event: Callable[[str, str, str | None], None] | None = None   # (done|changed, need_id, at) → weekly plan
+
+    def _emit(self, event: str, plan_id: str = "", at: str | None = None) -> None:
+        if self.on_event:
+            try:
+                self.on_event(event, f"activity.{plan_id}", at)
+            except Exception as exc:
+                logger.warning("[🔄] event=hercules_activity_coach_event_failed error=%s", exc)
 
     # ── helpers ─────────────────────────────────────────────────────────────
     @property
@@ -327,6 +335,7 @@ class Activities:
             if s["status"] == "planned" and s["id"] in kept_ids:
                 self._schedule(plan, s)
         planned = [s for s in plan["slots"] if s["status"] == "planned"]
+        self._emit("changed", plan_id)
         logger.info("event=hercules_activity_confirmed plan=%s slots=%s", plan_id, len(planned))
         return {"confirmed": True, "plan_id": plan_id, "kind": label(plan["kind"]), "times": plan["times"],
                 "planned": [slot_text(s) for s in planned],
@@ -353,6 +362,7 @@ class Activities:
             plan["status"] = "confirmed"
         plan = self.h.save("activity_plan", plan, id=plan_id)
         self._schedule(plan, slot)
+        self._emit("changed", plan_id)
         return {"planned": slot_text(slot), "plan_id": plan_id, "slot_id": slot["id"]}
 
     # ── slot outcome ────────────────────────────────────────────────────────
@@ -376,6 +386,7 @@ class Activities:
         plan = self._set_slot(plan, slot_id, status="done")
         self._event_title(plan, slot, done=True)
         self._close_question(slot_id, "Fatto")
+        self._emit("done", plan_id, slot["start"])
         return {"done": True, **self.progress(plan)}
 
     def slot_missed(self, plan_id: str, slot_id: str) -> dict:
@@ -416,6 +427,8 @@ class Activities:
         self._history_event_for_log(a)
         open_plan = next((p for p in self.plans(open_only=True) if p.get("kind") == k
                           and p["week_from"] <= d <= p["week_to"]), None)
+        if open_plan:
+            self._emit("done", open_plan["id"], a["at"])
         return {"logged": True, "id": a["id"], "kind": label(k), "date": d,
                 **(self.progress(open_plan) if open_plan else {})}
 
@@ -631,4 +644,26 @@ class Activities:
                          for s in plan.get("slots") or []]
         plan["status"] = "cancelled"
         self.h.save("activity_plan", plan, id=plan_id)
+        self._emit("changed", plan_id)
         return {"cancelled": True}
+
+    # ── weekly plan (coach contract, hestia_common.coach) ───────────────────
+    def coach_needs(self, start: date, end: date) -> list[dict]:
+        """Open intentions with times still neither done nor planned → ``outdoor`` blocks for the weekly plan
+        (Chronos places them in free time without rain). Planned slots are already in the calendar."""
+        out = []
+        for p in self.plans(open_only=True):
+            if p["week_to"] < start.isoformat() or p["week_from"] >= end.isoformat():
+                continue
+            prog = self.progress(p)
+            future = [s for s in p.get("slots") or [] if s.get("status") == "planned"
+                      and s["start"][:10] >= start.isoformat()]
+            left = min(prog["remaining"] - len(future), (end - start).days)
+            if left <= 0:
+                continue
+            minutes = int(p.get("minutes") or 45)
+            out.append({"id": f"activity.{p['id']}", "title": label(p["kind"]), "kind": "block", "count": left,
+                        "minutes": minutes, "min_minutes": minutes, "time_of_day": "any", "min_gap_days": 1,
+                        "tags": ["outdoor", "activity", "effort:2"], "priority": "could",
+                        "reason": prog["hint"] + (f" · {p['place']}" if p.get("place") else ""), "link": "allenamento"})
+        return out
