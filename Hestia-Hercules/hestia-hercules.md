@@ -29,6 +29,7 @@
   Writes are last-write-wins by `updated_at`; older writes come back in `stale`.
 - Hercules keeps an in-memory mirror pulled by cursor. Archive away → reads keep working on the mirror
   (`[🔄] event=hercules_mirror_refresh_failed`), writes answer 503.
+- Archive data epoch: store answers carry `epoch`; when it changes (a backup rollback swapped the database) the mirror is dropped and reloaded from zero (`[🔄] event=hercules_mirror_reset reason=data_epoch`), so no stale row is written back.
 - Clients: `GET /api/hercules/bootstrap` once, then the outbox goes to `POST /api/hercules/sync`
   `{device_id, cursor, ops:[{op_id, kind, id, action: upsert|delete, fields, updated_at}]}` →
   `{applied, rejected, stale, changes, cursor, suggestions}`. Ops are idempotent (replay safe); ids are client UUIDs.

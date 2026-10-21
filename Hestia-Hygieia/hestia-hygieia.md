@@ -33,6 +33,7 @@ Kinds: product, event (product history), routine, version (immutable steps per c
 log, journal, option (user list values), reminder (chain state), alert (last sent).
 Hygieia keeps an in-memory mirror pulled by cursor. Archive away → reads keep working
 (`[🔄] event=hygieia_mirror_refresh_failed`), writes answer 503.
+Archive data epoch: store answers carry `epoch`; when it changes (a backup rollback swapped the database) the mirror is dropped and reloaded from zero (`[🔄] event=hygieia_mirror_reset reason=data_epoch`), so no stale row is written back.
 
 ## Planner states
 

@@ -70,7 +70,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/api/webui/sessions/clear` | Reset session |
 | GET | `/api/webui/settings` | Get session settings |
 | PUT | `/api/webui/settings` | Update settings |
-| GET | `/api/webui/central-settings/{modules,items,revision,proposals}` | Impostazioni → Sistema: proxy to Themis (`items?module=&q=`) |
+| GET | `/api/webui/central-settings/{modules,items,revision,proposals}` | Impostazioni → Sistema: proxy to Themis (`items?module=&q=`). Below a module's settings the WebUI mounts that module's plugin `settings_panel` elements (catalog type `settings_panel`; e.g. Archivio → «Backup»), hidden while searching |
 | GET | `/api/webui/central-settings/key/{key}/{options,history}` | choices for a setting · last changes |
 | PUT/DELETE | `/api/webui/central-settings/key/{key}` | change (`{value}`) / reset to default — actor `webui` |
 | POST | `/api/webui/central-settings/key/{key}/undo` · `presets/{module}/{id}/apply` | undo · apply a preset |
