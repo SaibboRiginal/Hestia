@@ -115,8 +115,10 @@ def _flush(key: tuple) -> None:
     if _publisher is not None:
         try:
             link = _batch_link(entry.entities)
-            ok = bool(_publisher(entry.subscription_id, entry.channel_type, entry.domain, text,
-                                 **({"link": link} if link else {})))
+            extra = {"link": link} if link else {}
+            if any(isinstance(e, dict) and e.get("_voice") for e in entry.entities):
+                extra["voice"] = True              # the module wants its notifications also as audio
+            ok = bool(_publisher(entry.subscription_id, entry.channel_type, entry.domain, text, **extra))
             detail = "published" if ok else "no client reached"
         except Exception as exc:
             detail = str(exc)

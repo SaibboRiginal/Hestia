@@ -92,7 +92,8 @@ class ScoutWorker:
             "event_type": "entity.upserted",
             "domain": self.target_domain,
             "entity_id": str(entity_id),
-            "payload": {**(payload or {}), "_link": link},
+            "payload": {**(payload or {}), "_link": link,
+                        **({"_voice": True} if scout_settings.settings.get(scout_settings.NOTIFY_VOICE, False) else {})},
         }
         route_body = {
             "method": "POST",
