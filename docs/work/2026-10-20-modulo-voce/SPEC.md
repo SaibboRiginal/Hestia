@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 3.1 |
+| **Version** | 3.2 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 4 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator 2026-10-20 |
-| **Status** | Approved by Marko 2026-10-20 (v3.1, answers in §10); implementation started |
+| **Status** | Approved by Marko 2026-10-20 (v3.1, answers in §10); V1–V10 implemented (v3.2 notes in §11), PR open, Marko's real run pending |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -292,3 +292,21 @@ Everything writes through Themis. Icons mic, speaker, waveform added to the WebU
    audio bubble + transcript).
 5. **No external live services**, ever: live = Oracle (its current LLMs, unchanged) + Echo.
 6. Audio kept by the rule of §7.4; external mode of Echo = proxy to speech engines only.
+
+## 11. Implementation notes (v3.2, refinements, no scope change)
+
+- **External mode**: `esterna` sends every operation of a use to the one engine `echo.external.provider` (+ model or
+  voice `echo.external.model`); the raw audio goes to it when the engine does not want PCM. Echo still cuts blocks,
+  keeps audio and counts use. Fallback `interna` = the use's chain, `nessuno` = error.
+- **Browsers play mp3** (Safari has no ogg/opus in `<audio>`): the WebUI asks `format=mp3`; Telegram `ogg_opus`;
+  kept audio is always opus 16 kbps and converted on read (`/audio/{id}?format=`).
+- **WebUI «Parla»**: the browser measures the mic level (start of speech, `echo.live.silence_ms` pause = end of turn,
+  read from `GET /api/voice/live`), sends 800 ms chunks to `listen` (partial text shown), the answer's text to `say`
+  every ~300 ms while it is written and plays the sentences in order; speaking again or «Interrompi» stops voice and
+  answer. The turn is a normal chat message (audio bubble + transcript), the answer a normal reply.
+- **Notification voice**: Hermes publishes the text first, then the audio arrives as an `update {voice}` (Telegram:
+  voice message replying to the notification, deleted with it; WebUI inbox: «Ascolta» via Hermes
+  `/api/ui/inbox/{id}/voice`). Defaults of `<module>.notifiche.voce`: Hercules, Hygieia, Wardrobe on; Plutus, Scout off.
+- **Refs of kept audio**: Telegram `tg:<chat>:<message>`, WebUI `web:<session>:<message>`, notifications their id.
+- **Page «Voce»** tabs: Prova, Motori (providers, chains, uses; saved through Themis with `PUT /api/voice/blocks/*`),
+  Uso, Audio conservati.
