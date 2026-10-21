@@ -9,5 +9,5 @@
 - [x] R3 — tool recap_today, morning template, quick action, Athena page «Recap»
 - [x] R3b — Chronos flex timing + standard activities restore + WebUI panel + tool agenda_standard
 - [x] R4a — docs sync (ARCHITECTURE Capability Discovery §9 + Chronos/Athena, swagger, module docs, hestia-shared), governance checks
-- [ ] R4b — cloud bench run, PR opened, CI green
+- [ ] R4b — PR #21 opened (cloud bench not run: no Docker in this container); wait CI green
 - [ ] R4c — Marko's ok, PR merged
