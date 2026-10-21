@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-21
+- Coaches of every kind: one weekly plan built by Chronos from what each coach module needs (training from the goal or weekly program with a short version when time is tight, self care routines with conflicts and pairings, budget targets and a «Rivedi spese» block), placed around the calendar, re-planned when something changes, weekly message, page «La tua settimana» and widget «Oggi nel piano», chat tools `coach_*`; shared contract `hestia_common.coach`, Hub tag `coach`; supplements stay in self care as information; study: automatic food data not worth a module yet → `docs/work/2026-10-20-coach-di-ogni-tipo/` [ext-chat]
+
 ## 2026-10-20
 - Fix: cloud bench in a Codespace without Docker crashed with a long traceback; it now says the container must be rebuilt (*Codespaces: Full Rebuild Container*) → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Fix: Codespaces automatic start could stop at once with «Docker is not running» when it ran before Docker was up; it now waits up to 120 s and writes its output to `.cloud-test/start.log` → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]

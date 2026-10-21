@@ -81,3 +81,16 @@ import (Strong/Hevy CSV preview + commit, idempotent), export (csv/json), remind
 ## Tests
 
 `python -m pytest -q -m unit Hestia-Hercules/tests` (fake Archive in memory, no network).
+
+
+## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.1)
+
+Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter`.
+- **Needs**: a weekly program → one `workout.<weekday>` block per program day still to do this week; otherwise an
+  "N a settimana" goal → one `workout` block with `count` = what is left. Tags `workout`, `effort:N`, muscle groups;
+  deload suggested → lower effort and a note. No goal and no weekly program → no need.
+- **Fit**: the adaptation engine's time-limit rule (short version of the day's workout).
+- **Placed**: kept in memory; the summary says «Nel piano: giovedì 18:30» and the reminder gives the time.
+- **Reports** (`CoachClient`, background): done on finish/quick done/sync, skipped on skip day, changed on postpone
+  and on goal/program save. **Review**: sessions done vs the weekly goal, deload/stall flags.
+- Settings: `hercules.coach.time_of_day` (evening), `hercules.coach.min_minutes` (30), group «Piano della settimana».

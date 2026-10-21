@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 9 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator 2026-10-20 («iniziamo intanto, voglio che venga fatto tutto») |
-| **Status** | Approved by Marko 2026-10-20 (answers in §12, v1.1); implementation C1 → C4 |
+| **Status** | Approved by Marko 2026-10-20 (answers in §12, v1.1); implemented C1 → C4 (v1.2 = paths as built) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -111,13 +111,13 @@ becomes done/skipped. **Push**: Chronos never polls modules for completion.
 ### 5.1 When it is built (agenda, push)
 - Agenda job `chronos.coach_week` (owner chronos, weekly on the day before `themis.personal.week_start`, 18:00, editable
   or pausable in the agenda like every job — pausing it is how I stop the weekly plan; no on/off setting) →
-  `POST /api/coach/week/run`.
+  `POST /api/agenda/coach/week/run`.
 - **Re-plan of the rest of the week** (only the affected days, never the past) when:
   - the calendar sync brings a new/moved event that overlaps a plan item (Chronos already runs the sync; it compares
     in the same call, no new job);
   - a module reports `skipped`, or a `must`/`should` item's day passed without `done` (checked lazily at the next
     re-plan or read, no timer);
-  - a module's needs change (it calls `coach.changed()` → `POST /api/coach/needs-changed {module}`; e.g. Hercules
+  - a module's needs change (it calls `coach.changed()` → `POST /api/agenda/coach/report {module, event:"changed"}`; e.g. Hercules
     enters a deload week, Hygieia pauses acids);
   - I ask in chat or on the page ("rifai il piano", "mercoledì sono via tutto il giorno").
 - Items I moved or edited are **never moved back** (agenda rule: user edits win).
@@ -127,7 +127,7 @@ Window per day = from `chronos.coach.day_start` (07:00) to `chronos.coach.day_en
 minus my calendar events (Archive, synced from Hecate) with `chronos.coach.buffer_minutes` (15) around them, minus
 busy blocks I add in chat ("mercoledì via"). Presence `busy`/`dnd` periods already in the agenda count as busy.
 
-### 5.3 Placement (deterministic, `Hestia-Chronos/app/core/coach_planner.py`)
+### 5.3 Placement (deterministic, `Hestia-Chronos/app/services/coach_planner.py`)
 1. Collect needs from every service with Hub tag `coach` (through Hub; a module that does not answer is listed as
    "non raggiunto" and its last plan is kept — `[🔄] event=coach_needs_failed`).
 2. Place `must`, then `should`, then `could`. For each need with `count` N: choose days that respect `days`,
@@ -226,13 +226,13 @@ No new env variable.
 
 ## 11. Clients
 
-- **WebUI** — Chronos plugin, new page **«Settimana»** (order next to «Agenda di Hestia»): seven columns (phone: one
+- **WebUI** — Chronos plugin, new page **«La tua settimana»** (`settimana`) (order next to «Agenda di Hestia»): seven columns (phone: one
   day per screen, swipe), blocks with the module icon and colour, slots as small chips under the day, targets on top,
   «non entra» list with reasons, last week's review. Drag a block = my edit (`coach_move`); «Rifai il piano»;
   «Aggiungi impegno» (busy block). Widget **«Oggi nel piano»** for Home. Each module's Oggi page shows its next plan
   item ("Nel piano: giovedì 18:30"). Icons, never emoji; texts never name modules.
 - **Telegram**: the weekly message with **Apri il piano**, command «settimana», and chat for changes.
-- Swagger: coach contract (once, as a shared schema), Chronos `/api/coach/*`, module `/api/coach/*`.
+- Swagger: coach contract (once, as a shared schema), Chronos `/api/agenda/coach/*`, module `/api/coach/*`.
 - Siblings: reflection reads `GET /api/coach/review` as module signals (or the coach adopts their signal shape if it
   lands first — one format, decided by whichever SPEC Marko approves first); recap reads plan items; weather adds
   the `outdoor` rule in 5.3 when `weather_*` exists.
@@ -251,11 +251,20 @@ No new env variable.
 
 | Phase | Content |
 |---|---|
-| **C1** | `hestia_common.coach` (Need, CoachRouter, done/skipped/changed client) + Hub tag `coach` + swagger; Chronos planner, `/api/coach/*`, plan items, job `chronos.coach_week`, weekly message (Oracle text + fallback) via Hermes, tools `coach_*`, `coach` domain in Oracle classifier; adapters Hercules + Hygieia (supplements as information) |
+| **C1** | `hestia_common.coach` (Need, CoachRouter, done/skipped/changed client) + Hub tag `coach` + swagger; Chronos planner, `/api/agenda/coach/*`, plan items, job `chronos.coach_week`, weekly message (Oracle text + fallback) via Hermes, tools `coach_*`, `coach` domain in Oracle classifier; adapters Hercules + Hygieia (supplements as information) |
 | **C2** | Re-plan triggers (calendar sync overlap, skipped/missed, needs-changed), change notices, WebUI page «Settimana» + widget, module Oggi pages show their plan item |
 | **C3** | Plutus adapter; weather `outdoor` rule if the weather dossier is on main; signal format aligned with reflection |
 | **C4** | Study §8 (automatic food data) — document only |
 | **C5** | Tests green, cloud bench run of the chain, docs everywhere, root CHANGELOG, PR merged when CI is green |
+
+### 13.1 As built (v1.2)
+- Chronos endpoints live under its plugin prefix: `GET /api/agenda/coach/week|today|review`, `POST /api/agenda/coach/replan`,
+  `/week/run`, `/report` (module events done/skipped/changed), `/items/{key}/move`, `/items/{key}/skip`, `/busy`,
+  `DELETE /api/agenda/coach/busy/{key}`. Modules keep `/api/coach/needs|fit|placed|review`.
+- Weather `outdoor` rule: the weather dossier is not on main yet → deferred to that thread (the rule is a tag on the
+  need plus one filter in the planner; nothing else changes).
+- Study C4: `docs/work/2026-10-20-coach-di-ogni-tipo/STUDIO-spesa-automatica.md` (copy in
+  `/mnt/project-files/valutazioni/spesa-automatica.md`): not worth a nutrition module yet.
 
 ## 14. Acceptance criteria
 
