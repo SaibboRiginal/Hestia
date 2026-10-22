@@ -684,7 +684,7 @@ services:
       - ./Hestia-Hephaestus/data:/code/data   # Forge task state (persistent)
       - ./Hestia-Hephaestus/data/forge/worktrees:/forge/worktrees   # task worktrees, shared with Oracle
       - ./:/repo                              # Hestia repo: Forge branches/merges here
-      - /var/run/docker.sock:/var/run/docker.sock   # Forge deploy: restarts hestia_<svc> after an approved merge
+      - /var/run/docker.sock:/var/run/docker.sock   # Forge deploy restarts hestia_<svc> after an approved merge; Argus immune system restarts a module that stays down
     depends_on:
       hub:
         condition: service_started

@@ -217,3 +217,19 @@ def request_hephaestus_remediation(
             "status": "error",
             "error": str(exc),
         }
+
+
+def route(service: str, path: str, method: str = "GET", body: object = None, query: dict | None = None,
+          timeout: float = 10) -> tuple[bool, object]:
+    """Any Hub route (``/route/<service>/<path>``): ``(ok, payload)``; never raises."""
+    try:
+        resp = requests.post(f"{HUB_API_URL}/route/{service}/{path.lstrip('/')}",
+                             json={"method": method, "headers": {}, "query": query or {}, "body": body,
+                                   "timeout_seconds": timeout}, timeout=timeout + 4)
+        if resp.status_code != 200:
+            return False, resp.text[:300]
+        routed = resp.json() or {}
+        return int(routed.get("status_code", 500)) < 400, routed.get("payload")
+    except Exception as exc:
+        logger.warning("[🔄] event=argus_hub_route_failed service=%s path=%s error=%s", service, path, exc)
+        return False, str(exc)

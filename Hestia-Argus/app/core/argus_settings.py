@@ -36,6 +36,8 @@ REMEDIATE_TIMEOUT = "argus.remediate.timeout"
 REPAIR_RECHECK = "argus.repair.recheck"
 REPAIR_RECHECK_MAX = "argus.repair.recheck_max"
 ORACLE_GRACE = "argus.oracle.grace"
+REPAIR_RESTARTS = "argus.repair.max_restarts"
+REPAIR_RESTART_AFTER = "argus.repair.restart_after"
 AUTH_CHECK_ENABLED = "argus.auth_check.enabled"
 AUTH_CHECK_EVERY = "argus.auth_check.every_cycles"
 FORGE_ENABLED = "argus.forge.enabled"
@@ -102,6 +104,13 @@ settings.declare([
             order=34, help="Dopo quanto ricontrollo un modulo fermo (poi il tempo raddoppia a ogni tentativo)."),
     setting(REPAIR_RECHECK_MAX, "Ricontrollo massimo", "int", 360, group="Riparazione", min=1, max=10080,
             unit="min", order=35, help="Tempo massimo tra due ricontrolli di un modulo che resta fermo."),
+    setting(REPAIR_RESTARTS, "Riavvii automatici", "int", 3, group="Riparazione", min=0, max=5, unit="volte",
+            order=37, depends_on=_REMEDIATE_ON,
+            help="Quante volte riavvio da solo un modulo fermo prima di arrendermi e avvisarti. 0 = mai."),
+    setting(REPAIR_RESTART_AFTER, "Primo riavvio dopo", "int", 120, group="Riparazione", min=30, max=3600,
+            unit="s", order=38, depends_on=_REMEDIATE_ON,
+            help="Quanto aspetto un modulo fermo prima di riavviarlo (un riavvio normale si risolve prima); "
+                 "poi l'attesa raddoppia a ogni tentativo."),
     setting(ORACLE_GRACE, "Non disponibile dopo", "int", 60, group="Riparazione", min=0, max=3600, unit="s",
             order=36, help="Secondi senza Oracle prima dello stato «Non disponibile» e dell'avviso: un riavvio "
                            "normale più breve non dice nulla. I messaggi in chat vanno in coda comunque."),
