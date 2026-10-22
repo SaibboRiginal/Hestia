@@ -10,6 +10,8 @@ services:
       - HUB_NOTIFY_TIMEOUT=2             # seconds to wait when fanning out registry-change webhooks (float, default 2)
       - LOG_LEVEL=INFO                   # logging verbosity: DEBUG | INFO | WARNING | ERROR
       - PYTHONUNBUFFERED=1               # flush stdout/stderr immediately (required for Docker log streaming)
+    volumes:
+      - ./data:/code/data                # registry snapshot (registry.json): routes work right after a Hub restart
     networks:
       - hestia_net
 

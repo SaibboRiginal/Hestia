@@ -1336,6 +1336,9 @@ paths:
     get:
       tags: [Hub]
       summary: List all registered services
+      description: >-
+        Instances as registered (+ `updated_at` = last heartbeat). After a Hub restart the instances come from Hub's
+        snapshot (`/code/data/registry.json`, heartbeat under 24 h) with `restored: true` until they re-register.
       servers:
         - url: http://localhost:19001
       responses:
@@ -1350,6 +1353,11 @@ paths:
                     type: array
                     items:
                       type: object
+                      properties:
+                        name: {type: string}
+                        base_url: {type: string}
+                        updated_at: {type: number, description: "Unix time of the last (re-)registration"}
+                        restored: {type: boolean, description: "Loaded from the snapshot, not yet re-registered"}
 
   /api/discovery/commands:
     get:
