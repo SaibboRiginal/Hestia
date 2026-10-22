@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 7 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0 and §3 «Meteo?»); routed by the project coordinator |
-| **Status** | Approved by Marko 2026-10-20 («ok» + v2.1 additions); implementation started |
+| **Status** | Approved by Marko 2026-10-20 («ok» + v2.1 additions); P1–P4 built, P5 waits for the recap PR on main |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -184,3 +184,31 @@ Oracle (only gains tools through the Hub), Hermes, Chronos backend (no job; only
 All answered 2026-10-20: several places; weather shown in Hestia's agenda for 14 days, Marko's own events untouched;
 outdoor activities with their own Google calendar «Allenamenti» as history, feedback question and morning coach
 nudge. Marko: «ok».
+
+## 10. As built (v2.2)
+
+- **Hecate**: `app/providers/weather.py` (`WeatherService`, Open-Meteo forecast + geocoding, cache
+  `hecate.weather.cache_minutes`, stale fallback). Endpoints `GET /api/gateway/weather/now|forecast|place|places`,
+  `POST /api/gateway/weather/at` (many place+time pairs in one call), `POST /api/gateway/calendar/calendars`
+  (idempotent «ensure calendar by name», Google). Tools `weather_now`, `weather_forecast`; Hecate owns the tool
+  domain `weather`. Calendar create accepts `nag: false` (events Hestia writes for history do not nag).
+- **Places**: `themis.personal.places` (list, editor `places`, options from `hecate:/api/gateway/weather/places`),
+  one `home` («Casa»), saved lat/lon skip geocoding; addresses resolve through their city. WebUI inline editor
+  «Luoghi». Shared `hestia_common.weather_client` (`now/forecast/at`, `is_rainy`, `day_summary`).
+- **Wardrobe**: suggestions and packing use the forecast when temperature/rain are empty (tri-state rain in the UI).
+- **Agenda**: Chronos `POST /api/agenda/weather` → day chips for 14 days, weather of located items
+  (`params.place`) and of Marko's own located events (read only, never modified).
+- **Hercules activities** (`app/core/activities.py`): propose → confirm → event in Google «Allenamenti» + agenda
+  task `hercules.activity.<slot>` that asks «Hai fatto la corsa delle 18:00?» (Fatto / Non fatto / Spostato) through
+  Hermes; answering anywhere closes the question (Hermes `closes`, there is no resolve endpoint). Log («ho corso»,
+  quick action «Ho corso»), finished gym sessions mirrored to «Allenamenti», morning job
+  `hercules.activity_morning` 07:30 (one message a day at most, only with an open intention). Store kinds
+  `activity_plan`, `activity`, `calendar_link`, `activity_nudge` (server-side only, refused from the offline sync).
+  Tools `fitness_plan_activity`, `fitness_confirm_activity`, `fitness_log_activity`, `fitness_activities`,
+  `fitness_activity_outcome`, `fitness_cancel_activity`. Week widget shows «Corsa 1/2».
+- **Weekly plan (coach, merged meanwhile)**: the coach dossier left the `outdoor` rule to this thread. Open
+  intentions with times neither done nor planned are coach needs `activity.<plan>` (block, tag `outdoor`, priority
+  `could`); the planner (`plan_week(wet=…)`) does not place `outdoor` needs in hours with rain ≥50 % / ≥0.5 mm or
+  dark at Casa (Hecate forecast); no forecast = no filter. Logging an activity reports `done` to the plan.
+- **P5 recap**: the recap contract (`hestia_common.recap`) is still in its own PR; the Hecate «domani a Casa» piece
+  and the activities lines in the training piece are added once it is on main.

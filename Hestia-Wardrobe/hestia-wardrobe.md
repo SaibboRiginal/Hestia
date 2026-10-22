@@ -45,6 +45,9 @@
   `wardrobe_search`, `wardrobe_piece`, `wardrobe_add`, `wardrobe_update` (status: laundry, lent…),
   `wardrobe_outfits`, `wardrobe_create_outfit`, `wardrobe_suggest`, `wardrobe_log_worn`,
   `wardrobe_stats`, `wardrobe_packing`, `wardrobe_delete`. Pieces and outfits are found by name.
+- **Weather**: `wardrobe_suggest` and `wardrobe_packing` take `place`; when temperature/rain are left empty they use
+  the Hecate forecast (today, or the trip dates; max temperature, rainy days) through `hestia_common.weather_client`.
+  The UI rain toggle is three-state (sì / no / «Usa la previsione») and shows the forecast line used.
 - `wardrobe_delete` never deletes: it asks through Hermes with **Elimina / Archivia / Tieni**.
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`: one caveman line (counts, style, laundry,
   forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`.

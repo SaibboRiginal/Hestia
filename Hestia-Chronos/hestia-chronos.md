@@ -383,6 +383,9 @@ minutes/min_minutes, days, time_of_day, gaps, `not_same_day`, `with`, priority).
   user calendar events (Archive, non all-day) and user busy blocks, with the buffer; places must → should → could,
   full length first, else the module's shorter variant; respects the daily limits. Unplaced needs come back with a
   reason («non entra»). **Orchestration** `app/services/coach.py`.
+- **Outdoor rule** (weather dossier `docs/work/2026-10-20-meteo-hecate`): needs tagged `outdoor` (e.g. a run) are
+  not placed in hours with rain (≥50 % or ≥0.5 mm) or dark at Casa — Hecate forecast read only when such a need
+  exists (`plan_week(wet=…)`, `wet_hours`); no forecast = no filter (`[🔄] event=coach_weather_failed`).
 - **Plan items** = assistant agenda `event` items, owner = the module, key
   `coach.<week>.<module>.<need_id>.<date>`, parent `coach.week.<week>` (week = ISO date of its first day; the parent's
   params hold targets, unplaced, states, the weekly text). `params.coach_status` planned/done/skipped/replanned.
@@ -406,3 +409,12 @@ WebUI: page **«La tua settimana»** (`settimana`, element `chronos-week`): seve
 phone), blocks with the area icon, slots as chips, targets with a bar, «Non entra», last week's review; drag a
 block to another day or «Sposta» (= user move), «Salta», «Rifai il piano», «Aggiungi impegno». Widget
 **«Oggi nel piano»** (`chronos-today-widget`). Icons from the kit, never emoji, no module names in texts.
+
+
+## Weather on the calendar page (dossier `docs/work/2026-10-20-meteo-hecate` §3.7)
+
+`POST /api/agenda/weather {start, end, located: [{id, place, at}]}` (`app/services/agenda_weather.py`) → `{days,
+events, external, horizon: 14}`: Casa's weather per day (chip next to the day number: icon, min–max, rain hours),
+weather at located agenda items (`params.place`, e.g. a planned run) and at Marko's own provider events that have a
+location (Hecate, cached 10 minutes; only shown, never modified). Only the next 14 days; one Hecate `weather/at`
+call; failures answer empty parts. The calendar views (month, week/day grid, list) show the chips with kit icons.
