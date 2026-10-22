@@ -109,6 +109,13 @@ A domain module that knows what is due (workouts, routines, budget review) is a 
 `hestia_common.coach.CoachRouter` (needs/fit/placed/review) + `CoachClient` (done/skipped/changed, pushed to Chronos).
 Never schedule the user's own week inside a module: Chronos plans it (`Hestia-Chronos/app/services/coach*.py`,
 endpoints `/api/agenda/coach/*`, page «La tua settimana»). Need fields are generic; Chronos must not learn domain words.
+Tag `outdoor` on a need = the planner avoids rainy/dark hours at Casa (Hecate forecast).
+
+### 5.2 Weather and places
+Weather lives only in Hecate (Open-Meteo): `/api/gateway/weather/*`, tools `weather_now`/`weather_forecast`.
+Modules use `hestia_common.weather_client` through Hub; never call a weather API from a module. Places are the
+personal setting `themis.personal.places` (one Casa; empty place = Casa). Outdoor activities live in Hercules
+(`app/core/activities.py`): Hestia writes only to its own Google calendar «Allenamenti», never to Marko's events.
 
 ## 5a. Mail flow (push) — subscribe, never poll
 
@@ -176,6 +183,9 @@ and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossi
   the 15-min history check is the push source (Gmail can push only through Pub/Sub).
 - Chat files for a module: declare `attachment_handlers` in Hub capabilities (Plutus: bank statement PDF); Oracle
   stores the file as an Archive blob (`owner_module=chat`) and hands the blob id to the module, else normal analysis.
+- Open-Meteo is unreachable from the Claude cloud (403 at the proxy): weather tests use fake HTTP; a real check
+  needs Marko's stack. Hermes has no «resolve» endpoint: to close a live question answered elsewhere, ingest an
+  event with `payload.closes = <key>` (Wardrobe/Hercules pattern).
 - No Marko PC needed for a real run: `python tools/cloud_test.py all` starts the whole stack in a Claude cloud
   session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Banco di prova cloud».
 

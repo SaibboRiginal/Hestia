@@ -1340,6 +1340,9 @@ paths:
     get:
       tags: [Hub]
       summary: List all registered services
+      description: >-
+        Instances as registered (+ `updated_at` = last heartbeat). After a Hub restart the instances come from Hub's
+        snapshot (`/code/data/registry.json`, heartbeat under 24 h) with `restored: true` until they re-register.
       servers:
         - url: http://localhost:19001
       responses:
@@ -1354,6 +1357,11 @@ paths:
                     type: array
                     items:
                       type: object
+                      properties:
+                        name: {type: string}
+                        base_url: {type: string}
+                        updated_at: {type: number, description: "Unix time of the last (re-)registration"}
+                        restored: {type: boolean, description: "Loaded from the snapshot, not yet re-registered"}
 
   /api/discovery/commands:
     get:
@@ -3193,6 +3201,60 @@ paths:
         "200":
           description: "{status: ok|initialized|busy|skipped|error, new, source?, reason?, action_required?: reauth_google, error?}"
 
+  /api/gateway/weather/now:
+    get:
+      tags: [Hecate]
+      summary: "Current weather at place (query place: saved place name/id, city, empty = Casa)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status: ok|needs_place|place_not_found|error, place, now{temp_c, feels_c, condition, icon, wind_kmh, humidity, is_day}, today}"}
+
+  /api/gateway/weather/forecast:
+    get:
+      tags: [Hecate]
+      summary: "Forecast (query place, date_from, date_to max 16 days, hourly=true adds hours)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, place, days[{date, min_c, max_c, condition, icon, rain_mm, rain_prob, wind_kmh, sunrise, sunset, rain_hours, hours?}], cached}"}
+
+  /api/gateway/weather/at:
+    post:
+      tags: [Hecate]
+      summary: "Weather at many {id, place, at} pairs in one call (agenda chips)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{items[{id, status, place, temp_c, condition, icon, rain_prob, stale?}]}"}
+
+  /api/gateway/weather/place:
+    get:
+      tags: [Hecate]
+      summary: "Resolve a place (query place) → label, lat, lon, source saved|geocoding"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "OK"}
+
+  /api/gateway/weather/places:
+    get:
+      tags: [Hecate]
+      summary: "Saved personal places resolved, as setting options [{value, label, ok}]"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "OK"}
+
+  /api/gateway/calendar/calendars:
+    post:
+      tags: [Hecate]
+      summary: "Ensure a secondary calendar by name {name, provider} (idempotent, e.g. Allenamenti)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, provider, name, calendar_id}"}
+
   /api/gateway/mail/watch:
     get:
       tags: [Hecate]
@@ -4423,6 +4485,15 @@ paths:
         - url: http://localhost:19007
       responses:
         "200": {description: "{status, count, items}"}
+
+  /api/agenda/weather:
+    post:
+      tags: [Chronos]
+      summary: "Weather for the calendar page {start, end, located[{id, place, at}]} (next 14 days)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{days[{date, min_c, max_c, condition, icon, rain_hours}], events{id: weather}, external[{id, title, start, location, weather}], horizon}"}
 
   /api/agenda/coach/week:
     get:
@@ -7976,6 +8047,141 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hercules/activities:
+    get:
+      tags: [Hercules]
+      summary: "Outdoor activities of this week: intentions with progress, slots, done activities"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/propose:
+    post:
+      tags: [Hercules]
+      summary: "Intention {kind, times, place, minutes, week} → best slots from forecast and free time (nothing in calendar yet)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/log:
+    post:
+      tags: [Hercules]
+      summary: "Log a done activity {kind, date, minutes, km, note} (closes a planned slot that day)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/log/{id}:
+    delete:
+      tags: [Hercules]
+      summary: "Undo a logged activity"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/quick-run:
+    post:
+      tags: [Hercules]
+      summary: "Home quick action «Ho corso» {km?, date?} (DELETE = undo today)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/morning:
+    post:
+      tags: [Hercules]
+      summary: "Agenda job hercules.activity_morning: morning coach line through Hermes (at most once a day)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/sync-calendar:
+    post:
+      tags: [Hercules]
+      summary: "Finished gym sessions → calendar «Allenamenti» {days}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}:
+    delete:
+      tags: [Hercules]
+      summary: "Cancel an intention (future events removed)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/confirm:
+    post:
+      tags: [Hercules]
+      summary: "Confirm {slots?: numbers|ids|ISO times} → events in «Allenamenti» + «l'hai fatto?» agenda task"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots:
+    post:
+      tags: [Hercules]
+      summary: "Plan one more slot {start?} (default best today)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/keep:
+    post:
+      tags: [Hercules]
+      summary: "«Tengo» / «Non oggi» from the morning message (no change)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/done:
+    post:
+      tags: [Hercules]
+      summary: "Slot done {minutes?, km?}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/missed:
+    post:
+      tags: [Hercules]
+      summary: "Slot not done"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/moved:
+    post:
+      tags: [Hercules]
+      summary: "Slot moved {to?} (default best slot left this week)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/ask:
+    post:
+      tags: [Hercules]
+      summary: "Agenda task: send «Hai fatto la corsa?» through Hermes"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
   /api/hercules/quick/templates:
     get:
       tags: [Hercules]
@@ -8273,7 +8479,7 @@ paths:
   /api/wardrobe/suggest:
     post:
       tags: [Wardrobe]
-      summary: "«Cosa mi metto» {occasion, temp_c, rain, date, styles, count} → items[{outfit_id?, name, pieces, score, reasons}]"
+      summary: "«Cosa mi metto» {occasion, temp_c, rain, place, date, styles, count} (temp/rain empty → Hecate forecast) → items[{outfit_id?, name, pieces, score, reasons}]"
       servers:
         - url: http://localhost:19017
       responses:

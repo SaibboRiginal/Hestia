@@ -18,6 +18,7 @@ services:
     volumes:
       - ./Hestia-Hub/src:/code/src
       - ./Hestia-Shared/hestia_common:/code/hestia_common
+      - ./Hestia-Hub/data:/code/data   # registry snapshot (registry.json): routes work right after a Hub restart
     networks:
       - hestia_net
 

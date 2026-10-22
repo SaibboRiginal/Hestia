@@ -81,6 +81,8 @@ Service registry + routing gateway.
 - Registers services and their capabilities.
 - Exposes discovery APIs for Oracle and other services.
 - Proxies internal requests by service name.
+- Keeps a snapshot of its own registry (`Hestia-Hub/data/registry.json`, not business data, so not in Archive):
+  after a restart routes work at once instead of waiting for every service's 60 s re-registration.
 
 ### Hestia-Archive 🗄️
 Single database gateway.
@@ -143,6 +145,12 @@ Provider access model (single entry point):
   search fallback). Optional real push: Gmail `users.watch` + Pub/Sub **streaming pull** (no public URL needed, env
   `HECATE_GMAIL_PUBSUB_*`, renewed by `hecate.mail_watch_renew`); then the check slows to a safety net
   (`hecate.mail.safety_interval`). New mails go to Iris `POST /api/email/incoming`. Hecate never decides who gets a mail.
+- **Weather** (Open-Meteo, free, no key): `/api/gateway/weather/now|forecast|at|place|places`, tools
+  `weather_now`/`weather_forecast` (tool domain `weather`). Places come from the personal setting
+  `themis.personal.places` (Casa, Lavoro, Palestra…). Modules read weather only through Hub
+  (`hestia_common.weather_client`): Wardrobe (suggestions, packing), Chronos (calendar chips, `outdoor` needs),
+  Hercules (outdoor activities). Hecate also ensures module-owned secondary calendars
+  (`POST /api/gateway/calendar/calendars`, e.g. «Allenamenti»). Dossier `docs/work/2026-10-20-meteo-hecate`.
 - Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
 - Google OAuth uses loopback redirect + PKCE (the old OOB flow is blocked by Google since 2023). Setup and troubleshooting: `Hestia-Hecate/hestia-hecate.md` → *Google setup*. From the phone: ask Telegram "collega Google Calendar", open the link, paste back the final `localhost` URL.
 
@@ -302,7 +310,9 @@ Real-estate domain module.
 ### Hestia-Hercules 🏋️
 Gym coach module (port 19019): exercises, templates and weekly program, live sessions that work offline, records and
 progress, goals «N volte a settimana», adaptation by conversation with the assistant (`fitness_*` tools). Rows in
-Archive `hercules-store`; reminder through the agenda and Hermes (off by default). Details:
+Archive `hercules-store`; reminder through the agenda and Hermes (off by default). Outdoor activities (run, bike,
+walk) as light intentions: best slots from the weather and free time, events in Google «Allenamenti» (also the gym
+history), «l'hai fatto?» after each slot, morning coach line «Ottimo giorno per…». Details:
 `Hestia-Hercules/hestia-hercules.md`.
 
 ### Hestia-Hygieia 🧴
@@ -330,6 +340,7 @@ with generic constraints), never when. **Chronos** places them in the free time 
 (deterministic planner, plan items = assistant agenda events owned by the module, user moves always win), re-plans
 the rest of the week on pushed events (`/api/agenda/coach/report`, calendar sync, chat) and sends the weekly message
 via Oracle (text) and Hermes (delivery). Chronos reads no domain words; a new coach = one router + the tag.
+Needs tagged `outdoor` are kept out of rainy or dark hours (Hecate forecast at Casa; none = no filter).
 Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
 
 ### Hestia-Hephaestus (Module Execution Role)

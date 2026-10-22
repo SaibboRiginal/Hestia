@@ -294,8 +294,16 @@ def suggest(body: dict = Body(default={})):
     b = body or {}
     temp = b.get("temp_c")
     return wardrobe.suggest(day=b.get("date") or "", occasion=b.get("occasion") or "", styles=b.get("styles"),
-                            temp_c=float(temp) if temp not in (None, "") else None, rain=bool(b.get("rain")),
-                            count=b.get("count"), exclude_recent_days=b.get("exclude_recent_days"))
+                            temp_c=float(temp) if temp not in (None, "") else None, rain=_opt_bool(b.get("rain")),
+                            count=b.get("count"), exclude_recent_days=b.get("exclude_recent_days"),
+                            place=b.get("place") or "")
+
+
+def _opt_bool(value) -> bool | None:
+    """Missing/empty = «use the forecast»; anything else is the user's own answer."""
+    if value in (None, ""):
+        return None
+    return value if isinstance(value, bool) else str(value).lower() in ("1", "true", "si", "sì", "yes")
 
 
 @app.post(f"{API}/suggest/save")
@@ -349,7 +357,7 @@ def collection_packing(body: dict = Body(default={})):
     return wardrobe.packing(name=b.get("name") or "", date_from=b.get("from") or b.get("date_from") or "",
                             date_to=b.get("to") or b.get("date_to") or "", place=b.get("place") or "",
                             occasion=b.get("occasion") or "", temp_c=float(temp) if temp not in (None, "") else None,
-                            rain=bool(b.get("rain")))
+                            rain=_opt_bool(b.get("rain")))
 
 
 @app.get(f"{API}/collections/{{id}}")
@@ -628,10 +636,11 @@ try:
                                   "favorite": favorite, "source": "assistant"})
         return {"saved": True, "id": o["id"], "name": o["name"], "pieces": [x["name"] for x in o["pieces"]]}
 
-    def _suggest(occasion: str = "", temp_c: float | None = None, rain: bool = False, date: str = "",
-                 styles: list | None = None, count: int | None = None) -> dict:
-        r = wardrobe.suggest(day=date, occasion=occasion, temp_c=temp_c, rain=rain, styles=styles, count=count)
-        return {"date": r["date"], "season": r["season"], "hint": r.get("hint"),
+    def _suggest(occasion: str = "", temp_c: float | None = None, rain: bool | None = None, date: str = "",
+                 styles: list | None = None, count: int | None = None, place: str = "") -> dict:
+        r = wardrobe.suggest(day=date, occasion=occasion, temp_c=temp_c, rain=rain, styles=styles, count=count,
+                             place=place)
+        return {"date": r["date"], "season": r["season"], "hint": r.get("hint"), "weather": r.get("weather"),
                 "items": [{"outfit_id": i.get("outfit_id"), "saved": i["saved"], "name": i["name"],
                            "pieces": [f"{x['name']} ({domain.SLOTS[x['slot']].lower()})" for x in i["pieces"]],
                            "piece_ids": [x["id"] for x in i["pieces"]], "why": i["reasons"]} for i in r["items"]]}
@@ -665,7 +674,7 @@ try:
         return wardrobe.summary()
 
     def _packing(place: str = "", date_from: str = "", date_to: str = "", occasion: str = "", temp_c: float | None = None,
-                 rain: bool = False) -> dict:
+                 rain: bool | None = None) -> dict:
         c = wardrobe.packing(place=place, date_from=date_from, date_to=date_to, occasion=occasion, temp_c=temp_c, rain=rain)
         return {"saved": True, "id": c["id"], "name": c["name"], "pieces": [p["name"] for p in c["pieces"]],
                 "outfits": [o["name"] for o in c["outfits"]]}
@@ -736,9 +745,11 @@ try:
                 telegram_group=G),
         MCPTool(name="wardrobe_suggest", description="«Cosa mi metto»: outfit dai capi disponibili (non in "
                 "lavanderia, giusta stagione e temperatura, non messi di recente) con i motivi. occasion: work, office, "
-                "evening, date, travel, home, sport, ceremony, weekend, party. Aggiungi tu gusto e spiegazione.",
+                "evening, date, travel, home, sport, ceremony, weekend, party. temp_c/rain: lasciali vuoti e uso la "
+                "previsione del giorno (place = luogo, vuoto = casa); mettili solo se l'utente li dice. Aggiungi tu "
+                "gusto e spiegazione.",
                 parameters={"type": "object", "properties": {"occasion": S, "temp_c": N, "rain": B, "date": S,
-                                                             "styles": L, "count": I}},
+                                                             "styles": L, "count": I, "place": S}},
                 handler=_t(_suggest), title="👕 Cosa mi metto", method="POST", clients=["telegram", "ui"], telegram_group=G),
         MCPTool(name="wardrobe_log_worn", description="Segna cosa ho indossato (outfit per nome, oppure capi), "
                 "default oggi. Facoltativo: l'utente lo fa solo quando vuole.",
@@ -749,7 +760,8 @@ try:
                 parameters={"type": "object", "properties": {}}, handler=_t(_stats), title="👕 Statistiche guardaroba",
                 clients=["telegram", "ui"], telegram_group=G),
         MCPTool(name="wardrobe_packing", description="Prepara una lista valigia per un viaggio (date YYYY-MM-DD, luogo, "
-                "occasione, temperatura prevista): un outfit al giorno dai capi disponibili.",
+                "occasione): un outfit al giorno dai capi disponibili. temp_c/rain vuoti = previsione del luogo per quei "
+                "giorni (entro 16 giorni).",
                 parameters={"type": "object", "properties": {"place": S, "date_from": S, "date_to": S, "occasion": S,
                                                              "temp_c": N, "rain": B}, "required": ["date_from"]},
                 handler=_t(_packing), title="👕 Valigia", method="POST", clients=["ui"], telegram_visible=False,

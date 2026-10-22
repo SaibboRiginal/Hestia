@@ -258,6 +258,34 @@ def _planner_cfg() -> planner.PlannerConfig:
                                  buffer_minutes=int(_cfg(CS.COACH_BUFFER, 15)))
 
 
+def wet_hours(days: list[dict], zone) -> dict[date, list[tuple[datetime, datetime]]]:
+    """Hecate forecast days (hourly) → hours with rain (≥50% or ≥0.5 mm) or dark, per day (outdoor rule)."""
+    out: dict[date, list[tuple[datetime, datetime]]] = {}
+    for d in days or []:
+        for h in d.get("hours") or []:
+            try:
+                s = datetime.fromisoformat(str(h["time"])).replace(tzinfo=zone)
+            except (KeyError, ValueError):
+                continue
+            if (h.get("rain_prob") or 0) >= 50 or (h.get("rain_mm") or 0) >= 0.5 or h.get("is_day") is False:
+                out.setdefault(s.date(), []).append((s, s + timedelta(hours=1)))
+    return out
+
+
+def _wet(start: date, end: date) -> dict[date, list[tuple[datetime, datetime]]]:
+    """Rainy/dark hours at home for ``outdoor`` needs (Hecate weather). Unreachable → no filter."""
+    try:
+        status, payload = _route("hecate", "GET", "api/gateway/weather/forecast", timeout=10, query={
+            "date_from": start.isoformat(), "date_to": (end - timedelta(days=1)).isoformat(), "hourly": "true"})
+    except Exception as exc:
+        logger.warning("[🔄] event=coach_weather_failed error=%s fallback=no_outdoor_filter", exc)
+        return {}
+    if status >= 400 or (payload or {}).get("status") != "ok":
+        logger.info("event=coach_weather_skipped status=%s", (payload or {}).get("status") or status)
+        return {}
+    return wet_hours(payload.get("days") or [], tz())
+
+
 def _free(days: list[date], busy_map: dict, current: datetime) -> dict[date, list]:
     """Free intervals per day: the plan window minus the user's events (with the buffer); today from now on."""
     day_start = _hhmm(_cfg(CS.COACH_DAY_START, "07:00"), time(7))
@@ -290,8 +318,9 @@ def replan(day: date | None = None, *, reason: str = "manual", week_start: date 
         avoid = {(i["owner"], (i.get("params") or {}).get("need_id") or "", _item_day(i)) for i in existing
                  if _status(i) == "skipped" and _item_day(i) and _item_day(i) >= first}
         needs = [{**n, "module": m["module"]} for m in modules if m["ok"] for n in m["needs"]]
+        wet = _wet(first, end) if any("outdoor" in (n.get("tags") or []) for n in needs) else {}
         result = planner.plan_week(days, _free(days, busy(first, end), current), needs, keep=keep, avoid=avoid,
-                                   cfg=_planner_cfg(), tz=tz(), fit=_fit(services))
+                                   cfg=_planner_cfg(), tz=tz(), fit=_fit(services), wet=wet)
         _ensure_parent(week, start, end)
         written: set[str] = {k["key"] for k in keep}
         labels = {m["module"]: m["label"] for m in modules}

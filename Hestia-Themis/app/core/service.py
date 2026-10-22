@@ -239,9 +239,12 @@ class Themis:
                 values[ref] = self.get(ref, client=client, session=session, include_status=False).get("value") \
                     if self.registry.definition(ref) else ""
         path = re.sub(r"\{([^{}]+)\}", lambda m: quote(str(values.get(m.group(1), "")), safe=""), source)
+        module = d["module"]
+        if not path.startswith("/") and ":" in path:   # «<module>:/path»: a personal setting resolved by another module
+            module, _, path = path.partition(":")
         path, _, qs = path.partition("?")
         try:
-            status, payload = self.hub.call(d["module"], "GET", path, query=dict(parse_qsl(qs)), timeout=6)
+            status, payload = self.hub.call(module, "GET", path, query=dict(parse_qsl(qs)), timeout=6)
         except Exception as exc:
             logger.warning("[🔄] event=themis_options_failed key=%s error=%s", key, exc)
             return {"key": key, "options": [], "source": "offline"}

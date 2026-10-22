@@ -3,7 +3,7 @@
  * marked `by: user` (a user decision wins over modules; Chronos defaults to `user` too). Errors throw `Error(detail)`.
  */
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
-import type { AgendaItem, AgendaOccurrence, AgendaTemplate, AgendaType } from './models';
+import type { AgendaItem, AgendaOccurrence, AgendaTemplate, AgendaType, CalWeather } from './models';
 
 export const API = '/api/agenda';
 export interface AgendaDraft { title: string; type: AgendaType; start_at: string; end_at: string | null;
@@ -63,6 +63,10 @@ export class AgendaApi {
   async parse(text: string): Promise<AgendaDraft> {
     const r = await this.call<{ draft: AgendaDraft }>('POST', '/parse', { body: { text, tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
     return r.draft;
+  }
+  /** Weather for the visible days (next 14 only): Casa per day, located occurrences, own located events. */
+  weather(start: Date, end: Date, located: { key: string; place: string; at: string }[]) {
+    return this.call<CalWeather>('POST', '/weather', { body: { start: start.toISOString(), end: end.toISOString(), located } });
   }
   /** A module's logs around an occurrence (its in-memory buffer: recent hours only), read by Chronos through Hub. */
   logs(service: string, at: string, minutes = 5) {

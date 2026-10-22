@@ -862,7 +862,7 @@ class Hercules:
         for op in ops or []:
             kind, rid = op.get("kind"), op.get("id")
             try:
-                if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder"):
+                if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder", "activity_plan", "activity"):
                     raise domain.Invalid(f"tipo sconosciuto: {kind}")
                 if not rid:
                     raise domain.Invalid("id mancante")
