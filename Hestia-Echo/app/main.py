@@ -49,7 +49,7 @@ SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
 SERVICE_TYPE = os.getenv("SERVICE_TYPE", "core")
 SERVICE_TAGS = [t.strip().lower() for t in os.getenv("SERVICE_TAGS", "core,voice").split(",") if t.strip()]
 SERVICE_TOPOLOGY_TAGS = [t.strip().lower() for t in os.getenv(
-    "SERVICE_TOPOLOGY_TAGS", "layer:core,domain:voice,status:alpha").split(",") if t.strip()]
+    "SERVICE_TOPOLOGY_TAGS", "layer:cognition,domain:voice,status:alpha").split(",") if t.strip()]
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 UI_DIST = os.getenv("ECHO_UI_DIST", "/code/ui/dist")
 TZ = os.getenv("TZ") or "Europe/Rome"

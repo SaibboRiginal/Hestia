@@ -99,7 +99,7 @@ unreachable through Hub. Argus (duplicate `layer:`/`domain:` + `domain:system`) 
 Themis (`settings` tag, `layer:core`, `domain:settings`) and Metis (`improvement` tag) had the same fate: `settings` and
 `improvement` added to `ALLOWED_TAGS`, `settings` to `domain:`, Themis moved to `layer:foundation`. The unit test
 `tests/test_compose_registration_tags.py` validates every compose service's tags against these lists. Plutus
-(`finance`, 2026-10-19) was the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here.
+(`finance`, 2026-10-19, then `voice` for Echo on `layer:cognition`, 2026-10-22) were the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here.
 
 Tag `coach` (2026-10-20): a module that serves `GET /api/coach/needs` (`hestia_common.coach`) carries it; Chronos
 finds the coaches of the weekly plan with `GET /registry/services` filtered on this tag. `test_coach_modules_carry_the_coach_tag`
