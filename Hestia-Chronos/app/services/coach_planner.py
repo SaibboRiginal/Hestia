@@ -13,7 +13,9 @@ priority). It never knows what a workout or a routine is.
              (done ones, already out of the module's count) do not reduce the need's count;
 - ``avoid``  ``(module, need_id, date)`` the user skipped: that need does not come back on that day;
 - ``fit``    ``(module, need_id, date, minutes) -> {ok, minutes, title, note} | None`` asks the module for a
-             shorter variant when a day only has a smaller gap.
+             shorter variant when a day only has a smaller gap;
+- ``wet``    ``{date: [(start, end), …]}`` hours with rain or dark at home (weather dossier 2026-10-20-meteo-hecate):
+             needs tagged ``outdoor`` are not placed there. Missing day/forecast = no filter.
 
 Same input → same output (stable sorts), so a re-plan only moves what has to move.
 """
@@ -46,6 +48,7 @@ class _Day:
     free: list[tuple[datetime, datetime]]
     blocks: list[tuple[datetime, datetime]] = field(default_factory=list)
     items: list[dict] = field(default_factory=list)
+    wet: list[tuple[datetime, datetime]] = field(default_factory=list)
 
     @property
     def block_count(self) -> int:
@@ -111,7 +114,8 @@ def _window(need: dict, d: _Day, tz) -> tuple[datetime, datetime]:
 def _gaps(need: dict, d: _Day, tz, pad: timedelta) -> list[tuple[datetime, datetime]]:
     lo, hi = _window(need, d, tz)
     out = []
-    for s, e in _subtract(d.free, d.blocks, pad):
+    free = _subtract(d.free, d.wet, timedelta(0)) if "outdoor" in (need.get("tags") or []) else d.free
+    for s, e in _subtract(free, d.blocks, pad):
         s, e = max(s, lo), min(e, hi)
         if e > s:
             out.append((s, e))
@@ -147,10 +151,11 @@ def _sort_key(need: dict) -> tuple:
 def plan_week(days: list[date], free: dict[date, list[tuple[datetime, datetime]]], needs: list[dict], *,
               keep: list[dict] | None = None, avoid: set[tuple[str, str, date]] | None = None,
               cfg: PlannerConfig | None = None, tz=None,
-              fit: Callable[[str, str, date, int], dict | None] | None = None) -> dict[str, Any]:
+              fit: Callable[[str, str, date, int], dict | None] | None = None,
+              wet: dict[date, list[tuple[datetime, datetime]]] | None = None) -> dict[str, Any]:
     cfg = cfg or PlannerConfig()
     pad = timedelta(minutes=max(0, cfg.buffer_minutes))
-    grid = {d: _Day(d, sorted(free.get(d) or [])) for d in days}
+    grid = {d: _Day(d, sorted(free.get(d) or []), wet=sorted((wet or {}).get(d) or [])) for d in days}
     kept_by_need: dict[tuple[str, str], list[date]] = {}
     for k in sorted(keep or [], key=lambda i: (i.get("start") or "", i.get("need_id") or "")):
         d = k["date"] if isinstance(k["date"], date) else date.fromisoformat(str(k["date"])[:10])
@@ -283,5 +288,7 @@ def _why(n: dict, candidates: list[date], grid: dict[date, _Day], cfg: PlannerCo
     if n["kind"] == "block":
         if all(grid[d].block_count >= cfg.max_blocks_per_day for d in candidates if d in grid):
             return "giorni già pieni"
+        if "outdoor" in (n.get("tags") or []) and any(grid[d].wet for d in candidates if d in grid):
+            return "pioggia o buio nei momenti liberi"
         return f"mancano {n['min_minutes']}' liberi nei giorni possibili"
     return "vincoli con altre cose dello stesso giorno"

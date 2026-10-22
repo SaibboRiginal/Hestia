@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from providers.registry import CalendarProviderRegistry
 from providers.mail import mail_gateway, MailUnavailable
+from providers.weather import WeatherError, WeatherService
 from schemas.calendar_events import CalendarEvent
 
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
@@ -22,7 +23,7 @@ from core import google_oauth
 from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
 from core.mail_watch import MailWatcher
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
-                                  settings as hecate_settings)
+                                  PERSONAL_PLACES, WEATHER_CACHE_MINUTES, settings as hecate_settings)
 
 load_dotenv()
 
@@ -211,6 +212,36 @@ try:
                 "è stata completata con successo o se è ancora in attesa. "
                 "Se completata, informa che Calendar e Gmail sono ora operativi."
             ),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="weather_now",
+            description=("Meteo adesso e oggi in un luogo: temperatura, percepita, condizioni, vento, ore di pioggia. "
+                         "place: nome di un luogo salvato (casa, lavoro, palestra…), indirizzo o città; vuoto = Casa."),
+            parameters={"type": "object", "properties": {
+                "place": {"type": "string", "description": "Luogo salvato, indirizzo o città (vuoto = Casa)"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "weather_now", "params": kw},
+            title="Meteo adesso", method="GET", path="/api/gateway/weather/now",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=("Rispondi in una o due frasi: luogo, temperatura, condizioni e se pioverà oggi "
+                             "(con le ore). Se status è needs_place o place_not_found spiega cosa serve."),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="weather_forecast",
+            description=("Previsione meteo per giorni (fino a 16 giorni avanti): minima/massima, condizioni, "
+                         "probabilità e ore di pioggia, vento, alba/tramonto. date_from/date_to YYYY-MM-DD "
+                         "(vuoto = oggi + 2 giorni); hourly=true aggiunge le ore. place come in weather_now."),
+            parameters={"type": "object", "properties": {
+                "place": {"type": "string", "description": "Luogo salvato, indirizzo o città (vuoto = Casa)"},
+                "date_from": {"type": "string", "description": "Primo giorno YYYY-MM-DD"},
+                "date_to": {"type": "string", "description": "Ultimo giorno YYYY-MM-DD"},
+                "hourly": {"type": "boolean", "description": "Includi le ore"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "weather_forecast", "params": kw},
+            title="Previsioni meteo", method="GET", path="/api/gateway/weather/forecast",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=("Riassumi la previsione giorno per giorno in modo breve (min–max, condizioni, pioggia "
+                             "con le ore). Se status non è ok spiega cosa serve."),
             telegram_visible=True, telegram_group="pianificazione",
         ),
     ]
@@ -527,7 +558,8 @@ def register_on_hub_startup():
             "ingest_trigger": "/api/ingest/trigger",
             "calendar_sync": "/api/ingest/calendar/trigger",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
-            "module_tool_domains": ["calendar"],
+            "module_tool_domains": ["calendar", "weather"],
+            "owns_tool_domains": ["weather"],
         },
     }
     try:
@@ -883,7 +915,7 @@ def gateway_calendar_create(body: dict):
                     "end_at": event.end_datetime.isoformat(),
                     "all_day": event.all_day,
                     "location": event.location,
-                    "nag_enabled": True,
+                    "nag_enabled": bool(body.get("nag", True)),
                 }
             )
         except Exception as exc:
@@ -928,6 +960,91 @@ def gateway_calendar_delete(event_id: str, provider: str, calendar_id: str = "pr
             status_code=404, detail=f"Provider '{provider}' not available")
     deleted = target.delete_event(event_id, calendar_id=calendar_id)
     return {"success": bool(deleted)}
+
+
+_owned_calendars: dict[tuple[str, str], str] = {}
+
+
+@app.post("/api/gateway/calendar/calendars")
+def gateway_calendar_ensure(body: dict):
+    """Id of a Hestia-owned calendar (e.g. «Allenamenti»), created on the provider when missing. Idempotent:
+    found again by name, cached. Marko's other calendars are never touched."""
+    name = str((body or {}).get("name") or "").strip()
+    if not name or len(name) > 100:
+        raise HTTPException(status_code=400, detail="name required (max 100 chars)")
+    provider_name = _normalize_provider_name((body or {}).get("provider")) or "google"
+    cached = _owned_calendars.get((provider_name, name))
+    if cached:
+        return {"status": "ok", "provider": provider_name, "name": name, "calendar_id": cached}
+    target = _calendar_registry.get(provider_name)
+    if target is None:
+        return {"status": "unavailable", "provider": provider_name, "name": name,
+                "error": f"{provider_name} non collegato"}
+    try:
+        calendar_id = target.ensure_calendar(name)
+    except NotImplementedError as exc:
+        return {"status": "unsupported", "provider": provider_name, "name": name, "error": str(exc)}
+    except Exception as exc:
+        logger.warning("[🔄] event=calendar_ensure_failed provider=%s error=%s", provider_name, exc)
+        return {"status": "error", "provider": provider_name, "name": name, "error": str(exc)}
+    _owned_calendars[(provider_name, name)] = calendar_id
+    logger.info("event=calendar_ensured provider=%s name=%s", provider_name, name)
+    return {"status": "ok", "provider": provider_name, "name": name, "calendar_id": calendar_id}
+
+
+# ── Weather (Open-Meteo) ─────────────────────────────────────────────────────
+weather = WeatherService(places=lambda: hecate_settings.get(PERSONAL_PLACES) or [],
+                         cache_minutes=lambda: hecate_settings.get(WEATHER_CACHE_MINUTES, 30))
+
+
+def _weather_call(fn, *args, **kwargs) -> dict:
+    try:
+        return fn(*args, **kwargs)
+    except WeatherError as exc:
+        return exc.as_dict()
+
+
+@app.get("/api/gateway/weather/now")
+def gateway_weather_now(place: str = ""):
+    """Current conditions + today at ``place`` (saved place name, address, city; empty = Casa)."""
+    return _weather_call(weather.now, place)
+
+
+@app.get("/api/gateway/weather/forecast")
+def gateway_weather_forecast(place: str = "", date_from: str = "", date_to: str = "", hourly: bool = False):
+    """Daily forecast (default today + 2 days, up to 16 days ahead); ``hourly=true`` adds the hours."""
+    return _weather_call(weather.forecast, place, date_from, date_to, hourly)
+
+
+@app.post("/api/gateway/weather/at")
+def gateway_weather_at(body: dict):
+    """Weather at many (place, hour/day) items in one call: ``{items: [{key, place?, at?, date?}]}``."""
+    items = (body or {}).get("items")
+    if not isinstance(items, list):
+        raise HTTPException(status_code=400, detail="items must be a list")
+    return weather.at(items)
+
+
+@app.get("/api/gateway/weather/place")
+def gateway_weather_place(q: str = ""):
+    """Map candidates for a place text (to check a place before saving it)."""
+    try:
+        return {"status": "ok", "query": q, "places": weather.geocode(q)}
+    except WeatherError as exc:
+        return {**exc.as_dict(), "query": q, "places": []}
+
+
+@app.get("/api/gateway/weather/places")
+def gateway_weather_places():
+    """Marko's saved places and what each resolves to; ``options`` feeds the settings editor «Luoghi»."""
+    try:
+        rows = weather.resolved_places()
+    except Exception as exc:
+        logger.warning("[🔄] event=weather_places_failed error=%s", exc)
+        rows = []
+    return {"status": "ok", "places": rows,
+            "options": [{"value": r["id"], "label": r.get("resolved") or r.get("error") or "", "ok": bool(r.get("ok"))}
+                        for r in rows]}
 
 
 _REAUTH_ACTIONS = [{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}]

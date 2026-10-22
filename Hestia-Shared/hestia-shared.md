@@ -181,7 +181,8 @@ clients show the settings of a group as a grid (Oracle: use case × fornitore / 
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
 **Personal settings shared by every module** (owner Themis, group «Personali», `settings_client.PERSONAL`):
-`themis.personal.week_start` (monday/sunday) and `themis.personal.currency`. A module never declares its own copy:
+`themis.personal.week_start` (monday/sunday), `themis.personal.currency` and `themis.personal.places` (Casa, Lavoro,
+Palestra…; editor `places`, options from `hecate:/api/gateway/weather/places`). A module never declares its own copy:
 `settings.follow_personal()` (or `follow({...})`) sends `follows` on register, Themis answers `shared` and pushes
 it again on every change; `settings.get("themis.personal.week_start")` then works like an own key
 (`week_start_index()` gives 0 = Monday … 6 = Sunday).
@@ -310,6 +311,12 @@ not_before/not_after, min_gap_days, not_same_day, with{tag, relation}, tags, pri
 link, value/unit/progress); unknown fields are refused. `CoachClient(module).done(need_id, at)` / `.skipped(...)` /
 `.changed()` push events to `POST /route/chronos/api/agenda/coach/report` (fails soft, `[🔄] event=coach_report_failed`).
 `week_bounds(day, week_start)` → `[start, end)`. Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+
+## Weather client (`hestia_common.weather_client`)
+
+`WeatherClient(hub_api_url).now(place)`, `.forecast(place, date_from, date_to, hourly=False)`, `.at([{id, place, at}])`
+call Hecate through Hub (`/api/gateway/weather/*`); `is_rainy(day_or_hour)` and `day_summary(day)` give one shared
+reading. Failures answer `{status: "unavailable"}`; never raises. Place = saved place name/id, a city, or empty = Casa.
 
 ## Constraints
 

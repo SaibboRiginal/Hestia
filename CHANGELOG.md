@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-22
+- Weather and places: Hecate gives the weather (Open-Meteo, free, tools `weather_now`/`weather_forecast`) for your saved places (new personal setting «Luoghi»: Casa, Lavoro, Palestra…); Guardaroba suggests outfits and packing from the forecast when you leave temperature/rain empty; the calendar shows the weather of the next 14 days and of events with a place; outdoor activities in Allenamento («ho voglia di correre 2 volte questa settimana» → best dry, free slots, events in a Google calendar «Allenamenti» that is also the gym history, «l'hai fatto?» after each slot, morning «Ottimo giorno per…», quick action «Ho corso»); the weekly plan keeps outdoor needs out of rain and dark → `docs/work/2026-10-20-meteo-hecate/` [ext-chat]
+
 ## 2026-10-21
 - Coaches of every kind: one weekly plan built by Chronos from what each coach module needs (training from the goal or weekly program with a short version when time is tight, self care routines with conflicts and pairings, budget targets and a «Rivedi spese» block), placed around the calendar, re-planned when something changes, weekly message, page «La tua settimana» and widget «Oggi nel piano», chat tools `coach_*`; shared contract `hestia_common.coach`, Hub tag `coach`; supplements stay in self care as information; study: automatic food data not worth a module yet → `docs/work/2026-10-20-coach-di-ogni-tipo/` [ext-chat]
 

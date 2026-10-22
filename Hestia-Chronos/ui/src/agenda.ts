@@ -331,10 +331,10 @@ export class ChronosAgenda extends HestiaElement {
       move: (e: CustomEvent) => { e.stopPropagation(); void this.onMove(e.detail); },
       day: (e: CustomEvent) => { e.stopPropagation(); this.openDay(e.detail); },
     };
-    if (s.view === 'month') return html`<chronos-cal-month .anchor=${s.anchor} .events=${ev} @cal-select=${handlers.select}
+    if (s.view === 'month') return html`<chronos-cal-month .anchor=${s.anchor} .events=${ev} .weather=${s.weather} @cal-select=${handlers.select}
       @cal-create=${handlers.create} @cal-move=${handlers.move} @cal-day=${handlers.day}></chronos-cal-month>`;
-    if (s.view === 'list') return html`<chronos-cal-list .events=${ev} .from=${s.range().start} @cal-select=${handlers.select}></chronos-cal-list>`;
-    return html`<chronos-cal-grid .days=${this.gridDays()} .events=${ev} .windowsMode=${s.vp.windowsMode} .frequentMode=${s.vp.frequentMode}
+    if (s.view === 'list') return html`<chronos-cal-list .events=${ev} .weather=${s.weather} .from=${s.range().start} @cal-select=${handlers.select}></chronos-cal-list>`;
+    return html`<chronos-cal-grid .days=${this.gridDays()} .events=${ev} .weather=${s.weather} .windowsMode=${s.vp.windowsMode} .frequentMode=${s.vp.frequentMode}
       .focusDay=${s.anchor} .scrollHour=${s.vp.scrollHour} .workHours=${[s.vp.workStart, s.vp.workEnd]}
       @cal-select=${handlers.select} @cal-create=${handlers.create} @cal-move=${handlers.move} @cal-day=${handlers.day}></chronos-cal-grid>`;
   }

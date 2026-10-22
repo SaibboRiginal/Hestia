@@ -23,6 +23,8 @@ AUTH_RECHECK_INTERVAL = "hecate.auth.recheck_interval"
 ACTION_NOTIFY_COOLDOWN = "hecate.auth.notify_cooldown"
 MAIL_WATCH_INTERVAL = "hecate.mail.watch_interval"
 MAIL_SAFETY_INTERVAL = "hecate.mail.safety_interval"
+WEATHER_CACHE_MINUTES = "hecate.weather.cache_minutes"
+PERSONAL_PLACES = "themis.personal.places"
 
 settings = SettingsClient("hecate")
 settings.declare([
@@ -51,4 +53,8 @@ settings.declare([
             min=300, max=86400, unit="s", advanced=True,
             help="Quando le notifiche push di Gmail (Pub/Sub) sono attive, il controllo periodico serve solo "
                  "da rete di sicurezza e passa a questo intervallo."),
-]).declare_log_level()
+    setting(WEATHER_CACHE_MINUTES, "Validità della previsione meteo", "int", 30, group="Meteo", min=5, max=360,
+            unit="min", advanced=True,
+            help="Per quanti minuti riuso la previsione già scaricata per un luogo prima di chiederla di nuovo "
+                 "(il servizio meteo aggiorna i dati circa ogni ora)."),
+]).declare_log_level().follow_personal()

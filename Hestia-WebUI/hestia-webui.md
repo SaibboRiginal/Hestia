@@ -189,6 +189,10 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   services without settings yet. A module = its groups; a group with presets shows *Economico / … /
   Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table.
   Filters *Solo modificate* and *Avanzate (N)*.
+- Settings with `editor: places` (personal «Luoghi», `themis.personal.places`) use `<hx-places-editor>`
+  (`places-editor.component.ts`): inline rows name / address / kind (Casa, Lavoro, Altro; one Casa), add/remove,
+  each row shows how Hecate resolved it (options from `hecate:/api/gateway/weather/places`). Weather icons (sun,
+  cloud-sun, cloud, fog, drizzle, rain, snow, storm, run) are in the shared icon set.
 - `<hx-setting>` (`setting-row.component.ts`): label, help, badges *modificato · riavvio necessario · modulo
   offline · al riavvio · personale*, the control and a clock popover with the last changes, *Annulla ultima*,
   *Ripristina predefinito*. Settings whose `depends_on` is not met are greyed out with "Attiva solo con …".

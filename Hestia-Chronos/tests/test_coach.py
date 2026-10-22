@@ -130,6 +130,31 @@ def test_relation_and_daily_limits_and_kept_items():
 
 
 @pytest.mark.unit
+def test_outdoor_needs_avoid_rainy_and_dark_hours():
+    """Weather dossier 2026-10-20-meteo-hecate: an ``outdoor`` need is not placed where it rains; others are."""
+    from services.coach import wet_hours
+    from services.coach_planner import plan_week
+    days = []
+    for d in WEEK:
+        rain_all_day = d.weekday() < 6                      # only Sunday is dry
+        days.append({"date": d.isoformat(), "hours": [
+            {"time": f"{d.isoformat()}T{h:02d}:00", "rain_prob": 90 if rain_all_day else 0, "rain_mm": 0,
+             "is_day": 7 <= h < 19} for h in range(24)]})
+    wet = wet_hours(days, TZ)
+    assert len(wet[WEEK[0]]) == 24 and len(wet[WEEK[6]]) == 12        # Sunday: only the dark hours
+    run = {**need("activity.p1", "Corsa", kind="block", count=2, minutes=45, min_minutes=45, time_of_day="any",
+                  min_gap_days=1, tags=["outdoor", "effort:2"], priority="could"), "module": "hercules"}
+    gym = _workouts(1)
+    plan = plan_week(WEEK, _free(), [run, gym], tz=TZ, wet=wet)
+    runs = [i for i in plan["items"] if i["need_id"] == "activity.p1"]
+    assert len(runs) == 1 and runs[0]["date"] == WEEK[6]
+    assert 7 <= datetime.fromisoformat(runs[0]["start"]).hour < 19
+    assert plan["unplaced"][0]["reason"] == "pioggia o buio nei momenti liberi"
+    assert any(i["need_id"] == "workout" and i["date"] != WEEK[6] for i in plan["items"])   # indoor: rain is fine
+    assert len([i for i in plan_week(WEEK, _free(), [run], tz=TZ)["items"]]) == 2           # no forecast: no filter
+
+
+@pytest.mark.unit
 def test_planner_has_no_domain_words():
     """Acceptance 8: the planner reads the contract only."""
     import inspect

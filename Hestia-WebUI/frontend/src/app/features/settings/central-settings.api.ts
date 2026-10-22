@@ -31,7 +31,7 @@ export interface SettingItem {
   depends_on?: { key: string; equals?: unknown; not_equals?: unknown };
   row?: string;
   column?: string;
-  /** Dedicated editor of an `object` value (llm_providers | llm_chains | llm_usecases → Oracle · Cervello · Modelli). */
+  /** Dedicated editor (llm_providers | llm_chains | llm_usecases → Oracle · Cervello · Modelli; places → inline Luoghi editor). */
   editor?: string;
   /** stored | default (system) · profile | client | session | default (user) */
   source: string;

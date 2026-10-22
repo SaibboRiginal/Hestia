@@ -5,10 +5,11 @@
  */
 import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
 import type { TemplateResult } from '@hestia/webui-sdk';
-import { type CalEvent, STATUS_META, TYPE_META, dur, fire, ownerLabel } from '../models';
+import { type CalEvent, type CalWeather, NO_WEATHER, STATUS_META, TYPE_META, dur, fire, ownerLabel } from '../models';
+import { extLines } from './month';
 import { dayKey, fmt, isSameDay, isToday } from '../date';
 import { describeRRule } from '../rrule';
-import { calStyles, ic } from '../ui';
+import { calStyles, ic, wxChip } from '../ui';
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
 interface Outcome { label: string; tone: Tone; detail?: string; }
@@ -63,8 +64,8 @@ export function outcome(ev: CalEvent, now: number): Outcome | null {
 }
 
 export class ChronosCalList extends LitElement {
-  static properties = { events: { attribute: false }, from: { attribute: false }, now: { state: true } };
-  declare events: CalEvent[]; declare from: Date; declare now: number;
+  static properties = { events: { attribute: false }, from: { attribute: false }, weather: { attribute: false }, now: { state: true } };
+  declare weather: CalWeather; declare events: CalEvent[]; declare from: Date; declare now: number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private scrolled = false;
   static styles = [tokens, calStyles, css`
@@ -80,6 +81,8 @@ export class ChronosCalList extends LitElement {
     .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .title { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--text); }
     .meta { font-size: 12px; color: var(--text-3); }
+    .wx { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    h3 .wx { margin-left: 8px; font-weight: 400; }
     .detail { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .detail.err { color: var(--danger); }
     .row.past .time, .row.past .title { color: var(--text-3); }
@@ -91,7 +94,7 @@ export class ChronosCalList extends LitElement {
     .now .line { flex: 1; border-top: 2px solid var(--danger); }
     @media (max-width: 720px) { :host { padding: 6px 10px 30px; } .time { width: 76px; } .row { gap: 8px; padding: 8px 4px; } }
   `];
-  constructor() { super(); this.events = []; this.from = new Date(); this.now = Date.now(); }
+  constructor() { super(); this.events = []; this.from = new Date(); this.weather = NO_WEATHER; this.now = Date.now(); }
   connectedCallback() { super.connectedCallback(); this.timer = setInterval(() => (this.now = Date.now()), 60_000); }
   disconnectedCallback() { super.disconnectedCallback(); if (this.timer) clearInterval(this.timer); }
   updated() {
@@ -120,6 +123,7 @@ export class ChronosCalList extends LitElement {
       <span class="bar" style="background:${ev.color}"></span>
       <span class="main">
         <span class="title">${ic(meta?.icon ?? 'event', 14)} ${ev.occ.title}</span>
+        ${this.evWx(ev)}
         <span class="meta">${ownerLabel(ev.occ.owner)} · ${meta?.label ?? ev.occ.type}${ev.occ.recurring ? ` · ${describeRRule(ev.item?.recurrence)}` : ''}</span>
         ${o?.detail ? html`<span class="detail ${o.tone === 'danger' ? 'err' : ''}" title=${o.detail}>${o.detail}</span>` : nothing}
       </span>
@@ -127,11 +131,19 @@ export class ChronosCalList extends LitElement {
     </button>`;
   }
 
+  /** Weather at the place and hour of an item that has one (e.g. a planned run). */
+  private evWx(ev: CalEvent) {
+    const w = this.weather.events[ev.id];
+    if (!w?.hour) return nothing;
+    const wet = ['rain', 'drizzle', 'storm', 'snow'].includes(w.hour.icon);
+    return html`<span class="wx"><hxk-icon name=${w.hour.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${w.place ? w.place + ': ' : ''}${w.hour.temp_c}°, ${w.hour.condition}${w.hour.rain_prob ? ` (pioggia ${w.hour.rain_prob}%)` : ''}</span>`;
+  }
+
   render() {
     const groups = groupByDay(this.events, this.from, this.now);
     if (!groups.length) return html`<hxk-state kind="empty" text="Niente in programma: nessuna voce nel periodo con i filtri attuali."></hxk-state>`;
     return groups.map(g => html`${g.nowBefore ? this.nowLine() : nothing}
-      <section><h3 class=${g.today ? 'today' : ''}>${g.label}</h3>
+      <section><h3 class=${g.today ? 'today' : ''}>${g.label}${wxChip(this.weather.days[g.key], extLines(this.weather, g.key))}</h3>
         ${g.events.map(ev => html`${g.nowAt === ev.id ? this.nowLine() : nothing}${this.row(ev)}`)}
         ${g.nowAfter ? this.nowLine() : nothing}</section>`);
   }

@@ -496,16 +496,44 @@ class Wardrobe:
         return Suggester(self._pieces_raw(), self.store.items("outfit"), self._wears(), today=self.today(),
                          forgotten_days=int(self.cfg("forgotten_days", 180)))
 
+    def weather(self, d0: date, d1: date | None = None, place: str = "") -> dict | None:
+        """Forecast for a day or a trip, read from Hecate through Hub: ``{source, place, temp_c, rain, …}``.
+        Highest temperature of the period (daytime clothes) and rain if any day rains. None when unavailable
+        (no Casa among the places, beyond 16 days, Hecate away): callers go on as without weather."""
+        q = {"date_from": d0.isoformat(), "date_to": (d1 or d0).isoformat(), **({"place": place} if place else {})}
+        try:
+            status, payload = self.hub.call("hecate", "GET", "api/gateway/weather/forecast", query=q, timeout=6)
+        except Exception as exc:
+            logger.warning("[🔄] event=wardrobe_weather_failed error=%s fallback=no_weather", exc)
+            return None
+        if status >= 400 or not isinstance(payload, dict) or payload.get("status") != "ok" or not payload.get("days"):
+            return None
+        days = payload["days"]
+        maxes = [d["max_c"] for d in days if d.get("max_c") is not None]
+        mins = [d["min_c"] for d in days if d.get("min_c") is not None]
+        rainy = [d["date"] for d in days if (d.get("rain_prob") or 0) >= 50 or (d.get("rain_mm") or 0) >= 1]
+        return {"source": "forecast", "place": (payload.get("place") or {}).get("label") or place,
+                "temp_c": max(maxes) if maxes else None, "min_c": min(mins) if mins else None,
+                "rain": bool(rainy), "rain_days": rainy, "condition": days[0].get("condition"),
+                "icon": days[0].get("icon")}
+
     def suggest(self, *, day: str = "", occasion: str = "", styles: list[str] | str | None = None,
-                temp_c: float | None = None, rain: bool = False, count: int | None = None,
-                exclude_recent_days: int | None = None) -> dict:
+                temp_c: float | None = None, rain: bool | None = None, count: int | None = None,
+                exclude_recent_days: int | None = None, place: str = "") -> dict:
+        """``temp_c``/``rain`` not given → the day's forecast (what the user types always wins)."""
         d = date.fromisoformat(domain.iso_date(day)) if day else self.today()
         styles = self.vocab_keys("style", styles) or []
         occasion = (self.vocab_keys("occasion", [occasion]) or [""])[0] if occasion else ""
+        weather = self.weather(d, place=place) if temp_c is None or rain is None else None
+        if weather:
+            temp_c = weather["temp_c"] if temp_c is None else temp_c
+            rain = weather["rain"] if rain is None else rain
         out = self.suggester().suggest(day=d, occasion=occasion, styles=styles, temp_c=temp_c,
                                        rain=bool(rain), count=int(count or self.cfg("suggest.count", 3)),
                                        recent_days=int(exclude_recent_days if exclude_recent_days is not None
                                                        else self.cfg("suggest.exclude_recent_days", 4)))
+        if weather:
+            out["weather"] = weather
         if not out["items"]:
             out["hint"] = ("Aggiungi qualche capo (almeno uno sopra, uno sotto e delle scarpe) per avere suggerimenti"
                            if out["available_pieces"] < 3 else "Nessuna combinazione adatta: prova senza occasione o con un'altra temperatura")
@@ -873,15 +901,20 @@ class Wardrobe:
         return {"id": id, "deleted": True, "name": c["name"]}
 
     def packing(self, *, name: str = "", date_from: str = "", date_to: str = "", place: str = "", occasion: str = "",
-                temp_c: float | None = None, rain: bool = False) -> dict:
-        """Proposed packing list for a trip: one outfit per day (max 7, then repeat), shoes and outerwear once."""
+                temp_c: float | None = None, rain: bool | None = None) -> dict:
+        """Proposed packing list for a trip: one outfit per day (max 7, then repeat), shoes and outerwear once.
+        Temperature/rain not given → the forecast at ``place`` for the trip days (when within 16 days)."""
         d0 = date.fromisoformat(domain.iso_date(date_from) or self.today().isoformat())
         d1 = date.fromisoformat(domain.iso_date(date_to) or d0.isoformat())
         if d1 < d0:
             raise Invalid("la fine viaggio è prima dell'inizio")
         days = min(7, (d1 - d0).days + 1)
         occasion = (self.vocab_keys("occasion", [occasion]) or [""])[0] if occasion else ""
-        sug = self.suggester().suggest(day=d0, occasion=occasion, temp_c=temp_c, rain=rain, count=days,
+        weather = self.weather(d0, d1, place) if temp_c is None or rain is None else None
+        if weather:
+            temp_c = weather["temp_c"] if temp_c is None else temp_c
+            rain = weather["rain"] if rain is None else rain
+        sug = self.suggester().suggest(day=d0, occasion=occasion, temp_c=temp_c, rain=bool(rain), count=days,
                                        recent_days=0)
         outfit_ids, piece_ids = [], []
         for s in sug["items"]:
@@ -892,7 +925,8 @@ class Wardrobe:
                     piece_ids.append(x["piece_id"])
         return self.save_collection({"name": name or f"Valigia {place or d0.strftime('%d/%m')}".strip(), "type": "packing",
                                      "piece_ids": piece_ids, "outfit_ids": outfit_ids,
-                                     "trip": {"from": d0.isoformat(), "to": d1.isoformat(), "place": place}})
+                                     "trip": {"from": d0.isoformat(), "to": d1.isoformat(), "place": place,
+                                              **({"weather": weather} if weather else {})}})
 
     # ── export / import ────────────────────────────────────────────────────
     def export(self) -> dict:

@@ -313,6 +313,51 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
     assert wd._local_day("2026-10-18") == "2026-10-18"
 
 
+# ── weather (forecast from Hecate) ───────────────────────────────────────────
+def _with_forecast(w, max_c=6, rain_prob=80):
+    calls = []
+    inner = w.hub.call
+
+    def call(service, method, path, *, body=None, query=None, timeout=8):
+        if service == "hecate":
+            calls.append(query)
+            days = [{"date": query["date_from"], "min_c": max_c - 6, "max_c": max_c, "rain_prob": rain_prob,
+                     "rain_mm": 3, "condition": "pioggia", "icon": "rain"}]
+            return 200, {"status": "ok", "place": {"label": "Casa · Milano"}, "days": days}
+        return inner(service, method, path, body=body, query=query, timeout=timeout)
+    w.hub.call = call
+    return calls
+
+
+@pytest.mark.unit
+def test_suggest_uses_the_forecast_when_nothing_typed(wd):
+    _basics(wd)
+    calls = _with_forecast(wd, max_c=6)
+    r = wd.suggest()
+    assert r["weather"]["source"] == "forecast" and r["weather"]["temp_c"] == 6 and r["weather"]["rain"] is True
+    assert r["temp_c"] == 6 and r["rain"] is True and calls
+    typed = wd.suggest(temp_c=25, rain=False)
+    assert typed["temp_c"] == 25 and typed["rain"] is False and "weather" not in typed
+    assert len(calls) == 1                     # typed values: no forecast asked
+
+
+@pytest.mark.unit
+def test_suggest_without_forecast_behaves_as_before(wd):
+    _basics(wd)
+    r = wd.suggest()                           # FakeHub answers no forecast for hecate
+    assert "weather" not in r and r["rain"] is False
+
+
+@pytest.mark.unit
+def test_packing_takes_the_trip_forecast(wd):
+    _basics(wd)
+    calls = _with_forecast(wd, max_c=4)
+    d0 = wd.today() + timedelta(days=3)
+    c = wd.packing(date_from=d0.isoformat(), date_to=(d0 + timedelta(days=2)).isoformat(), place="Roma")
+    assert calls[-1]["place"] == "Roma" and calls[-1]["date_to"] == (d0 + timedelta(days=2)).isoformat()
+    assert c["trip"]["weather"]["temp_c"] == 4
+
+
 # ── reflection signals (hestia_common.signals_client) ───────────────────────
 def _age(w, piece_id, days):
     """Pretend a piece was last changed ``days`` ago (laundry «da tanto» reads the piece's updated_at)."""
