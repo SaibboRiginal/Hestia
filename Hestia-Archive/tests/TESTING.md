@@ -17,6 +17,14 @@
 | 1.6 | `test_tools_call_missing_required_fields` | ⬜ |
 | 1.7 | `test_tool_has_client_metadata` | ⬜ |
 
+## Backup (`unit`, `integration`) — `docs/work/2026-10-20-backup-drive`
+
+| File | What |
+|---|---|
+| `test_crypto.py` | `hestia_common.crypto`: round trip (sizes around the chunk), wrong passphrase, truncated/reordered/tampered file |
+| `test_backup_service.py` | fake Postgres + fake Drive: encrypted upload, Drive down → pending copy then upload, at most 3 pending, no passphrase, retention plan, verify ok/tampered/wrong passphrase, restore + swap + undo, failed restore changes nothing, restore of a hand-copied file, one job at a time, CLI asks `RIPRISTINA` |
+| `test_backup_pg_live.py` (`integration`) | real Postgres (`ARCHIVE_TEST_PG_URL`, pgvector, pg client tools): backup → verify in scratch DB → restore → undo → redo |
+
 ## API Tests (`api`)
 
 **File:** `test_archive_api.py` (to be created)

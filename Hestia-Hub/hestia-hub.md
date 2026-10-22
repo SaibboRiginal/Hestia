@@ -23,6 +23,20 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 - `register` / `deregister` service instances.
 - Keep metadata: name, base URL, health endpoint, tags, capabilities.
 
+### Persistent registry (snapshot)
+SPEC `docs/work/2026-10-20-hub-registro-persistente`. Code: `src/modules/snapshot.py`.
+- Hub saves its routing table to `/code/data/registry.json` (volume `./Hestia-Hub/data`), atomically: at once on
+  a real change (created / updated / deregister), heartbeat-only refreshes at most every 30 s (written during the
+  register call, no timer), and on shutdown.
+- At startup it reloads it: instances with a heartbeat older than 24 h are dropped, the rest are routable at once
+  with `restored: true` until they re-register (that clears the flag as a plain refresh). `revision` continues from
+  the saved value and is bumped once (`reason=restore`) so watchers refresh. Log `event=hub_registry_restored`.
+- Missing or corrupt file → `event=hub_registry_restore_failed` `[🔄]`, Hub starts empty like before; a failed
+  write → `event=hub_registry_save_failed` `[🔄]`, the registry stays in memory. Always on, no settings: the file is
+  read before any other service (Themis included) can answer.
+- It is a cache of Hub's own table, not business data, so it does not go to Archive (which is itself found through
+  Hub). Services keep re-registering every 60 s: that stays the source of truth.
+
 ### Discovery
 - Provide service list.
 - Provide module-tools discovery for Oracle (`domain -> endpoint`).
@@ -45,7 +59,7 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 | `GET` | `/api/registry/services` | List registered services |
 | `GET` | `/api/discovery/module-tools` | Domain to module-tool endpoint map |
 | `GET` | `/api/discovery/commands` | Commands from inline `capabilities.commands` + MCP tools (`?client=`) |
-| `GET` | `/api/discovery/catalog` | **One catalog** organized by client × type (`?client=webui&type=page,widget&module=scout`): `tool` (MCP, client `*`), `command`, and the UI contributions `page` · `widget` · `quick_action` · `bundle` read from each module's `capabilities.ui_manifest` (cached 5 min, refetched when `ui_version` changes). Offline modules keep their last manifest with `online: false`. Each module carries `kind` (`domain` · `core`: the WebUI shows core modules under *Sistema*) and pages may carry `badge {source, field}`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.2 |
+| `GET` | `/api/discovery/catalog` | **One catalog** organized by client × type (`?client=webui&type=page,widget&module=scout`): `tool` (MCP, client `*`), `command`, and the UI contributions `page` · `widget` · `quick_action` · `settings_panel` (a panel inside the module's own settings, 2026-10-21) · `bundle` read from each module's `capabilities.ui_manifest` (cached 5 min, refetched when `ui_version` changes). Offline modules keep their last manifest with `online: false`. Each module carries `kind` (`domain` · `core`: the WebUI shows core modules under *Sistema*) and pages may carry `badge {source, field}`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.2 |
 | `ANY` | `/api/route/{service}/{path:path}` | Proxy request to named service/path. Two styles: **envelope** (POST `{method, headers, query, body, timeout_seconds}`) or **direct passthrough** (real method + query string + raw JSON body; timeout via `X-Hub-Timeout-Seconds`, default 8s). Response is always `{status_code, service, target, payload}` |
 | `GET` | `/api/ui/map` | *Mappa* read model (WebUI plugin): every service (newest instance, `instances` count) **plus Hub itself**: `online` (re-registered in the last 180 s), `node` (`capabilities.node` or base-URL host), `version`, `last_heartbeat`, `age_seconds`, `topology_tags` + parsed `topology`, `has_ui`, `has_mcp`; top level `revision`, `updated_at`, `online_count`, `offline_count`. `?probe=true` also calls each health endpoint in parallel (`health`: healthy · degraded · unavailable) |
 | `GET` | `/api/ui/manifest` | Hub's own plugin manifest (also folded into the catalog in-process) |
@@ -78,9 +92,9 @@ Hub never registers with itself, so two things are done in-process:
 
 ## Constraints
 
-- No persistence dependency.
+- No database dependency: only the local registry snapshot, and Hub works without it.
 - No domain logic.
-- Stateless restart-safe behavior (services re-register on startup).
+- Restart-safe: the snapshot restores routes at once; services still re-register every 60 s.
 
 
 ## Documentation Synchronization (Required)

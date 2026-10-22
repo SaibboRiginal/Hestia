@@ -25,6 +25,11 @@ services:
       - HUB_API_URL=http://hestia_hub:19001/api
       - ARCHIVE_SERVICE_BASE_URL=http://hestia_archive:19002
       - LOG_HEALTH_ACCESS_MODE=off
+      - TZ=${TZ:-Europe/Rome}
+      - HESTIA_BACKUP_PASSPHRASE=${HESTIA_BACKUP_PASSPHRASE:-}  # backup to Drive; the DB user must be allowed to create/rename databases
+      - ARCHIVE_BACKUP_DIR=/code/backups
+    volumes:
+      - hestia_archive_backups:/code/backups
     depends_on:
       hub:
         condition: service_started
@@ -179,3 +184,6 @@ networks:
   hestia_net:
     external: true
     name: hestia_net
+
+volumes:
+  hestia_archive_backups:

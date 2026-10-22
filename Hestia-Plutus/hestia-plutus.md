@@ -42,6 +42,7 @@ recognised → Oracle extraction. PDFs are kept as Archive blobs (owner `plutus`
 
 Archive `/api/finance-store/records`: table `finance_records (kind, id)` with `data` JSONB, `parent_id`, `ref_id`,
 `at`, `updated_at`, `deleted` tombstone, `seq` cursor — same protocol as the other module stores.
+Archive data epoch: store answers carry `epoch`; when it changes (a backup rollback swapped the database) the mirror is dropped and reloaded from zero (`[🔄] event=plutus_mirror_reset reason=data_epoch`), so no stale row is written back.
 Kinds: tx, category, rule, budget, account, import, recurring, mail (processed mail refs, idempotency), alert (sent
 budget alerts, one per category per level per month), reminder.
 

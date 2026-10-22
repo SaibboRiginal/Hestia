@@ -81,6 +81,8 @@ Service registry + routing gateway.
 - Registers services and their capabilities.
 - Exposes discovery APIs for Oracle and other services.
 - Proxies internal requests by service name.
+- Keeps a snapshot of its own registry (`Hestia-Hub/data/registry.json`, not business data, so not in Archive):
+  after a restart routes work at once instead of waiting for every service's 60 s re-registration.
 
 ### Hestia-Archive 🗄️
 Single database gateway.
@@ -88,6 +90,12 @@ Single database gateway.
 - Exposes generic search/filter/query APIs.
 - Stores **subscriptions** and **dispatch logs** for proactive notifications.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered archive hygiene tasks.
+- **Backup** (2026-10-21, `docs/work/2026-10-20-backup-drive`): encrypted `pg_dump` of the whole database to
+  `.hestia/backup` on Google Drive through Hecate's Drive API (scope `drive.file`), daily agenda job + monthly
+  verification in a scratch database; rollback from *Impostazioni → Sistema → Archivio → Backup* (restore into a
+  scratch database, then rename swap, previous database kept for «Annulla ripristino»). After a swap Archive writes a
+  new **data epoch**: every module-store answer carries `epoch`, and a module that mirrors its rows reloads when it
+  changes (rule for any new module mirror). Passphrase `HESTIA_BACKUP_PASSPHRASE` only in `.env`.
 
 ### Hestia-Oracle 🧠
 Conversational reasoning layer with unified agentic tool calling.
@@ -429,7 +437,8 @@ No code-only behavior changes are considered complete without synchronized docs.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
    `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`
    (`capabilities.ui_manifest` in its Hub registration, next to `mcp_endpoint`). Hub exposes ONE catalog organized by
-   client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action). Clients load what they support
+   client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action, settings_panel — a panel shown inside the
+   module's own settings). Clients load what they support
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
