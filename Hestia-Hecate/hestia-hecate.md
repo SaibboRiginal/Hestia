@@ -280,7 +280,9 @@ Open-Meteo (free, no key): forecast (current, daily, hourly, 16 days, `timezone=
 an address resolves through its city; saved lat/lon skip geocoding). `WeatherService` caches per rounded lat/lon and
 answers a stale copy on failure (`[🔄] event=weather_stale`). WMO codes → Italian condition + icon name (sun,
 cloud-sun, cloud, fog, drizzle, rain, snow, storm). Tools `weather_now`, `weather_forecast` (tool domain `weather`,
-owned by Hecate). Modules read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
+owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoint`) gives the piece «Meteo»
+with one line «Domani a Casa: 10–18°, pioggia 15–17» (warning tone when rainy; no Casa → empty piece). Modules
+read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
 
 ### Mail (`providers/mail.py`)
 

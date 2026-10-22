@@ -50,7 +50,8 @@ light outdoor activities (run, bike, walk) planned with the weather
   `week_goal` → goal hint and days left); an unknown topic answers the normal line. Same shape `{module, domain,
   updated_at, text}`, cut to `budget`.
 - `GET /api/module/recap?day=&next=`: piece «Allenamento» of the daily recap (sessions with sets/minutes, records, a
-  planned day skipped or missed, next workout, goal note). Plain facts, capability `recap_endpoint`.
+  planned day skipped or missed, next workout, goal note) plus outdoor lines: activities done, slots not done or
+  still to mark, slots planned tomorrow (`Activities.recap`). Plain facts, capability `recap_endpoint`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
 
 ## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)

@@ -139,7 +139,7 @@ Provider access model (single entry point):
   `weather_now`/`weather_forecast` (tool domain `weather`). Places come from the personal setting
   `themis.personal.places` (Casa, Lavoro, Palestra…). Modules read weather only through Hub
   (`hestia_common.weather_client`): Wardrobe (suggestions, packing), Chronos (calendar chips, `outdoor` needs),
-  Hercules (outdoor activities). Hecate also ensures module-owned secondary calendars
+  Hercules (outdoor activities); the daily recap gets «Domani a Casa» from Hecate's recap piece. Hecate also ensures module-owned secondary calendars
   (`POST /api/gateway/calendar/calendars`, e.g. «Allenamenti»). Dossier `docs/work/2026-10-20-meteo-hecate`.
 - Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
 - Google OAuth uses loopback redirect + PKCE (the old OOB flow is blocked by Google since 2023). Setup and troubleshooting: `Hestia-Hecate/hestia-hecate.md` → *Google setup*. From the phone: ask Telegram "collega Google Calendar", open the link, paste back the final `localhost` URL.
