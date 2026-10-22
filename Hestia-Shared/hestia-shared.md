@@ -270,6 +270,35 @@ Effects include `chat.reply` (`live` | `queued`: Oracle offline, chat clients qu
 State cached 15 s; Chronos down → `[🔄]` log and `FALLBACK_EFFECTS` (everything allowed, every notification
 delivered), so each module still follows only its own agenda windows.
 
+## Export and import (`hestia_common.transfer`)
+
+One contract for «Esporta e importa» (dossier `docs/work/2026-10-20-import-export`): a module lists *sections* of its
+own data; the client (WebUI Impostazioni → Esporta e importa, `tools/hestia_transfer.py`) builds one `.hestia` file and
+imports it elsewhere with a mode — `append` (Aggiungi: new only), `merge` (Unisci, default: new + newer `updated_at`),
+`replace` (Sostituisci: the file wins, target-only records deleted, never for a partial section). Every import can be a
+dry run (the preview).
+
+```python
+from hestia_common.transfer import StoreSection, Section, Transfer
+
+transfer = Transfer("hercules", hub, sections=[
+    StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
+    StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"],   # sets travel with
+                 depends_on=["esercizi", "schede"]),                                          # pulled when named
+    StoreSection("foto", "Foto", store, ["photo"], file_fields=["original", "medium", "thumb"]),  # Archive blobs
+])
+app.include_router(transfer.router())       # /api/transfer/describe|items|export|import|files
+caps.update(transfer.capabilities())        # Hub registration: capabilities.transfer
+```
+
+- `StoreSection` covers the module stores (`hercules-store` & co.); other data subclasses `Section`
+  (`records`, `write`, `title`/`subtitle`, optional `check`, `same`, `refs`, `migrate`) — see Scout (listings),
+  Oracle (memories), Chronos (agenda), Themis (settings, `sections=lambda: …` built per call).
+- Never secrets, tokens, logs or runtime state: a section lists only what the user made. Settings travel only
+  through Themis. Files only with `include_files` (or the section chosen by hand); `POST /api/transfer/files` stores a
+  blob of the module and the import rewrites the ids (`files_map`).
+- Versioning: file `format` and a `schema` per section; newer than this Hestia → refused with «aggiorna Hestia».
+
 ## Coach contract (`hestia_common.coach`)
 
 A domain module becomes a coach of the weekly plan (Chronos) with the Hub tag `coach` and one router:

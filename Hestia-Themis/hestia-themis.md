@@ -81,6 +81,14 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 MCP tools (Hestia-MCP, domains `system`, `settings`): `settings_search`, `settings_get`, `settings_propose`,
 `settings_undo`. There is deliberately **no** approve tool: only the user answers.
 
+## Export and import of settings (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Themis owns the values, so it exports every module's settings (`app/core/transfer.py`): one section per module with
+settings (id = module name; `themis` = personal settings), records `<key>|<scope>|<scope_id>`. Layers system,
+profile and client travel; session copies never. On import each value is validated against this Hestia's schema
+(unknown key or bad value → reported problem, skipped) and written with history actor `import`; «Sostituisci»
+resets the ticked keys that are only here. Hub capability `transfer.settings: true`.
+
 ## Configuration (infrastructure only)
 
 | Env | Default | |

@@ -27,6 +27,7 @@ except ModuleNotFoundError:
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
@@ -530,6 +531,21 @@ ui.webui(
 app.include_router(ui.router())
 app.include_router(settings.router())
 
+# ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
+transfer = Transfer("wardrobe", hub, sections=[
+    StoreSection("capi", "Capi", store, ["piece"], icon="shirt",
+                 subtitle=lambda r: " · ".join(x for x in (r["data"].get("category"), r["data"].get("brand")) if x),
+                 depends_on=["vocabolari", "foto"]),
+    StoreSection("outfit", "Outfit", store, ["outfit"], icon="sparkle", depends_on=["capi", "foto"]),
+    StoreSection("indossati", "Indossati", store, ["wear"], icon="history",
+                 title=lambda r: f"Indossato il {r['data'].get('date')}", depends_on=["capi", "outfit"]),
+    StoreSection("liste", "Liste", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
+    StoreSection("vocabolari", "Vocabolari", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
+    StoreSection("foto", "Foto", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
+                 title=lambda r: r["data"].get("name") or "Foto", subtitle=lambda r: r["data"].get("owner") or ""),
+])
+app.include_router(transfer.router())
+
 
 # ── MCP tools (domain wardrobe; Oracle calls them, the logic stays here) ─────
 def _t(fn):
@@ -794,6 +810,7 @@ def _registration() -> dict:
             "context_endpoint": "/api/module/context", **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
+        caps.update(transfer.capabilities())
     except Exception as exc:
         logger.warning("[🔄] event=wardrobe_ui_manifest_failed error=%s fallback=no_ui", exc)
     return {"name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",

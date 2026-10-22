@@ -98,6 +98,13 @@ programs, next, sessions (start, start-next, log-text, sets, finish, discard), p
 checkin, feedback, adapt (+apply, restore), measurements, stats, records, goals, summary, quick (Home chips),
 import (Strong/Hevy CSV preview + commit, idempotent), export (csv/json), reminder/check, signals/run.
 
+## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Sections (hestia_common.transfer over `hercules-store`): `esercizi` (exercise) · `schede` (template, program) ·
+`sessioni` (session + its sets) · `misure` (measurement) · `obiettivi` (goal, plan) · `feedback` (checkin, feedback).
+Choosing a session pulls its template and exercises. Reminder and adaptation rows are runtime state: never exported.
+Settings travel through Themis.
+
 ## Configuration (infrastructure only)
 
 `SERVICE_NAME`, `SERVICE_BASE_URL`, `HUB_API_URL`, `TZ` (local day for goals/streaks), `HERCULES_UI_DIST`.

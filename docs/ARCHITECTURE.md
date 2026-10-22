@@ -347,7 +347,12 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 9. **Presence is effects, not names:** modules report facts to Chronos (pings, activities, signals) and ask
    effects through `hestia_common.presence_client`; they never test a state name, so new states are data only.
    Chronos down → safe defaults, each module keeps following its own agenda windows.
-10. **Organ Model (No functional overlap):**
+10. **Export and import per module (`hestia_common.transfer`):** a module with user data lists its sections and
+   serves `/api/transfer/*` (Hub capability `transfer`); it exports and imports only its own data, never secrets,
+   tokens, logs or runtime state. Settings travel only through Themis. The client (WebUI «Esporta e importa»,
+   `tools/hestia_transfer.py`) builds the `.hestia` file, always offers a dry-run preview and saves a restore
+   point before writing. The assistant has no import tool. Dossier `docs/work/2026-10-20-import-export`.
+11. **Organ Model (No functional overlap):**
    - Argus = observe and decide incidents.
    - Hephaestus = execute remediation and controlled code changes.
    - Oracle = reason and orchestrate tool/command flow.

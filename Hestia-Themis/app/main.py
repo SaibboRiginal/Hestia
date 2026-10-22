@@ -29,6 +29,8 @@ from hestia_common.settings_client import PERSONAL
 from .core.hub import Hub, HubError
 from .core.registry import Registry
 from .core.service import SELF_OWNER, Themis, ThemisError
+from .core.transfer import settings_sections
+from hestia_common.transfer import FORMAT as TRANSFER_FORMAT, Transfer
 
 logger, log_buffer = setup_service_logging("hestia_themis")
 
@@ -45,6 +47,8 @@ DATA_DIR = Path(os.getenv("THEMIS_DATA_DIR", "/code/data"))
 hub = Hub(HUB_API_URL)
 registry = Registry(DATA_DIR / "schema_cache.json")
 themis = Themis(hub, registry)
+# export / import: every module's settings, one section per module (hestia_common.transfer)
+transfer = Transfer("themis", hub, sections=lambda: settings_sections(themis))
 # Personal settings shared by every module (week start, currency): Themis owns them, modules follow them.
 registry.register(SELF_OWNER, list(PERSONAL.values()))
 
@@ -61,6 +65,7 @@ ui.webui(entry="themis.js", api_prefix="/api/settings/",
                      help="Ogni modifica e proposta di impostazione: chi (tu, Athena, Oracle, un client, un'AI "
                           "esterna), quando, da cosa a cosa. Annulla l'ultima modifica; le proposte aspettano te.")])
 app.include_router(ui.router())
+app.include_router(transfer.router())   # /api/transfer/* (settings of every module)
 
 
 @app.exception_handler(ThemisError)
@@ -337,7 +342,9 @@ _REGISTRATION = {
 
 
 def _register() -> None:
-    payload = {**_REGISTRATION, "capabilities": {**_REGISTRATION["capabilities"], **ui.capabilities(SERVICE_BASE_URL)}}
+    payload = {**_REGISTRATION, "capabilities": {**_REGISTRATION["capabilities"], **ui.capabilities(SERVICE_BASE_URL),
+                                                 "transfer": {"endpoint": "/api/transfer", "format": TRANSFER_FORMAT,
+                                                              "settings": True}}}
     resp = requests.post(f"{HUB_API_URL}/registry/register", json=payload, timeout=4)
     if resp.status_code >= 400:
         logger.warning("event=hub_registration_non_success status=%s body=%s", resp.status_code, resp.text[:200])

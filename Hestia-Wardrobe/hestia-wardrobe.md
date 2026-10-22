@@ -100,6 +100,13 @@ files/{photo_id} (`{mime, data_b64}`), outfits (+photos, worn), wears, suggest (
 collections (+packing, check), describe-photo, export/import (JSON), quick (Home chips), reminder/check,
 reminder/skip, review/run, signals/run.
 
+## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Sections over `wardrobe-store`: `capi` (piece) · `outfit` · `indossati` (wear) · `liste` (collection) · `vocabolari`
+(taxonomy) · `foto` (photo rows + their Archive blobs, only with «Includi foto» or chosen by hand). On import the
+blobs are uploaded first (`POST /api/transfer/files`, owner `wardrobe`) and the photo rows get the new blob ids.
+Reminder rows are never exported. Settings travel through Themis.
+
 ## Configuration (infrastructure only)
 
 `SERVICE_NAME`, `SERVICE_BASE_URL`, `HUB_API_URL`, `TZ` (local day for marks and goal), `WARDROBE_UI_DIST`.

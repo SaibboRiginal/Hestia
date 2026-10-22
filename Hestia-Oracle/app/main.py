@@ -222,6 +222,13 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
                          help="Chiamate, token e costo di oggi, per modello.")])
 app.include_router(ui.router())
 
+# ── export / import (hestia_common.transfer): long-term memory only, never chats ─────────────────────────
+from hestia_common.transfer import Transfer
+from core.services.memory_transfer import MemorySection
+
+transfer = Transfer("oracle", sections=[MemorySection(lambda *a, **kw: engine._memory_service._route_archive(*a, **kw))])
+app.include_router(transfer.router())
+
 
 @app.get("/api/ui/activity")
 def ui_activity(limit: int = 30):
@@ -546,6 +553,7 @@ def _register_on_hub():
             "chat_endpoint": "/api/chat",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             **ui.capabilities(service_base_url),
+            **transfer.capabilities(),
         },
     }
     try:
