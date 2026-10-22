@@ -11,9 +11,8 @@ import sys
 import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
-from . import models, database, schemas
+from . import models, database, schema, schemas
 from .database import engine, SessionLocal
 from .routers import archive, blobs, chat, chat_queue, calendar, documents, entities, hercules_store, llm_usage_store, mcp_access_store, memory, module_store, presence, selfcare_store, settings, wardrobe_store
 
@@ -29,33 +28,6 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_archive")
 
 # ── Database bootstrap ────────────────────────────────────────────────────────
-# ── Schema migrations (additive only — never remove columns) ─────────────────
-_ADDITIVE_COLUMNS = [
-    ("calendar_items", "meta", "JSONB"),
-    ("user_preferences", "memory_class", "VARCHAR"),
-    ("user_preferences", "embedding", "vector(768)"),
-    ("user_preferences", "domains", "JSONB"),
-    ("user_preferences", "extra_data", "JSONB"),
-    ("mcp_accesses", "client_id", "VARCHAR"),
-    ("mcp_accesses", "refresh_hash", "VARCHAR"),
-    ("mcp_accesses", "prev_refresh_hash", "VARCHAR"),
-    ("mcp_accesses", "token_expires_at", "TIMESTAMPTZ"),
-]
-
-
-def _additive_migrations() -> None:
-    """create_all never adds columns to existing tables. Each ALTER runs in its
-    own transaction: a failure is rolled back instead of aborting every later
-    statement ("current transaction is aborted")."""
-    for table, col_name, col_type in _ADDITIVE_COLUMNS:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
-        except Exception as exc:
-            logger.warning("[🔄] event=archive_migration_failed table=%s column=%s error=%s",
-                           table, col_name, str(exc)[:200])
-
-
 def _bootstrap_database() -> None:
     """Wait for Postgres (boot ordering), then ensure pgvector + tables.
     ARCHIVE_DB_WAIT_SECONDS=0 waits forever (Startup Readiness Contract)."""
@@ -66,13 +38,7 @@ def _bootstrap_database() -> None:
     while True:
         attempt += 1
         try:
-            with engine.connect() as conn:
-                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                conn.commit()
-            models.Base.metadata.create_all(bind=engine)
-            # create_all never adds columns to existing tables: tiny idempotent
-            # migrations for columns introduced after first deploy.
-            _additive_migrations()
+            schema.migrate(engine)
             return
         except Exception as exc:
             if limit and _time.monotonic() - started > limit:
@@ -108,6 +74,10 @@ app.include_router(module_store.finance_router)   # Plutus (expenses)
 app.include_router(module_store.iris_router)      # Iris (mail subscriptions)
 app.include_router(module_store.echo_router)      # Echo (kept audio index, voice usage)
 app.include_router(module_store.signals_router)   # reflection signals (modules → Athena)
+
+# Backup to Google Drive, verification, rollback (docs/work/2026-10-20-backup-drive) + maintenance gate.
+from .backup import wiring as backup_wiring  # noqa: E402
+backup_service = backup_wiring.setup(app, engine, database.SQLALCHEMY_DATABASE_URL)
 
 # ── MCP tools ──────────────────────────────────────────────────────────────────
 try:
@@ -411,6 +381,7 @@ _HUB_REGISTRATION_PAYLOAD = {
 def register_on_hub_startup():
     """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
     _register_on_hub()
+    backup_wiring.start()
     try:
         from hestia_common.startup_utils import start_hub_keepalive
         start_hub_keepalive(_register_on_hub, logger=logger)
@@ -422,9 +393,12 @@ def _register_on_hub():
     """Register this service with the Hub (best-effort)."""
     hub_url = os.getenv(
         "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    payload = {**_HUB_REGISTRATION_PAYLOAD, "capabilities": {
+        **_HUB_REGISTRATION_PAYLOAD["capabilities"],
+        **backup_wiring.capabilities(_HUB_REGISTRATION_PAYLOAD["base_url"])}}   # Backup panel (plugin)
     try:
         resp = requests.post(f"{hub_url}/registry/register",
-                             json=_HUB_REGISTRATION_PAYLOAD, timeout=4)
+                             json=payload, timeout=4)
         if resp.status_code < 400:
             log_event(
                 logger,

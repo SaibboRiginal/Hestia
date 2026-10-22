@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
-from .. import models, database
+from .. import database, maintenance, models
 
 _MAX_LIMIT = 20000
 
@@ -76,7 +76,7 @@ def build_router(prefix: str, model, tag: str) -> APIRouter:
 
     @router.get("/cursor")
     def read_cursor(db: Session = Depends(database.get_db)):
-        return {"cursor": cursor(db)}
+        return {"cursor": cursor(db), "epoch": maintenance.epoch()}
 
     @router.get("/records")
     def list_records(kind: Optional[str] = None, parent_id: Optional[str] = None, ref_id: Optional[str] = None,
@@ -100,7 +100,7 @@ def build_router(prefix: str, model, tag: str) -> APIRouter:
             q = q.filter(model.deleted.is_(False))
         col = {"at": model.at.asc().nulls_first(), "-at": model.at.desc().nulls_last()}.get(order, model.seq.asc())
         rows = q.order_by(col).limit(max(1, min(int(limit), _MAX_LIMIT))).all()
-        return {"rows": [view(r) for r in rows], "cursor": cursor(db)}
+        return {"rows": [view(r) for r in rows], "cursor": cursor(db), "epoch": maintenance.epoch()}
 
     return router
 

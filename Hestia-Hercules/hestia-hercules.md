@@ -31,6 +31,7 @@ light outdoor activities (run, bike, walk) planned with the weather
   Writes are last-write-wins by `updated_at`; older writes come back in `stale`.
 - Hercules keeps an in-memory mirror pulled by cursor. Archive away → reads keep working on the mirror
   (`[🔄] event=hercules_mirror_refresh_failed`), writes answer 503.
+- Archive data epoch: store answers carry `epoch`; when it changes (a backup rollback swapped the database) the mirror is dropped and reloaded from zero (`[🔄] event=hercules_mirror_reset reason=data_epoch`), so no stale row is written back.
 - Clients: `GET /api/hercules/bootstrap` once, then the outbox goes to `POST /api/hercules/sync`
   `{device_id, cursor, ops:[{op_id, kind, id, action: upsert|delete, fields, updated_at}]}` →
   `{applied, rejected, stale, changes, cursor, suggestions}`. Ops are idempotent (replay safe); ids are client UUIDs.
@@ -48,6 +49,8 @@ light outdoor activities (run, bike, walk) planned with the weather
   `pr:<exercise>` → records of the last 14 days, `missed_streak` → which days, `deload` → the low check-ins,
   `week_goal` → goal hint and days left); an unknown topic answers the normal line. Same shape `{module, domain,
   updated_at, text}`, cut to `budget`.
+- `GET /api/module/recap?day=&next=`: piece «Allenamento» of the daily recap (sessions with sets/minutes, records, a
+  planned day skipped or missed, next workout, goal note). Plain facts, capability `recap_endpoint`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
 
 ## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)

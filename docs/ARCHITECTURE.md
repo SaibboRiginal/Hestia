@@ -90,6 +90,12 @@ Single database gateway.
 - Exposes generic search/filter/query APIs.
 - Stores **subscriptions** and **dispatch logs** for proactive notifications.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered archive hygiene tasks.
+- **Backup** (2026-10-21, `docs/work/2026-10-20-backup-drive`): encrypted `pg_dump` of the whole database to
+  `.hestia/backup` on Google Drive through Hecate's Drive API (scope `drive.file`), daily agenda job + monthly
+  verification in a scratch database; rollback from *Impostazioni → Sistema → Archivio → Backup* (restore into a
+  scratch database, then rename swap, previous database kept for «Annulla ripristino»). After a swap Archive writes a
+  new **data epoch**: every module-store answer carries `epoch`, and a module that mirrors its rows reloads when it
+  changes (rule for any new module mirror). Passphrase `HESTIA_BACKUP_PASSPHRASE` only in `.env`.
 
 ### Hestia-Oracle 🧠
 Conversational reasoning layer with unified agentic tool calling.
@@ -191,6 +197,12 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   and Argus rechecks of a service that stays down (tasks). Shared client: `hestia_common.agenda_client`.
   A module retires default rules it no longer declares with `POST /api/agenda/retire {owner, keys}`
   (`AgendaClient.retire`): only rules the module itself created are cancelled, user items stay.
+  **Flexible rules:** a recurring job/task may carry `params.flex {earliest, latest}` (`job_rule(..., flex=)`): when
+  its time falls on one of the user's events (± `chronos.flex.gap_minutes`) it fires after the event, else before it,
+  else at the end of the range; the run records `flex {from, at, reason}`. **Standard activities:** every rule a
+  module declares is listed by `GET /api/agenda/standard` with its state (eliminata, fallita, in pausa, modificata,
+  attiva); `POST /api/agenda/standard/{key}/restore` puts the module's default back in one click (WebUI page
+  «Attività standard», tools `agenda_standard`, `agenda_standard_ripristina`).
 - **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
   profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
   `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
@@ -250,6 +262,7 @@ Proactive cognition and advisory strategy engine.
 - Archives every thinking cycle for audit and client display (`GET /api/athena/thinking`).
 - Resource-conscious: single Oracle call per cycle, compact prompts, source-level failure isolation.
 - Tracks commitments (action items) with TTL, resolution, and pruning.
+- **Daily recap**: composes «com'è andata e cosa c'è domani» from every module's recap piece (Capability Discovery §9); page «Recap», tool `recap_today`, history in Archive domain `recap`.
 
 ### Hestia-Metis 🦉
 Continuous improvement organ — dataset curation, benchmark evaluation, LoRA training orchestration.
@@ -447,7 +460,8 @@ No code-only behavior changes are considered complete without synchronized docs.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
    `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`
    (`capabilities.ui_manifest` in its Hub registration, next to `mcp_endpoint`). Hub exposes ONE catalog organized by
-   client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action). Clients load what they support
+   client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action, settings_panel — a panel shown inside the
+   module's own settings). Clients load what they support
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
@@ -476,6 +490,12 @@ No code-only behavior changes are considered complete without synchronized docs.
    only mailbox watcher, Iris the only dispatcher; each mail is stored in Archive (subscriber's domain) **before** the
    module is rung, so a module that is down loses nothing (it processes `/api/archive/<domain>/unevaluated` at startup).
    No module polls Gmail or schedules its own mail job.
+9. **Module recap**: a module with something to say about the user's day exposes
+   `GET /api/module/recap?day=YYYY-MM-DD&next=YYYY-MM-DD` → `{module, title, icon, emoji, order, done[], missed[],
+   next[], note}` or `{module, empty: true}` (plain facts, never an LLM call) with capability `recap_endpoint`
+   (`hestia_common.recap.recap_router`). Athena collects every piece through Hub, Oracle writes one text
+   (`athena.recap`, deterministic list as fallback), Hermes delivers it; a quiet day sends nothing. The time is the
+   agenda job `athena.recap.evening` (flexible 20:00–23:30). `docs/work/2026-10-20-recap-giornaliero/SPEC.md` §3.2.
 
 ## Governance Automation (Mandatory)
 

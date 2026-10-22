@@ -60,6 +60,8 @@ except ModuleNotFoundError:
     )
 
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common import recap as recap_contract
+from services import day_view
 
 logger, log_buffer = setup_service_logging("hestia_chronos")
 
@@ -76,7 +78,12 @@ ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
                           "attorno agli impegni del calendario. Trascina per spostare; i tuoi spostamenti vincono."),
                 page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=151, parent="agenda",
                      help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
-                          "è durata, e le regole registrate da ogni modulo.")],
+                          "è durata, e le regole registrate da ogni modulo."),
+                page("standard", "Attività standard", element="chronos-standard", icon="undo", order=152,
+                     parent="agenda",
+                     help="Le attività che i moduli mettono in agenda da soli (es. il recap della sera), con lo "
+                          "stato: se ne hai eliminata, messa in pausa o cambiata una, «Ripristina» la rimette come "
+                          "prevista. Sotto, i modelli da aggiungere.")],
          widgets=[widget("oggi-nel-piano", "Oggi nel piano", element="chronos-today-widget", sizes=["s", "m"],
                          auto=True, open_page="settimana", icon="calendar",
                          help="Cosa c'è oggi nel piano della settimana, con l'orario."),
@@ -356,6 +363,31 @@ try:
             telegram_visible=False, telegram_group="pianificazione",
         ),
         MCPTool(
+            name="agenda_standard",
+            description=("Attività standard di Hestia (quelle predefinite dei moduli, es. il recap della sera) con lo "
+                         "stato: attiva, modificata, in pausa, eliminata, fallita; più i modelli per aggiungerne. "
+                         "Usalo quando l'utente vuole rimettere qualcosa che aveva tolto dal calendario."),
+            parameters={"type": "object", "properties": {
+                "owner": {"type": "string", "description": "solo le attività di questa area (vuoto = tutte)"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_standard", "params": kw},
+            title="\U0001f4cb Attività standard", method="GET", path="/api/agenda/standard",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="agenda_standard_ripristina",
+            description=("Rimette un'attività standard come la prevede il suo modulo (riattiva un'attività eliminata "
+                         "o in pausa, annulla le modifiche). 'key' dalla lista di agenda_standard."),
+            parameters={"type": "object", "properties": {
+                "key": {"type": "string", "description": "chiave dell'attività standard"}},
+                "required": ["key"]},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_standard_ripristina", "params": kw},
+            title="\u21a9\ufe0f Ripristina attività standard", method="POST",
+            path="/api/agenda/standard/{key}/restore",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
             name="agenda_assistente_sposta_occorrenza",
             description=("Sposta SOLO un'occorrenza di una voce ricorrente (eccezione, come 'solo questo evento'); "
                          "reset=true la riporta all'orario originale"),
@@ -613,7 +645,7 @@ def on_startup() -> None:
         logger=logger,
     )
 
-    register_on_hub(hub_api_url, service_base_url, extra_capabilities={**ui.capabilities(service_base_url), **transfer.capabilities()})
+    register_on_hub(hub_api_url, service_base_url, extra_capabilities={**ui.capabilities(service_base_url), **recap_contract.capabilities(), **transfer.capabilities()})
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
     def _hub_keepalive():
@@ -625,7 +657,7 @@ def on_startup() -> None:
                     service_base_url,
                     max_attempts=1,
                     quiet_success=True,
-                    extra_capabilities={**ui.capabilities(service_base_url), **transfer.capabilities()},
+                    extra_capabilities={**ui.capabilities(service_base_url), **recap_contract.capabilities(), **transfer.capabilities()},
                 )
             except Exception as error:
                 logger.warning(
@@ -701,6 +733,11 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
     }
 
 app.include_router(create_log_control_router("hestia_chronos"))
+
+# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): the user's events, assistant tasks, failed jobs.
+app.include_router(recap_contract.recap_router(
+    "chronos", lambda day, nxt: recap_contract.piece("chronos", "Agenda", icon="calendar", emoji="📅", order=10,
+                                                     **day_view.recap(day, nxt))))
 app.include_router(presence_settings.settings.router())
 
 # ─────────────────────────────────────────────────────────────────────
@@ -990,6 +1027,18 @@ def agenda_retire(req: AgendaRetire) -> dict:
     """A module cancels default rules it no longer declares (only rules it created; user items stay)."""
     keys = _agenda_guard(assistant_agenda.retire_rules, req.owner, req.keys)
     return {"status": "ok", "retired": keys}
+
+
+@app.get("/api/agenda/standard")
+def agenda_standard(owner: str | None = None) -> dict:
+    """Standard activities of every module (deleted, paused, changed or active) + templates (recap dossier §3.9)."""
+    return _agenda_guard(assistant_agenda.standard, owner)
+
+
+@app.post("/api/agenda/standard/{key}/restore")
+def agenda_standard_restore(key: str, by: str = "user") -> dict:
+    """Bring a standard activity back exactly as its module declares it."""
+    return {"status": "ok", "item": _agenda_guard(assistant_agenda.restore, key, by)}
 
 
 @app.patch("/api/agenda/items/{ref}")

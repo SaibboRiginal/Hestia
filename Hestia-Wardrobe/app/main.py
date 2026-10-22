@@ -24,6 +24,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
+from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -321,6 +322,14 @@ def stats():
 def summary():
     _refresh()
     return wardrobe.summary()
+
+
+def _recap_piece(day, nxt) -> dict:
+    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    return recap.piece("wardrobe", "Guardaroba", icon="shirt", emoji="👕", order=50, **wardrobe.recap(day, nxt))
+
+
+app.include_router(recap.recap_router("wardrobe", _recap_piece, today=lambda: wardrobe.today()))
 
 
 @app.get("/api/module/context")
@@ -820,7 +829,7 @@ LLM_USECASES = [llm_usecase("wardrobe.foto", "Guardaroba · foto dei capi", chai
 
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["wardrobe"],
-            "context_endpoint": "/api/module/context", **llm_capabilities(LLM_USECASES)}
+            "context_endpoint": "/api/module/context", **recap.capabilities(), **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
         caps.update(transfer.capabilities())

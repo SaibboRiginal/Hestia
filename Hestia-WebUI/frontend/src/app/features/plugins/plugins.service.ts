@@ -66,6 +66,7 @@ export class PluginsService {
   readonly allPages = computed(() => this.webui().page ?? []);
   readonly allWidgets = computed(() => this.webui().widget ?? []);
   readonly allQuick = computed(() => this.webui().quick_action ?? []);
+  readonly settingsPanels = computed(() => this.webui().settings_panel ?? []);
   readonly bundles = computed(() => new Map((this.webui().bundle ?? []).map(b => [b.module, b] as [string, PluginBundle])));
 
   /** Sidebar pages: visible, top-level or children, in the user's order then the manifest order. */
@@ -364,7 +365,7 @@ export class PluginsService {
     return `/p/${encodeURIComponent(module)}/${page.replace(/^\//, '')}${qs}`;
   }
 
-  context(module: string, surface: 'page' | 'widget', id: string, extra: { params?: Record<string, unknown>; query?: Record<string, string>; size?: WidgetSize; title?: string } = {}) {
+  context(module: string, surface: 'page' | 'widget' | 'settings_panel', id: string, extra: { params?: Record<string, unknown>; query?: Record<string, string>; size?: WidgetSize; title?: string } = {}) {
     return {
       module, surface, id,
       params: Object.fromEntries(Object.entries(extra.params ?? {}).map(([k, v]) => [k, v == null ? '' : String(v)])),

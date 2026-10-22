@@ -419,6 +419,51 @@ def test_api_chat_attachment_handoff(api):
     assert caps["attachment_handlers"][0]["path"] == "/api/finance/attachments"
 
 
+# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+def test_recap_spent_today_by_category_and_budget(pl):
+    pl.add_tx({"amount": "12,50", "merchant": "Esselunga", "category": "spesa"})
+    pl.add_tx({"amount": 30, "merchant": "Esselunga", "category": "spesa"})
+    pl.set_budget("total", "500")
+    today = pl.today()
+    facts = pl.recap(today, today + timedelta(days=1))
+    assert facts["done"][0]["text"].startswith("Spesi 42,50 ")
+    assert "Spesa" in facts["done"][0]["text"] and "su 500" in facts["note"]
+
+
+def test_recap_quiet_day(pl):
+    today = pl.today()
+    assert pl.recap(today, today + timedelta(days=1)) == {"done": [], "next": [], "note": ""}
+
+
+@pytest.mark.api
+def test_api_recap_piece(api):
+    c, *_ = api
+    c.post("/api/finance/quick/expense/ristoranti", json={"amount": "3,20"})
+    body = c.get("/api/module/recap").json()
+    assert body["module"] == "plutus" and body["title"] == "Spese" and "3,20" in body["done"][0]["text"]
+
+
+def test_mirror_reloads_when_archive_epoch_changes():
+    """Backup rollback replaces Archive's database (seq goes back): the mirror must drop what it had."""
+    class Epochs:
+        def __init__(self):
+            self.epoch, self.rows = "e1", [{"kind": "tx", "id": "a", "data": {}, "updated_at": "2026-10-01T00:00:00+00:00",
+                                            "deleted": False, "seq": 5}]
+
+        def ok(self, service, method, path, *, body=None, query=None, timeout=8):
+            since = int((query or {}).get("since_seq") or 0)
+            return {"rows": [r for r in self.rows if r["seq"] > since], "cursor": 5, "epoch": self.epoch}
+
+    fake = Epochs()
+    store = Store(fake, min_refresh_seconds=0)
+    assert store.refresh(force=True) and store.get("tx", "a")
+    fake.epoch = "e2"                                      # rolled back to a day without "a", seq restarted
+    fake.rows = [{"kind": "tx", "id": "b", "data": {}, "updated_at": "2026-09-01T00:00:00+00:00", "deleted": False,
+                  "seq": 2}]
+    assert store.refresh(force=True)
+    assert store.get("tx", "a") is None and store.get("tx", "b") and store.cursor == 2
+
+
 # ── reflection signals (hestia_common.signals_client) ────────────────────────
 def _at(pl, day):
     pl.today = lambda: day                       # fixed «today» (month pace and ISO weeks are date-driven)

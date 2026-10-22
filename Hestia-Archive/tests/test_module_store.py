@@ -81,7 +81,7 @@ def test_lww_cursor_and_tombstone(client):
     assert [x["id"] for x in live] == ["a"]
     since = client.get(f"{base}/records", params={"since_seq": 2}).json()["rows"]
     assert since[0]["id"] == "b" and since[0]["deleted"]
-    assert client.get(f"{base}/cursor").json() == {"cursor": 3}
+    assert client.get(f"{base}/cursor").json()["cursor"] == 3
 
 
 @pytest.mark.api

@@ -183,6 +183,8 @@ flowchart LR
    `/api/route/hub/{api/ui/*, ui/*}` locally.
 3. The WebUI loads each bundle through Hub and proxies the plugin's calls only under its `api_prefix`; core modules
    go under *Sistema* and their `auto` widgets build the *Sistema* dashboard.
+4. `settings_panel` contributions are shown inside the module's own settings (*Impostazioni → Sistema → <module>*),
+   e.g. Archive's «Backup».
 
 ### Assistant agenda flow (rules as data)
 1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.
@@ -229,6 +231,17 @@ SPEC `docs/work/2026-10-19-oracle-offline`.
 3. Accepted observations are stored (signals-store, `ref_id=athena`) and served as Athena's recap piece
    (`GET /api/module/recap`, «Da tenere d'occhio»); no Hermes notice. Setting ideas → Themis proposal.
 SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
+
+### Backup flow (Archive → Google Drive)
+1. Chronos agenda job `archive.backup` (daily) → Archive `POST /api/backup/run`: `pg_dump` from one snapshot +
+   manifest → `hestia_common.crypto` (passphrase `HESTIA_BACKUP_PASSPHRASE`) → Hub → Hecate
+   `/api/gateway/drive/upload/*` into `.hestia/backup` (scope `drive.file`) → retention (Themis
+   `archive.backup.keep_*`). Drive away → encrypted copy waits in the Archive volume, notice via Hermes.
+2. Job `archive.backup_verify` (monthly) → download, decrypt, restore into `hestia_restore_check`, compare counts.
+3. Rollback (WebUI Backup panel or `tools/hestia_backup.py`) → restore into `hestia_memory_restore` → migrate →
+   compare → gate (503) → rename swap, old database kept as `hestia_memory_prev` for undo → new data epoch: module
+   stores answer `epoch`, module mirrors (Hercules, Hygieia, Wardrobe, Plutus) reload. SPEC
+   `docs/work/2026-10-20-backup-drive`.
 
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).

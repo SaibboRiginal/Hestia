@@ -42,6 +42,7 @@ recognised → Oracle extraction. PDFs are kept as Archive blobs (owner `plutus`
 
 Archive `/api/finance-store/records`: table `finance_records (kind, id)` with `data` JSONB, `parent_id`, `ref_id`,
 `at`, `updated_at`, `deleted` tombstone, `seq` cursor — same protocol as the other module stores.
+Archive data epoch: store answers carry `epoch`; when it changes (a backup rollback swapped the database) the mirror is dropped and reloaded from zero (`[🔄] event=plutus_mirror_reset reason=data_epoch`), so no stale row is written back.
 Kinds: tx, category, rule, budget, account, import, recurring, mail (processed mail refs, idempotency), alert (sent
 budget alerts, one per category per level per month), reminder.
 
@@ -54,6 +55,8 @@ assistant: `GET /api/module/context` (month spent/budget, pace, high budgets, to
 `&topic=<signal key>` → the detail behind a reflection signal (`budget_pace:<cat>|month`: spent vs budget, pace,
 biggest movements; `unusual_week`: week vs 8-week median, top categories and merchants; `new_subscription:<id>`;
 `to_review`); unknown topic → the normal line.
+Daily recap piece «Spese»: `GET /api/module/recap?day=&next=` (spent by category, income, to review, confirmed
+recurring payments due next; budget as note). Capability `recap_endpoint`.
 
 ## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
 

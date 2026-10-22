@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
+    from hestia_common import recap
 except ModuleNotFoundError:
     _workspace_root = Path(__file__).resolve().parents[2]
     _shared_pkg = _workspace_root / "Hestia-Shared"
@@ -24,6 +25,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
     from hestia_common.startup_utils import hub_health_url, wait_for_http_ready
+    from hestia_common import recap
 
 
 @dataclass(frozen=True)
@@ -88,6 +90,7 @@ def _register_to_hub(config: RuntimeConfig, logger) -> None:
         "tags": config.service_tags,
         "topology_tags": config.service_topology_tags,
         "capabilities": {
+            **recap.capabilities(),
             "commands": [
                 {
                     "command": "dummy_test_reconcile",
@@ -166,6 +169,20 @@ app = FastAPI(title="Hestia-Dummy",
               version=runtime.service_version, lifespan=lifespan)
 
 app.include_router(create_log_control_router("hestia_dummy"))
+
+
+def _recap_piece(day, nxt) -> dict:
+    """Reference recap piece (docs/work/2026-10-20-recap-giornaliero): the reconciles run on ``day``."""
+    with _state_lock:
+        last, count = _state.get("last_reconcile_at"), _state.get("mutation_count", 0)
+    if not last or datetime.fromisoformat(str(last)).astimezone().date() != day:
+        return recap.empty("dummy")
+    return recap.piece("dummy", "Prova", icon="flask", emoji="🧪", order=990,
+                       done=[recap.item(f"Riconciliazione alle {recap.hhmm(last)} ({count} modifiche in totale)",
+                                        tone="success")])
+
+
+app.include_router(recap.recap_router("dummy", _recap_piece))
 
 @app.get("/health")
 def health() -> dict[str, str]:

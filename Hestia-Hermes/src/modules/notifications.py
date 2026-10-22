@@ -622,6 +622,33 @@ class NotificationCenter:
         return {"unread": sum(1 for v in views if not v["read"]),
                 "pending": sum(1 for v in views if v["pending"])}
 
+    def recap(self, day: str) -> dict[str, Any]:
+        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): how many notifications ``day``
+        brought (the important ones named) and which are still waiting for an answer. The recap itself is left out."""
+        rows = self.archive.get_outbound_events({"channel": CHANNEL, "order_by": "created", "limit": 200,
+                                                 "lifecycle_states": ",".join(LISTED_STATES)})
+        rows = [r for r in rows if r.get("dedupe_key") != "athena.recap"]
+        views = [view(r) for r in rows]
+
+        def local_day(v: dict) -> str:
+            ts = _parse_ts(v.get("created_at"))
+            return ts.astimezone().date().isoformat() if ts else ""
+
+        todays = [v for v in views if local_day(v) == day]
+        done, missed = [], []
+        if todays:
+            important = [v["title"] for v in todays if v["level"] in ("warning", "error") and v["title"]]
+            text = f"{len(todays)} notific{'a' if len(todays) == 1 else 'he'}"
+            if important:
+                text += " · importanti: " + ", ".join(dict.fromkeys(important[:3]))
+            done.append({"text": text})
+        waiting = [v["title"] or v["message"][:60] for v in views if v["pending"]]
+        if waiting:
+            missed.append({"text": "In attesa di una tua risposta: " + ", ".join(dict.fromkeys(waiting[:4]))
+                                   + (f" e altre {len(waiting) - 4}" if len(waiting) > 4 else ""),
+                           "tone": "warning"})
+        return {"done": done, "missed": missed}
+
     # ── Resilience: per-client retry; retract stale messages ────────────────
 
     def retry_failed(self) -> dict[str, int]:

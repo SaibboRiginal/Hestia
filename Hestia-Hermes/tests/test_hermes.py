@@ -449,3 +449,27 @@ class TestRepeatChain:
 def normalize_done():
     from modules.notifications import normalize_actions
     return normalize_actions([{"id": "done", "label": "Fatto", "service": "hygieia", "path": "/l", "resolves": True}])
+
+
+@pytest.mark.unit
+def test_recap_counts_today_and_lists_pending(center):
+    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero): today's count, important titles, answers awaited;
+    the recap notification itself is not counted."""
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    def row(title, level="info", actions=None, state="delivered", key="", created=now):
+        return {"outbound_event_id": title, "created_at": created, "lifecycle_state": state, "dedupe_key": key,
+                "payload": {"notification": {"title": title, "level": level, "actions": actions or []}}}
+
+    center.archive.get_outbound_events.return_value = [
+        row("Backup fallito", level="error"),
+        row("Conferma impostazione", actions=[{"id": "ok", "label": "Ok"}]),
+        row("Recap della sera", key="athena.recap"),
+        row("Vecchia", created="2020-01-01T10:00:00+00:00", state="seen"),
+    ]
+    today = datetime.now().astimezone().date().isoformat()
+    facts = center.recap(today)
+    assert facts["done"] == [{"text": "2 notifiche · importanti: Backup fallito"}]
+    assert facts["missed"][0]["text"] == "In attesa di una tua risposta: Conferma impostazione"

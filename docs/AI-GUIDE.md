@@ -183,6 +183,10 @@ and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossi
   the 15-min history check is the push source (Gmail can push only through Pub/Sub).
 - Chat files for a module: declare `attachment_handlers` in Hub capabilities (Plutus: bank statement PDF); Oracle
   stores the file as an Archive blob (`owner_module=chat`) and hands the blob id to the module, else normal analysis.
+- Backup/rollback (Archive, `docs/work/2026-10-20-backup-drive`): a rollback renames databases, so a module that
+  keeps an in-memory mirror of its Archive rows must read `epoch` from store answers and reload when it changes
+  (Hercules, Hygieia, Wardrobe, Plutus do). Archive answers 503 for the few seconds of the swap. Archive's
+  `requirements.txt` must end with a newline (a missing one glued `cryptography` onto `requests`).
 - Open-Meteo is unreachable from the Claude cloud (403 at the proxy): weather tests use fake HTTP; a real check
   needs Marko's stack. Hermes has no «resolve» endpoint: to close a live question answered elsewhere, ingest an
   event with `payload.closes = <key>` (Wardrobe/Hercules pattern).

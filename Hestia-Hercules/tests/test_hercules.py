@@ -204,6 +204,39 @@ def test_reminder_once_a_day():
     assert h.reminder_decision()["why"] == "sent_today"
 
 
+# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+def test_recap_lists_today_session_and_tomorrow_plan(hc):
+    t = _template(hc)
+    s = hc.start_session(t["id"])
+    hc.log_set(s["id"], {"session_exercise_id": s["blocks"][0]["id"], "weight_kg": 80, "reps": 8})
+    hc.finish_session(s["id"])
+    today = hc.today()
+    tomorrow = today + timedelta(days=1)
+    hc.save("program", {"name": "Settimana", "mode": "weekly", "active": True,
+                        "days": [{"weekday": tomorrow.weekday(), "template_id": t["id"]}]})
+    facts = hc.recap(today, tomorrow)
+    assert facts["done"] and facts["done"][0]["text"].startswith("Push A: ")
+    assert facts["next"] and facts["next"][0]["text"].startswith("Push A")
+    assert facts["missed"] == []
+
+
+def test_recap_planned_day_without_session_is_missed(hc):
+    t = _template(hc)
+    today = hc.today()
+    hc.save("program", {"name": "Settimana", "mode": "weekly", "active": True,
+                        "days": [{"weekday": today.weekday(), "template_id": t["id"]}]})
+    facts = hc.recap(today, today + timedelta(days=1))
+    assert facts["done"] == [] and "non fatto" in facts["missed"][0]["text"]
+    hc.skip_day(today.isoformat())
+    assert hc.recap(today, today + timedelta(days=1))["missed"][0]["text"] == "Allenamento saltato"
+
+
+def test_recap_quiet_day_is_empty(hc):
+    today = hc.today()
+    facts = hc.recap(today, today + timedelta(days=1))
+    assert facts == {"done": [], "missed": [], "next": [], "note": ""}
+
+
 # ── weekly plan coach (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.1) ──────
 def test_coach_needs_follow_the_goal_and_report_done(hc):
     from hestia_common.coach import validate_need

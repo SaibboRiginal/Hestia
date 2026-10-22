@@ -38,6 +38,7 @@
   `{original, medium, thumb}`; removing the photo deletes the blobs no other photo uses.
 - In-memory mirror refreshed by cursor: reads and stats are instant; Archive away → reads keep working
   (`[🔄] event=wardrobe_mirror_refresh_failed`), writes answer 503.
+- Archive data epoch: store answers carry `epoch`; when it changes (a backup rollback swapped the database) the mirror is dropped and reloaded from zero (`[🔄] event=wardrobe_mirror_reset reason=data_epoch`), so no stale row is written back.
 
 ## Assistant
 
@@ -53,6 +54,8 @@
   forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`. `&topic=<signal key>`
   (`forgotten`, `laundry_backlog`, `to_repair`) → the detail behind that signal (names, days); unknown topic → the
   normal line.
+- `GET /api/module/recap?day=&next=`: piece «Guardaroba» of the daily recap (what was worn; laundry as note).
+  Capability `recap_endpoint`.
 
 ## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
 

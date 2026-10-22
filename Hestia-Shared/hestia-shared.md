@@ -67,6 +67,23 @@ Rules are idempotent by `key`; edits made by the user (`user_modified`) are neve
 cancelled rule is a user decision: `is_open` → closed, `should_self_run` → False. Every call fails soft.
 `retire(keys)` cancels only rules the module itself created (user items stay; marked `params.retired_by_module`).
 
+## Daily recap piece (`hestia_common.recap`)
+
+A module with something to say about the user's day serves one piece (contract: `docs/work/2026-10-20-recap-giornaliero/SPEC.md` §3.2):
+
+```python
+from hestia_common import recap
+app.include_router(recap.recap_router("hercules", lambda day, nxt: recap.piece(
+    "hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30,
+    done=[recap.item("Push day: 5 esercizi, 18 serie")], next=[...], note="")))
+capabilities = {**recap.capabilities(), ...}       # recap_endpoint → /api/module/recap
+```
+
+`GET /api/module/recap?day=&next=` → the piece, or `{module, empty: true}` when there are no lines (also when the
+builder raises: logged, never a 500; bad date → 400). Pass `today=lambda: svc.today()` so the default day is the module's
+local day, not the container's. Plain facts only, never an LLM call; Athena writes the text.
+`job_rule(..., flex={"earliest": "20:00", "latest": "23:30"})` makes a recurring job fire around the user's events.
+
 ## Mail subscriptions client (`hestia_common.mail_client`)
 
 Modules get mail by **push** from Iris, never by polling (one watcher in Hecate → Iris dispatch):
@@ -234,7 +251,7 @@ A module with a UI ships it inside the module and advertises it to the clients (
 `docs/work/2026-10-17-client-plugins/SPEC.md` §4):
 
 ```python
-from hestia_common.plugin_client import PluginClient, page, widget, quick_action
+from hestia_common.plugin_client import PluginClient, page, widget, quick_action, settings_panel
 
 ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/ui/dist")
 ui.webui(entry="scout.js", api_prefix="/api/ui/",
@@ -255,6 +272,19 @@ types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). 
 script) — see its `README.md`.
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
 2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
+
+`settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history")]` (2026-10-21)
+adds a panel that clients show **inside the module's own settings** (WebUI *Impostazioni → Sistema → <module>*),
+below its Themis settings; the element calls only the module's `api_prefix` like any plugin element.
+
+## Encryption (`hestia_common.crypto`)
+
+One format for every encrypted file Hestia writes (backup, later export files): passphrase → scrypt (N=2^16) →
+AES-256-GCM in 1 MB chunks, header `HESTIA-ENC1` + salt + KDF params + nonce prefix; chunk counter in the nonce and
+last-chunk flag in the authenticated data, so truncation, reordering and tampering fail with `DecryptError`.
+`encrypt_stream(src, dst, passphrase)` / `decrypt_stream(...)` (file objects, constant memory),
+`encrypt_bytes` / `decrypt_bytes`, `is_encrypted(head)`. Needs `cryptography`. A lost passphrase means the file
+cannot be opened: nobody stores it except the user (`.env` + password manager).
 
 ## Tools: MCP client (`hestia_common.mcp_client`) + call rules (`hestia_common.tool_call`)
 

@@ -2,7 +2,7 @@ import os
 import threading
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 
 from .core.runtime import AthenaRuntime
 from .core.schemas import CommitmentResolveRequest, TriggerRequest
@@ -27,6 +27,8 @@ LLM_USECASES = [
                 help="Ragionamenti di Athena (proposte, consolidamento della memoria)."),
     llm_usecase("athena.revisione", "Athena · revisione risposte", chain="veloce",
                 help="Valuta la qualità delle risposte dell'assistente."),
+    llm_usecase("athena.recap", "Athena · recap della giornata", chain="veloce",
+                help="Scrive il recap serale o del mattino dai fatti delle aree (allenamento, spese, agenda…)."),
     llm_usecase("athena.riflessione", "Athena · riflessione sulla tua vita", chain="potente",
                 help="Legge i segnali delle aree e i collegamenti tra le settimane e scrive le osservazioni "
                      "del recap della sera."),
@@ -72,6 +74,7 @@ class AthenaService(HestiaServiceBase):
             "thinking_summary_endpoint": "/api/athena/thinking/summary",
             "think_now_endpoint": "/api/athena/think",
             "observation_endpoint": "/api/athena/observation",
+            "recap_compose_endpoint": "/api/athena/recap",
             "signals_endpoint": "/api/athena/signals",
             # Athena's own piece of the daily recap («Da tenere d'occhio»), discovered like any module's.
             "recap_endpoint": "/api/module/recap",
@@ -168,10 +171,15 @@ ui.webui(
                             "ciclo subito."),
            plugin_page("segnali", "Segnali", element="athena-signals", icon="pulse", order=131,
                        help="I segnali brevi che ogni area pubblica sui suoi dati e i numeri settimanali che la "
-                            "riflessione confronta. Le osservazioni che ne nascono arrivano nel recap della sera.")],
+                            "riflessione confronta. Le osservazioni che ne nascono arrivano nel recap della sera."),
+           plugin_page("recap", "Recap", element="athena-recaps", icon="note", order=132,
+                       help="I recap della giornata: il testo che ti è arrivato e, sotto, i fatti di ogni area da "
+                            "cui è stato scritto. L'orario si sposta nel calendario.")],
     widgets=[plugin_widget("ultimo", "Ultimo pensiero", element="athena-last-widget", sizes=["m", "l"], auto=True,
                            open_page="pensieri", icon="zap", help="L'ultimo ciclo di Athena e cosa ne è uscito.")],
     quick_actions=[plugin_quick_action("pensa", "Fai pensare Athena", "POST", f"{API}/think", icon="zap",
+                                       group="Sistema"),
+                   plugin_quick_action("recap", "Recap adesso", "POST", f"{API}/recap/now", icon="note",
                                        group="Sistema")],
 )
 
@@ -372,6 +380,44 @@ def athena_observation() -> dict[str, Any]:
     }
 
 
+# ── Daily recap (docs/work/2026-10-20-recap-giornaliero) ─────────────────────
+@app.post("/api/athena/recap")
+def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
+    """Compose the recap (agenda job, template, quick action). ``deliver`` false = return the text only."""
+    momento = str((body or {}).get("momento") or "sera")
+    day = str((body or {}).get("day") or "").strip() or None
+    try:
+        return runtime.recap.compose(momento=momento, day=day, deliver=bool((body or {}).get("deliver", True)),
+                                     trigger=str((body or {}).get("trigger") or "manual"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="day must be YYYY-MM-DD")
+
+
+@app.post("/api/athena/recap/now")
+def athena_recap_now() -> dict[str, Any]:
+    """Quick action «Recap adesso»: evening recap now, delivered like the scheduled one."""
+    out = runtime.recap.compose(momento="sera", trigger="quick")
+    label = ("Niente da raccontare oggi" if out.get("status") == "empty"
+             else "Recap inviato" if out.get("delivered") else "Recap pronto (consegna in ritardo)")
+    return {**out, "label": label}
+
+
+@app.get("/api/athena/recaps")
+def athena_recaps(limit: int = 20) -> dict[str, Any]:
+    rows = runtime.recap.history(limit)
+    return {"count": len(rows), "recaps": rows}
+
+
+def _recap_today_handler(momento: str = "", **_kw) -> dict:
+    """Chat «fammi il recap»: before 14:00 the morning view (yesterday + today), then the evening one."""
+    from datetime import datetime as _dt
+    moment = momento if momento in {"sera", "mattina"} else ("mattina" if _dt.now().hour < 14 else "sera")
+    out = runtime.recap.compose(momento=moment, deliver=False, trigger="chat")
+    if out.get("status") == "empty":
+        return {"status": "empty", "text": "Niente da raccontare: nessuna area ha registrato qualcosa."}
+    return {"status": "ok", "momento": moment, "day": out.get("day"), "text": out.get("text")}
+
+
 # ── MCP tools ──────────────────────────────────────────────────────────────────
 try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
@@ -393,6 +439,23 @@ try:
         return result
 
     _athena_mcp_tools = [
+        MCPTool(
+            name="recap_today",
+            description=("Recap della giornata: com'è andata (allenamento, routine, spese, agenda, notifiche "
+                         "aperte…) e cosa c'è dopo. 'momento': sera = oggi + domani, mattina = ieri + oggi "
+                         "(default secondo l'ora). Restituisce il testo pronto."),
+            parameters={"type": "object", "properties": {
+                "momento": {"type": "string", "enum": ["sera", "mattina"],
+                            "description": "sera = oggi e domani; mattina = ieri e oggi"}}},
+            handler=_recap_today_handler,
+            title="📝 Recap della giornata",
+            method="POST",
+            path="/api/athena/recap/today",
+            clients=["telegram", "ui", "external"],
+            response_mode="direct",
+            telegram_visible=True,
+            telegram_group="chat",
+        ),
         # Inside view, also for external AIs (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): read only.
         MCPTool(
             name="athena_thinking",

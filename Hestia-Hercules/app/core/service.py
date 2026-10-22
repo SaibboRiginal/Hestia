@@ -788,6 +788,47 @@ class Hercules:
                 "active_session": {"id": act["id"], "name": act.get("name")} if act else None,
                 "last_sync": self.store.cursor}
 
+    def recap(self, day: date, nxt: date) -> dict:
+        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): sessions and records of ``day``,
+        a planned day left undone, the workout planned on ``nxt``, the goal hint. Plain data, no LLM."""
+        self.store.refresh()
+        data = self.data()
+        done, missed, upcoming = [], [], []
+        sessions = [s for s in data.sessions if records.local_date(s.get("started_at"), self.tz) == day]
+        for sess in sessions:
+            sm = records.session_summary(data, sess)
+            parts = [f"{sm['exercises']} esercizi", f"{sm['sets']} serie"]
+            if sm.get("duration_min"):
+                parts.append(f"{sm['duration_min']} min")
+            done.append({"text": f"{sm.get('name') or 'Allenamento'}: " + ", ".join(parts), "tone": "success"})
+            prs = [p for p in records.session_prs(data, sess, self.formula()) if not p["first"]]
+            if prs:
+                done.append({"text": "Record: " + ", ".join(
+                    f"{p['exercise']} {p['label'].lower()} {progression.fmt_kg(p['value'])}" for p in prs[:3]),
+                    "tone": "success"})
+        plans = {p["date"]: p for p in self.store.items("plan")}
+        prog = self.active_program()
+        templates = {t["id"]: t for t in self.store.items("template") if not t.get("archived")}
+        if not sessions:
+            plan = plans.get(day.isoformat()) or {}
+            if plan.get("status") == "skipped":
+                missed.append({"text": "Allenamento saltato", "tone": "warning"})
+            elif prog and prog.get("mode") == "weekly" and plan.get("status") != "moved":
+                todays = [x for x in prog["days"] if x.get("weekday") == day.weekday() and x["template_id"] in templates]
+                if todays:
+                    missed.append({"text": f"{templates[todays[0]['template_id']]['name']} in programma, non fatto",
+                                   "tone": "warning"})
+        nw = self.next_workout(nxt)
+        planned_for_next = nw.get("template") and (nw.get("planned_date") == nxt.isoformat()
+                                                   or nw.get("reason") == "Spostato a oggi.")
+        if planned_for_next and not nw.get("skipped"):
+            mins = nw.get("estimated_minutes")
+            upcoming.append({"text": f"{nw['template']['name']}" + (f" · circa {mins} min" if mins else "")})
+        goals = self.goals()
+        note = f"{goals[0]['progress']['label']}: {goals[0]['progress']['hint']}" if goals and (done or missed) else ""
+        return {"done": done, "missed": missed, "next": upcoming, "note": note}
+
+
     # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
     def signals(self) -> tuple[list[dict], list[dict]]:
         """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
