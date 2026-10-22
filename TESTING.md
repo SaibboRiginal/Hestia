@@ -42,6 +42,7 @@ Runs every service for real (WebUI .NET + Angular included) in a **Claude cloud 
 then checks it like a user. Dossier: `docs/work/2026-10-19-banco-prova-cloud/`.
 
 ```
+python tools/cloud_test.py          # no argument: starts Hestia if it is off, prints the login link + a short Italian guide (also `help`)
 python tools/cloud_test.py all      # prepare (Docker, base images, .env) + up (build, start) + check
 python tools/cloud_test.py check    # again: health, Hub registry, smoke calls, WebUI screenshots
 python tools/cloud_test.py start    # up + login link in .cloud-test/login.txt (Codespaces: automatic on every start)

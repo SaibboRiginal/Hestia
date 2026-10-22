@@ -19,4 +19,5 @@
 - [x] Fix 2026-10-22: Codespace in recovery mode — `devcontainers/python:3.12` is now Debian 13 (trixie) where the docker-in-docker feature (moby) fails; image pinned to `3.12-bookworm`
 - [x] Fix 2026-10-22: `prepare` crashed in the Codespace (`PermissionError` on `/root/.ccr/ca-bundle.crt`: user vscode cannot look inside /root), so postCreate failed and postStart never ran; an unreadable CA path now counts as «no proxy CA»
 - [x] Fix 2026-10-22: login link gave ERR_INVALID_RESPONSE in the browser → devcontainer forces `protocol: http` on ports 19015/19000
+- [x] 2026-10-22 (Marko): `python tools/cloud_test.py` with no argument starts Hestia if it is off, prints the login link and a short Italian guide; `help` prints only the guide (was: `all`, with an English usage text on unknown commands)
 - [ ] Marko opens a Codespace with his test secrets

@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-22
+- Test bench: `python tools/cloud_test.py` with no argument starts Hestia if it is off and prints the login link and a short guide in Italian → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - «Non disponibile» more sophisticated: the assistant can ask you like Claude does (confirm, one choice, several choices, «Altro…», free text) in Telegram and WebUI, and the answer continues the chat; messages written while it was unavailable are answered in one go, the assistant decides whether to answer each, merge them or ask which still matter; an immune system restarts a module that stays down (up to 3 tries, then one notice); new state «Limitato» when only fallback models are left (none left = «Non disponibile»); «Mentre non c'ero» redoes or lists the work missed meanwhile; the Salute page keeps a «Registro» of notable events across restarts; queued messages and open questions come back after reloading the WebUI page → `docs/work/2026-10-19-oracle-offline/` [ext-chat]
 - Fix: Codespace did not start Hestia: the bench setup stopped on a certificate path the Codespace user cannot read; now it is skipped → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Fix: Codespace opened in recovery mode without Docker: the devcontainer base image moved to Debian 13, where docker-in-docker does not install; pinned to `python:3.12-bookworm` → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
