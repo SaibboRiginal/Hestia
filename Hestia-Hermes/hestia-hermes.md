@@ -104,6 +104,7 @@ within the cooldown window.
 | `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |
 | `POST` | `/api/ui/inbox/{id}/seen` · `/api/ui/inbox/seen-all` · `/api/ui/inbox/{id}/answer` | Same logic as the `/api/notifications/*` actions (body `client` optional, default `webui`; answer body `{action_id}`, 409 = already handled) |
 | `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |
+| `GET` | `/api/module/recap` | Daily recap piece «Notifiche»: how many today, the important ones (warning/error), those still waiting for an answer; the recap itself (`replaces: athena.recap`) is excluded. Capability `recap_endpoint` |
 
 System subscription (`service.action_required`) is bootstrapped at startup for the user (`owner`,
 channel `{"type": "all"}` = every client; Telegram resolves `owner` to its `ALLOWED_USER_ID`); older `sys-action-required-<chat id>` subscriptions are

@@ -36,6 +36,7 @@ from . import athena_settings as S
 from .athena_settings import get_bool, get_float, get_int
 from .shared_imports import import_shared_symbol
 from .strategist import Strategist
+from .recap import EVENING_AT, EVENING_FLEX, JOB_EVENING, RecapComposer
 
 TaskLifecycleStore = import_shared_symbol(
     "hestia_common.task_lifecycle", "TaskLifecycleStore"
@@ -43,6 +44,7 @@ TaskLifecycleStore = import_shared_symbol(
 AgendaClient = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")
 agenda_template = import_shared_symbol("hestia_common.agenda_client", "template")
 daily_window = import_shared_symbol("hestia_common.agenda_client", "daily_window")
+job_rule = import_shared_symbol("hestia_common.agenda_client", "job_rule")
 PresenceClient = import_shared_symbol("hestia_common.presence_client", "PresenceClient")
 
 # Assistant-agenda windows (Chronos). The user moves/skips/pauses them there;
@@ -118,6 +120,8 @@ class AthenaRuntime:
         self.observer = Observer(hub_api_url=self.hub_api_url)
         self.strategist = Strategist(hub_api_url=self.hub_api_url)
         self.consolidator = MemoryConsolidator(hub_api_url=self.hub_api_url)
+        # Daily recap (docs/work/2026-10-20-recap-giornaliero): independent from the thinking loop.
+        self.recap = RecapComposer(self.hub_api_url)
         self._consolidation_ran_today: str = ""  # date iso
 
         # Skill curator (Plan P3b-10 — Hermes Agent pattern)
@@ -882,6 +886,11 @@ class AthenaRuntime:
                          t_start, t_end,
                          description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
                                      "chattando. Salta/metti in pausa per fermare Athena."),
+            job_rule(JOB_EVENING, "Recap della sera", service="athena", path="/api/athena/recap",
+                     body={"momento": "sera", "trigger": "agenda"}, recurrence="FREQ=DAILY",
+                     start_at=f"2026-01-01T{EVENING_AT}:00", flex=EVENING_FLEX, timeout_seconds=150,
+                     description="Com'è andata oggi e cosa c'è domani, in un messaggio. Può anticipare o "
+                                 "posticipare (20:00–23:30) per non cadere sui tuoi impegni."),
         ]
 
     def _window_open(self, key: str, fallback) -> bool:
@@ -1280,7 +1289,16 @@ class AthenaRuntime:
             fields={"title": {"type": "string", "label": "Tema", "description": "Tema (es. 'spese di casa')"},
                     "summary": {"type": "string", "label": "Dettagli", "format": "textarea", "description": "Cosa deve considerare"}},
             required=["title"], body={"domain": "cognition"}, title="Athena: {title}",
-            description="Athena analizza il tema all'orario scelto e ti propone idee o azioni.")])
+            description="Athena analizza il tema all'orario scelto e ti propone idee o azioni."),
+            agenda_template(
+            "recap", "Recap della giornata", service="athena", path="/api/athena/recap",
+            type="job", types=["job", "task"], icon="note", recurrence="FREQ=DAILY",
+            fields={"momento": {"type": "string", "label": "Momento", "enum": ["mattina", "sera"],
+                                "default": "mattina",
+                                "description": "mattina = ieri in breve + oggi; sera = oggi + domani"}},
+            required=["momento"], body={"trigger": "agenda"}, title="Recap ({momento})",
+            description="Un messaggio con com'è andata e cosa ti aspetta. Aggiungi quello del mattino o un "
+                        "secondo recap.")])
         # Wait for Oracle inside the loop thread: blocking here would hold the
         # FastAPI startup (and /health) for up to 60 s.
         self._thread = threading.Thread(

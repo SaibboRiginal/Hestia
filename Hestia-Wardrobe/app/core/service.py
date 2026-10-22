@@ -572,6 +572,21 @@ class Wardrobe:
                 "forgotten": [f["name"] for f in s["forgotten"][:8]], "gaps": s["gaps"], "goal": g,
                 "favorite_outfits": [o["name"] for o in self.outfits(favorite=True, limit=8)["items"]]}
 
+    def recap(self, day: date, nxt: date) -> dict:
+        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): what was worn on ``day``, pieces in
+        the laundry. Nothing worn → nothing to say. No LLM."""
+        pieces = {p["id"]: p for p in self.store.items("piece")}
+        outfits = {o["id"]: o for o in self.store.items("outfit")}
+        worn = [w for w in self._wears() if w["date"] == day.isoformat()]
+        done = []
+        for w in worn:
+            name = (outfits.get(w.get("outfit_id") or "") or {}).get("name") or \
+                " + ".join((pieces.get(p) or {}).get("name", "?") for p in (w.get("piece_ids") or [])[:3])
+            done.append({"text": f"Indossato: {name}"})
+        laundry = sum(1 for p in pieces.values() if p.get("status") == "laundry")
+        note = f"In lavanderia: {laundry} cap{'o' if laundry == 1 else 'i'}" if done and laundry else ""
+        return {"done": done, "note": note}
+
     def context(self, budget: int = 400, topic: str = "") -> dict:
         detail = self.topic_text(topic, budget) if topic else None
         if detail:

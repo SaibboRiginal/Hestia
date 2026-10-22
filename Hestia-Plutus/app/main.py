@@ -28,6 +28,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
+from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
@@ -305,6 +306,14 @@ def recurring_set(id: str, body: dict = Body(...)):
 @app.get(f"{API}/export")
 def export():
     return {"filename": f"spese-{plutus.today().isoformat()}.json", "data": plutus.export()}
+
+
+def _recap_piece(day, nxt) -> dict:
+    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    return recap.piece("plutus", "Spese", icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
+
+
+app.include_router(recap.recap_router("plutus", _recap_piece, today=lambda: plutus.today()))
 
 
 @app.get("/api/module/context")
@@ -856,6 +865,7 @@ except NameError:
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": [DOMAIN],
             "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS,
+            **recap.capabilities(),
             **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))

@@ -53,6 +53,8 @@ with something already done or due today) · `paused`. A target routine is behin
   `topic=<signal key>` the text explains that signal (`adherence_drop` → this week per routine done/needed, skipped,
   the routines behind and the 4 weeks before; `goal:<routine>` / `streak:<routine>` → hint, last done, streak,
   adherence and the last 4 periods); an unknown topic answers the normal line. Same shape, cut to `budget`.
+- `GET /api/module/recap?day=&next=`: piece «Cura di sé» of the daily recap (routines done, products used, daily
+  routines not done, skipped, due next; alerts as note). Capability `recap_endpoint`.
 - Every step change keeps a version; `POST /routines/{id}/undo` goes back.
 
 ## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)

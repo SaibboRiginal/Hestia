@@ -26,6 +26,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
+from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -352,6 +353,14 @@ def overview():
 @app.get(f"{API}/export")
 def export():
     return {"filename": f"selfcare-{hygieia.today().isoformat()}.json", "data": hygieia.export()}
+
+
+def _recap_piece(day, nxt) -> dict:
+    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    return recap.piece("hygieia", "Cura di sé", icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
+
+
+app.include_router(recap.recap_router("hygieia", _recap_piece, today=lambda: hygieia.today()))
 
 
 @app.get("/api/module/context")
@@ -925,7 +934,7 @@ except NameError:
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
     caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["selfcare"],
-            "context_endpoint": "/api/module/context"}
+            "context_endpoint": "/api/module/context", **recap.capabilities()}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
         caps.update(transfer.capabilities())

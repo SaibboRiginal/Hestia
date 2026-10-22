@@ -54,6 +54,8 @@
   forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`. `&topic=<signal key>`
   (`forgotten`, `laundry_backlog`, `to_repair`) → the detail behind that signal (names, days); unknown topic → the
   normal line.
+- `GET /api/module/recap?day=&next=`: piece «Guardaroba» of the daily recap (what was worn; laundry as note).
+  Capability `recap_endpoint`.
 
 ## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
 

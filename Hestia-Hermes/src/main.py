@@ -36,6 +36,7 @@ from .modules.hermes_settings import DELIVERY_RETRY_INTERVAL, settings as hermes
 from .modules.service import HermesService
 from .modules import ui_view
 from hestia_common.plugin_client import PluginClient, page, widget
+from hestia_common import recap
 
 logger, log_buffer = setup_service_logging("hestia_hermes")
 
@@ -169,6 +170,7 @@ def register_on_hub_startup():
         "capabilities": {
             "event_ingest": "/api/events/ingest",
             "notifications": "/api/notifications",
+            **recap.capabilities(),
             **ui.capabilities(service_base_url),
         },
     }
@@ -288,6 +290,11 @@ def health():
     return {"status": "ok", "service": "hestia_hermes"}
 
 app.include_router(create_log_control_router("hestia_hermes"))
+
+# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): notifications of the day, answers still awaited.
+app.include_router(recap.recap_router(
+    "hermes", lambda day, nxt: recap.piece("hermes", "Notifiche", icon="bell", emoji="🔔", order=800,
+                                         **service.notifications.recap(day.isoformat()))))
 
 @app.get("/api/logs")
 def get_logs(limit: int = 200, level: str | None = None, contains: str | None = None):

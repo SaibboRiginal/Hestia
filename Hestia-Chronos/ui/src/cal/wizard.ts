@@ -125,7 +125,9 @@ export class ChronosCalWizard extends LitElement {
       for (const t of this.templates) (groups.get(t.owner) ?? groups.set(t.owner, []).get(t.owner)!).push(t);
       return html`${[...groups.entries()].map(([owner, items]) => html`<h4>${ownerLabel(owner)}</h4><div class="cards">
         ${items.map(t => html`<button class="card" @click=${() => this.pick(t)}>${ic(t.icon || 'zap', 18)}
-          <span class="ct"><b>${t.label}</b><span>${t.description ?? ''}</span></span></button>`)}</div>`)}`;
+          <span class="ct"><b>${t.label}</b><span>${t.description ?? ''}</span></span></button>`)}</div>`)}
+        <p class="hint">Hai eliminato un'attività che un modulo aveva messo da solo (es. il recap della sera)? Rimettila
+          com'era da Agenda → «Attività standard».</p>`;
     }
     const t = this.tpl; if (!t) return nothing;
     if (this.step === 1) {

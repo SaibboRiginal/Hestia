@@ -165,6 +165,7 @@ One `SettingsClient("chronos")` (`app/core/presence_settings.py`); agenda/calend
 | `chronos.sync.calendar_id` (adv.) | `primary` | Calendario | Provider calendar id read by the sync |
 | `chronos.reminders.look_ahead_hours` | 26 h | Promemoria | First reminder ("1d" bucket upper bound; then 2 h and 30 min) |
 | `chronos.reminders.poll_seconds` (adv.) | 300 s | Promemoria | Reminder worker poll |
+| `chronos.flex.gap_minutes` | 15 min | Agenda | Margin kept from your events by flexible activities |
 | `chronos.coach.day_start` / `day_end` | 07:00 / 22:00 | Piano della settimana | Window where the weekly plan may place blocks |
 | `chronos.coach.buffer_minutes` | 15 | Piano della settimana | Free minutes kept around calendar events |
 | `chronos.coach.max_blocks_per_day` / `max_minutes_per_day` | 2 / 120 | Piano della settimana | Daily load limits of the plan |
@@ -256,6 +257,8 @@ Recurrence is evaluated in local wall time (`tz`, default `TZ`/Europe/Rome), DST
 | GET | `/api/agenda/ics?days=60&past_days=7&owner=&types=event,task,window` | Read-only iCalendar feed (expanded occurrences, skips/moves applied; jobs excluded by default) |
 | GET | `/api/agenda/runs?owner=&status=ok\|failed\|skipped&since=\|hours=&limit=100` | Every recorded run of jobs/tasks (from `meta.runs`) + skipped past occurrences, newest first, with `summary {ok, failed, skipped, avg_ms, failed_items}` and `owners` (rules registered per module: active / paused / failed / changed by the user, per type) — plugin page *Esecuzioni* |
 | GET | `/api/agenda/logs?service=&at=&minutes=5&level=&contains=` | A module's logs around an occurrence: Chronos reads `{service}/api/logs` through Hub (its in-memory buffer, last 2000 lines) and keeps `at ± minutes` (1–120); `{service, from, to, count, oldest, logs}`; module unreachable → 502 (`[🔄] event=agenda_logs_failed`) — Agenda *Log del modulo* |
+| GET | `/api/agenda/standard` | Standard activities: every default rule a module declared (not user items, not retired) with `state` eliminata / fallita / in pausa / modificata / attiva, `can_restore`, `flex`; plus `templates` and `counts` |
+| POST | `/api/agenda/standard/{key}/restore` | Put a standard activity back as the module declares it: status confirmed, `user_modified` off, declared fields re-applied (404 = not a module default) |
 | GET | `/api/agenda/runs/failed?hours=24` | Chips `[{id: key, label, owner, at, detail, state: late}]` of jobs whose last run failed (or stopped `failed`) — source of the quick action *Riprova job* |
 
 **Run log**: every execution (tick or "run now") is appended to `meta.runs` (last 50:
@@ -270,8 +273,30 @@ user cancels marks the parent (`last_result` + run log entry `by=link:<child>`; 
 `ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi` (`parent`),
 `agenda_assistente_sposta`, `agenda_assistente_sposta_occorrenza`, `agenda_assistente_salta`,
 `agenda_assistente_ripristina`, `agenda_assistente_annulla`, `agenda_assistente_esegui`,
-`agenda_assistente_modelli`, `agenda_assistente_da_modello`, `agenda_assistente_collega`. Oracle turns a
+`agenda_assistente_modelli`, `agenda_assistente_da_modello`, `agenda_assistente_collega`. Standard activities: `agenda_standard`, `agenda_standard_ripristina` (Telegram, WebUI). Oracle turns a
 successful write of these into an `agenda.planned` notice (calendar pages reload live).
+
+### Flexible activities (`params.flex`, dossier `docs/work/2026-10-20-recap-giornaliero` §3.8)
+
+A recurring job or task may carry `params.flex = {earliest: "HH:MM", latest: "HH:MM"}` (`job_rule(..., flex=)`, or the
+calendar editor «Orario flessibile»). The nominal time stays the one you see and move. When it falls on one of your
+events (calendar items of every source but `hestia`, all-day ones excluded) or closer than `chronos.flex.gap_minutes`,
+the tick fires it after the event (chained events walked through), else before it, else at the end of the range
+(`services/flex.py`, deterministic). The run records `flex {from, at, reason}` («dopo Cena»), shown in the
+occurrence details; log `event=agenda_flex_moved`. Calendar unreadable → nominal time (`[🔄] event=agenda_flex_calendar_failed`).
+An occurrence you moved by hand never flexes. First user: the evening recap `athena.recap.evening` (21:30, 20:00–23:30).
+
+### Standard activities (dossier `docs/work/2026-10-20-recap-giornaliero` §3.9)
+
+Chronos keeps in memory the last rule set each module declared (`register`). Page **Attività standard**
+(`chronos-standard`, under Agenda, order 152) lists them with their state; one you deleted, paused, that stopped for
+errors or that you changed comes back with **Ripristina** (`POST /api/agenda/standard/{key}/restore`). The page also
+lists the templates of each module («Da aggiungere», created from the calendar wizard).
+
+### Recap piece
+
+`GET /api/module/recap` piece «Agenda» (`services/day_view.py`): your events of the day, assistant tasks done /
+skipped / failed and jobs that failed (a job that works is not news); next: tomorrow's events and tasks.
 
 ### Who plans what (registered rules)
 
@@ -288,6 +313,7 @@ when mail moved to push). No module polls mail: they subscribe to Iris.
 | `plutus.daily` | job | plutus | daily 21:00 | `POST plutus /api/finance/alerts/run` — budget alerts + recurring detection |
 | `plutus.review` | job | plutus | 1st of the month 09:00 | `POST plutus /api/finance/review/run` — monthly review (only if `plutus.review.enabled`) |
 | `plutus.statement_reminder` | job | plutus | days 3, 6, 9 of the month 10:00 | `POST plutus /api/finance/reminders/run` — «carica l'estratto» if last month's statement is missing (only if enabled) |
+| `athena.recap.evening` | job | athena | daily 21:30, flexible 20:00–23:30 | `POST athena /api/athena/recap` — the evening recap (nothing on a quiet day) |
 | `chronos.calendar_sync` | job | chronos | every 15 min (edit/pause in the agenda) | `POST chronos /api/calendar/sync` — Hecate → Archive sync |
 | `athena.consolidation` | window | athena | daily 03–05 | memory consolidation, once a day inside the window |
 | `athena.skill_curation` | window | athena | daily 05–07 | skill curation, once a day inside the window |

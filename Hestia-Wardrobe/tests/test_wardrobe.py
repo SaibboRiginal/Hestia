@@ -313,6 +313,17 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
     assert wd._local_day("2026-10-18") == "2026-10-18"
 
 
+# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+@pytest.mark.unit
+def test_recap_lists_what_was_worn(wd):
+    tee, jeans, *_ = _basics(wd)
+    today = wd.today()
+    assert wd.recap(today, today + timedelta(days=1)) == {"done": [], "note": ""}
+    wd.mark_worn({"piece_ids": [tee["id"], jeans["id"]]})
+    facts = wd.recap(today, today + timedelta(days=1))
+    assert facts["done"][0]["text"].startswith("Indossato: ") and tee["name"] in facts["done"][0]["text"]
+
+
 # ── weather (forecast from Hecate) ───────────────────────────────────────────
 def _with_forecast(w, max_c=6, rain_prob=80):
     calls = []

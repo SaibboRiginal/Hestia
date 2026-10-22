@@ -117,6 +117,7 @@ Provider keys live only in Oracle (`ORACLE_KEY_<NAME>`). (Previously Scout embed
 | `POST` | `/api/tools/real_estate/search` | Optional direct domain endpoint (internal/debug use) |
 | `POST` | `/api/module/maintenance/reconcile` | Run standardized module maintenance reconcile |
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for module maintenance reconcile |
+| `GET` | `/api/module/recap` | Daily recap piece «Case»: new listings of the day (`?day=&next=`, capability `recap_endpoint`) |
 | `POST` | `/api/scout/cycle` | Run the email → listings cycle `{trigger, wait}` (default async; one cycle at a time, `busy` otherwise) |
 | `GET` | `/api/scout/cycle` | Cycle state: running, last start/finish/trigger/error, `mail: push`, subscription `scout:listings` |
 | `POST` | `/api/scout/mail` | Iris doorbell `{owner, key, domain, count, reference_ids, source}` → runs the cycle (async) on the pending records |

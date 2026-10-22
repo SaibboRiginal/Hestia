@@ -55,6 +55,8 @@ assistant: `GET /api/module/context` (month spent/budget, pace, high budgets, to
 `&topic=<signal key>` → the detail behind a reflection signal (`budget_pace:<cat>|month`: spent vs budget, pace,
 biggest movements; `unusual_week`: week vs 8-week median, top categories and merchants; `new_subscription:<id>`;
 `to_review`); unknown topic → the normal line.
+Daily recap piece «Spese»: `GET /api/module/recap?day=&next=` (spent by category, income, to review, confirmed
+recurring payments due next; budget as note). Capability `recap_endpoint`.
 
 ## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
 

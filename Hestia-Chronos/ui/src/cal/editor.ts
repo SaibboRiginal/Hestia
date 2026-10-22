@@ -45,7 +45,7 @@ export class ChronosCalEditor extends LitElement {
   static properties = { seed: { attribute: false }, f: { state: true }, rep: { state: true }, errors: { state: true } };
   declare seed: EditorSeed | null;
   declare f: { title: string; description: string; start: string; end: string; type: AgendaType;
-               svc: string; method: string; path: string; body: string };
+               svc: string; method: string; path: string; body: string; flexFrom: string; flexTo: string };
   declare rep: RepeatModel; declare errors: Errors;
   private loadedFor: EditorSeed | null = null;
   static styles = [tokens, kitStyles, calStyles, formStyles, css`
@@ -66,7 +66,8 @@ export class ChronosCalEditor extends LitElement {
 
   constructor() {
     super(); this.seed = null; this.errors = {}; this.rep = emptyRepeat();
-    this.f = { title: '', description: '', start: '', end: '', type: 'event', svc: '', method: 'POST', path: '', body: '' };
+    this.f = { title: '', description: '', start: '', end: '', type: 'event', svc: '', method: 'POST', path: '', body: '',
+               flexFrom: '', flexTo: '' };
   }
 
   willUpdate() {
@@ -83,6 +84,7 @@ export class ChronosCalEditor extends LitElement {
       start: toLocalInput(start), end: end ? toLocalInput(end) : '', type: it?.type ?? s.type ?? 'event',
       svc: it?.action?.service ?? '', method: it?.action?.method ?? 'POST', path: it?.action?.path ?? '',
       body: it?.action?.body ? JSON.stringify(it.action.body, null, 2) : '',
+      flexFrom: String((it?.params as any)?.flex?.earliest ?? ''), flexTo: String((it?.params as any)?.flex?.latest ?? ''),
     };
     this.rep = parseRRule(it?.recurrence ?? s.prefill?.recurrence);
     this.errors = {};
@@ -136,6 +138,12 @@ export class ChronosCalEditor extends LitElement {
     const payload: Record<string, unknown> = { title: f.title.trim(), description: f.description.trim() || null,
       start_at: start!.toISOString(), end_at: end ? end.toISOString() : null, recurrence: recurrence ?? '' };
     if (action) payload['action'] = action;
+    if (f.type === 'job') {   // flexible time around the user's events (recap dossier §3.8): stored in params.flex
+      const params: Record<string, unknown> = { ...(this.seed?.item?.params ?? {}) };
+      if (f.flexFrom && f.flexTo) params['flex'] = { earliest: f.flexFrom, latest: f.flexTo };
+      else delete params['flex'];
+      payload['params'] = params;
+    }
     const it = this.seed?.item;
     fire(this, 'cal-save', (this.editing && it ? { key: it.key, body: payload }
       : { body: { ...payload, type: f.type, recurrence: recurrence ?? null, owner: 'user', created_by: 'user' } }) as EditorResult);
@@ -179,6 +187,11 @@ export class ChronosCalEditor extends LitElement {
             <span class="inl">oppure dopo <input class="num" type="number" min="1" .value=${r.count ? String(r.count) : ''}
               @change=${(e: any) => this.patchRep({ count: +e.target.value || null, until: '' })}> volte</span></div>` : nothing}`,
           { hint: describeRRule(buildRRule(r)) })}
+        ${f.type === 'job' && r.freq !== 'none' ? this.field('Orario flessibile', html`<div class="rep">
+            <span class="inl">tra <input type="time" style="width:auto" .value=${f.flexFrom} @change=${(e: any) => this.set('flexFrom', e.target.value)}></span>
+            <span class="inl">e <input type="time" style="width:auto" .value=${f.flexTo} @change=${(e: any) => this.set('flexTo', e.target.value)}></span></div>`,
+          { hint: f.flexFrom && f.flexTo ? 'Se a quell\'ora hai un impegno parte subito prima o subito dopo, dentro questa fascia.'
+            : 'Facoltativo: lascia vuoto per un orario fisso.' }) : nothing}
         ${this.field('Descrizione', html`<textarea rows="3" .value=${f.description} @input=${(e: any) => this.set('description', e.target.value)}></textarea>`)}
         ${f.type === 'task' || f.type === 'job' ? html`<details class="adv" ?open=${!!f.svc}>
           <summary>Azione da eseguire (via Hub)</summary>

@@ -35,13 +35,19 @@ def _hub_default() -> str:
 def job_rule(key: str, title: str, *, service: str, path: str, recurrence: str,
              start_at: str = "2026-01-01T00:00:00", method: str = "POST", body: dict | None = None,
              description: str = "", params: dict | None = None, tz: str | None = None,
-             timeout_seconds: float = 60) -> dict:
-    """Build a recurring ``job`` rule whose action Chronos fires through Hub."""
+             timeout_seconds: float = 60, flex: dict | None = None) -> dict:
+    """Build a recurring ``job`` rule whose action Chronos fires through Hub.
+
+    ``flex={"earliest": "20:00", "latest": "23:30"}``: Chronos may fire each occurrence earlier or later inside
+    that range to avoid the user's calendar events (stored as ``params.flex``; the user edits it in the calendar)."""
+    params = dict(params or {})
+    if flex:
+        params["flex"] = {"earliest": str(flex.get("earliest") or ""), "latest": str(flex.get("latest") or "")}
     rule = {"key": key, "type": "job", "title": title, "description": description,
             "start_at": start_at, "recurrence": recurrence,
             "action": {"service": service, "path": path, "method": method, "body": body,
                        "timeout_seconds": timeout_seconds},
-            "params": params or {}}
+            "params": params}
     if tz:
         rule["tz"] = tz
     return rule
