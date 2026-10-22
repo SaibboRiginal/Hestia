@@ -17,6 +17,8 @@ from statistics import median
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from hestia_common.signals_client import iso_week, last_weeks, metric, signal
+
 from . import catalog, paypal
 from .store import Store, now_iso
 
@@ -502,7 +504,9 @@ class Plutus:
             nxt = _d(rows[-1]["date"]) + timedelta(days={"weekly": 7, "monthly": 30, "yearly": 365}[period])
             data = {"merchant": rows[-1]["merchant"], "amount": round(mid, 2), "period": period,
                     "category": rows[-1].get("category"), "last": rows[-1]["date"], "next": nxt.isoformat(),
-                    "count": len(rows), "status": prev.get("status") or "suggested"}
+                    "count": len(rows), "status": prev.get("status") or "suggested",
+                    # first seen (reflection signal «new subscription»); rows older than this field stay ""
+                    "found_at": prev.get("found_at", "") if prev else self.today().isoformat()}
             if {k: prev.get(k) for k in data} != data:
                 self.store.upsert("recurring", rid, data, ref_id=data["category"])
             found.append({**data, "id": rid})
@@ -631,6 +635,139 @@ class Plutus:
         if s["recurring_next"]:
             parts.append("in arrivo: " + ", ".join(f"{r['merchant']} {r['amount']:.0f}" for r in s["recurring_next"][:3]))
         text = ". ".join(parts)
+        return text if len(text) <= budget else text[: max(0, budget - 1)] + "…"
+
+    # ── reflection signals (hestia_common.signals_client; Athena reads them, never the rows) ──
+    PACE_MIN_DAYS = 5          # pace on fewer days of the month is noise
+    UNUSUAL_RATIO = 1.5        # this week vs median of the previous 8
+    TO_REVIEW_MIN = 5
+    NEW_RECURRING_DAYS = 7
+
+    def _sym(self) -> str:
+        cur = self.currency()
+        return "€" if cur == "EUR" else cur
+
+    def weekly_spending(self, weeks: int = 12) -> dict[str, dict]:
+        """``{YYYY-Www: {total, by_cat, rows}}`` of the last ``weeks`` ISO weeks (current last). Expenses only:
+        counted rows, amount < 0, no income category (same rule as ``summary``)."""
+        order = last_weeks(weeks, self.today())
+        out = {w: {"total": 0.0, "by_cat": defaultdict(float), "rows": []} for w in order}
+        cats = self.category_map()
+        for t in self._tx_rows():
+            d = _d(t.get("date"))
+            w = iso_week(d) if d else None
+            if w not in out or t["amount"] >= 0 or not self.counted(t, cats) \
+                    or cats.get(t["category"], {}).get("kind") == "income":
+                continue
+            out[w]["total"] += -t["amount"]
+            out[w]["by_cat"][t["category"]] += -t["amount"]
+            out[w]["rows"].append(t)
+        return out
+
+    def signals(self) -> tuple[list[dict], list[dict]]:
+        """Deterministic signals + weekly metrics (12 ISO weeks) for the reflection layer. Texts say «Spese»."""
+        sym, cats = self._sym(), self.category_map()
+        sigs: list[dict] = []
+        # budget pace / over budget (month and per category)
+        s = self.summary()
+        items = [(c["id"], c["label"], c["spent"], c["budget"]) for c in s["categories"] if c.get("budget")]
+        if s.get("budget"):
+            items.append(("month", "del mese", s["spent"], s["budget"]))
+        for cid, label, spent, budget in items:
+            pace = round(spent / s["days_gone"] * s["days_total"], 2) if spent else 0.0
+            name = f"Budget {label}" if cid != "month" else "Budget del mese"
+            nums = {"spent": round(spent, 2), "budget": budget, "pace": pace, "days_gone": s["days_gone"],
+                    "days_total": s["days_total"]}
+            if spent >= budget:
+                sigs.append(signal(f"budget_pace:{cid}", f"{name} superato: {spent:.0f}/{budget:.0f}{sym}.",
+                                   kind="goal", severity="alta", metrics=nums, period=s["month"], page="budget"))
+            elif s["days_gone"] >= self.PACE_MIN_DAYS and pace > budget:
+                sigs.append(signal(f"budget_pace:{cid}", f"{name} a ritmo alto: {spent:.0f}/{budget:.0f}{sym}, "
+                                   f"fine mese ~{pace:.0f}{sym}.", kind="goal", severity="attenzione", metrics=nums,
+                                   period=s["month"], page="budget"))
+        # unusual week vs median of the previous 8
+        weeks = self.weekly_spending(12)
+        order = list(weeks)
+        this_week = order[-1]
+        prev = [weeks[w]["total"] for w in order[-9:-1]]
+        mid = median(prev) if prev else 0
+        now = weeks[this_week]["total"]
+        if mid > 0 and now > self.UNUSUAL_RATIO * mid:
+            sigs.append(signal("unusual_week", f"Settimana di spesa alta: {now:.0f}{sym} contro {mid:.0f}{sym} "
+                               "di solito.", kind="anomaly", severity="attenzione",
+                               metrics={"spent": round(now, 2), "median_8w": round(mid, 2)}, period=this_week,
+                               page="statistiche"))
+        # recurring payments found in the last days
+        since = (self.today() - timedelta(days=self.NEW_RECURRING_DAYS)).isoformat()
+        for r in self.detect_recurring():
+            if r.get("status") != "dismissed" and (r.get("found_at") or "") >= since:
+                period = {"weekly": "settimanale", "monthly": "mensile", "yearly": "annuale"}.get(r["period"], "")
+                sigs.append(signal(f"new_subscription:{r['id']}", f"Nuovo pagamento ricorrente: {r['merchant']} "
+                                   f"{r['amount']:.2f}{sym} {period}.", kind="trend", severity="info",
+                                   metrics={"amount": r["amount"], "count": r["count"]}, page="abbonamenti"))
+        # rows waiting for a category
+        n = sum(1 for t in self._tx_rows() if t.get("status") == "to_review")
+        if n >= self.TO_REVIEW_MIN:
+            sigs.append(signal("to_review", f"{n} movimenti di spesa da rivedere.", kind="trend", severity="info",
+                               metrics={"count": n}, page="movimenti"))
+        # weekly metrics: total + top 4 categories of the period
+        mets = [metric("finance.spent", w, weeks[w]["total"], "Spesa settimanale") for w in order]
+        totals: dict[str, float] = defaultdict(float)
+        for w in order:
+            for k, v in weeks[w]["by_cat"].items():
+                totals[k] += v
+        for cid, _ in sorted(totals.items(), key=lambda kv: -kv[1])[:4]:
+            label = (cats.get(cid) or {}).get("label") or cid
+            mets += [metric(f"finance.spent.{cid}", w, weeks[w]["by_cat"].get(cid, 0.0), label) for w in order]
+        return sigs, mets
+
+    def topic_text(self, topic: str, budget: int = 400) -> str | None:
+        """Detail behind one signal key (``/api/module/context?topic=``); unknown topic → None."""
+        sym = self._sym()
+        text = None
+        if topic.startswith("budget_pace:"):
+            cid = topic.split(":", 1)[1]
+            s = self.summary()
+            start = s["start"]
+            if cid == "month" and s.get("budget"):
+                text = (f"Budget mese {s['label']}: speso {s['spent']:.0f}/{s['budget']:.0f}{sym}, giorno "
+                        f"{s['days_gone']}/{s['days_total']}, ritmo {s['pace']:.0f}. Categorie: "
+                        + ", ".join(f"{c['label']} {c['spent']:.0f}" for c in s["categories"][:4]))
+            else:
+                c = next((c for c in s["categories"] if c["id"] == cid and c.get("budget")), None)
+                if c:
+                    pace = c["spent"] / s["days_gone"] * s["days_total"] if c["spent"] else 0
+                    big = sorted((t for t in self.transactions(month=start, category=cid)
+                                  if t.get("counted") and t["amount"] < 0), key=lambda t: t["amount"])[:4]
+                    text = (f"{c['label']} {s['label']}: speso {c['spent']:.0f}/{c['budget']:.0f}{sym} "
+                            f"({c['pct']}%), giorno {s['days_gone']}/{s['days_total']}, ritmo {pace:.0f}. "
+                            "Più grandi: " + ", ".join(f"{t.get('merchant') or '—'} {-t['amount']:.0f} {t['date'][5:]}"
+                                                       for t in big))
+        elif topic == "unusual_week":
+            weeks = self.weekly_spending(12)
+            order = list(weeks)
+            cur = weeks[order[-1]]
+            mid = median([weeks[w]["total"] for w in order[-9:-1]])
+            cats = self.category_map()
+            top_c = sorted(cur["by_cat"].items(), key=lambda kv: -kv[1])[:3]
+            merch: dict[str, float] = defaultdict(float)
+            for t in cur["rows"]:
+                merch[t.get("merchant") or "—"] += -t["amount"]
+            text = (f"Settimana {order[-1]}: {cur['total']:.0f}{sym}, mediana 8 settimane {mid:.0f}{sym}. "
+                    "Categorie: " + ", ".join(f"{(cats.get(k) or {}).get('label', k)} {v:.0f}" for k, v in top_c)
+                    + ". Esercenti: " + ", ".join(f"{m} {v:.0f}" for m, v in
+                                                  sorted(merch.items(), key=lambda kv: -kv[1])[:3]))
+        elif topic.startswith("new_subscription:"):
+            r = self.store.data("recurring", topic.split(":", 1)[1])
+            if r:
+                text = (f"Ricorrente {r['merchant']}: {r['amount']:.2f}{sym} {r['period']}, visto {r['count']} volte, "
+                        f"ultimo {r['last']}, prossimo {r['next']}, stato {r['status']}.")
+        elif topic == "to_review":
+            rows = self.transactions(status="to_review", limit=6)
+            text = (f"{len(self.transactions(status='to_review', limit=5000))} da rivedere. Ultimi: "
+                    + ", ".join(f"{t.get('merchant') or '—'} {abs(t['amount']):.0f}" for t in rows))
+        if text is None:
+            return None
         return text if len(text) <= budget else text[: max(0, budget - 1)] + "…"
 
     # ── quick (Home) ─────────────────────────────────────────────────────────

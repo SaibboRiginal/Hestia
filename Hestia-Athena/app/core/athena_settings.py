@@ -57,6 +57,13 @@ SKILLS_STALE_DAYS = "athena.skills.stale_days"
 SKILLS_HARD_DELETE_DAYS = "athena.skills.hard_delete_days"
 SKILLS_CORE_USE_COUNT = "athena.skills.core_use_count"
 
+REFLECTION_MAX_PER_DAY = "athena.reflection.max_per_day"
+REFLECTION_MAX_TOPICS = "athena.reflection.max_topics"
+REFLECTION_MIN_WEEKS = "athena.reflection.min_weeks"
+REFLECTION_MIN_CORRELATION = "athena.reflection.min_correlation"
+REFLECTION_REPEAT_DAYS = "athena.reflection.repeat_days"
+REFLECTION_DETAIL_BUDGET = "athena.reflection.detail_budget"
+
 AUDIT_TIMEOUT = "athena.audit.timeout"
 AUDIT_MAX_TURNS = "athena.audit.max_turns"
 
@@ -69,6 +76,7 @@ _G_FORGE = "Miglioramenti (Forge)"
 _G_MEMORY = "Consolidamento memoria"
 _G_SKILLS = "Cura delle skill"
 _G_AUDIT = "Audit conversazioni"
+_G_REFLECTION = "Riflessione sulla tua vita"
 
 _ON_LOOP = {"key": LOOP_ENABLED, "equals": True}
 _ON_HINTS = {"key": HINTS_ENABLED, "equals": True}
@@ -184,6 +192,22 @@ settings.declare([
     setting(SKILLS_CORE_USE_COUNT, "Usi per skill fondamentale", "int", 50, group=_G_SKILLS, min=1, max=10000,
             advanced=True,
             help="Una skill usata più di così con successo diventa fondamentale."),
+
+    # ── Life reflection (signals of the modules → links between domains → the evening recap) ─
+    setting(REFLECTION_MAX_PER_DAY, "Osservazioni al giorno", "int", 2, group=_G_REFLECTION, min=1, max=5,
+            help="Quante osservazioni sulla tua vita entrano al massimo nel recap della sera."),
+    setting(REFLECTION_MAX_TOPICS, "Temi per riflessione", "int", 4, group=_G_REFLECTION, min=1, max=10,
+            help="Quanti segnali o collegamenti approfondisce ogni riflessione."),
+    setting(REFLECTION_MIN_WEEKS, "Settimane per un collegamento", "int", 6, group=_G_REFLECTION, min=3, max=52,
+            unit="settimane", help="Quante settimane con dati servono prima di collegare due abitudini."),
+    setting(REFLECTION_MIN_CORRELATION, "Forza minima del collegamento", "float", 0.6, group=_G_REFLECTION,
+            min=0.3, max=0.95, advanced=True,
+            help="Quanto due andamenti devono muoversi insieme (correlazione) per contare."),
+    setting(REFLECTION_REPEAT_DAYS, "Non ripetere prima di", "int", 14, group=_G_REFLECTION, min=1, max=180,
+            unit="giorni", advanced=True, help="La stessa osservazione non torna prima di così."),
+    setting(REFLECTION_DETAIL_BUDGET, "Dettagli chiesti a ogni area", "int", 600, group=_G_REFLECTION, min=100,
+            max=3000, unit="caratteri", advanced=True,
+            help="Quanto testo chiedere a un'area quando un segnale merita un approfondimento."),
 
     # ── Conversation audit ──────────────────────────────────────────────────
     setting(AUDIT_TIMEOUT, "Attesa audit", "float", 40.0, group=_G_AUDIT, min=5, max=600, unit="s",

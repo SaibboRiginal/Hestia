@@ -47,7 +47,24 @@
   `wardrobe_stats`, `wardrobe_packing`, `wardrobe_delete`. Pieces and outfits are found by name.
 - `wardrobe_delete` never deletes: it asks through Hermes with **Elimina / Archivia / Tieni**.
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`: one caveman line (counts, style, laundry,
-  forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`.
+  forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`. `&topic=<signal key>`
+  (`forgotten`, `laundry_backlog`, `to_repair`) → the detail behind that signal (names, days); unknown topic → the
+  normal line.
+
+## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
+
+Deterministic, no LLM; texts say «Guardaroba», never the module name. Stored in Archive `signals-store` through
+`Signals("wardrobe", "wardrobe").sync()` (only changes written, signals gone are retracted).
+
+| Key | Severity | When | Page |
+|---|---|---|---|
+| `forgotten` | info | active pieces not worn for 60+ days (`stats.forgotten`; only once something was ever marked) | statistiche |
+| `laundry_backlog` | attenzione | ≥ 3 pieces in laundry unchanged for 7+ days | capi |
+| `to_repair` | info | pieces with status or condition «da riparare» | capi |
+
+Weekly metric (12 ISO weeks, current included): `wardrobe.worn` «Capi indossati» = number of «Indossato» marks per
+week. Re-evaluated after every mark / piece change (`signals.changed()`, debounced), once after warm-up and by the
+agenda job `wardrobe.signals` (daily 17:30, editable) → `POST /api/wardrobe/signals/run`.
 
 ## Notifications (both off by default, through Hermes, target `owner`)
 
@@ -81,7 +98,7 @@ week start (weekly goal) are the personal settings `themis.personal.*`.
 See `Hestia-Swagger/swagger.yml` tag *Wardrobe*. Groups: meta, vocabularies, pieces (+bulk, photos, cover),
 files/{photo_id} (`{mime, data_b64}`), outfits (+photos, worn), wears, suggest (+save), stats, summary,
 collections (+packing, check), describe-photo, export/import (JSON), quick (Home chips), reminder/check,
-reminder/skip, review/run.
+reminder/skip, review/run, signals/run.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
@@ -96,4 +113,4 @@ Reminder rows are never exported. Settings travel through Themis.
 
 ## Tests
 
-`python -m pytest -q -m "unit or format" Hestia-Wardrobe/tests` (fake Hub with Archive store and blobs in memory).
+`python -m pytest -q -m "unit or api or format" Hestia-Wardrobe/tests` (fake Hub with Archive store and blobs in memory).
