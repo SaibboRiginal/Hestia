@@ -1,10 +1,12 @@
 """Health history + incidents — what the *Salute* page shows (SPEC 2026-10-18-moduli-core-e-mcp-esterno §A2).
 
-In memory only (Argus owns no DB; Archive is the only DB owner): restarts start from an empty history.
-- **History**: per service, one sample per minute (worst status seen in that minute), last 24 h.
-- **Incidents**: a service that stops being "up" opens an incident; every step Argus takes (alert to Hermes,
-  repair request to Hephaestus, recheck planned in the agenda, manual recheck) is appended as an action;
-  recovery closes it. The last closed incidents are kept for the page.
+- **History**: per service, one sample per minute (worst status seen in that minute), last 24 h. In memory only:
+  an Argus restart starts it again.
+- **Incidents** = the journal of notable events (oracle-offline v3 F): a service that stops being "up" opens an
+  incident; every step Argus takes (alert to Hermes, automatic restart through Hephaestus, repair request,
+  recheck planned in the agenda, manual recheck, giving up) is appended as an action; recovery closes it. Each
+  change is also written to Archive (``/api/argus-store``, kind ``incident``; Argus owns no DB) and reloaded at
+  start, so the journal survives restarts. It sends nothing by itself: Hermes notices point to it.
 """
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ from typing import Any
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 MINUTES_KEPT = 24 * 60
-CLOSED_KEPT = 50
+CLOSED_KEPT = 200
 ACTIONS_KEPT = 40
 _RANK = {"up": 0, "degraded": 1, "down": 2}
 _CODE = {0: "u", 1: "w", 2: "d"}      # strip codes: up · warning (degraded) · down; "-" = no data
@@ -31,8 +33,59 @@ _closed: deque = deque(maxlen=CLOSED_KEPT)
 _seq = {"n": 0}
 
 
+_STORE = "api/argus-store/records"
+_store_writer = None   # callable(row) — set by start_journal(); None = memory only (tests, local run)
+
+
+def _persist(inc: dict | None) -> None:
+    """Write one incident to the journal in Archive (background, best effort)."""
+    if inc is None or _store_writer is None:
+        return
+    from datetime import datetime, timezone
+    snap = {k: (list(map(dict, v)) if k == "actions" else v) for k, v in inc.items()}
+    row = {"kind": "incident", "id": snap["id"], "ref_id": snap["service"],
+           "at": datetime.fromtimestamp(snap["opened_at"], tz=timezone.utc).isoformat(), "data": snap,
+           "updated_at": datetime.now(timezone.utc).isoformat(), "deleted": False}
+    threading.Thread(target=_store_writer, args=(row,), daemon=True, name="argus-journal").start()
+
+
+def start_journal(route) -> int:
+    """Reload the journal from Archive and keep writing to it. ``route`` = ``hub_client.route``. Returns rows."""
+    global _store_writer
+
+    def write(row: dict) -> None:
+        ok, res = route("archive", _STORE, "PUT", {"rows": [row]}, timeout=8)
+        if not ok:
+            logger.warning("[🔄] event=argus_journal_write_failed id=%s error=%s", row["id"], str(res)[:200])
+
+    _store_writer = write
+    ok, res = route("archive", _STORE, "GET", query={"kind": "incident", "order": "-at", "limit": CLOSED_KEPT + 50})
+    rows = (res or {}).get("rows") if ok and isinstance(res, dict) else []
+    loaded = 0
+    with _lock:
+        for r in reversed(rows or []):           # oldest first: appendleft keeps the newest on top
+            inc = dict(r.get("data") or {})
+            if not inc.get("id") or not inc.get("service"):
+                continue
+            inc.setdefault("actions", [])
+            if inc.get("closed_at"):
+                _closed.appendleft(inc)
+            elif inc["service"] not in _open:
+                _open[inc["service"]] = inc
+            loaded += 1
+    logger.info("event=argus_journal_loaded rows=%d", loaded)
+    return loaded
+
+
+def is_open(service: str) -> bool:
+    with _lock:
+        return service in _open
+
+
 def reset() -> None:
     """Tests only."""
+    global _store_writer
+    _store_writer = None
     with _lock:
         _minutes.clear(); _last.clear(); _open.clear(); _closed.clear()
         _cycle.update(at=None, ms=None, count=0)
@@ -75,12 +128,16 @@ def note_unhealthy(service: str, status: str, error: str | None = None) -> bool:
                               "actions": [{"at": now, "kind": "detected", "ok": None,
                                            "text": f"Rilevato: {status}" + (f" — {error}" if error else "")}]}
             opened = True
+            changed = _open[service]
         else:
+            changed = None
             if inc["status"] != status:
                 inc["actions"].append({"at": now, "kind": "status", "ok": None, "text": f"Ora {status}"})
                 del inc["actions"][:-ACTIONS_KEPT]
+                changed = inc
             inc["status"], inc["error"] = status, error
             opened = False
+    _persist(changed)
     if opened:
         logger.info("event=argus_incident_opened service=%s status=%s", service, status)
     return opened
@@ -94,6 +151,7 @@ def note_action(service: str, kind: str, text: str, ok: bool | None = None) -> N
             return
         inc["actions"].append({"at": time.time(), "kind": kind, "ok": ok, "text": text})
         del inc["actions"][:-ACTIONS_KEPT]
+    _persist(inc)
 
 
 def note_recovered(service: str) -> None:
@@ -105,6 +163,7 @@ def note_recovered(service: str) -> None:
         inc["actions"].append({"at": now, "kind": "recovered", "ok": True, "text": "Di nuovo online"})
         inc["closed_at"], inc["status"] = now, "up"
         _closed.appendleft(inc)
+    _persist(inc)
     logger.info("event=argus_incident_closed service=%s duration_s=%d", service, int(now - inc["opened_at"]))
 
 

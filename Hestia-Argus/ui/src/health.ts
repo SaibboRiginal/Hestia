@@ -12,7 +12,8 @@ const SINCE = [{ value: '30m', label: '30 min' }, { value: '1h', label: '1 ora' 
 const LEVEL_TONE: Record<string, string> = { INFO: 'info', WARNING: 'warning', ERROR: 'danger', CRITICAL: 'danger' };
 /** Incident timeline: action kind → [kit icon, tone] (tone '' = inherit). */
 const ACTION_ICON: Record<string, [string, string]> = { detected: ['alert', 'warning'], status: ['arrows-v', 'info'], alert: ['bell', 'warning'],
-  remediation: ['wrench', 'accent'], recheck_planned: ['calendar', 'muted'], recheck: ['pulse', 'info'], recovered: ['check-circle', 'success'] };
+  remediation: ['wrench', 'accent'], recheck_planned: ['calendar', 'muted'], recheck: ['pulse', 'info'], recovered: ['check-circle', 'success'],
+  restart: ['refresh', 'accent'], restart_result: ['pulse', 'info'], gave_up: ['alert', 'danger'] };
 
 export class ArgusHealth extends HestiaElement {
   static properties = { ...HestiaElement.properties, ov: { state: true }, hist: { state: true }, inc: { state: true },
@@ -71,7 +72,7 @@ export class ArgusHealth extends HestiaElement {
     const [ov, hist, inc] = await Promise.all([
       this.host.api('GET', `${API}/overview`),
       this.host.api('GET', `${API}/history`, { query: { minutes: this.minutes, buckets: 60 } }),
-      this.host.api('GET', `${API}/incidents`, { query: { limit: 20 } }),
+      this.host.api('GET', `${API}/incidents`, { query: { limit: 100 } }),
     ]);
     if (!ov.ok) { this.error = ov.error === 'offline' ? 'Sei offline' : 'Argus non raggiungibile'; return; }
     this.error = ''; this.ov = ov.data;
@@ -186,7 +187,7 @@ export class ArgusHealth extends HestiaElement {
         ${this.renderHistory()}
       </section>
       ${closed.length ? html`<section>
-        <div class="sec"><h2 class="grow">Incidenti risolti</h2>
+        <div class="sec"><h2 class="grow">Registro</h2>
           <hxk-button size="sm" variant="ghost" @click=${() => (this.showClosed = !this.showClosed)}>${this.showClosed ? 'Nascondi' : `Mostra (${closed.length})`}</hxk-button></div>
         ${this.showClosed ? closed.map(i => this.renderIncident(i, false)) : nothing}</section>` : nothing}
       ${this.renderLogs()}

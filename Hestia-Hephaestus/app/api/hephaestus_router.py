@@ -13,12 +13,19 @@ from ..core.models import (
     RemediationRequest,
     RemediationRollbackRequest,
 )
+from ..core import container_restart
 from ..core.remediation_service import RemediationService
 from ..core.runbooks import RUNBOOKS, build_self_heal_preview, consent_allows, select_runbook
 
 
-def create_hephaestus_router(remediation_service: RemediationService) -> APIRouter:
+def create_hephaestus_router(remediation_service: RemediationService, forge=None) -> APIRouter:
     router = APIRouter()
+
+    @router.post("/api/hephaestus/restart")
+    def restart_container(body: dict[str, Any]) -> dict[str, Any]:
+        """Restart a sick module's container and check its health (Argus' immune system, oracle-offline v3 B)."""
+        return container_restart.restart(str(body.get("service") or ""), forge, str(body.get("reason") or ""),
+                                         int(body.get("attempt") or 0))
 
     @router.get("/api/hephaestus/status")
     def status() -> dict[str, Any]:

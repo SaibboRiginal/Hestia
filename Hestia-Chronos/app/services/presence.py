@@ -196,6 +196,7 @@ class PresenceEngine:
         self._loaded = False
         self._last_ping_persist = 0.0
         self._last_snapshot_persist = 0.0
+        self._queued_since: datetime | None = None   # when chat.reply became «queued» (catch-up window)
 
     # ── persistence ─────────────────────────────────────────────────────────
     def load(self) -> bool:
@@ -420,9 +421,14 @@ class PresenceEngine:
         after = snapshot["effects"].get("notify.level", "all")
         if before in order and after in order and order.index(after) < order.index(before):
             self._release_held(after)
-        if (prev.get("effects") or {}).get("chat.reply") == "queued" and \
-                snapshot["effects"].get("chat.reply", "live") == "live":
+        before_reply = (prev.get("effects") or {}).get("chat.reply", "live")
+        after_reply = snapshot["effects"].get("chat.reply", "live")
+        if before_reply != "queued" and after_reply == "queued":
+            self._queued_since = _now()
+        if before_reply == "queued" and after_reply == "live":
             self._drain_chat_queues()
+            since, self._queued_since = self._queued_since, None
+            self._catch_up(since)    # «Mentre non c'ero» (v3 D)
 
     def _emit_default(self, event_type: str, payload: dict) -> None:
         publish_event("assistant", event_type, "presence", {**payload, "_source": "chronos"})
@@ -435,6 +441,14 @@ class PresenceEngine:
                                 "timeout_seconds": 20}, timeout=25)
         except Exception as exc:
             logger.warning("[🔄] event=presence_release_held_failed error=%s", exc)
+
+    def _catch_up(self, since: datetime | None) -> None:
+        """The agenda work missed while unavailable: redo what is recent, one «Mentre non c'ero» message."""
+        try:
+            from services import catchup
+            catchup.run(since)
+        except Exception as exc:
+            logger.warning("[🔄] event=presence_catchup_failed error=%s", exc)
 
     def _drain_chat_queues(self) -> None:
         """Oracle back: every Hub service declaring ``capabilities.chat_queue_drain`` (its path) answers the

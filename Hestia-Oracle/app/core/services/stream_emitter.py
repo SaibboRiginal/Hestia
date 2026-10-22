@@ -72,6 +72,7 @@ def emit_question(
     options: list | None = None,
     timeout_sec: int | None = None,
     required: bool = True,
+    allow_other: bool = False,
 ) -> str:
     """Return a question-type NDJSON frame for the cross-client question protocol.
 
@@ -90,6 +91,8 @@ def emit_question(
         payload["options"] = options
     if timeout_sec is not None:
         payload["timeout_sec"] = timeout_sec
+    if allow_other:
+        payload["allow_other"] = True  # choice kinds also accept a free answer («Altro…»)
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 

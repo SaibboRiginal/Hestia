@@ -1028,6 +1028,21 @@ class Forge:
             return False, "deploy timed out"
         return proc.returncode == 0, (proc.stdout or "") + (proc.stderr or "")
 
+    def deploying_services(self) -> set[str]:
+        """Services a Forge deploy is restarting right now (merged, not yet deployed/rolled back): the immune
+        system leaves them to Forge's own health check and rollback (oracle-offline v3 B)."""
+        with self._lock:
+            tasks = [dict(t) for t in self._tasks.values()] if isinstance(self._tasks, dict) else []
+        out: set[str] = set()
+        for t in tasks:
+            if t.get("state") == "merged":
+                out.update((t.get("deploy_plan") or {}).get("restart") or [])
+        return out
+
+    def unhealthy(self, services: list[str]) -> list[str]:
+        """Health check through Hub after the verify delay (deploys and the immune system's restarts)."""
+        return self._unhealthy(services)
+
     def _unhealthy(self, services: list[str]) -> list[str]:
         wait_seconds(forge_settings.get_int(forge_settings.VERIFY_DELAY, 0))
         bad = []

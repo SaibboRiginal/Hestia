@@ -135,7 +135,9 @@ read at use time, so changes apply live unless marked *restart*. Safety switches
 | `argus.remediate.timeout` | int (s) | `15` | Hub-routed timeout of the remediation request |
 | `argus.repair.recheck` | int (min) | `10` | First agenda recheck after a service goes down (doubles each attempt) |
 | `argus.repair.recheck_max` | int (min) | `360` | Backoff cap for agenda rechecks |
-| `argus.oracle.grace` | int (s) | `60` | Oracle down this long → presence signal `oracle.offline` + Hermes notice (0 = at once) |
+| `argus.oracle.grace` | int (s) | `60` | Oracle down this long → presence signal `oracle.offline` + Hermes notice (0 = at once); also used for «Limitato» |
+| `argus.repair.max_restarts` | int | `3` (0–5) | Immune system: container restarts of a down module before giving up (0 = never restart) — depends on `remediate.enabled` |
+| `argus.repair.restart_after` | int (s) | `120` (30–3600) | Immune system: down this long → first restart; then the wait doubles |
 | `argus.forge.enabled` | bool | `true` | Recurring errors become Forge fix proposals — `oracle=read` |
 | `argus.forge.threshold` | int | `3` | Occurrences of one signature inside the window |
 | `argus.forge.window` | int (s) | `3600` | Counting window |
@@ -176,6 +178,26 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v2.0), code `app/services/oracle_wat
   agenda rechecks stay as for any service. A shorter outage (restart, deploy) says nothing.
 - While offline Argus never asks Oracle to write a text (no 60 s waits). Logs: `event=oracle_offline`,
   `event=oracle_online`.
+- Oracle's `/health` carries `models` (`ok` · `limited` · `none`, v3 E). `none` (no model left in any chain) counts as
+  offline with reason `no_models`. `limited` (only fallback models answer) for the grace time → signal
+  `oracle.limited` (overlay «Limitato»: heavy work deferred, short answers) and one notice «🔋 Limitato…»
+  (`replaces: "system.oracle"`); back to `ok` → signal cleared and «✅ Di nuovo al completo» (`closes`).
+
+## Immune system (v3 B, `app/services/immune.py`)
+
+Each monitor cycle calls `immune.observe(service, healthy)`. A module down for `argus.repair.restart_after` s (120) is
+restarted through the Hub on Hephaestus (`POST /api/hephaestus/restart`, Docker socket), then again after double the
+wait, up to `argus.repair.max_restarts` (3). Never acts on argus, hephaestus or hub; a module Forge is deploying is
+skipped (does not use up a try). After the last try: one Hermes notice «Una parte di Hestia non riparte da sola»
+(key `system.repair.<svc>`); back healthy → «Tornato a posto» closes it. Restarts run in a thread, logs
+`event=immune_restart`, `event=immune_gave_up`.
+
+## Journal (v3 F, «Registro» in the Salute page)
+
+The incidents of `health_history` (down, restart, restart result, gave up, recovered) are the journal of notable
+events. They persist in Archive (`/api/argus-store`, kind `incident`; the last 200 closed kept) and are reloaded at
+startup, so the «Registro» survives restarts. Hermes notices stay for what needs you; the journal is the history,
+shown with an icon per action (`/api/argus/incidents?limit=` up to 200).
 
 ## Forge fix proposals
 

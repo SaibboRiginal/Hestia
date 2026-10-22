@@ -79,6 +79,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/api/webui/central-settings/key/{key}/undo` · `presets/{module}/{id}/apply` | undo · apply a preset |
 | POST | `/api/webui/central-settings/proposals/{id}/{approve,reject}` | answer an assistant proposal (`by: webui`, first answer wins) |
 | POST | `/api/webui/feedback` | Submit feedback |
+| GET | `/api/webui/chat/pending` | After a reload: open questions of the assistant + messages still queued in the current chat `{session_id, questions, queued}` (oracle-offline v3 G) |
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
@@ -411,6 +412,14 @@ when Oracle is back) and startup replay the queue server-side (no browser needed
 push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Non disponibile» while
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Crea con Hestia» drawer does
 not queue (it answers «riprova appena torna»).
+
+**v3** (same SPEC): the drain sends all the queued messages of one chat to Oracle in one turn (`queued`), the
+assistant decides how to answer (each, merged, or asks); `queued_answer` carries `queue_ids` and the reply goes under
+the last bubble. Questions of the assistant (`question` frames with `ask_…` ids, also during a drain) are drawn by
+`hx-question-card` (Chat page and «Crea con Hestia» drawer): confirm, single choice, multiple choice (toggles +
+«Invia»), «Altro…», free text, «Salta». `ChatHub` answers via Oracle `question-answer` and sends `resume`, which the
+page sends as the next message. After a reload the page asks `/api/webui/chat/pending` and shows again the hourglass
+bubbles of queued messages and the open question. «Limitato» shows as a presence overlay (icon `battery-low`).
 
 ## Icons, not emoji
 

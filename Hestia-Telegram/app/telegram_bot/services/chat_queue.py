@@ -2,14 +2,13 @@
 
 SPEC docs/work/2026-10-19-oracle-offline §3. A message Oracle did not accept is stored in Archive
 (``/api/chat-queue``, client ``telegram``) and the user gets a fixed reply. When Oracle is back, Chronos calls
-``POST /api/chat-queue/drain`` (capability ``chat_queue_drain``); the same drain runs at startup. Oldest first,
-one at a time, each answered as a reply to the original message.
+``POST /api/chat-queue/drain`` (capability ``chat_queue_drain``); the same drain runs at startup. Chat by chat,
+all of a chat's messages in one turn where the assistant decides how to answer (v3 C), as a reply to the last one.
 """
 from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime
 from html import escape
 from typing import Any
 
@@ -64,16 +63,6 @@ def queued_text(item: dict) -> str:
             "ti rispondo appena possibile.")
 
 
-def _note(item: dict) -> str:
-    created = str(item.get("created_at") or "")
-    try:
-        when = datetime.fromisoformat(created.replace("Z", "+00:00")).astimezone().strftime("%d/%m %H:%M")
-    except ValueError:
-        when = created[:16]
-    return (f"Nota: questo messaggio è stato scritto alle {when} mentre eri offline; rispondi ora tenendo conto "
-            "del tempo passato.")
-
-
 def drain_async(reason: str = "") -> bool:
     """Start a drain in the background; False when one is already running."""
     if _drain_lock.locked():
@@ -83,7 +72,9 @@ def drain_async(reason: str = "") -> bool:
 
 
 def drain(reason: str = "") -> dict:
-    """Answer the queued messages, oldest first. Stops at the first Oracle failure (still offline)."""
+    """Answer the queued messages chat by chat (oldest chat first). Stops at the first Oracle failure (still offline).
+    All messages of one chat go to the assistant in one turn (``queued``): it decides whether to answer each, merge
+    them, or ask which old ones still matter (oracle-offline v3 C)."""
     if not _drain_lock.acquire(blocking=False):
         return {"status": "busy"}
     answered = failed = 0
@@ -93,30 +84,25 @@ def drain(reason: str = "") -> dict:
         if status >= 400 or not items:
             return {"status": "ok", "answered": 0}
         logger.info("event=chat_queue_drain_start items=%d reason=%s", len(items), reason or "-")
-        per_chat: dict[str, int] = {}
-        for item in items:
-            per_chat[str(item.get("target"))] = per_chat.get(str(item.get("target")), 0) + 1
-        headed: set[str] = set()
-        for item in items:
-            target = str(item.get("target") or "")
-            if not target:
+        chats: dict[tuple[str, str], list[dict]] = {}
+        for item in items:                     # oldest first: dict order = first message of each chat
+            if str(item.get("target") or ""):
+                chats.setdefault((str(item["target"]), str(item.get("session_id") or "")), []).append(item)
+        for chat_items in chats.values():
+            claimed = []
+            for item in chat_items:
+                code, got = _archive("POST", f"api/chat-queue/{item['id']}/claim")
+                if code < 400 and isinstance(got, dict):
+                    claimed.append(item)      # else another drain holds it
+            if not claimed:
                 continue
-            code, claimed = _archive("POST", f"api/chat-queue/{item['id']}/claim")
-            if code >= 400 or not isinstance(claimed, dict):
-                continue      # another drain holds it
-            if per_chat.get(target, 0) > 1 and target not in headed:
-                headed.add(target)
-                try:
-                    core.bot.send_message(int(target), f"✅ Rispondo ai {per_chat[target]} messaggi arrivati "
-                                                       "mentre non potevo rispondere.", parse_mode="HTML")
-                except Exception:
-                    pass
-            ok, detail = _answer(item)
-            _archive("POST", f"api/chat-queue/{item['id']}/done", {"ok": ok, "detail": detail})
+            ok, detail = _answer(claimed)
+            for item in claimed:
+                _archive("POST", f"api/chat-queue/{item['id']}/done", {"ok": ok, "detail": detail})
             if ok:
-                answered += 1
+                answered += len(claimed)
                 continue
-            failed += 1
+            failed += len(claimed)
             break
         logger.info("event=chat_queue_drain_done answered=%d failed=%d", answered, failed)
         return {"status": "ok", "answered": answered, "failed": failed}
@@ -124,22 +110,24 @@ def drain(reason: str = "") -> dict:
         _drain_lock.release()
 
 
-def _answer(item: dict) -> tuple[bool, str]:
+def _answer(items: list[dict]) -> tuple[bool, str]:
     from telegram_bot.services.chat_service import OracleUnavailable, ask_oracle, send_oracle_questions
 
-    chat_id = int(item["target"])
-    ref = item.get("client_ref")
+    last = items[-1]
+    chat_id = int(last["target"])
+    ref = last.get("client_ref")
+    what = "al messaggio in coda" if len(items) == 1 else f"ai {len(items)} messaggi in coda"
     try:
         status_msg = core.bot.send_message(
-            chat_id, "⏳ <b>Rispondo al messaggio in coda...</b>", parse_mode="HTML",
+            chat_id, f"⏳ <b>Rispondo {what}...</b>", parse_mode="HTML",
             reply_to_message_id=int(ref) if ref and str(ref).isdigit() else None,
             allow_sending_without_reply=True)
     except Exception as exc:
         return False, f"telegram: {exc}"[:300]
+    queued = [{"text": str(i["text"]), "written_at": i.get("created_at")} for i in items]
     try:
-        result = ask_oracle(chat_id, str(item["session_id"]), str(item["text"]), status_msg.message_id,
-                            extra_instructions=_note(item))
-        send_oracle_questions(chat_id, str(item["session_id"]), result.signals, result.questions)
+        result = ask_oracle(chat_id, str(last["session_id"]), "", status_msg.message_id, queued=queued)
+        send_oracle_questions(chat_id, str(last["session_id"]), result.signals, result.questions)
         return True, ""
     except OracleUnavailable as exc:
         core.bot.edit_message_text("⏳ Non posso ancora rispondere: resto in coda.",

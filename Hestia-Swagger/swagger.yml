@@ -453,6 +453,14 @@ components:
           type: string
           enum: [generic, reasoning, code]
           default: generic
+        queued:
+          type: array
+          description: "Messages written while the assistant could not answer, oldest first: answered in ONE turn where the model decides (each, merged, or asks which old ones to keep with ask_user). `message` is ignored when set (oracle-offline v3 C)."
+          items:
+            type: object
+            properties:
+              text: {type: string}
+              written_at: {type: string, format: date-time}
 
     FormatRequest:
       type: object
@@ -3597,7 +3605,7 @@ paths:
         - url: http://localhost:19004
       responses:
         "200":
-          description: OK
+          description: "{status, service, models: ok|limited|none} — models: how the assistant can answer now (first model of the general chain · only fallback steps · none usable); Argus turns it into «Limitato» / «Non disponibile» (oracle-offline v3 E)"
 
   /api/chat:
     post:
@@ -3620,7 +3628,9 @@ paths:
             - `{"type":"token","text":"..."}` — incremental LLM token
             - `{"type":"final","reply":"...","domain":"..."}` — terminal answer
             - `{"type":"signal","event":"memory.preference.*|subscription.*|action.*|tool.summary","content":"...","data":{...}}` — side-channel event
-            - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive prompt
+            - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...],"allow_other":bool}` — interactive prompt; id `ask_…` = the assistant itself asked (tool ask_user): the turn stopped there, the answer continues it (oracle-offline v3 A)
+        "503":
+          description: "No model can answer now (`/health` models = none): the client queues the message like an unreachable Oracle (oracle-offline v3 E)"
 
   /api/chat/document/json:
     post:
@@ -3749,9 +3759,21 @@ paths:
                   type: string
       responses:
         "200":
-          description: "{resolved, question_id, action?: {ok, result}} — action = the module action bound to the answer (confirm cards, e.g. Themis proposals)"
+          description: "{resolved, question_id, action?: {ok, result}, resume?: {message}} — action = the module action bound to the answer (confirm cards, e.g. Themis proposals); resume = a question the assistant asked (ask_user): the client sends `message` as the next chat turn of the same session (oracle-offline v3 A)"
         "404":
-          description: "question not found or already resolved"
+          description: "question not found, already resolved or expired (oracle.ask.timeout)"
+
+  /api/chat/questions:
+    get:
+      tags: [Oracle]
+      summary: "Questions the assistant asked in a session still waiting for an answer (kept in Archive; clients redraw them after a reload)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: query, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: "{session_id, questions: [{question_id, header, prompt, kind, options, allow_other, required, asked_at}]}"
 
   /api/user/controls:
     get:
@@ -6533,15 +6555,15 @@ paths:
   /api/argus/incidents:
     get:
       tags: [Argus]
-      summary: Open and recently closed incidents with what Argus did
+      summary: Open incidents and the journal of closed ones (kept in Archive argus-store, survives restarts) with what Argus did
       servers:
         - url: http://localhost:19008
       parameters:
         - name: limit
           in: query
-          schema: {type: integer, default: 20, minimum: 0, maximum: 50}
+          schema: {type: integer, default: 20, minimum: 0, maximum: 200}
       responses:
-        "200": {description: "{open: [Incident], recent: [Incident], open_count}; Incident = {id, service, status, error, opened_at, closed_at, duration_seconds, actions: [{at, kind: detected|status|alert|remediation|recheck_planned|recheck|recovered, ok, text}]}"}
+        "200": {description: "{open: [Incident], recent: [Incident], open_count}; Incident = {id, service, status, error, opened_at, closed_at, duration_seconds, actions: [{at, kind: detected|status|alert|restart|restart_result|gave_up|remediation|recheck_planned|recheck|recovered, ok, text}]}"}
 
   /api/argus/recheck-targets:
     get:
@@ -10148,6 +10170,27 @@ paths:
                   task:
                     $ref: "#/components/schemas/HephaestusTaskRecord"
 
+  /api/hephaestus/restart:
+    post:
+      tags: [Hephaestus]
+      summary: "Restart a sick module's container hestia_<service> and check its health (Argus immune system, oracle-offline v3 B). Never hephaestus itself, never a service a Forge deploy is restarting."
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service]
+              properties:
+                service: {type: string}
+                reason: {type: string}
+                attempt: {type: integer}
+      responses:
+        "200":
+          description: "{status: ok|failed|skipped|refused, service, restarted, healthy, detail}"
+
   /api/hephaestus/remediate:
     post:
       tags: [Hephaestus]
@@ -10733,6 +10776,13 @@ paths:
       responses:
         "200": {description: Oracle context stats (active provider, session_usage)}
 
+  /api/webui/chat/pending:
+    get:
+      tags: [WebUI]
+      summary: "What still waits in the current conversation, drawn again after a reload: the assistant's open questions (→ Oracle /api/chat/questions) and the messages still in the queue (Archive chat-queue)"
+      responses:
+        "200": {description: "{session_id, questions: [...], queued: [{queue_id, text, created_at}]}"}
+
   /api/webui/chat/compact:
     post:
       tags: [WebUI]
@@ -11264,6 +11314,64 @@ paths:
     get:
       tags: [Archive — Echo store]
       summary: "Current cursor of the Echo store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/oracle-store/records:
+    get:
+      tags: [Archive — Oracle store]
+      summary: "Oracle rows by kind/ref/parent/at range/since_seq (Oracle only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Oracle store]
+      summary: "Upsert Oracle rows {rows} (LWW): pending questions to the user"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/oracle-store/cursor:
+    get:
+      tags: [Archive — Oracle store]
+      summary: "Current cursor of the Oracle store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/argus-store/records:
+    get:
+      tags: [Archive — Argus store]
+      summary: "Argus rows by kind/ref/parent/at range/since_seq (Argus only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Argus store]
+      summary: "Upsert Argus rows {rows} (LWW): notable events journal"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/argus-store/cursor:
+    get:
+      tags: [Archive — Argus store]
+      summary: "Current cursor of the Argus store"
       servers:
         - url: http://localhost:19002
       responses:

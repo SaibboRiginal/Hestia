@@ -1,5 +1,7 @@
 import { uid } from '../core/uid';
 import { Injectable, Injector, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { SignalRService } from './signalr.service';
 import { ChatMessage, ChatNotice, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
 import { NoticePrefsService } from './notice-prefs.service';
@@ -25,6 +27,9 @@ export class ChatService {
   isStreaming = signal(false);
   currentStreamingId = signal<string | null>(null);
   pendingQuestion = signal<PendingQuestion | null>(null);
+  /** Where the answer to the assistant's own question goes on (same chat, mode and page context). */
+  private resumeTarget: { sessionId: string; mode: string; context?: string } | null = null;
+  private restored = false;
 
   private thinkingBuffer: ThinkingStep[] = [];
   private stepCounter = 0;
@@ -187,10 +192,37 @@ export class ChatService {
       this.finalizeStreaming(streamId, err?.message || 'Invio non riuscito', undefined, undefined, true));
   }
 
-  answerQuestion(questionId: string, answer: string): void {
+  answerQuestion(questionId: string, answer: string, sessionId = '', mode = 'auto', context?: string): void {
     this.signalR.claim(this.channel);
+    this.resumeTarget = { sessionId, mode, context };
     this.signalR.send({ type: 'question_answer', question_id: questionId, answer }).catch(() => {});
     if (this.pendingQuestion()?.questionId === questionId) this.pendingQuestion.set(null);
+  }
+
+  /**
+   * After a reload: draw again what is still waiting in this conversation — messages in the queue (hourglass) and the
+   * assistant's open question (oracle-offline v3 A + G). Once per page load.
+   */
+  async restorePending(): Promise<void> {
+    if (this.restored) return;
+    this.restored = true;
+    type Pending = { questions?: ServerEvent[]; queued?: { queue_id: number; text: string; created_at?: string }[] };
+    let p: Pending;
+    try {
+      p = await firstValueFrom(this.injector.get(HttpClient).get<Pending>('/api/webui/chat/pending'));
+    } catch { return; }
+    const known = new Set(this.messages().map(m => m.queuedId).filter(Boolean));
+    const add: ChatMessage[] = [];
+    for (const q of p.queued ?? []) {
+      if (known.has(q.queue_id)) continue;
+      const at = q.created_at ? new Date(q.created_at) : new Date();
+      add.push({ id: uid(), role: 'user', content: q.text, timestamp: at },
+               { id: uid(), role: 'assistant', content: 'Non posso rispondere adesso: messaggio in coda, ti rispondo appena possibile.',
+                 timestamp: at, queuedId: q.queue_id });
+    }
+    if (add.length) this.messages.update(msgs => [...msgs, ...add]);
+    const open = (p.questions ?? [])[0];
+    if (open && !this.pendingQuestion()) this.setQuestion({ ...open, type: 'question' });
   }
 
   /** Show the result of a command (palette) in the conversation. */
@@ -259,20 +291,15 @@ export class ChatService {
         break;
 
       case 'question':
-        if (event.question_id) {
-          const opts = (event.options || []).map(o => typeof o === 'string'
-            ? { label: o, value: o }
-            : { label: String(o.label ?? o.value ?? ''), value: String(o.value ?? o.label ?? '') });
-          this.pendingQuestion.set({
-            questionId: event.question_id,
-            header: event.header || 'Domanda',
-            prompt: event.prompt || '',
-            kind: (event.kind || (opts.length ? 'single_choice' : 'free_text')) as PendingQuestion['kind'],
-            options: event.kind === 'confirm' && !opts.length
-              ? [{ label: 'Sì', value: 'yes' }, { label: 'No', value: 'no' }] : opts,
-            required: event.required !== false,
-            expiresAt: event.timeout_sec ? Date.now() + event.timeout_sec * 1000 : undefined,
-          });
+        this.setQuestion(event);
+        break;
+
+      case 'resume':
+        // The answer to the assistant's own question goes on as the next message of the same chat.
+        if (event.message && this.resumeTarget) {
+          const t = this.resumeTarget;
+          this.resumeTarget = null;
+          void this.sendMessage(event.message, t.sessionId, t.mode, 'generic', t.context);
         }
         break;
 
@@ -284,12 +311,35 @@ export class ChatService {
     }
   }
 
+  private setQuestion(event: ServerEvent): void {
+    if (!event.question_id) return;
+    const opts = (event.options || []).map(o => typeof o === 'string'
+      ? { label: o, value: o }
+      : { label: String(o.label ?? o.value ?? ''), value: String(o.value ?? o.label ?? '') });
+    this.pendingQuestion.set({
+      questionId: event.question_id,
+      header: event.header || 'Domanda',
+      prompt: event.prompt || '',
+      kind: (event.kind || (opts.length ? 'single_choice' : 'free_text')) as PendingQuestion['kind'],
+      options: event.kind === 'confirm' && !opts.length
+        ? [{ label: 'Sì', value: 'yes' }, { label: 'No', value: 'no' }] : opts,
+      required: event.required !== false,
+      allowOther: !!event.allow_other,
+      expiresAt: event.timeout_sec ? Date.now() + event.timeout_sec * 1000 : undefined,
+    });
+  }
+
   private handleQueuedAnswer(event: ServerEvent): void {
     const reply = event.reply || '';
-    const waiting = this.messages().some(m => m.queuedId === event.queue_id);
+    // Several queued messages answered together (v3 C): the reply goes under the last one.
+    const ids = event.queue_ids?.length ? event.queue_ids : [event.queue_id];
+    const last = ids[ids.length - 1];
+    const waiting = this.messages().some(m => m.queuedId !== undefined && ids.includes(m.queuedId));
     if (waiting) {
-      this.messages.update(msgs => msgs.map(m => m.queuedId === event.queue_id
-        ? { ...m, content: reply, queuedId: undefined, timestamp: new Date(), sessionId: event.session_id } : m));
+      this.messages.update(msgs => msgs
+        .filter(m => !(m.queuedId !== undefined && ids.includes(m.queuedId) && m.queuedId !== last))
+        .map(m => m.queuedId === last
+          ? { ...m, content: reply, queuedId: undefined, timestamp: new Date(), sessionId: event.session_id } : m));
       return;
     }
     // Page reloaded meanwhile: show the pair (Oracle saved it in the session history anyway).

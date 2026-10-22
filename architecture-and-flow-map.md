@@ -218,8 +218,17 @@ Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
    overlay «⏳ Non disponibile», effect `chat.reply = queued`) + one Hermes notice to every client.
 2. Telegram/WebUI: a chat message Oracle does not accept → Archive `/api/chat-queue` + fixed «in coda» reply.
 3. Oracle healthy → Argus clears the signal and closes the notice; Chronos sees `chat.reply` back to `live` and calls each
-   client's `capabilities.chat_queue_drain` via Hub; each client replays its queue to Oracle, oldest first.
-SPEC `docs/work/2026-10-19-oracle-offline`.
+   client's `capabilities.chat_queue_drain` via Hub; each client sends each chat's queue to Oracle in one turn
+   (`queued`, the model answers each, merges or asks), then Chronos runs the «Mentre non c'ero» catch-up.
+4. Only fallback models left (Oracle `/health` `models=limited`) → signal `oracle.limited`, overlay «Limitato»;
+   `models=none` → same as down.
+5. Any module down past `argus.repair.restart_after` → Argus → Hub → Hephaestus `/api/hephaestus/restart` (Docker),
+   at most `argus.repair.max_restarts`, then one Hermes notice; incidents persist in Archive `argus-store` («Registro»).
+
+### Assistant question flow
+Oracle tool `ask_user` → turn stops, `question` frame (`ask_…`, kept in Archive `oracle-store`) → client card/buttons →
+`POST /api/chat/question-answer` → `resume.message` → the client sends it as the next chat turn of the same session.
+SPEC `docs/work/2026-10-19-oracle-offline` (v3).
 
 ### Layered reflection flow
 1. Domain modules (Hercules, Hygieia, Plutus, Wardrobe) evaluate their own data deterministically on every write and in

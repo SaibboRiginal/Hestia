@@ -67,6 +67,7 @@ export type ServerEventType =
   | 'error'
   | 'needs_input'
   | 'notice'
+  | 'resume'
   | 'stream_done';
 
 export interface ServerEvent {
@@ -93,11 +94,15 @@ export interface ServerEvent {
   detail?: string;
   required?: boolean;
   timeout_sec?: number;
+  /** question: choice kinds that also take a free answer («Altro…»). */
+  allow_other?: boolean;
   missing_fields?: string[];
   data?: any;
   metadata?: ThinkingMetadata;
   /** queued / queued_answer (Oracle offline). */
   queue_id?: number;
+  /** queued_answer: every queued message the one answer covers (answered together, v3 C). */
+  queue_ids?: number[];
   position?: number;
   message?: string;
 }
@@ -110,6 +115,8 @@ export interface PendingQuestion {
   kind: 'free_text' | 'single_choice' | 'multi_choice' | 'confirm';
   options: { label: string; value: string }[];
   required: boolean;
+  /** Choice kinds: also accept a free answer («Altro…»). */
+  allowOther?: boolean;
   expiresAt?: number;
 }
 

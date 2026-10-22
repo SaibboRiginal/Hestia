@@ -649,6 +649,16 @@ EchoRecord = _module_record_model(
     "EchoRecord", "echo_records",
     "One row of the voice module Hestia-Echo (kept audio index, usage row). Owner of the semantics: Hestia-Echo.")
 
+OracleRecord = _module_record_model(
+    "OracleRecord", "oracle_records",
+    "One row of Hestia-Oracle (pending question the assistant asked the user, docs/work/2026-10-19-oracle-offline v3 A). "
+    "Owner of the semantics: Hestia-Oracle.")
+
+ArgusRecord = _module_record_model(
+    "ArgusRecord", "argus_records",
+    "One row of Hestia-Argus (notable system event of the journal, docs/work/2026-10-19-oracle-offline v3 F). "
+    "Owner of the semantics: Hestia-Argus.")
+
 SignalRecord = _module_record_model(
     "SignalRecord", "signal_records",
     "One row of the reflection signals (docs/work/2026-10-20-riflessione-a-livelli): a module's signal or weekly "

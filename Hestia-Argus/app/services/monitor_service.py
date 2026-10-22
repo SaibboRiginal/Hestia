@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 from core import argus_settings as cfg
 from core import docker_client, forge_proposer, health_poller, hub_client
-from services import oracle_watch, health_history
+from services import oracle_watch, health_history, immune
 
 try:
     from hestia_common.agenda_client import AgendaClient, template as agenda_template
@@ -334,12 +334,15 @@ def _run_once() -> None:
     # --- Oracle watch: its own notice replaces the generic one below ---
     oracle = health.get(oracle_watch.ORACLE)
     if oracle is not None or services:  # empty registry = Hub down: say nothing about Oracle
-        oracle_watch.observe(oracle.status if oracle else None, oracle.error if oracle else "not registered on Hub")
+        oracle_watch.observe(oracle.status if oracle else None, oracle.error if oracle else "not registered on Hub",
+                             models=str((oracle.details or {}).get("models") or "") if oracle else None)
 
     # --- Health alerts & recovery ---
     for name, report in health.items():
         with _unhealthy_lock:
             was_unhealthy = name in _unhealthy
+        # Immune system: a module that stays down is restarted (Hephaestus), 1 to N times (v3 B).
+        immune.observe(name, report.status == "up")
 
         if report.status != "up":
             with _unhealthy_lock:
@@ -394,6 +397,9 @@ def _run_once() -> None:
             health_history.note_recovered(name)
             if name != oracle_watch.ORACLE:
                 send_recovery(name)
+        elif health_history.is_open(name):
+            # An incident reloaded from the journal after an Argus restart: the service is fine now.
+            health_history.note_recovered(name)
 
     _report_degraded()
 
@@ -424,6 +430,9 @@ def _run_once() -> None:
 
 def start() -> None:
     """Launch the monitoring loop in a daemon background thread."""
+    # Journal of notable events (incidents) from Archive, kept up to date there (v3 F).
+    threading.Thread(target=health_history.start_journal, args=(hub_client.route,), daemon=True,
+                     name="argus-journal-load").start()
     if _agenda is not None and agenda_template is not None:
         _agenda.register_async([], templates=[agenda_template(
             "recheck", "Ricontrolla un servizio", service="argus", path="/api/argus/recheck/{service}",

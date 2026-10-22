@@ -75,7 +75,8 @@ public class OracleStreamService
         string message, string sessionId,
         string mode = "", string model = "generic",
         string? clientInstructions = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<object>? queued = null)
     {
         var body = new Dictionary<string, object>
         {
@@ -86,6 +87,9 @@ public class OracleStreamService
         };
         if (!string.IsNullOrWhiteSpace(clientInstructions))
             body["client_instructions"] = clientInstructions;
+        // Messages queued while the assistant could not answer: one turn, the model decides how (oracle-offline v3 C).
+        if (queued is { Count: > 0 })
+            body["queued"] = queued;
 
         _logger.LogInformation("event=oracle_stream_start session={S} mode={M} model={D} msg_len={L}",
             sessionId, mode, model, message.Length);

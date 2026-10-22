@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
@@ -196,6 +196,7 @@ except Exception as exc:
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
 from core.services import activity_log  # noqa: E402
+from core.services import queued_chat  # noqa: E402
 
 app.include_router(_oracle_settings.settings.router())
 
@@ -586,6 +587,9 @@ class ChatRequest(BaseModel):
     mode: str = ""
     # Which use-case model: generic (daily), reasoning (deep), code (coding)
     model: str = "generic"
+    # Messages written while the assistant could not answer ([{text, written_at}], oldest first): answered in one
+    # turn where the model decides how (oracle-offline v3 C). `message` is ignored when this is set.
+    queued: Optional[list[dict]] = None
 
 
 class ChatResponse(BaseModel):
@@ -681,9 +685,28 @@ class AthenaHintIngestRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+def _models_state() -> str:
+    try:
+        from core.services import llm_chains
+        return llm_chains.models_state()["state"]
+    except Exception:
+        return "ok"
+
+
+def _no_usable_model() -> bool:
+    """Every step of the general chain is out of quota or not configured. A chain that only failed recently is
+    still tried (a success clears it), so the chat refuses only what cannot work."""
+    try:
+        from core.services import llm_chains
+        return llm_chains.models_state()["usable_steps"] == 0
+    except Exception:
+        return False
+
+
 @app.get("/health")
 def health_endpoint():
-    return {"status": "ok", "service": "hestia_oracle"}
+    # `models`: ok | limited | none — Argus turns it into «Limitato» / «Non disponibile» (oracle-offline v3 E).
+    return {"status": "ok", "service": "hestia_oracle", "models": _models_state()}
 
 
 @app.get("/api/logs")
@@ -796,15 +819,27 @@ def chat_endpoint(req: ChatRequest):
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
 
+        # No model can answer (every step out of quota or not configured): refuse like an unreachable Oracle, so
+        # the client queues the message and it is answered when a model is back (oracle-offline v3 E).
+        if _no_usable_model():
+            logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
+            return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
+        message, instructions = req.message, req.client_instructions
+        queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
+        if queued:
+            message = queued_chat.compose(queued)
+            instructions = queued_chat.instructions(queued, req.client_instructions)
+            mode = "thinking" if len(queued) > 1 else mode  # the agent loop: ask_user may be needed
+            logger.info("event=chat_queued_batch session_id=%s items=%d", current_session, len(queued))
         # Return the Engine's output as a continuous stream (LLM usage counted for this session)
         return StreamingResponse(
             llm_stats.bind_session(current_session, engine.chat(
-                req.message, current_session,
+                message, current_session,
                 notify_target=req.notify_target,
                 force_notification_compiler=bool(req.force_notification_compiler),
                 client_instructions=_with_personal_settings(
-                    req.client_instructions, req.client, current_session, presence_state),
+                    instructions, req.client, current_session, presence_state),
                 save_history=req.save_history,
                 mode=mode,
                 model=req.model,
@@ -1020,13 +1055,22 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
                 detail=f"Question '{req.question_id}' not found or already resolved.",
             )
         action = engine.run_question_action(req.question_id, req.answer, client=req.client or "")
-        return {"resolved": True, "question_id": req.question_id, **({"action": action} if action else {})}
+        # A question the model asked (ask_user): the client sends `resume.message` as the next chat turn.
+        resume = engine.question_resume_message(req.question_id, req.answer)
+        return {"resolved": True, "question_id": req.question_id, **({"action": action} if action else {}),
+                **({"resume": {"message": resume}} if resume else {})}
     except HTTPException:
         raise
     except Exception as e:
         logger.exception(
             "event=unhandled_error_question_answer_endpoint Unhandled error in question-answer endpoint")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/questions")
+def open_questions_endpoint(session_id: str):
+    """Questions the assistant asked in this session still waiting for an answer (clients redraw them after a reload)."""
+    return {"session_id": session_id, "questions": engine.open_questions(session_id)}
 
 
 @app.post("/api/actions/approval/respond")

@@ -12,6 +12,7 @@ import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem,
 import { ThinkingStepsComponent } from './thinking-steps.component';
 import { ChatModeComponent } from './chat-mode.component';
 import { ChatContextComponent } from './chat-context.component';
+import { QuestionCardComponent } from './question-card.component';
 import { ChatQuickSettingsComponent } from '../settings/chat-quick-settings.component';
 import { NoticePrefsService } from '../../services/notice-prefs.service';
 import { PresenceService } from '../../services/presence.service';
@@ -26,7 +27,7 @@ const LIVE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-chat-page',
   imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
-            ChatModeComponent, ChatContextComponent],
+            ChatModeComponent, ChatContextComponent, QuestionCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
@@ -115,22 +116,7 @@ const LIVE_LABELS: Record<string, string> = {
           <span><b>Non disponibile</b> · i messaggi restano in coda e avranno risposta appena possibile.</span>
         </div>
       }
-      @if (chat.pendingQuestion(); as q) {
-        <div class="question hx-fade-in">
-          <div class="qh"><hx-icon name="info" [size]="15" /> {{ q.header }}</div>
-          @if (q.prompt) { <div class="qp">{{ q.prompt }}</div> }
-          @if (q.options.length) {
-            <div class="qo">@for (o of q.options; track o.value) { <button hx-btn size="sm" (click)="answer(q.questionId, o.value)">{{ o.label }}</button> }</div>
-          }
-          @if (q.kind === 'free_text' || !q.options.length) {
-            <div class="qf">
-              <input class="hx-input" [(ngModel)]="questionText" (keydown.enter)="answer(q.questionId, questionText)" placeholder="Rispondi…" />
-              <button hx-btn variant="primary" size="sm" (click)="answer(q.questionId, questionText)" [disabled]="!questionText.trim()">Invia</button>
-            </div>
-          }
-          @if (!q.required) { <button class="skipq" (click)="answer(q.questionId, '')">Salta</button> }
-        </div>
-      }
+      @if (chat.pendingQuestion(); as q) { <hx-question-card [question]="q" (answered)="answer(q.questionId, $event)" /> }
       @if (live.on) {
         <div class="live hx-fade-in" role="status" [attr.data-state]="live.state()">
           <span class="ldot"></span>
@@ -217,17 +203,11 @@ const LIVE_LABELS: Record<string, string> = {
     textarea::placeholder { color: var(--text-3); }
     .tools { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
     .disc { text-align: center; font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
-    .question { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 10px; box-shadow: var(--shadow-1); }
-    .qh { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
-    .qp { color: var(--text-2); font-size: 13.5px; margin: 4px 0 8px; }
-    .qo, .qf { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-    .qf .hx-input { flex: 1; min-width: 160px; }
     .offline { display: flex; align-items: center; gap: 8px; background: var(--warning-soft); color: var(--text);
                border-radius: var(--radius-lg); padding: 9px 14px; margin-bottom: 10px; font-size: 13.5px; }
     .offline .oe { font-size: 16px; }
     .hx-prose.queued { color: var(--text-2); }
     .inq { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--warning); }
-    .skipq { font-size: 12px; color: var(--text-3); margin-top: 6px; }
     .bubble.voice { min-width: 200px; }
     .vrow { display: flex; align-items: center; gap: 8px; }
     .vplay { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--accent); flex: none; }
@@ -280,7 +260,6 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   liveLabel = computed(() => LIVE_LABELS[this.live.state()] || '');
 
   text = '';
-  questionText = '';
   mode = signal('auto');   // hx-chat-mode: this conversation's mode (Themis), sent with every message
   rated = signal<Record<string, 'good' | 'bad'>>({});
   private lastCount = 0;
@@ -297,6 +276,11 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     const h = new Date().getHours();
     return h < 6 ? 'Buona notte' : h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera';
   });
+
+  constructor() {
+    // After a reload: queued messages keep their hourglass and an open question comes back (oracle-offline v3).
+    void this.chat.restorePending();
+  }
 
   ngOnDestroy() {
     if (this.recording()) void this.finishRec(true);
@@ -398,7 +382,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     void this.live.start(this.mode()).then(() => { if (this.live.error()) this.toast.error(this.live.error()); });
   }
 
-  answer(id: string, v: string) { this.chat.answerQuestion(id, v); this.questionText = ''; }
+  answer(id: string, v: string) { this.chat.answerQuestion(id, v, this.session.sessionId() || '', this.mode()); }
 
   async feedback(label: 'good' | 'bad', m: ChatMessage) {
     const msgs = this.chat.messages();

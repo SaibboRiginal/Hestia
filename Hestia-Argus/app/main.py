@@ -267,8 +267,9 @@ def get_history(
 
 
 @app.get("/api/argus/incidents", tags=["argus"])
-def get_incidents(limit: int = Query(default=20, ge=0, le=50, description="Closed incidents to return")) -> dict:
-    """Open incidents and the last closed ones, each with what Argus did (alert, repair, recheck, recovery)."""
+def get_incidents(limit: int = Query(default=20, ge=0, le=200, description="Closed incidents to return")) -> dict:
+    """Open incidents and the journal of closed ones (kept in Archive), each with what Argus did (alert, automatic
+    restart, repair, recheck, giving up, recovery)."""
     return health_history.incidents(limit=limit)
 
 

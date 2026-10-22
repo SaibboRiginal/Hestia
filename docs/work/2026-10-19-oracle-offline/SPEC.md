@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
-| **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.2: «togli proprio cervello come nome e icona»; v2.3: «metti qualcosa di generico, chi lo legge non deve sapere chi o che cosa»; v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
-| **Status** | Approved 2026-10-19 (v2.0 = Marko's simplification on top of the approved v1.0); merged (PR #6); v2.2 rename; v2.3 generic texts |
+| **Version** | 3.1 |
+| **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.2: «togli proprio cervello come nome e icona»; v2.3: «metti qualcosa di generico, chi lo legge non deve sapere chi o che cosa»; v3.0: «rendiamolo un po' più sofisticato» + answers of 2026-10-22 (sistema immunitario 1–3 tentativi, stato a sé quando finiscono i modelli, coda smart che decide, «mentre non c'ero», registro eventi notevoli non ridondante con Hermes, fumetto dopo reload, domande dell'assistente come Claude: selezione multipla, campo libero, conferma «per tutto»); v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
+| **Status** | v2.3 merged (PRs #6 #10 #11). **v3.0 approved by Marko 2026-10-22** (section «v3»), v3.1 implemented (PR pending merge) |
 
 ## Goal
 Oracle is the only LLM core. When it is down the rest of Hestia keeps working and says so: the user is told once,
@@ -93,3 +93,115 @@ drain call), `hestia-archive.md` (queue), `hestia-telegram.md`, `hestia-webui.md
 - One state: presence. Argus = diagnosis (signal), Chronos = state and its effects, Hermes = telling the user,
   Archive = storing, each client = its own conversation. Oracle untouched.
 - Oracle back is pushed (presence relax → drain), mirroring the existing «release held notifications».
+
+## v3 — More sophisticated (draft 3.0, 2026-10-22)
+Source: Marko in the Project thread, 2026-10-19 → 2026-10-22. Same principles: one presence state, each module its own
+job, generic user texts (no module named), icons + tone in clients, Telegram keeps emoji, tunables in Themis.
+
+### Facts checked in the code (2026-10-22)
+- Argus already: detects a module down → `request_hephaestus_remediation(requested_action="auto_health_recovery")` →
+  plans rechecks in the agenda with growing waits (`argus.repair.recheck` 10 min … `recheck_max` 360 min), keeps an
+  incident list (`health_history`, **memory only**, lost on restart).
+- But the repair does nothing real: issue `service_down` selects the read-only triage runbook; Hephaestus executes by
+  calling the **sick service's own** maintenance path through Hub (a dead service cannot answer); `argus.remediate.dry_run`
+  defaults to true; no container is ever restarted. Hephaestus already restarts containers for Forge deploys
+  (`forge/deployer.restart_containers`, Docker socket).
+- Oracle already knows when its model chain is exhausted (`llm_chains.ChainExhausted`, `mark_exhausted`), but nobody
+  outside sees it.
+- Question cards already exist end to end: Oracle `ask_question` → NDJSON `question` frame (kinds `free_text`,
+  `single_choice`, `multi_choice`, `confirm`) → WebUI card / Telegram buttons → answer routes an action. **Only modules**
+  use it (Themis confirmations); the model itself cannot ask.
+- WebUI: the «in coda» hourglass lives only in the page state; a reload loses it.
+
+### A. Questions from the assistant (like Claude) — foundation, needed by C
+- Oracle gives the model one tool **`ask_user`**: `{prompt, kind: free_text|single_choice|multi_choice|confirm,
+  options?[{value,label,help?}], allow_other?, required?}`. The model calls it when the request is ambiguous, when an
+  action is risky or not easily undone, or when it has to choose between real alternatives (with or without thinking).
+  Oracle's prompt says when (caveman style): ask only if the answer changes what is done; never for trivia.
+- The turn **pauses**: Oracle emits the existing `question` frame and keeps the pending turn (tool call + messages so
+  far); the answer resumes the same turn with the answer as the tool result. Timeout (Themis `oracle.ask.timeout`,
+  default 24 h) → the turn resumes with «nessuna risposta» and the model goes on with its safest default.
+- Pending questions survive a restart: stored in Archive (`/api/pending-questions`), not only in Oracle's memory.
+- Clients: WebUI card gains multi-choice (checkboxes + «Invia») and «Altro…» free field; Telegram: inline buttons,
+  multi-choice as toggle buttons + «Fatto», free text = the next message. A question asked outside an open chat (queue
+  drain, proactive work) is delivered by **Hermes** as a confirmation with the same options (Hermes is the only
+  messenger), and the answer comes back to Oracle.
+
+### B. Immune system — real self-repair, 1 to 3 tries
+- Argus (diagnosis) stays the one who notices and decides; Hephaestus (hands) does the repair.
+- New Hephaestus runbook action `restart_container` for `service_down` / `service_degraded` when the health check fails
+  or the container is exited/unhealthy: snapshot (status + last logs) → restart `hestia_<svc>` (existing deployer) →
+  health check → result. Only `hestia_*` containers; never Hephaestus itself, never during a Forge deploy of the same
+  service (Forge's own rollback owns that window).
+- Tries: at most `argus.repair.max_attempts` (Themis, default 3, 1–5) per incident, on the existing agenda rechecks
+  (growing waits). Restarts are real by default (`dry_run` default → false for this action only; the read-only runbooks
+  stay as they are).
+- Gave up after the last try → one Hermes notice (`service.action_required`, `replaces: system.repair.<svc>`) with a
+  generic text: «🩺 Un servizio non riparte da solo: ho provato 3 volte. Dettagli nel registro.» + action «Riprova».
+  Back → `closes` + «✅ Tornato a posto». Each try is a line in the incident (feeds E).
+- If the sick service is Oracle, the existing «Non disponibile» flow runs as today; the restarts happen underneath.
+
+### C. Smart queue — the assistant decides
+- Drain no longer replays one message at a time. The client sends Oracle the whole queue for that chat in one call
+  (`/api/chat` with `queued: [{text, written_at}]`, use case `chat.queue`). Oracle's model decides, case by case:
+  answer each separately, one merged answer, or — when some messages are old or superseded — ask with `ask_user`
+  (A): multi-choice «Questi messaggi sono di ieri, li tengo?» and then answers only the kept ones.
+- Every queued message ends answered, merged or discarded by the user's choice; none silently dropped.
+- No `/coda` command (Marko: automatic).
+
+### D. «Mentre non c'ero» — one catch-up message
+- Case: unavailable 7:50–9:30; at 8:00 the morning recap, at 9:00 a gym reminder, a mail arrives meanwhile.
+- While the overlay holds, Chronos already defers work (`work.light/heavy: defer`). Chronos records what was deferred
+  or failed in the window (agenda runs, Iris events that needed the assistant) in the incident window.
+- On relax, Chronos (owner of the agenda) re-runs the jobs still meaningful (a reminder whose time is long past is not
+  re-sent alone) and asks Oracle for **one** text «Mentre non c'ero: …» covering everything, delivered by Hermes.
+  No list → nothing sent.
+
+### E. Status «Limitato» — every model is exhausted
+- Oracle reports in its `/health` `{models: "ok" | "limited" | "none"}` from its chain state (no notification logic in
+  Oracle). Argus reads it in the monitor cycle and sets presence signal `oracle.limited` (grace = `argus.oracle.grace`).
+- Chronos overlay `oracle_limited`: «Limitato», icon `battery-low`, tone warning, help «rispondo, ma in modo ridotto:
+  i modelli principali non sono disponibili», effects `work.heavy: defer`, `chat.style: brief`. `none` = all chains
+  exhausted → same as «Non disponibile» (`chat.reply: queued`).
+- One Hermes notice like the existing one (`replaces/closes system.oracle`, generic text).
+
+### F. Notable events journal
+- Not the request log (that is the «Registro persistente dell'Hub» work) and not notifications (Hermes): a short,
+  curated history of things worth remembering — outages and their length, «Non disponibile»/«Limitato», repairs and
+  their tries, gave-ups, Forge rollbacks, backups failed.
+- Argus owns it (it already keeps incidents) and stores it in **Archive** (`/api/system-events`), so it survives
+  restarts. Argus WebUI page «Registro»: a timeline, one line per event with icon + tone, duration, what was tried.
+- No double alerting: an event in the journal sends nothing by itself; Hermes notices link to it («Dettagli nel
+  registro»).
+
+### G. WebUI: the hourglass survives a reload
+- On page load the chat asks its backend for this session's queued items (Archive `/api/chat-queue?client=webui`) and
+  draws them with the hourglass until answered.
+
+### Order
+A → C (needs A) · B → F (F shows B's tries) · E · D · G. Each phase: code, tests, module `.md`, swagger, root CHANGELOG.
+
+### v3.1 — refinements made while implementing (2026-10-22)
+- A: no paused thread in Oracle. The turn ends at the question; `question-answer` returns `resume.message` and the
+  client sends it as the next chat turn of the same session (history already has the question): survives an Oracle
+  restart. Pending questions kept in Archive `oracle-store` (kind `question`), expiry `oracle.ask.timeout` (24 h).
+  Questions reach the client in the chat stream only (no Hermes delivery: they belong to the conversation).
+  `GET /api/chat/questions` lists the open ones.
+- B: restart via a new endpoint `POST /api/hephaestus/restart` (not a remediation runbook: no approval flow, Argus
+  decides). Settings `argus.repair.max_restarts` (3) and `argus.repair.restart_after` (120 s, doubles each try).
+- C: `ChatRequest.queued` `[{text, written_at}]`; WebUI and Telegram send one turn per chat; the reply goes under the
+  last message.
+- E: Oracle `/health` gives `models` ok/limited/none; `none` is «Non disponibile» (reason `no_models`), chat returns 503.
+- F: the journal is Argus' incidents, persisted in Archive `argus-store` (kind `incident`), shown as «Registro».
+- D: fixed-text message (no LLM: the model may just have come back), setting `chronos.catchup.max_age_hours` (6).
+- G: `GET /api/webui/chat/pending`. No «Riprova» button (the queue is drained by itself).
+
+### Acceptance criteria (v3)
+1. The model asks via a card (WebUI) / buttons (Telegram) in each of the 4 kinds; the answer resumes the same turn;
+   a pending question survives an Oracle restart.
+2. A stopped module is restarted by itself within the first recheck; after 3 failed tries one notice, no more tries.
+3. Five queued messages, two of them from yesterday → the assistant answers sensibly (merged or asks about the old ones).
+4. Outage across a recap + reminder → one «Mentre non c'ero» message after return, no duplicates.
+5. All chains exhausted → «Limitato», notice; models back → closed.
+6. Journal page lists the outage, the tries and the return after an Argus restart.
+7. Reload of the WebUI chat while a message is queued → hourglass still there.

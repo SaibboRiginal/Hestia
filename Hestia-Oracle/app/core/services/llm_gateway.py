@@ -123,10 +123,12 @@ def chat(body: dict[str, Any]) -> dict[str, Any]:
                 errors.append(f"{provider}/{model}: {str(exc)[:160]}")
                 continue
         llm_usage.finish(usage)
+        llm_chains.note_outcome(use_case, index)
         data["hestia_step"] = {"use_case": use_case, "chain": llm_chains.usecase_config(use_case)["chain"],
                                "step": index, "provider": provider, "model": model}
         return data
     chain = llm_chains.usecase_config(use_case)["chain"]
+    llm_chains.note_outcome(use_case, None)
     logger.error("event=llm_chain_exhausted use_case=%s chain=%s errors=%s", use_case, chain,
                  " | ".join(errors) or "no usable step")
     raise LLMGatewayError(f"chain '{chain}' ({use_case}): " + (" | ".join(errors) or "no usable step"), 502)

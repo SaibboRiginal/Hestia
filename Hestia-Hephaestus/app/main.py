@@ -133,7 +133,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Hestia Hephaestus",
               version=config.service_version, lifespan=lifespan)
-app.include_router(create_hephaestus_router(remediation_service))
+app.include_router(create_hephaestus_router(remediation_service, forge))
 app.include_router(create_forge_router(forge))
 app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
