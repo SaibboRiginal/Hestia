@@ -251,3 +251,21 @@ def test_cli_restore_needs_the_confirm_word(monkeypatch):
     monkeypatch.setattr(cli, "_wait", lambda: {"last_restore": {"ok": True, "name": "x"}})
     cli.main(["restore", "hestia-backup-2026-10-20-033000.enc", "--yes"])
     assert ("POST", "/restore", {"file_id": "f1", "confirm": True}) in calls
+
+
+def test_unreachable_drive_notice_is_plain(env):
+    """Regression (bench 2026-10-21): the notice repeated itself and showed the internal Hub URL."""
+    from app.backup.remote import DriveRemote, RemoteError
+
+    class Down:
+        def post(self, *a, **k):
+            raise ConnectionError("503 Server Error for url: http://hestia_hub:19001/api/route/hecate/x")
+
+    with pytest.raises(RemoteError) as err:
+        DriveRemote("http://hub/api", session=Down()).list()
+    assert err.value.code == "unreachable" and "http" not in str(err.value)
+    svc, _, remote, _, _, _ = env
+    remote.down = "unreachable"
+    svc.run()
+    text = svc.state()["problem"]["text"]
+    assert text.count("non raggiungibile") == 1 and "http" not in text

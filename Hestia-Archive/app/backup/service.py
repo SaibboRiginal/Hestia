@@ -258,8 +258,9 @@ class BackupService:
                                   "La copia cifrata resta sul PC e la carico appena ricolleghi Google.",
                                   actions=[REAUTH_ACTION])
                 else:
-                    self._problem("drive", "Backup in attesa", f"Backup in attesa: Google Drive non raggiungibile "
-                                  f"({_short(exc)}). La copia cifrata resta sul PC e riprovo al prossimo giro.")
+                    why = "Google Drive non raggiungibile ora" if exc.code == "unreachable" else _short(exc)
+                    self._problem("drive", "Backup in attesa", f"Backup in attesa: {why}. La copia cifrata resta "
+                                  "sul PC e riprovo al prossimo giro.")
                 return None
             path.unlink(missing_ok=True)
             meta_path.unlink(missing_ok=True)

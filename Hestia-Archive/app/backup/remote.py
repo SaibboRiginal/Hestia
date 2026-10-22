@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ import requests
 
 FOLDER = "backup"
 CHUNK = 2 * 1024 * 1024          # multiple of 256 KiB (Drive resumable rule)
+
+logger = logging.getLogger("hestia_archive.backup")
 
 
 class RemoteError(RuntimeError):
@@ -29,8 +32,9 @@ class DriveRemote:
                                         "timeout_seconds": timeout}, timeout=timeout + 5)
             resp.raise_for_status()
             routed = resp.json() or {}
-        except Exception as exc:
-            raise RemoteError(f"Google Drive non raggiungibile ({exc})", "unreachable") from exc
+        except Exception as exc:                               # details in the log, a plain sentence for Marko
+            logger.warning("[🔄] event=drive_unreachable path=%s error=%s", path.split("/")[0], str(exc)[:300])
+            raise RemoteError("Google Drive non raggiungibile ora", "unreachable") from exc
         status, payload = int(routed.get("status_code", 500)), routed.get("payload")
         if status >= 400:
             detail = (payload or {}).get("detail") if isinstance(payload, dict) else None

@@ -53,7 +53,11 @@ def _confirm(what: str, assume_yes: bool) -> None:
     print(what)
     if assume_yes:
         return
-    if input(f"Scrivi {CONFIRM_WORD} per continuare: ").strip() != CONFIRM_WORD:
+    try:
+        answer = input(f"Scrivi {CONFIRM_WORD} per continuare: ").strip()
+    except EOFError:
+        answer = ""
+    if answer != CONFIRM_WORD:
         raise SystemExit("Annullato, nessun dato è cambiato.")
 
 
@@ -89,15 +93,15 @@ def cmd_restore(args) -> None:
     if args.local:
         name = Path(args.local).name
         body = {"local": name, "confirm": True}
-        label = f"il file {name}"
+        label = f"del file {name}"
     else:
         items = _call("GET", "/list").get("items") or []
         match = [it for it in items if it["name"] == args.name or it["id"] == args.name]
         if not match:
             raise SystemExit(f"Backup {args.name} non trovato su Google Drive (vedi «list»).")
         body = {"file_id": match[0]["id"], "confirm": True}
-        label = match[0]["name"]
-    _confirm(f"Ripristino di {label}: tutti i dati tornano a quel momento, quello cambiato dopo viene sostituito.",
+        label = f"di {match[0]['name']}"
+    _confirm(f"Ripristino {label}: tutti i dati tornano a quel momento, quello cambiato dopo viene sostituito.",
              args.yes)
     _call("POST", "/restore", body)
     _report_restore(_wait())

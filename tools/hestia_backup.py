@@ -22,8 +22,8 @@ IMPORT_DIR = "/code/backups/import"
 
 def _docker(*args: str, interactive: bool = False) -> int:
     cmd = ["docker", *args]
-    if interactive:
-        cmd = ["docker", args[0], "-it", *args[1:]] if sys.stdin.isatty() else cmd
+    if interactive:                    # keep stdin (the RIPRISTINA confirmation), a terminal only when there is one
+        cmd = ["docker", args[0], "-it" if sys.stdin.isatty() else "-i", *args[1:]]
     return subprocess.call(cmd)
 
 
