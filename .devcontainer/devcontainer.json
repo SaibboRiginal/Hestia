@@ -14,8 +14,8 @@
   "hostRequirements": { "cpus": 4, "memory": "16gb", "storage": "32gb" },
   "forwardPorts": [19015, 19000],
   "portsAttributes": {
-    "19015": { "label": "WebUI", "onAutoForward": "notify" },
-    "19000": { "label": "Swagger", "onAutoForward": "silent" }
+    "19015": { "label": "WebUI", "onAutoForward": "notify", "protocol": "http" },
+    "19000": { "label": "Swagger", "onAutoForward": "silent", "protocol": "http" }
   },
   "otherPortsAttributes": { "onAutoForward": "ignore" },
   "secrets": {
