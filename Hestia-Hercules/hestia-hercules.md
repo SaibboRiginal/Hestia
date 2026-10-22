@@ -43,8 +43,32 @@ light outdoor activities (run, bike, walk) planned with the weather
   `apply_adaptation`, `restore_today`, `skip_day`, `postpone`, `feedback`, `edit_template`, `undo_template`,
   `log_measurement`, `set_goal`, `plan_activity`, `confirm_activity`, `log_activity`, `activities`,
   `activity_outcome`, `cancel_activity` (all prefixed `fitness_`).
-- `GET /api/module/context`: short lines (next workout, week vs goal, recent PRs, stalls, feedback to discuss).
+- `GET /api/module/context?budget=&topic=`: short lines (next workout, week vs goal, recent PRs, stalls, feedback to
+  discuss). With `topic=<signal key>` the text explains that signal (`stall:<exercise>` → last 4 exposures,
+  `pr:<exercise>` → records of the last 14 days, `missed_streak` → which days, `deload` → the low check-ins,
+  `week_goal` → goal hint and days left); an unknown topic answers the normal line. Same shape `{module, domain,
+  updated_at, text}`, cut to `budget`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
+
+## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
+
+Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hercules`,
+domain `fitness`); texts say «Allenamento» things, never the module name. No LLM, no new judging logic.
+
+| Key | Kind · severity | When | Page |
+|---|---|---|---|
+| `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `esercizi/<id>` |
+| `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `allenamento` |
+| `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `allenamento` |
+| `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `esercizi/<id>` |
+| `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progressi` |
+
+Weekly metrics (last 12 ISO weeks, current included; weeks before the first workout left out): `fitness.sessions`
+«Allenamenti», `fitness.volume` «Volume (kg)», `fitness.energy` «Energia media» (only weeks with check-ins).
+
+When: `signals.changed()` (debounced re-evaluation) after sync with ops, session finish/delete, set delete, check-in,
+quick done/undo, import, the MCP finish/check-in tools and once after warm-up; agenda job `hercules.signals` (daily
+17:30, editable in the agenda) → `POST /api/hercules/signals/run` → `{written, retracted, signals, metrics}`.
 
 ## Reminders (off by default)
 
@@ -78,7 +102,7 @@ programs, next, sessions (start, start-next, log-text, sets, finish, discard), p
 checkin, feedback, adapt (+apply, restore), measurements, stats, records, goals, summary, quick (Home chips),
 import (Strong/Hevy CSV preview + commit, idempotent), export (csv/json), reminder/check, activities (week,
 propose, `{plan}/confirm`, `{plan}/slots` (+`/{slot}/done|missed|moved|ask`), `{plan}/keep`, `DELETE {plan}`, log,
-`DELETE log/{id}`, quick-run, morning, sync-calendar).
+`DELETE log/{id}`, quick-run, morning, sync-calendar), signals/run.
 
 ## Configuration (infrastructure only)
 
@@ -86,7 +110,8 @@ propose, `{plan}/confirm`, `{plan}/slots` (+`/{slot}/done|missed|moved|ask`), `{
 
 ## Tests
 
-`python -m pytest -q -m unit Hestia-Hercules/tests` (fake Archive in memory, no network).
+`python -m pytest -q -m "unit or api" Hestia-Hercules/tests` (fake Archive in memory, no network; `test_signals.py`
+mocks the signals transport).
 
 
 ## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.1)

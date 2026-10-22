@@ -110,7 +110,7 @@ class TestThinkNow:
     def test_summary_is_compact(self, rt):
         with patch.object(rt.strategist, "reason", return_value=_cands()):
             rt._run_once()
-        out = rt.thinking_summary(limit=5)
+        out = rt.thinking_summary(limit=5, track="sistema")
         assert out["count"] == 1 and out["running"] is False and out["threshold"] == rt.emit_threshold
         assert set(out["weights"]) == {"urgency", "usefulness", "novelty", "confidence", "interruption_cost"}
         cyc = out["cycles"][0]

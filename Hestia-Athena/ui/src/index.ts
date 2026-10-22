@@ -5,6 +5,7 @@
  */
 import { definePlugin } from '@hestia/webui-sdk';
 import { AthenaThoughts } from './thoughts';
+import { AthenaSignals } from './signals';
 import { AthenaLastWidget } from './widgets';
 
-definePlugin({ 'athena-thoughts': AthenaThoughts, 'athena-last-widget': AthenaLastWidget });
+definePlugin({ 'athena-thoughts': AthenaThoughts, 'athena-signals': AthenaSignals, 'athena-last-widget': AthenaLastWidget });

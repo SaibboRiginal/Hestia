@@ -7,6 +7,34 @@ loop: gathers system state, generates action candidates via Oracle LLM, scores t
 through a relevance gate, and emits accepted actions to Hermes. Every thinking cycle
 is archived for audit and client display.
 
+## Two tracks (docs/work/2026-10-20-riflessione-a-livelli)
+
+| Track | Reads | Produces | When |
+|---|---|---|---|
+| **Sistema** | Hub, Argus health/errors, Metis weak spots, settings, presence (no life data) | Hermes briefs, Forge hand-offs, setting proposals | idle cycles in window `athena.thinking` |
+| **Vita** | only module **signals** + weekly metrics (Archive `signals-store`), details via `/api/module/context?topic=` | **observations** stored for the evening recap (never sent to Hermes), at most one setting proposal via Themis | once a day in window `athena.reflection` (default 18–20, before the recap) |
+
+### Life reflection («Vita», `app/core/reflection.py`)
+1. Read active signals (`hestia_common.signals_client.SignalReader`) and weekly series (26 weeks).
+2. **Link** series of different areas: Pearson at lag 0 (same week) and lag 1 (the week after), closed weeks only,
+   ≥ `athena.reflection.min_weeks` paired weeks and |r| ≥ `athena.reflection.min_correlation`. Numbers, not the model.
+3. **Topics**: `alta` signals, then links (strongest), then `attenzione` signals; at most `max_topics`; anything told
+   within `repeat_days` is skipped (dedup on `topic_key`).
+4. **Details**: `GET route/<module>/api/module/context?topic=<key>&budget=<detail_budget>` per signal topic; the
+   normal context line of both modules for a link.
+5. **Think**: one Oracle call, use case `athena.riflessione` (chain `potente`), caveman prompt, same `AZIONE/TIPO/…`
+   format plus `TEMA: T<n>`; kinds `observation` | `setting`.
+6. **Gate** (same score and threshold). Accepted observations → Archive `signals-store` (`kind=observation`,
+   `ref_id=athena`, `day`, `title`, `text`, `domains`, `topic_key`, `link`, `page`, `score`), outcome `observed`,
+   at most `max_per_day` per day. Settings → Themis proposal (`setting_proposed`).
+7. **Record**: thinking record with `track: "vita"` and `life{signals, links, topics, details, series}`.
+Oracle down → record with `error`, nothing stored, no static fallback.
+
+### Recap piece
+Athena advertises `recap_endpoint` like any module: `GET /api/module/recap?day=` → `{module: athena, title: «Da tenere
+d'occhio», icon: eye, order: 900, done: [{text, tone}]}` with that day's observations, or `{empty: true}`. The daily
+recap (`app/core/recap.py`, dossier `2026-10-20-recap-giornaliero`) collects it like the other pieces.
+
 ## Event contract
 - Event type: `athena.focus_brief`
 - Destination: Hermes `/api/events/ingest`
@@ -131,6 +159,12 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.skills.core_use_count` | int | 50 | uses to promote to core |
 | `athena.audit.timeout` | float s | 40 | auditor LLM timeout |
 | `athena.audit.max_turns` | int | 20 | default turns per audit |
+| `athena.reflection.max_per_day` | int | 2 | life observations per day (all in the evening recap) |
+| `athena.reflection.max_topics` | int | 4 | topics per life cycle |
+| `athena.reflection.min_weeks` | int settimane | 6 | paired weeks before a link counts |
+| `athena.reflection.min_correlation` | float | 0.6 | minimum |r| (advanced) |
+| `athena.reflection.repeat_days` | int giorni | 14 | same topic not repeated before (advanced) |
+| `athena.reflection.detail_budget` | int caratteri | 600 | detail asked to a module (advanced) |
 | `athena.log.level` | enum | `LOG_LEVEL` env | log verbosity |
 
 ### Thinking archive
@@ -159,8 +193,15 @@ Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_pr
 | Kind | Id | What |
 |---|---|---|
 | page (order 130) | `pensieri` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena non raggiungibile» |
+| page (order 131) | `segnali` → `<athena-signals>` | active signals per area (severity icon + tone, «Apri» opens the module page), links between areas, recent observations, weekly series charts; area filter |
 | widget (auto) | `ultimo` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
 | quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
+
+Pensieri has a **Vita / Sistema** switch (default Vita): a life cycle shows 1 Legge i segnali · 2 Collega · 3
+Approfondisce · 4 Pensa e filtra · 5 Per il recap; «Pensa ora» runs the selected track.
+
+### MCP tool `athena_signals(domain?, limit?)`
+Read only (GET `/api/athena/signals`), clients `ui` + `external`, not in the Telegram menu.
 
 ### MCP tool `athena_thinking(limit?)`
 Read only (GET `/api/athena/thinking/summary`), clients `ui` + `external` (external AIs with an MCP access may read
@@ -179,8 +220,10 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/athena/commitments` | Active commitments (action items tracked) |
 | POST | `/api/athena/commitments/{brief_id}/resolve` | Resolve a commitment |
 | GET | `/api/athena/thinking` | Recent thinking records, full (observation payload included) |
-| GET | `/api/athena/thinking/summary?limit=` | Compact cycles + `running`, `threshold`, `weights`, `loop_enabled`, `strategist_enabled` (page Pensieri, MCP `athena_thinking`) |
-| POST | `/api/athena/think` | «Pensa ora»: one full cycle now in background → `{status: started, trace_id}` or `{status: busy}` |
+| GET | `/api/athena/thinking/summary?limit=&track=` | Compact cycles + `running`, `threshold`, `weights`, `loop_enabled`, `strategist_enabled` (page Pensieri, MCP `athena_thinking`) |
+| POST | `/api/athena/think?track=` | «Pensa ora»: one full cycle now in background (`sistema` default, or `vita`) → `{status: started, trace_id, track}` or `{status: busy}` |
+| GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Segnali, MCP `athena_signals`) |
+| GET | `/api/module/recap?day=` | Athena's recap piece «Da tenere d'occhio» (capability `recap_endpoint`) |
 | GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
 
@@ -195,6 +238,7 @@ makes them user-editable and Chronos keeps your edits over the registered defaul
 | `athena.consolidation` | daily 03–05 | memory consolidation, once per day inside the window |
 | `athena.skill_curation` | daily 05–07 | skill curation, once per day inside the window |
 | `athena.thinking` | all day | idle thinking cycles (observe → think → propose); skip/pause = Athena silent |
+| `athena.reflection` | daily 18–20 | life reflection, once per day inside the window; skip/pause = no observations |
 
 Missing window or Chronos down → default hours (consolidation 03–05) / always (skills, thinking). Skipped or paused
 window = closed (your decision). Thinking still requires the idle gate (`athena.loop.idle_seconds`).
@@ -213,7 +257,7 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `ATHENA_UI_DIST` | `/ui/dist` | WebUI bundle folder (set in the Dockerfile, infrastructure) |
 
 Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategia`
-(strategist + memory consolidation) or `athena.revisione` (answer audit), both declared in its Hub registration
+(strategist + memory consolidation), `athena.riflessione` (life reflection) or `athena.revisione` (answer audit), both declared in its Hub registration
 (`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `potente`).
 
 ## Resource-conscious design

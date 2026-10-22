@@ -89,6 +89,29 @@ Archive under `domain` (`reference_id = mail:<domain>:<gmail id>`) and calls `PO
 count, reference_ids, source}`. The module processes its unevaluated records there **and once at startup** (mail
 that arrived while it was down). Fails soft (`[🔄] event=mail_subscribe_failed`).
 
+## Module signals (`hestia_common.signals_client`)
+
+First layer of the reflection (`docs/work/2026-10-20-riflessione-a-livelli`): each domain module judges its own data
+with deterministic rules and publishes short **signals** + **weekly metrics** to Archive `signals-store`; Athena
+reads only those (links between areas, then details through `/api/module/context?topic=`).
+
+```python
+from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
+
+signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
+signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
+metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
+signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
+signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
+rules.append(signals_rule("hercules", "Allenamento", path="/api/hercules/signals/run", tz=TZ))   # daily 17:30
+```
+
+`kind` = trend · streak · anomaly · goal · milestone; `severity` = info · attenzione · alta (ranks the topics).
+`key` is stable inside the module (republishing updates the row); `sync` writes only what changed and retracts
+signals no longer present; signals expire after `ttl_days` (7). Texts are Italian, short, and name the area
+(«Allenamento», «Spese»), never the module. `SignalReader` (Athena) reads active signals and weekly series.
+Fails soft (`[🔄] event=signals_sync_*_failed`).
+
 ## Response packets (standard for every client)
 
 Oracle streams NDJSON; every client (Telegram, WebUI, future apps/voice) renders the same packets.

@@ -80,7 +80,7 @@ class ActionCandidate(BaseModel):
     domain: str = "cognition"
     title: str = ""
     summary: str = ""
-    kind: str = "advisory"  # advisory | remediation | notification | maintenance | improvement | setting
+    kind: str = "advisory"  # advisory | remediation | notification | maintenance | improvement | setting | observation
     target_service: str | None = None
     setting_key: str | None = None      # kind=setting: Themis key to change (always confirmed by the user)
     setting_value: str | None = None
@@ -91,7 +91,9 @@ class ActionCandidate(BaseModel):
     score: float = 0.0
     accepted: bool = False
     gate_reason: str = ""   # why the relevance gate accepted/discarded it (Italian, shown on the Pensieri page)
-    outcome: str = ""       # emitted | forge | forge_skipped | setting_proposed | setting_skipped | failed | discarded
+    outcome: str = ""       # emitted | forge | forge_skipped | setting_proposed | setting_skipped | observed | failed | discarded
+    track: str = "sistema"  # sistema (Hestia's own health) | vita (life reflection, observations go to the recap)
+    topic_key: str | None = None   # vita: the signal / link the observation is about (dedup)
 
 
 class ThinkingRecord(BaseModel):
@@ -102,6 +104,8 @@ class ThinkingRecord(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     trigger: str = "periodic"  # periodic | manual
+    track: str = "sistema"     # sistema | vita (docs/work/2026-10-20-riflessione-a-livelli)
+    life: dict[str, Any] = Field(default_factory=dict)   # vita: signals, links, topics, details used
     observation: ObservationSnapshot = Field(default_factory=ObservationSnapshot)
     candidates: list[ActionCandidate] = Field(default_factory=list)
     emitted_count: int = 0

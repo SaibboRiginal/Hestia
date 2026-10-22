@@ -12,6 +12,8 @@ from datetime import date, datetime, timedelta
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
+from hestia_common.signals_client import iso_week, last_weeks, metric, signal
+
 from . import domain, photos, stats as stats_mod
 from .domain import Invalid
 from .hub import Hub
@@ -570,11 +572,82 @@ class Wardrobe:
                 "forgotten": [f["name"] for f in s["forgotten"][:8]], "gaps": s["gaps"], "goal": g,
                 "favorite_outfits": [o["name"] for o in self.outfits(favorite=True, limit=8)["items"]]}
 
-    def context(self, budget: int = 400) -> dict:
+    def context(self, budget: int = 400, topic: str = "") -> dict:
+        detail = self.topic_text(topic, budget) if topic else None
+        if detail:
+            return {"module": "wardrobe", "domain": "wardrobe", "updated_at": now_iso(), "text": detail}
         text = "Guardaroba: " + self.summary()["text"]
         if len(text) > budget:
             text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
         return {"module": "wardrobe", "domain": "wardrobe", "updated_at": now_iso(), "text": text}
+
+    # ── reflection signals (hestia_common.signals_client; Athena reads them, never the rows) ──
+    FORGOTTEN_DAYS = 60        # SPEC riflessione-a-livelli: «nothing worn for 60 days»
+    LAUNDRY_DAYS = 7           # in laundry since a week or more…
+    LAUNDRY_MIN = 3            # …at least this many pieces
+
+    def _signal_facts(self) -> dict:
+        """The lists behind the signals (shared by ``signals`` and ``topic_text``)."""
+        raw = self._pieces_raw()
+        wears = self._wears()
+        use = stats_mod.usage(raw, wears)
+        today = self.today()
+        tracked = bool(wears) or any(p.get("last_worn_manual") for p in raw)   # never marked = nothing to judge
+        cut = (today - timedelta(days=self.LAUNDRY_DAYS)).isoformat()
+        return {"today": today, "wears": wears,
+                "forgotten": stats_mod.forgotten(raw, use, today, self.FORGOTTEN_DAYS) if tracked else [],
+                "laundry": sorted((p for p in raw if p.get("status") == "laundry"
+                                   and str(p.get("updated_at") or "")[:10] < cut), key=lambda p: p.get("updated_at") or ""),
+                "repair": [p for p in raw if p.get("status") == "to_repair"
+                           or (p.get("status") in domain.OWNED and p.get("condition") == "to_repair")]}
+
+    def signals(self) -> tuple[list[dict], list[dict]]:
+        """Deterministic signals + weekly metric ``wardrobe.worn`` (12 ISO weeks). Texts say «Guardaroba»."""
+        f = self._signal_facts()
+        sigs: list[dict] = []
+        if f["forgotten"]:
+            n = len(f["forgotten"])
+            sigs.append(signal("forgotten", f"Guardaroba: {n} capi non indossati da {self.FORGOTTEN_DAYS}+ giorni.",
+                               kind="trend", severity="info", metrics={"count": n, "days": self.FORGOTTEN_DAYS},
+                               page="statistiche"))
+        if len(f["laundry"]) >= self.LAUNDRY_MIN:
+            n = len(f["laundry"])
+            sigs.append(signal("laundry_backlog", f"Guardaroba: {n} capi in lavanderia da più di "
+                               f"{self.LAUNDRY_DAYS} giorni.", kind="anomaly", severity="attenzione",
+                               metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="capi"))
+        if f["repair"]:
+            n = len(f["repair"])
+            sigs.append(signal("to_repair", f"Guardaroba: {n} capi da riparare.", kind="trend", severity="info",
+                               metrics={"count": n}, page="capi"))
+        weeks = last_weeks(12, f["today"])
+        per_week = {w: 0 for w in weeks}
+        for w in f["wears"]:
+            try:
+                wk = iso_week(date.fromisoformat(str(w.get("date"))[:10]))
+            except ValueError:
+                continue
+            if wk in per_week:
+                per_week[wk] += 1
+        return sigs, [metric("wardrobe.worn", w, per_week[w], "Capi indossati") for w in weeks]
+
+    def topic_text(self, topic: str, budget: int = 400) -> str | None:
+        """Detail behind one signal key (``/api/module/context?topic=``); unknown topic → None."""
+        if topic not in ("forgotten", "laundry_backlog", "to_repair"):
+            return None
+        f = self._signal_facts()
+        if topic == "forgotten":
+            items = f["forgotten"]
+            text = (f"Non indossati da {self.FORGOTTEN_DAYS}+ giorni: {len(items)}. Es. "
+                    + ", ".join(f"{x['name']} ({x['days']}g)" if x.get("days") else f"{x['name']} (mai)"
+                                for x in items[:8]))
+        elif topic == "laundry_backlog":
+            items = f["laundry"]
+            text = (f"In lavanderia da più di {self.LAUNDRY_DAYS} giorni: {len(items)}. "
+                    + ", ".join(f"{p['name']} dal {str(p.get('updated_at') or '')[:10]}" for p in items[:8]))
+        else:
+            items = f["repair"]
+            text = f"Da riparare: {len(items)}. " + ", ".join(p["name"] for p in items[:8])
+        return text if len(text) <= budget else text[: max(0, budget - 1)] + "…"
 
     # ── quick actions (WebUI Home) ─────────────────────────────────────────
     def quick_chips(self, limit: int = 6) -> list[dict]:

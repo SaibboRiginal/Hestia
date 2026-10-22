@@ -15,7 +15,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Scout | 19006 | hestia_scout | domain: real-estate listings from emails |
 | Chronos | 19007 | hestia_chronos | calendars + **assistant agenda** (Hestia's own calendar) |
 | Argus | 19008 | hestia_argus | monitoring: health, logs, alerts, repair rechecks, Forge proposals |
-| Athena | 19009 | hestia_athena | idle cognition: observe → think → propose (improvements to Forge) |
+| Athena | 19009 | hestia_athena | two tracks: Sistema (idle: observe → think → propose, improvements to Forge) and Vita (module signals → links between areas → observations for the evening recap; `signals_client`) |
 | Hephaestus | 19010 | hestia_hephaestus | remediation runbooks + **Forge** (self-development) |
 | Dummy | 19011 | hestia_dummy | template/test service (ignore) |
 | Iris | 19012 | hestia_iris | email domain logic (search/send/threads) via Hecate + **mail dispatcher** to module subscriptions |
