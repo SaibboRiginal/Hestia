@@ -66,7 +66,8 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   `GOOGLE_CLIENT_SECRET` (or set them once on GitHub → *Settings → Codespaces → Secrets*). Every start runs
   `cloud_test.py start` (output in `.cloud-test/start.log`, it waits up to 120 s for Docker); open the link in
   `.cloud-test/login.txt`. Ports stay private. «Docker is not installed» = the container was not built from
-  the devcontainer: *Ctrl+Shift+P → Codespaces: Full Rebuild Container*.
+  the devcontainer: *Ctrl+Shift+P → Codespaces: Full Rebuild Container*. «Recovery mode» = the devcontainer failed to build
+  (until 2026-10-22: the base image moved to Debian 13, where docker-in-docker does not install; now pinned to bookworm).
 
 ## Critical Regressions Log
 
