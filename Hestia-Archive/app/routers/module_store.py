@@ -1,7 +1,8 @@
 """Generic module store router — rows with last-write-wins and a global cursor.
 
 Same contract as ``hercules-store`` / ``selfcare-store`` / ``wardrobe-store`` (PUT/GET ``records``, GET
-``cursor``), built once for every newer module (Plutus ``finance-store``, Iris ``iris-store``, Echo ``echo-store``).
+``cursor``), built once for every newer module (Plutus ``finance-store``, Iris ``iris-store``, reflection ``signals-store``,
+Echo ``echo-store``).
 Archive only stores: the owner module gives each ``kind`` its meaning.
 """
 from datetime import datetime, timezone
@@ -107,3 +108,4 @@ def build_router(prefix: str, model, tag: str) -> APIRouter:
 finance_router = build_router("/api/finance-store", models.FinanceRecord, "finance")
 iris_router = build_router("/api/iris-store", models.IrisRecord, "iris")
 echo_router = build_router("/api/echo-store", models.EchoRecord, "echo")
+signals_router = build_router("/api/signals-store", models.SignalRecord, "signals")

@@ -6,9 +6,10 @@
 import { definePlugin } from '@hestia/webui-sdk';
 import { OracleBrain } from './brain';
 import { OracleDocuments } from './documents';
+import { OracleMemory } from './memory';
 import { OracleModels } from './models';
 import { OracleUsage } from './usage';
 import { OracleUsageWidget } from './widgets';
 
 definePlugin({ 'oracle-brain': OracleBrain, 'oracle-documents': OracleDocuments, 'oracle-usage-widget': OracleUsageWidget,
-               'oracle-usage': OracleUsage, 'oracle-models': OracleModels });
+               'oracle-usage': OracleUsage, 'oracle-models': OracleModels, 'oracle-memory': OracleMemory });

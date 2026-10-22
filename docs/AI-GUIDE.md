@@ -15,7 +15,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Scout | 19006 | hestia_scout | domain: real-estate listings from emails |
 | Chronos | 19007 | hestia_chronos | calendars + **assistant agenda** (Hestia's own calendar) |
 | Argus | 19008 | hestia_argus | monitoring: health, logs, alerts, repair rechecks, Forge proposals |
-| Athena | 19009 | hestia_athena | idle cognition: observe → think → propose (improvements to Forge) |
+| Athena | 19009 | hestia_athena | two tracks: Sistema (idle: observe → think → propose, improvements to Forge) and Vita (module signals → links between areas → observations for the evening recap; `signals_client`) |
 | Hephaestus | 19010 | hestia_hephaestus | remediation runbooks + **Forge** (self-development) |
 | Dummy | 19011 | hestia_dummy | template/test service (ignore) |
 | Iris | 19012 | hestia_iris | email domain logic (search/send/threads) via Hecate + **mail dispatcher** to module subscriptions |
@@ -103,6 +103,12 @@ work is allowed). Actions `{service, method, path, body}` are fired through Hub 
 Modules register defaults (idempotent by key) with `hestia_common.agenda_client.AgendaClient`
 (`register_async`, `is_open(key, fallback)`, `should_self_run(key, interval)`, `plan`, `show`, `done`).
 Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
+
+### 5.1 Weekly plan (coaches)
+A domain module that knows what is due (workouts, routines, budget review) is a **coach**: Hub tag `coach` +
+`hestia_common.coach.CoachRouter` (needs/fit/placed/review) + `CoachClient` (done/skipped/changed, pushed to Chronos).
+Never schedule the user's own week inside a module: Chronos plans it (`Hestia-Chronos/app/services/coach*.py`,
+endpoints `/api/agenda/coach/*`, page «La tua settimana»). Need fields are generic; Chronos must not learn domain words.
 
 ## 5a. Mail flow (push) — subscribe, never poll
 

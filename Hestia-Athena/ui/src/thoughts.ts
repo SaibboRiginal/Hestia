@@ -1,15 +1,19 @@
 /**
  * <athena-thoughts> — "Pensieri": every Athena cycle, observe → think → gate (5 factors) → act, with accepted /
  * discarded candidates and why; open commitments; «Pensa ora» runs a cycle now and the list refreshes when done.
- * Reads GET /api/athena/thinking/summary · /api/athena/commitments; POST /api/athena/think,
+ * Two tracks (docs/work/2026-10-20-riflessione-a-livelli): Vita (signals → links → details → observations for the
+ * evening recap) and Sistema (Hestia's own health).
+ * Reads GET /api/athena/thinking/summary?track= · /api/athena/commitments; POST /api/athena/think?track=,
  * POST /api/athena/commitments/{id}/resolve.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
-import { API, FACTORS, KINDS, OUTCOMES, ago, pct, secs, when } from './util';
+import { API, FACTORS, KINDS, OUTCOMES, ago, area, linkText, pct, secs, when } from './util';
 
 export class AthenaThoughts extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, commitments: { state: true },
-                        error: { state: true }, thinking: { state: true }, open: { state: true } };
+                        error: { state: true }, thinking: { state: true }, open: { state: true },
+                        track: { state: true } };
+  declare track: 'vita' | 'sistema';
   declare data: any; declare commitments: any[] | null; declare error: string; declare thinking: boolean;
   declare open: Record<string, boolean>;
   private poll: number | undefined;
@@ -39,10 +43,15 @@ export class AthenaThoughts extends HestiaElement {
     .muted2 { color: var(--text-2); font-size: 13px; }
     .comm { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); }
     .comm:first-child { border-top: 0; }
+    .tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-full); background: var(--surface-2); }
+    .tabs button { border: 0; background: none; font: inherit; font-size: 13px; padding: 4px 12px; border-radius: var(--radius-full); color: var(--text-2); cursor: pointer; }
+    .tabs button[aria-pressed="true"] { background: var(--surface); color: var(--text-1); box-shadow: var(--shadow-1); }
+    .items { margin: 4px 0 0; padding-left: 16px; }
+    .items li { margin: 2px 0; }
     .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 12.5px; }
   `];
 
-  constructor() { super(); this.data = null; this.commitments = null; this.error = ''; this.thinking = false; this.open = {}; }
+  constructor() { super(); this.data = null; this.commitments = null; this.error = ''; this.thinking = false; this.open = {}; this.track = 'vita'; }
 
   connectedCallback() {
     super.connectedCallback();
@@ -54,7 +63,7 @@ export class AthenaThoughts extends HestiaElement {
 
   private async load(): Promise<any> {
     const [t, c] = await Promise.all([
-      this.host.api('GET', `${API}/thinking/summary`, { query: { limit: 15 } }),
+      this.host.api('GET', `${API}/thinking/summary`, { query: { limit: 15, track: this.track } }),
       this.host.api('GET', `${API}/commitments`, { query: { limit: 20 } }),
     ]);
     if (!t.ok) { this.error = t.status === 0 ? 'Athena non raggiungibile' : t.error || 'Athena non raggiungibile'; return null; }
@@ -76,7 +85,9 @@ export class AthenaThoughts extends HestiaElement {
         const fresh = d.cycles?.[0];
         if (fresh && fresh.record_id !== before) {
           const n = (fresh.candidates || []).filter((x: any) => x.accepted).length;
-          this.host.toast(n ? `Athena ha pensato: ${n} ${n === 1 ? 'idea utile' : 'idee utili'}` : 'Athena ha pensato: niente da proporre ora', n ? 'success' : 'info');
+          const what = this.track === 'vita' ? (n === 1 ? 'osservazione per il recap' : 'osservazioni per il recap')
+            : (n === 1 ? 'idea utile' : 'idee utili');
+          this.host.toast(n ? `Athena ha pensato: ${n} ${what}` : 'Athena ha pensato: niente da dire ora', n ? 'success' : 'info');
           this.open = { ...this.open, [fresh.record_id]: true };
         }
         return;
@@ -87,7 +98,7 @@ export class AthenaThoughts extends HestiaElement {
 
   private async thinkNow() {
     const before = this.data?.cycles?.[0]?.record_id;
-    const r = await this.host.api('POST', `${API}/think`);
+    const r = await this.host.api('POST', `${API}/think`, { query: { track: this.track } });
     if (!r.ok) { this.host.toast(r.error || 'Athena non raggiungibile', 'danger'); return; }
     if (r.data?.status === 'busy') this.host.toast('Athena sta già pensando', 'info');
     else this.host.toast('Athena sta pensando…', 'info');
@@ -130,6 +141,33 @@ export class AthenaThoughts extends HestiaElement {
     </div>`;
   }
 
+  private setTrack(t: 'vita' | 'sistema') {
+    if (t === this.track) return;
+    this.track = t; this.data = null; this.load();
+  }
+
+  /** Life cycle: what it read, the links it found, what it asked, what went to the recap. */
+  private lifeSteps(r: any, cands: any[], threshold: number, verdict: string) {
+    const l = r.life || {};
+    const sig: any[] = l.signals || [];
+    const links: any[] = l.links || [];
+    const topics: any[] = l.topics || [];
+    const strong = sig.filter(s => s.severity !== 'info').length;
+    return html`<div class="steps">
+      <div class="step"><b>1 · Legge i segnali</b>${sig.length} ${sig.length === 1 ? 'segnale' : 'segnali'} delle aree${strong ? `, ${strong} da guardare` : ''}
+        · ${l.series || 0} andamenti settimanali
+        ${sig.length ? html`<ul class="items small muted">${sig.slice(0, 4).map(s => html`<li>${area(s.domain)}: ${s.text}</li>`)}</ul>` : nothing}</div>
+      <div class="step"><b>2 · Collega</b>${links.length ? `${links.length} ${links.length === 1 ? 'collegamento' : 'collegamenti'} tra aree diverse` : 'Nessun collegamento abbastanza forte'}
+        ${links.length ? html`<ul class="items small muted">${links.slice(0, 3).map(x => html`<li>${linkText(x)}</li>`)}</ul>` : nothing}</div>
+      <div class="step"><b>3 · Approfondisce</b>${topics.length ? `${topics.length} ${topics.length === 1 ? 'tema' : 'temi'}, dettagli chiesti alle aree` : 'Niente di nuovo da approfondire'}
+        ${topics.length ? html`<ul class="items small muted">${topics.map(t => html`<li>${t.text}</li>`)}</ul>` : nothing}</div>
+      <div class="step"><b>4 · Pensa e filtra</b>${cands.length ? `${cands.length} ${cands.length === 1 ? 'idea' : 'idee'}, soglia ${threshold.toFixed(2)}` : 'Nessuna osservazione'}
+        <div class="small muted">${verdict} · ${secs(r.duration_ms)}</div></div>
+      <div class="step"><b>5 · Per il recap</b>${r.emitted_count ? `${r.emitted_count} nel recap della sera` : 'niente per il recap'}
+        ${r.error ? html`<div class="small" style="color:var(--danger)">${r.error}</div>` : nothing}</div>
+    </div>`;
+  }
+
   private cycle(r: any, first: boolean) {
     const o = r.observation || {};
     const cands: any[] = r.candidates || [];
@@ -144,7 +182,9 @@ export class AthenaThoughts extends HestiaElement {
           <hxk-badge tone=${accepted ? 'success' : 'neutral'}>${verdict}</hxk-badge>
           ${r.error ? html`<hxk-badge tone="danger">errore</hxk-badge>` : nothing}
           <button class="link" @click=${() => (this.open = { ...this.open, [r.record_id]: !isOpen })}>${isOpen ? 'Chiudi' : 'Dettagli'}</button></div>
-        ${isOpen ? html`
+        ${isOpen && r.track === 'vita' ? html`${this.lifeSteps(r, cands, threshold, verdict)}
+          ${cands.map(c => this.candidate(c, threshold))}` : nothing}
+        ${isOpen && r.track !== 'vita' ? html`
           <div class="steps">
             <div class="step"><b>1 · Osserva</b>${o.services} servizi${o.unhealthy_services?.length
               ? html`, <span style="color:var(--danger)">${o.unhealthy_services.length} giù (${o.unhealthy_services.join(', ')})</span>` : ', tutti ok'}
@@ -184,17 +224,23 @@ export class AthenaThoughts extends HestiaElement {
     const cycles: any[] = d.cycles || [];
     const last = cycles[0];
     return html`<div class="page">
-      <div class="head"><h1>Pensieri</h1><span class="sub">Cosa pensa Athena quando sei libero</span><span class="grow"></span>
+      <div class="head"><h1>Pensieri</h1><span class="sub">${this.track === 'vita' ? 'Cosa nota della tua vita: finisce nel recap della sera' : 'Come sta Hestia: servizi, errori, miglioramenti'}</span><span class="grow"></span>
+        <span class="tabs" role="group" aria-label="Traccia">
+          <button aria-pressed=${String(this.track === 'vita')} @click=${() => this.setTrack('vita')}>Vita</button>
+          <button aria-pressed=${String(this.track === 'sistema')} @click=${() => this.setTrack('sistema')}>Sistema</button></span>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>Aggiorna</hxk-button>
         <hxk-button variant="primary" icon="play" ?loading=${this.thinking} @click=${() => this.thinkNow()}>${this.thinking ? 'Sta pensando…' : 'Pensa ora'}</hxk-button></div>
       <div class="line">
-        <hxk-badge tone=${d.loop_enabled ? 'success' : 'warning'}>${d.loop_enabled ? `pensa da sola ogni ${Math.round(d.interval_seconds / 60)} min` : 'pensiero automatico spento'}</hxk-badge>
+        ${this.track === 'vita' ? html`<hxk-badge tone="neutral">una volta al giorno, prima del recap (orario in Agenda)</hxk-badge>`
+          : html`<hxk-badge tone=${d.loop_enabled ? 'success' : 'warning'}>${d.loop_enabled ? `pensa da sola ogni ${Math.round(d.interval_seconds / 60)} min` : 'pensiero automatico spento'}</hxk-badge>`}
         ${d.strategist_enabled ? nothing : html`<hxk-badge tone="warning">ragionamento spento: nessuna idea</hxk-badge>`}
         <span class="chip">soglia ${Number(d.threshold).toFixed(2)}</span>
         ${last ? html`<span class="small muted">ultimo ciclo ${ago(last.cycle_at)}</span>` : nothing}</div>
-      ${this.renderCommitments()}
+      ${this.track === 'sistema' ? this.renderCommitments() : nothing}
       ${cycles.length ? cycles.map((r, i) => this.cycle(r, i === 0))
-        : html`<hxk-state kind="empty" text="Nessun ciclo ancora da quando Athena è partita. Premi «Pensa ora»."></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${this.track === 'vita'
+          ? 'Nessuna riflessione ancora: avviene una volta al giorno prima del recap della sera. Premi «Pensa ora» per farne una subito.'
+          : 'Nessun ciclo ancora da quando Athena è partita. Premi «Pensa ora».'}></hxk-state>`}
       <p class="small muted">Punteggio = 30% urgenza + 25% utilità + 20% novità + 15% sicurezza + 10% (1 − disturbo). Le soglie e i tempi si cambiano in Impostazioni → Sistema → Athena.</p>
     </div>`;
   }

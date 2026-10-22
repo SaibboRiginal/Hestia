@@ -89,6 +89,29 @@ Archive under `domain` (`reference_id = mail:<domain>:<gmail id>`) and calls `PO
 count, reference_ids, source}`. The module processes its unevaluated records there **and once at startup** (mail
 that arrived while it was down). Fails soft (`[🔄] event=mail_subscribe_failed`).
 
+## Module signals (`hestia_common.signals_client`)
+
+First layer of the reflection (`docs/work/2026-10-20-riflessione-a-livelli`): each domain module judges its own data
+with deterministic rules and publishes short **signals** + **weekly metrics** to Archive `signals-store`; Athena
+reads only those (links between areas, then details through `/api/module/context?topic=`).
+
+```python
+from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
+
+signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
+signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
+metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
+signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
+signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
+rules.append(signals_rule("hercules", "Allenamento", path="/api/hercules/signals/run", tz=TZ))   # daily 17:30
+```
+
+`kind` = trend · streak · anomaly · goal · milestone; `severity` = info · attenzione · alta (ranks the topics).
+`key` is stable inside the module (republishing updates the row); `sync` writes only what changed and retracts
+signals no longer present; signals expire after `ttl_days` (7). Texts are Italian, short, and name the area
+(«Allenamento», «Spese»), never the module. `SignalReader` (Athena) reads active signals and weekly series.
+Fails soft (`[🔄] event=signals_sync_*_failed`).
+
 ## Response packets (standard for every client)
 
 Oracle streams NDJSON; every client (Telegram, WebUI, future apps/voice) renders the same packets.
@@ -204,7 +227,7 @@ audio made by Echo to the same notification (Telegram voice message, WebUI «Asc
 
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
-`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji.
+`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji. Added 2026-10-20: `bookmark` (Oracle Memoria page).
 
 A module with a UI ships it inside the module and advertises it to the clients (contract:
 `docs/work/2026-10-17-client-plugins/SPEC.md` §4):
@@ -269,6 +292,18 @@ presence.context_line()                               # one line for a model's c
 Effects include `chat.reply` (`live` | `queued`: Oracle offline, chat clients queue messages; fallback `live`).
 State cached 15 s; Chronos down → `[🔄]` log and `FALLBACK_EFFECTS` (everything allowed, every notification
 delivered), so each module still follows only its own agenda windows.
+
+## Coach contract (`hestia_common.coach`)
+
+A domain module becomes a coach of the weekly plan (Chronos) with the Hub tag `coach` and one router:
+`CoachRouter(module, domain, label, needs=, fit=, placed=, review=).router` serves `GET /api/coach/needs?start=&end=`
+(`{module, domain, label, state, needs, refused}`), `POST /api/coach/fit`, `POST /api/coach/placed`,
+`GET /api/coach/review`. `need(id, title, **fields)` / `validate_need` give the canonical need (kind
+block/slot/target, count still to do, per week|day, minutes/min_minutes, days, fixed_dates, time_of_day,
+not_before/not_after, min_gap_days, not_same_day, with{tag, relation}, tags, priority must|should|could, reason,
+link, value/unit/progress); unknown fields are refused. `CoachClient(module).done(need_id, at)` / `.skipped(...)` /
+`.changed()` push events to `POST /route/chronos/api/agenda/coach/report` (fails soft, `[🔄] event=coach_report_failed`).
+`week_bounds(day, week_start)` → `[start, end)`. Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
 
 ## Constraints
 

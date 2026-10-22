@@ -503,7 +503,7 @@ services:
       - SERVICE_BASE_URL=http://hestia_hercules:19019
       - SERVICE_VERSION=1.0.0
       - SERVICE_TYPE=module
-      - SERVICE_TAGS=module,fitness,context
+      - SERVICE_TAGS=module,fitness,context,coach
       - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:fitness,status:alpha
       - TZ=${TZ:-Europe/Rome}                                # Local day for streaks, goals, reminders
       - LOG_HEALTH_ACCESS_MODE=off
@@ -533,7 +533,7 @@ services:
       - SERVICE_BASE_URL=http://hestia_hygieia:19018
       - SERVICE_VERSION=1.0.0
       - SERVICE_TYPE=module
-      - SERVICE_TAGS=module,selfcare,context
+      - SERVICE_TAGS=module,selfcare,context,coach
       - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:selfcare,status:alpha
       - TZ=${TZ:-Europe/Rome}                                # Local day for routine goals, reminders
       - LOG_HEALTH_ACCESS_MODE=off
@@ -563,7 +563,7 @@ services:
       - SERVICE_BASE_URL=http://hestia_plutus:19020
       - SERVICE_VERSION=1.0.0
       - SERVICE_TYPE=module
-      - SERVICE_TAGS=module,finance,context
+      - SERVICE_TAGS=module,finance,context,coach
       - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:finance,status:alpha
       - TZ=${TZ:-Europe/Rome}                                # Local day for months, budgets, reminders
       - LOG_HEALTH_ACCESS_MODE=off

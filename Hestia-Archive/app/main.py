@@ -107,6 +107,7 @@ app.include_router(mcp_access_store.router)
 app.include_router(module_store.finance_router)   # Plutus (expenses)
 app.include_router(module_store.iris_router)      # Iris (mail subscriptions)
 app.include_router(module_store.echo_router)      # Echo (kept audio index, voice usage)
+app.include_router(module_store.signals_router)   # reflection signals (modules → Athena)
 
 # ── MCP tools ──────────────────────────────────────────────────────────────────
 try:

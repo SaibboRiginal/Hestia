@@ -46,16 +46,7 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
         else:
             lines.append("Nessun servizio registrato su Hub.")
 
-    # Domain activity
-    for domain in snapshot.domains[:4]:
-        parts = [f"Dominio '{domain.domain}': {domain.total_entities} entità"]
-        if domain.recent_count:
-            parts.append(f"{domain.recent_count} recenti")
-        if domain.pending_count:
-            parts.append(f"{domain.pending_count} in attesa")
-        if domain.sample_titles:
-            parts.append(f"esempi: {', '.join(domain.sample_titles[:3])}")
-        lines.append(", ".join(parts))
+    # Life domains are not here: they reach the «Vita» track as module signals (reflection.py).
 
     # Self state
     self_parts = [f"{snapshot.active_commitments} impegni attivi"]
@@ -138,7 +129,7 @@ def _parse_candidates(raw: str) -> list[dict[str, str]]:
                 key, _, value = line.partition(":")
                 key_lower = key.strip().lower()
                 val = value.strip()[:200]
-                if key_lower in ("tipo", "priorita", "dominio", "motivo", "riassunto", "chiave", "valore"):
+                if key_lower in ("tipo", "priorita", "dominio", "motivo", "riassunto", "chiave", "valore", "tema"):
                     candidate[key_lower] = val
 
         if candidate.get("title"):

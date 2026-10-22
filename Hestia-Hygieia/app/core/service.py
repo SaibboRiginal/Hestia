@@ -5,6 +5,7 @@ SPEC docs/work/2026-10-17-selfcare-module.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
@@ -14,6 +15,8 @@ from . import catalog
 from .catalog import LEVEL_VALUE
 from .planner import DONE_STATUSES, Day, cadence_label, conflict_notes, goal_state, norm_cadence, period_next, period_start
 from .store import Store, now_iso, parse_dt
+
+logger = logging.getLogger("hestia_hygieia.service")
 
 
 class Invalid(ValueError):
@@ -38,7 +41,7 @@ PRODUCT_FIELDS = ("name", "brand", "line", "areas", "category", "actives", "inci
                   "shop", "url", "status", "purchased_at", "opened_at", "finished_at", "pao_months", "expires_at",
                   "level", "rating", "verdict", "favorite", "photo_id", "barcode", "tags", "notes", "replaces_id")
 ROUTINE_FIELDS = ("name", "areas", "slot", "cadence", "max_per_day", "min_gap_hours", "not_same_day_as", "reminder",
-                  "status", "order", "favorite", "icon", "color", "notes")
+                  "status", "order", "favorite", "icon", "color", "notes", "plan_with")
 STEP_FIELDS = ("id", "order", "product_id", "label", "amount", "wait_seconds", "cadence", "not_same_day_as",
                "optional", "note", "paused_until")
 
@@ -84,6 +87,15 @@ class Hygieia:
         self.store = store
         self._setting = setting
         self.tz = ZoneInfo(tz_name or "Europe/Rome")
+        # Weekly plan (hestia_common.coach): ``on_event(event, data)`` with done / skipped / changed. Set by main.
+        self.on_event: Callable[[str, dict], None] | None = None
+
+    def _emit(self, event: str, **data) -> None:
+        if self.on_event:
+            try:
+                self.on_event(event, data)
+            except Exception as exc:
+                logger.warning("[🔄] event=hygieia_coach_emit_failed kind=%s error=%s", event, exc)
 
     # ── basics ──────────────────────────────────────────────────────────────
     def setting(self, key: str, default: Any = None) -> Any:
@@ -431,6 +443,7 @@ class Hygieia:
         r["reminder"] = bool(r.get("reminder"))
         r["favorite"] = bool(r.get("favorite"))
         r["status"] = r.get("status") if r.get("status") in ("active", "paused", "archived") else "active"
+        r["plan_with"] = catalog.slug(str(r.get("plan_with") or "")) or None
         if r.get("order") is None:
             r["order"] = len(self.items("routine")) + 1
         rows = []
@@ -452,6 +465,8 @@ class Hygieia:
         r.pop("id", None)
         rows.insert(0, {"kind": "routine", "id": rid, "data": r})
         self.store.write(rows)
+        if not old or any(old.get(k) != r.get(k) for k in ("cadence", "status", "slot", "not_same_day_as", "plan_with")):
+            self._emit("changed")
         return self.routine_detail(rid)
 
     def _diff(self, before: list[dict] | None, after: list[dict]) -> str:
@@ -570,6 +585,7 @@ class Hygieia:
         self.store.upsert("log", lid, data, parent_id=rid, ref_id=d, at=at)
         if status in DONE_STATUSES:
             self._mark_reminder(rid, resolved=True)
+        self._emit("done" if status in DONE_STATUSES else "skipped", need_id=f"routine.{rid}", at=at)
         g = self.day(date.fromisoformat(d)).plan_routine(self.get("routine", rid))
         return {**data, "id": lid, "name": r["name"], "hint": g["hint"], "goal": g["goal"]}
 
@@ -981,6 +997,9 @@ class Hygieia:
             parts.append("oggi: " + "; ".join(today_bits))
         if in_use:
             parts.append(f"in uso {len(in_use)} prodotti")
+        supplements = [p["name"] for p in in_use if p.get("category") == "integratore"]
+        if supplements:
+            parts.append("integratori: " + ", ".join(supplements[:5]))
         for a in alerts[:3]:
             parts.append(a["text"])
         text = " · ".join(parts) or "nessuna routine ancora"
@@ -1004,7 +1023,21 @@ class Hygieia:
                 "today": [{"name": p["name"], "state": p["state"], "hint": p["hint"], "reason": p["reason"],
                            "steps": [x["label"] for x in p["steps"] if x["include"]]} for p in s["plan"]["routines"]]}
 
-    def context_text(self, budget: int = 400) -> str:
+    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    def signals(self) -> tuple[list[dict], list[dict]]:
+        """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
+        from . import signals as signals_engine
+        return signals_engine.evaluate(self)
+
+    def signal_detail(self, topic: str) -> str | None:
+        """Facts behind one signal key, for ``/api/module/context?topic=`` (``None`` = unknown topic)."""
+        from . import signals as signals_engine
+        return signals_engine.detail(self, topic)
+
+    def context_text(self, budget: int = 400, topic: str = "") -> str:
+        detail = self.signal_detail(topic) if topic else None
+        if detail:
+            return detail if len(detail) <= budget else detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
         s = self.summary()
         text = "Self care: " + s["text"]
         if len(text) > budget:

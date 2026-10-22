@@ -15,11 +15,13 @@ import { ChronosCalEditor } from './cal/editor';
 import { ChronosCalWizard } from './cal/wizard';
 import { ChronosAgenda } from './agenda';
 import { ChronosRuns } from './runs';
-import { ChronosFailedWidget } from './widget';
+import { ChronosWeek } from './week';
+import { ChronosFailedWidget, ChronosTodayWidget } from './widget';
 
 definePlugin({
   'chronos-dialog': ChronosDialog, 'chronos-pop': ChronosPop, 'chronos-menu': ChronosMenu, 'chronos-cal-mini': ChronosCalMini,
   'chronos-cal-grid': ChronosCalGrid, 'chronos-cal-month': ChronosCalMonth, 'chronos-cal-list': ChronosCalList,
   'chronos-cal-details': ChronosCalDetails, 'chronos-cal-editor': ChronosCalEditor, 'chronos-cal-wizard': ChronosCalWizard,
   'chronos-agenda': ChronosAgenda, 'chronos-runs': ChronosRuns, 'chronos-failed-widget': ChronosFailedWidget,
+  'chronos-week': ChronosWeek, 'chronos-today-widget': ChronosTodayWidget,
 });

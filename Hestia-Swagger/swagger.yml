@@ -114,6 +114,33 @@ tags:
 # ─────────────────────────────────────────────────────────────────────────────
 components:
   schemas:
+    CoachNeed:
+      type: object
+      description: "One need of a coach module (hestia_common.coach.validate_need); Chronos reads only these generic fields"
+      required: [id, title]
+      properties:
+        id: {type: string, example: workout.3}
+        title: {type: string, example: Push A}
+        kind: {type: string, enum: [block, slot, target], default: block}
+        count: {type: integer, minimum: 0, maximum: 21, description: "still to do from start"}
+        per: {type: string, enum: [week, day], default: week}
+        minutes: {type: integer, description: "required for a block"}
+        min_minutes: {type: integer, description: "shortest acceptable (the module's /api/coach/fit gives the variant)"}
+        days: {type: array, items: {type: integer, minimum: 0, maximum: 6}}
+        fixed_dates: {type: array, items: {type: string, format: date}}
+        time_of_day: {type: string, enum: [morning, midday, afternoon, evening, any]}
+        not_before: {type: string, example: "07:00"}
+        not_after: {type: string, example: "21:30"}
+        min_gap_days: {type: integer}
+        not_same_day: {type: array, items: {type: string}, description: "tags that must not share the day"}
+        with: {type: object, properties: {tag: {type: string}, relation: {type: string, enum: [same_day, day_after, before, after]}}}
+        tags: {type: array, items: {type: string}}
+        priority: {type: string, enum: [must, should, could]}
+        reason: {type: string}
+        link: {type: string, description: "plugin page of the module"}
+        value: {}
+        unit: {type: string}
+        progress: {}
     HealthResponse:
       type: object
       properties:
@@ -4094,6 +4121,61 @@ paths:
         "200": {description: "{group, days, rows: [{<group keys>, calls, ok, errors, quota, fallbacks, input_tokens, cached_tokens, output_tokens, cost_usd, avg_duration_ms, max_input_tokens, context_window, first_at, last_at}]}"}
         "400": {description: Unknown group}
 
+  /oracle/api/memory/note:
+    post:
+      tags: [Oracle]
+      summary: "memory_note: durable facts from an external AI's conversation (real path /api/memory/note)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: X-Hestia-Access, in: header, schema: {type: string}, description: "External AI access name (set by Hestia-MCP); absent = chat origin"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [facts]
+              properties:
+                facts: {description: "One fact per line (string) or a list; max 10, 300 chars each"}
+                topic: {type: string}
+      responses:
+        "200": {description: "{status: saved, saved: [{fact, domains}], skipped: [{fact, existing_id}]}"}
+        "422": {description: Empty, too many or too long facts}
+        "502": {description: Archive did not save}
+
+  /oracle/api/memory/recall:
+    get:
+      tags: [Oracle]
+      summary: "memory_recall: what Hestia knows about the user (keyword match, max 20)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: query, in: query, schema: {type: string}}
+      responses:
+        "200": {description: "{count, memories: [{fact, domains, since}]}"}
+
+  /oracle/api/ui/memory:
+    get:
+      tags: [Oracle]
+      summary: Memoria page, active user memories with origin (real path /api/ui/memory)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{memories: [{id, fact, domains, source: chat|external, access, topic, created_at}]}"}
+
+  /oracle/api/ui/memory/{memory_id}:
+    delete:
+      tags: [Oracle]
+      summary: Forget a memory (Archive is_active=false)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: memory_id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: "{status: forgotten, id}"}
+        "502": {description: Archive refused}
+
   /oracle/api/ui/documents:
     get:
       tags: [Oracle]
@@ -4341,6 +4423,157 @@ paths:
         - url: http://localhost:19007
       responses:
         "200": {description: "{status, count, items}"}
+
+  /api/agenda/coach/week:
+    get:
+      tags: [Chronos]
+      summary: "Weekly plan of the week containing date (default today)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: date, in: query, schema: {type: string, format: date}}
+      responses:
+        "200": {description: "{week, start, end, planned, updated_at, days[{date, weekday, items[{key, module, label, domain, title, kind, need_id, date, start_at, end_at, minutes, status planned|done|skipped, moved_by_user, variant, reason, link}]}], targets, unplaced, states, text, busy, counts}"}
+  /api/agenda/coach/today:
+    get:
+      tags: [Chronos]
+      summary: "Today's plan items (widget «Oggi nel piano»)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{date, items}"}
+  /api/agenda/coach/review:
+    get:
+      tags: [Chronos]
+      summary: "How the week before date's week went, from every coach (GET /api/coach/review of each)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{start, end, modules[{module, domain, label, done, missed, adherence, notes}]}"}
+  /api/agenda/coach/replan:
+    post:
+      tags: [Chronos]
+      summary: "Re-plan from date to the end of its week (busy periods added first)"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {date: {type: string, format: date}, busy: {type: array, items: {type: object}}}}
+      responses:
+        "200": {description: "{week, items, unplaced, targets, ...}"}
+  /api/agenda/coach/week/run:
+    post:
+      tags: [Chronos]
+      summary: "Agenda job chronos.coach_week: plan the coming week and send the weekly message (Oracle text, fixed fallback, Hermes)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{ok, week, text, ...}"}
+  /api/agenda/coach/report:
+    post:
+      tags: [Chronos]
+      summary: "A coach module pushes an event (hestia_common.coach.CoachClient): done / skipped mark the nearest plan item, changed re-plans"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [module, event]
+              properties:
+                module: {type: string, example: hercules}
+                event: {type: string, enum: [done, skipped, changed]}
+                need_id: {type: string}
+                at: {type: string, format: date-time}
+                reason: {type: string}
+      responses:
+        "200": {description: "{ok, ...}"}
+  /api/agenda/coach/items/{ref}/move:
+    post:
+      tags: [Chronos]
+      summary: "The user moves a plan item (kept, never moved back)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [start_at], properties: {start_at: {type: string}, end_at: {type: string}}}
+      responses:
+        "200": {description: "the plan item"}
+  /api/agenda/coach/items/{ref}/skip:
+    post:
+      tags: [Chronos]
+      summary: "The user skips a plan item; the rest of the week is re-planned"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{ok, key, status}"}
+  /api/agenda/coach/busy:
+    post:
+      tags: [Chronos]
+      summary: "A period the plan must leave free"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [start_at, end_at], properties: {start_at: {type: string}, end_at: {type: string}, title: {type: string}}}
+      responses:
+        "200": {description: "{key, title, start_at, end_at}"}
+  /api/agenda/coach/busy/{ref}:
+    delete:
+      tags: [Chronos]
+      summary: "Remove a busy period"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: ref, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{ok, key}"}
+  /api/coach/fit:
+    post:
+      tags: [Hercules]
+      summary: "Coach contract: a shorter variant of need_id that fits minutes on date → {ok, minutes, title, note}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "{ok, minutes?, title?, note?}"}
+  /api/coach/placed:
+    post:
+      tags: [Hercules]
+      summary: "Coach contract: Chronos tells the module where its needs landed {week, items[{need_id, key, start_at, end_at, kind, status}]}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "{ok, count}"}
+  /api/coach/review:
+    get:
+      tags: [Hercules]
+      summary: "Coach contract: how a past week went from the module's own data (Hygieia, Plutus too)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "{module, domain, label, start, end, done, missed, adherence, notes}"}
+  /api/coach/needs:
+    get:
+      tags: [Hercules]
+      summary: "Coach contract: what this module needs in the weekly plan (also served by every module with Hub tag coach)"
+      servers:
+        - url: http://localhost:19019
+      parameters:
+        - {name: start, in: query, schema: {type: string, format: date}}
+        - {name: end, in: query, schema: {type: string, format: date}}
+      responses:
+        "200": {description: "{module, domain, label, start, end, state, needs[CoachNeed], refused[{id, error}]}"}
 
   /api/agenda/retire:
     post:
@@ -7740,6 +7973,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hercules/signals/run:
+    post:
+      tags: [Hercules]
+      summary: "Agenda job hercules.signals: re-evaluate reflection signals (stall:<exercise>, deload, missed_streak, pr:<exercise>, week_goal) and weekly metrics (fitness.sessions, fitness.volume, fitness.energy), sync to Archive signals-store → {written, retracted, signals, metrics}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
   /api/wardrobe/meta:
     get:
       tags: [Wardrobe]
@@ -8123,12 +8365,24 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/wardrobe/signals/run:
+    post:
+      tags: [Wardrobe]
+      summary: "Agenda job wardrobe.signals (daily 17:30): reflection signals forgotten, laundry_backlog, to_repair + weekly metric wardrobe.worn (12 weeks) → Archive signals-store {written, retracted, signals, metrics, error?}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
   /api/module/context:
     get:
       tags: [Wardrobe]
-      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract)"
+      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract). ?topic=<signal key> → the detail behind that reflection signal; unknown topic → the normal line"
       servers:
         - url: http://localhost:19017
+      parameters:
+        - {name: budget, in: query, schema: {type: integer, default: 400}}
+        - {name: topic, in: query, required: false, schema: {type: string}, description: "Signal key (e.g. budget_pace:ristoranti, unusual_week, forgotten)"}
       responses:
         "200": {description: OK}
 
@@ -8503,6 +8757,15 @@ paths:
     post:
       tags: [Plutus]
       summary: "Agenda job plutus.review (1st of the month, off by default; {force: true} overrides): last month vs budget and month before {sent, text?, review?, why?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/signals/run:
+    post:
+      tags: [Plutus]
+      summary: "Agenda job plutus.signals (daily 17:30): reflection signals budget_pace:<cat>|month, unusual_week, new_subscription:<id>, to_review + weekly metrics finance.spent, finance.spent.<category> (12 weeks) → Archive signals-store {written, retracted, signals, metrics, error?}"
       servers:
         - url: http://localhost:19020
       responses:
@@ -9226,6 +9489,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/selfcare/signals/run:
+    post:
+      tags: [Hygieia]
+      summary: "Agenda job hygieia.signals: re-evaluate reflection signals (adherence_drop, goal:<routine>, streak:<routine>) and weekly metrics (selfcare.adherence, selfcare.journal.<area>.<metric>), sync to Archive signals-store → {written, retracted, signals, metrics}"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
   /api/selfcare-store/records:
     put:
       tags: [Archive — Self care store]
@@ -9828,8 +10100,9 @@ paths:
         - url: http://localhost:19009
       parameters:
         - {name: limit, in: query, schema: {type: integer, default: 10, maximum: 50}}
+        - {name: track, in: query, schema: {type: string, enum: [vita, sistema]}, description: "one track only (both when omitted)"}
       responses:
-        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
+        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, track (vita|sistema), life{signals[], links[], topics[], details{}, series} (vita), threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
 
   /api/athena/think:
     post:
@@ -9838,17 +10111,55 @@ paths:
       description: >
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
+        track=vita runs the life reflection instead (signals → links → details → observations for the recap).
       servers:
         - url: http://localhost:19009
+      parameters:
+        - {name: track, in: query, schema: {type: string, enum: [sistema, vita], default: sistema}}
       responses:
-        "200": {description: "{status: started, trace_id} | {status: busy, detail}"}
+        "200": {description: "{status: started, trace_id, track} | {status: busy, detail}"}
+        "422": {description: "unknown track"}
+
+  /api/athena/signals:
+    get:
+      tags: [Athena]
+      summary: What the life reflection reads (page Segnali, MCP tool athena_signals)
+      description: >
+        Active module signals (Archive signals-store, worst first), weekly series of the last `weeks` weeks, the
+        links found between areas (Pearson, closed weeks) and the observations of the last 14 days.
+        SPEC docs/work/2026-10-20-riflessione-a-livelli.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: domain, in: query, schema: {type: string}, description: "one area (fitness, selfcare, finance, wardrobe…)"}
+        - {name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}
+        - {name: weeks, in: query, schema: {type: integer, default: 12, minimum: 4, maximum: 52}}
+      responses:
+        "200": {description: "{status, signals: [{module, domain, key, kind, severity, text, metrics, period, page, topic, expires_at, updated_at}], series: {<name>: {label, module, domain, values{YYYY-Www: n}}}, links: [{key, a, b, a_label, b_label, a_domain, b_domain, lag, r, weeks}], observations: [{id, day, title, text, domains[], topic_key, link, page, module, score, at}]}"}
+        "503": {description: "signals store unreachable"}
+
+  /athena/api/module/recap:
+    get:
+      tags: [Athena]
+      summary: Athena's piece of the daily recap («Da tenere d'occhio») — real path /api/module/recap
+      description: >
+        Recap contract (docs/work/2026-10-20-recap-giornaliero §3.2), advertised as capability recap_endpoint.
+        The life observations stored that day; deterministic, no model call. Observations reach the user only here.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: day, in: query, schema: {type: string, format: date}, description: "default today (local)"}
+        - {name: next, in: query, schema: {type: string, format: date}, description: "unused by Athena"}
+      responses:
+        "200": {description: "{module: athena, title: Da tenere d'occhio, icon: eye, emoji, order: 900, done: [{text, tone}]} | {..., empty: true}"}
 
   /athena/api/ui/manifest:
     get:
       tags: [Athena]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/athena/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130),
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130,
+        tracks Vita/Sistema), page `segnali` (athena-signals, order 131),
         widget `ultimo` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
       servers:
         - url: http://localhost:19009

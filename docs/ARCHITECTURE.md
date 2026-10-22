@@ -165,7 +165,7 @@ User interface relay for chat, file attachments, and clear session commands.
 Web client (.NET 9 backend + Angular frontend, port 19015).
 - Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, "Crea con Hestia" drawer. Everything
   else is a module plugin page: Agenda (Chronos, Google-like calendar; ICS feed stays a WebUI path), Sviluppo (Hephaestus), Notifiche (Hermes),
-  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti (Oracle) and the core inside views; old routes redirect.
+  Comandi & MCP + Accessi AI (Hestia-MCP), Documenti and Memoria (Oracle) and the core inside views; old routes redirect.
 - Voice (`/api/webui/voice/*` → Echo): voice messages in the chat (hold to record), «Ascolta» under replies, live mode
   **Parla** (mic stream → Oracle chat → answer spoken sentence by sentence, speaking again interrupts).
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
@@ -323,6 +323,15 @@ subscription), bank statement PDF (Hype) from the plugin *Importa* or sent in ch
 preview → commit, PayPal↔bank linking, quick manual entry. Rows in Archive `finance-store`; reminders through the
 agenda and Hermes. Details: `Hestia-Plutus/hestia-plutus.md`.
 
+### Weekly plan — coaches (contract, 2026-10-20)
+Domain modules that coach (Hercules, Hygieia, Plutus) carry the Hub tag `coach` and serve
+`/api/coach/needs|fit|placed|review` with `hestia_common.coach`: they say **what** is due (blocks, slots, targets,
+with generic constraints), never when. **Chronos** places them in the free time around the user's calendar
+(deterministic planner, plan items = assistant agenda events owned by the module, user moves always win), re-plans
+the rest of the week on pushed events (`/api/agenda/coach/report`, calendar sync, chat) and sends the weekly message
+via Oracle (text) and Hermes (delivery). Chronos reads no domain words; a new coach = one router + the tag.
+Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
 - Trigger source: Argus/Oracle/explicit user command.
@@ -389,6 +398,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 1. Current default: local build/deploy orchestration.
    Test bench without the local PC: `tools/cloud_test.py` (Claude cloud session or GitHub Codespace); test
    credentials come only from the environment (Codespaces secrets) through `docker-compose.cloud-test.yml`, never files.
+   In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`; no Docker = rebuild the container).
 2. Future target: multi-node/cluster delivery with shared Hub discovery.
 3. Required for remote rollout:
    - deployment controller contract,
@@ -432,7 +442,13 @@ No code-only behavior changes are considered complete without synchronized docs.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth
-   saying; Oracle decides when to include it.
+   saying; Oracle decides when to include it. `?topic=<signal key>` asks for details on one of the module's signals
+   (unknown topic → the normal line).
+5b. **Module signals (reflection in layers)**: a domain module judges its own data deterministically and publishes
+   short signals + weekly metrics with `hestia_common.signals_client` (Archive `signals-store`, on write + daily agenda
+   job `<module>.signals`). Athena reads only signals (never raw data), links weekly series of different areas and
+   asks details via `topic`; its life observations reach the user only in the daily recap («Da tenere d'occhio»).
+   System health is a separate Athena track. `docs/work/2026-10-20-riflessione-a-livelli/`.
 6. **Module files**: bytes (photos, attachments) go to Archive `/api/blobs` (`owner_module`, deduplicated by sha256);
    the module keeps the blob ids in its own rows and serves images to clients as `{mime, data_b64}`.
 7. **Chat attachments for a module**: a module that can take a file sent in chat declares in its Hub capabilities

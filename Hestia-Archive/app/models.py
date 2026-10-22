@@ -648,3 +648,9 @@ IrisRecord = _module_record_model(
 EchoRecord = _module_record_model(
     "EchoRecord", "echo_records",
     "One row of the voice module Hestia-Echo (kept audio index, usage row). Owner of the semantics: Hestia-Echo.")
+
+SignalRecord = _module_record_model(
+    "SignalRecord", "signal_records",
+    "One row of the reflection signals (docs/work/2026-10-20-riflessione-a-livelli): a module's signal or weekly "
+    "metric (ref_id = module), or one of Athena's observations (ref_id = athena). Owner of the semantics: each "
+    "writer for its own rows; shape in hestia_common.signals_client.")
