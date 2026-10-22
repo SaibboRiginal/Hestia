@@ -693,6 +693,16 @@ def _models_state() -> str:
         return "ok"
 
 
+def _no_usable_model() -> bool:
+    """Every step of the general chain is out of quota or not configured. A chain that only failed recently is
+    still tried (a success clears it), so the chat refuses only what cannot work."""
+    try:
+        from core.services import llm_chains
+        return llm_chains.models_state()["usable_steps"] == 0
+    except Exception:
+        return False
+
+
 @app.get("/health")
 def health_endpoint():
     # `models`: ok | limited | none — Argus turns it into «Limitato» / «Non disponibile» (oracle-offline v3 E).
@@ -809,9 +819,9 @@ def chat_endpoint(req: ChatRequest):
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
 
-        # No model can answer (every step out of quota or failing): refuse like an unreachable Oracle, so the
-        # client queues the message and it is answered when a model is back (oracle-offline v3 E).
-        if _models_state() == "none":
+        # No model can answer (every step out of quota or not configured): refuse like an unreachable Oracle, so
+        # the client queues the message and it is answered when a model is back (oracle-offline v3 E).
+        if _no_usable_model():
             logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
             return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)

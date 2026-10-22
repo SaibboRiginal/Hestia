@@ -203,7 +203,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no model is left |
+| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
 | `GET` | `/api/chat/questions?session_id=` | Questions the assistant asked and still open in that session (clients draw them again after a reload) |
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |

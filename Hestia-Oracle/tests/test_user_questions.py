@@ -125,6 +125,7 @@ def test_chat_endpoint_composes_queued_batch(monkeypatch):
         yield '{"type":"final","reply":"ok"}\n'
 
     monkeypatch.setattr(main.engine, "chat", fake_chat)
+    monkeypatch.setattr(main, "_no_usable_model", lambda: False)
     from fastapi.testclient import TestClient
     res = TestClient(main.app).post("/api/chat", json={"message": "", "session_id": "s1", "client": "telegram",
                                                        "queued": [{"text": "uno"}, {"text": "due"}]})
@@ -138,8 +139,21 @@ def test_chat_refused_with_503_when_no_model(monkeypatch):
     """v3 E: no model can answer → 503 like an unreachable Oracle, so the client queues the message."""
     import main
     monkeypatch.setattr(main, "_models_state", lambda: "none")
+    monkeypatch.setattr(main, "_no_usable_model", lambda: True)
     from fastapi.testclient import TestClient
     client = TestClient(main.app)
     res = client.post("/api/chat", json={"message": "ciao", "session_id": "s1"})
     assert res.status_code == 503 and res.json()["models"] == "none"
     assert client.get("/health").json()["models"] == "none"
+
+
+@pytest.mark.unit
+def test_recent_failure_does_not_refuse_the_chat(monkeypatch):
+    """A chain that only failed recently is still tried (a success clears «none»); only no usable step refuses."""
+    import main
+    from core.services import llm_chains
+    monkeypatch.setattr(llm_chains, "models_state", lambda: {"state": "none", "usable_steps": 2, "steps": 2})
+    assert main._no_usable_model() is False
+    monkeypatch.setattr(llm_chains, "models_state", lambda: {"state": "none", "usable_steps": 0, "steps": 2})
+    assert main._no_usable_model() is True
+

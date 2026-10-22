@@ -185,8 +185,8 @@ def models_state(use_case: str = GENERAL) -> dict:
     with _lock:
         row = dict(_outcomes.get(use_case) or {"ok_at": 0.0, "ok_index": 0, "failed_at": 0.0})
     from core.services import oracle_settings
-    # A failure on every step counts for one cooldown: then the chain is tried again (the chat refuses calls
-    # while «none», so without this nothing could ever succeed again).
+    # A failure on every step reads «none» for one cooldown (Argus: «Non disponibile»); the chat still tries the
+    # chain (it refuses only when no step is usable) and the first success clears it.
     failed_recently = row["failed_at"] > row["ok_at"] and \
         time.time() - row["failed_at"] < 60 * oracle_settings.get_int(oracle_settings.CHAIN_COOLDOWN, 1)
     if not usable or failed_recently:
