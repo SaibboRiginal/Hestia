@@ -34,6 +34,8 @@ from schemas.events import (
 )
 from services import agenda as assistant_agenda
 from services import agenda_parse
+from services import agenda_weather
+from services import coach as weekly_coach
 from services import notification_worker, sync_worker
 from services import presence as assistant_presence
 from core import presence_settings
@@ -71,6 +73,9 @@ ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
          pages=[page("agenda", "Agenda di Hestia", element="chronos-agenda", icon="calendar", order=150,
                      help="Il calendario dell'assistente: eventi, task, job e finestre di ogni modulo, in vista giorno, "
                           "settimana, mese o elenco. Crea, sposta, salta o annulla; i tuoi cambi vincono sui moduli."),
+                page("settimana", "La tua settimana", element="chronos-week", icon="calendar", order=149,
+                     help="Il piano della settimana: allenamenti, routine e il resto messi nel tuo tempo libero, "
+                          "attorno agli impegni del calendario. Trascina per spostare; i tuoi spostamenti vincono."),
                 page("esecuzioni", "Esecuzioni", element="chronos-runs", icon="repeat", order=151, parent="agenda",
                      help="Ogni esecuzione dei job dell'agenda dell'assistente: riuscita, fallita o saltata, quanto "
                           "è durata, e le regole registrate da ogni modulo."),
@@ -79,7 +84,10 @@ ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
                      help="Le attività che i moduli mettono in agenda da soli (es. il recap della sera), con lo "
                           "stato: se ne hai eliminata, messa in pausa o cambiata una, «Ripristina» la rimette come "
                           "prevista. Sotto, i modelli da aggiungere.")],
-         widgets=[widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
+         widgets=[widget("oggi-nel-piano", "Oggi nel piano", element="chronos-today-widget", sizes=["s", "m"],
+                         auto=True, open_page="settimana", icon="calendar",
+                         help="Cosa c'è oggi nel piano della settimana, con l'orario."),
+                  widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
                          open_page="esecuzioni", icon="alert",
                          help="Job dell'agenda falliti nelle ultime 24 ore, con «Riprova».")],
          quick_actions=[quick_action("riprova", "Riprova job", "POST", "/api/agenda/items/{id}/run", icon="refresh",
@@ -116,6 +124,13 @@ app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/chronos.js
+
+# ── export / import (hestia_common.transfer): the user's own agenda decisions ────────────────────────────
+from hestia_common.transfer import Transfer
+from services.agenda_transfer import AgendaSection
+
+transfer = Transfer("chronos", sections=[AgendaSection()])
+app.include_router(transfer.router())
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools
@@ -485,6 +500,86 @@ try:
             response_prompt="Conferma in una riga che «Non disturbare» è spento e indica il nuovo stato (label).",
             telegram_visible=True, telegram_group="sistema",
         ),
+        # ── Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §6) ──
+        MCPTool(
+            name="coach_week",
+            description=("Piano della settimana dell'utente: allenamenti, routine e il resto messi nel suo tempo "
+                         "libero, obiettivi, cosa non entra e perché. Usalo per «cosa ho in programma questa "
+                         "settimana», «quando mi alleno», «com'è il piano»."),
+            parameters={"type": "object", "properties": {
+                "date": {"type": "string", "description": "un giorno della settimana voluta YYYY-MM-DD (vuoto = questa)"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "coach_week", "params": kw},
+            title="Piano della settimana", method="GET", path="/api/agenda/coach/week",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=("Riassumi il piano per giorno: ora e cosa (versione corta se indicata). Poi, se ci "
+                             "sono, cosa non entra e perché, e gli obiettivi. Breve, niente JSON, niente nomi di "
+                             "moduli. Mostra la chiave tra parentesi solo se l'utente vuole spostare qualcosa."),
+            telegram_visible=True, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="coach_replan",
+            description=("Rifà il piano dal giorno indicato a fine settimana. busy = periodi da lasciare liberi "
+                         "prima di rifarlo (es. trasferta mercoledì e giovedì)."),
+            parameters={"type": "object", "properties": {
+                "date": {"type": "string", "description": "primo giorno YYYY-MM-DD (vuoto = oggi)"},
+                "busy": {"type": "array", "description": "periodi occupati",
+                         "items": {"type": "object", "properties": {
+                             "start_at": {"type": "string", "description": "inizio ISO 8601"},
+                             "end_at": {"type": "string", "description": "fine ISO 8601"},
+                             "title": {"type": "string", "description": "es. Trasferta"}}}}}},
+            handler=lambda **kw: {"status": "ok", "tool": "coach_replan", "params": kw},
+            title="Rifai il piano", method="POST", path="/api/agenda/coach/replan",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Dì in 2-3 righe cosa c'è ora nel piano dei prossimi giorni e cosa non entra.",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="coach_move",
+            description="Sposta una voce del piano della settimana (chiave da coach_week) a un altro giorno/ora.",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "chiave della voce del piano"},
+                "start_at": {"type": "string", "description": "nuovo inizio ISO 8601"},
+                "end_at": {"type": "string", "description": "nuova fine ISO 8601 (vuoto = stessa durata)"}},
+                "required": ["ref", "start_at"]},
+            handler=lambda **kw: {"status": "ok", "tool": "coach_move", "params": kw},
+            title="Sposta nel piano", method="POST", path="/api/agenda/coach/items/{ref}/move",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="coach_skip",
+            description="Salta una voce del piano della settimana; il resto della settimana viene ripianificato.",
+            parameters={"type": "object", "properties": {
+                "ref": {"type": "string", "description": "chiave della voce del piano"},
+                "reason": {"type": "string", "description": "perché (facoltativo)"}}, "required": ["ref"]},
+            handler=lambda **kw: {"status": "ok", "tool": "coach_skip", "params": kw},
+            title="Salta nel piano", method="POST", path="/api/agenda/coach/items/{ref}/skip",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="coach_add_busy",
+            description="Segna un periodo in cui l'utente non c'è o è occupato, così il piano lo lascia libero.",
+            parameters={"type": "object", "properties": {
+                "start_at": {"type": "string", "description": "inizio ISO 8601"},
+                "end_at": {"type": "string", "description": "fine ISO 8601"},
+                "title": {"type": "string", "description": "es. Trasferta"}}, "required": ["start_at", "end_at"]},
+            handler=lambda **kw: {"status": "ok", "tool": "coach_add_busy", "params": kw},
+            title="Impegno per il piano", method="POST", path="/api/agenda/coach/busy",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
+        MCPTool(
+            name="coach_review",
+            description="Com'è andata la settimana scorsa secondo il piano: fatti, saltati, note di ogni ambito.",
+            parameters={"type": "object", "properties": {
+                "date": {"type": "string", "description": "un giorno della settimana DOPO quella da rivedere"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "coach_review", "params": kw},
+            title="Com'è andata la settimana", method="GET", path="/api/agenda/coach/review",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="2-4 righe: cosa è andato bene, cosa è saltato. Niente JSON, niente nomi di moduli.",
+            telegram_visible=False, telegram_group="pianificazione",
+        ),
     ]
     app.include_router(create_mcp_router(_chronos_mcp_tools, service_name="chronos"))
     logger.info("event=mcp_router_mounted service=chronos")
@@ -550,7 +645,7 @@ def on_startup() -> None:
         logger=logger,
     )
 
-    register_on_hub(hub_api_url, service_base_url, extra_capabilities={**ui.capabilities(service_base_url), **recap_contract.capabilities()})
+    register_on_hub(hub_api_url, service_base_url, extra_capabilities={**ui.capabilities(service_base_url), **recap_contract.capabilities(), **transfer.capabilities()})
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
     def _hub_keepalive():
@@ -562,7 +657,7 @@ def on_startup() -> None:
                     service_base_url,
                     max_attempts=1,
                     quiet_success=True,
-                    extra_capabilities={**ui.capabilities(service_base_url), **recap_contract.capabilities()},
+                    extra_capabilities={**ui.capabilities(service_base_url), **recap_contract.capabilities(), **transfer.capabilities()},
                 )
             except Exception as error:
                 logger.warning(
@@ -594,7 +689,8 @@ def _presence_boot() -> None:
                 assistant_agenda.register_rules("chronos", [daily_window(
                     presence_settings.SLEEP_WINDOW, "Hestia: notte (sonno profondo)", 1, 7,
                     description="Di notte l'assistente va in sonno profondo: lavori pesanti permessi, "
-                                "solo notifiche urgenti. Sposta o salta per cambiare la notte.")])
+                                "solo notifiche urgenti. Sposta o salta per cambiare la notte."),
+                    weekly_coach.week_job_rule()])
                 registered = True
             except Exception as exc:
                 logger.warning("[🔄] event=presence_window_register_failed attempt=%d error=%s", attempt + 1, exc)
@@ -888,6 +984,15 @@ def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = N
                        include_done=include_done)
 
 
+@app.post("/api/agenda/weather")
+def agenda_weather_view(body: dict) -> dict:
+    """Weather for the calendar page: Casa per day, located occurrences (``located: [{key, place, at}]``) and
+    Marko's own located calendar events, next 14 days only (``services/agenda_weather.py``)."""
+    b = body or {}
+    located = b.get("located") if isinstance(b.get("located"), list) else []
+    return agenda_weather.build(_route_hecate, str(b.get("start") or ""), str(b.get("end") or ""), located)
+
+
 @app.get("/api/agenda/items")
 def agenda_items(owner: str | None = None, type: str | None = None, include_cancelled: bool = False) -> dict:
     items = assistant_agenda.list_items(owner=owner, type_=type, include_cancelled=include_cancelled)
@@ -1157,6 +1262,126 @@ def agenda_ics(days: int = Query(60, ge=1, le=400), past_days: int = Query(7, ge
 def agenda_window(key: str) -> dict:
     """Modules ask: is my window open now? (closed if missing/cancelled/skipped)."""
     return {"status": "ok", **assistant_agenda.window_status(key)}
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo)
+#  Under the plugin's api_prefix (/api/agenda/) so the «La tua settimana» page needs nothing else.
+# ─────────────────────────────────────────────────────────────────────
+
+
+class CoachReport(BaseModel):
+    module: str
+    event: str = Field(..., description="done | skipped | changed")
+    need_id: str = ""
+    at: str | None = None
+    reason: str = ""
+
+
+class CoachReplan(BaseModel):
+    date: str | None = Field(None, description="first day to plan (default today)")
+    busy: list[dict] = Field(default_factory=list, description="[{start_at, end_at, title}] to leave free first")
+
+
+class CoachMove(BaseModel):
+    ref: str | None = None
+    start_at: str
+    end_at: str | None = None
+
+
+class CoachSkip(BaseModel):
+    ref: str | None = None
+    reason: str = ""
+
+
+class CoachBusy(BaseModel):
+    start_at: str
+    end_at: str
+    title: str = ""
+
+
+def _coach_guard(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except weekly_coach.CoachError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+    except assistant_agenda.AgendaError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+
+def _coach_day(value: str | None):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value)[:10]).date()
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date must be ISO (YYYY-MM-DD)")
+
+
+@app.get("/api/agenda/coach/week")
+def coach_week(date: str | None = None) -> dict:
+    """The week's plan (the week containing ``date``, default today)."""
+    return _coach_guard(weekly_coach.view, _coach_day(date))
+
+
+@app.get("/api/agenda/coach/today")
+def coach_today(date: str | None = None) -> dict:
+    """Today's plan items (widget «Oggi nel piano», daily recap)."""
+    day = _coach_day(date)
+    return {"date": (day or weekly_coach.now().date()).isoformat(),
+            "items": _coach_guard(weekly_coach.today_items, day)}
+
+
+@app.post("/api/agenda/coach/replan")
+def coach_replan(req: CoachReplan | None = None) -> dict:
+    """Re-plan from ``date`` to the end of its week (chat «rifai il piano», page button)."""
+    req = req or CoachReplan()
+    for b in req.busy:
+        _coach_guard(weekly_coach.add_busy, b.get("start_at"), b.get("end_at"), b.get("title") or "")
+    return _coach_guard(weekly_coach.replan, _coach_day(req.date), reason="chat")
+
+
+@app.post("/api/agenda/coach/week/run")
+def coach_week_run() -> dict:
+    """Agenda job ``chronos.coach_week``: plan the coming week and deliver the message."""
+    return _coach_guard(weekly_coach.run_week)
+
+
+@app.post("/api/agenda/coach/report")
+def coach_report(req: CoachReport) -> dict:
+    """A coach module reports done / skipped / changed (``hestia_common.coach.CoachClient``)."""
+    return _coach_guard(weekly_coach.report, req.module, req.event, req.need_id, req.at, req.reason)
+
+
+@app.post("/api/agenda/coach/items/{ref}/move")
+def coach_move(ref: str, req: CoachMove) -> dict:
+    """Move a plan item (drag on the page, chat): it becomes the user's and stays there."""
+    return _coach_guard(weekly_coach.move, ref, req.start_at, req.end_at)
+
+
+@app.post("/api/agenda/coach/items/{ref}/skip")
+def coach_skip(ref: str, req: CoachSkip | None = None) -> dict:
+    return _coach_guard(weekly_coach.skip, ref, (req or CoachSkip()).reason)
+
+
+@app.post("/api/agenda/coach/busy")
+def coach_busy_add(req: CoachBusy) -> dict:
+    """A period the plan leaves free («mercoledì sono via»)."""
+    return _coach_guard(weekly_coach.add_busy, req.start_at, req.end_at, req.title)
+
+
+@app.delete("/api/agenda/coach/busy/{ref}")
+def coach_busy_remove(ref: str) -> dict:
+    return _coach_guard(weekly_coach.remove_busy, ref)
+
+
+@app.get("/api/agenda/coach/review")
+def coach_review(date: str | None = None) -> dict:
+    """How the week before ``date``'s week went, from every coach (their own data)."""
+    start, _end = weekly_coach.week_of(_coach_day(date) or weekly_coach.now().date())
+    from datetime import timedelta as _td
+    return {"start": (start - _td(days=7)).isoformat(), "end": start.isoformat(),
+            "modules": weekly_coach.reviews(start - _td(days=7), start)}
 
 
 # ─────────────────────────────────────────────────────────────────────

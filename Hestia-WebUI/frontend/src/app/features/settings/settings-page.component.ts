@@ -6,6 +6,7 @@ import { CentralSettingsStore, moduleLabel } from './central-settings.store';
 import { PERSONAL_SECTIONS, PersonalSettingsComponent, personalHits } from './personal-settings.component';
 import { HEALTH, SystemSettingsComponent } from './system-settings.component';
 import { PluginSettingsComponent } from '../plugins/plugin-settings.component';
+import { TransferSettingsComponent } from './transfer-settings.component';
 
 /**
  * Impostazioni, VS Code-like: one search box over every setting (personal and system), a
@@ -15,7 +16,7 @@ import { PluginSettingsComponent } from '../plugins/plugin-settings.component';
  */
 @Component({
   selector: 'app-settings-page',
-  imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent, PluginSettingsComponent],
+  imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent, PluginSettingsComponent, TransferSettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
@@ -38,6 +39,10 @@ import { PluginSettingsComponent } from '../plugins/plugin-settings.component';
             @if (searching() && pHits().get(s.id)) { <span class="n">{{ pHits().get(s.id) }}</span> }
           </button>
         }
+        <div class="head">Dati</div>
+        <button class="item" [class.on]="!searching() && view() === 'transfer'" (click)="open('transfer')">
+          <hx-icon name="download" [size]="15" /><span class="hx-grow">Esporta e importa</span>
+        </button>
         <div class="head">Sistema</div>
         <button class="item" [class.on]="!searching() && view() === 'system'" (click)="open('system')">
           <hx-icon name="grid" [size]="15" /><span class="hx-grow">Panoramica</span>
@@ -63,6 +68,8 @@ import { PluginSettingsComponent } from '../plugins/plugin-settings.component';
             <app-personal-settings [query]="store.query()" />
           }
           @if (store.visible().length || store.hiddenAdvanced() || store.onlyModified() || !pTotal()) { <app-system-settings /> }
+        } @else if (view() === 'transfer') {
+          <app-transfer-settings />
         } @else if (view() === 'p:plugin') {
           <app-plugin-settings />
         } @else if (view().startsWith('p:')) {
@@ -131,6 +138,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     const module = p.get('module'), section = p.get('section');
     if (module) this.open(module, false);
     else if (p.get('tab') === 'system') this.open('system', false);
+    else if (p.get('tab') === 'transfer') this.open('transfer', false);
     else if (section && PERSONAL_SECTIONS.some(s => s.id === section)) this.open('p:' + section, false);
     void this.store.init();
   }
@@ -138,9 +146,9 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
 
   open(view: string, navigate = true) {
     this.view.set(view);
-    this.store.select(view === 'system' || view.startsWith('p:') ? null : view);
+    this.store.select(view === 'system' || view === 'transfer' || view.startsWith('p:') ? null : view);
     if (!navigate) return;
-    const queryParams = view.startsWith('p:') ? { section: view.slice(2), tab: null, module: null }
+    const queryParams = view === 'transfer' ? { tab: 'transfer', module: null, section: null } : view.startsWith('p:') ? { section: view.slice(2), tab: null, module: null }
       : { tab: 'system', module: view === 'system' ? null : view, section: null };
     void this.router.navigate([], { queryParams, queryParamsHandling: 'merge', replaceUrl: true });
   }

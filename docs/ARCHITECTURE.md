@@ -127,6 +127,12 @@ Provider access model (single entry point):
   search fallback). Optional real push: Gmail `users.watch` + Pub/Sub **streaming pull** (no public URL needed, env
   `HECATE_GMAIL_PUBSUB_*`, renewed by `hecate.mail_watch_renew`); then the check slows to a safety net
   (`hecate.mail.safety_interval`). New mails go to Iris `POST /api/email/incoming`. Hecate never decides who gets a mail.
+- **Weather** (Open-Meteo, free, no key): `/api/gateway/weather/now|forecast|at|place|places`, tools
+  `weather_now`/`weather_forecast` (tool domain `weather`). Places come from the personal setting
+  `themis.personal.places` (Casa, Lavoro, Palestra…). Modules read weather only through Hub
+  (`hestia_common.weather_client`): Wardrobe (suggestions, packing), Chronos (calendar chips, `outdoor` needs),
+  Hercules (outdoor activities). Hecate also ensures module-owned secondary calendars
+  (`POST /api/gateway/calendar/calendars`, e.g. «Allenamenti»). Dossier `docs/work/2026-10-20-meteo-hecate`.
 - Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
 - Google OAuth uses loopback redirect + PKCE (the old OOB flow is blocked by Google since 2023). Setup and troubleshooting: `Hestia-Hecate/hestia-hecate.md` → *Google setup*. From the phone: ask Telegram "collega Google Calendar", open the link, paste back the final `localhost` URL.
 
@@ -288,7 +294,9 @@ Real-estate domain module.
 ### Hestia-Hercules 🏋️
 Gym coach module (port 19019): exercises, templates and weekly program, live sessions that work offline, records and
 progress, goals «N volte a settimana», adaptation by conversation with the assistant (`fitness_*` tools). Rows in
-Archive `hercules-store`; reminder through the agenda and Hermes (off by default). Details:
+Archive `hercules-store`; reminder through the agenda and Hermes (off by default). Outdoor activities (run, bike,
+walk) as light intentions: best slots from the weather and free time, events in Google «Allenamenti» (also the gym
+history), «l'hai fatto?» after each slot, morning coach line «Ottimo giorno per…». Details:
 `Hestia-Hercules/hestia-hercules.md`.
 
 ### Hestia-Hygieia 🧴
@@ -308,6 +316,16 @@ budgets with alerts, recurring payments, monthly summary. Sources: PayPal receip
 subscription), bank statement PDF (Hype) from the plugin *Importa* or sent in chat (Oracle `attachment_handlers`),
 preview → commit, PayPal↔bank linking, quick manual entry. Rows in Archive `finance-store`; reminders through the
 agenda and Hermes. Details: `Hestia-Plutus/hestia-plutus.md`.
+
+### Weekly plan — coaches (contract, 2026-10-20)
+Domain modules that coach (Hercules, Hygieia, Plutus) carry the Hub tag `coach` and serve
+`/api/coach/needs|fit|placed|review` with `hestia_common.coach`: they say **what** is due (blocks, slots, targets,
+with generic constraints), never when. **Chronos** places them in the free time around the user's calendar
+(deterministic planner, plan items = assistant agenda events owned by the module, user moves always win), re-plans
+the rest of the week on pushed events (`/api/agenda/coach/report`, calendar sync, chat) and sends the weekly message
+via Oracle (text) and Hermes (delivery). Chronos reads no domain words; a new coach = one router + the tag.
+Needs tagged `outdoor` are kept out of rainy or dark hours (Hecate forecast at Casa; none = no filter).
+Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
 
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
@@ -345,7 +363,12 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 9. **Presence is effects, not names:** modules report facts to Chronos (pings, activities, signals) and ask
    effects through `hestia_common.presence_client`; they never test a state name, so new states are data only.
    Chronos down → safe defaults, each module keeps following its own agenda windows.
-10. **Organ Model (No functional overlap):**
+10. **Export and import per module (`hestia_common.transfer`):** a module with user data lists its sections and
+   serves `/api/transfer/*` (Hub capability `transfer`); it exports and imports only its own data, never secrets,
+   tokens, logs or runtime state. Settings travel only through Themis. The client (WebUI «Esporta e importa»,
+   `tools/hestia_transfer.py`) builds the `.hestia` file, always offers a dry-run preview and saves a restore
+   point before writing. The assistant has no import tool. Dossier `docs/work/2026-10-20-import-export`.
+11. **Organ Model (No functional overlap):**
    - Argus = observe and decide incidents.
    - Hephaestus = execute remediation and controlled code changes.
    - Oracle = reason and orchestrate tool/command flow.
@@ -417,7 +440,13 @@ No code-only behavior changes are considered complete without synchronized docs.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth
-   saying; Oracle decides when to include it.
+   saying; Oracle decides when to include it. `?topic=<signal key>` asks for details on one of the module's signals
+   (unknown topic → the normal line).
+5b. **Module signals (reflection in layers)**: a domain module judges its own data deterministically and publishes
+   short signals + weekly metrics with `hestia_common.signals_client` (Archive `signals-store`, on write + daily agenda
+   job `<module>.signals`). Athena reads only signals (never raw data), links weekly series of different areas and
+   asks details via `topic`; its life observations reach the user only in the daily recap («Da tenere d'occhio»).
+   System health is a separate Athena track. `docs/work/2026-10-20-riflessione-a-livelli/`.
 6. **Module files**: bytes (photos, attachments) go to Archive `/api/blobs` (`owner_module`, deduplicated by sha256);
    the module keeps the blob ids in its own rows and serves images to clients as `{mime, data_b64}`.
 7. **Chat attachments for a module**: a module that can take a file sent in chat declares in its Hub capabilities

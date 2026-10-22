@@ -92,6 +92,15 @@ export interface CalendarSource {
 
 export type CalView = 'month' | 'week' | 'day' | 'list';
 
+/** Weather of a day / an hour (Hecate's answer, read through Chronos `POST /api/agenda/weather`). */
+export interface WxDay { date: string; min_c: number | null; max_c: number | null; condition: string; icon: string;
+                         rain_prob?: number | null; rain_mm?: number | null; rain_hours?: string[]; }
+export interface WxHour { time: string; temp_c: number | null; rain_prob?: number | null; condition: string; icon: string; }
+export interface WxExternal { id: string; title: string; start: string; location: string; place?: string; hour?: WxHour; day?: WxDay; }
+export interface CalWeather { days: Record<string, WxDay>; events: Record<string, { place?: string; hour?: WxHour; day?: WxDay }>;
+                              external: WxExternal[]; }
+export const NO_WEATHER: CalWeather = { days: {}, events: {}, external: [] };
+
 export const TYPE_META: Record<AgendaType, { label: string; icon: string; hint: string }> = {
   event: { label: 'Evento', icon: 'event', hint: 'Informativo: qualcosa che un modulo ha pianificato' },
   task: { label: 'Task', icon: 'task', hint: 'Azione una tantum eseguita all\'orario indicato' },

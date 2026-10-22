@@ -7,10 +7,11 @@
  * Events: cal-select {ev, rect} · cal-create (Date) · cal-move {ev,start,end} · cal-day (Date).
  */
 import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
-import { type CalEvent, TYPE_META, fire } from '../models';
-import { DAY_MS, addDays, addMinutes, fmt, isSameDay, isToday, minutesOfDay, snap, startOfDay } from '../date';
+import { type CalEvent, type CalWeather, NO_WEATHER, TYPE_META, fire } from '../models';
+import { extLines } from './month';
+import { DAY_MS, addDays, addMinutes, dayKey, fmt, isSameDay, isToday, minutesOfDay, snap, startOfDay } from '../date';
 import type { FrequentMode, WindowsMode } from '../prefs';
-import { calStyles, ic } from '../ui';
+import { calStyles, ic, wxChip } from '../ui';
 
 const HOUR = 48;
 const MIN_BLOCK_MIN = 22;            // instants and very short items still get a clickable block
@@ -26,11 +27,11 @@ interface Segs { bands: Band[][]; blocks: Placed[][]; lanes: number[]; groups: C
 
 export class ChronosCalGrid extends LitElement {
   static properties = {
-    days: { attribute: false }, events: { attribute: false }, windowsMode: { attribute: false }, frequentMode: { attribute: false },
+    days: { attribute: false }, events: { attribute: false }, weather: { attribute: false }, windowsMode: { attribute: false }, frequentMode: { attribute: false },
     focusDay: { attribute: false }, scrollHour: { attribute: false }, workHours: { attribute: false },
     drag: { state: true }, now: { state: true }, scrollY: { state: true },
   };
-  declare days: Date[]; declare events: CalEvent[]; declare windowsMode: WindowsMode; declare frequentMode: FrequentMode;
+  declare days: Date[]; declare events: CalEvent[]; declare weather: CalWeather; declare windowsMode: WindowsMode; declare frequentMode: FrequentMode;
   declare focusDay: Date; declare scrollHour: number; declare workHours: [number, number];
   declare drag: Drag | null; declare now: number; declare scrollY: number;
   private segs: Segs = { bands: [], blocks: [], lanes: [], groups: [] };
@@ -45,6 +46,7 @@ export class ChronosCalGrid extends LitElement {
     .dh:hover { background: var(--surface-2); }
     .wd { font-size: 11.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
     .dn { font-size: 20px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--text); }
+    .wx { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .dh.today .dn { background: var(--accent); color: var(--accent-contrast); }
     .dh.today .wd { color: var(--accent); }
     .dh.sel { background: var(--accent-soft); }
@@ -111,7 +113,7 @@ export class ChronosCalGrid extends LitElement {
 
   constructor() {
     super();
-    this.days = []; this.events = []; this.windowsMode = 'lane'; this.frequentMode = 'compact'; this.focusDay = new Date();
+    this.days = []; this.events = []; this.weather = NO_WEATHER; this.windowsMode = 'lane'; this.frequentMode = 'compact'; this.focusDay = new Date();
     this.scrollHour = 7; this.workHours = [9, 18]; this.drag = null; this.now = Date.now(); this.scrollY = 0;
   }
   connectedCallback() { super.connectedCallback(); this.timer = setInterval(() => (this.now = Date.now()), 60_000); }
@@ -298,7 +300,7 @@ export class ChronosCalGrid extends LitElement {
     return html`
       <div class="head" style="grid-template-columns:${cols}"><div></div>
         ${this.days.map(d => html`<button class="dh ${isToday(d) ? 'today' : ''} ${this.days.length > 1 && isSameDay(d, this.focusDay) ? 'sel' : ''}"
-          @click=${() => fire(this, 'cal-day', d)} title=${'Apri ' + fmt.dayLong(d)}><span class="wd">${fmt.weekdayShort(d)}</span><span class="dn">${d.getDate()}</span></button>`)}
+          @click=${() => fire(this, 'cal-day', d)} title=${'Apri ' + fmt.dayLong(d)}><span class="wd">${fmt.weekdayShort(d)}</span><span class="dn">${d.getDate()}</span>${wxChip(this.weather?.days[dayKey(d)], extLines(this.weather ?? NO_WEATHER, dayKey(d)))}</button>`)}
       </div>
       ${hasSummary ? html`<div class="sum" style="grid-template-columns:${cols}">
         <div class="sum-h" title="Attività che si ripetono spesso, raggruppate (Vista → Ricorrenze frequenti)">Ricorrenti</div>

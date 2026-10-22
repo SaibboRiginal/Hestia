@@ -29,6 +29,9 @@ LLM_USECASES = [
                 help="Valuta la qualità delle risposte dell'assistente."),
     llm_usecase("athena.recap", "Athena · recap della giornata", chain="veloce",
                 help="Scrive il recap serale o del mattino dai fatti delle aree (allenamento, spese, agenda…)."),
+    llm_usecase("athena.riflessione", "Athena · riflessione sulla tua vita", chain="potente",
+                help="Legge i segnali delle aree e i collegamenti tra le settimane e scrive le osservazioni "
+                     "del recap della sera."),
 ]
 plugin_page = import_shared_symbol("hestia_common.plugin_client", "page")
 plugin_widget = import_shared_symbol("hestia_common.plugin_client", "widget")
@@ -60,6 +63,7 @@ class AthenaService(HestiaServiceBase):
             "thinking_modules": [
                 "observer",
                 "strategist",
+                "reflection",
             ],
             "event_emit_endpoint": "/api/events/ingest",
             "oracle_hint_route": "/api/athena/hints",
@@ -71,6 +75,9 @@ class AthenaService(HestiaServiceBase):
             "think_now_endpoint": "/api/athena/think",
             "observation_endpoint": "/api/athena/observation",
             "recap_compose_endpoint": "/api/athena/recap",
+            "signals_endpoint": "/api/athena/signals",
+            # Athena's own piece of the daily recap («Da tenere d'occhio»), discovered like any module's.
+            "recap_endpoint": "/api/module/recap",
             **ui.capabilities(SERVICE_BASE_URL),
             **llm_capabilities(LLM_USECASES),
         }
@@ -158,9 +165,14 @@ ui = plugin_client("athena", title="Athena", icon="zap", color="amber", kind="co
 ui.webui(
     entry="athena.js", api_prefix=f"{API}/",
     pages=[plugin_page("pensieri", "Pensieri", element="athena-thoughts", icon="zap", order=130,
-                       help="Ogni ciclo di Athena: cosa ha osservato, cosa ha pensato, il punteggio (5 fattori) "
-                            "e cosa ha fatto o scartato, con il motivo. Impegni aperti. «Pensa ora» per un ciclo subito."),
-           plugin_page("recap", "Recap", element="athena-recaps", icon="note", order=131,
+                       help="Ogni ciclo di Athena, in due tracce: Vita (segnali delle aree, collegamenti tra le "
+                            "settimane, osservazioni per il recap) e Sistema (salute di Hestia). Cosa ha osservato, "
+                            "il punteggio (5 fattori) e cosa ha fatto o scartato, con il motivo. «Pensa ora» per un "
+                            "ciclo subito."),
+           plugin_page("segnali", "Segnali", element="athena-signals", icon="pulse", order=131,
+                       help="I segnali brevi che ogni area pubblica sui suoi dati e i numeri settimanali che la "
+                            "riflessione confronta. Le osservazioni che ne nascono arrivano nel recap della sera."),
+           plugin_page("recap", "Recap", element="athena-recaps", icon="note", order=132,
                        help="I recap della giornata: il testo che ti è arrivato e, sotto, i fatti di ogni area da "
                             "cui è stato scritto. L'orario si sposta nel calendario.")],
     widgets=[plugin_widget("ultimo", "Ultimo pensiero", element="athena-last-widget", sizes=["m", "l"], auto=True,
@@ -307,17 +319,51 @@ def athena_thinking(
 
 
 @app.get("/api/athena/thinking/summary")
-def athena_thinking_summary(limit: int = 10) -> dict[str, Any]:
+def athena_thinking_summary(limit: int = 10, track: str | None = None) -> dict[str, Any]:
     """Compact cycles (newest first) for the Pensieri page and the MCP tool ``athena_thinking``: observation
-    counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome."""
-    return runtime.thinking_summary(limit=limit)
+    counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome.
+    ``track`` = ``vita`` | ``sistema`` (both when omitted)."""
+    return runtime.thinking_summary(limit=limit, track=track or None)
 
 
 @app.post("/api/athena/think")
-def athena_think_now() -> dict[str, Any]:
+def athena_think_now(track: str = "sistema") -> dict[str, Any]:
     """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
-    ``started`` or ``busy`` (a cycle is already running); the record appears in /api/athena/thinking."""
-    return runtime.think_now()
+    ``track`` = ``sistema`` (default) or ``vita``. ``started`` or ``busy`` (a cycle is already running); the
+    record appears in /api/athena/thinking."""
+    if track not in ("sistema", "vita"):
+        raise HTTPException(status_code=422, detail="track: sistema | vita")
+    return runtime.think_now(track=track)
+
+
+@app.get("/api/athena/signals")
+def athena_signals(domain: str | None = None, limit: int = 50, weeks: int = 12) -> dict[str, Any]:
+    """What the reflection reads: active signals of the modules (worst first), the weekly series, the links found
+    and the observations of the last 14 days (page Segnali, MCP ``athena_signals``)."""
+    from .core.reflection import correlate
+    from .core import athena_settings as AS
+    try:
+        signals = runtime.reflection.reader.signals(domain=domain)
+        series = runtime.reflection.reader.series(weeks=max(4, min(int(weeks), 52)))
+    except Exception as exc:
+        logger.warning("[🔄] event=athena_signals_read_failed error=%s fallback=503", exc)
+        raise HTTPException(status_code=503, detail="segnali non disponibili")
+    if domain:
+        series = {k: v for k, v in series.items() if v.get("domain") == domain}
+    links = correlate(series, min_weeks=AS.get_int(AS.REFLECTION_MIN_WEEKS),
+                      min_r=AS.get_float(AS.REFLECTION_MIN_CORRELATION))
+    observations = runtime.reflection.observations(since_days=14)
+    observations.sort(key=lambda o: str(o.get("at") or ""), reverse=True)
+    return {"status": "ok", "signals": signals[:max(1, min(int(limit), 200))], "series": series,
+            "links": links[:10], "observations": observations[:20]}
+
+
+@app.get("/api/module/recap")
+def module_recap(day: str | None = None, next: str | None = None) -> dict[str, Any]:  # noqa: A002 — contract name
+    """Athena's piece of the daily recap (contract docs/work/2026-10-20-recap-giornaliero §3.2): the life
+    observations of ``day`` under «Da tenere d'occhio», or ``{empty: true}``. Deterministic, no model call."""
+    from .core.reflection import local_day
+    return runtime.reflection.recap_piece(day or local_day())
 
 
 @app.get("/api/athena/observation")
@@ -429,6 +475,31 @@ try:
             title="💭 Pensieri di Athena",
             method="GET",
             path="/api/athena/thinking/summary",
+            clients=["ui", "external"],
+            response_mode="oracle_natural",
+            telegram_visible=False,
+            telegram_group="sistema",
+        ),
+        MCPTool(
+            name="athena_signals",
+            description=(
+                "Segnali brevi che ogni area (allenamento, cura di sé, spese, guardaroba…) pubblica sui suoi dati, "
+                "i numeri settimanali, i collegamenti trovati tra le settimane e le osservazioni recenti della "
+                "riflessione. Utile per «com'è andata la settimana?» o «cosa noti di me?»."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "domain": {"type": "string", "description": "Solo un'area (es. fitness, finance)"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 200,
+                              "description": "Quanti segnali (default 50, i più importanti prima)"},
+                },
+            },
+            handler=lambda domain=None, limit=50, **_kw: athena_signals(domain=domain or None,
+                                                                         limit=int(limit or 50)),
+            title="📡 Segnali delle aree",
+            method="GET",
+            path="/api/athena/signals",
             clients=["ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,

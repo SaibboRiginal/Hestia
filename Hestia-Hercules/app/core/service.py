@@ -37,6 +37,15 @@ class Hercules:
         self.setting = setting
         self.tz = ZoneInfo(tz_name or os.getenv("TZ") or "Europe/Rome")
         self._data_cache: tuple[int, records.Data] | None = None
+        # Weekly plan (hestia_common.coach): ``on_event(event, data)`` with done / skipped / changed. Set by main.
+        self.on_event: Callable[[str, dict], None] | None = None
+
+    def _emit(self, event: str, **data) -> None:
+        if self.on_event:
+            try:
+                self.on_event(event, data)
+            except Exception as exc:          # the plan never breaks a workout
+                logger.warning("[🔄] event=hercules_coach_emit_failed kind=%s error=%s", event, exc)
 
     # ── basics ──────────────────────────────────────────────────────────────
     def cfg(self, key: str, fallback: Any = None) -> Any:
@@ -85,6 +94,8 @@ class Hercules:
         if updated_at:
             row["updated_at"] = updated_at
         self.store.write([row])
+        if kind in ("goal", "program"):
+            self._emit("changed")
         return {**norm, "id": rid}
 
     def get(self, kind: str, id: str) -> dict:
@@ -498,6 +509,7 @@ class Hercules:
         detail = self.update_session(id, changes)
         if update_template and sess.get("template_id"):
             self._template_from_session(sess["template_id"], detail)
+        self._emit("done", at=changes["ended_at"])
         return detail
 
     def _template_from_session(self, template_id: str, detail: dict) -> None:
@@ -537,6 +549,7 @@ class Hercules:
                                         "session_at": start.isoformat()})
                 rows.append({"kind": "set", "id": domain.new_id(), "data": st, **domain.index_columns("set", st)})
         self.store.write(rows)
+        self._emit("done", at=when.isoformat())
         return {"session_id": sess["id"], "name": t["name"], "sets": len(rows)}
 
     # ── days ────────────────────────────────────────────────────────────────
@@ -544,8 +557,10 @@ class Hercules:
         d = day or self.today().isoformat()
         rotation = (self.active_program() or {}).get("mode") == "rotation" and self.cfg("skip_mode", "shift") == "shift"
         existing = next((p for p in self.store.items("plan") if p.get("date") == d), None)
-        return self.save("plan", {"date": d, "status": "skipped", "note": note, "rotation_skip": rotation},
-                         id=existing["id"] if existing else None)
+        out = self.save("plan", {"date": d, "status": "skipped", "note": note, "rotation_skip": rotation},
+                        id=existing["id"] if existing else None)
+        self._emit("skipped", at=f"{d}T12:00:00", reason=note)
+        return out
 
     def unskip_day(self, day: str | None = None) -> dict:
         d = day or self.today().isoformat()
@@ -563,8 +578,10 @@ class Hercules:
         plans = {p["date"]: p for p in self.store.items("plan")}
         self.save("plan", {"date": frm, "status": "moved", "template_id": tid, "note": f"spostato al {to_day}"},
                   id=(plans.get(frm) or {}).get("id"))
-        return self.save("plan", {"date": to_day, "status": "planned", "template_id": tid, "from_date": frm},
-                         id=(plans.get(to_day) or {}).get("id"))
+        out = self.save("plan", {"date": to_day, "status": "planned", "template_id": tid, "from_date": frm},
+                        id=(plans.get(to_day) or {}).get("id"))
+        self._emit("changed")
+        return out
 
     # ── how I feel ──────────────────────────────────────────────────────────
     def checkin(self, body: dict) -> dict:
@@ -811,6 +828,18 @@ class Hercules:
         note = f"{goals[0]['progress']['label']}: {goals[0]['progress']['hint']}" if goals and (done or missed) else ""
         return {"done": done, "missed": missed, "next": upcoming, "note": note}
 
+
+    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    def signals(self) -> tuple[list[dict], list[dict]]:
+        """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
+        from . import signals as signals_engine
+        return signals_engine.evaluate(self)
+
+    def signal_detail(self, topic: str) -> str | None:
+        """Facts behind one signal key, for ``/api/module/context?topic=`` (``None`` = unknown topic)."""
+        from . import signals as signals_engine
+        return signals_engine.detail(self, topic)
+
     def _missed_days(self, days: int) -> list[str]:
         """Program days in the last ``days`` (before today) with no session, not skipped/moved."""
         prog = self.active_program()
@@ -874,7 +903,7 @@ class Hercules:
         for op in ops or []:
             kind, rid = op.get("kind"), op.get("id")
             try:
-                if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder"):
+                if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder", "activity_plan", "activity"):
                     raise domain.Invalid(f"tipo sconosciuto: {kind}")
                 if not rid:
                     raise domain.Invalid("id mancante")
@@ -896,10 +925,16 @@ class Hercules:
             except domain.Invalid as exc:
                 rejected.append({"op_id": op.get("op_id"), "kind": kind, "id": rid, "error": str(exc)})
         self.store.refresh(force=True)
+        was_done = {r["id"] for r in rows if r["kind"] == "session"
+                    and (self.store.data("session", r["id"]) or {}).get("status") == "done"}
         result = self.store.write(rows) if rows else {"applied": [], "stale": []}
         applied_keys = {(a["kind"], a["id"]) for a in result.get("applied") or []}
         stale_keys = {(s["kind"], s["id"]) for s in result.get("stale") or []}
         op_ids = {(o.get("kind"), o.get("id")): o.get("op_id") for o in ops or []}
+        for r in rows:
+            if r["kind"] == "session" and not r.get("deleted") and (r["data"] or {}).get("status") == "done" \
+                    and (r["kind"], r["id"]) in applied_keys and r["id"] not in was_done:
+                self._emit("done", at=r["data"].get("ended_at") or r["data"].get("started_at"))
         changes = [self._wire(r) for r in self.store.changes_since(int(cursor or 0))]
         logger.info("event=hercules_sync device=%s ops=%d applied=%d stale=%d rejected=%d changes=%d",
                     device_id or "?", len(ops or []), len(applied_keys), len(stale_keys), len(rejected), len(changes))

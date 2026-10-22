@@ -235,3 +235,42 @@ def test_recap_quiet_day_is_empty(hc):
     today = hc.today()
     facts = hc.recap(today, today + timedelta(days=1))
     assert facts == {"done": [], "missed": [], "next": [], "note": ""}
+
+
+# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.1) ──────
+def test_coach_needs_follow_the_goal_and_report_done(hc):
+    from hestia_common.coach import validate_need
+    from app.core.coach import HerculesCoach
+    events = []
+    hc.on_event = lambda e, d: events.append(e)
+    coach = HerculesCoach(hc)
+    today = hc.today()
+    assert coach.needs(today, today + timedelta(days=7))["needs"] == []       # no goal, no program: nothing to plan
+    t = _template(hc)
+    hc.save("goal", {"times": 3, "per": "week", "scope": "any"})
+    assert events[-1] == "changed"
+    n = [validate_need(x) for x in coach.needs(today, today + timedelta(days=7))["needs"]]
+    assert n[0]["id"] == "workout" and n[0]["kind"] == "block" and n[0]["minutes"] >= n[0]["min_minutes"]
+    remaining = n[0]["count"]
+    hc.quick_done(t["id"])
+    assert events[-1] == "done"
+    left = coach.needs(today, today + timedelta(days=7))["needs"]
+    assert (left[0]["count"] if left else 0) == max(0, remaining - 1)
+
+
+def test_coach_weekly_program_needs_and_short_fit(hc):
+    from app.core.coach import HerculesCoach
+    coach = HerculesCoach(hc)
+    t = _template(hc)
+    today = hc.today()
+    hc.save("program", {"name": "Settimana", "active": True, "mode": "weekly",
+                        "days": [{"weekday": (today.weekday() + 1) % 7, "template_id": t["id"]}]})
+    needs = coach.needs(today, today + timedelta(days=7))["needs"]
+    assert len(needs) == 1 and needs[0]["days"] == [(today.weekday() + 1) % 7] and needs[0]["title"] == "Push A"
+    fit = coach.fit(needs[0]["id"], today + timedelta(days=1), 15)
+    assert fit["ok"] and fit["minutes"] <= 15 and "corto" in fit["title"]
+    coach.on_placed("w", [{"need_id": needs[0]["id"], "key": "k", "status": "planned",
+                           "start_at": datetime.combine(today + timedelta(days=1), datetime.min.time()).replace(hour=18).isoformat()}])
+    assert coach.next_planned()["label"].startswith("domani")
+    review = coach.review(today - timedelta(days=7), today)
+    assert review["done"] == 0

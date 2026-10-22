@@ -65,6 +65,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/oauth/register` · `/oauth/token` · `/oauth/revoke` | OAuth 2.1 for claude.ai / ChatGPT connectors (form or JSON body + `Authorization` forwarded) |
 | GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/accessi?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
+| GET | `/api/webui/transfer/modules` | Modules with the `transfer` capability (Hub registry) — «Esporta e importa» |
+| GET · POST | `/api/webui/transfer/{module}/describe` · `/{module}/items|export|import|files` · GET `/{module}/files/{id}` | Forwarded to the module's `/api/transfer/*` (only modules advertising `transfer`) |
+| GET · POST · GET · DELETE | `/api/webui/transfer/restore-points[/{id}]` | Restore points: WebUI Archive blobs (gzip JSON, meta `kind: transfer-restore`), newest `webui.transfer.restore_points` kept |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
 | POST | `/api/webui/sessions/clear` | Reset session |
@@ -186,6 +189,10 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   services without settings yet. A module = its groups; a group with presets shows *Economico / … /
   Personalizzato* (custom = values match no preset). Settings that declare `row` + `column` render as a table.
   Filters *Solo modificate* and *Avanzate (N)*.
+- Settings with `editor: places` (personal «Luoghi», `themis.personal.places`) use `<hx-places-editor>`
+  (`places-editor.component.ts`): inline rows name / address / kind (Casa, Lavoro, Altro; one Casa), add/remove,
+  each row shows how Hecate resolved it (options from `hecate:/api/gateway/weather/places`). Weather icons (sun,
+  cloud-sun, cloud, fog, drizzle, rain, snow, storm, run) are in the shared icon set.
 - `<hx-setting>` (`setting-row.component.ts`): label, help, badges *modificato · riavvio necessario · modulo
   offline · al riavvio · personale*, the control and a clock popover with the last changes, *Annulla ultima*,
   *Ripristina predefinito*. Settings whose `depends_on` is not met are greyed out with "Attiva solo con …".
@@ -284,6 +291,16 @@ The page asks Hestia through the plugin host (`host.assistant(...)`), logs come 
   Settings → *Messaggi di sistema*: where (sotto la risposta · popup · entrambi · solo importanti · nascosti),
   style (compatto · dettagliato), per-group toggles (memoria, azioni, notifiche, altro). Stored per browser
   (`NoticePrefsService`, localStorage). Notices arriving after `final` attach to the last answer.
+
+## Esporta e importa (Impostazioni → Dati, dossier `docs/work/2026-10-20-import-export`)
+
+`features/settings/transfer-settings.component.ts` (+ `transfer.api.ts`), deep link `/settings?tab=transfer`. Three
+tabs: **Esporta** (tree modules → sections with counts, «Scegli» for single items, «Solo modifiche dal», «Includi
+foto» → downloads `hestia-AAAA-MM-GG.hestia`, gzip JSON via `CompressionStream`), **Importa** (open/drop a file → same
+tree, mode Aggiungi/Unisci/Sostituisci globally or per section, «Anteprima» = dry run with counts and item lists,
+«Importa» saves a restore point first, then uploads files and imports), **Ripristino** (restore points: Ripristina =
+open in Importa with Sostituisci, Elimina). Settings of each module come from Themis and show under that module.
+Themis setting `webui.transfer.restore_points` (system, default 5, 1–20).
 
 ## Known Constraints
 
