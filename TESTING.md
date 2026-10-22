@@ -56,6 +56,8 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
   → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».
+  The bench overlay passes it to Oracle as `ORACLE_KEY_GEMINI` (Oracle reads only `ORACLE_KEY_<NAME>`): on the bench
+  the secret keeps the name `GEMINI_API_KEY`; on the real stack the key goes in `Hestia-Oracle/app/.env` as `ORACLE_KEY_GEMINI`.
 - Telegram starts only with a (test) `TELEGRAM_BOT_TOKEN`; Google/Microsoft OAuth needs a person in a browser.
 - Claude cloud network: Docker Hub rate-limits (429) and Debian's apt servers are blocked, Ubuntu's are allowed.
   The script takes images from `mirror.gcr.io`, builds Ubuntu 24.04 stand-ins for `python:3.12-slim` and
