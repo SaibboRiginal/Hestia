@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-10-22
+- Fix: Codespace did not start Hestia: the bench setup stopped on a certificate path the Codespace user cannot read; now it is skipped → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Fix: Codespace opened in recovery mode without Docker: the devcontainer base image moved to Debian 13, where docker-in-docker does not install; pinned to `python:3.12-bookworm` → `docs/work/2026-10-19-banco-prova-cloud/` [ext-chat]
 - Evening recap: «Domani a Casa» weather line and outdoor activities (done, not done, planned tomorrow) → `docs/work/2026-10-20-meteo-hecate/` [ext-chat]
 - Daily recap: one message in the evening with how the day went and what comes tomorrow (agenda, training, self care, expenses, wardrobe, houses, notifications), each area gives its facts through `GET /api/module/recap`, the assistant writes the text (plain list if the model is down), nothing on a quiet day; the evening time moves by itself around your events (flexible 20:00–23:30), morning recap from the calendar template, «Recap adesso», chat tool `recap_today`, page Recap; new Chronos «Attività standard» page puts back in one click any module activity you deleted, paused or changed; flexible time available for every recurring job in the calendar editor → `docs/work/2026-10-20-recap-giornaliero/` [ext-chat]

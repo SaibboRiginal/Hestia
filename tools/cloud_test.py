@@ -112,8 +112,11 @@ def http(method: str, url: str, body=None, timeout: float = 15.0) -> tuple[int, 
 
 def proxy_ca() -> Path | None:
     for cand in CA_CANDIDATES:
-        if cand and Path(cand).is_file():
-            return Path(cand)
+        try:
+            if cand and Path(cand).is_file():
+                return Path(cand)
+        except OSError:  # e.g. Codespaces: user vscode may not even look inside /root
+            continue
     return None
 
 
