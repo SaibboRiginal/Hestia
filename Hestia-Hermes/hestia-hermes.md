@@ -88,6 +88,18 @@ within the cooldown window.
 - The inbox lists every state but `superseded`: only the live occurrence is shown.
 - When to nudge stays with the module (e.g. Self care max 2/week).
 
+## Notifications also as voice (2026-10-20, dossier `docs/work/2026-10-20-modulo-voce` §7.3)
+
+- The module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`) and puts
+  `_voice: true` in the event payload (`reminder_event(voice=…)`; batched domains keep the flag for the batch).
+- Hermes publishes the written notification as always, then in the background asks Echo (`VoiceClient.speak`, use
+  `hermes.notifica` declared in `voice_usecases`, `ogg_opus`, kept as class `notification`), stores
+  `payload.voice {blob_id, duration_s, mime_type}` and sends every client an `update {voice: {blob_id, duration_s,
+  mime_type, audio_b64}}`: Telegram sends a voice message replying to the notification; the WebUI inbox shows
+  «Ascolta» (`view.voice`, bytes via `GET /api/ui/inbox/{id}/voice`).
+- Echo down → `[🔄]`, the text stays the only form. Superseded (or superseded before the audio is ready) → the audio is
+  dropped in Echo (`forget`).
+
 ## API (MVP)
 
 | Method | Path | Description |
@@ -102,6 +114,7 @@ within the cooldown window.
 | `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
 | `GET` | `/api/ui/subscriptions` · `/api/ui/clients` | Active subscriptions (domain, event type, filters, channels) · clients reached now |
 | `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |
+| `GET` | `/api/ui/inbox/{id}/voice?format=mp3` | Audio of a notification sent also as voice (from Echo): `{mime_type, audio_b64, blob_id, duration_s}`; 404 without voice |
 | `POST` | `/api/ui/inbox/{id}/seen` · `/api/ui/inbox/seen-all` · `/api/ui/inbox/{id}/answer` | Same logic as the `/api/notifications/*` actions (body `client` optional, default `webui`; answer body `{action_id}`, 409 = already handled) |
 | `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |
 | `GET` | `/api/module/recap` | Daily recap piece «Notifiche»: how many today, the important ones (warning/error), those still waiting for an answer; the recap itself (`replaces: athena.recap`) is excluded. Capability `recap_endpoint` |

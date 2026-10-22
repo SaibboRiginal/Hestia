@@ -1,0 +1,29 @@
+# Standalone run (the global stack is docker-compose.global.yml at repo root).
+services:
+  hestia_echo:
+    build:
+      context: ..
+      dockerfile: Hestia-Echo/Dockerfile
+    container_name: hestia_echo
+    ports:
+      - "${ECHO_PORT:-19021}:19021"
+    env_file:
+      - path: ./app/.env          # ECHO_KEY_<NAME> only (provider keys); optional
+        required: false
+    environment:
+      - SERVICE_NAME=echo
+      - SERVICE_BASE_URL=http://hestia_echo:19021
+      - HUB_API_URL=http://hestia_hub:19001/api
+      - TZ=${TZ:-Europe/Rome}
+    volumes:
+      - hestia_echo_models:/models
+    networks:
+      - hestia_net
+    restart: unless-stopped
+
+volumes:
+  hestia_echo_models:
+
+networks:
+  hestia_net:
+    external: true

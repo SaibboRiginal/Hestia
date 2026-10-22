@@ -225,3 +225,25 @@ def test_calendar_ensure(client, monkeypatch):
     assert Prov.n == 1
     assert client.post("/api/gateway/calendar/calendars", json={"name": "X", "provider": "outlook"}).json()["status"] == "unavailable"
     assert client.post("/api/gateway/calendar/calendars", json={}).status_code == 400
+
+
+@pytest.mark.unit
+def test_recap_tomorrow_at_home():
+    from providers.weather import recap_facts
+    svc, _ = _svc()
+    rainy = recap_facts(svc, (TODAY + timedelta(days=1)).isoformat())
+    (line,) = rainy["next"]
+    assert line["text"].startswith("Domani a Casa: 10–18°") and "pioggia 15:00–17:00" in line["text"]
+    assert line["tone"] == "warning" and rainy["icon"]
+    dry = recap_facts(svc, (TODAY + timedelta(days=2)).isoformat())
+    assert "tone" not in dry["next"][0] and "pioggia" not in dry["next"][0]["text"]
+    assert recap_facts(_svc(places=[])[0], TODAY.isoformat()) == {}     # no Casa: nothing to say
+
+
+@pytest.mark.api
+def test_recap_endpoint_and_capability(client):
+    p = client.get("/api/module/recap", params={"day": TODAY.isoformat(),
+                                                "next": (TODAY + timedelta(days=1)).isoformat()}).json()
+    assert p["module"] == "hecate" and p["title"] == "Meteo" and p["next"][0]["text"].startswith("Domani a Casa")
+    import app.main as m
+    assert m.recap_contract.capabilities()["recap_endpoint"] == "/api/module/recap"

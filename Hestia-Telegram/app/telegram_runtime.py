@@ -19,6 +19,7 @@ from telegram_bot.services.chat_service import (
     send_welcome,
 )
 from telegram_bot.services.executor import handle_group_callback
+from telegram_bot.services import voice_service
 from telegram_bot.services.notifications import handle_callback as handle_notification_callback
 from telegram_bot.services.notifications import mark_seen_on_activity as mark_notifications_seen
 from telegram_bot.services.presence import touch as presence_touch
@@ -137,6 +138,11 @@ def on_feedback_callback(call):
 @bot.callback_query_handler(func=lambda call: _allowed(call) and (call.data.startswith("doc_")))
 def on_doc_callback(call):
     handle_doc_callback(call)
+
+
+@bot.callback_query_handler(func=lambda call: _allowed(call) and call.data == voice_service.LISTEN_CALLBACK)
+def on_listen(call):
+    voice_service.handle_listen_callback(call)
 
 
 @bot.message_handler(content_types=["document", "photo", "audio", "voice", "video", "video_note"])

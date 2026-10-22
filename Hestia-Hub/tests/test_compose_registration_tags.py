@@ -87,3 +87,12 @@ def test_coach_modules_carry_the_coach_tag():
         tags = re.search(r'"SERVICE_TAGS", "([^"]+)"', source).group(1).split(",")
         assert "coach" in tags
         RegisterServiceRequest(name=svc.lower(), base_url="http://x:1", service_type="module", tags=tags)
+
+
+@pytest.mark.unit
+def test_echo_default_tags_pass_hub_validation():
+    """Echo (voice) used `layer:core`, which the Hub does not know: it would never be reachable."""
+    source = (_ROOT / "Hestia-Echo" / "app" / "main.py").read_text(encoding="utf-8")
+    tags = re.search(r'"SERVICE_TAGS",\s*"([^"]+)"', source).group(1).split(",")
+    topo = re.search(r'"SERVICE_TOPOLOGY_TAGS",\s*"([^"]+)"', source).group(1).split(",")
+    RegisterServiceRequest(name="echo", base_url="http://echo:1", tags=tags, topology_tags=topo)

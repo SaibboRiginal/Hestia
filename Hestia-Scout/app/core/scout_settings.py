@@ -27,6 +27,7 @@ BATCH_COOLDOWN = "scout.batch.cooldown"
 LLM_TIMEOUT = "scout.llm.timeout"
 RECONCILE_EVERY_CYCLES = "scout.reconcile.every_cycles"
 ENRICHMENT_ENABLED = "scout.enrichment.enabled"
+NOTIFY_VOICE = "scout.notifiche.voce"
 
 DEFAULT_SENDERS = ["nonrispondere@idealista.it", "noreply@notifiche.immobiliare.it"]
 
@@ -60,6 +61,9 @@ settings.declare([
     setting(ENRICHMENT_ENABLED, "Arricchisci dalla pagina dell'annuncio", "bool", True, group="Manutenzione dati",
             order=21,
             help="Apre la pagina dell'annuncio per completare descrizione e indirizzo e riprova quelli rimasti a metà."),
+    # Same key as hestia_common.reminders.voice_setting: off, a list of houses reads badly aloud.
+    setting(NOTIFY_VOICE, "Notifiche anche a voce", "bool", False, group="Notifiche", order=30,
+            help="Oltre al testo ricevi un vocale (Telegram) o un tasto play (sito) per le nuove case."),
 ]).declare_log_level()
 
 

@@ -1,8 +1,9 @@
-"""Lazy-loaded local model singletons: CLIP, YOLO, and WhisperX.
+"""Lazy-loaded local model singletons: CLIP and YOLO (audio is transcribed by the voice module Echo,
+see ``transcription.py``).
 
 Single responsibility: manage optional heavy ML model lifecycles.
 
-All three models are loaded at most once per process (singleton pattern).
+Both models are loaded at most once per process (singleton pattern).
 Public functions are the only API consumers should call — the internal
 state variables are module-private.
 
@@ -12,8 +13,6 @@ needs to change.
 """
 import io
 import logging
-import os
-import tempfile
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -74,46 +73,6 @@ def _load_yolo():
     except Exception as exc:
         logger.info("event=local_yolo_unavailable [LOCAL] YOLO unavailable: %s", exc)
     return _YOLO_MODEL
-
-
-# ── WhisperX singleton ────────────────────────────────────────────────────────
-_WHISPER_LOADED = ""  # name of the loaded model ("" = none yet)
-_WHISPER_MODEL = None
-
-_MIME_TO_EXT: dict[str, str] = {
-    "audio/mpeg": ".mp3", "audio/mp3": ".mp3",
-    "audio/wav": ".wav", "audio/x-wav": ".wav",
-    "audio/ogg": ".ogg", "audio/vorbis": ".ogg",
-    "audio/flac": ".flac",
-    "audio/aac": ".aac", "audio/x-aac": ".aac",
-    "audio/m4a": ".m4a", "audio/mp4": ".m4a",
-    "video/mp4": ".mp4", "video/mpeg": ".mpeg",
-    "video/webm": ".webm", "video/ogg": ".ogv",
-    "video/quicktime": ".mov", "video/x-msvideo": ".avi",
-}
-
-
-def _whisper_name() -> str:
-    from core.services import oracle_settings
-    return str(oracle_settings.settings.get(oracle_settings.WHISPER_MODEL) or "base")
-
-
-def _load_whisper():
-    """Return the WhisperX model of setting ``oracle.documents.whisper_model``; loaded on first
-    use and again when the setting changes."""
-    global _WHISPER_LOADED, _WHISPER_MODEL
-    name = _whisper_name()
-    if _WHISPER_LOADED == name:
-        return _WHISPER_MODEL
-    _WHISPER_LOADED = name
-    _WHISPER_MODEL = None
-    try:
-        import whisperx
-        _WHISPER_MODEL = whisperx.load_model(name, device="cpu", compute_type="int8")
-        logger.info("event=local_whisperx_model_loaded [LOCAL] WhisperX model loaded (%s)", name)
-    except Exception as exc:
-        logger.info("event=local_whisperx_unavailable [LOCAL] WhisperX unavailable: %s", exc)
-    return _WHISPER_MODEL
 
 
 # ── Public inference functions ────────────────────────────────────────────────
@@ -194,32 +153,3 @@ def analyze_image(file_bytes: bytes) -> dict:
         "clip_available": clip_available,
         "yolo_available": yolo_available,
     }
-
-
-def transcribe_audio(file_bytes: bytes, mime_type: str) -> str:
-    """Transcribe audio (or audio track of a video) using WhisperX.
-
-    Returns the transcribed text, or an empty string if WhisperX is
-    unavailable or transcription fails.
-    """
-    ext = _MIME_TO_EXT.get(mime_type, ".audio")
-    whisper = _load_whisper()
-    if whisper is None:
-        return ""
-    tmp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
-            f.write(file_bytes)
-            tmp_path = f.name
-        result = whisper.transcribe(tmp_path, batch_size=8)
-        segments = result.get("segments") or []
-        return " ".join(seg.get("text", "").strip() for seg in segments if seg.get("text", "").strip())
-    except Exception as exc:
-        logger.warning("event=local_whisperx_transcription_failed [LOCAL] WhisperX transcription failed: %s", exc)
-        return ""
-    finally:
-        if tmp_path:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass

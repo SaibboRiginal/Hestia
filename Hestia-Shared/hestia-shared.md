@@ -167,6 +167,25 @@ payload["capabilities"].update(llm_capabilities(LLM_USECASES))   # Hub registrat
 # call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.annunci"}
 ```
 
+## Voice (`hestia_common.voice_client`, `hestia_common.voice_usecases`)
+
+Only Echo calls speech engines (dossier `docs/work/2026-10-20-modulo-voce`). A module declares its voice uses
+(direction `ascolto` or `voce`, suggested chain) and calls Echo through the Hub; failures return `None` so the caller
+keeps its own fallback.
+
+```python
+from hestia_common.voice_client import VoiceClient
+from hestia_common.voice_usecases import usecase, capabilities as voice_capabilities
+
+VOICE_USECASES = [usecase("telegram.vocale", "Telegram · vocali", direction="ascolto")]
+payload["capabilities"].update(voice_capabilities(VOICE_USECASES))   # Hub registration
+voice = VoiceClient(HUB_API_URL)
+heard = voice.transcribe(audio, "audio/ogg", use_case="telegram.vocale",
+                         keep={"kind": "recording", "message_id": "tg:1:2"})      # {text, ...} | None
+spoken = voice.speak("Ciao", use_case="telegram.risposta", fmt="ogg_opus")      # {audio: bytes, ...} | None
+voice.forget(notification_id="…")                                              # drop regenerable audio
+```
+
 ## Settings client (`hestia_common.settings_client`)
 
 Every tunable knob is a setting declared to **Themis** (never a new env var; env = secrets + infrastructure):
@@ -219,6 +238,10 @@ hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
 The body is a `service.action_required` event on domain `system` (where Hermes' owner subscription listens; the
 module domain travels in the payload) with `target: owner`, `replaces: <key>` (one live notification per key) and
 `_link` to the module page. Modules send at most one reminder a day and respect `max_per_week`.
+
+Voice: `voice_setting("<m>", default)` declares `<m>.notifiche.voce` («Notifiche anche a voce»; each module picks its
+default) and `reminder_event(..., voice=settings.get("<m>.notifiche.voce"))` sets `_voice`: Hermes then adds the
+audio made by Echo to the same notification (Telegram voice message, WebUI «Ascolta»). The text never changes.
 
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 

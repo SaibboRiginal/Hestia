@@ -96,7 +96,8 @@ Crea outfit / Da donare. A UI change needs `up-all.bat --build wardrobe`.
 
 forgotten_days (180), photo.max_mb (10), suggest.count (3), suggest.exclude_recent_days (4),
 tracking.goal_times (0 = no goal), tracking.goal_per (week), reminder.enabled (false), reminder.max_per_week (2),
-review.enabled (false). Reminder settings come from `hestia_common.reminders`; currency and
+review.enabled (false), notifiche.voce (true: notifications also as voice). Reminder and voice settings come from
+`hestia_common.reminders`; currency and
 week start (weekly goal) are the personal settings `themis.personal.*`.
 
 ## API (via Hub `/route/wardrobe/...`)

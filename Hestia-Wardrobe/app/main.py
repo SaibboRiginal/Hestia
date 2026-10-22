@@ -28,8 +28,8 @@ from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.transfer import StoreSection, Transfer
-from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
 
@@ -69,6 +69,7 @@ settings.declare([
             depends_on={"key": "wardrobe.tracking.goal_times", "not_equals": 0}),
     *reminder_settings("wardrobe", help="Solo con un obiettivo, solo se sei indietro e oggi non hai segnato nulla. Uno "
                                         "alla volta; l'orario si cambia nell'agenda (Promemoria guardaroba)."),
+    voice_setting("wardrobe", True),
     setting("wardrobe.review.enabled", "Revisione mensile", "bool", False, group="Notifiche",
             help="Una volta al mese: capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere."),
 ]).follow_personal()                                       # week start, currency: personal settings shared by every module
@@ -431,7 +432,7 @@ def quick_undo(id: str, date: str = ""):
 # ── notifications through Hermes (agenda jobs; both off by default) ──────────
 def _notify(key: str, title: str, text: str, actions: list[dict], *, replaces: bool, page: str = "") -> None:
     body = reminder_event(module="wardrobe", domain="wardrobe", key=key, title=title, text=text, actions=actions,
-                          page=page)
+                          page=page, voice=bool(settings.get("wardrobe.notifiche.voce", True)))
     if not replaces:                                   # a one-off question (delete), not a reminder thread
         body["payload"].pop("replaces", None)
     hub.ok("hermes", "POST", "api/events/ingest", body=body, timeout=8)

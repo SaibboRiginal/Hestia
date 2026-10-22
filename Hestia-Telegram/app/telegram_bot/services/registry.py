@@ -102,6 +102,11 @@ def refresh_command_registry(force: bool = False) -> bool:
     return True
 
 
+def _voice_capabilities() -> dict:
+    from telegram_bot.services.voice_service import capabilities
+    return capabilities()
+
+
 def register_telegram_service() -> bool:
     """Register this Telegram service with the Hub."""
     payload = {
@@ -119,6 +124,8 @@ def register_telegram_service() -> bool:
             "notify_endpoint": "/api/notify",
             # Chronos calls it when Oracle is back (SPEC oracle-offline): answer the queued messages.
             "chat_queue_drain": "/api/chat-queue/drain",
+            # Voice uses (SPEC modulo-voce): voice notes heard, replies spoken.
+            **_voice_capabilities(),
         },
     }
     try:

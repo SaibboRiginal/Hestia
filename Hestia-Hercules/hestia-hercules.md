@@ -50,7 +50,8 @@ light outdoor activities (run, bike, walk) planned with the weather
   `week_goal` → goal hint and days left); an unknown topic answers the normal line. Same shape `{module, domain,
   updated_at, text}`, cut to `budget`.
 - `GET /api/module/recap?day=&next=`: piece «Allenamento» of the daily recap (sessions with sets/minutes, records, a
-  planned day skipped or missed, next workout, goal note). Plain facts, capability `recap_endpoint`.
+  planned day skipped or missed, next workout, goal note) plus outdoor lines: activities done, slots not done or
+  still to mark, slots planned tomorrow (`Activities.recap`). Plain facts, capability `recap_endpoint`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
 
 ## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
@@ -95,7 +96,8 @@ A UI change needs `up-all.bat --build hercules`.
 
 units, rest.default_seconds, bar_weight, plates, warmup.scheme, increment.{barbell,dumbbell,machine,cable},
 e1rm_formula, stall.exposures, adapt.low_energy, adapt.weight_cut_pct, skip_mode, reminder.enabled (false),
-reminder.max_per_week (2) from `hestia_common.reminders`. Week start is the personal setting
+reminder.max_per_week (2) and notifiche.voce (true: the reminder also arrives as a voice message / «Ascolta») from
+`hestia_common.reminders`. Week start is the personal setting
 `themis.personal.week_start` (shared by every module).
 
 ## API (via Hub `/route/hercules/...`)

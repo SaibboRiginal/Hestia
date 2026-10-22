@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 7 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0 and §3 «Meteo?»); routed by the project coordinator |
-| **Status** | Approved by Marko 2026-10-20 («ok» + v2.1 additions); P1–P4 built, P5 waits for the recap PR on main |
+| **Status** | Approved by Marko 2026-10-20 («ok» + v2.1 additions); done: P1–P4 merged via PR #24, P5 recap pieces in a follow-up PR |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -210,5 +210,5 @@ nudge. Marko: «ok».
   intentions with times neither done nor planned are coach needs `activity.<plan>` (block, tag `outdoor`, priority
   `could`); the planner (`plan_week(wet=…)`) does not place `outdoor` needs in hours with rain ≥50 % / ≥0.5 mm or
   dark at Casa (Hecate forecast); no forecast = no filter. Logging an activity reports `done` to the plan.
-- **P5 recap**: the recap contract (`hestia_common.recap`) is still in its own PR; the Hecate «domani a Casa» piece
-  and the activities lines in the training piece are added once it is on main.
+- **P5 recap** (after PR #21 brought `hestia_common.recap`): Hecate piece «Meteo» (order 5) = «Domani a Casa: …»;
+  the training piece adds outdoor lines (done, not done / to mark, planned tomorrow).

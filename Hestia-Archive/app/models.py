@@ -645,6 +645,10 @@ IrisRecord = _module_record_model(
     "IrisRecord", "iris_records",
     "One row of Hestia-Iris (mail subscription, delivery log). Owner of the semantics: Hestia-Iris.")
 
+EchoRecord = _module_record_model(
+    "EchoRecord", "echo_records",
+    "One row of the voice module Hestia-Echo (kept audio index, usage row). Owner of the semantics: Hestia-Echo.")
+
 SignalRecord = _module_record_model(
     "SignalRecord", "signal_records",
     "One row of the reflection signals (docs/work/2026-10-20-riflessione-a-livelli): a module's signal or weekly "

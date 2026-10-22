@@ -34,6 +34,9 @@ It stores and serves all persistent state through generic APIs.
   Pure storage for Plutus (expenses: transactions, categories, rules, budgets, accounts, imports, recurring).
 - **Iris store** (`/api/iris-store/*`): table `iris_records`, same shape and protocol. Pure storage for Iris (mail
   subscriptions, kind `subscription`, id `<owner>:<key>`).
+- **Echo store** (`/api/echo-store/*`): table `echo_records`, same shape and protocol. Pure storage for Echo (index of
+  kept audio, kind `audio`, id = blob id, `ref_id` = message/notification; usage rows, kind `usage`). The audio
+  bytes are Archive blobs with `owner_module=echo`.
 - **Signals store** (`/api/signals-store/*`): table `signal_records`, same shape and protocol. Reflection layer
   (`docs/work/2026-10-20-riflessione-a-livelli`): modules write their signals (`kind=signal`, id `<module>:<key>`) and
   weekly metrics (`kind=metric`, id `<module>:<name>:<YYYY-Www>`) with `ref_id=<module>`, `parent_id=<domain>`; Athena
@@ -86,6 +89,7 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/wardrobe-store/cursor` | Current sync cursor |
 | `PUT`/`GET` | `/api/finance-store/records` · `GET /api/finance-store/cursor` | Plutus rows (same contract as hercules-store) (Plutus only) |
 | `PUT`/`GET` | `/api/iris-store/records` · `GET /api/iris-store/cursor` | Iris rows (same contract) (Iris only) |
+| `PUT`/`GET` | `/api/echo-store/records` · `GET /api/echo-store/cursor` | Echo rows: kept audio index and usage (same contract) (Echo only) |
 | `PUT`/`GET` | `/api/signals-store/records` · `GET /api/signals-store/cursor` | reflection signals / metrics (each module its own rows) and Athena observations |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |

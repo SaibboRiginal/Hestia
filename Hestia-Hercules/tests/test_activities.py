@@ -321,3 +321,21 @@ def test_coach_needs_only_for_times_neither_done_nor_planned(env):
             a.slot_done(plan["id"], s["id"])
     assert ("done", n["id"]) in events
     assert a.coach_needs(d0, d1 + timedelta(days=1))[0]["count"] == 2
+
+
+# ── daily recap ─────────────────────────────────────────────────────────────
+def test_recap_lines_done_missed_and_tomorrow(env):
+    h, hub, ag, a = env
+    p = a.propose("corsa", times=3, week="next")
+    a.confirm(p["plan_id"])
+    plan = h.store.data("activity_plan", p["plan_id"])
+    s1, s2, s3 = sorted((s for s in plan["slots"] if s["status"] == "planned"), key=lambda s: s["start"])
+    a.slot_missed(plan["id"], s1["id"])
+    d1 = datetime.fromisoformat(s1["start"]).date()
+    r = a.recap(d1, d1 + timedelta(days=1))
+    assert r["missed"] == [{"text": f"Corsa delle {s1['start'][11:16]}: non fatta", "tone": "warning"}]
+    d2 = datetime.fromisoformat(s2["start"]).date()
+    a.log("corsa", day=d2.isoformat(), km=5.5, minutes=30)
+    r = a.recap(d2, datetime.fromisoformat(s3["start"]).date())
+    assert r["done"] == [{"text": "Corsa: 5.5 km, 30 min", "tone": "success"}] and r["missed"] == []
+    assert r["next"][0]["text"].startswith(f"Corsa alle {s3['start'][11:16]}")
