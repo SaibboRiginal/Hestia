@@ -4,6 +4,8 @@ import { ModuleInfo, PresetGroup, Proposal, SettingItem } from './central-settin
 import { CentralSettingsStore, isModified, moduleLabel } from './central-settings.store';
 import { SettingControlComponent } from './setting-control.component';
 import { SettingRowComponent, showValue } from './setting-row.component';
+import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
+import { PluginsService } from '../plugins/plugins.service';
 
 export const HEALTH: Record<string, { tone: Tone; label: string }> = {
   healthy: { tone: 'success', label: 'attivo' },
@@ -23,7 +25,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
 @Component({
   selector: 'app-system-settings',
   imports: [BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SpinnerComponent,
-            ToggleComponent, SettingRowComponent, SettingControlComponent],
+            ToggleComponent, SettingRowComponent, SettingControlComponent, PluginOutletComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="main">
@@ -146,6 +148,15 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
             </div>
           }
         }
+
+        <!-- Panels a module adds to its own settings (plugin contribution settings_panel), e.g. Backup. -->
+        @if (!store.query()) { @for (p of panels(); track p.id) {
+          <div class="group panel">
+            <div class="gh"><h4><hx-icon [name]="p.icon || 'puzzle'" [size]="15" /> {{ p.label }}</h4></div>
+            @if (p.help) { <p class="ph">{{ p.help }}</p> }
+            <hx-plugin-outlet [module]="p.module" [element]="p.element" [ctx]="panelCtx(p)" />
+          </div>
+        } }
       }
     </section>`,
   styles: [`
@@ -187,10 +198,25 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
     .cell { display: flex; align-items: flex-start; gap: 4px; min-width: 150px; }
     .cell hx-setting-control { flex: 1; }
     .rst { color: var(--accent); padding: 8px 2px; }
+    .panel { padding-bottom: 12px; }
+    .panel h4 { display: flex; align-items: center; gap: 6px; }
   `],
 })
 export class SystemSettingsComponent {
   readonly store = inject(CentralSettingsStore);
+  private plugins = inject(PluginsService);
+
+  /** settings_panel contributions of the selected module, in manifest order. */
+  readonly panels = computed(() => {
+    const m = this.store.selected();
+    return m ? this.plugins.settingsPanels().filter(p => p.module === m).sort((a, b) => a.order - b.order) : [];
+  });
+  private ctxCache = new Map<string, object>();
+  panelCtx(p: { id: string; module: string; local_id: string }) {
+    let ctx = this.ctxCache.get(p.id);
+    if (!ctx) { ctx = this.plugins.context(p.module, 'settings_panel', p.local_id); this.ctxCache.set(p.id, ctx); }
+    return ctx;
+  }
 
   readonly current = computed(() => this.store.modulesById().get(this.store.selected() ?? '') ?? null);
   readonly advancedLabel = computed(() => this.store.hiddenAdvanced() ? `Avanzate (${this.store.hiddenAdvanced()})` : 'Avanzate');

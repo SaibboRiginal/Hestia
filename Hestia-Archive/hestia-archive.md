@@ -112,6 +112,54 @@ It stores and serves all persistent state through generic APIs.
 | `POST` | `/api/chat-queue/{id}/claim` · `/done` | Compare-and-set `queued → answering` (409 = someone else; a claim older than `stale_seconds` 600 is free again) · `{ok, detail}`: answered, or back to queued (failed after 5 attempts) |
 | `GET` | `/health` | Archive health |
 
+| `GET` | `/api/backup/status` | Backup panel state: `job {kind, step}`, `last_backup`, `last_verify`, `last_restore`, `problem`, `passphrase_set`, `drive {connected, scope_ok}`, `undo_available`, `settings` (`?fresh=true` re-checks Drive). Answers also during the rollback swap |
+| `GET` | `/api/backup/list` | History = the Drive folder `.hestia/backup` (`items` with `verify`/`verified_at`/`monthly`) + `pending` (local copies waiting for Drive) + `error` |
+| `POST` | `/api/backup/run` · `/verify` `{file_id?}` | Start a backup · a verification (newest when no id); answer at once (`started`), 409 `busy` while another job runs. Agenda jobs `archive.backup` (daily 03:30) and `archive.backup_verify` (1st of the month 04:00) |
+| `POST` | `/api/backup/restore` `{file_id | local, confirm: true}` · `/undo` `{confirm: true}` | Rollback to a backup · swap back with the database kept from before the rollback (404 `nothing_to_undo`) |
+| `POST` | `/api/backup/drive/connect` | Google authorization link from Hecate (panel «Collega Google Drive») |
+
+---
+
+## Backup on Google Drive (docs/work/2026-10-20-backup-drive)
+
+- **What:** every night (agenda rule «Backup», editable) the whole `hestia_memory` database: `pg_dump -Fc` and the
+  row count of every table taken from **one snapshot**, wrapped with a JSON manifest and encrypted with
+  `hestia_common.crypto` (scrypt + AES-256-GCM, passphrase `HESTIA_BACKUP_PASSPHRASE` from the root `.env`), uploaded
+  in 2 MB chunks through Hub to Hecate's Drive API (`.hestia/backup/hestia-backup-AAAA-MM-GG-HHMMSS.enc`, scope
+  `drive.file`: Hestia sees only its own files). No passphrase → no backup and a notice. **Lost passphrase = the
+  backups cannot be opened.**
+- **Drive unreachable / not authorized:** the encrypted copy waits in the volume `hestia_archive_backups`
+  (`/code/backups/pending`, at most 3) and goes up first at the next run; a notice with «Ricollega Google».
+- **Retention** (Themis, group «Backup»): `archive.backup.keep_daily` (3) newest + the first backup of each of the last
+  `archive.backup.keep_monthly` (3) months; the rest goes to the Drive trash. The newest is never removed.
+- **Verification** (agenda «Verifica backup», monthly, or «Verifica ora»): download, sha256, decrypt, restore into the
+  scratch database `hestia_restore_check`, compare the counts with the manifest, drop it, write `verify`/`verified_at`
+  into the file's appProperties. Failure → notice.
+- **Rollback** (Impostazioni → Sistema → Archive → Backup → «Ripristina»): restore into `hestia_memory_restore`, run the
+  schema migrations (`app/schema.py`, an old backup gains today's tables/columns), compare counts; only then the
+  **swap**: the maintenance gate answers 503 for a few seconds (except `/health` and `/api/backup/status`), Archive
+  closes its connections, `hestia_memory` → `hestia_memory_prev`, `hestia_memory_restore` → `hestia_memory`. A new
+  **data epoch** (`/code/backups/epoch`) is returned by every module store (`epoch` in `GET …-store/records|cursor`):
+  Hercules, Hygieia, Wardrobe and Plutus drop their mirror when it changes and reload, so no stale row is written back.
+  «Annulla ripristino» (`/undo`) exchanges `hestia_memory` and `hestia_memory_prev` (again = redo); the next rollback
+  replaces `_prev`.
+- **State** (job, last results, problem) lives in `/code/backups/state.json`, not in the database (a rollback replaces it);
+  the history is the Drive folder itself.
+- **Image:** `postgresql-client-15/16/17` from the PGDG repository (`ARG PG_CLIENTS`); the client matching the server major
+  is used (`/usr/lib/postgresql/<major>/bin`), else the closest newer.
+- **Panel:** Archive ships a plugin bundle (`ui/` → `archive.js`) with one `settings_panel` (`archive-backup-panel`), shown by
+  the WebUI under Archive's settings. Texts name no module.
+- **Not in the backup:** `.env`, Hecate's Google token (`Hestia-Hecate/data`), other volumes, Forge worktrees.
+- **New PC:** install, set `HESTIA_BACKUP_PASSPHRASE`, start, connect Google once, open the Backup panel, «Ripristina».
+- **Terminal** (no WebUI yet, or a file downloaded by hand): `python tools/hestia_backup.py list | status | restore <name>
+  | restore --file <path.enc> | undo | decrypt <path.enc>`. It runs `python -m app.backup.cli` in `hestia_archive`, which
+  calls this same API (gate and epoch as in the panel) and asks to type `RIPRISTINA`; `--file` copies the file to
+  `/code/backups/import/` and restores it with `{local: <name>}`; `decrypt` writes the plain `pg_dump` next to the file.
+- Logs: `event=backup_step kind=… step=…`, `backup_done`, `backup_failed`, `backup_verify ok=…`, `backup_restore ok=…`,
+  `[🔄] backup_problem code=…`, `[🔄] backup_upload_retry`.
+- Tests: `tests/test_backup_service.py` (fake Postgres + Drive), `tests/test_crypto.py`, `tests/test_backup_pg_live.py`
+  (marker `integration`, real Postgres: `ARCHIVE_TEST_PG_URL=postgresql://…` + `pg_dump` installed).
+
 ---
 
 ## Constraints
@@ -145,3 +193,5 @@ It stores and serves all persistent state through generic APIs.
 - 2026-10-20: `/api/signals-store` (reflection signals, metrics, Athena observations) on the generic module store.
 - 2026-10-19: generic `module_store` router → `/api/finance-store` (Plutus) and `/api/iris-store` (Iris); raw mail
   records delivered by Iris land in `/api/archive` under the subscriber's domain (`reference_id = mail:<domain>:<gmail id>`).
+- 2026-10-20: backup to Google Drive, verification and rollback (section above); schema bootstrap moved to `app/schema.py`;
+  module store answers carry `epoch`; Archive registers a plugin bundle (settings panel «Backup»).

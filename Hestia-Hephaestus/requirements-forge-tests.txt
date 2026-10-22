@@ -24,3 +24,4 @@ beautifulsoup4
 pypdf
 python-docx
 docker
+cryptography

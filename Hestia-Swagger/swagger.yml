@@ -96,6 +96,8 @@ tags:
     description: Same (kind,id) last-write-wins records and cursor as the other module stores, for Plutus only
   - name: Archive — Iris store
     description: Same (kind,id) last-write-wins records and cursor, for Iris only (mail subscriptions, delivery state)
+  - name: Archive — Backup
+    description: Encrypted backup of the whole database on Google Drive, monthly verification, rollback with undo (panel in the WebUI settings, agenda jobs, tools/hestia_backup.py)
   - name: Archive — MCP accesses
     description: Who may use Hestia's MCP from outside (Hestia-MCP only); tokens only as sha256
   - name: Archive — Blobs
@@ -3270,6 +3272,82 @@ paths:
       responses:
         "200":
           description: "{status: ok|inactive|error, reason?: not_configured, error?, ...watch state}"
+
+  /api/gateway/drive/status:
+    get:
+      tags: [Hecate]
+      summary: "Google Drive state for Hestia's files (scope drive.file) → {connected, scope_ok, error}"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/drive/files:
+    get:
+      tags: [Hecate]
+      summary: "Files of .hestia/<folder> → [{id, name, size, created_at, app_properties}]"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: folder, in: query, required: true, schema: {type: string, pattern: "^[a-z0-9_-]+$"}}
+      responses:
+        "200": {description: OK}
+        "409": {description: "{error: drive_scope_missing|no_token|drive_api_disabled, message} — re-authorize Google / enable the Drive API"}
+
+  /api/gateway/drive/upload/start:
+    post:
+      tags: [Hecate]
+      summary: "Start a resumable upload {folder, name, mime, size, app_properties} → {upload_id}"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/drive/upload/{upload_id}/chunk:
+    post:
+      tags: [Hecate]
+      summary: "Send bytes {offset, data_b64} (≤ 2 MB, multiple of 256 KiB except the last) → {received, done, file?}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: upload_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "400": {description: "{error: bad_chunk|bad_offset}"}
+        "404": {description: "{error: unknown_upload}"}
+
+  /api/gateway/drive/files/{file_id}/chunk:
+    get:
+      tags: [Hecate]
+      summary: "Read bytes of a Hestia file → {data_b64, eof, size}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: file_id, in: path, required: true, schema: {type: string}}
+        - {name: offset, in: query, schema: {type: integer, default: 0}}
+        - {name: length, in: query, schema: {type: integer, default: 2097152}}
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/drive/files/{file_id}:
+    patch:
+      tags: [Hecate]
+      summary: "Update {app_properties} of a Hestia file"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: file_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hecate]
+      summary: "Move a Hestia file to the Drive trash"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: file_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
 
   /api/gateway/auth/callback/google:
     get:
@@ -8684,7 +8762,7 @@ paths:
   /api/wardrobe-store/cursor:
     get:
       tags: [Archive — Wardrobe store]
-      summary: "Current sync cursor"
+      summary: "Current sync cursor → {cursor, epoch} (epoch changes after a backup rollback: drop the mirror and reload)"
       servers:
         - url: http://localhost:19002
       responses:
@@ -9084,6 +9162,73 @@ paths:
       responses:
         "200": {description: "tool result, or {error} for invalid input / not found"}
 
+  /api/backup/status:
+    get:
+      tags: [Archive — Backup]
+      summary: "Last backup/verify/restore, job in progress {kind, step}, problem, passphrase_set, drive {connected, scope_ok, error} (cached 60 s, ?fresh=true), undo_available, settings {keep_daily, keep_monthly}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/backup/list:
+    get:
+      tags: [Archive — Backup]
+      summary: "History = files in .hestia/backup on Drive {items [{id, name, size, created_at, monthly, verify ok|fail, verified_at}], pending [copies waiting for Drive], error?}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/backup/run:
+    post:
+      tags: [Archive — Backup]
+      summary: "Backup now (agenda job archive.backup, daily 03:30): dump → encrypt → upload → retention; runs in background → {status: started}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+        "409": {description: "{error: busy} — another backup job is running"}
+
+  /api/backup/verify:
+    post:
+      tags: [Archive — Backup]
+      summary: "Verify {file_id?} (newest by default; agenda job archive.backup_verify, 1st of the month 04:00): restore into a scratch database and compare row counts; background"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/backup/restore:
+    post:
+      tags: [Archive — Backup]
+      summary: "Rollback {file_id | local, confirm: true}: restore into hestia_memory_restore, migrate, compare, then swap (503 for a few seconds), keep the previous database for undo, new data epoch; background"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+        "422": {description: "confirm missing, or neither file_id nor local"}
+        "409": {description: "{error: busy}"}
+
+  /api/backup/undo:
+    post:
+      tags: [Archive — Backup]
+      summary: "Swap back with the database kept before the last restore {confirm: true} (again = redo); background"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+        "404": {description: "{error: nothing_to_undo}"}
+
+  /api/backup/drive/connect:
+    post:
+      tags: [Archive — Backup]
+      summary: "Start Google authorization (through Hecate) for the panel's «Collega Google Drive» → {ok, auth_url, user_code?}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
   /api/finance-store/records:
     put:
       tags: [Archive — Finance store]
@@ -9094,7 +9239,7 @@ paths:
         "200": {description: OK}
     get:
       tags: [Archive — Finance store]
-      summary: "Rows by kind/parent_id/ref_id/ids/at_from/at_to/since_seq, include_deleted, order seq|at|-at, limit (tombstones included with since_seq) → {rows, cursor}"
+      summary: "Rows by kind/parent_id/ref_id/ids/at_from/at_to/since_seq, include_deleted, order seq|at|-at, limit (tombstones included with since_seq) → {rows, cursor, epoch}"
       servers:
         - url: http://localhost:19002
       responses:
@@ -9103,7 +9248,7 @@ paths:
   /api/finance-store/cursor:
     get:
       tags: [Archive — Finance store]
-      summary: "Current sync cursor"
+      summary: "Current sync cursor → {cursor, epoch} (epoch changes after a backup rollback: drop the mirror and reload)"
       servers:
         - url: http://localhost:19002
       responses:
@@ -9119,7 +9264,7 @@ paths:
         "200": {description: OK}
     get:
       tags: [Archive — Iris store]
-      summary: "Rows by kind/parent_id/ref_id/ids/at_from/at_to/since_seq, include_deleted, order seq|at|-at, limit (tombstones included with since_seq) → {rows, cursor}"
+      summary: "Rows by kind/parent_id/ref_id/ids/at_from/at_to/since_seq, include_deleted, order seq|at|-at, limit (tombstones included with since_seq) → {rows, cursor, epoch}"
       servers:
         - url: http://localhost:19002
       responses:
@@ -9128,7 +9273,7 @@ paths:
   /api/iris-store/cursor:
     get:
       tags: [Archive — Iris store]
-      summary: "Current sync cursor"
+      summary: "Current sync cursor → {cursor, epoch} (epoch changes after a backup rollback: drop the mirror and reload)"
       servers:
         - url: http://localhost:19002
       responses:
@@ -9361,7 +9506,7 @@ paths:
   /api/hercules-store/cursor:
     get:
       tags: [Archive — Hercules store]
-      summary: "Current sync cursor"
+      summary: "Current sync cursor → {cursor, epoch} (epoch changes after a backup rollback: drop the mirror and reload)"
       servers:
         - url: http://localhost:19002
       responses:
@@ -9796,7 +9941,7 @@ paths:
   /api/selfcare-store/cursor:
     get:
       tags: [Archive — Self care store]
-      summary: "Current sync cursor"
+      summary: "Current sync cursor → {cursor, epoch} (epoch changes after a backup rollback: drop the mirror and reload)"
       servers:
         - url: http://localhost:19002
       responses:

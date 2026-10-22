@@ -40,6 +40,7 @@ from typing import Any
 logger = logging.getLogger("hestia_common.plugins")
 
 SDK_VERSION = "1"
+UI_KINDS = ("page", "widget", "quick_action", "settings_panel")
 CLIENTS = {"webui", "telegram"}
 SIZES = ("s", "m", "l", "xl")
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
@@ -95,6 +96,15 @@ def widget(id: str, label: str, *, element: str, sizes: list[str] | None = None,
             "params": _params(params), "open_page": open_page, "icon": icon, "help": help}
 
 
+def settings_panel(id: str, label: str, *, element: str, icon: str = "", order: int = 100, help: str = "") -> dict:
+    """A panel the client shows inside this module's own settings (WebUI: Impostazioni → Sistema → <module>,
+    under its settings). For things that belong with the settings but are not a value: e.g. the backup history
+    with «Ripristina»."""
+    if not _ID_RE.match(id):
+        raise ValueError(f"bad settings panel id {id!r}")
+    return {"id": id, "label": label, "element": element, "icon": icon, "order": int(order), "help": help}
+
+
 def quick_action(id: str, label: str, method: str = "POST", path: str = "", *, icon: str = "",
                  group: str = "", source: str = "", confirm: str = "", undo: dict | None = None,
                  params: dict | None = None, favorite: bool = False, order: int = 100) -> dict:
@@ -135,7 +145,8 @@ class PluginClient:
     # ── declaring ──────────────────────────────────────────────────────────
     def client(self, client: str, *, entry: str = "", api_prefix: str = "/api/ui/", **contributions: list) -> "PluginClient":
         """Contributions for one client (``webui``, ``telegram``…): lists keyed by type
-        (``page``/``pages``, ``widget``/``widgets``, ``quick_action``/``quick_actions``)."""
+        (``page``/``pages``, ``widget``/``widgets``, ``quick_action``/``quick_actions``,
+        ``settings_panel``/``settings_panels``)."""
         if client not in CLIENTS:
             raise ValueError(f"unknown client {client!r} (known: {sorted(CLIENTS)})")
         if not api_prefix.startswith("/api/") or not api_prefix.endswith("/"):
@@ -144,7 +155,7 @@ class PluginClient:
                                  "sdk": SDK_VERSION}
         for key, items in contributions.items():
             kind = key[:-1] if key.endswith("s") else key
-            if kind not in {"page", "widget", "quick_action"}:
+            if kind not in UI_KINDS:
                 raise ValueError(f"unknown contribution type {key!r}")
             block[kind] = list(items or [])
         self._validate(client, block)
@@ -152,17 +163,19 @@ class PluginClient:
         return self
 
     def webui(self, *, entry: str, api_prefix: str = "/api/ui/", pages: list | None = None,
-              widgets: list | None = None, quick_actions: list | None = None) -> "PluginClient":
+              widgets: list | None = None, quick_actions: list | None = None,
+              settings_panels: list | None = None) -> "PluginClient":
+        extra = {"settings_panel": settings_panels} if settings_panels else {}
         return self.client("webui", entry=entry, api_prefix=api_prefix, page=pages or [],
-                           widget=widgets or [], quick_action=quick_actions or [])
+                           widget=widgets or [], quick_action=quick_actions or [], **extra)
 
     def _validate(self, client: str, block: dict) -> None:
         prefix = block["api_prefix"]
-        elements_needed = bool(block.get("page") or block.get("widget"))
+        elements_needed = bool(block.get("page") or block.get("widget") or block.get("settings_panel"))
         if elements_needed and not block["entry"]:
             raise ValueError(f"{self.module}/{client}: pages/widgets need a bundle entry")
         ids: set[str] = set()
-        for kind in ("page", "widget", "quick_action"):
+        for kind in UI_KINDS:
             for item in block.get(kind, []):
                 key = f"{kind}:{item['id']}"
                 if key in ids:

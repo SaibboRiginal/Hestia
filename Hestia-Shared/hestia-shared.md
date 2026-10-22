@@ -211,7 +211,7 @@ A module with a UI ships it inside the module and advertises it to the clients (
 `docs/work/2026-10-17-client-plugins/SPEC.md` §4):
 
 ```python
-from hestia_common.plugin_client import PluginClient, page, widget, quick_action
+from hestia_common.plugin_client import PluginClient, page, widget, quick_action, settings_panel
 
 ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/ui/dist")
 ui.webui(entry="scout.js", api_prefix="/api/ui/",
@@ -232,6 +232,19 @@ types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). 
 script) — see its `README.md`.
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
 2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
+
+`settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history")]` (2026-10-21)
+adds a panel that clients show **inside the module's own settings** (WebUI *Impostazioni → Sistema → <module>*),
+below its Themis settings; the element calls only the module's `api_prefix` like any plugin element.
+
+## Encryption (`hestia_common.crypto`)
+
+One format for every encrypted file Hestia writes (backup, later export files): passphrase → scrypt (N=2^16) →
+AES-256-GCM in 1 MB chunks, header `HESTIA-ENC1` + salt + KDF params + nonce prefix; chunk counter in the nonce and
+last-chunk flag in the authenticated data, so truncation, reordering and tampering fail with `DecryptError`.
+`encrypt_stream(src, dst, passphrase)` / `decrypt_stream(...)` (file objects, constant memory),
+`encrypt_bytes` / `decrypt_bytes`, `is_encrypted(head)`. Needs `cryptography`. A lost passphrase means the file
+cannot be opened: nobody stores it except the user (`.env` + password manager).
 
 ## Tools: MCP client (`hestia_common.mcp_client`) + call rules (`hestia_common.tool_call`)
 
