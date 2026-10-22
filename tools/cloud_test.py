@@ -2,6 +2,8 @@
 """Cloud test bench: run the whole Hestia stack in a Claude cloud session or a GitHub Codespace.
 
 Usage (from the repo root, Linux, Docker):
+  python tools/cloud_test.py            # no argument: start Hestia if it is off, login link + short guide (Italian)
+  python tools/cloud_test.py help       # only the short guide
   python tools/cloud_test.py all        # prepare + up + check (the usual one-shot)
   python tools/cloud_test.py start      # up + login link in .cloud-test/login.txt (Codespaces runs it on every start)
   python tools/cloud_test.py prepare    # docker daemon, network, base images, .env files
@@ -480,8 +482,36 @@ def cmd_start() -> None:
           f"Apri il link qui sopra (anche in .cloud-test/login.txt).")
 
 
+GUIDE = """
+Comandi utili (dalla cartella /workspaces/Hestia):
+  python tools/cloud_test.py           avvia Hestia se è spento e ti dà il link (questo)
+  python tools/cloud_test.py token     nuovo link di accesso alla WebUI
+  python tools/cloud_test.py check     controllo completo: servizi, risposte, schermate → .cloud-test/report.md
+  python tools/cloud_test.py flows     prove d'uso reali di ogni modulo → .cloud-test/flows.md
+  python tools/cloud_test.py logs webui  ultime righe di log di un servizio (webui, oracle, telegram…)
+  python tools/cloud_test.py up        ricostruisce e riavvia dopo un git pull
+  python tools/cloud_test.py down      spegne tutto (i dati restano)
+Secret di prova (facoltativi): github.com/settings/codespaces → GEMINI_API_KEY, TELEGRAM_BOT_TOKEN + ALLOWED_USER_ID,
+GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET; poi riavvia il Codespace. Guida completa: TESTING.md «Banco di prova cloud».
+"""
+
+
+def cmd_default() -> None:
+    """No argument: whatever state the bench is in, end with Hestia running, a login link and the guide."""
+    status, _ = http("GET", f"{WEBUI}/health", timeout=5)
+    if status == 200:
+        log("already_running")
+        cmd_token()
+    else:
+        cmd_start()
+    print(GUIDE)
+
+
 def main(argv: list[str]) -> int:
-    cmd = argv[1] if len(argv) > 1 else "all"
+    if len(argv) < 2:
+        cmd_default()
+        return 0
+    cmd = argv[1]
     force = "--force" in argv
     if cmd == "prepare":
         cmd_prepare(force)
@@ -505,8 +535,10 @@ def main(argv: list[str]) -> int:
         run(COMPOSE + ["logs", "--tail", "120", argv[2]] if len(argv) > 2 else COMPOSE + ["logs", "--tail", "40"])
     elif cmd == "down":
         run(COMPOSE + ["down"])
+    elif cmd in ("help", "aiuto", "-h", "--help"):
+        print(GUIDE)
     else:
-        print(__doc__)
+        print(GUIDE)
         return 2
     return 0
 
