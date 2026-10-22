@@ -507,6 +507,12 @@ def _activity_hints() -> list[dict]:
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
     facts = hercules.recap(day, nxt)
+    try:
+        outdoor = activities.recap(day, nxt)
+        for k in ("done", "missed", "next"):
+            facts[k] = [*facts.get(k, []), *outdoor[k]]
+    except Exception as exc:
+        logger.warning("[🔄] event=hercules_activity_recap_failed error=%s fallback=gym_only", exc)
     return recap.piece("hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30, **facts)
 
 

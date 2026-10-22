@@ -619,6 +619,31 @@ class Activities:
     def mark_nudge(self) -> None:
         self.h.store.write([{"kind": "activity_nudge", "id": domain.new_id(), "at": now_iso(), "data": {"at": now_iso(), "day": self.h.today().isoformat()}}])
 
+    # ── daily recap (hestia_common.recap, merged into the training piece) ───
+    def recap(self, day: date, nxt: date) -> dict:
+        """Outdoor lines: activities done on ``day``, its slots not done, slots planned on ``nxt``. No network."""
+        d, n = day.isoformat(), nxt.isoformat()
+        done = []
+        for a in self.logs(day, day):
+            extra = ", ".join(x for x in (f"{a['km']:g} km" if a.get("km") else "",
+                                          f"{a['minutes']} min" if a.get("minutes") else "") if x)
+            done.append({"text": label(a["kind"]) + (f": {extra}" if extra else ""), "tone": "success"})
+        missed, upcoming = [], []
+        for p in self.plans():
+            if p.get("status") != "confirmed":
+                continue
+            for s in p.get("slots") or []:
+                when = s["start"][11:16]
+                if s["start"][:10] == d and s.get("status") in ("missed", "planned"):
+                    state = ("non fatto" if p["kind"] == "nuoto" else "non fatta") if s["status"] == "missed" \
+                        else "da segnare"
+                    missed.append({"text": f"{label(p['kind'])} delle {when}: {state}", "tone": "warning"})
+                elif s["start"][:10] == n and s.get("status") == "planned":
+                    w = s.get("weather") or {}
+                    upcoming.append({"text": f"{label(p['kind'])} alle {when}"
+                                     + (f" · {w['temp_c']}°" if w.get("temp_c") is not None else ""), "at": s["start"]})
+        return {"done": done, "missed": missed, "next": upcoming}
+
     # ── views ───────────────────────────────────────────────────────────────
     def week(self) -> dict:
         """This week's intentions with progress and slots (plugin week widget, summary, recap)."""

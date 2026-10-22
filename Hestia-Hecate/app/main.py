@@ -14,7 +14,9 @@ from dotenv import load_dotenv
 from providers.registry import CalendarProviderRegistry
 from providers.mail import mail_gateway, MailUnavailable
 from providers.drive import DriveError, drive_files
-from providers.weather import WeatherError, WeatherService
+from zoneinfo import ZoneInfo
+from hestia_common import recap as recap_contract
+from providers.weather import WeatherError, WeatherService, recap_facts
 from schemas.calendar_events import CalendarEvent
 
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
@@ -561,6 +563,7 @@ def register_on_hub_startup():
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["calendar", "weather"],
             "owns_tool_domains": ["weather"],
+            **recap_contract.capabilities(),
         },
     }
     try:
@@ -1003,6 +1006,17 @@ def _weather_call(fn, *args, **kwargs) -> dict:
         return fn(*args, **kwargs)
     except WeatherError as exc:
         return exc.as_dict()
+
+
+def _recap_piece(day, nxt) -> dict:
+    """Daily recap piece: tomorrow's weather at Casa (``hestia_common.recap`` contract)."""
+    facts = recap_facts(weather, nxt.isoformat())
+    icon = facts.pop("icon", "cloud-sun")
+    return recap_contract.piece("hecate", "Meteo", icon=icon, emoji="🌦️", order=5, **facts)
+
+
+app.include_router(recap_contract.recap_router(
+    "hecate", _recap_piece, today=lambda: datetime.now(ZoneInfo(os.getenv("TZ") or "Europe/Rome")).date()))
 
 
 @app.get("/api/gateway/weather/now")

@@ -385,3 +385,22 @@ def is_rainy(day_or_hour: dict | None) -> bool:
     return ((day_or_hour.get("rain_prob") or 0) >= 50 or (day_or_hour.get("rain_mm") or 0) >= 1
             or day_or_hour.get("icon") in RAINY_ICONS and (day_or_hour.get("rain_prob") or 0) >= 30)
 
+
+
+def recap_facts(service: "WeatherService", nxt: str) -> dict:
+    """Daily recap (dossier 2026-10-20-meteo-hecate §3.6): tomorrow at Casa, one line; rain → warning tone.
+    No Casa or no forecast → nothing to say."""
+    try:
+        f = service.forecast("", nxt, nxt)
+    except WeatherError:
+        return {}
+    day = next(iter(f.get("days") or []), None)
+    if not day:
+        return {}
+    line = f"{day.get('min_c')}–{day.get('max_c')}°, {day.get('condition') or ''}".rstrip(", ")
+    hours = day.get("rain_hours") or []
+    if hours:
+        line += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else f", pioggia alle {hours[0]}"
+    label = (f.get("place") or {}).get("name") or "Casa"
+    return {"next": [{"text": f"Domani a {label}: {line}", **({"tone": "warning"} if is_rainy(day) else {})}],
+            "icon": day.get("icon") or "cloud-sun"}

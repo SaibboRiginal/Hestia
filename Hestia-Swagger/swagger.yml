@@ -3220,11 +3220,11 @@ paths:
   /api/gateway/weather/at:
     post:
       tags: [Hecate]
-      summary: "Weather at many {id, place, at} pairs in one call (agenda chips)"
+      summary: "Weather at many {key, place?, at?, date?} items in one call (agenda chips)"
       servers:
         - url: http://localhost:19003
       responses:
-        "200": {description: "{items[{id, status, place, temp_c, condition, icon, rain_prob, stale?}]}"}
+        "200": {description: "{items: {key: {status, place, temp_c, condition, icon, rain_prob, stale?}}}"}
 
   /api/gateway/weather/place:
     get:
@@ -8771,7 +8771,7 @@ paths:
   /api/module/recap:
     get:
       tags: [Wardrobe]
-      summary: "Daily recap piece (shared contract, capability recap_endpoint; Chronos, Scout, Hercules, Hygieia, Wardrobe, Plutus, Hermes, Athena, Dummy)"
+      summary: "Daily recap piece (shared contract, capability recap_endpoint; Chronos, Hecate (tomorrow's weather at Casa), Scout, Hercules (gym + outdoor activities), Hygieia, Wardrobe, Plutus, Hermes, Athena, Dummy)"
       description: >
         Plain facts of the day, never an LLM call (hestia_common.recap.recap_router). Piece:
         {module, title, icon, emoji, order, done[{text, tone?, at?}], missed[...], next[...], note} or
