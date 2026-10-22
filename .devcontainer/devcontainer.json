@@ -5,7 +5,9 @@
 // Ports stay private (only your GitHub account). Docs: TESTING.md «Banco di prova cloud».
 {
   "name": "Hestia — banco di prova",
-  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  // Debian 12: the plain 3.12 tag moved to Debian 13 (trixie), where docker-in-docker (moby) does not install
+  // and the Codespace falls back to recovery mode without Docker.
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
