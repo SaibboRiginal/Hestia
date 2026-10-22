@@ -45,7 +45,8 @@ def client():
         conn.create_function("nextval", 1, lambda name: next(seqs.setdefault(name, count(1))))
 
     models.Base.metadata.create_all(bind=engine, tables=[models.FinanceRecord.__table__, models.IrisRecord.__table__,
-                                                               models.SignalRecord.__table__, models.EchoRecord.__table__])
+                                                               models.SignalRecord.__table__, models.EchoRecord.__table__,
+                                                               models.OracleRecord.__table__, models.ArgusRecord.__table__])
     session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
     def _db():
@@ -59,6 +60,8 @@ def client():
     app.include_router(module_store.finance_router)
     app.include_router(module_store.iris_router)
     app.include_router(module_store.echo_router)
+    app.include_router(module_store.oracle_router)
+    app.include_router(module_store.argus_router)
     app.include_router(module_store.signals_router)
     app.dependency_overrides[database.get_db] = _db
     return TestClient(app)

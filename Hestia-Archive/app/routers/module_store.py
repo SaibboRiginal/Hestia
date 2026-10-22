@@ -2,7 +2,7 @@
 
 Same contract as ``hercules-store`` / ``selfcare-store`` / ``wardrobe-store`` (PUT/GET ``records``, GET
 ``cursor``), built once for every newer module (Plutus ``finance-store``, Iris ``iris-store``, reflection ``signals-store``,
-Echo ``echo-store``).
+Echo ``echo-store``, Oracle ``oracle-store`` pending questions, Argus ``argus-store`` journal).
 Archive only stores: the owner module gives each ``kind`` its meaning.
 """
 from datetime import datetime, timezone
@@ -109,3 +109,5 @@ finance_router = build_router("/api/finance-store", models.FinanceRecord, "finan
 iris_router = build_router("/api/iris-store", models.IrisRecord, "iris")
 echo_router = build_router("/api/echo-store", models.EchoRecord, "echo")
 signals_router = build_router("/api/signals-store", models.SignalRecord, "signals")
+oracle_router = build_router("/api/oracle-store", models.OracleRecord, "oracle")
+argus_router = build_router("/api/argus-store", models.ArgusRecord, "argus")

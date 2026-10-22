@@ -130,6 +130,7 @@ _CONTEXT = [
 # ── Runtime tunables (were ORACLE_* / OLLAMA_* / DOC_* env vars) ─────────────────────────────
 # Agent loop
 MAX_TURNS = "oracle.agent.max_turns"
+ASK_TIMEOUT = "oracle.ask.timeout"
 MAX_TOKENS = "oracle.agent.max_tokens"
 TOOL_RESULT_MAX_CHARS = "oracle.agent.tool_result_max_chars"
 EARLY_EXIT_NO_TOOL_TURNS = "oracle.agent.early_exit_no_tool_turns"
@@ -208,6 +209,9 @@ _AGENT = [
     setting(MAX_TURNS, "Passi massimi per risposta", "int", 25, group="Agente", min=1, max=100, unit="passi",
             order=0, help="Quante volte al massimo l'assistente usa gli strumenti prima di risponderti "
                           "(la modalità CoT ne usa almeno 50)."),
+    setting(ASK_TIMEOUT, "Una domanda per te resta aperta per", "int", 24, group="Agente", min=1, max=720,
+            unit="ore", order=3, help="Quando l'assistente ti chiede qualcosa (scelta, conferma, testo libero), "
+                                      "dopo questo tempo senza risposta la domanda si chiude."),
     setting(MAX_TOKENS, "Token massimi per risposta", "int", 0, group="Agente", min=0, max=2_000_000,
             unit="token", order=1, advanced=True, help="Limite di token consumati in un ragionamento. 0 = nessun limite."),
     setting(TOOL_RESULT_MAX_CHARS, "Lunghezza massima del risultato di uno strumento", "int", 2000,

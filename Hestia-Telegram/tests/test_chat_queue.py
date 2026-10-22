@@ -87,20 +87,22 @@ def test_offline_message_is_queued_with_fixed_reply(env, fake_message):
 
 
 @pytest.mark.unit
-def test_drain_answers_oldest_first_with_note_and_once(env):
+def test_drain_answers_a_chat_in_one_turn_and_once(env):
+    """v3 C: every queued message of a chat goes to the assistant in one turn; it decides how to answer."""
     bot, archive, oracle = env
     from telegram_bot.services import chat_queue
     chat_queue.enqueue(12345, "s-1", "primo", 7)
     chat_queue.enqueue(12345, "s-1", "secondo", 8)
+    chat_queue.enqueue(555, "s-2", "altra chat", 3)
     oracle["up"] = True
     out = chat_queue.drain("test")
-    assert out["answered"] == 2
-    assert [c["message"] for c in oracle["calls"]] == ["primo", "secondo"]
-    assert "mentre eri offline" in oracle["calls"][0]["client_instructions"]
+    assert out["answered"] == 3
+    assert [[q["text"] for q in c["queued"]] for c in oracle["calls"]] == [["primo", "secondo"], ["altra chat"]]
+    assert oracle["calls"][0]["queued"][0]["written_at"] == "2026-10-19T10:42:00+00:00"
     assert all(i["state"] == "answered" for i in archive.items)
     replies = [c.kwargs.get("reply_to_message_id") for c in bot.send_message.call_args_list
                if c.kwargs.get("reply_to_message_id")]
-    assert replies == [7, 8]
+    assert replies == [8, 3]   # under the last message of each chat
     assert chat_queue.drain("again")["answered"] == 0
 
 
@@ -111,5 +113,5 @@ def test_drain_stops_when_still_offline(env):
     chat_queue.enqueue(12345, "s-1", "primo", 7)
     chat_queue.enqueue(12345, "s-1", "secondo", 8)
     out = chat_queue.drain("test")
-    assert out == {"status": "ok", "answered": 0, "failed": 1}
+    assert out == {"status": "ok", "answered": 0, "failed": 2}
     assert len(oracle["calls"]) == 1 and all(i["state"] == "queued" for i in archive.items)

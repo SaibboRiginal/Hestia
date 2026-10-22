@@ -11269,6 +11269,64 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/oracle-store/records:
+    get:
+      tags: [Archive — Oracle store]
+      summary: "Oracle rows by kind/ref/parent/at range/since_seq (Oracle only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Oracle store]
+      summary: "Upsert Oracle rows {rows} (LWW): pending questions to the user"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/oracle-store/cursor:
+    get:
+      tags: [Archive — Oracle store]
+      summary: "Current cursor of the Oracle store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/argus-store/records:
+    get:
+      tags: [Archive — Argus store]
+      summary: "Argus rows by kind/ref/parent/at range/since_seq (Argus only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Argus store]
+      summary: "Upsert Argus rows {rows} (LWW): notable events journal"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/argus-store/cursor:
+    get:
+      tags: [Archive — Argus store]
+      summary: "Current cursor of the Argus store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
   /api/webui/voice/transcribe:
     post:
       tags: [WebUI]

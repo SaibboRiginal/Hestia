@@ -141,6 +141,9 @@ public record OracleEvent(
     bool? Required = null,
     [property: JsonPropertyName("timeout_sec")]
     int? TimeoutSec = null,
+    // Choice questions that also accept a free answer («Altro…», oracle-offline v3 A)
+    [property: JsonPropertyName("allow_other")]
+    bool? AllowOther = null,
     // needs_input frames (non-interactive callers)
     [property: JsonPropertyName("missing_fields")]
     object? MissingFields = null,

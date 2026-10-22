@@ -665,11 +665,22 @@ def run_agent_loop(
                     # as a question card after the answer.
                     "confirm": result_raw.get("confirm") if ok and isinstance(result_raw, dict)
                     and isinstance(result_raw.get("confirm"), dict) else None,
+                    # The assistant asking the user (tool ask_user): the turn stops here, the answer starts
+                    # the next turn (docs/work/2026-10-19-oracle-offline v3 A).
+                    "ask": result_raw.get("ask") if ok and isinstance(result_raw, dict)
+                    and isinstance(result_raw.get("ask"), dict) else None,
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the
             # scratchpad — pure context waste, and same-name calls overwrote
             # each other. Removed.)
+
+            _ask = next((e["ask"] for e in tool_log if e.get("turn") == turn and e.get("ask")), None)
+            if _ask:
+                final_answer = str(_ask.get("prompt") or "")
+                final_tokens = [final_answer]
+                logger.info("event=agent_loop_paused_for_question turn=%d kind=%s", turn, _ask.get("kind"))
+                break
 
             _consecutive_no_tool = 0
             logger.trace("event=agent_loop_tool_done_continuing turn=%d "

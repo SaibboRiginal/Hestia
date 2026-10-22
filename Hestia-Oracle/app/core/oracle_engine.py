@@ -34,6 +34,7 @@ from core.services import llm_stats
 from core.services import activity_log
 from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_THRESHOLD
 from core.services import stream_emitter
+from core.services import user_questions
 from core.services import prompt_config
 from core.services.context_builder import ContextBuilder
 from core.services.memory_intent import (
@@ -517,20 +518,36 @@ class OracleEngine:
         timeout_sec: int | None = None,
         required: bool = True,
         actions: dict | None = None,
+        resume: bool = False,
+        allow_other: bool = False,
     ) -> str:
         """Register a pending question and return the NDJSON question frame to emit.
         ``actions`` = ``{answer value: {service, method, path, body}}``: the chosen one is routed through Hub
-        when the user answers (``<client>`` in the body → the answering client)."""
+        when the user answers (``<client>`` in the body → the answering client).
+        ``resume`` = asked by the model (tool ask_user): the answer becomes the next chat turn and the question is
+        also kept in Archive (v3 A)."""
+        from core.services import oracle_settings as _os
+        entry = {
+            "question_id": question_id,
+            "session_id": session_id,
+            "header": header,
+            "prompt": prompt,
+            "kind": kind,
+            "options": options or [],
+            "allow_other": bool(allow_other),
+            "answer": None,
+            "resolved": False,
+            "actions": actions or {},
+            "resume": bool(resume),
+            "asked_at": datetime.now(datetime_timezone.utc).isoformat(),
+        }
+        if resume:
+            entry["expires_at"] = user_questions.expires_at(_os.get_int(_os.ASK_TIMEOUT, 1))
+            timeout_sec = timeout_sec or _os.get_int(_os.ASK_TIMEOUT, 1) * 3600
         with self._questions_lock:
-            self._pending_questions[question_id] = {
-                "session_id": session_id,
-                "header": header,
-                "prompt": prompt,
-                "kind": kind,
-                "answer": None,
-                "resolved": False,
-                "actions": actions or {},
-            }
+            self._pending_questions[question_id] = entry
+        if resume:
+            user_questions.save(self._hub, entry)
         self._append_interaction_ledger(
             event_type="question_asked",
             session_id=session_id,
@@ -549,11 +566,12 @@ class OracleEngine:
         return stream_emitter.emit_question(
             question_id=question_id,
             header=header,
-            prompt=prompt,
+            prompt="" if resume else prompt,  # ask_user: the question itself is the turn's answer text
             kind=kind,
             options=options,
             timeout_sec=timeout_sec,
             required=required,
+            allow_other=allow_other,
         )
 
     def _trace_headers(self, session_id: str, trace_id: str | None = None) -> dict:
@@ -656,10 +674,23 @@ class OracleEngine:
         """Record the user's answer to a pending question. Returns True if found."""
         with self._questions_lock:
             entry = self._pending_questions.get(question_id)
-            if not entry:
+        if not entry and question_id.startswith("ask_"):
+            # Asked before an Oracle restart: the pending question is in Archive.
+            entry = user_questions.load(self._hub, question_id)
+            if entry and not entry.get("resolved"):
+                with self._questions_lock:
+                    self._pending_questions[question_id] = entry
+        with self._questions_lock:
+            entry = self._pending_questions.get(question_id)
+            if not entry or entry.get("resolved"):
+                return False
+            if entry.get("resume") and user_questions.expired(entry):
+                logger.info("event=user_question_expired question_id=%s", question_id)
                 return False
             entry["answer"] = answer
             entry["resolved"] = True
+        if entry.get("resume"):
+            user_questions.save(self._hub, entry, deleted=True)
         self._append_interaction_ledger(
             event_type="question_answered",
             session_id=str(entry.get("session_id") or ""),
@@ -693,6 +724,21 @@ class OracleEngine:
         if not ok:
             logger.warning("[🔄] event=question_action_failed question_id=%s result=%s", question_id, str(result)[:200])
         return {"ok": bool(ok), "result": result if isinstance(result, (dict, list)) else str(result)[:300]}
+
+    def question_resume_message(self, question_id: str, answer: str) -> str | None:
+        """For a question the model asked (ask_user): the next chat message that carries the answer."""
+        with self._questions_lock:
+            entry = dict(self._pending_questions.get(question_id) or {})
+        if not entry.get("resume"):
+            return None
+        return user_questions.resume_message(entry, answer)
+
+    def open_questions(self, session_id: str) -> list[dict]:
+        """Questions the model asked in this session still waiting for an answer (clients redraw them)."""
+        rows = user_questions.open_for_session(self._hub, session_id)
+        return [{"question_id": r.get("question_id"), "header": r.get("header"), "prompt": r.get("prompt"),
+                 "kind": r.get("kind"), "options": r.get("options") or [], "allow_other": bool(r.get("allow_other")),
+                 "required": True, "asked_at": r.get("asked_at")} for r in rows]
 
     def get_question_answer(self, question_id: str) -> Optional[str]:
         """Return the recorded answer for question_id, or None if unresolved."""
@@ -1263,6 +1309,16 @@ class OracleEngine:
                         session_id, str(card["question_id"]), str(card.get("header") or "Confermi?"),
                         str(card.get("prompt") or ""), kind="confirm", options=card.get("options") or None,
                         actions=card.get("actions") if isinstance(card.get("actions"), dict) else None)
+            # The model asked the user (tool ask_user): the turn stopped on it, the answer is the next turn.
+            for entry in tool_log:
+                ask = entry.get("ask")
+                if isinstance(ask, dict) and ask.get("question_id"):
+                    yield self.ask_question(
+                        session_id, str(ask["question_id"]), str(ask.get("header") or "Rispondi"),
+                        str(ask.get("prompt") or ""),
+                        kind=str(ask.get("kind") or "confirm"), options=ask.get("options") or None,
+                        resume=True, allow_other=bool(ask.get("allow_other")))
+                    break
 
         total_ms = int((time.perf_counter() - t0) * 1000)
         _record_turn("agent", list(intent.valid_domains or []), tool_log)
@@ -2258,6 +2314,15 @@ class OracleEngine:
                 "required": [],
             },
             handler=_memory_search_handler,
+        ))
+
+        # ── Asking the user (always available, v3 A): the turn stops on it ─────
+        tools.append(ToolDefinition(
+            name="ask_user",
+            description=user_questions.TOOL_DESCRIPTION,
+            parameters=user_questions.TOOL_PARAMETERS,
+            handler=user_questions.build_question,
+            title="❓ Domanda",
         ))
 
         # ── Oracle self-introspection tools (always available) ─────────────

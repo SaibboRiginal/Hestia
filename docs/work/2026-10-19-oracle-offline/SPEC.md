@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 3.0 |
 | **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.2: «togli proprio cervello come nome e icona»; v2.3: «metti qualcosa di generico, chi lo legge non deve sapere chi o che cosa»; v3.0: «rendiamolo un po' più sofisticato» + answers of 2026-10-22 (sistema immunitario 1–3 tentativi, stato a sé quando finiscono i modelli, coda smart che decide, «mentre non c'ero», registro eventi notevoli non ridondante con Hermes, fumetto dopo reload, domande dell'assistente come Claude: selezione multipla, campo libero, conferma «per tutto»); v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
-| **Status** | v2.3 merged (PRs #6 #10 #11). **v3.0 draft, awaiting Marko's approval** (section «v3») |
+| **Status** | v2.3 merged (PRs #6 #10 #11). **v3.0 approved by Marko 2026-10-22** (section «v3»), in progress |
 
 ## Goal
 Oracle is the only LLM core. When it is down the rest of Hestia keeps working and says so: the user is told once,

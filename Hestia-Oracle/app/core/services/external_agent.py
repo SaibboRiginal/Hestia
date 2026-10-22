@@ -116,7 +116,9 @@ def call_tool(token: str, name: str, params: dict) -> dict:
         run["log"].append({"tool": name, "ok": bool(ok), "result_preview": preview[:300], "turn": len(run["log"]) + 1,
                            "writes": bool(getattr(tool, "writes", False)), "title": getattr(tool, "title", "") or name,
                            "confirm": result.get("confirm") if ok and isinstance(result, dict)
-                           and isinstance(result.get("confirm"), dict) else None})
+                           and isinstance(result.get("confirm"), dict) else None,
+                           "ask": result.get("ask") if ok and isinstance(result, dict)
+                           and isinstance(result.get("ask"), dict) else None})
     return {"ok": bool(ok), "result": preview}
 
 

@@ -11,6 +11,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
 import { AssistantService } from '../../services/assistant.service';
 import { ButtonComponent, IconComponent, ResizeHandleComponent, savedWidth } from '../../ui';
 import { ThinkingStepsComponent } from '../chat/thinking-steps.component';
+import { QuestionCardComponent } from '../chat/question-card.component';
 
 const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   calendar: ['Ogni lunedì alle 9 controlla le nuove case', 'Sposta il job di stanotte a domani alle 3', 'Salta la prossima finestra Claude'],
@@ -26,7 +27,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
  */
 @Component({
   selector: 'hx-assistant',
-  imports: [FormsModule, ButtonComponent, IconComponent, ResizeHandleComponent, ThinkingStepsComponent],
+  imports: [FormsModule, ButtonComponent, IconComponent, ResizeHandleComponent, ThinkingStepsComponent, QuestionCardComponent],
   providers: [{ provide: ChatService, useFactory: () => { const c = new ChatService(); c.channel = 'assistant'; return c; } }],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -90,21 +91,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
         </div>
 
         <div class="foot">
-          @if (chat.pendingQuestion(); as q) {
-            <div class="question hx-fade-in">
-              <div class="qh"><hx-icon name="info" [size]="14" /> {{ q.header }}</div>
-              @if (q.prompt) { <div class="qp">{{ q.prompt }}</div> }
-              @if (q.options.length) {
-                <div class="qo">@for (o of q.options; track o.value) { <button hx-btn size="sm" (click)="answer(q.questionId, o.value)">{{ o.label }}</button> }</div>
-              }
-              @if (q.kind === 'free_text' || !q.options.length) {
-                <div class="qo">
-                  <input class="hx-input" [(ngModel)]="questionText" (keydown.enter)="answer(q.questionId, questionText)" placeholder="Rispondi…" />
-                  <button hx-btn variant="primary" size="sm" (click)="answer(q.questionId, questionText)" [disabled]="!questionText.trim()">Invia</button>
-                </div>
-              }
-            </div>
-          }
+          @if (chat.pendingQuestion(); as q) { <hx-question-card [question]="q" [compact]="true" (answered)="answer(q.questionId, $event)" /> }
           <div class="composer" [class.disabled]="signalR.connectionState() !== 'connected'">
             <textarea #ta [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="2"
                       [placeholder]="placeholder()"></textarea>
@@ -161,11 +148,6 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
     textarea::placeholder { color: var(--text-3); }
     .tools { display: flex; align-items: center; gap: 4px; }
     .hint { font-size: 11px; color: var(--text-3); }
-    .question { border: 1px solid var(--accent); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 8px; }
-    .qh { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13.5px; }
-    .qp { color: var(--text-2); font-size: 13px; margin: 4px 0 6px; }
-    .qo { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-    .qo .hx-input { flex: 1; min-width: 140px; }
     @media (max-width: 720px) {
       .drawer { width: 100vw !important; border-left: 0; }
       .scrim { display: none; }
@@ -182,7 +164,6 @@ export class AssistantDrawerComponent implements AfterViewChecked {
   private ta = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
 
   text = '';
-  questionText = '';
   /** Own Oracle session: drawer conversations don't pollute the Chat page context. */
   private sessionId = uid();
   private lastCount = 0;
@@ -244,7 +225,9 @@ export class AssistantDrawerComponent implements AfterViewChecked {
     this.sessionId = uid();
   }
 
-  answer(id: string, v: string) { this.chat.answerQuestion(id, v); this.questionText = ''; }
+  answer(id: string, v: string) {
+    this.chat.answerQuestion(id, v, this.sessionId, 'auto', this.packet() || 'page=generico');
+  }
 
   onKey(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this.send(); }

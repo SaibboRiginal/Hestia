@@ -291,6 +291,24 @@ public class ChatHub : Hub
                     data = new { question_id = questionId, answer },
                 });
             }
+            // A question the assistant asked (ask_user): the answer goes on as the next chat turn — the browser
+            // sends `message` like a typed one, so the reply streams in the chat (oracle-offline v3 A).
+            else if (status < 400 && payload.ValueKind == JsonValueKind.Object
+                     && payload.TryGetProperty("resume", out var resume) && resume.ValueKind == JsonValueKind.Object
+                     && resume.TryGetProperty("message", out var resumeMsg))
+            {
+                await Clients.Caller.SendAsync("ReceiveEvent",
+                    new { type = "resume", question_id = questionId, message = resumeMsg.GetString() ?? "" });
+            }
+            else if (status >= 400)
+            {
+                await Clients.Caller.SendAsync("ReceiveEvent", new
+                {
+                    type = "notice", kind = "action.failed", level = "warning", icon = "clock",
+                    title = "Domanda scaduta", detail = "Questa domanda non è più aperta: scrivimi di nuovo",
+                    data = new { question_id = questionId },
+                });
+            }
             else
             {
                 await Clients.Caller.SendAsync("ReceiveEvent",

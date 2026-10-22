@@ -196,6 +196,7 @@ except Exception as exc:
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
 from core.services import activity_log  # noqa: E402
+from core.services import queued_chat  # noqa: E402
 
 app.include_router(_oracle_settings.settings.router())
 
@@ -586,6 +587,9 @@ class ChatRequest(BaseModel):
     mode: str = ""
     # Which use-case model: generic (daily), reasoning (deep), code (coding)
     model: str = "generic"
+    # Messages written while the assistant could not answer ([{text, written_at}], oldest first): answered in one
+    # turn where the model decides how (oracle-offline v3 C). `message` is ignored when this is set.
+    queued: Optional[list[dict]] = None
 
 
 class ChatResponse(BaseModel):
@@ -797,14 +801,21 @@ def chat_endpoint(req: ChatRequest):
             uuid.uuid4())
 
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
+        message, instructions = req.message, req.client_instructions
+        queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
+        if queued:
+            message = queued_chat.compose(queued)
+            instructions = queued_chat.instructions(queued, req.client_instructions)
+            mode = "thinking" if len(queued) > 1 else mode  # the agent loop: ask_user may be needed
+            logger.info("event=chat_queued_batch session_id=%s items=%d", current_session, len(queued))
         # Return the Engine's output as a continuous stream (LLM usage counted for this session)
         return StreamingResponse(
             llm_stats.bind_session(current_session, engine.chat(
-                req.message, current_session,
+                message, current_session,
                 notify_target=req.notify_target,
                 force_notification_compiler=bool(req.force_notification_compiler),
                 client_instructions=_with_personal_settings(
-                    req.client_instructions, req.client, current_session, presence_state),
+                    instructions, req.client, current_session, presence_state),
                 save_history=req.save_history,
                 mode=mode,
                 model=req.model,
@@ -1020,13 +1031,22 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
                 detail=f"Question '{req.question_id}' not found or already resolved.",
             )
         action = engine.run_question_action(req.question_id, req.answer, client=req.client or "")
-        return {"resolved": True, "question_id": req.question_id, **({"action": action} if action else {})}
+        # A question the model asked (ask_user): the client sends `resume.message` as the next chat turn.
+        resume = engine.question_resume_message(req.question_id, req.answer)
+        return {"resolved": True, "question_id": req.question_id, **({"action": action} if action else {}),
+                **({"resume": {"message": resume}} if resume else {})}
     except HTTPException:
         raise
     except Exception as e:
         logger.exception(
             "event=unhandled_error_question_answer_endpoint Unhandled error in question-answer endpoint")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/questions")
+def open_questions_endpoint(session_id: str):
+    """Questions the assistant asked in this session still waiting for an answer (clients redraw them after a reload)."""
+    return {"session_id": session_id, "questions": engine.open_questions(session_id)}
 
 
 @app.post("/api/actions/approval/respond")

@@ -11,7 +11,7 @@ import requests
 from telebot import types
 
 from telegram_bot import core
-from telegram_bot.services import chat_queue, voice_service
+from telegram_bot.services import assistant_questions, chat_queue, voice_service
 from telegram_bot.services.reply_renderer import ReplyRenderer
 from telegram_bot.services.oauth_paste import complete_oauth_from_paste, match_oauth_callback
 from telegram_bot.services.command_service import (
@@ -83,8 +83,10 @@ _DOWN_STATUSES = {502, 503, 504}
 
 
 def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
-               extra_instructions: str = "") -> OracleResult:
+               extra_instructions: str = "", queued: list[dict] | None = None) -> OracleResult:
     """Stream one chat turn from Oracle into a renderer on ``status_message_id``.
+    ``queued``: messages written while the assistant could not answer ([{text, written_at}]), answered in one turn
+    where the assistant decides how (oracle-offline v3 C).
     Raises ``OracleUnavailable`` when Oracle did not accept the request."""
     session_settings = core.get_session_settings(str(chat_id))
     renderer = ReplyRenderer(chat_id, status_message_id, session_settings)
@@ -103,6 +105,7 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
                 "force_notification_compiler": False,
                 "client_instructions": instructions,
                 "client": "telegram",
+                **({"queued": queued} if queued else {}),
             },
             stream=True,
             # (connect, max silence between chunks): no timeout used to hang
@@ -123,6 +126,9 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
 def send_oracle_questions(chat_id, session_id: str, streamed_signals: list, streamed_questions: list) -> None:
     """Confirm cards Oracle asked for during the turn."""
     for question in streamed_questions:
+        if str(question.get("question_id") or "").startswith("ask_"):
+            assistant_questions.send(chat_id, session_id, question)   # the assistant itself asks (v3 A)
+            continue
         if not question.get("id") and question.get("question_id"):
             _send_oracle_question(chat_id, session_id, question)
             continue
@@ -674,6 +680,11 @@ def handle_chat_message(message):
     chat_id = message.chat.id
     user_text = message.text
     pending_flow = core.PENDING_WORKFLOWS.pop(str(chat_id), None)
+
+    if pending_flow and pending_flow.get("action") == assistant_questions.TEXT_FLOW:
+        # The next message answers the assistant's open question (free text / «Altro…»).
+        if assistant_questions.answer_text(message, pending_flow, str(message.text or "").strip()):
+            return
 
     if pending_flow and pending_flow.get("action") == "set_parameter_value":
         parameter_name = str(pending_flow.get("parameter", "")).strip().lower()

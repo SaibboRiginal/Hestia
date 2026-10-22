@@ -9,8 +9,8 @@ using Hestia.WebUI.Hubs;
 /// Chat messages written while Oracle is offline (SPEC docs/work/2026-10-19-oracle-offline §3).
 /// A message Oracle did not accept is stored in Archive (<c>/api/chat-queue</c>, client <c>webui</c>); when the
 /// Oracle is back Chronos calls <c>POST /api/chat-queue/drain</c> (capability <c>chat_queue_drain</c>), and the same
-/// drain runs at startup. The backend replays each message to Oracle (no browser needed: Oracle saves the history)
-/// and pushes the answer to open tabs as <c>queued_answer</c>.
+/// drain runs at startup. The backend sends each chat's messages to Oracle in one turn (no browser needed: Oracle
+/// saves the history) and pushes the answer to open tabs as <c>queued_answer</c>.
 /// </summary>
 public class ChatQueueService
 {
@@ -57,7 +57,9 @@ public class ChatQueueService
         return true;
     }
 
-    /// <summary>Answer queued messages oldest first; stop at the first Oracle failure (still offline).</summary>
+    /// <summary>Answer queued messages chat by chat (oldest chat first); stop at the first Oracle failure.
+    /// All messages of one chat go to Oracle in one turn (<c>queued</c>): the assistant decides whether to answer
+    /// each, merge them, or ask which old ones still matter (oracle-offline v3 C).</summary>
     public async Task<int> DrainAsync(string reason)
     {
         if (!await _drainLock.WaitAsync(0)) return 0;
@@ -72,17 +74,26 @@ public class ChatQueueService
             if (status >= 400 || !payload.TryGetProperty("items", out var items) || items.GetArrayLength() == 0)
                 return 0;
             _logger.LogInformation("event=chat_queue_drain_start items={N} reason={Reason}", items.GetArrayLength(), reason);
-            foreach (var item in items.EnumerateArray())
+            var chats = items.EnumerateArray()
+                .GroupBy(i => i.GetProperty("session_id").GetString() ?? "")
+                .OrderBy(g => g.Min(i => i.GetProperty("id").GetInt32()));
+            foreach (var chat in chats)
             {
-                var id = item.GetProperty("id").GetInt32();
-                var (claimStatus, _) = await hub.RouteRawAsync("archive", $"/api/chat-queue/{id}/claim", HttpMethod.Post,
-                    timeoutSeconds: 8);
-                if (claimStatus >= 400) continue;   // another drain holds it
-                var (ok, detail) = await AnswerAsync(oracle, item);
-                await hub.RouteRawAsync("archive", $"/api/chat-queue/{id}/done", HttpMethod.Post,
-                    new { ok, detail = Trim(detail, 400) }, timeoutSeconds: 8);
+                var claimed = new List<JsonElement>();
+                foreach (var item in chat.OrderBy(i => i.GetProperty("id").GetInt32()))
+                {
+                    var id = item.GetProperty("id").GetInt32();
+                    var (claimStatus, _) = await hub.RouteRawAsync("archive", $"/api/chat-queue/{id}/claim",
+                        HttpMethod.Post, timeoutSeconds: 8);
+                    if (claimStatus < 400) claimed.Add(item);   // else another drain holds it
+                }
+                if (claimed.Count == 0) continue;
+                var (ok, detail) = await AnswerAsync(oracle, chat.Key, claimed);
+                foreach (var item in claimed)
+                    await hub.RouteRawAsync("archive", $"/api/chat-queue/{item.GetProperty("id").GetInt32()}/done",
+                        HttpMethod.Post, new { ok, detail = Trim(detail, 400) }, timeoutSeconds: 8);
                 if (!ok) break;
-                answered++;
+                answered += claimed.Count;
             }
             _logger.LogInformation("event=chat_queue_drain_done answered={N}", answered);
             return answered;
@@ -98,23 +109,26 @@ public class ChatQueueService
         }
     }
 
-    private async Task<(bool Ok, string Detail)> AnswerAsync(OracleStreamService oracle, JsonElement item)
+    private async Task<(bool Ok, string Detail)> AnswerAsync(OracleStreamService oracle, string sessionId,
+        List<JsonElement> items)
     {
-        var id = item.GetProperty("id").GetInt32();
-        var sessionId = item.GetProperty("session_id").GetString() ?? "";
-        var text = item.GetProperty("text").GetString() ?? "";
-        var meta = item.TryGetProperty("meta", out var m) && m.ValueKind == JsonValueKind.Object ? m : default;
+        var first = items[0];
+        var meta = first.TryGetProperty("meta", out var m) && m.ValueKind == JsonValueKind.Object ? m : default;
         string Meta(string key) => meta.ValueKind == JsonValueKind.Object && meta.TryGetProperty(key, out var v)
             ? v.GetString() ?? "" : "";
-        var when = item.TryGetProperty("created_at", out var c) && DateTimeOffset.TryParse(c.GetString(), out var at)
-            ? at.ToLocalTime().ToString("dd/MM HH:mm") : "";
-        var instructions = Meta("client_instructions") +
-            $"\nNota: questo messaggio è stato scritto alle {when} mentre eri offline; rispondi ora tenendo conto del tempo passato.";
+        var queued = items.Select(i => (object)new
+        {
+            text = i.GetProperty("text").GetString() ?? "",
+            written_at = i.TryGetProperty("created_at", out var c) ? c.GetString() : null,
+        }).ToList();
+        var ids = items.Select(i => i.GetProperty("id").GetInt32()).ToArray();
+        var texts = items.Select(i => i.GetProperty("text").GetString() ?? "").ToArray();
 
         var reply = new StringBuilder();
         string? final = null;
-        await foreach (var evt in oracle.StreamChatAsync(text, sessionId, Meta("mode"),
-                           string.IsNullOrEmpty(Meta("model")) ? "generic" : Meta("model"), instructions))
+        await foreach (var evt in oracle.StreamChatAsync("", sessionId, Meta("mode"),
+                           string.IsNullOrEmpty(Meta("model")) ? "generic" : Meta("model"),
+                           Meta("client_instructions"), queued: queued))
         {
             switch (evt.Type)
             {
@@ -128,12 +142,18 @@ public class ChatQueueService
                 case "final":
                     final = evt.Reply;
                     break;
+                case "question":
+                    // The assistant asks (e.g. which old messages to keep): open tabs show the card; a reloaded tab
+                    // gets it again from Oracle's open questions.
+                    await _browsers.Clients.All.SendAsync("ReceiveEvent", evt);
+                    break;
             }
         }
         var answer = final ?? reply.ToString();
         await _browsers.Clients.All.SendAsync("ReceiveEvent", new
         {
-            type = "queued_answer", queue_id = id, session_id = sessionId, message = text, reply = answer,
+            type = "queued_answer", queue_id = ids[^1], queue_ids = ids, session_id = sessionId,
+            message = string.Join("\n", texts), reply = answer,
         });
         return (true, "");
     }

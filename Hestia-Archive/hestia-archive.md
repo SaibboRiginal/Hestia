@@ -41,6 +41,11 @@ It stores and serves all persistent state through generic APIs.
   (`docs/work/2026-10-20-riflessione-a-livelli`): modules write their signals (`kind=signal`, id `<module>:<key>`) and
   weekly metrics (`kind=metric`, id `<module>:<name>:<YYYY-Www>`) with `ref_id=<module>`, `parent_id=<domain>`; Athena
   writes its observations (`kind=observation`, `ref_id=athena`). Shape in `hestia_common.signals_client`.
+- **Oracle store** (`/api/oracle-store/*`): table `oracle_records`, same shape and protocol. Pending questions the
+  assistant asked the user (`kind=question`, id = question id, `ref_id` = session), so an answer still works after an
+  Oracle restart (`docs/work/2026-10-19-oracle-offline` v3 A).
+- **Argus store** (`/api/argus-store/*`): table `argus_records`, same shape and protocol. Journal of notable system
+  events (`kind=event`, `ref_id` = service, `at` = start) shown on Argus' «Registro» page (v3 F).
   All are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
   own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
@@ -91,6 +96,8 @@ It stores and serves all persistent state through generic APIs.
 | `PUT`/`GET` | `/api/iris-store/records` · `GET /api/iris-store/cursor` | Iris rows (same contract) (Iris only) |
 | `PUT`/`GET` | `/api/echo-store/records` · `GET /api/echo-store/cursor` | Echo rows: kept audio index and usage (same contract) (Echo only) |
 | `PUT`/`GET` | `/api/signals-store/records` · `GET /api/signals-store/cursor` | reflection signals / metrics (each module its own rows) and Athena observations |
+| `PUT`/`GET` | `/api/oracle-store/records` · `GET /api/oracle-store/cursor` | Oracle rows: pending questions to the user (Oracle only) |
+| `PUT`/`GET` | `/api/argus-store/records` · `GET /api/argus-store/cursor` | Argus rows: notable events journal (Argus only) |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |

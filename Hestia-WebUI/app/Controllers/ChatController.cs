@@ -36,6 +36,35 @@ public class ChatController : ControllerBase
         return StatusCode(status, payload);
     }
 
+    /// <summary>What is still waiting in the current conversation, so a reloaded page draws it again
+    /// (oracle-offline v3 A + G): the assistant's open questions and the messages still in the queue.</summary>
+    [HttpGet("pending")]
+    public async Task<IActionResult> Pending()
+    {
+        var sid = _sessionManager.GetSession();
+        var (qStatus, qPayload) = await _hub.RouteRawAsync("oracle", "/api/chat/questions", HttpMethod.Get,
+            query: new Dictionary<string, string> { ["session_id"] = sid }, timeoutSeconds: 8);
+        var questions = qStatus < 400 && qPayload.ValueKind == JsonValueKind.Object
+                        && qPayload.TryGetProperty("questions", out var q) ? q.Clone() : JsonDocument.Parse("[]").RootElement;
+        var queued = new List<object>();
+        foreach (var state in new[] { "queued", "answering" })
+        {
+            var (status, payload) = await _hub.RouteRawAsync("archive", "/api/chat-queue", HttpMethod.Get,
+                query: new Dictionary<string, string> { ["client"] = ChatQueueService.Client, ["state"] = state },
+                timeoutSeconds: 8);
+            if (status >= 400 || !payload.TryGetProperty("items", out var items)) continue;
+            foreach (var item in items.EnumerateArray())
+                if (item.GetProperty("session_id").GetString() == sid)
+                    queued.Add(new
+                    {
+                        queue_id = item.GetProperty("id").GetInt32(),
+                        text = item.GetProperty("text").GetString() ?? "",
+                        created_at = item.TryGetProperty("created_at", out var c) ? c.GetString() : null,
+                    });
+        }
+        return Ok(new { session_id = sid, questions, queued });
+    }
+
     /// <summary>Summarise older messages of the current conversation (frees context).</summary>
     [HttpPost("compact")]
     public async Task<IActionResult> Compact()

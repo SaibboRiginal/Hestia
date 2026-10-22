@@ -24,7 +24,7 @@ Screenshots: /mnt/project-files/cervello-offline/screenshots/ (taken before the 
 
 ## v3 (draft SPEC 3.0, 2026-10-22)
 - [x] SPEC v3.0 written
-- [ ] Marko approves SPEC v3.0
+- [x] Marko approves SPEC v3.0 (2026-10-22)
 - [ ] A. ask_user tool + paused turn + Archive pending questions + WebUI multi-choice/«Altro» + Telegram + Hermes delivery
 - [ ] C. smart queue (one call per chat, model decides, asks about old ones)
 - [ ] B. Hephaestus restart_container runbook + argus.repair.max_attempts + gave-up notice
