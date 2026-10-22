@@ -21,3 +21,15 @@ Oracle stopped → WebUI message queued at once (Hub 502) with «In coda» bubbl
 (grace 60 s + monitor cycle); Hermes notice «Oracle offline» delivered to webui; second message queued too. Oracle
 started → both answered (attempts 1) 50 s later, presence back to «Sveglio», notice closed + «Di nuovo online dopo 2 min».
 Screenshots: /mnt/project-files/cervello-offline/screenshots/ (taken before the v2.2 rename).
+
+## v3 (draft SPEC 3.0, 2026-10-22)
+- [x] SPEC v3.0 written
+- [ ] Marko approves SPEC v3.0
+- [ ] A. ask_user tool + paused turn + Archive pending questions + WebUI multi-choice/«Altro» + Telegram + Hermes delivery
+- [ ] C. smart queue (one call per chat, model decides, asks about old ones)
+- [ ] B. Hephaestus restart_container runbook + argus.repair.max_attempts + gave-up notice
+- [ ] F. journal in Archive + Argus «Registro» page
+- [ ] E. Oracle /health models state + Argus signal oracle.limited + Chronos overlay «Limitato»
+- [ ] D. «Mentre non c'ero» catch-up from Chronos
+- [ ] G. WebUI hourglass after reload
+- [ ] Docs, swagger, root CHANGELOG; PR, CI green, merge
