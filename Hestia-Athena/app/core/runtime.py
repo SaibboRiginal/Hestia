@@ -22,6 +22,7 @@ import requests
 
 from .consolidator import CONSOLIDATION_WINDOW_DEFAULT, MemoryConsolidator
 from .observer import Observer
+from .reflection import LifeReflection, local_day
 from .skill_curator import SkillCurator
 from .schemas import (
     ActionCandidate,
@@ -50,8 +51,10 @@ PresenceClient = import_shared_symbol("hestia_common.presence_client", "Presence
 WINDOW_CONSOLIDATION = "athena.consolidation"
 WINDOW_SKILL_CURATION = "athena.skill_curation"
 WINDOW_THINKING = "athena.thinking"
+WINDOW_REFLECTION = "athena.reflection"
 SKILL_CURATION_WINDOW_DEFAULT = (5, 7)
 THINKING_WINDOW_DEFAULT = (0, 0)
+REFLECTION_WINDOW_DEFAULT = (18, 20)   # before the evening recap (default 21:30)
 
 logger = logging.getLogger("hestia_athena.runtime")
 
@@ -69,10 +72,11 @@ def compact_record(record: dict[str, Any]) -> dict[str, Any]:
     """A thinking record without the bulky observation payload (services list, raw errors)."""
     obs = record.get("observation") or {}
     keep = ("candidate_id", "title", "summary", "kind", "domain", "priority", "reasoning", "signals", "score",
-            "accepted", "gate_reason", "outcome", "setting_key", "setting_value")
+            "accepted", "gate_reason", "outcome", "setting_key", "setting_value", "track", "topic_key")
     return {
         "record_id": record.get("record_id"), "trace_id": record.get("trace_id"),
         "cycle_at": record.get("cycle_at"), "trigger": record.get("trigger"),
+        "track": record.get("track") or "sistema", "life": record.get("life") or {},
         "threshold": record.get("threshold"), "duration_ms": record.get("duration_ms", 0),
         "emitted_count": record.get("emitted_count", 0), "error": record.get("error"),
         "observation": {
@@ -123,6 +127,12 @@ class AthenaRuntime:
             oracle_route=self.oracle_hint_route,
         )
         self._skill_curation_ran_today: str = ""
+
+        # Life reflection («Vita»): module signals → links between domains → observations for the recap.
+        self.reflection = LifeReflection(
+            self.hub_api_url, gate=self._gate, propose_setting=self._propose_setting,
+            settings_lines=lambda: self.observer.observe_settings(limit=40))
+        self._reflection_ran_today: str = ""
 
         # Assistant agenda: when Athena works is data the user can edit.
         self.agenda = AgendaClient("athena", self.hub_api_url)
@@ -438,19 +448,22 @@ class AthenaRuntime:
             )
 
     def list_thinking_records(
-        self, limit: int = 20
+        self, limit: int = 20, track: str | None = None
     ) -> list[dict[str, Any]]:
-        """Return recent thinking records (newest first)."""
+        """Return recent thinking records (newest first), optionally one track (``sistema`` | ``vita``)."""
         with self._lock:
             records = list(self._thinking_records)
+        if track:
+            records = [r for r in records if (r.get("track") or "sistema") == track]
         records.reverse()
         return records[: max(1, min(int(limit), self.thinking_store_max))]
 
-    def thinking_summary(self, limit: int = 10) -> dict[str, Any]:
+    def thinking_summary(self, limit: int = 10, track: str | None = None) -> dict[str, Any]:
         """Compact cycles for the Pensieri page and the MCP tool ``athena_thinking`` (newest first): what was
         observed (counts, not payloads), every candidate with its 5 gate factors, score, accepted/discarded and
         why, and what was done with it."""
-        rows = [compact_record(r) for r in self.list_thinking_records(limit=max(1, min(int(limit or 10), 50)))]
+        rows = [compact_record(r) for r in self.list_thinking_records(limit=max(1, min(int(limit or 10), 50)),
+                                                                      track=track)]
         return {
             "status": "ok", "count": len(rows), "running": self.cycle_running,
             "threshold": self.emit_threshold, "loop_enabled": self.loop_enabled,
@@ -860,6 +873,11 @@ class AthenaRuntime:
             daily_window(WINDOW_SKILL_CURATION, "Athena: cura delle skill",
                          s_start, s_end,
                          description="Crea/aggiorna/depreca skill dalle conversazioni (una volta al giorno)."),
+            daily_window(WINDOW_REFLECTION, "Riflessione sulla tua vita",
+                         *REFLECTION_WINDOW_DEFAULT,
+                         description="Legge i segnali delle aree (allenamento, cura di sé, spese…), cerca i "
+                                     "collegamenti tra le settimane e prepara le osservazioni per il recap della "
+                                     "sera. Una volta al giorno; in pausa = nessuna riflessione."),
             daily_window(WINDOW_THINKING, "Athena: retrospettiva in idle",
                          t_start, t_end,
                          description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
@@ -920,6 +938,16 @@ class AthenaRuntime:
             except Exception as exc:
                 logger.warning("event=skill_curation_failed error=%s", exc)
 
+        # ── Life reflection: once a day inside its window (before the evening recap) ──
+        if self._reflection_ran_today != local_day() and self._window_open(
+                WINDOW_REFLECTION, lambda: REFLECTION_WINDOW_DEFAULT[0] <= datetime.now().hour < REFLECTION_WINDOW_DEFAULT[1]):
+            if self._cycle_lock.acquire(blocking=False):
+                try:
+                    self._life_cycle("periodic", f"athena-vita-{uuid4().hex[:10]}")
+                    self._reflection_ran_today = local_day()
+                finally:
+                    self._cycle_lock.release()
+
         # ── Thinking cycles only inside the agenda window ───────────────────
         if not self._window_open(WINDOW_THINKING, lambda: True):
             if not self._thinking_paused_logged:
@@ -940,25 +968,48 @@ class AthenaRuntime:
     def cycle_running(self) -> bool:
         return self._cycle_lock.locked()
 
-    def think_now(self) -> dict[str, Any]:
+    def think_now(self, track: str = "sistema") -> dict[str, Any]:
         """«Pensa ora» (WebUI, quick action): one full cycle now, in the background, past the idle gate and the
-        agenda window (the user asked). Returns at once; the new record appears in /api/athena/thinking."""
+        agenda window (the user asked). ``track`` = ``sistema`` (default) or ``vita`` (life reflection). Returns at
+        once; the new record appears in /api/athena/thinking."""
         if not self._cycle_lock.acquire(blocking=False):
             logger.info("event=think_now_busy")
             return {"status": "busy", "detail": "Athena sta già pensando"}
-        trace_id = f"athena-now-{uuid4().hex[:10]}"
+        life = track == "vita"
+        trace_id = f"athena-{'vita' if life else 'now'}-{uuid4().hex[:10]}"
 
         def _run() -> None:
             try:
-                self._thinking_cycle("manual", trace_id)
+                (self._life_cycle if life else self._thinking_cycle)("manual", trace_id)
             except Exception as exc:  # noqa: BLE001 — a failed cycle is logged, never kills the service
                 logger.warning("event=think_now_failed trace_id=%s error=%s", trace_id, exc)
             finally:
                 self._cycle_lock.release()
 
-        logger.info("event=think_now_started trace_id=%s", trace_id)
+        logger.info("event=think_now_started trace_id=%s track=%s", trace_id, "vita" if life else "sistema")
         threading.Thread(target=_run, daemon=True, name="athena-think-now").start()
-        return {"status": "started", "trace_id": trace_id}
+        return {"status": "started", "trace_id": trace_id, "track": "vita" if life else "sistema"}
+
+    def _life_cycle(self, trigger: str, run_trace_id: str) -> dict[str, Any]:
+        """«Vita»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
+        Separate from the system cycle: no services, errors or Forge here."""
+        t0 = time.perf_counter()
+        with self.presence.activity("athena.reflection", label="Hestia riflette", load="light", resource="gpu",
+                                    ttl_seconds=900):
+            out = self.reflection.run(run_trace_id)
+        scored = out.get("candidates") or []
+        record = ThinkingRecord(
+            trace_id=run_trace_id, trigger=trigger, track="vita", life=out.get("life") or {},
+            candidates=scored, emitted_count=sum(1 for c in scored if c.outcome == "observed"),
+            threshold=self.emit_threshold, error=out.get("error"),
+        )
+        with self._lock:
+            self._ticks += 1
+        record.duration_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info("event=life_cycle_done trigger=%s trace_id=%s candidates=%d observed=%d ms=%d", trigger,
+                    run_trace_id, len(scored), record.emitted_count, record.duration_ms)
+        self._store_thinking_record(record)
+        return record.model_dump()
 
     def _thinking_cycle(self, trigger: str, run_trace_id: str) -> dict[str, Any]:
         """observe → think → gate → act → archive. Every candidate is kept in the record (accepted or discarded,

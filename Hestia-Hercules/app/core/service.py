@@ -788,6 +788,17 @@ class Hercules:
                 "active_session": {"id": act["id"], "name": act.get("name")} if act else None,
                 "last_sync": self.store.cursor}
 
+    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    def signals(self) -> tuple[list[dict], list[dict]]:
+        """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
+        from . import signals as signals_engine
+        return signals_engine.evaluate(self)
+
+    def signal_detail(self, topic: str) -> str | None:
+        """Facts behind one signal key, for ``/api/module/context?topic=`` (``None`` = unknown topic)."""
+        from . import signals as signals_engine
+        return signals_engine.detail(self, topic)
+
     def _missed_days(self, days: int) -> list[str]:
         """Program days in the last ``days`` (before today) with no session, not skipped/moved."""
         prog = self.active_program()
@@ -851,7 +862,7 @@ class Hercules:
         for op in ops or []:
             kind, rid = op.get("kind"), op.get("id")
             try:
-                if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder"):
+                if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder", "activity_plan", "activity"):
                     raise domain.Invalid(f"tipo sconosciuto: {kind}")
                 if not rid:
                     raise domain.Invalid("id mancante")

@@ -63,7 +63,13 @@ Adding a new data source = implementing this interface and registering the conne
 | `POST` | `/api/gateway/auth/verify` | Check every provider and push re-auth notifications (with button) for broken ones |
 | `DELETE` | `/api/gateway/auth/initiate/{provider}` | Cancel pending OAuth flow |
 | `GET` | `/api/gateway/calendar/events` | List events for a provider/calendar |
-| `POST` | `/api/gateway/calendar/events` | Create event on target providers |
+| `POST` | `/api/gateway/calendar/events` | Create event on target providers; optional `calendar_id`, `nag` (false = history events that must not remind) |
+| `POST` | `/api/gateway/calendar/calendars` | Ensure a secondary calendar by name `{name, provider}` → `{status, calendar_id}` (idempotent, cached; e.g. «Allenamenti» owned by Hercules) |
+| `GET` | `/api/gateway/weather/now` | Current weather at `place` (saved place name/id, city, or empty = Casa) |
+| `GET` | `/api/gateway/weather/forecast` | Daily forecast `date_from`–`date_to` (max 16 days), `hourly=true` adds the hours; `status` ok · needs_place · place_not_found · out_of_range · error |
+| `POST` | `/api/gateway/weather/at` | Many `{id, place, at}` pairs in one call → weather at that place and hour (agenda chips) |
+| `GET` | `/api/gateway/weather/place` | Resolve a place (saved → lat/lon, else geocoding) |
+| `GET` | `/api/gateway/weather/places` | Saved personal places resolved, as setting options `{value, label, ok}` |
 | `PUT` | `/api/gateway/calendar/events/{id}` | Update event on target provider |
 | `DELETE` | `/api/gateway/calendar/events/{id}` | Delete event on target provider |
 | `GET` | `/api/gateway/mail/status` | Gmail state (authorized, can_send, error) |
@@ -201,7 +207,11 @@ they are not env vars. All apply **live** (read at use time).
 | `hecate.auth.notify_cooldown` | int (s, advanced) | `300` | Min gap between identical action-required notifications |
 | `hecate.mail.watch_interval` | int (s) | `900` | Default recurrence of agenda job `hecate.mail_watch` (min 60) |
 | `hecate.mail.safety_interval` | int (s, advanced) | `21600` | Recurrence of `hecate.mail_watch` when Gmail Pub/Sub push is configured (safety net) |
+| `hecate.weather.cache_minutes` | int (min, advanced) | `30` | Forecast cache per place; a stale copy answers when Open-Meteo is down |
 | `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
+
+Hecate also follows the personal setting `themis.personal.places` (Casa, Lavoro, Palestra…: name, address, kind,
+optional lat/lon).
 
 Endpoints: `GET /api/settings/effective`, `POST /api/settings/reload` (used by Themis).
 
@@ -263,6 +273,14 @@ Google), `no_token`, `drive_api_disabled` (enable *Google Drive API* in the Clou
 `not_found`, `bad_folder`, `bad_chunk`, `bad_offset`, `unknown_upload`. Hecate sends no notification here: the caller
 does. Logs `event=drive_upload|drive_download|drive_delete …`. Setup: enable *Google Drive API* and add the scope
 `.../auth/drive.file` to the consent screen, then re-authorize Google once.
+
+### Weather (`providers/weather.py`) — dossier `docs/work/2026-10-20-meteo-hecate`
+
+Open-Meteo (free, no key): forecast (current, daily, hourly, 16 days, `timezone=auto`) and geocoding (city level:
+an address resolves through its city; saved lat/lon skip geocoding). `WeatherService` caches per rounded lat/lon and
+answers a stale copy on failure (`[🔄] event=weather_stale`). WMO codes → Italian condition + icon name (sun,
+cloud-sun, cloud, fog, drizzle, rain, snow, storm). Tools `weather_now`, `weather_forecast` (tool domain `weather`,
+owned by Hecate). Modules read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
 
 ### Mail (`providers/mail.py`)
 

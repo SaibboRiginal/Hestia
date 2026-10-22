@@ -27,10 +27,13 @@ except ModuleNotFoundError:
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
+from hestia_common.signals_client import Signals, signals_rule
 
 from .core import catalog, domain
+from .core.activities import Activities
 from .core.coach import HerculesCoach
 from .core.hub import Hub
 from .core.service import Conflict, Hercules, NotFound
@@ -48,6 +51,7 @@ SERVICE_TOPOLOGY_TAGS = [t.strip().lower() for t in os.getenv(
 HUB_API_URL = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 UI_DIST = os.getenv("HERCULES_UI_DIST", "/code/ui/dist")
 API = "/api/hercules"
+TZ = os.getenv("TZ") or "Europe/Rome"
 
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("hercules")
@@ -89,6 +93,9 @@ hub = Hub(HUB_API_URL)
 store = Store(hub)
 hercules = Hercules(store, settings.get)
 agenda = AgendaClient("hercules", HUB_API_URL)
+activities = Activities(hercules, hub.call, agenda, api=API)
+# reflection signals (Archive signals-store): re-evaluated after the natural writes and by the daily agenda job
+signals = Signals("hercules", "fitness", evaluate=hercules.signals, hub_api_url=HUB_API_URL)
 coach = HerculesCoach(hercules)
 coach_client = CoachClient("hercules", HUB_API_URL)
 
@@ -109,7 +116,27 @@ hercules.on_event = _coach_event
 
 app = FastAPI(title="Hestia-Hercules", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.include_router(CoachRouter("hercules", "fitness", "Allenamento", needs=coach.needs, fit=coach.fit,
+def _needs(start, end) -> dict:
+    """Gym needs + open outdoor intentions (tag ``outdoor``: the weekly plan avoids rain for them)."""
+    out = coach.needs(start, end)
+    try:
+        out["needs"] = [*out["needs"], *activities.coach_needs(start, end)]
+    except Exception as exc:
+        logger.warning("[🔄] event=hercules_activity_needs_failed error=%s fallback=gym_only", exc)
+    return out
+
+
+def _activity_event(event: str, need_id: str, at: str | None) -> None:
+    def _send():
+        if event == "done":
+            coach_client.done(need_id, at)
+        else:
+            coach_client.changed()
+    threading.Thread(target=_send, daemon=True, name=f"hercules-activity-{event}").start()
+
+
+activities.on_event = _activity_event
+app.include_router(CoachRouter("hercules", "fitness", "Allenamento", needs=_needs, fit=coach.fit,
                                placed=coach.on_placed, review=coach.review).router)
 
 
@@ -153,7 +180,10 @@ def bootstrap(days: int = 120):
 
 @app.post(f"{API}/sync")
 def sync(body: dict = Body(...)):
-    return hercules.sync(str(body.get("device_id") or ""), int(body.get("cursor") or 0), body.get("ops") or [])
+    out = hercules.sync(str(body.get("device_id") or ""), int(body.get("cursor") or 0), body.get("ops") or [])
+    if body.get("ops"):
+        signals.changed()
+    return out
 
 
 @app.get(f"{API}/meta")
@@ -305,13 +335,28 @@ def session_patch(id: str, body: dict = Body(...)):
 
 @app.delete(f"{API}/sessions/{{id}}")
 def session_delete(id: str):
-    return hercules.delete("session", id)
+    out = hercules.delete("session", id)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/sessions/{{id}}/finish")
 def session_finish(id: str, body: dict = Body(default={})):
-    return hercules.finish_session(id, notes=body.get("notes"), perceived_effort=body.get("perceived_effort"),
-                                   ended_at=body.get("ended_at"), update_template=bool(body.get("update_template")))
+    out = hercules.finish_session(id, notes=body.get("notes"), perceived_effort=body.get("perceived_effort"),
+                                  ended_at=body.get("ended_at"), update_template=bool(body.get("update_template")))
+    signals.changed()
+    _sync_history()
+    return out
+
+
+def _sync_history() -> None:
+    """Finished gym sessions → «Allenamenti» calendar (history), off the request thread."""
+    def run():
+        try:
+            activities.sync_sessions(3)
+        except Exception as exc:
+            logger.warning("[🔄] event=hercules_history_sync_failed error=%s fallback=next_finish", exc)
+    threading.Thread(target=run, daemon=True, name="hercules-history-sync").start()
 
 
 @app.post(f"{API}/sessions/{{id}}/discard")
@@ -332,7 +377,9 @@ def session_log_set(id: str, body: dict = Body(...)):
 
 @app.delete(f"{API}/sets/{{id}}")
 def set_delete(id: str):
-    return hercules.delete("set", id)
+    out = hercules.delete("set", id)
+    signals.changed()
+    return out
 
 
 # ── days, how I feel, adaptation ─────────────────────────────────────────────
@@ -359,7 +406,9 @@ def day_postpone(body: dict = Body(...)):
 
 @app.post(f"{API}/checkin")
 def checkin(body: dict = Body(...)):
-    return hercules.checkin(body)
+    out = hercules.checkin(body)
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/feedback")
@@ -441,13 +490,32 @@ def _summary_with_plan() -> dict:
 
 @app.get(f"{API}/summary")
 def summary():
-    return _summary_with_plan()
+    return {**_summary_with_plan(), "activities": _activity_hints()}
+
+
+def _activity_hints() -> list[dict]:
+    """«Corsa 1/2» for every open outdoor intention of this week (summary, widget, context)."""
+    try:
+        return [{"kind": i["kind"], "label": i["label"], "done": i["done"], "times": i["times"], "hint": i["hint"]}
+                for i in activities.week()["intentions"]]
+    except Exception as exc:
+        logger.warning("[🔄] event=hercules_activity_hints_failed error=%s", exc)
+        return []
 
 
 @app.get("/api/module/context")
-def module_context(budget: int = 400):
-    """Shared contract (SPEC §9): a short caveman line the assistant may include."""
+def module_context(budget: int = 400, topic: str = ""):
+    """Shared contract (SPEC §9): a short caveman line the assistant may include. ``topic`` = a signal key
+    (``stall:<exercise>``, ``missed_streak``…): the facts behind that signal; unknown topic → the normal line."""
+    detail = hercules.signal_detail(topic) if topic else None
+    if detail:
+        if len(detail) > budget:
+            detail = detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
+        return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": detail}
     text = "Allenamento: " + _summary_with_plan()["text"]
+    hints = [a["hint"] for a in _activity_hints()]
+    if hints:
+        text += " · All'aperto: " + ", ".join(hints)
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
     return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": text}
@@ -466,6 +534,7 @@ def quick_done(id: str, body: dict = Body(default={})):
         return {"session_id": act["id"] if act else None, "resumed": bool(act),
                 "label": f"Ripreso {act.get('name')}" if act else "Nessun allenamento in corso"}
     out = hercules.quick_done(id, day=body.get("date"))
+    signals.changed()
     return {**out, "label": f"{out['name']} segnato fatto"}
 
 
@@ -479,7 +548,9 @@ def quick_undo(id: str, date: str = ""):
     if not rows:
         raise NotFound("niente da annullare")
     rows.sort(key=lambda s: s.get("started_at") or "")
-    return hercules.delete("session", rows[-1]["id"])
+    out = hercules.delete("session", rows[-1]["id"])
+    signals.changed()
+    return out
 
 
 @app.post(f"{API}/quick-bodyweight")
@@ -498,7 +569,9 @@ def import_preview(body: dict = Body(...)):
 
 @app.post(f"{API}/import/commit")
 def import_commit(body: dict = Body(...)):
-    return hercules.import_commit(str(body.get("text") or ""), body.get("mapping") or {}, body.get("unit") or "kg")
+    out = hercules.import_commit(str(body.get("text") or ""), body.get("mapping") or {}, body.get("unit") or "kg")
+    signals.changed()
+    return out
 
 
 @app.get(f"{API}/export")
@@ -543,12 +616,138 @@ def reminder_check():
     return {"send": True, "text": text}
 
 
+# ── outdoor activities (dossier 2026-10-20-meteo-hecate §3.8) ─────────────────
+def _notify(msg: dict, title: str) -> bool:
+    try:
+        hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
+            module="hercules", domain="fitness", key=msg["key"], title=title, text=msg["text"],
+            actions=msg["actions"], page="allenamento"), timeout=8)
+        return True
+    except Exception as exc:
+        logger.warning("[🔄] event=hercules_activity_notify_failed key=%s error=%s fallback=none", msg.get("key"), exc)
+        return False
+
+
+@app.get(f"{API}/activities")
+def activities_week():
+    return activities.week()
+
+
+@app.post(f"{API}/activities/propose")
+def activities_propose(body: dict = Body(default={})):
+    return activities.propose(body.get("kind") or "corsa", int(body.get("times") or 1), str(body.get("place") or ""),
+                              int(body.get("minutes") or 45), str(body.get("week") or ""))
+
+
+@app.post(f"{API}/activities/log")
+def activities_log(body: dict = Body(default={})):
+    return activities.log(body.get("kind") or "corsa", str(body.get("date") or ""), domain._num(body.get("minutes"), integer=True),
+                          domain._num(body.get("km")), str(body.get("note") or ""))
+
+
+@app.post(f"{API}/activities/quick-run")
+def activities_quick_run(body: dict = Body(default={})):
+    """Home quick action «Ho corso» (``km`` optional, ``date`` for another day)."""
+    return activities.log("corsa", str(body.get("date") or ""), None, domain._num(body.get("km")))
+
+
+@app.delete(f"{API}/activities/quick-run")
+def activities_quick_run_undo(date: str = ""):
+    last = [a for a in activities.logs() if a.get("kind") == "corsa" and a.get("source") in ("log", "slot")
+            and a["date"] == (date or hercules.today().isoformat())]
+    if not last:
+        return {"undone": False}
+    return activities.unlog(last[-1]["id"])
+
+
+@app.delete(f"{API}/activities/log/{{id}}")
+def activities_unlog(id: str):
+    return activities.unlog(id)
+
+
+@app.post(f"{API}/activities/morning")
+def activities_morning():
+    """Agenda job (07:30): the coach line «Ottimo giorno per…» or «pioggia, spostiamo?», at most once a day."""
+    msg = activities.morning()
+    if not msg or msg.get("skip"):
+        return {"send": False, "why": (msg or {}).get("skip") or "nothing_to_say"}
+    if not _notify(msg, "Allenamento all'aperto"):
+        return {"send": False, "why": "hermes_unreachable"}
+    activities.mark_nudge()
+    logger.info("event=hercules_activity_morning_sent key=%s", msg["key"])
+    return {"send": True, "text": msg["text"]}
+
+
+@app.post(f"{API}/activities/sync-calendar")
+def activities_sync_calendar(body: dict = Body(default={})):
+    return {"created": activities.sync_sessions(int(body.get("days") or 14))}
+
+
+@app.post(f"{API}/activities/{{plan_id}}/confirm")
+def activities_confirm(plan_id: str, body: dict = Body(default={})):
+    slots = body.get("slots")
+    return activities.confirm(plan_id, slots if isinstance(slots, list) and slots else None)
+
+
+@app.post(f"{API}/activities/{{plan_id}}/slots")
+def activities_add_slot(plan_id: str, body: dict = Body(default={})):
+    return activities.add_slot(plan_id, str(body.get("start") or ""))
+
+
+@app.post(f"{API}/activities/{{plan_id}}/keep")
+def activities_keep(plan_id: str):
+    """«Tengo» / «Non oggi» from the morning message: nothing changes."""
+    return {"ok": True, "plan_id": plan_id}
+
+
+@app.delete(f"{API}/activities/{{plan_id}}")
+def activities_cancel(plan_id: str):
+    return activities.cancel(plan_id)
+
+
+@app.post(f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/done")
+def activities_slot_done(plan_id: str, slot_id: str, body: dict = Body(default={})):
+    return activities.slot_done(plan_id, slot_id, domain._num(body.get("minutes"), integer=True), domain._num(body.get("km")))
+
+
+@app.post(f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/missed")
+def activities_slot_missed(plan_id: str, slot_id: str):
+    return activities.slot_missed(plan_id, slot_id)
+
+
+@app.post(f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/moved")
+def activities_slot_moved(plan_id: str, slot_id: str, body: dict = Body(default={})):
+    return activities.slot_moved(plan_id, slot_id, str(body.get("to") or ""))
+
+
+@app.post(f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/ask")
+def activities_slot_ask(plan_id: str, slot_id: str):
+    """Agenda task after the slot: «Hai fatto la corsa delle 18:00?» (Fatto / Non fatto / Spostato)."""
+    msg = activities.ask(plan_id, slot_id)
+    if not msg:
+        return {"send": False, "why": "already_answered"}
+    return {"send": _notify(msg, "Allenamento all'aperto")}
+
+
+# ── reflection signals (agenda job hercules.signals) ─────────────────────────
+@app.post(f"{API}/signals/run")
+def signals_run():
+    """Agenda job ``hercules.signals``: re-evaluate the training signals and weekly metrics, sync to Archive."""
+    return signals.run()
+
+
 def _agenda_rules() -> list[dict]:
-    return [job_rule("hercules.reminder", "Promemoria allenamento (Hercules)", service="hercules",
+    return [signals_rule("hercules", "Allenamento", path=f"{API}/signals/run", tz=TZ),
+            job_rule("hercules.reminder", "Promemoria allenamento (Hercules)", service="hercules",
                      path=f"{API}/reminder/check", recurrence="FREQ=DAILY", start_at="2026-01-01T18:30:00",
                      description="Controlla se sei indietro con l'obiettivo di allenamento. Non invia nulla se il "
                                  "promemoria è spento nelle impostazioni (default) o se oggi ti sei già allenato.",
-                     tz=os.getenv("TZ") or "Europe/Rome")]
+                     tz=TZ),
+            job_rule("hercules.activity_morning", "Coach attività all'aperto (Hercules)", service="hercules",
+                     path=f"{API}/activities/morning", recurrence="FREQ=DAILY", start_at="2026-01-01T07:30:00",
+                     description="Solo mentre hai un'intenzione aperta (es. correre 2 volte questa settimana): "
+                                 "«Ottimo giorno per…» quando il meteo è buono, o propone di spostare se piove.",
+                     tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
@@ -593,12 +792,35 @@ ui.webui(
                      group="Allenamento", order=31),
         quick_action("peso", "Registra peso corporeo", "POST", f"{API}/quick-bodyweight", icon="scale",
                      group="Allenamento", params={"peso": {"type": "float", "label": "Peso (kg)"}}, order=32),
+        quick_action("corsa", "Ho corso", "POST", f"{API}/activities/quick-run", icon="run", group="Allenamento",
+                     params={"km": {"type": "float", "label": "Km (facoltativo)"}},
+                     undo={"method": "DELETE", "path": f"{API}/activities/quick-run"}, order=34),
         quick_action("salta", "Salta oggi", "POST", f"{API}/days/skip", icon="skip", group="Allenamento",
                      undo={"method": "DELETE", "path": f"{API}/days/skip"}, order=33),
     ],
 )
 app.include_router(ui.router())
 app.include_router(settings.router())
+
+# ── export / import (hestia_common.transfer; reminder and adaptation rows are runtime state) ────────────────
+transfer = Transfer("hercules", hub, sections=[
+    StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
+    StoreSection("schede", "Schede e programmi", store, ["template", "program"], icon="list",
+                 depends_on=["esercizi"]),
+    StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"], icon="history",
+                 title=lambda r: r["data"].get("name") or "Sessione",
+                 subtitle=lambda r: str(r["data"].get("started_at") or r.get("at") or "")[:10],
+                 depends_on=["esercizi", "schede"]),
+    StoreSection("misure", "Misure", store, ["measurement"], icon="scale",
+                 title=lambda r: f"{r['data'].get('kind')}: {r['data'].get('value')} {r['data'].get('unit') or ''}"),
+    StoreSection("obiettivi", "Obiettivi e piani", store, ["goal", "plan"], icon="target",
+                 title=lambda r: r["data"].get("label") or r["data"].get("note") or r["data"].get("date") or r["id"],
+                 depends_on=["esercizi", "schede"]),
+    StoreSection("feedback", "Check-in e note", store, ["checkin", "feedback"], icon="note",
+                 title=lambda r: r["data"].get("text") or r["data"].get("free_text") or "Check-in",
+                 depends_on=["esercizi", "sessioni"]),
+])
+app.include_router(transfer.router())
 
 
 # ── MCP tools (domain fitness; Oracle calls them, the logic stays here) ─────
@@ -675,12 +897,14 @@ try:
         if not act:
             return {"error": "nessun allenamento in corso"}
         d = hercules.finish_session(act["id"], notes=notes or None, perceived_effort=effort)
+        signals.changed()
         return {"summary": d.get("summary"), "prs": d.get("prs")}
 
     def _checkin(energy: int | None = None, sleep: int | None = None, soreness: list | None = None,
                  pain_areas: list | None = None, time_minutes: int | None = None, free_text: str = "") -> dict:
         row = hercules.checkin({"energy": energy, "sleep": sleep, "soreness": soreness or [], "pain_areas": pain_areas or [],
                                 "time_minutes": time_minutes, "free_text": free_text})
+        signals.changed()
         return {"saved": True, "checkin": row}
 
     def _adapt(energy: int | None = None, time_minutes: int | None = None, pain_areas: list | None = None,
@@ -760,6 +984,29 @@ try:
         existing = next((g for g in hercules.store.items("goal") if g.get("scope") == scope and g.get("target_id") == target_id), None)
         return hercules.save("goal", {"times": times, "per": per, "scope": scope, "target_id": target_id, "active": active},
                              id=existing["id"] if existing else None)
+
+    def _plan_activity(kind: str = "corsa", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
+        return activities.propose(kind, times, place, minutes, week)
+
+    def _confirm_activity(plan_id: str = "", slots: list | None = None) -> dict:
+        return activities.confirm(plan_id, slots or None)
+
+    def _log_activity(kind: str = "corsa", date: str = "", minutes: int | None = None, km: float | None = None,
+                      note: str = "") -> dict:
+        return activities.log(kind, date, minutes, km, note)
+
+    def _activities_week() -> dict:
+        return activities.week()
+
+    def _activity_outcome(plan_id: str = "", slot_id: str = "", outcome: str = "done", to: str = "") -> dict:
+        if outcome == "missed":
+            return activities.slot_missed(plan_id, slot_id)
+        if outcome == "moved":
+            return activities.slot_moved(plan_id, slot_id, to)
+        return activities.slot_done(plan_id, slot_id)
+
+    def _cancel_activity(plan_id: str = "") -> dict:
+        return activities.cancel(plan_id)
 
     S = {"type": "string"}
     I = {"type": "integer"}
@@ -860,6 +1107,43 @@ try:
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
                 handler=_t(_goal), title="🏋️ Obiettivo allenamento", method="POST", path=f"{API}/goals", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento"),
+        MCPTool(name="fitness_plan_activity", description="Intenzione di attività all'aperto («ho voglia di correre 2 "
+                "volte questa settimana»): kind corsa|bici|camminata|nuoto|altro, times, place (nome di un luogo salvato "
+                "o città; vuoto = Casa), minutes, week (vuoto = questa, 'next' = prossima). Propone i momenti migliori "
+                "da meteo e impegni; NON scrive nel calendario: mostra i momenti e chiedi conferma.",
+                parameters={"type": "object", "properties": {"kind": S, "times": I, "place": S, "minutes": I, "week": S}},
+                handler=_t(_plan_activity), title="🏃 Pianifica attività", method="POST",
+                path=f"{API}/activities/propose", clients=["telegram", "ui"], telegram_group="allenamento"),
+        MCPTool(name="fitness_confirm_activity", description="Conferma l'intenzione proposta (dopo il sì dell'utente): "
+                "slots = numeri dei momenti da tenere o orari ISO scelti dall'utente (vuoto = tutti). Crea gli eventi "
+                "nel calendario «Allenamenti» e dopo ogni uscita chiede se è stata fatta.",
+                parameters={"type": "object", "properties": {"plan_id": S, "slots": L}, "required": ["plan_id"]},
+                handler=_t(_confirm_activity), title="🏃 Conferma attività", method="POST",
+                path=f"{API}/activities/{{plan_id}}/confirm", clients=["ui"], telegram_visible=False,
+                telegram_group="allenamento"),
+        MCPTool(name="fitness_log_activity", description="Registra un'attività fatta («ho corso 5 km»): kind, date "
+                "(vuoto = oggi), minutes, km, note. Chiude il momento pianificato di quel giorno se c'è.",
+                parameters={"type": "object", "properties": {"kind": S, "date": S, "minutes": I,
+                                                             "km": {"type": "number"}, "note": S}},
+                handler=_t(_log_activity), title="🏃 Registra attività", method="POST", path=f"{API}/activities/log",
+                clients=["telegram", "ui"], telegram_group="allenamento"),
+        MCPTool(name="fitness_activities", description="Attività all'aperto di questa settimana: intenzioni con "
+                "progresso (es. Corsa 1/2), momenti pianificati e attività fatte.",
+                parameters={"type": "object", "properties": {}}, handler=_t(_activities_week),
+                title="🏃 Attività della settimana", path=f"{API}/activities", clients=["telegram", "ui"],
+                telegram_group="allenamento"),
+        MCPTool(name="fitness_activity_outcome", description="Esito di un momento pianificato: outcome done|missed|"
+                "moved (to = nuovo orario ISO; vuoto = il migliore rimasto nella settimana).",
+                parameters={"type": "object", "properties": {"plan_id": S, "slot_id": S, "outcome": S, "to": S},
+                            "required": ["plan_id", "slot_id"]},
+                handler=_t(_activity_outcome), title="🏃 Esito attività", method="POST",
+                path=f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/done", clients=["ui"], telegram_visible=False,
+                telegram_group="allenamento"),
+        MCPTool(name="fitness_cancel_activity", description="Annulla un'intenzione (toglie gli eventi futuri dal calendario).",
+                parameters={"type": "object", "properties": {"plan_id": S}, "required": ["plan_id"]},
+                handler=_t(_cancel_activity), title="🏃 Annulla attività", method="DELETE",
+                path=f"{API}/activities/{{plan_id}}", clients=["ui"], telegram_visible=False,
+                telegram_group="allenamento"),
     ]
     def _coerced(t: MCPTool):
         """REST callers (Telegram, gateway) send strings: coerce by the tool's schema before the handler."""
@@ -906,6 +1190,7 @@ def _registration() -> dict:
             "context_endpoint": "/api/module/context"}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
+        caps.update(transfer.capabilities())
     except Exception as exc:
         logger.warning("[🔄] event=hercules_ui_manifest_failed error=%s fallback=no_ui", exc)
     return {"name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",
@@ -928,6 +1213,7 @@ def _warm_up() -> None:
         try:
             if store.refresh(force=True):
                 hercules.ensure_catalog()
+                signals.changed()           # time-based facts may have moved while the service was down
                 return
         except Exception as exc:
             logger.warning("[🔄] event=hercules_warmup_failed attempt=%d error=%s", attempt, exc)

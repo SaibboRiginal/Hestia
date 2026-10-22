@@ -3,17 +3,23 @@
  * HTML5 drag of a chip to another day. Events: cal-select {ev, rect} · cal-create (Date) · cal-move {ev,start,end} · cal-day (Date).
  */
 import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
-import { type CalEvent, fire } from '../models';
+import { type CalEvent, type CalWeather, NO_WEATHER, fire } from '../models';
 import { DAY_MS, addDays, dayKey, fmt, isSameDay, isToday, monthGrid, startOfDay } from '../date';
-import { calStyles } from '../ui';
+import { calStyles, wxChip } from '../ui';
 
 const MAX_CHIPS = 3;
+
+/** Tooltip lines for a day: Marko's own located events with the weather there at their hour. */
+export function extLines(w: CalWeather, k: string): string[] {
+  return w.external.filter(x => x.start.slice(0, 10) === k).map(x =>
+    `${x.start.slice(11, 16)} ${x.title} · ${x.place || x.location}${x.hour ? `: ${x.hour.temp_c}°, ${x.hour.condition}` : ''}`);
+}
 const WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 type Split = { wins: CalEvent[]; groups: { ev: CalEvent; count: number }[] };
 
 export class ChronosCalMonth extends LitElement {
-  static properties = { anchor: { attribute: false }, events: { attribute: false }, dropKey: { state: true } };
-  declare anchor: Date; declare events: CalEvent[]; declare dropKey: string | null;
+  static properties = { anchor: { attribute: false }, events: { attribute: false }, weather: { attribute: false }, dropKey: { state: true } };
+  declare anchor: Date; declare events: CalEvent[]; declare weather: CalWeather; declare dropKey: string | null;
   private dragged: CalEvent | null = null;
   private split = new Map<string, Split>();
   static styles = [tokens, calStyles, css`
@@ -29,6 +35,8 @@ export class ChronosCalMonth extends LitElement {
     .cell.drop { background: var(--accent-soft); }
     .num { align-self: flex-start; width: 26px; height: 26px; border-radius: 50%; font-size: 12.5px; color: var(--text-2); }
     .num:hover { background: var(--surface-2); }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+    .wx { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .today .num { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
     .cell.sel { box-shadow: inset 0 0 0 2px var(--accent); }
     .chips { display: flex; flex-direction: column; gap: 2px; min-height: 0; }
@@ -52,7 +60,7 @@ export class ChronosCalMonth extends LitElement {
     .more:hover { background: var(--surface-2); }
     @media (max-width: 600px) { .chip .t, .wds div { font-size: 10px; } .chip { padding: 1px 2px; } .cell { padding: 2px; } .wds div { padding: 6px 2px; text-align: center; } }
   `];
-  constructor() { super(); this.anchor = new Date(); this.events = []; this.dropKey = null; }
+  constructor() { super(); this.anchor = new Date(); this.events = []; this.weather = NO_WEATHER; this.dropKey = null; }
 
   willUpdate(ch: Map<string, unknown>) {
     if (!ch.has('events') && !ch.has('anchor')) return;
@@ -108,7 +116,8 @@ export class ChronosCalMonth extends LitElement {
         @click=${() => fire(this, 'cal-create', this.at9(d))}
         @dragover=${(e: DragEvent) => { e.preventDefault(); this.dropKey = k; }} @dragleave=${() => (this.dropKey = null)}
         @drop=${(e: DragEvent) => this.drop(e, d)}>
-      <button class="num" @click=${(e: Event) => { e.stopPropagation(); fire(this, 'cal-day', d); }} title="Apri il giorno">${d.getDate()}</button>
+      <div class="top"><button class="num" @click=${(e: Event) => { e.stopPropagation(); fire(this, 'cal-day', d); }} title="Apri il giorno">${d.getDate()}</button>
+        ${wxChip(this.weather.days[k], extLines(this.weather, k))}</div>
       ${s?.wins.length ? html`<div class="wins">${s.wins.map(w => html`<span class="win ${w.occ.skipped ? 'skipped' : ''} ${w.occ.status === 'paused' ? 'paused' : ''}"
           style="--c:${w.color}" title=${`Finestra ${fmt.time(w.start)}${w.end ? '–' + fmt.time(w.end) : ''} · ${w.occ.title}`}
           @click=${(e: Event) => this.sel(e, w)}></span>`)}</div>` : nothing}

@@ -115,6 +115,22 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
                                      eventId=event_id, body=patch).execute()
         return True
 
+    def ensure_calendar(self, name: str) -> str:
+        """Find the calendar by its title among the user's calendars, else create it (scope ``calendar``)."""
+        wanted = str(name or "").strip()
+        page = None
+        while True:
+            resp = self._service.calendarList().list(pageToken=page, maxResults=250).execute()
+            for row in resp.get("items", []):
+                if str(row.get("summary") or "").strip() == wanted:
+                    return str(row.get("id"))
+            page = resp.get("nextPageToken")
+            if not page:
+                break
+        created = self._service.calendars().insert(body={"summary": wanted}).execute()
+        logger.info("event=google_calendar_created name=%s", wanted)
+        return str(created.get("id", ""))
+
     def _setup(self) -> None:
         if not _GOOGLE_LIBS_AVAILABLE:
             self._init_error = "google-api-python-client not installed"

@@ -34,7 +34,11 @@ It stores and serves all persistent state through generic APIs.
   Pure storage for Plutus (expenses: transactions, categories, rules, budgets, accounts, imports, recurring).
 - **Iris store** (`/api/iris-store/*`): table `iris_records`, same shape and protocol. Pure storage for Iris (mail
   subscriptions, kind `subscription`, id `<owner>:<key>`).
-  Both are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
+- **Signals store** (`/api/signals-store/*`): table `signal_records`, same shape and protocol. Reflection layer
+  (`docs/work/2026-10-20-riflessione-a-livelli`): modules write their signals (`kind=signal`, id `<module>:<key>`) and
+  weekly metrics (`kind=metric`, id `<module>:<name>:<YYYY-Www>`) with `ref_id=<module>`, `parent_id=<domain>`; Athena
+  writes its observations (`kind=observation`, `ref_id=athena`). Shape in `hestia_common.signals_client`.
+  All are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
   own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
   deduplicated per module by sha256, max 15 MB each. Generic byte storage for module files (Wardrobe photos, Plutus
@@ -82,6 +86,7 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/wardrobe-store/cursor` | Current sync cursor |
 | `PUT`/`GET` | `/api/finance-store/records` · `GET /api/finance-store/cursor` | Plutus rows (same contract as hercules-store) (Plutus only) |
 | `PUT`/`GET` | `/api/iris-store/records` · `GET /api/iris-store/cursor` | Iris rows (same contract) (Iris only) |
+| `PUT`/`GET` | `/api/signals-store/records` · `GET /api/signals-store/cursor` | reflection signals / metrics (each module its own rows) and Athena observations |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
@@ -185,6 +190,7 @@ It stores and serves all persistent state through generic APIs.
 - Session summaries for Athena skills are stored as entities with `domain=session_summary`.
 - Startup waits for Postgres (`ARCHIVE_DB_WAIT_SECONDS`, 0 = forever) and re-registers on Hub every
   `HUB_KEEPALIVE_SECONDS` (Hub restarts no longer drop Archive).
+- 2026-10-20: `/api/signals-store` (reflection signals, metrics, Athena observations) on the generic module store.
 - 2026-10-19: generic `module_store` router → `/api/finance-store` (Plutus) and `/api/iris-store` (Iris); raw mail
   records delivered by Iris land in `/api/archive` under the subscriber's domain (`reference_id = mail:<domain>:<gmail id>`).
 - 2026-10-20: backup to Google Drive, verification and rollback (section above); schema bootstrap moved to `app/schema.py`;

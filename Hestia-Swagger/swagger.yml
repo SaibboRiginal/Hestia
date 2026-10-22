@@ -3191,6 +3191,60 @@ paths:
         "200":
           description: "{status: ok|initialized|busy|skipped|error, new, source?, reason?, action_required?: reauth_google, error?}"
 
+  /api/gateway/weather/now:
+    get:
+      tags: [Hecate]
+      summary: "Current weather at place (query place: saved place name/id, city, empty = Casa)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status: ok|needs_place|place_not_found|error, place, now{temp_c, feels_c, condition, icon, wind_kmh, humidity, is_day}, today}"}
+
+  /api/gateway/weather/forecast:
+    get:
+      tags: [Hecate]
+      summary: "Forecast (query place, date_from, date_to max 16 days, hourly=true adds hours)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, place, days[{date, min_c, max_c, condition, icon, rain_mm, rain_prob, wind_kmh, sunrise, sunset, rain_hours, hours?}], cached}"}
+
+  /api/gateway/weather/at:
+    post:
+      tags: [Hecate]
+      summary: "Weather at many {id, place, at} pairs in one call (agenda chips)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{items[{id, status, place, temp_c, condition, icon, rain_prob, stale?}]}"}
+
+  /api/gateway/weather/place:
+    get:
+      tags: [Hecate]
+      summary: "Resolve a place (query place) → label, lat, lon, source saved|geocoding"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "OK"}
+
+  /api/gateway/weather/places:
+    get:
+      tags: [Hecate]
+      summary: "Saved personal places resolved, as setting options [{value, label, ok}]"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "OK"}
+
+  /api/gateway/calendar/calendars:
+    post:
+      tags: [Hecate]
+      summary: "Ensure a secondary calendar by name {name, provider} (idempotent, e.g. Allenamenti)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, provider, name, calendar_id}"}
+
   /api/gateway/mail/watch:
     get:
       tags: [Hecate]
@@ -4497,6 +4551,15 @@ paths:
         - url: http://localhost:19007
       responses:
         "200": {description: "{status, count, items}"}
+
+  /api/agenda/weather:
+    post:
+      tags: [Chronos]
+      summary: "Weather for the calendar page {start, end, located[{id, place, at}]} (next 14 days)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{days[{date, min_c, max_c, condition, icon, rain_hours}], events{id: weather}, external[{id, title, start, location, weather}], horizon}"}
 
   /api/agenda/coach/week:
     get:
@@ -7437,6 +7500,83 @@ paths:
       responses:
         "200": {description: "{owner, applied[], pending_restart[]}"}
 
+  # Export and import (hestia_common.transfer, docs/work/2026-10-20-import-export): every module that advertises the
+  # `transfer` capability (Hercules, Hygieia, Wardrobe, Plutus, Scout, Oracle memories, Chronos agenda, Themis settings).
+  # Never secrets, tokens, chats or sessions. Errors: 400 {detail} bad mode/section/format, 404 unknown file.
+  /api/transfer/describe:
+    get:
+      tags: [Meta]
+      summary: (every module with transfer) sections {id, label, icon, help, count, depends_on, has_files, schema}
+      responses:
+        "200": {description: "{module, format, sections[]}"}
+
+  /api/transfer/items:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) items of one section for the picker
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [section], properties: {section: {type: string}, q: {type: string}, limit: {type: integer, default: 200}, offset: {type: integer, default: 0}}}
+      responses:
+        "200": {description: "{items[{key, title, subtitle, updated_at}], total}"}
+
+  /api/transfer/export:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) export the chosen sections; dependencies and children are pulled in
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sections: {type: object, nullable: true, description: "{section: {keys?: [..]}}; null = every section"}
+                since: {type: string, nullable: true, description: "ISO date: only records changed since (deletions included)"}
+                include_files: {type: boolean, default: false}
+      responses:
+        "200": {description: "{module, format, exported_at, since, sections{id: {schema, label, partial, records[]}}, pulled{section: [keys]}, files[blob ids]}"}
+
+  /api/transfer/files/{blob_id}:
+    get:
+      tags: [Meta]
+      summary: (every module with transfer) one of the module's own files as base64 (blobs of other modules → 404)
+      parameters:
+        - {name: blob_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{id, mime, sha256, meta, data_b64}"}
+
+  /api/transfer/files:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) store a file from an export before the import; returns the id map entry
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [id, data_b64], properties: {id: {type: string}, mime: {type: string}, meta: {type: object}, data_b64: {type: string}}}
+      responses:
+        "200": {description: "{old_id, new_id}"}
+
+  /api/transfer/import:
+    post:
+      tags: [Meta]
+      summary: (every module with transfer) preview (dry_run, default) or import a module export
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data: {type: object, description: "the module's block of the .hestia file"}
+                mode: {type: string, enum: [append, merge, replace], default: merge}
+                modes: {type: object, description: "per-section mode override"}
+                dry_run: {type: boolean, default: true}
+                sections: {type: object, nullable: true, description: "{section: {keys?: [..]}}; null = everything in the file"}
+                files_map: {type: object, description: "old blob id → new blob id from POST /api/transfer/files"}
+      responses:
+        "200": {description: "{module, dry_run, sections{id: {mode, added, updated, unchanged, skipped, deleted, problems, related, partial, items{added[], updated[], skipped[], deleted[], problems[]}}}, totals{}}"}
+
   /api/settings-store/values:
     get:
       tags: [Archive — Settings store]
@@ -7973,6 +8113,141 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hercules/activities:
+    get:
+      tags: [Hercules]
+      summary: "Outdoor activities of this week: intentions with progress, slots, done activities"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/propose:
+    post:
+      tags: [Hercules]
+      summary: "Intention {kind, times, place, minutes, week} → best slots from forecast and free time (nothing in calendar yet)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/log:
+    post:
+      tags: [Hercules]
+      summary: "Log a done activity {kind, date, minutes, km, note} (closes a planned slot that day)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/log/{id}:
+    delete:
+      tags: [Hercules]
+      summary: "Undo a logged activity"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/quick-run:
+    post:
+      tags: [Hercules]
+      summary: "Home quick action «Ho corso» {km?, date?} (DELETE = undo today)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/morning:
+    post:
+      tags: [Hercules]
+      summary: "Agenda job hercules.activity_morning: morning coach line through Hermes (at most once a day)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/sync-calendar:
+    post:
+      tags: [Hercules]
+      summary: "Finished gym sessions → calendar «Allenamenti» {days}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}:
+    delete:
+      tags: [Hercules]
+      summary: "Cancel an intention (future events removed)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/confirm:
+    post:
+      tags: [Hercules]
+      summary: "Confirm {slots?: numbers|ids|ISO times} → events in «Allenamenti» + «l'hai fatto?» agenda task"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots:
+    post:
+      tags: [Hercules]
+      summary: "Plan one more slot {start?} (default best today)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/keep:
+    post:
+      tags: [Hercules]
+      summary: "«Tengo» / «Non oggi» from the morning message (no change)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/done:
+    post:
+      tags: [Hercules]
+      summary: "Slot done {minutes?, km?}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/missed:
+    post:
+      tags: [Hercules]
+      summary: "Slot not done"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/moved:
+    post:
+      tags: [Hercules]
+      summary: "Slot moved {to?} (default best slot left this week)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
+  /api/hercules/activities/{plan_id}/slots/{slot_id}/ask:
+    post:
+      tags: [Hercules]
+      summary: "Agenda task: send «Hai fatto la corsa?» through Hermes"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: "OK"}
+
   /api/hercules/quick/templates:
     get:
       tags: [Hercules]
@@ -8042,6 +8317,15 @@ paths:
     post:
       tags: [Hercules]
       summary: "Agenda job: nudge through Hermes only when a goal is behind (off by default)"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
+  /api/hercules/signals/run:
+    post:
+      tags: [Hercules]
+      summary: "Agenda job hercules.signals: re-evaluate reflection signals (stall:<exercise>, deload, missed_streak, pr:<exercise>, week_goal) and weekly metrics (fitness.sessions, fitness.volume, fitness.energy), sync to Archive signals-store → {written, retracted, signals, metrics}"
       servers:
         - url: http://localhost:19019
       responses:
@@ -8261,7 +8545,7 @@ paths:
   /api/wardrobe/suggest:
     post:
       tags: [Wardrobe]
-      summary: "«Cosa mi metto» {occasion, temp_c, rain, date, styles, count} → items[{outfit_id?, name, pieces, score, reasons}]"
+      summary: "«Cosa mi metto» {occasion, temp_c, rain, place, date, styles, count} (temp/rain empty → Hecate forecast) → items[{outfit_id?, name, pieces, score, reasons}]"
       servers:
         - url: http://localhost:19017
       responses:
@@ -8430,12 +8714,24 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/wardrobe/signals/run:
+    post:
+      tags: [Wardrobe]
+      summary: "Agenda job wardrobe.signals (daily 17:30): reflection signals forgotten, laundry_backlog, to_repair + weekly metric wardrobe.worn (12 weeks) → Archive signals-store {written, retracted, signals, metrics, error?}"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
   /api/module/context:
     get:
       tags: [Wardrobe]
-      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract)"
+      summary: "Assistant context {module, domain, updated_at, text} within ?budget= chars (Wardrobe, Hercules, Plutus :19020: same contract). ?topic=<signal key> → the detail behind that reflection signal; unknown topic → the normal line"
       servers:
         - url: http://localhost:19017
+      parameters:
+        - {name: budget, in: query, schema: {type: integer, default: 400}}
+        - {name: topic, in: query, required: false, schema: {type: string}, description: "Signal key (e.g. budget_pace:ristoranti, unusual_week, forgotten)"}
       responses:
         "200": {description: OK}
 
@@ -8810,6 +9106,15 @@ paths:
     post:
       tags: [Plutus]
       summary: "Agenda job plutus.review (1st of the month, off by default; {force: true} overrides): last month vs budget and month before {sent, text?, review?, why?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
+  /api/finance/signals/run:
+    post:
+      tags: [Plutus]
+      summary: "Agenda job plutus.signals (daily 17:30): reflection signals budget_pace:<cat>|month, unusual_week, new_subscription:<id>, to_review + weekly metrics finance.spent, finance.spent.<category> (12 weeks) → Archive signals-store {written, retracted, signals, metrics, error?}"
       servers:
         - url: http://localhost:19020
       responses:
@@ -9600,6 +9905,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/selfcare/signals/run:
+    post:
+      tags: [Hygieia]
+      summary: "Agenda job hygieia.signals: re-evaluate reflection signals (adherence_drop, goal:<routine>, streak:<routine>) and weekly metrics (selfcare.adherence, selfcare.journal.<area>.<metric>), sync to Archive signals-store → {written, retracted, signals, metrics}"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
   /api/selfcare-store/records:
     put:
       tags: [Archive — Self care store]
@@ -10202,8 +10516,9 @@ paths:
         - url: http://localhost:19009
       parameters:
         - {name: limit, in: query, schema: {type: integer, default: 10, maximum: 50}}
+        - {name: track, in: query, schema: {type: string, enum: [vita, sistema]}, description: "one track only (both when omitted)"}
       responses:
-        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
+        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, track (vita|sistema), life{signals[], links[], topics[], details{}, series} (vita), threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
 
   /api/athena/think:
     post:
@@ -10212,17 +10527,55 @@ paths:
       description: >
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
+        track=vita runs the life reflection instead (signals → links → details → observations for the recap).
       servers:
         - url: http://localhost:19009
+      parameters:
+        - {name: track, in: query, schema: {type: string, enum: [sistema, vita], default: sistema}}
       responses:
-        "200": {description: "{status: started, trace_id} | {status: busy, detail}"}
+        "200": {description: "{status: started, trace_id, track} | {status: busy, detail}"}
+        "422": {description: "unknown track"}
+
+  /api/athena/signals:
+    get:
+      tags: [Athena]
+      summary: What the life reflection reads (page Segnali, MCP tool athena_signals)
+      description: >
+        Active module signals (Archive signals-store, worst first), weekly series of the last `weeks` weeks, the
+        links found between areas (Pearson, closed weeks) and the observations of the last 14 days.
+        SPEC docs/work/2026-10-20-riflessione-a-livelli.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: domain, in: query, schema: {type: string}, description: "one area (fitness, selfcare, finance, wardrobe…)"}
+        - {name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}
+        - {name: weeks, in: query, schema: {type: integer, default: 12, minimum: 4, maximum: 52}}
+      responses:
+        "200": {description: "{status, signals: [{module, domain, key, kind, severity, text, metrics, period, page, topic, expires_at, updated_at}], series: {<name>: {label, module, domain, values{YYYY-Www: n}}}, links: [{key, a, b, a_label, b_label, a_domain, b_domain, lag, r, weeks}], observations: [{id, day, title, text, domains[], topic_key, link, page, module, score, at}]}"}
+        "503": {description: "signals store unreachable"}
+
+  /athena/api/module/recap:
+    get:
+      tags: [Athena]
+      summary: Athena's piece of the daily recap («Da tenere d'occhio») — real path /api/module/recap
+      description: >
+        Recap contract (docs/work/2026-10-20-recap-giornaliero §3.2), advertised as capability recap_endpoint.
+        The life observations stored that day; deterministic, no model call. Observations reach the user only here.
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: day, in: query, schema: {type: string, format: date}, description: "default today (local)"}
+        - {name: next, in: query, schema: {type: string, format: date}, description: "unused by Athena"}
+      responses:
+        "200": {description: "{module: athena, title: Da tenere d'occhio, icon: eye, emoji, order: 900, done: [{text, tone}]} | {..., empty: true}"}
 
   /athena/api/ui/manifest:
     get:
       tags: [Athena]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/athena/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130),
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130,
+        tracks Vita/Sistema), page `segnali` (athena-signals, order 131),
         widget `ultimo` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
       servers:
         - url: http://localhost:19009
@@ -10489,3 +10842,86 @@ paths:
       responses:
         "200":
           description: "{public_url, detected}"
+
+  /api/webui/transfer/modules:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Modules with the transfer capability (Hub registry)
+      responses:
+        "200": {description: "{modules[{module, settings}]}"}
+        "503": {description: "Hub unreachable"}
+
+  /api/webui/transfer/{module}/describe:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Forward to the module's /api/transfer/describe (only modules with the capability, else 404)
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "see /api/transfer/describe"}
+
+  /api/webui/transfer/{module}/files/{id}:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Forward to the module's /api/transfer/files/{id}
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "see /api/transfer/files/{blob_id}"}
+
+  /api/webui/transfer/{module}/{op}:
+    servers:
+      - url: http://localhost:19015
+    post:
+      tags: [WebUI]
+      summary: Forward items · export · import · files (upload) to the module's /api/transfer/{op}
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: op, in: path, required: true, schema: {type: string, enum: [items, export, import, files]}}
+      responses:
+        "200": {description: "the module's answer, status kept"}
+
+  /api/webui/transfer/restore-points:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: Restore points saved before imports (Archive blobs of webui, newest webui.transfer.restore_points kept)
+      responses:
+        "200": {description: "{items[{id, created_at, size, label, modules}], keep}"}
+    post:
+      tags: [WebUI]
+      summary: Save a restore point (gzip in Archive) and prune the oldest
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, required: [file], properties: {label: {type: string}, modules: {type: array, items: {type: string}}, file: {type: object, description: ".hestia JSON"}}}
+      responses:
+        "200": {description: "{id}"}
+
+  /api/webui/transfer/restore-points/{id}:
+    servers:
+      - url: http://localhost:19015
+    get:
+      tags: [WebUI]
+      summary: The restore point as .hestia JSON (imported with «Sostituisci»)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: ".hestia JSON"}
+        "404": {description: "not a restore point"}
+    delete:
+      tags: [WebUI]
+      summary: Delete a restore point
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "deleted"}
+        "404": {description: "not a restore point"}

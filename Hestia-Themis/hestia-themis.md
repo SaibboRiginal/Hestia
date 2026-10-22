@@ -31,6 +31,11 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 | Preset | named bundle of values for one group (e.g. Economico / Qualità); editing any value → group shows `custom` |
 | Proposal | assistant suggestion, pending until the user approves/rejects; expires after 24 h (closed lazily, no timers) |
 
+Personal settings (owner Themis, group «Personali»): `themis.personal.week_start`, `themis.personal.currency`,
+`themis.personal.places` (list of `{id, name, address, kind home|work|other, lat?, lon?}`, editor «Luoghi», one
+Casa; options resolved by Hecate). `options_source` may name another module: `"<module>:/path"` is fetched through
+Hub from that module (e.g. `hecate:/api/gateway/weather/places`).
+
 ## Flows
 
 - **Module start**: `SettingsClient.start()` → `POST /api/settings/register` (definitions, presets, effective)
@@ -80,6 +85,14 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 
 MCP tools (Hestia-MCP, domains `system`, `settings`): `settings_search`, `settings_get`, `settings_propose`,
 `settings_undo`. There is deliberately **no** approve tool: only the user answers.
+
+## Export and import of settings (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Themis owns the values, so it exports every module's settings (`app/core/transfer.py`): one section per module with
+settings (id = module name; `themis` = personal settings), records `<key>|<scope>|<scope_id>`. Layers system,
+profile and client travel; session copies never. On import each value is validated against this Hestia's schema
+(unknown key or bad value → reported problem, skipped) and written with history actor `import`; «Sostituisci»
+resets the ticked keys that are only here. Hub capability `transfer.settings: true`.
 
 ## Configuration (infrastructure only)
 

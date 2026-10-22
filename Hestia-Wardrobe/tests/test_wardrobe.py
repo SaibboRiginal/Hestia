@@ -311,3 +311,147 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
     assert wd._local_day("2026-10-18T22:20:00+00:00") == "2026-10-19"
     assert wd._local_day("2026-10-18T12:00:00+00:00") == "2026-10-18"
     assert wd._local_day("2026-10-18") == "2026-10-18"
+
+
+# ── weather (forecast from Hecate) ───────────────────────────────────────────
+def _with_forecast(w, max_c=6, rain_prob=80):
+    calls = []
+    inner = w.hub.call
+
+    def call(service, method, path, *, body=None, query=None, timeout=8):
+        if service == "hecate":
+            calls.append(query)
+            days = [{"date": query["date_from"], "min_c": max_c - 6, "max_c": max_c, "rain_prob": rain_prob,
+                     "rain_mm": 3, "condition": "pioggia", "icon": "rain"}]
+            return 200, {"status": "ok", "place": {"label": "Casa · Milano"}, "days": days}
+        return inner(service, method, path, body=body, query=query, timeout=timeout)
+    w.hub.call = call
+    return calls
+
+
+@pytest.mark.unit
+def test_suggest_uses_the_forecast_when_nothing_typed(wd):
+    _basics(wd)
+    calls = _with_forecast(wd, max_c=6)
+    r = wd.suggest()
+    assert r["weather"]["source"] == "forecast" and r["weather"]["temp_c"] == 6 and r["weather"]["rain"] is True
+    assert r["temp_c"] == 6 and r["rain"] is True and calls
+    typed = wd.suggest(temp_c=25, rain=False)
+    assert typed["temp_c"] == 25 and typed["rain"] is False and "weather" not in typed
+    assert len(calls) == 1                     # typed values: no forecast asked
+
+
+@pytest.mark.unit
+def test_suggest_without_forecast_behaves_as_before(wd):
+    _basics(wd)
+    r = wd.suggest()                           # FakeHub answers no forecast for hecate
+    assert "weather" not in r and r["rain"] is False
+
+
+@pytest.mark.unit
+def test_packing_takes_the_trip_forecast(wd):
+    _basics(wd)
+    calls = _with_forecast(wd, max_c=4)
+    d0 = wd.today() + timedelta(days=3)
+    c = wd.packing(date_from=d0.isoformat(), date_to=(d0 + timedelta(days=2)).isoformat(), place="Roma")
+    assert calls[-1]["place"] == "Roma" and calls[-1]["date_to"] == (d0 + timedelta(days=2)).isoformat()
+    assert c["trip"]["weather"]["temp_c"] == 4
+
+
+# ── reflection signals (hestia_common.signals_client) ───────────────────────
+def _age(w, piece_id, days):
+    """Pretend a piece was last changed ``days`` ago (laundry «da tanto» reads the piece's updated_at)."""
+    row = w.store.rows[("piece", piece_id)]
+    row["data"] = {**row["data"], "updated_at": (w.today() - timedelta(days=days)).isoformat() + "T08:00:00+00:00"}
+
+
+@pytest.mark.unit
+def test_signals_forgotten_laundry_repair_and_worn_metric(wd):
+    tee, jeans, sneak, coat = _basics(wd)
+    wd.save_piece({"last_worn_manual": (wd.today() - timedelta(days=90)).isoformat()}, jeans["id"], partial=True)
+    wd.mark_worn({"piece_ids": [tee["id"], sneak["id"]]})
+    wd.mark_worn({"piece_ids": [tee["id"]], "date": (wd.today() - timedelta(days=7)).isoformat()})
+    socks = [wd.save_piece({"name": f"Felpa {i}", "category": "tshirt", "status": "laundry"}) for i in range(3)]
+    for p in socks:
+        _age(wd, p["id"], 10)
+    wd.save_piece({"condition": "to_repair"}, coat["id"], partial=True)
+    sigs, mets = wd.signals()
+    by = {s["key"]: s for s in sigs}
+    assert set(by) == {"forgotten", "laundry_backlog", "to_repair"}
+    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "statistiche"
+    assert by["laundry_backlog"]["severity"] == "attenzione" and by["laundry_backlog"]["metrics"]["count"] == 3
+    assert by["to_repair"]["metrics"]["count"] == 1
+    assert all(s["text"].startswith("Guardaroba") and "Wardrobe" not in s["text"] for s in sigs)
+    assert len(mets) == 12 and {m["name"] for m in mets} == {"wardrobe.worn"} and mets[-1]["label"] == "Capi indossati"
+    assert mets[-1]["value"] == 1 and mets[-2]["value"] == 1 and sum(m["value"] for m in mets) == 2
+
+
+@pytest.mark.unit
+def test_signals_quiet_without_marks_or_backlog(wd):
+    _basics(wd)
+    wd.save_piece({"name": "Felpa", "category": "tshirt", "status": "laundry"})     # fresh in laundry: fine
+    sigs, mets = wd.signals()
+    assert sigs == [] and len(mets) == 12 and all(m["value"] == 0 for m in mets)
+
+
+@pytest.mark.unit
+def test_context_topic_detail_and_unknown(wd):
+    tee, jeans, *_ = _basics(wd)
+    wd.save_piece({"last_worn_manual": (wd.today() - timedelta(days=90)).isoformat()}, jeans["id"], partial=True)
+    normal = wd.context()
+    detail = wd.context(topic="forgotten")
+    assert set(detail) == {"module", "domain", "updated_at", "text"}
+    assert "Jeans blu" in detail["text"] and "60+" in detail["text"]
+    assert wd.context(topic="boh")["text"] == normal["text"]
+    assert len(wd.context(budget=30, topic="forgotten")["text"]) <= 30
+
+
+class _QuietSignals:
+    """Stands in for the Signals publisher in API tests: counts ``changed()``, never touches the network."""
+
+    def __init__(self):
+        self.changes = 0
+
+    def changed(self):
+        self.changes += 1
+
+
+@pytest.fixture
+def api(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app import main
+    hub = FakeHub()
+    store = Store(hub, min_refresh_seconds=0)
+    w = Wardrobe(store, hub, lambda key, default=None: SETTINGS.get(key, default), tz="Europe/Rome")
+    w.ensure_vocabularies()
+    monkeypatch.setattr(main, "hub", hub)
+    monkeypatch.setattr(main, "store", store)
+    monkeypatch.setattr(main, "wardrobe", w)
+    monkeypatch.setattr(main, "signals", _QuietSignals())
+    return TestClient(main.app), main, w
+
+
+@pytest.mark.api
+def test_api_writes_ask_signals_and_run_syncs(api, monkeypatch):
+    c, main, w = api
+    tee, jeans, *_ = _basics(w)
+    assert c.post("/api/wardrobe/wears", json={"piece_ids": [tee["id"]]}).status_code == 200
+    c.patch(f"/api/wardrobe/pieces/{jeans['id']}", json={"status": "to_repair"})
+    assert main.signals.changes == 2
+    assert "Jeans blu" in c.get("/api/module/context", params={"topic": "to_repair"}).json()["text"]
+    assert c.get("/api/module/context", params={"topic": "x"}).json()["text"].startswith("Guardaroba: ")
+    from hestia_common.signals_client import Signals
+    calls = []
+
+    def fake_call(self, method, path, *, body=None, query=None, timeout=10):
+        calls.append((method, body))
+        return {"rows": []} if method == "GET" else {"applied": []}
+    monkeypatch.setattr(Signals, "_call", fake_call)
+    monkeypatch.setattr(main, "signals", Signals("wardrobe", "wardrobe", evaluate=w.signals))
+    out = c.post("/api/wardrobe/signals/run").json()
+    assert out["signals"] == 1 and out["metrics"] == 12 and out["written"] == 13
+    put = next(b for m, b in calls if m == "PUT")
+    assert {r["id"] for r in put["rows"] if r["kind"] == "signal"} == {"wardrobe:to_repair"}
+    job = next(r for r in main._agenda_rules() if r["key"] == "wardrobe.signals")
+    assert "/api/wardrobe/signals/run" in str(job)

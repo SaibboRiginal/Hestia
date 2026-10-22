@@ -34,6 +34,7 @@ from schemas.events import (
 )
 from services import agenda as assistant_agenda
 from services import agenda_parse
+from services import agenda_weather
 from services import coach as weekly_coach
 from services import notification_worker, sync_worker
 from services import presence as assistant_presence
@@ -116,6 +117,13 @@ app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/chronos.js
+
+# ── export / import (hestia_common.transfer): the user's own agenda decisions ────────────────────────────
+from hestia_common.transfer import Transfer
+from services.agenda_transfer import AgendaSection
+
+transfer = Transfer("chronos", sections=[AgendaSection()])
+app.include_router(transfer.router())
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools
@@ -605,7 +613,7 @@ def on_startup() -> None:
         logger=logger,
     )
 
-    register_on_hub(hub_api_url, service_base_url, extra_capabilities=ui.capabilities(service_base_url))
+    register_on_hub(hub_api_url, service_base_url, extra_capabilities={**ui.capabilities(service_base_url), **transfer.capabilities()})
     # Periodically re-register with Hub so a Hub restart doesn't lose this service.
 
     def _hub_keepalive():
@@ -617,7 +625,7 @@ def on_startup() -> None:
                     service_base_url,
                     max_attempts=1,
                     quiet_success=True,
-                    extra_capabilities=ui.capabilities(service_base_url),
+                    extra_capabilities={**ui.capabilities(service_base_url), **transfer.capabilities()},
                 )
             except Exception as error:
                 logger.warning(
@@ -937,6 +945,15 @@ def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = N
     (WebUI plugin «Agenda di Hestia») reads its occurrences here."""
     return agenda_view(days=days, owner=owner, type=type, past_hours=past_hours, start=start, end=end,
                        include_done=include_done)
+
+
+@app.post("/api/agenda/weather")
+def agenda_weather_view(body: dict) -> dict:
+    """Weather for the calendar page: Casa per day, located occurrences (``located: [{key, place, at}]``) and
+    Marko's own located calendar events, next 14 days only (``services/agenda_weather.py``)."""
+    b = body or {}
+    located = b.get("located") if isinstance(b.get("located"), list) else []
+    return agenda_weather.build(_route_hecate, str(b.get("start") or ""), str(b.get("end") or ""), located)
 
 
 @app.get("/api/agenda/items")

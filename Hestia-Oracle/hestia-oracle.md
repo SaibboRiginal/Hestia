@@ -449,6 +449,13 @@ gives the classifier/memory calls their own slot so they stop evicting the chat 
 num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa --cache-reuse 256
 --port 8080` (+ `-md draft.gguf` for speculative decoding); vLLM: `vllm serve <model> --enable-prefix-caching`.
 
+## Export and import of memories (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+One section `memorie` (`core/services/memory_transfer.py`): active long-term memories (preferences, facts, skills,
+commitments) — never `conversational_history`, chats or sessions (Marko 2026-10-20). Archive ids differ between two
+Hestia, so a memory is matched by class + normalized fact; imported ones are marked `extra_data.imported`.
+«Sostituisci» deactivates the memories that are only here. Settings travel through Themis.
+
 ## Claude Code / Codex CLIs in the image
 
 Claude Code CLI is installed by default (`ORACLE_INSTALL_CLAUDE_CODE=0` for a slimmer image) and used only when

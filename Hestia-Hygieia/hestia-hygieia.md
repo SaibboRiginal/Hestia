@@ -49,8 +49,34 @@ with something already done or due today) · `paused`. A target routine is behin
   `routine_get`, `routine_create`, `routine_edit` (add / remove / step cadence / pause N days / routine cadence /
   status / reminder / favorite, always with a reason), `undo_routine`, `journal_add`,
   `stats`, `timeline`, `period`, `check`, `shopping` (all prefixed `selfcare_`).
-- `GET /api/module/context?budget=`: short caveman lines (left today, goals behind, alerts).
+- `GET /api/module/context?budget=&topic=`: short caveman lines (left today, goals behind, alerts). With
+  `topic=<signal key>` the text explains that signal (`adherence_drop` → this week per routine done/needed, skipped,
+  the routines behind and the 4 weeks before; `goal:<routine>` / `streak:<routine>` → hint, last done, streak,
+  adherence and the last 4 periods); an unknown topic answers the normal line. Same shape, cut to `budget`.
 - Every step change keeps a version; `POST /routines/{id}/undo` goes back.
+
+## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
+
+Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hygieia`,
+domain `selfcare`); texts speak of «Cura di sé» things, never the module name. Expiry / restock alerts are reminders,
+not facts about the user: they are not signals.
+
+| Key | Kind · severity | When | Page |
+|---|---|---|---|
+| `adherence_drop` | trend · attenzione | weekly adherence this week ≥ 20 points under the mean of the previous 4 weeks | `statistiche` |
+| `goal:<routine_id>` | goal · attenzione | a target routine `behind` its goal and `due` today (planner `goal_state`) | `routine/<id>` |
+| `streak:<routine_id>` | milestone · info | `routine_stats` streak reaches 4, 8, 12, 26 or 52 periods | `routine/<id>` |
+
+Weekly adherence = Σ min(done, needed) / Σ needed over active routines with a goal (daily = days, fixed days =
+matching days, target = times prorated on the days of the week; the open week counts until today; a routine counts
+from its first version or first log). Weekly metrics (last 12 ISO weeks): `selfcare.adherence` «Routine rispettate
+%» (weeks with something to meet) and `selfcare.journal.<area>.<metric>` «Diario <Area> · <Metrica>» (average of the
+journal scores, only weeks with entries; area in the name because metrics like `irritazione` exist in several areas).
+
+When: `signals.changed()` (debounced re-evaluation) after routine done / undone / skip, quick routine and its undo,
+log delete, journal add / delete, the MCP `log` / `journal_add` tools and once after warm-up; agenda job
+`hygieia.signals` (daily 17:30, editable in the agenda) → `POST /api/selfcare/signals/run` →
+`{written, retracted, signals, metrics}`.
 
 ## Reminders and alerts (few, never piling up)
 
@@ -91,7 +117,13 @@ there and used only when wanted. Week start and currency are the personal settin
 
 See `Hestia-Swagger/swagger.yml` tag *Hygieia*. Groups: meta/options, products (+status, level, repurchase,
 use), routines (+undo, plan, done, skip, snooze), today, logs, journal, stats, timeline, period, alerts,
-shopping, check, summary, overview, export, quick (Home chips), reminders/run, alerts/run.
+shopping, check, summary, overview, export, quick (Home chips), reminders/run, alerts/run, signals/run.
+
+## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Sections over `selfcare-store`: `prodotti` (product + its history events) · `routine` (routine + versions) ·
+`registro` (log) · `diario` (journal) · `liste` (option). A routine pulls its products and options. Reminder chain
+state and alerts are never exported. Settings travel through Themis.
 
 ## Configuration (infrastructure only)
 
@@ -99,7 +131,8 @@ shopping, check, summary, overview, export, quick (Home chips), reminders/run, a
 
 ## Tests
 
-`python -m pytest -q -m unit Hestia-Hygieia/tests` (fake Archive in memory, no network).
+`python -m pytest -q -m "unit or api" Hestia-Hygieia/tests` (fake Archive in memory, no network; `test_signals.py`
+mocks the signals transport).
 
 
 ## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.2)

@@ -15,7 +15,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Scout | 19006 | hestia_scout | domain: real-estate listings from emails |
 | Chronos | 19007 | hestia_chronos | calendars + **assistant agenda** (Hestia's own calendar) |
 | Argus | 19008 | hestia_argus | monitoring: health, logs, alerts, repair rechecks, Forge proposals |
-| Athena | 19009 | hestia_athena | idle cognition: observe → think → propose (improvements to Forge) |
+| Athena | 19009 | hestia_athena | two tracks: Sistema (idle: observe → think → propose, improvements to Forge) and Vita (module signals → links between areas → observations for the evening recap; `signals_client`) |
 | Hephaestus | 19010 | hestia_hephaestus | remediation runbooks + **Forge** (self-development) |
 | Dummy | 19011 | hestia_dummy | template/test service (ignore) |
 | Iris | 19012 | hestia_iris | email domain logic (search/send/threads) via Hecate + **mail dispatcher** to module subscriptions |
@@ -94,6 +94,13 @@ A domain module that knows what is due (workouts, routines, budget review) is a 
 `hestia_common.coach.CoachRouter` (needs/fit/placed/review) + `CoachClient` (done/skipped/changed, pushed to Chronos).
 Never schedule the user's own week inside a module: Chronos plans it (`Hestia-Chronos/app/services/coach*.py`,
 endpoints `/api/agenda/coach/*`, page «La tua settimana»). Need fields are generic; Chronos must not learn domain words.
+Tag `outdoor` on a need = the planner avoids rainy/dark hours at Casa (Hecate forecast).
+
+### 5.2 Weather and places
+Weather lives only in Hecate (Open-Meteo): `/api/gateway/weather/*`, tools `weather_now`/`weather_forecast`.
+Modules use `hestia_common.weather_client` through Hub; never call a weather API from a module. Places are the
+personal setting `themis.personal.places` (one Casa; empty place = Casa). Outdoor activities live in Hercules
+(`app/core/activities.py`): Hestia writes only to its own Google calendar «Allenamenti», never to Marko's events.
 
 ## 5a. Mail flow (push) — subscribe, never poll
 
@@ -113,6 +120,17 @@ A new tunable is a **setting**, not an env var: declare it with `hestia_common.s
 at runtime (`on_change`), `apply="restart"` ones are flagged until restart. Env keeps only secrets and
 infrastructure (URLs, ports, paths). The assistant only *proposes* changes (Themis → Hermes → user).
 Details: `Hestia-Themis/hestia-themis.md`.
+
+## 5c. Export and import — every module moves its own data
+
+`hestia_common.transfer`: a module lists its **sections** (`StoreSection` over its Archive store, or a `Section`
+subclass) in `Transfer("<module>", hub, sections=[...])`, includes `transfer.router()` (`/api/transfer/*`) and adds
+`transfer.capabilities()` to its Hub registration. Modes `append` · `merge` (default, newer wins) · `replace`;
+import is a dry run unless `dry_run=false`; dependencies and children travel with the chosen items; files are
+Archive blobs remapped on import. Themis exports the settings of every module (scopes system/profile/client, never
+session); Oracle only memories (no chats); Chronos only the user's agenda rules. Never export secrets, tokens,
+chats or sessions. File `.hestia` = gzip JSON, orchestrated by the WebUI page *Impostazioni → Esporta e importa*
+and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossier `docs/work/2026-10-20-import-export/`.
 
 ## 6. Clients
 
@@ -153,6 +171,9 @@ Details: `Hestia-Themis/hestia-themis.md`.
   keeps an in-memory mirror of its Archive rows must read `epoch` from store answers and reload when it changes
   (Hercules, Hygieia, Wardrobe, Plutus do). Archive answers 503 for the few seconds of the swap. Archive's
   `requirements.txt` must end with a newline (a missing one glued `cryptography` onto `requests`).
+- Open-Meteo is unreachable from the Claude cloud (403 at the proxy): weather tests use fake HTTP; a real check
+  needs Marko's stack. Hermes has no «resolve» endpoint: to close a live question answered elsewhere, ingest an
+  event with `payload.closes = <key>` (Wardrobe/Hercules pattern).
 - No Marko PC needed for a real run: `python tools/cloud_test.py all` starts the whole stack in a Claude cloud
   session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Banco di prova cloud».
 

@@ -47,9 +47,10 @@ the affected containers and rolls back automatically if the health check fails.
 | 🔔 **Proactive notifications** | Subscriptions ("tell me when…"), deduplicated alerts, reminders, focus briefs. |
 | 👁️ **Self-monitoring** | Argus watches health and logs, raises incidents and proposes fixes; Hephaestus runs guarded remediation. |
 | 🛠️ **Self-development (Forge)** | Natural-language change requests → isolated branch → coding engine (local, cloud or Claude Code) → tests → your approval → merge → restart → auto-rollback. |
-| 🧭 **Idle cognition** | Athena observes the system when you're not using it, scores ideas for relevance and proposes improvements. |
+| 🧭 **Idle cognition** | Athena observes the system when you're not using it, scores ideas for relevance and proposes improvements. Every evening it also reflects on your life in layers: each area (training, self care, spending, wardrobe) publishes short signals about its own data, Athena links the weeks across areas and adds what is worth watching to the daily recap. |
 | 🦉 **Continuous learning** | Metis turns your feedback into datasets (ChatML/Alpaca/ShareGPT) and orchestrates LoRA training. |
 | 🏠 **Domain modules** | Examples: Scout reads real-estate listing emails, tracks listings and alerts you on matches; Plutus «Spese» tracks expenses from PayPal mails and the monthly bank statement PDF (upload it or send it in chat), with budgets and subscriptions. New domains are new services. |
+| 📦 **Export and import** | Move what you configured and added from one Hestia to another, granularly: modules → sections → single items, as one `.hestia` file. Modes *Aggiungi / Unisci / Sostituisci*, a preview before anything is written, a restore point before every import. Never keys, tokens or passwords. WebUI *Impostazioni → Esporta e importa* or `tools/hestia_transfer.py`. |
 | 🌐 **Two clients** | Telegram bot (fail-closed allow-list) and a themable WebUI: chat, commands, documents, Google-like calendar, Forge "Sviluppo" page with live transcripts and diffs. |
 
 ## 🚀 Quick start
@@ -180,7 +181,7 @@ flowchart LR
 | [Scout](Hestia-Scout/hestia-scout.md) | 19006 | Domain module: real-estate listings from email |
 | [Chronos](Hestia-Chronos/hestia-chronos.md) | 19007 | Calendars and the assistant agenda |
 | [Argus](Hestia-Argus/hestia-argus.md) | 19008 | Health and log monitoring, alerts, repair rechecks |
-| [Athena](Hestia-Athena/hestia-athena.md) | 19009 | Idle cognition: observe, think, propose |
+| [Athena](Hestia-Athena/hestia-athena.md) | 19009 | Idle cognition (system) and layered life reflection: observe, think, propose |
 | [Hephaestus](Hestia-Hephaestus/hestia-hephaestus.md) | 19010 | Guarded remediation and **Forge** (self-development) |
 | [Dummy](Hestia-Dummy/hestia-dummy.md) | 19011 | Integration-test target |
 | [Iris](Hestia-Iris/hestia-iris.md) | 19012 | Email domain logic |

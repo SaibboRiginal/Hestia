@@ -3,7 +3,7 @@ export const API = '/api/athena';
 
 export const KINDS: Record<string, string> = {
   advisory: 'consiglio', remediation: 'riparazione', notification: 'avviso', maintenance: 'manutenzione',
-  improvement: 'miglioramento', setting: 'impostazione',
+  improvement: 'miglioramento', setting: 'impostazione', observation: 'osservazione',
 };
 
 export const OUTCOMES: Record<string, { label: string; tone: string }> = {
@@ -12,6 +12,7 @@ export const OUTCOMES: Record<string, { label: string; tone: string }> = {
   forge_skipped: { label: 'Forge: saltata (limite o già proposta)', tone: 'warning' },
   setting_proposed: { label: 'proposta di impostazione', tone: 'success' },
   setting_skipped: { label: 'impostazione: saltata', tone: 'warning' },
+  observed: { label: 'nel recap della sera', tone: 'success' },
   failed: { label: 'invio non riuscito', tone: 'danger' },
   discarded: { label: 'scartata', tone: 'neutral' },
 };
@@ -48,3 +49,23 @@ export function secs(ms?: number): string {
 }
 
 export const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 100)}%`;
+
+/** Life areas in user words (never module names). */
+export const AREAS: Record<string, string> = {
+  fitness: 'Allenamento', selfcare: 'Cura di sé', finance: 'Spese', wardrobe: 'Guardaroba', real_estate: 'Case',
+  cognition: 'Hestia',
+};
+export const area = (d?: string) => (d && AREAS[d]) || d || '';
+
+export const SEVERITY: Record<string, { label: string; tone: string; icon: string }> = {
+  alta: { label: 'importante', tone: 'danger', icon: 'alert' },
+  attenzione: { label: 'da guardare', tone: 'warning', icon: 'eye' },
+  info: { label: 'informazione', tone: 'neutral', icon: 'info' },
+};
+
+/** «Allenamenti → Routine rispettate % (stessa settimana): salgono insieme, r +0,72 su 9 settimane». */
+export function linkText(l: any): string {
+  const when = l.lag ? 'la settimana dopo' : 'stessa settimana';
+  const dir = l.r > 0 ? 'salgono insieme' : 'uno sale, l\'altro scende';
+  return `${l.a_label} → ${l.b_label} (${when}): ${dir}, r ${l.r > 0 ? '+' : ''}${Number(l.r).toFixed(2).replace('.', ',')} su ${l.weeks} settimane`;
+}
