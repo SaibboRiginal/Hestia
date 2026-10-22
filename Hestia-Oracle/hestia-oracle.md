@@ -122,6 +122,12 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - The analyst LLM reasons over the document and the user's instruction together, then returns a streamed NDJSON reply (same protocol as `/api/chat`).
 - Document turns are persisted in chat history so the session remains coherent.
 
+### Audio in documents → Echo (`core/document/transcription.py`, 2026-10-20)
+Oracle has no speech engine (WhisperX removed, dossier `docs/work/2026-10-20-modulo-voce`). When an audio/video
+file needs a transcript (archiving, or a model that does not take audio natively) Oracle asks Echo through the Hub
+(`hestia_common.voice_client`, use `oracle.documenti`, chain `ascolto-preciso`, declared in `voice_usecases`).
+Echo down or nothing heard → `[🔄]` and the file is analysed/archived without transcript.
+
 ### Chat attachment hand-off to modules (`core/document/handoff.py`, 2026-10-19)
 Generic: Oracle knows no domain. A module declares in its Hub capabilities
 `attachment_handlers: [{mime: [...], match: [...], min_hits (default 2), path, label}]` (Plutus: bank statement PDFs).
@@ -316,7 +322,7 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
 | Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
 | Conferme | `oracle.approval.enabled` (on), `.ttl` (600 s), `.bulk_min_count` (2), `.methods` (DELETE, PUT, PATCH), `.commands` ([]) — the assistant may only read them |
-| Documenti | `oracle.documents.max_archive_mb` (10), `.search_threshold` (1.2), `.whisper_model` (base, reloaded on change), `.vision_models`, `.audio_models` (prefix lists) |
+| Documenti | `oracle.documents.max_archive_mb` (10), `.search_threshold` (1.2), `.vision_models`, `.audio_models` (prefix lists) |
 | Esperimenti | `oracle.prompt_ab.*` (above) |
 | Diagnostica | `oracle.cache.schemas_ttl` (30 s), `.tool_registry_ttl` (120 s), `oracle.tasks.max_kept` (500), `oracle.log.level` |
 

@@ -1,0 +1,9 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.9.2
+requests==2.32.3
+# Local engines (models download on first use into ECHO_MODELS_DIR, a volume): listening and two voices.
+# Each one is optional at runtime: a missing engine only marks its provider «non installato» and the chain moves on.
+faster-whisper==1.2.1
+piper-tts==1.8.0
+kokoro-onnx==0.6.1

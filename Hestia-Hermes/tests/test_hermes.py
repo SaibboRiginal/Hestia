@@ -147,6 +147,12 @@ class TestHermesService:
         assert kwargs["audience"] == "origin"
         assert kwargs["origin"] == {"client": "telegram", "session_id": "42"}
 
+    def test_voice_flag_reaches_publish(self, hermes_service):
+        hermes_service.archive.get_active_subscriptions.return_value = [
+            {"id": "sub1", "filters": {}, "channels": [{"type": "all", "target": "owner"}]}]
+        hermes_service.process_event("service.action_required", "system", "e1", {"_message": "Ciao", "_voice": True})
+        assert hermes_service.notifications.publish.call_args.kwargs["voice"] is True
+
     def test_closes_event_closes_without_new_notification(self, hermes_service):
         hermes_service.notifications.close.return_value = 1
         result = hermes_service.process_event("settings.proposal_closed", "settings", "p1", {
@@ -239,6 +245,43 @@ class TestNotificationCenter:
             status, body = center.answer("n1", "approve", "webui")
         assert status == 200 and body["answer"]["outcome_text"] == "Applicata"
         assert route.call_args.args[:3] == ("themis", "/p", {"by": "webui"})
+
+    def test_voice_follows_the_written_notification(self, center):
+        center.voice = MagicMock()
+        center.voice.speak.return_value = {"audio": b"OGG", "blob_id": "b1", "duration_s": 2.5,
+                                           "mime_type": "audio/ogg"}
+        center.archive.get_outbound_event.return_value = {"outbound_event_id": "n1", "lifecycle_state": "delivered"}
+        center.archive.patch_outbound_event.return_value = (200, {"outbound_event_id": "n1", "payload": {}})
+        with patch.object(center, "_broadcast") as broadcast:
+            center._add_voice("n1", {"title": "Allenamento", "message": "Oggi tocca a te"})
+        assert center.voice.speak.call_args.args[0] == "Allenamento. Oggi tocca a te"
+        assert center.voice.speak.call_args.kwargs["keep"] == {"kind": "notification", "notification_id": "n1"}
+        assert center.archive.patch_outbound_event.call_args.kwargs["payload_merge"]["voice"]["blob_id"] == "b1"
+        change = broadcast.call_args.args[1]["voice"]
+        assert change["blob_id"] == "b1" and change["audio_b64"] == "T0dH"
+
+    def test_voice_failure_keeps_text_only(self, center):
+        center.voice = MagicMock()
+        center.voice.speak.return_value = None
+        with patch.object(center, "_broadcast") as broadcast:
+            center._add_voice("n1", {"title": "", "message": "Ciao"})
+        broadcast.assert_not_called()
+        center.archive.patch_outbound_event.assert_not_called()
+
+    def test_voice_of_superseded_notification_is_dropped(self, center):
+        center.voice = MagicMock()
+        center.voice.speak.return_value = {"audio": b"x", "blob_id": "b1"}
+        center.archive.get_outbound_event.return_value = {"outbound_event_id": "n1", "lifecycle_state": "superseded"}
+        with patch.object(center, "_broadcast") as broadcast:
+            center._add_voice("n1", {"message": "Ciao"})
+        center.voice.forget.assert_called_once_with(notification_id="n1")
+        broadcast.assert_not_called()
+
+    def test_view_exposes_voice_without_bytes(self):
+        from modules.notifications import view
+        v = view({"outbound_event_id": "n1", "payload": {"notification": {}, "voice": {
+            "blob_id": "b1", "duration_s": 3, "mime_type": "audio/ogg"}}})
+        assert v["voice"] == {"blob_id": "b1", "duration_s": 3}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

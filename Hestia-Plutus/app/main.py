@@ -34,8 +34,8 @@ from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.transfer import StoreSection, Transfer
-from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
 
@@ -76,6 +76,7 @@ settings.declare([
             help="Il primo del mese: com'è andato il mese passato rispetto al budget e al mese prima."),
     *reminder_settings("plutus", help="Ti ricordo di caricare l'estratto conto (PDF dei movimenti) se il mese "
                                       "passato non c'è ancora. Uno alla volta."),
+    voice_setting("plutus", False),
     setting("plutus.mail.senders", "Mittenti PayPal", "list", list(DEFAULT_PAYPAL_SENDERS), group="Email", order=0,
             help="Indirizzi o domini delle email di pagamento: Iris le passa a Spese appena arrivano."),
     setting("plutus.coach.review_threshold", "Movimenti da controllare per proporre un ripasso", "int", 10,
@@ -512,6 +513,7 @@ def quick_expense_undo(id: str, date: str = ""):
 def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page_: str = "panoramica") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="plutus", domain=DOMAIN, key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
+        voice=bool(settings.get("plutus.notifiche.voce", False)),
         actions=actions, page=page_, level=level), timeout=8)
 
 

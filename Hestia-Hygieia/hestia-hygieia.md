@@ -111,7 +111,7 @@ A UI change needs `up-all.bat --build hygieia`.
 
 default_pao_months (12), reminder.enabled (false) and reminder.max_per_week (2) from
 `hestia_common.reminders.reminder_settings` (same two settings in every module; each routine still chooses its own
-reminder), alerts.enabled (true), alerts.expiry_days (30), alerts.restock_days (14). The diary has no switch: it is
+reminder), notifiche.voce (true: notifications also as voice, `voice_setting`), alerts.enabled (true), alerts.expiry_days (30), alerts.restock_days (14). The diary has no switch: it is
 there and used only when wanted. Week start and currency are the personal settings `themis.personal.week_start` /
 `themis.personal.currency` (owner Themis, read with `follow_personal()`), never a module copy.
 

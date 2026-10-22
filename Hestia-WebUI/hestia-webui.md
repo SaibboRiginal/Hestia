@@ -82,6 +82,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
+| POST | `/api/webui/voice/transcribe` · `speak` | Voice → Echo (`VoiceController`): voice message of the chat (use `webui.vocale`, recording kept with the message `web:<session>:<msg>`) · «Ascolta» under a reply (`webui.ascolta`, mp3, kept with the reply) |
+| POST | `/api/webui/voice/listen` · `say` · `{listen\|say}/{sid}/{chunk\|text\|end}` | Live mode **Parla**: mic stream (partials) and answer spoken sentence by sentence (`webui.live.*`) |
+| GET | `/api/webui/voice/live` · `audio-for?ref_id=` · `audio/{id}` | Live settings (`silence_ms`) · kept audio of a message · one kept audio |
 | GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only). The rest of the agenda API moved with the page into Chronos's plugin (2026-10-19) |
 | GET | `/api/webui/notifications?filter&source&before&limit` · `counts` | Inbox (→ Hermes `/api/notifications`, `client=webui`); the Notifiche page itself is Hermes' plugin |
 | POST | `/api/webui/notifications/{id}/seen` · `seen-all` · `{id}/answer` | Global read state; answer (`{actionId}`, 409 = already handled elsewhere) |
@@ -121,6 +124,21 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   Abbonamenti, Importa, Statistiche, Categorie e regole; widgets *Spese del mese* / *Ultimi movimenti*; quick action
   *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Controlla email»). No WebUI code: both
   come from the Hub plugin catalog.
+
+### Voce (2026-10-20, dossier `docs/work/2026-10-20-modulo-voce`)
+
+- Chat composer: with an empty field the send button is a **microphone**. Touch: hold to record, release to send,
+  slide left to cancel. Mouse: click to record, then bin or send. The voice message appears at once as an audio
+  bubble (play, duration) with «Trascrivo…», then its transcript; the text goes to Hestia like a typed message
+  (`ChatService.sendVoice`, `services/voice.service.ts`).
+- **Ascolta** (volume icon) under every reply: Echo reads it (kept, a second play is not generated again).
+- **Parla** (header, waveform icon, `services/live-voice.service.ts`): live conversation by voice with the same chat.
+  The browser measures the mic level: speech start opens Echo's `listen` stream (chunks every 800 ms, partial text
+  shown), a pause of `echo.live.silence_ms` ends the turn; the answer, while it is written, goes to Echo's `say` stream
+  and the sentences play in order; speaking again (or «Interrompi») stops the voice and the answer. No external live
+  service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando.
+- Hub registration declares `voice_usecases` (`webui.vocale`, `webui.ascolta`, `webui.live.ascolto`, `webui.live.voce`).
+- Icons `mic`, `mic-off`, `volume`, `waveform` in the shared icon set (`hx-icon` and the SDK's `hxk-icon`).
 
 ### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifiche`, `services/notifications.service.ts`)
 

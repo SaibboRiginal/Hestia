@@ -11,7 +11,7 @@ import requests
 from telebot import types
 
 from telegram_bot import core
-from telegram_bot.services import chat_queue
+from telegram_bot.services import chat_queue, voice_service
 from telegram_bot.services.reply_renderer import ReplyRenderer
 from telegram_bot.services.oauth_paste import complete_oauth_from_paste, match_oauth_callback
 from telegram_bot.services.command_service import (
@@ -777,10 +777,18 @@ def handle_chat_message(message):
         return
     # ────────────────────────────────────────────────────────────────
 
+    run_chat_turn(message, chat_id, user_text, pending_flow=pending_flow)
+
+
+def run_chat_turn(message, chat_id, user_text: str, *, pending_flow: dict | None = None, status_msg=None,
+                  spoken: bool = False) -> None:
+    """One chat turn: Oracle streams the reply into ``status_msg`` (queued while unavailable). ``spoken``: the
+    text came from a voice note (live mode answers it by voice too)."""
     session_id = core.get_session(chat_id)
 
-    status_msg = core.bot.reply_to(
-        message, "⏳ <b>Inizializzazione richiesta...</b>", parse_mode="HTML")
+    if status_msg is None:
+        status_msg = core.bot.reply_to(
+            message, "⏳ <b>Inizializzazione richiesta...</b>", parse_mode="HTML")
 
     stop_typing = threading.Event()
 
@@ -799,17 +807,21 @@ def handle_chat_message(message):
             _run_notification_shortcut(
                 chat_id=chat_id,
                 session_id=session_id,
-                user_message=str(message.text or "").strip(),
+                user_message=str(user_text or "").strip(),
                 status_message_id=status_msg.message_id,
             )
             return
 
         result = ask_oracle(chat_id, session_id, user_text, status_msg.message_id)
+        try:
+            voice_service.after_reply(chat_id, result.renderer, spoken=spoken, reply_to=message.message_id)
+        except Exception as exc:              # the text reply is already there: voice is an addition
+            logger.warning("[🔄] event=voice_after_reply_failed chat_id=%s error=%s", chat_id, exc)
 
         # ── Feedback prompt (selective, rate-limited, snoozeable) ──────────
         _maybe_prompt_feedback(
             chat_id=chat_id,
-            message_text=str(message.text or "").strip(),
+            message_text=str(user_text or "").strip(),
             session_id=session_id,
         )
         send_oracle_questions(chat_id, session_id, result.signals, result.questions)
@@ -851,6 +863,43 @@ def _download_telegram_file(file_id: str) -> bytes:
 
 
 def handle_file_message(message):
+    if message.content_type in ("voice", "video_note") and is_authorized(message):
+        if handle_voice_note(message):
+            return
+    handle_file_as_document(message)
+
+
+def handle_voice_note(message) -> bool:
+    """A voice note is a chat message (SPEC modulo-voce §7.1): transcribe, show what was understood, then the
+    normal chat turn. False = could not listen: the caller falls back to the document path ``[🔄]``."""
+    chat_id = message.chat.id
+    if message.content_type == "voice":
+        file_id = message.voice.file_id
+        mime_type = (message.voice.mime_type or "audio/ogg").split(";")[0].strip().lower()
+    else:
+        file_id, mime_type = message.video_note.file_id, "video/mp4"
+    status_msg = core.bot.reply_to(message, "🎙️ <i>Ascolto…</i>", parse_mode="HTML")
+    try:
+        core.bot.send_chat_action(chat_id, "typing")
+        audio = _download_telegram_file(file_id)
+        text = voice_service.transcribe_note(message, audio, mime_type, core.get_session(chat_id))
+    except Exception as exc:
+        logger.warning("[🔄] event=voice_note_failed chat_id=%s error=%s fallback=document_path", chat_id, exc)
+        text = None
+    if not text:
+        logger.warning("[🔄] event=voice_note_not_heard chat_id=%s fallback=document_path", chat_id)
+        try:
+            core.bot.delete_message(chat_id, status_msg.message_id)
+        except Exception:
+            pass
+        return False
+    core.bot.edit_message_text(voice_service.heard_html(text), chat_id=chat_id, message_id=status_msg.message_id,
+                               parse_mode="HTML")
+    run_chat_turn(message, chat_id, text, spoken=True)
+    return True
+
+
+def handle_file_as_document(message):
     """Handle an incoming document or photo message by forwarding it to Oracle."""
     if not is_authorized(message):
         return

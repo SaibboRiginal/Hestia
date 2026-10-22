@@ -4,6 +4,7 @@ import { SignalRService } from './signalr.service';
 import { ChatMessage, ChatNotice, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
 import { NoticePrefsService } from './notice-prefs.service';
 import { ToastService } from '../ui';
+import { VoiceService } from './voice.service';
 
 /**
  * Chat state over the SignalR stream. Root instance = the Chat page ("main" channel);
@@ -41,7 +42,8 @@ export class ChatService {
     });
   }
 
-  async sendMessage(text: string, sessionId: string, mode = 'auto', model = 'generic', context?: string): Promise<void> {
+  async sendMessage(text: string, sessionId: string, mode = 'auto', model = 'generic', context?: string,
+                    userMessageId?: string): Promise<void> {
     this.signalR.claim(this.channel);
     this.isStreaming.set(true);
     this.thinkingBuffer = [];
@@ -52,13 +54,18 @@ export class ChatService {
     this.currentStreamingId.set(streamId);
     this.lastAssistantId = streamId;
 
-    const userMsg: ChatMessage = {
-      id: uid(),
-      role: 'user',
-      content: text,
-      timestamp: new Date()
-    };
-    this.messages.update(msgs => [...msgs, userMsg]);
+    if (userMessageId && this.messages().some(m => m.id === userMessageId)) {
+      // A voice message already on screen: its transcript becomes the text sent.
+      this.messages.update(msgs => msgs.map(m => m.id === userMessageId ? { ...m, content: text, transcribing: false } : m));
+    } else {
+      const userMsg: ChatMessage = {
+        id: uid(),
+        role: 'user',
+        content: text,
+        timestamp: new Date()
+      };
+      this.messages.update(msgs => [...msgs, userMsg]);
+    }
 
     const assistantMsg: ChatMessage = {
       id: streamId,
@@ -86,6 +93,29 @@ export class ChatService {
       this.currentStreamingId.set(null);
       this.isStreaming.set(false);
     }
+  }
+
+  /**
+   * A voice message (dossier modulo-voce §7.2): the audio bubble appears at once, the voice module transcribes it
+   * (recording kept with the message), then the text goes to Hestia exactly like a typed one.
+   */
+  async sendVoice(audio: Blob, mime: string, seconds: number, sessionId: string, mode = 'auto'): Promise<string | null> {
+    if (this.isStreaming()) return null;
+    const id = uid();
+    this.messages.update(msgs => [...msgs, { id, role: 'user', content: '', timestamp: new Date(), transcribing: true,
+                                             audio: { url: URL.createObjectURL(audio), seconds } }]);
+    const voice = this.injector.get(VoiceService);
+    let text = '';
+    try {
+      text = (await voice.transcribe(audio, mime, id)).text?.trim() || '';
+    } catch { text = ''; }
+    if (!text) {
+      this.messages.update(msgs => msgs.map(m => m.id === id
+        ? { ...m, transcribing: false, error: true, content: 'Non sono riuscita ad ascoltarlo: riprova o scrivilo.' } : m));
+      return null;
+    }
+    await this.sendMessage(text, sessionId, mode, 'generic', undefined, id);
+    return text;
   }
 
   /** Upload a file for analysis: POST /api/webui/chat/document, NDJSON streamed back. */

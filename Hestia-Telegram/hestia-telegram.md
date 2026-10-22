@@ -25,6 +25,17 @@ Telegram must:
 - Forwards to Oracle (`POST /api/chat`) with session-aware context.
 - Streams status and renders final Oracle reply.
 
+### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)
+- A **voice note** (or video note) is transcribed by Echo (use `telegram.vocale`, recording kept with the message
+  `tg:<chat>:<msg>`), shown as «🎙️ *testo*» and handled exactly like the same sentence typed (`run_chat_turn`).
+  Echo down or nothing heard → «Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?» (`[🔄]`).
+- Every reply gets **«🔊 Ascolta»** (`voice:play`): Echo reads it (use `telegram.risposta`, ogg/opus voice message,
+  kept with the reply so a second tap does not generate it again).
+- **`/live`** (session setting `voice_live`): voice notes are also answered by voice; **`/chat`** back to text only.
+  The written reply always stays.
+- Notifications sent also as voice: Hermes `update` with `voice.audio_b64` → voice message replying to the
+  notification; deleted together with it (superseded/retracted).
+
 ### Command Rendering (tools from Hestia-MCP)
 - Loads the command catalog from Hestia's one MCP server (`tools/list` as client `telegram`, through Hub) —
   `services/registry.py` with `hestia_common.mcp_client`; tool names with dots become `_` commands.
@@ -162,7 +173,7 @@ Telegram is event-driven and also exposes an internal control endpoint for Herme
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted; repeat chains: `repeat.text` shown in italics («↻ Saltato 2 volte»), `update superseded` → old message deleted (over 48 h: «↻ Sostituito»), button on a replaced one → «Sostituita da un promemoria più recente» |
+| `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted; repeat chains: `repeat.text` shown in italics («↻ Saltato 2 volte»), `update superseded` → old message deleted (over 48 h: «↻ Sostituito»), button on a replaced one → «Sostituita da un promemoria più recente»; `update` with `voice` → voice message replying to the notification |
 | `POST` | `/api/dispatch/send` | Legacy (no longer called by Hermes): dispatch payloads via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
 | `GET` | `/health` | Service health |
 | `GET` | `/api/settings/effective` | Themis: values Telegram is using now (`hestia_common.settings_client` contract) |

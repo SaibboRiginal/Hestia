@@ -17,6 +17,10 @@ export interface ChatMessage {
   icon?: string;
   /** The answer failed: drawn with an alert icon in the danger colour. */
   error?: boolean;
+  /** A voice message (dossier modulo-voce §7.2): local recording, shown as an audio bubble with its transcript. */
+  audio?: { url: string; seconds: number };
+  /** The voice message is being transcribed (the text arrives, then it is sent like a typed one). */
+  transcribing?: boolean;
 }
 
 /** Standard Oracle `notice` packet — see Hestia-Shared/hestia-shared.md § Response packets. */

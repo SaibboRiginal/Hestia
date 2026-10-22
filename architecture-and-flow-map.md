@@ -9,7 +9,8 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hub | Core | No | No | Registry + routing for all services |
 | Archive | Core | No | No | Persistent storage gateway |
 | Oracle | Core | No | No | Uses Hub discovery and routes commands |
-| Hermes | Core | No | No | Dispatches events/notifications |
+| Hermes | Core | No | No | Dispatches events/notifications (audio from Echo when the module wants voice) |
+| Echo | Core | No | Speech engines only (keys `ECHO_KEY_<NAME>`) | The only caller of speech-to-text/text-to-speech; providers → chains → uses like Oracle; audio kept in Archive |
 | Telegram | Interface | No | No | User-facing chat/file relay to Oracle |
 | WebUI | Interface | No | No | Web-based chat/file relay to Oracle, SignalR streaming |
 | Hecate | Core Gateway | No domain logic | Yes (Google/Outlook provider runtime) | Provider-facing gateway; the one Gmail watcher (pushes new mails to Iris) |
@@ -54,6 +55,7 @@ flowchart LR
     HUB --> IR[Iris Email Domain]
     HUB --> SC[Scout Real Estate Domain]
     HUB --> PL[Plutus Expenses Domain]
+    HUB --> EC[Echo Voice]
     HUB --> AT[Athena Advisory Engine]
     HUB --> AG[Argus Monitoring]
     HUB --> HP[Hephaestus Remediation]
@@ -108,12 +110,12 @@ flowchart LR
 | Node | Services |
 |---|---|
 | Raspberry Pi (always-on) | Hub, Archive, Oracle, Telegram, WebUI, Hecate, Hermes, Chronos, Iris, MCP |
-| Main PC (best-effort) | Scout and other domain modules, Metis, local LLM/runtime helpers |
+| Main PC (best-effort) | Scout and other domain modules, Echo (voice engines), Metis, local LLM/runtime helpers |
 | Host utility (outside Docker) | Atlas |
 
 ## Coverage Checklist
 
-- Core: Hub, Archive, Oracle, Hermes, Telegram, WebUI, Hecate
+- Core: Hub, Archive, Oracle, Echo, Hermes, Telegram, WebUI, Hecate
 - Domain: Chronos, Iris, Scout, Hercules, Hygieia, Wardrobe, Plutus
 - Organ services: Argus, Hephaestus, Athena, Metis
 - Utility/support: Atlas, Dummy, Swagger, Shared, MCP
@@ -246,6 +248,16 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 2. Phone: the final `localhost` page fails (expected); user pastes the URL in Telegram → Telegram forwards it
    to Hecate `complete/google` via Hub (no LLM). Host browser: Hecate's callback completes it directly.
 3. Token saved to `Hestia-Hecate/data/google_token.json`, provider registry reloaded.
+
+### Voice flows (Echo)
+1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.vocale` /
+   `webui.vocale`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
+2. «Ascolta» under a reply → Echo `/api/voice/speak` (kept with the reply; asked again → the kept audio).
+3. Live («Parla», Telegram `/live`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
+   chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.
+4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
+   Echo `speak` (use `hermes.notifica`, kept with the notification) → `update` with `voice` to the clients.
+5. Audio inside a document → Oracle → Echo (use `oracle.documenti`); Oracle has no speech engine.
 
 ### Real-estate extraction flow
 1. Iris rings Scout (`/api/scout/mail`) for listing mails already stored in Archive (`real_estate`).

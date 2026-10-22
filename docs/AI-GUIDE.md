@@ -27,6 +27,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Hercules | 19019 | hestia_hercules | gym coach: exercises, templates, live sessions offline (sync), records, adaptation by conversation, WebUI plugin |
 | Wardrobe | 19017 | hestia_wardrobe | wardrobe: pieces, accessories, outfits, «Cosa mi metto», laundry/status, packing lists, stats, photos in Archive blobs, WebUI plugin |
 | Plutus | 19020 | hestia_plutus | expenses «Spese» (domain `finance`): PayPal mails by push, bank statement PDF (Hype) from plugin or chat, categories, budgets, recurring, PayPal↔bank linking, WebUI plugin |
+| Echo | 19021 | hestia_echo | **voice core**: speech → text and text → speech, files and streams in blocks, providers/chains/uses like Oracle a blocchi, keeps audio, WebUI page «Voce» |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |
 | Atlas | host | — | HTML fetch/scrape, runs on the host (`run_host.bat`) |
@@ -59,6 +60,20 @@ serves the declared REST path of handler-only tools — call it after the app's 
 - `/api/llm/code`: Claude Code CLI (`claude -p`) in a Forge worktree under `/forge/worktrees`, auth
   `CLAUDE_CODE_OAUTH_TOKEN` (Pro/Max, from `claude setup-token`). Only for code tasks.
 - Embeddings are truncated + renormalized to 768 (`ORACLE_EMBED_DIM`) because Archive is `Vector(768)`.
+
+## 3a. Voice (Echo only)
+
+- Dossier `docs/work/2026-10-20-modulo-voce`. Nobody but Echo calls speech engines; Oracle has no Whisper any more.
+- Callers: `hestia_common.voice_client.VoiceClient(hub).transcribe(audio, mime, use_case=, keep=)` /
+  `.speak(text, use_case=, fmt=, keep=)` / `.forget(notification_id=)`; streams `/api/voice/listen*` and `/say*`.
+  Every use is declared in Hub capabilities `voice_usecases` (`hestia_common.voice_usecases.usecase`).
+- Providers `echo.providers` (keys only in env `ECHO_KEY_<NAME>`), chains `echo.chains` with `direction`
+  ascolto|voce, uses `echo.usecases`, mode `echo.mode` interna|esterna — edited on page «Voce → Motori».
+- `keep` stores audio in Archive with its message/notification (`recording` never deleted automatically). Telegram
+  refs are `tg:<chat>:<msg>`, WebUI refs `web:<session>:<msg>`.
+- Notifications in voice: module setting `<module>.notifiche.voce` (`reminders.voice_setting`) + `reminder_event(voice=)`
+  → payload `_voice` → Hermes adds the audio as an `update`.
+- Live («Parla», Telegram `/live`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
 
 ## 4. Forge (self-development) — how a change ships
 
@@ -135,10 +150,11 @@ and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossi
 ## 6. Clients
 
 - Telegram: `Hestia-Telegram/app` — routing, streaming, commands from Hub discovery, OAuth paste.
-  Access is fail-closed on `ALLOWED_USER_ID`.
+  Access is fail-closed on `ALLOWED_USER_ID`. Voice: `telegram_bot/services/voice_service.py`.
 - WebUI: `Hestia-WebUI` — backend proxies everything via Hub; token from Telegram `/webui_token`;
   admin API guarded (`WEBUI_ADMIN_SECRET` or internal network only). Frontend rules:
-  `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
+  `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`. Voice: `VoiceController.cs` (proxy to Echo), `voice.service.ts`
+  (voice messages, «Ascolta»), `live-voice.service.ts` (Parla).
 - Response packets: clients render the standard packets — spec in `Hestia-Shared/hestia-shared.md`
   § Response packets. System messages = `notice` (never styled like chat). Telegram: `ReplyRenderer` +
   `chat_settings.SETTINGS` (one schema → `/settings` panel). WebUI: `.hx-notice` + `NoticePrefsService`.

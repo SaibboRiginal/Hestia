@@ -28,8 +28,8 @@ from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
+from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
 from hestia_common.transfer import StoreSection, Transfer
-from hestia_common.reminders import reminder_event, reminder_settings
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
 
@@ -88,6 +88,7 @@ settings.declare([
             min=10, max=120, unit="min",
             help="Se un giorno ha poco tempo libero il piano usa una versione corta, ma non sotto questi minuti."),
     *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo e oggi non ti sei allenato. Uno alla volta."),
+    voice_setting("hercules", True),
 ]).follow_personal()                                       # week start: personal setting shared by every module
 
 hub = Hub(HUB_API_URL)
@@ -623,7 +624,8 @@ def reminder_check():
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento", text=text,
-            actions=actions, page="allenamento"), timeout=8)
+            actions=actions, page="allenamento", voice=bool(settings.get("hercules.notifiche.voce", True))),
+            timeout=8)
         hercules.mark_reminder_sent()
         logger.info("event=hercules_reminder_sent template=%s hint=%s", tpl.get("id"), goal["hint"])
     except Exception as exc:

@@ -98,14 +98,15 @@ class HermesService:
         set_batch_publisher(self._publish_batch)
 
     def _publish_batch(self, subscription_id, audience_key: str, domain: str, text: str,
-                       link: dict | None = None) -> bool:
+                       link: dict | None = None, voice: bool = False) -> bool:
         audience, origin = ("global", None)
         if audience_key.startswith("client:"):
             _, client, session = (audience_key.split(":", 2) + ["owner"])[:3]
             audience, origin = "origin", {"client": client, "session_id": session}
         result = self.notifications.publish(
             message=text, event_type="entity.upserted", domain=domain, source=domain,
-            audience=audience, origin=origin, subscription_id=subscription_id, link=link)
+            audience=audience, origin=origin, subscription_id=subscription_id, link=link,
+            voice=voice)
         return bool(result.get("deliveries"))
 
     def process_event(self, event_type: str, domain: str, entity_id: str, payload: dict):
@@ -187,7 +188,7 @@ class HermesService:
             actions=payload.get("_actions"), audience=audience, origin=origin,
             dedupe_key=anchor, dedupe_max_age=max_age, event_payload=payload,
             subscription_id=str(matched_subs[0].get("id")), replaces=replaces,
-            link=payload.get("_link"), quiet=bool(payload.get("_quiet")),
+            link=payload.get("_link"), quiet=bool(payload.get("_quiet")), voice=bool(payload.get("_voice")),
         )
         logger.info(
             "event=event_processed ms=%d domain=%s event_type=%s entity_id=%s subscriptions=%d matched=%d deliveries=%d",

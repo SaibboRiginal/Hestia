@@ -31,6 +31,8 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
   (Single exception: Telegram → WebUI admin API, guarded.)
 - **Oracle is the LLM core**: nobody else calls model providers. Use `/api/llm/generate` (plain),
   `/api/llm/chat` (OpenAI-compatible, profiles `local`/`cloud`), `/api/llm/code` (Claude Code).
+- **Echo is the voice core**: nobody else calls speech engines (STT/TTS). Use `hestia_common.voice_client`
+  (`/api/voice/transcribe`, `/speak`, streams `listen`/`say`) with a `use_case` declared in `voice_usecases`.
 - **Archive is the only DB owner**. Hecate owns external providers (Google/Microsoft OAuth, Gmail).
 - Core services stay generic; domain logic lives in domain modules (Scout = real estate).
 - Settings = **Themis**: a tunable is declared with `hestia_common.settings_client`, never a new env var

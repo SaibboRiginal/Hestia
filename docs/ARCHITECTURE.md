@@ -22,7 +22,7 @@ Stack baseline: Python · FastAPI · PostgreSQL + pgvector · Docker · Ollama.
 
 Always-on node (Raspberry Pi): `Hub`, `Archive`, `Oracle`, `Telegram`, `Hecate`, `Hermes`, `Chronos`, `Iris`, `MCP` (+ `WebUI` client)
 
-Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), `Metis`, Ollama, local DB replica.
+Best-effort high-power node (Main PC): domain modules (e.g. `Scout`), `Metis`, `Echo` (voice engines), Ollama, local DB replica.
 
 Host OS shared utility (Windows/Linux): `Atlas` (runs outside Docker, registers in Hub)
 
@@ -109,7 +109,20 @@ Conversational reasoning layer with unified agentic tool calling.
 - Injects timezone-aware current datetime context in each turn.
 - Accepts file attachments (images, PDFs) via `POST /api/chat/document` with multimodal reasoning.
 - **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools) via Hub with a `use_case` `<module>.<task>` they declare in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`) — never provider URLs/keys/model names of their own.
+- **No speech engines in Oracle** (2026-10-20): audio inside documents is transcribed by Echo (use `oracle.documenti`); WhisperX is gone.
 - **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset, any error moves to the next step) → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `veloce` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
+
+### Hestia-Echo 🎙️
+Voice core (port 19021): the only module that listens (speech → text) and speaks (text → speech), for files and for
+streams in blocks (`listen` mic chunks with partial text and end-of-turn silence, `say` text → audio sentence by
+sentence), for every client. Built like Oracle a blocchi: providers (`echo.providers`, keys only in env
+`ECHO_KEY_<NAME>`; standards Whisper locale, Piper, Kokoro, OpenAI-compatible, Google, ElevenLabs, Wyoming), chains
+with a direction `ascolto` or `voce` (quota skip until reset), uses declared by modules (`capabilities.voice_usecases`,
+`hestia_common.voice_usecases`) and mode interna/esterna (Echo as the door of one engine, fallback to the chains).
+Keeps audio in Archive (blobs + `echo-store`): Marko's recordings never deleted, generated audio while useful
+(`echo.audio.generated_days`, regenerated from the text), space limit drops regenerable audio first. Live mode on every
+client = the same Oracle chat + Echo; no external live service. Callers use `hestia_common.voice_client`.
+Details: `Hestia-Echo/hestia-echo.md`.
 
 ### Hestia-Hermes 📨
 Proactive dispatch core — the only outbound messenger to the user's clients.
@@ -119,6 +132,9 @@ Proactive dispatch core — the only outbound messenger to the user's clients.
 - Recurring nudges (reminders) never pile up: the module sends `replaces: "<key>"`; Hermes keeps one live
   notification per key on every client with the skip counter (`resolves: true` / `closes` done ends it).
 - Read state is global; answers go to the module that asked, first answer wins.
+- Voice: a module that wants its notifications also as audio says so with its own setting `<module>.notifiche.voce`
+  (`hestia_common.reminders.voice_setting`) and the event flag `_voice`; Hermes sends the text first, then the audio
+  made by Echo as an `update` (Telegram: voice message replying to it; WebUI inbox: «Ascolta»). Superseded → audio dropped.
 - Writes delivery outcomes to Archive.
 
 ### Hestia-Hecate 📥
@@ -153,6 +169,9 @@ Host-side shared web fetch gateway.
 ### Hestia-Telegram 💬
 User interface relay for chat, file attachments, and clear session commands.
 - Forwards photos and documents (PDF, images) to Oracle's multimodal endpoint.
+- Voice notes are transcribed by Echo and handled like typed text (recording kept); «🔊 Ascolta» under replies;
+  `/live` answers voice notes also by voice (`/chat` back to text). Notifications sent also as voice arrive as a
+  voice message replying to them.
 - Pasted OAuth callback URLs (`.../api/gateway/auth/callback/<provider>?code=`) go straight to Hecate, no LLM involved.
 - Streams NDJSON status frames back as typing indicators while Oracle processes.
 
@@ -161,6 +180,8 @@ Web client (.NET 9 backend + Angular frontend, port 19015).
 - Shell + own pages: Home, Chat (SignalR streaming of Oracle NDJSON), Settings, "Crea con Hestia" drawer. Everything
   else is a module plugin page: Agenda (Chronos, Google-like calendar; ICS feed stays a WebUI path), Sviluppo (Hephaestus), Notifiche (Hermes),
   Comandi & MCP + Accessi AI (Hestia-MCP), Documenti and Memoria (Oracle) and the core inside views; old routes redirect.
+- Voice (`/api/webui/voice/*` → Echo): voice messages in the chat (hold to record), «Ascolta» under replies, live mode
+  **Parla** (mic stream → Oracle chat → answer spoken sentence by sentence, speaking again interrupts).
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`/webui_token`).
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
@@ -348,6 +369,8 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 1. Core services are 100% generic.
 2. Domain logic stays inside domain modules only.
 3. No direct DB access outside Archive.
+3b. Only Oracle calls LLM providers; only Echo calls speech engines (speech-to-text, text-to-speech). Everybody else
+    goes through them via the Hub (`/api/llm/*`, `/api/voice/*`).
 4. No giant single-file services: modular packages only.
 5. Every service must include:
    - project markdown summary

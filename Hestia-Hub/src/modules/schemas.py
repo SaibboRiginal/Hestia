@@ -24,6 +24,7 @@ ALLOWED_TAGS = {
     "selfcare",
     "finance",
     "coach",        # serves GET /api/coach/needs (weekly plan contract, hestia_common.coach)
+    "voice",        # speech core (Echo): STT/TTS for every client
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -58,6 +59,7 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "wardrobe",
         "selfcare",
         "finance",
+        "voice",
     },
     "status": {
         "alpha",

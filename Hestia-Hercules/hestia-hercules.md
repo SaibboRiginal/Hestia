@@ -96,7 +96,8 @@ A UI change needs `up-all.bat --build hercules`.
 
 units, rest.default_seconds, bar_weight, plates, warmup.scheme, increment.{barbell,dumbbell,machine,cable},
 e1rm_formula, stall.exposures, adapt.low_energy, adapt.weight_cut_pct, skip_mode, reminder.enabled (false),
-reminder.max_per_week (2) from `hestia_common.reminders`. Week start is the personal setting
+reminder.max_per_week (2) and notifiche.voce (true: the reminder also arrives as a voice message / «Ascolta») from
+`hestia_common.reminders`. Week start is the personal setting
 `themis.personal.week_start` (shared by every module).
 
 ## API (via Hub `/route/hercules/...`)

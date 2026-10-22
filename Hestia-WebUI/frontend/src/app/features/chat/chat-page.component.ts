@@ -1,5 +1,5 @@
 import {
-  AfterViewChecked, ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild,
+  AfterViewChecked, ChangeDetectionStrategy, OnDestroy, Component, ElementRef, computed, inject, signal, viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChatService } from '../../services/chat.service';
@@ -15,6 +15,12 @@ import { ChatContextComponent } from './chat-context.component';
 import { ChatQuickSettingsComponent } from '../settings/chat-quick-settings.component';
 import { NoticePrefsService } from '../../services/notice-prefs.service';
 import { PresenceService } from '../../services/presence.service';
+import { MicRecorder, VoiceService } from '../../services/voice.service';
+import { LiveVoiceService } from '../../services/live-voice.service';
+
+const LIVE_LABELS: Record<string, string> = {
+  starting: 'Accendo il microfono…', listening: 'Ti ascolto', hearing: 'Ti sento…', thinking: 'Ci penso…', speaking: 'Sto parlando',
+};
 
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
@@ -26,6 +32,8 @@ import { PresenceService } from '../../services/presence.service';
     <header class="top">
       <span class="ttl">{{ chat.messages().length ? 'Conversazione' : '' }}</span>
       <div class="hx-grow"></div>
+      <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" (click)="toggleLive()"
+              [attr.aria-pressed]="live.on" title="Parla con Hestia a voce">Parla</button>
       <hx-chat-context />
       <hx-chat-quick-settings />
       <hx-menu [items]="menu" (select)="onMenu($event)">
@@ -47,7 +55,20 @@ import { PresenceService } from '../../services/presence.service';
         }
         @for (m of chat.messages(); track m.id) {
           @if (m.role === 'user') {
-            <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}</div></div>
+            @if (m.audio) {
+              <div class="msg user hx-fade-in"><div class="bubble voice">
+                <div class="vrow">
+                  <button class="vplay" (click)="playVoice(m)" [attr.aria-label]="voice.playing() === m.id ? 'Ferma' : 'Ascolta il vocale'">
+                    <hx-icon [name]="voice.playing() === m.id ? 'pause' : 'play'" [size]="15" /></button>
+                  <hx-icon class="vwave" name="waveform" [size]="22" />
+                  <span class="vdur">{{ duration(m.audio.seconds) }}</span>
+                </div>
+                @if (m.transcribing) { <div class="vtext muted">Trascrivo…</div> }
+                @else if (m.content) { <div class="vtext" [class.verr]="m.error">{{ m.content }}</div> }
+              </div></div>
+            } @else {
+              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}</div></div>
+            }
           } @else {
             <div class="msg asst hx-fade-in">
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
@@ -74,6 +95,9 @@ import { PresenceService } from '../../services/presence.service';
                   <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)" title="Utile"><hx-icon name="thumb-up" [size]="15" /></button>
                   <button class="fb" [class.on]="rated()[m.id] === 'bad'" (click)="feedback('bad', m)" title="Non utile"><hx-icon name="thumb-down" [size]="15" /></button>
                   <button class="fb" (click)="copy(m)" title="Copia"><hx-icon name="copy" [size]="15" /></button>
+                  <button class="fb" [class.on]="voice.playing() === m.id" (click)="voice.toggle(m.id, m.content)"
+                          [title]="voice.playing() === m.id || voice.loading() === m.id ? 'Ferma' : 'Ascolta'">
+                    <hx-icon [name]="voice.playing() === m.id || voice.loading() === m.id ? 'stop' : 'volume'" [size]="15" /></button>
                   @if ($last) { <button class="fb" (click)="chat.retry()" [disabled]="chat.isStreaming()" title="Rigenera"><hx-icon name="refresh" [size]="15" /></button> }
                 </div>
               }
@@ -107,8 +131,33 @@ import { PresenceService } from '../../services/presence.service';
           @if (!q.required) { <button class="skipq" (click)="answer(q.questionId, '')">Salta</button> }
         </div>
       }
+      @if (live.on) {
+        <div class="live hx-fade-in" role="status" [attr.data-state]="live.state()">
+          <span class="ldot"></span>
+          <div class="hx-grow">
+            <div class="lst">{{ liveLabel() }}</div>
+            @if (live.partial()) { <div class="lpart">{{ live.partial() }}</div> }
+          </div>
+          @if (live.state() === 'speaking' || live.state() === 'thinking') {
+            <button hx-btn variant="secondary" size="sm" icon="stop" (click)="live.interrupt()">Interrompi</button>
+          }
+          <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi Parla" (click)="live.stop()"></button>
+        </div>
+      }
       <div class="composer" [class.disabled]="signalR.connectionState() !== 'connected'">
-        <textarea #ta [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="1"
+        @if (recording()) {
+          <div class="rec" role="status">
+            <span class="rdot"></span><span class="rtime">{{ duration(recSeconds()) }}</span>
+            @if (recLocked()) {
+              <div class="hx-grow"></div>
+              <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly aria-label="Annulla il vocale" (click)="finishRec(true)"></button>
+              <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia il vocale" (click)="finishRec(false)"></button>
+            } @else {
+              <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? 'Rilascia per annullare' : '‹ Scorri per annullare' }}</span>
+            }
+          </div>
+        }
+        <textarea #ta [hidden]="recording()" [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="1"
                   [placeholder]="signalR.connectionState() === 'connected' ? 'Scrivi a Hestia…' : 'Connessione in corso…'"></textarea>
         <div class="tools">
           <input #file type="file" hidden (change)="onFile($event)" />
@@ -117,12 +166,17 @@ import { PresenceService } from '../../services/presence.service';
           <div class="hx-grow"></div>
           @if (chat.isStreaming()) {
             <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly aria-label="Stop" (click)="chat.cancelStream()"></button>
+          } @else if (text.trim() || recLocked()) {
+            @if (!recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia" (click)="send()" [disabled]="!text.trim()"></button> }
           } @else {
-            <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia" (click)="send()" [disabled]="!text.trim()"></button>
+            <button hx-btn [variant]="recording() ? 'primary' : 'ghost'" size="sm" icon="mic" iconOnly class="micbtn"
+                    aria-label="Tieni premuto per registrare un vocale" title="Vocale: tieni premuto (o clic per registrare)"
+                    (pointerdown)="micDown($event)" (pointermove)="micMove($event)" (pointerup)="micUp($event)"
+                    (pointercancel)="finishRec(true)" (contextmenu)="$event.preventDefault()"></button>
           }
         </div>
       </div>
-      <p class="disc">Invio per mandare · Shift+Invio per andare a capo</p>
+      <p class="disc">Invio per mandare · Shift+Invio per andare a capo · tieni premuto il microfono per un vocale</p>
     </div>
   `,
   styles: [`
@@ -174,10 +228,33 @@ import { PresenceService } from '../../services/presence.service';
     .hx-prose.queued { color: var(--text-2); }
     .inq { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--warning); }
     .skipq { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+    .bubble.voice { min-width: 200px; }
+    .vrow { display: flex; align-items: center; gap: 8px; }
+    .vplay { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--accent); flex: none; }
+    .vwave { opacity: .7; }
+    .vdur { font-size: 12.5px; font-variant-numeric: tabular-nums; opacity: .8; margin-left: auto; }
+    .vtext { margin-top: 6px; font-size: 14px; font-style: italic; opacity: .9; }
+    .vtext.verr { font-style: normal; color: var(--danger); }
+    .rec { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+    .rdot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); animation: hx-pulse 1s infinite; }
+    .rtime { font-variant-numeric: tabular-nums; font-size: 14px; }
+    .rhint { color: var(--text-3); font-size: 13px; margin-left: auto; }
+    .rhint.cancel { color: var(--danger); }
+    .micbtn { touch-action: none; user-select: none; -webkit-user-select: none; }
+    .live { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--accent);
+            border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 10px; box-shadow: var(--shadow-1); }
+    .ldot { width: 12px; height: 12px; border-radius: 50%; background: var(--text-3); flex: none; }
+    .live[data-state=listening] .ldot { background: var(--accent); }
+    .live[data-state=hearing] .ldot { background: var(--danger); animation: hx-pulse 1s infinite; }
+    .live[data-state=thinking] .ldot { background: var(--warning); animation: hx-pulse 1.4s infinite; }
+    .live[data-state=speaking] .ldot { background: var(--success); animation: hx-pulse .8s infinite; }
+    .lst { font-weight: 600; font-size: 14px; }
+    .lpart { color: var(--text-2); font-size: 13.5px; font-style: italic; }
+    @media (prefers-reduced-motion: reduce) { .rdot, .ldot { animation: none !important; } }
     @media (max-width: 720px) { .thread { padding: 4px 12px 18px; } .composer-wrap { padding: 0 10px 8px; } .welcome h1 { font-size: 25px; } }
   `],
 })
-export class ChatPageComponent implements AfterViewChecked {
+export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   chat = inject(ChatService);
   signalR = inject(SignalRService);
   private session = inject(SessionService);
@@ -189,6 +266,18 @@ export class ChatPageComponent implements AfterViewChecked {
   private dialogs = inject(DialogService);
   private bottom = viewChild<ElementRef<HTMLElement>>('bottom');
   private ta = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
+  voice = inject(VoiceService);
+  live = inject(LiveVoiceService);
+
+  // voice message: hold to record, release to send, slide left to cancel; mouse: click, then bin or send
+  private mic = new MicRecorder();
+  recording = signal(false);
+  recLocked = signal(false);
+  recCancel = signal(false);
+  recSeconds = signal(0);
+  private recX = 0;
+  private recTimer: number | undefined;
+  liveLabel = computed(() => LIVE_LABELS[this.live.state()] || '');
 
   text = '';
   questionText = '';
@@ -208,6 +297,12 @@ export class ChatPageComponent implements AfterViewChecked {
     const h = new Date().getHours();
     return h < 6 ? 'Buona notte' : h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera';
   });
+
+  ngOnDestroy() {
+    if (this.recording()) void this.finishRec(true);
+    this.live.stop();
+    this.voice.stop();
+  }
 
   ngAfterViewChecked() {
     const msgs = this.chat.messages();
@@ -248,6 +343,59 @@ export class ChatPageComponent implements AfterViewChecked {
     const t = this.text.trim();
     this.text = '';
     void this.chat.sendDocument(f, t, this.session.sessionId() || '');
+  }
+
+  duration(seconds: number): string {
+    const v = Math.max(0, Math.round(seconds || 0));
+    return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`;
+  }
+
+  async micDown(e: PointerEvent) {
+    if (this.recording() || this.chat.isStreaming()) return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    this.recX = e.clientX;
+    this.recCancel.set(false);
+    this.recLocked.set(e.pointerType === 'mouse');
+    try { await this.mic.start(); }
+    catch { this.toast.error('Il browser non mi dà il microfono'); return; }
+    this.voice.stop();
+    this.recording.set(true);
+    this.recSeconds.set(0);
+    const t0 = performance.now();
+    this.recTimer = window.setInterval(() => this.recSeconds.set((performance.now() - t0) / 1000), 250);
+  }
+
+  micMove(e: PointerEvent) {
+    if (!this.recording() || this.recLocked()) return;
+    this.recCancel.set(this.recX - e.clientX > 80);
+  }
+
+  micUp(_e: PointerEvent) {
+    if (!this.recording() || this.recLocked()) return;
+    void this.finishRec(this.recCancel());
+  }
+
+  async finishRec(cancel: boolean) {
+    window.clearInterval(this.recTimer);
+    this.recording.set(false);
+    this.recLocked.set(false);
+    this.recCancel.set(false);
+    const out = await this.mic.stop(cancel);
+    if (!out) return;
+    void this.chat.sendVoice(out.blob, this.mic.mime, out.seconds, this.session.sessionId() || '', this.mode());
+  }
+
+  playVoice(m: ChatMessage) {
+    if (!m.audio) return;
+    if (this.voice.playing() === m.id) { this.voice.stop(); return; }
+    void fetch(m.audio.url).then(r => r.blob()).then(b => this.voice.play(m.id, b));
+  }
+
+  toggleLive() {
+    if (this.live.on) { this.live.stop(); return; }
+    this.voice.stop();
+    void this.live.start(this.mode()).then(() => { if (this.live.error()) this.toast.error(this.live.error()); });
   }
 
   answer(id: string, v: string) { this.chat.answerQuestion(id, v); this.questionText = ''; }

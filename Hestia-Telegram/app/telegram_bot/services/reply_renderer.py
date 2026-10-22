@@ -48,6 +48,7 @@ class ReplyRenderer:
         self.tool_calls = 0
         self.answer_ids: list[int] = []      # message ids holding the final answer
         self.answer_last_html = ""
+        self.answer_text = ""                # plain final answer (for «Ascolta»)
         self._last_edit = 0.0
         self._last_sent = ""
         self.finalized = False
@@ -93,6 +94,8 @@ class ReplyRenderer:
         answer = str(reply or "").strip() or "".join(self.tokens).strip()
         if not answer:
             answer = "⚠️ Nessuna risposta ricevuta. Riprova (/retry)."
+        else:
+            self.answer_text = answer
         html = message_format.render_answer_html(answer)
         parts = self._split(html)
         head = self._reasoning_block()
