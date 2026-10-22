@@ -13,7 +13,7 @@ import pytest
 def engine():
     from services import presence as P
 
-    calls: dict[str, list] = {"emit": [], "release": [], "drain": []}
+    calls: dict[str, list] = {"emit": [], "release": [], "drain": [], "catchup": []}
     window = {"open": False}
 
     def store(method, path, body=None, query=None, timeout=8):
@@ -25,6 +25,7 @@ def engine():
                            emit=lambda event, payload: calls["emit"].append(payload["base"]))
     eng._release_held = lambda level: calls["release"].append(level)
     eng._drain_chat_queues = lambda: calls["drain"].append(True)
+    eng._catch_up = lambda since: calls["catchup"].append(since)
     eng._async = lambda fn, *args: fn(*args)        # synchronous for tests
     eng.load()
     eng.window, eng.calls = window, calls
@@ -132,6 +133,7 @@ def test_oracle_offline_overlay_queues_chat_and_drains_when_back(engine):
     state = engine.view()
     assert state["effects"]["chat.reply"] == "live" and state["overlays"] == []
     assert engine.calls["drain"] == [True]
+    assert len(engine.calls["catchup"]) == 1 and engine.calls["catchup"][0] is not None   # «Mentre non c'ero»
 
 
 @pytest.mark.unit
