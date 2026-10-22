@@ -143,3 +143,6 @@ Hestia-WebUI/frontend/public/plugins/_sdk/
 # Cloud test bench (tools/cloud_test.py): report, screenshots, proxy CA copy
 .cloud-test/
 tools/cloud_test/base/ca/
+
+# Esporta e importa: files with personal data (docs/work/2026-10-20-import-export)
+*.hestia

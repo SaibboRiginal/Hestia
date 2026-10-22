@@ -23,7 +23,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
-| Athena | Core Organ | Yes (proactive advisory cognition, idle retrospective) | No | Advisory hints for Oracle; improvement hand-off to Forge |
+| Athena | Core Organ | Yes (proactive advisory cognition: Sistema track idle retrospective, Vita track life reflection on module signals) | No | Advisory hints for Oracle; improvement hand-off to Forge; life observations for the daily recap |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
 | Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
@@ -171,6 +171,8 @@ flowchart LR
    `/oauth/register` → `/oauth/authorize` (WebUI → Hub → Hestia-MCP parks the request) → browser to
    `/p/mcp/accessi?oauth=<id>` (WebUI login) → **Consenti** → code to the AI's redirect → `/oauth/token` (PKCE) →
    `hso_…` bearer on `/mcp` exactly like a token access; `refresh_token` rotates, a replay revokes the access.
+6. External AI memory: `memory_note` (write access) → Hestia-MCP → Hub → Oracle `POST /api/memory/note` → Archive
+   `/api/memory` (`durable_user_preference`, origin in `extra_data`); `memory_recall` reads them back. Page Memoria lists/forgets.
 
 ### Plugin flow (module pages and widgets)
 1. A module with a UI declares its pages, widgets and quick actions (`hestia_common.plugin_client`) in its Hub
@@ -187,7 +189,7 @@ flowchart LR
 4. The user reads and edits the agenda from Telegram (move, pause, skip, cancel, run now); edits win over defaults.
 5. The agenda (`source=hestia`) is separate from the user's calendars and never sent as user reminders.
 6. Registered today: `hecate.mail_watch`, `hecate.mail_watch_renew`, `chronos.calendar_sync` (jobs); `athena.consolidation`,
-   `athena.skill_curation`, `athena.thinking`, `metis.training`, `forge.claude_nights`, `forge.claude_final`
+   `athena.skill_curation`, `athena.thinking`, `athena.reflection`, `metis.training`, `forge.claude_nights`, `forge.claude_final`
    (windows); `metis.train.<job>`, `hephaestus.repair.<id>`, `argus.repair.<service>` (tasks); `forge.task.<id>`
    (events). Jobs keep a module-side fallback (Chronos down / job missing / stale) that never overrides a pause.
 7. A rule a module no longer declares is retired by the module itself: `POST /api/agenda/retire {owner, keys}`
@@ -214,6 +216,17 @@ Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
 3. Oracle healthy → Argus clears the signal and closes the notice; Chronos sees `chat.reply` back to `live` and calls each
    client's `capabilities.chat_queue_drain` via Hub; each client replays its queue to Oracle, oldest first.
 SPEC `docs/work/2026-10-19-oracle-offline`.
+
+### Layered reflection flow
+1. Domain modules (Hercules, Hygieia, Plutus, Wardrobe) evaluate their own data deterministically on every write and in
+   the daily agenda job `<module>.signals` → `hestia_common.signals_client` → Archive `/api/signals-store` (signals +
+   weekly metrics, via Hub).
+2. Window `athena.reflection` (daily 18–20): Athena reads the store, links weekly series of different areas (Pearson),
+   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.riflessione`),
+   relevance gate.
+3. Accepted observations are stored (signals-store, `ref_id=athena`) and served as Athena's recap piece
+   (`GET /api/module/recap`, «Da tenere d'occhio»); no Hermes notice. Setting ideas → Themis proposal.
+SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).

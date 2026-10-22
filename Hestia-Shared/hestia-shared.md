@@ -89,6 +89,29 @@ Archive under `domain` (`reference_id = mail:<domain>:<gmail id>`) and calls `PO
 count, reference_ids, source}`. The module processes its unevaluated records there **and once at startup** (mail
 that arrived while it was down). Fails soft (`[🔄] event=mail_subscribe_failed`).
 
+## Module signals (`hestia_common.signals_client`)
+
+First layer of the reflection (`docs/work/2026-10-20-riflessione-a-livelli`): each domain module judges its own data
+with deterministic rules and publishes short **signals** + **weekly metrics** to Archive `signals-store`; Athena
+reads only those (links between areas, then details through `/api/module/context?topic=`).
+
+```python
+from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
+
+signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
+signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
+metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
+signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
+signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
+rules.append(signals_rule("hercules", "Allenamento", path="/api/hercules/signals/run", tz=TZ))   # daily 17:30
+```
+
+`kind` = trend · streak · anomaly · goal · milestone; `severity` = info · attenzione · alta (ranks the topics).
+`key` is stable inside the module (republishing updates the row); `sync` writes only what changed and retracts
+signals no longer present; signals expire after `ttl_days` (7). Texts are Italian, short, and name the area
+(«Allenamento», «Spese»), never the module. `SignalReader` (Athena) reads active signals and weekly series.
+Fails soft (`[🔄] event=signals_sync_*_failed`).
+
 ## Response packets (standard for every client)
 
 Oracle streams NDJSON; every client (Telegram, WebUI, future apps/voice) renders the same packets.
@@ -158,7 +181,8 @@ clients show the settings of a group as a grid (Oracle: use case × fornitore / 
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
 **Personal settings shared by every module** (owner Themis, group «Personali», `settings_client.PERSONAL`):
-`themis.personal.week_start` (monday/sunday) and `themis.personal.currency`. A module never declares its own copy:
+`themis.personal.week_start` (monday/sunday), `themis.personal.currency` and `themis.personal.places` (Casa, Lavoro,
+Palestra…; editor `places`, options from `hecate:/api/gateway/weather/places`). A module never declares its own copy:
 `settings.follow_personal()` (or `follow({...})`) sends `follows` on register, Themis answers `shared` and pushes
 it again on every change; `settings.get("themis.personal.week_start")` then works like an own key
 (`week_start_index()` gives 0 = Monday … 6 = Sunday).
@@ -181,7 +205,7 @@ module domain travels in the payload) with `target: owner`, `replaces: <key>` (o
 
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
-`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji.
+`<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji. Added 2026-10-20: `bookmark` (Oracle Memoria page).
 
 A module with a UI ships it inside the module and advertises it to the clients (contract:
 `docs/work/2026-10-17-client-plugins/SPEC.md` §4):
@@ -246,6 +270,53 @@ presence.context_line()                               # one line for a model's c
 Effects include `chat.reply` (`live` | `queued`: Oracle offline, chat clients queue messages; fallback `live`).
 State cached 15 s; Chronos down → `[🔄]` log and `FALLBACK_EFFECTS` (everything allowed, every notification
 delivered), so each module still follows only its own agenda windows.
+
+## Export and import (`hestia_common.transfer`)
+
+One contract for «Esporta e importa» (dossier `docs/work/2026-10-20-import-export`): a module lists *sections* of its
+own data; the client (WebUI Impostazioni → Esporta e importa, `tools/hestia_transfer.py`) builds one `.hestia` file and
+imports it elsewhere with a mode — `append` (Aggiungi: new only), `merge` (Unisci, default: new + newer `updated_at`),
+`replace` (Sostituisci: the file wins, target-only records deleted, never for a partial section). Every import can be a
+dry run (the preview).
+
+```python
+from hestia_common.transfer import StoreSection, Section, Transfer
+
+transfer = Transfer("hercules", hub, sections=[
+    StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
+    StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"],   # sets travel with
+                 depends_on=["esercizi", "schede"]),                                          # pulled when named
+    StoreSection("foto", "Foto", store, ["photo"], file_fields=["original", "medium", "thumb"]),  # Archive blobs
+])
+app.include_router(transfer.router())       # /api/transfer/describe|items|export|import|files
+caps.update(transfer.capabilities())        # Hub registration: capabilities.transfer
+```
+
+- `StoreSection` covers the module stores (`hercules-store` & co.); other data subclasses `Section`
+  (`records`, `write`, `title`/`subtitle`, optional `check`, `same`, `refs`, `migrate`) — see Scout (listings),
+  Oracle (memories), Chronos (agenda), Themis (settings, `sections=lambda: …` built per call).
+- Never secrets, tokens, logs or runtime state: a section lists only what the user made. Settings travel only
+  through Themis. Files only with `include_files` (or the section chosen by hand); `POST /api/transfer/files` stores a
+  blob of the module and the import rewrites the ids (`files_map`).
+- Versioning: file `format` and a `schema` per section; newer than this Hestia → refused with «aggiorna Hestia».
+
+## Coach contract (`hestia_common.coach`)
+
+A domain module becomes a coach of the weekly plan (Chronos) with the Hub tag `coach` and one router:
+`CoachRouter(module, domain, label, needs=, fit=, placed=, review=).router` serves `GET /api/coach/needs?start=&end=`
+(`{module, domain, label, state, needs, refused}`), `POST /api/coach/fit`, `POST /api/coach/placed`,
+`GET /api/coach/review`. `need(id, title, **fields)` / `validate_need` give the canonical need (kind
+block/slot/target, count still to do, per week|day, minutes/min_minutes, days, fixed_dates, time_of_day,
+not_before/not_after, min_gap_days, not_same_day, with{tag, relation}, tags, priority must|should|could, reason,
+link, value/unit/progress); unknown fields are refused. `CoachClient(module).done(need_id, at)` / `.skipped(...)` /
+`.changed()` push events to `POST /route/chronos/api/agenda/coach/report` (fails soft, `[🔄] event=coach_report_failed`).
+`week_bounds(day, week_start)` → `[start, end)`. Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+
+## Weather client (`hestia_common.weather_client`)
+
+`WeatherClient(hub_api_url).now(place)`, `.forecast(place, date_from, date_to, hourly=False)`, `.at([{id, place, at}])`
+call Hecate through Hub (`/api/gateway/weather/*`); `is_rainy(day_or_hour)` and `day_summary(day)` give one shared
+reading. Failures answer `{status: "unavailable"}`; never raises. Place = saved place name/id, a city, or empty = Casa.
 
 ## Constraints
 

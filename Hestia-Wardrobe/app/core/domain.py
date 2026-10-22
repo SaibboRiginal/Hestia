@@ -322,6 +322,16 @@ def wear(data: dict, pieces: dict[str, dict], outfits: dict[str, dict], today: d
 
 
 # ── collections ─────────────────────────────────────────────────────────────
+def _trip_weather(w: dict) -> dict:
+    """Forecast used for a packing list (shown on the list): only the short known fields."""
+    out = {k: w[k] for k in ("source", "place", "condition", "icon") if isinstance(w.get(k), str)}
+    for k in ("temp_c", "min_c"):
+        if isinstance(w.get(k), (int, float)):
+            out[k] = w[k]
+    out["rain"] = bool(w.get("rain"))
+    return out
+
+
 def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) -> dict:
     name = _text(data.get("name"), 120)
     if not name:
@@ -340,7 +350,8 @@ def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) ->
     valid = set(pids) | set(oids) | {i["id"] for i in items}
     return {"name": name, "type": ctype, "piece_ids": pids, "outfit_ids": oids, "items": items,
             "checked": [c for c in dict.fromkeys(str(x) for x in data.get("checked") or []) if c in valid],
-            "trip": {"from": iso_date(trip.get("from")), "to": iso_date(trip.get("to")), "place": _text(trip.get("place"), 80)},
+            "trip": {"from": iso_date(trip.get("from")), "to": iso_date(trip.get("to")), "place": _text(trip.get("place"), 80),
+                     **({"weather": _trip_weather(trip["weather"])} if isinstance(trip.get("weather"), dict) else {})},
             "notes": _text(data.get("notes"), 2000), "archived": bool(data.get("archived"))}
 
 

@@ -76,3 +76,27 @@ def test_reminder_event_shape():
     # Regression: Hermes' owner subscription listens on domain "system"; any other envelope domain
     # matched no subscription and the reminder was never delivered.
     assert body["domain"] == "system" and p["domain"] == "wardrobe"
+
+
+@pytest.mark.unit
+def test_personal_places_validate_and_resolve_through_hecate():
+    hub = FakeHub()
+    calls = []
+    inner = hub.call
+
+    def call(svc, method, path, body=None, query=None, timeout=8):
+        if svc == "hecate":
+            calls.append((svc, path))
+            return 200, {"options": [{"value": "casa", "label": "Casa · Milano"}]}
+        return inner(svc, method, path, body=body, query=query, timeout=timeout)
+    hub.call = call
+    registry = Registry(None)
+    registry.register("themis", list(PERSONAL.values()))
+    themis = Themis(hub, registry)
+    places = [{"id": "casa", "name": "Casa", "address": "Milano", "kind": "home"}]
+    assert themis.set("themis.personal.places", places)["value"] == places
+    with pytest.raises(Exception):
+        themis.set("themis.personal.places", [{"name": "X", "kind": "castello"}])
+    # «hecate:/path» options source: asked to Hecate, not to the owner (Themis)
+    opts = themis.options("themis.personal.places")
+    assert opts["options"][0]["label"] == "Casa · Milano" and calls == [("hecate", "/api/gateway/weather/places")]

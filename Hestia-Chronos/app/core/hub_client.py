@@ -41,11 +41,14 @@ def register_on_hub(
                 "calendar.agenda": f"{service_base_url}/api/calendar/agenda",
             },
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
-            "module_tool_domains": ["calendar"],
+            "module_tool_domains": ["calendar", "coach"],
             # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Modelli.
             "llm_usecases": [{"id": "chronos.agenda", "label": "Agenda · lettura richieste", "chain": "veloce",
                               "help": "Trasforma una frase in un impegno o in una regola dell'agenda.",
-                              "thinking": "auto", "mode": "segui"}],
+                              "thinking": "auto", "mode": "segui"},
+                             {"id": "chronos.coach", "label": "Piano della settimana · messaggio", "chain": "veloce",
+                              "help": "Scrive il messaggio con il piano della settimana a partire dal piano già fatto.",
+                              "thinking": "off", "mode": "segui"}],
             **(extra_capabilities or {}),   # WebUI plugin manifest (ui_manifest, ui_version)
         },
     }

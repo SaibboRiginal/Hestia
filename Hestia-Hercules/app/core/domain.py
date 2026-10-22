@@ -241,7 +241,13 @@ def checkin(d: dict) -> dict:
 
 
 NORMALIZERS = {"plan": plan, "checkin": checkin, "exercise": exercise, "template": template, "program": program, "session": session, "set": logged_set,
-               "measurement": measurement, "feedback": feedback, "goal": goal, "adaptation": lambda d: dict(d), "reminder": lambda d: dict(d)}
+               "measurement": measurement, "feedback": feedback, "goal": goal, "adaptation": lambda d: dict(d), "reminder": lambda d: dict(d),
+               "activity_plan": lambda d: _activities().norm_plan(d), "activity": lambda d: _activities().norm_activity(d)}
+
+
+def _activities():
+    from . import activities                       # outdoor activities live in their own module (imports domain)
+    return activities
 
 
 def normalize(kind: str, data: dict) -> dict:
@@ -265,6 +271,10 @@ def index_columns(kind: str, data: dict) -> dict:
         return {"ref_id": data.get("template_id"), "at": (data.get("date") or "") + "T12:00:00+00:00"}
     if kind == "checkin":
         return {"at": data.get("at")}
+    if kind == "activity_plan":
+        return {"ref_id": data.get("kind"), "at": (data.get("week_from") or "") + "T12:00:00+00:00"}
+    if kind == "activity":
+        return {"ref_id": data.get("kind"), "at": data.get("at") or (data.get("date") or "") + "T12:00:00+00:00"}
     if kind == "adaptation":
         return {"parent_id": data.get("session_id"), "at": data.get("created_at")}
     return {}

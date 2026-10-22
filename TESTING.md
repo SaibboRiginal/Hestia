@@ -52,7 +52,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
 - `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
-  agenda, presence, settings, plugins, mcp, webui (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
+  agenda, presence, settings, plugins, mcp, webui, transfer (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
   → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».
@@ -64,7 +64,9 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 - Start a Codespace: *Code → Codespaces → «…» → New with options* (4-core, `.devcontainer/devcontainer.json`); the
   page asks for the optional test secrets `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN` + `ALLOWED_USER_ID`, `GOOGLE_CLIENT_ID` +
   `GOOGLE_CLIENT_SECRET` (or set them once on GitHub → *Settings → Codespaces → Secrets*). Every start runs
-  `cloud_test.py start`; open the link in `.cloud-test/login.txt`. Ports stay private.
+  `cloud_test.py start` (output in `.cloud-test/start.log`, it waits up to 120 s for Docker); open the link in
+  `.cloud-test/login.txt`. Ports stay private. «Docker is not installed» = the container was not built from
+  the devcontainer: *Ctrl+Shift+P → Codespaces: Full Rebuild Container*.
 
 ## Critical Regressions Log
 

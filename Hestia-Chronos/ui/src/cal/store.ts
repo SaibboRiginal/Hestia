@@ -5,8 +5,8 @@
  */
 import type { HestiaHost } from '@hestia/webui-sdk';
 import { AgendaApi, type TemplateBody } from './api';
-import type { AgendaItem, AgendaOccurrence, AgendaType, CalEvent, CalView, CalendarSource, EventClass } from './models';
-import { colorFor } from './models';
+import type { AgendaItem, AgendaOccurrence, AgendaType, CalEvent, CalView, CalWeather, CalendarSource, EventClass } from './models';
+import { NO_WEATHER, colorFor } from './models';
 import { DAY_MS, addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './date';
 import { type CalendarPrefs, DEFAULT_PREFS, type SavedPrefs, perDayFromRRule, savePrefs } from './prefs';
 import { shiftByDay } from './rrule';
@@ -27,6 +27,8 @@ export class CalStore {
   sources: CalendarSource[] = [{ id: 'hestia', label: 'Agenda di Hestia', kind: 'ai', enabled: true }];
   // data
   occurrences: AgendaOccurrence[] = [];
+  /** Weather of the visible range (empty when the weather service is away or the range is past/far). */
+  weather: CalWeather = NO_WEATHER;
   items = new Map<string, AgendaItem>();
   loading = false;
   error = '';
@@ -235,11 +237,27 @@ export class CalStore {
       this.occurrences = occ;
       this.items = new Map(items.map(i => [i.key, i]));
       this.offline = false; this.loaded = true;
+      void this.loadWeather(seq);
     } catch (e: any) {
       if (seq === this.seq) { this.error = e?.message || 'Chronos non raggiungibile'; this.offline = !!e?.offline; }
     } finally {
       if (seq === this.seq) { this.loading = false; this.changed(); }
     }
+  }
+
+  /** Weather after the occurrences (never blocks the calendar): items with `params.place` get their own. */
+  private async loadWeather(seq: number) {
+    const { start, end } = this.range();
+    const located = this.occurrences.flatMap(o => {
+      const place = this.items.get(o.key)?.params?.['place'];
+      return typeof place === 'string' && place ? [{ key: `${o.key}|${o.occurrence}`, place, at: o.start }] : [];
+    });
+    try {
+      const w = await this.api.weather(start, end, located);
+      if (seq !== this.seq) return;
+      this.weather = { days: w?.days ?? {}, events: w?.events ?? {}, external: w?.external ?? [] };
+      this.changed();
+    } catch { /* no weather: the calendar works as before */ }
   }
 
   // ── actions (each reloads; errors → toast) ─────────────────────────────

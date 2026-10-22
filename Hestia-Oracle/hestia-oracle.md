@@ -170,6 +170,12 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 ### Memory as First-Class Tools
 - `memory.save` — agent loop tool to persist a durable user fact immediately.
 - `memory.search` — agent loop tool to recall saved preferences/memories during conversation.
+- `memory_note` / `memory_recall` (2026-10-20, docs/work/2026-10-20-memory-note) — also open to external AIs
+  (Claude, ChatGPT through Hestia-MCP): `memory_note` saves the durable facts the external AI distilled from its
+  conversation (one per line, max 10 × 300 chars) as `durable_user_preference`, domains from the embedding classifier,
+  no LLM call; duplicates of an active memory (same words, case/punctuation ignored) are skipped. Origin in
+  `extra_data`: `{source: external, access: <X-Hestia-Access>, topic, noted_at}`; Oracle's own saves carry
+  `{source: chat}`. `memory_recall` = keyword search, max 20 compact rows. Page **Memoria** lists and forgets them.
 - Background memory extraction still runs as a safety net, but the primary memory path is tool-driven.
 - Memory taxonomy (P1-8): `conversational_history`, `durable_user_preference`, `task_goal_state`, `domain_fact_entity`, `assistant_commitment`.
 
@@ -223,6 +229,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `POST` | `/api/ui/documents` | Add a file `{name, mime, data_b64}` → `{status: ingesting, document_id}`; archiving (extract → chunks → embeddings → Archive) runs in background, session `webui-documenti`; 415 type, 413 too big |
 | `PATCH` | `/api/ui/documents/{id}/permanent` | `{is_permanent}`: keep for good (never pruned) or temporary |
 | `DELETE` | `/api/ui/documents/{id}` | Delete document and passages (404 unknown) |
+| `GET` | `/api/ui/memory` | Memoria page: active user memories `{memories: [{id, fact, domains, source, access, topic, created_at}]}` |
+| `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
+| `POST` | `/api/memory/note` | `memory_note` `{facts, topic?}` (+ `X-Hestia-Access`) → `{status, saved[], skipped[]}`; 422 empty/too many/too long, 502 Archive |
+| `GET` | `/api/memory/recall?query=` | `memory_recall` → `{count, memories: [{fact, domains, since}]}` |
 | `GET` | `/health` | Service health |
 
 ### Module tools (agent loop)
@@ -241,6 +251,8 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 |------|-------------|
 | `memory.save` | Save a durable user preference |
 | `memory.search` | Search saved preferences |
+| `memory_note` | Save facts from an external AI's conversation (clients ui, telegram, external) |
+| `memory_recall` | What Hestia knows on a topic (clients ui, telegram, external) |
 | `documents.search` | Search uploaded documents |
 | `oracle.context_stats` | Session context breakdown |
 | `oracle.compact` | Force context compaction |
@@ -436,6 +448,13 @@ gives the classifier/memory calls their own slot so they stop evicting the chat 
 `OLLAMA_CONTEXT_LENGTH` = the same num_ctx for any client that uses Ollama's `/v1` endpoint directly (no per-request
 num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa --cache-reuse 256
 --port 8080` (+ `-md draft.gguf` for speculative decoding); vLLM: `vllm serve <model> --enable-prefix-caching`.
+
+## Export and import of memories (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+One section `memorie` (`core/services/memory_transfer.py`): active long-term memories (preferences, facts, skills,
+commitments) — never `conversational_history`, chats or sessions (Marko 2026-10-20). Archive ids differ between two
+Hestia, so a memory is matched by class + normalized fact; imported ones are marked `extra_data.imported`.
+«Sostituisci» deactivates the memories that are only here. Settings travel through Themis.
 
 ## Claude Code / Codex CLIs in the image
 

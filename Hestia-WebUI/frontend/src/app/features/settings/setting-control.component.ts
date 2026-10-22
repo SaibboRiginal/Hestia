@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { SegmentedComponent, SegmentOption, TimeFieldComponent, ToastService, ToggleComponent } from '../../ui';
 import { CentralSettingsApi, SettingItem, SettingOption } from './central-settings.api';
+import { PlacesEditorComponent } from './places-editor.component';
 
 /**
  * <hx-setting-control [item] [disabled] (commit)="store.set(item, $event)" />
@@ -12,10 +13,13 @@ import { CentralSettingsApi, SettingItem, SettingOption } from './central-settin
  */
 @Component({
   selector: 'hx-setting-control',
-  imports: [NgTemplateOutlet, RouterLink, ToggleComponent, SegmentedComponent, TimeFieldComponent],
+  imports: [NgTemplateOutlet, RouterLink, ToggleComponent, SegmentedComponent, TimeFieldComponent, PlacesEditorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let it = item();
+    @if (it.editor === 'places') {
+      <hx-places-editor [key]="it.key" [value]="it.value" [disabled]="disabled()" (commit)="commit.emit($event)" />
+    } @else {
     @switch (it.type) {
       @case ('bool') {
         <hx-toggle [checked]="!!it.value" [disabled]="disabled()" (changed)="commit.emit($event)" />
@@ -68,6 +72,7 @@ import { CentralSettingsApi, SettingItem, SettingOption } from './central-settin
                [placeholder]="it.type === 'duration' ? 'es. 30s, 5m, 2h' : ''"
                (change)="commitText($any($event.target).value)" (keydown.enter)="blur($event)" />
       }
+    }
     }
     <ng-template #num>
       <span class="num">

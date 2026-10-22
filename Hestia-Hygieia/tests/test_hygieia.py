@@ -263,3 +263,32 @@ def test_store_unavailable(hy):
     hy.store.hub.down = True
     with pytest.raises(StoreUnavailable):
         hy.save_product({"name": "x"})
+
+
+# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.2) ──────
+def test_coach_needs_slots_conflicts_and_supplements(hy):
+    from hestia_common.coach import validate_need
+    from app.core.coach import HygieiaCoach
+    events = []
+    hy.on_event = lambda e, d: events.append((e, d.get("need_id")))
+    ret = hy.save_product({"name": "Retinale", "actives": ["retinale"]})
+    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicilico"]})
+    a = hy.save_routine({"name": "Notte retinoide", "slot": "evening", "cadence": {"mode": "target", "times": 3},
+                         "steps": [{"product_id": ret["id"]}]})
+    b = hy.save_routine({"name": "Notte esfoliante", "slot": "evening", "cadence": {"mode": "target", "times": 1},
+                         "steps": [{"product_id": bha["id"]}]})
+    vit = hy.save_product({"name": "Creatina", "category": "integratore", "status": "in_use"})
+    c = hy.save_routine({"name": "Creatina", "cadence": {"mode": "daily"}, "steps": [{"product_id": vit["id"]}],
+                         "plan_with": "workout"})
+    assert events and events[-1][0] == "changed"
+    start = hy.today()
+    needs = {n["id"]: validate_need(n) for n in HygieiaCoach(hy).needs(start, start + timedelta(days=7))["needs"]}
+    na, nb = needs[f"routine.{a['id']}"], needs[f"routine.{b['id']}"]
+    assert na["kind"] == "slot" and na["time_of_day"] == "evening" and na["count"] == 3 and na["min_gap_days"] == 2
+    assert f"routine.{b['id']}" in na["not_same_day"] and f"routine.{a['id']}" in nb["not_same_day"]
+    assert needs[f"routine.{c['id']}"]["with"] == {"tag": "workout", "relation": "same_day"}
+    assert "integratori: Creatina" in hy.summary()["text"]
+    hy.log_routine(a["id"])
+    assert events[-1] == ("done", f"routine.{a['id']}")
+    review = HygieiaCoach(hy).review(start, start + timedelta(days=1))
+    assert review["done"] == 1
