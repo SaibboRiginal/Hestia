@@ -18,4 +18,5 @@
 - [x] Fix 2026-10-20: no docker CLI in the container (Codespace not built from the devcontainer) → clear message with «Full Rebuild Container» instead of a traceback
 - [x] Fix 2026-10-22: Codespace in recovery mode — `devcontainers/python:3.12` is now Debian 13 (trixie) where the docker-in-docker feature (moby) fails; image pinned to `3.12-bookworm`
 - [x] Fix 2026-10-22: `prepare` crashed in the Codespace (`PermissionError` on `/root/.ccr/ca-bundle.crt`: user vscode cannot look inside /root), so postCreate failed and postStart never ran; an unreadable CA path now counts as «no proxy CA»
+- [x] Fix 2026-10-22: login link gave ERR_INVALID_RESPONSE in the browser → devcontainer forces `protocol: http` on ports 19015/19000
 - [ ] Marko opens a Codespace with his test secrets

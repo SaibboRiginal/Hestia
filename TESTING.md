@@ -71,6 +71,8 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   the devcontainer: *Ctrl+Shift+P → Codespaces: Full Rebuild Container*. «Recovery mode» = the devcontainer failed to build
   (until 2026-10-22: the base image moved to Debian 13, where docker-in-docker does not install; now pinned to bookworm). No `.cloud-test` folder = the setup failed: see *Ctrl+Shift+P → Codespaces: View Creation Log*,
   or run `python tools/cloud_test.py start` in the terminal.
+  Browser «ERR_INVALID_RESPONSE» on the link = the forwarded port talks HTTPS to the WebUI (plain HTTP): *Ports* tab →
+  row 19015 → right click → *Change Port Protocol → HTTP* (the devcontainer now sets HTTP for 19015/19000).
 
 ## Critical Regressions Log
 
