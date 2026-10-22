@@ -129,6 +129,17 @@ at runtime (`on_change`), `apply="restart"` ones are flagged until restart. Env 
 infrastructure (URLs, ports, paths). The assistant only *proposes* changes (Themis → Hermes → user).
 Details: `Hestia-Themis/hestia-themis.md`.
 
+## 5c. Export and import — every module moves its own data
+
+`hestia_common.transfer`: a module lists its **sections** (`StoreSection` over its Archive store, or a `Section`
+subclass) in `Transfer("<module>", hub, sections=[...])`, includes `transfer.router()` (`/api/transfer/*`) and adds
+`transfer.capabilities()` to its Hub registration. Modes `append` · `merge` (default, newer wins) · `replace`;
+import is a dry run unless `dry_run=false`; dependencies and children travel with the chosen items; files are
+Archive blobs remapped on import. Themis exports the settings of every module (scopes system/profile/client, never
+session); Oracle only memories (no chats); Chronos only the user's agenda rules. Never export secrets, tokens,
+chats or sessions. File `.hestia` = gzip JSON, orchestrated by the WebUI page *Impostazioni → Esporta e importa*
+and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossier `docs/work/2026-10-20-import-export/`.
+
 ## 6. Clients
 
 - Telegram: `Hestia-Telegram/app` — routing, streaming, commands from Hub discovery, OAuth paste.

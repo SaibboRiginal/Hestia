@@ -32,6 +32,14 @@ public class HubClient
         return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
     }
 
+    /// <summary>Registered services (registry only, no health probe — fast).</summary>
+    public async Task<JsonElement> GetServicesAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"{_hubUrl}/registry/services", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+    }
+
     // ── Tools: Hestia's one MCP server (Hestia-MCP /mcp through Hub) ──────────
     // Every client lists and runs tools the same way (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
     private long _mcpId;

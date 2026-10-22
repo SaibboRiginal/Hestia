@@ -34,6 +34,7 @@ from hestia_common.mail_client import MailClient, mail_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
+from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
 
@@ -646,6 +647,23 @@ ui.webui(
 app.include_router(ui.router())
 app.include_router(settings.router())
 
+# ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
+transfer = Transfer("plutus", hub, sections=[
+    StoreSection("movimenti", "Movimenti", store, ["tx"], icon="wallet",
+                 title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or 'Movimento'} "
+                                 f"{r['data'].get('amount')} {r['data'].get('currency') or ''}".strip(),
+                 subtitle=lambda r: r["data"].get("date") or "", depends_on=["categorie", "conti"]),
+    StoreSection("categorie", "Categorie", store, ["category"], icon="tag"),
+    StoreSection("regole", "Regole", store, ["rule"], icon="filter",
+                 title=lambda r: f"{r['data'].get('pattern')} → {r['data'].get('category')}", depends_on=["categorie"]),
+    StoreSection("budget", "Budget", store, ["budget"], icon="target",
+                 title=lambda r: f"{r['data'].get('category')}: {r['data'].get('amount')}", depends_on=["categorie"]),
+    StoreSection("conti", "Conti", store, ["account"], icon="wallet"),
+    StoreSection("ricorrenti", "Ricorrenti", store, ["recurring"], icon="repeat",
+                 title=lambda r: r["data"].get("merchant") or r["id"], depends_on=["categorie"]),
+])
+app.include_router(transfer.router())
+
 
 # ── MCP tools (domain finance; Oracle calls them, the logic stays here) ──────
 def _t(fn):
@@ -843,6 +861,7 @@ def _registration() -> dict:
             **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
+        caps.update(transfer.capabilities())
     except Exception as exc:
         logger.warning("[🔄] event=plutus_ui_manifest_failed error=%s fallback=no_ui", exc)
     return {"name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",

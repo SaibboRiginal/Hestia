@@ -15,5 +15,5 @@
 - [x] V8 Notifications with voice (Hermes)
 - [x] V9 Plugin «Voce»
 - [x] V10 Docs (module docs, ARCHITECTURE, AI-GUIDE, readme, flow map, swagger, CLAUDE.md rule), root CHANGELOG
-- [ ] PR green, Marko's ok, merge
+- [x] PR green, Marko's ok (2026-10-22: «finisci tutto non aspettare il mio test»), merge (PR #23)
 - [ ] Marko's real run: `up-all.bat --build` (Echo image, .NET WebUI build), try Telegram vocale + /live, WebUI vocale + Parla, page Voce → Prova

@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 3.2 |
 | **Source** | user via external chat → project brainstorm 2026-10-19, item 4 of the final list (`/mnt/project-files/brainstorm/2026-10-19-idee-e-cloud.md` §0); routed by the project coordinator 2026-10-20 |
-| **Status** | Approved by Marko 2026-10-20 (v3.1, answers in §10); V1–V10 implemented (v3.2 notes in §11), PR open, Marko's real run pending |
+| **Status** | Approved by Marko 2026-10-20 (v3.1, answers in §10); V1–V10 implemented (v3.2 notes in §11), merged to main via PR #23 on 2026-10-22, Marko's real run pending |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 

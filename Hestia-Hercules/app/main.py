@@ -28,6 +28,7 @@ from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
+from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
 
@@ -636,6 +637,26 @@ ui.webui(
 app.include_router(ui.router())
 app.include_router(settings.router())
 
+# ── export / import (hestia_common.transfer; reminder and adaptation rows are runtime state) ────────────────
+transfer = Transfer("hercules", hub, sections=[
+    StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
+    StoreSection("schede", "Schede e programmi", store, ["template", "program"], icon="list",
+                 depends_on=["esercizi"]),
+    StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"], icon="history",
+                 title=lambda r: r["data"].get("name") or "Sessione",
+                 subtitle=lambda r: str(r["data"].get("started_at") or r.get("at") or "")[:10],
+                 depends_on=["esercizi", "schede"]),
+    StoreSection("misure", "Misure", store, ["measurement"], icon="scale",
+                 title=lambda r: f"{r['data'].get('kind')}: {r['data'].get('value')} {r['data'].get('unit') or ''}"),
+    StoreSection("obiettivi", "Obiettivi e piani", store, ["goal", "plan"], icon="target",
+                 title=lambda r: r["data"].get("label") or r["data"].get("note") or r["data"].get("date") or r["id"],
+                 depends_on=["esercizi", "schede"]),
+    StoreSection("feedback", "Check-in e note", store, ["checkin", "feedback"], icon="note",
+                 title=lambda r: r["data"].get("text") or r["data"].get("free_text") or "Check-in",
+                 depends_on=["esercizi", "sessioni"]),
+])
+app.include_router(transfer.router())
+
 
 # ── MCP tools (domain fitness; Oracle calls them, the logic stays here) ─────
 def _t(fn):
@@ -944,6 +965,7 @@ def _registration() -> dict:
             "context_endpoint": "/api/module/context"}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
+        caps.update(transfer.capabilities())
     except Exception as exc:
         logger.warning("[🔄] event=hercules_ui_manifest_failed error=%s fallback=no_ui", exc)
     return {"name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",

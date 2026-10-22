@@ -108,6 +108,12 @@ See `Hestia-Swagger/swagger.yml` tag *Plutus*. Groups under `/api/finance`: meta
 budgets, transactions, summary, stats, recurring, export, imports (+commit, undo), attachments, mail (+check),
 quick, alerts/run, review/run, reminders/run|skip, signals/run, tools.
 
+## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+Sections over `finance-store`: `movimenti` (tx) · `categorie` · `regole` · `budget` · `conti` (account) · `ricorrenti`.
+A transaction pulls its category and account. Statement imports, processed mails, alerts and reminder state are
+runtime: never exported. Settings travel through Themis.
+
 ## Configuration (infrastructure only)
 
 `SERVICE_NAME`, `SERVICE_BASE_URL`, `HUB_API_URL`, `TZ` (local day for months and jobs), `PLUTUS_UI_DIST`.

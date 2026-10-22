@@ -65,6 +65,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/oauth/register` · `/oauth/token` · `/oauth/revoke` | OAuth 2.1 for claude.ai / ChatGPT connectors (form or JSON body + `Authorization` forwarded) |
 | GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/accessi?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
+| GET | `/api/webui/transfer/modules` | Modules with the `transfer` capability (Hub registry) — «Esporta e importa» |
+| GET · POST | `/api/webui/transfer/{module}/describe` · `/{module}/items|export|import|files` · GET `/{module}/files/{id}` | Forwarded to the module's `/api/transfer/*` (only modules advertising `transfer`) |
+| GET · POST · GET · DELETE | `/api/webui/transfer/restore-points[/{id}]` | Restore points: WebUI Archive blobs (gzip JSON, meta `kind: transfer-restore`), newest `webui.transfer.restore_points` kept |
 | GET/POST | `/api/settings/effective` · `/api/settings/reload` | WebUI's own Themis settings (internal network only) |
 | GET | `/api/webui/sessions/current` | Current session ID |
 | POST | `/api/webui/sessions/clear` | Reset session |
@@ -302,6 +305,16 @@ The page asks Hestia through the plugin host (`host.assistant(...)`), logs come 
   Settings → *Messaggi di sistema*: where (sotto la risposta · popup · entrambi · solo importanti · nascosti),
   style (compatto · dettagliato), per-group toggles (memoria, azioni, notifiche, altro). Stored per browser
   (`NoticePrefsService`, localStorage). Notices arriving after `final` attach to the last answer.
+
+## Esporta e importa (Impostazioni → Dati, dossier `docs/work/2026-10-20-import-export`)
+
+`features/settings/transfer-settings.component.ts` (+ `transfer.api.ts`), deep link `/settings?tab=transfer`. Three
+tabs: **Esporta** (tree modules → sections with counts, «Scegli» for single items, «Solo modifiche dal», «Includi
+foto» → downloads `hestia-AAAA-MM-GG.hestia`, gzip JSON via `CompressionStream`), **Importa** (open/drop a file → same
+tree, mode Aggiungi/Unisci/Sostituisci globally or per section, «Anteprima» = dry run with counts and item lists,
+«Importa» saves a restore point first, then uploads files and imports), **Ripristino** (restore points: Ripristina =
+open in Importa with Sostituisci, Elimina). Settings of each module come from Themis and show under that module.
+Themis setting `webui.transfer.restore_points` (system, default 5, 1–20).
 
 ## Known Constraints
 

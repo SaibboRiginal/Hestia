@@ -235,6 +235,12 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 | `scout.notifiche.voce` | bool | `false` | New-listing notifications also as voice (event `_voice`, Hermes adds the audio from Echo) |
 | `scout.log.level` | enum | boot `LOG_LEVEL` | Log verbosity (live) |
 
+## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
+
+One section `annunci`: the active listings of Scout's domain in Archive (payload with the user's marks
+`user_flag`, `listing_status`). Import upserts through Archive's entity merge; «Sostituisci» never deletes (the
+mail cycle brings listings back anyway). Settings travel through Themis.
+
 ## Configuration (env: infrastructure only)
 
 | Variable | Description |
