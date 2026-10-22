@@ -131,3 +131,15 @@ def test_chat_endpoint_composes_queued_batch(monkeypatch):
     assert res.status_code == 200 and "ok" in res.text
     assert "1. uno" in seen["message"] and "2. due" in seen["message"]
     assert seen["mode"] == "thinking" and "ask_user" in (seen["instructions"] or "")
+
+
+@pytest.mark.api
+def test_chat_refused_with_503_when_no_model(monkeypatch):
+    """v3 E: no model can answer → 503 like an unreachable Oracle, so the client queues the message."""
+    import main
+    monkeypatch.setattr(main, "_models_state", lambda: "none")
+    from fastapi.testclient import TestClient
+    client = TestClient(main.app)
+    res = client.post("/api/chat", json={"message": "ciao", "session_id": "s1"})
+    assert res.status_code == 503 and res.json()["models"] == "none"
+    assert client.get("/health").json()["models"] == "none"

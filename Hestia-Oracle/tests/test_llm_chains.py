@@ -275,3 +275,44 @@ class TestUsageRows:
         monkeypatch.setattr(llm_usage, "_pending", [{"a": 1}, {"a": 2}, {"a": 3}])
         llm_usage.flush()
         assert sent == [[{"a": 1}, {"a": 2}], [{"a": 3}]] and llm_usage._pending == []
+
+
+@pytest.mark.unit
+class TestModelsState:
+    """oracle-offline v3 E: /health says how the assistant can answer now (Argus → «Limitato»)."""
+
+    def _setup(self, monkeypatch, available=("ollama", "gemini")):
+        from core.services import llm_chains, llm_providers
+        monkeypatch.setattr(llm_chains, "chain_steps", lambda uc: [
+            {"provider": "ollama", "model": "a"}, {"provider": "gemini", "model": "b"}])
+        monkeypatch.setattr(llm_providers, "available", lambda name: (name in available, ""))
+        llm_chains.clear_exhausted()
+        llm_chains._outcomes.clear()
+        return llm_chains
+
+    def test_ok_when_first_model_works(self, monkeypatch):
+        lc = self._setup(monkeypatch)
+        assert lc.models_state()["state"] == "ok"
+        lc.note_outcome(lc.GENERAL, 0)
+        assert lc.models_state()["state"] == "ok"
+
+    def test_limited_when_only_a_later_step_answers(self, monkeypatch):
+        lc = self._setup(monkeypatch)
+        lc.note_outcome(lc.GENERAL, 1)
+        assert lc.models_state()["state"] == "limited"
+        lc.note_outcome(lc.GENERAL, 0)
+        assert lc.models_state()["state"] == "ok"
+
+    def test_limited_when_first_unavailable(self, monkeypatch):
+        lc = self._setup(monkeypatch, available=("gemini",))
+        assert lc.models_state()["state"] == "limited"
+
+    def test_none_when_every_step_failed_last(self, monkeypatch):
+        lc = self._setup(monkeypatch)
+        lc.note_outcome(lc.GENERAL, 0)
+        lc.note_outcome(lc.GENERAL, None)
+        assert lc.models_state()["state"] == "none"
+
+    def test_none_when_nothing_usable(self, monkeypatch):
+        lc = self._setup(monkeypatch, available=())
+        assert lc.models_state()["state"] == "none"

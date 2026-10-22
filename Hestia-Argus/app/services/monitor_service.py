@@ -334,7 +334,8 @@ def _run_once() -> None:
     # --- Oracle watch: its own notice replaces the generic one below ---
     oracle = health.get(oracle_watch.ORACLE)
     if oracle is not None or services:  # empty registry = Hub down: say nothing about Oracle
-        oracle_watch.observe(oracle.status if oracle else None, oracle.error if oracle else "not registered on Hub")
+        oracle_watch.observe(oracle.status if oracle else None, oracle.error if oracle else "not registered on Hub",
+                             models=str((oracle.details or {}).get("models") or "") if oracle else None)
 
     # --- Health alerts & recovery ---
     for name, report in health.items():

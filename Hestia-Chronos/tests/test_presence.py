@@ -132,3 +132,17 @@ def test_oracle_offline_overlay_queues_chat_and_drains_when_back(engine):
     state = engine.view()
     assert state["effects"]["chat.reply"] == "live" and state["overlays"] == []
     assert engine.calls["drain"] == [True]
+
+
+@pytest.mark.unit
+def test_oracle_limited_overlay_brief_and_heavy_waits(engine):
+    """v3 E: only fallback models → «Limitato», heavy work waits, chat stays live."""
+    engine.ping("telegram")
+    engine.set_signal("oracle.limited", True)
+    state = engine.view()
+    assert [o["key"] for o in state["overlays"]] == ["oracle_limited"]
+    assert state["overlays"][0]["icon"] == "battery-low" and state["overlays"][0]["tone"] == "warning"
+    assert state["effects"]["work.heavy"] == "defer" and state["effects"]["chat.style"] == "brief"
+    assert state["effects"]["chat.reply"] == "live"
+    engine.clear_signal("oracle.limited")
+    assert engine.view()["overlays"] == []

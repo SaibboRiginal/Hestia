@@ -161,6 +161,43 @@ def clear_exhausted(provider: str = "", model: str = "") -> None:
                 del _exhausted[key]
 
 
+_outcomes: dict[str, dict] = {}   # use case → {ok_at, ok_index, failed_at} of its last chain calls
+
+
+def note_outcome(use_case: str, index: int | None) -> None:
+    """A chain call answered from step ``index`` (None = every step failed): feeds ``models_state``."""
+    with _lock:
+        row = _outcomes.setdefault(use_case, {"ok_at": 0.0, "ok_index": 0, "failed_at": 0.0})
+        if index is None:
+            row["failed_at"] = time.time()
+        else:
+            row.update(ok_at=time.time(), ok_index=int(index))
+
+
+def models_state(use_case: str = GENERAL) -> dict:
+    """How the assistant can answer now (oracle-offline v3 E, read by Argus from ``/health``; no notification
+    logic here): ``ok`` = the chain's first model works · ``limited`` = only later steps (first one out of quota,
+    unavailable or failing) · ``none`` = no step usable or the last call failed on every step."""
+    from core.services import llm_providers
+    steps = chain_steps(use_case)
+    usable = [i for i, s in enumerate(steps)
+              if not exhausted_until(s["provider"], s["model"]) and llm_providers.available(s["provider"])[0]]
+    with _lock:
+        row = dict(_outcomes.get(use_case) or {"ok_at": 0.0, "ok_index": 0, "failed_at": 0.0})
+    from core.services import oracle_settings
+    # A failure on every step counts for one cooldown: then the chain is tried again (the chat refuses calls
+    # while «none», so without this nothing could ever succeed again).
+    failed_recently = row["failed_at"] > row["ok_at"] and \
+        time.time() - row["failed_at"] < 60 * oracle_settings.get_int(oracle_settings.CHAIN_COOLDOWN, 1)
+    if not usable or failed_recently:
+        state = "none"
+    elif usable[0] != 0 or (row["ok_at"] and row["ok_index"] > 0):
+        state = "limited"
+    else:
+        state = "ok"
+    return {"state": state, "use_case": use_case, "usable_steps": len(usable), "steps": len(steps)}
+
+
 def last_answered() -> dict | None:
     """Step that answered the last chain call in this context (use case, chain, index, provider, model)."""
     return _answered.get()
@@ -378,6 +415,7 @@ class ChainAgent:
     def _answered(self, index: int, step: dict) -> None:
         _answered.set({"use_case": self.use_case, "chain": usecase_config(self.use_case)["chain"], "step": index,
                        "provider": step["provider"], "model": step["model"]})
+        note_outcome(self.use_case, index)
 
     def _usage(self, index: int, step: dict):
         from core.services import llm_usage
@@ -397,6 +435,7 @@ class ChainAgent:
         errors.append(f"{step['provider']}/{step['model']}: {str(exc)[:160]}")
 
     def _exhausted(self, errors: list[str]) -> ChainExhausted:
+        note_outcome(self.use_case, None)
         cfg = usecase_config(self.use_case)
         logger.error("event=llm_chain_exhausted use_case=%s chain=%s errors=%s", self.use_case, cfg["chain"],
                      " | ".join(errors) or "no usable step")

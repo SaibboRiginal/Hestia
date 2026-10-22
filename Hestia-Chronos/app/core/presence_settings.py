@@ -122,6 +122,14 @@ BUILTIN_STATES: dict[str, dict] = {
         "effects": {"work.light": "defer", "work.heavy": "defer", "chat.reply": "queued"},
         "notice": "non posso rispondere adesso, ti rispondo appena possibile",
     },
+    # Only fallback models answer for longer than argus.oracle.grace (signal from Argus, oracle-offline v3 E).
+    "oracle_limited": {
+        "kind": "overlay", "priority": 90, "label": "Limitato", "emoji": "🔋", "icon": "battery-low", "tone": "warning",
+        "help": "Rispondo, ma in modo ridotto: i modelli principali non sono disponibili. I lavori pesanti aspettano.",
+        "when": [[_c("oracle.limited", "true")]],
+        "effects": {"work.heavy": "defer", "chat.style": "brief"},
+        "notice": "rispondo in modo ridotto finché i modelli principali non tornano",
+    },
 }
 CORE_STATES = tuple(k for k, v in BUILTIN_STATES.items() if v.get("core"))
 

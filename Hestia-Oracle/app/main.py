@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
@@ -685,9 +685,18 @@ class AthenaHintIngestRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+def _models_state() -> str:
+    try:
+        from core.services import llm_chains
+        return llm_chains.models_state()["state"]
+    except Exception:
+        return "ok"
+
+
 @app.get("/health")
 def health_endpoint():
-    return {"status": "ok", "service": "hestia_oracle"}
+    # `models`: ok | limited | none — Argus turns it into «Limitato» / «Non disponibile» (oracle-offline v3 E).
+    return {"status": "ok", "service": "hestia_oracle", "models": _models_state()}
 
 
 @app.get("/api/logs")
@@ -800,6 +809,11 @@ def chat_endpoint(req: ChatRequest):
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
 
+        # No model can answer (every step out of quota or failing): refuse like an unreachable Oracle, so the
+        # client queues the message and it is answered when a model is back (oracle-offline v3 E).
+        if _models_state() == "none":
+            logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
+            return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, req.client_instructions
         queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
