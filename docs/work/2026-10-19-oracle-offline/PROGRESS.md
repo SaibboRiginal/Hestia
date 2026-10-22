@@ -25,11 +25,13 @@ Screenshots: /mnt/project-files/cervello-offline/screenshots/ (taken before the 
 ## v3 (draft SPEC 3.0, 2026-10-22)
 - [x] SPEC v3.0 written
 - [x] Marko approves SPEC v3.0 (2026-10-22)
-- [ ] A. ask_user tool + paused turn + Archive pending questions + WebUI multi-choice/«Altro» + Telegram + Hermes delivery
-- [ ] C. smart queue (one call per chat, model decides, asks about old ones)
-- [ ] B. Hephaestus restart_container runbook + argus.repair.max_attempts + gave-up notice
-- [ ] F. journal in Archive + Argus «Registro» page
-- [ ] E. Oracle /health models state + Argus signal oracle.limited + Chronos overlay «Limitato»
-- [ ] D. «Mentre non c'ero» catch-up from Chronos
-- [ ] G. WebUI hourglass after reload
-- [ ] Docs, swagger, root CHANGELOG; PR, CI green, merge
+- [x] A. ask_user tool + turn stops at the question + Archive pending questions + WebUI card (multi-choice/«Altro») + Telegram (resume as next turn, no Hermes delivery: v3.1)
+- [x] C. smart queue (one call per chat, model decides, asks about old ones)
+- [x] B. Hephaestus restart endpoint + argus.repair.max_restarts/restart_after + gave-up notice (v3.1)
+- [x] F. journal in Archive + Argus «Registro» page
+- [x] E. Oracle /health models state + Argus signal oracle.limited + Chronos overlay «Limitato»
+- [x] D. «Mentre non c'ero» catch-up from Chronos
+- [x] G. WebUI hourglass after reload
+- [x] Docs, swagger, root CHANGELOG
+- [ ] PR, CI green, merge
+- [ ] Marko real run: Telegram questions, WebUI build (.NET), reload with queued messages

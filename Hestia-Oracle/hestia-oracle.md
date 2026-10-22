@@ -203,7 +203,8 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/chat` | Send a message, receive NDJSON stream |
+| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no model is left |
+| `GET` | `/api/chat/questions?session_id=` | Questions the assistant asked and still open in that session (clients draw them again after a reload) |
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
@@ -239,7 +240,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
 | `POST` | `/api/memory/note` | `memory_note` `{facts, topic?}` (+ `X-Hestia-Access`) → `{status, saved[], skipped[]}`; 422 empty/too many/too long, 502 Archive |
 | `GET` | `/api/memory/recall?query=` | `memory_recall` → `{count, memories: [{fact, domains, since}]}` |
-| `GET` | `/health` | Service health |
+| `GET` | `/health` | Service health; `models` = `ok` · `limited` (only fallback models answer) · `none` (Argus: «Limitato» / «Non disponibile») |
 
 ### Module tools (agent loop)
 
@@ -299,6 +300,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
+  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404.
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
@@ -321,6 +323,7 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 | Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…) |
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
 | Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
+| Domande | `oracle.ask.timeout` (24 h, 1–720): how long a question of the assistant stays open |
 | Conferme | `oracle.approval.enabled` (on), `.ttl` (600 s), `.bulk_min_count` (2), `.methods` (DELETE, PUT, PATCH), `.commands` ([]) — the assistant may only read them |
 | Documenti | `oracle.documents.max_archive_mb` (10), `.search_threshold` (1.2), `.vision_models`, `.audio_models` (prefix lists) |
 | Esperimenti | `oracle.prompt_ab.*` (above) |

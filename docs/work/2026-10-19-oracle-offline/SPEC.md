@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 3.0 |
+| **Version** | 3.1 |
 | **Source** | user via external chat (Marko, brainstorm 2026-10-19 §0 item 2: «Cervello offline — Argus → Hermes diretto con testo fisso; banner WebUI e avviso Telegram; i messaggi della chat vanno in coda e hanno risposta quando torna»; v2.2: «togli proprio cervello come nome e icona»; v2.3: «metti qualcosa di generico, chi lo legge non deve sapere chi o che cosa»; v3.0: «rendiamolo un po' più sofisticato» + answers of 2026-10-22 (sistema immunitario 1–3 tentativi, stato a sé quando finiscono i modelli, coda smart che decide, «mentre non c'ero», registro eventi notevoli non ridondante con Hermes, fumetto dopo reload, domande dell'assistente come Claude: selezione multipla, campo libero, conferma «per tutto»); v2.0: «deve andare in congiunzione con lo stato che avevamo già adesso, non andiamo a complicarci troppo») |
-| **Status** | v2.3 merged (PRs #6 #10 #11). **v3.0 approved by Marko 2026-10-22** (section «v3»), in progress |
+| **Status** | v2.3 merged (PRs #6 #10 #11). **v3.0 approved by Marko 2026-10-22** (section «v3»), v3.1 implemented (PR pending merge) |
 
 ## Goal
 Oracle is the only LLM core. When it is down the rest of Hestia keeps working and says so: the user is told once,
@@ -180,6 +180,21 @@ job, generic user texts (no module named), icons + tone in clients, Telegram kee
 
 ### Order
 A → C (needs A) · B → F (F shows B's tries) · E · D · G. Each phase: code, tests, module `.md`, swagger, root CHANGELOG.
+
+### v3.1 — refinements made while implementing (2026-10-22)
+- A: no paused thread in Oracle. The turn ends at the question; `question-answer` returns `resume.message` and the
+  client sends it as the next chat turn of the same session (history already has the question): survives an Oracle
+  restart. Pending questions kept in Archive `oracle-store` (kind `question`), expiry `oracle.ask.timeout` (24 h).
+  Questions reach the client in the chat stream only (no Hermes delivery: they belong to the conversation).
+  `GET /api/chat/questions` lists the open ones.
+- B: restart via a new endpoint `POST /api/hephaestus/restart` (not a remediation runbook: no approval flow, Argus
+  decides). Settings `argus.repair.max_restarts` (3) and `argus.repair.restart_after` (120 s, doubles each try).
+- C: `ChatRequest.queued` `[{text, written_at}]`; WebUI and Telegram send one turn per chat; the reply goes under the
+  last message.
+- E: Oracle `/health` gives `models` ok/limited/none; `none` is «Non disponibile» (reason `no_models`), chat returns 503.
+- F: the journal is Argus' incidents, persisted in Archive `argus-store` (kind `incident`), shown as «Registro».
+- D: fixed-text message (no LLM: the model may just have come back), setting `chronos.catchup.max_age_hours` (6).
+- G: `GET /api/webui/chat/pending`. No «Riprova» button (the queue is drained by itself).
 
 ### Acceptance criteria (v3)
 1. The model asks via a card (WebUI) / buttons (Telegram) in each of the 4 kinds; the answer resumes the same turn;

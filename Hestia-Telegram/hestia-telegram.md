@@ -222,6 +222,15 @@ accept (connection refused, timeout before the answer, HTTP 502/503/504) is stor
 client `telegram`, the message id as `client_ref`) and the reply is «⏳ Non posso rispondere adesso: messaggio in coda,
 ti rispondo appena possibile.» A file while offline gets «rimandamelo più tardi» (not queued). Archive down too → the
 usual error. `POST /api/chat-queue/drain` (capability `chat_queue_drain`, called by Chronos when Oracle is back) and
-startup answer the queue oldest first, each as a reply to the original message, with a note to Oracle about when it
-was written; one header line when a chat had more than one; the first Oracle failure stops the drain. The Hermes
+startup answer the queue chat by chat: all the messages of one chat go to Oracle in one turn (`queued`, each with
+when it was written) and the assistant decides whether to answer each, merge them or ask which old ones still
+matter (v3 C); the answer is a reply to the last message; the first Oracle failure stops the drain. The Hermes
 notice «Non disponibile» and `/stato` show the state.
+
+## Questions from the assistant (v3 A, `services/assistant_questions.py`)
+
+When the assistant asks (Oracle tool `ask_user`, question id `ask_…`) the question arrives as a message with inline
+buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Invia»), «Altro…» or free text (the next text
+message is the answer). The callback is answered at once, then the answer goes to Oracle
+`/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
+question no longer open answers «⌛ Questa domanda non è più aperta».

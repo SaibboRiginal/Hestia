@@ -217,7 +217,8 @@ export class ChatService {
       if (known.has(q.queue_id)) continue;
       const at = q.created_at ? new Date(q.created_at) : new Date();
       add.push({ id: uid(), role: 'user', content: q.text, timestamp: at },
-               { id: uid(), role: 'assistant', content: 'Messaggio in coda', timestamp: at, queuedId: q.queue_id });
+               { id: uid(), role: 'assistant', content: 'Non posso rispondere adesso: messaggio in coda, ti rispondo appena possibile.',
+                 timestamp: at, queuedId: q.queue_id });
     }
     if (add.length) this.messages.update(msgs => [...msgs, ...add]);
     const open = (p.questions ?? [])[0];

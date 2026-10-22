@@ -165,6 +165,7 @@ One `SettingsClient("chronos")` (`app/core/presence_settings.py`); agenda/calend
 | `chronos.sync.calendar_id` (adv.) | `primary` | Calendario | Provider calendar id read by the sync |
 | `chronos.reminders.look_ahead_hours` | 26 h | Promemoria | First reminder ("1d" bucket upper bound; then 2 h and 30 min) |
 | `chronos.reminders.poll_seconds` (adv.) | 300 s | Promemoria | Reminder worker poll |
+| `chronos.catchup.max_age_hours` | 6 h (0–48) | Agenda | After «Non disponibile», missed work younger than this is redone, older is only listed |
 | `chronos.flex.gap_minutes` | 15 min | Agenda | Margin kept from your events by flexible activities |
 | `chronos.coach.day_start` / `day_end` | 07:00 / 22:00 | Piano della settimana | Window where the weekly plan may place blocks |
 | `chronos.coach.buffer_minutes` | 15 | Piano della settimana | Free minutes kept around calendar events |
@@ -374,7 +375,8 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
   `eating`, `tired`, `oracle_offline` («⏳ Non disponibile», signal `oracle.offline` from Argus when Oracle is down past
   `argus.oracle.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
-  `docs/work/2026-10-19-oracle-offline`). Modules may add their own with `POST /api/presence/states/register`.
+  `docs/work/2026-10-19-oracle-offline`), `oracle_limited` («Limitato», icon `battery-low`, signal `oracle.limited`
+  from Argus when only fallback models answer; effects `work.heavy` defer, `chat.style` brief). Modules may add their own with `POST /api/presence/states/register`.
 - **Effects**: `work.light`/`work.heavy` (allow < local < defer), `llm.claude` (allow < save < deny),
   `notify.level` (all < important < urgent), `chat.style` (normal < brief), `chat.reply` (live < queued: chat
   clients queue what Oracle cannot answer), `chat.notice` (text). Overlays combine
@@ -384,7 +386,10 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   Archive (`/api/presence-store`), emits Hermes event `assistant.state_changed` (only to subscribers) and, when
   `notify.level` relaxes, asks Hermes to release held notifications as one digest; when `chat.reply` goes back to
   `live` (Oracle online again) it calls every Hub service declaring `capabilities.chat_queue_drain` (its path, via Hub
-  route) so each chat client answers its queued messages.
+  route) so each chat client answers its queued messages, then runs the **catch-up** «Mentre non c'ero»
+  (`app/services/catchup.py`, v3 D): agenda items whose last run failed during the outage are re-run
+  (`run_now(by="catchup")`) when younger than `chronos.catchup.max_age_hours` (6), older ones are only listed; one
+  Hermes message (`service.action_required`, entity `assistant.catchup`) says what was done.
 - **Settings** (group Presenza): `enabled`, `idle_after` 5, `nap_after` 45, `sleep_after` 180 (0 = night only),
   `use_sleep_window`, `dnd_default_duration` 120, `tired_quota` 25 %, `tired_degraded` 2, `count_ui_actions`,
   `oracle_context_line`, `states` (advanced).

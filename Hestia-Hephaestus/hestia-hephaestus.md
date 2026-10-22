@@ -26,6 +26,9 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - POST /api/hephaestus/remediate/{task_id}/approve
 - POST /api/hephaestus/remediate/{task_id}/retry (agenda retry of a failed repair)
 - POST /api/hephaestus/remediate/{task_id}/rollback
+- POST /api/hephaestus/restart `{service, reason?, attempt?}` — immune system (Argus, oracle-offline v3 B): restarts the
+  module's container through the Docker socket, then checks its health → `{status, service, restarted, healthy,
+  detail}`; refuses `hephaestus` and bad names, `skipped` while Forge is deploying that module
 - GET /api/hephaestus/tasks
 - GET /api/hephaestus/tasks/{task_id}
 - GET /api/ui/manifest · GET /ui/webui/{file} (WebUI plugin, see below)
