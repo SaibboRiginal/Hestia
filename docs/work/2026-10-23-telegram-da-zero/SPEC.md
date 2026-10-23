@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via Project thread (Marko 2026-10-23: «dobbiamo aprire uno specifico per rivedere tutto telegram, le emoji e come mostra le cose è veramente brutto... dobbiamo rivederlo da 0») |
 | **Status** | Draft — waiting for Marko's approval (no code before it) |
 
@@ -34,7 +34,7 @@ shown and reached changes.
 2. **Text first, symbols second.** Hierarchy comes from Telegram's own formatting: **bold** title, normal body,
    *italic* for secondary info and outcomes, `<blockquote expandable>` for long or optional detail, `code` only for
    things to copy. No emoji as decoration.
-3. **One marker per message at most**, from a fixed set (section 3). Never on detail lines, never on buttons.
+3. **One marker per message at most**, from a fixed set (section 3.1), on the title line. Never on detail lines; on buttons only for areas.
 4. **Plain Italian, no internals.** No module names, no ids, no exceptions, no `key=value`. Sentence case, no «!»,
    no «...» on finished text.
 5. **Deterministic output.** A command shows data with the same layout every time, without calling the model.
@@ -43,23 +43,19 @@ shown and reached changes.
 
 ## 3. Visual grammar
 
-### 3.1 Markers (the only emoji left)
-Telegram cannot colour text or draw icons, so intent is a coloured dot, the same `tone` the WebUI already uses:
+### 3.1 Markers — hybrid (Marko 2026-10-23: «farei una cosa ibrida»)
+Telegram cannot colour text or draw icons. Three kinds of marker, each with its own place, and **at most one marker
+per message, only on its title line**:
 
-| Tone | Marker | Used for |
+| Kind | Where | Set |
 |---|---|---|
-| danger | 🔴 | something failed / needs you now |
-| warning | 🟠 | attention, waiting, unavailable |
-| success | 🟢 | done, back available |
-| info | 🔵 | neutral notice from the assistant |
+| **Tone dot** | notifications, outcomes, errors (what needs attention) | 🔴 danger · 🟠 warning · 🟢 success · 🔵 info — the same `tone` the WebUI colours icons with |
+| **Area emoji** | «Comandi» area buttons and the title of a command result | one fixed emoji per area (5.2), declared once by Telegram, never repeated in lines |
+| **Nothing** | chat answers, lists, detail lines, settings, wizards, every other button | typographic symbols only: `•` items, `·` separator, `›` «go to», `—` in titles |
 
-- Only at the start of the **title line**, only on notifications, outcomes and errors. A normal answer or a list has
-  no marker.
-- Data that already carries `tone` (Hermes level, presence states, recap pieces) maps to the dot; its `emoji` field
-  is no longer shown by Telegram.
-- Typographic symbols (not emoji): `•` list items, `·` separator inside a line, `›` «go to», `—` in titles.
-
-*(Choice for Marko, section 9: dots as above · no emoji at all · one emoji per area.)*
+- A notification of an area shows the dot, not the area emoji (urgency wins); its `emoji` field is no longer shown.
+- Data that carries `tone` (Hermes level, presence states, recap pieces) maps to the dot.
+- 👍/👎 stay as the vote buttons.
 
 ### 3.2 Building blocks (one helper, `telegram_bot/ui.py`)
 `card(title, lines=[], detail=None, tone=None)` · `item(title, meta=[], url=None)` · `outcome(text, tone)` ·
@@ -96,7 +92,7 @@ They appear with the same rate as today (`telegram.feedback.prompt_rate`) and va
 **Command result** (`Allenamento di oggi`, no LLM):
 ```
 BEFORE                                    AFTER
-⌛ 🏋️ Allenamento di oggi...               <b>Allenamento di oggi</b> — Push A
+⌛ 🏋️ Allenamento di oggi...               🏋️ <b>Allenamento di oggi</b> — Push A
 🏋️ Allenamento di oggi                     <i>Martedì · 5 esercizi · ~55 min</i>
 (new msg, written by the model, emoji)    • Panca piana  4×8 · 62,5 kg
                                           • Lento avanti  3×10 · 30 kg
@@ -149,8 +145,9 @@ Old names (`/clear`, `/live`, `/chat`, `/settings`, `/help`, every module comman
 just not listed. `/help` = `/comandi`.
 
 ### 5.2 Areas in «Comandi»
-Fixed order, Italian names, no emoji: Giornata (agenda, meteo, recap) · Allenamento · Cura di sé · Guardaroba ·
-Spese · Case · Posta · Documenti · Sistema. An area appears only if it has a visible command. A module declares its
+Fixed order, Italian names, one emoji each (only on the area button and on result titles): 📅 Giornata (agenda,
+meteo, recap) · 🏋️ Allenamento · ✨ Cura di sé · 👕 Guardaroba · 💶 Spese · 🏠 Case · ✉️ Posta · 📎 Documenti ·
+⚙️ Sistema. An area appears only if it has a visible command. A module declares its
 area with the existing `telegram_group` (values renamed to these keys); unknown → «Altro».
 
 ### 5.3 What is shown at all
@@ -202,12 +199,12 @@ area with the existing `telegram_group` (values renamed to these keys); unknown 
 Each phase is a PR merged when CI is green. Old callback data keep working for messages already in the chat.
 
 ## 9. Open choices (Marko)
-1. **Markers**: coloured dots by tone (recommended) · no emoji at all · one emoji per area.
+1. ~~Markers~~ — decided v1.1: hybrid (3.1).
 2. Command names in the menu as in 5.1 (`/oggi`, `/nuova`, `/voce`…) — ok or other names?
 3. Areas list of 5.2 — anything to add, merge or rename?
 
 ## Acceptance criteria
-- No emoji in any Telegram text or button except the 4 markers and 👍/👎 (test scans the client strings).
+- No emoji in any Telegram text or button except the 4 tone dots, the area emoji (area buttons + result titles) and 👍/👎 (test scans the client strings).
 - `/` menu has the 8 entries; every visible module command reachable from «Comandi» in ≤ 3 taps.
 - Running a command produces exactly one message, same layout each time, with Oracle stopped.
 - No module name, id, exception text or `key=value` in user texts (test on the string table).
