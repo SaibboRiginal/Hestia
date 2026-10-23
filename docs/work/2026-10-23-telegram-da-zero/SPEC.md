@@ -171,10 +171,12 @@ HOME (/start)                        OGGI                                  AREE
 <i>Giovedì 23 ottobre</i>            • 09:00 Dentista                      [ 📅 Giornata ] [ 🏋️ Allenamento ]
 • Prossimo: 18:00 palestra           • 18:00 Palestra — Push A             [ ✨ Cura di sé ] [ 👕 Guardaroba ]
 • 2 notifiche da vedere              • Da fare: crema solare, bolletta     [ 💶 Spese ]    [ 🏠 Case ]
-[ Oggi ]      [ Aree ]               <i>Meteo: 18°, pioggia dalle 17</i>     [ ✉️ Posta ]    [ 📎 Documenti ]
-[ Notifiche ] [ Impostazioni ]       [ Aggiorna ] [ Domani › ]              [ ⚙️ Sistema ]
+[ Vedi 2 notifiche ]                 <i>Meteo: 18°, pioggia dalle 17</i>     [ ✉️ Posta ]    [ 📎 Documenti ]
+[ Inizia allenamento ]               [ Aggiorna ] [ Domani › ]              [ ⚙️ Sistema ]
                                      [ ‹ Home ]                             [ ‹ Home ]
 ```
+- **Home buttons are contextual**, not a copy of the bottom keyboard: up to 3 «next things» chosen from what is due
+  (notifications waiting, today's workout, an event about to start), each one tap to act.
 - **Breadcrumb** in the title when deeper than one level: `Aree › Allenamento › Registra peso`.
 - Last row always `‹ Indietro` (and `Home` from level 3). Same place on every card.
 - **One live card**: opening a new card (from keyboard, `/` or button) strips the buttons of the previous navigation
