@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 2.0 |
 | **Source** | user via Project thread (Marko 2026-10-23: «dobbiamo aprire uno specifico per rivedere tutto telegram, le emoji e come mostra le cose è veramente brutto... dobbiamo rivederlo da 0») |
 | **Status** | Draft — waiting for Marko's approval (no code before it) |
 
@@ -25,6 +25,8 @@ shown and reached changes.
 | A7 | **Settings panel of 13 knobs**, half of them presentation switches (`split_mode`, `notice_style`, 4 × `notice_<family>`, `stream_answer`) — against «no feature switches». Plus Themis keys `telegram.signals.style*` for a legacy path. | chat_settings, telegram_settings | 13 + 5 |
 | A8 | **Two homes**: `/start` («🏛️ Hestia pronta») and `/help` («📘 Guida comandi», a flat list of 100 lines); two groups both «⚙️»; a group key that contains an emoji (`"🌐 webui"`). | executor, registry | — |
 | A9 | **Chat style asked to the model**: «personale e caldo… prima persona femminile», Markdown then converted to HTML by regex, no rule on emoji, 6–8 lines max even when a list is asked. | `DEFAULT_CLIENT_INSTRUCTIONS` | — |
+| A11 | **Whole areas missing from the buttons menu**: `build_commands_keyboard` shows only the 8 keys of `GROUP_ORDER`; modules declare `allenamento`, `selfcare`, `guardaroba`, `spese`, `chat`, `sviluppo` → those ~38 commands are reachable only by typing their English name. | `registry.py` | 6 areas |
+| A12 | **Fragile buttons and flows**: pending flows, confirmations and picker tokens live in memory dicts (lost at every restart → «Richiesta scaduta»); `callback_data` cut at 64 bytes (`ntf:<id>:<action>`[:64]) can silently break ids; missing input asked by argument name («Inserisci ora il valore per *subscription id*»); `setMyCommands` rebuilt at every registry change (429 debounce). | core, executor, notifications | — |
 | A10 | **Notifications**: all buttons on one row (cramped, cut at 40 chars), status lines mixing ✓ and ✅. | notifications.py | — |
 
 ## 2. Design principles
@@ -39,7 +41,7 @@ shown and reached changes.
    no «...» on finished text.
 5. **Deterministic output.** A command shows data with the same layout every time, without calling the model.
    The model writes only chat answers.
-6. **Few, clear entry points.** A short `/` menu; everything else in a «Comandi» browser and in plain chat.
+6. **Few, clear entry points.** Four doors (bottom keyboard), a short `/` menu, area cards; everything else in plain chat.
 
 ## 3. Visual grammar
 
@@ -111,55 +113,157 @@ Ricordati la crema solare                  Oggi UV alto alle 13.
 after the answer: «✅ Fatto · da WebUI»     after: buttons removed, last line <i>Fatto · da WebUI</i>
 ```
 
-**Home `/start`** (one message, edited while navigating):
-```
-<b>Ciao Marko</b>
-<i>Giovedì 23 ottobre</i>
-• Prossimo: 18:00 palestra
-• 2 notifiche da vedere
-[ Oggi ]  [ Comandi ]
-[ Notifiche ]  [ Impostazioni ]
-```
-«Comandi» opens areas → commands of an area → runs it, all in the same message with `Indietro`.
+**Home, areas, actions**: see section 5.
 
 **Wizard** (new event): one message, «Passo 2 di 4», the question, quick buttons, typed answer accepted; the
 message is edited at each step and ends as the summary with `Crea` / `Annulla`.
 
 **Error**: `🔴 <b>Non sono riuscita a creare l'evento</b>` / `Il calendario non risponde, riprova tra poco.`
 
-## 5. Commands
+## 5. Navigation and menus (v2.0 — Marko: «i menu erano la parte seccante… usando a pieno l'intera potenza di customizzazione… facilmente usabile e navigabile»)
 
-### 5.1 The `/` menu (setMyCommands) — 8 entries
-| Command | What |
+### 5.0 Idea
+Chat stays the main way: you write, the assistant answers. Menus exist for what is quicker with a tap: see today,
+open an area, run its common actions without remembering any command. Every Telegram surface has one job:
+
+| Surface (Telegram feature) | Job | Always there? |
+|---|---|---|
+| **Bottom keyboard** (`ReplyKeyboardMarkup`, `is_persistent`, `resize_keyboard`, placeholder «Scrivimi o tocca un pulsante») | the 4 doors, one thumb away | yes, under the input field |
+| **`/` menu** (`setMyCommands`, scope = owner's private chat, `it`) | the same doors + quick shortcuts, for who types | yes |
+| **Navigation card** (one message with inline keyboard, edited in place) | Home → Area → Action, with breadcrumb and Indietro | one live at a time |
+| **Action flow** (same card + `ForceReply` with placeholder for typed values) | fill what an action needs, confirm, show result | while running |
+| **Buttons on results/notifications** (inline, URL, copy-text, deep link) | the next sensible step after a result | on that message |
+| **Bot profile** (`setMyName/Description/ShortDescription`) | what the bot is, in Italian, set at boot | — |
+
+### 5.1 Bottom keyboard
+```
+┌──────────────┬──────────────┐
+│     Oggi     │     Aree     │
+├──────────────┼──────────────┤
+│  Notifiche   │ Impostazioni │
+└──────────────┴──────────────┘
+```
+- Taps send exactly these words; Telegram catches them before the chat (they never reach the model). Typed «oggi»
+  inside a sentence is chat as usual: only an exact, whole-message match is a button.
+- Sent once with the Home card and kept (`is_persistent`); a restart re-sends it on the next Home.
+- No counts in labels (Telegram cannot update them without a new message); counts live in the Home card.
+
+### 5.2 `/` menu — 8 entries
+| Command | Same as |
 |---|---|
-| `/start` | Home (above) |
-| `/oggi` | Today: agenda + what is due (existing `agenda_today` / recap tools) |
-| `/comandi` | Browse every command by area |
-| `/notifiche` | Notifications to see / answer |
-| `/nuova` | New conversation (today `/clear`, with confirm) |
-| `/voce` | Voice answers on/off (today `/live` + `/chat`) |
-| `/stato` | Assistant status |
-| `/impostazioni` | Settings panel |
+| `/oggi` | bottom «Oggi» — day card |
+| `/aree` | bottom «Aree» — area list |
+| `/notifiche` | bottom «Notifiche» — what to see or answer |
+| `/impostazioni` | bottom «Impostazioni» |
+| `/nuova` | new conversation (today `/clear`, with confirm) |
+| `/voce` | voice answers on/off (today `/live` + `/chat`) |
+| `/stato` | assistant status, do-not-disturb buttons |
+| `/aiuto` | how to use the bot + every typed shortcut (expandable) |
 
-Old names (`/clear`, `/live`, `/chat`, `/settings`, `/help`, every module command) still work when typed; they are
-just not listed. `/help` = `/comandi`.
+`/start` is Telegram's own button: it opens Home and re-sends the bottom keyboard. Old names (`/clear`, `/live`,
+`/chat`, `/settings`, `/help`, every module command) still work when typed, never listed. The menu is static: set
+at boot only (no more rebuild at each registry change, no 429).
 
-### 5.2 Areas in «Comandi»
-Fixed order, Italian names, one emoji each (only on the area button and on result titles): 📅 Giornata (agenda,
-meteo, recap) · 🏋️ Allenamento · ✨ Cura di sé · 👕 Guardaroba · 💶 Spese · 🏠 Case · ✉️ Posta · 📎 Documenti ·
-⚙️ Sistema. An area appears only if it has a visible command. A module declares its
-area with the existing `telegram_group` (values renamed to these keys); unknown → «Altro».
+### 5.3 Cards (one live navigation message)
+```
+HOME (/start)                        OGGI                                  AREE
+<b>Ciao Marko</b>                    📅 <b>Oggi</b> — giovedì 23 ottobre    <b>Aree</b>
+<i>Giovedì 23 ottobre</i>            • 09:00 Dentista                      [ 📅 Giornata ] [ 🏋️ Allenamento ]
+• Prossimo: 18:00 palestra           • 18:00 Palestra — Push A             [ ✨ Cura di sé ] [ 👕 Guardaroba ]
+• 2 notifiche da vedere              • Da fare: crema solare, bolletta     [ 💶 Spese ]    [ 🏠 Case ]
+[ Oggi ]      [ Aree ]               <i>Meteo: 18°, pioggia dalle 17</i>     [ ✉️ Posta ]    [ 📎 Documenti ]
+[ Notifiche ] [ Impostazioni ]       [ Aggiorna ] [ Domani › ]              [ ⚙️ Sistema ]
+                                     [ ‹ Home ]                             [ ‹ Home ]
+```
+- **Breadcrumb** in the title when deeper than one level: `Aree › Allenamento › Registra peso`.
+- Last row always `‹ Indietro` (and `Home` from level 3). Same place on every card.
+- **One live card**: opening a new card (from keyboard, `/` or button) strips the buttons of the previous navigation
+  card and deletes it when it is younger than 48 h, so the chat does not fill with old menus. Results stay.
+- **Fresh on tap**: every tap re-reads the data; «Aggiorna» exists only where data changes during the day.
+- Callback answered first (spinner gone in < 1 s), then the edit.
 
-### 5.3 What is shown at all
-- A tool is shown in Telegram only if it has `clients` with `telegram` **and** is meant for a person. Maintenance and
-  internal tools become `telegram_visible=False`: `*_reconcile`, `gateway_auth_poll`, `gateway_auth_complete`,
-  `hephaestus_*` except status, `metis_*`, `forge_settings`, `forge_set_claude_schedule`. They remain reachable from
-  WebUI and from chat («ripara il servizio…»).
-- Titles in modules lose the emoji (`"🏋️ Allenamento di oggi"` → `"Allenamento di oggi"`); Telegram also strips a
-  leading emoji from any title as a safety net. `tools/governance/check_icons.py` extended: no emoji in `MCPTool`
-  titles.
-- Module names leave titles: «Stato Forge» → «Stato sviluppo», «Riconcilia Scout» → hidden, «Agenda di Hestia» →
-  «Agenda dell'assistente».
+### 5.4 Area card = the area's mini dashboard
+```
+🏋️ <b>Allenamento</b>
+<i>Settimana 2/3 · prossimo: Push A oggi</i>
+• Record: panca 65 kg (lunedì)
+• Peso: 78,4 kg (−0,6 in 30 giorni)
+[ Inizia allenamento ] [ Registra peso ]
+[ Registra attività ]  [ Schede ]
+[ Tutte le azioni › ]
+[ ‹ Aree ]
+```
+- **Header** = the area's summary tool rendered as a card (section 6), e.g. `fitness_summary`, `finance_summary`.
+- **Primary actions**: up to 6, 2 per row, in the module's order. The rest under «Tutte le azioni ›» (paged list, 8 per
+  page, «Altre ›»).
+- Areas, order and primary actions:
+
+| Area | Header | Primary actions |
+|---|---|---|
+| 📅 Giornata | agenda of today | Agenda · Meteo · Recap · Nuovo evento · Nuovo promemoria · Piano della settimana |
+| 🏋️ Allenamento | summary | Inizia allenamento · Allenamento di oggi · Registra peso · Registra attività · Schede · Salta oggi |
+| ✨ Cura di sé | summary | Oggi · Segna fatto · Routine · Prodotti · Lista spesa |
+| 👕 Guardaroba | summary | Cosa mi metto · Indossato · Cerca · Aggiungi capo · Outfit |
+| 💶 Spese | month summary | Registra spesa · Cerca movimenti · Budget · Abbonamenti |
+| 🏠 Case | stats | Case disponibili · Cerca · Controlla email |
+| ✉️ Posta | — | Cerca messaggi · Invia messaggio · Iscrizioni |
+| 📎 Documenti | count | Documenti salvati (pin / elimina on each) |
+| ⚙️ Sistema | status | Stato · Non disturbare · Sviluppa Hestia · Lavori di sviluppo · Accesso WebUI · Collega calendario |
+
+  Area appears only when it has a visible action; an unknown area key goes to «Altro», **never dropped** (fixes A11).
+
+### 5.5 Action flow (no argument names, no `key=value`)
+Inputs come from the tool's own JSON schema, so modules need nothing new for the basics:
+- `enum` / boolean → buttons (`• ` on the current one); integer with small `min..max` → quick buttons + typing;
+  dates → Oggi / Domani / Dopodomani + typing; existing `arg_picker` sources → buttons with real items.
+- free text → the card shows the question in words (schema `title`/`description`, first sentence) and a `ForceReply`
+  with **placeholder example** («Es. 12,50 pranzo con Luca»); the typed reply fills it.
+- optional values → «Salta»; required ones first; «Passo 2 di 3» in the title.
+- **Confirm** when the tool writes or deletes (method ≠ GET, or MCP `destructiveHint`): summary card
+  `[ Conferma ] [ Annulla ]`, destructive spelled out («Elimina»). Read-only tools run at once.
+- Result replaces the card (one message). Result buttons = the next step the module declares
+  (`display.actions`, section 6), e.g. after «Allenamento di oggi» → `[ Inizia ] [ Salta oggi ]`.
+- While a flow waits for text, the placeholder says what it waits for; a tap on the keyboard, a `/` command or
+  «Annulla» ends it and says so («Ho lasciato perdere: Registra spesa»). Writing a sentence that does not fit (e.g. a
+  question) → «Vuoi uscire da Registra spesa?» `[ Sì ] [ No, continuo ]`.
+- Typing works too: `/finance_add 12,50 pranzo` or «ho speso 12,50 a pranzo» in chat (the model) — same result.
+
+### 5.6 Other Telegram features used
+- **Deep links** `t.me/<bot>?start=<area>` or `=<action>`: a notification can carry «Apri Spese ›»; `/aiuto` lists them.
+- **URL buttons** to the WebUI page of the same thing (when `WEBUI_PUBLIC_URL` is set): «Apri nella WebUI».
+- **Copy button** (`CopyTextButton`) for the WebUI token and codes, instead of text to select.
+- **Link preview** off by default on cards (`link_preview_options`), on for a single house/article result.
+- **Expandable blockquote** for long detail (reasoning, list of all shortcuts, logs in Sistema).
+- **Typing action** while a command runs (no «⌛ Titolo…» message).
+
+### 5.7 What modules declare (MCP `_meta.hestia`, generic, no Telegram logic in modules)
+| Key | Meaning | Default |
+|---|---|---|
+| `telegram_group` | area key of 5.4 (`giornata`, `allenamento`, `selfcare`, `guardaroba`, `spese`, `case`, `posta`, `documenti`, `sistema`) | `altro` |
+| `telegram_order` | position inside the area | declaration order |
+| `telegram_primary` | shown on the area card | false |
+| `telegram_summary` | this tool is the area card's header | false |
+| `telegram_label` | short button label (≤ 24 chars) | `title` |
+| `telegram_visible` | shown in Telegram at all (exists today) | true |
+
+Area names and emoji are Telegram's (one table in `telegram_bot/areas.py`), not the modules'.
+Hidden from Telegram (`telegram_visible=False`, still in WebUI and chat): `*_reconcile`, `gateway_auth_poll`,
+`gateway_auth_complete`, `hephaestus_*` but status, `metis_*`, `forge_settings`, `forge_set_claude_schedule`,
+`athena_audit_conversation`. Module names leave titles («Stato Forge» → «Stato sviluppo», «Agenda di Hestia» →
+«Agenda dell'assistente»). Titles lose their emoji; `tools/governance/check_icons.py` fails on emoji in `MCPTool`
+titles; Telegram also strips a leading one as safety net.
+
+### 5.8 Robustness (the «sempre un sacco di problemi» part)
+- **One callback router**: `cb:<kind>:<short id>`; a test asserts that every button the client can draw has a handler.
+- **Short ids, persisted**: tool names, notification ids and flow tokens map to 6-char ids stored in the session
+  store (file, TTL 7 days) → never cut at 64 bytes, still valid after a restart.
+- **Flows persisted** (pending input, confirmations, pickers) in the same store with TTL; after a restart a
+  half-filled «Registra spesa» continues.
+- **Old buttons** (unknown id, old format) never error: «Questo menu è vecchio» + the current card in its place.
+- **Registry changes** update the area cards lazily (next tap), never the `/` menu.
+- **Button labels** ≤ 24 chars, cut on a word with «…»; tested on the live catalog.
+- **Reachability test**: walks Home → every area → every action for the catalog of all modules (from their
+  `MCPTool` declarations) and fails if a visible tool cannot be reached in ≤ 3 taps.
 
 ## 6. Command results without the model
 - Default response mode becomes `display`: Telegram renders the JSON itself with a **generic renderer**: a dict →
@@ -190,7 +294,7 @@ area with the existing `telegram_group` (values renamed to these keys); unknown 
 | Phase | Content |
 |---|---|
 | T1 | `ui.py` grammar (cards, markers, buttons, errors, paging) + tests; rewrite every local string (A1, A5, A6) |
-| T2 | Commands: 8-entry menu, Home, «Comandi» browser by area, aliases; module titles without emoji, hidden technical tools, area keys; governance check (A2, A3, A8) |
+| T2 | Navigation (section 5): bottom keyboard, `/` menu, Home, area cards, action flow from the tool schema, confirmations, deep links, bot profile, robustness 5.8; module meta (`telegram_*`), titles without emoji, hidden technical tools; governance + reachability tests (A2, A3, A8, A11, A12) |
 | T3 | Results without the model: generic renderer, `hestia_common.display`, `display` in the 6 modules, Scout card, signal path removed (A4) |
 | T4 | Chat: new client instructions, notices inside the answer, feedback + Ascolta on the answer, slim settings (A7, A9) |
 | T5 | Notifications, assistant questions, wizards, chat queue texts on the new grammar (A10) |
@@ -200,12 +304,16 @@ Each phase is a PR merged when CI is green. Old callback data keep working for m
 
 ## 9. Open choices (Marko)
 1. ~~Markers~~ — decided v1.1: hybrid (3.1).
-2. Command names in the menu as in 5.1 (`/oggi`, `/nuova`, `/voce`…) — ok or other names?
-3. Areas list of 5.2 — anything to add, merge or rename?
+2. Bottom keyboard (5.1) always visible — yes (recommended) or only the `/` menu?
+3. Command names of 5.2 (`/oggi`, `/aree`, `/nuova`, `/voce`…) — ok or other names?
+4. Areas of 5.4 and their primary actions — anything to add, merge or rename?
 
 ## Acceptance criteria
 - No emoji in any Telegram text or button except the 4 tone dots, the area emoji (area buttons + result titles) and 👍/👎 (test scans the client strings).
-- `/` menu has the 8 entries; every visible module command reachable from «Comandi» in ≤ 3 taps.
+- `/` menu has the 8 entries; every visible module command reachable from the bottom keyboard in ≤ 3 taps (test walks
+  the whole tree for every tool of the live catalog; no tool dropped because of an unknown area).
+- Buttons keep working after a restart of Telegram (persisted ids/flows); an old menu answers with a fresh one.
+- An action never asks for an argument by its technical name; choices come as buttons from the tool schema.
 - Running a command produces exactly one message, same layout each time, with Oracle stopped.
 - No module name, id, exception text or `key=value` in user texts (test on the string table).
 - Settings panel has 6 entries; removed keys gone from Themis declarations and docs.

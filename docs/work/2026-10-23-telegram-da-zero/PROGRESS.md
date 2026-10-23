@@ -1,7 +1,7 @@
 # Progress
 
 - [x] Audit of the current Telegram client (strings, emoji, menu, command output, settings) — SPEC section 1
-- [x] SPEC v1.0 (draft)
+- [x] SPEC v1.0 (draft), v1.1 hybrid markers, v2.0 navigation redesign
 - [ ] Marko approves SPEC + choices of section 9
 - [ ] T1 `ui.py` grammar + local strings
 - [ ] T2 commands: menu, Home, «Comandi» browser, module titles, hidden technical tools, governance check
