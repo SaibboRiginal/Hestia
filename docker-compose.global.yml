@@ -175,6 +175,9 @@ services:
       - ORACLE_API_URL=http://hestia_oracle:19004/api/chat   # Oracle endpoint for batch narration
       - HERMES_HUB_REGISTER_RETRIES=8                        # Max Hub registration attempts on startup (int, default 8)
       - HERMES_HUB_REGISTER_RETRY_DELAY=2                    # Seconds between registration retry attempts (float, default 2)
+      - HERMES_VAPID_PUBLIC_KEY=${HERMES_VAPID_PUBLIC_KEY:-}    # Web Push (WebUI browsers): VAPID public key; empty = off
+      - HERMES_VAPID_PRIVATE_KEY=${HERMES_VAPID_PRIVATE_KEY:-}  # Web Push: VAPID private key (secret)
+      - HERMES_VAPID_SUBJECT=${HERMES_VAPID_SUBJECT:-}          # Web Push: contact, e.g. mailto:you@example.com
       - LOG_LEVEL=INFO                                       # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                           # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1

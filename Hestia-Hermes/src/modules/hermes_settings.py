@@ -24,6 +24,8 @@ BATCH_WINDOW = "hermes.batch.window"
 BATCH_MAX_ATTEMPTS = "hermes.batch.max_attempts"
 RETRACT_AFTER = "hermes.retract.after"
 REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
+PENDING_REMIND_HOURS = "hermes.attesa.richiamo_ore"
+ACTIVE_CLIENT_MINUTES = "hermes.consegna.client_attivo_minuti"
 
 settings = SettingsClient("hermes")
 settings.declare([
@@ -56,6 +58,14 @@ settings.declare([
             min=1, max=365, unit="giorni",
             help="Un promemoria ripetuto (es. una routine) tiene il conto di quante volte l'hai saltato. "
                  "Se per questo tempo non arriva più, il conto riparte da zero."),
+    setting(PENDING_REMIND_HOURS, "Ricordami le cose da decidere dopo", "int", 4, group="Da decidere",
+            min=1, max=72, unit="h",
+            help="Se una notifica che aspetta una tua risposta resta lì per questo tempo, ti mando un solo "
+                 "promemoria con tutte quelle in attesa (una volta per ognuna)."),
+    setting(ACTIVE_CLIENT_MINUTES, "Suona solo dove mi stai usando, per", "int", 10, group="Consegna",
+            min=0, max=240, unit="min",
+            help="Se mi hai usato da un'app (Telegram, WebUI) in questi minuti, la notifica suona solo lì; "
+                 "nelle altre arriva in silenzio. 0 = suona dappertutto."),
 ]).declare_log_level()
 
 

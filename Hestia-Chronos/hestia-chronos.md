@@ -460,3 +460,54 @@ call; failures answer empty parts. The calendar views (month, week/day grid, lis
 
 ## Telegram card (`display`)
 `GET /api/calendar/agenda` returns a `display` card (time · title · place, grouped by day when more than one day; Nuovo evento, Prossimi giorni / Solo oggi). `GET /api/calendar/agenda/today` = the same for today only (tool `agenda_today`, which used to show 7 days). Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+
+## Routines, special events, smart calendar (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W2)
+
+Code: `app/life_api.py` (endpoints, MCP tools, agenda rules), `app/services/routines.py`, `special.py`,
+`smart_calendar.py`, `app/core/life_store.py` (rows in Archive `/api/chronos-store`).
+
+**Routines in words** (Cindy 7 + 27 + 28). A routine is an assistant-agenda rule (owner `chronos`, key
+`routine.<slug>-<id>`) with `params.routine = {instruction, precheck?, deliver, on?, template?}`:
+- by time → a `job` (RRULE) whose action is `POST /api/routines/{key}/run`; by event → an `event` with `on`
+  `{"mail": {senders, subject_contains}}` (Chronos subscribes to Iris, push, domain `routine_mail`) or
+  `{"signal": "<name>"}` (a module calls `POST /api/routines/signal`; Chronos itself sends `special_moment`).
+- run: optional pre-check tool first (an empty answer stops the run, no model call), then one assistant turn with
+  origin `routine:<key>` (writes allowed, no deletes), then the answer goes to Hermes (`routine.result`) or is kept
+  for the evening recap (`deliver: recap`, also stored in `chronos-store` kind `routine_result`). The assistant
+  answers `NIENTE` when there is nothing to say: nothing is sent. Pause, move, «Esegui adesso» = the agenda.
+- gallery: `GET /api/routines/templates` (radar notizie, case nuove, spese da rivedere, la settimana, mail da un
+  mittente) → `POST /api/routines/from-template/{id}` with the template's fields.
+
+**Special events** (B6). Agenda `event`s `special.<…>` with `params.special = {kind birthday|anniversary|custom,
+lead_days, person, person_id, note, source}`; birthdays/anniversaries are yearly. Sources: the personal setting
+`themis.personal.birth_date` (followed, synced at boot and on change; the owner's edits win), the owner (tool
+`special_add`), modules with a stable key (`by` = module: idempotent, the owner's edits win), the assistant only by
+proposal (`special_propose` → Hermes card «Aggiungi» / «No»). Daily job `chronos.special.daily` (08:00):
+«Tra N giorni» `lead_days` before, and on the day the greeting plus `special_moment` to every Hub service declaring
+`capabilities.special_moment_endpoint` and to routines waiting for that signal. The recap shows tomorrow's ones.
+
+**Smart calendar** (B8). Daily job `chronos.smart_calendar` (07:00) or tool `calendar_check`: overlapping timed
+events of the next days (the owner's, not the assistant's) → Hermes card «Sposta alle HH:MM» (first free slot of
+the same day between 08 and 21 with the `chronos.flex.gap_minutes` margin, through `PATCH /api/calendar/events/{id}`)
+/ «Lascia così» (`POST /api/calendar/smart/kept`, remembered in `chronos-store` kind `smart_kept`). Never moves
+anything by itself.
+
+**Manual presence** (Telegram parity). `POST /api/presence/manual {state, minutes?}` sets the signal `manual.state`
+(any defined state: a base state wins over the rules, an overlay is added); `DELETE` gives control back.
+
+| Method | Path | |
+|---|---|---|
+| `GET` / `POST` | `/api/routines` | list · create `{title, instruction, recurrence?, on?, precheck?, deliver}` |
+| `GET` | `/api/routines/templates` | gallery |
+| `POST` | `/api/routines/from-template/{id}` | `{values, recurrence?, title?}` |
+| `POST` | `/api/routines/{key}/run` | agenda action / run now |
+| `POST` | `/api/routines/signal` · `/api/routines/mail` | event triggers (module signal · Iris doorbell) |
+| `GET` / `POST` | `/api/special` | list (with `next`, `in_days`) · add |
+| `DELETE` | `/api/special/{key}` | remove |
+| `POST` | `/api/special/propose` · `/api/special/proposal/declined` · `/api/special/run` | proposal card · «No» · daily pass |
+| `POST` | `/api/calendar/smart/check?days=3` · `/api/calendar/smart/kept` | check · keep as is |
+| `POST` / `DELETE` | `/api/presence/manual` | manual state on / off |
+
+MCP tools (all on Telegram through the dynamic menus): `routine_list`, `routine_templates`, `routine_create`,
+`routine_from_template`, `routine_run`, `special_list`, `special_add`, `special_remove`, `special_propose`,
+`calendar_check`, `presence_set`, `presence_clear`, `presence_history`.

@@ -121,6 +121,10 @@ mode and instructions are central settings (Themis, layer client `telegram`) thr
   in italics, superseded ones deleted (over 48 h: «Sostituito»).
 - Button → Hermes `/api/notifications/{id}/answer` (first answer wins; 409 → «Già gestita»).
 - Any message of the owner marks the notifications shown here as seen (`/api/notifications/seen-all`).
+- Secret form (`secret` in the body, Cindy 4): an «Inserisci» button opens the WebUI Notifiche page as Mini App
+  (`/p/hermes/notifiche?secret=<id>`); without a public address a line says to open the WebUI. The value is never
+  asked or typed in the chat.
+- `silent` (held, quiet, or another client in use: Hermes rings only where the owner is) → not sent here, inbox only.
 
 ## Mini App (`telegram_bot/webapp.py`)
 

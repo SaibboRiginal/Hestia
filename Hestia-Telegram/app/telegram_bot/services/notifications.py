@@ -136,6 +136,14 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         button = webapp.open_button("Apri", f"/p/{link['module']}/{link['page']}")
         if button:
             rows.append([button])
+    if isinstance(body.get("secret"), dict):
+        # Secret form (Cindy 4): never typed in the chat — the WebUI form (Mini App) sends it to Hermes.
+        from telegram_bot import webapp
+        button = webapp.open_button("Inserisci", f"/p/hermes/notifiche?secret={notification_id}")
+        if button:
+            rows.append([button])
+        else:
+            html += "\n<i>Per inserirlo apri la WebUI, pagina Notifiche: qui in chat non scriverlo.</i>"
     markup = ui.keyboard(rows)
     try:
         sent = core.send_user_message(chat_id, html, parse_mode="HTML", reply_markup=markup)

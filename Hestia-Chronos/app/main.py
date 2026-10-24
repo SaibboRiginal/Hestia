@@ -125,6 +125,8 @@ app = FastAPI(title="Hestia Chronos", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(ui.router())   # GET /api/ui/manifest · GET /ui/webui/chronos.js
+import life_api  # noqa: E402 — routines, special events, smart calendar, manual presence (brainstorm W2)
+app.include_router(life_api.router)
 
 # ── export / import (hestia_common.transfer): the user's own agenda decisions ────────────────────────────
 from hestia_common.transfer import Transfer
@@ -582,6 +584,8 @@ try:
             telegram_visible=False, telegram_group="giornata",
                 telegram={"section": "Piano della settimana"}),
     ]
+    import life_api as _life_api
+    _chronos_mcp_tools += _life_api.mcp_tools()     # routines, special events, smart calendar, manual presence
     app.include_router(create_mcp_router(_chronos_mcp_tools, service_name="chronos"))
     logger.info("event=mcp_router_mounted service=chronos")
 except ModuleNotFoundError:
@@ -674,9 +678,31 @@ def on_startup() -> None:
     # Assistant presence (SPEC assistant-presence): settings from Themis, state from Archive,
     # night window in the agenda, re-evaluated after every agenda tick.
     presence_settings.settings.on_change(lambda changed: assistant_presence.get_engine().evaluate("settings"))
+    presence_settings.settings.on_change(_on_personal_change)
     presence_settings.settings.start()
     threading.Thread(target=_presence_boot, daemon=True, name="presence-boot").start()
     assistant_agenda.on_tick(lambda: assistant_presence.get_engine().evaluate("tick"))
+
+
+def _life_boot() -> None:
+    """Mail routines re-subscribe to Iris; the owner's birthday follows ``themis.personal.birth_date``."""
+    from services import routines, smart_calendar, special
+    routines.refresh_mail_subscriptions()
+    routines.load_results()
+    smart_calendar.load_kept()
+    try:
+        special.sync_birthday(presence_settings.settings.get(special.BIRTH_SETTING))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[🔄] event=special_birthday_sync_failed error=%s", exc)
+
+
+def _on_personal_change(changed: dict) -> None:
+    from services import special
+    if special.BIRTH_SETTING in (changed or {}):
+        try:
+            special.sync_birthday(changed[special.BIRTH_SETTING])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[🔄] event=special_birthday_sync_failed error=%s", exc)
 
 
 def _presence_boot() -> None:
@@ -691,8 +717,9 @@ def _presence_boot() -> None:
                     presence_settings.SLEEP_WINDOW, "Hestia: notte (sonno profondo)", 1, 7,
                     description="Di notte l'assistente va in sonno profondo: lavori pesanti permessi, "
                                 "solo notifiche urgenti. Sposta o salta per cambiare la notte."),
-                    weekly_coach.week_job_rule()])
+                    weekly_coach.week_job_rule(), *life_api.boot_rules()])
                 registered = True
+                _life_boot()
             except Exception as exc:
                 logger.warning("[🔄] event=presence_window_register_failed attempt=%d error=%s", attempt + 1, exc)
         if loaded and registered:
@@ -735,10 +762,25 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
 
 app.include_router(create_log_control_router("hestia_chronos"))
 
+def _recap_with_life(day, nxt) -> dict:
+    """Agenda facts + routine results kept for the recap + today's special moments."""
+    from services import routines, special
+    facts = day_view.recap(day, nxt)
+    for r in routines.recap_lines(datetime(day.year, day.month, day.day, tzinfo=timezone.utc)):
+        facts["done"].append({"text": f"{r['title']}: {r['text'][:400]}"})
+    try:
+        for s in special.list_special(nxt):
+            if s["in_days"] == 0:
+                facts["next"].insert(0, {"text": f"{s['title']}", "tone": "success"})
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[🔄] event=recap_special_failed error=%s", exc)
+    return facts
+
+
 # Daily recap piece (docs/work/2026-10-20-recap-giornaliero): the user's events, assistant tasks, failed jobs.
 app.include_router(recap_contract.recap_router(
     "chronos", lambda day, nxt: recap_contract.piece("chronos", "Agenda", icon="calendar", emoji="📅", order=10,
-                                                     **day_view.recap(day, nxt))))
+                                                     **_recap_with_life(day, nxt))))
 app.include_router(presence_settings.settings.router())
 
 # ─────────────────────────────────────────────────────────────────────

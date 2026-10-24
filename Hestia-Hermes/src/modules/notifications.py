@@ -15,6 +15,14 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
   one is ``superseded`` on every client, so at most one is live, and Hermes keeps
   the counter (``repeat: {count, skipped, since}``). An action with
   ``resolves: true`` (or ``closes`` with decision done/resolved) ends the chain.
+- Secret form (Cindy 4): ``_secret {service, path, fields: [{name, label, type}]}`` asks the owner for values
+  (a password, a token). The client shows a form; ``POST /api/notifications/{id}/secret`` claims the notification
+  (first answer wins) and forwards the values to the module through the Hub. Hermes never stores or logs them.
+- «Da decidere» (Cindy 5): notifications still waiting for an answer after ``hermes.attesa.richiamo_ore`` get ONE
+  grouped reminder (agenda job ``hermes.notifications.remind_pending``), once per notification.
+- Active client (Cindy 20): if the owner used a client in the last ``hermes.consegna.client_attivo_minuti``,
+  only that client rings; the others get the notification ``silent``.
+- Web Push (C15): the WebUI's browsers subscribed through ``/api/push/*`` get a push too (``webpush.py``).
 - Hermes keeps no domain logic: it delivers, claims answers, forwards them and
   tells every client what happened (``update``) or to drop a stale message
   (``retract``).
@@ -33,8 +41,10 @@ from typing import Any, Callable
 
 import requests
 
+from . import webpush
 from .clients import ClientRegistry, NotifyClient
-from .hermes_settings import DELIVERY_MAX_ATTEMPTS, REPEAT_RESET_AFTER_DAYS, RETRACT_AFTER, settings
+from .hermes_settings import (ACTIVE_CLIENT_MINUTES, DELIVERY_MAX_ATTEMPTS, PENDING_REMIND_HOURS,
+                              REPEAT_RESET_AFTER_DAYS, RETRACT_AFTER, settings)
 from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import usecase as voice_usecase
@@ -145,6 +155,30 @@ def normalize_actions(raw: Any) -> list[dict[str, Any]]:
     return actions
 
 
+_SECRET_TYPES = {"password", "text", "token"}
+
+
+def normalize_secret(raw: Any) -> dict[str, Any] | None:
+    """``_secret`` of an event → ``{service, path, fields}`` or None (malformed = ignored)."""
+    if not isinstance(raw, dict) or not raw.get("service") or not str(raw.get("path") or "").startswith("/"):
+        return None
+    fields = []
+    for f in raw.get("fields") or []:
+        if isinstance(f, dict) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,40}", str(f.get("name") or "")):
+            fields.append({"name": f["name"], "label": str(f.get("label") or f["name"])[:80],
+                           "type": f.get("type") if f.get("type") in _SECRET_TYPES else "password"})
+    if not fields:
+        return None
+    return {"service": str(raw["service"]).strip(), "path": str(raw["path"]).strip(), "fields": fields[:6]}
+
+
+def public_secret(secret: Any) -> dict[str, Any] | None:
+    """What clients see of a secret form: only the fields to ask."""
+    if not isinstance(secret, dict) or not secret.get("fields"):
+        return None
+    return {"fields": [dict(f) for f in secret["fields"]]}
+
+
 def public_actions(actions: list[dict[str, Any]]) -> list[dict[str, str]]:
     return [{"id": a["id"], "label": a["label"], "style": a.get("style", "default")} for a in actions]
 
@@ -173,6 +207,7 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
     deliveries = stored.get("deliveries") if isinstance(stored.get("deliveries"), dict) else {}
     state = str(row.get("lifecycle_state") or "")
     actions = n.get("actions") or []
+    secret = public_secret(n.get("secret"))
     origin = n.get("origin") if isinstance(n.get("origin"), dict) else None
     return {
         "id": row.get("outbound_event_id"),
@@ -180,7 +215,8 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
         "updated_at": row.get("updated_at"),
         "state": state,
         "read": state not in UNREAD_STATES,
-        "pending": bool(actions) and state in ANSWERABLE_STATES,
+        "pending": bool(actions or secret) and state in ANSWERABLE_STATES,
+        "secret": secret,
         "title": n.get("title") or "",
         "message": n.get("message") or "",
         "level": n.get("level") or "info",
@@ -263,6 +299,7 @@ class NotificationCenter:
         link: dict[str, Any] | None = None,
         quiet: bool = False,
         voice: bool = False,
+        secret: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one.
@@ -296,6 +333,8 @@ class NotificationCenter:
         }
         if public_link(link):
             spec["link"] = public_link(link)
+        if normalize_secret(secret):
+            spec["secret"] = normalize_secret(secret)
         if quiet:   # the answer is asked elsewhere (e.g. a confirm card in the chat): inbox copy, no push
             spec["quiet"] = True
         if held:
@@ -395,16 +434,32 @@ class NotificationCenter:
         logger.info("event=notification_voice_added notification_id=%s duration_s=%s", notification_id,
                     voice.get("duration_s"))
 
+    def active_client(self) -> str:
+        """The client the owner used in the last ``hermes.consegna.client_attivo_minuti`` (Cindy 20), or ''."""
+        try:
+            minutes = int(settings.get(ACTIVE_CLIENT_MINUTES) or 0)
+        except (TypeError, ValueError):
+            minutes = 0
+        state = self.presence.get() if minutes > 0 else None
+        if not state or not state.get("last_interaction_client"):
+            return ""
+        try:
+            idle = float(state.get("idle_minutes"))
+        except (TypeError, ValueError):
+            return ""
+        return str(state["last_interaction_client"]) if idle <= minutes else ""
+
     def _client_body(self, notification_id: str, spec: dict, client: str,
-                     event_payload: dict | None) -> dict[str, Any]:
+                     event_payload: dict | None, active: str = "") -> dict[str, Any]:
         origin = spec.get("origin") or {}
         is_origin = bool(origin) and origin.get("client") == client
+        urgent = bool((event_payload or {}).get("_urgent"))
         return {
             "kind": "notification",
             "notification_id": notification_id,
             "target": str(origin.get("session_id") or "owner") if is_origin else "owner",
             "silent": (spec.get("audience") == "origin" and not is_origin) or bool(spec.get("held"))
-                      or bool(spec.get("quiet")),
+                      or bool(spec.get("quiet")) or (bool(active) and active != client and not urgent),
             "title": spec.get("title", ""),
             "message": spec.get("message", ""),
             "level": spec.get("level", "info"),
@@ -414,15 +469,22 @@ class NotificationCenter:
             "origin": origin or None,
             "repeat": public_repeat(spec.get("repeat")),
             "link": spec.get("link"),
+            "secret": public_secret(spec.get("secret")),
             "payload": event_payload or {},
         }
 
     def _fan_out(self, notification_id: str, spec: dict, event_payload: dict | None,
                  only: list[str] | None = None) -> dict[str, dict]:
         clients = [c for c in self.clients.clients() if only is None or c.name in only]
-        futures = {c.name: self._pool.submit(
-            self._deliver, c, self._client_body(notification_id, spec, c.name, event_payload))
-            for c in clients}
+        active = self.active_client() if spec.get("audience") != "origin" else ""
+        if active and active not in {c.name for c in self.clients.clients()}:
+            active = ""            # a client that receives no notifications (e.g. the voice) → ring everywhere
+        bodies = {c.name: self._client_body(notification_id, spec, c.name, event_payload, active) for c in clients}
+        futures = {c.name: self._pool.submit(self._deliver, c, bodies[c.name]) for c in clients}
+        if only is None and webpush.configured():
+            ring = [b for name, b in bodies.items() if name == webpush.CLIENT]
+            if ring and not ring[0]["silent"]:
+                self._pool.submit(webpush.send_all, self.archive, ring[0])
         results: dict[str, dict] = {}
         for name, fut in futures.items():
             try:
@@ -533,6 +595,73 @@ class NotificationCenter:
         logger.warning("[🔄] event=notification_action_failed notification_id=%s service=%s status=%s",
                        notification_id, action.get("service"), code)
         return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+
+    def submit_secret(self, notification_id: str, values: dict[str, Any], client: str) -> tuple[int, dict[str, Any]]:
+        """Cindy 4: the owner's values go to the module that asked, through the Hub. Never stored, never logged
+        (only the field names are). First answer wins, like an action."""
+        row = self.archive.get_outbound_event(notification_id)
+        if not row:
+            return 404, {"status": "not_found"}
+        secret = ((row.get("payload") or {}).get("notification") or {}).get("secret") or {}
+        names = [f["name"] for f in secret.get("fields") or []]
+        if not names:
+            return 404, {"status": "no_secret_form"}
+        clean = {n: str(values.get(n)) for n in names if values.get(n) not in (None, "")}
+        if len(clean) != len(names):
+            return 400, {"status": "missing_fields", "fields": [n for n in names if n not in clean]}
+        answer = {"action_id": "secret", "label": "Inviato", "by": client, "at": _now(), "status": "pending"}
+        status, current = self.archive.patch_outbound_event(
+            notification_id, "answered", only_if_states=ANSWERABLE_STATES,
+            payload_merge={"answer": answer}, detail=f"secret form sent by {client}")
+        if status == 409:
+            return 409, {"status": "already_handled"}
+        if status != 200:
+            return 503, {"status": "error", "detail": "archive unavailable"}
+        code, payload = self._route(secret["service"], secret["path"], {"values": clean, "client": client},
+                                    timeout=15, trace_id=notification_id)
+        clean.clear()
+        logger.info("event=notification_secret_forwarded notification_id=%s service=%s fields=%s status=%s",
+                    notification_id, secret["service"], ",".join(names), code)
+        if 200 <= code < 300:
+            return self._finish(notification_id, answer, "done", _outcome_text(payload, "Ricevuto"))
+        self.archive.patch_outbound_event(
+            notification_id, "seen", only_if_states=["answered"],
+            payload_merge={"answer": {**answer, "status": "error"}}, detail=f"secret form failed: {code}")
+        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+
+    def remind_pending(self, now: datetime | None = None) -> dict[str, int]:
+        """Cindy 5: one grouped reminder for what still waits for an answer after ``hermes.attesa.richiamo_ore``;
+        each notification is recalled once (``reminded_at``). The reminder replaces the previous one."""
+        now = now or datetime.now(timezone.utc)
+        after = timedelta(hours=float(settings.get(PENDING_REMIND_HOURS) or 4))
+        rows = self.archive.get_outbound_events({
+            "channel": CHANNEL, "lifecycle_states": ",".join(ANSWERABLE_STATES),
+            "created_after": (now - timedelta(days=7)).isoformat(), "limit": 200})
+        due = []
+        for row in rows:
+            v = view(row)
+            stored = row.get("payload") or {}
+            created = _parse_ts(row.get("created_at"))
+            if not v["pending"] or stored.get("reminded_at") or row.get("event_type") == "assistant.pending_reminder":
+                continue
+            if created and now - created >= after:
+                due.append((row, v))
+        if not due:
+            return {"reminded": 0}
+        for row, _ in due:
+            self.archive.patch_outbound_event(str(row["outbound_event_id"]), str(row.get("lifecycle_state")),
+                                              payload_merge={"reminded_at": now.isoformat()})
+        import html
+        lines = [f"• {html.escape(v['title'] or v['message'][:80])}" for _, v in due[:8]]
+        more = len(due) - len(lines)
+        message = ("Aspettano ancora una tua risposta:\n" + "\n".join(lines)
+                   + (f"\n…e altre {more}." if more > 0 else ""))
+        self.publish(message=message, event_type="assistant.pending_reminder", domain="assistant",
+                     title=f"Da decidere: {len(due)}", level="info", source="hermes",
+                     replaces="hermes.pending_reminder",
+                     link={"module": "hermes", "page": "notifiche", "params": {"filter": "pending"}})
+        logger.info("event=notification_pending_reminded count=%d", len(due))
+        return {"reminded": len(due)}
 
     def report_outcome(self, notification_id: str, client: str, ok: bool, text: str) -> dict[str, Any]:
         row = self.archive.get_outbound_event(notification_id) or {}

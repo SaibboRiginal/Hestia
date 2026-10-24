@@ -659,6 +659,16 @@ ArgusRecord = _module_record_model(
     "One row of Hestia-Argus (notable system event of the journal, docs/work/2026-10-19-oracle-offline v3 F). "
     "Owner of the semantics: Hestia-Argus.")
 
+HermesRecord = _module_record_model(
+    "HermesRecord", "hermes_records",
+    "One row of Hestia-Hermes (Web Push subscription of a browser, docs/work/2026-10-24-tutto-brainstorm-cindy). "
+    "Owner of the semantics: Hestia-Hermes.")
+
+ChronosRecord = _module_record_model(
+    "ChronosRecord", "chronos_records",
+    "One row of Hestia-Chronos (routine result kept for the recap, smart-calendar «keep as is» choice, "
+    "docs/work/2026-10-24-tutto-brainstorm-cindy). Owner of the semantics: Hestia-Chronos.")
+
 SignalRecord = _module_record_model(
     "SignalRecord", "signal_records",
     "One row of the reflection signals (docs/work/2026-10-20-riflessione-a-livelli): a module's signal or weekly "
