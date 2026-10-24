@@ -119,3 +119,6 @@ Bundle `ui/` → Dockerfile Node stage → `/ui/dist/webui/themis.js`; manifest 
 registration at every (keepalive) register.
 
 Design dossier: `docs/work/2026-10-10-central-settings/`.
+
+## Telegram menus
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Impostazioni: 4 (area › section: tools).

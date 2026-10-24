@@ -128,3 +128,6 @@ import. Volume `./Hestia-Metis/data:/code/data`.
 ## Assistant presence
 
 Window-mode trainings also wait for presence `work.heavy` allow/local: held → re-planned +30 min (agenda key `metis.train.<job>.<ts>`). A running training is activity `metis.training.<job>` (heavy, gpu).
+
+## Telegram menus
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 5 (area › section: tools).

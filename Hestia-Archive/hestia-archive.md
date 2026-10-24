@@ -206,3 +206,6 @@ It stores and serves all persistent state through generic APIs.
   records delivered by Iris land in `/api/archive` under the subscriber's domain (`reference_id = mail:<domain>:<gmail id>`).
 - 2026-10-20: backup to Google Drive, verification and rollback (section above); schema bootstrap moved to `app/schema.py`;
   module store answers carry `epoch`; Archive registers a plugin bundle (settings panel «Backup»).
+
+## Telegram menus
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › interno: 1; memoria › Note e preferenze: 1; notifiche › Avvisi automatici: 4; notifiche › Promemoria e allerte: 4; sistema › Avanzate: 1 (area › section: tools).

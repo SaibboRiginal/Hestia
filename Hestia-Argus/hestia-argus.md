@@ -235,3 +235,6 @@ recovered → entry completed and recovery notice. Visible/movable/cancellable f
 ## Assistant presence
 
 Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Non disponibile».
+
+## Telegram menus
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
