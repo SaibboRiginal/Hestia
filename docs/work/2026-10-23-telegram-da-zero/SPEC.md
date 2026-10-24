@@ -2,15 +2,16 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 3.0 |
 | **Source** | user via Project thread (Marko 2026-10-23: «dobbiamo aprire uno specifico per rivedere tutto telegram, le emoji e come mostra le cose è veramente brutto... dobbiamo rivederlo da 0») |
 | **Status** | Draft — waiting for Marko's approval (no code before it) |
 
 ## Goal
-Telegram looks like one product, calm and readable: a small, fixed visual grammar shared by every message
+**Every function of the assistant is usable from Telegram — all of them** (Marko 2026-10-24: «anche da telegram
+voglio disponibili tutte le funzioni dell'assistente! e intendo tutte!»). Telegram looks like one product, calm and readable: a small, fixed visual grammar shared by every message
 (chat answers, command results, notifications, questions, wizards, errors), almost no emoji, one message per
-interaction edited in place, and a short command menu in plain Italian. Same features as today; only how they are
-shown and reached changes.
+interaction edited in place, and a short command menu in plain Italian. Today Telegram reaches 80 of 165 tools; after
+this work it reaches 165 of 165, plus what the WebUI does without a tool (section 5.9).
 
 ## 1. Audit of today's client (main @ af732d7)
 
@@ -27,6 +28,7 @@ shown and reached changes.
 | A9 | **Chat style asked to the model**: «personale e caldo… prima persona femminile», Markdown then converted to HTML by regex, no rule on emoji, 6–8 lines max even when a list is asked. | `DEFAULT_CLIENT_INSTRUCTIONS` | — |
 | A11 | **Whole areas missing from the buttons menu**: `build_commands_keyboard` shows only the 8 keys of `GROUP_ORDER`; modules declare `allenamento`, `selfcare`, `guardaroba`, `spese`, `chat`, `sviluppo` → those ~38 commands are reachable only by typing their English name. | `registry.py` | 6 areas |
 | A12 | **Fragile buttons and flows**: pending flows, confirmations and picker tokens live in memory dicts (lost at every restart → «Richiesta scaduta»); `callback_data` cut at 64 bytes (`ntf:<id>:<action>`[:64]) can silently break ids; missing input asked by argument name («Inserisci ora il valore per *subscription id*»); `setMyCommands` rebuilt at every registry change (429 debounce). | core, executor, notifications | — |
+| A13 | **Half of the functions are not on Telegram**: 85 of 165 tools are `clients=["ui"]` or `telegram_visible=False` (Chronos 22 of 30, Hercules 15 of 26, Hygieia 10 of 18, Oracle memory/documents 9 of 9, Themis 4 of 4, Plutus 6 of 11, Forge review 8 of 19, Wardrobe 5 of 12…). Photos/files cannot be given to an action. A reply to a message is not passed as context. | modules, executor | 85 tools |
 | A10 | **Notifications**: all buttons on one row (cramped, cut at 40 chars), status lines mixing ✓ and ✅. | notifications.py | — |
 
 ## 2. Design principles
@@ -200,19 +202,22 @@ HOME (/start)                        OGGI                                  AREE
   page, «Altre ›»).
 - Areas, order and primary actions:
 
-| Area | Header | Primary actions |
-|---|---|---|
-| 📅 Giornata | agenda of today | Agenda · Meteo · Recap · Nuovo evento · Nuovo promemoria · Piano della settimana |
-| 🏋️ Allenamento | summary | Inizia allenamento · Allenamento di oggi · Registra peso · Registra attività · Schede · Salta oggi |
-| ✨ Cura di sé | summary | Oggi · Segna fatto · Routine · Prodotti · Lista spesa |
-| 👕 Guardaroba | summary | Cosa mi metto · Indossato · Cerca · Aggiungi capo · Outfit |
-| 💶 Spese | month summary | Registra spesa · Cerca movimenti · Budget · Abbonamenti |
-| 🏠 Case | stats | Case disponibili · Cerca · Controlla email |
-| ✉️ Posta | — | Cerca messaggi · Invia messaggio · Iscrizioni |
-| 📎 Documenti | count | Documenti salvati (pin / elimina on each) |
-| ⚙️ Sistema | status | Stato · Non disturbare · Sviluppa Hestia · Lavori di sviluppo · Accesso WebUI · Collega calendario |
+| Area | Header | Primary actions | Then «Tutte le azioni ›», by section |
+|---|---|---|---|
+| 📅 Giornata | agenda of today | Agenda · Meteo · Recap · Nuovo evento · Nuovo promemoria · Piano della settimana | Calendario (eventi: crea, modifica, sposta, elimina) · Agenda dell'assistente (aggiungi, sposta, salta, modelli, ripristina) · Meteo · Recap |
+| 🏋️ Allenamento | summary | Inizia allenamento · Allenamento di oggi · Registra peso · Registra attività · Schede · Salta oggi | Oggi (check-in, adatta, rimanda) · Schede (modifica, annulla) · Attività · Storico e statistiche · Obiettivi |
+| ✨ Cura di sé | summary | Oggi · Segna fatto · Routine · Prodotti · Lista spesa | Routine (crea, modifica) · Prodotti · Diario · Statistiche e ciclo |
+| 👕 Guardaroba | summary | Cosa mi metto · Indossato · Cerca · Aggiungi capo · Outfit | Capi (dettaglio, modifica, elimina) · Outfit · Valigia · Statistiche |
+| 💶 Spese | month summary | Registra spesa · Cerca movimenti · Budget · Abbonamenti | Movimenti (modifica, elimina) · Categorie · Importa estratto conto · Statistiche |
+| 🏠 Case | stats | Case disponibili · Cerca · Controlla email | Statistiche · Avanzate |
+| ✉️ Posta | — | Cerca messaggi · Invia messaggio · Iscrizioni | Conversazioni · Avanzate |
+| 🧠 Memoria | what I know (count) | Ricorda questo · Cosa ricordi di… · Documenti salvati · Cerca sul web | Note e preferenze · Documenti (pin, elimina) · Web (cerca, leggi pagina) |
+| 🛠 Sviluppo | open tasks | Sviluppa Hestia · Lavori in corso · Da approvare | Lavoro (dettaglio, differenze, dossier, nota, approva, rifiuta, annulla) · Riparazioni · Dataset e training · Impostazioni sviluppo |
+| ⚙️ Sistema | status | Stato · Non disturbare · Accesso WebUI · Collega calendario · Impostazioni | Salute e log · Account collegati · Contesto della chat · Tutte le impostazioni · Avanzate (riconcilia, verifica) |
 
-  Area appears only when it has a visible action; an unknown area key goes to «Altro», **never dropped** (fixes A11).
+  Area appears only when it has an action; an unknown area key goes to «Altro», **never dropped** (fixes A11).
+- **Sections** inside «Tutte le azioni» come from the module (`telegram_section`); technical tools go in a last
+  section «Avanzate», still one tap away. Nothing is hidden.
 
 ### 5.5 Action flow (no argument names, no `key=value`)
 Inputs come from the tool's own JSON schema, so modules need nothing new for the basics:
@@ -241,17 +246,19 @@ Inputs come from the tool's own JSON schema, so modules need nothing new for the
 ### 5.7 What modules declare (MCP `_meta.hestia`, generic, no Telegram logic in modules)
 | Key | Meaning | Default |
 |---|---|---|
-| `telegram_group` | area key of 5.4 (`giornata`, `allenamento`, `selfcare`, `guardaroba`, `spese`, `case`, `posta`, `documenti`, `sistema`) | `altro` |
+| `telegram_group` | area key of 5.4 (`giornata`, `allenamento`, `selfcare`, `guardaroba`, `spese`, `case`, `posta`, `memoria`, `sviluppo`, `sistema`) | from service, else `altro` |
+| `telegram_section` | section inside «Tutte le azioni» (`avanzate` = last) | none |
 | `telegram_order` | position inside the area | declaration order |
 | `telegram_primary` | shown on the area card | false |
 | `telegram_summary` | this tool is the area card's header | false |
 | `telegram_label` | short button label (≤ 24 chars) | `title` |
-| `telegram_visible` | shown in Telegram at all (exists today) | true |
+| `telegram_visible` | **removed**: every tool is on Telegram; `clients` keeps only `external` (outside AIs) as a restriction | — |
 
 Area names and emoji are Telegram's (one table in `telegram_bot/areas.py`), not the modules'.
-Hidden from Telegram (`telegram_visible=False`, still in WebUI and chat): `*_reconcile`, `gateway_auth_poll`,
-`gateway_auth_complete`, `hephaestus_*` but status, `metis_*`, `forge_settings`, `forge_set_claude_schedule`,
-`athena_audit_conversation`. Module names leave titles («Stato Forge» → «Stato sviluppo», «Agenda di Hestia» →
+Every tool of every module is shown: `telegram_visible=False` and `clients=["ui"]` stop meaning «not on Telegram»
+(85 tools come in). Maintenance tools (`*_reconcile`, `gateway_auth_poll`, `metis_*`, …) go to the «Avanzate»
+section of their area. Internal ones that a person cannot meaningfully run (`feedback_submit`, used by the client
+itself) are the only exception, declared with `telegram_section="interno"` and listed in the reachability test. Module names leave titles («Stato Forge» → «Stato sviluppo», «Agenda di Hestia» →
 «Agenda dell'assistente»). Titles lose their emoji; `tools/governance/check_icons.py` fails on emoji in `MCPTool`
 titles; Telegram also strips a leading one as safety net.
 
@@ -266,6 +273,31 @@ titles; Telegram also strips a leading one as safety net.
 - **Button labels** ≤ 24 chars, cut on a word with «…»; tested on the live catalog.
 - **Reachability test**: walks Home → every area → every action for the catalog of all modules (from their
   `MCPTool` declarations) and fails if a visible tool cannot be reached in ≤ 3 taps.
+
+### 5.9 «Tutte» means also what the WebUI does without a tool
+- **Parity list**: the governance check of brainstorm idea 22 (plugin actions ↔ MCP tools) gives the list of WebUI
+  actions without a tool. Each gap gets a tool in its own module (module boundaries: the module owns it, Telegram
+  only shows it). Known today: export/import `.hestia`, backup now/restore, notification subscriptions, Hermes inbox
+  answer/history, presence states, plugin quick actions, Athena proposals/thoughts, Argus remediation history.
+  The list is filled at T2 start and tracked in PROGRESS.md; a test fails when a new plugin action has no tool.
+- **Files in and out**: an action whose schema asks for a file/image (`format: binary`, `contentMediaType`) asks
+  «Mandami la foto» and takes the next photo/document (wardrobe photo, bank statement, receipt, document to save).
+  Results with images (a garment, an outfit, a house) come as photo + caption, several as an album
+  (`sendMediaGroup`); exports come as a document file.
+- **Visual pages (Mini App)**: what is a picture rather than an action — charts, the week grid of the agenda,
+  photo galleries — opens the same WebUI page **inside Telegram** as a Mini App (`web_app` button: «Apri grafico»,
+  plus the chat menu button «Apri Hestia»). Needs the public HTTPS address (`CLOUDFLARE_TUNNEL_HOSTNAME`) and a
+  WebUI login with Telegram's signed `initData` (HMAC with the bot token, only the `ALLOWED_USER_ID`). Without a
+  public address the buttons are simply not drawn and every action still works with buttons.
+- **Chat**: anything can still be asked in words; the assistant already uses every tool in its scope.
+
+### 5.10 Reply to a message = context (brainstorm idea 24, accepted)
+- Replying to any message (an answer, a notification, a result card, your own message) or to a **quote** of part of
+  it (Telegram `quote`) sends the quoted text to the assistant with the new message: Oracle `/api/chat` gets
+  `quoted: {text, from: assistant|user|notification, at, ref}` and shows it to the model as context (not as an
+  instruction). Small Oracle contract change (swagger + Oracle doc), same field usable by the WebUI.
+- Reply to a notification: the notification id goes with it, so «spostalo a domani» acts on that reminder.
+- WebUI shows the quoted context closed under your message (WebUI part done here too, it is small).
 
 ## 6. Command results without the model
 - Default response mode becomes `display`: Telegram renders the JSON itself with a **generic renderer**: a dict →
@@ -300,6 +332,8 @@ titles; Telegram also strips a leading one as safety net.
 | T3 | Results without the model: generic renderer, `hestia_common.display`, `display` in the 6 modules, Scout card, signal path removed (A4) |
 | T4 | Chat: new client instructions, notices inside the answer, feedback + Ascolta on the answer, slim settings (A7, A9) |
 | T5 | Notifications, assistant questions, wizards, chat queue texts on the new grammar (A10) |
+| T5b | All functions (5.9): every tool reachable (85 in), `telegram_section` in modules, files in/out, parity list → missing tools module by module, reply-as-context (5.10, Oracle + WebUI) (A13) |
+| T7 | Mini App: WebUI page inside Telegram with `initData` login, menu button, «Apri grafico» buttons — needs the public address |
 | T6 | Docs (`hestia-telegram.md`, `docs/ARCHITECTURE.md` Telegram rules, swagger if a contract changes, module docs, `.env.example` untouched), root CHANGELOG, bench screenshots of a real bot conversation if possible |
 
 Each phase is a PR merged when CI is green. Old callback data keep working for messages already in the chat.
@@ -308,7 +342,8 @@ Each phase is a PR merged when CI is green. Old callback data keep working for m
 1. ~~Markers~~ — decided v1.1: hybrid (3.1).
 2. Bottom keyboard (5.1) always visible — yes (recommended) or only the `/` menu?
 3. Command names of 5.2 (`/oggi`, `/aree`, `/nuova`, `/voce`…) — ok or other names?
-4. Areas of 5.4 and their primary actions — anything to add, merge or rename?
+4. Areas of 5.4 (now 10, with Memoria and Sviluppo) and their primary actions — anything to add, merge or rename?
+5. Mini App (5.9, T7) — ok to open WebUI pages inside Telegram for charts, agenda grid and photos?
 
 ## Acceptance criteria
 - No emoji in any Telegram text or button except the 4 tone dots, the area emoji (area buttons + result titles) and 👍/👎 (test scans the client strings).
@@ -316,6 +351,8 @@ Each phase is a PR merged when CI is green. Old callback data keep working for m
   the whole tree for every tool of the live catalog; no tool dropped because of an unknown area).
 - Buttons keep working after a restart of Telegram (persisted ids/flows); an old menu answers with a fresh one.
 - An action never asks for an argument by its technical name; choices come as buttons from the tool schema.
+- 165 of 165 tools reachable (exception list = `interno` only); every WebUI action has a tool or is on the parity list.
+- A reply to a message reaches the assistant with the quoted text.
 - Running a command produces exactly one message, same layout each time, with Oracle stopped.
 - No module name, id, exception text or `key=value` in user texts (test on the string table).
 - Settings panel has 6 entries; removed keys gone from Themis declarations and docs.
