@@ -317,8 +317,8 @@ def list_tools():
 @api_app.post("/api/tools/real_estate/search")
 def search_real_estate(req: RealEstateSearchRequest):
     items = retrieval_service.search(req)
-    text = retrieval_service.search_formatted(req)
-    return {"text": text, "domain": TARGET_DOMAIN, "count": len(items)}
+    text = retrieval_service.search_formatted(req, items)
+    return {"text": text, "domain": TARGET_DOMAIN, "count": len(items), "display": retrieval_service.display_of(items)}
 
 
 @api_app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
@@ -435,7 +435,18 @@ if _HAS_MCP:
             "by_status": status_counts,
             "oldest_created": str(oldest) if oldest else None,
             "newest_created": str(newest) if newest else None,
+            "display": stats_display(total, status_counts, newest),
         }
+
+    def stats_display(total: int, by_status: dict, newest) -> dict:
+        from hestia_common.display import action, display, item
+        names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
+                 "unknown": "senza stato"}
+        when = str(newest or "")[:10]
+        return display("Case", subtitle=f"{total} annunci", footer=f"Ultimo arrivato il {when[8:10]}/{when[5:7]}" if when else "",
+                       items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
+                                                                                         key=lambda kv: -kv[1])],
+                       actions=[action("Case disponibili", "scout_listings", style="primary"), action("Cerca", "scout.search")])
 
     mcp_tools = [
         MCPTool(name="scout.search",

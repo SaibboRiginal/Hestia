@@ -27,6 +27,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common import recap
+from hestia_common.display import action, display, item
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -274,7 +275,40 @@ def routine_snooze(id: str):
 
 @app.get(f"{API}/today")
 def today(date: str = "", paused: bool = False):
-    return hygieia.plan(date or None, include_paused=paused)
+    plan = hygieia.plan(date or None, include_paused=paused)
+    return {**plan, "display": today_display(plan)}
+
+
+# ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
+_STATE = {"due": ("da fare", "warning"), "suggested": ("consigliata", ""), "done": ("fatta", "success"),
+          "partial": ("in parte", ""), "blocked": ("non ora", ""), "wait": ("più avanti", ""), "ok": ("in pari", "")}
+
+
+def today_display(plan: dict) -> dict:
+    rows = []
+    for p in plan.get("routines") or []:
+        if p.get("state") in ("off", "rest", "paused") and not p.get("log_id"):
+            continue
+        label, tone = _STATE.get(p.get("state"), ("", ""))
+        steps = [x["label"] for x in p.get("steps") or [] if x.get("include")]
+        rows.append(item(p.get("name") or "Routine", [label, p.get("reason") or p.get("hint"),
+                                                      ", ".join(steps[:4]) + ("…" if len(steps) > 4 else "")], tone=tone))
+    due = next((p for p in plan.get("routines") or [] if p.get("state") == "due"), None)
+    acts = [action(f"Fatta: {due['name']}"[:24], "selfcare_log", {"routine": due["name"], "status": "done"}, style="primary")] if due else []
+    return display("Cura di sé oggi", items=rows, lines=[] if rows else ["Niente in programma oggi."],
+                   actions=acts + [action("Registra", "selfcare_log"), action("Lista spesa", "selfcare_shopping")])
+
+
+def overview_display(o: dict) -> dict:
+    lines = list(o.get("alerts") or [])
+    if o.get("in_use"):
+        lines.append("In uso: " + ", ".join(o["in_use"][:6]) + ("…" if len(o["in_use"]) > 6 else ""))
+    rows = [item(r["name"], [r.get("slot"), r.get("cadence"), "in pausa" if r.get("status") == "paused" else ""])
+            for r in o.get("routines") or []]
+    return display("Cura di sé", subtitle=o.get("text") or "", lines=lines, items=rows,
+                   tone="warning" if o.get("alerts") else "",
+                   actions=[action("Oggi", "selfcare_today", style="primary"), action("Prodotti", "selfcare_products"),
+                            action("Statistiche", "selfcare_stats")])
 
 
 # ── logs, journal ────────────────────────────────────────────────────────────
@@ -348,7 +382,8 @@ def summary():
 
 @app.get(f"{API}/overview")
 def overview():
-    return hygieia.overview()
+    o = hygieia.overview()
+    return {**o, "display": overview_display(o)}
 
 
 @app.get(f"{API}/export")

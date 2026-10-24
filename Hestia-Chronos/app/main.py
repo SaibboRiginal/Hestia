@@ -61,6 +61,7 @@ except ModuleNotFoundError:
 
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common import recap as recap_contract
+from hestia_common.display import action, display, item
 from services import day_view
 
 logger, log_buffer = setup_service_logging("hestia_chronos")
@@ -167,7 +168,7 @@ try:
             description="Mostra gli eventi di oggi",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "agenda_today", "params": kw},
-            title="Agenda di oggi", method="GET", path="/api/calendar/agenda",
+            title="Agenda di oggi", method="GET", path="/api/calendar/agenda/today",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 "Mostra gli eventi di oggi in modo conciso. Se non ci sono "
@@ -867,7 +868,41 @@ def get_agenda(
         "days": days,
         "count": len(items),
         "items": items,
+        "display": agenda_display(items, days, now),
     }
+
+
+@app.get("/api/calendar/agenda/today")
+def get_agenda_today() -> dict:
+    """Today's items only (MCP ``agenda_today``)."""
+    return get_agenda(days=1, source=None, kind=None)
+
+
+_WD = ("lun", "mar", "mer", "gio", "ven", "sab", "dom")
+_MO = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+
+
+def agenda_display(items: list[dict], days: int, start: datetime) -> dict:
+    """Telegram card of the agenda (hestia_common.display): one line per item, grouped by day when days > 1."""
+    tz = start.tzinfo
+    rows, last_day = [], None
+    for it in items[:30]:
+        try:
+            at = datetime.fromisoformat(str(it.get("start_at")).replace("Z", "+00:00")).astimezone(tz)
+        except (TypeError, ValueError):
+            continue
+        day = at.date()
+        when = "tutto il giorno" if it.get("all_day") else at.strftime("%H:%M")
+        if days > 1 and day != last_day:
+            rows.append(item(f"{_WD[day.weekday()]} {day.day} {_MO[day.month - 1]}".capitalize(), [when, it.get("title")]))
+            last_day = day
+        else:
+            rows.append(item(it.get("title") or "Evento", [when, it.get("location")]))
+    title = "Agenda di oggi" if days == 1 else f"Agenda · prossimi {days} giorni"
+    return display(title, items=rows, lines=[] if rows else ["Niente in agenda."],
+                   footer=f"e altri {len(items) - 30}" if len(items) > 30 else "",
+                   actions=[action("Nuovo evento", "create_event", style="primary"),
+                            action("Prossimi giorni" if days == 1 else "Solo oggi", "agenda" if days == 1 else "agenda_today")])
 
 
 # ─────────────────────────────────────────────────────────────────────

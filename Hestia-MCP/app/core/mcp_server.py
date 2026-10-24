@@ -26,6 +26,7 @@ except ModuleNotFoundError:
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "Hestia-Shared"))
     from hestia_common.tool_call import build_request
+from hestia_common.display import strip as strip_display
 
 logger = logging.getLogger("hestia_mcp.server")
 
@@ -106,6 +107,9 @@ class MCPServer:
                     client or "-", ok, status, int((time.perf_counter() - t0) * 1000))
         if ctx.get("external") and ctx.get("on_call"):
             ctx["on_call"](tool, ok, payload)
+        if client != "telegram":
+            # The display block is for Telegram's cards (hestia_common.display): models see the plain data.
+            payload = strip_display(payload)
         structured = payload if isinstance(payload, dict) else {"result": payload}
         text = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False, default=str)
         return {"content": [{"type": "text", "text": text}], "structuredContent": structured, "isError": not ok,

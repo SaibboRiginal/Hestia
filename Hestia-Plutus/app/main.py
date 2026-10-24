@@ -29,6 +29,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common import recap
+from hestia_common.display import action, display, item, money
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
@@ -689,6 +690,49 @@ def _short(t: dict) -> dict:
                                   "status") if t.get(k) not in (None, "")} | ({"counted": False} if not t.get("counted") else {})
 
 
+# ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
+def _tx_item(t: dict) -> dict:
+    amount = t.get("amount") or 0
+    when = str(t.get("date") or "")[:10]
+    return item(t.get("merchant") or t.get("category_label") or "Movimento",
+                [("+" if amount > 0 else "") + money(abs(amount)),
+                 t.get("category_label"), f"{when[8:10]}/{when[5:7]}" if len(when) == 10 else "",
+                 "da rivedere" if t.get("status") == "to_review" else ""],
+                tone="success" if amount > 0 else "")
+
+
+def summary_display(s: dict) -> dict:
+    lines = [f"Speso {money(s.get('spent'))}" + (f" su {money(s['budget'])}" if s.get("budget") else "")
+             + (f" · restano {money(s['left'])}" if s.get("budget") and s.get("left") is not None else "")]
+    if s.get("income"):
+        lines.append(f"Entrate {money(s['income'])}")
+    if s.get("pace") and s.get("budget") and s["pace"] > s["budget"]:
+        lines.append(f"A questo ritmo arrivi a {money(s['pace'])}")
+    rows = [item(c["label"], [money(c["spent"]), f"{c['pct']}% del budget" if c.get("budget") else ""],
+                 tone="danger" if (c.get("pct") or 0) >= 100 else ("warning" if (c.get("pct") or 0) >= 80 else ""))
+            for c in (s.get("categories") or [])[:8]]
+    over = s.get("budget") and (s.get("left") or 0) < 0
+    acts = [action("Aggiungi spesa", "finance_add", style="primary"), action("Cerca", "finance_search")]
+    if s.get("to_review"):
+        acts.append(action(f"Da rivedere ({s['to_review']})", "finance_search", {"to_review": True}))
+    return display(f"Spese · {s.get('label') or 'questo mese'}", lines=lines, items=rows, actions=acts,
+                   tone="danger" if over else "")
+
+
+def search_display(items: list[dict], total: float) -> dict:
+    return display("Movimenti", subtitle=f"{len(items)} · totale {money(abs(total))}" if items else "",
+                   items=[_tx_item(t) for t in items[:20]], lines=[] if items else ["Nessun movimento trovato."],
+                   footer=f"e altri {len(items) - 20}" if len(items) > 20 else "",
+                   actions=[action("Aggiungi spesa", "finance_add", style="primary")])
+
+
+def added_display(t: dict) -> dict:
+    return display("Salvato", tone="success", items=[_tx_item(t)],
+                   actions=[action("Cambia categoria", "finance_update", {"id": t.get("id")}),
+                            action("Elimina", "finance_delete", {"id": t.get("id")}, style="danger"),
+                            action("Riepilogo", "finance_summary")])
+
+
 try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes
 
@@ -698,14 +742,15 @@ try:
             "categories": [f"{c['label']} {c['spent']:.2f}" + (f"/{c['budget']:.0f} ({c['pct']}%)" if c.get("budget") else "")
                            for c in s["categories"]],
             "top_merchants": [f"{m['merchant']} {m['spent']:.2f}" for m in s["top_merchants"]],
-            "recurring_next": [f"{r['merchant']} {r['amount']:.2f} il {r['next']}" for r in s["recurring_next"]]}
+            "recurring_next": [f"{r['merchant']} {r['amount']:.2f} il {r['next']}" for r in s["recurring_next"]],
+            "display": summary_display(s)}
 
     def _search(query: str = "", category: str = "", month: str = "", since: str = "", until: str = "",
                 account: str = "", to_review: bool = False, limit: int = 30) -> dict:
         items = plutus.transactions(q=query, category=category, month=month, since=since, until=until, account=account,
                                     status="to_review" if to_review else "", limit=max(1, min(limit, 100)))
         total = round(sum(t["amount"] for t in items if t.get("counted")), 2)
-        return {"count": len(items), "total": total, "items": [_short(t) for t in items]}
+        return {"count": len(items), "total": total, "items": [_short(t) for t in items], "display": search_display(items, total)}
 
     def _add(amount: float | None = None, category: str = "", merchant: str = "", date: str = "", account: str = "",
              note: str = "", income: bool = False) -> dict:
@@ -713,7 +758,7 @@ try:
                              "account": account or "contanti", "notes": note, "type": "income" if income else "expense"},
                             source="chat")
         signals.changed()
-        return {"saved": True, **_short(out), "undo": "finance_delete"}
+        return {"saved": True, **_short(out), "undo": "finance_delete", "display": added_display(out)}
 
     def _update(id: str = "", category: str = "", amount: float | None = None, date: str = "", merchant: str = "",
                 note: str = "", always: bool = False) -> dict:

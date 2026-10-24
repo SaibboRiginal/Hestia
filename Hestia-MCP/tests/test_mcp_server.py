@@ -98,6 +98,15 @@ class TestTools:
         assert env["body"] == {"title": "Dentista", "owner": "owner"}
         assert env["headers"] == {"X-Session-Id": "s1", "X-Hestia-Client": "webui"}
 
+    def test_display_block_only_for_telegram(self, rig, monkeypatch):
+        c, _ = rig
+        answer = {"items": [1], "display": {"title": "Agenda"}}
+        monkeypatch.setattr(server_mod.requests, "post",
+                            lambda url, json=None, timeout=0: _Resp({"status_code": 200, "payload": answer}))
+        params = {"name": "forge_tasks", "arguments": {}}
+        assert _rpc(c, "tools/call", params, who="oracle")["result"]["structuredContent"] == {"items": [1]}
+        assert _rpc(c, "tools/call", params, who="telegram")["result"]["structuredContent"] == answer
+
     def test_hidden_tool_cannot_be_called(self, rig):
         c, _ = rig
         err = _rpc(c, "tools/call", {"name": "forge_approve", "arguments": {"task_id": "x"}}, who="webui")["error"]

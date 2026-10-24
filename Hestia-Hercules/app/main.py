@@ -26,6 +26,7 @@ except ModuleNotFoundError:
 
 from hestia_common import recap
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.display import action, display, item
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
@@ -286,9 +287,24 @@ def _save_program(body: dict) -> dict:
     return saved
 
 
+def _next_with_plan(slim: bool = False) -> dict:
+    """Next workout with exercises and suggested weights (REST, MCP tool and its Telegram display)."""
+    n = hercules.next_workout()
+    t = n.get("template")
+    if t:
+        detail = hercules.template_detail(t["id"])
+        n["plan"] = [{"exercise": i["exercise"].get("name"), "sets": len(i.get("sets") or []),
+                      "target": [(s.get("weight_kg"), s.get("reps")) for s in i["suggestion"]["sets"]],
+                      "why": i["suggestion"]["reason"]} for i in detail["items"]]
+        if slim:    # the model needs only the name (the plugin reads the whole template)
+            n["template"] = {"id": t["id"], "name": t["name"]}
+    n["display"] = _next_display(n)
+    return n
+
+
 @app.get(f"{API}/next")
 def next_workout():
-    return hercules.next_workout()
+    return _next_with_plan()
 
 
 # ── sessions ─────────────────────────────────────────────────────────────────
@@ -492,7 +508,8 @@ def _summary_with_plan() -> dict:
 
 @app.get(f"{API}/summary")
 def summary():
-    return {**_summary_with_plan(), "activities": _activity_hints()}
+    s = _summary_with_plan()
+    return {**s, "activities": _activity_hints(), "display": _summary_display(s)}
 
 
 def _activity_hints() -> list[dict]:
@@ -841,6 +858,44 @@ transfer = Transfer("hercules", hub, sections=[
 app.include_router(transfer.router())
 
 
+# ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
+def _summary_display(s: dict) -> dict:
+    act = s.get("active_session")
+    acts = ([action("Registra serie", "fitness_log_sets", style="primary"), action("Concludi", "fitness_finish_session")]
+            if act else [action("Inizia", "fitness_start_session", style="primary"), action("Come mi sento", "fitness_checkin")])
+    lines = s.get("lines") or [x for x in str(s.get("text") or "").split(" · ") if x]
+    return display("Allenamento", subtitle=f"In corso: {act['name']}" if act else "",
+                   lines=[x for x in lines if not (act and x.startswith("In corso:"))],
+                   actions=acts + [action("Storico", "fitness_history")],
+                   tone="warning" if "deload_suggested" in (s.get("flags") or []) else "")
+
+
+def _next_display(n: dict) -> dict:
+    t = n.get("template")
+    if not t:
+        return display("Allenamento di oggi", lines=[n.get("reason") or "Nessun allenamento in programma."],
+                       actions=[action("Le mie schede", "fitness_templates")])
+    def _target(pairs: list) -> str:
+        kg = [w for w, _ in pairs if w]
+        reps = [r for _, r in pairs if r]
+        return " · ".join(x for x in (f"{_kg(max(kg))}" if kg else "", f"{reps[0]} rip" if reps else "") if x)
+    items = [item(p["exercise"] or "Esercizio", [f"{p['sets']} serie", _target(p.get("target") or [])])
+             for p in n.get("plan") or []]
+    minutes = n.get("estimated_minutes")
+    subtitle = " · ".join(x for x in (n.get("reason") or "", f"{minutes} min" if minutes else "") if x)
+    acts = [] if n.get("rest_day") else [action("Inizia", "fitness_start_session", {"template": t["name"]}, style="primary"),
+                                         action("Adatta a come sto", "fitness_adapt_today")]
+    return display(t["name"], subtitle=subtitle, items=items,
+                   actions=acts + [action("Sposta", "fitness_postpone"), action("Salta oggi", "fitness_skip_day")])
+
+
+def _kg(value) -> str:
+    try:
+        return f"{float(value):g} kg".replace(".", ",")
+    except (TypeError, ValueError):
+        return ""
+
+
 # ── MCP tools (domain fitness; Oracle calls them, the logic stays here) ─────
 def _t(fn):
     def run(**kw):
@@ -857,18 +912,11 @@ try:
     def _summary() -> dict:
         s = _summary_with_plan()
         return {"text": s["text"], "planned": s.get("planned"), "goals": s["goals"], "flags": s["flags"], "stalls": s["stalls"],
-                "recent_prs": s["recent_prs"], "missed_7d": s["missed_7d"], "active_session": s["active_session"]}
+                "recent_prs": s["recent_prs"], "missed_7d": s["missed_7d"], "active_session": s["active_session"],
+                "display": _summary_display(s)}
 
     def _next() -> dict:
-        n = hercules.next_workout()
-        t = n.get("template")
-        if t:
-            detail = hercules.template_detail(t["id"])
-            n["plan"] = [{"exercise": i["exercise"].get("name"), "sets": len(i.get("sets") or []),
-                          "target": [(s.get("weight_kg"), s.get("reps")) for s in i["suggestion"]["sets"]],
-                          "why": i["suggestion"]["reason"]} for i in detail["items"]]
-            n["template"] = {"id": t["id"], "name": t["name"]}
-        return n
+        return _next_with_plan(slim=True)
 
     def _history(days: int = 30, exercise: str = "", limit: int = 20) -> dict:
         ex_id = ""

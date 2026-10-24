@@ -25,6 +25,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common import recap
+from hestia_common.display import action, display, item
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -582,6 +583,32 @@ def _brief_piece(p: dict) -> dict:
             "status": p.get("status_label"), "last_worn": p.get("last_worn"), "favorite": p.get("favorite") or None}
 
 
+# ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
+def summary_display(s: dict) -> dict:
+    lines = [x for x in str(s.get("text") or "").split(" · ") if x]
+    if s.get("laundry"):
+        lines.append("In lavanderia: " + ", ".join(s["laundry"][:5]))
+    if s.get("forgotten"):
+        lines.append("Da riprendere: " + ", ".join(s["forgotten"][:4]))
+    return display("Guardaroba", lines=[x for x in lines if not x.startswith("in lavanderia ")],
+                   actions=[action("Cosa mi metto", "wardrobe_suggest", style="primary"), action("Cerca", "wardrobe_search"),
+                            action("Aggiungi capo", "wardrobe_add")])
+
+
+def suggest_display(r: dict) -> dict:
+    w = r.get("weather") or {}
+    sub = " · ".join(str(x) for x in (r.get("hint"), f"{w['temp_c']:.0f}°" if isinstance(w.get("temp_c"), (int, float)) else "")
+                     if x)
+    rows = [item(o["name"] or f"Idea {n}", [", ".join(o["pieces"]), (o.get("why") or [""])[0]])
+            for n, o in enumerate(r.get("items") or [], 1)]
+    acts = [action(f"Metto {o['name'] or f'idea {n}'}"[:24], "wardrobe_log_worn",
+                   {"outfit": o["name"]} if o.get("saved") else {"pieces": o["piece_ids"]}, style="primary" if n == 1 else "")
+            for n, o in enumerate((r.get("items") or [])[:3], 1)]
+    return display("Cosa mi metto", subtitle=sub, items=rows,
+                   lines=[] if rows else ["Non trovo una combinazione adatta tra i capi disponibili."],
+                   actions=acts + [action("Altre idee", "wardrobe_suggest")])
+
+
 try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes
 
@@ -649,10 +676,11 @@ try:
                  styles: list | None = None, count: int | None = None, place: str = "") -> dict:
         r = wardrobe.suggest(day=date, occasion=occasion, temp_c=temp_c, rain=rain, styles=styles, count=count,
                              place=place)
-        return {"date": r["date"], "season": r["season"], "hint": r.get("hint"), "weather": r.get("weather"),
-                "items": [{"outfit_id": i.get("outfit_id"), "saved": i["saved"], "name": i["name"],
-                           "pieces": [f"{x['name']} ({domain.SLOTS[x['slot']].lower()})" for x in i["pieces"]],
-                           "piece_ids": [x["id"] for x in i["pieces"]], "why": i["reasons"]} for i in r["items"]]}
+        out = {"date": r["date"], "season": r["season"], "hint": r.get("hint"), "weather": r.get("weather"),
+               "items": [{"outfit_id": i.get("outfit_id"), "saved": i["saved"], "name": i["name"],
+                          "pieces": [f"{x['name']} ({domain.SLOTS[x['slot']].lower()})" for x in i["pieces"]],
+                          "piece_ids": [x["id"] for x in i["pieces"]], "why": i["reasons"]} for i in r["items"]]}
+        return {**out, "display": suggest_display(out)}
 
     def _worn(outfit: str = "", pieces: list | None = None, date: str = "", note: str = "") -> dict:
         body = {"date": date or None, "note": note, "source": "assistant"}
@@ -680,7 +708,8 @@ try:
                 "usage": {k: s["usage"][k] for k in ("has_marks", "most_worn", "never_marked", "cost_per_wear")}}
 
     def _summary() -> dict:
-        return wardrobe.summary()
+        out = wardrobe.summary()
+        return {**out, "display": summary_display(out)}
 
     def _packing(place: str = "", date_from: str = "", date_to: str = "", occasion: str = "", temp_c: float | None = None,
                  rain: bool | None = None) -> dict:
