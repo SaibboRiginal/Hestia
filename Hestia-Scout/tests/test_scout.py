@@ -176,3 +176,19 @@ def test_oracle_evaluator_sends_use_case_not_model(monkeypatch):
     assert sent["body"]["use_case"] == "scout.annunci"
     assert "model" not in sent["body"] and "provider" not in sent["body"]
     assert out == {"raw_response": "{}", "model_used": "gemini-2.5-flash", "error": None}
+
+
+@pytest.mark.unit
+class TestListingDisplay:
+    """Telegram card of a search (docs/work/2026-10-23-telegram-da-zero §6)."""
+
+    def test_card_has_link_price_surface(self):
+        with patch("tools.retrieval.ScoutRetrievalService.__init__", return_value=None):
+            from tools.retrieval import ScoutRetrievalService
+            svc = ScoutRetrievalService()
+        d = svc.display_of([{"title": "Bilocale Navigli", "url": "https://example.org/1", "price": 250000,
+                             "address": "Milano", "specs": {"surface_m2": 60, "rooms": 2}}])
+        row = d["items"][0]
+        assert row["title"] == "Bilocale Navigli" and row["url"] == "https://example.org/1"
+        assert row["meta"][:2] == ["250.000 €", "60 m²"] and "Milano" in row["meta"]
+        assert svc.display_of([])["lines"] == ["Nessuna casa trovata."]

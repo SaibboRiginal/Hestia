@@ -3,15 +3,15 @@
 One Oracle stream → ONE answer message (split only when > 4096 chars):
 
     ┌ status message (reused) ──────────────────────────────┐
-    │ ⏳ live status / 💭 live steps / streaming tokens ▍     │  while working
-    │ ▸ 💭 Ragionamento · 3 passi   (expandable blockquote)  │  final
+    │ live status / live steps / streaming tokens ▍          │  while working
+    │ ▸ Ragionamento · 3 passi   (expandable blockquote)     │  final
     │ answer…                                                │
-    │ ┄                                                      │
-    │ 💾 Ricordato: L'utente ha due figli                    │  notices (inline)
+    │ Ricordato: l'utente ha due figli          (italic)     │  notices (inline)
+    │ [ Ascolta ] [ 👍 ] [ 👎 ]                               │  one row (voice_service)
     └────────────────────────────────────────────────────────┘
 
-All behaviour comes from chat_settings (thinking_display, stream_answer,
-split_mode, notice_*). Notices are the standard Oracle `notice` packets.
+Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-da-zero §7).
+Notices are the standard Oracle `notice` packets.
 """
 from __future__ import annotations
 
@@ -38,14 +38,14 @@ class ReplyRenderer:
         self.msg_id = status_message_id
         self.settings = settings or {}
         self.thinking_mode = chat_settings.value(self.settings, "thinking_display")
-        self.stream = chat_settings.value(self.settings, "stream_answer") == "on"
-        self.split_mode = chat_settings.value(self.settings, "split_mode")
+        self.stream = True
         self.policy = NoticePolicy.from_settings(self.settings)
         self.status_text = ""
         self.steps: list[str] = []
         self.tokens: list[str] = []
         self.notices: list[dict] = []
         self.tool_calls = 0
+        self.reasoning = 0
         self.answer_ids: list[int] = []      # message ids holding the final answer
         self.answer_last_html = ""
         self.answer_text = ""                # plain final answer (for «Ascolta»)
@@ -64,15 +64,14 @@ class ReplyRenderer:
         tool = str(evt.get("tool") or "")
         meta = evt.get("metadata") if isinstance(evt.get("metadata"), dict) else {}
         if action == "reasoning" and evt.get("content"):
-            self.steps.append("💭 " + str(evt["content"]).strip().split("\n")[0][:180])
+            self.reasoning += 1
+            self.steps.append("• " + str(evt["content"]).strip().split("\n")[0][:180])
         elif action == "tool_call" and tool:
             self.tool_calls += 1
-            self.steps.append(f"🛠 {tool}")
+            self.steps.append(f"• Uso: {_tool_label(tool)}")
         elif action == "tool_result" and tool:
             n = meta.get("result_count")
-            ok = "✓" if meta.get("ok") else "✗"
-            self.steps.append(f"   {ok} {tool}" + (f" · {n} risultati" if n else "")
-                              + (f" · {meta.get('duration_ms')} ms" if meta.get("duration_ms") else ""))
+            self.steps.append(("  fatto" if meta.get("ok") else "  non riuscito") + (f" · {n} risultati" if n else ""))
         if self.thinking_mode == "live" and not self.tokens:
             self._live_edit()
 
@@ -93,7 +92,7 @@ class ReplyRenderer:
     def on_final(self, reply: str) -> None:
         answer = str(reply or "").strip() or "".join(self.tokens).strip()
         if not answer:
-            answer = "⚠️ Nessuna risposta ricevuta. Riprova (/retry)."
+            answer = "Nessuna risposta: riprova tra poco."
         else:
             self.answer_text = answer
         html = message_format.render_answer_html(answer)
@@ -120,55 +119,44 @@ class ReplyRenderer:
         if not self.notices:
             return
         lines = [self._notice_line(n) for n in self.notices]
-        if self.policy.mode == "separate":
-            body = "\n".join(lines)
-            self._send(f"<blockquote>{body}</blockquote>" if self.policy.style == "rich" else body)
-            return
-        # inline / important → footer under the answer (new message if it would not fit)
+        # footer under the answer, same message (new message only if it would not fit)
         footer = "\n".join(lines)
         combined = f"{self.answer_last_html}\n\n{footer}"
         last_id = self.answer_ids[-1] if self.answer_ids else None
         if last_id and len(combined) <= TG_LIMIT:
             self._edit(combined, parse_mode="HTML", throttle=False, force=True, message_id=last_id)
+            self.answer_last_html = combined
         else:
             self._send(footer)
 
     # ── helpers ────────────────────────────────────────────────────────────
     def _notice_line(self, n: dict) -> str:
-        emoji = str(n.get("emoji") or "ℹ️")
-        title = escape(str(n.get("title") or ""))
-        detail = escape(str(n.get("detail") or ""))
-        if self.policy.style == "rich":
-            return f"{emoji} <b>{title}</b>" + (f"\n<i>{detail}</i>" if detail else "")
-        return f"{emoji} <i>{title}{': ' + detail if detail else ''}</i>"
+        """One italic line, no emoji; 🔴 only on what did not work."""
+        title = escape(_strip_emoji(n.get("title") or ""))
+        detail = escape(_strip_emoji(n.get("detail") or ""))
+        text = f"{title}: {detail}" if title and detail else (title or detail)
+        dot = "🔴 " if str(n.get("level") or "") == "error" else ""
+        return f"{dot}<i>{text}</i>"
 
     def _reasoning_block(self) -> str:
         if self.thinking_mode == "hidden" or not self.steps:
             return ""
         steps = self.steps[-MAX_STEP_LINES:]
         more = len(self.steps) - len(steps)
-        n_reason = sum(1 for s in self.steps if s.startswith("💭"))
-        summary = f"{n_reason} passi" + (f" · {self.tool_calls} strumenti" if self.tool_calls else "")
+        summary = f"{self.reasoning} passi" + (f" · {self.tool_calls} strumenti" if self.tool_calls else "")
         body = "\n".join(escape(s) for s in steps)
         if more:
             body = f"… (+{more})\n" + body
         tag = "<blockquote>" if self.thinking_mode == "detailed" else "<blockquote expandable>"
-        return f"{tag}💭 <b>Ragionamento</b> · {summary}\n{body}</blockquote>"
+        return f"{tag}<b>Ragionamento</b> · {summary}\n{body}</blockquote>"
 
     def _live_edit(self) -> None:
-        text = f"⏳ <i>{escape(self.status_text or 'Sto lavorando…')}</i>"
+        text = f"<i>{escape(_strip_emoji(self.status_text) or 'Sto lavorando…')}</i>"
         if self.thinking_mode == "live" and self.steps:
             text += "\n" + "\n".join(escape(s) for s in self.steps[-4:])
         self._edit(text, parse_mode="HTML", throttle=True)
 
     def _split(self, html: str) -> list[str]:
-        if self.split_mode == "paragraphs" and "<pre" not in html:
-            parts: list[str] = []
-            for para in re.split(r"\n\s*\n", html):
-                if para.strip():
-                    parts.extend(message_format.split_long_message(para.strip(), TG_LIMIT))
-            if parts:
-                return parts
         return message_format.split_long_message(html, TG_LIMIT) or [html]
 
     def _edit(self, text: str, parse_mode: str = "HTML", throttle: bool = True, force: bool = False,
@@ -219,6 +207,23 @@ class ReplyRenderer:
             except Exception as exc2:
                 logger.warning("event=reply_send_failed error=%s", exc2)
                 return None
+
+
+def _strip_emoji(text) -> str:
+    from telegram_bot import ui
+    return ui.strip_emoji(text)
+
+
+def _tool_label(name: str) -> str:
+    """A tool in words (its title), never its technical name when the catalog knows it."""
+    try:
+        from telegram_bot import catalog
+        tool = catalog.get(name)
+        if tool:
+            return _strip_emoji(tool.title) or name
+    except Exception:  # noqa: BLE001
+        pass
+    return name.replace("_", " ").replace(".", " ")
 
 
 def _strip_tags(text: str) -> str:

@@ -29,6 +29,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common import recap
+from hestia_common.display import action, display, item, money
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
@@ -689,6 +690,49 @@ def _short(t: dict) -> dict:
                                   "status") if t.get(k) not in (None, "")} | ({"counted": False} if not t.get("counted") else {})
 
 
+# ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
+def _tx_item(t: dict) -> dict:
+    amount = t.get("amount") or 0
+    when = str(t.get("date") or "")[:10]
+    return item(t.get("merchant") or t.get("category_label") or "Movimento",
+                [("+" if amount > 0 else "") + money(abs(amount)),
+                 t.get("category_label"), f"{when[8:10]}/{when[5:7]}" if len(when) == 10 else "",
+                 "da rivedere" if t.get("status") == "to_review" else ""],
+                tone="success" if amount > 0 else "")
+
+
+def summary_display(s: dict) -> dict:
+    lines = [f"Speso {money(s.get('spent'))}" + (f" su {money(s['budget'])}" if s.get("budget") else "")
+             + (f" · restano {money(s['left'])}" if s.get("budget") and s.get("left") is not None else "")]
+    if s.get("income"):
+        lines.append(f"Entrate {money(s['income'])}")
+    if s.get("pace") and s.get("budget") and s["pace"] > s["budget"]:
+        lines.append(f"A questo ritmo arrivi a {money(s['pace'])}")
+    rows = [item(c["label"], [money(c["spent"]), f"{c['pct']}% del budget" if c.get("budget") else ""],
+                 tone="danger" if (c.get("pct") or 0) >= 100 else ("warning" if (c.get("pct") or 0) >= 80 else ""))
+            for c in (s.get("categories") or [])[:8]]
+    over = s.get("budget") and (s.get("left") or 0) < 0
+    acts = [action("Aggiungi spesa", "finance_add", style="primary"), action("Cerca", "finance_search")]
+    if s.get("to_review"):
+        acts.append(action(f"Da rivedere ({s['to_review']})", "finance_search", {"to_review": True}))
+    return display(f"Spese · {s.get('label') or 'questo mese'}", lines=lines, items=rows, actions=acts,
+                   tone="danger" if over else "")
+
+
+def search_display(items: list[dict], total: float) -> dict:
+    return display("Movimenti", subtitle=f"{len(items)} · totale {money(abs(total))}" if items else "",
+                   items=[_tx_item(t) for t in items[:20]], lines=[] if items else ["Nessun movimento trovato."],
+                   footer=f"e altri {len(items) - 20}" if len(items) > 20 else "",
+                   actions=[action("Aggiungi spesa", "finance_add", style="primary")])
+
+
+def added_display(t: dict) -> dict:
+    return display("Salvato", tone="success", items=[_tx_item(t)],
+                   actions=[action("Cambia categoria", "finance_update", {"id": t.get("id")}),
+                            action("Elimina", "finance_delete", {"id": t.get("id")}, style="danger"),
+                            action("Riepilogo", "finance_summary")])
+
+
 try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes
 
@@ -698,14 +742,15 @@ try:
             "categories": [f"{c['label']} {c['spent']:.2f}" + (f"/{c['budget']:.0f} ({c['pct']}%)" if c.get("budget") else "")
                            for c in s["categories"]],
             "top_merchants": [f"{m['merchant']} {m['spent']:.2f}" for m in s["top_merchants"]],
-            "recurring_next": [f"{r['merchant']} {r['amount']:.2f} il {r['next']}" for r in s["recurring_next"]]}
+            "recurring_next": [f"{r['merchant']} {r['amount']:.2f} il {r['next']}" for r in s["recurring_next"]],
+            "display": summary_display(s)}
 
     def _search(query: str = "", category: str = "", month: str = "", since: str = "", until: str = "",
                 account: str = "", to_review: bool = False, limit: int = 30) -> dict:
         items = plutus.transactions(q=query, category=category, month=month, since=since, until=until, account=account,
                                     status="to_review" if to_review else "", limit=max(1, min(limit, 100)))
         total = round(sum(t["amount"] for t in items if t.get("counted")), 2)
-        return {"count": len(items), "total": total, "items": [_short(t) for t in items]}
+        return {"count": len(items), "total": total, "items": [_short(t) for t in items], "display": search_display(items, total)}
 
     def _add(amount: float | None = None, category: str = "", merchant: str = "", date: str = "", account: str = "",
              note: str = "", income: bool = False) -> dict:
@@ -713,7 +758,7 @@ try:
                              "account": account or "contanti", "notes": note, "type": "income" if income else "expense"},
                             source="chat")
         signals.changed()
-        return {"saved": True, **_short(out), "undo": "finance_delete"}
+        return {"saved": True, **_short(out), "undo": "finance_delete", "display": added_display(out)}
 
     def _update(id: str = "", category: str = "", amount: float | None = None, date: str = "", merchant: str = "",
                 note: str = "", always: bool = False) -> dict:
@@ -777,53 +822,64 @@ try:
         MCPTool(name="finance_summary", description="Spese del mese (o 'month' YYYY-MM-DD): speso, entrate, budget, "
                 "ritmo, categorie, esercenti principali, pagamenti ricorrenti in arrivo. Usalo per primo per domande "
                 "su soldi, spese, budget.", parameters={"type": "object", "properties": {"month": S}},
-                handler=_t(_summary), title="💶 Spese del mese", clients=["telegram", "ui"], telegram_group=G),
+                handler=_t(_summary), title="Spese del mese", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Movimenti", "summary": True}),
         MCPTool(name="finance_search", description="Cerca movimenti: query (esercente/descrizione), category, month o "
                 "since/until YYYY-MM-DD, account (paypal, hype, contanti…), to_review. Dà anche il totale.",
                 parameters={"type": "object", "properties": {"query": S, "category": S, "month": S, "since": S,
                                                              "until": S, "account": S, "to_review": B, "limit": I}},
-                handler=_t(_search), title="💶 Cerca movimenti", clients=["telegram", "ui"], telegram_group=G),
+                handler=_t(_search), title="Cerca movimenti", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Movimenti", "primary": 2}),
         MCPTool(name="finance_add", description="Registra una spesa (es. 'ho speso 12 € al bar' = amount 12, merchant "
                 "bar, category ristoranti) o un'entrata (income=true). date YYYY-MM-DD (default oggi), account "
                 "contanti (default) | hype | paypal.",
                 parameters={"type": "object", "properties": {"amount": N, "category": S, "merchant": S, "date": S,
                                                              "account": S, "note": S, "income": B},
                             "required": ["amount"]},
-                handler=_t(_add), title="💶 Registra spesa", method="POST", clients=["telegram", "ui"], telegram_group=G),
+                handler=_t(_add), title="Registra spesa", method="POST", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Movimenti", "primary": 1}),
         MCPTool(name="finance_update", description="Correggi un movimento (id da finance_search): category, amount, "
                 "date, merchant, note. always=true → da ora in poi stessa categoria per quell'esercente.",
                 parameters={"type": "object", "properties": {"id": S, "category": S, "amount": N, "date": S,
                                                              "merchant": S, "note": S, "always": B},
                             "required": ["id"]},
-                handler=_t(_update), title="💶 Correggi movimento", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group=G),
+                handler=_t(_update), title="Correggi movimento", method="POST", clients=["ui"],
+                telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Movimenti"}),
         MCPTool(name="finance_delete", description="Elimina un movimento (id). Solo dopo il sì dell'utente.",
                 parameters={"type": "object", "properties": {"id": S}, "required": ["id"]},
-                handler=_t(_delete), title="💶 Elimina movimento", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group=G),
+                handler=_t(_delete), title="Elimina movimento", method="POST", clients=["ui"],
+                telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Movimenti"}),
         MCPTool(name="finance_budget", description="Budget del mese per categoria e totale, con lo speso.",
                 parameters={"type": "object", "properties": {"month": S}}, handler=_t(_budget),
-                title="💶 Budget", clients=["telegram", "ui"], telegram_group=G),
+                title="Budget", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Budget e categorie", "primary": 3}),
         MCPTool(name="finance_set_budget", description="Imposta il budget mensile di una categoria (o 'total'). "
                 "amount 0 = togli. Solo dopo il sì dell'utente.",
                 parameters={"type": "object", "properties": {"category": S, "amount": N}, "required": ["amount"]},
-                handler=_t(_set_budget), title="💶 Imposta budget", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group=G),
+                handler=_t(_set_budget), title="Imposta budget", method="POST", clients=["ui"],
+                telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Budget e categorie"}),
         MCPTool(name="finance_categories", description="Le categorie di spesa (id = nome).",
-                parameters={"type": "object", "properties": {}}, handler=_t(_categories), title="💶 Categorie",
-                clients=["ui"], telegram_visible=False, telegram_group=G),
+                parameters={"type": "object", "properties": {}}, handler=_t(_categories), title="Categorie",
+                clients=["ui"], telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Budget e categorie"}),
         MCPTool(name="finance_import_statement", description="Estratto conto PDF mandato in chat (blob_id "
                 "dell'allegato): prima anteprima (movimenti nuovi, già presenti, collegati a PayPal), poi, dopo il sì "
                 "dell'utente, import_id + commit=true. account hype (default) o altra banca.",
                 parameters={"type": "object", "properties": {"blob_id": S, "account": S, "commit": B, "import_id": S}},
-                handler=_t(_import), title="💶 Importa estratto conto", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group=G),
+                handler=_t(_import), title="Importa estratto conto", method="POST", clients=["ui"],
+                telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Importa"}),
         MCPTool(name="finance_recurring", description="Pagamenti ricorrenti e abbonamenti riconosciuti (importo, "
                 "periodo, prossima data).", parameters={"type": "object", "properties": {}},
-                handler=_t(_recurring), title="💶 Abbonamenti", clients=["telegram", "ui"], telegram_group=G),
+                handler=_t(_recurring), title="Abbonamenti", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Statistiche", "primary": 4}),
         MCPTool(name="finance_stats", description="Andamento degli ultimi mesi: totali, per categoria, esercenti.",
                 parameters={"type": "object", "properties": {"months": I}}, handler=_t(_stats),
-                title="💶 Statistiche spese", clients=["ui"], telegram_visible=False, telegram_group=G),
+                title="Statistiche spese", clients=["ui"], telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Statistiche", "label": "Statistiche"}),
     ]
 
     def _coerced(t: MCPTool):

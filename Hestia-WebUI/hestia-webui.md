@@ -53,6 +53,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 |--------|------|---------|
 | WS | `/hubs/chat?access_token=...` | SignalR chat streaming (Oracle NDJSON bridge). Message `context` (drawer packet) is appended to that turn's client instructions |
 | POST | `/api/webui/auth/login` | Validate access token |
+| POST | `/api/webui/auth/telegram` | Mini App login: `{initData}` (Telegram's signed launch data) → Telegram verifies it via Hub (`/api/webapp/verify`, owner only, ≤ 24 h) → `{status, token, expiresInSeconds}` (12-hour session token next to the main token; no token needed to call it) |
 | GET | `/api/webui/auth/status` | Token status |
 | GET | `/api/webui/auth/access` | `{local, tokenRequired}` — asked by the browser at start, no token needed |
 | GET | `/api/webui/plugins/catalog` | Client plugins (Hub catalog `client=webui`), 15 s cache |
@@ -365,7 +366,11 @@ Built Angular app served as static files from `wwwroot/`.
 
 - Single-user, single-active-token policy
 - Token: 256-bit random, validated constant-time
-- CSP, X-Frame-Options, XSS protection on all responses
+- CSP on all responses; framing allowed only to Telegram Web/Desktop (`frame-ancestors`, Mini App) instead of
+  `X-Frame-Options: DENY`
+- Mini App sessions (`TokenManager.IssueMiniAppSession`): in memory, 12 h, issued only after Telegram verified the
+  signed initData; revoking the main token ends them. The frontend reads `#tgWebAppData` once at start
+  (`AuthService`) and logs in by itself when the server asks for a token
 - Public URL: set explicitly by `cloudflare-tunnel.bat` (wins); Host-header auto-detection only for real
   Cloudflare traffic (`Cf-Connecting-Ip`) on allowed suffixes — an arbitrary Host could redirect the login
   link (and the token) to another domain

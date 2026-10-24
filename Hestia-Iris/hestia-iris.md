@@ -69,3 +69,6 @@ mailbox and posts new mail **headers** to `/api/email/incoming`.
 
 Iris serves a small core plugin (`ui/`, entry `iris.js`): page **Email** (subscriptions, last deliveries, unmatched
 count, watcher state) and quick action «Controlla email» (`POST /api/email/check`), so no log reading is needed.
+
+## Telegram menus
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: posta › Messaggi: 3; posta › Iscrizioni: 1; posta › Avanzate: 1 (area › section: tools).

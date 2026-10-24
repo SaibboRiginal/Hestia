@@ -1,2 +1,2 @@
-pyTelegramBotAPI
+pyTelegramBotAPI>=4.37  # coloured buttons (style), copy-text, disabled buttons
 requests

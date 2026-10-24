@@ -34,3 +34,8 @@ jobs:
 
       - name: Icons, not emoji, in the web clients
         run: python tools/governance/check_icons.py
+
+      - name: Every function on Telegram, no emoji in tool titles
+        run: |
+          pip install -r Hestia-Telegram/requirements.txt
+          python tools/governance/check_telegram.py

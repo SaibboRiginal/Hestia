@@ -19,6 +19,10 @@ public class TokenManager
     private DateTime _tokenExpiresAt = DateTime.MinValue;
     private DateTime _tokenCreatedAt = DateTime.MinValue;
     private readonly object _lock = new();
+    // Mini App sessions (login with Telegram's signed initData): extra short tokens next to the main one, in memory
+    // only — Telegram signs a new initData at every open, so a restart just means one more silent login.
+    private readonly Dictionary<string, DateTime> _miniAppSessions = new();
+    public const double MiniAppSessionHours = 12;
 
     private static readonly string StateFile =
         Environment.GetEnvironmentVariable("WEBUI_TOKEN_STATE_FILE") ?? "/app/data/token_state.json";
@@ -102,13 +106,19 @@ public class TokenManager
 
         lock (_lock)
         {
+            var candidateHash = HashToken(token);
+            if (_miniAppSessions.TryGetValue(candidateHash, out var until))
+            {
+                if (DateTime.UtcNow <= until) return true;
+                _miniAppSessions.Remove(candidateHash);
+            }
+
             if (_activeTokenHash is null)
                 return false;
 
             if (_tokenExpiresAt > DateTime.MinValue && DateTime.UtcNow > _tokenExpiresAt)
                 return false;
 
-            var candidateHash = HashToken(token);
             // Constant-time comparison
             return CryptographicOperations.FixedTimeEquals(
                 System.Text.Encoding.UTF8.GetBytes(candidateHash),
@@ -133,11 +143,27 @@ public class TokenManager
             _tokenExpiresAt, lifetime);
     }
 
-    /// <summary>Immediately invalidate the current token.</summary>
+    /// <summary>A Mini App session token (after Telegram's initData was verified); the main token is untouched.</summary>
+    public string IssueMiniAppSession()
+    {
+        var token = GenerateToken();
+        lock (_lock)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var old in _miniAppSessions.Where(kv => kv.Value < now).Select(kv => kv.Key).ToList())
+                _miniAppSessions.Remove(old);
+            _miniAppSessions[HashToken(token)] = now.AddHours(MiniAppSessionHours);
+        }
+        _logger.LogInformation("event=webui_miniapp_session_issued hours={Hours}", MiniAppSessionHours);
+        return token;
+    }
+
+    /// <summary>Immediately invalidate the current token (and every Mini App session).</summary>
     public void RevokeToken()
     {
         lock (_lock)
         {
+            _miniAppSessions.Clear();
             _activeTokenHash = null;
             _tokenExpiresAt = DateTime.MinValue;
             _tokenCreatedAt = DateTime.MinValue;

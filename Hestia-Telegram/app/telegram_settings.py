@@ -23,79 +23,45 @@ except ModuleNotFoundError:
             sys.path.insert(0, str(_p))
     from hestia_common.settings_client import SettingsClient, setting
 
-ALERTS_BUFFER_WINDOW = "telegram.alerts.buffer_window"
 FEEDBACK_PROMPT_RATE = "telegram.feedback.prompt_rate"
 FEEDBACK_SNOOZE_DAYS = "telegram.feedback.snooze_days"
-COMMANDS_HIDDEN_SERVICES = "telegram.commands.hidden_services"
-COMMANDS_HIDDEN = "telegram.commands.hidden"
 CHAT_LOCALE = "telegram.chat.locale"
 CHAT_CLIENT_INSTRUCTIONS = "telegram.chat.client_instructions"
 ORACLE_STREAM_TIMEOUT = "telegram.oracle.stream_timeout"
-SIGNALS_STYLE = "telegram.signals.style"
-SIGNAL_FAMILIES = ("memory", "subscription", "action", "other")
-SIGNALS_STYLE_BY_FAMILY = {f: f"telegram.signals.style_{f}" for f in SIGNAL_FAMILIES}
-
-SIGNAL_STYLES = [("minimal", "Minimo"), ("compact", "Compatto"), ("rich", "Completo")]
-_FAMILY_LABELS = {"memory": "memoria", "subscription": "iscrizioni", "action": "azioni",
-                  "other": "altri"}
+MENU_LAYOUT = "telegram.menu.layout"
 
 DEFAULT_CLIENT_INSTRUCTIONS = (
-    "Rispondi in modo conciso (massimo 6-8 righe), personale e caldo. "
-    "Parla in prima persona femminile e usa il nome dell'utente quando naturale (se lo conosci).\n\n"
-    "FORMATO RICHIESTO DAL CLIENT: Markdown. "
-    "Usa **grassetto**, _corsivo_, [testo descrittivo](url) per link. "
-    "Per elenchi usa • (bullet) su ogni riga. "
-    "NON usare tag HTML (<b>, <i>, <a>, <code>, <pre>, <br>). "
-    "NON mostrare URL in chiaro. "
-    "NON usare ## headings o */- per liste."
+    "FORMATO TELEGRAM. Scrivi in HTML di Telegram: <b>, <i>, <a href=\"url\">testo</a>, <code>, <blockquote>. "
+    "Niente Markdown, niente titoli #, niente tabelle. Elenchi: una riga per voce che inizia con •. "
+    "NIENTE EMOJI. Mai URL in chiaro: link sul testo che descrive. "
+    "Breve: poche righe, salvo che ti chieda un elenco o i dettagli. Grassetto solo per l'informazione chiave."
 )
 
 settings = SettingsClient("telegram")
 settings.declare([
-    setting(ALERTS_BUFFER_WINDOW, "Attesa per raggruppare gli avvisi", "float", 0.8, group="Avvisi",
-            min=0, max=30, unit="s", advanced=True,
-            help="Avvisi che arrivano entro questo tempo l'uno dall'altro finiscono in un solo messaggio."),
     setting(FEEDBACK_PROMPT_RATE, "Frequenza della richiesta di voto", "float", 0.15, group="Voto risposte",
             min=0, max=1,
-            help="Dopo la prima risposta, in che parte delle risposte ti chiedo 👍/👎 "
+            help="Dopo la prima risposta, in che parte delle risposte ti chiedo un voto "
                  "(0 = mai, 1 = sempre, 0.15 = circa una su sette)."),
     setting(FEEDBACK_SNOOZE_DAYS, "Pausa voto predefinita", "int", 7, group="Voto risposte",
             min=1, max=365, unit="giorni",
             help="Per quanti giorni smetto di chiederti il voto quando metti in pausa senza dire quanto."),
-    setting(COMMANDS_HIDDEN_SERVICES, "Moduli con comandi nascosti", "list", [], group="Comandi",
-            help="I comandi di questi moduli (es. scout) non compaiono nel menu di Telegram."),
-    setting(COMMANDS_HIDDEN, "Comandi nascosti", "list",
-            ["notifica_attiva", "notifica_disattiva", "notifiche_attive"], group="Comandi",
-            help="Comandi che non compaiono nel menu di Telegram."),
     setting(CHAT_LOCALE, "Lingua dei messaggi formattati", "enum", "it", group="Chat",
             options=[("it", "Italiano"), ("en", "English"), ("de", "Deutsch"), ("fr", "Français"),
                      ("es", "Español")],
-            help="Lingua in cui l'assistente scrive i risultati dei comandi."),
+            help="Lingua in cui scrivo date e numeri nei risultati."),
     setting(CHAT_CLIENT_INSTRUCTIONS, "Istruzioni di formato per Telegram", "text", DEFAULT_CLIENT_INSTRUCTIONS,
             group="Chat", advanced=True,
-            help="Regole di stile e formato mandate all'assistente con ogni messaggio da Telegram. "
+            help="Regole di formato mandate all'assistente con ogni messaggio da Telegram. "
                  "Il tono e le tue istruzioni personali si cambiano in Personali."),
     setting(ORACLE_STREAM_TIMEOUT, "Attesa massima di una risposta", "int", 600, group="Chat",
             min=30, max=3600, unit="s", advanced=True,
             help="Se l'assistente resta in silenzio per questo tempo durante una risposta, la interrompo."),
-    setting(SIGNALS_STYLE, "Stile delle notifiche brevi", "enum", "minimal", group="Notifiche brevi",
-            options=SIGNAL_STYLES,
-            help="Come mostro le note brevi sotto le risposte (memoria salvata, azione fatta…)."),
-    # action = compact keeps what the global compose ran with before P6
-    *[setting(key, f"Stile per {_FAMILY_LABELS[family]}", "enum", "compact" if family == "action" else "",
-              group="Notifiche brevi",
-              options=[("", "Come lo stile generale")] + SIGNAL_STYLES, advanced=True,
-              help=f"Stile solo per le note di tipo {_FAMILY_LABELS[family]}.")
-      for family, key in SIGNALS_STYLE_BY_FAMILY.items()],
+    setting(MENU_LAYOUT, "Disposizione dei menu", "object", {}, group="Menu",
+            help="Come sono disposti i menu di Telegram: tastiera in basso, comandi «/», aree, azioni principali, "
+                 "nomi ed emoji. Vuoto = disposizione predefinita. Si cambia anche da Telegram: Impostazioni › Menu. "
+                 "Un'azione che qui non compare resta comunque nella sua area."),
 ]).declare_log_level()
-
-
-def as_set(key: str) -> set[str]:
-    """A list setting as a lowercase set (comma string accepted)."""
-    raw = settings.get(key) or []
-    if isinstance(raw, str):
-        raw = raw.split(",")
-    return {str(item).strip().lower() for item in raw if str(item).strip()}
 
 
 # ── Themis endpoints on the control server (plain http.server, no FastAPI) ──

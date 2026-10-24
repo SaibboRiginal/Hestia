@@ -2,7 +2,8 @@
 
 1. The WebUI icon set (hx-icon) and the plugin SDK set (hxk-icon) have the same names and paths.
 2. WebUI code and module plugin code draw no emoji or pictographs (comments are ignored).
-   Telegram is not checked: it has no icons and keeps emoji.
+   Telegram is not checked here: it has no icons; its rule (one area emoji, tone dots, no emoji in tool titles)
+   is checked by ``check_telegram.py``.
 """
 from __future__ import annotations
 

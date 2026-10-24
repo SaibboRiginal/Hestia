@@ -113,7 +113,7 @@ try:
             description="Mostra lo stato di salute di tutti i servizi Hestia",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_status", "params": kw},
-            title="\U0001f5a5️ Stato sistema", method="GET", path="/api/argus/status",
+            title="Stato del sistema", method="GET", path="/api/argus/status",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 "Sii ESTREMAMENTE conciso. "
@@ -123,7 +123,7 @@ try:
                 "Nessun paragrafo aggiuntivo, nessuna conclusione."
             ),
             telegram_visible=True, telegram_group="sistema",
-        ),
+                telegram={"section": "Salute e log", "summary": True}),
         MCPTool(
             name="system_log",
             description="Mostra gli errori e warning recenti dei servizi",
@@ -136,7 +136,7 @@ try:
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "system_log", "params": kw},
-            title="\U0001f4cb Log di sistema", method="GET", path="/api/argus/logs",
+            title="Log di sistema", method="GET", path="/api/argus/logs",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 "Sii ESTREMAMENTE conciso. "
@@ -147,13 +147,13 @@ try:
                 "Nessun paragrafo introduttivo, nessuna conclusione."
             ),
             telegram_visible=True, telegram_group="sistema",
-        ),
+                telegram={"section": "Salute e log", "label": "Log"}),
         MCPTool(
             name="system_analysis",
             description="Esegui un'analisi completa dei servizi con AI",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_analysis", "params": kw},
-            title="\U0001f50d Analisi sistema", method="POST", path="/api/argus/analyze",
+            title="Analisi del sistema", method="POST", path="/api/argus/analyze",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 "Sii conciso e diretto. Struttura SEMPRE così: "
@@ -164,7 +164,7 @@ try:
                 "Usa il campo 'summary' come base per l'analisi AI già elaborata."
             ),
             telegram_visible=True, telegram_group="sistema",
-        ),
+                telegram={"section": "Salute e log", "label": "Analisi"}),
         MCPTool(
             name="system_remediate",
             description="Invia un remediation intent ad Hephaestus",
@@ -182,10 +182,10 @@ try:
                 "required": ["service", "issue"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "system_remediate", "params": kw},
-            title="\U0001f528 Ripara servizio", method="POST", path="/api/argus/remediate",
+            title="Ripara un servizio", method="POST", path="/api/argus/remediate",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-        ),
+                telegram={"section": "Riparazioni"}),
     ]
     app.include_router(create_mcp_router(_argus_mcp_tools, service_name="argus"))
     logger.info("event=mcp_router_mounted service=argus")

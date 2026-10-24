@@ -269,3 +269,6 @@ mail cycle brings listings back anyway). Settings travel through Themis.
 2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
 3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
+
+## Telegram card (`display`)
+`POST /api/tools/real_estate/search` (tools `scout_listings`, `scout.search`) and `scout_stats` return a `display` card: one line per house (title linked to the listing, price, surface, rooms, address) and counts by listing status, with Cerca / Controlla email. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).

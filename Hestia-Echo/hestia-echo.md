@@ -72,7 +72,7 @@ never changes.
 ## Clients
 
 - **Telegram**: a voice note becomes a chat message (transcript shown, then handled like typed text, recording
-  kept); every reply has «🔊 Ascolta»; `/live` answers voice notes also by voice, `/chat` goes back to text only.
+  kept); every reply has «Ascolta»; `/voce` switches spoken answers to voice notes on or off.
 - **WebUI**: voice messages in the chat like any messenger (hold to record, release to send, slide left to cancel;
   with a mouse click to record, then bin or send), audio bubble with transcript; «Ascolta» under every reply;
   **Parla** (live): the browser notices start and end of speech (`echo.live.silence_ms`), streams the mic to `listen`,

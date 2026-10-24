@@ -8,6 +8,10 @@ public record LoginRequest(string Token);
 
 public record LoginResponse(string Status, int ExpiresInSeconds);
 
+public record TelegramLoginRequest(string InitData);
+
+public record TelegramLoginResponse(string Status, string Token, int ExpiresInSeconds);
+
 public record TokenStatusResponse(
     bool Active,
     DateTime? CreatedAt,

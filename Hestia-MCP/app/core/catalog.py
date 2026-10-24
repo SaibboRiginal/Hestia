@@ -26,10 +26,14 @@ logger = logging.getLogger("hestia_mcp.catalog")
 # Command discovery predates the WebUI name: its commands use the client key "ui".
 CLIENT_KEYS = {"webui": "ui"}
 _META_KEYS = ("method", "path", "response_mode", "response_prompt", "arguments_help", "arg_picker", "clients",
-              "telegram_visible", "telegram_help_visible", "telegram_group", "query_template", "body_template")
+              "telegram_visible", "telegram_help_visible", "telegram_group", "telegram", "query_template",
+              "body_template")
 
 
 def _input_schema(cmd: dict) -> dict:
+    full = cmd.get("input_schema")
+    if isinstance(full, dict) and isinstance(full.get("properties"), dict):
+        return {"type": "object", **full}     # the module's own schema (enums, formats, limits)
     args = cmd.get("arguments_schema") if isinstance(cmd.get("arguments_schema"), dict) else {}
     if args:
         props = {k: {"type": str((v or {}).get("type", "string")), "description": str((v or {}).get("description", k))}
@@ -64,6 +68,10 @@ def visible_to(cmd: dict, client: str) -> bool:
         return EXTERNAL in clients
     if not client or client == "oracle":
         return True
+    if client == "telegram":
+        # Every function of the assistant is usable from Telegram (docs/work/2026-10-23-telegram-da-zero §5.9):
+        # only tools meant solely for outside AIs stay out.
+        return clients != [EXTERNAL]
     return not clients or "*" in clients or CLIENT_KEYS.get(client, client) in clients or client in clients
 
 

@@ -317,8 +317,8 @@ def list_tools():
 @api_app.post("/api/tools/real_estate/search")
 def search_real_estate(req: RealEstateSearchRequest):
     items = retrieval_service.search(req)
-    text = retrieval_service.search_formatted(req)
-    return {"text": text, "domain": TARGET_DOMAIN, "count": len(items)}
+    text = retrieval_service.search_formatted(req, items)
+    return {"text": text, "domain": TARGET_DOMAIN, "count": len(items), "display": retrieval_service.display_of(items)}
 
 
 @api_app.post("/api/module/maintenance/reconcile", response_model=ModuleMaintenanceResponse)
@@ -435,7 +435,18 @@ if _HAS_MCP:
             "by_status": status_counts,
             "oldest_created": str(oldest) if oldest else None,
             "newest_created": str(newest) if newest else None,
+            "display": stats_display(total, status_counts, newest),
         }
+
+    def stats_display(total: int, by_status: dict, newest) -> dict:
+        from hestia_common.display import action, display, item
+        names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
+                 "unknown": "senza stato"}
+        when = str(newest or "")[:10]
+        return display("Case", subtitle=f"{total} annunci", footer=f"Ultimo arrivato il {when[8:10]}/{when[5:7]}" if when else "",
+                       items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
+                                                                                         key=lambda kv: -kv[1])],
+                       actions=[action("Case disponibili", "scout_listings", style="primary"), action("Cerca", "scout.search")])
 
     mcp_tools = [
         MCPTool(name="scout.search",
@@ -452,9 +463,10 @@ if _HAS_MCP:
                         "limit": {"type": "integer", "description": "Max results (default 30)"},
                     },
                 }, handler=_mcp_scout_search,
-                title="\U0001f50d Cerca immobili", method="POST", path="/api/tools/real_estate/search",
+                title="Cerca case", method="POST", path="/api/tools/real_estate/search",
                 clients=["*"], response_mode="oracle_natural", response_prompt="",
-                telegram_visible=True, telegram_group="immobiliare"),
+                telegram_visible=True, telegram_group="case",
+                telegram={"section": "Case", "primary": 2}),
         MCPTool(name="scout_listings",
                 description="Show available real estate listings. Use when user wants to browse listings.",
                 parameters={
@@ -464,10 +476,11 @@ if _HAS_MCP:
                         "limit": {"type": "integer", "description": "Max results (default 50)"},
                     },
                 }, handler=_mcp_scout_listings,
-                title="\U0001f3e0 Case disponibili", method="POST", path="/api/tools/real_estate/search",
+                title="Case disponibili", method="POST", path="/api/tools/real_estate/search",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Mostra una lista breve e leggibile delle case trovate con punti chiave e link.",
-                telegram_visible=True, telegram_group="immobiliare"),
+                telegram_visible=True, telegram_group="case",
+                telegram={"section": "Case", "primary": 1}),
         MCPTool(name="scout_reconcile",
                 description="Run Scout data reconciliation maintenance.",
                 parameters={
@@ -476,30 +489,33 @@ if _HAS_MCP:
                         "dry_run": {"type": "boolean", "description": "Simulate without changes"},
                     },
                 }, handler=_mcp_scout_reconcile,
-                title="\U0001f6e0️ Riconcilia Scout", method="POST", path="/api/module/maintenance/reconcile",
+                title="Riconcilia case", method="POST", path="/api/module/maintenance/reconcile",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Riassumi esito della riconciliazione Scout, indicando se era dry-run e cosa e stato verificato.",
-                telegram_visible=True, telegram_group="immobiliare"),
+                telegram_visible=True, telegram_group="case",
+                telegram={"section": "Avanzate"}),
         MCPTool(name="scout_fetch",
                 description="Check listing emails NOW: Iris passes the last day's listing mails again and Scout "
                             "parses and extracts them (new mails normally arrive by themselves). "
                             "Use when the user wants to check for new house listings NOW.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_fetch,
-                title="📥 Controlla email", method="POST", path="/api/scout/check",
+                title="Controlla email delle case", method="POST", path="/api/scout/check",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Conferma che il ciclo fetch è stato avviato e di controllare i log.",
-                telegram_visible=True, telegram_group="immobiliare"),
+                telegram_visible=True, telegram_group="case",
+                telegram={"section": "Case", "primary": 3, "label": "Controlla email"}),
         MCPTool(name="scout_stats",
                 description="Return real_estate domain statistics: total entities, "
                             "breakdown by listing status (available/sold/etc), "
                             "and date range of when listings were added.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_stats,
-                title="📊 Statistiche case", method="GET", path="/api/scout/stats",
+                title="Statistiche case", method="GET", path="/api/scout/stats",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Mostra le statistiche del dominio immobiliare in formato leggibile.",
-                telegram_visible=True, telegram_group="immobiliare"),
+                telegram_visible=True, telegram_group="case",
+                telegram={"section": "Case", "summary": True}),
     ]
     api_app.include_router(create_mcp_router(mcp_tools, service_name="scout"))
     # REST paths of MCP-only tools (scout_stats → GET /api/scout/stats); Hub/Telegram call by path.

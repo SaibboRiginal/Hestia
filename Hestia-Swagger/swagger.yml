@@ -461,6 +461,47 @@ components:
             properties:
               text: {type: string}
               written_at: {type: string, format: date-time}
+        quoted:
+          type: object
+          description: "The earlier message the user replied to or quoted (Telegram reply / quote): context for this turn only, added as one instruction line; the saved user message stays `message` (docs/work/2026-10-23-telegram-da-zero §5.10)."
+          properties:
+            text: {type: string}
+            from: {type: string, enum: [assistant, user, notification]}
+            at: {type: string, format: date-time}
+            ref: {type: string, description: "Client id of that message (e.g. Telegram message id), optional"}
+
+    DisplayBlock:
+      type: object
+      description: "Optional card next to a tool's data (hestia_common.display): plain Italian, no emoji, no ids. Telegram draws it; Hestia-MCP strips it for other clients."
+      required: [title]
+      properties:
+        title: {type: string}
+        subtitle: {type: string}
+        lines: {type: array, items: {type: string}}
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              title: {type: string}
+              meta: {type: array, items: {type: string}}
+              url: {type: string}
+              tone: {type: string, enum: [danger, warning, success, info]}
+        actions:
+          type: array
+          maxItems: 6
+          items:
+            type: object
+            required: [label, tool]
+            properties:
+              label: {type: string}
+              tool: {type: string, description: "Existing tool name; missing arguments are asked"}
+              args: {type: object, additionalProperties: true}
+              style: {type: string, enum: [primary, success, danger]}
+        footer: {type: string}
+        tone: {type: string, enum: [danger, warning, success, info]}
+        image: {type: string}
+        images: {type: array, items: {type: string}}
 
     FormatRequest:
       type: object
@@ -6106,7 +6147,17 @@ paths:
             enum: [event, task, reminder]
       responses:
         "200":
-          description: "{from, to, days, count, items[...]}"
+          description: "{from, to, days, count, items[...], display} — `display` = Telegram card (DisplayBlock)"
+
+  /api/calendar/agenda/today:
+    get:
+      tags: [Chronos]
+      summary: Today's agenda only (MCP tool agenda_today) — same answer as /api/calendar/agenda?days=1
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200":
+          description: "{from, to, days: 1, count, items[...], display}"
 
   # ══════════════════════════════════════════════════════════════════════════
   #  MCP — 19013  (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2)
@@ -6127,6 +6178,9 @@ paths:
           timeout_seconds}}`; answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
           service, wrapped}}` (`wrapped` = a non-object module answer is in `structuredContent.result`).
           `_meta.hestia.client` is forwarded to the module as `X-Hestia-Client` (the client the user talks from).
+          A module answer may carry `display` (DisplayBlock, `hestia_common.display`): how Telegram draws it without the
+          model. Hestia-MCP removes `display` for every client except `telegram`, so models and external AIs see the
+          same data as before.
 
         **Public door for external AIs** (server 19015 = WebUI, the only service behind the tunnel): the same path
         `POST /mcp` on the WebUI needs `Authorization: Bearer <token>` (an access from *Accessi AI*) and is forwarded
@@ -10768,6 +10822,51 @@ paths:
         - url: http://localhost:19015
       responses:
         "200": {description: "{local, tokenRequired}"}
+
+  /api/webui/auth/telegram:
+    post:
+      tags: [WebUI]
+      summary: Mini App login — Telegram's signed initData → 12-hour session token (no token required to call it)
+      description: >-
+        The WebUI page opened inside Telegram (Mini App) sends the launch data Telegram signed (`initData`, read from
+        `#tgWebAppData` or Telegram.WebApp). The WebUI asks the Telegram module via Hub (`POST /api/webapp/verify`):
+        the bot token never leaves Telegram. Valid, fresh (≤ 24 h) and the owner (ALLOWED_USER_ID) → a session token
+        next to the main token (revoking the main token ends these sessions too).
+      servers:
+        - url: http://localhost:19015
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [initData]
+              properties:
+                initData: {type: string, maxLength: 4096}
+      responses:
+        "200": {description: "{status: ok, token, expiresInSeconds}"}
+        "400": {description: initData missing}
+        "401": {description: "Not allowed (bad signature, expired, other user) or Telegram not reachable"}
+
+  /api/webapp/verify:
+    post:
+      tags: [Clients]
+      summary: Telegram — check Mini App initData (WebUI via Hub only)
+      description: HMAC-SHA256 with the bot token as Telegram documents for Mini Apps; auth_date ≤ 24 h; user id in ALLOWED_USER_ID. No reason detail beyond a short code.
+      servers:
+        - url: http://hestia_telegram:8010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [init_data]
+              properties:
+                init_data: {type: string}
+      responses:
+        "200": {description: "{ok: true, user_id}"}
+        "403": {description: "{ok: false, reason: missing | signature | expired | user}"}
 
   /api/webui/chat/context:
     get:

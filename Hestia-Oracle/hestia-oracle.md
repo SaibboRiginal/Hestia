@@ -74,7 +74,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   `SettingsClient.user_values`; Themis down → defaults). Clients no longer send tone lines themselves.
 - `oracle.chat.mode` (auto · quick «Rapida» · thinking «Pensata» · cot «CoT») is the conversation mode, same
   layers. `/api/chat` with an empty `mode` uses it (`oracle_settings.chat_mode`); an explicit mode wins
-  (WebUI composer sends it and saves it for the conversation; Telegram `/settings` → Modalità).
+  (WebUI composer sends it and saves it for the conversation; Telegram Impostazioni → Modalità).
 
 ### Session Management
 - Each interface (e.g. Telegram) has one active session at a time.
@@ -203,7 +203,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
+| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `quoted: {text, from, at, ref}` = the message the user replied to or quoted (one context line for this turn, `core/services/quoted_context.py`; the saved user message stays `message`); `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
 | `GET` | `/api/chat/questions?session_id=` | Questions the assistant asked and still open in that session (clients draw them again after a reload) |
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |

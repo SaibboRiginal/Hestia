@@ -38,7 +38,7 @@ public class TokenAuthMiddleware
         }
 
         // Allow login endpoint without token; /auth/access tells the browser whether it needs one
-        if ((path == "/api/webui/auth/login" && context.Request.Method == "POST")
+        if (((path == "/api/webui/auth/login" || path == "/api/webui/auth/telegram") && context.Request.Method == "POST")
             || (path == "/api/webui/auth/access" && HttpMethods.IsGet(context.Request.Method)))
         {
             await _next(context);

@@ -11,7 +11,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Oracle | Core | No | No | Uses Hub discovery and routes commands |
 | Hermes | Core | No | No | Dispatches events/notifications (audio from Echo when the module wants voice) |
 | Echo | Core | No | Speech engines only (keys `ECHO_KEY_<NAME>`) | The only caller of speech-to-text/text-to-speech; providers → chains → uses like Oracle; audio kept in Archive |
-| Telegram | Interface | No | No | User-facing chat/file relay to Oracle |
+| Telegram | Interface | No | No | Telegram client: chat with Oracle, every module tool through configurable menus and guided actions, Hermes notifications, Mini App login check |
 | WebUI | Interface | No | No | Web-based chat/file relay to Oracle, SignalR streaming |
 | Hecate | Core Gateway | No domain logic | Yes (Google/Outlook provider runtime) | Provider-facing gateway; the one Gmail watcher (pushes new mails to Iris) |
 | Chronos | Domain (Calendar) | Yes (calendar workflows + assistant agenda) | No | Routes provider calendar calls to Hecate; owns the assistant agenda |
@@ -176,6 +176,17 @@ flowchart LR
 6. External AI memory: `memory_note` (write access) → Hestia-MCP → Hub → Oracle `POST /api/memory/note` → Archive
    `/api/memory` (`durable_user_preference`, origin in `extra_data`); `memory_recall` reads them back. Page Memoria lists/forgets.
 
+### Telegram flow (every function, no model in the menus)
+1. Catalog: Telegram → Hub → Hestia-MCP `tools/list` (client `telegram`: input schema + `telegram_group` / `telegram`
+   hints) + local actions; refreshed on Hub `registry-changed`.
+2. Menu = defaults (data) + module hints + Themis `telegram.menu.layout` → bottom keyboard, Aree, area cards.
+3. A tap starts a guided action: fields from the input schema (buttons for choices / `arg_picker`), confirmation for
+   writes → Hestia-MCP `tools/call` → module → result card from the module's `display` block (Hestia-MCP keeps it
+   only for Telegram) or the generic renderer; next-step buttons start other tools with preset arguments.
+4. Reply / quote of a message + text → Oracle `/api/chat` with `quoted` (context for that turn only).
+5. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
+   Telegram `POST /api/webapp/verify` (bot-token HMAC, owner only) → 12-hour session token.
+
 ### Plugin flow (module pages and widgets)
 1. A module with a UI declares its pages, widgets and quick actions (`hestia_common.plugin_client`) in its Hub
    registration capabilities; Hub merges them into `/api/discovery/catalog` (core modules `kind=core`).
@@ -262,7 +273,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.vocale` /
    `webui.vocale`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
 2. «Ascolta» under a reply → Echo `/api/voice/speak` (kept with the reply; asked again → the kept audio).
-3. Live («Parla», Telegram `/live`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
+3. Live («Parla», Telegram `/voce`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
    chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.
 4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
    Echo `speak` (use `hermes.notifica`, kept with the notification) → `update` with `voice` to the clients.

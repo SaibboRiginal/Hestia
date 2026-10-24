@@ -1,7 +1,7 @@
 """Questions the assistant asks in this chat (docs/work/2026-10-19-oracle-offline v3 A).
 
 Oracle streams a ``question`` frame (id ``ask_…``) when the model calls ``ask_user``. Here it becomes inline buttons:
-confirm and single choice answer at once; multiple choice toggles options (✓) then «Invia»; free text — and the
+confirm and single choice answer at once; multiple choice toggles options (• on the chosen) then «Invia»; free text — and the
 «Altro…» of a choice that allows it — is the next message written in the chat. The answer goes to Oracle, which
 returns ``resume.message``: sent as the next chat turn, so the reply arrives here like any other.
 """
@@ -12,10 +12,9 @@ import time
 import uuid
 from html import escape
 
-import requests
 from telebot import types
 
-from telegram_bot import core
+from telegram_bot import core, store, ui
 
 logger = logging.getLogger("hestia_telegram.assistant_questions")
 
@@ -32,7 +31,7 @@ def _keyboard(token: str, entry: dict) -> types.InlineKeyboardMarkup:
     opts = entry["options"]
     if entry["kind"] == "multi_choice":
         for i, o in enumerate(opts):
-            mark = "✓ " if o["value"] in entry["picked"] else ""
+            mark = "• " if o["value"] in entry["picked"] else ""
             markup.row(types.InlineKeyboardButton(f"{mark}{o['label']}"[:60], callback_data=f"askt:{token}:{i}"))
         markup.row(types.InlineKeyboardButton("Invia", callback_data=f"asks:{token}"))
         return markup
@@ -54,13 +53,13 @@ def send(chat_id, session_id: str, question: dict) -> None:
     entry = {"action": "assistant_question", "chat_id": str(chat_id), "session_id": session_id,
              "question_id": str(question.get("question_id")), "kind": kind, "options": options, "picked": [],
              "created_at": int(time.time())}
-    core.PENDING_CONFIRMATIONS[token] = entry
+    store.put_pending(token, entry)
     free = kind == "free_text" or not options or bool(question.get("allow_other"))
     hint = {"multi_choice": "Scegli una o più risposte, poi «Invia».",
             "free_text": "Scrivi la risposta qui sotto."}.get(kind, "")
     if free and options:
         hint = (hint + " " if hint else "") + "Oppure scrivi un'altra risposta."
-    text = f"❓ <b>{escape(str(question.get('header') or 'Domanda'))}</b>"
+    text = f"<b>{escape(ui.strip_emoji(question.get('header') or 'Domanda'))}</b>"
     if question.get("prompt"):
         text += f"\n{escape(str(question['prompt']))}"
     if hint:
@@ -68,20 +67,21 @@ def send(chat_id, session_id: str, question: dict) -> None:
     core.bot.send_message(int(chat_id), text, parse_mode="HTML",
                           reply_markup=_keyboard(token, entry) if options else None)
     if free:
-        core.PENDING_WORKFLOWS[str(chat_id)] = {"action": TEXT_FLOW, "token": token}
+        store.set_flow(chat_id, {"kind": TEXT_FLOW, "token": token})
     logger.info("event=assistant_question_sent chat=%s question_id=%s kind=%s", chat_id, entry["question_id"], kind)
 
 
 def handle_callback(call) -> None:
     action, _, rest = call.data.partition(":")
     token, _, idx = rest.partition(":")
-    entry = core.PENDING_CONFIRMATIONS.get(token)
+    entry = store.get_pending(token)
     if not entry:
-        core.bot.answer_callback_query(call.id, "Domanda scaduta")
+        core.bot.answer_callback_query(call.id, "Questa domanda è già chiusa")
         return
     if action == "askt":
         value = entry["options"][int(idx)]["value"]
         entry["picked"] = [v for v in entry["picked"] if v != value] if value in entry["picked"] else [*entry["picked"], value]
+        store.put_pending(token, entry)
         core.bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id,
                                            reply_markup=_keyboard(token, entry))
         core.bot.answer_callback_query(call.id)
@@ -98,18 +98,19 @@ def handle_callback(call) -> None:
     # Answer the tap at once: the reply that follows is a whole chat turn.
     core.bot.answer_callback_query(call.id, shown[:60])
     original = call.message.html_text or call.message.text
-    core.bot.edit_message_text(f"{original}\n\n<b>{escape(shown)}</b> ✓", chat_id=call.message.chat.id,
+    core.bot.edit_message_text(f"{original}\n<i>Risposta: {escape(shown)}</i>", chat_id=call.message.chat.id,
                                message_id=call.message.message_id, parse_mode="HTML")
     if not _submit(call.message, token, entry, answer):
         core.bot.edit_message_text(original, chat_id=call.message.chat.id, message_id=call.message.message_id,
                                    parse_mode="HTML", reply_markup=_keyboard(token, entry))
-        core.bot.send_message(call.message.chat.id, "⚠️ Risposta non inviata: riprova tra poco.")
+        core.bot.send_message(call.message.chat.id, "🔴 <b>Risposta non inviata</b>\nRiprova tra poco.",
+                              parse_mode="HTML")
 
 
 def answer_text(message, flow: dict, text: str) -> bool:
     """The next message as the answer; False when the question is gone (the message is a normal chat turn)."""
     token = str(flow.get("token") or "")
-    entry = core.PENDING_CONFIRMATIONS.get(token)
+    entry = store.get_pending(token)
     if not entry or not text or text.startswith("/"):
         return False
     if entry["kind"] == "multi_choice" and entry["picked"]:
@@ -119,22 +120,21 @@ def answer_text(message, flow: dict, text: str) -> bool:
 
 def _submit(reply_to, token: str, entry: dict, answer: str) -> bool:
     """Answer → Oracle; its ``resume.message`` goes on as the next turn of this chat."""
-    oracle_base_url = core.resolve_oracle_chat_url().rsplit("/api/chat", 1)[0]
-    try:
-        response = requests.post(f"{oracle_base_url}/api/chat/question-answer", json={
-            "session_id": entry["session_id"], "question_id": entry["question_id"], "answer": answer,
-            "client": "telegram"}, timeout=20)
-        result = response.json() if response.content else {}
-    except Exception as error:
-        logger.warning("[🔄] event=assistant_question_answer_failed question_id=%s error=%s", entry["question_id"], error)
+    status, result = core.oracle_post("api/chat/question-answer", {
+        "session_id": entry["session_id"], "question_id": entry["question_id"], "answer": answer,
+        "client": "telegram"}, timeout=20)
+    if status == 0:
+        logger.warning("[🔄] event=assistant_question_answer_failed question_id=%s", entry["question_id"])
         return False
-    core.PENDING_CONFIRMATIONS.pop(token, None)
-    if core.PENDING_WORKFLOWS.get(entry["chat_id"], {}).get("token") == token:
-        core.PENDING_WORKFLOWS.pop(entry["chat_id"], None)
-    if response.status_code == 404:
-        core.bot.send_message(int(entry["chat_id"]), "⌛ Questa domanda non è più aperta: scrivimi di nuovo.")
+    store.pop_pending(token)
+    flow = store.get_flow(entry["chat_id"])
+    if flow and flow.get("kind") == TEXT_FLOW and flow.get("token") == token:
+        store.clear_flow(entry["chat_id"])
+    if status == 404:
+        core.bot.send_message(int(entry["chat_id"]), "<i>Questa domanda non è più aperta: scrivimi di nuovo.</i>",
+                              parse_mode="HTML")
         return True
-    if response.status_code >= 400:
+    if status >= 400:
         return False
     resume = str((result.get("resume") or {}).get("message") or "")
     if resume:

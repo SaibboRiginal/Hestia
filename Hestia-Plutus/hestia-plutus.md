@@ -136,3 +136,6 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
   `plutus.coach.review_threshold` (10, group «Piano della settimana»). After a correction, an import commit or new
   mail payments Plutus tells the plan: changed when the review becomes due, done when it no longer is.
 - **Review**: budgets kept vs over in the budget month.
+
+## Telegram card (`display`)
+Tools `finance_summary`, `finance_search`, `finance_add` return a `display` card: spent vs budget and pace, categories with orange/red over 80/100 %, «Da rivedere (n)»; movements as merchant · amount · category · date; a saved movement with Cambia categoria / Elimina (red) / Riepilogo. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).

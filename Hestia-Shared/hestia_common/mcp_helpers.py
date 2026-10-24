@@ -39,8 +39,12 @@ class MCPTool:
     clients: list[str] | None = None  # e.g. ["telegram", "ui"] or ["*"]
     response_mode: str = "oracle_natural"  # oracle_natural | direct | raw_json
     response_prompt: str = ""     # Prompt for Oracle LLM formatting
-    telegram_visible: bool = True # Show in Telegram /help menu
-    telegram_group: str = "altro" # Group in Telegram /help keyboard
+    telegram_visible: bool = True # Ignored by Telegram since 2026-10-24: every tool is on Telegram
+    telegram_group: str = "altro" # Telegram area (giornata, allenamento, selfcare, guardaroba, spese, case,
+                                  # posta, memoria, sviluppo, sistema, notifiche)
+    # Telegram presentation hints (docs/work/2026-10-23-telegram-da-zero §5.7): section, order, primary,
+    # summary (area card header), label (short button text, ≤ 24 chars). The user's layout can override them.
+    telegram: dict | None = None
 
 
 def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
@@ -84,6 +88,8 @@ def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
                     desc["telegram_visible"] = False
                 if t.telegram_group != "altro":
                     desc["telegram_group"] = t.telegram_group
+                if t.telegram:
+                    desc["telegram"] = t.telegram
                 tool_descriptors.append(desc)
             return JSONResponse({
                 "jsonrpc": "2.0",

@@ -10,12 +10,14 @@ public class AuthController : ControllerBase
 {
     private readonly TokenManager _tokenManager;
     private readonly LocalAccess _localAccess;
+    private readonly HubClient _hub;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(TokenManager tokenManager, LocalAccess localAccess, ILogger<AuthController> logger)
+    public AuthController(TokenManager tokenManager, LocalAccess localAccess, HubClient hub, ILogger<AuthController> logger)
     {
         _tokenManager = tokenManager;
         _localAccess = localAccess;
+        _hub = hub;
         _logger = logger;
     }
 
@@ -53,6 +55,32 @@ public class AuthController : ControllerBase
             HttpContext.Connection.RemoteIpAddress, status.RemainingHours);
 
         return Ok(new LoginResponse("ok", status.RemainingSeconds));
+    }
+
+    /// <summary>
+    /// Mini App login: the page opened inside Telegram sends Telegram's signed launch data (initData). The Telegram
+    /// module checks the signature with its bot token and that the user is the owner (via Hub); then this returns a
+    /// session token for 12 hours. The main /webui_token stays as it is.
+    /// </summary>
+    [HttpPost("telegram")]
+    public async Task<IActionResult> TelegramLogin([FromBody] TelegramLoginRequest request, CancellationToken ct)
+    {
+        var initData = request.InitData?.Trim() ?? "";
+        if (initData.Length == 0 || initData.Length > 4096)
+            return BadRequest(new { detail = "initData is required" });
+        var (status, payload) = await _hub.RouteRawAsync("telegram", "api/webapp/verify", HttpMethod.Post,
+            new { init_data = initData }, timeoutSeconds: 10, ct: ct);
+        var ok = status < 400 && payload.ValueKind == System.Text.Json.JsonValueKind.Object
+                 && payload.TryGetProperty("ok", out var okEl) && okEl.ValueKind == System.Text.Json.JsonValueKind.True;
+        if (!ok)
+        {
+            _logger.LogWarning("event=webui_miniapp_login_refused status={Status} ip={Ip}", status,
+                HttpContext.Connection.RemoteIpAddress);
+            return Unauthorized(new { detail = status >= 500 ? "Telegram not reachable" : "Not allowed" });
+        }
+        var token = _tokenManager.IssueMiniAppSession();
+        _logger.LogInformation("event=webui_miniapp_login_success");
+        return Ok(new TelegramLoginResponse("ok", token, (int)(TokenManager.MiniAppSessionHours * 3600)));
     }
 
     [HttpGet("status")]

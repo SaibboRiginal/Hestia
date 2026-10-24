@@ -195,7 +195,7 @@ class TestFeedbackSubmitClientMetadata:
             t for t in data["result"]["tools"]
             if t["name"] == "feedback_submit"
         )
-        assert tool.get("title") == "📊 Valuta risposta"
+        assert tool.get("title") == "Valuta risposta"   # no emoji in tool titles (check_telegram.py)
         assert tool.get("method") == "POST"
         assert tool.get("path") == "/api/feedback"
         assert "telegram" in tool.get("clients", [])

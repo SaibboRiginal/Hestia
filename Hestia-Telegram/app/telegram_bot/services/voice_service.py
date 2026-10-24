@@ -3,7 +3,7 @@ be listened to, and ``/live`` makes Hestia answer voice notes by voice.
 
 Telegram never touches audio engines: the voice module (Echo) listens and speaks through the Hub
 (``hestia_common.voice_client``). The chat stays text: a voice note is transcribed, shown, and handled exactly like
-the same sentence typed; every reply gets «🔊 Ascolta»; in live mode a voice note also gets a voice answer (the
+the same sentence typed; every reply gets «Ascolta»; in live mode a voice note also gets a voice answer (the
 text always stays). User texts never name modules.
 """
 from __future__ import annotations
@@ -30,8 +30,8 @@ VOICE_USECASES = [
 ]
 LIVE_KEY = "voice_live"
 LISTEN_CALLBACK = "voice:play"
-CANT_LISTEN = "🎙️ Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?"
-CANT_SPEAK = "🔇 Non riesco a leggerla ad alta voce adesso, riprova tra poco."
+CANT_LISTEN = "Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?"
+CANT_SPEAK = "Non riesco a leggerla ad alta voce adesso, riprova tra poco."
 
 _client: VoiceClient | None = None
 _answers: "OrderedDict[tuple[int, int], str]" = OrderedDict()     # (chat, message) → reply text, for «Ascolta»
@@ -62,8 +62,8 @@ def is_live(chat_id) -> bool:
 
 def set_live(chat_id, on: bool) -> str:
     core.set_session_setting(str(chat_id), LIVE_KEY, "on" if on else "")
-    return ("🎧 <b>Modalità live</b>: ai tuoi vocali rispondo anche a voce. Scrivi /chat per tornare al testo."
-            if on else "💬 <b>Modalità chat</b>: rispondo solo in testo, con «Ascolta» se vuoi sentire la risposta.")
+    return ("<b>Risposte a voce: sì</b>\nAi tuoi vocali rispondo anche a voce."
+            if on else "<b>Risposte a voce: no</b>\nRispondo in testo; sotto ogni risposta c'è «Ascolta».")
 
 
 # ── listening ────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ def transcribe_note(message, audio: bytes, mime_type: str, session_id: str) -> s
 
 
 def heard_html(text: str) -> str:
-    return f"🎙️ <i>{escape(text)}</i>"
+    return f"<i>«{escape(text)}»</i>"
 
 
 # ── speaking ─────────────────────────────────────────────────────────────────
@@ -89,14 +89,17 @@ def remember_answer(chat_id, message_id, text: str) -> None:
             _answers.popitem(last=False)
 
 
-def listen_keyboard() -> types.InlineKeyboardMarkup:
-    kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("🔊 Ascolta", callback_data=LISTEN_CALLBACK))
-    return kb
+def listen_keyboard(feedback: bool = False) -> types.InlineKeyboardMarkup:
+    """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons)."""
+    row = [types.InlineKeyboardButton("Ascolta", callback_data=LISTEN_CALLBACK)]
+    if feedback:
+        row += [types.InlineKeyboardButton("👍", callback_data="fb:good"),
+                types.InlineKeyboardButton("👎", callback_data="fb:bad")]
+    return types.InlineKeyboardMarkup(keyboard=[row])
 
 
-def after_reply(chat_id, renderer, *, spoken: bool, reply_to: int | None = None) -> None:
-    """Under a finished reply: the «🔊 Ascolta» button; in live mode after a voice note, the voice answer too."""
+def after_reply(chat_id, renderer, *, spoken: bool, reply_to: int | None = None, feedback: bool = False) -> None:
+    """Under a finished reply: «Ascolta» (+ vote); in live mode after a voice note, the voice answer too."""
     answer = str(getattr(renderer, "answer_text", "") or "").strip()
     ids = list(getattr(renderer, "answer_ids", []) or [])
     if not answer or not ids:
@@ -104,7 +107,7 @@ def after_reply(chat_id, renderer, *, spoken: bool, reply_to: int | None = None)
     last = ids[-1]
     remember_answer(chat_id, last, answer)
     try:
-        core.bot.edit_message_reply_markup(chat_id, last, reply_markup=listen_keyboard())
+        core.bot.edit_message_reply_markup(chat_id, last, reply_markup=listen_keyboard(feedback))
     except Exception as exc:                      # e.g. message already has buttons or was replaced
         logger.debug("event=voice_listen_button_failed chat_id=%s error=%s", chat_id, exc)
     if spoken and is_live(chat_id):
@@ -128,13 +131,13 @@ def send_spoken(chat_id, text: str, answer_message_id: int, *, reply_to: int | N
 
 
 def handle_listen_callback(call) -> None:
-    """«🔊 Ascolta» under a reply."""
+    """«Ascolta» under a reply."""
     chat_id, message_id = call.message.chat.id, call.message.message_id
     with _answers_lock:
         text = _answers.get((int(chat_id), int(message_id)))
     text = text or str(call.message.text or "")
     try:
-        core.bot.answer_callback_query(call.id, "🔊 Preparo l'audio…")
+        core.bot.answer_callback_query(call.id, "Preparo l'audio…")
     except Exception:
         pass
     if not text.strip() or not send_spoken(chat_id, text, message_id):

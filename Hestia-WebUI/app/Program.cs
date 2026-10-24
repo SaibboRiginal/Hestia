@@ -199,15 +199,17 @@ app.UseCors();
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
     context.Response.Headers["Content-Security-Policy"] =
         // blob: = module plugin bundles (fetched with the token, imported as blob modules); https: images =
         // photos a module shows from the web (e.g. Scout listing photos). Client plugins SPEC §4.3.
+        // frame-ancestors: only Telegram Web/Desktop may embed the page (Mini App, docs/work/2026-10-23-telegram-da-zero);
+        // it replaces X-Frame-Options DENY, which cannot name an allowed origin.
         "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws: wss:; " +
-        "img-src 'self' data: blob: https:; frame-src 'none'; object-src 'none'";
+        "img-src 'self' data: blob: https:; frame-src 'none'; object-src 'none'; " +
+        "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org";
     await next();
 });
 

@@ -167,13 +167,17 @@ Host-side shared web fetch gateway.
 - Registers into Hub as `atlas` so callers can route through Hub (`/api/route/atlas/...`).
 
 ### Hestia-Telegram 💬
-User interface relay for chat, file attachments, and clear session commands.
-- Forwards photos and documents (PDF, images) to Oracle's multimodal endpoint.
-- Voice notes are transcribed by Echo and handled like typed text (recording kept); «🔊 Ascolta» under replies;
-  `/live` answers voice notes also by voice (`/chat` back to text). Notifications sent also as voice arrive as a
-  voice message replying to them.
+Telegram client: chat with Oracle and **every assistant function** (SPEC `docs/work/2026-10-23-telegram-da-zero`).
+- Menus are configuration: defaults (data) + module hints (`telegram_group`, `telegram: {section, primary, summary,
+  label}`) + Themis `telegram.menu.layout`; bottom keyboard Oggi · Aree · Notifiche · Impostazioni, 8-entry `/` menu,
+  area cards, guided actions built from each tool's input schema (confirmation for writes, red «Elimina» for
+  destructive ones). Every module tool is reachable; only section `interno` is hidden.
+- Tool results are drawn without the model: the module's `display` block (`hestia_common.display`) or a generic renderer.
+- Replying to / quoting a message sends it to Oracle as `quoted` context. Files, photos and voice notes go to the
+  open action or to Oracle; voice through Echo («Ascolta» under replies, `/voce`).
+- Mini App: WebUI pages open inside Telegram on the public https address; login with Telegram's signed initData,
+  verified by Telegram via Hub.
 - Pasted OAuth callback URLs (`.../api/gateway/auth/callback/<provider>?code=`) go straight to Hecate, no LLM involved.
-- Streams NDJSON status frames back as typing indicators while Oracle processes.
 
 ### Hestia-WebUI 🌐
 Web client (.NET 9 backend + Angular frontend, port 19015).
@@ -183,7 +187,8 @@ Web client (.NET 9 backend + Angular frontend, port 19015).
 - Voice (`/api/webui/voice/*` → Echo): voice messages in the chat (hold to record), «Ascolta» under replies, live mode
   **Parla** (mic stream → Oracle chat → answer spoken sentence by sentence, speaking again interrupts).
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
-- Backend proxies everything through Hub routing; single-token auth minted from Telegram (`/webui_token`).
+- Backend proxies everything through Hub routing; single-token auth minted from Telegram (`webui_token`), plus
+  12-hour Mini App sessions after Telegram verified the signed initData (`POST /api/webui/auth/telegram`).
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
 
 ### Hestia-Chronos 📅
@@ -506,18 +511,18 @@ No code-only behavior changes are considered complete without synchronized docs.
 
 ## Messaging Contract (Global UX Rules)
 
-- Web clients (WebUI, plugins) draw minimal stroke icons coloured by intent, never emoji; Telegram keeps emoji. Data shown by both carries `emoji` (Telegram) and `icon` + `tone` (WebUI). Check: `tools/governance/check_icons.py`.
+- Web clients (WebUI, plugins) draw minimal stroke icons coloured by intent, never emoji. Data shown by both carries `emoji` (Telegram area markers) and `icon` + `tone` (WebUI). Check: `tools/governance/check_icons.py`.
 
-Applies to every user-facing Telegram delivery path (chat replies, command outputs, proactive alerts):
+Applies to every user-facing Telegram delivery path (chat replies, tool results, notifications, questions):
 
-1. **Human-readable first**: dedicated formatters for known commands; Oracle/LLM formatting only for unknown payloads. Never show raw JSON to users.
-2. **No "n/d"**: omit fields that have no data instead of printing placeholders.
-3. **Minimal emojis**: one or two per section header maximum; no emoji on every line.
-4. **Link splitting**: if a message contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram link previews).
+1. **Calm visual grammar** (`telegram_bot/ui.py`): tone dots 🔴🟠🟢🔵 only on a title line, one emoji per area only on area buttons and result titles, 👍/👎 for the vote, nothing else. Module tool titles carry no emoji (`tools/governance/check_telegram.py`).
+2. **Results without the model**: a tool result is drawn by the client (module `display` block, else generic renderer); Oracle never formats command output. Never raw JSON, ids, exception text or module names; **no "n/d"** (omit empty fields).
+3. **Every function reachable**: a new module tool appears in Telegram by itself (area from its `telegram_group`, else module); declare `telegram: {section, primary, summary}` to place it well. Arguments are asked in words from the input schema, never `key=value`.
+4. **One message per interaction**, edited in place; split only above 4000 characters.
 5. **HTML parse mode**: all rich user-facing output uses HTML. No markdown bold (`**`) inside HTML content.
 6. **HTML resilience**: client renderers must normalize non-Telegram tags (for example `<em>/<strong>`) to Telegram-compatible tags before send; on Telegram parse-entity failure, retry the affected part as plain text.
-7. **Conversational alerts**: proactive multi-alert dispatches must read as natural chat, not disconnected notifications.
-8. **Message splitting logic is global** via `build_delivery_messages()` and reused by all send paths.
+7. **Buttons survive restarts**: callback data are short persisted ids; an old message's buttons answer with a fresh menu.
+8. **Menus are configuration** (`telegram.menu.layout`, Themis): change areas, labels, order and primary actions without code.
 9. **Owner target**: services never hold the owner's chat id. They notify `target: "owner"`; Telegram resolves it
    to its first `ALLOWED_USER_ID`.
 10. **Notifications are global**: a client receives Hermes notifications by declaring
@@ -546,7 +551,7 @@ Applies to every user-facing Telegram delivery path (chat replies, command outpu
 
 1. Registry change propagation is push-first through Hub events (`hub.registry.changed`) and registered webhooks.
 2. Polling is fallback-only (hybrid/poll modes), never the primary update path when push webhook support exists.
-3. Telegram command refresh should be webhook-driven by default (`TELEGRAM_REGISTRY_UPDATE_MODE=push`).
+3. Telegram's tool catalog refreshes on Hub's `registry-changed` push (`POST /api/events/registry-changed`).
 
 ## Communication Policy (Hub Gateway — Mandatory)
 

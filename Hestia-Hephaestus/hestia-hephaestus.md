@@ -381,3 +381,6 @@ prompt within ~70% of it (≈3 chars/token): old tool outputs become `[old outpu
 one is clipped with a hint to read a smaller range. A stop is reported precisely: `model context full`
 (answer cut, `finish_reason=length` → raise num_ctx or use `claude`), `turn limit reached`, or
 `model stopped calling tools`. Coding on a local model needs a large window (≥32k tokens).
+
+## Telegram menus
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Riparazioni: 5; sviluppo › Lavori: 10; sviluppo › Avanzate: 1; sviluppo › Impostazioni sviluppo: 3 (area › section: tools).

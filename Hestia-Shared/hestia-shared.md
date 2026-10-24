@@ -305,6 +305,19 @@ ok, payload = mcp.call("forge_tasks", {"limit": 5}, session_id=sid, notify_targe
 `tool_call.resolve` / `template_vars` / `is_write` are the pieces. Hestia-MCP uses it; Telegram reuses `resolve`
 for `arg_picker` sources (data reads declared by a tool).
 
+## Display blocks (`hestia_common.display`)
+Optional card next to a tool's data, so Telegram shows the result without the model (docs/work/2026-10-23-telegram-da-zero §6).
+```python
+from hestia_common.display import action, display, item, money
+return {**data, "display": display("Spese · ottobre", lines=[f"Speso {money(812.4)}"],
+                                   items=[item("Spesa", [money(320)], tone="warning")],
+                                   actions=[action("Aggiungi spesa", "finance_add", style="primary")])}
+```
+`item(title, meta, url=, tone=)`, `action(label, tool, args, style=)` (≤ 6 drawn, missing args are asked),
+`display(title, subtitle=, lines=, items=, actions=, footer=, tone=, image=, images=)`, `strip(payload)` (used by
+Hestia-MCP for non-Telegram clients), `money(value)` → «1.234,50 €». Plain Italian, no emoji, no ids, existing tool
+names only. Contract: swagger `DisplayBlock`.
+
 ## Presence client (`hestia_common.presence_client`)
 
 Assistant activity state kept by Chronos (see `Hestia-Chronos/hestia-chronos.md`). Report facts, ask effects —

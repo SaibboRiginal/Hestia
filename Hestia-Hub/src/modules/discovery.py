@@ -114,6 +114,9 @@ def _fetch_mcp_tools_as_commands(
                 "telegram_visible": bool(tool.get("telegram_visible", False)),
                 "telegram_help_visible": bool(tool.get("telegram_help_visible", True)),
                 "telegram_group": str(tool.get("telegram_group", "altro")).strip(),
+                "telegram": tool.get("telegram") if isinstance(tool.get("telegram"), dict) else {},
+                # Full JSON Schema (enums, formats, limits): clients build their inputs from it.
+                "input_schema": tool.get("inputSchema") if isinstance(tool.get("inputSchema"), dict) else {},
             }
             commands.append(cmd)
 
@@ -236,6 +239,8 @@ def discover_commands(registry: ServiceRegistry, client_key: str = "") -> list[d
                     "arg_picker": command.get("arg_picker") if isinstance(command.get("arg_picker"), dict) else {},
                     "telegram_visible": bool(command.get("telegram_visible", False)),
                     "telegram_help_visible": bool(command.get("telegram_help_visible", True)),
+                    "telegram_group": str(command.get("telegram_group", "")).strip(),
+                    "telegram": command.get("telegram") if isinstance(command.get("telegram"), dict) else {},
                     "clients": clients,
                     "_registration_ts": registration_ts,
                 }

@@ -167,13 +167,13 @@ try:
                 "required": ["session_id", "quality_label"],
             },
             handler=_feedback_submit_handler,
-            title="📊 Valuta risposta",
+            title="Valuta risposta",
             method="POST",
             path="/api/feedback",
             clients=["telegram", "ui"],
             response_mode="direct",
-            telegram_visible=False,
-        ),
+            telegram_visible=False, telegram_group="sistema",
+                telegram={"section": "interno"}),
     ]
     app.include_router(
         create_mcp_router(_archive_mcp_tools, service_name="archive")
@@ -212,7 +212,9 @@ _HUB_REGISTRATION_PAYLOAD = {
         "commands": [
             {
                 "command": "preferenze_attive",
-                "title": "🧠 Preferenze attive",
+                "title": "Preferenze attive",
+                "telegram_group": "memoria",
+                "telegram": {"section": "Note e preferenze"},
                 "description": "Mostra le preferenze utente attive",
                 "method": "GET",
                 "path": "/api/memory/active",
@@ -222,7 +224,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "notifiche_attive",
-                "title": "🔔 Notifiche attive",
+                "title": "Avvisi automatici",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Avvisi automatici", "label": "Avvisi automatici"},
                 "description": "Mostra le notifiche automatiche attive",
                 "method": "GET",
                 "path": "/api/subscriptions/active",
@@ -231,7 +235,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "avvisi_recenti",
-                "title": "📬 Avvisi recenti",
+                "title": "Avvisi recenti",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Avvisi automatici"},
                 "description": "Mostra gli ultimi avvisi inviati",
                 "method": "GET",
                 "path": "/api/dispatch/logs/enriched",
@@ -242,7 +248,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "notifica_disattiva",
-                "title": "🔕 Disattiva notifica",
+                "title": "Disattiva un avviso",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Avvisi automatici"},
                 "description": "Disattiva una notifica tramite subscription_id",
                 "method": "PATCH",
                 "path": "/api/subscriptions/$arg.subscription_id/active",
@@ -264,7 +272,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "notifica_attiva",
-                "title": "🔔 Riattiva notifica",
+                "title": "Riattiva un avviso",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Avvisi automatici"},
                 "description": "Riattiva una notifica tramite subscription_id",
                 "method": "PATCH",
                 "path": "/api/subscriptions/$arg.subscription_id/active",
@@ -287,7 +297,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             # ── Calendar reminder subscriptions ───────────────────────────────
             {
                 "command": "iscriviti_calendario",
-                "title": "📅 Attiva promemoria calendario",
+                "title": "Attiva promemoria del calendario",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Promemoria e allerte"},
                 "description": "Ricevi promemoria automatici per eventi del calendario",
                 "method": "POST",
                 "path": "/api/subscriptions",
@@ -306,7 +318,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "disiscriviti_calendario",
-                "title": "📅 Disattiva promemoria calendario",
+                "title": "Disattiva promemoria del calendario",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Promemoria e allerte"},
                 "description": "Smetti di ricevere promemoria automatici del calendario",
                 "method": "PATCH",
                 "path": "/api/subscriptions/cal-reminder-$chat_id/active",
@@ -318,7 +332,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             # ── System health alert subscriptions ─────────────────────────────
             {
                 "command": "iscriviti_sistema",
-                "title": "🔧 Attiva allerte sistema",
+                "title": "Attiva allerte di sistema",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Promemoria e allerte"},
                 "description": "Ricevi notifiche sullo stato dei servizi Hestia",
                 "method": "POST",
                 "path": "/api/subscriptions",
@@ -337,7 +353,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "disiscriviti_sistema",
-                "title": "🔧 Disattiva allerte sistema",
+                "title": "Disattiva allerte di sistema",
+                "telegram_group": "notifiche",
+                "telegram": {"section": "Promemoria e allerte"},
                 "description": "Smetti di ricevere notifiche sullo stato dei servizi Hestia",
                 "method": "PATCH",
                 "path": "/api/subscriptions/sys-health-$chat_id/active",
@@ -348,7 +366,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "archive_reconcile",
-                "title": "🛠️ Riconcilia archivio",
+                "title": "Riconcilia archivio",
+                "telegram_group": "sistema",
+                "telegram": {"section": "Avanzate"},
                 "description": "Esegue una manutenzione di riconciliazione sui record entita in Archive",
                 "method": "POST",
                 "path": "/api/module/maintenance/reconcile",
