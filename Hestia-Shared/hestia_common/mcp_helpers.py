@@ -25,7 +25,6 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger("hestia_common.mcp")
 
 
-@dataclass
 def undo(tool: str, label: str = "Annulla", **args) -> dict:
     """How to undo a write, put in the write tool's result as ``"undo"`` (Cindy 13, «Ho fatto» with Annulla).
 
@@ -34,6 +33,7 @@ def undo(tool: str, label: str = "Annulla", **args) -> dict:
     return {"tool": tool, "args": args, "label": label}
 
 
+@dataclass
 class MCPTool:
     """Descriptor for one MCP tool with optional Hestia client metadata."""
     name: str
