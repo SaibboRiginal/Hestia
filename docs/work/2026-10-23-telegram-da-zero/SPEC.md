@@ -328,7 +328,7 @@ titles; Telegram also strips a leading one as safety net.
 | Phase | Content |
 |---|---|
 | T1 | `ui.py` grammar (cards, markers, buttons, errors, paging) + tests; rewrite every local string (A1, A5, A6) |
-| T2 | Navigation (section 5): bottom keyboard, `/` menu, Home, area cards, action flow from the tool schema, confirmations, deep links, bot profile, robustness 5.8; module meta (`telegram_*`), titles without emoji, hidden technical tools; governance + reachability tests (A2, A3, A8, A11, A12) |
+| T2 | Navigation (section 5): bottom keyboard, `/` menu, Home, area cards, action flow from the tool schema, confirmations, deep links, bot profile, robustness 5.8; module meta (`telegram_*`), titles without emoji, technical tools in «Avanzate»; governance + reachability tests (A2, A3, A8, A11, A12) |
 | T3 | Results without the model: generic renderer, `hestia_common.display`, `display` in the 6 modules, Scout card, signal path removed (A4) |
 | T4 | Chat: new client instructions, notices inside the answer, feedback + Ascolta on the answer, slim settings (A7, A9) |
 | T5 | Notifications, assistant questions, wizards, chat queue texts on the new grammar (A10) |
