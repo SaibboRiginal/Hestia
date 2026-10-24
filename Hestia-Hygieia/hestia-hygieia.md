@@ -146,3 +146,6 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
   lists them, no plan item.
 - **Reports**: routine logged → done/skipped for `routine.<id>`; cadence/status/slot/conflict/`plan_with` change →
   changed (re-plan). Tool `selfcare_routine_edit` takes `plan_with`.
+
+## Telegram card (`display`)
+`GET /api/selfcare/today` and `GET /api/selfcare/overview` (tools `selfcare_today`, `selfcare_summary`) return a `display` card: routines with state (da fare in orange, fatta in green), the steps of today, a «Fatta: <routine>» button for the first one due; the overview with alerts, products in use, routines and Oggi / Prodotti / Statistiche. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).

@@ -457,3 +457,6 @@ events, external, horizon: 14}`: Casa's weather per day (chip next to the day nu
 weather at located agenda items (`params.place`, e.g. a planned run) and at Marko's own provider events that have a
 location (Hecate, cached 10 minutes; only shown, never modified). Only the next 14 days; one Hecate `weather/at`
 call; failures answer empty parts. The calendar views (month, week/day grid, list) show the chips with kit icons.
+
+## Telegram card (`display`)
+`GET /api/calendar/agenda` returns a `display` card (time · title · place, grouped by day when more than one day; Nuovo evento, Prossimi giorni / Solo oggi). `GET /api/calendar/agenda/today` = the same for today only (tool `agenda_today`, which used to show 7 days). Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).

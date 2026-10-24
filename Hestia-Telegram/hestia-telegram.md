@@ -1,236 +1,198 @@
-# Hestia-Telegram 💬
+# Hestia-Telegram
 
-**Role:** User Interface — Telegram Relay + Command Renderer
+**Role:** User Interface — Telegram client (chat, every assistant function, notifications)
 **Node:** Raspberry Pi (Always-On)
 **Stack:** Python · pyTelegramBotAPI · requests · Docker
+**Design dossier:** `docs/work/2026-10-23-telegram-da-zero` (SPEC v3.2, section 10 = as built)
 
 ---
 
 ## Responsibility
 
-Primary human-facing interface for chat, commands, and proactive notifications.
+The human-facing client on Telegram. It must:
+- relay chat messages to Oracle (streamed, one answer message);
+- make **every assistant function** usable without typing commands: all module tools (MCP catalog) through menus
+  and guided actions, plus a few local actions;
+- show results without the model (module `display` blocks or a generic renderer);
+- deliver Hermes notifications and answer their buttons;
+- keep one calm visual grammar everywhere (below).
 
-Telegram must:
-- Relay user chat messages to Oracle.
-- Render command outputs discovered from Hub.
-- Deliver Hermes proactive alerts.
-- Enforce user-facing formatting rules consistently across chat, commands, and alerts.
+Telegram never decides domain things: modules own their tools and data, Oracle is the brain, Hermes sends.
 
 ---
 
-## Core Features
+## Visual grammar (`telegram_bot/ui.py`)
 
-### Message Relay
-- Receives messages from Telegram user.
-- Forwards to Oracle (`POST /api/chat`) with session-aware context.
-- Streams status and renders final Oracle reply.
+- **Markers (hybrid)**: tone dots 🔴🟠🟢🔵 only on a title line (errors, warnings, outcomes, notifications);
+  one emoji per area only on area buttons and result titles; 👍 / 👎 for the vote. No other emoji in texts or buttons
+  (tests scan the strings; module titles are checked by `tools/governance/check_telegram.py`).
+- **Card** = bold title (optional crumbs `Aree › Spese`), italic subtitle, `•` lines, footer. HTML parse mode only.
+- **Buttons**: labels ≤ 24 characters cut on a word, two per row (longer than 18 alone); Telegram styles
+  `primary` / `success` / `danger` (Conferma, Elimina), disabled buttons for states («Fatto · da WebUI»), copy buttons.
+- **Errors** say what failed in plain Italian (`ui.error`), never an exception, id or module name.
+
+## Navigation (configuration, not code)
+
+- **Bottom keyboard** (always there): Oggi · Aree · Notifiche · Impostazioni. Tapping a key during a guided action
+  leaves it.
+- **`/` menu** (8): `oggi`, `aree`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`, `aiuto`. Old names keep
+  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`…); any tool name typed as `/name k=v free text`
+  starts that action with the values given.
+- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + actions), Aree (11 areas + «Usate
+  spesso»), area card (summary tool + primary actions + «Tutte le azioni» by section, «Avanzate» last). One live
+  navigation message edited in place; an old message's buttons answer «Questo menu è vecchio» and open a fresh one.
+- **Where the menu comes from** (`telegram_bot/menu/`), later wins:
+  1. `defaults.py` — data only: keyboard, doors, commands, aliases, areas (key, label, emoji, order, aliases),
+     `SERVICE_AREAS`, «Oggi» content;
+  2. module hints on each tool: `telegram_group` (area), `telegram: {section, primary, summary, label}`;
+  3. Themis setting **`telegram.menu.layout`** (system scope, same shape as the defaults, every part optional):
+     edited from Telegram (Impostazioni › Menu: rename, emoji, order, move an action, pin primaries, new area, reset),
+     from the WebUI settings panel, or proposed by the assistant (the user confirms).
+  A tool that nothing mentions still appears (area from module group, else module, else «Altro»); only section
+  `interno` is hidden. Reachability: primary actions ≤ 2 taps, every action ≤ 5 taps plus paging.
+- **Catalog** (`catalog.py`): Hestia-MCP `tools/list` as client `telegram` through Hub (input schema + hints),
+  refreshed on Hub `registry-changed`; local actions from `local_actions.py`.
+
+## Guided actions (`telegram_bot/actions.py`, `inputs.py`)
+
+- Fields come from the tool's JSON schema: label in words, help, «Es.» example, «Passo i di n»; enum/boolean/
+  `arg_picker` → buttons; numbers, dates («domani», «25/10»), times («18.30»), amounts («12,50 €») parsed in Italian;
+  a date alone for a date-time asks the time. Indietro · Salta · Annulla on every step.
+- Writes get a **confirmation card** (Conferma); destructive tools get «Elimina» in red and «Non si può annullare».
+- Result: «Un attimo…» then the result card with the module's next-step buttons, «Cambia», «‹ Area», «Di nuovo».
+  Images come as photo / album, exports as a document.
+- A file sent while an action waits for one is the answer (Archive blob when the schema asks `blob_id`).
+- Writing a sentence during an action asks «Vuoi uscire da X?»; a spoken answer works like a typed one.
+- Flows, pending confirmations and short callback ids are persisted in `data/telegram_ui.json`
+  (`TELEGRAM_UI_STATE_FILE`), so buttons keep working after a restart.
+
+## Results without the model (`render.py`)
+
+A tool result is drawn by Telegram, never sent to Oracle for formatting:
+- **`display` block** (`hestia_common.display`) when the module returns one: title, subtitle, lines, items (with link
+  and tone), up to 6 next-step actions (tool + preset args + style), images. Today: Hercules (summary, next
+  workout), Chronos (agenda, agenda today), Hygieia (today, overview), Plutus (summary, search, add), Wardrobe
+  (summary, suggest), Scout (listings, stats). Hestia-MCP strips `display` for every other client.
+- otherwise a **generic renderer**: lists → `•` lines (title + 2–3 meta, no ids, no «n/d»), money/date fields in
+  Italian, errors red, plain text as is.
+
+## Local actions (`local_actions.py`)
+
+Actions that belong to the client itself, declared like tools (`T(name, title, description, …)`, checked by
+`check_command_contracts`): `nuova` (new conversation: Oracle `DELETE /api/chat/{session}`), `voce` / `voce_on` /
+`voce_off`, `aiuto`, `webui_token` / `webui_status` / `webui_revoke`, `documenti` / `documento_fissa` /
+`documento_elimina`, `nuovo_promemoria` / `nuova_attivita` (Archive calendar items), `nuovo_avviso` (Oracle
+subscription compile), `pausa_voto`.
+
+## Chat (`services/chat_service.py`, `reply_renderer.py`)
+
+- One Oracle stream → **one answer message** (status → steps «• Uso: <azione>» → streamed tokens → final); split
+  only above 4000 characters. Reasoning in an expandable quote «Ragionamento · N passi».
+- Notices from Oracle are italic lines inside the answer (🔴 only for errors), per the notice setting.
+- **Reply or quote = context**: replying to (or quoting part of) any message sends
+  `quoted: {text, from: assistant|user|notification, at, ref}` with `/api/chat`; Oracle uses it for that turn only.
+- Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`).
+- Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
 
 ### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)
-- A **voice note** (or video note) is transcribed by Echo (use `telegram.vocale`, recording kept with the message
-  `tg:<chat>:<msg>`), shown as «🎙️ *testo*» and handled exactly like the same sentence typed (`run_chat_turn`).
-  Echo down or nothing heard → «Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?» (`[🔄]`).
-- Every reply gets **«🔊 Ascolta»** (`voice:play`): Echo reads it (use `telegram.risposta`, ogg/opus voice message,
-  kept with the reply so a second tap does not generate it again).
-- **`/live`** (session setting `voice_live`): voice notes are also answered by voice; **`/chat`** back to text only.
-  The written reply always stays.
-- Notifications sent also as voice: Hermes `update` with `voice.audio_b64` → voice message replying to the
-  notification; deleted together with it (superseded/retracted).
+- A voice note is transcribed by Echo (use `telegram.vocale`) and shown as «*testo*», then handled like the same
+  sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
+  puoi scrivermelo?» (`[🔄]`).
+- «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.risposta`), kept so a second tap does not regenerate.
+- `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
+- Hermes `update` with `voice.audio_b64` → voice message replying to the notification.
 
-### Command Rendering (tools from Hestia-MCP)
-- Loads the command catalog from Hestia's one MCP server (`tools/list` as client `telegram`, through Hub) —
-  `services/registry.py` with `hestia_common.mcp_client`; tool names with dots become `_` commands.
-- Runs a command with `tools/call` (session id + chat id as notify target); `arg_picker` sources (data reads a tool
-  declares) use the shared template rules (`hestia_common.tool_call`) and a plain Hub route.
-- Supports `oracle_natural` response mode: command payloads must be formatted by Oracle for user display.
-- `/avvisi_recenti` must always be user-formatted text, never raw JSON in chat output.
+### Settings (`services/chat_settings.py`)
+Impostazioni opens one panel edited in place: tone (`oracle.chat.tone`), mode (`oracle.chat.mode`), reasoning
+display, notices, voice, personal instructions (`oracle.chat.instructions`), plus «Menu» (the editor above). Tone,
+mode and instructions are central settings (Themis, layer client `telegram`) through `personal_settings.py`.
 
-### Access control (fail closed)
-- `ALLOWED_USER_ID` (one id or comma-separated list) is **required**: when unset the bot answers nobody and tells
-  the sender their numeric id. Previously an unset value let anyone use the bot — unacceptable now that it can
-  command Forge to change Hestia's code.
-- Checked on every message handler and, centrally, on every button callback (`telegram_runtime._allowed`).
+### Confirm cards and assistant questions
+- An Oracle `question` with `question_id` (e.g. a Themis proposal made in this chat) becomes a card with two
+  buttons; the answer goes to `POST /api/chat/question-answer` (`client: telegram`).
+- `ask_user` questions (`services/assistant_questions.py`): Sì/No, single choice, multiple choice (toggles +
+  «Invia»), «Altro…» / free text; a question no longer open answers «Questa domanda non è più aperta».
 
-### Owner notification alias
-- Services notify the user, not a chat: Hermes, Chronos and Argus send `target: "owner"` (no config). Telegram,
-  as the client, decides the chat: the first `ALLOWED_USER_ID` (`core.resolve_notify_target`). The chat id lives
-  only in `Hestia-Telegram/app/.env`. Single-user for now; more recipients would be the client's job.
+## Notifications (`services/notifications.py`)
 
-### OAuth Paste Shortcut
-- If a message contains a URL with `/api/gateway/auth/callback/<provider>?code=...` (the page a phone
-  cannot open at the end of Google consent), Telegram forwards it straight to Hecate
-  (`POST /api/gateway/auth/complete/<provider>` via Hub) and replies with the outcome.
-- No LLM in the loop: deterministic even with small local models. Module: `telegram_bot/services/oauth_paste.py`.
+- Hermes `/api/notify`: `notification` → message with tone dot and buttons `na:<short id>` (old `ntf:` still
+  accepted), «Apri» opens the WebUI page as Mini App when there is a public https address; `update` → buttons
+  replaced by a disabled state button («Vista su WebUI», «Approva · da WebUI»); `retract` → deleted; repeat chains
+  in italics, superseded ones deleted (over 48 h: «Sostituito»).
+- Button → Hermes `/api/notifications/{id}/answer` (first answer wins; 409 → «Già gestita»).
+- Any message of the owner marks the notifications shown here as seen (`/api/notifications/seen-all`).
 
-### Session Clear Command
-- The user can send `/clear` to reset active Oracle session.
-- Telegram confirms with inline buttons and supports cancel.
-- On confirm, history and local session settings are reset.
+## Mini App (`telegram_bot/webapp.py`)
 
-### Delivery Formatting Contract (Global)
-- Applies to chat replies, proactive alerts, and command outputs.
-- Known commands (`scout_listings`, `avvisi_recenti`, `notifiche_attive`) use **dedicated formatters** — not Oracle. Oracle is only used for unknown command payloads.
-- Never show "n/d" for missing data — omit the field entirely.
-- Minimal emojis: one per section header, none on detail lines.
-- HTML parse mode is the default render mode for user-facing rich content.
-- No markdown bold (`**`) inside HTML output — use `<b>` tags only.
-- Leaked markdown patterns (`**bold**`, `-`/`*` bullets) in HTML text are converted to HTML equivalents **without** escaping existing HTML tags (markdown conversion uses targeted regex, never the full `format_for_telegram()` path that would turn `<a href>` into `&lt;a href&gt;`).
-- Outbound HTML is normalized to Telegram-supported tags before send (for example `<em>` → `<i>`, `<strong>` → `<b>`) to avoid parse errors.
-- If Telegram rejects an HTML fragment (`can't parse entities`), delivery retries automatically as plain text for that message part.
-- If output contains property blocks separated by blank lines and any block has a link, each block becomes its own Telegram message (enables Telegram native link preview).
-- Raw JSON is allowed only as technical fallback when no formatter path exists.
+With `WEBUI_PUBLIC_URL` (or `CLOUDFLARE_TUNNEL_HOSTNAME`) on https: chat menu button «Apri Hestia» and «Apri»
+buttons open WebUI pages inside Telegram (`?tg=1`). The page logs in by itself: WebUI
+`POST /api/webui/auth/telegram` asks this module `POST /api/webapp/verify` (via Hub) to check Telegram's signed
+`initData` with the bot token (fresh ≤ 24 h, user in `ALLOWED_USER_ID`); the WebUI then issues a 12-hour session
+token. With http the button is a plain link; with no public address no button is drawn.
 
-### Reply rendering (Claude-like, `services/reply_renderer.py`)
-- One Oracle stream → **one answer message**: the status message is reused (live status → optional live steps →
-  streamed tokens → final). Never sent twice; split only above 4000 chars.
-- Reasoning = `<blockquote expandable>` above the answer (open when *Dettagliato*).
-- System notices (Oracle `notice` packets) are rendered **distinct from the answer** (emoji + italic, or bold
-  title + detail in *rich* style) under the answer, in a separate message, only important ones, or hidden.
-- Stream consumption: `chat_service.consume_oracle_stream()` (shared by text and file messages).
+## Access control (fail closed)
+- `ALLOWED_USER_ID` (one id or comma-separated) is **required**: unset → the bot answers nobody and tells the sender
+  their id. Checked on every message and every callback (`telegram_runtime`).
 
-### Settings (`services/chat_settings.py` — single schema)
-`/settings` opens one panel edited in place (menu ↔ options with ✓, Indietro, Ripristina, Chiudi). Adding a
-`Setting` to `SETTINGS` adds it to the panel automatically.
+## Owner notification alias
+- Services notify `target: "owner"`; Telegram resolves it to the first `ALLOWED_USER_ID`
+  (`core.resolve_notify_target`). The chat id lives only in `Hestia-Telegram/app/.env`.
 
-| Key | Options (default **bold**) |
+## OAuth paste shortcut
+- A pasted `/api/gateway/auth/callback/<provider>?code=…` URL goes straight to Hecate
+  (`POST /api/gateway/auth/complete/<provider>` via Hub); reply 🟢 / 🔴 without raw errors (`services/oauth_paste.py`).
+
+## Module settings (Themis, `app/telegram_settings.py`)
+Env keeps only secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, `HUB_API_URL`, `TELEGRAM_BASE_URL`,
+`TELEGRAM_CONTROL_PORT`, `FEEDBACK_ARCHIVE_URL`, `WEBUI_API_URL`, `WEBUI_PUBLIC_URL`, `WEBUI_ADMIN_SECRET`,
+`TELEGRAM_UI_STATE_FILE`.
+
+| Key | Default |
 |---|---|
-| `tone` | **warm** · neutral · direct · formal — central setting `oracle.chat.tone` (Themis, layer client `telegram`); Oracle applies it |
-| `mode` | **auto** · quick · thinking · cot (Rapida, Pensata, CoT) — central setting `oracle.chat.mode` (layer client `telegram`); Oracle uses it when no mode is sent |
-| `thinking_display` | hidden · **compact** · detailed · live |
-| `stream_answer` | **on** · off |
-| `split_mode` | **single** · paragraphs |
-| `notice_mode` | **inline** · separate · important · hidden |
-| `notice_style` | **compact** · rich |
-| `notice_memory` / `notice_actions` / `notice_subscriptions` / `notice_other` | **on** · off (errors always shown unless hidden) |
-| `custom_prompt` | free text, central setting `oracle.chat.instructions` (layer client `telegram`); `-` removes it |
+| `telegram.feedback.prompt_rate` | 0.15 |
+| `telegram.feedback.snooze_days` | 7 |
+| `telegram.chat.locale` | `it` |
+| `telegram.chat.client_instructions` | Telegram format contract (no emoji, HTML) |
+| `telegram.oracle.stream_timeout` | 600 s |
+| `telegram.menu.layout` | `{}` (system scope; see Navigation) |
+| `telegram.log.level` | `LOG_LEVEL` at boot |
 
-Nothing from this table is forwarded to Oracle: `build_client_instructions_for_chat` sends only the Telegram
-presentation contract, and Oracle requests carry `"client": "telegram"` so Oracle adds tone and instructions
-itself. `tone`/`custom_prompt` are read and written through `services/personal_settings.py` (Themis via Hub,
-20 s cache, local value if Themis is down); the other keys stay in the local settings file. `/thinking <mode>` is a shortcut; `/retry` regenerates the last answer.
+Removed with the redesign: `telegram.alerts.buffer_window`, `telegram.commands.hidden*`, `telegram.signals.*`.
 
-### Signal cards (legacy, non-stream paths only)
-The notification-compile path (`/api/subscriptions/compile` response `signals`) still uses signal cards:
-central settings `telegram.signals.style` (`minimal`|`compact`|`rich`) and per family
-`telegram.signals.style_memory|subscription|action|other` (empty = general style).
-
-### Module settings (Themis, `app/telegram_settings.py`)
-Tunables are central settings (`SettingsClient("telegram")`, all `apply=live`, read at use time). Env keeps only
-secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, `HUB_API_URL`, `TELEGRAM_BASE_URL`,
-`TELEGRAM_CONTROL_PORT`, `FEEDBACK_ARCHIVE_URL`, `WEBUI_API_URL`, `WEBUI_PUBLIC_URL`, `WEBUI_ADMIN_SECRET`.
-Separate from the personal chat settings (`oracle.chat.*`, see Settings above).
-
-| Key | Default | Was env |
-|---|---|---|
-| `telegram.alerts.buffer_window` | 0.8 s | `ALERT_BUFFER_WINDOW_SECONDS` |
-| `telegram.feedback.prompt_rate` | 0.15 | `TELEGRAM_FEEDBACK_PROMPT_RATE` |
-| `telegram.feedback.snooze_days` | 7 | `FEEDBACK_SNOOZE_DEFAULT_DAYS` |
-| `telegram.commands.hidden_services` | `[]` | `TELEGRAM_HIDDEN_COMMAND_SERVICES` |
-| `telegram.commands.hidden` | `notifica_attiva, notifica_disattiva, notifiche_attive` | `TELEGRAM_HIDDEN_DYNAMIC_COMMANDS` |
-| `telegram.chat.locale` | `it` | `TELEGRAM_LOCALE` |
-| `telegram.chat.client_instructions` | Telegram style/format contract | `TELEGRAM_ORACLE_CLIENT_INSTRUCTIONS` |
-| `telegram.oracle.stream_timeout` | 600 s | `TELEGRAM_ORACLE_STREAM_TIMEOUT` |
-| `telegram.signals.style` / `.style_<family>` | `minimal` / empty | `TELEGRAM_SIGNAL_STYLE`, `TELEGRAM_SIGNAL_STYLE_BY_FAMILY` |
-| `telegram.log.level` | `LOG_LEVEL` at boot | — |
-
-`settings.start()` runs at boot (background register, hourly re-assert); the control server answers
-`GET /api/settings/effective` and `POST /api/settings/reload` so Themis pushes changes at once.
-
-### Input Collection Contract (Global)
-- Commands must not rely on technical `key=value` syntax as primary UX.
-- When a command requires missing input, Telegram asks for it via the next user message.
-- Every text-input workflow must expose an inline `Annulla` action to stop the flow immediately.
-- Rule applies to local and dynamic commands (for example: `/set`, notification creation, and any future command requiring manual text input).
-
-### Commands (Examples)
-
-| Command | Action |
-|---|---|
-| `/clear` | Clear active Oracle session |
-| `/avvisi_recenti` | Show recent alerts in natural formatted text |
-| `/notifiche_attive` | Show active subscriptions in readable format |
-| `/scout_listings` | Show property list with HTML links |
-| `/snooze_feedback` | Suspend feedback prompts (`telegram.feedback.snooze_days`, default 7) |
-| `/feedback good` / `/feedback bad` | Rate last Oracle response |
-
-### Feedback Collection
-- Inline 👍/👎 buttons appear after eligible chat responses (setting `telegram.feedback.prompt_rate`, default 0.15).
-- Never on greetings, trivial messages, or during snooze periods.
-- Feedback is submitted to Archive's `feedback_submit` MCP tool via Hub routing.
-- On button press, the feedback prompt message is **deleted from chat** immediately — no lingering acknowledgment text.
-- Snooze via `/snooze_feedback` — writes a durable preference to Archive; auto-expires after `telegram.feedback.snooze_days` (default 7).
-
-### Confirm cards from the chat (2026-10-18, client plugins)
-- An Oracle `question` with `question_id` (no approval `id`), e.g. a Themis proposal made in this chat ("crea una
-  dashboard…", "cambia l'impostazione…"), becomes a message with two buttons; the answer goes to Oracle
-  `POST /api/chat/question-answer` (`client: telegram`), which routes the module's action. The Hermes copy of such a
-  proposal is quiet, so the card in the chat is where you answer.
-
----
-
-## API Endpoints
-
-Telegram is event-driven and also exposes an internal control endpoint for Hermes dispatch.
+## API Endpoints (control server, `services/control_service.py`)
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/notify` | Hermes notification client (`capabilities.notify_endpoint`): `notification` → message + buttons `ntf:<id>:<action>` (`silent` ones skipped, `ref` = `chat:message_id` returned), `update` → buttons replaced by "✓ Vista su WebUI" / "✅ Approva · da WebUI", `retract` → message deleted; repeat chains: `repeat.text` shown in italics («↻ Saltato 2 volte»), `update superseded` → old message deleted (over 48 h: «↻ Sostituito»), button on a replaced one → «Sostituita da un promemoria più recente»; `update` with `voice` → voice message replying to the notification |
-| `POST` | `/api/dispatch/send` | Legacy (no longer called by Hermes): dispatch payloads via Hub routing. `target` = chat id, or `owner` / empty = first `ALLOWED_USER_ID` (the only place the owner's chat id lives) |
+| `POST` | `/api/notify` | Hermes notification client (notification / update / retract, see Notifications) |
+| `POST` | `/api/webapp/verify` | WebUI via Hub: `{init_data}` → `{ok: true, user_id}` or 403 `{ok: false, reason}` (Mini App login) |
+| `POST` | `/api/events/registry-changed` | Hub: tools changed → catalog refresh |
+| `POST` | `/api/chat-queue/drain` | Chronos: Oracle is back, answer queued messages |
 | `GET` | `/health` | Service health |
-| `GET` | `/api/settings/effective` | Themis: values Telegram is using now (`hestia_common.settings_client` contract) |
-| `POST` | `/api/settings/reload` | Themis: push changed values (`{values, shared}`) or re-fetch them (empty body) |
+| `GET` | `/api/settings/effective` | Themis: values in use |
+| `POST` | `/api/settings/reload` | Themis: push changed values |
+| `GET` | `/api/logs` | Log buffer |
 
----
+`/api/dispatch/send` (legacy) was removed: every notification goes through Hermes `/api/notify`.
 
-### Notifications (Hermes global notifications, `services/notifications.py`)
-
-- Button `ntf:<notification_id>:<action_id>` → Hermes `/api/notifications/{id}/answer` (first answer wins;
-  409 → "Già gestita da WebUI" and the buttons are replaced). Legacy command actions are run here and the
-  outcome is reported to Hermes.
-- Any message of the allowed user in the chat marks the notifications shown here as seen
-  (`/api/notifications/seen-all` with `delivered_to=telegram`) — read state is global across clients.
-
-## Constraints
-
-- Domain/business decisions remain in core/module services (Oracle/Hermes/Archive/Scout).
-- Telegram does not evaluate domain events or matching logic.
-- Telegram may perform presentation-layer formatting and message splitting.
-- Telegram does not access database directly.
-
-
-## Documentation Synchronization (Required)
-
-1. Any behavior, command, or contract change must update this service document in the same change set.
-2. If API routes, methods, schemas, or Hub-routed command contracts change, update Hestia-Swagger/swagger.yml in the same change.
-3. Ensure command metadata exposed to Hub discovery is complete and accurate (service, method, path, arguments/templates) so Oracle and clients can execute deterministically.
-4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
-
-## WebUI token commands
-
-`/webui_token`, `/webui_revoke`, `/webui_status` call the WebUI admin API directly (`WEBUI_API_URL`, security
-exception: not via Hub). When `WEBUI_ADMIN_SECRET` is set (same value as the webui container) it is sent as
-`X-WebUI-Admin-Secret`. No local fallback: if the WebUI is down the user gets an error (a locally minted token was
-never accepted and was stored in clear text in Archive memory). The message is HTML with the real lifetime.
+## WebUI token actions
+`webui_token`, `webui_status`, `webui_revoke` call the WebUI admin API directly (`WEBUI_API_URL`, security exception:
+not via Hub) with `X-WebUI-Admin-Secret` when `WEBUI_ADMIN_SECRET` is set. The token comes with «Apri» and «Copia».
 
 ## Assistant presence
-
-Every allowed command, file and chat message pings Chronos presence (`telegram`, debounced 60 s) through `telegram_bot/services/presence.py`. `/stato`, `/nondisturbare`, `/disturbami` come from Chronos MCP tools (group sistema).
+Every allowed message, file and button pings Chronos presence (`telegram`, debounced 60 s, `services/presence.py`).
+`/stato` shows the assistant state.
 
 ## Oracle offline (chat queue)
+SPEC `docs/work/2026-10-19-oracle-offline`, `services/chat_queue.py`. A message Oracle does not accept is stored in
+Archive (`/api/chat-queue`, client `telegram`) and the reply is «🟠 Non disponibile: messaggio in coda, ti rispondo
+appena possibile.» `POST /api/chat-queue/drain` and startup answer the queue chat by chat in one turn (`queued`).
 
-SPEC `docs/work/2026-10-19-oracle-offline`, code `telegram_bot/services/chat_queue.py`. A text message Oracle does not
-accept (connection refused, timeout before the answer, HTTP 502/503/504) is stored in Archive (`/api/chat-queue`,
-client `telegram`, the message id as `client_ref`) and the reply is «⏳ Non posso rispondere adesso: messaggio in coda,
-ti rispondo appena possibile.» A file while offline gets «rimandamelo più tardi» (not queued). Archive down too → the
-usual error. `POST /api/chat-queue/drain` (capability `chat_queue_drain`, called by Chronos when Oracle is back) and
-startup answer the queue chat by chat: all the messages of one chat go to Oracle in one turn (`queued`, each with
-when it was written) and the assistant decides whether to answer each, merge them or ask which old ones still
-matter (v3 C); the answer is a reply to the last message; the first Oracle failure stops the drain. The Hermes
-notice «Non disponibile» and `/stato` show the state.
+## Constraints
+- Domain decisions stay in modules; Telegram only presents and asks.
+- No database access, no LLM formatting of tool results, no module names in user texts.
+- Service calls go through Hub (exceptions: Oracle chat streaming, WebUI admin API).
 
-## Questions from the assistant (v3 A, `services/assistant_questions.py`)
-
-When the assistant asks (Oracle tool `ask_user`, question id `ask_…`) the question arrives as a message with inline
-buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Invia»), «Altro…» or free text (the next text
-message is the answer). The callback is answered at once, then the answer goes to Oracle
-`/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
-question no longer open answers «⌛ Questa domanda non è più aperta».
+## Tests
+`python -m pytest -q -m "unit or api or format" Hestia-Telegram/tests` — grammar, store, inputs, renderer, menu
+reachability over every module tool, action flow, notifications, settings, Mini App signature.
+`python tools/governance/check_telegram.py` — no emoji in tool titles, every tool in an area, labels fit.

@@ -25,6 +25,9 @@
   `$session_id` · `$chat_id`/`$owner` · `$arg.x`, rest → query or JSON body) and routes it through Hub with
   `X-Session-Id`, `X-Trace-Id` and `X-Hestia-Client` (= the client the user talks from, given by the caller).
 - Read tools carry `annotations.readOnlyHint: true` (same rule Oracle used for "writes").
+- **Display blocks**: a module answer may carry `display` (`hestia_common.display`, how Telegram draws it without the
+  model). `tools/call` keeps it only for client `telegram` and strips it for everyone else (Oracle, WebUI, external
+  AIs), so models see the same data as before.
 
 Python clients use `hestia_common.mcp_client.MCPClient(HUB_API_URL, client=…)` (`list_tools`, `call`, `as_command`);
 the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.

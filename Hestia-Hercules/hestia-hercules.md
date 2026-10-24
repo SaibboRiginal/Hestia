@@ -160,3 +160,6 @@ calendar before `fitness_confirm_activity` (all slots, some by number, or times 
   tag `outdoor`, priority `could`); the planner keeps them out of rainy/dark hours. A log reports `done`.
 - Store kinds `activity_plan`, `activity` (written by the server only; refused from the offline sync),
   `calendar_link`, `activity_nudge`.
+
+## Telegram card (`display`)
+`GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).

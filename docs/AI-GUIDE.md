@@ -40,7 +40,9 @@ services, discovered via Hub) → answer formatted (HTML subset for Telegram) �
 (selective) → session summary to Archive.
 
 Tools: every service declares `MCPTool(name, description, parameters, method, path, clients,
-response_mode, response_prompt, telegram_visible, telegram_group)` (`hestia_common.mcp_helpers`).
+response_mode, response_prompt, telegram_group, telegram={section, primary, summary, label})`
+(`hestia_common.mcp_helpers`). Every tool shows up on Telegram by itself (area = `telegram_group`); return a
+`display` block (`hestia_common.display`) next to the data so Telegram can draw the result without the model.
 Hub turns them into commands (`/api/discovery/commands?client=telegram|ui`). Paths may contain
 `{name}`/`$name` placeholders, filled by Oracle/Telegram/WebUI/MCP. `mount_missing_rest_routes`
 serves the declared REST path of handler-only tools — call it after the app's own routes.
@@ -73,7 +75,7 @@ serves the declared REST path of handler-only tools — call it after the app's 
   refs are `tg:<chat>:<msg>`, WebUI refs `web:<session>:<msg>`.
 - Notifications in voice: module setting `<module>.notifiche.voce` (`reminders.voice_setting`) + `reminder_event(voice=)`
   → payload `_voice` → Hermes adds the audio as an `update`.
-- Live («Parla», Telegram `/live`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
+- Live («Parla», Telegram `/voce`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
 
 ## 4. Forge (self-development) — how a change ships
 
@@ -149,15 +151,17 @@ and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossi
 
 ## 6. Clients
 
-- Telegram: `Hestia-Telegram/app` — routing, streaming, commands from Hub discovery, OAuth paste.
-  Access is fail-closed on `ALLOWED_USER_ID`. Voice: `telegram_bot/services/voice_service.py`.
-- WebUI: `Hestia-WebUI` — backend proxies everything via Hub; token from Telegram `/webui_token`;
+- Telegram: `Hestia-Telegram/app` — catalog from Hestia-MCP (`catalog.py`), menus as configuration (`menu/defaults.py`
+  data + Themis `telegram.menu.layout`), guided actions (`actions.py`), result cards (`render.py`), grammar
+  (`ui.py`, no emoji except tone dots/area markers), persisted state (`store.py`), OAuth paste. Access is fail-closed
+  on `ALLOWED_USER_ID`. Voice: `telegram_bot/services/voice_service.py`. Check: `tools/governance/check_telegram.py`.
+- WebUI: `Hestia-WebUI` — backend proxies everything via Hub; token from Telegram `webui_token` (or Mini App login via Telegram initData);
   admin API guarded (`WEBUI_ADMIN_SECRET` or internal network only). Frontend rules:
   `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`. Voice: `VoiceController.cs` (proxy to Echo), `voice.service.ts`
   (voice messages, «Ascolta»), `live-voice.service.ts` (Parla).
 - Response packets: clients render the standard packets — spec in `Hestia-Shared/hestia-shared.md`
   § Response packets. System messages = `notice` (never styled like chat). Telegram: `ReplyRenderer` +
-  `chat_settings.SETTINGS` (one schema → `/settings` panel). WebUI: `.hx-notice` + `NoticePrefsService`.
+  `chat_settings.SETTINGS` (one schema → Impostazioni panel). WebUI: `.hx-notice` + `NoticePrefsService`.
 - Never send the answer twice: `final` is rendered exactly once (Telegram edits the status message into it).
 
 ## 7. Gotchas learned the hard way

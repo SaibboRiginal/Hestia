@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 3.1 |
+| **Version** | 3.2 |
 | **Source** | user via Project thread (Marko 2026-10-23: «dobbiamo aprire uno specifico per rivedere tutto telegram, le emoji e come mostra le cose è veramente brutto... dobbiamo rivederlo da 0») |
-| **Status** | Approved 2026-10-24 (Marko: «tu imposta per averle tutte, e implementa come me l'hai detto tutto») — implementing |
+| **Status** | Approved 2026-10-24 (Marko: «tu imposta per averle tutte, e implementa come me l'hai detto tutto») — implemented 2026-10-24 (section 10 = as built); Marko real run pending |
 
 ## Goal
 **Every function of the assistant is usable from Telegram — all of them** (Marko 2026-10-24: «anche da telegram
@@ -297,7 +297,9 @@ titles; Telegram also strips a leading one as safety net.
   `quoted: {text, from: assistant|user|notification, at, ref}` and shows it to the model as context (not as an
   instruction). Small Oracle contract change (swagger + Oracle doc), same field usable by the WebUI.
 - Reply to a notification: the notification id goes with it, so «spostalo a domani» acts on that reminder.
-- WebUI shows the quoted context closed under your message (WebUI part done here too, it is small).
+- WebUI shows the quoted context closed under your message (WebUI part done here too, it is small). *(v3.2: the quote
+  is context for the turn only and is not saved in history, so there is nothing to show afterwards; the WebUI can send
+  the same field when it gets a reply gesture.)*
 
 ### 5.11 The menu is configuration, not code (v3.1 — Marko: «rendi facile rielaborare i menu… configurazione dinamica piuttosto che hard coded»)
 Everything you see in the menus comes from **one data structure** built at run time from three layers, later wins:
@@ -396,3 +398,26 @@ Each phase is a PR merged when CI is green. Old callback data keep working for m
 - No module name, id, exception text or `key=value` in user texts (test on the string table).
 - Settings panel has 6 entries; removed keys gone from Themis declarations and docs.
 - Existing tests green, new tests for `ui.py`, renderer, menu and every screen of section 4.
+
+## 10. As built (v3.2, 2026-10-24)
+What changed from the text above while implementing, and why:
+- **No ForceReply**: the action flow asks with a normal card and reads the next message (placeholder «Es.» in the
+  card). ForceReply hid the bottom keyboard and broke the «tap a door to leave» rule.
+- **Home has no inline buttons**: the bottom keyboard is the navigation; «Usate spesso» (most used actions) sits on
+  the Aree card.
+- **Buttons use Telegram's styles**: `primary` / `success` / `danger` (Conferma, Elimina), disabled buttons for
+  states («Fatto · da WebUI»), copy buttons; custom emoji icons are supported by the helper but not used.
+- **`telegram_visible` is ignored**: every tool is reachable (section «Avanzate» for technical ones); only section
+  `interno` is hidden (`feedback_submit`, `voce_on`, `voce_off`, all reachable another way).
+- **Reachability is ≤ 5 taps** (Aree › area › Tutte le azioni › section › action, plus paging), not ≤ 3: with 192
+  actions in 11 areas three taps cannot hold them all with readable buttons. Primary actions stay ≤ 2 taps.
+- **`/api/dispatch/send` removed** from Telegram: every notification goes through Hermes `/api/notify`.
+- **Menu layout scope is system** (`telegram.menu.layout`, Themis): one menu for the bot, not per chat.
+- **Feedback and Ascolta share one row** under an answer (Ascolta · 👍 · 👎).
+- **Display blocks** (`hestia_common.display`) in Hercules, Chronos (new route `/api/calendar/agenda/today` for
+  `agenda_today`), Hygieia, Plutus, Wardrobe, Scout; Hestia-MCP strips the block for every client except Telegram.
+- **Mini App login** goes through the Telegram module: WebUI `POST /api/webui/auth/telegram` asks Telegram
+  `POST /api/webapp/verify` via Hub (the bot token never leaves Telegram) and issues a 12-hour session token next to
+  the main token; revoking the main token also ends Mini App sessions.
+- **Parity list** (WebUI actions without a tool) is tracked in PROGRESS.md; the automatic plugin↔tool test is part of
+  brainstorm idea 22, not of this task.
