@@ -337,7 +337,8 @@ _REGISTRATION = {
     "name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",
     "service_type": SERVICE_TYPE, "service_version": SERVICE_VERSION, "tags": SERVICE_TAGS,
     "topology_tags": SERVICE_TOPOLOGY_TAGS,
-    "capabilities": {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
+    "capabilities": {"when_to_use": "impostazioni dell'assistente e dei moduli", "manual": "Legge le impostazioni e propone cambi: l'utente conferma ogni proposta.",
+                     "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
                      # Assistant tools appear when the chat is about Hestia itself / its settings.
                      "module_tool_domains": ["system", "settings"],
                      "settings": "/api/settings", "settings_register": "/api/settings/register",

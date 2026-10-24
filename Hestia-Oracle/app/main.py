@@ -817,8 +817,12 @@ def _with_personal_settings(client_instructions: Optional[str], client: Optional
 
 
 @app.post("/api/chat")
-def chat_endpoint(req: ChatRequest):
-    presence_state = _mark_user_activity(req.notify_target, req.client)
+def chat_endpoint(req: ChatRequest, request: Request):
+    # Who started this turn comes from the routed headers, never from the body (Cindy 6, hestia_common.origin).
+    from hestia_common import origin as _origin
+    turn_origin = _origin.parse(dict(request.headers), req.client or "")
+    presence_state = (_mark_user_activity(req.notify_target, req.client)
+                      if turn_origin["level"] == "utente" else None)
     try:
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
@@ -847,7 +851,8 @@ def chat_endpoint(req: ChatRequest):
                 save_history=req.save_history,
                 mode=mode,
                 model=req.model,
-                client=req.client or ""), client=req.client or ""),
+                client=req.client or "",
+                origin=turn_origin), client=req.client or ""),
             media_type="application/x-ndjson"
         )
     except Exception as e:

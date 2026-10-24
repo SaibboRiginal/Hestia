@@ -988,7 +988,8 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["selfcare"],
+    caps = {"when_to_use": 'cura di sé: skincare, routine, diario del benessere, sonno, umore', "manual": 'Routine di cura di sé, prodotti, diario del benessere (sempre attivo), note su sonno e umore.',
+            "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["selfcare"],
             "context_endpoint": "/api/module/context", **recap.capabilities()}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))

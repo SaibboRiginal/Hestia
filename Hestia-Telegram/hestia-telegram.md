@@ -196,3 +196,20 @@ appena possibile.» `POST /api/chat-queue/drain` and startup answer the queue ch
 `python -m pytest -q -m "unit or api or format" Hestia-Telegram/tests` — grammar, store, inputs, renderer, menu
 reachability over every module tool, action flow, notifications, settings, Mini App signature.
 `python tools/governance/check_telegram.py` — no emoji in tool titles, every tool in an area, labels fit.
+
+## Questions from the assistant (v3 A, `services/assistant_questions.py`)
+
+When the assistant asks (Oracle tool `ask_user`, question id `ask_…`) the question arrives as a message with inline
+buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Invia»), «Altro…» or free text (the next text
+message is the answer). The callback is answered at once, then the answer goes to Oracle
+`/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
+question no longer open answers «⌛ Questa domanda non è più aperta».
+
+## Answer extras (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
+`services/answer_extras.py` + `ReplyRenderer`:
+- ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons
+  become an inline keyboard «Scegli» whose tap sends the button's text as the next chat message (callback `uisend:`).
+- `final.origin` not from the owner (`routine`, `autonomo`) adds its label in italics above the answer.
+- The `changes` frame becomes «📝 Ho fatto» with one «↩️ Annulla: …» button per change that has an undo; the tap
+  (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
+- `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.

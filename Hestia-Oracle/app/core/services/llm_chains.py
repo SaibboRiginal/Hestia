@@ -30,20 +30,24 @@ def _step(provider: str, model: str, **extra) -> dict:
 
 
 DEFAULT_CHAINS: dict[str, dict] = {
+    # llama-server first (brainstorm D17: slots + saved context); skipped at once when it is not running.
     "veloce": {"label": "Veloce", "steps": [
-        _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash-lite"),
+        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash-lite"),
         _step("gemini", "gemini-2.0-flash-lite")]},
     "potente": {"label": "Potente", "steps": [
-        _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash"),
+        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash"),
         _step("gemini", "gemini-2.5-flash-lite")]},
     "codice": {"label": "Codice", "steps": [
-        _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash"), _step("gemini", "gemini-2.0-flash")]},
+        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash"), _step("gemini", "gemini-2.0-flash")]},
     # One step only: vectors of different models are not comparable (memory and document search would break).
     "embedding": {"label": "Embedding", "steps": [_step("ollama", "qwen3-embedding:0.6b")]},
     "visione": {"label": "Visione", "steps": [
         _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash")]},
 }
 EMBEDDING_CHAIN = "embedding"
+DESCRIBE_USECASE = "oracle.descrivi_immagine"
+DESCRIBE_PROMPT = ("Descrivi questa immagine in italiano per chi non può vederla: cosa c'è, testo leggibile "
+                   "(trascrivilo), numeri, colori e dettagli utili. Niente commenti.")
 
 # Oracle's own use cases: id → (label, chain, thinking, help). Internal slot names (AgentBundle) in SLOTS.
 ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
@@ -52,6 +56,12 @@ ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
     "oracle.ragionamento": ("Ragionamento", "potente", "true", "Analisi lunghe e ragionamenti complessi."),
     "oracle.codice": ("Codice", "codice", "auto", "Generazione e correzione di codice nella chat."),
     "oracle.documenti": ("Documenti e immagini", "visione", "false", "Lettura di documenti, immagini e audio."),
+    "oracle.descrivi_immagine": ("Descrizione delle immagini", "visione", "false",
+                                 "Quando il modello che risponde non vede le immagini, un modello che le vede le "
+                                 "descrive prima."),
+    "oracle.controllo_giri": ("Controllo dei giri a vuoto", "veloce", "false",
+                              "Quando l'assistente ripete le stesse chiamate: un'occhiata veloce per capire se aspetta "
+                              "o gira a vuoto."),
     "oracle.embedding": ("Embedding (ricerca)", "embedding", "false",
                          "Vettori per memoria e documenti. Cambiarlo rende diversi i vettori già salvati."),
 }
@@ -467,8 +477,43 @@ class ChainAgent:
     def complete(self, prompt: str) -> str:
         return self._call("complete", prompt)
 
-    def ask_with_attachment(self, *args, **kwargs) -> str:
-        return self._call("ask_with_attachment", *args, **kwargs)
+    def ask_with_attachment(self, file_bytes: bytes = b"", mime_type: str = "", user_message: str = "",
+                            *args, **kwargs) -> str:
+        """Attachments along the chain. Vision bridge (Cindy 16): an image never goes to a step whose model is
+        text-only (``oracle.documents.vision_models``): that step gets a description made by the ``visione`` chain
+        (use case ``oracle.descrivi_immagine``) instead. Steps that see images are untouched."""
+        if not str(mime_type or "").startswith("image/"):
+            return self._call("ask_with_attachment", file_bytes, mime_type, user_message, *args, **kwargs)
+        from core.document import capabilities
+        from core.services import llm_usage
+        errors: list[str] = []
+        description: str | None = None
+        for index, step, agent in self.steps():
+            sees = capabilities.model_supports_vision(step["model"])
+            if not sees and description is None and self.use_case != DESCRIBE_USECASE:
+                try:
+                    description = agent_for(DESCRIBE_USECASE).ask_with_attachment(
+                        file_bytes, mime_type, DESCRIBE_PROMPT)
+                except Exception as exc:
+                    logger.warning("[🔄] event=vision_bridge_failed use_case=%s error=%s", self.use_case, exc)
+                    description = ""
+            if not sees and not description:
+                continue
+            with self._usage(index, step) as usage:
+                try:
+                    if sees:
+                        result = agent.ask_with_attachment(file_bytes, mime_type, user_message)
+                    else:
+                        logger.info("event=vision_bridge_used use_case=%s model=%s", self.use_case, step["model"])
+                        result = agent.ask(f"[Immagine allegata, descritta da un modello che vede]\n{description}\n\n"
+                                           f"{user_message}")
+                except Exception as exc:
+                    self._failed(step, exc, errors, usage)
+                    continue
+            llm_usage.finish(usage)
+            self._answered(index, step)
+            return result
+        raise self._exhausted(errors)
 
     def embed(self, text: str) -> list[float]:
         return self._call("embed", text)

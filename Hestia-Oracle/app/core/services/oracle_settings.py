@@ -125,6 +125,11 @@ _CONTEXT = [
             group="Contesto", order=4, advanced=True,
             help="Chiede a llama-server di riusare il prefisso già calcolato (cache_prompt). "
                  "Disattivalo se il server rifiuta il campo."),
+    setting("oracle.provider.llamacpp.slots", "llama-server · conversazioni calde insieme", "int", 3,
+            group="Contesto", min=2, max=16, unit="slot", order=5, advanced=True,
+            help="Deve essere uguale a --parallel del server. Lo slot 0 serve le chiamate senza chat (classificatore, "
+                 "moduli); gli altri tengono il contesto di una chat ciascuno e lo salvano su disco quando passano "
+                 "a un'altra."),
 ]
 
 # ── Runtime tunables (were ORACLE_* / OLLAMA_* / DOC_* env vars) ─────────────────────────────
@@ -222,6 +227,27 @@ _AGENT = [
             help="Se il modello non usa strumenti per questi passi di fila (e ha già fatto qualcosa), risponde."),
     setting(MAX_PARALLEL_TOOLS, "Strumenti in parallelo", "int", 8, group="Agente", min=1, max=32, order=4,
             advanced=True, help="Quanti strumenti possono girare insieme nello stesso passo."),
+    # Loop guard (core/services/loop_guard.py, Cindy 1): always on, these only shape it.
+    setting("oracle.agent.giri.ripetizioni", "Giri a vuoto · stessa chiamata di fila", "int", 4, group="Agente",
+            min=2, max=20, order=5, advanced=True,
+            help="Se l'assistente rifà la stessa chiamata uguale tante volte di fila, smette e ti risponde con "
+                 "quello che ha."),
+    setting("oracle.agent.giri.finestra", "Giri a vuoto · chiamate guardate", "int", 12, group="Agente", min=6,
+            max=50, order=6, advanced=True,
+            help="Ultime chiamate in cui cerco un ping-pong (A-B-A-B) o un giro che si ripete."),
+    setting("oracle.agent.giri.attesa_secondi", "Giri a vuoto · un'attesa vera dura almeno", "int", 30,
+            group="Agente", min=0, max=3600, unit="s", order=7, advanced=True,
+            help="Una chiamata ripetuta dopo questo tempo è un controllo («ricontrollo tra poco»), non un giro."),
+    setting("oracle.agent.giri.verifiche", "Giri a vuoto · verifiche col modello leggero", "int", 3,
+            group="Agente", min=0, max=10, order=8, advanced=True,
+            help="Al sospetto un modello leggero guarda le chiamate e dice se sta aspettando o girando. "
+                 "0 = mi fermo subito."),
+    # Conversation goal (core/services/conversation_goal.py, Cindy 23).
+    setting("oracle.obiettivo.giri", "Obiettivo · giri in tutto", "int", 8, group="Agente", min=1, max=50,
+            order=9, help="Quanti giri di lavoro in tutto l'assistente fa su un obiettivo della conversazione."),
+    setting("oracle.obiettivo.giri_per_risposta", "Obiettivo · giri dopo ogni risposta", "int", 3, group="Agente",
+            min=1, max=10, order=9, advanced=True,
+            help="Dopo aver risposto a un tuo messaggio, quanti giri fa sull'obiettivo prima di aggiornarti."),
     setting(HISTORY_LIMIT, "Messaggi precedenti nel contesto", "int", 6, group="Contesto", min=1, max=100,
             unit="messaggi", order=10, help="Quanti messaggi della conversazione l'assistente rilegge a ogni risposta."),
     setting(HISTORY_CHAR_LIMIT, "Lunghezza massima di un messaggio precedente", "int", 500, group="Contesto",
@@ -457,6 +483,8 @@ def provider_settings(provider_type: str) -> dict:
     """Tunables of one provider type (merged into its infrastructure config)."""
     if provider_type == "openai":
         return {"cache_prompt": bool(settings.get(OPENAI_CACHE_PROMPT, True))}
+    if provider_type == "llamacpp":
+        return {"cache_prompt": True}
     return {}
 
 

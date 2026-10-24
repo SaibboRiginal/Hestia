@@ -12,6 +12,7 @@ Event types:
   - final    : terminal event carrying the assistant's full reply
   - signal   : side-channel event (e.g. memory update, tool summary, document saved)
   - question : interactive question frame for cross-client approval flows
+  - changes  : what the answer changed, each item with its «Annulla» (Cindy 13)
   - notice   : STANDARD system packet for every client (memory saved, action done,
                errors…): {type, kind, level, icon, emoji, title, detail, data}.
                Clients render it distinctly from chat text (see NOTICE_KINDS and
@@ -59,9 +60,39 @@ def emit_thinking(
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 
-def emit_final(reply: str, domain: str = "none") -> str:
-    """Return the terminal final-type NDJSON line."""
-    return json.dumps({"type": "final", "reply": reply, "domain": domain}) + "\n"
+def emit_final(reply: str, domain: str = "none", origin: dict | None = None) -> str:
+    """Return the terminal final-type NDJSON line. ``origin`` (Cindy 6) is set when the turn was not typed by the
+    owner: clients show its ``label`` as a small tag («Da una tua routine»)."""
+    payload = {"type": "final", "reply": reply, "domain": domain}
+    if origin:
+        payload["origin"] = {k: origin.get(k, "") for k in ("kind", "level", "label")}
+    return json.dumps(payload) + "\n"
+
+
+def changes_from_log(tool_log: list[dict]) -> list[dict]:
+    """«Cosa ho cambiato» (Cindy 13): one item per successful write of the turn; ``undo`` when the module declared
+    how to undo it in its result (``{"tool", "args", "label"}``, or a tool name + the call's ``id``)."""
+    out = []
+    for entry in tool_log or []:
+        if not entry.get("ok") or not entry.get("writes"):
+            continue
+        undo = entry.get("undo")
+        if isinstance(undo, str) and undo.strip():
+            params = entry.get("params") or {}
+            undo = {"tool": undo.strip(), "args": {"id": params["id"]} if params.get("id") else {}}
+        if isinstance(undo, dict) and undo.get("tool"):
+            undo = {"tool": str(undo["tool"]), "args": dict(undo.get("args") or {}),
+                    "label": str(undo.get("label") or "Annulla")}
+        else:
+            undo = None
+        out.append({"tool": str(entry.get("tool") or ""), "title": str(entry.get("title") or entry.get("tool") or ""),
+                    "detail": str(entry.get("result_preview") or "")[:160], "undo": undo})
+    return out
+
+
+def emit_changes(items: list[dict], session_id: str = "") -> str:
+    """Return the ``changes`` frame: what this answer changed, each with its Annulla (clients may ignore it)."""
+    return json.dumps({"type": "changes", "items": items, "session_id": session_id}, ensure_ascii=False) + "\n"
 
 
 def emit_question(
@@ -119,6 +150,7 @@ NOTICE_KINDS: dict[str, tuple[str, str, str, str]] = {
     "agenda.planned": ("info", "calendar", "📅", "In agenda"),
     "forge.task": ("info", "terminal", "🔨", "Sviluppo"),
     "document.saved": ("success", "file", "📄", "Documento salvato"),
+    "goal.progress": ("info", "target", "🎯", "Obiettivo"),
     "info": ("info", "info", "ℹ️", "Info"),
     "warning": ("warning", "alert", "⚠️", "Attenzione"),
     "error": ("error", "alert", "❌", "Errore"),

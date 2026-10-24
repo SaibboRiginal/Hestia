@@ -238,3 +238,7 @@ Argus reports the number of degraded services to Chronos presence (`health.degra
 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
+
+## Redaction (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 19)
+Log samples sent to Oracle for analysis and the context of Forge proposals pass through
+`hestia_common.redact.redact` first: keys, tokens, emails, phone numbers, chat ids, home paths become placeholders.

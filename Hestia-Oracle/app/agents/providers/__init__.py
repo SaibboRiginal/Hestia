@@ -10,12 +10,14 @@ from __future__ import annotations
 from agents.providers.anthropic_api import AnthropicProvider
 from agents.providers.base import LLMProvider
 from agents.providers.claude_cli import ClaudeCliProvider
+from agents.providers.llamacpp import LlamaCppProvider
 from agents.providers.openai_compat import OpenAICompatProvider
 
 PROVIDER_TYPES: dict[str, type[LLMProvider]] = {
     AnthropicProvider.TYPE: AnthropicProvider,
     ClaudeCliProvider.TYPE: ClaudeCliProvider,
     OpenAICompatProvider.TYPE: OpenAICompatProvider,
+    LlamaCppProvider.TYPE: LlamaCppProvider,
 }
 
 
@@ -57,7 +59,7 @@ def runtime_info(name: str, local_window: int) -> dict:
     prov = llm_providers.get(name)
     if prov:
         label = prov["label"]
-    if ptype == "openai" and not llm_providers.api_key(name):
+    if ptype in ("openai", "llamacpp") and not llm_providers.api_key(name):
         billing = "Server locale · gratis"
     elif ptype == "openai":
         billing = "API · a consumo"

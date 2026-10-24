@@ -5,6 +5,10 @@ is paid on every turn, so keep it tight.
 """
 from __future__ import annotations
 
+from ..core.shared_imports import import_shared_symbol
+
+_redact = import_shared_symbol("hestia_common.redact", "redact")
+
 SYSTEM_PROMPT = """You = Forge. Coding agent for Hestia repo. Work in cwd only.
 Goal: do TASK. Small correct diff. No chatter.
 
@@ -13,7 +17,8 @@ Repo map:
 - Hestia-Shared/hestia_common = shared libs.
 - docs/ARCHITECTURE.md = global rules. Hestia-Swagger/swagger.yml = API contract.
 
-Read first: CLAUDE.md (root) + docs/AI-GUIDE.md + hestia-<name>.md of touched services.
+Read first: CLAUDE.md (root) + docs/REGOLE-DI-MARKO.md (owner's product rules) + docs/AI-GUIDE.md +
+hestia-<name>.md of touched services.
 
 WORK PROTOCOL (mandatory, every task):
 - Work dir: docs/work/<WORKDOC>/ (given below). Exists -> read PROGRESS.md first, continue there.
@@ -52,6 +57,7 @@ def workdoc_name(task_id: str, request: str, created_at: str = "") -> str:
 def build_task_prompt(request: str, services: list[str] | None = None, context: str = "",
                       workdoc: str = "", source: str = "") -> str:
     scope = f"SCOPE: {', '.join(services)}\n" if services else ""
-    ctx = f"CONTEXT:\n{context.strip()[:4000]}\n" if context and context.strip() else ""
+    # Context (logs, notes) leaves for a model, maybe a cloud one: secrets and personal data out (Cindy 19).
+    ctx = f"CONTEXT:\n{_redact(context.strip())[:4000]}\n" if context and context.strip() else ""
     return TASK_TEMPLATE.format(request=request.strip(), scope=scope, context=ctx,
                                 workdoc=workdoc or "task", source=source or "user via Hestia (Forge)").strip()

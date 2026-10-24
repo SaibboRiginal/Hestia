@@ -13,6 +13,8 @@ import os
 
 import requests
 
+from hestia_common.redact import redact
+
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
 HUB_API_URL = os.getenv(
@@ -42,7 +44,9 @@ def analyze(prompt: str, context: str = "") -> str:
             + instructions
         )
 
-    # Plain generation: alert narration needs no classifier/tools/history.
+    # Plain generation: alert narration needs no classifier/tools/history. Health data and logs may hold
+    # secrets or personal data: cleaned before they reach any model (Cindy 19, hestia_common.redact).
+    prompt = redact(prompt)
     full_prompt = f"{instructions}\n\n{prompt}" if instructions else prompt
     try:
         envelope = {

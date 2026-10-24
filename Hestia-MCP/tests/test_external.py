@@ -199,7 +199,8 @@ class TestExternalTools:
         assert res["isError"] is False
         url, env = routed[-1]
         assert url.endswith("/route/hephaestus/api/forge/tasks/abc/notes")
-        assert env["headers"] == {"X-Hestia-Access": "Claude Code PC"} and env["body"] == {"text": "causa: X"}
+        assert env["headers"] == {"X-Hestia-Access": "Claude Code PC", "X-Hestia-Origin": "esterno:Claude Code PC"}
+        assert env["body"] == {"text": "causa: X"}
         assert inbox and inbox[-1]["metadata"]["quiet"] is True and "Claude Code PC" in inbox[-1]["message"]
         assert archive.used == 1
 
