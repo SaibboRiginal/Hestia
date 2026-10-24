@@ -86,7 +86,7 @@ def build_request(tool: dict, args: dict | None, ctx: dict | None = None) -> dic
     """``{service, method, path, query, body, headers}`` for Hub ``/route/<service>/<path>``.
 
     ``ctx`` = caller context: ``session_id``, ``notify_target`` (chat id / owner), ``client``, ``trace_id``,
-    ``access`` (external AI access name → ``X-Hestia-Access``)."""
+    ``access`` (external AI access name → ``X-Hestia-Access``), ``origin`` (``X-Hestia-Origin``)."""
     args = {k: v for k, v in (args or {}).items() if v is not None}
     ctx = ctx or {}
     method = str(tool.get("method") or "GET").upper()
@@ -122,6 +122,8 @@ def build_request(tool: dict, args: dict | None, ctx: dict | None = None) -> dic
         headers["X-Hestia-Client"] = str(ctx["client"])
     if ctx.get("access"):   # an external AI's access name (Hestia-MCP external door): who asked, for the module
         headers["X-Hestia-Access"] = str(ctx["access"])
+    if ctx.get("origin"):   # who started the turn (hestia_common.origin), never taken from the arguments
+        headers["X-Hestia-Origin"] = str(ctx["origin"])
     return {"service": str(tool.get("service") or "").strip(), "method": method, "path": path.lstrip("/"),
             "query": {k: v for k, v in (query or {}).items() if v is not None},
             "body": (_strip_nones(body) or None) if isinstance(body, dict) else body, "headers": headers}

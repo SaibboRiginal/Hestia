@@ -52,6 +52,10 @@ from core.document.rag import DocumentRAG
 from core.document.analyser import DocumentAnalyser
 from core.agent_loop import run_agent_loop, ToolDefinition
 from hestia_common.mcp_client import MCPClient, as_command
+from hestia_common import origin as origin_mod
+from hestia_common import ui_blocks
+from core.services import conversation_goal
+from core.services import loop_guard
 
 
 def _resolve_task_lifecycle_store() -> type:
@@ -303,6 +307,8 @@ class OracleEngine:
         # session → client (webui, telegram…) of its last chat turn: tool calls carry it to the modules
         # (X-Hestia-Client), so e.g. a Themis proposal made in a chat is confirmed in that same chat.
         self._session_clients: dict[str, str] = {}
+        # session → origin of its current turn (hestia_common.origin): tool calls carry it to the modules.
+        self._session_origins: dict[str, dict] = {}
 
         # ── Phase 2: query-source execution policy matrix ─────────────────────
         # Timeouts per request source: settings oracle.timeouts.* (oracle_settings.timeout, live).
@@ -784,8 +790,13 @@ class OracleEngine:
         mode: str = "auto",
         model: str = "generic",
         client: str = "",
+        origin: dict | None = None,
     ):
         """Main conversational loop. Yields NDJSON lines.
+
+        *origin* (``hestia_common.origin.parse``) = who started the turn, decided by the system: ``utente`` acts
+        with the usual confirmation gate, ``routine`` only inside its instruction, ``autonomo`` only reads,
+        proposes and notifies (Cindy 6).
 
         Modes (control PROCESS, same model for all; main.py resolves "" from oracle.chat.mode):
           quick    → single ask(), no classify, no tools. <2s latency.
@@ -812,6 +823,17 @@ class OracleEngine:
 
         if client and session_id:
             self._session_clients[session_id] = str(client)[:40]
+        origin = dict(origin or origin_mod.parse(None, client))
+        if session_id:
+            self._session_origins[session_id] = origin
+        # Conversation goal (Cindy 23): «obiettivo: …» fixes it, «ferma l'obiettivo» stops it.
+        _goal_text = conversation_goal.parse_prefix(user_message) if origin["level"] == "utente" else ""
+        if _goal_text:
+            conversation_goal.set_goal(self._hub, session_id, _goal_text)
+            if mode == "quick":
+                mode = "thinking"
+        elif origin["level"] == "utente" and conversation_goal.is_stop(user_message):
+            conversation_goal.end(self._hub, session_id, "fermato")
         logger.trace("event=chat_entry trace_id=%s session_id=%s mode=%s model=%s msg=%s",
                      trace_id, session_id, mode, model,
                      json.dumps(user_message[:120], ensure_ascii=False))
@@ -1101,8 +1123,23 @@ class OracleEngine:
             intent.action_intent,
         )
 
+        domain_tools += self._turn_tools(session_id, origin)
+        self._apply_origin_gate(domain_tools, origin)
+
         # Assemble agent loop client instructions
         agent_loop_client_instructions_parts: list[str] = []
+        _origin_line = origin_mod.prompt_line(origin)
+        if _origin_line:
+            agent_loop_client_instructions_parts.append(_origin_line)
+        _module_index = self._module_registry.index_text()
+        if _module_index:
+            agent_loop_client_instructions_parts.append(
+                "MODULI (quando usarli; module_manual(modulo) per il manuale):\n" + _module_index)
+        _goal = conversation_goal.active(self._hub, session_id)
+        if _goal:
+            agent_loop_client_instructions_parts.append(f"OBIETTIVO della conversazione: {_goal['text']}")
+        if self._wants_ui_blocks(client):
+            agent_loop_client_instructions_parts.append(ui_blocks.PROMPT)
         if planner_contract:
             agent_loop_client_instructions_parts.append(planner_contract)
         action_tool_policy = prompt_config.prompt("agent_action_tool_policy").strip()
@@ -1188,6 +1225,7 @@ class OracleEngine:
                 return None
 
         answer = None
+        _prior_actions: list[dict] = []
         if external:
             yield stream_emitter.emit_status("🤖 Agente esterno al lavoro...")
             try:
@@ -1197,6 +1235,8 @@ class OracleEngine:
                     primer=history_text, tools=domain_tools, use_case=chat_use_case)
                 tokens = [answer]
             except external_agent.AgentError as exc:
+                # Writes the agent already did must not run twice (Cindy 2): the internal loop continues from them.
+                _prior_actions = [e for e in (getattr(exc, "log", None) or []) if e.get("ok")]
                 if external_agent.brain()["fallback"] != "interna":
                     answer, tokens, tool_log = ("⚠️ L'agente esterno non ha risposto. Riprova tra poco.",
                                                 ["⚠️ L'agente esterno non ha risposto. Riprova tra poco."], [])
@@ -1220,7 +1260,22 @@ class OracleEngine:
                 on_thinking=_on_thinking,
                 action_intent=intent.action_intent,
                 compact_fn=_auto_compact,
+                guard_checker=loop_guard.llm_checker,
+                prior_actions=_prior_actions,
             )
+            tool_log = list(_prior_actions) + list(tool_log)
+
+        # ── Conversation goal rounds (Cindy 23): after the owner's message is answered ────────────
+        if origin["level"] == "utente" and not any(e.get("ask") for e in tool_log):
+            _goal_answer, _goal_log, _goal_frames = self._goal_rounds(
+                session_id=session_id, history_text=history_text, preference_facts=preference_facts,
+                tools=domain_tools, ask_tools=_ask_tools_bound, think_level=_think_level,
+                instructions=agent_loop_client_instructions)
+            thinking_ndjson_lines.extend(_goal_frames)
+            if _goal_answer:
+                answer = f"{answer}\n\n{_goal_answer}".strip()
+                tokens = [answer]
+            tool_log = list(tool_log) + list(_goal_log)
         agent_loop_ms = int((time.perf_counter() - t_agent_loop) * 1000)
         logger.info(
             "event=chat_agent_loop_done trace_id=%s session_id=%s turns=%s tools_called=%s tools_available=%s tokens=%s answer_len=%s agent_loop_ms=%s model=%s provider=%s thinking=%s max_turns=%s domains=%s",
@@ -1279,7 +1334,12 @@ class OracleEngine:
         yield stream_emitter.emit_final(
             answer,
             intent.valid_domains[0] if intent.valid_domains else "general",
+            origin=origin if origin.get("level") != "utente" or origin.get("kind") == "esterno" else None,
         )
+        # «Cosa ho cambiato» with Annulla per item (Cindy 13): clients draw it under the answer.
+        _changes = stream_emitter.changes_from_log(tool_log)
+        if _changes:
+            yield stream_emitter.emit_changes(_changes, session_id=session_id)
 
         # Tool trace (reasoning detail; clients fold it into the reasoning block)
         if tool_log:
@@ -2246,6 +2306,7 @@ class OracleEngine:
                         session_id=session_id, notify_target=str(notify_target or ""),
                         trace_id=str(trace_id or ""), service=str(command_def.get("service", "")),
                         origin_client=self._session_clients.get(session_id) or "",
+                        origin=self._origin_header(session_id),
                         timeout=self._policy_timeout("action_service_route"))
 
                 return _hub_command_handler
@@ -2261,6 +2322,7 @@ class OracleEngine:
                 handler=make_handler(cmd),
                 writes=bool(cmd.get("writes")),
                 title=str(cmd.get("title") or cmd_name),
+                method=str(cmd.get("method") or "GET").upper(),
             ))
 
         if _filtered_cmds:
@@ -2376,6 +2438,127 @@ class OracleEngine:
         ))
 
         return tools
+
+    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-tutto-brainstorm-cindy) ─────────
+    def _origin_header(self, session_id: str) -> str:
+        """``X-Hestia-Origin`` for the module calls of this turn; empty for the owner typing (X-Hestia-Client says it)."""
+        o = self._session_origins.get(session_id) or {}
+        if not o.get("kind") or o.get("kind") == "utente":
+            return ""
+        return f"{o['kind']}:{o.get('ref') or ''}".rstrip(":")
+
+    def _turn_tools(self, session_id: str, origin: dict) -> list[ToolDefinition]:
+        """Tools every turn has besides the modules': module manuals (Cindy 30) and the conversation goal (23)."""
+        registry = self._module_registry
+
+        def _manual(module: str = "") -> tuple[bool, Any]:
+            text = registry.manual(module)
+            if not text:
+                return False, f"Nessun manuale per «{module}». Moduli: {', '.join(sorted(registry.guides()))}"
+            return True, text
+
+        tools = [ToolDefinition(
+            name="module_manual", title="Manuale del modulo",
+            description="Manuale breve di un modulo (cosa sa fare, come usarne gli strumenti). Usalo quando non sai "
+                        "quale strumento di quel modulo serve.",
+            parameters={"type": "object", "properties": {"module": {"type": "string"}}, "required": ["module"]},
+            handler=_manual)]
+        if origin.get("level") != "utente":
+            return tools
+        hub = self._hub
+
+        def _goal_set(text: str = "") -> tuple[bool, Any]:
+            if not str(text or "").strip():
+                return False, "text is required"
+            goal = conversation_goal.set_goal(hub, session_id, str(text))
+            return True, {"goal": goal["text"], "note": "Obiettivo fissato: ci lavoro dopo ogni risposta."}
+
+        def _goal_done(summary: str = "") -> tuple[bool, Any]:
+            goal = conversation_goal.end(hub, session_id, "raggiunto", summary)
+            return (True, {"done": True, "goal": goal["text"]}) if goal else (False, "nessun obiettivo attivo")
+
+        def _goal_stop() -> tuple[bool, Any]:
+            goal = conversation_goal.end(hub, session_id, "fermato")
+            return (True, {"stopped": True}) if goal else (False, "nessun obiettivo attivo")
+
+        handlers = {"goal_set": _goal_set, "goal_done": _goal_done, "goal_stop": _goal_stop}
+        for spec in conversation_goal.tool_specs():
+            tools.append(ToolDefinition(name=spec["name"], description=spec["description"],
+                                        parameters=spec["parameters"], handler=handlers[spec["name"]],
+                                        title=spec["title"]))
+        return tools
+
+    @staticmethod
+    def _apply_origin_gate(tools: list[ToolDefinition], origin: dict) -> None:
+        """Turn authority (Cindy 6): a routine never deletes, an autonomous turn never writes (it proposes)."""
+        if origin.get("level") == "utente":
+            return
+        blocked = 0
+        for t in tools:
+            if not t.writes and t.name not in ("memory.save",):
+                continue
+            reason = origin_mod.blocks_write(origin, method=t.method or "POST", name=t.name)
+            if reason:
+                t.handler = (lambda _r: (lambda **_kw: (False, _r)))(reason)
+                blocked += 1
+        if blocked:
+            logger.info("event=origin_gate_applied level=%s kind=%s blocked_tools=%d", origin.get("level"),
+                        origin.get("kind"), blocked)
+
+    def _wants_ui_blocks(self, client: str) -> bool:
+        """Components in answers (Cindy 9): WebUI only, and only when a capable (non-local) model answers."""
+        if str(client or "").lower() not in ("webui", "ui", "web"):
+            return False
+        from core.services import llm_providers
+        try:
+            ptype = llm_providers.type_of(self._agents.generic.provider)
+        except Exception:
+            return False
+        return bool(ptype) and ptype not in ("ollama", "llamacpp")
+
+    def _goal_rounds(self, *, session_id: str, history_text: str, preference_facts: list[str],
+                     tools: list[ToolDefinition], ask_tools, think_level, instructions: str | None
+                     ) -> tuple[str, list[dict], list[str]]:
+        """Work on the conversation goal for a few rounds; returns (report, tool log, thinking frames)."""
+        goal = conversation_goal.active(self._hub, session_id)
+        if not goal:
+            return "", [], []
+        total, per_answer = conversation_goal.budget()
+        frames: list[str] = []
+        log: list[dict] = []
+        last = ""
+        for _ in range(per_answer):
+            goal = conversation_goal.active(self._hub, session_id)
+            if not goal:
+                break
+            if int(goal.get("rounds") or 0) >= total:
+                conversation_goal.end(self._hub, session_id, "budget")
+                last = (f"Obiettivo «{goal['text']}»: ho finito i giri a disposizione ({total}). "
+                        "Dimmi se continuo.")
+                break
+            try:
+                ans, _toks, round_log = run_agent_loop(
+                    user_message=conversation_goal.continuation_message(goal), history_text=history_text,
+                    preference_facts=preference_facts, tools=tools,
+                    ask_fn=lambda p: self._ask_analyst(p, thinking=think_level), ask_tools_fn=ask_tools,
+                    stream_fn=None, client_instructions=instructions,
+                    conversation_style=conversation_style_contract(), on_thinking=frames.append,
+                    guard_checker=loop_guard.llm_checker)
+            except Exception as exc:
+                logger.warning("[🔄] event=goal_round_failed session_id=%s error=%s", session_id, exc)
+                break
+            log.extend(round_log)
+            conversation_goal.note_round(self._hub, goal, ans)
+            last = ans
+            frames.append(stream_emitter.emit_notice("goal.progress", detail=str(ans or "")[:300],
+                                                     data={"goal": goal["text"], "round": goal["rounds"]}))
+            if any(e.get("ask") for e in round_log) or not conversation_goal.active(self._hub, session_id):
+                break
+        if not last:
+            return "", log, frames
+        state = conversation_goal.active(self._hub, session_id)
+        head = "Obiettivo" + (f" (giro {state['rounds']}/{total})" if state else " — fatto")
+        return f"**{head}:** {last}", log, frames
 
     # ── Context compaction (REST + MCP) ──────────────────────────────────────
 
@@ -2753,6 +2936,7 @@ class OracleEngine:
                 action_name, params, session_id=session_id, notify_target=str(notify_target or ""),
                 trace_id=str(trace_id or ""), service=str(matched.get("service", "")),
                 origin_client=self._session_clients.get(session_id) or "",
+                origin=self._origin_header(session_id),
                 timeout=self._policy_timeout("action_service_route"))
             route_results.append({
                 "ok": ok,

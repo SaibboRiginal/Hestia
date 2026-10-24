@@ -79,13 +79,14 @@ class MCPClient:
         return tools
 
     def call(self, name: str, arguments: dict | None = None, *, session_id: str = "", notify_target: str = "",
-             trace_id: str = "", service: str = "", origin_client: str = "",
+             trace_id: str = "", service: str = "", origin_client: str = "", origin: str = "",
              timeout: float | None = None) -> tuple[bool, Any]:
         """``(ok, payload)``: the module's JSON answer on success, the error detail otherwise.
         ``origin_client`` = the client the user is talking from (webui, telegram), sent to the module as
-        ``X-Hestia-Client`` (e.g. Themis answers a chat-born proposal with a confirm card for that client)."""
+        ``X-Hestia-Client`` (e.g. Themis answers a chat-born proposal with a confirm card for that client).
+        ``origin`` = ``<kind>:<ref>`` of the turn (``hestia_common.origin``), sent to the module as ``X-Hestia-Origin``."""
         hestia = {k: v for k, v in {"session_id": session_id, "notify_target": notify_target, "trace_id": trace_id,
-                                    "service": service, "client": origin_client,
+                                    "service": service, "client": origin_client, "origin": origin,
                                     "timeout_seconds": timeout}.items() if v}
         try:
             result = self._rpc("tools/call", {"name": name, "arguments": arguments or {}, "_meta": {"hestia": hestia}},

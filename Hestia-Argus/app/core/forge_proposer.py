@@ -17,6 +17,7 @@ import time
 import requests
 
 from core import argus_settings as cfg
+from hestia_common.redact import redact
 
 logger = logging.getLogger("hestia_argus.forge_proposer")
 
@@ -68,7 +69,8 @@ def propose(hub_api_url: str, service: str, sig: str) -> bool:
         "source": "argus",
         "requested_by": "argus.monitor",
         # No auto_start: Forge applies the user's permission mode.
-        "context": f"signature={sig}\nlog:\n{sample}",
+        # Logs leave for a model (Forge engine): secrets and personal data out first (Cindy 19).
+        "context": f"signature={sig}\nlog:\n{redact(sample)}",
     }
     try:
         resp = requests.post(

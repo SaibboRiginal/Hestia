@@ -3654,6 +3654,9 @@ paths:
       summary: Send a chat message (streaming NDJSON)
       servers:
         - url: http://localhost:19004
+      parameters:
+        - {name: X-Hestia-Origin, in: header, required: false, schema: {type: string}, description: "who started the turn, set by the caller's code (hestia_common.origin): utente | esterno:<access> | routine:<rule> | autonomo:<module>. Missing = utente for a user client (telegram, webui), else autonomo. routine cannot delete, autonomo can only propose/notify/ask."}
+        - {name: X-Hestia-Origin-Label, in: header, required: false, schema: {type: string}, description: "label clients show above the answer (e.g. Da una tua routine)"}
       requestBody:
         required: true
         content:
@@ -3667,7 +3670,8 @@ paths:
             - `{"type":"status","content":"..."}` — progress update
             - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility
             - `{"type":"token","text":"..."}` — incremental LLM token
-            - `{"type":"final","reply":"...","domain":"..."}` — terminal answer
+            - `{"type":"final","reply":"...","domain":"...","origin":{"kind","level","label"}}` — terminal answer (`origin` when the turn was not the owner's); for the WebUI with a capable model `reply` may hold ```hestia-ui blocks (one JSON component per line, hestia_common.ui_blocks)
+            - `{"type":"changes","session_id":"...","items":[{"tool","title","detail","undo":{"tool","args","label"}}]}` — writes of the turn with their undo (after final)
             - `{"type":"signal","event":"memory.preference.*|subscription.*|action.*|tool.summary","content":"...","data":{...}}` — side-channel event
             - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...],"allow_other":bool}` — interactive prompt; id `ask_…` = the assistant itself asked (tool ask_user): the turn stopped there, the answer continues it (oracle-offline v3 A)
         "503":
@@ -6175,7 +6179,8 @@ paths:
           `_meta.hestia {service, method, path, response_mode, response_prompt, clients, telegram_*…}`;
           `params._meta.hestia.services` narrows the list. A client sees tools whose `clients` is empty, `*` or its own.
         - tools/call → `params {name, arguments, _meta.hestia {session_id, notify_target, trace_id, client, service,
-          timeout_seconds}}`; answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
+          origin, timeout_seconds}}` (`origin` → `X-Hestia-Origin` on the module request; external AIs are stamped
+          `esterno:<access>`); answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
           service, wrapped}}` (`wrapped` = a non-object module answer is in `structuredContent.result`).
           `_meta.hestia.client` is forwarded to the module as `X-Hestia-Client` (the client the user talks from).
           A module answer may carry `display` (DisplayBlock, `hestia_common.display`): how Telegram draws it without the

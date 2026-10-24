@@ -138,3 +138,8 @@ Declared in `app/core/mcp_settings.py` (`SettingsClient("mcp")`, router `GET /ap
 
 Env keeps only infrastructure: `HUB_API_URL`, `MCP_SERVICE_BASE_URL`, `MCP_SERVICE_VERSION`,
 `MCP_UI_DIST` (set by the Dockerfile), `LOG_LEVEL` (boot default only). No token in env: accesses are data.
+
+## Origin of the call (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 6)
+Every tool call carries the origin of the turn: external AIs are stamped `esterno:<access name>` (header
+`X-Hestia-Origin` on the module request, next to `X-Hestia-Access`); internal callers forward `hestia.origin`
+(set by Oracle from the chat's `X-Hestia-Origin`). Modules may read it; Oracle uses it to gate writes.

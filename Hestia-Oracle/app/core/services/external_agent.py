@@ -40,7 +40,12 @@ _internal_at: dict[str, float] = {}
 
 
 class AgentError(RuntimeError):
-    pass
+    """The external agent failed. ``log`` = tool calls it already made in this turn (Cindy 2: the fallback must
+    continue from them, never redo a write)."""
+
+    def __init__(self, *args, log: list[dict] | None = None):
+        super().__init__(*args)
+        self.log = list(log or [])
 
 
 # ── settings ─────────────────────────────────────────────────────────────────
@@ -118,7 +123,9 @@ def call_tool(token: str, name: str, params: dict) -> dict:
                            "confirm": result.get("confirm") if ok and isinstance(result, dict)
                            and isinstance(result.get("confirm"), dict) else None,
                            "ask": result.get("ask") if ok and isinstance(result, dict)
-                           and isinstance(result.get("ask"), dict) else None})
+                           and isinstance(result.get("ask"), dict) else None,
+                           "undo": result.get("undo") if ok and isinstance(result, dict) and result.get("undo")
+                           else None, "params": dict(params or {})})
     return {"ok": bool(ok), "result": preview}
 
 
@@ -175,8 +182,10 @@ def run_turn(*, session_id: str, user_message: str, system_prompt: str, primer: 
     token = open_run(tools)
     try:
         result = _timed(adapter, use_case, cfg, system_prompt, prompt, resume, token)
-    finally:
-        log = close_run(token)
+    except AgentError as exc:
+        exc.log = close_run(token)
+        raise
+    log = close_run(token)
     _remember(session_id, cfg["agent"], cfg["model"], result.get("session_id", ""))
     return result["text"], log
 

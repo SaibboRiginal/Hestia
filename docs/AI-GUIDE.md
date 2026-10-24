@@ -35,7 +35,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 ## 2. Request flow (chat)
 
 Client (Telegram/WebUI) → Hub → Oracle `/api/chat` (NDJSON stream: `status`, `thinking`, `token`,
-`question`, `final`, `notice`, `error`) → classifier picks domain → agent loop calls tools (MCP tools of
+`question`, `final`, `changes`, `notice`, `error`) → classifier picks domain → agent loop calls tools (MCP tools of
 services, discovered via Hub) → answer formatted (HTML subset for Telegram) → memory extraction
 (selective) → session summary to Archive.
 
@@ -46,6 +46,12 @@ response_mode, response_prompt, telegram_group, telegram={section, primary, summ
 Hub turns them into commands (`/api/discovery/commands?client=telegram|ui`). Paths may contain
 `{name}`/`$name` placeholders, filled by Oracle/Telegram/WebUI/MCP. `mount_missing_rest_routes`
 serves the declared REST path of handler-only tools — call it after the app's own routes.
+
+Turn safety (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`): whoever calls `/api/chat` without being the
+owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomo:<module>`, `hestia_common.origin`); write tools
+return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Annulla»; register
+`capabilities.when_to_use` + `manual` so the assistant knows when to use your module; text sent to a cloud model or
+a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.md` before designing.
 
 ## 3. LLM access (Oracle only)
 

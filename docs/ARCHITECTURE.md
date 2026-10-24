@@ -412,6 +412,14 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    - Themis = settings (declared by modules, stored by Archive, changed by the user; the assistant only proposes).
    Multiple services must not duplicate the same responsibility in parallel without an explicit contract reason.
 
+12. **Origin and authority of a turn (`hestia_common.origin`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`):**
+   whoever starts an assistant turn says so in `X-Hestia-Origin: <kind>[:<ref>]`, set by the caller's code, never by
+   the model. `utente` (the owner's client, or `esterno` = an external AI through Hestia-MCP) may do anything;
+   `routine` (a Chronos rule) may write but not delete; `autonomo` (a module on its own) may only propose, notify
+   and ask. No header from a non-user client = `autonomo`. Write tools return `undo`
+   (`hestia_common.mcp_helpers.undo`) when they can be undone; text sent outside the house (cloud model analysis,
+   Forge prompts) passes through `hestia_common.redact`. Dated rules from Marko: `docs/REGOLE-DI-MARKO.md`.
+
 ## Autonomous Remediation Contract
 
 1. Monitoring is centralized in Argus; Hephaestus consumes remediation requests and executes.
@@ -461,6 +469,8 @@ No code-only behavior changes are considered complete without synchronized docs.
    Tool names of domain modules are `<domain>_<verb>` in English (`fitness_log_sets`, `selfcare_today`,
    `wardrobe_suggest`): the domain the module registers, never the module's mythological name or Italian words.
 2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.
+   Each module also declares in its registration `capabilities.when_to_use` (one line, the assistant's «MODULI»
+   index) and `capabilities.manual` (loaded on demand by the tool `module_manual`).
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
    `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`

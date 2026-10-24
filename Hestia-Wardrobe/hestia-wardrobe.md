@@ -124,3 +124,7 @@ Reminder rows are never exported. Settings travel through Themis.
 
 ## Telegram card (`display`)
 Tools `wardrobe_summary` and `wardrobe_suggest` return a `display` card: the summary lines with laundry and forgotten pieces; outfit ideas (pieces and the first reason) with one «Metto …» button per idea (`wardrobe_log_worn` with the outfit or its pieces) and «Altre idee». Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+
+## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
+`capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).

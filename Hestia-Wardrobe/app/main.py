@@ -869,7 +869,8 @@ LLM_USECASES = [llm_usecase("wardrobe.foto", "Guardaroba · foto dei capi", chai
 
 
 def _registration() -> dict:
-    caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["wardrobe"],
+    caps = {"when_to_use": 'vestiti, guardaroba, outfit, cosa mettersi', "manual": 'Capi del guardaroba con foto, outfit, suggerimenti in base al meteo e agli impegni.',
+            "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["wardrobe"],
             "context_endpoint": "/api/module/context", **recap.capabilities(), **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))

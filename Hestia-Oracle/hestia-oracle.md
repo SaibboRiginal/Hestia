@@ -164,6 +164,41 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 - **Max agent turns:** setting `oracle.agent.max_turns` (default 25; CoT uses at least 50). Complex multi-step tasks can use many turns; simple tasks exit early (1-2 turns).
 - **Early exit:** when the LLM produces text without tool calls for `oracle.agent.early_exit_no_tool_turns` (2) consecutive turns after having already called tools, the loop terminates.
 
+### Turn safety, origin and goal (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
+- **Loop guard** (`core/services/loop_guard.py`, Cindy 1): before the turn cap, the loop stops when the same call
+  (tool + arguments) repeats `oracle.agent.giri.ripetizioni` times in a row, on A-B-A-B ping-pong or on a sequence of
+  3-4 calls repeated 3 times inside `oracle.agent.giri.finestra` calls. A repeat made at least
+  `oracle.agent.giri.attesa_secondi` after the previous one is a real wait, not a loop. On a suspicion the light use
+  case `oracle.controllo_giri` says «aspetta» or «gira» (at most `oracle.agent.giri.verifiche` checks per answer; a
+  failure = stop). Stop = one last turn without tools, the model answers with what it has.
+- **No replay** (Cindy 2): when the external brain fails after it already ran tools, its tool log
+  (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
+- **Origin** (Cindy 6, `hestia_common.origin`): `/api/chat` reads `X-Hestia-Origin: <kind>[:<ref>]` (+ optional
+  `X-Hestia-Origin-Label`) set by the **caller's code** (never by the model or the body). No header: a user client
+  (`telegram`, `webui`, …) = `utente`, anything else = `autonomo` (fail closed). Levels: `utente` (also `esterno`, an
+  external AI through Hestia-MCP), `routine` (a Chronos rule: writes allowed, deletes and destructive tools
+  blocked), `autonomo` (only proposals, notifications and questions; every other write is refused with a clear
+  message). The prompt gets one line saying who started the turn; presence is marked only for `utente`; module
+  calls of the turn carry the same header (`MCPClient.call(origin=…)` → `hestia.origin`). `final` carries
+  `origin {kind, level, label}` so clients can show «Da una tua routine».
+- **Changes with undo** (Cindy 13): after `final`, a `changes` frame lists the successful writes of the turn
+  (`{tool, title, detail, undo {tool, args, label}}`); `undo` comes from the module's write result
+  (`hestia_common.mcp_helpers.undo("finance_delete", id=…)`). Clients show «Annulla» per change and call the undo
+  tool through Hestia-MCP.
+- **Goal of a conversation** (Cindy 23, `core/services/conversation_goal.py`): «obiettivo: …» at the start of a
+  message (or tool `goal_set`) fixes a goal; after each answer to the owner the loop works on it for
+  `oracle.obiettivo.giri_per_risposta` rounds (at most `oracle.obiettivo.giri` in all), emits `goal.progress`
+  notices and appends a short «Obiettivo (giro n/N)» line. «ferma l'obiettivo» or `goal_stop` ends it, the model
+  closes it with `goal_done`. Stored in Archive `oracle-store` kind `goal`. Only `utente` turns run rounds.
+- **Module index** (Cindy 30): modules declare `capabilities.when_to_use` (one line) and `capabilities.manual` in
+  their Hub registration; the prompt gets a short «MODULI» index and the tool `module_manual(service)` loads the
+  manual only when needed.
+- **Components** (Cindy 9, `hestia_common.ui_blocks`): for the WebUI with a capable (non-local) model the prompt
+  allows ```` ```hestia-ui ```` blocks (card, stat, table, list, chart, checklist, button); Telegram turns them into
+  plain text and reply buttons.
+- **Vision bridge** (Cindy 16): an image sent to a chain step whose model has no vision is first described by the
+  use case `oracle.descrivi_immagine` (chain `visione`), then the text model answers with that description.
+
 ### Visible Thinking
 - The agent loop emits **thinking** NDJSON events (`type: "thinking"`) for real-time visibility:
   - `action: "reasoning"` — LLM reasoning before a tool call
@@ -296,7 +331,8 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"status","content":"..."}` — progress messages (shown as live status updates).
 - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
-- `{"type":"final","reply":"...","domain":"..."}` — terminal answer event.
+- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."}}` — terminal answer event (`origin` only when the turn was not started by the owner's client).
+- `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
@@ -319,8 +355,8 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 |---|---|
 | Modelli | `oracle.providers`, `oracle.chains`, `oracle.usecases` (object, editor Cervello → Modelli), `oracle.quota.cooldown_minutes` (60), `oracle.brain.mode` (interna), `.agent` (claude), `.model` (sonnet), `.fallback` (interna) |
 | Uso | `oracle.usage.retention_days` (90), `oracle.pricing` (`{"provider/model": {in, out, cached}}` $ per Mtok, `{}`) |
-| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8) |
-| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…) |
+| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8); loop guard `oracle.agent.giri.{ripetizioni 4, finestra 12, attesa_secondi 30, verifiche 3}`; goal `oracle.obiettivo.giri` (8), `.giri_per_risposta` (3) |
+| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…); `oracle.provider.llamacpp.slots` (3) |
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
 | Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
 | Domande | `oracle.ask.timeout` (24 h, 1–720): how long a question of the assistant stays open |
@@ -450,6 +486,13 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   (`…/v1`, default `llamacpp` = `http://host.docker.internal:8080/v1`), optional key `ORACLE_KEY_<NAME>`. Static prompt
   part goes in the system message; `cache_prompt` (setting `oracle.provider.openai.cache_prompt`) for llama-server;
   quick mode sends `chat_template_kwargs.enable_thinking=false`; native tools, SSE stream, images, `/embeddings`.
+- **Type `llamacpp`** (brainstorm D17, `agents/providers/llamacpp.py`) — llama-server with **slots and saved
+  context**: default provider `llamacpp` = `http://hestia_llamacpp:8080/v1` (compose service `llamacpp`, profile
+  `llamacpp`, off by default). Each chat session gets its own slot (`id_slot`, LRU over
+  `oracle.provider.llamacpp.slots`; slot 0 = calls without a session); the evicted session's KV cache is saved
+  (`/slots/{id}?action=save`) and restored when it comes back. Needs `--slot-save-path` (a refusal turns saving off,
+  `[🔄]` logged). `/health` probe cached 30 s: the default chains `veloce`, `potente`, `codice` start with it and
+  skip it at once when it is off, so Ollama answers as before.
 
 Host tips (Ollama env on the PC, infrastructure, not managed by Hestia): `OLLAMA_FLASH_ATTENTION=1` +
 `OLLAMA_KV_CACHE_TYPE=q8_0` (about half the KV memory → bigger context in the same VRAM); `OLLAMA_NUM_PARALLEL=2`

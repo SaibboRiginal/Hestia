@@ -19,6 +19,9 @@ class ModuleToolRegistry:
         self._service_topology: dict[str, set[str]] = {}
         # Explicit tool-domain ownership (capabilities.owns_tool_domains)
         self._service_owned_domains: dict[str, set[str]] = {}
+        # Progressive tool discovery (Cindy 30): capabilities.when_to_use (one line) + capabilities.manual (short
+        # manual for the AI, loaded only when the model asks for it with the tool module_manual).
+        self._service_guides: dict[str, dict[str, str]] = {}
 
     @property
     def ttl_seconds(self) -> int:
@@ -66,6 +69,7 @@ class ModuleToolRegistry:
                     services = services_response.json().get("services", []) or []
                     topo_cache: dict[str, set[str]] = {}
                     owned_cache: dict[str, set[str]] = {}
+                    guides: dict[str, dict[str, str]] = {}
                     for service in services:
                         service_name = str(service.get(
                             "name", "")).strip().lower()
@@ -77,6 +81,10 @@ class ModuleToolRegistry:
                         owned_cache[service_name] = {
                             str(d).strip().lower() for d in (capabilities.get("owns_tool_domains") or [])
                             if str(d).strip()}
+                        when = str(capabilities.get("when_to_use") or "").strip()
+                        if when and service_name:
+                            guides[service_name] = {"when": when[:160],
+                                                    "manual": str(capabilities.get("manual") or "").strip()[:6000]}
                         for domain in capabilities.get("module_tool_domains", []) or []:
                             normalized_domain = str(domain).strip().lower()
                             if not normalized_domain or not service_name:
@@ -85,6 +93,7 @@ class ModuleToolRegistry:
                                 normalized_domain, []).append(service_name)
                     self._service_topology = topo_cache
                     self._service_owned_domains = owned_cache
+                    self._service_guides = guides
             except Exception as error:
                 logger.warning(
                     "event=hub_services_registry_lookup_failed Hub services registry lookup failed: %s", error)
@@ -122,6 +131,21 @@ class ModuleToolRegistry:
         self._last_refresh = time.time()
         logger.info("event=module_registry_cache_refreshed Module registry cache refreshed: %s",
                     self._domain_to_urls)
+
+    def guides(self) -> dict[str, dict[str, str]]:
+        """``{service: {when, manual}}`` of the modules that declared ``when_to_use``."""
+        if self._needs_refresh():
+            self.refresh()
+        return dict(self._service_guides)
+
+    def index_text(self, limit: int = 40) -> str:
+        """Caveman index «modulo: quando usarlo», one line per module (prompt, Cindy 30)."""
+        rows = sorted(self.guides().items())[:limit]
+        return "\n".join(f"- {name}: {g['when']}" for name, g in rows)
+
+    def manual(self, service: str) -> str:
+        g = self.guides().get(str(service or "").strip().lower()) or {}
+        return g.get("manual") or g.get("when") or ""
 
     def get_services_for_domain(self, domain: str) -> list[str]:
         if self._needs_refresh():

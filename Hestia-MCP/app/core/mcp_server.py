@@ -91,13 +91,16 @@ class MCPServer:
             raise RpcError(FORBIDDEN, f"This access is read-only: {name} changes something")
         if ctx.get("external"):
             # An external access never chooses session, chat or client: the module sees only who it is.
-            call_ctx = {"access": ctx.get("access_name") or "external"}
+            call_ctx = {"access": ctx.get("access_name") or "external",
+                        "origin": f"esterno:{ctx.get('access_name') or 'external'}"}
         else:
             # X-Hestia-Client towards the module = the client the user talks from (given by internal callers),
             # not who calls this server.
             call_ctx = {k: hestia.get(k) for k in ("session_id", "notify_target", "trace_id")}
             if hestia.get("client"):
                 call_ctx["client"] = str(hestia["client"])
+            if hestia.get("origin"):
+                call_ctx["origin"] = str(hestia["origin"])[:160]
         req = build_request(cmd, args, call_ctx)
         timeout = float(hestia.get("timeout_seconds") or settings.get(SERVER_TIMEOUT))
         timeout = max(1.0, min(20.0 if ctx.get("external") else 300.0, timeout))   # external: inside the WebUI door

@@ -22,6 +22,7 @@ from html import escape
 
 from telegram_bot import core
 import message_format
+from hestia_common import ui_blocks
 from telegram_bot.services import chat_settings
 from telegram_bot.services.chat_settings import NoticePolicy
 
@@ -52,6 +53,9 @@ class ReplyRenderer:
         self._last_edit = 0.0
         self._last_sent = ""
         self.finalized = False
+        self.origin_label = ""               # who started the turn when it is not the owner (Cindy 6)
+        self.buttons: list[dict] = []        # hestia-ui buttons of the answer (Cindy 9)
+        self.changes: dict | None = None     # `changes` frame: writes of this turn with undo (Cindy 13)
 
     # ── live phase ─────────────────────────────────────────────────────────
     def on_status(self, text: str) -> None:
@@ -89,13 +93,24 @@ class ReplyRenderer:
             self.notices.append(packet)
 
     # ── final phase ────────────────────────────────────────────────────────
-    def on_final(self, reply: str) -> None:
+    def on_changes(self, frame: dict) -> None:
+        if isinstance(frame, dict) and frame.get("items"):
+            self.changes = frame
+
+    def on_final(self, reply: str, origin: dict | None = None) -> None:
         answer = str(reply or "").strip() or "".join(self.tokens).strip()
+        if ui_blocks.has_blocks(answer):
+            self.buttons = ui_blocks.buttons(answer)
+            answer = ui_blocks.to_text(answer)
+        if isinstance(origin, dict) and origin.get("level") not in (None, "", "utente"):
+            self.origin_label = str(origin.get("label") or "")
         if not answer:
             answer = "Nessuna risposta: riprova tra poco."
         else:
             self.answer_text = answer
         html = message_format.render_answer_html(answer)
+        if self.origin_label:
+            html = f"<i>{escape(self.origin_label)}</i>\n{html}"
         parts = self._split(html)
         head = self._reasoning_block()
         if head:
@@ -116,6 +131,14 @@ class ReplyRenderer:
         """After the stream ends: render collected notices per the user's mode."""
         if not self.finalized:
             self.on_final("".join(self.tokens))
+        self._notices()
+        from telegram_bot.services import answer_extras
+        if self.changes:
+            answer_extras.send_changes(self.chat_id, self.changes)
+        if self.buttons:
+            answer_extras.send_buttons(self.chat_id, self.buttons)
+
+    def _notices(self) -> None:
         if not self.notices:
             return
         lines = [self._notice_line(n) for n in self.notices]

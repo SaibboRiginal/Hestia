@@ -26,6 +26,14 @@ logger = logging.getLogger("hestia_common.mcp")
 
 
 @dataclass
+def undo(tool: str, label: str = "Annulla", **args) -> dict:
+    """How to undo a write, put in the write tool's result as ``"undo"`` (Cindy 13, «Ho fatto» with Annulla).
+
+    ``return {"saved": True, "id": tx_id, "undo": undo("finance_delete", id=tx_id)}`` — the clients show one
+    «Annulla» button per change; a tap calls ``tool`` with ``args`` through Hestia-MCP."""
+    return {"tool": tool, "args": args, "label": label}
+
+
 class MCPTool:
     """Descriptor for one MCP tool with optional Hestia client metadata."""
     name: str

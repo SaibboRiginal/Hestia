@@ -6,6 +6,7 @@ engine (Claude Code inside Oracle, or a local/cloud model) in a git worktree →
 merge → container restart → health check → auto-rollback on failure.
 
 Detailed knowledge (architecture, every module, gotchas, history): **`docs/AI-GUIDE.md`**.
+Marko's product rules (dated decisions + new-feature checklist): **`docs/REGOLE-DI-MARKO.md`**.
 UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
 
 ## Work protocol — MANDATORY for every task (human or AI)
@@ -15,7 +16,7 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
 2. `SPEC.md` — header table **Version** (1.0; minor = refinement, major = scope/design change) ·
    **Source** (where the request came from: user via external chat · user via Telegram/WebUI → Forge task
    `<id>` · Hestia AI proactive) · **Status**. Then goal, scope, acceptance criteria, design decisions.
-   Written **before** coding.
+   Written **before** coding. Template with the new-feature checklist: `docs/work/SPEC-TEMPLATE.md`.
 3. `PROGRESS.md` — checklist `- [ ]` / `- [x]`; update after every step. If you stop midway it must
    say exactly what is left, so the next run (or another model) can resume.
 4. `CHANGELOG.md` in the same folder — every change of the spec: `vX.Y — date — change — reason — source`.

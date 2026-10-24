@@ -389,3 +389,17 @@ reading. Failures answer `{status: "unavailable"}`; never raises. Place = saved 
 - No domain logic — pure library code.
 - No service registration or Hub contracts.
 - No runtime dependencies beyond Python stdlib + common third-party packages.
+
+## Wave 1 helpers (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+- `hestia_common.redact` (Cindy 19): `redact(text)` / `redact_obj(obj)` replace secrets and personal data (keys,
+  tokens, passwords in assignments and URLs, emails, phone numbers, IBAN, card numbers, chat ids, home paths, private
+  IPs) with `[segreto]`, `[email]`, … before text leaves the house (Argus → Oracle, Forge task prompts).
+- `hestia_common.origin` (Cindy 6): `X-Hestia-Origin: <kind>[:<ref>]` + `X-Hestia-Origin-Label`; `headers()`,
+  `parse(headers, client)` (no header: user client = `utente`, else `autonomo`), `prompt_line`, `blocks_write`
+  (autonomo: only proposals/notifications/questions; routine: no deletes). `MCPClient.call(origin=…)` puts it in
+  `hestia.origin`; `tool_call.build_request` turns `ctx["origin"]` into the header.
+- `hestia_common.ui_blocks` (Cindy 9): ```` ```hestia-ui ```` blocks in answers (card, stat, table, list, chart,
+  checklist, button; tones primary/success/warning/danger/info); `segments`, `to_text` (plain text for Telegram),
+  `buttons`.
+- `hestia_common.mcp_helpers.undo(tool, label="Annulla", **args)` (Cindy 13): what a write tool puts in its result as
+  `"undo"`, so clients can show «Annulla» under «Ho fatto».

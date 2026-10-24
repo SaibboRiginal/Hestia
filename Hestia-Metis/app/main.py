@@ -644,6 +644,7 @@ _HUB_REGISTRATION_PAYLOAD = {
     "tags": SERVICE_TAGS,
     "topology_tags": SERVICE_TOPOLOGY_TAGS,
     "capabilities": {
+        "when_to_use": "ricordi, fatti e preferenze dell'utente, note di memoria", "manual": 'Memoria a lungo termine: fatti e preferenze. Per salvare una nota usa memory_note, per cercarla memory_recall.',
         "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
         "dataset_build": "/api/metis/dataset/build",
         "dataset_export": "/api/metis/dataset/export",

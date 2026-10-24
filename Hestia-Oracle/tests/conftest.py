@@ -227,13 +227,15 @@ class HubBackedMCP:
         return tools
 
     def call(self, name, arguments=None, *, session_id="", notify_target="", trace_id="", service="",
-             origin_client="", timeout=None):
+             origin_client="", origin="", timeout=None):
         from hestia_common.tool_call import build_request
         cmd = next((c for c in self._hub.get_commands() or []
                     if c.get("command") == name and (not service or c.get("service") == service)), None)
         if cmd is None:
             return False, f"Unknown tool: {name}"
         ctx = {"session_id": session_id, "notify_target": notify_target, "trace_id": trace_id, "client": origin_client}
+        if origin:
+            ctx["origin"] = origin
         self.calls.append((name, dict(arguments or {}), ctx))
         req = build_request(cmd, arguments or {}, ctx)
         return self._hub.route_to_service(service=req["service"], path=req["path"], method=req["method"],
