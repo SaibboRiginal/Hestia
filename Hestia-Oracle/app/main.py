@@ -197,6 +197,7 @@ from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
 from core.services import activity_log  # noqa: E402
 from core.services import queued_chat  # noqa: E402
+from core.services import quoted_context  # noqa: E402
 
 app.include_router(_oracle_settings.settings.router())
 
@@ -590,6 +591,9 @@ class ChatRequest(BaseModel):
     # Messages written while the assistant could not answer ([{text, written_at}], oldest first): answered in one
     # turn where the model decides how (oracle-offline v3 C). `message` is ignored when this is set.
     queued: Optional[list[dict]] = None
+    # The earlier message the user replied to or quoted ({text, from: assistant|user|notification, at, ref}):
+    # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-da-zero §5.10).
+    quoted: Optional[dict] = None
 
 
 class ChatResponse(BaseModel):
@@ -825,11 +829,11 @@ def chat_endpoint(req: ChatRequest):
             logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
             return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
-        message, instructions = req.message, req.client_instructions
+        message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
         if queued:
             message = queued_chat.compose(queued)
-            instructions = queued_chat.instructions(queued, req.client_instructions)
+            instructions = queued_chat.instructions(queued, instructions)
             mode = "thinking" if len(queued) > 1 else mode  # the agent loop: ask_user may be needed
             logger.info("event=chat_queued_batch session_id=%s items=%d", current_session, len(queued))
         # Return the Engine's output as a continuous stream (LLM usage counted for this session)
