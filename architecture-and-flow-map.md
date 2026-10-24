@@ -210,6 +210,22 @@ flowchart LR
 7. A rule a module no longer declares is retired by the module itself: `POST /api/agenda/retire {owner, keys}`
    (only rules it created; user items stay). Example: Scout retired `scout.email_cycle`.
 
+### Routine and special-moment flow (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W2)
+1. A routine is a Chronos agenda rule `routine.<…>` with an instruction: by time (job → `POST /api/routines/{key}/run`),
+   by mail (Chronos subscribes to Iris; Iris rings `/api/routines/mail`) or by a module signal (`/api/routines/signal`).
+2. Run: optional pre-check tool through Hestia-MCP (empty → stop) → Oracle `/api/chat` with origin `routine:<key>` →
+   Hermes `routine.result` (or kept for the recap in Archive `chronos-store`). `NIENTE` = nothing sent.
+3. Special events: daily job `chronos.special.daily` → Hermes `special.soon` / `special.today` → `special_moment` to
+   modules declaring `capabilities.special_moment_endpoint` and to routines waiting for it.
+4. Smart calendar: daily job `chronos.smart_calendar` → Hermes card «Sposta alle» (→ Chronos → Hecate update) /
+   «Lascia così». Registered jobs: `chronos.special.daily`, `chronos.smart_calendar`, `hermes.notifications.remind_pending`.
+
+### Notification delivery details (same dossier, W2)
+- Hermes rings only the client the owner used in the last `hermes.consegna.client_attivo_minuti` (Chronos presence);
+  the others get the notification silent. When the WebUI rings, subscribed browsers also get a Web Push (`hermes-store`).
+- Secret form: module event `_secret` → client form → Hermes `/api/notifications/{id}/secret` → Hub → the module.
+  Hermes never stores or logs the values.
+
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate`, Forge and Wardrobe use
 `/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.annunci`, `athena.strategia`,
