@@ -131,3 +131,7 @@ Window-mode trainings also wait for presence `work.heavy` allow/local: held → 
 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 5 (area › section: tools).
+
+## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
+`capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).

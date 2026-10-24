@@ -136,6 +136,7 @@ class ToolDefinition:
     # Mutating tool (POST/PUT/PATCH/DELETE, memory.save…): clients get an action notice.
     writes: bool = False
     title: str = ""         # human label for notices (e.g. "📅 Crea evento")
+    method: str = ""        # HTTP method of a module tool (origin gate: DELETE is destructive)
 
 
 # ── Scratchpad message ─────────────────────────────────────────────────────────
@@ -274,12 +275,19 @@ def run_agent_loop(
     on_thinking: Callable[[str], None] | None = None,
     action_intent: bool = False,
     compact_fn: Callable[[], str | None] | None = None,
+    guard_checker: Callable[[list[str]], str] | None = None,
+    prior_actions: list[dict] | None = None,
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
 
     OpenClaw pattern: *compact_fn* is called before each turn when the
     estimated token count exceeds the compaction threshold.  It should
     return the new compacted history text, or None if no change.
+
+    *guard_checker*: light model check of the loop guard (``core.services.loop_guard``); None = a suspected loop
+    stops at once. *prior_actions*: tool log entries already executed for this same user message by an earlier
+    attempt (external agent that failed midway, Cindy 2): they go in the scratchpad as «già fatto» so the model
+    continues from there instead of redoing them.
     """
     _cfg = _settings()
     resolved_max_turns = max_turns if max_turns is not None else _cfg.get_int(_cfg.MAX_TURNS, 1)
@@ -366,6 +374,15 @@ def run_agent_loop(
 
     # Scratchpad: ephemeral tool-call/result messages for this session turn only
     scratchpad: list[ScratchMessage] = []
+    for _done in prior_actions or []:
+        scratchpad.append(ScratchMessage(
+            "tool", f"[{_done.get('tool')}] → {'✅' if _done.get('ok') else '❌'} GIÀ FATTO in questo turno da un "
+                    f"tentativo precedente, non ripeterlo: {str(_done.get('result_preview') or '')[:300]}", -1))
+    if prior_actions:
+        logger.info("[🔄] event=agent_loop_resumed_after_fallback done=%d", len(prior_actions))
+    from core.services.loop_guard import STOP_MESSAGE, LoopGuard
+    _guard = LoopGuard.from_settings(guard_checker)
+    _force_final = False
     # Tool-call log for post-answer summary
     tool_log: list[dict] = []
     # Track consecutive turns without tool calls for early exit
@@ -394,7 +411,7 @@ def run_agent_loop(
     _cumulative_tokens: int = 0  # Claude Agent SDK pattern: budget tracking
 
     for turn in range(resolved_max_turns):
-        is_last_turn = (turn == resolved_max_turns - 1)
+        is_last_turn = (turn == resolved_max_turns - 1) or _force_final
 
         # ── OpenClaw pattern: auto-trigger compaction when threshold exceeded
         if compact_fn is not None and turn > 0:
@@ -589,7 +606,7 @@ def run_agent_loop(
                     _ok, _result = False, str(_exc)
                 _dur = int((time.perf_counter() - _t0) * 1000)
                 return {"name": _tn, "ok": _ok, "result": _result,
-                        "duration_ms": _dur}
+                        "duration_ms": _dur, "params": _tp}
 
             # Emit thinking: tool_call for each tool about to execute
             if on_thinking:
@@ -669,11 +686,22 @@ def run_agent_loop(
                     # the next turn (docs/work/2026-10-19-oracle-offline v3 A).
                     "ask": result_raw.get("ask") if ok and isinstance(result_raw, dict)
                     and isinstance(result_raw.get("ask"), dict) else None,
+                    # «Cosa ho cambiato» with Annulla (Cindy 13): the module says how to undo its own write.
+                    "undo": result_raw.get("undo") if ok and isinstance(result_raw, dict)
+                    and result_raw.get("undo") else None,
+                    "params": r.get("params") or {},
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the
             # scratchpad — pure context waste, and same-name calls overwrote
             # each other. Removed.)
+
+            # Loop guard (Cindy 1): same calls again and again → next turn is the final answer.
+            for _tc in tool_calls_list:
+                if _guard.add(str(_tc.get("name") or ""), _tc.get("params") or {}):
+                    _force_final = True
+            if _force_final:
+                scratchpad.append(ScratchMessage("tool", STOP_MESSAGE, turn))
 
             _ask = next((e["ask"] for e in tool_log if e.get("turn") == turn and e.get("ask")), None)
             if _ask:

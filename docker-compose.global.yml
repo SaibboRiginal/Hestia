@@ -721,6 +721,32 @@ services:
     networks:
       - hestia_net
 
+  # Optional local model server with slots + saved context (brainstorm D17). Off by default:
+  #   docker compose -f docker-compose.global.yml --profile llamacpp up -d llamacpp
+  # Oracle's default chains try it first and skip it in a moment when it is off (health probe), then Ollama.
+  llamacpp:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: hestia_llamacpp
+    profiles: ["llamacpp"]
+    restart: unless-stopped
+    command: >
+      -m /models/${LLAMACPP_MODEL:-model.gguf} -c 16384 -fa on -ngl 99 --parallel 3
+      --slot-save-path /slots --host 0.0.0.0 --port 8080
+    ports:
+      - "18080:8080"  # llama-server OpenAI-compatible API (/v1) + /health + /slots
+    volumes:
+      - ${LLAMACPP_MODELS_DIR:-./models}:/models:ro   # folder with the .gguf files (infra, see .env.example)
+      - hestia_llamacpp_slots:/slots                  # saved KV caches of the chats
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - hestia_net
+
   webui:
     build:
       context: .
@@ -776,3 +802,4 @@ volumes:
   hestia_archive_backups:
   hestia_webui_data:
   hestia_echo_models:
+  hestia_llamacpp_slots:

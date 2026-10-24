@@ -558,6 +558,7 @@ def register_on_hub_startup():
         "tags": ["core", "connector"],
         "topology_tags": ["layer:gateway", "domain:auth_api", "status:stable"],
         "capabilities": {
+            "when_to_use": 'calendario, eventi, mail Gmail, meteo e luoghi', "manual": 'Account Google/Microsoft: eventi del calendario (crea, sposta, cerca), mail Gmail, meteo dei luoghi salvati.',
             "ingest_trigger": "/api/ingest/trigger",
             "calendar_sync": "/api/ingest/calendar/trigger",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",

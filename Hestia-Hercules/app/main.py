@@ -1278,7 +1278,8 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["fitness"],
+    caps = {"when_to_use": "palestra, allenamenti, schede, esercizi e attività all'aperto", "manual": "Schede e sessioni di allenamento, progressi sugli esercizi, attività all'aperto col meteo. Il piano della settimana lo propone il coach.",
+            "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["fitness"],
             "context_endpoint": "/api/module/context", **recap.capabilities()}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))

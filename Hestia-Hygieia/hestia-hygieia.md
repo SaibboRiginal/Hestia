@@ -149,3 +149,7 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
 
 ## Telegram card (`display`)
 `GET /api/selfcare/today` and `GET /api/selfcare/overview` (tools `selfcare_today`, `selfcare_summary`) return a `display` card: routines with state (da fare in orange, fatta in green), the steps of today, a «Fatta: <routine>» button for the first one due; the overview with alerts, products in use, routines and Oggi / Prodotti / Statistiche. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+
+## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
+`capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).

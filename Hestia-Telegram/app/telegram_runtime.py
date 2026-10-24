@@ -9,7 +9,7 @@ import threading
 
 from telegram_bot import actions, catalog, core, nav, store
 from telegram_bot.menu import editor, model
-from telegram_bot.services import assistant_questions, chat_service, chat_settings, voice_service
+from telegram_bot.services import answer_extras, assistant_questions, chat_service, chat_settings, voice_service
 from telegram_bot.services.control_service import run_control_api
 from telegram_bot.services.notifications import handle_callback as handle_notification_callback
 from telegram_bot.services.notifications import mark_seen_on_activity as mark_notifications_seen
@@ -55,6 +55,8 @@ def _route_callback(call) -> None:
         chat_service.handle_confirmation(call)
     elif assistant_questions.is_callback(data):
         assistant_questions.handle_callback(call)
+    elif answer_extras.is_callback(data):
+        answer_extras.handle_callback(call)
     elif data.startswith("fb:"):
         chat_service.handle_feedback_callback(call)
     elif data == voice_service.LISTEN_CALLBACK:

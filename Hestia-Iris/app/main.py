@@ -214,6 +214,7 @@ def register_on_hub_startup() -> None:
         "tags": ["module", "integration"],
         "topology_tags": ["layer:domain", "domain:email", "status:experimental"],
         "capabilities": {
+            "when_to_use": 'mail in arrivo smistate ai moduli', "manual": 'Smista le mail nuove ai moduli interessati (push). Di solito non serve chiamarla direttamente.',
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["email"],
             "mail_dispatch": "/api/email/incoming",

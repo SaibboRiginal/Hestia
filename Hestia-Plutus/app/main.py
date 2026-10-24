@@ -734,7 +734,7 @@ def added_display(t: dict) -> dict:
 
 
 try:
-    from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes
+    from hestia_common.mcp_helpers import MCPTool, create_mcp_router, mount_missing_rest_routes, undo
 
     def _summary(month: str = "") -> dict:
         s = plutus.summary(month)
@@ -758,7 +758,8 @@ try:
                              "account": account or "contanti", "notes": note, "type": "income" if income else "expense"},
                             source="chat")
         signals.changed()
-        return {"saved": True, **_short(out), "undo": "finance_delete", "display": added_display(out)}
+        return {"saved": True, **_short(out), "undo": undo("finance_delete", id=out.get("id")),
+                "display": added_display(out)}
 
     def _update(id: str = "", category: str = "", amount: float | None = None, date: str = "", merchant: str = "",
                 note: str = "", always: bool = False) -> dict:
@@ -921,7 +922,8 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps = {"mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": [DOMAIN],
+    caps = {"when_to_use": "spese, entrate, budget, conti e abbonamenti dell'utente", "manual": "Registra e cerca spese/entrate (finance_add, finance_search), budget per categoria, riepiloghi del mese. Le mail con ricevute arrivano da sole. Per cancellare usa l'id della voce.",
+            "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": [DOMAIN],
             "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS,
             **recap.capabilities(),
             **llm_capabilities(LLM_USECASES)}

@@ -538,6 +538,7 @@ def _register_with_hub(port: int):
         "tags": ["module", "real_estate"],
         "topology_tags": ["layer:domain", "domain:real_estate", "status:stable"],
         "capabilities": {
+            "when_to_use": 'ricerca casa: annunci immobiliari, filtri, preferiti', "manual": "Cerca annunci immobiliari con i filtri dell'utente, preferiti, avvisi sui nuovi annunci.",
             "module_tool_domains": [TARGET_DOMAIN],
             "module_tool_endpoint": f"{service_base_url.rstrip('/')}/api/module-tools",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",

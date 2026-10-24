@@ -139,3 +139,11 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
 
 ## Telegram card (`display`)
 Tools `finance_summary`, `finance_search`, `finance_add` return a `display` card: spent vs budget and pace, categories with orange/red over 80/100 %, «Da rivedere (n)»; movements as merchant · amount · category · date; a saved movement with Cambia categoria / Elimina (red) / Riepilogo. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+
+## Undo of a chat write
+`finance_add` returns `undo = {tool: finance_delete, args: {id}}` (`hestia_common.mcp_helpers.undo`): the chat shows
+«Ho fatto: Registra spesa» with «Annulla».
+
+## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
+`capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).

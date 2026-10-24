@@ -22,6 +22,7 @@ KEY_PREFIX = "ORACLE_KEY_"
 TYPES: dict[str, str] = {
     "ollama": "Ollama",
     "openai": "Compatibile OpenAI",
+    "llamacpp": "llama-server (slot e contesto salvato)",
     "anthropic": "Compatibile Anthropic",
     "gemini": "Gemini",
     "claude_cli": "Claude (abbonamento, CLI)",
@@ -37,7 +38,7 @@ _DEFAULT_URL = {
 # its CLI login is simply skipped by every chain.
 DEFAULT_PROVIDERS: dict[str, dict[str, str]] = {
     "ollama": {"type": "ollama", "label": "Ollama (locale)", "url": ""},
-    "llamacpp": {"type": "openai", "label": "llama-server (locale)", "url": "http://host.docker.internal:8080/v1"},
+    "llamacpp": {"type": "llamacpp", "label": "llama-server (locale)", "url": "http://hestia_llamacpp:8080/v1"},
     "gemini": {"type": "gemini", "label": "Gemini", "url": ""},
     "deepseek": {"type": "openai", "label": "DeepSeek", "url": "https://api.deepseek.com/v1"},
     "claude-api": {"type": "anthropic", "label": "Claude (chiave API)", "url": ""},
@@ -120,8 +121,8 @@ def class_config(name: str) -> dict[str, Any]:
     ptype = prov.get("type", "")
     config: dict[str, Any] = dict(load_llm_config().get(ptype, {}))
     config.update(oracle_settings.provider_settings(ptype))
-    if ptype in ("openai", "anthropic"):
-        config["base_url"] = url(name) if prov.get("url") or ptype == "openai" else ""
+    if ptype in ("openai", "anthropic", "llamacpp"):
+        config["base_url"] = url(name) if prov.get("url") or ptype in ("openai", "llamacpp") else ""
         config["api_key"] = api_key(name)
     config["name"] = prov.get("name", name)
     return config
@@ -135,9 +136,9 @@ def available(name: str) -> tuple[bool, str]:
     ptype = prov["type"]
     if ptype in _NEEDS_KEY and not api_key(name):
         return False, f"{key_env(name)} not set"
-    if ptype == "openai" and not url(name):
+    if ptype in ("openai", "llamacpp") and not url(name):
         return False, "address missing"
-    if ptype == "claude_cli":
+    if ptype in ("claude_cli", "llamacpp"):   # CLI login / server health probe (cached)
         from agents.providers import get_provider
         return get_provider(name).available()
     return True, "ok"

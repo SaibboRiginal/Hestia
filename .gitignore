@@ -146,3 +146,6 @@ tools/cloud_test/base/ca/
 
 # Esporta e importa: files with personal data (docs/work/2026-10-20-import-export)
 *.hestia
+
+# llama-server model files (compose profile llamacpp)
+/models/

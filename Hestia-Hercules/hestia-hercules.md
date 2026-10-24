@@ -163,3 +163,7 @@ calendar before `fitness_confirm_activity` (all slots, some by number, or times 
 
 ## Telegram card (`display`)
 `GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+
+## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
+`capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
