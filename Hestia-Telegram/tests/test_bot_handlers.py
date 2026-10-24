@@ -50,50 +50,54 @@ class TestIsAuthorized:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# send_welcome
+# Home (/start)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.unit
-class TestSendWelcome:
-    def test_send_welcome_replies_to_message(self, fake_message, monkeypatch):
+class TestHome:
+    def _home(self, monkeypatch):
         import telegram_bot.core as core_module
+        from telegram_bot import catalog, nav
+        from telegram_bot.menu import model
         core_module.ALLOWED_USER_ID = "99999"
         mock_bot = MagicMock()
         core_module.bot = mock_bot
-        monkeypatch.setattr("telegram_bot.services.registry.requests.get",
-                            lambda *a, **kw: MagicMock(status_code=404, json=lambda: {}))
-        from telegram_bot.services.chat_service import send_welcome
-        msg = fake_message(text="/start")
-        send_welcome(msg)
-        mock_bot.reply_to.assert_called_once()
+        monkeypatch.setattr(catalog, "route", lambda *a, **kw: (True, {"unread": 2}))
+        monkeypatch.setattr(catalog, "get", lambda name: None)
+        monkeypatch.setattr(model, "current", lambda: model.build([], {}))
+        nav.home(12345)
+        return mock_bot
 
-    def test_send_welcome_uses_html_parse_mode(self, fake_message, monkeypatch):
-        import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = "99999"
-        mock_bot = MagicMock()
-        core_module.bot = mock_bot
-        monkeypatch.setattr("telegram_bot.services.registry.requests.get",
-                            lambda *a, **kw: MagicMock(status_code=404, json=lambda: {}))
-        from telegram_bot.services.chat_service import send_welcome
-        msg = fake_message(text="/start")
-        send_welcome(msg)
-        _, kwargs = mock_bot.reply_to.call_args
-        assert kwargs.get("parse_mode") == "HTML"
+    def test_home_sends_greeting_with_bottom_keyboard(self, monkeypatch):
+        bot = self._home(monkeypatch)
+        args, kwargs = bot.send_message.call_args
+        assert kwargs["parse_mode"] == "HTML"
+        assert args[1].startswith("<b>Ciao</b>")
+        assert "2 notifiche da vedere" in args[1]
+        keys = [b["text"] for row in kwargs["reply_markup"].keyboard for b in row]
+        assert keys == ["Oggi", "Aree", "Notifiche", "Impostazioni"]
 
-    def test_send_welcome_unauthorized_user_not_welcomed(self, fake_message, monkeypatch):
-        import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = "00000"  # different from test user 99999
-        mock_bot = MagicMock()
-        core_module.bot = mock_bot
-        from telegram_bot.services.chat_service import send_welcome
-        msg = fake_message(text="/start", user_id=99999)
-        send_welcome(msg)
-        # reply_to is called once in is_authorized (access denied), not with welcome
-        all_calls = [str(c) for c in mock_bot.reply_to.call_args_list]
-        # Should not contain "Hestia pronta"
-        for c in all_calls:
-            assert "Hestia pronta" not in c
+    def test_start_command_opens_home(self, fake_message, monkeypatch):
+        import telegram_runtime
+        from telegram_bot import nav
+        from telegram_bot.menu import model
+        monkeypatch.setattr(model, "current", lambda: model.build([], {}))
+        with patch.object(nav, "home") as home:
+            telegram_runtime.on_message(fake_message(text="/start"))
+        home.assert_called_once_with(12345)
+
+    def test_keyboard_words_open_their_door_not_the_chat(self, fake_message, monkeypatch):
+        import telegram_runtime
+        from telegram_bot import nav
+        from telegram_bot.menu import model
+        monkeypatch.setattr(model, "current", lambda: model.build([], {}))
+        with patch.object(nav, "open_door", return_value=True) as door, \
+                patch("telegram_bot.services.chat_service.handle_chat_message") as chat:
+            telegram_runtime.on_message(fake_message(text="Aree"))
+            telegram_runtime.on_message(fake_message(text="mostrami le aree"))
+        door.assert_called_once_with(12345, "aree")
+        chat.assert_called_once()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -158,58 +162,44 @@ class TestHandleChatMessage:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# handle_confirmation callback
+# handle_confirmation callback (persisted tokens)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.unit
 class TestHandleConfirmation:
-    def test_confirm_token_triggers_command_execution(self, fake_callback, fake_message, monkeypatch):
+    def test_module_question_answer_goes_to_oracle(self, fake_callback, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = "99999"
-        mock_bot = MagicMock()
-        core_module.bot = mock_bot
-        token = "abc123"
-        fake_pending = {
-            token: {
-                "command_name": "meteo",
-                "command_metadata": {
-                    "command": "meteo",
-                    "method": "GET",
-                    "path": "/api/meteo",
-                    "response_mode": "direct",
-                    "title": "Meteo",
-                },
-                "args": {},
-            }
-        }
-        core_module.PENDING_CONFIRMATIONS = fake_pending
-        cb = fake_callback(
-            data=f"confirm:{token}", message=fake_message(text=""))
-
-        fake_resp = MagicMock()
-        fake_resp.status_code = 200
-        fake_resp.json.return_value = {"temperature": "22°C"}
-        monkeypatch.setattr("requests.get", lambda *a, **kw: fake_resp)
-        monkeypatch.setattr("requests.post", lambda *a, **kw: fake_resp)
-
+        from telegram_bot import store
+        core_module.bot = MagicMock()
+        store.put_pending("abc123", {"action": "oracle_question", "chat_id": "12345", "session_id": "s",
+                                     "question_id": "q1", "confirm": "yes", "cancel": "no",
+                                     "labels": ["Applica", "Lascia stare"]})
+        sent = []
+        monkeypatch.setattr(core_module, "oracle_post",
+                            lambda path, body, **kw: sent.append((path, body)) or (200, {"action": {"ok": True}}))
         from telegram_bot.services.chat_service import handle_confirmation
-        handle_confirmation(cb)
-        # The confirmation token should have been consumed (removed from pending)
-        assert token not in core_module.PENDING_CONFIRMATIONS
+        handle_confirmation(fake_callback(data="confirm:abc123", message=fake_message(text="")))
+        assert sent[0][0] == "api/chat/question-answer" and sent[0][1]["answer"] == "yes"
+        assert store.get_pending("abc123") is None
 
-    def test_cancel_token_removes_pending_confirmation(self, fake_callback, fake_message, monkeypatch):
+    def test_failed_answer_keeps_the_token(self, fake_callback, fake_message, monkeypatch):
         import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = "99999"
-        mock_bot = MagicMock()
-        core_module.bot = mock_bot
-        token = "xyz789"
-        core_module.PENDING_CONFIRMATIONS = {token: {"command_name": "test"}}
-        cb = fake_callback(
-            data=f"cancel:{token}", message=fake_message(text=""))
+        from telegram_bot import store
+        core_module.bot = MagicMock()
+        store.put_pending("xyz789", {"action": "oracle_question", "chat_id": "12345", "session_id": "s",
+                                     "question_id": "q1", "confirm": "yes", "cancel": "no", "labels": ["Sì", "No"]})
+        monkeypatch.setattr(core_module, "oracle_post", lambda *a, **kw: (0, {}))
         from telegram_bot.services.chat_service import handle_confirmation
-        handle_confirmation(cb)
-        assert token not in core_module.PENDING_CONFIRMATIONS
+        handle_confirmation(fake_callback(data="cancel:xyz789", message=fake_message(text="")))
+        assert store.get_pending("xyz789") is not None
+
+    def test_unknown_token_says_closed(self, fake_callback, fake_message):
+        import telegram_bot.core as core_module
+        core_module.bot = MagicMock()
+        from telegram_bot.services.chat_service import handle_confirmation
+        handle_confirmation(fake_callback(data="confirm:nope", message=fake_message(text="")))
+        core_module.bot.answer_callback_query.assert_called_with("cb_001", "Questa richiesta è già chiusa")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

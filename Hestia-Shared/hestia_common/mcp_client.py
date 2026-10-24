@@ -130,5 +130,7 @@ def as_command(tool: dict) -> dict:
         "telegram_visible": bool(meta.get("telegram_visible", False)),
         "telegram_help_visible": bool(meta.get("telegram_help_visible", True)),
         "telegram_group": meta.get("telegram_group", ""),
+        "telegram": meta.get("telegram") if isinstance(meta.get("telegram"), dict) else {},
+        "input_schema": schema if isinstance(schema, dict) else {},
         "writes": not bool((tool.get("annotations") or {}).get("readOnlyHint", False)),
     }

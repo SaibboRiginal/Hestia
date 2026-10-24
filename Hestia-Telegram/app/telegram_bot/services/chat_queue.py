@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from html import escape
 from typing import Any
 
 import requests
@@ -20,8 +19,7 @@ logger = logging.getLogger("hestia_telegram.chat_queue")
 
 CLIENT = "telegram"
 DRAIN_PATH = "/api/chat-queue/drain"
-FILE_OFFLINE_TEXT = ("⏳ <b>Non posso rispondere adesso</b>: non riesco a leggere il file. "
-                     "Rimandamelo più tardi.")
+FILE_OFFLINE_TEXT = "🟠 <b>Non disponibile</b>\nNon riesco a leggere il file adesso: rimandamelo più tardi."
 _drain_lock = threading.Lock()
 
 
@@ -59,8 +57,7 @@ def enqueue(chat_id, session_id: str, text: str, message_id: int | None, error: 
 def queued_text(item: dict) -> str:
     position = int(item.get("position") or 1)
     where = f" (n° {position})" if position > 1 else ""
-    return (f"⏳ <b>Non posso rispondere adesso</b>: messaggio in coda{where}, "
-            "ti rispondo appena possibile.")
+    return f"🟠 <b>Non disponibile</b>\n<i>Messaggio in coda{where}: ti rispondo appena possibile.</i>"
 
 
 def drain_async(reason: str = "") -> bool:
@@ -119,7 +116,7 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
     what = "al messaggio in coda" if len(items) == 1 else f"ai {len(items)} messaggi in coda"
     try:
         status_msg = core.bot.send_message(
-            chat_id, f"⏳ <b>Rispondo {what}...</b>", parse_mode="HTML",
+            chat_id, f"<i>Rispondo {what}…</i>", parse_mode="HTML",
             reply_to_message_id=int(ref) if ref and str(ref).isdigit() else None,
             allow_sending_without_reply=True)
     except Exception as exc:
@@ -130,10 +127,11 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
         send_oracle_questions(chat_id, str(last["session_id"]), result.signals, result.questions)
         return True, ""
     except OracleUnavailable as exc:
-        core.bot.edit_message_text("⏳ Non posso ancora rispondere: resto in coda.",
+        core.bot.edit_message_text("<i>Non posso ancora rispondere: resta in coda.</i>",
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]
     except Exception as exc:
-        core.bot.edit_message_text(f"⚠️ <b>Risposta non riuscita</b>\n<code>{escape(str(exc))}</code>",
+        logger.warning("event=chat_queue_answer_failed chat=%s error=%s", chat_id, exc)
+        core.bot.edit_message_text("🔴 <b>Non sono riuscita a rispondere</b>\nRiscrivimi tra poco.",
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]

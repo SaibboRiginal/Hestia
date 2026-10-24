@@ -8,9 +8,8 @@ Telegram recognises the pattern and forwards it straight to Hecate via Hub.
 from __future__ import annotations
 
 import html
+import logging
 import re
-
-from telegram_bot.services.router import route_service_command
 
 _CALLBACK_RE = re.compile(
     r"(https?://\S*/api/gateway/auth/callback/(?P<provider>[a-z]+)\?\S*(?:code|error)=\S+)",
@@ -28,23 +27,19 @@ def match_oauth_callback(text: str) -> tuple[str, str] | None:
 
 def complete_oauth_from_paste(provider: str, url: str) -> str:
     """Forward the pasted URL to Hecate and return an HTML reply."""
-    ok, payload = route_service_command(
-        service="hecate",
-        path=f"/api/gateway/auth/complete/{provider}",
-        method="POST",
-        query={},
-        body={"code": url},
-    )
+    from telegram_bot import catalog
+    ok, payload = catalog.route("hecate", f"api/gateway/auth/complete/{provider}", "POST", body={"code": url})
     name = html.escape(provider.capitalize())
     if ok and isinstance(payload, dict) and payload.get("status") == "authorized":
-        return f"✅ <b>{name} collegato.</b> Calendario attivo."
+        return f"🟢 <b>{name} collegato</b>\nIl calendario è attivo."
     detail = payload.get("detail") if isinstance(payload, dict) else payload
     if isinstance(detail, dict):
         msg = str(detail.get("error") or detail)
         hint = str(detail.get("hint") or "")
     else:
         msg, hint = str(detail or "errore sconosciuto"), ""
-    reply = f"⚠️ Collegamento {name} non riuscito: {html.escape(msg[:300])}"
-    if hint:
-        reply += f"\n<i>{html.escape(hint[:300])}</i>"
+    logging.getLogger("hestia_telegram.oauth").warning("event=oauth_paste_failed provider=%s detail=%s", provider,
+                                                         msg[:300])
+    reply = f"🔴 <b>Collegamento {name} non riuscito</b>"
+    reply += f"\n{html.escape(hint[:300])}" if hint else "\nRiprova dall'inizio: il link vale pochi minuti."
     return reply

@@ -448,14 +448,14 @@ try:
                 "momento": {"type": "string", "enum": ["sera", "mattina"],
                             "description": "sera = oggi e domani; mattina = ieri e oggi"}}},
             handler=_recap_today_handler,
-            title="📝 Recap della giornata",
+            title="Recap della giornata",
             method="POST",
             path="/api/athena/recap/today",
             clients=["telegram", "ui", "external"],
             response_mode="direct",
             telegram_visible=True,
-            telegram_group="chat",
-        ),
+            telegram_group="giornata",
+                telegram={"section": "Recap", "primary": 3, "label": "Recap"}),
         # Inside view, also for external AIs (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): read only.
         MCPTool(
             name="athena_thinking",
@@ -472,14 +472,14 @@ try:
                 },
             },
             handler=lambda limit=10, **_kw: runtime.thinking_summary(limit=int(limit or 10)),
-            title="💭 Pensieri di Athena",
+            title="Pensieri dell'assistente",
             method="GET",
             path="/api/athena/thinking/summary",
             clients=["ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
             telegram_group="sistema",
-        ),
+                telegram={"section": "Assistente"}),
         MCPTool(
             name="athena_signals",
             description=(
@@ -497,14 +497,14 @@ try:
             },
             handler=lambda domain=None, limit=50, **_kw: athena_signals(domain=domain or None,
                                                                          limit=int(limit or 50)),
-            title="📡 Segnali delle aree",
+            title="Segnali delle aree",
             method="GET",
             path="/api/athena/signals",
             clients=["ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
             telegram_group="sistema",
-        ),
+                telegram={"section": "Assistente"}),
         MCPTool(
             name="athena_audit_conversation",
             description=(
@@ -530,7 +530,7 @@ try:
                 "required": ["session_id"],
             },
             handler=_athena_audit_handler,
-            title="🔍 Audita conversazione",
+            title="Rivedi una conversazione",
             method="POST",
             path="/api/athena/audit/conversation",
             clients=["telegram", "ui"],
@@ -541,8 +541,8 @@ try:
                 "accuratezza e utilità. Sii conciso."
             ),
             telegram_visible=True,
-            telegram_group="chat",
-        ),
+            telegram_group="sistema",
+                telegram={"section": "Avanzate"}),
     ]
     app.include_router(
         create_mcp_router(_athena_mcp_tools, service_name="athena")

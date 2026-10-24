@@ -12,7 +12,6 @@ import message_format
 import session_store
 import telegram_settings as tg_settings
 from telegram_settings import settings
-from command_catalog import telegram_local_commands
 
 try:
     from hestia_common.logging_utils import setup_service_logging
@@ -74,27 +73,6 @@ def client_instructions() -> str:
 def locale() -> str:
     return str(settings.get(tg_settings.CHAT_LOCALE) or "it")
 
-
-def hidden_command_services() -> set[str]:
-    return tg_settings.as_set(tg_settings.COMMANDS_HIDDEN_SERVICES)
-
-
-def hidden_dynamic_commands() -> set[str]:
-    return tg_settings.as_set(tg_settings.COMMANDS_HIDDEN)
-
-
-PENDING_CONFIRMATIONS: dict[str, dict] = {}
-COMMAND_REGISTRY: dict[str, dict[str, Any]] = {}
-COMMAND_REGISTRY_REVISION = -1
-COMMAND_REGISTRY_LOCK = threading.Lock()
-ARG_PICKER_TOKENS: dict[str, dict[str, Any]] = {}
-PENDING_WORKFLOWS: dict[str, dict[str, Any]] = {}
-LOCAL_COMMANDS = {item["command"]: item for item in telegram_local_commands()}
-
-# Alert buffering for grouping consecutive alerts into one message
-ALERT_BUFFER: dict[str, list[dict]] = {}  # chat_id -> [alerts]
-ALERT_BUFFER_LOCK = threading.Lock()
-ALERT_BUFFER_TIMERS: dict[str, threading.Timer] = {}  # chat_id -> timer
 
 # ── Feedback prompting ──────────────────────────────────────────────────────
 FEEDBACK_ARCHIVE_URL = os.getenv(
@@ -174,19 +152,6 @@ def should_show_feedback_prompt(chat_id: str, message_text: str, has_tools: bool
         return True
     import random
     return random.random() < float(settings.get(tg_settings.FEEDBACK_PROMPT_RATE))
-
-
-def build_feedback_keyboard(interaction_id: str = "") -> "types.InlineKeyboardMarkup":
-    """Build the inline 👍/👎 keyboard for feedback."""
-    from telebot import types
-    markup = types.InlineKeyboardMarkup()
-    markup.row(
-        types.InlineKeyboardButton(
-            "👍", callback_data=f"fb:good:{interaction_id}"),
-        types.InlineKeyboardButton(
-            "👎", callback_data=f"fb:bad:{interaction_id}"),
-    )
-    return markup
 
 
 def submit_feedback_to_archive(
@@ -299,11 +264,6 @@ def resolve_oracle_document_url() -> str:
     return f"{_discover_oracle_base()}/api/chat/document"
 
 
-def resolve_oracle_format_url() -> str:
-    """Deprecated: use oracle_post() (Hub-routed). Kept for compatibility."""
-    return f"{_discover_oracle_base()}/api/format"
-
-
 def oracle_post(path: str, body: dict, timeout: float = 15, trace_id: str | None = None) -> tuple[int, dict]:
     """Non-streaming Oracle call via Hub route (Communication Policy).
     Returns (status_code, payload_dict); (0, {}) when Hub/Oracle unreachable."""
@@ -323,30 +283,6 @@ def oracle_post(path: str, body: dict, timeout: float = 15, trace_id: str | None
     except Exception as exc:
         logging.getLogger("hestia_telegram").warning("event=oracle_post_failed path=%s error=%s", path, exc)
         return 0, {}
-
-
-_mcp_base_url: str | None = None
-
-
-def resolve_mcp_url() -> str:
-    """Discover MCP base_url from Hub registry. Cached after first lookup."""
-    global _mcp_base_url
-    if _mcp_base_url:
-        return _mcp_base_url
-    try:
-        # /registry/services: instant. (/status health-checks every service
-        # sequentially and could take tens of seconds.)
-        resp = requests.get(f"{HUB_API_URL}/registry/services", timeout=5)
-        if resp.ok:
-            services = resp.json().get("services", [])
-            for svc in services:
-                if svc.get("name") == "mcp":
-                    _mcp_base_url = svc["base_url"].rstrip("/")
-                    return _mcp_base_url
-    except Exception:
-        pass
-    _mcp_base_url = "http://hestia_mcp:19013"
-    return _mcp_base_url
 
 
 def get_session(chat_id: str) -> str:
@@ -388,22 +324,6 @@ def build_client_instructions_for_chat(chat_id: str) -> str:
 
 def format_for_telegram(text: str) -> str:
     return message_format.format_for_telegram(text)
-
-
-def build_chat_messages(raw_markdown: str) -> list[str]:
-    return message_format.build_chat_messages(raw_markdown)
-
-
-def strip_markdown(text: str) -> str:
-    return message_format.strip_markdown(text)
-
-
-def build_signal_cards(signals: list[dict]) -> list[str]:
-    return message_format.build_signal_cards(signals)
-
-
-def format_payload_raw(payload: Any) -> str:
-    return message_format.format_payload_raw(payload)
 
 
 def build_delivery_messages(text: str, parse_mode: str = "HTML") -> tuple[list[str], str | None]:
@@ -471,78 +391,3 @@ def send_user_message(
             )
         sent.append(msg)
     return sent
-
-
-def buffer_alert(
-    chat_id: str,
-    entity_payload: dict[str, Any],
-    domain: str = "",
-    entity_id: str = "",
-    trace_id: str | None = None,
-):
-    """Add alert to buffer and schedule flush if needed"""
-    with ALERT_BUFFER_LOCK:
-        if chat_id not in ALERT_BUFFER:
-            ALERT_BUFFER[chat_id] = []
-
-        ALERT_BUFFER[chat_id].append({
-            "payload": entity_payload,
-            "domain": domain,
-            "entity_id": entity_id,
-            "trace_id": str(trace_id or "").strip(),
-        })
-
-        # Cancel existing timer for this chat if any
-        if chat_id in ALERT_BUFFER_TIMERS:
-            ALERT_BUFFER_TIMERS[chat_id].cancel()
-
-        # Schedule flush after buffer window
-        def flush_alerts():
-            with ALERT_BUFFER_LOCK:
-                ALERT_BUFFER_TIMERS.pop(chat_id, None)
-            flush_buffered_alerts(chat_id)
-
-        timer = threading.Timer(float(settings.get(tg_settings.ALERTS_BUFFER_WINDOW)), flush_alerts)
-        timer.daemon = True
-        ALERT_BUFFER_TIMERS[chat_id] = timer
-        timer.start()
-
-
-def flush_buffered_alerts(chat_id: str):
-    """Send all buffered alerts as a conversational message flow"""
-    with ALERT_BUFFER_LOCK:
-        alerts = ALERT_BUFFER.pop(chat_id, [])
-
-    if not alerts:
-        return
-
-    from telegram_bot.services.control_service import format_multiple_alerts_with_oracle, build_alert_fallback_message
-
-    trace_id = next(
-        (str(a.get("trace_id") or "").strip()
-         for a in alerts if str(a.get("trace_id") or "").strip()),
-        "",
-    )
-    message = format_multiple_alerts_with_oracle(
-        alerts,
-        chat_id=chat_id,
-        trace_id=trace_id or None,
-    )
-    if not message:
-        for alert in alerts:
-            try:
-                fallback = build_alert_fallback_message(
-                    alert.get("payload", {}),
-                    alert.get("domain", ""),
-                    alert.get("entity_id", ""),
-                )
-                send_user_message(chat_id, fallback, parse_mode="HTML")
-            except Exception:
-                pass
-        return
-
-    try:
-        send_user_message(chat_id, message, parse_mode="HTML")
-    except Exception as e:
-        LOGGER.warning(
-            "event=failed_send_buffered_alert_message Failed to send buffered alert message: %s", e)

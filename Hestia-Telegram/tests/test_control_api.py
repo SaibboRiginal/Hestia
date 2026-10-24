@@ -1,7 +1,7 @@
 """Tests — Telegram control API (Phase 2.5)
 
 Tests for the HTTP control service (GET /health, GET /api/logs,
-POST /api/events/registry-changed, POST /api/dispatch/send).
+POST /api/events/registry-changed; the legacy /api/dispatch/send is gone).
 Uses a minimal threaded server spin-up.
 """
 from __future__ import annotations
@@ -142,52 +142,23 @@ class TestControlApiLogs:
 
 @pytest.mark.api
 class TestControlApiRegistryChanged:
-    def test_registry_changed_returns_ok(self, monkeypatch):
-        monkeypatch.setattr(
-            "telegram_bot.services.control_service.refresh_command_registry",
-            lambda force=True: None,
-        )
-        import telegram_bot.core as core_module
-        core_module.COMMAND_REGISTRY_REVISION = 5
+    def test_registry_changed_refreshes_the_catalog(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr("telegram_bot.catalog.refresh", lambda force=False: calls.append(force))
         handler = _FakeRequestHandler(
             "/api/events/registry-changed", method="POST", body=b"")
         status, body = handler.response()
         assert status == 200
         assert body.get("status") == "ok"
+        time.sleep(0.05)
+        assert calls == [True]
 
 
 @pytest.mark.api
-class TestControlApiDispatchSend:
-    def test_send_message_with_valid_target(self, monkeypatch):
-        import telegram_bot.core as core_module
-        core_module.ALLOWED_USER_ID = "99999"
-        mock_bot = MagicMock()
-        core_module.bot = mock_bot
-        core_module.LOG_BUFFER = MagicMock()
-        core_module.LOG_BUFFER.query.return_value = []
-
-        payload = json.dumps({
-            "target": "12345",
-            "message": "<b>Notifica</b>: evento importante",
-            "parse_mode": "HTML",
-        }).encode()
-
-        handler = _FakeRequestHandler(
-            "/api/dispatch/send", method="POST", body=payload)
-        status, body = handler.response()
-        assert status == 200
-
-    def test_send_message_missing_target_returns_error(self, monkeypatch):
-        import telegram_bot.core as core_module
-        mock_bot = MagicMock()
-        core_module.bot = mock_bot
-
-        payload = json.dumps({"text": "No target"}).encode()
-        handler = _FakeRequestHandler(
-            "/api/dispatch/send", method="POST", body=payload)
-        status, _ = handler.response()
-        # Missing or empty target should return 400
-        assert status in (400, 422)
+class TestControlApiLegacyDispatchRemoved:
+    def test_dispatch_send_is_gone(self):
+        status, _ = _FakeRequestHandler("/api/dispatch/send", method="POST", body=b"{}").response()
+        assert status == 404
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -228,12 +199,12 @@ class TestControlApiSettings:
         status, body = _FakeRequestHandler("/api/settings/effective", method="GET").response()
         assert status == 200
         assert body["owner"] == "telegram"
-        assert body["values"]["telegram.signals.style"] == "minimal"
+        assert body["values"]["telegram.menu.layout"] == {}
 
     def test_post_reload_applies_pushed_values(self):
         import telegram_settings
-        payload = json.dumps({"values": {"telegram.alerts.buffer_window": 2.5}}).encode()
+        payload = json.dumps({"values": {"telegram.feedback.prompt_rate": 0.5}}).encode()
         status, body = _FakeRequestHandler("/api/settings/reload", method="POST", body=payload).response()
         assert status == 200
-        assert body["applied"] == ["telegram.alerts.buffer_window"]
-        assert telegram_settings.settings.get(telegram_settings.ALERTS_BUFFER_WINDOW) == 2.5
+        assert body["applied"] == ["telegram.feedback.prompt_rate"]
+        assert telegram_settings.settings.get(telegram_settings.FEEDBACK_PROMPT_RATE) == 0.5

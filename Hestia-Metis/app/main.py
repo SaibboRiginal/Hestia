@@ -473,7 +473,7 @@ try:
                 "required": ["name"],
             },
             handler=_metis_dataset_build_handler,
-            title="🏗️ Build dataset",
+            title="Crea dataset",
             method="POST",
             path="/api/metis/dataset/build",
             clients=["telegram", "ui"],
@@ -484,7 +484,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
-        ),
+                telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_dataset_export",
             description=(
@@ -504,14 +504,14 @@ try:
                 "required": ["name"],
             },
             handler=_metis_dataset_export_handler,
-            title="📦 Esporta dataset",
+            title="Esporta dataset",
             method="GET",
             path="/api/metis/dataset/export",
             clients=["telegram", "ui"],
             response_mode="raw_json",
             telegram_visible=True,
             telegram_group="sviluppo",
-        ),
+                telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_dataset_status",
             description=(
@@ -526,7 +526,7 @@ try:
                 "required": [],
             },
             handler=_metis_dataset_status_handler,
-            title="📈 Stato dataset",
+            title="Stato dataset",
             method="GET",
             path="/api/metis/dataset/status",
             clients=["telegram", "ui"],
@@ -537,7 +537,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
-        ),
+                telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_benchmark_run",
             description=(
@@ -561,7 +561,7 @@ try:
                 "required": ["candidate_model", "dataset_name"],
             },
             handler=_metis_benchmark_run_handler,
-            title="🧪 Esegui benchmark",
+            title="Esegui benchmark",
             method="POST",
             path="/api/metis/benchmark/run",
             clients=["telegram", "ui"],
@@ -572,7 +572,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
-        ),
+                telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_loRA_train",
             description=(
@@ -603,7 +603,7 @@ try:
                 "required": ["dataset_name", "adapter_name"],
             },
             handler=_metis_loRA_train_handler,
-            title="🦾 Avvia training LoRA",
+            title="Avvia training LoRA",
             method="POST",
             path="/api/metis/lora/train",
             clients=["telegram", "ui"],
@@ -614,7 +614,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
-        ),
+                telegram={"section": "Dataset e training"}),
     ]
 
     app.include_router(

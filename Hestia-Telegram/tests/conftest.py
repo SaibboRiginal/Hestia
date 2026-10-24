@@ -8,7 +8,6 @@ Fixtures:
     fake_message: Factory for a minimal telebot Message object.
     mock_bot: MagicMock standing in for core.bot.
     mock_oracle_stream: Patches the streaming NDJSON Oracle call.
-    mock_hub_commands: Patches Hub command discovery with a fixed catalog.
     mock_archive_memory: Patches Archive memory retrieval.
 """
 from __future__ import annotations
@@ -58,6 +57,15 @@ class _FakeBot:
 def _patch_telebot(monkeypatch):
     """Automatically stub telebot so no real Telegram API calls occur."""
     monkeypatch.setattr("telebot.TeleBot", _FakeBot)
+
+
+@pytest.fixture(autouse=True)
+def _ui_store(tmp_path):
+    """Each test gets its own persisted UI state (flows, short ids, pending questions)."""
+    from telegram_bot import store
+    store.reset_for_tests(str(tmp_path / "telegram_ui.json"))
+    yield store
+    store.reset_for_tests()
 
 
 # ── Fake message factory ───────────────────────────────────────────────────────
@@ -150,41 +158,3 @@ def mock_oracle_stream(monkeypatch):
     monkeypatch.setattr("requests.post", lambda *a,
                         **kw: _FakeStreamResponse())
     return _configure
-
-
-# ── Hub mock ──────────────────────────────────────────────────────────────────
-
-
-SAMPLE_DYNAMIC_COMMANDS: list[dict] = [
-    {
-        "command": "meteo",
-        "title": "🌤 Meteo",
-        "description": "Mostra meteo corrente",
-        "method": "GET",
-        "path": "/api/meteo",
-        "response_mode": "oracle_natural",
-        "clients": ["telegram"],
-        "service": "dummy",
-    },
-    {
-        "command": "scout_listings",
-        "title": "🏠 Annunci",
-        "description": "Cerca annunci immobiliari",
-        "method": "GET",
-        "path": "/api/scout/listings",
-        "response_mode": "direct",
-        "clients": ["telegram"],
-        "service": "scout",
-    },
-]
-
-
-@pytest.fixture()
-def mock_hub_commands(monkeypatch):
-    """Patch Hub discovery so COMMAND_REGISTRY gets loaded with sample commands."""
-    resp = MagicMock()
-    resp.status_code = 200
-    resp.ok = True
-    resp.json.return_value = {"commands": SAMPLE_DYNAMIC_COMMANDS}
-    monkeypatch.setattr("requests.get", lambda *a, **kw: resp)
-    return SAMPLE_DYNAMIC_COMMANDS

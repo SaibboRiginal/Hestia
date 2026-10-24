@@ -79,7 +79,7 @@ def test_voice_note_becomes_chat_message_with_listen_button(env, fake_message):
     t = voice.calls[0]
     assert t[1] == "audio/ogg" and t[2]["use_case"] == "telegram.vocale" and t[2]["keep"]["kind"] == "recording"
     assert t[2]["keep"]["message_id"] == "tg:12345:7"
-    assert "🎙️" in bot.edit_message_text.call_args_list[0][0][0]
+    assert "«aggiungi al diario che ho dormito male»" in bot.edit_message_text.call_args_list[0][0][0]
     assert bot.edit_message_reply_markup.called and not bot.send_voice.called      # chat: text only
 
 
@@ -88,7 +88,7 @@ def test_live_mode_answers_voice_notes_by_voice(env, fake_message):
     bot, voice, _, settings = env
     from telegram_bot.services import voice_service
     from telegram_bot.services.chat_service import handle_file_message
-    assert "live" in voice_service.set_live(12345, True).lower()
+    assert "risposte a voce: sì" in voice_service.set_live(12345, True).lower()
     handle_file_message(_voice_message(fake_message))
     spoken = [c for c in voice.calls if c[0] == "s"]
     assert spoken[0][1] == "Segnato nel diario." and spoken[0][2]["fmt"] == "ogg_opus"

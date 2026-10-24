@@ -1,7 +1,7 @@
 """Tests — message_format module (Phase 2.1)
 
 Format contract tests: HTML output correctness, Markdown conversion,
-message splitting, link handling, and signal card generation.
+message splitting and link handling.
 All pure function tests — no network, no bot.
 """
 from __future__ import annotations

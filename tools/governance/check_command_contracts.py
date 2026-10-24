@@ -2,7 +2,8 @@
 """Governance gate: validate command metadata and detect contract drift.
 
 Checks:
-1) Validate Telegram local command catalog entries include required fields.
+1) Validate Telegram's own actions (``telegram_bot/local_actions.py``): each has a name, a title and a
+   description argument (they are menu entries like every module tool).
 2) If command-contract files changed, require capability inventory and Swagger sync.
 3) Verify maintenance-eligible services each expose a *_reconcile command that
    routes to /api/module/maintenance/reconcile (Phase 5 contract enforcement).
@@ -19,19 +20,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-TELEGRAM_COMMAND_FILE = ROOT / "Hestia-Telegram" / "app" / "command_catalog.py"
-REQUIRED_COMMAND_KEYS = {
-    "command",
-    "title",
-    "description",
-    "method",
-    "path",
-    "response_mode",
-    "clients",
-}
+TELEGRAM_ACTIONS_FILE = ROOT / "Hestia-Telegram" / "app" / "telegram_bot" / "local_actions.py"
 
 CONTRACT_KEYWORDS = (
-    "command_catalog",
+    "local_actions",
     "discovery",
     "capabilities",
     "route",
@@ -80,23 +72,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def extract_command_dict_keys(path: Path) -> list[set[str]]:
-    source = path.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    rows: list[set[str]] = []
-
+def extract_local_actions(path: Path) -> list[list]:
+    """Positional arguments of each ``T(name, title, description, …)`` in ``tools()``."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    rows: list[list] = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Dict):
-            continue
-
-        keys: set[str] = set()
-        for key_node in node.keys:
-            if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str):
-                keys.add(key_node.value)
-
-        if "command" in keys:
-            rows.append(keys)
-
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "T":
+            rows.append([a.value if isinstance(a, ast.Constant) else None for a in node.args])
     return rows
 
 
@@ -148,21 +130,15 @@ def main() -> int:
 
     errors: list[str] = []
 
-    if not TELEGRAM_COMMAND_FILE.exists():
-        errors.append("Missing Telegram command catalog file.")
+    if not TELEGRAM_ACTIONS_FILE.exists():
+        errors.append("Missing Telegram local actions file.")
     else:
-        rows = extract_command_dict_keys(TELEGRAM_COMMAND_FILE)
+        rows = extract_local_actions(TELEGRAM_ACTIONS_FILE)
         if not rows:
-            errors.append(
-                "No command entries found in Telegram command catalog.")
-        else:
-            for idx, keys in enumerate(rows, start=1):
-                missing = sorted(REQUIRED_COMMAND_KEYS - keys)
-                if missing:
-                    errors.append(
-                        "Telegram command entry #"
-                        f"{idx} missing required keys: {', '.join(missing)}"
-                    )
+            errors.append("No actions found in Telegram local actions.")
+        for idx, args in enumerate(rows, start=1):
+            if len(args) < 3 or not all(isinstance(a, str) for a in args[:3]) or not args[0] or not args[1]:
+                errors.append(f"Telegram local action #{idx} needs name, title and description as plain strings")
 
     if changed:
         changed_set = set(changed)

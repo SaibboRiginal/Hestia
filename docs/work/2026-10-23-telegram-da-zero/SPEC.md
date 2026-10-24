@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 3.0 |
+| **Version** | 3.1 |
 | **Source** | user via Project thread (Marko 2026-10-23: «dobbiamo aprire uno specifico per rivedere tutto telegram, le emoji e come mostra le cose è veramente brutto... dobbiamo rivederlo da 0») |
-| **Status** | Draft — waiting for Marko's approval (no code before it) |
+| **Status** | Approved 2026-10-24 (Marko: «tu imposta per averle tutte, e implementa come me l'hai detto tutto») — implementing |
 
 ## Goal
 **Every function of the assistant is usable from Telegram — all of them** (Marko 2026-10-24: «anche da telegram
@@ -299,6 +299,45 @@ titles; Telegram also strips a leading one as safety net.
 - Reply to a notification: the notification id goes with it, so «spostalo a domani» acts on that reminder.
 - WebUI shows the quoted context closed under your message (WebUI part done here too, it is small).
 
+### 5.11 The menu is configuration, not code (v3.1 — Marko: «rendi facile rielaborare i menu… configurazione dinamica piuttosto che hard coded»)
+Everything you see in the menus comes from **one data structure** built at run time from three layers, later wins:
+
+| Layer | Who writes it | What |
+|---|---|---|
+| 1. Defaults | Telegram, `telegram_bot/menu/defaults.py` — **data only**, no logic | bottom keyboard, `/` menu, area list (key, label, emoji, order, which services/groups belong) |
+| 2. Module hints | each module, in its tool declaration (5.7) | area, section, order, primary, header, short label |
+| 3. Your layout | you, Themis setting `telegram.menu.layout` (type `object`, scope user, live) | any override of the above |
+
+Layout shape (every part optional):
+```json
+{
+  "keyboard": [["oggi", "aree"], ["notifiche", "impostazioni"]],
+  "commands": ["oggi", "aree", "notifiche", "impostazioni", "nuova", "voce", "stato", "aiuto"],
+  "areas": {
+    "spese": {"label": "Soldi", "emoji": "💶", "order": 15,
+              "header": "finance_summary", "primary": ["finance_add", "finance_budget"]},
+    "viaggi": {"label": "Viaggi", "emoji": "🧳", "order": 90}
+  },
+  "tools": {
+    "wardrobe_packing": {"area": "viaggi", "label": "Valigia", "primary": true},
+    "fitness_log_measurement": {"section": "Corpo", "order": 1}
+  }
+}
+```
+How you change it:
+- **From Telegram**: Impostazioni › Menu → choose an area → Azioni principali (add/remove, Su/Giù), Rinomina,
+  Emoji, Sposta un'azione in un'altra area, Nuova area, Ripristina predefinito. Each change is saved at once and
+  the card you are looking at is redrawn.
+- **From the WebUI**: the same setting in Impostazioni (Themis panel), as an editable JSON object.
+- **From the assistant**: «metti Registra spesa in alto nelle Spese» → Themis proposal, you confirm (usual rule).
+
+Rules that make it safe:
+- A tool that the layout does not mention **still appears** (area from its hints or its service, else «Altro»):
+  no layout can lose a function. Unknown tool/area names are ignored and logged (`event=menu_layout_unknown`).
+- Areas, keyboard and `/` menu are redrawn at the next tap after a change; the `/` menu and keyboard are re-sent
+  only when they actually changed.
+- The reachability test runs on defaults **and** on sample layouts.
+
 ## 6. Command results without the model
 - Default response mode becomes `display`: Telegram renders the JSON itself with a **generic renderer**: a dict →
   title + «Etichetta: valore» lines (keys humanised, empty values omitted, no «n/d»); a list of dicts → items with
@@ -328,7 +367,7 @@ titles; Telegram also strips a leading one as safety net.
 | Phase | Content |
 |---|---|
 | T1 | `ui.py` grammar (cards, markers, buttons, errors, paging) + tests; rewrite every local string (A1, A5, A6) |
-| T2 | Navigation (section 5): bottom keyboard, `/` menu, Home, area cards, action flow from the tool schema, confirmations, deep links, bot profile, robustness 5.8; module meta (`telegram_*`), titles without emoji, technical tools in «Avanzate»; governance + reachability tests (A2, A3, A8, A11, A12) |
+| T2 | Navigation (section 5) as configuration (5.11: defaults + module hints + `telegram.menu.layout`, menu editor in Telegram): bottom keyboard, `/` menu, Home, area cards, action flow from the tool schema, confirmations, deep links, bot profile, robustness 5.8; module meta (`telegram_*`), titles without emoji, technical tools in «Avanzate»; governance + reachability tests (A2, A3, A8, A11, A12) |
 | T3 | Results without the model: generic renderer, `hestia_common.display`, `display` in the 6 modules, Scout card, signal path removed (A4) |
 | T4 | Chat: new client instructions, notices inside the answer, feedback + Ascolta on the answer, slim settings (A7, A9) |
 | T5 | Notifications, assistant questions, wizards, chat queue texts on the new grammar (A10) |
@@ -338,7 +377,7 @@ titles; Telegram also strips a leading one as safety net.
 
 Each phase is a PR merged when CI is green. Old callback data keep working for messages already in the chat.
 
-## 9. Open choices (Marko)
+## 9. Choices (all decided 2026-10-24: keyboard yes, names and areas as proposed, Mini App yes)
 1. ~~Markers~~ — decided v1.1: hybrid (3.1).
 2. Bottom keyboard (5.1) always visible — yes (recommended) or only the `/` menu?
 3. Command names of 5.2 (`/oggi`, `/aree`, `/nuova`, `/voce`…) — ok or other names?

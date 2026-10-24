@@ -51,10 +51,10 @@ _oracle_mcp_tools = [
             fact=str(kw.get("fact", "")),
             domain=str(kw.get("domain", "general")),
         ),
-        title="🧠 Ricorda preferenza", method="POST", path="/api/memory",
+        title="Salva preferenza", method="POST", path="/api/memory",
         clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="preferenze",
-    ),
+        telegram_visible=False, telegram_group="memoria",
+                telegram={"section": "Note e preferenze"}),
     MCPTool(
         name="memory.search",
         description="Search saved memories and preferences about the user.",
@@ -67,10 +67,10 @@ _oracle_mcp_tools = [
         handler=lambda **kw: engine._memory_service.search_memories(
             query=str(kw.get("query", "")),
         ),
-        title="🔍 Cerca ricordi", method="GET", path="/api/memory",
+        title="Cerca ricordi", method="GET", path="/api/memory",
         clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="preferenze",
-    ),
+        telegram_visible=False, telegram_group="memoria",
+                telegram={"section": "Note e preferenze"}),
     # ── Memory from external AIs (docs/work/2026-10-20-memory-note) ────────
     MCPTool(
         name="memory_note",
@@ -88,10 +88,10 @@ _oracle_mcp_tools = [
         },
         handler=lambda **kw: engine._memory_service.save_note(
             facts=kw.get("facts", ""), topic=str(kw.get("topic", "") or "")),
-        title="Annota in memoria", method="POST", path="/api/memory/note",
+        title="Ricorda questo", method="POST", path="/api/memory/note",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="preferenze",
-    ),
+        telegram_visible=False, telegram_group="memoria",
+                telegram={"section": "Note e preferenze", "primary": 1}),
     MCPTool(
         name="memory_recall",
         description=("What Hestia already knows about the user on a topic (keywords), so your answer and Hestia's "
@@ -103,10 +103,10 @@ _oracle_mcp_tools = [
             },
         },
         handler=lambda **kw: engine._memory_service.recall(query=str(kw.get("query", "") or "")),
-        title="Cosa sa Hestia", method="GET", path="/api/memory/recall",
+        title="Cosa ricordi", method="GET", path="/api/memory/recall",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="preferenze",
-    ),
+        telegram_visible=False, telegram_group="memoria",
+                telegram={"section": "Note e preferenze", "primary": 2}),
     MCPTool(
         name="documents.search",
         description="Search through uploaded documents and files for relevant content.",
@@ -119,10 +119,10 @@ _oracle_mcp_tools = [
         },
         handler=lambda **kw: (True, engine._doc_rag.search_relevant_chunks(
             str(kw.get("query", "")), None, None)),
-        title="📄 Cerca documenti", method="GET", path="/api/documents/search",
+        title="Cerca nei documenti", method="GET", path="/api/documents/search",
         clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="documenti",
-    ),
+        telegram_visible=False, telegram_group="memoria",
+                telegram={"section": "Documenti", "primary": 3}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -136,10 +136,10 @@ _oracle_mcp_tools = [
         },
         handler=lambda **kw: engine.estimate_context_stats(
             session_id=str(kw.get("session_id", ""))),
-        title="📊 Contesto sessione", method="GET", path="/api/chat/context",
+        title="Contesto della chat", method="GET", path="/api/chat/context",
         clients=["telegram", "ui"], response_mode="raw_json",
         telegram_visible=False, telegram_group="sistema",
-    ),
+                telegram={"section": "Chat"}),
     MCPTool(
         name="oracle.compact",
         description="Force-compact conversation history for a session via LLM summarisation.",
@@ -152,19 +152,19 @@ _oracle_mcp_tools = [
         },
         handler=lambda **kw: engine.compact_context(
             session_id=str(kw.get("session_id", ""))),
-        title="🗜️ Compatta contesto", method="POST", path="/api/chat/compact",
+        title="Compatta la chat", method="POST", path="/api/chat/compact",
         clients=["telegram", "ui"], response_mode="raw_json",
         telegram_visible=False, telegram_group="sistema",
-    ),
+                telegram={"section": "Chat"}),
     MCPTool(
         name="oracle.session_info",
         description="Return global Oracle state: active sessions, uptime, model in use, Hub connection.",
         parameters={"type": "object", "properties": {}, "required": []},
         handler=lambda **kw: engine.get_session_info(),
-        title="ℹ️ Stato Oracle", method="GET", path="/api/sessions",
+        title="Stato dei modelli", method="GET", path="/api/sessions",
         clients=["telegram", "ui"], response_mode="raw_json",
         telegram_visible=False, telegram_group="sistema",
-    ),
+                telegram={"section": "Salute e log"}),
     MCPTool(
         name="oracle.logs_query",
         description="Query Oracle's in-memory log buffer by level and text filter.",
@@ -181,10 +181,10 @@ _oracle_mcp_tools = [
             contains=str(kw.get("contains", "") or "").strip() or None,
             limit=int(kw.get("limit", 50)),
         ),
-        title="📋 Log Oracle", method="GET", path="/api/logs",
+        title="Log dei modelli", method="GET", path="/api/logs",
         clients=["telegram", "ui"], response_mode="raw_json",
         telegram_visible=False, telegram_group="sistema",
-    ),
+                telegram={"section": "Salute e log"}),
 ]
 try:
     app.include_router(create_mcp_router(_oracle_mcp_tools, service_name="oracle"))

@@ -1,15 +1,9 @@
-import json
 import re
 from html import escape as html_escape
 from html import unescape
 from html.parser import HTMLParser
-from typing import Any
 from urllib.parse import urlparse
 
-from telegram_settings import SIGNALS_STYLE, SIGNALS_STYLE_BY_FAMILY, settings
-
-
-_SIGNAL_STYLE_ALLOWED = {"minimal", "compact", "rich"}
 
 _ALLOWED_TELEGRAM_HTML_TAGS = {"b", "i", "u", "s", "code", "pre", "a", "br", "blockquote"}
 _TELEGRAM_HTML_TAG_ALIASES = {
@@ -128,38 +122,6 @@ def html_to_plain_text(text: str) -> str:
     normalized = unescape(normalized)
     normalized = re.sub(r"\n{3,}", "\n\n", normalized)
     return normalized.strip()
-
-
-def _normalize_signal_style(value: str | None, fallback: str = "minimal") -> str:
-    style = str(value or "").strip().lower()
-    return style if style in _SIGNAL_STYLE_ALLOWED else fallback
-
-
-def _signal_family(event: str) -> str:
-    normalized = str(event or "").strip().lower()
-    if normalized.startswith("memory."):
-        return "memory"
-    if normalized.startswith("subscription."):
-        return "subscription"
-    if normalized.startswith("action."):
-        return "action"
-    return "other"
-
-
-def _resolve_signal_style(signal: dict[str, Any], event: str) -> str:
-    family = _signal_family(event)
-    base = _normalize_signal_style(settings.get(SIGNALS_STYLE), fallback="minimal")
-    override = settings.get(SIGNALS_STYLE_BY_FAMILY.get(family, ""), "")
-    style = _normalize_signal_style(override, fallback=base)
-
-    # Optional per-signal client override (keeps payload canonical while client chooses rendering).
-    ui = signal.get("ui") if isinstance(signal.get("ui"), dict) else {}
-    telegram_ui = ui.get("telegram") if isinstance(
-        ui.get("telegram"), dict) else {}
-    forced = _normalize_signal_style(
-        str(telegram_ui.get("style") or "").strip().lower(), fallback=style
-    )
-    return forced
 
 
 def prettify_link_label(label: str, url: str) -> str:
@@ -436,7 +398,7 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
                 continue
             seen_urls.add(normalized_url)
             pretty_label = prettify_link_label(label, normalized_url)
-            messages.append(f'🔗 <a href="{normalized_url}">{pretty_label}</a>')
+            messages.append(f'• <a href="{normalized_url}">{pretty_label}</a>')
 
     return messages
 
@@ -490,160 +452,3 @@ def strip_markdown(text: str) -> str:
     text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
     text = text.replace("`", "")
     return text
-
-
-def build_signal_cards(signals: list[dict]) -> list[str]:
-    if not signals:
-        return []
-
-    def _safe_inline(value: Any) -> str:
-        text = format_for_telegram(str(value or "")).replace("\n", " ").strip()
-        return re.sub(r"\s+", " ", text)
-
-    cards: list[str] = []
-    for signal in signals:
-        event = str(signal.get("event", "")).strip().lower()
-        data = signal.get("data") if isinstance(
-            signal.get("data"), dict) else {}
-        style = _resolve_signal_style(signal, event)
-
-        if event == "memory.preference.added":
-            fact = _safe_inline(data.get("fact", ""))
-            domain = _safe_inline(data.get("domain", "general")) or "general"
-            if fact:
-                if style == "compact":
-                    cards.append(
-                        "🧠 Preferenza salvata\n"
-                        f"<i>{fact}</i>"
-                    )
-                elif style == "rich":
-                    cards.append(
-                        "🧠 <b>Preferenza salvata</b>\n"
-                        f"• <b>Dominio:</b> {domain}\n"
-                        f"• <b>Dettaglio:</b> {fact}"
-                    )
-                else:
-                    cards.append(f"🧠 Preferenza salvata: <i>{fact}</i>")
-            else:
-                cards.append("🧠 Preferenza salvata")
-            continue
-
-        if event == "memory.preference.removed":
-            fact = _safe_inline(data.get("fact", ""))
-            domain = _safe_inline(data.get("domain", "general")) or "general"
-            if fact:
-                if style == "compact":
-                    cards.append(
-                        "🧠 Preferenza disattivata\n"
-                        f"<i>{fact}</i>"
-                    )
-                elif style == "rich":
-                    cards.append(
-                        "🧠 <b>Preferenza disattivata</b>\n"
-                        f"• <b>Dominio:</b> {domain}\n"
-                        f"• <b>Dettaglio:</b> {fact}"
-                    )
-                else:
-                    cards.append(f"🧠 Preferenza disattivata: <i>{fact}</i>")
-            else:
-                cards.append("🧠 Preferenza disattivata")
-            continue
-
-        if event in {"subscription.added", "subscription.changed", "subscription.removed"}:
-            domain = _safe_inline(data.get("domain", "general")) or "general"
-            domain_suffix = "" if domain == "general" else f" ({domain})"
-            filters = data.get("filters") if isinstance(
-                data.get("filters"), dict) else {}
-            filters_summary = _safe_inline(
-                ", ".join(
-                    f"{str(key).replace('_', ' ')}={value}"
-                    for key, value in filters.items()
-                )
-            )
-            if event == "subscription.added":
-                if style == "compact" and filters_summary:
-                    cards.append(
-                        f"🔔 Notifica attivata{domain_suffix}\n"
-                        f"<i>{filters_summary}</i>"
-                    )
-                else:
-                    cards.append(f"🔔 Notifica attivata{domain_suffix}")
-            elif event == "subscription.changed":
-                if style == "compact" and filters_summary:
-                    cards.append(
-                        f"🔔 Notifica aggiornata{domain_suffix}\n"
-                        f"<i>{filters_summary}</i>"
-                    )
-                else:
-                    cards.append(f"🔔 Notifica aggiornata{domain_suffix}")
-            else:
-                cards.append(f"🔕 Notifica disattivata{domain_suffix}")
-            continue
-
-        if event == "action.executed":
-            title = _safe_inline(data.get("title", ""))
-            command = _safe_inline(data.get("command", ""))
-            path = _safe_inline(data.get("path", ""))
-            label = title or command or "azione"
-            if style == "compact" and path:
-                cards.append(
-                    f"✅ Eseguito: <i>{label}</i>\n<code>{path}</code>")
-            else:
-                cards.append(f"✅ Eseguito: <i>{label}</i>")
-            continue
-
-        if event == "action.failed":
-            title = _safe_inline(data.get("title", ""))
-            command = _safe_inline(data.get("command", ""))
-            error = _safe_inline(data.get("error", ""))
-            label = title or command or "azione"
-            if style in {"compact", "rich"} and error:
-                cards.append(
-                    f"❌ Non riuscito: <i>{label}</i>\n"
-                    f"<i>{error[:220]}</i>"
-                )
-            else:
-                cards.append(f"❌ Non riuscito: <i>{label}</i>")
-            continue
-
-        if event == "tool.summary":
-            calls = data.get("calls") if isinstance(
-                data.get("calls"), list) else []
-            if not calls:
-                continue
-            if style == "minimal":
-                tool_names = ", ".join(
-                    str(c.get("tool", "?")).replace(".search", "").replace("_", " ")
-                    for c in calls[:6]
-                )
-                cards.append(f"🔧 <b>Strumenti usati:</b> {tool_names}")
-                continue
-            # compact / rich: one bullet per tool call
-            lines: list[str] = ["🔧 <b>Riepilogo strumenti</b>"]
-            for c in calls[:8]:
-                tool = str(c.get("tool", "?")).replace(".search", "")
-                ok = bool(c.get("ok"))
-                count = c.get("result_count")
-                duration = c.get("duration_ms")
-                icon = "✅" if ok else "❌"
-                detail_parts: list[str] = [icon, f"<code>{tool}</code>"]
-                if count is not None:
-                    detail_parts.append(f"({count} risultati)")
-                if duration is not None:
-                    detail_parts.append(f"{duration}ms")
-                lines.append(" ".join(detail_parts))
-            cards.append("\n".join(lines))
-            continue
-
-        if style in {"compact", "rich"}:
-            content = _safe_inline(signal.get("content", ""))
-            if content:
-                cards.append(f"<i>{content}</i>")
-
-    return cards
-
-
-def format_payload_raw(payload: Any) -> str:
-    if isinstance(payload, (dict, list)):
-        return f"```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
-    return str(payload)

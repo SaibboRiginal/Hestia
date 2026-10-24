@@ -2,7 +2,7 @@
 
 - [x] Audit of the current Telegram client (strings, emoji, menu, command output, settings) — SPEC section 1
 - [x] SPEC v1.0 (draft), v1.1 hybrid markers, v2.0 navigation redesign, v3.0 all functions + reply as context
-- [ ] Marko approves SPEC + choices of section 9
+- [x] Marko approves SPEC + choices of section 9 (2026-10-24, all as proposed; v3.1 menu as configuration)
 - [ ] T1 `ui.py` grammar + local strings
 - [ ] T2 commands: menu, Home, «Comandi» browser, module titles, technical tools in «Avanzate», governance check
 - [ ] T3 results without the model: generic renderer, `hestia_common.display`, 6 modules, Scout card, signal path removed
