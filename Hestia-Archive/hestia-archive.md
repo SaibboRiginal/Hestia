@@ -46,6 +46,10 @@ It stores and serves all persistent state through generic APIs.
   Oracle restart (`docs/work/2026-10-19-oracle-offline` v3 A).
 - **Argus store** (`/api/argus-store/*`): table `argus_records`, same shape and protocol. Journal of notable system
   events (`kind=event`, `ref_id` = service, `at` = start) shown on Argus' «Registro» page (v3 F).
+- **Hermes store** (`/api/hermes-store/*`): table `hermes_records`. Web Push subscriptions of the WebUI's browsers
+  (`kind=push`, id = hash of the endpoint) (`docs/work/2026-10-24-tutto-brainstorm-cindy` C15).
+- **Chronos store** (`/api/chronos-store/*`): table `chronos_records`. Routine results kept for the evening recap
+  (`kind=routine_result`, `ref_id` = routine key) and the smart calendar's «Lascia così» (`kind=smart_kept`).
   All are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
   own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
@@ -98,6 +102,8 @@ It stores and serves all persistent state through generic APIs.
 | `PUT`/`GET` | `/api/signals-store/records` · `GET /api/signals-store/cursor` | reflection signals / metrics (each module its own rows) and Athena observations |
 | `PUT`/`GET` | `/api/oracle-store/records` · `GET /api/oracle-store/cursor` | Oracle rows: pending questions to the user (Oracle only) |
 | `PUT`/`GET` | `/api/argus-store/records` · `GET /api/argus-store/cursor` | Argus rows: notable events journal (Argus only) |
+| `PUT`/`GET` | `/api/hermes-store/records` · `GET /api/hermes-store/cursor` | Hermes rows: Web Push subscriptions (Hermes only) |
+| `PUT`/`GET` | `/api/chronos-store/records` · `GET /api/chronos-store/cursor` | Chronos rows: routine results for the recap, «Lascia così» choices (Chronos only) |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |

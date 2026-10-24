@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import threading
 import time
+from typing import Any
 import requests
 
 from fastapi import FastAPI, HTTPException
@@ -34,7 +35,7 @@ from .modules.schemas import (
 )
 from .modules.hermes_settings import DELIVERY_RETRY_INTERVAL, settings as hermes_settings
 from .modules.service import HermesService
-from .modules import ui_view
+from .modules import ui_view, webpush
 from .modules.notifications import public_voice as notifications_public_voice
 from hestia_common.plugin_client import PluginClient, page, widget
 from hestia_common.voice_usecases import capabilities as voice_capabilities
@@ -147,6 +148,14 @@ def _register_agenda() -> None:
         service="hermes", path="/api/notifications/retract-stale",
         recurrence="FREQ=HOURLY",
         description="Toglie dalla chat Telegram le notifiche già viste o gestite (restano nell'elenco della WebUI).",
+        timeout_seconds=60,
+    ), job_rule(
+        "hermes.notifications.remind_pending",
+        "Promemoria delle cose da decidere",
+        service="hermes", path="/api/notifications/remind-pending",
+        recurrence="FREQ=HOURLY",
+        description="Se una notifica aspetta una tua risposta da qualche ora ti mando un solo promemoria con "
+                    "tutte quelle in attesa.",
         timeout_seconds=60,
     )])
 
@@ -400,6 +409,60 @@ def notifications_release_held(req: ReleaseHeldRequest | None = None):
 def notifications_retract_stale():
     """Agenda job: drop handled messages from transient client surfaces (Telegram chat)."""
     return service.notifications.retract_stale()
+
+
+@app.post("/api/notifications/remind-pending")
+def notifications_remind_pending():
+    """Agenda job: one grouped reminder of the notifications still waiting for an answer (Cindy 5)."""
+    return service.notifications.remind_pending()
+
+
+class SecretSubmitRequest(BaseModel):
+    client: str = "webui"
+    values: dict[str, Any] = {}
+
+    def __repr__(self) -> str:          # never print the values
+        return f"SecretSubmitRequest(client={self.client!r}, fields={sorted(self.values)})"
+
+    __str__ = __repr__
+
+
+@app.post("/api/notifications/{notification_id}/secret")
+def notification_secret(notification_id: str, req: SecretSubmitRequest):
+    """Secret form (Cindy 4): the values go to the module that asked, never stored nor logged by Hermes."""
+    status, body = service.notifications.submit_secret(notification_id, req.values, req.client)
+    req.values.clear()
+    return JSONResponse(status_code=status, content=body)
+
+
+# ── Web Push (WebUI browsers, C15) ───────────────────────────────────────────
+
+class PushSubscribeRequest(BaseModel):
+    subscription: dict[str, Any]
+    device: str = ""
+
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str
+
+
+@app.get("/api/push/key")
+def push_key():
+    """VAPID public key for the browser's ``pushManager.subscribe`` (empty = Web Push not set up)."""
+    return {"enabled": webpush.configured(), "public_key": webpush.public_key()}
+
+
+@app.post("/api/push/subscribe")
+def push_subscribe(req: PushSubscribeRequest):
+    try:
+        return webpush.subscribe(service.archive, req.subscription, req.device)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.delete("/api/push/subscribe")
+def push_unsubscribe(req: PushUnsubscribeRequest):
+    return webpush.unsubscribe(service.archive, req.endpoint)
 
 
 @app.post("/api/notifications/{notification_id}/seen")

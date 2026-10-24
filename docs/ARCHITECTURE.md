@@ -419,6 +419,11 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    and ask. No header from a non-user client = `autonomo`. Write tools return `undo`
    (`hestia_common.mcp_helpers.undo`) when they can be undone; text sent outside the house (cloud model analysis,
    Forge prompts) passes through `hestia_common.redact`. Dated rules from Marko: `docs/REGOLE-DI-MARKO.md`.
+13. **Routines are agenda rules, secrets never rest (same dossier, W2):** a routine is a Chronos agenda rule with a
+   written instruction (by time = job, by event = Iris mail push or a module signal), run as a `routine` turn; no
+   module adds its own scheduler for it. A value the owner types in a Hermes secret form goes straight to the module
+   that asked, through the Hub: Hermes never stores or logs it, and no client asks for it in a chat. A notification
+   rings only on the client the owner is using (the others get it silent); Web Push is one more way to ring the WebUI.
 
 ## Autonomous Remediation Contract
 

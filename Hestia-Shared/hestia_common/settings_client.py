@@ -110,6 +110,8 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
             help="I tuoi posti (Casa, Lavoro, Palestra…): uno è Casa, il luogo predefinito per il meteo; "
                  "l'agenda e gli allenamenti riconoscono gli eventi in questi posti. Basta la città, "
                  "o l'indirizzo con la città."),
+    setting("themis.personal.birth_date", "Data di nascita", "string", "", group="Personali",
+            help="AAAA-MM-GG. Il tuo compleanno entra negli eventi speciali (lo puoi cambiare anche lì)."),
 )}
 PERSONAL["themis.personal.places"]["item"] = {
     "type": "object", "label": "Luogo",

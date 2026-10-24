@@ -217,8 +217,9 @@ clients show the settings of a group as a grid (Oracle: use case × fornitore / 
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
 **Personal settings shared by every module** (owner Themis, group «Personali», `settings_client.PERSONAL`):
-`themis.personal.week_start` (monday/sunday), `themis.personal.currency` and `themis.personal.places` (Casa, Lavoro,
-Palestra…; editor `places`, options from `hecate:/api/gateway/weather/places`). A module never declares its own copy:
+`themis.personal.week_start` (monday/sunday), `themis.personal.currency`, `themis.personal.places` (Casa, Lavoro,
+Palestra…; editor `places`, options from `hecate:/api/gateway/weather/places`) and `themis.personal.birth_date`
+(`AAAA-MM-GG`, Chronos turns it into the owner's birthday among the special events). A module never declares its own copy:
 `settings.follow_personal()` (or `follow({...})`) sends `follows` on register, Themis answers `shared` and pushes
 it again on every change; `settings.get("themis.personal.week_start")` then works like an own key
 (`week_start_index()` gives 0 = Monday … 6 = Sunday).

@@ -100,6 +100,27 @@ within the cooldown window.
 - Echo down → `[🔄]`, the text stays the only form. Superseded (or superseded before the audio is ready) → the audio is
   dropped in Echo (`forget`).
 
+## Da decidere, active client, secret form, Web Push (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W2)
+
+- **«Da decidere»** (Cindy 5): agenda job `hermes.notifications.remind_pending` (hourly) → `POST
+  /api/notifications/remind-pending`. Notifications still waiting for an answer after `hermes.attesa.richiamo_ore`
+  (default 4 h) get ONE grouped reminder «Da decidere: N» (repeat chain `hermes.pending_reminder`, so the previous
+  reminder is replaced), each notification recalled once (`reminded_at`). The link opens the inbox filter `pending`.
+- **Rings only where the owner is** (Cindy 20): if the presence says the owner used a client (`last_interaction_client`)
+  within `hermes.consegna.client_attivo_minuti` (default 10, 0 = everywhere), the other clients get the notification
+  `silent` (inbox only). Urgent ones (`_urgent`) and `origin` notifications keep their own rule; an unknown client
+  (one Hermes does not deliver to) rings everywhere.
+- **Secret form** (Cindy 4): an event with `_secret: {service, path, fields: [{name, label, type password|text|token}]}`
+  shows a form (WebUI; Telegram gets an «Inserisci» Mini App button, never asks in the chat). `POST
+  /api/notifications/{id}/secret {client, values}` claims it (first answer wins) and forwards `{values, client}` to
+  the module through the Hub. Hermes never stores or logs the values (only the field names); clients see only the
+  fields (`secret: {fields}`). A secret notification counts as pending.
+- **Web Push** (C15, `src/modules/webpush.py`): the WebUI's browsers subscribe with `POST /api/push/subscribe
+  {subscription, device}` (`GET /api/push/key` gives the VAPID public key; `DELETE /api/push/subscribe {endpoint}`).
+  Subscriptions are rows of Archive `/api/hermes-store` (kind `push`). Every notification that rings on the WebUI is
+  also pushed (title, plain text ≤ 300, link, id; never form values); 404/410 subscriptions are dropped. Env
+  `HERMES_VAPID_PUBLIC_KEY` / `HERMES_VAPID_PRIVATE_KEY` / `HERMES_VAPID_SUBJECT`; empty = off.
+
 ## API (MVP)
 
 | Method | Path | Description |
@@ -111,6 +132,9 @@ within the cooldown window.
 | `POST` | `/api/notifications/{id}/seen` · `/seen-all` | Global read state |
 | `POST` | `/api/notifications/{id}/answer` · `/answer/outcome` | First answer wins, routed to the asking module |
 | `POST` | `/api/notifications/retract-stale` | Agenda job: retract handled messages from clients |
+| `POST` | `/api/notifications/remind-pending` | Agenda job: one grouped «Da decidere» reminder (Cindy 5) |
+| `POST` | `/api/notifications/{id}/secret` | Secret form `{client, values}` → forwarded to the module, never stored (Cindy 4) |
+| `GET` · `POST` · `DELETE` | `/api/push/key` · `/api/push/subscribe` | Web Push: VAPID public key · browser subscription on/off (C15) |
 | `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
 | `GET` | `/api/ui/subscriptions` · `/api/ui/clients` | Active subscriptions (domain, event type, filters, channels) · clients reached now |
 | `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |

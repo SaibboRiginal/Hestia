@@ -75,6 +75,8 @@ app.include_router(module_store.iris_router)      # Iris (mail subscriptions)
 app.include_router(module_store.echo_router)      # Echo (kept audio index, voice usage)
 app.include_router(module_store.oracle_router)    # Oracle (pending questions to the user)
 app.include_router(module_store.argus_router)     # Argus (notable events journal)
+app.include_router(module_store.hermes_router)    # Hermes (Web Push subscriptions)
+app.include_router(module_store.chronos_router)   # Chronos (routine results, smart-calendar choices)
 app.include_router(module_store.signals_router)   # reflection signals (modules → Athena)
 
 # Backup to Google Drive, verification, rollback (docs/work/2026-10-20-backup-drive) + maintenance gate.

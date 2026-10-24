@@ -5188,6 +5188,199 @@ paths:
       responses:
         "200": {description: "{count, items[{base, overlays, label, reason, from, from_label, at}]}"}
 
+  /api/routines:
+    get:
+      tags: [Chronos — Life]
+      summary: "Routines (agenda rules with an instruction): trigger, deliver, last run"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: include_cancelled, in: query, required: false, schema: {type: boolean}}
+      responses:
+        "200": {description: "{count, items}"}
+    post:
+      tags: [Chronos — Life]
+      summary: "New routine {title, instruction, recurrence? (RRULE) | on? ({mail} | {signal}), precheck? {tool,args}, deliver hermes|recap}"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/routines/templates:
+    get:
+      tags: [Chronos — Life]
+      summary: "Gallery of ready-made routines (radar, case, spese, settimana, mail)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{templates}"}
+
+  /api/routines/from-template/{template_id}:
+    post:
+      tags: [Chronos — Life]
+      summary: "Routine from a template {values, recurrence?, title?}"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: template_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/routines/{key}/run:
+    post:
+      tags: [Chronos — Life]
+      summary: "Run a routine now (agenda action): pre-check, assistant turn with origin routine:<key>, delivery"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{ok, ran, delivered?, reason?, text?}"}
+
+  /api/routines/signal:
+    post:
+      tags: [Chronos — Life]
+      summary: "A module's event {name, data}: runs the routines waiting for it"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{ok, started}"}
+
+  /api/routines/mail:
+    post:
+      tags: [Chronos — Life]
+      summary: "Iris doorbell {key, reference_ids} for mail-triggered routines"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/special:
+    get:
+      tags: [Chronos — Life]
+      summary: "Special events (birthdays, anniversaries, important dates) with next and in_days"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{count, items}"}
+    post:
+      tags: [Chronos — Life]
+      summary: "Add a special event {title, day YYYY-MM-DD, kind birthday|anniversary|custom, lead_days?, person?, note?, key?, by?}"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/special/{key}:
+    delete:
+      tags: [Chronos — Life]
+      summary: "Remove a special event"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "OK"}
+
+  /api/special/propose:
+    post:
+      tags: [Chronos — Life]
+      summary: "The assistant found a date: Hermes card Aggiungi / No {title, day, kind, person?, evidence?}"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{proposed, proposal_id}"}
+
+  /api/special/proposal/declined:
+    post:
+      tags: [Chronos — Life]
+      summary: "«No» on a special event proposal"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/special/run:
+    post:
+      tags: [Chronos — Life]
+      summary: "Daily agenda job chronos.special.daily: lead-time notices, greetings, special_moment push"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{today, soon}"}
+
+  /api/calendar/smart/check:
+    post:
+      tags: [Chronos — Life]
+      summary: "Overlapping events of the next days → Hermes card «Sposta alle HH:MM» / «Lascia così» (never moves by itself)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: integer}}
+      responses:
+        "200": {description: "{checked, proposals}"}
+
+  /api/calendar/smart/kept:
+    post:
+      tags: [Chronos — Life]
+      summary: "«Lascia così» {event_id}: not proposed again"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/presence/manual:
+    post:
+      tags: [Chronos — Life]
+      summary: "Manual state {state, minutes?} (signal manual.state; 404 unknown state)"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+    delete:
+      tags: [Chronos — Life]
+      summary: "Manual state off: the rules decide again"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "OK"}
+
   /api/activity:
     get:
       tags: [Oracle]
@@ -5590,6 +5783,63 @@ paths:
       responses:
         "200":
           description: "{retracted}"
+
+  /api/notifications/remind-pending:
+    post:
+      tags: [Hermes]
+      summary: "Agenda job hermes.notifications.remind_pending: one grouped «Da decidere» reminder, once per notification"
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{reminded}"}
+
+  /api/notifications/{notification_id}/secret:
+    post:
+      tags: [Hermes]
+      summary: "Secret form {client, values}: first answer wins, values forwarded to the module through the Hub, never stored or logged"
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - {name: notification_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{status, answer} · 400 missing_fields · 409 already_handled"}
+
+  /api/push/key:
+    get:
+      tags: [Hermes]
+      summary: "Web Push: VAPID public key (enabled false when not set up)"
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{enabled, public_key}"}
+
+  /api/push/subscribe:
+    post:
+      tags: [Hermes]
+      summary: "Web Push: store a browser PushSubscription {subscription, device}"
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{ok, id}"}
+    delete:
+      tags: [Hermes]
+      summary: "Web Push: drop a browser subscription {endpoint}"
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
 
   /api/notifications/{notification_id}/seen:
     post:
@@ -11480,6 +11730,64 @@ paths:
         - url: http://localhost:19002
       responses:
         "200": {description: OK}
+
+  /api/hermes-store/records:
+    get:
+      tags: [Archive — module stores]
+      summary: "Hermes rows by kind/ref/parent/at range/since_seq"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "OK"}
+    put:
+      tags: [Archive — module stores]
+      summary: "Upsert Hermes rows {rows} (LWW): Web Push subscriptions (Hermes only)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/hermes-store/cursor:
+    get:
+      tags: [Archive — module stores]
+      summary: "Current cursor of the Hermes store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "OK"}
+
+  /api/chronos-store/records:
+    get:
+      tags: [Archive — module stores]
+      summary: "Chronos rows by kind/ref/parent/at range/since_seq"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "OK"}
+    put:
+      tags: [Archive — module stores]
+      summary: "Upsert Chronos rows {rows} (LWW): routine results, smart-calendar choices (Chronos only)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/chronos-store/cursor:
+    get:
+      tags: [Archive — module stores]
+      summary: "Current cursor of the Chronos store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "OK"}
 
   /api/webui/voice/transcribe:
     post:

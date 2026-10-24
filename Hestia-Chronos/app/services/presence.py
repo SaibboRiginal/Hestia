@@ -153,8 +153,12 @@ def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[
     """Pick base + overlays and their effects (no side effects)."""
     bases = sorted((s for s in states.values() if s["kind"] == "base"),
                    key=lambda s: -int(s.get("priority") or 0))
-    base = next((s for s in bases if matches(s, signals, resolve)), None) or states.get("idle")
-    overlays = sorted((s for s in states.values() if s["kind"] == "overlay" and matches(s, signals, resolve)),
+    # A state the owner picked by hand (``manual.state``, any state: data, never a name test) wins over the rules.
+    forced = states.get(str(signals.get("manual.state") or ""))
+    base = forced if forced and forced["kind"] == "base" else None
+    base = base or next((s for s in bases if matches(s, signals, resolve)), None) or states.get("idle")
+    overlays = sorted((s for s in states.values() if s["kind"] == "overlay"
+                       and (matches(s, signals, resolve) or s is forced)),
                       key=lambda s: -int(s.get("priority") or 0))
     effects, decided = combine(base, overlays)
     notices = [render(s["notice"], activities) for s in [base, *overlays] if s and s.get("notice")]
@@ -286,6 +290,17 @@ class PresenceEngine:
 
     def clear_dnd(self) -> dict:
         return self.clear_signal("manual.dnd", reason="dnd_off")
+
+    def set_manual(self, state: str, minutes: float | None = None) -> dict:
+        """The owner says how they are («sto mangiando», «vado a dormire»): that state until ``minutes`` (or until
+        cleared). Any defined state, base or overlay."""
+        if state not in self.states():
+            raise KeyError(state)
+        ttl = float(minutes) * 60 if minutes else None
+        return self.set_signal("manual.state", state, meta={"by": "user"}, ttl=ttl, reason="manual_state")
+
+    def clear_manual(self) -> dict:
+        return self.clear_signal("manual.state", reason="manual_state_off")
 
     # ── declared states (modules) ───────────────────────────────────────────
     def declare_states(self, owner: str, states: dict[str, dict]) -> int:

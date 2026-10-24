@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via project thread «Implementare tutto il brainstorm e Cindy» (Marko 2026-10-24 18:31: «iniziamo a implementare TUTTO … tutto one shot, poi una volta fatto tutto e collegato tutto e senza bug, fai il test e finalizza solo alla fine fine»); lists: `/mnt/project-files/brainstorm/2026-10-23-review-e-nuove-idee.md` §0 (A–D) + §5, adaptation table `/mnt/project-files/valutazioni/idee-dal-repo-cindy.md` «Adattamento a Hestia»; routed by the project coordinator |
 | **Status** | For the record (Marko asked for no per-item approvals); implementation in waves, merged by Claude when CI is green |
 
