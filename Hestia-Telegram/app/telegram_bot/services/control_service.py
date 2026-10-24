@@ -82,6 +82,18 @@ class ControlRequestHandler(BaseHTTPRequestHandler):
             from telegram_bot.services.chat_queue import drain_async
             self._send_json(202, {"status": "started" if drain_async("chronos") else "busy"})
             return
+        if self.path == "/api/webapp/verify":
+            # WebUI (via Hub): is this Mini App launch data signed by our bot for the owner?
+            from telegram_bot.webapp import verify_init_data
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(content_length).decode("utf-8") or "{}") if content_length else {}
+                result = verify_init_data(str((body or {}).get("init_data") or ""))
+                self._send_json(200 if result["ok"] else 403, result)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("event=webapp_verify_failed error=%s", e)
+                self._send_json(400, {"ok": False, "reason": "bad_request"})
+            return
         if self.path == "/api/notify":
             # Hermes notification client contract (notification / update / retract).
             from telegram_bot.services.notifications import handle_notify

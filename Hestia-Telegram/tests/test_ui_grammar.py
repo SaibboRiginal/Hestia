@@ -153,3 +153,38 @@ class TestRender:
     def test_error_payload_is_red(self):
         from telegram_bot.render import render
         assert render({"ok": False, "message": "Non trovato"}, "Cerca").html.startswith("🔴")
+
+
+# ── Mini App login ───────────────────────────────────────────────────────────
+
+def _signed(token: str, fields: dict) -> str:
+    import hashlib
+    import hmac
+    from urllib.parse import urlencode
+    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
+    secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+    return urlencode({**fields, "hash": hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()})
+
+
+@pytest.mark.unit
+class TestWebAppVerify:
+    def _setup(self, monkeypatch):
+        from telegram_bot import core
+        monkeypatch.setattr(core, "TELEGRAM_TOKEN", "123:abc")
+        monkeypatch.setattr(core, "ALLOWED_USER_ID", "99999")
+
+    def test_owner_with_fresh_signature_is_accepted(self, monkeypatch):
+        from telegram_bot import webapp
+        self._setup(monkeypatch)
+        data = _signed("123:abc", {"auth_date": "1000", "user": '{"id":99999,"first_name":"M"}', "query_id": "q"})
+        assert webapp.verify_init_data(data, now=1100) == {"ok": True, "user_id": "99999"}
+
+    def test_wrong_bot_old_or_other_user_is_refused(self, monkeypatch):
+        from telegram_bot import webapp
+        self._setup(monkeypatch)
+        user = '{"id":99999}'
+        assert webapp.verify_init_data(_signed("999:zzz", {"auth_date": "1000", "user": user}), now=1100)["reason"] == "signature"
+        assert webapp.verify_init_data(_signed("123:abc", {"auth_date": "1000", "user": user}),
+                                       now=1000 + webapp.MAX_AGE_SECONDS + 5)["reason"] == "expired"
+        assert webapp.verify_init_data(_signed("123:abc", {"auth_date": "1000", "user": '{"id":1}'}), now=1100)["reason"] == "user"
+        assert webapp.verify_init_data("", now=1)["ok"] is False

@@ -13,11 +13,40 @@ export class AuthService {
   local = signal(false);
   isAuthenticated = computed(() => this.local() || (this.token() !== null && this.token()!.length >= 32));
 
+  /** Telegram's signed launch data when the page was opened as a Mini App (read once: the router drops the hash). */
+  private telegramInitData = AuthService.readTelegramInitData();
+
+  private static readTelegramInitData(): string {
+    const fromScript = (window as any).Telegram?.WebApp?.initData;
+    if (fromScript) return String(fromScript);
+    const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    return hash.get('tgWebAppData') || '';
+  }
+
+  /** Opened inside Telegram: log in with the signed launch data (the bot checks it is the owner). */
+  private async telegramLogin(): Promise<boolean> {
+    if (!this.telegramInitData) return false;
+    try {
+      const resp = await firstValueFrom(this.http.post<{ status: string; token: string }>(
+        `${this.apiBase}/auth/telegram`, { initData: this.telegramInitData }));
+      if (resp.status === 'ok' && resp.token) {
+        this.token.set(resp.token);
+        localStorage.setItem('hestia_token', resp.token);
+        return true;
+      }
+    } catch {
+      // not the owner, or the bot is not reachable: the login page asks for the token as usual
+    }
+    this.telegramInitData = '';
+    return false;
+  }
+
   /** Asks the server once whether this browser needs the token. Error → token required. */
   checkAccess(): Promise<boolean> {
     this.accessCheck ??= firstValueFrom(
       this.http.get<{ local: boolean; tokenRequired: boolean }>(`${this.apiBase}/auth/access`)
-    ).then(r => {
+    ).then(async r => {
+      if (r?.tokenRequired && this.telegramInitData) await this.telegramLogin();
       const local = !!r?.local && !r.tokenRequired;
       if (local) localStorage.setItem('hestia_local', '1'); else localStorage.removeItem('hestia_local');
       return local;

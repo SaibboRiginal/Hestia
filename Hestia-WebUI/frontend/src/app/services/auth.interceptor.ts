@@ -9,11 +9,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
   const token = auth.getToken();
-  if (token && !req.url.includes('/auth/login')) {
+  if (token && !req.url.includes('/auth/login') && !req.url.includes('/auth/telegram')) {
     req = req.clone({ setHeaders: { 'X-Access-Token': token } });
   }
   return next(req).pipe(catchError((err: HttpErrorResponse) => {
-    if (err.status === 401 && !req.url.includes('/auth/login')) {
+    if (err.status === 401 && !req.url.includes('/auth/login') && !req.url.includes('/auth/telegram')) {
       auth.logout();
       router.navigate(['/login']);
     }
