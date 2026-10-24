@@ -823,7 +823,8 @@ class OracleEngine:
 
         if client and session_id:
             self._session_clients[session_id] = str(client)[:40]
-        origin = dict(origin or origin_mod.parse(None, client))
+        # The HTTP endpoint always passes the parsed origin (fail closed there); a direct in-process call is trusted.
+        origin = dict(origin or origin_mod.parse({origin_mod.HEADER: "utente"}, client))
         if session_id:
             self._session_origins[session_id] = origin
         # Conversation goal (Cindy 23): «obiettivo: …» fixes it, «ferma l'obiettivo» stops it.
