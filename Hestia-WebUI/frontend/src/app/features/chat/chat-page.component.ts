@@ -153,7 +153,7 @@ const LIVE_LABELS: Record<string, string> = {
           <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi Parla" (click)="live.stop()"></button>
         </div>
       }
-      <div class="composer" [class.disabled]="signalR.connectionState() !== 'connected'">
+      <div class="composer hx-glass" [class.disabled]="signalR.connectionState() !== 'connected'">
         @if (recording()) {
           <div class="rec" role="status">
             <span class="rdot"></span><span class="rtime">{{ duration(recSeconds()) }}</span>

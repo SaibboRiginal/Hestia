@@ -57,7 +57,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 # ── WebUI plugin (core module, Sistema section): Registro ────────────────────
 UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
-ui = PluginClient("themis", title="Themis", icon="settings", color="gray", kind="core", dist=UI_DIST,
+ui = PluginClient("themis", title="Registro impostazioni", icon="settings", color="gray", kind="core", dist=UI_DIST,
                   description="Chi ha cambiato quale impostazione, quando e come: modifiche, proposte, annulla.",
                   version=SERVICE_VERSION)
 ui.webui(entry="themis.js", api_prefix="/api/settings/",

@@ -55,7 +55,7 @@ def _dist_dir() -> Path:
     return here / "ui" / "dist"
 
 
-plugin = PluginClient("scout", title="Scout", icon="home", color="amber",
+plugin = PluginClient("scout", title="Immobili", icon="home", color="amber",
                       description="Case trovate dalle email degli annunci: elenco, preferite, statistiche.",
                       dist=_dist_dir(), version=os.getenv("SCOUT_SERVICE_VERSION", "1.0.0"))
 plugin.webui(

@@ -25,7 +25,9 @@ import { PluginsService } from './plugins.service';
   styles: [`
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
     .center { flex: 1; display: grid; place-items: center; padding: 24px; }
-    @media (max-width: 860px) { :host { padding-top: 48px; } }
+    /* Phone: the shell's menu button sits on the title line of the plugin page (SDK .page > :first-child reads
+       --head-inset), not on a row of its own. */
+    @media (max-width: 860px) { :host { --head-inset: 44px; } }
   `],
 })
 export class PluginPageComponent {

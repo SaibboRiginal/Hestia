@@ -38,7 +38,7 @@ const SYSTEM_ENTRY = 'app.sistema';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
-      <aside class="nav" [style.width.px]="collapsed() ? null : navWidth()">
+      <aside class="nav hx-glass" [style.width.px]="collapsed() ? null : navWidth()">
         @if (!collapsed()) { <hx-resize [(width)]="navWidth" [min]="200" [max]="420" [def]="248" key="nav" /> }
         <div class="brand">
           <svg class="logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
@@ -132,10 +132,10 @@ const SYSTEM_ENTRY = 'app.sistema';
         </nav>
         @if (presence.state(); as p) {
           <div class="presence-wrap">
-            <button class="item presence" [attr.data-tone]="presence.tone()" (click)="togglePresence($event)"
-                    [attr.title]="'Stato: ' + p.label + ' · ultima interazione ' + ago(p.idle_minutes)"
+            <button class="item presence" [attr.data-tone]="online() ? presence.tone() : 'off'" (click)="togglePresence($event)"
+                    [attr.title]="'Stato: ' + p.label + ' · ' + connLabel() + ' · ultima interazione ' + ago(p.idle_minutes)"
                     [attr.aria-expanded]="presenceOpen()">
-              <span class="pdot"></span><span class="plabel">{{ p.label }}</span>
+              <span class="pdot"></span><span class="plabel">{{ online() ? p.label : connLabel() }}</span>
             </button>
             @if (presenceOpen()) {
               <div class="presence-pop" role="dialog" aria-label="Stato dell'assistente"
@@ -143,6 +143,7 @@ const SYSTEM_ENTRY = 'app.sistema';
                    [style.max-height.px]="presencePos().maxHeight">
                 <div class="ptitle"><hx-icon [name]="presence.icon().name" [tone]="presence.icon().tone" [size]="15" />{{ p.label }}</div>
                 @if (p.help) { <div class="pline">{{ p.help }}</div> }
+                <div class="pline dim">Sito: {{ connLabel() }}</div>
                 <div class="pline dim">Ultima interazione: {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
                 @if (p.dnd_until) { <div class="pline">Non disturbare fino alle {{ p.dnd_until | date:'HH:mm' }}</div> }
                 @for (a of p.activities; track a.key) { <div class="pline">• {{ a.label || a.key }}</div> }
@@ -176,10 +177,12 @@ const SYSTEM_ENTRY = 'app.sistema';
               </div>
             }
           </div>
+        } @else {
+          <!-- One status line: the connection shows here only until the assistant's state is known. -->
+          <div class="conn" [attr.data-state]="signalR.connectionState()">
+            <span class="dot"></span><span>{{ connLabel() }}</span>
+          </div>
         }
-        <div class="conn" [attr.data-state]="signalR.connectionState()">
-          <span class="dot"></span><span>{{ connLabel() }}</span>
-        </div>
       </aside>
       @if (chats.historyOpen()) { @defer { <hx-chat-history /> } }
       <div class="scrim" (click)="mobileOpen.set(false)"></div>
@@ -262,11 +265,13 @@ const SYSTEM_ENTRY = 'app.sistema';
     .presence[data-tone=idle] .pdot { background: var(--warning); }
     .presence[data-tone=sleep] .pdot { background: var(--accent); }
     .presence[data-tone=dnd] .pdot { background: var(--danger); }
+    .presence[data-tone=off] .pdot { background: var(--warning); animation: hx-pulse 1.4s ease-in-out infinite; }
     .presence .plabel { overflow: hidden; text-overflow: ellipsis; }
     /* fixed: the sidebar clips its overflow (resizable/collapsible width), so the popover lives in the viewport */
     .presence-pop { position: fixed; width: min(300px, calc(100vw - 16px)); z-index: 900; padding: 12px; overflow-y: auto;
                     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 10px);
-                    box-shadow: var(--shadow-3); display: flex; flex-direction: column; gap: 4px; }
+                    box-shadow: var(--shadow-3); display: flex; flex-direction: column; gap: 4px;
+                    backdrop-filter: var(--glass, none); -webkit-backdrop-filter: var(--glass, none); }
     .ptitle { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
     .pline { font-size: 12.5px; color: var(--text-2); }
     .pline.dim { color: var(--text-3); }
@@ -285,7 +290,7 @@ const SYSTEM_ENTRY = 'app.sistema';
     .collapsed .nav { width: var(--nav-width-collapsed); }
     .collapsed .name, .collapsed .item span, .collapsed .conn span:last-child { display: none; }
     .collapsed .brand { flex-direction: column; padding-left: 0; padding-right: 0; }
-    main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; background: var(--bg); }
+    main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; background: transparent; }
     .burger { display: none; position: absolute; top: 12px; left: 10px; z-index: 5; }
     .scrim { display: none; }
     @media (max-width: 860px) {
@@ -318,7 +323,8 @@ export class ShellComponent {
     const top = pages.filter(p => !p.parent || !pages.some(x => x.module === p.module && x.local_id === p.parent));
     return top.flatMap(p => [p, ...pages.filter(c => c.parent === p.local_id && c.module === p.module)]);
   });
-  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home'));
+  /** The «Stato del sistema» dashboard opens from the Sistema page, not from a second sidebar entry. */
+  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'sistema'));
 
   /** Every sidebar entry by section; pinned ones move to «Fissati» (in the user's order) and leave their section. */
   readonly sections = computed<NavSection[]>(() => {
@@ -434,6 +440,7 @@ export class ShellComponent {
   /** Expanded sidebar width, dragged from its right edge (<hx-resize>), kept per browser. */
   navWidth = signal(savedWidth('nav', 248));
   mobileOpen = signal(false);
+  online = computed(() => this.signalR.connectionState() === 'connected');
   connLabel = computed(() => ({ connected: 'Connesso', connecting: 'Connessione…', disconnected: 'Disconnesso' })[this.signalR.connectionState()]);
   private bootstrapped = false;
 

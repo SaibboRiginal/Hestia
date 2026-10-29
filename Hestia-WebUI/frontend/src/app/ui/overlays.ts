@@ -22,7 +22,7 @@ import { ButtonComponent, ButtonVariant } from './button.component';
   template: `
     @if (open()) {
       <div class="backdrop hx-fade-in" (mousedown)="onBackdrop($event)">
-        <div class="dlg" role="dialog" aria-modal="true" [attr.aria-label]="title()" [attr.data-size]="size()" #dlg tabindex="-1">
+        <div class="dlg hx-glass" role="dialog" aria-modal="true" [attr.aria-label]="title()" [attr.data-size]="size()" #dlg tabindex="-1">
           @if (title()) {
             <header>
               <h2>{{ title() }}</h2>
@@ -88,7 +88,8 @@ export type Anchor = DOMRect | { x: number; y: number; width?: number; height?: 
     }`,
   styles: [`
     .pop { position: fixed; z-index: 900; background: var(--surface); border: 1px solid var(--border);
-           border-radius: var(--radius-lg); box-shadow: var(--shadow-3); max-height: calc(100vh - 24px); overflow: auto; }
+           border-radius: var(--radius-lg); box-shadow: var(--shadow-3); max-height: calc(100vh - 24px); overflow: auto;
+           backdrop-filter: var(--glass, none); -webkit-backdrop-filter: var(--glass, none); }
   `],
 })
 export class PopoverComponent {
@@ -163,7 +164,8 @@ export interface MenuItem { id: string; label: string; icon?: string; danger?: b
     :host { position: relative; display: inline-flex; }
     .trg { display: inline-flex; }
     .menu { position: absolute; top: calc(100% + 4px); right: 0; min-width: 190px; z-index: 950; padding: 5px;
-            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-2); }
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-2);
+            backdrop-filter: var(--glass, none); -webkit-backdrop-filter: var(--glass, none); }
     .menu.left { right: auto; left: 0; }
     .menu.up { top: auto; bottom: calc(100% + 4px); }
     button { width: 100%; display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: var(--radius-sm);

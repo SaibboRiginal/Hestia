@@ -221,11 +221,11 @@ app.include_router(_oracle_settings.settings.router())
 # Inside view of Oracle (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): recent turns, LLM use per
 # use case/model, tokens/cost per day, Claude Code. Reads under /api/ui/ (Oracle's routes are spread over prefixes).
 UI_DIST = os.getenv("ORACLE_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
-ui = PluginClient("oracle", title="Oracle", icon="brain", color="purple", kind="core", dist=UI_DIST,
-                  description="Il cervello di Hestia: richieste, modelli usati, token e costi, Claude Code.",
+ui = PluginClient("oracle", title="Assistente", icon="brain", color="purple", kind="core", dist=UI_DIST,
+                  description="Come lavora l'assistente: richieste, modelli usati, token e costi, documenti, memoria.",
                   version=os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="oracle.js", api_prefix="/api/ui/",
-         pages=[page("cervello", "Cervello", element="oracle-brain", icon="brain", order=120,
+         pages=[page("cervello", "Richieste e modelli", element="oracle-brain", icon="brain", order=120,
                      help="Cosa fa Oracle: ultime richieste (dominio, strumenti, modello, tempi), stato di Claude "
                           "Code; scheda Uso (chiamate, token, cache e costi per modulo e conversazione) e scheda "
                           "Modelli (fornitori, catene di modelli, uso scelto da ogni modulo)."),

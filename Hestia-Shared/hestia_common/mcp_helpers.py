@@ -53,6 +53,8 @@ class MCPTool:
     # Telegram presentation hints (docs/work/2026-10-23-telegram-da-zero §5.7): section, order, primary,
     # summary (area card header), label (short button text, ≤ 24 chars). The user's layout can override them.
     telegram: dict | None = None
+    summary: str = ""             # one sentence for people (Scopri, Comandi); empty = cleaned description
+                                  # (hestia_common.areas.for_people)
 
 
 def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
@@ -98,6 +100,8 @@ def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
                     desc["telegram_group"] = t.telegram_group
                 if t.telegram:
                     desc["telegram"] = t.telegram
+                if t.summary:
+                    desc["summary"] = t.summary
                 tool_descriptors.append(desc)
             return JSONResponse({
                 "jsonrpc": "2.0",

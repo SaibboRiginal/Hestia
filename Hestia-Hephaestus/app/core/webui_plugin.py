@@ -28,8 +28,8 @@ widget = import_shared_symbol("hestia_common.plugin_client", "widget")
 API_PREFIX = "/api/hephaestus/"
 UI_DIST = os.getenv("HEPHAESTUS_UI_DIST", "/ui/dist")   # infra: where the image put the built bundle
 
-ui = PluginClient("hephaestus", title="Hephaestus", icon="code", color="amber", kind="core", dist=UI_DIST,
-                  description="Riparazioni automatiche dei servizi e auto-sviluppo (Forge).",
+ui = PluginClient("hephaestus", title="Sviluppo", icon="code", color="amber", kind="core", dist=UI_DIST,
+                  description="Hestia che si sviluppa da sola, con il tuo ok, e le riparazioni automatiche dei servizi.",
                   version=os.getenv("SERVICE_VERSION", "1.0.0"))
 ui.webui(
     entry="hephaestus.js", api_prefix=API_PREFIX,

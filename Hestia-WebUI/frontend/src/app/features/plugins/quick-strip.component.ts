@@ -20,7 +20,7 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
       <section class="strip" aria-label="Azioni rapide">
         @for (c of shown(); track c.key) {
           <div class="chip" role="button" tabindex="0" [attr.data-state]="c.state || 'todo'" [attr.aria-busy]="qa.busy() === c.key"
-               [attr.title]="moduleTitle(c)" (click)="tap(c)" (keydown.enter)="tap(c)" (keydown.space)="$event.preventDefault(); tap(c)">
+               [attr.title]="c.hint ? c.label + ' · ' + c.hint : moduleTitle(c)" (click)="tap(c)" (keydown.enter)="tap(c)" (keydown.space)="$event.preventDefault(); tap(c)">
             @if (c.state === 'done') { <hx-icon name="check" [size]="16" /> } @else if (c.icon) { <hx-icon [name]="c.icon" [size]="16" /> }
             <span class="txt"><span class="lab">{{ c.label }}</span>@if (c.hint) {<span class="hint">{{ c.hint }}</span>}</span>
             <button class="mini" [class.pinned]="isPinned(c)" (click)="$event.stopPropagation(); plugins.togglePin(c.key)"
@@ -44,6 +44,7 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
       @if (more(); as c) {
         <div class="sheet">
           <div class="st">{{ c.label }}</div>
+          @if (c.hint) { <div class="sh">{{ c.hint }}</div> }
           <hx-field label="Giorno"><hx-date [(value)]="date" /></hx-field>
           @for (p of params(); track p.name) {
             <hx-field [label]="p.spec.label">
@@ -65,7 +66,7 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
     </hx-popover>`,
   styles: [`
     .strip { display: flex; flex-wrap: wrap; gap: 8px; }
-    .chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 4px 6px 14px; border-radius: var(--radius-full);
+    .chip { max-width: min(100%, 360px); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 4px 6px 14px; border-radius: var(--radius-full);
             border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px;
             transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); user-select: none; }
     .chip:hover { background: var(--surface-2); }
@@ -73,15 +74,18 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
     .chip[data-state=done] { background: var(--success-soft); border-color: transparent; color: var(--success); }
     .chip[data-state=late] { border-color: var(--warning); }
     .chip[aria-busy=true] { opacity: .55; pointer-events: none; }
-    .txt { display: flex; flex-direction: column; line-height: 1.15; }
+    .txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+    /* One line each: a long hint (e.g. today's outfit) is cut here and shown whole in ⋯ */
+    .lab, .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lab { font-weight: 500; } .hint { font-size: 11.5px; color: var(--text-3); }
+    .mini { flex-shrink: 0; }
     .chip[data-state=done] .hint { color: inherit; opacity: .8; }
     .mini { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--text-3); }
     .mini:hover { background: var(--surface-3); color: var(--text); }
     .mini.pinned { color: var(--warning); }
     .more-toggle { padding: 6px 14px; color: var(--text-2); font-weight: 500; }
     .sheet { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-    .st { font-weight: 600; }
+    .st { font-weight: 600; } .sh { font-size: 13px; color: var(--text-2); margin-top: -4px; }
   `],
 })
 export class QuickStripComponent implements OnInit {

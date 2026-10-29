@@ -3,7 +3,7 @@
  * <plutus-transaction>  — one movement: edit, change category (and «sempre per questo esercente»), links, delete.
  * <plutus-tx-form>      — add / edit sheet (event 'close', detail = saved row or null).
  */
-import { HestiaElement, html, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, nothing, plural } from '@hestia/webui-sdk';
 import { API, SOURCE, addMonths, call, dayLabel, meta, money, plutusStyles, today, txRow } from './util';
 
 export class PlutusTxForm extends HestiaElement {
@@ -120,7 +120,7 @@ export class PlutusTransactions extends HestiaElement {
       </div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`
         : !items.length ? html`<div class="card"><hxk-state kind="empty" text=${this.review ? 'Niente da rivedere' : 'Nessun movimento.'}></hxk-state></div>` : html`
-        <div class="small muted">${items.length} movimenti · saldo ${money(total, cur, true)}</div>
+        <div class="small muted">${plural(items.length, 'movimento', 'movimenti')} · saldo ${money(total, cur, true)}</div>
         ${Object.entries(days).map(([d, list]) => html`<h3 style="margin-top:6px">${dayLabel(d)}</h3>
           <div class="card list">${list.map(t => txRow(this.host, t, cur))}</div>`)}`}
       ${this.form ? html`<plutus-tx-form .host=${this.host} @close=${() => { this.form = false; this.load(); }}></plutus-tx-form>` : nothing}

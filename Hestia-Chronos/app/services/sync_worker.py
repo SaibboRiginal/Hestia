@@ -264,7 +264,7 @@ def agenda_rules() -> list[dict]:
     """Calendar sync as a recurring job of the assistant agenda (fired via Hub)."""
     minutes = max(1, _DEFAULT_INTERVAL_SECONDS // 60)
     return [{
-        "key": AGENDA_JOB_KEY, "type": "job", "title": "Chronos: sincronizza calendari",
+        "key": AGENDA_JOB_KEY, "type": "job", "title": "Sincronizza i calendari",
         "description": "Importa gli eventi da Google/Outlook (via Hecate) e avvisa dei nuovi.",
         "start_at": "2026-01-01T00:00:00", "recurrence": f"FREQ=MINUTELY;INTERVAL={minutes}",
         "action": {"service": "chronos", "path": "/api/calendar/sync", "method": "POST",

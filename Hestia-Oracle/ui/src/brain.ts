@@ -141,7 +141,7 @@ export class OracleBrain extends HestiaElement {
     const c = this.code;
     if (!c) return html`<hxk-card heading="Claude Code"><hxk-state kind="error" text="Stato non disponibile"></hxk-state></hxk-card>`;
     const runs: any[] = c.runs || [];
-    return html`<hxk-card heading="Claude Code" subtitle="Motore di sviluppo di Forge (abbonamento Claude)">
+    return html`<hxk-card heading="Claude Code" subtitle="Motore di sviluppo (abbonamento Claude)">
       <div class="line" style="margin-bottom:8px">
         <hxk-badge tone=${c.available ? 'success' : 'warning'}>${c.available ? 'pronto' : 'non pronto'}</hxk-badge>
         ${c.available && c.model ? html`<span class="chip">modello ${c.model}</span>` : nothing}
@@ -175,7 +175,7 @@ export class OracleBrain extends HestiaElement {
 
   render() {
     return html`<div class="page">
-      <div class="head"><h1>Cervello</h1><span class="sub">Cosa fa Oracle: richieste, modelli, token</span><span class="grow"></span>
+      <div class="head"><h1>Richieste e modelli</h1><span class="sub">Cosa fa l'assistente: richieste, modelli, token</span><span class="grow"></span>
         ${this.tab === 'attivita' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>Aggiorna</hxk-button>` : nothing}</div>
       ${this.tabs()}
       ${this.tab === 'uso' ? html`<oracle-usage .host=${this.host}></oracle-usage>`

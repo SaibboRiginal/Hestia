@@ -214,7 +214,7 @@ A second calendar, owned by Chronos, where **Hestia and its modules plan their o
 |---|---|---|
 | `event` | informational / planned | "Forge: sviluppo X" (scheduled Claude task) |
 | `task` | one-off action executed at `start_at` (retried up to `chronos.agenda.max_attempts`, then `failed`) | a repair Argus/Hephaestus planned for tonight |
-| `job` | recurring action (RRULE) | "Hecate: controlla nuove email ogni 15 min" |
+| `job` | recurring action (RRULE) | "Controlla le email nuove ogni 15 min" |
 | `window` | recurring period in which something is allowed (RRULE + duration) | "Claude Pro: notti prima del reset" |
 
 Actions are `{service, method, path, body, query, timeout_seconds}` executed **through Hub** by the agenda worker

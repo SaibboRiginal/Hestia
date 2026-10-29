@@ -102,6 +102,7 @@ def _fetch_mcp_tools_as_commands(
                 "command": name,
                 "title": str(tool.get("title") or tool.get("description") or name).strip() or name,
                 "description": str(tool.get("description") or name).strip(),
+                "summary": str(tool.get("summary", "")).strip(),   # text for people (hestia_common.areas)
                 "service": service_name,
                 "method": str(tool.get("method", "GET")).upper(),
                 "path": str(tool.get("path", "")).strip(),
@@ -404,6 +405,7 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
             for cmd in _fetch_mcp_tools_as_commands(svc_name, endpoint, svc.get("capabilities") or {}):
                 add("*", "tool", {"id": f"{svc_name}.{cmd['command']}", "name": cmd["command"], "module": svc_name,
                                   "title": cmd.get("title", ""), "description": cmd.get("description", ""),
+                                  "summary": cmd.get("summary", ""), "telegram_group": cmd.get("telegram_group", ""),
                                   "clients": cmd.get("clients", [])})
 
     for block in contributions.values():

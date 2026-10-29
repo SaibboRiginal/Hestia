@@ -70,7 +70,8 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
             @let w = plugins.widget(it.widget);
             <article class="cell" [style.grid-column]="'span ' + span(it).c" [style.grid-row]="'span ' + span(it).r"
                      [attr.draggable]="editing()" (dragstart)="dragFrom = i" (dragover)="$event.preventDefault()" (drop)="dropOn(i)"
-                     [class.offline]="w && !w.online">
+                     [class.offline]="w && !w.online" [class.empty]="!editing() && empty().has(it.widget + i)"
+                     (hestia-widget-empty)="setEmpty(it.widget + i, $any($event).detail)">
               <header>
                 @if (editing()) { <hx-icon name="selector" [size]="15" class="grip" title="Trascina per spostare" /> }
                 <span class="wt">{{ it.title || w?.label || it.widget }}</span>
@@ -164,6 +165,9 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
     .cell { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column;
             min-height: 0; overflow: hidden; }
     .cell.offline { opacity: .75; }
+    /* a widget with nothing to show (SDK markEmpty) takes one cell, its text muted */
+    .cell.empty { grid-column: span 1 !important; grid-row: span 1 !important; }
+    .cell.empty .wb { color: var(--text-3); }
     .editing .cell { border-style: dashed; cursor: grab; }
     header { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px 14px; min-height: 38px; }
     .wt { flex: 1; min-width: 0; font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -185,8 +189,9 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
       .ask, .lbl { display: none; }
       .body { padding: 14px 12px 28px; }
       .tabs { padding: 6px 12px 0; }
-      .grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(150px, auto); }
-      .cell { grid-column: span 1 !important; grid-row: span 1 !important; }
+      .grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
+      .cell { grid-column: span 1 !important; grid-row: span 1 !important; min-height: 150px; }
+      .cell.empty { min-height: 0; }
     }
   `],
 })
@@ -251,6 +256,14 @@ export class DashboardPageComponent {
   });
 
   span(it: DashboardItem) { return SIZE_SPAN[it.size] ?? SIZE_SPAN.m; }
+
+  /** Cells whose widget said «nothing to show» (SDK `markEmpty`): one cell instead of their size. */
+  readonly empty = signal<Set<string>>(new Set());
+  setEmpty(key: string, isEmpty: boolean): void {
+    const next = new Set(this.empty());
+    if (isEmpty) next.add(key); else next.delete(key);
+    this.empty.set(next);
+  }
 
   private ctxCache = new Map<string, { key: string; ctx: object }>();
   /** Stable ctx object per item (a new object would re-set el.ctx on every change detection). */

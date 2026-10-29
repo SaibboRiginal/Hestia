@@ -2,7 +2,7 @@
  * <plutus-import> — bank statement PDF (e.g. Hype «lista movimenti»): upload → preview (new / already there / linked to a
  *                   PayPal payment) → confirm; past imports can be undone. PayPal mails need nothing: they arrive alone.
  */
-import { HestiaElement, html, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, nothing, plural } from '@hestia/webui-sdk';
 import { API, call, dayLabel, meta, money, plutusStyles } from './util';
 
 const STATE: Record<string, { text: string; cls: string }> = {
@@ -48,14 +48,14 @@ export class PlutusImport extends HestiaElement {
     const r = await call(this.host, 'POST', `${API}/imports/${this.v.id}/commit`);
     this.busy = '';
     if (r.ok) {
-      this.host.toast(`Importati ${r.data.added} movimenti${r.data.linked ? `, ${r.data.linked} collegati a PayPal` : ''}`, 'success',
+      this.host.toast(`Importati ${plural(r.data.added, 'movimento', 'movimenti')}${r.data.linked ? `, ${r.data.linked} collegati a PayPal` : ''}`, 'success',
         { label: 'Annulla', run: () => this.undo(r.data.id) });
       this.v = r.data; this.load();
     }
   }
   private async undo(id: string) {
     const r = await call(this.host, 'POST', `${API}/imports/${id}/undo`);
-    if (r.ok) this.host.toast(`Tolti ${r.data.removed} movimenti`, 'success');
+    if (r.ok) this.host.toast(`Tolti ${plural(r.data.removed, 'movimento', 'movimenti')}`, 'success');
     if (this.v?.id === id) this.open(id);
     this.load();
   }
@@ -76,7 +76,7 @@ export class PlutusImport extends HestiaElement {
         <span class="tnum amt ${r.amount > 0 ? 'in' : ''}">${money(r.amount, cur, true)}</span></div>`)}</div>
       <div class="row wrap">
         ${v.status === 'preview' ? html`<hxk-button variant="primary" icon="check" ?loading=${this.busy === 'commit'} ?disabled=${!(c.new || c.link)}
-          @click=${() => this.commit()}>Importa ${(c.new || 0) + (c.link || 0)} movimenti</hxk-button>` : nothing}
+          @click=${() => this.commit()}>Importa ${plural((c.new || 0) + (c.link || 0), 'movimento', 'movimenti')}</hxk-button>` : nothing}
         ${v.status === 'committed' ? html`<hxk-button variant="ghost" icon="undo" @click=${() => this.undo(v.id)}>Annulla l'import</hxk-button>` : nothing}
         <hxk-button variant="ghost" @click=${() => (this.v = null)}>Chiudi</hxk-button></div>
     </div>`;

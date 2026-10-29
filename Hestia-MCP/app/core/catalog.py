@@ -27,7 +27,7 @@ logger = logging.getLogger("hestia_mcp.catalog")
 CLIENT_KEYS = {"webui": "ui"}
 _META_KEYS = ("method", "path", "response_mode", "response_prompt", "arguments_help", "arg_picker", "clients",
               "telegram_visible", "telegram_help_visible", "telegram_group", "telegram", "query_template",
-              "body_template")
+              "body_template", "summary")
 
 
 def _input_schema(cmd: dict) -> dict:

@@ -40,42 +40,9 @@ ALIASES = {
     "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout_listings",
 }
 
-# Areas in order. `aliases`: older or module group names that mean the same area.
-AREAS = [
-    {"key": "giornata", "label": "Giornata", "emoji": "📅", "order": 10,
-     "aliases": ["pianificazione", "agenda", "calendario", "chat", "meteo"]},
-    {"key": "scadenze", "label": "Scadenze", "emoji": "⏳", "order": 15, "aliases": ["deadlines", "kairos"]},
-    {"key": "allenamento", "label": "Allenamento", "emoji": "🏋️", "order": 20, "aliases": ["fitness", "palestra"]},
-    {"key": "alimentazione", "label": "Alimentazione", "emoji": "🥗", "order": 25,
-     "aliases": ["cibo", "food", "dieta", "demeter"]},
-    {"key": "selfcare", "label": "Cura di sé", "emoji": "✨", "order": 30, "aliases": ["self care", "hygieia"]},
-    {"key": "persone", "label": "Persone", "emoji": "👥", "order": 35, "aliases": ["people", "hera"]},
-    {"key": "guardaroba", "label": "Guardaroba", "emoji": "👕", "order": 40, "aliases": ["wardrobe"]},
-    {"key": "spese", "label": "Spese", "emoji": "💶", "order": 50, "aliases": ["finanze", "soldi"]},
-    {"key": "case", "label": "Immobili", "emoji": "🏠", "order": 60, "aliases": ["immobiliare", "case in vendita"]},
-    {"key": "casa", "label": "Casa", "emoji": "💡", "order": 65, "aliases": ["home", "domotica", "lares"]},
-    {"key": "posta", "label": "Posta", "emoji": "✉️", "order": 70, "aliases": ["email", "mail"]},
-    {"key": "memoria", "label": "Memoria", "emoji": "🧠", "order": 80,
-     "aliases": ["preferenze", "web", "ricerca"]},
-    {"key": "documenti", "label": "Documenti", "emoji": "📄", "order": 82, "aliases": ["documents", "calliope"]},
-    {"key": "notifiche", "label": "Notifiche", "emoji": "🔔", "order": 85, "aliases": ["avvisi"]},
-    {"key": "sviluppo", "label": "Sviluppo", "emoji": "🛠", "order": 90, "aliases": ["forge"]},
-    {"key": "aspetto", "label": "Immagini e aspetto", "emoji": "🎨", "order": 95,
-     "aliases": ["immagini", "images", "appearance", "apollo", "aphrodite"]},
-    {"key": "sistema", "label": "Sistema", "emoji": "⚙️", "order": 100,
-     "aliases": ["impostazioni", "webui", "🌐 webui", "salute"]},
-    {"key": "altro", "label": "Altro", "emoji": "•", "order": 999, "aliases": []},
-]
-
-# Last resort when a tool declares no area: its module.
-SERVICE_AREAS = {
-    "chronos": "giornata", "hecate": "giornata", "athena": "giornata", "hercules": "allenamento",
-    "hygieia": "selfcare", "wardrobe": "guardaroba", "plutus": "spese", "scout": "case", "iris": "posta",
-    "oracle": "memoria", "atlas": "memoria", "archive": "memoria", "hephaestus": "sviluppo", "metis": "sviluppo",
-    "argus": "sistema", "themis": "sistema", "hub": "sistema", "mcp": "sistema", "echo": "sistema",
-    "hermes": "notifiche", "telegram": "sistema", "webui": "sistema", "apollo": "aspetto", "aphrodite": "aspetto",
-    "lares": "casa", "hera": "persone", "demeter": "alimentazione", "calliope": "documenti", "kairos": "scadenze",
-}
+# Areas in order (`aliases`: older or module group names that mean the same area) and, as last resort when a
+# tool declares no area, its module's area: one list for every client (hestia_common.areas).
+from hestia_common.areas import AREAS, SERVICE_AREAS  # noqa: E402,F401
 
 # Section shown last inside «Tutte le azioni», and sections never shown (used by the client itself).
 LAST_SECTION = "Avanzate"

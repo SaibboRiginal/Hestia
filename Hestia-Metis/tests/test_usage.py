@@ -125,6 +125,11 @@ def test_scopri_lists_unused_one_per_module_first():
     assert "palestra_oggi" not in names and "spese_elimina" not in names and "solo_webui" not in names
     assert set(names) == {"spese_aggiungi", "meteo_oggi", "diario_scrivi"}
     assert all(i["reason"] == "Non l'hai mai usata" for i in out["items"])
+    # people read areas, never module names (dossier 2026-10-29-revisione-e-test-frontend §6.1)
+    by_tool = {i["tool"]: i for i in out["items"]}
+    assert by_tool["spese_aggiungi"]["area_label"] == "Spese"
+    assert by_tool["diario_scrivi"]["area_label"] == "Cura di sé"
+    assert by_tool["meteo_oggi"]["description"] == "Che tempo fa."
 
 
 def test_prune_drops_old_taps():

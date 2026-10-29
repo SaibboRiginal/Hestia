@@ -2,7 +2,7 @@
  * <plutus-overview> — the budget month: spent vs budget and pace, categories, latest movements, payments coming,
  *                     what needs a look (to review, PayPal check, statement import).
  */
-import { HestiaElement, html, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, nothing, plural } from '@hestia/webui-sdk';
 import { API, PERIOD, addMonths, budgetBar, call, dayLabel, meta, money, plutusStyles, txRow } from './util';
 
 export class PlutusOverview extends HestiaElement {
@@ -48,9 +48,9 @@ export class PlutusOverview extends HestiaElement {
         <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>Spesa</hxk-button>
           <hxk-button icon="upload" @click=${() => this.host.navigate('importa')}>Estratto conto</hxk-button></div></div>
       ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('movimenti', { rivedere: '1' })}>
-        <span>${s.to_review} movimenti con la categoria da controllare</span><span class="link">Rivedi ›</span></div>` : nothing}
+        <span>${plural(s.to_review, 'movimento', 'movimenti')} con la categoria da controllare</span><span class="link">Rivedi ›</span></div>` : nothing}
       <hxk-stat .items=${[
-        { label: 'Speso', value: money(s.spent, cur), hint: s.linked ? `${s.linked} movimenti collegati contati una volta` : '' },
+        { label: 'Speso', value: money(s.spent, cur), hint: s.linked ? `${plural(s.linked, 'movimento', 'movimenti')} collegati contati una volta` : '' },
         { label: 'Entrate', value: money(s.income, cur) },
         s.budget ? { label: 'Rimane', value: money(s.left, cur), tone: s.left < 0 ? 'danger' : 'success', delta: `${pct}% del budget` }
           : { label: 'Budget', value: '–', hint: 'Imposta un budget nella pagina Budget' },

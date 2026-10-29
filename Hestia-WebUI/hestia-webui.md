@@ -216,6 +216,10 @@ move/resize, skip/restore, pause, run now, cancel, "only this occurrence" vs "wh
 (tools from Hestia-MCP `tools/list` as client `webui`, run with `tools/call` — `HubClient.McpListToolsAsync` /
 `McpCallToolAsync`; arguments come from each tool's JSON schema),
 **Sviluppo** (Forge tasks + repository, see below), **Documenti**, **Impostazioni** (themes, tone, reasoning display, instructions, session).
+Look (2026-10-29): 14 colour themes (Claude, Ardesia, Oceano, Foresta, Lavanda, Cipria, Sabbia and their dark twins,
+Mezzanotte) × 3 styles (Classico, Vetro, Netto) with knobs for corners, borders, transparency/blur and animations,
+per browser (`core/theme/looks.ts`); thin themed scrollbars; sidebar shows one status line (assistant state; the
+connection only when it is not «Connesso»).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
 ### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/sviluppo`)

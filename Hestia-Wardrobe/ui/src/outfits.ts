@@ -3,7 +3,7 @@
  * <wardrobe-outfit>         — one outfit: pieces by slot, «Indossato» (today or another day), rating, tags, photos, history.
  * <wardrobe-outfit-builder> — pick pieces (tap = added in its usual slot), change slot, name it, save.
  */
-import { HestiaElement, css, html, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, css, html, nothing, plural } from '@hestia/webui-sdk';
 import { API, Meta, seasonIcon, WardrobeElement, call, dayLabel, dots, img, localDay, norm, photo, relDays, vocabOptions, wardrobeStyles } from './util';
 
 /** 2×2 collage of the pieces when the outfit has no photo of its own. */
@@ -143,7 +143,7 @@ export class WardrobeOutfits extends WardrobeElement {
           ${!o.complete ? html`<hxk-badge class="badge" tone="warning">da rivedere</hxk-badge>` : !o.available ? html`<hxk-badge class="badge" tone="info">non disponibile</hxk-badge>` : nothing}
           <hxk-button class="today" size="sm" variant=${o.last_worn === today ? 'primary' : 'default'} icon="check" title="Indossato oggi"
             @click=${(e: Event) => { e.stopPropagation(); markWorn(this.host, o, '', () => this.load()); }}>${o.last_worn === today ? 'Oggi' : ''}</hxk-button>
-          <div class="tx"><span class="nm">${o.name}</span><span class="small muted truncate">${o.pieces.length} capi${o.last_worn ? ' · ' + relDays(o.last_worn) : ''}</span></div>
+          <div class="tx"><span class="nm">${o.name}</span><span class="small muted truncate">${plural(o.pieces.length, 'capo', 'capi')}${o.last_worn ? ' · ' + relDays(o.last_worn) : ''}</span></div>
         </div>`)}</div>`}
     </div>`;
   }

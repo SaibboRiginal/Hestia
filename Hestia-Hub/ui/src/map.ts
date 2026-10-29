@@ -131,7 +131,7 @@ export class HubOnlineWidget extends HestiaElement {
     this.error = !r.ok; if (r.ok) this.data = r.data;
   }
   render() {
-    if (this.error && !this.data) return html`<hxk-state kind="offline" text="Hub non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
+    if (this.error && !this.data) return html`<hxk-state kind="offline" text="Mappa non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
     if (!this.data) return html`<hxk-state kind="loading"></hxk-state>`;
     const d = this.data;
     const off = (d.services || []).filter((s: any) => !s.online).map((s: any) => s.name);

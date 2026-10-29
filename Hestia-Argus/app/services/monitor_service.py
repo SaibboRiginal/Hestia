@@ -445,7 +445,7 @@ def start() -> None:
             "recheck", "Ricontrolla un servizio", service="argus", path="/api/argus/recheck/{service}",
             type="task", types=["task", "job"], icon="refresh",
             fields={"service": {"type": "string", "label": "Servizio", "in": "path", "description": "Nome del servizio (es. hecate)"}},
-            required=["service"], title="Argus: ricontrolla {service}",
+            required=["service"], title="Ricontrolla {service}",
             description="Argus verifica la salute del servizio all'orario scelto e avvia la riparazione se serve.")])
     thread = threading.Thread(
         target=_monitor_loop,

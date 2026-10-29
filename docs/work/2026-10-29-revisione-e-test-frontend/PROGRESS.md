@@ -23,4 +23,15 @@
   - Self care: «1 passi» → «1 passo»
 - [x] Fix PR #51 (visual fixes)
 - [x] UI/UX analysis: 10 proposals for Marko in a Claude Doc «Hestia: test del frontend e proposte UI/UX», screenshots in the project files `revisione-ui/` (texts for the user instead of module names/prompt text, 44 px touch targets, phone page header, seasonal effect only on Home, phone agenda in list view, one «Sistema», empty widgets, one status line, plurals, outfit chip)
-- [ ] Marko picks the proposals to implement
+- [x] Marko approved all 10 proposals (2026-10-29 20:11) → SPEC v2.0
+
+## v2.0
+- [x] 1 user texts (hestia_common.areas, tool summaries, plugin/agenda titles, offline texts)
+- [x] 2 touch 44 px (--tap) · [x] 3 phone header (--head-inset) · [x] 4 seasonal effect only on Home, fades out
+- [x] 5 phone agenda list view · [x] 6 one «Stato del sistema» · [x] 7 empty widgets (markEmpty)
+- [x] 8 one status line · [x] 9 plurals (SDK plural) · [x] 10 quick chip on one line, detail in ⋯
+- [x] scrollbars (scrollbar-color/width, webkit fallback, SDK) 
+- [x] colour themes (11 new, makeTheme)
+- [x] styles Classico / Vetro / Netto + knobs (looks.ts, ThemeService, Impostazioni → Aspetto)
+- [x] docs: DESIGN-SYSTEM, hestia-webui, hestia-shared, SDK README, ARCHITECTURE
+- [ ] bench check (desktop/phone, light/dark, the 3 styles), PR, merge

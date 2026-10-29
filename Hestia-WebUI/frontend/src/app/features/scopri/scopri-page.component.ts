@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { UI } from '../../ui';
 import { MetisService, ScopriItem } from '../../services/metis.service';
-import { PluginsService } from '../plugins/plugins.service';
 
 /**
  * «Scopri» (dossier 2026-10-24-tutto-brainstorm-cindy C14, W7): the things Hestia can do that you never or rarely
@@ -26,7 +25,7 @@ import { PluginsService } from '../plugins/plugins.service';
       } @else if (!shown().length) {
         <hx-empty icon="check-circle" title="Hai già provato tutto">{{ query() ? 'Niente con queste parole.' : 'Quando arrivano funzioni nuove le trovi qui.' }}</hx-empty>
       } @else {
-        @for (g of groups(); track g.module) {
+        @for (g of groups(); track g.key) {
           <section>
             <h2><hx-icon [name]="g.icon" [size]="15" />{{ g.title }}</h2>
             <div class="grid">
@@ -66,7 +65,6 @@ import { PluginsService } from '../plugins/plugins.service';
 })
 export class ScopriPageComponent implements OnInit {
   metis = inject(MetisService);
-  private plugins = inject(PluginsService);
   readonly items = signal<ScopriItem[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
@@ -77,12 +75,13 @@ export class ScopriPageComponent implements OnInit {
     const q = this.query().trim().toLowerCase();
     return q ? this.items().filter(i => `${i.title} ${i.description}`.toLowerCase().includes(q)) : this.items();
   });
+  /** Grouped by area as people know them (Allenamento, Casa…), never by module. */
   readonly groups = computed(() => {
-    const mods = this.plugins.modules();
     const by = new Map<string, ScopriItem[]>();
-    for (const it of this.shown()) by.set(it.module, [...(by.get(it.module) ?? []), it]);
-    return [...by.entries()].map(([module, items]) => ({ module, items, title: mods.get(module)?.title || 'Altro', icon: mods.get(module)?.icon || 'puzzle' }))
-      .sort((a, b) => b.items.length - a.items.length || a.title.localeCompare(b.title));
+    for (const it of this.shown()) { const k = it.area || 'altro'; by.set(k, [...(by.get(k) ?? []), it]); }
+    return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || 'Altro',
+      icon: items[0].area_icon || 'puzzle', order: items[0].area_order ?? 999 }))
+      .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
   });
   readonly subtitle = computed(() => this.total() ? `${this.total()} cose da provare` : 'Quello che sai fare con Hestia e non hai ancora provato');
 

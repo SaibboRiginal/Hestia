@@ -12,7 +12,8 @@ const API = '/api/mcp/ui';
 
 interface Prop { type?: string; description?: string; enum?: string[] }
 interface Cmd {
-  command: string; title: string; description: string; service: string; method: string; path: string;
+  command: string; title: string; description: string; summary?: string; area?: string; area_label?: string; area_order?: number;
+  service: string; method: string; path: string;
   response_mode: string; response_prompt: string; writes: boolean;
   arguments_schema: { properties?: Record<string, Prop>; required?: string[] };
 }
@@ -116,11 +117,13 @@ export class McpCommands extends HestiaElement {
     const q = this.q.toLowerCase();
     const map = new Map<string, Cmd[]>();
     for (const c of this.all || []) {
-      if (q && !`${c.title} ${c.command} ${c.description} ${c.service}`.toLowerCase().includes(q)) continue;
-      const key = c.service || 'altro';
+      if (q && !`${c.title} ${c.command} ${c.summary ?? ''} ${c.description} ${c.area_label ?? ''}`.toLowerCase().includes(q)) continue;
+      const key = c.area_label || 'Altro';    // grouped by area as people know them, never by module name
       (map.get(key) ?? map.set(key, []).get(key)!).push(c);
     }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([service, items]) => ({ service, items }));
+    const order = (items: Cmd[]) => items[0]?.area_order ?? 999;
+    return [...map.entries()].sort(([a, x], [b, y]) => order(x) - order(y) || a.localeCompare(b))
+      .map(([service, items]) => ({ service, items }));
   }
 
   private select(c: Cmd) { this.sel = c; this.args = {}; this.result = null; }
@@ -191,8 +194,9 @@ export class McpCommands extends HestiaElement {
     const names = Object.keys(c.arguments_schema?.properties ?? {});
     return html`<div class="card detail">
       <h2>${c.title || c.command}</h2>
-      ${c.description ? html`<p class="desc">${c.description}</p>` : nothing}
-      <div class="meta"><hxk-badge>${c.service || 'altro'}</hxk-badge><code>${c.method} ${c.path}</code>
+      ${c.summary || c.description ? html`<p class="desc">${c.summary || c.description}</p>` : nothing}
+      ${c.summary && c.description && c.summary !== c.description ? html`<details><summary>Istruzioni per l'assistente</summary><p class="small muted">${c.description}</p></details>` : nothing}
+      <div class="meta"><hxk-badge>${c.area_label || 'Altro'}</hxk-badge><code>${c.method} ${c.path}</code>
         ${c.writes ? html`<hxk-badge tone="warning">cambia qualcosa</hxk-badge>` : nothing}
         ${c.response_mode === 'oracle_natural' ? html`<hxk-badge tone="accent">risposta in linguaggio naturale</hxk-badge>` : nothing}</div>
       <div class="small muted">Nome dello strumento: <code>${c.command}</code></div>
@@ -206,10 +210,10 @@ export class McpCommands extends HestiaElement {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (!this.all) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const groups = this.groups();
-    const services = new Set(this.all.map(c => c.service)).size;
+    const services = new Set(this.all.map(c => c.area_label || c.service)).size;
     return html`<div class="page">
       <div class="head"><div class="grow"><h1>Comandi & MCP</h1>
-        <div class="sub">${this.all.length} strumenti da ${services} moduli: gli stessi di chat, Telegram e AI esterne</div></div>
+        <div class="sub">${this.all.length} strumenti in ${services} aree: gli stessi di chat, Telegram e AI esterne</div></div>
         <input class="search" type="search" placeholder="Cerca comando…" .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()} title="Aggiorna"></hxk-button>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.askHestia()}

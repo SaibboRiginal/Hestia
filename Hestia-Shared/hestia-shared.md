@@ -35,7 +35,7 @@ from hestia_common.agenda_client import AgendaClient, job_rule, daily_window
 
 agenda = AgendaClient("hecate")                      # owner = module name
 agenda.register_async(lambda: [                       # retry until Chronos answers, re-assert hourly
-    job_rule("hecate.mail_watch", "Hecate: controlla nuove email", service="hecate",
+    job_rule("hecate.mail_watch", "Controlla le email nuove", service="hecate",
              path="/api/gateway/mail/watch/run", recurrence="FREQ=MINUTELY;INTERVAL=15"),
     daily_window("athena.consolidation", "Athena: consolidamento", 3, 5),
 ])
@@ -58,7 +58,7 @@ agenda.register_async(rules, templates=lambda: [template(
     "recheck", "Ricontrolla un servizio", service="argus", path="/api/argus/recheck/{service}",
     type="task", types=["task", "job"], icon="refresh",
     fields={"service": {"type": "string", "label": "Servizio", "in": "path"}}, required=["service"],
-    title="Argus: ricontrolla {service}")])
+    title="Ricontrolla {service}")])
 ```
 Registered today: Athena (rifletti su un tema), Argus (ricontrolla un servizio),
 Hephaestus (sviluppo programmato).
@@ -300,12 +300,25 @@ types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). 
 script) — see its `README.md`.
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
 2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
+SDK helpers (2026-10-29): `plural(n, 'esercizio', 'esercizi')` → «1 esercizio» / «3 esercizi»; a widget calls
+`this.markEmpty(true|false)` when it has nothing to show, and the dashboard gives that cell less room. Kit controls
+read `--tap` (44px on touch screens) and the page's first line leaves `--head-inset` for the phone menu button.
 `hxk-quicklog` chips (2026-10-29; label above hint, its own `.col` style since the kit utilities are not in its shadow root): a 409/422 from the module shows its own reason (e.g. «già segnata oggi»)
 instead of a generic «Non sono riuscito a segnarlo».
 
 `settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history")]` (2026-10-21)
 adds a panel that clients show **inside the module's own settings** (WebUI *Impostazioni → Sistema → <module>*),
 below its Themis settings; the element calls only the module's `api_prefix` like any plugin element.
+
+## Areas and texts for people (`hestia_common.areas`, 2026-10-29)
+
+People never read module names or text written for the model. `AREAS` (Giornata, Allenamento, Spese, Casa…, with
+`icon` for web clients and `emoji` for Telegram) and `SERVICE_AREAS` are the single list Telegram's menus, the
+WebUI «Comandi» page and «Scopri» share. `area_of(tool, module)` = the tool's `telegram_group` when it names an area
+(or an alias), else the module's area, else «Altro». `for_people(tool)` = the tool's own `summary`
+(`MCPTool(..., summary="Che tempo fa.")`, sent in `tools/list` and in the Hub catalog) or, when missing, the first
+sentence of its description without parentheses and ALL-CAPS model notes. `module_label(name)` = what people call a
+module («scout» → «Immobili»), for texts such as agenda titles («Ricontrolla Immobili»).
 
 ## Encryption (`hestia_common.crypto`)
 

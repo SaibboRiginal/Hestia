@@ -870,11 +870,11 @@ class AthenaRuntime:
         s_start, s_end = SKILL_CURATION_WINDOW_DEFAULT
         t_start, t_end = THINKING_WINDOW_DEFAULT
         return [
-            daily_window(WINDOW_CONSOLIDATION, "Athena: consolidamento memoria",
+            daily_window(WINDOW_CONSOLIDATION, "Riordina la memoria",
                          c_start, c_end,
                          description="Estrae fatti dalle sessioni recenti e risolve conflitti di memoria "
                                      "(una volta al giorno dentro la finestra)."),
-            daily_window(WINDOW_SKILL_CURATION, "Athena: cura delle skill",
+            daily_window(WINDOW_SKILL_CURATION, "Cura delle abilità",
                          s_start, s_end,
                          description="Crea/aggiorna/depreca skill dalle conversazioni (una volta al giorno)."),
             daily_window(WINDOW_REFLECTION, "Riflessione sulla tua vita",
@@ -882,7 +882,7 @@ class AthenaRuntime:
                          description="Legge i segnali delle aree (allenamento, cura di sé, spese…), cerca i "
                                      "collegamenti tra le settimane e prepara le osservazioni per il recap della "
                                      "sera. Una volta al giorno; in pausa = nessuna riflessione."),
-            daily_window(WINDOW_THINKING, "Athena: retrospettiva in idle",
+            daily_window(WINDOW_THINKING, "Riflessione nei momenti liberi",
                          t_start, t_end,
                          description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
                                      "chattando. Salta/metti in pausa per fermare Athena."),

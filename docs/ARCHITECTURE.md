@@ -189,6 +189,7 @@ Web client (.NET 9 backend + Angular frontend, port 19015).
 - Public doors for external AIs (outside `/api/webui/`, no WebUI login): `POST /mcp`, `/.well-known/oauth-*`, `/oauth/*`.
 - Backend proxies everything through Hub routing; single-token auth minted from Telegram (`webui_token`), plus
   12-hour Mini App sessions after Telegram verified the signed initData (`POST /api/webui/auth/telegram`).
+- Look: 14 colour themes × 3 styles (Classico, Vetro, Netto) with knobs, per browser; touch targets 44px on touch screens.
 - See `Hestia-WebUI/hestia-webui.md` and `Hestia-WebUI/frontend/DESIGN-SYSTEM.md`.
 
 ### Hestia-Chronos 📅
@@ -607,6 +608,11 @@ No code-only behavior changes are considered complete without synchronized docs.
 ## Messaging Contract (Global UX Rules)
 
 - Web clients (WebUI, plugins) draw minimal stroke icons coloured by intent, never emoji. Data shown by both carries `emoji` (Telegram area markers) and `icon` + `tone` (WebUI). Check: `tools/governance/check_icons.py`.
+- **Texts for people** (2026-10-29): every client groups functions by **area** and shows people's words, never module
+  names or prompt text: `hestia_common.areas` (`AREAS`, `area_of`, `for_people`, `module_label`). A tool may declare
+  `summary` (`MCPTool(summary=…)`) for the one-line text people read; agenda titles and plugin titles use people's names.
+- **Look per browser**: colour theme × style (Classico, Vetro, Netto) with knobs for corners, borders, transparency and
+  animations, all tokens on `<html>` (`Hestia-WebUI/frontend/DESIGN-SYSTEM.md` § Styles); plugins follow through the tokens.
 
 Applies to every user-facing Telegram delivery path (chat replies, tool results, notifications, questions):
 

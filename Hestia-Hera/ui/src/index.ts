@@ -158,7 +158,7 @@ export class HeraSoonWidget extends HestiaElement {
   static styles = [...HestiaElement.styles, styles, css`:host { display: block; height: 100%; }`];
   constructor() { super(); this.items = undefined; }
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); this.onHost('visible', () => this.load()); }
-  async load() { const r = await call(this.host, 'GET', '/upcoming'); this.items = r.ok ? r.data.items : null; }
+  async load() { const r = await call(this.host, 'GET', '/upcoming'); this.items = r.ok ? r.data.items : null; this.markEmpty(!!this.items && !this.items.length); }
   render() {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;

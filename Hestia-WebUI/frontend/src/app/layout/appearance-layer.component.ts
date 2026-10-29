@@ -1,4 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { IconComponent } from '../ui';
 import { AppearanceService } from '../services/appearance.service';
 
@@ -13,26 +16,30 @@ const BITS: Bit[] = Array.from({ length: COUNT }, (_, i) => {
 const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
 
 /**
- * Over every page, never in the way (pointer-events off): the light effect of the active graphic profile (snow,
- * leaves, petals, confetti, hearts, stars, pumpkins, a warm sun) and the pet in the corner — a tap makes it happy,
- * at night it sleeps (dossier 2026-10-24-tutto-brainstorm-cindy A2, W7). With «riduci movimento» the effect is off.
+ * Never in the way (pointer-events off): the light effect of the active graphic profile (snow, leaves, petals,
+ * confetti, hearts, stars, pumpkins, a warm sun) — only on Home, and the falling bits fade out after about ten
+ * seconds so reading is never disturbed (dossier 2026-10-29-revisione-e-test-frontend §6.4) — and the pet in the
+ * corner on every page: a tap makes it happy, at night it sleeps (dossier 2026-10-24-tutto-brainstorm-cindy A2, W7).
+ * With «riduci movimento» or the «Animazioni: ridotte» knob the effect is off.
  */
 @Component({
   selector: 'hx-appearance-layer',
   imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (effect() === 'sun') {
-      <div class="sun" aria-hidden="true"></div>
-    } @else if (effect() !== 'none') {
-      <div class="fx" [attr.data-fx]="effect()" aria-hidden="true">
-        @for (b of bits; track $index) {
-          <span class="bit" [class.alt]="b.alt" [style.left.%]="b.left" [style.animation-delay.s]="b.delay"
-                [style.animation-duration.s]="b.dur" [style.width.px]="b.size" [style.height.px]="b.size">
-            @if (icon()) { <hx-icon [name]="icon()" [size]="b.size + 6" /> }
-          </span>
-        }
-      </div>
+    @if (onHome()) {
+      @if (effect() === 'sun') {
+        <div class="sun" aria-hidden="true"></div>
+      } @else if (effect() !== 'none') {
+        <div class="fx" [attr.data-fx]="effect()" aria-hidden="true">
+          @for (b of bits; track $index) {
+            <span class="bit" [class.alt]="b.alt" [style.left.%]="b.left" [style.animation-delay.s]="b.delay"
+                  [style.animation-duration.s]="b.dur" [style.width.px]="b.size" [style.height.px]="b.size">
+              @if (icon()) { <hx-icon [name]="icon()" [size]="b.size + 6" /> }
+            </span>
+          }
+        </div>
+      }
     }
     @if (petSrc(); as src) {
       <button class="pet" [class.happy]="pose() === 'happy'" (click)="cheer()" [attr.aria-label]="petName()" [attr.title]="petName()">
@@ -41,6 +48,9 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
     }`,
   styles: [`
     .fx, .sun { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+    .fx { animation: hx-fx-life 11s var(--ease) forwards; }
+    @keyframes hx-fx-life { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+    :host-context([data-motion=off]) .fx { display: none; }
     .sun { background: radial-gradient(circle at 92% -6%, color-mix(in srgb, var(--accent) 22%, transparent) 0, transparent 38%); }
     .bit { position: absolute; top: -24px; display: block; opacity: .55; animation-name: hx-fall; animation-timing-function: linear;
            animation-iteration-count: infinite; color: var(--accent); }
@@ -68,6 +78,10 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
 })
 export class AppearanceLayerComponent {
   private look = inject(AppearanceService);
+  private router = inject(Router);
+  /** The light effect lives on Home only (proposal 4). */
+  readonly onHome = toSignal(this.router.events.pipe(filter(e => e instanceof NavigationEnd),
+    map(() => this.router.url.startsWith('/home'))), { initialValue: this.router.url.startsWith('/home') || this.router.url === '/' });
   readonly bits = BITS;
   readonly effect = this.look.lightEffect;
   readonly icon = computed(() => ICON_EFFECT[this.effect()] || '');

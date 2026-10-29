@@ -233,5 +233,8 @@ def recheck_targets() -> list[dict]:
     with _lock:
         names = {n for n, v in _last.items() if v.get("status") != "up"} | set(_open)
         last = {n: dict(_last.get(n, {})) for n in names}
-    return [{"id": n, "label": f"Ricontrolla {n}", "icon": "refresh", "state": "late",
-             "hint": str(last[n].get("error") or last[n].get("status") or "")[:80]} for n in sorted(names)]
+    from hestia_common.areas import module_label
+    # people read «Ricontrolla Self care · non risponde», never a module name or a raw error
+    words = {"down": "non risponde", "degraded": "risponde a fatica", "unknown": "stato sconosciuto"}
+    return [{"id": n, "label": f"Ricontrolla {module_label(n)}", "icon": "refresh", "state": "late",
+             "hint": words.get(str(last[n].get("status") or "down"), "non risponde")} for n in sorted(names)]

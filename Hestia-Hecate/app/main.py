@@ -262,7 +262,7 @@ app.include_router(devices_api.router)
 # ── WebUI plugin «Dispositivi» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
 from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
 UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
-ui = PluginClient("hecate", title="Hecate", icon="link", color="teal", kind="core", dist=UI_DIST,
+ui = PluginClient("hecate", title="Account e dispositivi", icon="link", color="teal", kind="core", dist=UI_DIST,
                   description="Gli account e i dispositivi collegati: calendario, mail, meteo, orologio, telefono.",
                   version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
@@ -1266,14 +1266,14 @@ def _mail_watch_seconds() -> int:
 def _mail_agenda_rules() -> list[dict]:
     minutes = max(1, _mail_watch_seconds() // 60)
     rules = [job_rule(
-        MAIL_WATCH_JOB, "Hecate: controlla nuove email", service="hecate", path="/api/gateway/mail/watch/run",
+        MAIL_WATCH_JOB, "Controlla le email nuove", service="hecate", path="/api/gateway/mail/watch/run",
         body={"trigger": "agenda"}, recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
         description="Un solo controllo leggero della casella per tutta Hestia: le email nuove vanno a Iris, "
                     "che le passa ai moduli iscritti (Scout, Spese…). Con Gmail push attivo è solo una rete "
                     "di sicurezza.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
     if gmail_pubsub.configured():
         rules.append(job_rule(
-            MAIL_RENEW_JOB, "Hecate: rinnova notifiche Gmail", service="hecate",
+            MAIL_RENEW_JOB, "Rinnova l'avviso di Gmail", service="hecate",
             path="/api/gateway/mail/watch/renew", body={}, recurrence="FREQ=DAILY",
             start_at="2026-01-01T04:10:00", description="Gmail push scade dopo 7 giorni: lo rinnovo ogni giorno.",
             timeout_seconds=30))

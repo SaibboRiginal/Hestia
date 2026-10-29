@@ -15,7 +15,7 @@ const PAGE = 30;
   imports: [DatePipe, ButtonComponent, IconComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <aside class="hist hx-fade-in" aria-label="Cronologia delle conversazioni">
+    <aside class="hist hx-glass hx-fade-in" aria-label="Cronologia delle conversazioni">
       <div class="h"><b>Cronologia</b><span class="hx-grow"></span>
         <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi" (click)="chats.historyOpen.set(false)"></button></div>
       <div class="search"><hx-icon name="search" [size]="14" />
