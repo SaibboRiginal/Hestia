@@ -167,5 +167,5 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] regression test Oracle `test_chat_tools_are_in_the_chat_and_tag_the_conversation_of_the_turn`
 - [x] flows final run 65/65 → `BENCH.md` in this folder
 - [x] TESTING.md: setup steps for .NET build, ComfyUI, Home Assistant, Web Push, llama-server, real Telegram
-- [ ] PR + CI green + merge
-- [ ] final report to Marko
+- [x] PR + CI green + merge (PR #47, 4217a53)
+- [x] final report to Marko (2026-10-29, project thread); left for Marko: real run on his PC (TESTING.md «Setups that need Marko's devices»)
