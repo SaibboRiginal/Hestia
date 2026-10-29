@@ -37,7 +37,9 @@ from .core.blocks import (CHAINS_KEY, COOLDOWN_KEY, DEFAULT_CHAINS, DEFAULT_PROV
                           EXTERNAL_MODEL_KEY, FALLBACK_KEY, MODE_KEY, PROVIDERS_KEY, USECASES_KEY, Blocks,
                           ChainExhausted)
 from .core.hub import Hub, HubError
+from .core.dictionary import Dictionary
 from .core.keep import Keep
+from .core.voiceprint import Voiceprint, VoiceprintError
 from .core.service import Echo, Invalid, NotFound
 from .core.standards import STANDARDS
 
@@ -89,7 +91,7 @@ settings.declare([
             unit="caratteri", help="Oltre, la voce legge l'inizio e dice che il resto è nel testo."),
     setting("echo.ascolto.max_seconds", "Audio più lungo accettato", "int", 600, group="Voce", order=9, min=30,
             max=7200, unit="s", advanced=True),
-    setting("echo.live.silence_ms", "Pausa che chiude il turno dal vivo", "int", 900, group="Voce", order=10,
+    setting("echo.live.silence_ms", "Pausa che chiude il turno dal vivo", "int", 1250, group="Voce", order=10,
             min=300, max=5000, unit="ms", help="In modalità live: quanto silenzio vuol dire «ho finito di parlare»."),
     setting(COOLDOWN_KEY, "Pausa di un motore senza quota", "int", 60, group="Voce", order=11, min=1, max=1440,
             unit="min", advanced=True, help="Quando il fornitore non dice quando si ricarica la quota."),
@@ -100,6 +102,18 @@ settings.declare([
     setting("echo.audio.generated_days", "Giorni per gli audio generati", "int", 30, group="Audio conservati",
             order=21, min=1, max=3650, unit="giorni",
             help="Dopo l'ultimo ascolto. Riascoltando si rigenerano dal testo."),
+    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
+    setting("echo.impronta.soglia", "Quanto deve somigliare alla tua voce", "float", 0.45, group="La tua voce",
+            order=40, min=0.1, max=0.9,
+            help="Con la tua impronta registrata, le voci sotto questa somiglianza (TV, altre persone) diventano "
+                 "silenzio prima dell'ascolto. Più alto = più severo."),
+    setting("echo.impronta.usi", "Dove riconosco solo la tua voce", "list", ["webui.live.ascolto"],
+            group="La tua voce", order=41,
+            help="Usi della voce dove filtro le altre voci (es. webui.live.ascolto, telegram.vocale). "
+                 "Senza impronta registrata non filtro nulla."),
+    setting("echo.dizionario.conferme", "Correzioni per imparare una parola", "int", 2, group="La tua voce",
+            order=42, min=1, max=10, unit="volte",
+            help="Dopo quante tue correzioni una parola entra nel dizionario che passo al riconoscimento."),
     setting("echo.pricing", "Prezzi", "object", {}, group="Voce", order=30, advanced=True,
             help="«fornitore/modello» → {minute: € al minuto ascoltato, mchars: € per milione di caratteri letti}, "
                  "per il pannello Uso."),
@@ -128,7 +142,9 @@ def _notify(event: dict) -> None:
 
 blocks = Blocks(settings.get, _registry)
 keep = Keep(hub, settings.get, _notify)
-echo = Echo(blocks, keep, settings.get)
+dictionary = Dictionary(keep, settings.get)
+voiceprint = Voiceprint(keep, settings.get)
+echo = Echo(blocks, keep, settings.get, dictionary=dictionary, voiceprint=voiceprint)
 agenda = AgendaClient("echo", HUB_API_URL)
 
 app = FastAPI(title="Hestia-Echo", version=SERVICE_VERSION)
@@ -294,7 +310,8 @@ def usage(days: int = 30):
 @app.get(f"{API}/live")
 def live_config():
     """What a client needs for live mode («Parla», /live): the pause that closes a turn."""
-    return {"silence_ms": int(settings.get("echo.live.silence_ms", 900) or 900), "language": echo.language()}
+    return {"silence_ms": int(settings.get("echo.live.silence_ms", 1250) or 1250), "language": echo.language(),
+            "voiceprint": voiceprint.applies("webui.live.ascolto")}
 
 
 @app.get(f"{API}/recent")
@@ -351,6 +368,79 @@ def audio_cleanup():
     return keep.cleanup()
 
 
+# ── your voice: dictionary + voiceprint (Cindy 17 + 10) ─────────────────────
+@app.get(f"{API}/dictionary")
+def dictionary_list():
+    """Personal words passed to the listening engines (confirmed) and the candidates learnt from corrections."""
+    items = dictionary.list()
+    return {"items": items, "confirmed": sum(1 for d in items if d.get("status") == "confirmed"),
+            "needed": dictionary.needed()}
+
+
+@app.post(f"{API}/dictionary")
+def dictionary_add(body: dict = Body(...)):
+    try:
+        return {"status": "ok", "word": dictionary.add(str(body.get("word") or ""), source="manual"),
+                "message": "Parola aggiunta"}
+    except ValueError as exc:
+        raise Invalid(str(exc))
+
+
+@app.delete(API + "/dictionary/{word}")
+def dictionary_remove(word: str):
+    if not dictionary.remove(word):
+        raise NotFound("parola non nel dizionario")
+    return {"status": "ok", "message": "Parola tolta"}
+
+
+@app.post(f"{API}/dictionary/learn")
+def dictionary_learn(body: dict = Body(...)):
+    """A transcript corrected by the owner: ``{heard, corrected}`` → words counted (confirmed after N)."""
+    return dictionary.learn(str(body.get("heard") or ""), str(body.get("corrected") or ""))
+
+
+def _audio_body(body: dict) -> tuple[bytes, str]:
+    f = body.get("audio") if isinstance(body.get("audio"), dict) else {}
+    raw = base64.b64decode(str(body.get("audio_b64") or f.get("data_b64") or "").split(",", 1)[-1] or b"")
+    if not raw:
+        raise Invalid("audio vuoto")
+    return raw, str(body.get("mime_type") or f.get("mime") or "audio/ogg").split(";")[0].strip().lower()
+
+
+@app.get(f"{API}/voiceprint")
+def voiceprint_status():
+    return voiceprint.status()
+
+
+@app.post(f"{API}/voiceprint")
+def voiceprint_enroll(body: dict = Body(...)):
+    """Record the owner's voice once (≥ 6 s of speech): ``{audio_b64, mime_type}`` or ``{audio: {data_b64, mime}}``."""
+    raw, mime = _audio_body(body)
+    try:
+        pcm = audio.to_pcm16k(raw, mime)
+    except audio.AudioError as exc:
+        raise Invalid(f"audio non leggibile: {exc}")
+    blob = None
+    try:
+        blob = keep.save("recording", audio.keep_encode(raw), audio.KEEP_MIME,
+                         {"use_case": "echo.impronta", "text": "impronta della voce"})
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[🔄] event=voiceprint_recording_not_kept error=%s", exc)
+    try:
+        out = voiceprint.enroll(pcm, blob)
+    except VoiceprintError as exc:
+        raise Invalid(str(exc))
+    except Exception as exc:  # noqa: BLE001 — engine not available
+        logger.warning("[🔄] event=voiceprint_engine_unavailable error=%s", exc)
+        raise HTTPException(status_code=503, detail="riconoscimento della voce non disponibile ora")
+    return {**out, "status": "ok", "message": "Impronta della voce salvata"}
+
+
+@app.delete(f"{API}/voiceprint")
+def voiceprint_forget():
+    return {**voiceprint.forget(), "status": "ok", "message": "Impronta tolta: ascolto tutte le voci"}
+
+
 def _agenda_rules() -> list[dict]:
     return [job_rule("echo.audio_cleanup", "Voce: pulizia degli audio", service="echo", path=f"{API}/audio/cleanup",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T04:30:00", tz=TZ,
@@ -366,6 +456,43 @@ ui.webui(entry="echo.js", api_prefix=f"{API}/",
          pages=[page("voce", "Voce", element="echo-voice", icon="mic", order=125,
                      help="Come Hestia ascolta e parla: fornitori, catene di ascolto e di voce, usi di ogni modulo, "
                           "modalità esterna, prova del microfono e delle voci, uso e costi, le tue registrazioni.")])
+# ── MCP tools (assistant, Telegram, WebUI): your voice ───────────────────────
+from hestia_common.mcp_helpers import MCPTool, create_mcp_router  # noqa: E402
+
+
+def _t(name, title, description, method, path, props=None, required=None, label=None, writes_note=""):
+    return MCPTool(name=name, title=title, description=description + writes_note,
+                   parameters={"type": "object", "properties": props or {}, "required": required or []},
+                   handler=lambda **_kw: {"status": "ok"}, method=method, path=path,
+                   clients=["telegram", "ui"], response_mode="oracle_natural",
+                   telegram_visible=True, telegram_group="sistema",
+                   telegram={"section": "Voce", **({"label": label} if label else {})})
+
+
+_echo_tools = [
+    _t("voce_dizionario", "Dizionario della voce", "Le parole tue (nomi, termini) che passo al riconoscimento "
+       "della voce, e quelle che sto imparando dalle tue correzioni.", "GET", f"{API}/dictionary",
+       label="Dizionario"),
+    _t("voce_parola", "Aggiungi una parola", "Aggiungi una parola al dizionario della voce (un nome, un termine "
+       "che non capisco bene).", "POST", f"{API}/dictionary",
+       {"word": {"type": "string", "description": "La parola, scritta giusta"}}, ["word"]),
+    _t("voce_parola_togli", "Togli una parola", "Togli una parola dal dizionario della voce.", "DELETE",
+       API + "/dictionary/{word}", {"word": {"type": "string", "description": "La parola da togliere"}}, ["word"]),
+    _t("voce_correzione", "Correggi una trascrizione", "Quando l'utente corregge un vocale trascritto male "
+       "(«volevo dire …»): testo sentito e testo giusto; le parole nuove entrano nel dizionario dopo qualche "
+       "correzione.", "POST", f"{API}/dictionary/learn",
+       {"heard": {"type": "string", "description": "Cosa avevo trascritto"},
+        "corrected": {"type": "string", "description": "Il testo giusto"}}, ["heard", "corrected"]),
+    _t("voce_impronta", "La tua voce", "Se ho la tua impronta della voce e dove riconosco solo te.", "GET",
+       f"{API}/voiceprint"),
+    _t("voce_impronta_registra", "Registra la tua voce", "Registra almeno 10 secondi della tua voce: poi le "
+       "altre voci (TV, persone) non finiscono nei tuoi messaggi dove lo hai scelto.", "POST", f"{API}/voiceprint",
+       {"audio": {"type": "string", "contentMediaType": "audio/*",
+                  "description": "Un vocale di almeno 10 secondi in cui parli tu"}}, ["audio"]),
+    _t("voce_impronta_togli", "Togli l'impronta della voce", "Dimentica la tua impronta: ascolto tutte le voci.",
+       "DELETE", f"{API}/voiceprint"),
+]
+app.include_router(create_mcp_router(_echo_tools, service_name="echo"))
 app.include_router(ui.router())
 app.include_router(settings.router())
 app.include_router(create_log_control_router("hestia_echo"))
@@ -373,7 +500,8 @@ app.include_router(create_log_control_router("hestia_echo"))
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps: dict = {"voice": {"api": API, "standards": list(STANDARDS)}}
+    caps: dict = {"voice": {"api": API, "standards": list(STANDARDS)},
+                  "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["voice"]}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:

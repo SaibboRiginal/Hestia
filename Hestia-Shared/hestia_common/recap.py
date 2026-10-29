@@ -16,6 +16,9 @@ exposing the endpoint; nothing else changes.
     caps.update(recap_capabilities())
 
 ``title`` is a generic word for the area («Allenamento», «Spese»): user texts never name modules.
+``actions`` (optional, max 2): buttons the recap message carries for this module, Hermes action shape
+(``{label, command}`` = a tool the client opens, or ``{label, service, path, method?, body?}``). They ride even on an
+empty piece (e.g. «Racconta la giornata» after the evening recap, dossier ``2026-10-24-tutto-brainstorm-cindy`` B9).
 """
 from __future__ import annotations
 
@@ -57,17 +60,30 @@ def _items(rows: Iterable[Any] | None) -> list[dict]:
 
 def piece(module: str, title: str, *, icon: str = "", emoji: str = "", order: int = 500,
           done: Iterable[Any] | None = None, missed: Iterable[Any] | None = None,
-          next: Iterable[Any] | None = None, note: str = "") -> dict[str, Any]:
-    """A module's piece of the recap. No line at all → ``{module, empty: true}``."""
+          next: Iterable[Any] | None = None, note: str = "",
+          actions: Iterable[dict] | None = None) -> dict[str, Any]:
+    """A module's piece of the recap. No line at all → ``{module, empty: true}`` (plus its ``actions``)."""
     lists = {"done": _items(done), "missed": _items(missed), "next": _items(next)}
     note = str(note or "").strip()
+    acts = _actions(actions)
     if not any(lists.values()) and not note:
-        return empty(module)
+        return {**empty(module), **({"actions": acts} if acts else {})}
     out: dict[str, Any] = {"module": module, "title": title, "icon": icon, "emoji": emoji, "order": int(order)}
     out.update({k: v for k, v in lists.items() if v})
     if note:
         out["note"] = note
+    if acts:
+        out["actions"] = acts
     return out
+
+
+def _actions(rows: Iterable[Any] | None) -> list[dict]:
+    out = []
+    for a in rows or []:
+        if isinstance(a, dict) and str(a.get("label") or "").strip() and (a.get("command") or
+                                                                           (a.get("service") and a.get("path"))):
+            out.append(dict(a))
+    return out[:2]
 
 
 def empty(module: str) -> dict[str, Any]:

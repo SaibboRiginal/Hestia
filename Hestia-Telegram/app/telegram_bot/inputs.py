@@ -64,6 +64,7 @@ class Field:
     minimum: float | None = None
     maximum: float | None = None
     default: Any = None
+    media: str = ""                 # file fields: contentMediaType (audio/* = ask for a voice note)
 
 
 def _short_help(desc: str) -> str:
@@ -126,7 +127,7 @@ def fields(tool) -> list[Field]:
                          help=_short_help(desc) if _short_help(desc).lower() != label.lower() else "",
                          placeholder=str(examples[0]) if examples else PLACEHOLDERS.get(name, ""),
                          options=options, minimum=spec.get("minimum"), maximum=spec.get("maximum"),
-                         default=spec.get("default")))
+                         default=spec.get("default"), media=str(spec.get("contentMediaType") or "")))
     out.sort(key=lambda f: not f.required)
     return out
 

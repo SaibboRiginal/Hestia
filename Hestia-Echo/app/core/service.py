@@ -49,10 +49,13 @@ def _opts(std, provider: dict, step: dict, direction: str) -> dict:
 
 
 class Echo:
-    def __init__(self, blocks: Blocks, keep: Keep, get: Callable[[str, Any], Any]):
+    def __init__(self, blocks: Blocks, keep: Keep, get: Callable[[str, Any], Any], *, dictionary: Any = None,
+                 voiceprint: Any = None):
         self.blocks = blocks
         self.keep = keep
         self.get = get
+        self.dictionary = dictionary          # personal words → engine hint (Cindy 17)
+        self.voiceprint = voiceprint          # other voices → silence before listening (Cindy 10)
         self.recent: deque[dict] = deque(maxlen=20)
         self._streams: dict[str, dict] = {}
         self._lock = threading.Lock()
@@ -90,12 +93,29 @@ class Echo:
             return None
 
     # ── listening ────────────────────────────────────────────────────────────
-    def _heard(self, raw: bytes, mime: str, uc: str, language: str, *, record: bool = True) -> tuple[dict, dict, bytes]:
+    def _filtered(self, pcm: bytes, uc: str, cache: dict | None = None) -> tuple[bytes, dict]:
+        if self.voiceprint is None:
+            return pcm, {"applied": False}
+        return self.voiceprint.filter(pcm, uc, cache)
+
+    def _hint(self) -> str:
+        try:
+            return self.dictionary.hint() if self.dictionary is not None else ""
+        except Exception as exc:  # noqa: BLE001 — the archive being down never stops listening
+            logger.debug("event=voice_dictionary_unavailable error=%s", exc)
+            return ""
+
+    def _heard(self, raw: bytes, mime: str, uc: str, language: str, *, record: bool = True,
+               vcache: dict | None = None) -> tuple[dict, dict, bytes]:
         """Run the listening chain on one audio. Returns ``(result, info, pcm)``. Partials are not recorded."""
         try:
             pcm = audio.to_pcm16k(raw, mime)
         except audio.AudioError as exc:
             raise Invalid(f"audio non leggibile: {exc}")
+        pcm, vstats = self._filtered(pcm, uc, vcache)
+        if vstats.get("applied") and vstats.get("muted") and not vstats.get("kept"):
+            raise Invalid("non ho sentito la tua voce")
+        hint = self._hint()
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.1:
             raise Invalid("audio vuoto")
@@ -106,10 +126,15 @@ class Echo:
             std = STANDARDS[provider["type"]]
             # Local engines (and every engine in interna) get clean 16 kHz WAV; an external engine that accepts
             # common formats gets the audio as it came (the proxy does not reshape it).
-            external = self.blocks.usecase_config(uc, "ascolto")["mode"] == "esterna" and not std.wants_pcm
+            # A filtered audio (other voices muted) always goes as WAV.
+            external = self.blocks.usecase_config(uc, "ascolto")["mode"] == "esterna" and not std.wants_pcm \
+                and not vstats.get("muted")
             data, kind = (raw, mime) if external else (pcm, "audio/wav")
-            return std.transcribe(provider, step.get("model") or "", data, kind, language,
-                                  _opts(std, provider, step, "ascolto"))
+            opts = _opts(std, provider, step, "ascolto")
+            if hint:
+                for key in ("initial_prompt", "prompt"):
+                    opts[key] = f"{opts.get(key) or ''} {hint}".strip()
+            return std.transcribe(provider, step.get("model") or "", data, kind, language, opts)
 
         started = time.monotonic()
         try:
@@ -231,7 +256,7 @@ class Echo:
         return self._open("listen", use_case=str(body.get("use_case") or "echo.prova.ascolto"),
                           mime=str(body.get("mime_type") or "audio/webm").split(";")[0].strip().lower(),
                           language=self.language(body.get("language")), buf=bytearray(), partial="", seq=-1,
-                          keep=body.get("keep"))
+                          keep=body.get("keep"), vcache={})
 
     def listen_chunk(self, sid: str, body: dict) -> dict:
         st = self._stream(sid, "listen")
@@ -244,11 +269,13 @@ class Echo:
             pcm = audio.to_pcm16k(bytes(st["buf"]), st["mime"])
         except audio.AudioError:
             return {"partial": st["partial"], "silence_ms": 0, "duration_s": 0}   # a fragment ffmpeg cannot read yet
+        pcm, _ = self._filtered(pcm, st["use_case"], st["vcache"])   # other voices do not keep the turn open
         seconds = audio.wav_duration(pcm)
         silence = audio.trailing_silence_ms(pcm)
         if body.get("partial", True) and seconds <= PARTIAL_MAX_SECONDS and silence < seconds * 1000:
             try:
-                result, _, _ = self._heard(bytes(st["buf"]), st["mime"], st["use_case"], st["language"], record=False)
+                result, _, _ = self._heard(bytes(st["buf"]), st["mime"], st["use_case"], st["language"], record=False,
+                                           vcache=st["vcache"])
                 st["partial"] = result["text"]
             except (Invalid, ChainExhausted) as exc:
                 logger.debug("event=voice_partial_failed stream=%s error=%s", sid, exc)

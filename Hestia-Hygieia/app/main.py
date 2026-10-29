@@ -35,12 +35,15 @@ from hestia_common.reminders import reminder_event, reminder_settings, voice_set
 from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
+from hestia_common.feeds import capabilities as feed_capabilities
+from hestia_common.voice_client import VoiceClient
+from hestia_common.voice_usecases import capabilities as voice_capabilities, usecase as voice_usecase
 
 from .core import catalog
 from .core.coach import HygieiaCoach
 from .core.hub import Hub
 from .core.planner import cadence_label
-from .core.service import Conflict, Hygieia, Invalid, NotFound
+from .core.service import DIARY_VOICE_USE, Conflict, Hygieia, Invalid, NotFound
 from .core.store import Store, StoreUnavailable, now_iso
 
 logger, log_buffer = setup_service_logging("hestia_hygieia")
@@ -76,6 +79,9 @@ settings.declare([
 
 hub = Hub(HUB_API_URL)
 store = Store(hub)
+voice = VoiceClient(HUB_API_URL)
+VOICE_USECASES = [voice_usecase(DIARY_VOICE_USE, "Diario a voce", direction="ascolto",
+                                help="Il racconto della giornata dopo il recap della sera.")]
 hygieia = Hygieia(store, settings.get, tz_name=TZ)
 coach = HygieiaCoach(hygieia)
 coach_client = CoachClient("hygieia", HUB_API_URL)
@@ -334,6 +340,43 @@ def journal_add(body: dict = Body(...)):
     out = {"items": hygieia.journal_add(body)}
     signals.changed()
     return out
+
+
+def _diary_voice(audio: Any, date: str = "") -> dict:
+    """B9: a voice note → Echo transcribes it (recording kept) → the day's «giornata» entry."""
+    import base64
+    a = audio if isinstance(audio, dict) else {"data_b64": audio}
+    try:
+        raw = base64.b64decode(a.get("data_b64") or "")
+    except (ValueError, TypeError):
+        raw = b""
+    if not raw:
+        raise Invalid("manca il vocale")
+    heard = voice.transcribe(raw, a.get("mime") or a.get("mime_type") or "audio/ogg", use_case=DIARY_VOICE_USE,
+                             keep={"kind": "recording", "client": "hygieia"})
+    if not heard:
+        logger.warning("[🔄] event=diary_voice_not_heard fallback=ask_again")
+        raise Invalid("non sono riuscita a capire il vocale, riprova o scrivilo")
+    row = hygieia.journal_voice(heard, date or None)
+    signals.changed()
+    logger.info("event=diary_voice_saved chars=%d audio=%s", len(row.get("note") or ""), bool(row.get("audio_id")))
+    return row
+
+
+@app.post(f"{API}/journal/voice")
+def journal_voice(body: dict = Body(...)):
+    audio = body.get("audio") or ({"data_b64": body["audio_b64"], "mime": body.get("mime_type")}
+                                  if body.get("audio_b64") else None)
+    return {"item": _diary_voice(audio, body.get("date") or "")}
+
+
+@app.post(f"{API}/wearable")
+def wearable(body: dict = Body(...)):
+    """Feed ``wearable.daily`` from Hecate (Garmin, W4 B10): the night's sleep in the diary."""
+    row = hygieia.sleep_from_wearable(body)
+    if row:
+        signals.changed()
+    return {"status": "ok", "sleep": bool(row)}
 
 
 @app.delete(f"{API}/journal/{{id}}")
@@ -919,6 +962,14 @@ try:
                 handler=_t(_journal_add), title="Scrivi nel diario", method="POST", path=f"{API}/journal", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diario"}),
+        MCPTool(name="selfcare_diario_voce", description="Diario a voce: l'utente racconta la giornata con un vocale; "
+                "viene trascritto e salvato nel diario (area giornata). Proposto dopo il recap della sera.",
+                parameters={"type": "object", "properties": {
+                    "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Il tuo vocale"},
+                    "date": S}, "required": ["audio"]},
+                handler=_t(lambda audio, date="": {"item": _diary_voice(audio, date)}), title="Racconta la giornata",
+                method="POST", path=f"{API}/journal/voice", clients=["telegram", "ui"], telegram_group="selfcare",
+                telegram={"section": "Diario"}),
         MCPTool(name="selfcare_stats", description="Statistiche: costanza per routine (streak, % periodi rispettati), "
                 "prodotti più usati, spesa per mese.", parameters={"type": "object", "properties": {"days": I}},
                 handler=_t(_stats), title="Statistiche cura di sé", path=f"{API}/stats", clients=["ui"],
@@ -990,7 +1041,8 @@ except NameError:
 def _registration() -> dict:
     caps = {"when_to_use": 'cura di sé: skincare, routine, diario del benessere, sonno, umore', "manual": 'Routine di cura di sé, prodotti, diario del benessere (sempre attivo), note su sonno e umore.',
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["selfcare"],
-            "context_endpoint": "/api/module/context", **recap.capabilities()}
+            "context_endpoint": "/api/module/context", **recap.capabilities(), **voice_capabilities(VOICE_USECASES),
+            **feed_capabilities({"wearable.daily": f"{API}/wearable"})}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
         caps.update(transfer.capabilities())

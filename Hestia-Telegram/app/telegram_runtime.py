@@ -111,7 +111,8 @@ def on_file(message):
         return
     mark_notifications_seen(message)
     presence_touch(message, "chat")
-    if message.content_type in ("photo", "document") and actions.on_file(message.chat.id, message):
+    # a voice note goes to an open action that asks for a file (e.g. the spoken diary), otherwise to the chat
+    if message.content_type in ("photo", "document", "voice", "audio") and actions.on_file(message.chat.id, message):
         return
     chat_service.handle_file_message(message)
 

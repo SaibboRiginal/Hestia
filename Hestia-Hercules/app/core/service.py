@@ -592,6 +592,25 @@ class Hercules:
                                                                                      "pain_areas", "time_minutes", "free_text")}})
         return row
 
+    def checkin_from_wearable(self, item: dict) -> dict | None:
+        """Feed ``wearable.daily`` (B10): today's sleep score and morning energy (body battery or training
+        readiness, 0–100 → 1–5) become the day's check-in, only when the owner has not checked in by hand."""
+        if str(item.get("date") or "") != self.today().isoformat():
+            return None
+        own = self._today_checkin()
+        if own and own.get("source") != "device":
+            return None
+
+        def five(v):
+            return None if v is None else max(1, min(5, 1 + int(v) // 20))
+        sleep = five((item.get("sleep") or {}).get("score"))
+        energy = five((item.get("body_battery") or {}).get("morning") or item.get("readiness"))
+        if sleep is None and energy is None:
+            return None
+        return self.checkin({"sleep": sleep, "energy": energy, "source": "device",
+                             "free_text": f"dall'orologio · prontezza {item['readiness']}" if item.get("readiness")
+                             is not None else "dall'orologio"})
+
     def feedback(self, body: dict) -> dict:
         return self.save("feedback", {**body, "at": body.get("at") or now_iso()})
 

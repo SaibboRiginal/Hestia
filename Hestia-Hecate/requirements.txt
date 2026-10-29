@@ -9,3 +9,4 @@ google-auth-oauthlib>=1.2.0
 msal>=1.28.0
 # optional Gmail push (Pub/Sub streaming pull), imported only when configured
 google-cloud-pubsub>=2.21.0
+garminconnect>=0.2.19

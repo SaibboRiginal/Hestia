@@ -83,6 +83,16 @@ capabilities = {**recap.capabilities(), ...}       # recap_endpoint → /api/mod
 builder raises: logged, never a 500; bad date → 400). Pass `today=lambda: svc.today()` so the default day is the module's
 local day, not the container's. Plain facts only, never an LLM call; Athena writes the text.
 `job_rule(..., flex={"earliest": "20:00", "latest": "23:30"})` makes a recurring job fire around the user's events.
+`piece(..., actions=[{label, command}|{label, service, path, method?, body?}])` (max 2) adds buttons under the recap
+message, even on an empty piece; Athena puts them in the Hermes event (e.g. Hygieia «Racconta la giornata»).
+
+## Device feeds (`hestia_common.feeds`)
+
+Data from the owner's devices, pushed by Hecate to the modules that asked for it (dossier
+`2026-10-24-tutto-brainstorm-cindy` W4). A module declares `caps.update(feeds.capabilities({"wearable.daily":
+"/api/hercules/wearable"}))`; Hecate's `FeedPublisher(HUB).publish(kind, item)` discovers subscribers on the Hub
+(cache 60 s) and POSTs the item through the Hub → `{delivered, failed}`. Kinds: `wearable.daily`,
+`phone.notification`, `phone.state`. A failure is logged `[🔄]`; the next sync or push carries the data again.
 
 ## Mail subscriptions client (`hestia_common.mail_client`)
 

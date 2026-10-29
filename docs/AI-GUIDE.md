@@ -82,6 +82,8 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.m
 - Notifications in voice: module setting `<module>.notifiche.voce` (`reminders.voice_setting`) + `reminder_event(voice=)`
   → payload `_voice` → Hermes adds the audio as an `update`.
 - Live («Parla», Telegram `/voce`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
+- «La tua voce» (W4): voiceprint filter (`echo.impronta.*`, other voices → silence before any engine) and personal
+  dictionary (hint to every engine, learns from `/api/voice/dictionary/learn`) live inside Echo; callers change nothing.
 
 ## 4. Forge (self-development) — how a change ships
 
@@ -134,6 +136,9 @@ subscriptions → full mail stored in Archive as raw record under the subscriber
 `hestia_common.mail_client.MailClient(owner).subscribe_async(rules)`, processes `/api/archive/<domain>/unevaluated`
 when rung and once at startup, may ask `backfill(key)`. Subscribers today: Scout (`scout:listings`), Plutus (PayPal).
 Legacy rules a module stops declaring are retired with `AgendaClient.retire(keys)` (`POST /api/agenda/retire`).
+
+Device data (Garmin, phone) is pushed the same way, without Iris: Hecate → `hestia_common.feeds.FeedPublisher` →
+every module that declares `capabilities.feeds {kind: path}` (`wearable.daily`, `phone.notification`, `phone.state`).
 
 ## 5b. Settings (Themis) — tunables are data, not env
 

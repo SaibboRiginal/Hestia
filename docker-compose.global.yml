@@ -93,6 +93,8 @@ services:
       # - HECATE_GMAIL_PUBSUB_SUBSCRIPTION=${HECATE_GMAIL_PUBSUB_SUBSCRIPTION:-} # projects/<project>/subscriptions/<sub>
       # - HECATE_GMAIL_PUBSUB_CREDENTIALS=/code/data/gmail-pubsub-sa.json       # Pub/Sub Subscriber service-account JSON
       # - HECATE_MAIL_WATCH_STATE=/code/data/mail_watch.json                     # watcher historyId cursor file
+      # Devices (W4): GARMIN_EMAIL / GARMIN_PASSWORD / HECATE_PHONE_TOKEN live in Hestia-Hecate/app/.env (secrets);
+      # Garmin tokens stay in ./Hestia-Hecate/data/garmin (HECATE_GARMIN_TOKENS)
       - LOG_LEVEL=INFO                                        # Logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off                            # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1

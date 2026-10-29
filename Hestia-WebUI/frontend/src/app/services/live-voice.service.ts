@@ -7,7 +7,7 @@ import { PLAY_FORMAT, VoiceService, b64ToBlob, blobToB64, recorderMime, speakabl
 /**
  * Live mode «Parla» (dossier docs/work/2026-10-20-modulo-voce §7.1): a conversation by voice with the same Hestia
  * of the chat (same models, same conversation; no external live service). The browser only:
- * - notices when Marko speaks and when he stops (pause = `echo.live.silence_ms`, from the voice module);
+ * - notices when Marko starts and stops speaking (pause = `echo.live.silence_ms`, from the voice module);
  * - sends the microphone in chunks to the listen stream (partial text shown while speaking);
  * - sends the answer to the say stream while it is written and plays the sentences in order;
  * - stops talking when Marko starts speaking again (or taps «Interrompi»).
@@ -34,7 +34,7 @@ export class LiveVoiceService {
   private ctx: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private timer: number | undefined;
-  private silenceMs = 900;
+  private silenceMs = 1250;
   private floor = 0.01;
   private loudFor = 0;
   private quietFor = 0;

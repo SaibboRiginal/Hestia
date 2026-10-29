@@ -377,12 +377,13 @@ class Activities:
         plan["slots"] = [{**s, **changes} if s.get("id") == slot_id else s for s in plan.get("slots") or []]
         return self.h.save("activity_plan", plan, id=plan["id"])
 
-    def slot_done(self, plan_id: str, slot_id: str, minutes: int | None = None, km: float | None = None) -> dict:
+    def slot_done(self, plan_id: str, slot_id: str, minutes: int | None = None, km: float | None = None,
+                  ext: str = "") -> dict:
         plan, slot = self._slot(plan_id, slot_id)
         if slot.get("status") != "done":
             self.h.save("activity", {"kind": plan["kind"], "date": slot["start"][:10], "at": slot["start"],
                                      "minutes": minutes or plan.get("minutes"), "km": km, "plan_id": plan_id,
-                                     "slot_id": slot_id, "source": "slot"})
+                                     "slot_id": slot_id, "source": "slot", **({"ext": ext} if ext else {})})
         plan = self._set_slot(plan, slot_id, status="done")
         self._event_title(plan, slot, done=True)
         self._close_question(slot_id, "Fatto")
@@ -414,16 +415,19 @@ class Activities:
         return {"moved": True, **self.add_slot(plan_id, best["start"])}
 
     def log(self, kind: str = "corsa", day: str = "", minutes: int | None = None, km: float | None = None,
-            note: str = "") -> dict:
-        """«Ho corso 5 km»: one done activity; a planned slot of the same kind that day becomes done."""
+            note: str = "", ext: str = "") -> dict:
+        """«Ho corso 5 km»: one done activity; a planned slot of the same kind that day becomes done.
+        ``ext``: id of the same activity on a device (``garmin:<id>``), so a device sync never logs it twice."""
         d = day or self.h.today().isoformat()
         k = kind_of(kind)
         for plan in self.plans():
             for s in plan.get("slots") or []:
                 if s.get("status") == "planned" and s["start"][:10] == d and plan.get("kind") == k:
-                    return {**self.slot_done(plan["id"], s["id"], minutes=minutes, km=km), "slot": slot_text(s)}
+                    return {**self.slot_done(plan["id"], s["id"], minutes=minutes, km=km, ext=ext),
+                            "slot": slot_text(s)}
         a = self.h.save("activity", {"kind": k, "date": d, "at": now_iso(), "minutes": minutes, "km": km,
-                                     "note": note, "source": "log"})
+                                     "note": note, "source": "device" if ext else "log",
+                                     **({"ext": ext} if ext else {})})
         self._history_event_for_log(a)
         open_plan = next((p for p in self.plans(open_only=True) if p.get("kind") == k
                           and p["week_from"] <= d <= p["week_to"]), None)
@@ -431,6 +435,23 @@ class Activities:
             self._emit("done", open_plan["id"], a["at"])
         return {"logged": True, "id": a["id"], "kind": label(k), "date": d,
                 **(self.progress(open_plan) if open_plan else {})}
+
+    def from_wearable(self, item: dict) -> list[dict]:
+        """Feed ``wearable.daily`` (B10): the watch's outdoor activities become done activities (once each)."""
+        # deleted rows count too: an activity the owner removed never comes back with the next sync
+        seen = {(r.get("data") or {}).get("ext") for r in self.h.store.all("activity", deleted=True)}
+        out = []
+        for act in item.get("activities") or []:
+            ext = f"{item.get('source') or 'device'}:{act.get('id')}"
+            if not act.get("id") or ext in seen or act.get("kind") not in KINDS or act.get("kind") == "altro":
+                continue
+            day = str(act.get("start") or item.get("date") or "")[:10]
+            out.append(self.log(act["kind"], day, act.get("minutes"), act.get("km"), str(act.get("name") or ""),
+                                ext=ext))
+            seen.add(ext)
+        if out:
+            logger.info("event=activities_from_wearable count=%d", len(out))
+        return out
 
     def unlog(self, id: str) -> dict:
         """Undo a log: the activity goes; a slot it had closed is planned again, its history event goes."""

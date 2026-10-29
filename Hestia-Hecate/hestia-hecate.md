@@ -86,6 +86,14 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/gateway/drive/files/{id}/chunk?offset=&length=` | `{data_b64, eof, size}` |
 | `PATCH` | `/api/gateway/drive/files/{id}` | `{app_properties}` |
 | `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
+| `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, env_credentials, waiting_code, last_sync, last_error}` |
+| `POST` | `/api/gateway/garmin/connect` | «Collega Garmin»: Hermes secret form (email + password) to the owner |
+| `POST` | `/api/gateway/garmin/login` | Target of the secret form `{values: {email, password} \| {code}}` → `connected \| needs_code` (second form) |
+| `DELETE` | `/api/gateway/garmin` | Forget Garmin (delete the tokens) |
+| `GET` | `/api/gateway/garmin/day?day=` | One normalised day (sleep, steps, resting HR, body battery, HRV, readiness, stress, activities) |
+| `POST` | `/api/gateway/garmin/sync` | `{days}` (default 2) → feed `wearable.daily` per day (agenda job `hecate.garmin.sync`, daily 09:30) |
+| `POST` | `/api/gateway/phone/push` | Phone webhook, header `X-Hestia-Phone-Token`: `{type: state, wifi, home?, charging, battery}` · `{type: notification, app, title, text}` |
+| `GET` | `/api/gateway/phone/status` | Last phone state, configured, apps filter |
 | `POST` | `/api/ingest/trigger` | Trigger a domain connector fetch (legacy; calendar connectors only — mail goes through the watcher) |
 | `POST` | `/api/ingest/calendar/trigger` | Sync calendar events from providers into Archive |
 
@@ -208,6 +216,8 @@ they are not env vars. All apply **live** (read at use time).
 | `hecate.mail.watch_interval` | int (s) | `900` | Default recurrence of agenda job `hecate.mail_watch` (min 60) |
 | `hecate.mail.safety_interval` | int (s, advanced) | `21600` | Recurrence of `hecate.mail_watch` when Gmail Pub/Sub push is configured (safety net) |
 | `hecate.weather.cache_minutes` | int (min, advanced) | `30` | Forecast cache per place; a stale copy answers when Open-Meteo is down |
+| `hecate.telefono.wifi_casa` | list | `[]` | Home Wi-Fi names: the phone on one of them = «a casa» (empty = the phone sends `home`) |
+| `hecate.telefono.app` | list | `[]` | Apps whose phone notifications are passed on (feed `phone.notification`); empty = every app the phone sends |
 | `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
 
 Hecate also follows the personal setting `themis.personal.places` (Casa, Lavoro, Palestra…: name, address, kind,
@@ -249,6 +259,9 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `HECATE_GMAIL_PUBSUB_TOPIC` | — | Optional Gmail push: `projects/<project>/topics/<topic>` |
 | `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` | — | Optional Gmail push: `projects/<project>/subscriptions/<sub>` (pull). Push is active only when topic + subscription are set |
 | `HECATE_GMAIL_PUBSUB_CREDENTIALS` | `/code/data/gmail-pubsub-sa.json` | Service-account JSON key (only *Pub/Sub Subscriber*) used for the streaming pull |
+| `GARMIN_EMAIL` · `GARMIN_PASSWORD` | — | Optional: Garmin Connect login without the secret form (used once to get the tokens) |
+| `HECATE_GARMIN_TOKENS` | `/code/data/garmin` | Garmin OAuth tokens (garth), data volume |
+| `HECATE_PHONE_TOKEN` | — | Secret the phone sends in `X-Hestia-Phone-Token`; empty = phone webhook off (503) |
 | `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
 
 **Canonical Google OAuth setup (no expiring values):**
@@ -283,6 +296,25 @@ cloud-sun, cloud, fog, drizzle, rain, snow, storm). Tools `weather_now`, `weathe
 owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoint`) gives the piece «Meteo»
 with one line «Domani a Casa: 10–18°, pioggia 15–17» (warning tone when rainy; no Casa → empty piece). Modules
 read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
+
+### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W4
+
+Hecate owns the devices and only passes data on, as **device feeds** (`hestia_common.feeds`): modules declare
+`capabilities.feeds = {kind: path}` in their Hub registration, Hecate discovers them and POSTs each item through the
+Hub. Kinds: `wearable.daily` (Hercules: activities + morning check-in; Hygieia: sleep), `phone.notification`
+(Plutus: bank app notifications → transactions to review), `phone.state`.
+
+- **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» (tool `garmin_collega`) sends a Hermes secret form;
+  the password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`; a two-step code comes with a
+  second form. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
+  signal `wearable.woke_at`. A missing part (e.g. HRV on an older watch) is skipped, the day stays.
+- **Phone** (Cindy 32): Tasker / MacroDroid POST `https://<tunnel>/api/gateway/phone/push` with header
+  `X-Hestia-Phone-Token: <HECATE_PHONE_TOKEN>`. On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
+  "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Fuori casa», no
+  effect) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
+  "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.telefono.app`.
+- Tools (Telegram + WebUI, section «Dispositivi»): `garmin_stato`, `garmin_collega`, `garmin_sincronizza`,
+  `garmin_giorno`, `garmin_scollega`, `telefono_stato`. Tests: `tests/test_devices.py`.
 
 ### Mail (`providers/mail.py`)
 

@@ -29,6 +29,9 @@ class NotFound(LookupError):
 
 WEEK_START_KEY = "themis.personal.week_start"   # personal settings shared by every module (owner Themis)
 CURRENCY_KEY = "themis.personal.currency"
+DIARY_AREA = "giornata"                  # B9 spoken evening diary: one free entry about the day
+DIARY_TOOL = "selfcare_diario_voce"
+DIARY_VOICE_USE = "hygieia.diario"
 
 
 class Conflict(RuntimeError):
@@ -657,11 +660,36 @@ class Hygieia:
                 continue
             rows.append({"kind": "journal", "id": new_id(), "ref_id": area, "at": f"{d}T12:00:00+00:00",
                          "data": {"date": d, "area": area, "scores": scores, "tags": [str(t) for t in _list(e.get("tags") or body.get("tags"))],
-                                  "note": e.get("note") or "", "photo_ids": _list(e.get("photo_ids")), "source": source}})
+                                  "note": e.get("note") or "", "photo_ids": _list(e.get("photo_ids")), "source": source,
+                                  **({"audio_id": e["audio_id"], "duration_s": e.get("duration_s")}
+                                     if e.get("audio_id") else {})}})
         if not rows:
             raise Invalid("niente da salvare")
         self.store.write(rows)
         return [{**r["data"], "id": r["id"]} for r in rows]
+
+    def sleep_from_wearable(self, item: dict) -> dict | None:
+        """Feed ``wearable.daily`` (B10): the night that ended on ``date`` → one diary entry, area ``sonno``
+        (score 0–100 → quality 1–5, duration and deep sleep in the note). Same id per night: a sync updates it."""
+        sleep = item.get("sleep") or {}
+        d = _day(item.get("date"))
+        if not d or not sleep.get("minutes"):
+            return None
+        hours, minutes = divmod(int(sleep["minutes"]), 60)
+        note = f"{hours} h {minutes:02d} min"
+        if sleep.get("deep_minutes"):
+            note += f", profondo {sleep['deep_minutes']} min"
+        scores = {"qualita": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
+        row_id = f"device-sleep-{d}"
+        old = self.store.get("journal", row_id, deleted=True)
+        if old and old.get("deleted"):
+            return None                                   # the owner removed this night: a sync never brings it back
+        data = {"date": d, "area": "sonno", "scores": scores, "tags": [], "note": note, "photo_ids": [],
+                "source": "device", "sleep": {k: sleep.get(k) for k in ("start", "end", "minutes", "deep_minutes",
+                                                                         "rem_minutes", "score")}}
+        self.store.write([{"kind": "journal", "id": row_id, "ref_id": "sonno", "at": f"{d}T12:00:00+00:00",
+                           "data": data}])
+        return {**data, "id": row_id}
 
     def journal(self, area: str = "", days: int = 120) -> dict:
         since = (self.today() - timedelta(days=days)).isoformat()
@@ -1055,7 +1083,24 @@ class Hygieia:
         if due:
             upcoming.append({"text": "Da fare: " + ", ".join(due)})
         alerts = [a["text"] for a in self.alerts()[:2]]
-        return {"done": done, "missed": missed, "next": upcoming, "note": " · ".join(alerts)}
+        out = {"done": done, "missed": missed, "next": upcoming, "note": " · ".join(alerts)}
+        if day == self.today() and not self.told_today(day):
+            # B9: after the evening recap, «Racconta la giornata» opens the spoken diary (a voice note)
+            out["actions"] = [{"label": "Racconta la giornata", "command": DIARY_TOOL}]
+        return out
+
+    def told_today(self, day: date) -> bool:
+        return any(j.get("date") == day.isoformat() and j.get("area") == DIARY_AREA for j in self.items("journal"))
+
+    def journal_voice(self, heard: dict, date_: str | None = None) -> dict:
+        """B9 spoken diary: the transcript of the owner's voice note becomes the day's «giornata» entry
+        (tag ``voce``, the kept recording as ``audio_id``). Reflection reads it like every diary entry."""
+        text = str((heard or {}).get("text") or "").strip()
+        if not text:
+            raise Invalid("non ho sentito niente, riprova")
+        body = {"date": date_, "area": DIARY_AREA, "note": text, "tags": ["voce"],
+                "audio_id": heard.get("blob_id") or "", "duration_s": heard.get("duration_s")}
+        return self.journal_add(body, source="voce")[0]
 
     # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
     def signals(self) -> tuple[list[dict], list[dict]]:

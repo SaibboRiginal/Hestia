@@ -68,6 +68,7 @@ not facts about the user: they are not signals.
 | `adherence_drop` | trend · attenzione | weekly adherence this week ≥ 20 points under the mean of the previous 4 weeks | `statistiche` |
 | `goal:<routine_id>` | goal · attenzione | a target routine `behind` its goal and `due` today (planner `goal_state`) | `routine/<id>` |
 | `streak:<routine_id>` | milestone · info | `routine_stats` streak reaches 4, 8, 12, 26 or 52 periods | `routine/<id>` |
+| `diario` | trend · info (2 days) | today's spoken diary «giornata» exists (first 200 chars; `topic=diario` gives it all) | `diario` |
 
 Weekly adherence = Σ min(done, needed) / Σ needed over active routines with a goal (daily = days, fixed days =
 matching days, target = times prorated on the days of the week; the open week counts until today; a routine counts
@@ -115,10 +116,22 @@ reminder), notifiche.voce (true: notifications also as voice, `voice_setting`), 
 there and used only when wanted. Week start and currency are the personal settings `themis.personal.week_start` /
 `themis.personal.currency` (owner Themis, read with `follow_personal()`), never a module copy.
 
+## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+
+- **Diario a voce** (B9): the evening recap piece carries the button «Racconta la giornata» (`recap.piece(...,
+  actions=)`, a `command` action that opens the tool `selfcare_diario_voce`) until today has a «giornata» entry.
+  Telegram asks for a voice note; `POST /api/selfcare/journal/voice {audio:{data_b64, mime}|audio_b64, date?}` →
+  Echo transcribes it (use `hygieia.diario`, declared in the Hub registration, recording kept) → journal entry
+  area `giornata`, note = transcript, tag `voce`, source `voce`, `audio_id`. Reflection reads it (signal `diario`).
+- **Sleep from the watch** (B10): Hecate pushes feed `wearable.daily` (`hestia_common.feeds`) to
+  `POST /api/selfcare/wearable`; the night becomes one diary entry area `sonno` per date (id `device-sleep-<date>`,
+  quality 1–5 from the sleep score, duration and deep sleep in the note, source `device`). A night the owner deleted
+  never comes back.
+
 ## API (via Hub `/route/hygieia/...`)
 
 See `Hestia-Swagger/swagger.yml` tag *Hygieia*. Groups: meta/options, products (+status, level, repurchase,
-use), routines (+undo, plan, done, skip, snooze), today, logs, journal, stats, timeline, period, alerts,
+use), routines (+undo, plan, done, skip, snooze), today, logs, journal (+voice), wearable, stats, timeline, period, alerts,
 shopping, check, summary, overview, export, quick (Home chips), reminders/run, alerts/run, signals/run.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
