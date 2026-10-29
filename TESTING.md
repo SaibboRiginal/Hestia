@@ -137,7 +137,8 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 7. **Hecate → Chronos → Iris** — gateway services
 8. **Argus → Hephaestus** — organ services
 9. **Scout → Atlas → Dummy** — domain/support modules
-10. **Governance** — check_test_sync.py gate
+10. **Governance** — `python tools/governance/precheck.py`: every CI governance gate (docs sync, contracts,
+    icons, Hub tags, expected test files, Telegram) in seconds, before pushing
 
 ---
 

@@ -6,9 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+# A new push to the same PR cancels the run still going on the old commit (its result no longer matters).
+# Runs on main are never cancelled: each merge keeps its own result.
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    # A hung test or install stops here instead of holding the run for GitHub's 6-hour default.
+    timeout-minutes: 20
     strategy:
       # One red service must not cancel the others: we want every result.
       fail-fast: false
@@ -50,8 +58,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          # Cache the downloaded wheels: fewer trips to PyPI, fewer network failures.
+          cache: pip
+          cache-dependency-path: |
+            Hestia-${{ matrix.service }}/requirements.txt
+            Hestia-Hephaestus/requirements-forge-tests.txt
 
       - name: Install dependencies
+        env:
+          # A PyPI hiccup is retried instead of failing the job.
+          PIP_RETRIES: "5"
+          PIP_TIMEOUT: "60"
         run: |
           # Service pins first, then the union of test deps (httpx for
           # TestClient, shared libs) used by Forge; pytest-cov for coverage.
@@ -80,11 +97,14 @@ jobs:
           name: ${{ matrix.service }}
           path: test-results.xml
           reporter: java-junit
+          # «Run tests» already turns the job red; the report only shows which tests, no second red step.
+          fail-on-error: false
 
   summary:
     needs: test
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check results
         run: |

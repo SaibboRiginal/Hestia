@@ -6,9 +6,15 @@ on:
       - "**"
   workflow_dispatch:
 
+concurrency:
+  group: governance-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   governance:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Every gate runs even when an earlier one failed: one push shows every missing doc or tag at once.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,23 +25,42 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: Hestia-Telegram/requirements.txt
 
       - name: Docs sync gate
+        if: ${{ !cancelled() }}
         run: |
           python tools/governance/check_docs_sync.py \
             --base "${{ github.event.pull_request.base.sha || github.sha }}" \
             --head "${{ github.sha }}"
 
       - name: Command contract gate
+        if: ${{ !cancelled() }}
         run: |
           python tools/governance/check_command_contracts.py \
             --base "${{ github.event.pull_request.base.sha || github.sha }}" \
             --head "${{ github.sha }}"
 
+      - name: Expected test files
+        if: ${{ !cancelled() }}
+        run: python tools/governance/check_test_sync.py
+
       - name: Icons, not emoji, in the web clients
+        if: ${{ !cancelled() }}
         run: python tools/governance/check_icons.py
 
+      - name: Install gate dependencies
+        if: ${{ !cancelled() }}
+        env:
+          PIP_RETRIES: "5"
+          PIP_TIMEOUT: "60"
+        run: pip install -r Hestia-Telegram/requirements.txt pydantic
+
+      - name: Every service registers with tags the Hub accepts
+        if: ${{ !cancelled() }}
+        run: python tools/governance/check_hub_tags.py
+
       - name: Every function on Telegram, no emoji in tool titles
-        run: |
-          pip install -r Hestia-Telegram/requirements.txt
-          python tools/governance/check_telegram.py
+        if: ${{ !cancelled() }}
+        run: python tools/governance/check_telegram.py
