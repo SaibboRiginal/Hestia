@@ -596,6 +596,12 @@ No code-only behavior changes are considered complete without synchronized docs.
 3. `check_command_contracts.py` enforces command metadata quality and contract-drift safeguards.
 4. Rule updates must keep policy text and automation logic aligned in the same change set.
 5. Every service with a `tests/` folder is in the CI matrix (`.github/workflows/tests.yml`), Hestia-MCP included.
+6. Test files (`*/tests/*`), CI workflows and `tools/governance/` are not behaviour: changing only them needs no doc.
+7. `check_hub_tags.py`: every registration (compose files, `app/main.py` defaults, `ModuleKit` modules) uses tags the
+   Hub vocabulary accepts (`Hestia-Hub/src/modules/schemas.py`); a new domain adds its value there.
+8. Before pushing, `python tools/governance/precheck.py` runs every gate locally against `origin/main`.
+9. CI hygiene: a new push to a PR cancels the older run; jobs have a timeout; pip downloads are cached and retried;
+   the test report never adds a second red step; all governance gates report in one run.
 
 ## Messaging Contract (Global UX Rules)
 

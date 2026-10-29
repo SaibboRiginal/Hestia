@@ -24,6 +24,8 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
    `[ext-chat]` · `[forge:<task>]` · `[ai]`.
 6. Docs follow code: behaviour change → `Hestia-<Name>/hestia-<name>.md`; endpoint change →
    `Hestia-Swagger/swagger.yml`; env change → `.env.example` + compose comments; global rule → `docs/ARCHITECTURE.md`.
+7. Before pushing: commit, then `python tools/governance/precheck.py` (the CI governance gates in seconds:
+   missing docs, flow map, Hub tags, icons, Telegram). Push only when it says 0 failed.
 
 ## Non-negotiable rules
 
