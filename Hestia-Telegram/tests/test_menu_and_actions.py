@@ -97,7 +97,9 @@ class TestReachability:
         missing = [t.name for t in tools if t.name not in menu.hidden and t.name not in reached]
         assert not missing, missing
         assert len(tools) >= 165
-        assert set(menu.hidden) <= {"feedback_submit", "voce_on", "voce_off"}
+        # Hidden = steps reached only from a result card (confirm after a preview / a backup list), never a function.
+        assert set(menu.hidden) <= {"feedback_submit", "voce_on", "voce_off", "importa_conferma", "importa_annulla",
+                                    "ripristina_conferma"}
         # Aree › area › Tutte le azioni › section › action (+ «Altre ›» pages)
         assert max(reached.values()) <= 8
 
