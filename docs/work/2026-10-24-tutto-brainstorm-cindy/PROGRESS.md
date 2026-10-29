@@ -103,6 +103,7 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
       `/adesso`, `/scopri`
 - [x] tests: `Hestia-Metis/tests/test_usage.py` (Metis added to the CI matrix, it was missing), Telegram `TestAdesso` + commands
 - [x] docs: hestia-metis.md, hestia-telegram.md, hestia-archive.md, swagger, ARCHITECTURE, flow map, SPEC v1.6
+- [x] fix: `hestia_common.feeds` empty registry cache looked fresh right after boot (CI runner), regression test in Hecate
 - [ ] PR + CI green + merge
 - Left for W7: WebUI Home «Adesso» row, Ctrl+K palette entries, «Scopri» page, WebUI taps (pages + actions).
 

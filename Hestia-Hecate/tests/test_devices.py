@@ -176,3 +176,22 @@ def test_away_state_needs_a_real_signal():
     groups = PRESENCE_STATES["away_from_home"]["when"]
     assert {g[0]["signal"] for g in groups} == {"phone.home", "home.present"}
     assert all(g[0]["op"] == "==" and g[0]["value"] is False for g in groups)
+
+
+def test_feed_publisher_reads_the_registry_right_after_boot(monkeypatch):
+    """Regression: the empty cache stamped 0.0 looked fresh while monotonic() < cache time (fresh host/CI runner)."""
+    import hestia_common.feeds as feeds
+
+    class Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"services": [{"name": "hercules", "capabilities": feeds.capabilities({"wearable.daily": "/w"})}]}
+
+    class Session:
+        def get(self, url, timeout):
+            return Resp()
+
+    monkeypatch.setattr(feeds.time, "monotonic", lambda: 5.0)
+    assert feeds.FeedPublisher("http://hub/api", session=Session()).subscribers("wearable.daily")
