@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input } f
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../core/theme/theme.service';
+import { KNOB_OPTIONS, LookKnobs } from '../../core/theme/looks';
 import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../services/notice-prefs.service';
 import { SessionService } from '../../services/session.service';
 import { PushService } from '../../services/push.service';
@@ -25,8 +26,13 @@ export const PERSONAL_SECTIONS: PersonalSection[] = [
 
 /** Every personal setting, so the page search finds them like the system ones. */
 const ROWS: PersonalRow[] = [
-  { id: 'theme', section: 'aspetto', label: 'Tema', wide: true, keywords: 'colori scuro chiaro dark light',
+  { id: 'theme', section: 'aspetto', label: 'Colori', wide: true, keywords: 'tema colori scuro chiaro dark light oceano foresta lavanda',
     help: 'Colori dell\'interfaccia su questo browser. «Automatico» segue il sistema.' },
+  { id: 'style', section: 'aspetto', label: 'Stile', wide: true, keywords: 'stile vetro netto classico forma look',
+    help: 'La forma dell\'interfaccia, sopra ai colori. Ogni stile è un punto di partenza: sotto puoi cambiare angoli, bordi, trasparenze e animazioni.' },
+  { id: 'knobs', section: 'aspetto', label: 'Dettagli dello stile', wide: true,
+    keywords: 'angoli bordi trasparenza blur sfocatura opacità animazioni movimento',
+    help: 'Su questo browser. «Torna allo stile» rimette i valori dello stile scelto.' },
   { id: 'look', section: 'aspetto', label: 'Temi delle feste e animaletto', keywords: 'compleanno natale stagioni effetti neve animale pet',
     help: 'Nei giorni speciali (il tuo compleanno, le feste, le stagioni) i colori e un piccolo effetto cambiano da soli, sopra il tuo tema.' },
   { id: 'tone', section: 'assistente', label: 'Tono', keywords: 'stile risposte caldo formale diretto',
@@ -80,7 +86,7 @@ export function personalHits(query: string): Map<string, number> {
                   <button class="th" [class.on]="theme.selected() === 'auto'" (click)="theme.set('auto')">
                     <span class="pv auto"><i></i><i></i></span><span>Automatico (sistema)</span>
                   </button>
-                  @for (t of theme.themes; track t.id) {
+                  @for (t of themesSorted; track t.id) {
                     <button class="th" [class.on]="theme.selected() === t.id" (click)="theme.set(t.id)">
                       <span class="pv" [style.background]="t.tokens['--bg']" [style.border-color]="t.tokens['--border']">
                         <i [style.background]="t.tokens['--bg-subtle']"></i>
@@ -90,6 +96,26 @@ export function personalHits(query: string): Map<string, number> {
                       <span>{{ t.label }}</span>
                     </button>
                   }
+                </div>
+              }
+              @case ('style') {
+                <div class="styles">
+                  @for (st of theme.styles; track st.id) {
+                    <button class="st" [class.on]="theme.style().id === st.id" [attr.data-look]="st.id" (click)="theme.setStyle(st.id)">
+                      <span class="spv"><i></i><b></b><u></u></span>
+                      <span class="sl">{{ st.label }}</span><span class="sh">{{ st.help }}</span>
+                    </button>
+                  }
+                </div>
+              }
+              @case ('knobs') {
+                <div class="knobs">
+                  @for (k of knobRows; track k.key) {
+                    <div class="knob"><span class="kl">{{ k.label }}</span>
+                      <hx-segmented [options]="k.options" [value]="theme.knobs()[k.key]" (changed)="theme.setKnob(k.key, $any($event))" />
+                    </div>
+                  }
+                  @if (customised()) { <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="theme.setStyle(theme.style().id)">Torna allo stile</button> }
                 </div>
               }
               @case ('look') {
@@ -162,6 +188,24 @@ export function personalHits(query: string): Map<string, number> {
     .pv b { position: absolute; right: 10px; bottom: 10px; width: 26px; height: 12px; border-radius: 6px; }
     .pv u { position: absolute; left: 38%; right: 10px; top: 12px; height: 10px; border-radius: 5px; }
     .pv.auto { background: linear-gradient(135deg, #faf9f5 50%, #262624 50%); }
+    .styles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; width: 100%; }
+    .st { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--radius-lg); border: 2px solid transparent; text-align: left; color: var(--text-2); }
+    .st:hover { background: var(--surface-2); }
+    .st.on { border-color: var(--accent); color: var(--text); }
+    .sl { font-size: 13.5px; font-weight: 600; } .sh { font-size: 12px; color: var(--text-3); line-height: 1.35; }
+    /* Little drawing of each style, with the current colours */
+    .spv { height: 64px; position: relative; display: block; border-radius: 12px; overflow: hidden; margin-bottom: 4px; background: var(--bg); border: 1px solid var(--border); }
+    .spv i { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 28%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+    .spv b { position: absolute; left: 40%; right: 8px; top: 8px; height: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-1); }
+    .spv u { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 12px; background: var(--accent); border-radius: 6px; }
+    .st[data-look=vetro] .spv { border-radius: 16px; background: radial-gradient(ellipse at 15% 10%, var(--accent-soft), transparent 60%), radial-gradient(ellipse at 90% 90%, var(--info-soft), transparent 60%), var(--bg); }
+    .st[data-look=vetro] .spv i, .st[data-look=vetro] .spv b { background: color-mix(in srgb, var(--surface) 60%, transparent); border-color: color-mix(in srgb, var(--border) 50%, transparent); border-radius: 12px; }
+    .st[data-look=netto] .spv { border-radius: 4px; }
+    .st[data-look=netto] .spv i, .st[data-look=netto] .spv b { border-radius: 2px; border-color: var(--text-3); box-shadow: none; }
+    .st[data-look=netto] .spv u { border-radius: 1px; }
+    .knobs { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .knob { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .kl { width: 110px; font-size: 13px; color: var(--text-2); }
   `],
 })
 export class PersonalSettingsComponent implements OnInit {
@@ -178,6 +222,16 @@ export class PersonalSettingsComponent implements OnInit {
   private toast = inject(ToastService);
   private dialogs = inject(DialogService);
   custom = this.settings.settings().customPrompt ?? '';
+
+  /** Light themes first, then dark (the original order inside each). */
+  readonly themesSorted = [...this.theme.themes].sort((a, b) => (a.mode === b.mode ? 0 : a.mode === 'light' ? -1 : 1));
+  readonly knobRows: { key: keyof LookKnobs; label: string; options: SegmentOption[] }[] = [
+    { key: 'corners', label: 'Angoli', options: [...KNOB_OPTIONS.corners] },
+    { key: 'borders', label: 'Bordi', options: [...KNOB_OPTIONS.borders] },
+    { key: 'glass', label: 'Trasparenze', options: [...KNOB_OPTIONS.glass] },
+    { key: 'motion', label: 'Animazioni', options: [...KNOB_OPTIONS.motion] },
+  ];
+  readonly customised = computed(() => Object.keys(this.theme.look().knobs).length > 0);
 
   readonly shown = computed(() => {
     const q = this.query().trim();

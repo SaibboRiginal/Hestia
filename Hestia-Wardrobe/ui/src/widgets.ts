@@ -1,5 +1,5 @@
 /** Wardrobe widgets for Home and dashboards: one-tap «Indossato», today's idea, laundry, forgotten, numbers, recent. */
-import { css, html, nothing } from '@hestia/webui-sdk';
+import { css, html, nothing, plural } from '@hestia/webui-sdk';
 import type { QuickAction } from '@hestia/webui-sdk';
 import { API, WardrobeElement, call, dayLabel, img, relDays, wardrobeStyles } from './util';
 import { collage } from './outfits';
@@ -101,7 +101,7 @@ export class WardrobeForgottenWidget extends Widget {
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!items.length) return html`<div class="w"><span class="muted">Nessun capo dimenticato.</span></div>`;
     return html`<div class="w">
-      <span class="small muted">${items.length} capi non messi da tanto: rimettili in giro o valuta di darli via.</span>
+      <span class="small muted">${plural(items.length, 'capo', 'capi')} non messi da tanto: rimettili in giro o valuta di darli via.</span>
       <div class="list">${items.slice(0, this.size === 'l' ? 6 : 3).map(f => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
         <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span><span class="small muted">${f.last_worn ? relDays(f.last_worn) : 'mai'}</span></div>`)}</div>
     </div>`;

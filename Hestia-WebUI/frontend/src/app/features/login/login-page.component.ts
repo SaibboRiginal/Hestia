@@ -22,7 +22,7 @@ import { ButtonComponent, FieldComponent } from '../../ui';
       </form>
     </div>`,
   styles: [`
-    .wrap { height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); }
+    .wrap { height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--backdrop, var(--bg)); }
     .card { width: 100%; max-width: 380px; padding: 32px 28px; display: flex; flex-direction: column; gap: 14px; text-align: center; }
     .logo { font-size: 34px; color: var(--accent); }
     h1 { font-family: var(--font-serif); font-weight: 500; font-size: 28px; }

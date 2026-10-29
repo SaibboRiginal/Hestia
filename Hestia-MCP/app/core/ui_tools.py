@@ -17,6 +17,8 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from hestia_common.areas import area_of, for_people
+
 from core.mcp_server import MCPServer, RpcError
 
 logger = logging.getLogger("hestia_mcp.ui_tools")
@@ -32,10 +34,13 @@ def as_command(tool: dict) -> dict:
     """MCP tool → the command shape the page shows (the same one the WebUI used: arguments_schema = JSON schema)."""
     meta = ((tool.get("_meta") or {}).get("hestia") or {})
     name = str(tool.get("name") or "")
+    area = area_of(meta, str(meta.get("service") or ""))
     return {
         "command": name,
         "title": str(tool.get("title") or name),
         "description": str(tool.get("description") or ""),
+        "summary": for_people({"summary": meta.get("summary"), "description": tool.get("description")}),
+        "area": area["key"], "area_label": area["label"], "area_order": area["order"],
         "service": str(meta.get("service") or ""),
         "method": str(meta.get("method") or "GET"),
         "path": str(meta.get("path") or ""),

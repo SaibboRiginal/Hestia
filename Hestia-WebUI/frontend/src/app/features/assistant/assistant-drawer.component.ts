@@ -33,7 +33,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   template: `
     @if (assistant.isOpen()) {
       <div class="scrim hx-fade-in" (click)="assistant.close()"></div>
-      <aside class="drawer" role="dialog" aria-label="Crea con Hestia" [style.width.px]="width()">
+      <aside class="drawer hx-glass" role="dialog" aria-label="Crea con Hestia" [style.width.px]="width()">
         <hx-resize [(width)]="width" edge="left" [min]="340" [def]="440" key="assistant" />
         <header>
           <hx-icon name="sparkle" [size]="17" class="spark" />

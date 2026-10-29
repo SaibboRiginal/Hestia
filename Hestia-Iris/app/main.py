@@ -125,8 +125,8 @@ app.include_router(create_log_control_router("hestia_iris"))
 
 # ── WebUI plugin «Email» (core): subscriptions, last deliveries, watcher state — no need to read logs ──
 UI_DIST = os.getenv("IRIS_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
-ui = PluginClient("iris", title="Iris", icon="mail", color="blue", kind="core", dist=UI_DIST,
-                  description="Le email di Hestia: chi riceve cosa, le ultime consegne ai moduli, il controllo della casella.",
+ui = PluginClient("iris", title="Email", icon="mail", color="blue", kind="core", dist=UI_DIST,
+                  description="Le tue email arrivate a Hestia: chi riceve cosa, le ultime consegne, il controllo della casella.",
                   version=os.getenv("IRIS_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="iris.js", api_prefix="/api/email/",
          pages=[page("email", "Email", element="iris-email", icon="mail", order=145,

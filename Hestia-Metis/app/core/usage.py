@@ -25,6 +25,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from hestia_common.areas import area_of, for_people
 from hestia_common.module_kit import Invalid, new_id, now_iso, parse_dt
 
 logger = logging.getLogger("hestia_metis.usage")
@@ -222,16 +223,23 @@ class Usage:
     def scopri(self, client: str = "webui", limit: int = 12) -> dict:
         tools = {k: v for k, v in self.tools_for(client).items() if not _SKIP.search(k)}
         used = Counter(t["ref"] for t in self.taps(90) if t["kind"] == "tool")
-        rows = [{"tool": n, "title": t.get("title") or n, "description": str(t.get("description") or "")[:240],
-                 "module": t.get("module"), "uses": used[n],
-                 "reason": "Non l'hai mai usata" if not used[n] else f"Usata {used[n]} volt{'a' if used[n] == 1 else 'e'}"}
-                for n, t in tools.items() if used[n] <= 2]
-        rows.sort(key=lambda r: (r["uses"], str(r["module"]), r["title"]))
-        # one per module first, so the page shows many different things
-        first, rest, mods = [], [], set()
+        rows = []
+        for n, t in tools.items():
+            if used[n] > 2:
+                continue
+            area = area_of(t, str(t.get("module") or ""))
+            # people read the area and a short text, never the module name or the notes meant for the model
+            rows.append({"tool": n, "title": t.get("title") or n, "description": for_people(t),
+                         "module": t.get("module"), "area": area["key"], "area_label": area["label"],
+                         "area_icon": area["icon"], "area_order": area["order"], "uses": used[n],
+                         "reason": "Non l'hai mai usata" if not used[n]
+                         else f"Usata {used[n]} volt{'a' if used[n] == 1 else 'e'}"})
+        rows.sort(key=lambda r: (r["uses"], r["area_order"], r["title"]))
+        # one per area first, so the page shows many different things
+        first, rest, seen = [], [], set()
         for r in rows:
-            (rest if r["module"] in mods else first).append(r)
-            mods.add(r["module"])
+            (rest if r["area"] in seen else first).append(r)
+            seen.add(r["area"])
         return {"client": client, "items": (first + rest)[:limit], "total": len(rows), "tools": len(tools)}
 
     def stats(self, days: int = 30) -> dict:

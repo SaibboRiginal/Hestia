@@ -67,8 +67,8 @@ from services import day_view
 logger, log_buffer = setup_service_logging("hestia_chronos")
 
 UI_DIST = os.getenv("CHRONOS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
-ui = PluginClient("chronos", title="Chronos", icon="repeat", color="amber", kind="core", dist=UI_DIST,
-                  description="L'agenda dell'assistente al lavoro: esecuzioni dei job, errori, regole per modulo.",
+ui = PluginClient("chronos", title="Agenda dell'assistente", icon="repeat", color="amber", kind="core", dist=UI_DIST,
+                  description="Cosa fa l'assistente da solo e quando: esecuzioni, errori, regole, routine, eventi speciali.",
                   version=os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
          pages=[page("agenda", "Agenda di Hestia", element="chronos-agenda", icon="calendar", order=150,

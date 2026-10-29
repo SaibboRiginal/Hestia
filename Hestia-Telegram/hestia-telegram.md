@@ -238,3 +238,5 @@ question no longer open answers «⌛ Questa domanda non è più aperta».
   waits in memory 30 min at most, one use, same chat only.
 - «Ripristina un backup» (list of Drive backups → «Ripristina <data>», destructive confirm) and «Annulla ripristino»
   call Archive `/api/backup/restore` · `/undo`; status, list and «Backup adesso» are Archive tools.
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).

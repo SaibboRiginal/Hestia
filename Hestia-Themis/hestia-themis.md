@@ -130,3 +130,5 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 ## Proposals on Telegram (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
 Tool `settings_proposals(status?)` → `GET /api/settings/proposals` (pending by default): the owner sees on Telegram
 what the assistant proposed and confirms from the notification as usual.
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Registro impostazioni».

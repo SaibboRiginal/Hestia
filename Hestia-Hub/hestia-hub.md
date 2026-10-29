@@ -123,3 +123,5 @@ checks Hercules, Hygieia and Plutus.
 
 `capabilities.owns_tool_domains: [...]` lets a non-`layer:domain` service own a tool domain in Oracle's tool
 filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Mappa del sistema»; catalog tool/command entries carry `summary` and `telegram_group` (area, `hestia_common.areas`); map offline text «Mappa non raggiungibile».

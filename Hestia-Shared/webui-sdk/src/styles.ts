@@ -14,6 +14,8 @@ export const tokens = css`
     box-sizing: border-box;
   }
   *, *::before, *::after { box-sizing: inherit; }
+  /* scrollbar-color inherits from the WebUI <html>; scrollbar-width does not cross the shadow root */
+  * { scrollbar-width: thin; }
 `;
 
 /** Utility classes mirroring the WebUI helpers (.hx-row, .hx-card…), usable inside any plugin shadow root. */
@@ -36,7 +38,12 @@ export const kitStyles = css`
     border-radius: var(--radius-sm); padding: 7px 10px; outline: none; min-width: 0;
   }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+  /* Touch screens: --tap is 44px there (WebUI styles.scss, pointer: coarse), 0 elsewhere. data-dense opts out. */
+  button:not([data-dense]), select, input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) {
+    min-height: var(--tap, 0px); }
   @media (max-width: 860px) { .page { padding: 14px 12px; } }
+  /* Phone: the WebUI shell's menu button is on the first line (its height, 44px, set as --head-inset). */
+  .page > :first-child { margin-left: var(--head-inset, 0px); min-height: min(var(--head-inset, 0px), 40px); }
 `;
 
 export const toneColor = (tone?: string) => {

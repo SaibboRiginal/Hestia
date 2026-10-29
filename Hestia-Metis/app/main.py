@@ -71,7 +71,7 @@ hub = HubClient(_HUB_API_URL)
 # built in the image and copied outside /code (the compose dev mount of app/ would hide it). Read only:
 # insights, datasets and LoRA jobs through the existing /api/metis/ reads; training stays a chat/agenda action.
 UI_DIST = os.getenv("METIS_UI_DIST", "/ui/dist")
-ui = PluginClient("metis", title="Metis", icon="flask", color="purple", kind="core", dist=UI_DIST,
+ui = PluginClient("metis", title="Miglioramento", icon="flask", color="purple", kind="core", dist=UI_DIST,
                   description="Miglioramento continuo: dove Hestia sbaglia, dataset e training dei modelli.",
                   version=SERVICE_VERSION)
 ui.webui(entry="metis.js", api_prefix="/api/metis/",
@@ -116,7 +116,7 @@ def _agenda_rules() -> list[dict]:
     # (Chronos owns scheduling; user edits win), so it is neither env nor a Themis setting.
     tz = os.getenv("TZ") or "Europe/Rome"
     return [daily_window(
-        WINDOW_TRAINING, "Metis: finestra training modelli", 1, 6,
+        WINDOW_TRAINING, "Finestra per allenare i modelli", 1, 6,
         description="Training LoRA pianificati (non richiesti da te) partono qui. "
                     "Sposta/salta la finestra per rimandarli.")] + [
         job_rule(f"metis.adesso.{at.replace(':', '')}", "Idee per «Adesso»", service="metis",
@@ -429,7 +429,7 @@ try:
                 # the key that is completing); it fires with schedule=window so the checks run again.
                 agenda_key = f"metis.train.{job_id}.{int(time.time())}"
                 planned = agenda.plan(
-                    agenda_key, f"Metis: training LoRA {ds_name or '?'}", start_at,
+                    agenda_key, f"Allena il modello: {ds_name or '?'}", start_at,
                     action={"service": "metis", "path": "/api/metis/lora/train", "method": "POST",
                             "body": {"dataset_name": ds_name, "base_model": base_model,
                                      "adapter_name": adapter_name, "schedule": "window",

@@ -255,3 +255,5 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
   (3000) for `.cpu_samples` (3) samples in a row, `argus.storage.database_gb` (10), `argus.storage.growth_mb_day` (500).
 - API: `GET /api/argus/performance` (last sample + thresholds) · `GET /api/argus/performance/history?service=&hours=`.
   Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Salute e log» / «Riparazioni»).
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Salute»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «Salute del sistema non raggiungibile».

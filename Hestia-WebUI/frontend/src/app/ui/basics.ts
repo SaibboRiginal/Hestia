@@ -100,7 +100,7 @@ export class FieldComponent {
     h1 { font-family: var(--font-serif); font-weight: 500; font-size: 22px; color: var(--text); line-height: 1.2; }
     p { font-size: 13px; color: var(--text-3); margin-top: 2px; }
     .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    @media (max-width: 720px) { :host { padding: 12px 14px 10px; flex-wrap: wrap; } h1 { font-size: 19px; } }
+    @media (max-width: 720px) { :host { padding: 12px 14px 10px; flex-wrap: wrap; } h1 { font-size: 19px; } p { display: none; } }
   `],
 })
 export class PageHeaderComponent {

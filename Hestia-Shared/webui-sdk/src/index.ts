@@ -13,7 +13,7 @@ export { styleMap } from 'lit/directives/style-map.js';
 
 export * from './types';
 export { tokens, kitStyles, toneColor } from './styles';
-export { HestiaElement, definePlugin, fillPath } from './base';
+export { HestiaElement, definePlugin, fillPath, plural } from './base';
 export { HxkIcon, HxkButton, HxkBadge, HxkCard, HxkStat, HxkState, HxkList } from './kit/basics';
 export { HxkChart } from './kit/chart';
 export type { ChartSeries } from './kit/chart';

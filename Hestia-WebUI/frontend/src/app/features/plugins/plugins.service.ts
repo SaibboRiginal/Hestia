@@ -27,7 +27,8 @@ export const SIZE_SPAN: Record<WidgetSize, { c: number; r: number }> = { s: { c:
 type HostEvent = 'refresh' | 'theme' | 'visible' | 'hidden' | 'online' | 'offline';
 const BASE = '/api/webui/plugins';
 /** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A6). */
-const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: 'Sistema', icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
+/** Titled «Stato del sistema» (2026-10-29): «Sistema» is the sidebar page of the system modules, only one of each name. */
+const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: 'Stato del sistema', icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
 
 /**
  * Client plugins runtime (SPEC docs/work/2026-10-17-client-plugins §4): Hub catalog for client=webui, this client's
@@ -86,6 +87,7 @@ export class PluginsService {
     const savedSystem = list.some(d => d.id === SYSTEM_DASHBOARD.id);
     return [...list, ...(savedSystem ? [] : [SYSTEM_DASHBOARD])]
       .filter(d => !d.removed)
+      .map(d => d.id === SYSTEM_DASHBOARD.id && d.title === 'Sistema' ? { ...d, title: SYSTEM_DASHBOARD.title } : d)
       .map(d => d.auto ? { ...d, items: this.autoItems(d.items, d.dismissed, d.kind ?? 'domain') } : d)
       .filter(d => savedSystem || d.id !== SYSTEM_DASHBOARD.id || d.items.length > 0);   // no core widget yet: no empty tab
   });

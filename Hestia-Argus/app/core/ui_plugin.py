@@ -21,8 +21,8 @@ SERVICE_VERSION = "1.0.0"
 UI_DIST = os.getenv("ARGUS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 API = "/api/argus"
 
-ui = PluginClient("argus", title="Argus", icon="pulse", color="green", kind="core", dist=UI_DIST,
-                  description="La salute di Hestia: servizi nel tempo, incidenti, cosa ha fatto Argus, log.",
+ui = PluginClient("argus", title="Salute", icon="pulse", color="green", kind="core", dist=UI_DIST,
+                  description="Come stanno i servizi nel tempo, gli incidenti, cosa è stato riparato, i log.",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="argus.js", api_prefix=f"{API}/",

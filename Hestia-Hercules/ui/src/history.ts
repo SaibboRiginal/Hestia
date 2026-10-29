@@ -2,7 +2,7 @@
  * <hercules-history> — "Storico": every workout by month (from the local mirror, works offline).
  * <hercules-session> — one workout: sets by exercise (editable), records, feedback, repeat, delete.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, plural } from '@hestia/webui-sdk';
 import { API, nowIso, uuid } from './data';
 import { LocalPage } from './templates';
 import { FEEDBACK_TAGS, SET_TYPE_LABEL, dayLabel, herculesStyles, kg, minutes, num, parseNum, setLabel, timeLabel, usesWeight } from './util';
@@ -35,7 +35,7 @@ export class HerculesHistory extends LocalPage {
     if (!r.ok) { this.host.toast(r.error || 'Import non riuscito', 'danger'); return; }
     this.importing = null;
     await this.L.reset();
-    this.host.toast(`Importati ${r.data.sessions ?? ''} allenamenti`, 'success');
+    this.host.toast(`Importati ${plural(r.data.sessions, 'allenamento', 'allenamenti')}`, 'success');
   }
   private async download(fmt: string) {
     const r = await this.host.api('GET', `${API}/export`, { query: { format: fmt } });
@@ -55,7 +55,7 @@ export class HerculesHistory extends LocalPage {
     let month = '';
     const im = this.importing;
     return html`<div class="page">
-      <div class="head"><h1>Storico</h1><span class="sub">${sessions.length} allenamenti</span><span class="grow"></span>
+      <div class="head"><h1>Storico</h1><span class="sub">${plural(sessions.length, 'allenamento', 'allenamenti')}</span><span class="grow"></span>
         <select class="in" .value=${this.tpl} @change=${(e: any) => (this.tpl = e.target.value)}><option value="">Tutte le schede</option>${tpls.map(t => html`<option value=${t.id}>${t.name}</option>`)}</select></div>
       ${sessions.length ? html`<div class="card list">${sessions.slice(0, this.limit).map(s => {
           const d = new Date(s.started_at);
@@ -65,7 +65,7 @@ export class HerculesHistory extends LocalPage {
           return html`${head}<div class="li" @click=${() => this.host.navigate('storico/' + s.id)}>
             <div class="d small muted"><b>${d.getDate()}</b>${d.toLocaleDateString('it-IT', { weekday: 'short' })}</div>
             <div class="grow"><div class="truncate">${s.name}${s.source === 'quick' ? html` <span class="pill">segnato</span>` : s.source === 'import' ? html` <span class="pill">importato</span>` : nothing}</div>
-              <div class="small muted">${sm.exercises} esercizi · ${sm.sets} serie${sm.volume ? ` · ${num(sm.volume)} kg` : ''}${sm.minutes ? ` · ${minutes(sm.minutes)}` : ''}</div></div>
+              <div class="small muted">${plural(sm.exercises, 'esercizio', 'esercizi')} · ${sm.sets} serie${sm.volume ? ` · ${num(sm.volume)} kg` : ''}${sm.minutes ? ` · ${minutes(sm.minutes)}` : ''}</div></div>
             ${s.perceived_effort ? html`<span class="pill">RPE ${s.perceived_effort}</span>` : nothing}</div>`;
         })}
         ${sessions.length > this.limit ? html`<div class="li" @click=${() => (this.limit += 60)}><span class="link">Mostra altri</span></div>` : nothing}
@@ -78,7 +78,7 @@ export class HerculesHistory extends LocalPage {
           <hxk-button size="sm" variant="ghost" @click=${() => this.download('json')}>Esporta JSON</hxk-button>
         </div>
         ${im ? html`<div class="col">
-          <div><b>${im.preview.format === 'hevy' ? 'Hevy' : 'Strong'}</b>: ${im.preview.workouts} allenamenti, ${im.preview.sets} serie
+          <div><b>${im.preview.format === 'hevy' ? 'Hevy' : 'Strong'}</b>: ${plural(im.preview.workouts, 'allenamento', 'allenamenti')}, ${im.preview.sets} serie
             ${im.preview.from ? ` dal ${dayLabel(im.preview.from, false)} al ${dayLabel(im.preview.to, false)}` : ''}</div>
           ${(im.preview.unknown || []).length ? html`<div class="small muted">Controlla l'abbinamento degli esercizi (quelli senza abbinamento diventano esercizi tuoi):</div>` : nothing}
           ${(im.preview.mapping || []).map((m: any) => html`<div class="row"><span class="grow truncate">${m.name} <span class="small muted">(${m.sets} serie)</span></span>

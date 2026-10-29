@@ -134,7 +134,7 @@ class Forge:
                         "engine": {"type": "string", "label": "Motore", "enum": ["", "oracle", "claude"], "default": "",
                                    "description": "Motore (vuoto = predefinito)"}},
                 required=["request"], body={"source": "agenda", "requested_by": "user"},
-                title="Forge: sviluppo programmato", timeout_seconds=30,
+                title="Sviluppo programmato", timeout_seconds=30,
                 description="All'orario scelto Forge avvia il task di sviluppo (diff da approvare come sempre).")])
         except Exception as exc:  # never block Forge start on the agenda
             logger.warning("[🔄] event=forge_agenda_templates_failed error=%s", exc)
@@ -937,7 +937,7 @@ class Forge:
             import random
             at = datetime.fromisoformat(until) if "T" in str(until) else datetime.now(timezone.utc)
             at = (at if at.tzinfo else at.replace(tzinfo=timezone.utc)) + timedelta(seconds=random.randint(30, 90))
-            self.agenda.plan(f"forge.resume.{task['id']}", f"Forge: riprendi {task['request'][:60]}", at,
+            self.agenda.plan(f"forge.resume.{task['id']}", f"Riprendi lo sviluppo: {task['request'][:60]}", at,
                              action={"service": "hephaestus", "method": "POST",
                                      "path": f"/api/hephaestus/forge/tasks/{task['id']}/resume",
                                      "timeout_seconds": 30},

@@ -24,7 +24,7 @@ export class OracleUsageWidget extends HestiaElement {
   }
   render() {
     if (this.data === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (this.data === null) return html`<hxk-state kind="offline" text="Oracle non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
+    if (this.data === null) return html`<hxk-state kind="offline" text="Assistente non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
     const t = this.data.today || {};
     const rows: any[] = this.data.today_by_model || [];
     const size = this.ctx?.size || 'm';

@@ -37,9 +37,34 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
 | `--radius-xs..xl`, `--radius-full` | corner radii |
 | `--dur-fast`, `--dur`, `--ease` | motion |
 
-**New theme** = copy an entry of `THEMES` in `themes.ts`, change values and `id`. It appears in
-Impostazioni automatically. `ThemeService.set(id)` / `toggleMode()`; `'auto'` follows the OS.
-Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
+| `--glass` | blur for floating panels (`none` without transparency): use class `hx-glass` or `backdrop-filter: var(--glass, none)` |
+| `--backdrop` | page background (plain `--bg`, or a soft shading with transparency on); `body` paints it, pages stay transparent |
+| `--scroll-thumb`, `--scroll-track` | scrollbar colours (`scrollbar-color` on `<html>`, inherited by plugin shadow roots) |
+| `--tap` | 44px on touch screens (`pointer: coarse`), unset elsewhere: `min-height: var(--tap, 0px)` |
+| `--head-inset` | phone only: room for the shell's menu button on a plugin page's first line |
+
+**New theme** = one `makeTheme(id, label, mode, pair, { bg, surface, text, accent })` line in `THEMES`
+(every other colour is derived with the same steps as the Claude pair), or a full entry for hand-tuned colours.
+`pair` is the same family in the other mode. It appears in Impostazioni automatically. `ThemeService.set(id)` /
+`toggleMode()` (keeps the family); `'auto'` follows the OS. Tip for tints: `color-mix(in srgb, var(--c) 15%, transparent)`.
+
+### Styles (second axis, `core/theme/looks.ts`, 2026-10-29)
+
+Over the colours the user picks a **style** — `classico` (current look), `vetro` (translucent blurred panels on a shaded
+backdrop, rounder, lively motion), `netto` (sans everywhere, almost square corners, strong borders, no shadows) — and
+can change its four knobs one by one: **corners** (radius scale), **borders** (`--border*` lighter/stronger),
+**transparency** (`--surface`, `--bg-subtle`, `--surface-2` with alpha + `--glass`), **animations** (`--dur*`;
+`nessuna` stops every animation, `vivaci` adds card hover and a page entrance). Saved per browser
+(`localStorage hestia_look`), written as tokens + `data-style` / `data-glass` / `data-motion` on `<html>`.
+Rules for components: never hardcode radii, durations or opaque page backgrounds (`var(--bg)` on a page root hides
+the backdrop); a floating panel gets `hx-glass` (blur on `::before`, so the panel never becomes the containing block
+of its `position: fixed` popovers) or, when it holds no fixed children, `backdrop-filter: var(--glass, none)`.
+
+### Scrollbars
+
+Thin and theme-coloured everywhere (`scrollbar-color` / `scrollbar-width`, `::-webkit-scrollbar` only as a fallback
+for browsers without them). Inside plugins the SDK kit sets `scrollbar-width: thin`; colours inherit. Don't style
+scrollbars per component.
 
 ## 3. Kit (`import { ... } from '../../ui'` or `imports: [...UI]`)
 

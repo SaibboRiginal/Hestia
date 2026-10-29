@@ -159,7 +159,7 @@ runtime = AthenaRuntime()
 # Inside view (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): every cycle observe → think → gate → act.
 UI_DIST = os.getenv("ATHENA_UI_DIST", "/ui/dist")   # outside /code/app: the compose dev mount must not hide it
 API = "/api/athena"
-ui = plugin_client("athena", title="Athena", icon="zap", color="amber", kind="core", dist=UI_DIST,
+ui = plugin_client("athena", title="Pensieri", icon="zap", color="amber", kind="core", dist=UI_DIST,
                    description="Cosa pensa Hestia da sola: osserva, propone, filtra con il punteggio, agisce.",
                    version=SERVICE_VERSION)
 ui.webui(

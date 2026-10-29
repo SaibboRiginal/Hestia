@@ -147,7 +147,7 @@ export class HermesDeliveries extends HestiaElement {
   render() {
     if (this.error) return html`<div class="page"><h1>Consegne</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>Consegne</h1><span class="sub">Cosa Hermes ha mandato, a chi e com'è andata</span></div>
+      <div class="head"><h1>Consegne</h1><span class="sub">Cosa è stato mandato, a chi e com'è andata</span></div>
       ${this.renderStats()}
       <div class="row wrap">
         <div class="chips grow">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.flag === f.id} @click=${() => this.setFlag(f.id)}>${f.label}</button>`)}</div>

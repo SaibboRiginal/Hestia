@@ -23,7 +23,7 @@ export class AthenaLastWidget extends HestiaElement {
   }
   render() {
     if (this.data === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (this.data === null) return html`<hxk-state kind="offline" text="Athena non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
+    if (this.data === null) return html`<hxk-state kind="offline" text="Pensieri non raggiungibili" @retry=${() => this.load()}></hxk-state>`;
     const c = this.data.cycles?.[0];
     const go = () => this.host.navigate('pensieri');
     if (!c) return html`<div class="w" @click=${go}><span class="small muted">Ultimo pensiero</span>

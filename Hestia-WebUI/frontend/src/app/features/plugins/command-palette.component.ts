@@ -20,7 +20,7 @@ interface Entry { id: string; label: string; hint: string; icon: string; group: 
   template: `
     @if (open()) {
       <div class="backdrop" (mousedown)="close()">
-        <div class="pal hx-fade-in" role="dialog" aria-label="Azioni rapide" (mousedown)="$event.stopPropagation()">
+        <div class="pal hx-glass hx-fade-in" role="dialog" aria-label="Azioni rapide" (mousedown)="$event.stopPropagation()">
           <div class="in"><hx-icon name="search" [size]="17" />
             <input #q placeholder="Cosa vuoi fare? (azioni, pagine, dashboard)" [value]="query()" (input)="query.set($any($event.target).value); sel.set(0)"
                    (keydown)="onKeys($event)" aria-label="Cerca"></div>

@@ -55,8 +55,8 @@ service = HermesService()
 
 # ── WebUI plugin (core module, Sistema section): Notifiche (inbox) + Consegne ────────────────────
 # Routes of Hermes are spread over /api/notifications, /api/events…: the plugin reads /api/ui/* only.
-ui = PluginClient("hermes", title="Hermes", icon="bell", color="teal", kind="core", dist=UI_DIST,
-                  description="Cosa Hermes ha consegnato a quale client: trattenute, silenziose, ritirate, risposte.",
+ui = PluginClient("hermes", title="Notifiche", icon="bell", color="teal", kind="core", dist=UI_DIST,
+                  description="Le notifiche e dove sono arrivate: trattenute, silenziose, ritirate, risposte.",
                   version=SERVICE_VERSION)
 ui.webui(entry="hermes.js", api_prefix="/api/ui/",
          pages=[page("notifiche", "Notifiche", element="hermes-inbox", icon="bell", order=140,
@@ -144,7 +144,7 @@ def _register_agenda() -> None:
         return
     AgendaClient("hermes").register_async([job_rule(
         "hermes.notifications.retract",
-        "Pulizia notifiche già gestite dai client",
+        "Pulisci le notifiche già gestite",
         service="hermes", path="/api/notifications/retract-stale",
         recurrence="FREQ=HOURLY",
         description="Toglie dalla chat Telegram le notifiche già viste o gestite (restano nell'elenco della WebUI).",

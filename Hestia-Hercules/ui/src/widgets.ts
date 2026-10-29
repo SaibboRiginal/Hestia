@@ -1,5 +1,5 @@
 /** Hercules widgets for Home and dashboards (§8.2). Local mirror first, so most of them work offline too. */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, plural } from '@hestia/webui-sdk';
 import type { QuickAction } from '@hestia/webui-sdk';
 import { API, Local, local, nowIso, uuid } from './data';
 import { rest } from './today';
@@ -46,7 +46,7 @@ export class HerculesNextWidget extends Widget {
     return html`<div class="w">
       <span class="small muted">${done ? html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> Fatto oggi · prossimo` : n.reason || 'Prossimo allenamento'}</span>
       <div class="big truncate click" @click=${() => this.host.navigate('schede/' + t.id)}>${t.name}</div>
-      <div class="small muted">${(t.items || []).length} esercizi${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
+      <div class="small muted">${plural((t.items || []).length, 'esercizio', 'esercizi')}${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
       ${this.size === 'l' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
       <div class="row"><hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('allenamento', { scheda: t.id })}>Inizia</hxk-button></div>
     </div>`;
@@ -191,7 +191,7 @@ export class HerculesLiveWidget extends Widget {
     const left = rest.until ? (rest.until - Date.now()) / 1000 : 0;
     return html`<div class="w click" @click=${() => this.host.navigate('allenamento')}>
       <div class="between"><b class="truncate">${act.name}</b><span class="small muted tnum">${dur((Date.now() - Date.parse(act.started_at)) / 1000)}</span></div>
-      <div class="small muted">${sets.length}/${total} serie · ${doneBlocks.size}/${(act.exercises || []).length} esercizi</div>
+      <div class="small muted">${sets.length}/${total} serie · ${doneBlocks.size}/${plural((act.exercises || []).length, 'esercizio', 'esercizi')}</div>
       ${current ? html`<div class="truncate">Ora: <b>${exs.get(current.exercise_id)?.name || '?'}</b></div>` : nothing}
       ${rest.until ? html`<div class="pill tnum" style="font-size:15px"><hxk-icon name="timer" size=${14}></hxk-icon> ${left > 0 ? dur(left) : 'recupero finito'}</div>` : nothing}
     </div>`;

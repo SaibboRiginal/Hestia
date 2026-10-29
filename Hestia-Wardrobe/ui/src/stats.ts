@@ -2,7 +2,7 @@
  * <wardrobe-stats> — composition (category, colour, season, style), value, forgotten pieces, gaps; usage numbers only
  * as hints because «Indossato» is occasional (SPEC §4.3), with the optional goal on top.
  */
-import { css, html, nothing } from '@hestia/webui-sdk';
+import { css, html, nothing, plural } from '@hestia/webui-sdk';
 import { API, WardrobeElement, img, money, relDays, wardrobeStyles } from './util';
 
 export class WardrobeStats extends WardrobeElement {
@@ -45,7 +45,7 @@ export class WardrobeStats extends WardrobeElement {
         ${s.by_style.length ? html`<div class="card col"><h3>Stile</h3>${this.bars(s.by_style.map((x: any) => ({ ...x, label: this.m?.vocabularies?.style?.find(v => v.key === x.key)?.label || x.label })))}</div>` : nothing}
       </div>
       ${s.gaps.length ? html`<div class="card col"><h3>Cosa manca</h3>${s.gaps.map((x: string) => html`<div class="row"><hxk-icon name="pin" size="14"></hxk-icon>${x}</div>`)}</div>` : nothing}
-      <div class="card col"><div class="between"><h3>Dimenticati</h3><span class="small muted">${s.forgotten.length} capi</span></div>
+      <div class="card col"><div class="between"><h3>Dimenticati</h3><span class="small muted">${plural(s.forgotten.length, 'capo', 'capi')}</span></div>
         ${s.forgotten.length ? html`<div class="list">${s.forgotten.slice(0, 30).map((f: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
             <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span>
             <span class="small muted">${f.last_worn ? relDays(f.last_worn) : 'mai segnato'}</span></div>`)}</div>`
@@ -58,7 +58,7 @@ export class WardrobeStats extends WardrobeElement {
             ${u.cost_per_wear.length ? html`<div class="col"><span class="small muted">Costo per utilizzo</span>${u.cost_per_wear.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}>
               <span class="grow truncate">${p.name}</span><span class="small muted">${money(p.cost_per_wear, t.currency)} · ${p.wears}×</span></div>`)}</div>` : nothing}
           </div>
-          <span class="small muted">${u.never_marked} capi mai segnati: normale se non segni ogni giorno.</span>`}
+          <span class="small muted">${plural(u.never_marked, 'capo', 'capi')} mai segnati: normale se non segni ogni giorno.</span>`}
       </div>
       <div class="row small muted"><span>${t.wishlist ? `${t.wishlist} desiderati · ` : ''}${t.marks} segni in tutto</span><span class="grow"></span>
         <button class="link" @click=${async () => { const r = await this.host.api('GET', `${API}/export`); if (r.ok) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.data.text], { type: 'application/json' })); a.download = r.data.filename; a.click(); } }}>Esporta JSON</button></div>

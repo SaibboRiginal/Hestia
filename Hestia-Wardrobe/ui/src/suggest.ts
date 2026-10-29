@@ -3,7 +3,7 @@
  * reasons; save one, mark it worn, ask the assistant. Deterministic engine in the module (no LLM).
  * Temperature and rain left empty = the day's forecast (shown above the ideas); typing one overrides it.
  */
-import { css, html, nothing } from '@hestia/webui-sdk';
+import { css, html, nothing, plural } from '@hestia/webui-sdk';
 import { API, seasonIcon, WardrobeElement, call, dots, img, localDay, vocabOptions, wardrobeStyles } from './util';
 
 export class WardrobeSuggest extends WardrobeElement {
@@ -56,7 +56,7 @@ export class WardrobeSuggest extends WardrobeElement {
     const m = this.m, res = this.res, w = res?.weather;
     const manual = this.temp !== '' || this.rain !== null;
     return html`<div class="page">
-      <div class="head"><h1>Cosa mi metto</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${res.available_pieces} capi disponibili</span>` : nothing}
+      <div class="head"><h1>Cosa mi metto</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'capo', 'capi')} disponibili</span>` : nothing}
         <span class="grow"></span><hxk-button variant="ghost" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>Altre idee</hxk-button></div>
       <div class="chips">${vocabOptions(m, 'occasion').map(o => html`<button class="chip" aria-pressed=${this.occasion === o.key} @click=${() => this.setOcc(o.key)}>${o.label}</button>`)}</div>
       <div class="opts">

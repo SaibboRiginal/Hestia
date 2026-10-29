@@ -6,7 +6,8 @@ import { PluginsService } from '../features/plugins/plugins.service';
 /** One suggestion of the «Adesso» row (GET /api/metis/adesso). */
 export interface AdessoItem { tool: string; title: string; module: string; args: Record<string, unknown>; reason: string; source: string; }
 /** One feature of «Scopri» (GET /api/metis/scopri). */
-export interface ScopriItem { tool: string; title: string; description: string; module: string; uses: number; reason: string; }
+export interface ScopriItem { tool: string; title: string; description: string; module: string; uses: number; reason: string;
+  area?: string; area_label?: string; area_icon?: string; area_order?: number; }
 
 type TapKind = 'tool' | 'page' | 'action';
 interface Tap { client: 'webui'; kind: TapKind; ref: string; label?: string; at: string; }

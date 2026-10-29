@@ -28,7 +28,7 @@ API = "/api/ui"
 ONLINE_WINDOW = 180.0       # modules re-register every 60 s (same window as the catalog)
 SELF_TOPOLOGY = ["layer:foundation", "domain:registry", "status:stable"]
 
-ui = PluginClient("hub", title="Hub", icon="host", color="blue", kind="core", dist=UI_DIST,
+ui = PluginClient("hub", title="Mappa del sistema", icon="host", color="blue", kind="core", dist=UI_DIST,
                   description="La mappa di Hestia: ogni servizio registrato, dove gira e se risponde.",
                   version=SERVICE_VERSION)
 ui.webui(

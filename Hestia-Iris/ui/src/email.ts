@@ -79,7 +79,7 @@ export class IrisEmail extends HestiaElement {
   }
 
   private renderWatcher(w: any) {
-    if (!w) return html`<hxk-card heading="Controllo della casella"><hxk-state kind="offline" text="Hecate non raggiungibile"></hxk-state></hxk-card>`;
+    if (!w) return html`<hxk-card heading="Controllo della casella"><hxk-state kind="offline" text="Account non raggiungibili"></hxk-state></hxk-card>`;
     const st = w.watcher || {};
     const push = w.push || {};
     const auth = st.last_error === 'gmail_not_authorized' || String(st.last_error || '').includes('Re-authorize');

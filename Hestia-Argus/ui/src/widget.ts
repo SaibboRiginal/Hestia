@@ -17,7 +17,7 @@ export class ArgusStatusWidget extends HestiaElement {
     this.error = !r.ok; if (r.ok) this.data = r.data;
   }
   render() {
-    if (this.error && !this.data) return html`<hxk-state kind="offline" text="Argus non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
+    if (this.error && !this.data) return html`<hxk-state kind="offline" text="Salute del sistema non raggiungibile" @retry=${() => this.load()}></hxk-state>`;
     if (!this.data) return html`<hxk-state kind="loading"></hxk-state>`;
     const d = this.data;
     if (!d.last_cycle_at) return html`<div class="w"><span class="small muted">Stato sistema</span><div class="muted">Primo controllo in corso…</div></div>`;

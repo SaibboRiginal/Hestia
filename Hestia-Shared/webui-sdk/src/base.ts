@@ -25,6 +25,14 @@ export class HestiaElement extends LitElement {
     if (this.host) this._offs.push(this.host.on(event, cb));
   }
 
+  /** Widgets: «nothing to show now» — the dashboard gives the cell less room until there is something again. */
+  protected markEmpty(empty: boolean): void {
+    if (this.ctx?.surface !== 'widget' || this._empty === empty) return;
+    this._empty = empty;
+    this.dispatchEvent(new CustomEvent('hestia-widget-empty', { detail: empty, bubbles: true, composed: true }));
+  }
+  private _empty?: boolean;
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._offs.forEach(off => off());
@@ -42,4 +50,10 @@ export function definePlugin(elements: Record<string, CustomElementConstructor>)
 /** Fill `{name}` placeholders of a path from values (encoded). */
 export function fillPath(path: string, values: Record<string, string | number>): string {
   return path.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(String(values[k] ?? '')));
+}
+
+/** «1 esercizio» / «3 esercizi»: count plus the right form (Italian: only 1 is singular). */
+export function plural(n: number | null | undefined, one: string, many: string): string {
+  const v = Number(n ?? 0);
+  return `${v} ${v === 1 ? one : many}`;
 }

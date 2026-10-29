@@ -29,6 +29,25 @@ html, body {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
+/* The page backdrop: plain --bg, or a soft shading when the style has transparency (ThemeService, looks.ts). */
+body { background: var(--backdrop, var(--bg)); }
+
+/* Floating panels with transparency on (sidebar, dialogs, drawers, composer): the blur sits on ::before, so
+   the panel never becomes the containing block of the popovers (position: fixed) it holds. */
+.hx-glass { position: relative; isolation: isolate; }
+.hx-glass::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  backdrop-filter: var(--glass, none); -webkit-backdrop-filter: var(--glass, none); }
+
+/* Animations knob: «Nessuna» stops them everywhere in the WebUI (plugins get --dur 0ms);
+   «Vivaci» adds a little life to cards and pages. prefers-reduced-motion always wins (rule further down). */
+html[data-motion=nessuna] *, html[data-motion=nessuna] *::before, html[data-motion=nessuna] *::after {
+  animation: none !important; transition: none !important; }
+html[data-motion=vivaci] {
+  .hx-card { transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  .hx-card:hover { box-shadow: var(--shadow-2); border-color: var(--border-strong); }
+  main > :not(router-outlet):not(.burger) { animation: hx-rise var(--dur) var(--ease) both; }
+}
+@keyframes hx-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: none; }
@@ -36,9 +55,24 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-full); border: 2px solid var(--bg); }
+/* Touch screens: every control at least 44 px (--tap is read by the SDK kit inside plugins too). */
+@media (pointer: coarse) {
+  :root { --tap: 44px; }
+  button:not([data-dense]), [role=button]:not([data-dense]), select, .hx-input, .hx-select { min-height: var(--tap); }
+  button.hx-btn--icon, .icon-btn { min-width: var(--tap); }
+}
+
+/* Scrollbars: thin, theme-coloured, same on every surface. scrollbar-color inherits into plugin shadow roots;
+   scrollbar-width does not, so the SDK kit sets it there too. The thumb never relies on the track (macOS overlays). */
+:root { --scroll-thumb: color-mix(in srgb, var(--text-3) 42%, transparent); --scroll-track: transparent; }
+html { scrollbar-color: var(--scroll-thumb) var(--scroll-track); }
+* { scrollbar-width: thin; }
+@media (prefers-contrast: more) { :root { --scroll-thumb: var(--text-2); } }
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: var(--scroll-track); }
+  ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+}
 
 code, pre, kbd { font-family: var(--font-mono); font-size: 13px; }
 pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md);

@@ -59,6 +59,12 @@ event retry) · `hxk-list` (.items, event item-click) · `hxk-chart` (line|bar|d
 event change) · `hxk-image-picker` (.host, photos) · `hxk-quicklog` (one-tap chips, Annulla, ⋯ other day, progress
 hint). Utility classes in every `HestiaElement`: `.page .card .grid .row .col .grow .muted .small .truncate`.
 
+Helpers: `plural(n, one, many)` for counts («1 capo», «2 capi»); `this.markEmpty(bool)` in a widget with nothing to
+show (the dashboard shrinks the cell). Touch targets follow `--tap`, scrollbars are thin and themed, and every
+colour, radius and duration is a token, so plugins follow the user's theme **and style** (Classico, Vetro, Netto:
+`Hestia-WebUI/frontend/DESIGN-SYSTEM.md` § Styles). Don't hardcode radii or durations, and don't give a page root an
+opaque `var(--bg)`: with transparency on, the page backdrop must show through.
+
 ## Module folder and Docker build
 
 ```

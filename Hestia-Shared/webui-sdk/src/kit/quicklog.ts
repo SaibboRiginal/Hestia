@@ -44,7 +44,7 @@ export class HxkQuicklog extends LitElement {
     .col { display: flex; flex-direction: column; align-items: flex-start; text-align: left; line-height: 1.25; min-width: 0; }
     .lab { font-weight: 500; } .hint { font-size: 11.5px; color: var(--text-3); }
     .chip[data-state=done] .hint { color: inherit; opacity: .8; }
-    .more { border: none; background: transparent; color: var(--text-3); border-radius: 50%; width: 28px; height: 28px;
+    .more { border: none; background: transparent; color: var(--text-3); border-radius: 50%; width: 28px; height: 28px; min-width: min(var(--tap, 0px), 40px); min-height: min(var(--tap, 0px), 40px);
       display: grid; place-items: center; cursor: pointer; }
     .more:hover { background: var(--surface-3); color: var(--text); }
     .star { color: var(--warning); }

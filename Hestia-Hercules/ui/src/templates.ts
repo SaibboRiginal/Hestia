@@ -2,7 +2,7 @@
  * <hercules-templates> — "Schede": workout types, the weekly program and the training goals.
  * <hercules-template>  — one template: exercises, planned sets, progression, rest; edits are local first (offline).
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, plural } from '@hestia/webui-sdk';
 import { API, Local, local, uuid } from './data';
 import { GROUPS, GROUP_LABEL, PROGRESSION, SET_TYPE_LABEL, WEEKDAYS, dur, herculesStyles, kg, minutes, muscleText, parseNum, plannedLabel, relDays, usesTime, usesWeight } from './util';
 
@@ -21,7 +21,7 @@ abstract class LocalPage extends HestiaElement {
   protected notReady() {
     if (!this.L || this.L.loaded) return null;
     return html`<div class="page">${this.host.online ? html`<hxk-state kind="loading"></hxk-state>`
-      : html`<hxk-state kind="offline" text="Apri Hercules una volta online per scaricare i dati." @retry=${() => this.L.sync()}></hxk-state>`}</div>`;
+      : html`<hxk-state kind="offline" text="Apri Allenamento una volta online per scaricare i dati." @retry=${() => this.L.sync()}></hxk-state>`}</div>`;
   }
 }
 export { LocalPage };
@@ -92,7 +92,7 @@ export class HerculesTemplates extends LocalPage {
         const muscles = new Set<string>();
         (t.items || []).forEach((i: any) => (exs.get(i.exercise_id)?.primary_muscles || []).forEach((m: string) => muscles.add(m)));
         const groups = Object.entries(GROUP_LABEL).filter(([g]) => GROUPS[g].some(m => muscles.has(m))).map(([, l]) => l);
-        return html`<hxk-card clickable heading=${t.name} subtitle=${`${(t.items || []).length} esercizi · ultima ${relDays(last?.started_at)}`}
+        return html`<hxk-card clickable heading=${t.name} subtitle=${`${plural((t.items || []).length, 'esercizio', 'esercizi')} · ultima ${relDays(last?.started_at)}`}
             @click=${() => this.host.navigate('schede/' + t.id)}>
           ${t.favorite ? html`<hxk-icon slot="actions" name="star" size=${14} tone="warning" title="Preferita"></hxk-icon>` : nothing}
           <div class="tpl"><div class="small muted truncate">${(t.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ') || 'Vuota'}</div>
@@ -233,7 +233,7 @@ export class HerculesTemplate extends LocalPage {
         <input class="in grow" style="font-size:20px;font-weight:600" .value=${t.name} @change=${(e: any) => this.save({ name: e.target.value || 'Scheda' })}>
         <button class="chip" aria-pressed=${!!t.favorite} title="Preferita: compare in Home per «Segna fatto»" @click=${() => this.save({ favorite: !t.favorite })}><hxk-icon name="star" size=${14}></hxk-icon> Preferita</button>
       </div>
-      <div class="row wrap small muted">${(t.items || []).length} esercizi · circa ${minutes(est)}
+      <div class="row wrap small muted">${plural((t.items || []).length, 'esercizio', 'esercizi')} · circa ${minutes(est)}
         ${t.changed_by === 'assistant' ? html`· modificata dall'assistente <button class="link" @click=${() => this.undo()}>Annulla modifica</button>` : nothing}</div>
       <div class="row wrap">
         <hxk-button variant="primary" icon="play" ?disabled=${!(t.items || []).length || !!this.L.activeSession()} @click=${() => this.startNow(t)}>Inizia ora</hxk-button>

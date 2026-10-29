@@ -41,10 +41,10 @@ export class CalStore {
 
   constructor(private host: HestiaHost, private onChange: () => void) { this.api = new AgendaApi(host); }
 
-  /** Apply saved prefs (phones start on the day view instead of the week). */
+  /** Apply saved prefs (phones start on the list: a day or a week on a narrow screen is a wall of truncated chips). */
   applyPrefs(p: SavedPrefs, phone: boolean) {
     const v = p.view ?? 'week';
-    this.view = phone && v === 'week' ? 'day' : v;
+    this.view = phone && v === 'week' ? 'list' : v;
     this.hiddenOwners = new Set(p.hiddenOwners ?? []);
     this.hiddenTypes = new Set(p.hiddenTypes ?? []);
     this.showSkipped = p.showSkipped ?? true;

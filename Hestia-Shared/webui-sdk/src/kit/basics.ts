@@ -158,7 +158,8 @@ export class HxkButton extends LitElement {
     :host { display: inline-flex; }
     button { font: inherit; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
       border-radius: var(--radius-md); border: 1px solid var(--border-strong); background: var(--surface);
-      color: var(--text); padding: 7px 12px; transition: background var(--dur-fast) var(--ease); white-space: nowrap; }
+      color: var(--text); padding: 7px 12px; transition: background var(--dur-fast) var(--ease); white-space: nowrap;
+      min-height: var(--tap, 0px); min-width: var(--tap, 0px); justify-content: center; }
     button:hover { background: var(--surface-2); }
     :host([variant=primary]) button { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
     :host([variant=primary]) button:hover { background: var(--accent-hover); }
