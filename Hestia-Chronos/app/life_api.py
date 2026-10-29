@@ -187,6 +187,16 @@ def presence_manual_clear() -> dict:
 
 
 # ── agenda rules ─────────────────────────────────────────────────────────────
+# The WebUI plugin calls only under its api_prefix /api/agenda/: the pages «Routine» and «Eventi speciali» reach
+# the same handlers there (W7). The /api/routines and /api/special paths stay for modules and the tools.
+for _path, _fn, _method in [("/api/agenda/routines", routines_list, "GET"), ("/api/agenda/routines", routines_create, "POST"),
+                            ("/api/agenda/routines/templates", routines_templates, "GET"),
+                            ("/api/agenda/routines/from-template/{template_id}", routines_from_template, "POST"),
+                            ("/api/agenda/special", special_list, "GET"), ("/api/agenda/special", special_add, "POST"),
+                            ("/api/agenda/special/{key}", special_remove, "DELETE")]:
+    router.add_api_route(_path, _fn, methods=[_method])
+
+
 def boot_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
     return [

@@ -199,6 +199,7 @@ Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_pr
 | page (order 131) | `segnali` → `<athena-signals>` | active signals per area (severity icon + tone, «Apri» opens the module page), links between areas, recent observations, weekly series charts; area filter |
 | widget (auto) | `ultimo` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
 | quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
+| page (order 133) | `imparato` → `<athena-learning>` | «Cosa ho imparato»: the learning log (added, merged, let go, weaker) with the owner's quote and «Annulla» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Applica» / «Lascia») and «Rivedi cosa sai di me» (`POST /memory/review`); proposal notifications link here |
 
 Pensieri has a **Vita / Sistema** switch (default Vita): a life cycle shows 1 Legge i segnali · 2 Collega · 3
 Approfondisce · 4 Pensa e filtra · 5 Per il recap; «Pensa ora» runs the selected track.
@@ -245,6 +246,7 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | POST | `/api/athena/think?track=` | «Pensa ora»: one full cycle now in background (`sistema` default, or `vita`) → `{status: started, trace_id, track}` or `{status: busy}` |
 | GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Segnali, MCP `athena_signals`) |
 | GET | `/api/module/recap?day=` | Athena's recap piece «Da tenere d'occhio» (capability `recap_endpoint`) |
+| GET | `/api/athena/memory/proposals` | Clean-up proposals still waiting for the owner (page «Cosa ho imparato») |
 | GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
 | POST | `/api/athena/recap` | Compose the daily recap `{momento: sera\|mattina, day?, deliver?, trigger?}` (agenda job `athena.recap.evening`, template `recap`) |

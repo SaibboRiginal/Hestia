@@ -42,6 +42,13 @@ def test_counts_review_is_awaiting_review_plus_proposed():
 
 
 @pytest.mark.unit
+def test_counts_reviewing_and_waiting_limit_are_open():
+    """Regression: a task in the automatic review or waiting for the Claude limit is still open work."""
+    c = counts([{"state": "reviewing"}, {"state": "waiting_limit"}])
+    assert c["open"] == 2
+
+
+@pytest.mark.unit
 def test_export_markdown_says_how_to_submit_a_fix():
     t = {"id": "abcdef123456", "state": "failed", "request": "Correggi l'export ICS", "workdoc": "2026-10-01-ics",
          "error": "pytest: 2 failed", "source": "athena", "notes": [{"ts": "t", "by": "x", "text": "vedi tz"}]}

@@ -262,6 +262,7 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `GARMIN_EMAIL` · `GARMIN_PASSWORD` | — | Optional: Garmin Connect login without the secret form (used once to get the tokens) |
 | `HECATE_GARMIN_TOKENS` | `/code/data/garmin` | Garmin OAuth tokens (garth), data volume |
 | `HECATE_PHONE_TOKEN` | — | Secret the phone sends in `X-Hestia-Phone-Token`; empty = phone webhook off (503) |
+| `HECATE_UI_DIST` | `/ui/dist` | WebUI plugin bundle folder (set in the Dockerfile; infra only) |
 | `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
 
 **Canonical Google OAuth setup (no expiring values):**
@@ -317,6 +318,11 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.telefono.app`.
 - Tools (Telegram + WebUI, section «Dispositivi»): `garmin_stato`, `garmin_collega`, `garmin_sincronizza`,
   `garmin_giorno`, `garmin_scollega`, `telefono_stato`. Tests: `tests/test_devices.py`.
+- WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `dispositivi` →
+  `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (sends the secret form), «Leggi adesso», «Scollega»,
+  last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built
+  by the Dockerfile Node stage into `/ui/dist/webui/hecate.js` (`HECATE_UI_DIST`, outside `/code`); `ui_manifest` /
+  `ui_version` in the Hub registration.
 
 ### Mail (`providers/mail.py`)
 

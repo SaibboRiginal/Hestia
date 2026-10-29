@@ -495,6 +495,15 @@ anything by itself.
 **Manual presence** (Telegram parity). `POST /api/presence/manual {state, minutes?}` sets the signal `manual.state`
 (any defined state: a base state wins over the rules, an overlay is added); `DELETE` gives control back.
 
+**WebUI pages** (W7, plugin `api_prefix` `/api/agenda/`): **Routine** (`routine`, `chronos-routines`, order 153: new
+routine in words by time or by mail, the ready-made gallery, «Esegui adesso» / Pausa / Elimina through the agenda item
+routes; Hermes `_link` of `routine.result`) and **Eventi speciali** (`eventi`, `chronos-special`, order 154: list with
+days left and lead time, add, remove; the birthday from the personal settings is not removable there; `_link` of
+`special.today` / `special.soon`). The proxy only allows the plugin prefix, so the owner-facing routes are also served
+as `/api/agenda/routines` (GET/POST), `/api/agenda/routines/templates`, `/api/agenda/routines/from-template/{id}`,
+`/api/agenda/special` (GET/POST), `/api/agenda/special/{key}` (DELETE) — same handlers as `/api/routines…` and
+`/api/special…`, which stay for modules and the tools.
+
 | Method | Path | |
 |---|---|---|
 | `GET` / `POST` | `/api/routines` | list · create `{title, instruction, recurrence?, on?, precheck?, deliver}` |

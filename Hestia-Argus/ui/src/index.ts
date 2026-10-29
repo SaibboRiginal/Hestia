@@ -4,6 +4,7 @@
  */
 import { definePlugin } from '@hestia/webui-sdk';
 import { ArgusHealth } from './health';
+import { ArgusPerformance } from './performance';
 import { ArgusStatusWidget } from './widget';
 
-definePlugin({ 'argus-health': ArgusHealth, 'argus-status-widget': ArgusStatusWidget });
+definePlugin({ 'argus-health': ArgusHealth, 'argus-performance': ArgusPerformance, 'argus-status-widget': ArgusStatusWidget });

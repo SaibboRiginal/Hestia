@@ -118,16 +118,26 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] Apollo «Immagini», «Immagine», «Flussi» (`GET /jobs/{id}/image/{n}`)
 - [x] Aphrodite «Aspetto» (`GET /image/{blob}`, `POST /pets/{id}/image/{pose}`)
 - [x] tests `tests/test_webui_plugin.py` in each module (manifest elements = bundle elements, new endpoints); docs, swagger
+- [x] PR + CI green + merge (PR #40, c25e52a)
+
+## W7 — WebUI, part 2: pages in the system modules
+- [x] Chronos «Routine» (new in words, gallery, run / pause / delete) and «Eventi speciali» (add, remove); owner routes
+      also under `/api/agenda/` (plugin prefix); `_link` of the special notices
+- [x] Athena «Cosa ho imparato» (learning log with «Annulla», pending proposals, «Rivedi cosa sai di me»;
+      `GET /memory/proposals`; proposal cards link here)
+- [x] Argus «Prestazioni» (last sample over the limits, storage, 24 h chart)
+- [x] Hephaestus Sviluppo: «Revisione automatica» card; states `reviewing` / `waiting_limit` labelled and counted open
+- [x] Echo «Voce → La tua voce» (voiceprint, dictionary) + «Correggi la trascrizione» → `/dictionary/learn`
+- [x] Hecate plugin «Dispositivi» (Garmin, phone) — first Hecate bundle (Dockerfile Node stage)
+- [x] tests (Chronos plugin routes, Athena proposals, Argus/Athena manifests, Forge counts, Hecate manifest); docs, swagger
 - [ ] PR + CI green + merge
 
-## W7 — WebUI, part 2 (shell and core pages)
+## W7 — WebUI, part 3 (Angular shell)
 - [ ] Home «Adesso» row, Ctrl+K entries, «Scopri» page, WebUI taps (`POST /api/metis/usage`)
 - [ ] new sidebar; palette, effect and pet from `GET /api/appearance/now`
 - [ ] live overlay + dictation, chat components, change-set row, origin label, chat tags + history sidebar
-- [ ] Web Push service worker, «Da decidere» counter, secret form; Sistema «Prestazioni»
-- [ ] Chronos «Routine» and «Eventi speciali»; Memoria «Cosa ho imparato» + Annulla; Sviluppo review card
-- [ ] «Voce» → La tua voce (dictionary, voiceprint), transcript correction, Hermes `command` actions open the tool
-      form, Hecate «Dispositivi»
+- [ ] Web Push service worker, «Da decidere» counter, secret form
+- [ ] Hermes `command` actions open the tool form
 
 ## W8
 - [ ] see SPEC §3

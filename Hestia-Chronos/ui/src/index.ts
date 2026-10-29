@@ -15,6 +15,8 @@ import { ChronosCalEditor } from './cal/editor';
 import { ChronosCalWizard } from './cal/wizard';
 import { ChronosAgenda } from './agenda';
 import { ChronosRuns } from './runs';
+import { ChronosRoutines } from './routines';
+import { ChronosSpecial } from './special';
 import { ChronosStandard } from './standard';
 import { ChronosWeek } from './week';
 import { ChronosFailedWidget, ChronosTodayWidget } from './widget';
@@ -25,4 +27,5 @@ definePlugin({
   'chronos-cal-details': ChronosCalDetails, 'chronos-cal-editor': ChronosCalEditor, 'chronos-cal-wizard': ChronosCalWizard,
   'chronos-agenda': ChronosAgenda, 'chronos-runs': ChronosRuns, 'chronos-standard': ChronosStandard, 'chronos-failed-widget': ChronosFailedWidget,
   'chronos-week': ChronosWeek, 'chronos-today-widget': ChronosTodayWidget,
+  'chronos-routines': ChronosRoutines, 'chronos-special': ChronosSpecial,
 });

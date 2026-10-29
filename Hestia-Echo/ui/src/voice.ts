@@ -2,22 +2,24 @@
  * <echo-voice> — page «Voce» (dossier docs/work/2026-10-20-modulo-voce §8): how Hestia listens and speaks.
  * Tabs: «Prova» (record the mic → text, text → voice, with the chain and provider that answered), «Motori»
  * (<echo-blocks>: providers, chains, uses), «Uso» (calls, minutes, characters, cost, errors by use and engine),
- * «Audio conservati» (space by class, recordings to listen/download/delete).
+ * «Audio conservati» (space by class, recordings to listen/download/delete), «La tua voce» (<echo-your-voice>:
+ * voiceprint + personal dictionary). In «Prova» a wrong transcript can be corrected: the words go to the dictionary.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, bytes, money, playB64, secs, when } from './util';
 
-const TABS = [{ id: 'prova', label: 'Prova' }, { id: 'motori', label: 'Motori' }, { id: 'uso', label: 'Uso' },
-              { id: 'audio', label: 'Audio conservati' }];
+const TABS = [{ id: 'prova', label: 'Prova' }, { id: 'tua', label: 'La tua voce' }, { id: 'motori', label: 'Motori' },
+              { id: 'uso', label: 'Uso' }, { id: 'audio', label: 'Audio conservati' }];
 const CLASSES: Record<string, string> = { recording: 'Le tue registrazioni', file: 'Audio mandati in chat',
                                           generated: 'Risposte lette', notification: 'Notifiche a voce' };
 
 export class EchoVoice extends HestiaElement {
   static properties = { ...HestiaElement.properties, tab: { state: true }, recording: { state: true }, busy: { state: true },
                         heard: { state: true }, text: { state: true }, said: { state: true }, usage: { state: true },
-                        kept: { state: true }, days: { state: true }, error: { state: true } };
+                        kept: { state: true }, days: { state: true }, error: { state: true }, fix: { state: true } };
   declare tab: string; declare recording: boolean; declare busy: string; declare heard: any; declare text: string;
   declare said: any; declare usage: any; declare kept: any; declare days: number; declare error: string;
+  declare fix: string | null;
   private rec = new Recorder();
   private playing: HTMLAudioElement | null = null;
 
@@ -49,7 +51,7 @@ export class EchoVoice extends HestiaElement {
 
   constructor() {
     super(); this.tab = 'prova'; this.recording = false; this.busy = ''; this.heard = null; this.text = 'Ciao, sono Hestia. Ti sento forte e chiaro.';
-    this.said = null; this.usage = null; this.kept = null; this.days = 30; this.error = '';
+    this.said = null; this.usage = null; this.kept = null; this.days = 30; this.error = ''; this.fix = null;
   }
 
   connectedCallback() {
@@ -73,7 +75,7 @@ export class EchoVoice extends HestiaElement {
   // ── Prova ──────────────────────────────────────────────────────────────
   private async toggleMic() {
     if (!this.recording) {
-      try { await this.rec.start(); this.recording = true; this.heard = null; }
+      try { await this.rec.start(); this.recording = true; this.heard = null; this.fix = null; }
       catch { this.host.toast('Il browser non mi dà il microfono', 'danger'); }
       return;
     }
@@ -86,6 +88,20 @@ export class EchoVoice extends HestiaElement {
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || 'Non sono riuscita ad ascoltare', 'danger'); return; }
     this.heard = r.data;
+  }
+
+  /** «Correggi»: the corrected text teaches the personal dictionary (new words become sure after a few times). */
+  private async learn() {
+    const corrected = (this.fix || '').trim();
+    if (!corrected || corrected === this.heard?.text) { this.fix = null; return; }
+    this.busy = 'impara';
+    const r = await this.host.api('POST', `${API}/dictionary/learn`, { body: { heard: this.heard.text, corrected } });
+    this.busy = '';
+    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'warning'); return; }
+    this.heard = { ...this.heard, text: corrected };
+    this.fix = null;
+    const n = (r.data?.confirmed || []).length;
+    this.host.toast(n ? `Imparato: ${(r.data.confirmed || []).join(', ')}` : 'Grazie, me lo segno', 'success');
   }
 
   private async speak() {
@@ -122,7 +138,11 @@ export class EchoVoice extends HestiaElement {
             <hxk-icon name=${this.recording ? 'stop' : 'mic'} size=${30}></hxk-icon></button>
           <span class="small muted">${this.recording ? 'Ti ascolto… tocca per finire' : this.busy === 'ascolto' ? 'Trascrivo…' : 'Tocca per parlare'}</span>
         </div>
-        ${this.heard ? html`<div class="out">${this.heard.text}</div>${this.meta(this.heard)}` : nothing}
+        ${this.heard ? this.fix !== null && this.fix !== undefined ? html`<textarea .value=${this.fix} @input=${(e: any) => (this.fix = e.target.value)}></textarea>
+            <div class="actions"><hxk-button variant="ghost" @click=${() => (this.fix = null)}>Annulla</hxk-button>
+              <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'impara'} @click=${() => this.learn()}>Correggi</hxk-button></div>`
+          : html`<div class="out">${this.heard.text}</div>${this.meta(this.heard)}
+            <div class="actions"><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.fix = this.heard.text)}>Correggi la trascrizione</hxk-button></div>` : nothing}
       </hxk-card>
       <hxk-card heading="Voce" subtitle="Scrivi e ascolta come lo leggo">
         <textarea .value=${this.text} @input=${(e: any) => (this.text = e.target.value)}></textarea>
@@ -220,7 +240,7 @@ export class EchoVoice extends HestiaElement {
     return html`
       <div class="tabs" role="tablist">${TABS.map(t => html`<button role="tab" aria-selected=${this.tab === t.id}
         @click=${() => this.select(t.id)}>${t.label}</button>`)}</div>
-      ${this.tab === 'prova' ? this.prova() : this.tab === 'motori' ? html`<echo-blocks .host=${this.host}></echo-blocks>`
+      ${this.tab === 'prova' ? this.prova() : this.tab === 'tua' ? html`<echo-your-voice .host=${this.host}></echo-your-voice>` : this.tab === 'motori' ? html`<echo-blocks .host=${this.host}></echo-blocks>`
         : this.tab === 'uso' ? this.uso() : this.audio()}`;
   }
 }

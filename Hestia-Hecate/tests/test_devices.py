@@ -195,3 +195,15 @@ def test_feed_publisher_reads_the_registry_right_after_boot(monkeypatch):
 
     monkeypatch.setattr(feeds.time, "monotonic", lambda: 5.0)
     assert feeds.FeedPublisher("http://hub/api", session=Session()).subscribers("wearable.daily")
+
+
+def test_devices_page_is_a_plugin_under_the_gateway_prefix():
+    """WebUI «Dispositivi»: the manifest names only elements the bundle defines and calls only /api/gateway/…"""
+    import re
+    from pathlib import Path
+    import main
+    web = main.ui.manifest()["clients"]["webui"]
+    src = (Path(__file__).parents[1] / "ui" / "src" / "index.ts").read_text(encoding="utf-8")
+    assert {p["element"] for p in web["page"]} <= set(re.findall(r"'(hecate-[a-z-]+)'\s*:", src))
+    assert web["api_prefix"] == "/api/gateway/" and web["entry"] == "/ui/webui/hecate.js"
+    assert main.ui.capabilities("http://h:1")["ui_manifest"] == "http://h:1/api/ui/manifest"
