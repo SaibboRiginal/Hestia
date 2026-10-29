@@ -276,6 +276,10 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
 - **Does NOT own:** runtime model inference (Oracle), raw grade storage (Archive), quality judgment (Athena), feedback UI (Telegram).
 - Exposes five MCP tools: `metis_dataset_build`, `metis_dataset_export`, `metis_dataset_status`, `metis_benchmark_run`, `metis_loRA_train`.
 - In-memory dataset store with configurable deduplication and quality filtering. Exports ChatML, Alpaca, and ShareGPT formats.
+- **Owns the usage log** (wave 6): clients push taps (`POST /api/metis/usage`, Archive `metis-store`); «Adesso»
+  (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
+  at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
+  the same lists; tools `metis_adesso`, `metis_scopri`.
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.

@@ -14,7 +14,7 @@ import logging
 import re
 from typing import Any
 
-from telegram_bot import catalog, core, inputs, store, ui
+from telegram_bot import catalog, core, inputs, store, ui, usage
 from telegram_bot.menu import model
 from telegram_bot.render import Rendered, render
 
@@ -101,6 +101,7 @@ def start(chat_id, name: str, message_id: int | None = None, preset: dict | None
     flow = {"kind": "action", "tool": tool.name, "values": values, "queue": queue, "pos": 0,
             "mode": "ask", "message_id": message_id, "extra": extra, "asked": []}
     store.count_use(tool.name)
+    usage.tap(tool.name)
     _advance(chat_id, flow)
 
 

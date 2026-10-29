@@ -14,7 +14,7 @@ from typing import Any
 
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 
-from telegram_bot import catalog, core, store, ui
+from telegram_bot import catalog, core, store, ui, usage
 from telegram_bot.inputs import MONTHS, WEEKDAYS
 from telegram_bot.menu import model
 from telegram_bot.render import render
@@ -154,8 +154,15 @@ def oggi(chat_id, message_id: int | None = None) -> None:
             parts.append(body)
     if len(parts) == 1:
         parts.append(ui.note("Niente in programma."))
-    buttons = [ui.button(menu.label(n), f"t:{store.sid(n)}") for n in menu.today.get("actions") or []
-               if catalog.get(n)]
+    # «Adesso» (Metis: habits, agenda, ideas, each with its reason); the fixed Oggi actions when it has nothing.
+    now = [i for i in usage.adesso() if catalog.get(i["tool"])]
+    if now:
+        parts.append("\n".join([ui.note("Adesso")] + [f"• {ui.esc(menu.label(i['tool']))} — {ui.esc(i['reason'])}"
+                                                       for i in now]))
+        buttons = [ui.button(menu.label(i["tool"]), f"t:{store.sid(i['tool'])}") for i in now]
+    else:
+        buttons = [ui.button(menu.label(n), f"t:{store.sid(n)}") for n in menu.today.get("actions") or []
+                   if catalog.get(n)]
     rows = ui.grid(buttons) + [[ui.button("Aggiorna", "n:oggi")]]
     place(chat_id, "\n\n".join(parts), ui.keyboard(rows), message_id)
 

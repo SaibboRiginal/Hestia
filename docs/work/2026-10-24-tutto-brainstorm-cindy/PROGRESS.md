@@ -87,11 +87,24 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] A2 Aphrodite «Aspetto» (19023): profiles, moments, holidays/seasons, per-client choice, pets, pictures via Apollo
 - [x] Hub allowed tags/domains for the seven modules (CI caught the 422; test covers module_kit registrations)
 - [x] Archive stores (7), compose services, CI matrix, Telegram areas, swagger, .env.example, docs, tests
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #38, 7961538)
 - Left for W7 (WebUI): plugin bundles (`ui/`) of the seven modules (Persone, Scadenze, Alimentazione, Casa,
   Documenti, Immagini with flow upload, Aspetto settings) and the WebUI drawing `/api/appearance/now` (palette,
   effect, pet).
 - Left for W8: cloud bench flows (`tools/cloud_test/flows.py`) for the seven modules.
 
-## W6–W8
+## W6 — «Adesso» and «Scopri» backend
+- [x] Archive `metis-store` (MetisRecord, router, swagger)
+- [x] Metis `core/usage.py`: taps, habits, agenda items, ideas (use case `metis.adesso`), Scopri, stats, prune
+- [x] Metis endpoints `/api/metis/usage`, `/usage/stats`, `/adesso`, `/adesso/refresh`, `/scopri`; tools
+      `metis_adesso`, `metis_scopri` (display cards); agenda jobs `metis.adesso.0700/1230/1800`; `when_to_use` fixed
+      (it described memory notes, which live in Oracle)
+- [x] Telegram: taps pushed at every action start; Oggi card «Adesso» with reasons (fallback fixed actions);
+      `/adesso`, `/scopri`
+- [x] tests: `Hestia-Metis/tests/test_usage.py`, Telegram `TestAdesso` + commands
+- [x] docs: hestia-metis.md, hestia-telegram.md, hestia-archive.md, swagger, ARCHITECTURE, flow map, SPEC v1.6
+- [ ] PR + CI green + merge
+- Left for W7: WebUI Home «Adesso» row, Ctrl+K palette entries, «Scopri» page, WebUI taps (pages + actions).
+
+## W7–W8
 - [ ] see SPEC §3

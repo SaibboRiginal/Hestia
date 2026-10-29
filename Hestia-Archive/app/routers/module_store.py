@@ -5,7 +5,7 @@ Same contract as ``hercules-store`` / ``selfcare-store`` / ``wardrobe-store`` (P
 Echo ``echo-store``, Oracle ``oracle-store`` pending questions, Argus ``argus-store`` journal, Hermes ``hermes-store`` Web Push
 subscriptions, Chronos ``chronos-store`` routine results, and the W5 modules: Apollo ``images-store``, Aphrodite
 ``appearance-store``, Lares ``home-store``, Hera ``people-store``, Demeter ``food-store``, Calliope ``office-store``,
-Kairos ``deadlines-store``).
+Kairos ``deadlines-store``; W6: Metis ``metis-store`` usage log).
 Archive only stores: the owner module gives each ``kind`` its meaning.
 """
 from datetime import datetime, timezone
@@ -124,3 +124,4 @@ hera_router = build_router("/api/people-store", models.PeopleRecord, "hera")
 demeter_router = build_router("/api/food-store", models.FoodRecord, "demeter")
 calliope_router = build_router("/api/office-store", models.OfficeRecord, "calliope")
 kairos_router = build_router("/api/deadlines-store", models.DeadlinesRecord, "kairos")
+metis_router = build_router("/api/metis-store", models.MetisRecord, "metis")

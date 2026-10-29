@@ -123,10 +123,18 @@ class TestReachability:
         menu = model.build([Tool(name="x_strano", title="Strano", group="area_che_non_esiste")], {})
         assert menu.tool_area["x_strano"] == "altro" and menu.area("altro").names == ["x_strano"]
 
-    def test_slash_menu_has_eight_entries(self):
+    def test_slash_menu_has_ten_entries(self):
         from telegram_bot.menu import model
         assert [c for c, _ in model.build([], {}).commands] == [
-            "oggi", "aree", "notifiche", "impostazioni", "nuova", "voce", "stato", "aiuto"]
+            "oggi", "aree", "adesso", "scopri", "notifiche", "impostazioni", "nuova", "voce", "stato", "aiuto"]
+
+    def test_adesso_and_scopri_commands_open_their_tools(self, ui_env, monkeypatch):
+        import telegram_runtime
+        from telegram_bot import actions
+        opened = []
+        monkeypatch.setattr(actions, "from_command", lambda chat, name, args: opened.append(name) or True)
+        assert telegram_runtime.open_command(12345, "adesso") and telegram_runtime.open_command(12345, "scopri")
+        assert opened == ["metis_adesso", "metis_scopri"]
 
 
 @pytest.mark.unit
@@ -214,6 +222,36 @@ class TestActionFlow:
         assert store.get_flow(12345) is None
         assert "Ho lasciato perdere: Registra spesa" in core.bot.edit_message_text.call_args[0][0]
         catalog.set_tools([])
+
+
+@pytest.mark.unit
+class TestAdesso:
+    def test_oggi_shows_adesso_with_reasons_and_buttons(self, ui_env, monkeypatch):
+        bot, _, _ = ui_env
+        from telegram_bot import catalog, nav, store
+        items = {"items": [{"tool": "metis_scopri", "reason": "Di solito a quest'ora"},
+                           {"tool": "non_esiste", "reason": "x"}]}
+        monkeypatch.setattr(catalog, "route", lambda svc, path, *a, **kw: (True, items) if path ==
+                            "api/metis/adesso" else (False, None))
+        nav.oggi(12345)
+        html = bot.send_message.call_args.args[1]
+        assert "Adesso" in html and "Di solito a quest'ora" in html and "non_esiste" not in html
+        assert f"t:{store.sid('metis_scopri')}" in _callbacks(_last_markup(bot))
+
+    def test_oggi_keeps_fixed_actions_when_metis_is_away(self, ui_env):
+        bot, _, _ = ui_env
+        from telegram_bot import nav, store
+        nav.oggi(12345)
+        assert f"t:{store.sid('agenda_today')}" not in _callbacks(_last_markup(bot))
+        assert any(c.startswith("t:") for c in _callbacks(_last_markup(bot)))
+
+    def test_starting_an_action_pushes_a_tap(self, ui_env, monkeypatch):
+        from telegram_bot import actions, usage
+        taps = []
+        monkeypatch.setattr(usage, "tap", lambda ref, kind="tool", label="": taps.append(ref))
+        monkeypatch.setattr(actions, "_advance", lambda chat, flow: None)
+        actions.start(12345, "metis_scopri")
+        assert taps == ["metis_scopri"]
 
 
 @pytest.mark.unit

@@ -38,6 +38,25 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
   user request → starts now; module request (e.g. Athena) → agenda task `metis.train.<job>` at the next window
   opening, fired via Hub with `schedule=now`. `schedule=window|now` forces it. Move/cancel it from the agenda.
 
+### Usage log, «Adesso», «Scopri» (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 6)
+- **Taps**: clients push what the owner starts (`POST /api/metis/usage`, Telegram in the background at every action
+  start; the WebUI in wave 7). Rows in Archive `metis-store` (kind `tap`: client, kind tool|page|action, ref, weekday,
+  hour). Kept 180 days. Only the owner's own taps; nothing leaves Hestia.
+- **Adesso** (`GET /api/metis/adesso?client=`, tool `metis_adesso`): no model at read time. In order: agenda items of
+  the next 3 hours whose `params.tool` names a tool; up to 3 habits (score per tool = recency decay of 21 days ×
+  same hour ±1 × same weekday / same kind of day) or recent tools; then up to 3 **ideas**. Each item has its reason
+  («Di solito il lunedì a quest'ora», «In agenda alle 18:00: …», «Usata di recente», the idea's own words). Only
+  tools of the Hub catalog (`GET {HUB}/discovery/catalog?type=tool`, cached 10 min, last one kept if Hub is away)
+  that the client can run; delete/cancel tools never appear.
+- **Ideas**: agenda jobs `metis.adesso.0700`, `.1230`, `.1800` (seeds: move them in the agenda) call
+  `POST /api/metis/adesso/refresh`: Oracle use case `metis.adesso` (chain veloce) picks 3 tools different from the
+  habits, better if little used; the answer is validated against the catalog, kept 8 hours per client. Model away →
+  `[🔄]` habits only. The same job prunes old taps.
+- **Scopri** (`GET /api/metis/scopri?client=`, tool `metis_scopri`): catalog tools used at most twice in 90 days,
+  one per module first, with what they do.
+- Telegram: the Oggi card shows «Adesso» (reason + one button each) instead of its fixed actions when Metis has
+  something; `/adesso` and `/scopri` open the two tools.
+
 ## MCP Tools
 
 | Tool | Description |
@@ -47,6 +66,8 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `metis_dataset_status` | Show dataset statistics |
 | `metis_benchmark_run` | Evaluate candidate model vs baseline |
 | `metis_loRA_train` | Orchestrate LoRA fine-tuning run |
+| `metis_adesso` | «Adesso» card: what fits now, each with why and a button |
+| `metis_scopri` | «Scopri» card: features never or rarely used |
 
 ## API Endpoints
 
@@ -57,6 +78,11 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `POST` | `/mcp` | MCP JSON-RPC endpoint (tools/list, tools/call) |
 | `POST` | `/api/metis/dataset/build` · `/benchmark/run` · `/lora/train` | REST mirrors of the MCP tools (auto-mounted by `mount_missing_rest_routes`; were 404 via Hub/Telegram) |
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
+| `POST` | `/api/metis/usage` | Taps `{taps:[{client, kind, ref, label?, at?}]}` (422 if none valid) |
+| `GET` | `/api/metis/usage/stats` | Taps by client, top tools |
+| `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
+| `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
+| `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
