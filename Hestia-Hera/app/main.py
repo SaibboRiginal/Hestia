@@ -20,6 +20,7 @@ from hestia_common.agenda_client import job_rule
 from hestia_common.display import action, display, item
 from hestia_common.mcp_helpers import MCPTool, undo
 from hestia_common.module_kit import ModuleKit
+from hestia_common.plugin_client import page, widget
 from hestia_common.transfer import StoreSection, Transfer
 
 from .core.service import People
@@ -69,6 +70,21 @@ def delete_person(pid: str):
 @app.post(f"{API}/{{pid}}/contact")
 def contact(pid: str, body: dict = Body(default={})):
     return people.contact(pid, str(body.get("note") or ""), str(body.get("date") or ""))
+
+
+@app.post(f"{API}/{{pid}}/gift")
+def add_gift(pid: str, body: dict = Body(...)):
+    return people.gift_idea(pid, str(body.get("idea") or ""), source="webui")
+
+
+@app.post(f"{API}/{{pid}}/gift/{{gid}}/done")
+def gift_done(pid: str, gid: str):
+    return people.gift_done(pid, gid)
+
+
+@app.post(f"{API}/{{pid}}/like")
+def add_like(pid: str, body: dict = Body(...)):
+    return people.like(pid, str(body.get("text") or ""), bool(body.get("dislike")))
 
 
 @app.post(f"{API}/moment")
@@ -210,4 +226,11 @@ kit.agenda_rules(lambda: [job_rule("hera.daily", "Persone: chi sentire", service
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T18:00:00", tz=kit.tz,
                                    description="Un avviso per chi non senti da più del tempo che hai scelto.")])
 kit.on_warm(lambda: [people.sync_calendar(p) for p in people.store.items("person")])
+kit.webui(icon="user", color="pink", description="Le persone importanti: date nel calendario, gusti, idee regalo.",
+          pages=[page("persone", "Persone", element="hera-people", icon="user", order=90,
+                      help="Chi è importante per te: compleanni e date (vanno nel calendario con preavviso), gusti, "
+                           "idee regalo che l'assistente segna dalla chat, quando sentirle."),
+                 page("persona/:id", "Persona", element="hera-person", detail=True, parent="persone")],
+          widgets=[widget("prossime", "Prossime date", element="hera-soon-widget", sizes=["s", "m", "l"], size="m",
+                          auto=True, open_page="persone", icon="heart")])
 kit.finish()

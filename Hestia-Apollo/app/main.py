@@ -20,7 +20,8 @@ except ModuleNotFoundError:
 
 from hestia_common.display import display, file, item
 from hestia_common.mcp_helpers import MCPTool
-from hestia_common.module_kit import ModuleKit
+from hestia_common.module_kit import ModuleKit, NotFound
+from hestia_common.plugin_client import page
 from hestia_common.transfer import StoreSection, Transfer
 
 from .core.comfy import ComfyUI
@@ -81,6 +82,17 @@ def jobs(limit: int = 30):
 @app.get(f"{API}/jobs/{{jid}}")
 def job(jid: str):
     return images.job(jid)
+
+
+@app.get(f"{API}/jobs/{{jid}}/image/{{n}}")
+def job_image(jid: str, n: int):
+    """One image of a finished job as ``{mime, data_b64}`` (WebUI ``host.image``)."""
+    j = images.job(jid)
+    blobs = j.get("blob_ids") or []
+    if not 0 <= n < len(blobs):
+        raise NotFound("immagine non trovata")
+    blob = kit.hub.ok("archive", "GET", f"api/blobs/{blobs[n]}/base64", timeout=30) or {}
+    return {"mime": blob.get("mime") or "image/png", "data_b64": blob.get("data_b64") or ""}
 
 
 def _job_display(j: dict) -> dict:
@@ -152,4 +164,11 @@ def _start_worker() -> None:
 
 
 kit.on_warm(_start_worker)
+kit.webui(icon="camera", color="purple", description="Immagini create con il tuo ComfyUI: ritratti, sfondi, mascotte.",
+          pages=[page("immagini", "Immagini", element="apollo-images", icon="camera", order=210,
+                      help="Crea un'immagine e guarda quelle fatte. Servono il tuo ComfyUI e un flusso per tipo."),
+                 page("lavoro/:id", "Immagine", element="apollo-job", detail=True, parent="immagini"),
+                 page("flussi", "Flussi", element="apollo-flows", icon="upload", order=211, parent="immagini",
+                      help="Carica da ComfyUI il flusso salvato in formato API (Salva → API Format), uno per tipo "
+                           "di immagine.")])
 kit.finish()

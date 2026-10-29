@@ -12505,6 +12505,18 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/images/jobs/{jid}/image/{n}:
+    get:
+      tags: [Apollo]
+      summary: "One image of a finished job as {mime, data_b64} (WebUI page)"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: jid, in: path, required: true, schema: {type: string}}
+        - {name: n, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: OK}
+
 
   # ── Aphrodite (port 19023) — tools also as REST under /api/appearance/tools/<name>; /mcp; recap/transfer/settings as every module
 
@@ -12593,6 +12605,33 @@ paths:
         - url: http://localhost:19023
       parameters:
         - {name: pid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/image/{bid}:
+    get:
+      tags: [Aphrodite]
+      summary: "A background or pet picture as {mime, data_b64}; only blobs this module uses"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: bid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/pets/{pid}/image/{pose}:
+    post:
+      tags: [Aphrodite]
+      summary: "The owner's picture of the pet for a pose (idle, happy, sleep), body {mime, data_b64}; wins over a generated one"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+        - {name: pose, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
       responses:
         "200": {description: OK}
 
@@ -12721,6 +12760,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/home/quick:
+    get:
+      tags: [Lares]
+      summary: "Chips of the quick action «Casa»: [{id, label, icon, hint}] from the saved quick actions"
+      servers:
+        - url: http://localhost:19024
+      responses:
+        "200": {description: OK}
+
   /api/home/favorites/{fid}/run:
     post:
       tags: [Lares]
@@ -12816,6 +12864,48 @@ paths:
     post:
       tags: [Hera]
       summary: "Contact"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/people/{pid}/gift:
+    post:
+      tags: [Hera]
+      summary: "Add a gift idea {idea} (WebUI page)"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/people/{pid}/gift/{gid}/done:
+    post:
+      tags: [Hera]
+      summary: "Mark a gift idea as done"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+        - {name: gid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/people/{pid}/like:
+    post:
+      tags: [Hera]
+      summary: "Add a like {text, dislike?}"
       servers:
         - url: http://localhost:19025
       parameters:
@@ -13024,6 +13114,17 @@ paths:
     delete:
       tags: [Calliope]
       summary: "Delete document"
+      servers:
+        - url: http://localhost:19027
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/office/{did}/b64:
+    get:
+      tags: [Calliope]
+      summary: "The file as {name, mime, data_b64} for the WebUI page"
       servers:
         - url: http://localhost:19027
       parameters:

@@ -1,5 +1,14 @@
 # Build from the repo root (docker-compose.global.yml: context ".") so the shared hestia_common package is available.
-# The WebUI plugin bundle (ui/) arrives with wave 7 of docs/work/2026-10-24-tutto-brainstorm-cindy.
+
+# ── UI bundle (plugin contract): Hestia-Aphrodite/ui → /ui/dist/webui/aphrodite.js ──
+FROM node:22-alpine AS ui-build
+WORKDIR /sdk
+COPY Hestia-Shared/webui-sdk/package.json Hestia-Shared/webui-sdk/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY Hestia-Shared/webui-sdk/src ./src
+COPY Hestia-Shared/webui-sdk/build.mjs ./
+COPY Hestia-Aphrodite/ui/ /ui/
+RUN node build.mjs plugin /ui/src/index.ts /ui/dist/webui/aphrodite.js
 
 FROM python:3.12-slim
 
@@ -10,6 +19,7 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 COPY Hestia-Shared/hestia_common /code/hestia_common
 COPY Hestia-Aphrodite/app /code/app
+COPY --from=ui-build /ui/dist /code/ui/dist
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/code

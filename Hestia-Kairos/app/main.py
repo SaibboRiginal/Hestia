@@ -22,6 +22,7 @@ from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.display import action, display, item
 from hestia_common.mail_client import MailClient, mail_rule
 from hestia_common.mcp_helpers import MCPTool, undo
+from hestia_common.plugin_client import page, widget
 from hestia_common.module_kit import ModuleKit, StoreUnavailable
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase
 from hestia_common.settings_client import setting
@@ -281,4 +282,11 @@ kit.agenda_rules(lambda: [job_rule("kairos.daily", "Scadenze: avvisi", service="
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=kit.tz,
                                    description="Un avviso al preavviso e uno il giorno della scadenza.")])
 kit.on_warm(lambda: (mail.subscribe_async(_mail_rules), process_pending_mail()))
+kit.webui(icon="clock", color="orange", description="Bollette, assicurazioni, bollo, revisione, documenti: avvisi e consigli.",
+          pages=[page("scadenze", "Scadenze", element="kairos-list", icon="clock", order=70,
+                      help="Le scadenze con il preavviso, quelle trovate nelle email da confermare, un consiglio per "
+                           "ognuna. «Fatto» sposta le ricorrenti alla prossima data."),
+                 page("scadenza/:id", "Scadenza", element="kairos-detail", detail=True, parent="scadenze")],
+          widgets=[widget("prossime", "Scadenze", element="kairos-widget", sizes=["s", "m", "l"], size="m", auto=True,
+                          open_page="scadenze", icon="clock")])
 kit.finish()

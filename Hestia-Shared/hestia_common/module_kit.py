@@ -410,6 +410,20 @@ class ModuleKit:
             routes[:] = sorted(routes, key=lambda r: not str(getattr(r, "path", "")).startswith(tools_prefix))
         self.app.include_router(self.settings.router())
 
+    def webui(self, *, icon: str, color: str, description: str, pages: list, widgets: list | None = None,
+              quick_actions: list | None = None) -> Any:
+        """The module's WebUI plugin (bundle ``ui/`` → ``<dist>/webui/<name>.js``, built in the image): manifest
+        router + Hub capabilities. ``<NAME>_UI_DIST`` overrides the folder (default ``/code/ui/dist``)."""
+        from .plugin_client import PluginClient
+        ui = PluginClient(self.name, title=self.title, icon=icon, color=color, description=description,
+                          dist=os.getenv(f"{self.name.upper()}_UI_DIST", "/code/ui/dist"), version=self.version)
+        ui.webui(entry=f"{self.name}.js", api_prefix=f"{self.api}/", pages=pages, widgets=widgets or [],
+                 quick_actions=quick_actions or [])
+        self.app.include_router(ui.router())
+        self.capabilities(lambda: ui.capabilities(self.base_url))
+        self.ui = ui
+        return ui
+
     def agenda_rules(self, rules: Callable[[], list[dict]]) -> None:
         self._rules = rules
 

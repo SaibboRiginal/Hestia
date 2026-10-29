@@ -32,6 +32,10 @@
 `cibo_oggi`, `cibo_pasto`, `cibo_pasti`, `cibo_pasto_elimina`, `cibo_dieta`, `cibo_integratori`, `cibo_integratore`,
 `cibo_preso`, `cibo_integratore_elimina`.
 
+## WebUI plugin
+
+Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against the diet, meals added, edited, deleted with «Annulla», supplements «Preso»), **Dieta** (`demeter-diet`) and **Integratori** (`demeter-supplements`: weekdays, pause); widget «Alimentazione di oggi». Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+
 ## Tests
 
-`Hestia-Demeter/tests/test_demeter.py` (FakeArchive with a fake model answer).
+`Hestia-Demeter/tests/test_demeter.py` and `tests/test_webui_plugin.py` (FakeArchive with a fake model answer).

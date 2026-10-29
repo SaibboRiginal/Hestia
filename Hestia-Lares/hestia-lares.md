@@ -25,12 +25,17 @@ who is at home
 ## API (`/api/home`)
 
 `GET /status` · `GET /entities?domain=&q=` · `POST /entities/{entity_id}/{command}` `{value?}` · `GET/POST /favorites`
-· `POST /favorites/{id}/run` · `DELETE /favorites/{id}` · `GET /persons/options` (Themis options source).
+· `POST /favorites/{id}/run` · `DELETE /favorites/{id}` · `GET /persons/options` (Themis options source). For the WebUI page:
+`GET /quick` (quick action chips).
 
 ## Tools (Telegram area «Casa»)
 
 `casa_stato`, `casa_dispositivi`, `casa_comando` (undo = the opposite command), `casa_scena`, `casa_preferito`,
 `casa_preferito_esegui`, `casa_preferito_elimina`.
+
+## WebUI plugin
+
+Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by type with their controls, star = save as quick action); widget «Casa»; quick action «Casa» (chips from `GET /quick`, Home strip and Ctrl+K) runs `POST /favorites/{id}/run`. Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

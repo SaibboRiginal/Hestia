@@ -26,13 +26,17 @@
 ## API (`/api/appearance`)
 
 `GET /now?client=` · `GET/POST /profiles` · `PUT /profiles/{key}` · `GET/POST /pets` · `PUT/DELETE /pets/{id}` ·
-`GET/PUT /choice/{client}` · `GET /upcoming?days=` · `POST /moment` (calendar push) · `POST /images/done` (image push).
+`GET/PUT /choice/{client}` · `GET /upcoming?days=` · `POST /moment` (calendar push) · `POST /images/done` (image push). For the WebUI page:
+`GET /image/{blob_id}` (only pictures this module uses) · `POST /pets/{id}/image/{pose} {mime, data_b64}` (owner's picture, wins over a generated one).
 
 ## Tools (Telegram area «Immagini e aspetto»)
 
 `aspetto_adesso`, `aspetto_scelta`, `aspetto_prossimi`, `aspetto_animale`, `aspetto_animali`, `aspetto_genera`.
-The WebUI draws the effect and the pet in wave 7.
+
+## WebUI plugin
+
+Page **Aspetto** (`aphrodite-look`: the look now and why, automatic themes on or off for the site, pet choice, new pet, own picture per pose, regenerate, profile editor with colours, effect, dates, picture prompt, upcoming themes). The WebUI shell draws palette, effect and pet from `GET /now`. Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 
-`Hestia-Aphrodite/tests/test_aphrodite.py` (FakeArchive with a fake image module).
+`Hestia-Aphrodite/tests/test_aphrodite.py` and `tests/test_webui_plugin.py` (FakeArchive with a fake image module).

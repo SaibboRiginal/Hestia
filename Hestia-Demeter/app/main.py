@@ -21,6 +21,7 @@ from hestia_common import recap
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.display import action, display, item
 from hestia_common.mcp_helpers import MCPTool, undo
+from hestia_common.plugin_client import page, widget
 from hestia_common.module_kit import ModuleKit
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase
 from hestia_common.transfer import StoreSection, Transfer
@@ -239,4 +240,13 @@ kit.caps.update({**recap.capabilities(), **llm_capabilities([
     usecase(ESTIMATE_USE, "Alimentazione · stima kcal", chain="veloce",
             help="Stima kcal e proteine di un pasto descritto a parole.")])})
 kit.capabilities(transfer.capabilities)
+kit.webui(icon="leaf", color="green", description="Dieta, pasti con calorie stimate, integratori nel piano della settimana.",
+          pages=[page("oggi", "Alimentazione", element="demeter-today", icon="leaf", order=80,
+                      help="I pasti del giorno con calorie e proteine (stimate dall'assistente se non le scrivi), "
+                           "gli integratori da prendere."),
+                 page("dieta", "Dieta", element="demeter-diet", icon="target", order=81, parent="oggi"),
+                 page("integratori", "Integratori", element="demeter-supplements", icon="droplet", order=82,
+                      parent="oggi")],
+          widgets=[widget("oggi", "Alimentazione di oggi", element="demeter-widget", sizes=["s", "m"], size="m",
+                          auto=True, open_page="oggi", icon="leaf")])
 kit.finish()

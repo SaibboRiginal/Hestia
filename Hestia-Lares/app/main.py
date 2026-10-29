@@ -21,6 +21,7 @@ except ModuleNotFoundError:
 from hestia_common.display import action, display, item
 from hestia_common.mcp_helpers import MCPTool, undo
 from hestia_common.module_kit import ModuleKit
+from hestia_common.plugin_client import page, quick_action, widget
 from hestia_common.presence_client import PresenceClient
 from hestia_common.settings_client import setting
 from hestia_common.transfer import StoreSection, Transfer
@@ -84,6 +85,16 @@ def favorites():
 def add_favorite(body: dict = Body(...)):
     return home.add_favorite(body.get("entity", ""), body.get("label", ""), body.get("room", ""),
                              body.get("command", "toggle"))
+
+
+@app.get(f"{API}/quick")
+def quick_chips():
+    """Chips of the quick action «Casa» (Home strip, Ctrl+K): the saved quick actions."""
+    try:
+        return [{"id": f["id"], "label": f["label"], "icon": "home", "hint": f.get("room") or ""}
+                for f in home.favorites()]
+    except Exception:
+        return []
 
 
 @app.post(f"{API}/favorites/{{fid}}/run")
@@ -173,4 +184,11 @@ transfer = Transfer("lares", kit.hub, sections=[
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
 kit.on_warm(lambda: threading.Thread(target=_listen, daemon=True, name="lares-ha-ws").start())
+kit.webui(icon="home", color="teal", description="La casa su Home Assistant: luci, tapparelle, clima, scene, azioni rapide.",
+          pages=[page("casa", "Casa", element="lares-home", icon="home", order=100,
+                      help="La casa adesso, le azioni rapide e tutti i dispositivi di Home Assistant per tipo.")],
+          widgets=[widget("casa", "Casa", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
+                          open_page="casa", icon="home")],
+          quick_actions=[quick_action("azione", "Casa", "POST", f"{API}/favorites/{{id}}/run", icon="home",
+                                      group="Casa", source=f"{API}/quick", order=100)])
 kit.finish()

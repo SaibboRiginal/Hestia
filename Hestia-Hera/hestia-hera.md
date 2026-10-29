@@ -26,7 +26,8 @@ gift ideas, notes, last contact and how often to hear from them
 ## API (`/api/people`)
 
 `GET/POST /api/people` · `GET /upcoming?days=` · `GET/PUT/DELETE /{id}` · `POST /{id}/contact {note?, date?}` ·
-`POST /moment` (calendar push) · `POST /daily` (agenda job). Tools also as REST under `/api/people/tools/<name>`.
+`POST /moment` (calendar push) · `POST /daily` (agenda job). Tools also as REST under `/api/people/tools/<name>`. For the WebUI page:
+`POST /{id}/gift {idea}` · `POST /{id}/gift/{gift_id}/done` · `POST /{id}/like {text, dislike?}`.
 
 ## Tools (Telegram area «Persone»)
 
@@ -34,6 +35,10 @@ gift ideas, notes, last contact and how often to hear from them
 `people_gift_idea`, `people_like`, `people_contact`, `people_upcoming`. Dates: `GG/MM`, `GG/MM/AAAA`, `AAAA-MM-GG`;
 a day that does not exist (31/02) is refused; 29/02 falls on 28/02 in common years.
 
+## WebUI plugin
+
+Pages **Persone** (`hera-people`: list, search, new person, upcoming dates) and **Persona** (`persona/:id`: dates, gift ideas to mark done, likes, notes, «Sentito», delete); widget «Prossime date». Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+
 ## Tests
 
-`Hestia-Hera/tests/test_hera.py` (FakeArchive, no network).
+`Hestia-Hera/tests/test_hera.py` and `tests/test_webui_plugin.py` (FakeArchive, no network).
