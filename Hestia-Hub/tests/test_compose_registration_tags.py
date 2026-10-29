@@ -96,3 +96,16 @@ def test_echo_default_tags_pass_hub_validation():
     tags = re.search(r'"SERVICE_TAGS",\s*"([^"]+)"', source).group(1).split(",")
     topo = re.search(r'"SERVICE_TOPOLOGY_TAGS",\s*"([^"]+)"', source).group(1).split(",")
     RegisterServiceRequest(name="echo", base_url="http://echo:1", tags=tags, topology_tags=topo)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("module", ["Apollo", "Aphrodite", "Lares", "Hera", "Demeter", "Calliope", "Kairos"])
+def test_module_kit_registrations_pass_hub_validation(module):
+    """W5: the modules built on hestia_common.module_kit register with tags module,<domain>[,coach]."""
+    source = (_ROOT / f"Hestia-{module}" / "app" / "main.py").read_text(encoding="utf-8")
+    domain = (re.search(r'ModuleKit\([^)]*?domain="([a-z_]+)"', source, re.S)
+              or re.search(r'^DOMAIN = "([a-z_]+)"', source, re.M)).group(1)
+    extra = re.findall(r'tags=\(([^)]*)\)', source)
+    tags = ["module", domain] + [t.strip(" '\",") for t in (extra[0].split(",") if extra else []) if t.strip(" '\",")]
+    RegisterServiceRequest(name=module.lower(), base_url="http://m:1", service_type="module", tags=tags,
+                           topology_tags=["layer:domain", f"domain:{domain}", "status:alpha"])

@@ -85,6 +85,7 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] Cindy 21 Calliope «Documenti» (19027, `/api/office`): HTML → PDF/DOCX/XLSX, 3 themes, final check, blobs
 - [x] A1 Apollo «Immagini» (19022): flows, job worker, ComfyUI websocket, blobs, callback push, missing-flow notice
 - [x] A2 Aphrodite «Aspetto» (19023): profiles, moments, holidays/seasons, per-client choice, pets, pictures via Apollo
+- [x] Hub allowed tags/domains for the seven modules (CI caught the 422; test covers module_kit registrations)
 - [x] Archive stores (7), compose services, CI matrix, Telegram areas, swagger, .env.example, docs, tests
 - [ ] PR + CI green + merge
 - Left for W7 (WebUI): plugin bundles (`ui/`) of the seven modules (Persone, Scadenze, Alimentazione, Casa,

@@ -25,6 +25,14 @@ ALLOWED_TAGS = {
     "finance",
     "coach",        # serves GET /api/coach/needs (weekly plan contract, hestia_common.coach)
     "voice",        # speech core (Echo): STT/TTS for every client
+    # W5 domain modules (docs/work/2026-10-24-tutto-brainstorm-cindy)
+    "images",       # Apollo
+    "appearance",   # Aphrodite
+    "home",         # Lares (Home Assistant)
+    "people",       # Hera
+    "food",         # Demeter
+    "office",       # Calliope (documents)
+    "deadlines",    # Kairos
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -60,6 +68,13 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "selfcare",
         "finance",
         "voice",
+        "images",
+        "appearance",
+        "home",
+        "people",
+        "food",
+        "office",
+        "deadlines",
     },
     "status": {
         "alpha",
