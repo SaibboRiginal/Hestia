@@ -24,11 +24,16 @@ Word or an Excel file with one of three shared themes, checks it and keeps it
 ## API (`/api/office`)
 
 `GET/POST /api/office` `{title, html, format pdf|docx|xlsx, theme?, must_contain?}` · `GET /{id}` ·
-`GET /{id}/file` (download) · `DELETE /{id}` (record and blob).
+`GET /{id}/file` (download) · `DELETE /{id}` (record and blob). For the WebUI page:
+`GET /{id}/b64` (`{name, mime, data_b64}`).
 
 ## Tools (Telegram area «Documenti»)
 
 `documento_crea`, `documento_creati`, `documento_creato_invia`, `documento_creato_elimina`.
+
+## WebUI plugin
+
+Page **Documenti creati** (`calliope-docs`: list, download, delete, new document with title, format, theme, HTML and the words it must contain, «Chiedi all'assistente»). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

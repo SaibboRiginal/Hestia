@@ -18,10 +18,11 @@ except ModuleNotFoundError:
 
 from hestia_common.display import action, display, file, item
 from hestia_common.mcp_helpers import MCPTool, undo
-from hestia_common.module_kit import ModuleKit
+from hestia_common.module_kit import Invalid, ModuleKit, NotFound
+from hestia_common.plugin_client import page
 from hestia_common.transfer import StoreSection, Transfer
 
-from .core.service import CLIENTS, EFFECTS, Appearance
+from .core.service import CLIENTS, EFFECTS, POSES, Appearance
 
 API = "/api/appearance"
 kit = ModuleKit("aphrodite", port=19023, api=API, domain="appearance", title="Aspetto", store="appearance-store",
@@ -72,6 +73,29 @@ def update_pet(pid: str, body: dict = Body(...)):
 @app.delete(f"{API}/pets/{{pid}}")
 def delete_pet(pid: str):
     return look.delete_pet(pid)
+
+
+@app.get(f"{API}/image/{{bid}}")
+def image(bid: str):
+    """A background or pet picture as ``{mime, data_b64}`` (WebUI ``host.image``); only blobs this module uses."""
+    used = {p.get("background") for p in look.profiles()} | {
+        b for p in look.pets() for b in (p.get("images") or {}).values()}
+    if not bid or bid not in used:
+        raise NotFound("immagine non trovata")
+    blob = kit.hub.ok("archive", "GET", f"api/blobs/{bid}/base64", timeout=30) or {}
+    return {"mime": blob.get("mime") or "image/png", "data_b64": blob.get("data_b64") or ""}
+
+
+@app.post(f"{API}/pets/{{pid}}/image/{{pose}}")
+def upload_pet_image(pid: str, pose: str, body: dict = Body(...)):
+    """A picture of the pet chosen by the owner (wins over a generated one)."""
+    if pose not in POSES or not body.get("data_b64"):
+        raise Invalid("posa: " + ", ".join(POSES) + " e l'immagine")
+    look.pet(pid)
+    out = kit.hub.ok("archive", "POST", "api/blobs", body={"owner_module": "aphrodite", "content_type": body.get("mime") or
+                                                           "image/png", "data_base64": body["data_b64"],
+                                                           "meta": {"pet": pid, "pose": pose}}, timeout=30) or {}
+    return look.save_pet({f"image_{pose}": out.get("blob_id")}, pid)
 
 
 @app.get(f"{API}/choice/{{client}}")
@@ -174,4 +198,8 @@ transfer = Transfer("aphrodite", kit.hub, sections=[
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment"})
 kit.capabilities(transfer.capabilities)
+kit.webui(icon="palette", color="pink", description="Temi delle feste, delle stagioni e dei tuoi giorni speciali, un animaletto.",
+          pages=[page("aspetto", "Aspetto", element="aphrodite-look", icon="palette", order=220,
+                      help="Il sito cambia da solo con le feste, le stagioni e i tuoi giorni speciali: qui vedi cosa "
+                           "c'è adesso e perché, spegni i temi, scegli e crei l'animaletto, modifichi i profili.")])
 kit.finish()

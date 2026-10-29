@@ -18,6 +18,7 @@ except ModuleNotFoundError:
 
 from hestia_common.display import action, display, file, item
 from hestia_common.mcp_helpers import MCPTool
+from hestia_common.plugin_client import page
 from hestia_common.module_kit import ModuleKit
 from hestia_common.settings_client import setting
 from hestia_common.transfer import StoreSection, Transfer
@@ -61,6 +62,14 @@ def download(did: str):
     d, data = docs.file(did)
     return Response(content=data, media_type=d["mime"],
                     headers={"Content-Disposition": f'attachment; filename="{d["name"]}"'})
+
+
+@app.get(f"{API}/{{did}}/b64")
+def download_b64(did: str):
+    """The file as base64 for the WebUI plugin (its calls go through Hub as JSON)."""
+    import base64
+    d, data = docs.file(did)
+    return {"name": d["name"], "mime": d["mime"], "data_b64": base64.b64encode(data).decode()}
 
 
 @app.delete(f"{API}/{{did}}")
@@ -125,4 +134,8 @@ transfer = Transfer("calliope", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
+kit.webui(icon="file", color="indigo", description="PDF, Word ed Excel veri, controllati prima di consegnarli.",
+          pages=[page("documenti", "Documenti creati", element="calliope-docs", icon="file", order=200,
+                      help="I documenti che l'assistente ha creato per te (PDF, Word, Excel): scaricali o creane uno "
+                           "nuovo. Puoi anche chiederlo in chat: «fammi un PDF con…».")])
 kit.finish()

@@ -35,6 +35,10 @@ due day, amount, recurrence, lead time and a practical advice
 `scadenze_list`, `scadenze_get`, `scadenze_add`, `scadenze_update`, `scadenze_done`, `scadenze_snooze`,
 `scadenze_delete`, `scadenze_consiglio`.
 
+## WebUI plugin
+
+Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, next 30 days, later, done; «Fatto», «Dopo», new deadline) and **Scadenza** (`scadenza/:id`: edit, advice, delete); widget «Scadenze». Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+
 ## Tests
 
-`Hestia-Kairos/tests/test_kairos.py` (FakeArchive + fake agenda, no network).
+`Hestia-Kairos/tests/test_kairos.py` and `tests/test_webui_plugin.py` (FakeArchive + fake agenda, no network).

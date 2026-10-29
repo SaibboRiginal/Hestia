@@ -98,7 +98,10 @@ the FastAPI app (CORS, `/health` with mirror state, log router, errors: `Invalid
 arguments coerced by the schema, errors as `{"error": …}`); `kit.finish()` mounts them **before** the module's own
 `{api}/{id}/…` routes (so `tools/done` is never read as an id) plus the settings router. `agenda_rules(fn)`,
 `on_warm(fn)` (after the first mirror load), `capabilities(fn)`; startup = Hub registration + keepalive, settings,
-agenda rules, warm-up. Tests use `FakeArchive` (store protocol, blobs, recorded Hermes/other calls).
+agenda rules, warm-up. `kit.webui(icon=, color=, description=, pages=, widgets=, quick_actions=)` declares the
+module's WebUI plugin (`PluginClient`: entry `<name>.js`, `api_prefix` = `{api}/`, bundle folder `<NAME>_UI_DIST`,
+default `/code/ui/dist`, built from `ui/` in the image), mounts `/api/ui/manifest` + `/ui/…` and adds `ui_manifest`/
+`ui_version` to the Hub capabilities; `kit.ui` keeps the client. Tests use `FakeArchive` (store protocol, blobs, recorded Hermes/other calls).
 
 ## Device feeds (`hestia_common.feeds`)
 

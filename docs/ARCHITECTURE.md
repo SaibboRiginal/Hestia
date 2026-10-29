@@ -486,7 +486,8 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    Archive blobs and travel as `display.files`; a generated document is opened again and checked before it is
    delivered. Dates of people and deadlines go to the calendar with stable keys, so the owner's edits win; a mail can
    only **propose** a deadline. Ports: Apollo 19022, Aphrodite 19023, Lares 19024, Hera 19025, Demeter 19026,
-   Calliope 19027, Kairos 19028.
+   Calliope 19027, Kairos 19028. Their WebUI plugin is declared with `kit.webui(...)` (bundle `ui/` built in the image,
+   manifest + Hub capabilities, W7).
 
 ## Autonomous Remediation Contract
 
@@ -548,7 +549,8 @@ No code-only behavior changes are considered complete without synchronized docs.
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
    calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
-   Wardrobe 50s, Plutus 60s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
+   Wardrobe 50s, Plutus 60s, Kairos 70s, Demeter 80s, Hera 90s, then — the hundreds 100–190 being core — Calliope 200s,
+   Apollo 210s, Aphrodite 220s, Lares 230s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
    hundreds (Hub 100, Argus 110, Oracle 120, Athena 130, Hermes 140, Chronos 150, Themis 160, Hephaestus 170,
    Metis 180, Hestia-MCP 190); the WebUI groups them under *Sistema* and builds a ready-made *Sistema* dashboard from their `auto` widgets (Home takes the domain ones); Hub, which never registers with itself, folds its own manifest into the catalog and answers its plugin routes locally (`docs/work/2026-10-18-moduli-core-e-mcp-esterno/`). Module notifications carry `_link: {module, page}` so a
    client can open the plugin page.

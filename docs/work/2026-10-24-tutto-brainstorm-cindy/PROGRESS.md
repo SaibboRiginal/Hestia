@@ -104,8 +104,30 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] tests: `Hestia-Metis/tests/test_usage.py` (Metis added to the CI matrix, it was missing), Telegram `TestAdesso` + commands
 - [x] docs: hestia-metis.md, hestia-telegram.md, hestia-archive.md, swagger, ARCHITECTURE, flow map, SPEC v1.6
 - [x] fix: `hestia_common.feeds` empty registry cache looked fresh right after boot (CI runner), regression test in Hecate
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #39, dadbc79)
 - Left for W7: WebUI Home «Adesso» row, Ctrl+K palette entries, «Scopri» page, WebUI taps (pages + actions).
 
-## W7–W8
+## W7 — WebUI, part 1: pages of the seven new modules
+- [x] shared `ModuleKit.webui()` (PluginClient + manifest router + Hub capabilities); Dockerfiles build `ui/` in a
+      node stage (`/code/ui/dist`, not hidden by the compose mounts)
+- [x] Hera «Persone» / «Persona» + widget; endpoints `POST /{id}/gift`, `/{id}/gift/{gid}/done`, `/{id}/like`
+- [x] Kairos «Scadenze» / «Scadenza» + widget (proposals, Fatto, Dopo, advice)
+- [x] Demeter «Alimentazione», «Dieta», «Integratori» + widget (meals with «Annulla», supplements «Preso»)
+- [x] Lares «Casa» + widget + quick action «Casa» (`GET /quick` chips)
+- [x] Calliope «Documenti creati» (`GET /{id}/b64` download through the Hub)
+- [x] Apollo «Immagini», «Immagine», «Flussi» (`GET /jobs/{id}/image/{n}`)
+- [x] Aphrodite «Aspetto» (`GET /image/{blob}`, `POST /pets/{id}/image/{pose}`)
+- [x] tests `tests/test_webui_plugin.py` in each module (manifest elements = bundle elements, new endpoints); docs, swagger
+- [ ] PR + CI green + merge
+
+## W7 — WebUI, part 2 (shell and core pages)
+- [ ] Home «Adesso» row, Ctrl+K entries, «Scopri» page, WebUI taps (`POST /api/metis/usage`)
+- [ ] new sidebar; palette, effect and pet from `GET /api/appearance/now`
+- [ ] live overlay + dictation, chat components, change-set row, origin label, chat tags + history sidebar
+- [ ] Web Push service worker, «Da decidere» counter, secret form; Sistema «Prestazioni»
+- [ ] Chronos «Routine» and «Eventi speciali»; Memoria «Cosa ho imparato» + Annulla; Sviluppo review card
+- [ ] «Voce» → La tua voce (dictionary, voiceprint), transcript correction, Hermes `command` actions open the tool
+      form, Hecate «Dispositivi»
+
+## W8
 - [ ] see SPEC §3
