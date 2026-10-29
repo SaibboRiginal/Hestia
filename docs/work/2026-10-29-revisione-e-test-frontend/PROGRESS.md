@@ -34,4 +34,7 @@
 - [x] colour themes (11 new, makeTheme)
 - [x] styles Classico / Vetro / Netto + knobs (looks.ts, ThemeService, Impostazioni → Aspetto)
 - [x] docs: DESIGN-SYSTEM, hestia-webui, hestia-shared, SDK README, ARCHITECTURE
-- [ ] bench check (desktop/phone, light/dark, the 3 styles), PR, merge
+- [x] bench: 31 healthy, flows 65/65; UI tour 70 pages × desktop/phone × light/dark: 0 errors, 0 overflow (only the
+      benign «cross-world service worker» preload warnings); gallery of the 3 styles × 6 themes on Home/Chat/Impostazioni
+      (project files `revisione-ui/stili/`)
+- [x] PR #52 (CI green) → merge
