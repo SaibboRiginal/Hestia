@@ -105,7 +105,7 @@ agenda rules, warm-up. Tests use `FakeArchive` (store protocol, blobs, recorded 
 Data from the owner's devices, pushed by Hecate to the modules that asked for it (dossier
 `2026-10-24-tutto-brainstorm-cindy` W4). A module declares `caps.update(feeds.capabilities({"wearable.daily":
 "/api/hercules/wearable"}))`; Hecate's `FeedPublisher(HUB).publish(kind, item)` discovers subscribers on the Hub
-(cache 60 s) and POSTs the item through the Hub → `{delivered, failed}`. Kinds: `wearable.daily`,
+(cache 60 s; the first publish always reads the registry, also right after boot) and POSTs the item through the Hub → `{delivered, failed}`. Kinds: `wearable.daily`,
 `phone.notification`, `phone.state`. A failure is logged `[🔄]`; the next sync or push carries the data again.
 
 ## Mail subscriptions client (`hestia_common.mail_client`)
