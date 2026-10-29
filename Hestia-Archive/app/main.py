@@ -78,6 +78,13 @@ app.include_router(module_store.argus_router)     # Argus (notable events journa
 app.include_router(module_store.hermes_router)    # Hermes (Web Push subscriptions)
 app.include_router(module_store.chronos_router)   # Chronos (routine results, smart-calendar choices)
 app.include_router(module_store.athena_router)    # Athena (learning log, memory review proposals)
+app.include_router(module_store.apollo_router)    # Apollo (images-store)
+app.include_router(module_store.aphrodite_router) # Aphrodite (appearance-store)
+app.include_router(module_store.lares_router)     # Lares (home-store)
+app.include_router(module_store.hera_router)      # Hera (people-store)
+app.include_router(module_store.demeter_router)   # Demeter (food-store)
+app.include_router(module_store.calliope_router)  # Calliope (office-store)
+app.include_router(module_store.kairos_router)    # Kairos (deadlines-store)
 app.include_router(module_store.signals_router)   # reflection signals (modules → Athena)
 
 # Backup to Google Drive, verification, rollback (docs/work/2026-10-20-backup-drive) + maintenance gate.

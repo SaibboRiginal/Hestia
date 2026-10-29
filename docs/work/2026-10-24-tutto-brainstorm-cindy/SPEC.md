@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.4 |
+| **Version** | 1.5 |
 | **Source** | user via project thread «Implementare tutto il brainstorm e Cindy» (Marko 2026-10-24 18:31: «iniziamo a implementare TUTTO … tutto one shot, poi una volta fatto tutto e collegato tutto e senza bug, fai il test e finalizza solo alla fine fine»); lists: `/mnt/project-files/brainstorm/2026-10-23-review-e-nuove-idee.md` §0 (A–D) + §5, adaptation table `/mnt/project-files/valutazioni/idee-dal-repo-cindy.md` «Adattamento a Hestia»; routed by the project coordinator |
 | **Status** | For the record (Marko asked for no per-item approvals); implementation in waves, merged by Claude when CI is green |
 
@@ -121,6 +121,12 @@ Athena proposals and thoughts, Argus remediation history.
 6. **New modules** follow the Plutus pattern: generic `build_router` store in Archive (`<module>-store`), Themis
    settings, agenda rules, plugin UI bundle (`ui/` + webui-sdk), MCP tools with Telegram hints and `display`, transfer
    sections, recap piece where useful, Hub registration with `when_to_use` (Cindy 30), compose service, swagger, doc.
+   v1.5 (W5): the shared part is one skeleton, `hestia_common.module_kit` (app, Hub client with `notify`/`llm`,
+   Archive mirror, Themis, agenda, MCP + REST tools mounted before the module's `{id}` routes); the plugin UI bundles
+   of the seven new modules come with W7. Files produced by a tool (documents, images) are Archive blobs carried as
+   `display.files` (Telegram sends them). Calliope renders from one parsed block list with reportlab/python-docx/
+   openpyxl (no HTML-to-PDF engine) and serves `/api/office` (Archive already owns `/api/documents`). A mail only
+   proposes a deadline (Hermes card). Supplements: Hygieia keeps the products, Demeter the intake and the plan.
 7. **No new timers**: every periodic thing is an agenda job; push sources: Iris (mail), HA websocket (Lares), Hecate
    webhooks (phone), Chronos signals.
 

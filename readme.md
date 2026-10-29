@@ -193,6 +193,13 @@ flowchart LR
 | [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings: modules declare, every client and the assistant read/change, you confirm |
 | [Plutus](Hestia-Plutus/hestia-plutus.md) | 19020 | Domain module «Spese»: expenses from PayPal mails (push) and bank statement PDFs, budgets, subscriptions |
 | [Echo](Hestia-Echo/hestia-echo.md) | 19021 | Voice core: speech → text and text → speech, files and live streams, providers and chains like Oracle |
+| [Apollo](Hestia-Apollo/hestia-apollo.md) | 19022 | Domain module «Immagini»: images through a remote ComfyUI (flows you upload) |
+| [Aphrodite](Hestia-Aphrodite/hestia-aphrodite.md) | 19023 | Domain module «Aspetto»: themes of holidays and seasons, special days, a pet |
+| [Lares](Hestia-Lares/hestia-lares.md) | 19024 | Domain module «Casa»: lights, sensors and scenes on Home Assistant |
+| [Hera](Hestia-Hera/hestia-hera.md) | 19025 | Domain module «Persone»: birthdays, gift ideas, who to call |
+| [Demeter](Hestia-Demeter/hestia-demeter.md) | 19026 | Domain module «Alimentazione»: diet, meals, supplements |
+| [Calliope](Hestia-Calliope/hestia-calliope.md) | 19027 | Domain module «Documenti»: real PDF, Word and Excel files |
+| [Kairos](Hestia-Kairos/hestia-kairos.md) | 19028 | Domain module «Scadenze»: bills, insurance, car tax, documents |
 | [Swagger](Hestia-Swagger/swagger.yml) | 19000 | API contract of every service |
 | [Telegram](Hestia-Telegram/hestia-telegram.md) | — | Main chat client |
 | [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web fetch gateway running outside Docker |

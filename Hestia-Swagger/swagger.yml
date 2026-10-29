@@ -23,6 +23,14 @@ info:
     | Hygieia   | 19018 |
     | Hercules  | 19019 |
     | Plutus    | 19020 |
+    | Echo      | 19021 |
+    | Apollo    | 19022 |
+    | Aphrodite | 19023 |
+    | Lares     | 19024 |
+    | Hera      | 19025 |
+    | Demeter   | 19026 |
+    | Calliope  | 19027 |
+    | Kairos    | 19028 |
   version: 1.0.0
 
 servers:
@@ -100,6 +108,34 @@ tags:
     description: Voice — speech to text and text to speech, files and streams in blocks, providers/chains/uses, kept audio
   - name: Archive — Echo store
     description: Same (kind,id) last-write-wins records and cursor, for Echo only (kept audio index, usage)
+  - name: Apollo
+    description: Images — remote ComfyUI flows (API format) per purpose, job queue, images in Archive blobs, callback push
+  - name: Aphrodite
+    description: Appearance — profiles (holidays, seasons, today's moment), pets, per-client choice; clients read /now
+  - name: Lares
+    description: House — Home Assistant mirror by websocket push, commands, scenes, quick actions, presence home.present
+  - name: Hera
+    description: People — cards, dates as calendar special events, gift ideas, likes, contacts
+  - name: Demeter
+    description: Nutrition — diet, meals (kcal estimate by the assistant), supplements and intakes; coach of the weekly plan
+  - name: Calliope
+    description: Documents — HTML draft → PDF / Word / Excel with three themes and a final check; files in Archive blobs
+  - name: Kairos
+    description: Deadlines — bills, insurance, car tax…, recurrence, advice, calendar mirror, mail proposals, daily notices
+  - name: Archive — Apollo store
+    description: Same (kind,id) last-write-wins records and cursor, for Apollo only
+  - name: Archive — Aphrodite store
+    description: Same (kind,id) last-write-wins records and cursor, for Aphrodite only
+  - name: Archive — Lares store
+    description: Same (kind,id) last-write-wins records and cursor, for Lares only
+  - name: Archive — Hera store
+    description: Same (kind,id) last-write-wins records and cursor, for Hera only
+  - name: Archive — Demeter store
+    description: Same (kind,id) last-write-wins records and cursor, for Demeter only
+  - name: Archive — Calliope store
+    description: Same (kind,id) last-write-wins records and cursor, for Calliope only
+  - name: Archive — Kairos store
+    description: Same (kind,id) last-write-wins records and cursor, for Kairos only
   - name: Archive — Backup
     description: Encrypted backup of the whole database on Google Drive, monthly verification, rollback with undo (panel in the WebUI settings, agenda jobs, tools/hestia_backup.py)
   - name: Archive — MCP accesses
@@ -12294,3 +12330,980 @@ paths:
       responses:
         "200": {description: "deleted"}
         "404": {description: "not a restore point"}
+
+  # ── Apollo (port 19022) — tools also as REST under /api/images/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/images/status:
+    get:
+      tags: [Apollo]
+      summary: "Status"
+      servers:
+        - url: http://localhost:19022
+      responses:
+        "200": {description: OK}
+
+  /api/images/flows:
+    get:
+      tags: [Apollo]
+      summary: "Flows"
+      servers:
+        - url: http://localhost:19022
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Apollo]
+      summary: "Add flow"
+      servers:
+        - url: http://localhost:19022
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/images/flows/{fid}:
+    put:
+      tags: [Apollo]
+      summary: "Update flow"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: fid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Apollo]
+      summary: "Delete flow"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: fid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/images/jobs:
+    post:
+      tags: [Apollo]
+      summary: "Other modules (e.g. the appearance one) ask an image here, with ``callback: {service, path}``."
+      servers:
+        - url: http://localhost:19022
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    get:
+      tags: [Apollo]
+      summary: "Jobs"
+      servers:
+        - url: http://localhost:19022
+      responses:
+        "200": {description: OK}
+
+  /api/images/jobs/{jid}:
+    get:
+      tags: [Apollo]
+      summary: "Job"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: jid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+
+  # ── Aphrodite (port 19023) — tools also as REST under /api/appearance/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/appearance/now:
+    get:
+      tags: [Aphrodite]
+      summary: "What a client shows now: the only call clients make."
+      servers:
+        - url: http://localhost:19023
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/profiles:
+    get:
+      tags: [Aphrodite]
+      summary: "Profiles"
+      servers:
+        - url: http://localhost:19023
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Aphrodite]
+      summary: "Add profile"
+      servers:
+        - url: http://localhost:19023
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/profiles/{key}:
+    put:
+      tags: [Aphrodite]
+      summary: "Update profile"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/pets:
+    get:
+      tags: [Aphrodite]
+      summary: "Pets"
+      servers:
+        - url: http://localhost:19023
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Aphrodite]
+      summary: "Add pet"
+      servers:
+        - url: http://localhost:19023
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/pets/{pid}:
+    put:
+      tags: [Aphrodite]
+      summary: "Update pet"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Aphrodite]
+      summary: "Delete pet"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/choice/{client}:
+    get:
+      tags: [Aphrodite]
+      summary: "Get choice"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: client, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Aphrodite]
+      summary: "Put choice"
+      servers:
+        - url: http://localhost:19023
+      parameters:
+        - {name: client, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/upcoming:
+    get:
+      tags: [Aphrodite]
+      summary: "Upcoming"
+      servers:
+        - url: http://localhost:19023
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/moment:
+    post:
+      tags: [Aphrodite]
+      summary: "Calendar ``special_moment`` (capability ``special_moment_endpoint``)."
+      servers:
+        - url: http://localhost:19023
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance/images/done:
+    post:
+      tags: [Aphrodite]
+      summary: "Push from the image module when a picture asked by ``generate`` is ready."
+      servers:
+        - url: http://localhost:19023
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+
+  # ── Lares (port 19024) — tools also as REST under /api/home/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/home/status:
+    get:
+      tags: [Lares]
+      summary: "Status"
+      servers:
+        - url: http://localhost:19024
+      responses:
+        "200": {description: OK}
+
+  /api/home/persons/options:
+    get:
+      tags: [Lares]
+      summary: "Options of «Tu in Home Assistant» (Themis ``options_source``)."
+      servers:
+        - url: http://localhost:19024
+      responses:
+        "200": {description: OK}
+
+  /api/home/entities:
+    get:
+      tags: [Lares]
+      summary: "Entities"
+      servers:
+        - url: http://localhost:19024
+      responses:
+        "200": {description: OK}
+
+  /api/home/entities/{entity_id}/{command}:
+    post:
+      tags: [Lares]
+      summary: "Command"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: entity_id, in: path, required: true, schema: {type: string}}
+        - {name: command, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/home/favorites:
+    get:
+      tags: [Lares]
+      summary: "Favorites"
+      servers:
+        - url: http://localhost:19024
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Lares]
+      summary: "Add favorite"
+      servers:
+        - url: http://localhost:19024
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/home/favorites/{fid}/run:
+    post:
+      tags: [Lares]
+      summary: "Run favorite"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: fid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/home/favorites/{fid}:
+    delete:
+      tags: [Lares]
+      summary: "Delete favorite"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: fid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+
+  # ── Hera (port 19025) — tools also as REST under /api/people/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/people:
+    get:
+      tags: [Hera]
+      summary: "List people"
+      servers:
+        - url: http://localhost:19025
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Hera]
+      summary: "Add person"
+      servers:
+        - url: http://localhost:19025
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/people/upcoming:
+    get:
+      tags: [Hera]
+      summary: "Upcoming"
+      servers:
+        - url: http://localhost:19025
+      responses:
+        "200": {description: OK}
+
+  /api/people/{pid}:
+    get:
+      tags: [Hera]
+      summary: "Get person"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Hera]
+      summary: "Update person"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Hera]
+      summary: "Delete person"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/people/{pid}/contact:
+    post:
+      tags: [Hera]
+      summary: "Contact"
+      servers:
+        - url: http://localhost:19025
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/people/moment:
+    post:
+      tags: [Hera]
+      summary: "Chronos ``special_moment`` (capability ``special_moment_endpoint``)."
+      servers:
+        - url: http://localhost:19025
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/people/daily:
+    post:
+      tags: [Hera]
+      summary: "Agenda job ``hera.daily``."
+      servers:
+        - url: http://localhost:19025
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+
+  # ── Demeter (port 19026) — tools also as REST under /api/food/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/food/today:
+    get:
+      tags: [Demeter]
+      summary: "Today"
+      servers:
+        - url: http://localhost:19026
+      responses:
+        "200": {description: OK}
+
+  /api/food/meals:
+    get:
+      tags: [Demeter]
+      summary: "Meals"
+      servers:
+        - url: http://localhost:19026
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Demeter]
+      summary: "Add meal"
+      servers:
+        - url: http://localhost:19026
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/food/meals/{mid}:
+    put:
+      tags: [Demeter]
+      summary: "Update meal"
+      servers:
+        - url: http://localhost:19026
+      parameters:
+        - {name: mid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Demeter]
+      summary: "Delete meal"
+      servers:
+        - url: http://localhost:19026
+      parameters:
+        - {name: mid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/food/diet:
+    get:
+      tags: [Demeter]
+      summary: "Get diet"
+      servers:
+        - url: http://localhost:19026
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Demeter]
+      summary: "Put diet"
+      servers:
+        - url: http://localhost:19026
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/food/supplements:
+    get:
+      tags: [Demeter]
+      summary: "Supplements"
+      servers:
+        - url: http://localhost:19026
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Demeter]
+      summary: "Add supplement"
+      servers:
+        - url: http://localhost:19026
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/food/supplements/{sid}:
+    put:
+      tags: [Demeter]
+      summary: "Update supplement"
+      servers:
+        - url: http://localhost:19026
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Demeter]
+      summary: "Delete supplement"
+      servers:
+        - url: http://localhost:19026
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/food/supplements/{sid}/take:
+    post:
+      tags: [Demeter]
+      summary: "Take"
+      servers:
+        - url: http://localhost:19026
+      parameters:
+        - {name: sid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+
+  # ── Calliope (port 19027) — tools also as REST under /api/office/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/office:
+    get:
+      tags: [Calliope]
+      summary: "List documents"
+      servers:
+        - url: http://localhost:19027
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Calliope]
+      summary: "Create document"
+      servers:
+        - url: http://localhost:19027
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/office/{did}:
+    get:
+      tags: [Calliope]
+      summary: "Get document"
+      servers:
+        - url: http://localhost:19027
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Calliope]
+      summary: "Delete document"
+      servers:
+        - url: http://localhost:19027
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/office/{did}/file:
+    get:
+      tags: [Calliope]
+      summary: "Download"
+      servers:
+        - url: http://localhost:19027
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+
+  # ── Kairos (port 19028) — tools also as REST under /api/deadlines/tools/<name>; /mcp; recap/transfer/settings as every module
+
+  /api/deadlines:
+    get:
+      tags: [Kairos]
+      summary: "List deadlines"
+      servers:
+        - url: http://localhost:19028
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Kairos]
+      summary: "Add deadline"
+      servers:
+        - url: http://localhost:19028
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/categories:
+    get:
+      tags: [Kairos]
+      summary: "Categories"
+      servers:
+        - url: http://localhost:19028
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/daily:
+    post:
+      tags: [Kairos]
+      summary: "Agenda job ``kairos.daily``."
+      servers:
+        - url: http://localhost:19028
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/mail:
+    post:
+      tags: [Kairos]
+      summary: "Iris rang: mails are waiting in Archive → proposals (async)."
+      servers:
+        - url: http://localhost:19028
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/{did}:
+    get:
+      tags: [Kairos]
+      summary: "Get deadline"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Kairos]
+      summary: "Update deadline"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Kairos]
+      summary: "Delete deadline"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/{did}/done:
+    post:
+      tags: [Kairos]
+      summary: "Done"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/{did}/snooze:
+    post:
+      tags: [Kairos]
+      summary: "Snooze"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/{did}/confirm:
+    post:
+      tags: [Kairos]
+      summary: "Confirm"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines/{did}/dismiss:
+    post:
+      tags: [Kairos]
+      summary: "Dismiss"
+      servers:
+        - url: http://localhost:19028
+      parameters:
+        - {name: did, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/images-store/records:
+    get:
+      tags: [Archive — Apollo store]
+      summary: "Apollo rows by kind/ref/parent/at range/since_seq (Apollo only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Apollo store]
+      summary: "Upsert Apollo rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/images-store/cursor:
+    get:
+      tags: [Archive — Apollo store]
+      summary: "Current cursor of the Apollo store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/appearance-store/records:
+    get:
+      tags: [Archive — Aphrodite store]
+      summary: "Aphrodite rows by kind/ref/parent/at range/since_seq (Aphrodite only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Aphrodite store]
+      summary: "Upsert Aphrodite rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/appearance-store/cursor:
+    get:
+      tags: [Archive — Aphrodite store]
+      summary: "Current cursor of the Aphrodite store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/home-store/records:
+    get:
+      tags: [Archive — Lares store]
+      summary: "Lares rows by kind/ref/parent/at range/since_seq (Lares only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Lares store]
+      summary: "Upsert Lares rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/home-store/cursor:
+    get:
+      tags: [Archive — Lares store]
+      summary: "Current cursor of the Lares store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/people-store/records:
+    get:
+      tags: [Archive — Hera store]
+      summary: "Hera rows by kind/ref/parent/at range/since_seq (Hera only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Hera store]
+      summary: "Upsert Hera rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/people-store/cursor:
+    get:
+      tags: [Archive — Hera store]
+      summary: "Current cursor of the Hera store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/food-store/records:
+    get:
+      tags: [Archive — Demeter store]
+      summary: "Demeter rows by kind/ref/parent/at range/since_seq (Demeter only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Demeter store]
+      summary: "Upsert Demeter rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/food-store/cursor:
+    get:
+      tags: [Archive — Demeter store]
+      summary: "Current cursor of the Demeter store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/office-store/records:
+    get:
+      tags: [Archive — Calliope store]
+      summary: "Calliope rows by kind/ref/parent/at range/since_seq (Calliope only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Calliope store]
+      summary: "Upsert Calliope rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/office-store/cursor:
+    get:
+      tags: [Archive — Calliope store]
+      summary: "Current cursor of the Calliope store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines-store/records:
+    get:
+      tags: [Archive — Kairos store]
+      summary: "Kairos rows by kind/ref/parent/at range/since_seq (Kairos only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Kairos store]
+      summary: "Upsert Kairos rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/deadlines-store/cursor:
+    get:
+      tags: [Archive — Kairos store]
+      summary: "Current cursor of the Kairos store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}

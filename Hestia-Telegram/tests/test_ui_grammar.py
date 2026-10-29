@@ -138,6 +138,13 @@ class TestRender:
         assert r.html.startswith("🏋️ <b>Allenamento di oggi</b>\n<i>Push A</i>\n• Panca · 4×8 · 62,5 kg")
         assert r.actions[0].tool == "fitness_start" and r.actions[0].style == "primary"
 
+    def test_display_files_are_kept_for_sending(self):
+        """W5: generated documents and images travel as Archive blobs under the card."""
+        from telegram_bot.render import render
+        r = render({"display": {"title": "Lettera", "files": [{"blob_id": "b1", "name": "Lettera.pdf",
+                                                                "mime": "application/pdf"}, {"name": "senza id"}]}})
+        assert r.files == [{"blob_id": "b1", "name": "Lettera.pdf", "mime": "application/pdf"}]
+
     def test_generic_list_and_fields_without_ids(self):
         from telegram_bot.render import render
         r = render({"total": 42.5, "id": "abc", "items": [{"id": 1, "title": "Bar", "amount": 3.2,

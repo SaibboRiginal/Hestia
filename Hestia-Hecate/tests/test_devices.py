@@ -168,3 +168,11 @@ def test_feed_publisher_finds_subscribers_and_pushes():
     assert Session.posts == ["http://hub/api/route/hercules/api/hercules/wearable"]
     with pytest.raises(ValueError):
         capabilities({"nope": "/x"})
+
+
+def test_away_state_needs_a_real_signal():
+    """Regression: «false» was true with no phone at all → «Fuori casa» forever. Now «== False» per source."""
+    from app.devices_api import PRESENCE_STATES
+    groups = PRESENCE_STATES["away_from_home"]["when"]
+    assert {g[0]["signal"] for g in groups} == {"phone.home", "home.present"}
+    assert all(g[0]["op"] == "==" and g[0]["value"] is False for g in groups)

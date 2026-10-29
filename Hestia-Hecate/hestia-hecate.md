@@ -311,7 +311,8 @@ Hub. Kinds: `wearable.daily` (Hercules: activities + morning check-in; Hygieia: 
 - **Phone** (Cindy 32): Tasker / MacroDroid POST `https://<tunnel>/api/gateway/phone/push` with header
   `X-Hestia-Phone-Token: <HECATE_PHONE_TOKEN>`. On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
   "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Fuori casa», no
-  effect) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
+  effect; it is on when `phone.home` **or** the house signal `home.present` from Lares is explicitly false — a source
+  that never sent anything does not count, fixed in W5) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
   "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.telefono.app`.
 - Tools (Telegram + WebUI, section «Dispositivi»): `garmin_stato`, `garmin_collega`, `garmin_sincronizza`,
   `garmin_giorno`, `garmin_scollega`, `telefono_stato`. Tests: `tests/test_devices.py`.

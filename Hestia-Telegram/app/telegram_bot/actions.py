@@ -288,7 +288,7 @@ def _run(chat_id, flow: dict, tool: catalog.Tool) -> None:
         rows += [list(r) for r in result.rows]
         if not tool.writes and any(not f.required for f in inputs.fields(tool)):
             rows.append([ui.button("Cambia", "f:edit")])
-        if result.image or result.images or result.document:
+        if result.image or result.images or result.document or result.files:
             _media(chat_id, result)
     back = []
     if area:
@@ -314,6 +314,16 @@ def _media(chat_id, result: Rendered) -> None:
         if result.document:
             name, data = result.document
             core.bot.send_document(chat_id, (name, data))
+        for f in result.files:
+            ok, blob = catalog.route("archive", f"api/blobs/{f['blob_id']}/base64", timeout=30)
+            if not ok or not isinstance(blob, dict) or not blob.get("data_b64"):
+                logger.info("[🔄] event=telegram_result_file_missing fallback=card_only")
+                continue
+            data = base64.b64decode(blob["data_b64"])
+            if str(f.get("mime") or blob.get("mime") or "").startswith("image/"):
+                core.bot.send_photo(chat_id, data)
+            else:
+                core.bot.send_document(chat_id, (str(f.get("name") or "file"), data))
     except Exception as exc:  # noqa: BLE001 — the card is already there
         logger.info("event=telegram_result_media_failed error=%s", exc)
 

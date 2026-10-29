@@ -61,6 +61,7 @@ class Rendered:
     images: list[str] = field(default_factory=list)
     rows: list = field(default_factory=list)        # extra ready-made button rows (copy, url) from local actions
     document: tuple | None = None                   # (filename, bytes) sent as a file under the card
+    files: list[dict] = field(default_factory=list)  # Archive blobs {blob_id, name, mime} (photo or document)
 
 
 def _label_of(key: str) -> str:
@@ -186,7 +187,8 @@ def _display(block: dict, title: str, marker: str) -> Rendered:
                       args=a.get("args") if isinstance(a.get("args"), dict) else {}, style=str(a.get("style") or ""))
                for a in block.get("actions") or [] if isinstance(a, dict) and a.get("label") and a.get("tool")]
     images = [str(i) for i in block.get("images") or [] if str(i).startswith("http")]
-    return Rendered(_cap(html), actions, image=str(block.get("image") or ""), images=images)
+    files = [f for f in block.get("files") or [] if isinstance(f, dict) and f.get("blob_id")][:10]
+    return Rendered(_cap(html), actions, image=str(block.get("image") or ""), images=images, files=files)
 
 
 def _cap(html: str) -> str:

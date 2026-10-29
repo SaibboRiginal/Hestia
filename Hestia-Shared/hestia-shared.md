@@ -86,6 +86,20 @@ local day, not the container's. Plain facts only, never an LLM call; Athena writ
 `piece(..., actions=[{label, command}|{label, service, path, method?, body?}])` (max 2) adds buttons under the recap
 message, even on an empty piece; Athena puts them in the Hermes event (e.g. Hygieia «Racconta la giornata»).
 
+## Module skeleton (`hestia_common.module_kit`)
+
+The common skeleton of the W5 modules (Hera, Kairos, Demeter, Lares, Calliope, Apollo, Aphrodite), so each one holds
+only its own domain code. `ModuleKit(name, port=, api=, domain=, title=, store=, when_to_use=, manual=, tags=)` builds
+the FastAPI app (CORS, `/health` with mirror state, log router, errors: `Invalid` → 422, `NotFound` → 404,
+`StoreUnavailable` → 503), the Hub client `kit.hub` (`ok`/`call` through `/route`, `notify(event)` = Hermes ingest,
+`llm(prompt, use_case=)` = Oracle `/api/llm/chat`, None on failure), the Archive mirror `kit.store`
+(`Store`: LWW rows by cursor, `items/data/upsert/delete`, epoch reset), `kit.settings` (Themis) and `kit.caps`.
+`kit.tools(list, prefix=)` mounts the MCP router and one REST path per tool (`{api}/tools/<name without prefix>`,
+arguments coerced by the schema, errors as `{"error": …}`); `kit.finish()` mounts them **before** the module's own
+`{api}/{id}/…` routes (so `tools/done` is never read as an id) plus the settings router. `agenda_rules(fn)`,
+`on_warm(fn)` (after the first mirror load), `capabilities(fn)`; startup = Hub registration + keepalive, settings,
+agenda rules, warm-up. Tests use `FakeArchive` (store protocol, blobs, recorded Hermes/other calls).
+
 ## Device feeds (`hestia_common.feeds`)
 
 Data from the owner's devices, pushed by Hecate to the modules that asked for it (dossier
@@ -325,9 +339,11 @@ return {**data, "display": display("Spese · ottobre", lines=[f"Speso {money(812
                                    actions=[action("Aggiungi spesa", "finance_add", style="primary")])}
 ```
 `item(title, meta, url=, tone=)`, `action(label, tool, args, style=)` (≤ 6 drawn, missing args are asked),
-`display(title, subtitle=, lines=, items=, actions=, footer=, tone=, image=, images=)`, `strip(payload)` (used by
+`display(title, subtitle=, lines=, items=, actions=, footer=, tone=, image=, images=, files=)`, `strip(payload)` (used by
 Hestia-MCP for non-Telegram clients), `money(value)` → «1.234,50 €». Plain Italian, no emoji, no ids, existing tool
-names only. Contract: swagger `DisplayBlock`.
+names only. Contract: swagger `DisplayBlock`. `file(blob_id, name, mime)` (≤ 10 in `files`): a file kept in Archive
+blobs (a generated document, an image); Telegram fetches it through Hub (`archive api/blobs/{id}/base64`) and sends
+it under the card, as a photo when the mime is `image/*`, otherwise as a document (W5).
 
 ## Presence client (`hestia_common.presence_client`)
 

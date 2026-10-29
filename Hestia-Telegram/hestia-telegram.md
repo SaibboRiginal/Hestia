@@ -38,9 +38,11 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 - **`/` menu** (8): `oggi`, `aree`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`, `aiuto`. Old names keep
   working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
-- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + actions), Aree (11 areas + «Usate
+- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + actions), Aree (17 areas + «Usate
   spesso»), area card (summary tool + primary actions + «Tutte le azioni» by section, «Avanzate» last). One live
   navigation message edited in place; an old message's buttons answer «Questo menu è vecchio» and open a fresh one.
+- **W5 areas**: «Scadenze», «Alimentazione», «Persone», «Casa» (Home Assistant; the real-estate area is now labelled
+  «Immobili» so the two never look alike), «Documenti», «Immagini e aspetto».
 - **Where the menu comes from** (`telegram_bot/menu/`), later wins:
   1. `defaults.py` — data only: keyboard, doors, commands, aliases, areas (key, label, emoji, order, aliases),
      `SERVICE_AREAS`, «Oggi» content;
@@ -72,7 +74,9 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 
 A tool result is drawn by Telegram, never sent to Oracle for formatting:
 - **`display` block** (`hestia_common.display`) when the module returns one: title, subtitle, lines, items (with link
-  and tone), up to 6 next-step actions (tool + preset args + style), images. Today: Hercules (summary, next
+  and tone), up to 6 next-step actions (tool + preset args + style), images, and `files` (Archive blobs
+  `{blob_id, name, mime}`: fetched through Hub `archive api/blobs/{id}/base64` and sent under the card as a photo
+  for `image/*`, otherwise as a document; a missing blob is logged `[🔄]` and the card stays). Today: Hercules (summary, next
   workout), Chronos (agenda, agenda today), Hygieia (today, overview), Plutus (summary, search, add), Wardrobe
   (summary, suggest), Scout (listings, stats). Hestia-MCP strips `display` for every other client.
 - otherwise a **generic renderer**: lists → `•` lines (title + 2–3 meta, no ids, no «n/d»), money/date fields in
