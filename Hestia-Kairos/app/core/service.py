@@ -189,8 +189,10 @@ class Deadlines:
 
     def snooze(self, ref: str, days: int = 3) -> dict:
         d = self.find(ref)
+        # «Fra N giorni» = remind again then: the stage already notified must fire once more after the pause
         data = {**{k: v for k, v in d.items() if k != "id"}, "snoozed_until":
-                (self.today() + timedelta(days=max(1, int(days)))).isoformat(), "updated_at": now_iso()}
+                (self.today() + timedelta(days=max(1, int(days)))).isoformat(), "notified": {},
+                "updated_at": now_iso()}
         self.store.upsert("deadline", d["id"], data, at=f"{d['due']}T12:00:00+00:00")
         return self.view({**data, "id": d["id"]})
 

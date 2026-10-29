@@ -34,11 +34,10 @@ EXPECTED_TEST_FILES: dict[str, list[str]] = {
         "tests/conftest.py",
         "tests/TESTING.md",
         "tests/test_message_format.py",
-        "tests/test_command_catalog.py",
+        "tests/test_menu_and_actions.py",
         "tests/test_bot_handlers.py",
-        "tests/test_command_execution.py",
+        "tests/test_ui_grammar.py",
         "tests/test_control_api.py",
-        "tests/test_formatters.py",
     ],
     "Hestia-Athena": [
         "tests/conftest.py",

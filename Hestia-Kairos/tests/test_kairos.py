@@ -85,6 +85,18 @@ def test_daily_notices_once_per_stage(kd):
     assert deadlines.list()[0]["snoozed_until"] > deadlines.today().isoformat()
 
 
+def test_snooze_reminds_again_after_the_pause(kd):
+    """Regression: «Fra 3 giorni» kept the stage marked as notified, so the reminder never came back."""
+    deadlines, _, _ = kd
+    real_today = deadlines.today()
+    d = deadlines.save({"title": "Bollo", "due": (real_today + timedelta(days=10)).isoformat(), "category": "bollo"})
+    assert deadlines.daily() == {"sent": 1}
+    deadlines.snooze(d["id"], 3)
+    assert deadlines.daily() == {"sent": 0}                      # still paused
+    deadlines.today = lambda: real_today + timedelta(days=3)
+    assert deadlines.daily() == {"sent": 1}                      # reminded again after the pause
+
+
 @pytest.mark.api
 def test_endpoints_and_tools(monkeypatch):
     from fastapi.testclient import TestClient

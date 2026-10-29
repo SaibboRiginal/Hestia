@@ -22,7 +22,7 @@ due day, amount, recurrence, lead time and a practical advice
   that talks about a deadline **and** names a clear future date becomes a `proposed` deadline and a Hermes card
   «Nuova scadenza?» with «Aggiungi» / «No». Nothing enters the calendar before the owner confirms. Each mail once.
 - Agenda job `kairos.daily` (08:30): one notice at the lead time and one on the day, with «Fatto» and
-  «Fra 3 giorni» (snooze); a stage is notified once per due day.
+  «Fra 3 giorni» (snooze: reminds again after the pause); a stage is notified once per due day.
 - Recap piece «Scadenze» (next 7 days). Export/import section `scadenze`.
 
 ## API (`/api/deadlines`)

@@ -42,6 +42,7 @@ jobs:
           - Calliope
           - Kairos
           - Metis
+          - MCP
 
     steps:
       - uses: actions/checkout@v4
