@@ -7,3 +7,4 @@
 - [x] Placeholder banners + Gemini prompt (`docs/assets/BANNER.md`)
 - [x] Root CHANGELOG
 - [x] Real banners from Gemini in place (Marko, 2026-10-29)
+- [x] v1.2: How it works in plain words, developer section only links

@@ -73,28 +73,14 @@ can do in the other.
 
 ## How it works
 
-```mermaid
-flowchart LR
-    U((You)) --> C["Telegram · Web app · Voice<br/>external AIs over MCP"]
-    C --> HUB{{Hub}}
-    HUB --> OR["Oracle<br/>the brain"]
-    OR --> M[("Local model<br/>or cloud")]
-    HUB --> CORE["Core services<br/>agenda · mail · voice · settings<br/>notifications · monitoring"]
-    HUB --> DOM["Domain modules<br/>training · expenses · house<br/>wardrobe · people · …"]
-    CORE --> AR[("Archive<br/>PostgreSQL")]
-    DOM --> AR
-```
+1. **You ask.** Write or speak to Hestia from Telegram or the web app, in your own words.
+2. **It takes care of it.** The assistant understands what you want and hands it to the right part of Hestia:
+   agenda, training, expenses, house and so on.
+3. **You decide.** You get the answer, or a button to confirm before anything important happens, and a
+   notification later when something needs you.
 
-Hestia is a set of small services in Docker, each with one job:
-
-- **Hub** is the only door: services find and call each other only through it.
-- **Oracle** is the only one that talks to AI models; **Echo** the only one that listens and speaks.
-- **Archive** is the only owner of the database; **Hecate** the only one that talks to Google, Microsoft and the
-  other outside providers.
-- **Themis** keeps every setting in one place: the assistant may propose a change, you confirm it.
-
-New skills are new modules, generated from a template, that plug into all of this by themselves. The full picture,
-module by module: [architecture and rules](docs/ARCHITECTURE.md) · [dependency and flow map](architecture-and-flow-map.md).
+Everything runs on your own machine. Each skill is a separate piece, so a new one can be added without touching
+the others. Curious about what is under the hood? See the [architecture](docs/ARCHITECTURE.md).
 
 ## Quick start
 
@@ -198,23 +184,9 @@ access, connecting an external AI) is in **[docs/SETUP.md](docs/SETUP.md)**.
 
 ## For developers
 
-```bash
-python -m pytest -q -m "unit or api or format" Hestia-Oracle/tests   # fast tests of one service, no network
-python tools/cloud_test.py all                                       # the whole stack, end to end
-create-service.bat Markets module 8012                               # scaffold a new module (Windows)
-```
-
-```
-Hestia-<Name>/              one service: app/, tests/, hestia-<name>.md, Dockerfile
-Hestia-Shared/hestia_common shared libraries
-Hestia-WebUI/               .NET 9 backend (app/) + Angular frontend (frontend/)
-docs/                       architecture, setup, rules, task dossiers (work/)
-tools/                      setup, test bench, governance checks
-```
-
-Every change follows a short work protocol (spec, progress and changelog in `docs/work/`) described in
-[CLAUDE.md](CLAUDE.md), written for AI developers and readable by humans. CI runs every service's tests and the
-governance checks that keep docs, API contract and code in sync.
+How to run the tests, the test bench and how to add a new module: [TESTING.md](TESTING.md),
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md) (the work protocol, written for AI
+developers and readable by humans).
 
 ## Documentation
 

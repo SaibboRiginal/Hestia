@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.1 | user via external chat (project thread «Riscrivere il README più chiaro») | done |
+| 1.2 | user via external chat (project thread «Riscrivere il README più chiaro») | done |
 
 ## Goal
 `readme.md` had grown into a deep reference (every env variable, MCP tool names, tunnel commands). A first-time
@@ -12,7 +12,7 @@ Compact, very clear, well organised visually, with a banner at the top that Mark
 ## Scope
 - New `readme.md`: banner (`<picture>` with `docs/assets/banner-dark.png` / `banner-light.png`), tagline, five
   badges, three pillars, «What it does» by area, simple mermaid + the four house rules, five-step quick start,
-  Codespace link, «Using it» table, full module table folded in `<details>`, developer commands, docs index.
+  Codespace link, «Using it» table, full module table folded in `<details>`, developer links, docs index.
 - Knowledge is moved, not deleted: configuration tables, optional integrations, Forge flow and «Connect an
   external AI» (tokens, OAuth connectors, named tunnel, external MCP servers) → new `docs/SETUP.md`; roadmap →
   `docs/ARCHITECTURE.md` (Persistent Hub registry dropped: done in PR #16).
