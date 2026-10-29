@@ -40,3 +40,5 @@ Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by 
 ## Tests
 
 `Hestia-Lares/tests/test_lares.py` (fake Home Assistant, no network).
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Casa widget no longer repeats «Casa» under the frame title and calls `markEmpty()` when there is nothing to show.

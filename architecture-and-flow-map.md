@@ -358,3 +358,10 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    Telegram document.
 6. Nutrition: Demeter `/api/coach/needs` (supplements as slots, «with workout») → Chronos weekly plan; intake →
    `coach.done`; meal without numbers → Oracle `demeter.stima` in the background.
+
+### Texts for people and look (dossier `docs/work/2026-10-29-revisione-e-test-frontend` v2)
+1. Tool `summary` (MCPTool) → module `tools/list` → Hub catalog (`summary`, `telegram_group`) → Hestia-MCP
+   `/api/mcp/ui/tools` and Metis `/api/metis/scopri` add `area*` + text for people (`hestia_common.areas`) →
+   WebUI «Comandi» and «Scopri» group by area; Telegram's menus use the same `AREAS`.
+2. Look: Impostazioni → Aspetto → ThemeService (theme × style × knobs, localStorage) → tokens and
+   `data-style/glass/motion` on `<html>` → Angular pages and plugin shadow roots (tokens inherit).

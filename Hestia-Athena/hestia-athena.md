@@ -368,3 +368,5 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   `POST /api/athena/memory/proposals/{pid}/apply|dismiss` · `POST /api/athena/docs/check`.
   Tools: `memory_rivedi`, `memory_learning`, `memory_learning_undo`, `docs_check`; `athena_thinking` and
   `athena_signals` are on Telegram too.
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Pensieri»; agenda titles for people: «Riordina la memoria», «Cura delle abilità», «Riflessione nei momenti liberi»; offline text «Pensieri non raggiungibili».

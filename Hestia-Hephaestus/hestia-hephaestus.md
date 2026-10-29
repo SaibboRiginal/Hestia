@@ -410,3 +410,5 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
   (+30–90 s) → `POST /api/hephaestus/forge/tasks/{id}/resume`; the run restarts from that commit with a «RIPRESA»
   note. Three restarts without progress (`limit_restarts`) → failed. Budget-window tasks go back to `scheduled`.
 - Endpoint: `POST /api/hephaestus/forge/tasks/{task_id}/resume`. Task fields: `review`, `team`, `limit_restarts`.
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Sviluppo»; agenda titles «Sviluppo programmato» and «Riprendi lo sviluppo: …».

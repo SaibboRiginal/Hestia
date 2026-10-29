@@ -42,3 +42,5 @@ Pages **Persone** (`hera-people`: list, search, new person, upcoming dates) and 
 ## Tests
 
 `Hestia-Hera/tests/test_hera.py` and `tests/test_webui_plugin.py` (FakeArchive, no network).
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Persone widget calls `markEmpty()` when there is nothing coming up, so the Home cell shrinks.

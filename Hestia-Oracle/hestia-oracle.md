@@ -553,3 +553,5 @@ Every user chat (text and document, see the rule above) pings Chronos presence (
 
 ## Tests note (2026-10-29)
 Tests that stub the chat engine replace `main.engine` with their own `MagicMock` (via `monkeypatch.setattr(main, "engine", …)`) instead of patching attributes of the shared one: other test modules may leave it spec'd, which made `test_chat_endpoint_composes_queued_batch` depend on test order.
+
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Assistente»; the brain page is «Richieste e modelli» («Cosa fa l'assistente: richieste, modelli, token»); widget offline text «Assistente non raggiungibile».

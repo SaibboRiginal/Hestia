@@ -1484,6 +1484,8 @@ paths:
       description: |
         Tools (MCP, client `*`), commands, and client plugin contributions (page, widget, quick_action, bundle)
         read from each module's `capabilities.ui_manifest`. See docs/work/2026-10-17-client-plugins/SPEC.md §4.2.
+        Tool and command entries carry `summary` (one line for people, when the module wrote one) and
+        `telegram_group` (the area, see hestia_common.areas).
       servers:
         - url: http://localhost:19001
       parameters:
@@ -6891,7 +6893,7 @@ paths:
       servers:
         - url: http://localhost:19013
       responses:
-        "200": {description: "{commands: [{command, title, description, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
+        "200": {description: "{commands: [{command, title, description (for the model), summary (for people, hestia_common.areas.for_people), area, area_label, area_order, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
 
   /api/mcp/ui/tools/call:
     post:
@@ -8048,7 +8050,7 @@ paths:
         - {name: client, in: query, schema: {type: string, default: webui}}
         - {name: limit, in: query, schema: {type: integer, default: 12}}
       responses:
-        "200": {description: "{client, items[{tool, title, description, module, uses, reason}], total, tools}"}
+        "200": {description: "{client, items[{tool, title, description (for people), module, area, area_label, area_icon, area_order, uses, reason}], total, tools}"}
 
   /api/metis/tools/adesso:
     get:
