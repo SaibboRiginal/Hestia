@@ -1,320 +1,234 @@
 <div align="center">
 
-# 🏛️ Hestia
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.png">
+  <img alt="Hestia, a personal AI assistant that lives on your own hardware" src="docs/assets/banner-dark.png" width="100%">
+</picture>
 
-**A self-hosted, local-first personal AI assistant that runs your agenda, reads your mail, watches itself — and develops its own code.**
+<br>
+
+**A personal AI assistant that lives on your own hardware, looks after your days and improves its own code.**
 
 [![Tests](https://github.com/SaibboRiginal/Hestia/actions/workflows/tests.yml/badge.svg)](https://github.com/SaibboRiginal/Hestia/actions/workflows/tests.yml)
+![Self-hosted](https://img.shields.io/badge/self--hosted-local--first-0f172a)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-microservices-009688?logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
-![Ollama](https://img.shields.io/badge/LLM-Ollama%20%7C%20Gemini%20%7C%20Claude%20Code-000000?logo=ollama&logoColor=white)
-![.NET](https://img.shields.io/badge/.NET-9-512BD4?logo=dotnet&logoColor=white)
-![Angular](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)
-![Telegram](https://img.shields.io/badge/Client-Telegram-26A5E4?logo=telegram&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Features](#-features) ·
-[Quick start](#-quick-start) ·
-[Configuration](#%EF%B8%8F-configuration) ·
-[Architecture](#-architecture) ·
-[Roadmap](#-roadmap) ·
-[Docs](#-documentation)
+[What it is](#what-it-is) ·
+[What it does](#what-it-does) ·
+[How it works](#how-it-works) ·
+[Quick start](#quick-start) ·
+[Using it](#using-it) ·
+[Docs](#documentation)
 
 </div>
 
 ---
 
-Hestia is a modular assistant made of small **FastAPI microservices** (plus a .NET/Angular web app) that run in
-Docker on your own hardware — a PC, a home server, or a Raspberry Pi for the always-on core. You talk to it from
-**Telegram** or the **WebUI**; a local model through **Ollama** does the thinking, with **Gemini** as a cloud
-fallback and **Claude Code** as an optional coding engine.
+## What it is
 
-What makes it different: Hestia **improves itself**. Ask *"sviluppa …"* ("build …") and its Forge opens a git
-worktree, lets a coding engine implement the change, runs the tests, waits for your approval, merges, restarts
-the affected containers and rolls back automatically if the health check fails.
+Hestia is a private assistant you run at home, on a PC, a small server or a Raspberry Pi. You talk to it in plain
+language from **Telegram**, from its **web app** or by **voice**, and it takes care of your calendar, mail, training,
+expenses, house and much more. It thinks with a **local model** by default and can use cloud models when you want.
 
-## ✨ Features
+<table>
+<tr>
+<td width="33%" valign="top">
 
-| | |
+**Private by design**<br>
+Your data stays in your database, on your machine. Cloud models and services are optional, one key at a time.
+
+</td>
+<td width="33%" valign="top">
+
+**One assistant, many skills**<br>
+Every area of your life is a small module. Add one and the assistant can use it everywhere, at once.
+
+</td>
+<td width="33%" valign="top">
+
+**It improves itself**<br>
+Say *«sviluppa …»* and Hestia writes the change, tests it, asks you, deploys it and rolls back if it breaks.
+
+</td>
+</tr>
+</table>
+
+## What it does
+
+| Area | In short |
 |---|---|
-| 💬 **Conversational agent** | One ReAct tool-calling loop over every service's tools (via an MCP gateway), visible thinking, streamed answers, file/photo understanding (PDF, images). |
-| 🧠 **Long-term memory** | Selective, Claude-like memory in PostgreSQL + pgvector: the assistant decides what to remember and recalls it semantically. |
-| 📅 **Calendars + its own agenda** | Unified CRUD over Google Calendar and Outlook. Hestia also keeps an *assistant agenda* where every module's schedule lives as data (events, tasks, recurring jobs, windows) that you can move, pause or skip. ICS feed for your phone. |
-| ✉️ **Email** | Gmail via OAuth: search, threads, send. New mail arrives by **push**: one watcher (Hecate) hands it to Iris, which delivers it to the modules that subscribed — no module polls the mailbox. |
-| 🎙️ **Voice** | Echo listens and speaks for every client: voice messages in Telegram and in the WebUI chat, «Ascolta» under any reply, a live mode where you talk and Hestia answers by voice (same assistant, no external live service), notifications also as voice where a module wants it. Local engines (Whisper, Kokoro, Piper) or cloud ones in chains with fallback; your recordings are kept. |
-| 💾 **Backup on Google Drive** | Every night an encrypted copy of all data goes to a `.hestia` folder on your Drive (Hestia sees only its own files); once a month it is restored into a test database to prove it works. History and one-click rollback (with undo) in the settings. |
-| 🔔 **Proactive notifications** | Subscriptions ("tell me when…"), deduplicated alerts, reminders, focus briefs. |
-| 👁️ **Self-monitoring** | Argus watches health and logs, raises incidents and proposes fixes; Hephaestus runs guarded remediation. |
-| 🛠️ **Self-development (Forge)** | Natural-language change requests → isolated branch → coding engine (local, cloud or Claude Code) → tests → your approval → merge → restart → auto-rollback. |
-| 🧭 **Idle cognition** | Athena observes the system when you're not using it, scores ideas for relevance and proposes improvements. Every evening it also reflects on your life in layers: each area (training, self care, spending, wardrobe) publishes short signals about its own data, Athena links the weeks across areas and adds what is worth watching to the daily recap. |
-| 🦉 **Continuous learning** | Metis turns your feedback into datasets (ChatML/Alpaca/ShareGPT) and orchestrates LoRA training. |
-| 🏠 **Domain modules** | Examples: Scout reads real-estate listing emails, tracks listings and alerts you on matches; Plutus «Spese» tracks expenses from PayPal mails and the monthly bank statement PDF (upload it or send it in chat), with budgets and subscriptions. New domains are new services. |
-| 📦 **Export and import** | Move what you configured and added from one Hestia to another, granularly: modules → sections → single items, as one `.hestia` file. Modes *Aggiungi / Unisci / Sostituisci*, a preview before anything is written, a restore point before every import. Never keys, tokens or passwords. WebUI *Impostazioni → Esporta e importa* or `tools/hestia_transfer.py`. |
-| 🌐 **Two clients** | Telegram bot (fail-closed allow-list) and a themable WebUI: chat, commands, documents, Google-like calendar, Forge "Sviluppo" page with live transcripts and diffs. |
+| **Talk** | Chat with visible reasoning and tools, voice in and out, files and photos understood, long-term memory you can review. |
+| **Plan** | Google and Outlook calendars, the assistant's own agenda, a weekly plan built around your events, routines in words, deadlines, a morning and evening recap. |
+| **Look after you** | Gym coach, self care, nutrition, wardrobe and outfits from the weather, important people and their dates. |
+| **Money and home** | Expenses from mails and bank statements with budgets, Home Assistant lights and scenes, real-estate listings from mail. |
+| **Create** | Real PDF, Word and Excel documents, images through your ComfyUI. |
+| **Keep itself well** | Health monitoring with automatic repair, nightly encrypted backup on Google Drive, export and import of your data. |
+| **Be proactive** | Notifications only where you are, «Adesso» (what you usually do now), «Scopri» (what you never tried), ideas from idle reflection. |
 
-## 🚀 Quick start
+Each area has its own page in the web app and its own menu on Telegram: everything you can do in one client, you
+can do in the other.
 
-### Prerequisites
+## How it works
 
-- **Docker** with Compose v2 (Docker Desktop on Windows/macOS).
-- **Python 3** on the host (only for the one-shot env setup script).
-- **[Ollama](https://ollama.com)** running on the host (default `http://localhost:11434`).
-- A **Telegram bot token** from [@BotFather](https://t.me/BotFather) and your numeric Telegram user id
-  (e.g. from [@userinfobot](https://t.me/userinfobot)).
+```mermaid
+flowchart LR
+    U((You)) --> C["Telegram · Web app · Voice<br/>external AIs over MCP"]
+    C --> HUB{{Hub}}
+    HUB --> OR["Oracle<br/>the brain"]
+    OR --> M[("Local model<br/>or cloud")]
+    HUB --> CORE["Core services<br/>agenda · mail · voice · settings<br/>notifications · monitoring"]
+    HUB --> DOM["Domain modules<br/>training · expenses · house<br/>wardrobe · people · …"]
+    CORE --> AR[("Archive<br/>PostgreSQL")]
+    DOM --> AR
+```
 
-### 1. Clone and create the env files
+Hestia is a set of small services in Docker, each with one job:
+
+- **Hub** is the only door: services find and call each other only through it.
+- **Oracle** is the only one that talks to AI models; **Echo** the only one that listens and speaks.
+- **Archive** is the only owner of the database; **Hecate** the only one that talks to Google, Microsoft and the
+  other outside providers.
+- **Themis** keeps every setting in one place: the assistant may propose a change, you confirm it.
+
+New skills are new modules, generated from a template, that plug into all of this by themselves. The full picture,
+module by module: [architecture and rules](docs/ARCHITECTURE.md) · [dependency and flow map](architecture-and-flow-map.md).
+
+## Quick start
+
+**You need** Docker with Compose v2, Python 3, [Ollama](https://ollama.com) on the host and a Telegram bot token
+from [@BotFather](https://t.me/BotFather) (plus your numeric Telegram id, e.g. from [@userinfobot](https://t.me/userinfobot)).
+
+**1. Clone and create the env files**
 
 ```bash
 git clone https://github.com/SaibboRiginal/Hestia.git
 cd Hestia
-python tools/init_env.py        # copies every .env.example to .env (never overwrites)
+python tools/init_env.py        # copies every .env.example to .env, never overwrites
 ```
 
-### 2. Set the minimum configuration
-
-In `Hestia-Telegram/app/.env`:
+**2. Fill in three values**
 
 ```dotenv
+# Hestia-Telegram/app/.env
 TELEGRAM_BOT_TOKEN=<token from @BotFather>
 ALLOWED_USER_ID=<your numeric Telegram id>
-```
 
-In the root `.env`, pick your own database password (URL-safe characters; it is applied when the database is
-first created):
-
-```dotenv
+# .env (repository root)
 HESTIA_DB_PASSWORD=<a long random password>
 ```
 
-Reminders and alerts go to the first `ALLOWED_USER_ID`: your id is configured only there.
-
-### 3. Pull the local models
+**3. Pull the local models**
 
 ```bash
 ollama pull gemma4:e4b
 ollama pull qwen3-embedding:0.6b
 ```
 
-### 4. Start the stack
+**4. Start**
 
 ```bash
 docker network create hestia_net
 docker compose -f docker-compose.global.yml up -d --build
 ```
 
-On Windows, `up-all.bat --build` does the same (network included); `up-all.bat` alone restarts everything after
-a code change.
+On Windows `up-all.bat --build` does both.
 
-### 5. Say hi
+**5. Say hi** to your bot on Telegram, then send `/webui_token` for a login link to the web app.
 
-- **Telegram:** write to your bot. Send `/webui_token` to get a login link for the web app.
-- **WebUI:** <http://localhost:19015>
-- **API docs (Swagger):** <http://localhost:19000>
+> **Just want to look around?** Open it in a [GitHub Codespace](https://codespaces.new/SaibboRiginal/Hestia): the
+> whole stack starts by itself and prints a login link. See [TESTING.md](TESTING.md#banco-di-prova-cloud-whole-stack-no-local-pc).
 
-That's it: everything else below is optional.
+## Using it
 
-## ⚙️ Configuration
+| Where | How |
+|---|---|
+| **Telegram** | The main client. Keyboard *Oggi · Aree · Notifiche · Impostazioni*, voice notes, guided actions with confirmation. |
+| **Web app** | <http://localhost:19015>: chat, a page for every area, calendar, settings, development tasks. Opens inside Telegram too. |
+| **Voice** | Speak in either client, listen to any answer, or use the live mode and talk back and forth. |
+| **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in *Sistema › Accessi AI*. |
+| **API** | Swagger for every service at <http://localhost:19000>. |
 
-Every `.env` is documented in its `.env.example`, and every compose variable has an inline comment.
+Everything beyond the first start (cloud models, Google Calendar and Gmail, Drive backup, Home Assistant, remote
+access, connecting an external AI) is in **[docs/SETUP.md](docs/SETUP.md)**.
 
-### Minimum
+<details>
+<summary><b>All modules</b></summary>
 
-| Where | Variable | Purpose |
+<br>
+
+| Module | Port | Role |
 |---|---|---|
-| `Hestia-Telegram/app/.env` | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather. |
-| `Hestia-Telegram/app/.env` | `ALLOWED_USER_ID` | Who may talk to the bot (empty = nobody, fail closed). The first id also receives reminders and alerts. |
-| root `.env` | `HESTIA_DB_PASSWORD` | Postgres password (the DB port is bound to `127.0.0.1` only). |
-
-### Optional integrations
-
-| Feature | What to set | Notes |
-|---|---|---|
-| Cloud models (Gemini, DeepSeek, Claude API…) | one key per provider in `Hestia-Oracle/app/.env`: `ORACLE_KEY_GEMINI`, `ORACLE_KEY_DEEPSEEK`, `ORACLE_KEY_CLAUDE_API`… | A provider without its key is skipped by every chain; with it, its models can be steps of a chain (e.g. after the local model). |
-| Different models | WebUI → Oracle → Cervello → **Modelli** | Providers (name, standard, address), chains of models (order = fallback, quota skip) and the chain/mode of every use case each module declares. Usage per module and conversation: tab **Uso**. |
-| Claude Code / Codex as Hestia's brain | Modelli → «Modalità del cervello» = Esterna; `CLAUDE_CODE_OAUTH_TOKEN` (Claude) or `ORACLE_INSTALL_CODEX=1` + `codex login` (Codex) | The agent runs the loop with Hestia's tools over MCP; Hestia keeps history and memory. |
-| Google Calendar + Gmail | `HECATE_ENABLE_PROVIDER_GOOGLE=true` + OAuth client in `Hestia-Hecate/app/.env` | Step by step: [`Hestia-Hecate/hestia-hecate.md`](Hestia-Hecate/hestia-hecate.md) → *Google setup*. From the phone, ask the bot "collega Google Calendar". |
-| Backup on Google Drive | `HESTIA_BACKUP_PASSPHRASE` in the root `.env` (also in a password manager: without it the backups cannot be opened) + *Google Drive API* enabled and scope `drive.file` on the Google OAuth app | Then WebUI → Impostazioni → Sistema → Archivio → Backup → «Collega Google Drive». Terminal: `python tools/hestia_backup.py list / restore / undo`. Details: [`Hestia-Archive/hestia-archive.md`](Hestia-Archive/hestia-archive.md). |
-| Outlook calendar | `HECATE_ENABLE_PROVIDER_MICROSOFT=true` + `OUTLOOK_*` | Same file. |
-| Claude Code as coding engine | `CLAUDE_CODE_OAUTH_TOKEN` in `Hestia-Oracle/app/.env` | From `claude setup-token` (Pro/Max). Forge then can use the `claude` engine. |
-| Forge behaviour | `HEPHAESTUS_FORGE_*` in `Hestia-Hephaestus/app/.env` | Engine order, auto-rollback, deploy command. |
-| WebUI hardening | `WEBUI_ADMIN_SECRET`, `WEBUI_SECRET_KEY`, `WEBUI_ICS_KEY` in the root `.env` | See [`Hestia-WebUI/hestia-webui.md`](Hestia-WebUI/hestia-webui.md). |
-| Remote WebUI access | `cloudflare-tunnel.bat` | Cloudflare tunnel to port 19015: quick (random URL) or named (`CLOUDFLARE_TUNNEL_NAME` + `CLOUDFLARE_TUNNEL_HOSTNAME`). |
-| Resilient web fetching | Run Atlas on the host: `Hestia-Atlas/run_host.bat` / `run_host.sh` | Browser-assisted page fetching for modules. |
-| Raspberry Pi core | `ARCHIVE_DATABASE_URL` in the root `.env`, then `docker compose -f docker-compose.rpi.yml up -d --build` | Always-on services only, external Postgres. |
-
-## 🏗️ Architecture
-
-Every service registers in the **Hub** and talks to the others only through it. **Oracle** is the only service
-that calls model providers, **Archive** is the only owner of the database, **Hecate** is the only one that
-touches external providers.
-
-```mermaid
-flowchart LR
-    U((You)) --> TG[Telegram bot]
-    U --> WEB[WebUI]
-    TG --> HUB{{Hub<br/>registry + router}}
-    WEB --> HUB
-    HUB --> OR[Oracle<br/>LLM core + agent]
-    OR --> OL[(Ollama / Gemini /<br/>Claude Code)]
-    HUB --> MCP[MCP gateway]
-    HUB --> AR[(Archive<br/>Postgres + pgvector)]
-    HUB --> HE[Hecate<br/>Google · Microsoft]
-    HUB --> CH[Chronos<br/>calendars + agenda]
-    HUB --> IR[Iris<br/>email]
-    HUB --> HM[Hermes<br/>notifications]
-    HUB --> AG[Argus<br/>monitoring]
-    HUB --> HP[Hephaestus<br/>Forge]
-    HUB --> AT[Athena<br/>idle cognition]
-    HUB --> ME[Metis<br/>learning]
-    HUB --> SC[Scout<br/>real estate]
-    HUB --> PL[Plutus<br/>expenses]
-    HUB --> EC[Echo<br/>voice]
-```
-
-| Service | Port | Role |
-|---|---|---|
-| [Hub](Hestia-Hub/hestia-hub.md) | 19001 | Service registry, the only router, command discovery |
-| [Archive](Hestia-Archive/hestia-archive.md) | 19002 | The only database owner: memory, entities, chat, calendar items, documents, feedback |
-| [Hecate](Hestia-Hecate/hestia-hecate.md) | 19003 | Provider gateway: Google/Microsoft OAuth, Calendar, Gmail, Drive files |
-| [Oracle](Hestia-Oracle/hestia-oracle.md) | 19004 | LLM core: chat agent loop, memory, `/api/llm/*`, Claude Code runner (no speech engines: voice is Echo) |
-| [Hermes](Hestia-Hermes/hestia-hermes.md) | 19005 | Event dispatch and notifications |
-| [Scout](Hestia-Scout/hestia-scout.md) | 19006 | Domain module: real-estate listings from email |
-| [Chronos](Hestia-Chronos/hestia-chronos.md) | 19007 | Calendars and the assistant agenda |
-| [Argus](Hestia-Argus/hestia-argus.md) | 19008 | Health and log monitoring, alerts, repair rechecks |
-| [Athena](Hestia-Athena/hestia-athena.md) | 19009 | Idle cognition (system) and layered life reflection: observe, think, propose |
-| [Hephaestus](Hestia-Hephaestus/hestia-hephaestus.md) | 19010 | Guarded remediation and **Forge** (self-development) |
+| [Hub](Hestia-Hub/hestia-hub.md) | 19001 | Service registry and the only router |
+| [Archive](Hestia-Archive/hestia-archive.md) | 19002 | The only database owner: memory, chat, calendar items, documents, every module's data |
+| [Hecate](Hestia-Hecate/hestia-hecate.md) | 19003 | Outside providers: Google and Microsoft, Gmail, Drive, weather, Garmin, phone |
+| [Oracle](Hestia-Oracle/hestia-oracle.md) | 19004 | The brain: agent loop, model chains, memory, Claude Code runner |
+| [Hermes](Hestia-Hermes/hestia-hermes.md) | 19005 | Notifications and confirmations to your clients |
+| [Scout](Hestia-Scout/hestia-scout.md) | 19006 | Real-estate listings from mail |
+| [Chronos](Hestia-Chronos/hestia-chronos.md) | 19007 | Calendars, the assistant's agenda, weekly plan, routines |
+| [Argus](Hestia-Argus/hestia-argus.md) | 19008 | Health, logs and performance monitoring |
+| [Athena](Hestia-Athena/hestia-athena.md) | 19009 | Idle reflection, ideas, daily recap |
+| [Hephaestus](Hestia-Hephaestus/hestia-hephaestus.md) | 19010 | Guarded repairs and **Forge** (self-development) |
 | [Dummy](Hestia-Dummy/hestia-dummy.md) | 19011 | Integration-test target |
-| [Iris](Hestia-Iris/hestia-iris.md) | 19012 | Email domain logic |
-| [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | Hestia's one MCP server: Oracle, Telegram, WebUI and external AIs (with an access token, through the WebUI door `/mcp`) list and run every module's tools here |
+| [Iris](Hestia-Iris/hestia-iris.md) | 19012 | Mail: delivers new messages to the modules that asked |
+| [MCP](Hestia-MCP/hestia-mcp.md) | 19013 | The one tool catalog for every client and external AI |
 | [Metis](Hestia-Metis/hestia-metis.md) | 19014 | Datasets from feedback, benchmarks, LoRA training |
-| [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web client |
-| [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings: modules declare, every client and the assistant read/change, you confirm |
-| [Plutus](Hestia-Plutus/hestia-plutus.md) | 19020 | Domain module «Spese»: expenses from PayPal mails (push) and bank statement PDFs, budgets, subscriptions |
-| [Echo](Hestia-Echo/hestia-echo.md) | 19021 | Voice core: speech → text and text → speech, files and live streams, providers and chains like Oracle |
-| [Apollo](Hestia-Apollo/hestia-apollo.md) | 19022 | Domain module «Immagini»: images through a remote ComfyUI (flows you upload) |
-| [Aphrodite](Hestia-Aphrodite/hestia-aphrodite.md) | 19023 | Domain module «Aspetto»: themes of holidays and seasons, special days, a pet |
-| [Lares](Hestia-Lares/hestia-lares.md) | 19024 | Domain module «Casa»: lights, sensors and scenes on Home Assistant |
-| [Hera](Hestia-Hera/hestia-hera.md) | 19025 | Domain module «Persone»: birthdays, gift ideas, who to call |
-| [Demeter](Hestia-Demeter/hestia-demeter.md) | 19026 | Domain module «Alimentazione»: diet, meals, supplements |
-| [Calliope](Hestia-Calliope/hestia-calliope.md) | 19027 | Domain module «Documenti»: real PDF, Word and Excel files |
-| [Kairos](Hestia-Kairos/hestia-kairos.md) | 19028 | Domain module «Scadenze»: bills, insurance, car tax, documents |
-| [Swagger](Hestia-Swagger/swagger.yml) | 19000 | API contract of every service |
+| [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web app |
+| [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings |
+| [Wardrobe](Hestia-Wardrobe/hestia-wardrobe.md) | 19017 | «Guardaroba»: clothes, outfits, packing |
+| [Hygieia](Hestia-Hygieia/hestia-hygieia.md) | 19018 | «Cura di sé»: routines, products, diary |
+| [Hercules](Hestia-Hercules/hestia-hercules.md) | 19019 | «Allenamento»: gym coach and outdoor activities |
+| [Plutus](Hestia-Plutus/hestia-plutus.md) | 19020 | «Spese»: expenses, budgets, subscriptions |
+| [Echo](Hestia-Echo/hestia-echo.md) | 19021 | Voice: speech to text and text to speech |
+| [Apollo](Hestia-Apollo/hestia-apollo.md) | 19022 | «Immagini»: images through ComfyUI |
+| [Aphrodite](Hestia-Aphrodite/hestia-aphrodite.md) | 19023 | «Aspetto»: themes for holidays and seasons, a pet |
+| [Lares](Hestia-Lares/hestia-lares.md) | 19024 | «Casa»: Home Assistant |
+| [Hera](Hestia-Hera/hestia-hera.md) | 19025 | «Persone»: important people, dates, gift ideas |
+| [Demeter](Hestia-Demeter/hestia-demeter.md) | 19026 | «Alimentazione»: diet, meals, supplements |
+| [Calliope](Hestia-Calliope/hestia-calliope.md) | 19027 | «Documenti»: PDF, Word and Excel files |
+| [Kairos](Hestia-Kairos/hestia-kairos.md) | 19028 | «Scadenze»: bills, insurance, renewals |
 | [Telegram](Hestia-Telegram/hestia-telegram.md) | — | Main chat client |
-| [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web fetch gateway running outside Docker |
-| [Shared](Hestia-Shared/hestia-shared.md) | — | `hestia_common`: logging, startup, MCP helpers, agenda and settings clients |
+| [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web page fetching, runs outside Docker |
+| [Shared](Hestia-Shared/hestia-shared.md) | — | `hestia_common`, the libraries every Python service uses |
+| [Swagger](Hestia-Swagger/swagger.yml) | 19000 | API contract of every service |
 
-Deeper dive: [dependency and flow map](architecture-and-flow-map.md) ·
-[engineering rules and contracts](docs/ARCHITECTURE.md).
+</details>
 
-### How Hestia changes its own code
-
-```mermaid
-flowchart LR
-    A["You: 'sviluppa …'<br/>or Athena / Argus proposal"] --> B[Forge task]
-    B --> C[git worktree<br/>auto/forge/&lt;id&gt;]
-    C --> D[Coding engine<br/>local · cloud · Claude Code]
-    D --> E[Tests]
-    E --> F{Your approval}
-    F -->|approve| G[Merge + restart<br/>affected containers]
-    G --> H{Health check}
-    H -->|fail| I[Automatic rollback]
-    F -->|reject| J[Discarded]
-```
-
-Permission modes per engine (`ask` · `auto` · `full_auto`) are set from Telegram, and autonomous Claude Code work
-only runs inside agenda windows you control.
-
-### Connect an external AI (Collegare un'AI esterna)
-
-Claude Code, Claude Desktop, Cursor, VS Code, Gemini CLI or Codex CLI can read Hestia's development list, add notes
-and hand in fixes through MCP, without Forge or a local model doing the coding.
-
-1. WebUI → *Sistema* → **Accessi AI** → *Nuovo token*: name it ("Claude Code PC"), pick *Solo lettura* or
-   *Lettura e scrittura*, an expiry and, if you want, only some tools. The token is shown **once**.
-2. Paste the ready line it shows, e.g. for Claude Code:
-   `claude mcp add --transport http hestia http://localhost:19015/mcp --header "Authorization: Bearer hst_…"`
-   (other clients: the JSON block on the same card).
-3. Ask your AI: "elenca i task di sviluppo di Hestia", "guarda il task a1b2c3 e il suo dossier".
-
-What it can do: `forge_tasks`, `forge_task`, `forge_task_diff`, `forge_dossier`, `forge_status`, `system_status`,
-`system_log`, `settings_search`, `settings_get`; with write access also `forge_develop` (a proposal),
-`forge_task_note`, `forge_submit_branch` ("fixed on this branch": Forge fetches it, runs its tests and asks you as
-usual) and `settings_propose` (you confirm). Approving, merging and rolling back stay yours. Every call is logged and
-writes show up silently in Notifiche; revoke or renew a token in one tap.
-
-**claude.ai (web and phone) and ChatGPT** speak only OAuth: add a *custom connector* with the public address
-`https://<your-hostname>/mcp`. The app opens Hestia, you log in to the WebUI and the **Accessi AI** page shows a
-consent card ("Collegare Claude?") where you pick read or read-write, the tools and the expiry; *Consenti* sends you
-back to the app. The connection shows up in the same list (badge *OAuth*): revoke it there whenever you want.
-
-**Fixed address (named tunnel).** The quick tunnel of `cloudflare-tunnel.bat` changes URL at every start; connectors
-need a fixed one. Once, with a free Cloudflare account and a domain on it:
-
-```
-cloudflared tunnel login
-cloudflared tunnel create hestia
-cloudflared tunnel route dns hestia hestia.<your-domain>
-```
-
-then put `CLOUDFLARE_TUNNEL_NAME=hestia` and `CLOUDFLARE_TUNNEL_HOSTNAME=hestia.<your-domain>` in the root `.env`
-(never in the repo). `cloudflare-tunnel.bat` then runs the named tunnel and prints the MCP address. On the same PC
-you can always use `http://localhost:19015/mcp` without any tunnel.
-
-**Servizi esterni**: third-party MCP servers Hestia may use are listed on the same page; their address and key live
-only in `Hestia-Hecate/app/.env` (`HECATE_MCP_<NAME>_URL`, `HECATE_MCP_<NAME>_KEY`).
-
-## 🗂️ Project structure
-
-```
-Hestia-<Name>/              one service: app/ (code), tests/, hestia-<name>.md, Dockerfile
-Hestia-Shared/hestia_common shared libraries used by every Python service
-Hestia-WebUI/               .NET 9 backend (app/) + Angular frontend (frontend/)
-Hestia-Swagger/swagger.yml  API contract
-docker-compose.global.yml   whole stack · docker-compose.rpi.yml  always-on core
-docs/                       ARCHITECTURE.md, AI-GUIDE.md, work/ (task dossiers)
-tools/                      init_env.py, governance checks
-templates/                  service template used by create-service.bat
-```
-
-## 🧪 Development
+## For developers
 
 ```bash
-# fast tests for one service (no network needed)
-python -m pytest -q -m "unit or api or format" Hestia-Oracle/tests
-
-# scaffold a new service that already follows the Hub contract (Windows)
-create-service.bat Markets module 8012
+python -m pytest -q -m "unit or api or format" Hestia-Oracle/tests   # fast tests of one service, no network
+python tools/cloud_test.py all                                       # the whole stack, end to end
+create-service.bat Markets module 8012                               # scaffold a new module (Windows)
 ```
 
-- Test markers and plans: [`TESTING.md`](TESTING.md). CI runs every service's suite on each push.
-- Governance checks (`tools/governance/`) keep docs, Swagger and command contracts in sync with code.
-- Every task follows a small work protocol (spec, progress, changelog in `docs/work/`), described in
-  [`CLAUDE.md`](CLAUDE.md) — written for AI developers, readable by humans.
+```
+Hestia-<Name>/              one service: app/, tests/, hestia-<name>.md, Dockerfile
+Hestia-Shared/hestia_common shared libraries
+Hestia-WebUI/               .NET 9 backend (app/) + Angular frontend (frontend/)
+docs/                       architecture, setup, rules, task dossiers (work/)
+tools/                      setup, test bench, governance checks
+```
 
-## 🗺️ Roadmap
+Every change follows a short work protocol (spec, progress and changelog in `docs/work/`) described in
+[CLAUDE.md](CLAUDE.md), written for AI developers and readable by humans. CI runs every service's tests and the
+governance checks that keep docs, API contract and code in sync.
 
-- **Real rollback for remediation**: Hephaestus runbook remediation still records rollback as metadata only
-  (Forge already has true git revert).
-- **Metis**: live benchmark runner, persistent datasets, built-in LoRA training script.
-- **Persistent Hub registry**: today services re-register after a Hub restart.
-- **Multi-node deployment**: shared Hub discovery across nodes, health-gated progressive rollout, automatic
-  rollback on failed SLO checks.
-- **More domain modules**: every new capability is a new service generated from the template.
-
-## 📚 Documentation
+## Documentation
 
 | Topic | Where |
 |---|---|
-| Engineering rules and contracts | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
-| Full context for AI developers | [`CLAUDE.md`](CLAUDE.md) → [`docs/AI-GUIDE.md`](docs/AI-GUIDE.md) |
-| Dependency graph and flows | [`architecture-and-flow-map.md`](architecture-and-flow-map.md) |
-| Each service | `Hestia-<Name>/hestia-<name>.md` |
-| API | [`Hestia-Swagger/swagger.yml`](Hestia-Swagger/swagger.yml) |
-| WebUI design system | [`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`](Hestia-WebUI/frontend/DESIGN-SYSTEM.md) |
-| History | [`CHANGELOG.md`](CHANGELOG.md), [`docs/work/`](docs/work) |
+| Setup, configuration, integrations | [docs/SETUP.md](docs/SETUP.md) |
+| Architecture, rules and contracts | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [flow map](architecture-and-flow-map.md) |
+| Each module | `Hestia-<Name>/hestia-<name>.md` (links in *All modules* above) |
+| API | [Hestia-Swagger/swagger.yml](Hestia-Swagger/swagger.yml) |
+| Product rules | [docs/REGOLE-DI-MARKO.md](docs/REGOLE-DI-MARKO.md) |
+| Testing | [TESTING.md](TESTING.md) |
+| For AI developers | [CLAUDE.md](CLAUDE.md) → [docs/AI-GUIDE.md](docs/AI-GUIDE.md) |
+| History | [CHANGELOG.md](CHANGELOG.md) |
 
-## 📄 License
+## License
 
-Released under the [MIT License](LICENSE).
+[MIT](LICENSE)

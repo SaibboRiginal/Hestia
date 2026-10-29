@@ -521,7 +521,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 
 For every behavior or contract change, update documentation in the same change set:
 
-1. Global rules/contracts: `docs/ARCHITECTURE.md` (this file). Public front page: `readme.md` (update it only when the user-facing picture changes: capabilities, quick start, roadmap).
+1. Global rules/contracts: `docs/ARCHITECTURE.md` (this file). Public front page: `readme.md` (update it only when the user-facing picture changes: capabilities, quick start, module list); full setup and integrations: `docs/SETUP.md`.
 2. Impacted service docs: `Hestia-*/hestia-*.md`.
 3. API contract docs: `Hestia-Swagger/swagger.yml` whenever endpoints, schemas, or Hub-routed command contracts change.
 
@@ -672,6 +672,17 @@ This creates:
 - Hub registry is in memory: every service (Python ones, Hermes, the .NET WebUI) re-registers every 60 s, so it comes
   back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
   missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).
+
+## Roadmap
+
+(Moved here from the public `readme.md` on 2026-10-29.)
+
+- **Real rollback for remediation**: Hephaestus runbook remediation still records rollback as metadata only
+  (Forge already has true git revert).
+- **Metis**: live benchmark runner, persistent datasets, built-in LoRA training script.
+- **Multi-node deployment**: shared Hub discovery across nodes, health-gated progressive rollout, automatic
+  rollback on failed SLO checks.
+- **More domain modules**: every new capability is a new service generated from the template.
 
 ## Dependency and Flow Map
 

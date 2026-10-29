@@ -219,7 +219,7 @@ and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossi
 
 | Need | File |
 |---|---|
-| Global rules/contracts | `docs/ARCHITECTURE.md` (public front page: `readme.md`) |
+| Global rules/contracts | `docs/ARCHITECTURE.md` (public front page: `readme.md`; full setup: `docs/SETUP.md`) |
 | Dependency graph + flows | `architecture-and-flow-map.md` |
 | Test plans | `TESTING.md`, `Hestia-*/tests/TESTING.md`; whole-stack run: `tools/cloud_test.py` |
 | Task history | `CHANGELOG.md`, `docs/work/*/` |
