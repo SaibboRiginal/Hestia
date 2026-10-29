@@ -1,8 +1,8 @@
 # README banner
 
 `readme.md` shows `banner-dark.png` on GitHub's dark theme and `banner-light.png` on the light one (`<picture>`).
-The files in the repository are plain placeholders: replace them with the generated images **keeping the same
-names**, size about **1600 × 400** (4:1), PNG, under 1 MB each.
+The current images (1584 × 672) were generated with the prompt below on 2026-10-29. To change them, overwrite the files **keeping the same
+names**, about the same size and ratio, PNG, under 1 MB each.
 
 ## Gemini prompt (attach the assistant picture as the subject reference)
 
