@@ -21,4 +21,6 @@
   - Home widgets Alimentazione, Prossime date, Scadenze, Self care repeated their own title under the frame title
   - `<hxk-quicklog>` chips: label and hint ran together («…183940da fare oggi») — `.col` missing in its shadow styles
   - Self care: «1 passi» → «1 passo»
-- [ ] UI/UX analysis + proposals (`/mnt/project-files/revisione-ui/`)
+- [x] Fix PR #51 (visual fixes)
+- [x] UI/UX analysis: 10 proposals for Marko in a Claude Doc «Hestia: test del frontend e proposte UI/UX», screenshots in the project files `revisione-ui/` (texts for the user instead of module names/prompt text, 44 px touch targets, phone page header, seasonal effect only on Home, phone agenda in list view, one «Sistema», empty widgets, one status line, plurals, outfit chip)
+- [ ] Marko picks the proposals to implement
