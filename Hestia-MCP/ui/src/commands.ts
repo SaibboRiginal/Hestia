@@ -44,6 +44,7 @@ export class McpCommands extends HestiaElement {
     .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .sub { color: var(--text-3); font-size: 13px; }
     .search { width: min(100%, 260px); }
+    .head > .grow { min-width: min(100%, 240px); }   /* on a phone the title takes its line, search wraps below */
     .body { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
     .list { max-height: calc(100vh - 190px); overflow-y: auto; padding: 6px; }
     h4 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin: 12px 6px 4px;

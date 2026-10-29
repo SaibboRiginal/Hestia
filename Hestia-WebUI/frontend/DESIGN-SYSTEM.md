@@ -158,6 +158,8 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   feedback with `host.toast`, `host.confirm`; keep offline data in `host.store(name)`; react to `host.on('refresh'|'online'|…)`.
 - Widgets get a padded body (12 px) and `ctx.size` (`s|m|l|xl` = 1×1, 2×1, 2×2, 4×2 cells of 170 px); content must
   fit or scroll inside. On phone every widget is one column and one row tall (min 150 px, grows with content).
+  The frame already draws the widget title and a chevron to its page: the widget body never repeats them. In a
+  flex column filling the cell, keep the key line (`.big`, title) from shrinking (`flex-shrink: 0`), or `truncate` hides it whole.
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
 - Sidebar (`layout/shell.component.ts`): fixed top (logo, Crea con Hestia) and bottom (Impostazioni, Esci, state),

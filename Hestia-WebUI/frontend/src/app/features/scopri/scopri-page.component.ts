@@ -61,6 +61,7 @@ import { PluginsService } from '../plugins/plugins.service';
     .f { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
     .r { flex: 1; font-size: 12px; color: var(--text-3); }
     @media (max-width: 720px) { .body { padding: 14px 12px 28px; } }
+    @media (max-width: 860px) { hx-page-header { padding-left: 56px; } }   /* room for the shell's menu button */
   `],
 })
 export class ScopriPageComponent implements OnInit {

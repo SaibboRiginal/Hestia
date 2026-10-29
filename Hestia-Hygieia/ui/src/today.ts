@@ -183,7 +183,7 @@ export class HygieiaToday extends HestiaElement {
         <div class="ico">${done ? icon('check', 20, 'success') : (r.areas || []).length ? icon('droplet', 20, 'info') : slotIcon(r.slot, 20)}</div>
         <div class="grow click" @click=${() => { this.open = isOpen ? '' : r.routine_id; }}>
           <div class="row"><span class="name truncate">${r.name}</span>${r.favorite ? icon('star', 14, 'warning') : nothing}</div>
-          <div class="small muted">${r.state === 'blocked' || r.state === 'paused' ? r.reason : r.hint}${included ? ` · ${included} passi` : ''}${r.minutes && !done ? ` · ~${r.minutes} min` : ''}</div>
+          <div class="small muted">${r.state === 'blocked' || r.state === 'paused' ? r.reason : r.hint}${included ? ` · ${included} ${included === 1 ? 'passo' : 'passi'}` : ''}${r.minutes && !done ? ` · ~${r.minutes} min` : ''}</div>
         </div>
         ${done ? html`<hxk-button size="sm" variant="ghost" icon="undo" @click=${() => this.undo(r)}>Annulla</hxk-button>`
           : html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>

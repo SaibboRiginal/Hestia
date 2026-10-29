@@ -190,7 +190,6 @@ export class DemeterWidget extends HestiaElement {
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const todo = s.supplements.filter((x: any) => !x.taken);
     return html`<div class="col click" style="gap:8px" @click=${() => this.host.navigate('oggi')}>
-      <span class="small muted">Alimentazione di oggi</span>
       ${progress(s.kcal, s.kcal_target, 'kcal')}
       ${this.ctx?.size !== 's' ? html`<div class="small muted">${s.meals.length} past${s.meals.length === 1 ? 'o' : 'i'}${todo.length ? ` · da prendere: ${todo.map((x: any) => x.name).join(', ')}` : ''}</div>` : nothing}
     </div>`;
