@@ -101,7 +101,7 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
       (it described memory notes, which live in Oracle)
 - [x] Telegram: taps pushed at every action start; Oggi card «Adesso» with reasons (fallback fixed actions);
       `/adesso`, `/scopri`
-- [x] tests: `Hestia-Metis/tests/test_usage.py`, Telegram `TestAdesso` + commands
+- [x] tests: `Hestia-Metis/tests/test_usage.py` (Metis added to the CI matrix, it was missing), Telegram `TestAdesso` + commands
 - [x] docs: hestia-metis.md, hestia-telegram.md, hestia-archive.md, swagger, ARCHITECTURE, flow map, SPEC v1.6
 - [ ] PR + CI green + merge
 - Left for W7: WebUI Home «Adesso» row, Ctrl+K palette entries, «Scopri» page, WebUI taps (pages + actions).
