@@ -34,7 +34,7 @@
 
 ## WebUI plugin
 
-Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against the diet, meals added, edited, deleted with «Annulla», supplements «Preso»), **Dieta** (`demeter-diet`) and **Integratori** (`demeter-supplements`: weekdays, pause); widget «Alimentazione di oggi». Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against the diet, meals added, edited, deleted with «Annulla», supplements «Preso»), **Dieta** (`demeter-diet`) and **Integratori** (`demeter-supplements`: weekdays, pause); widget «Alimentazione di oggi» (the frame draws the title, the body shows only kcal and meals). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

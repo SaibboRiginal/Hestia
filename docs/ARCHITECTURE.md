@@ -596,6 +596,7 @@ No code-only behavior changes are considered complete without synchronized docs.
 3. `check_command_contracts.py` enforces command metadata quality and contract-drift safeguards.
 4. Rule updates must keep policy text and automation logic aligned in the same change set.
 5. Every service with a `tests/` folder is in the CI matrix (`.github/workflows/tests.yml`), Hestia-MCP included.
+6. Home widgets: the dashboard frame draws title and link; a widget body never repeats them (`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`).
 
 ## Messaging Contract (Global UX Rules)
 

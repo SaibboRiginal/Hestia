@@ -78,7 +78,7 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
 
 **WebUI plugin** (core module, *Sistema*, bundle `ui/` → `/ui/dist/webui/mcp.js`, outside `/code` so the compose dev
 mount does not hide it):
-- page *Comandi & MCP* (`comandi` → `mcp-commands`, order 190; ported from the built-in WebUI page, SPEC §A4): every
+- page *Comandi & MCP* (`comandi` → `mcp-commands`, order 190; on a phone the title takes its own line and the search wraps below; ported from the built-in WebUI page, SPEC §A4): every
   tool the WebUI sees grouped by module, search, description, `METHOD path`, arguments from the JSON schema (enum →
   select, boolean → sì/no, array/object → JSON or `a, b, c`), *Esegui* (a tool that changes something asks first),
   raw result; tools with `response_mode=oracle_natural` then get Oracle's readable text (second call, own 30 s budget
