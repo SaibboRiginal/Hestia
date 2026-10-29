@@ -7,7 +7,8 @@ import { definePlugin } from '@hestia/webui-sdk';
 import { AthenaRecaps } from './recaps';
 import { AthenaThoughts } from './thoughts';
 import { AthenaSignals } from './signals';
+import { AthenaLearning } from './learning';
 import { AthenaLastWidget } from './widgets';
 
 definePlugin({ 'athena-thoughts': AthenaThoughts, 'athena-signals': AthenaSignals, 'athena-last-widget': AthenaLastWidget,
-               'athena-recaps': AthenaRecaps });
+               'athena-recaps': AthenaRecaps, 'athena-learning': AthenaLearning });

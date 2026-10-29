@@ -44,7 +44,7 @@ _results: list[dict] = []          # today's results kept for the recap (in memo
 # Cindy 27: gallery of ready-made routines. Fields are filled by the owner; `{name}` placeholders in the
 # instruction / pre-check arguments take their values.
 TEMPLATES: list[dict] = [
-    {"id": "radar", "label": "Radar notizie", "icon": "radar",
+    {"id": "radar", "label": "Radar notizie", "icon": "search",
      "help": "Ogni mattina le notizie importanti su un tema, con la fonte e perché ti interessano.",
      "fields": {"topic": {"label": "Tema", "required": True}},
      "recurrence": "FREQ=DAILY;BYHOUR=7;BYMINUTE=30", "deliver": "recap",

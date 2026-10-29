@@ -206,6 +206,8 @@ flowchart LR
    go under *Sistema* and their `auto` widgets build the *Sistema* dashboard.
 4. `settings_panel` contributions are shown inside the module's own settings (*Impostazioni → Sistema → <module>*),
    e.g. Archive's «Backup».
+5. A page may need a route of its module outside the prefix: the module serves the same handler under the prefix
+   too (Chronos `/api/agenda/routines`, `/api/agenda/special`), never a wider proxy rule.
 
 ### Assistant agenda flow (rules as data)
 1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.

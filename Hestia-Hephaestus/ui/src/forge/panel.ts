@@ -5,6 +5,7 @@
 import { LitElement, css, html, nothing, kitStyles, tokens } from '@hestia/webui-sdk';
 import { icon } from './icons';
 import { ENGINE_LABEL, FILE_STATUS, duration, meta, shortDate } from './models';
+import type { ForgeTask } from './models';
 import type { ForgeStore, SidePanel } from './store';
 
 const TABS: { id: SidePanel; label: string; icon: string }[] = [
@@ -65,6 +66,8 @@ export class HephaestusTaskPanel extends LitElement {
     .err-log { color: var(--danger); }
     .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
     p.small { color: var(--text-2); font-size: 12.5px; }
+    .issue { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+    .issue:first-of-type { border-top: 0; }
   `];
 
   private openRepo(detail: Record<string, string>) {
@@ -96,6 +99,7 @@ export class HephaestusTaskPanel extends LitElement {
         <dt>Creato</dt><dd>${shortDate(t.created_at)}</dd>
       </dl>
       ${t.error ? html`<div class="err">${icon('alert', 14)} ${t.error}</div>` : nothing}
+      ${this.review(t)}
       ${t.deploy_plan ? html`<h4>Piano di deploy</h4><p class="small">
         ${t.deploy_plan.restart.length ? html`Riavvio: <b>${t.deploy_plan.restart.join(', ')}</b>. ` : nothing}
         ${t.deploy_plan.rebuild.length ? html`Da ricostruire a mano: <code>up-all.bat --build ${t.deploy_plan.rebuild.join(' ')}</code>. ` : nothing}
@@ -114,6 +118,21 @@ export class HephaestusTaskPanel extends LitElement {
       <ol class="timeline">${history.map(h => html`<li><span class="dot" data-tone=${meta(h.state).tone}></span>
         <div><b>${meta(h.state).label}</b>&nbsp; <span class="muted">${shortDate(h.ts)}</span>
           ${h.note ? html`<div class="note">${h.note}</div>` : nothing}</div></li>`)}</ol>`;
+  }
+
+  /** Review card: the independent check's verdict, issues by priority with the evidence, the round of fixes. */
+  private review(t: ForgeTask) {
+    const r = t.review;
+    if (!r) return nothing;
+    const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'non_disponibile' ? 'neutral' : r.blocking ? 'danger' : 'warning';
+    const head = r.verdict === 'ok' ? 'Nessun problema trovato' : r.verdict === 'non_disponibile' ? 'Non disponibile ora'
+      : `${r.issues.length} ${r.issues.length === 1 ? 'punto' : 'punti'}${r.blocking ? `, ${r.blocking} importanti` : ''}`;
+    const ptone: Record<string, string> = { alta: 'danger', media: 'warning', bassa: 'neutral' };
+    return html`<h4>Revisione automatica</h4>
+      <div class="review"><div class="tsum"><hxk-badge tone=${tone}>${head}</hxk-badge>
+        ${r.rounds ? html`<span class="small muted">dopo un giro di correzioni (${r.first?.length ?? 0} punti trovati la prima volta)</span>` : nothing}</div>
+      ${r.issues.map(i => html`<div class="issue"><hxk-badge tone=${ptone[i.priority] || 'neutral'}>${i.priority}</hxk-badge>
+        <div><span class="mono">${i.file || '—'}</span> ${i.problem}${i.evidence ? html`<div class="small muted">Prova: ${i.evidence}</div>` : nothing}</div></div>`)}</div>`;
   }
 
   private files() {

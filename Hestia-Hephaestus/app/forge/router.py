@@ -291,7 +291,7 @@ def overview(task: dict) -> dict:
     return out
 
 
-_ACTIVE_STATES = {"queued", "running", "approved", "merging"}
+_ACTIVE_STATES = {"queued", "running", "reviewing", "waiting_limit", "approved", "merging"}
 
 
 def counts(rows: list[dict]) -> dict[str, Any]:

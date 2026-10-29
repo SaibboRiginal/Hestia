@@ -259,6 +259,18 @@ app.include_router(create_log_control_router("hestia_hecate"))
 app.include_router(hecate_settings.router())
 app.include_router(devices_api.router)
 
+# ── WebUI plugin «Dispositivi» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
+from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
+UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
+ui = PluginClient("hecate", title="Hecate", icon="link", color="teal", kind="core", dist=UI_DIST,
+                  description="Gli account e i dispositivi collegati: calendario, mail, meteo, orologio, telefono.",
+                  version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
+ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
+         pages=[plugin_page("dispositivi", "Dispositivi", element="hecate-devices", icon="pulse", order=105,
+                            help="L'orologio Garmin (sonno e attività ogni mattina) e il telefono Android (a casa, in "
+                                 "carica, notifiche delle app scelte): collegali e guarda l'ultimo dato arrivato.")])
+app.include_router(ui.router())
+
 vault = ArchiveClient()
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
 _calendar_registry = CalendarProviderRegistry()
@@ -568,6 +580,7 @@ def register_on_hub_startup():
             "module_tool_domains": ["calendar", "weather", "devices"],
             "owns_tool_domains": ["weather", "devices"],
             **recap_contract.capabilities(),
+            **ui.capabilities(service_base_url),
         },
     }
     try:

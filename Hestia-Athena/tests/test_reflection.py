@@ -245,7 +245,7 @@ class TestApi:
     def test_manifest_has_segnali_page_and_tool(self, client):
         c, _ = client
         pages = c.get("/api/ui/manifest").json()["clients"]["webui"]["page"]
-        assert [(p["id"], p["order"]) for p in pages] == [("pensieri", 130), ("segnali", 131), ("recap", 132)]
+        assert [(p["id"], p["order"]) for p in pages] == [("pensieri", 130), ("segnali", 131), ("recap", 132), ("imparato", 133)]
         tools = c.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).json()["result"]["tools"]
         t = next(x for x in tools if x["name"] == "athena_signals")
         assert "external" in t["clients"] and t["path"] == "/api/athena/signals"

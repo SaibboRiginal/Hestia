@@ -174,7 +174,11 @@ ui.webui(
                             "riflessione confronta. Le osservazioni che ne nascono arrivano nel recap della sera."),
            plugin_page("recap", "Recap", element="athena-recaps", icon="note", order=132,
                        help="I recap della giornata: il testo che ti è arrivato e, sotto, i fatti di ogni area da "
-                            "cui è stato scritto. L'orario si sposta nel calendario.")],
+                            "cui è stato scritto. L'orario si sposta nel calendario."),
+           plugin_page("imparato", "Cosa ho imparato", element="athena-learning", icon="memory", order=133,
+                       help="Ogni cosa che l'assistente ha imparato, cambiato o lasciato andare sulla tua memoria, "
+                            "con la frase tua da cui viene. «Annulla» la toglie; «Rivedi cosa sai di me» propone "
+                            "di sistemare doppioni e contraddizioni.")],
     widgets=[plugin_widget("ultimo", "Ultimo pensiero", element="athena-last-widget", sizes=["m", "l"], auto=True,
                            open_page="pensieri", icon="zap", help="L'ultimo ciclo di Athena e cosa ne è uscito.")],
     quick_actions=[plugin_quick_action("pensa", "Fai pensare Athena", "POST", f"{API}/think", icon="zap",

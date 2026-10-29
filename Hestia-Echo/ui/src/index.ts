@@ -5,5 +5,6 @@
 import { definePlugin } from '@hestia/webui-sdk';
 import { EchoBlocks } from './blocks';
 import { EchoVoice } from './voice';
+import { EchoYourVoice } from './yourvoice';
 
-definePlugin({ 'echo-voice': EchoVoice, 'echo-blocks': EchoBlocks });
+definePlugin({ 'echo-voice': EchoVoice, 'echo-blocks': EchoBlocks, 'echo-your-voice': EchoYourVoice });

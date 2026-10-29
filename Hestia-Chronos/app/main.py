@@ -84,7 +84,14 @@ ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
                      parent="agenda",
                      help="Le attività che i moduli mettono in agenda da soli (es. il recap della sera), con lo "
                           "stato: se ne hai eliminata, messa in pausa o cambiata una, «Ripristina» la rimette come "
-                          "prevista. Sotto, i modelli da aggiungere.")],
+                          "prevista. Sotto, i modelli da aggiungere."),
+                page("routine", "Routine", element="chronos-routines", icon="repeat", order=153,
+                     help="Quello che l'assistente fa da solo, scritto in parole: a un orario o quando arriva una "
+                          "mail. Prima controlla se c'è qualcosa di nuovo; il risultato arriva come notifica o nel "
+                          "recap della sera."),
+                page("eventi", "Eventi speciali", element="chronos-special", icon="star", order=154,
+                     help="Compleanni, anniversari e date importanti con l'avviso qualche giorno prima. Il tuo "
+                          "compleanno viene dalle impostazioni personali, le date delle persone da Persone.")],
          widgets=[widget("oggi-nel-piano", "Oggi nel piano", element="chronos-today-widget", sizes=["s", "m"],
                          auto=True, open_page="settimana", icon="calendar",
                          help="Cosa c'è oggi nel piano della settimana, con l'orario."),

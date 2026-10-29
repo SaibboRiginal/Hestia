@@ -27,7 +27,10 @@ ui = PluginClient("argus", title="Argus", icon="pulse", color="green", kind="cor
 ui.webui(
     entry="argus.js", api_prefix=f"{API}/",
     pages=[page("salute", "Salute", element="argus-health", icon="pulse", order=110,
-                help="Salute di ogni servizio nel tempo, incidenti aperti e cosa ha fatto Argus, log con filtri.")],
+                help="Salute di ogni servizio nel tempo, incidenti aperti e cosa ha fatto Argus, log con filtri."),
+           page("prestazioni", "Prestazioni", element="argus-performance", icon="chart", order=111,
+                help="Memoria, processore, tempo di risposta e riavvii di ogni modulo, il giro attraverso l'hub, "
+                     "quanto pesano database e file e quanto crescono al giorno. Oltre i limiti arriva un avviso.")],
     widgets=[widget("stato", "Stato sistema", element="argus-status-widget", sizes=["s", "m", "l"], auto=True,
                     open_page="salute", icon="pulse",
                     help="Servizi sani su totale e incidenti aperti, dall'ultimo controllo di Argus.")],
