@@ -760,7 +760,7 @@ def flow_mcp(ctx: dict) -> None:
         lines = r.get("setup") or r.get("lines") or {}
         claude = lines.get("claude_code") or lines.get("claude") or json.dumps(lines)[:160]
         need("/mcp" in json.dumps(lines), f"riga di configurazione senza /mcp: {str(lines)[:200]}")
-        return f"token creato; riga: {str(claude)[:140]}"
+        return f"token creato; riga: {re.sub(r'hst_[A-Za-z0-9_-]+', 'hst_…', str(claude))[:140]}"
     step(A, "Accessi AI → nuovo token di sola lettura con la riga `claude mcp add`")(create)
     if "mcp_read" not in ctx:
         return
@@ -871,10 +871,14 @@ def flow_webui(ctx: dict) -> None:
     step(A, "Giro delle pagine — telefono 360 px, tema scuro")(tour("phone", {"width": 360, "height": 780}, "dark"))
 
     def home_quick():
+        # the hygieia flow already logged them today: undo once so the chip is «to do» again
+        for c in api("hygieia", "GET", "api/selfcare/quick/routines") or []:
+            if c.get("label", "").startswith("Banco Crema mani") and c.get("state") == "done":
+                api("hygieia", "DELETE", f"api/selfcare/quick/routine/{c['id']}", ok=())
         page = br.new_page(viewport={"width": 390, "height": 844})
         page.goto(f"{WEBUI}/home", wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(2000)
-        chip = page.get_by_text(re.compile(r"Banco Crema mani|Banco Viso sera")).first
+        chip = page.locator("hx-quick-strip").get_by_text(re.compile(r"Banco Crema mani")).first
         need(chip.count(), "nessun chip self care sulla Home")
         before = len(api("hygieia", "GET", "api/selfcare/logs", query={"days": 1})["items"])
         chip.click()

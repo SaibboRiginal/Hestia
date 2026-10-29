@@ -35,6 +35,7 @@ from core.services import activity_log
 from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_THRESHOLD
 from core.services import stream_emitter
 from core.services import user_questions
+from core.services import chat_sessions
 from core.services import prompt_config
 from core.services.context_builder import ContextBuilder
 from core.services.memory_intent import (
@@ -2378,6 +2379,29 @@ class OracleEngine:
             },
             handler=_memory_search_handler,
         ))
+
+        # ── Conversations (Cindy 26): Oracle's own tools, so not in the module commands; default = this chat ──
+        def _chat_tag_handler(**kw) -> tuple[bool, dict]:
+            try:
+                out = chat_sessions.tool_tag(_mem_svc._route_archive, **{"session_id": session_id, **{
+                    k: v for k, v in kw.items() if v not in (None, "")}})
+            except chat_sessions.ChatSessionsError as exc:
+                return (False, {"error": exc.detail})
+            return (True, out)
+
+        def _chat_list_handler(**kw) -> tuple[bool, dict]:
+            try:
+                return (True, chat_sessions.tool_list(_mem_svc._route_archive, **{
+                    k: v for k, v in kw.items() if v not in (None, "")}))
+            except chat_sessions.ChatSessionsError as exc:
+                return (False, {"error": exc.detail})
+
+        tools.append(ToolDefinition(
+            name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
+            handler=_chat_tag_handler, writes=True, title="Etichetta la conversazione", method="POST"))
+        tools.append(ToolDefinition(
+            name="chat_list", description=chat_sessions.LIST_DESCRIPTION, parameters=chat_sessions.LIST_PARAMETERS,
+            handler=_chat_list_handler, title="Le tue conversazioni", method="GET"))
 
         # ── Asking the user (always available, v3 A): the turn stops on it ─────
         tools.append(ToolDefinition(

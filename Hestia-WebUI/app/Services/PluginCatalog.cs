@@ -58,9 +58,12 @@ public class PluginCatalog
         return _prefixes.TryGetValue(module, out var p) ? p : null;
     }
 
-    /// <summary>True when <paramref name="path"/> (no traversal) is under the module's prefix.</summary>
+    /// <summary>True when the path (no traversal) is under the plugin's prefix; the prefix itself without its trailing slash counts too
+    /// (<c>/api/deadlines</c> for <c>/api/deadlines/</c>: the list and create calls of a module's API root).</summary>
     public static bool Allowed(string prefix, string path)
-        => !string.IsNullOrEmpty(prefix) && path.StartsWith(prefix, StringComparison.Ordinal)
+        => !string.IsNullOrEmpty(prefix)
+           && (path.StartsWith(prefix, StringComparison.Ordinal)
+               || (prefix.EndsWith('/') && prefix.Length > 1 && path == prefix[..^1]))
            && !path.Contains("..") && !path.Contains('\\') && !path.Contains("//");
 
     private static Dictionary<string, string> ReadPrefixes(JsonElement cat)

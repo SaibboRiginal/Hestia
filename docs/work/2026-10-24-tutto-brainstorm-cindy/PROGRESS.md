@@ -154,5 +154,18 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] tests: Archive `test_chat_sessions.py`, Oracle `test_chat_sessions.py`; `ng build` ok; docs, swagger
 - [x] PR + CI green + merge (PR #45, c958b4b)
 
-## W8
-- [ ] see SPEC §3
+## W8 — integration, bench, fixes, docs
+- [x] cross-checks: every new module in compose, CI matrix, readme, AI-GUIDE, ARCHITECTURE, swagger, its doc, tests, ui
+- [x] bench flows `vita` (Scadenze, Persone, Alimentazione, Documenti, Aspetto, Immagini, Casa, chat tool) and `shell`
+      (Metis taps → Adesso/Scopri, chat tag/pin/reopen, push key, new pages in Chromium); catalog check covers every
+      module with pages; Chromium path `chrome-linux64`
+- [x] `python tools/cloud_test.py all`: 31 services healthy, 27 on the Hub, map 28 online, 41 pages 0 JS errors
+- [x] flows first run 59/65 → bugs fixed: WebUI proxy refused a plugin's API root (`/api/deadlines` vs prefix
+      `/api/deadlines/`: Scadenze, Persone, Documenti could not list/create, widget «non raggiungibile»); `chat_tag` /
+      `chat_list` missing from the chat's tool set («Unknown tool»); chip 409 showed a generic error (now the module's
+      reason); Home «Parla» icon-only on phone; flow taps the Home strip after resetting the chip
+- [x] regression test Oracle `test_chat_tools_are_in_the_chat_and_tag_the_conversation_of_the_turn`
+- [x] flows final run 65/65 → `BENCH.md` in this folder
+- [x] TESTING.md: setup steps for .NET build, ComfyUI, Home Assistant, Web Push, llama-server, real Telegram
+- [ ] PR + CI green + merge
+- [ ] final report to Marko

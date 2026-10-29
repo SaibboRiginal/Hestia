@@ -18,6 +18,33 @@ logger = logging.getLogger(__name__)
 Route = Callable[..., Any]   # MemoryService._route_archive(method, endpoint, body=None, query=None)
 
 
+# Tool schemas, shared by the MCP tools (main.py: Telegram, Hestia-MCP) and the chat's own tool set (oracle_engine).
+TAG_DESCRIPTION = ("Put coloured tags on this conversation (e.g. lavoro, salute, viaggio) so the owner finds it "
+                   "later; also remove tags, give it a title or pin it. Without session_id: the conversation "
+                   "you are in.")
+TAG_PARAMETERS = {
+    "type": "object",
+    "properties": {
+        "tags": {"type": "string", "description": "Tags to add, comma separated (max 6 per conversation)"},
+        "remove": {"type": "string", "description": "Tags to remove, comma separated"},
+        "title": {"type": "string", "description": "Short title of the conversation"},
+        "pinned": {"type": "boolean", "description": "Pin it on top of the list"},
+        "color": {"type": "string", "enum": ["gray", "red", "orange", "yellow", "green", "teal", "blue",
+                                          "purple", "pink"], "description": "Colour of new tags"},
+        "session_id": {"type": "string", "description": "Conversation id (empty = this one)"},
+    },
+}
+LIST_DESCRIPTION = "The owner's conversations, newest first, with their tags; filter by one tag and/or words."
+LIST_PARAMETERS = {
+    "type": "object",
+    "properties": {
+        "tag": {"type": "string", "description": "Only conversations with this tag"},
+        "query": {"type": "string", "description": "Words in the title or messages"},
+        "limit": {"type": "integer", "description": "Max conversations (default 10, max 30)"},
+    },
+}
+
+
 class ChatSessionsError(Exception):
     def __init__(self, status: int, detail: str):
         super().__init__(detail)

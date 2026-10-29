@@ -77,7 +77,8 @@ export class QuickActionsService {
     this.busy.set('');
     if (!r.ok) {
       this.toasts.error(r.error === 'offline' ? 'Sei offline: riprova quando torni in linea'
-        : r.error === 'unreachable' ? `${this.plugins.modules().get(a.module)?.title ?? a.module} non raggiungibile` : 'Non sono riuscito a farlo');
+        : r.error === 'unreachable' ? `${this.plugins.modules().get(a.module)?.title ?? a.module} non raggiungibile`
+        : (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : 'Non sono riuscito a farlo');
       return false;
     }
     const msg = (r.data as { message?: string } | null)?.message || chip.label;
