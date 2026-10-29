@@ -53,7 +53,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
 - `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
-  agenda, presence, settings, plugins, mcp, webui, transfer (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
+  agenda, presence, settings, plugins, mcp, webui, transfer, vita (new modules), shell (Adesso, Scopri, chats, push) (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
   → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».
@@ -88,6 +88,26 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 - **Voice** (W4 Cindy 10/17): Telegram → Voce → «Registra la mia voce» (≥ 6 s); WebUI «Parla» with the TV on: the TV
   must not end in the transcript. «Parole» → add a name; after two corrections of the same word it is confirmed.
 - **Spoken diary** (W4 B9): after the evening recap tap «Racconta la giornata», send a voice note → Cura di sé → diario.
+- **.NET WebUI build** (W7): never built in the cloud sessions (no `dotnet` there; the bench builds it in Docker).
+  `up-all.bat --build`, then open the WebUI: new sidebar (Cerca, Parla, Conversazioni, Sistema), Home «Adesso»,
+  Chat «Cronologia» + «Detta». The `changes` frame («Ho fatto … Annulla») and the origin label need the new
+  `OracleEvent.items` / `origin` fields: a reply from a routine must show «Avviato da …».
+- **Images / ComfyUI** (W5 A1): on the PC with the GPU start ComfyUI with `--listen 0.0.0.0`; root `.env`
+  `APOLLO_COMFYUI_URL=http://<pc>:8188`. ComfyUI → your txt2img workflow → *Save (API Format)* → WebUI Immagini →
+  Flussi → upload it as «generico» (and «mascotte» for the pet). Then «Nuova immagine»: the job goes queued → running →
+  done and Hermes says «Immagine pronta». Aspetto → pet → «Genera» uses the «mascotte» flow.
+- **House / Home Assistant** (W5 A3): root `.env` `LARES_HA_URL` + `LARES_HA_TOKEN` (HA → profile → Security →
+  Long-lived access tokens). WebUI Casa shows the rooms; star a light → it appears as a Home chip and in Telegram Casa.
+  Themis «Tu in Home Assistant» = your `person.*` → leaving home sets the presence.
+- **Web Push** (W2/W7 C15): `npx web-push generate-vapid-keys` once → root `.env` `HERMES_VAPID_PUBLIC_KEY`,
+  `HERMES_VAPID_PRIVATE_KEY`, `HERMES_VAPID_SUBJECT=mailto:…`. WebUI Impostazioni → Personali → «Notifiche sul
+  dispositivo» → Attiva (needs HTTPS or localhost). Close the tab, ask a reminder in 1 minute: the system notification
+  opens the right page.
+- **llama-server** (W1 D17, optional): `.gguf` in `LLAMACPP_MODELS_DIR`, `LLAMACPP_MODEL=<file>`, then
+  `docker compose -f docker-compose.global.yml --profile llamacpp up -d llamacpp`; Sistema → Modelli shows the provider
+  online and it goes first in the local chains.
+- **Real Telegram** (all waves): every new area is in the menu (Scadenze, Persone, Alimentazione, Documenti, Immagini
+  e aspetto, Casa, Oggi with /adesso and /scopri, Conversazioni with chat_tag/chat_list).
 
 ## Critical Regressions Log
 

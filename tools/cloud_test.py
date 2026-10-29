@@ -375,7 +375,7 @@ def screenshots(shots: Path) -> list[str]:
             return ["playwright non installabile: screenshot saltati"]
     shots.mkdir(parents=True, exist_ok=True)
     notes: list[str] = []
-    exe = next(iter(sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))), None)
+    exe = next(iter(sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux*/chrome"))), None)
     with sync_playwright() as pw:
         try:
             browser = pw.chromium.launch(executable_path=str(exe) if exe else None)

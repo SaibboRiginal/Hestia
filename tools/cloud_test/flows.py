@@ -686,7 +686,8 @@ def flow_plugins(ctx: dict) -> None:
         cat = http("GET", f"{WEBUI}/api/webui/plugins/catalog")[1]
         mods = {m["module"]: m for m in cat["modules"]}
         want = {"hercules", "hygieia", "wardrobe", "scout", "hub", "argus", "athena", "chronos", "hermes", "themis",
-                "hephaestus", "metis", "oracle", "mcp"}
+                "hephaestus", "metis", "oracle", "mcp", "kairos", "hera", "demeter", "calliope", "apollo",
+                "aphrodite", "lares", "echo", "hecate", "plutus"}
         need(want <= set(mods), f"plugin mancanti: {sorted(want - set(mods))}")
         offline = [m for m, v in mods.items() if not v.get("online")]
         need(not offline, f"plugin offline: {offline}")
@@ -819,7 +820,7 @@ PAGES = ["/home", "/p/hercules/allenamento", "/p/hercules/schede", "/p/hercules/
 
 def browser():
     from playwright.sync_api import sync_playwright  # noqa: PLC0415
-    exe = next(iter(sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))), None)
+    exe = next(iter(sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux*/chrome"))), None)
     pw = sync_playwright().start()
     return pw, pw.chromium.launch(executable_path=str(exe) if exe else None)
 
@@ -1063,9 +1064,172 @@ def flow_transfer(ctx: dict) -> None:
     step(A, "Pagina Impostazioni → Esporta e importa nel browser")(page)
 
 
+# ── New modules (dossier 2026-10-24-tutto-brainstorm-cindy W5–W7) ────────────
+
+def flow_vita(ctx: dict) -> None:
+    A = "Moduli nuovi: Scadenze, Persone, Alimentazione, Documenti, Aspetto, Immagini, Casa"
+    soon = (TODAY + timedelta(days=5)).isoformat()
+
+    def kairos():
+        d = api("kairos", "POST", "api/deadlines", {"title": f"Banco bollo auto {RUN}", "due": soon, "amount": 120.5,
+                                                   "recurrence": "yearly"})
+        did = d.get("id") or (d.get("deadline") or {}).get("id")
+        need(did, f"nessun id: {str(d)[:200]}")
+        items = api("kairos", "GET", "api/deadlines", query={"days": 30})["items"]
+        need(any(i["id"] == did for i in items), "la scadenza non è nella lista dei prossimi 30 giorni")
+        cal = api("chronos", "GET", "api/agenda/items")["items"]
+        need(any(i["key"] == f"kairos.{did}" for i in cal), f"nessun evento kairos.{did} nel calendario")
+        done = api("kairos", "POST", f"api/deadlines/{did}/done")
+        nxt = (done.get("deadline") or done).get("due", "")
+        need(nxt[:4] == str(TODAY.year + 1) or nxt > soon, f"«Fatto» su una annuale non la sposta: {str(done)[:200]}")
+        return f"creata, in calendario come kairos.{did[:8]}…, «Fatto» → prossima {nxt[:10]}"
+    step(A, "Scadenze: nuova annuale → lista + calendario; «Fatto» la sposta all'anno dopo")(kairos)
+
+    def hera():
+        bday = (TODAY + timedelta(days=3)).isoformat()
+        p = api("hera", "POST", "api/people", {"name": f"Banco Anna {RUN}", "relation": "amica", "birthday": bday,
+                                               "likes": ["tè verde"]})
+        pid = p.get("id") or (p.get("person") or {}).get("id")
+        need(pid, f"nessun id: {str(p)[:200]}")
+        up = api("hera", "GET", "api/people/upcoming", query={"days": 7})
+        rows = up.get("items") or up.get("upcoming") or []
+        need(any(pid in json.dumps(r) for r in rows), f"il compleanno fra 3 giorni non è in «Prossimi»: {str(up)[:300]}")
+        api("hera", "POST", f"api/people/{pid}/gift", {"idea": "Banco libro"})
+        api("hera", "POST", f"api/people/{pid}/contact", {"note": "sentita al banco"})
+        got = api("hera", "GET", f"api/people/{pid}")
+        need("Banco libro" in json.dumps(got), "l'idea regalo non è salvata")
+        return f"persona creata, compleanno nei prossimi 7 giorni, idea regalo e contatto salvati"
+    step(A, "Persone: compleanno in arrivo, idea regalo, ultimo contatto")(hera)
+
+    def demeter():
+        api("demeter", "POST", "api/food/meals", {"text": f"Banco pasta al pomodoro {RUN}", "slot": "lunch",
+                                                  "kcal": 650, "protein": 20})
+        today = api("demeter", "GET", "api/food/today")
+        need(f"Banco pasta al pomodoro {RUN}" in json.dumps(today, ensure_ascii=False), f"il pasto non è in «Oggi»: {str(today)[:300]}")
+        s = api("demeter", "POST", "api/food/supplements", {"name": f"Banco vitamina D {RUN}", "dose": "1000 UI",
+                                                            "time_of_day": "morning"})
+        sid = s.get("id") or (s.get("supplement") or {}).get("id")
+        need(sid, f"integratore senza id: {str(s)[:200]}")
+        api("demeter", "POST", f"api/food/supplements/{sid}/take")
+        return "pasto in «Oggi», integratore creato e preso"
+    step(A, "Alimentazione: pasto di oggi e integratore preso")(demeter)
+
+    def calliope():
+        out = {}
+        for fmt in ("pdf", "docx", "xlsx"):
+            html = ("<h1>Banco preventivo</h1><p>Totale lavori</p>"
+                    "<table><tr><th>Voce</th><th>Euro</th></tr><tr><td>Pittura</td><td>300</td></tr></table>")
+            d = api("calliope", "POST", "api/office", {"title": f"Banco preventivo {RUN}", "html": html, "format": fmt,
+                                                       "must_contain": ["Pittura"]})
+            need(d.get("created", True) and (d.get("id") or (d.get("document") or {}).get("id")), f"{fmt}: {str(d)[:300]}")
+            did = d.get("id") or d["document"]["id"]
+            b = api("calliope", "GET", f"api/office/{did}/b64")
+            need(len(b.get("data_b64") or "") > 200, f"{fmt}: file vuoto")
+            out[fmt] = len(base64.b64decode(b["data_b64"]))
+        return " · ".join(f"{k} {v} byte" for k, v in out.items()) + " (controllati dopo la creazione)"
+    step(A, "Documenti: PDF, Word ed Excel veri, ricontrollati e scaricabili")(calliope)
+
+    def aphrodite():
+        now = api("aphrodite", "GET", "api/appearance/now", query={"client": "webui"})
+        prof = now.get("profile") or {}
+        need((prof.get("palette") or {}).get("accent"), f"nessuna palette: {str(now)[:300]}")
+        profiles = api("aphrodite", "GET", "api/appearance/profiles")
+        n = len(profiles.get("items") or profiles.get("profiles") or [])
+        return f"oggi «{prof.get('name')}» (effetto {prof.get('effect') or 'nessuno'}), {n} stili; perché: {str(now.get('why'))[:80]}"
+    step(A, "Aspetto: stile di oggi con palette ed effetto")(aphrodite)
+
+    def apollo():
+        st = api("apollo", "GET", "api/images/status")
+        need("configured" in st, f"stato senza «configured»: {str(st)[:200]}")
+        return ("ComfyUI non configurato (atteso sul banco): le richieste restano in coda" if not st["configured"]
+                else f"ComfyUI raggiungibile: {st.get('reachable')}")
+    step(A, "Immagini: stato del motore (ComfyUI)")(apollo)
+
+    def lares():
+        st = api("lares", "GET", "api/home/status")
+        need(isinstance(st, dict), f"stato: {str(st)[:200]}")
+        return f"Home Assistant: {str(st)[:140]}"
+    step(A, "Casa: stato di Home Assistant (non collegato sul banco)")(lares)
+
+    def by_chat():
+        r = chat('#tool scadenze_list {}')
+        t = next((x for x in r["tools"] if x["tool"] == "scadenze_list"), None)
+        need(t and t["ok"] is not False, f"lo strumento non è stato chiamato: {[x['tool'] for x in r['tools']]}")
+        need("Banco bollo" in (t["preview"] or "") or "Scadenze" in (t["preview"] or ""), f"anteprima: {str(t)[:200]}")
+        return "chat → scadenze_list (stesso strumento che usa Telegram) ok"
+    step(A, "Chat: l'assistente usa gli strumenti dei moduli nuovi")(by_chat)
+
+
+def flow_shell(ctx: dict) -> None:
+    A = "WebUI nuova: Adesso, Scopri, conversazioni ed etichette, notifiche push"
+
+    def taps_and_adesso():
+        at = datetime.now().isoformat(timespec="seconds")
+        api("metis", "POST", "api/metis/usage", {"taps": [
+            {"client": "webui", "kind": "tool", "ref": "scadenze_list", "label": "Scadenze", "at": at},
+            {"client": "webui", "kind": "page", "ref": "/p/kairos/scadenze", "label": "Scadenze", "at": at}]})
+        a = api("metis", "GET", "api/metis/adesso", query={"client": "webui"})
+        s = api("metis", "GET", "api/metis/scopri", query={"limit": 20})
+        na, ns = len(a.get("items") or []), len(s.get("items") or [])
+        need(ns, f"«Scopri» vuoto: {str(s)[:200]}")
+        return f"tap registrati; Adesso {na} proposte, Scopri {ns} idee"
+    step(A, "Tap della WebUI → Adesso e Scopri")(taps_and_adesso)
+
+    def chats():
+        sid = f"banco-tag-{RUN}"
+        chat("Ciao, questa è una conversazione di prova del banco", session=sid)
+        r = chat('#tool chat_tag {"tags": "banco", "session_id": "%s"}' % sid, session=sid)
+        t = next((x for x in r["tools"] if x["tool"] == "chat_tag"), None)
+        need(t and t["ok"] is not False, f"chat_tag non chiamato: {[x['tool'] for x in r['tools']]}")
+        undo_frame = next((e for e in r["events"] if e.get("type") == "changes"), None)
+        lst = api("oracle", "GET", "api/ui/chats", query={"tag": "banco"})
+        need(any(i["session_id"] == sid for i in lst.get("items") or []), f"la conversazione non ha l'etichetta: {str(lst)[:300]}")
+        api("oracle", "PUT", f"api/ui/chats/{sid}", {"pinned": True, "title": f"Banco conversazione {RUN}"})
+        top = api("oracle", "GET", "api/ui/chats", query={"limit": 1})["items"][0]
+        need(top["session_id"] == sid and top["pinned"], f"la fissata non è in cima: {str(top)[:200]}")
+        msgs = api("oracle", "GET", f"api/ui/chats/{sid}/messages")
+        need(len(msgs.get("items") or []) >= 2, "i messaggi non tornano")
+        api("oracle", "PUT", f"api/ui/chats/{sid}", {"pinned": False})
+        return (f"etichetta «banco» dalla chat, fissata in cima, {len(msgs['items'])} messaggi riaperti"
+                + ("; riga «Ho fatto» con Annulla" if undo_frame else "; nessun frame «Ho fatto»"))
+    step(A, "Conversazioni: etichetta dalla chat, fissa, titolo, riapri")(chats)
+
+    def push_key():
+        code, out = http("GET", f"{WEBUI}/api/webui/plugins/hermes/call/api/ui/push/key")
+        need(code in (200, 503), f"chiave push → {code} {str(out)[:200]}")
+        return "chiave VAPID pronta" if code == 200 and (out or {}).get("public_key") else f"push non configurato ({code})"
+    step(A, "Notifiche push: chiave del browser")(push_key)
+
+    def pages():
+        try:
+            pw, br = browser()
+        except Exception as exc:  # noqa: BLE001
+            raise Fail(f"Chromium non disponibile: {exc}") from None
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        bad, seen, js = [], [], []
+        try:
+            pg = br.new_page(viewport={"width": 1366, "height": 860})
+            pg.on("pageerror", lambda e: js.append(str(e)[:160]))
+            for path in ("/home", "/scopri", "/sistema", "/chat", "/p/kairos/scadenze", "/p/hera/persone",
+                         "/p/demeter/oggi", "/p/calliope/documenti", "/p/aphrodite/aspetto", "/p/apollo/immagini",
+                         "/p/lares/casa"):
+                pg.goto(WEBUI + path, wait_until="networkidle", timeout=60000)
+                pg.wait_for_timeout(1200)
+                errs = _errors_on(pg)
+                name = path.strip("/").replace("/", "_") or "root"
+                pg.screenshot(path=str(SHOTS / f"nuovo_{name}.png"), full_page=False)
+                (bad if errs else seen).append(f"{path}: {errs[:2]}" if errs else path)
+        finally:
+            br.close()
+            pw.stop()
+        need(not bad and not js, f"pagine con errori: {bad} · errori JS: {js[:3]}")
+        return f"{len(seen)} pagine aperte senza errori (screenshot nuovo_*.png)"
+    step(A, "Pagine nuove nel browser (Scopri, Sistema, moduli nuovi)")(pages)
+
+
 AREAS = {"hercules": flow_hercules, "hygieia": flow_hygieia, "wardrobe": flow_wardrobe, "agenda": flow_agenda,
          "presence": flow_presence, "settings": flow_settings, "plugins": flow_plugins, "mcp": flow_mcp, "webui": flow_webui,
-         "transfer": flow_transfer}
+         "transfer": flow_transfer, "vita": flow_vita, "shell": flow_shell}
 
 
 def main(argv: list[str]) -> int:

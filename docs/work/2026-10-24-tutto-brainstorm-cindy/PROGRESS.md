@@ -152,7 +152,7 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] answer components (```hestia-ui), «Ho fatto» with «Annulla» (changes frame), origin label; .NET `OracleEvent`
       gets `items` + `origin` (not built here: no dotnet)
 - [x] tests: Archive `test_chat_sessions.py`, Oracle `test_chat_sessions.py`; `ng build` ok; docs, swagger
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #45, c958b4b)
 
 ## W8
 - [ ] see SPEC §3
