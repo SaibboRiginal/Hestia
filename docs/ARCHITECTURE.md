@@ -351,8 +351,44 @@ subscription), bank statement PDF (Hype) from the plugin *Importa* or sent in ch
 preview → commit, PayPal↔bank linking, quick manual entry. Rows in Archive `finance-store`; reminders through the
 agenda and Hermes. Details: `Hestia-Plutus/hestia-plutus.md`.
 
+### Hestia-Hera 👥
+People module «Persone» (port 19025, `people_*` tools): cards with relation, dates (yearly special events in the
+calendar with stable keys, owner's edits win), likes, gift ideas the assistant notes from conversations, last contact
+and «senti …» notices (agenda `hera.daily` + Hermes). Rows in Archive `people-store`. Details: `Hestia-Hera/hestia-hera.md`.
+
+### Hestia-Kairos ⏳
+Deadlines module «Scadenze» (port 19028, `scadenze_*` tools): bills, insurance, car tax, inspection, documents,
+subscriptions with recurrence, lead time and advice (Oracle `kairos.consiglio`), mirrored as agenda events; mails by
+push (Iris `kairos:mail`) only **propose** a deadline (Hermes card). Rows in Archive `deadlines-store`. Details:
+`Hestia-Kairos/hestia-kairos.md`.
+
+### Hestia-Demeter 🥗
+Nutrition module «Alimentazione» (port 19026, `cibo_*` tools): diet, meals (kcal estimate through Oracle
+`demeter.stima`, owner's numbers win), supplements and intakes; a coach of the weekly plan (supplements as slots,
+next to the workout when asked). Rows in Archive `food-store`. Details: `Hestia-Demeter/hestia-demeter.md`.
+
+### Hestia-Lares 💡
+House module «Casa» (port 19024, `casa_*` tools): the only caller of Home Assistant (`LARES_HA_URL`/`LARES_HA_TOKEN`),
+websocket push of state changes into a mirror, commands, scenes, quick actions (Archive `home-store`), the owner's
+person entity → presence signal `home.present`. Details: `Hestia-Lares/hestia-lares.md`.
+
+### Hestia-Calliope 📄
+Documents module «Documenti» (port 19027, API `/api/office`, `documento_*` tools): HTML draft → PDF / Word / Excel
+with three themes, reopened and checked before delivery; files in Archive blobs, records in `office-store`.
+Details: `Hestia-Calliope/hestia-calliope.md`.
+
+### Hestia-Apollo 🎨
+Images module «Immagini» (port 19022, `immagine_*` tools): the only caller of image generators (remote ComfyUI,
+`APOLLO_COMFYUI_URL`); flows per purpose uploaded by the owner, one job worker woken by new jobs, ComfyUI websocket,
+images in Archive blobs, `callback` push to the requester or a Hermes notice. Details: `Hestia-Apollo/hestia-apollo.md`.
+
+### Hestia-Aphrodite 🌸
+Appearance module «Aspetto» (port 19023, `aspetto_*` tools): decides the look of each client (today's special
+moment, dated profiles, holidays, season), pets, per-client choice (`auto` off = standard); pictures asked to Apollo;
+clients read `GET /api/appearance/now`. Rows in Archive `appearance-store`. Details: `Hestia-Aphrodite/hestia-aphrodite.md`.
+
 ### Weekly plan — coaches (contract, 2026-10-20)
-Domain modules that coach (Hercules, Hygieia, Plutus) carry the Hub tag `coach` and serve
+Domain modules that coach (Hercules, Hygieia, Plutus, Demeter) carry the Hub tag `coach` and serve
 `/api/coach/needs|fit|placed|review` with `hestia_common.coach`: they say **what** is due (blocks, slots, targets,
 with generic constraints), never when. **Chronos** places them in the free time around the user's calendar
 (deterministic planner, plan items = assistant agenda events owned by the module, user moves always win), re-plans
@@ -438,6 +474,15 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    and which words to expect (personal dictionary) are decided inside Echo before any engine hears the audio. A
    module may add buttons under the daily recap (`recap.piece(actions=)`); data the owner deleted never comes back
    with a later sync.
+16. **New modules share one skeleton; each external system has one owner (same dossier, W5):** a new domain module
+   is built on `hestia_common.module_kit` (registration, Archive mirror, Themis, agenda, MCP + REST tools, Hermes and
+   Oracle only through the Hub) and keeps only its domain code. Image generators (ComfyUI) belong to Apollo, Home
+   Assistant to Lares: their URL/token are env (infrastructure/secret), everything else Themis. Both answer by
+   **push** (ComfyUI and Home Assistant websockets, Apollo `callback` to the requester). Files a tool produces live in
+   Archive blobs and travel as `display.files`; a generated document is opened again and checked before it is
+   delivered. Dates of people and deadlines go to the calendar with stable keys, so the owner's edits win; a mail can
+   only **propose** a deadline. Ports: Apollo 19022, Aphrodite 19023, Lares 19024, Hera 19025, Demeter 19026,
+   Calliope 19027, Kairos 19028.
 
 ## Autonomous Remediation Contract
 

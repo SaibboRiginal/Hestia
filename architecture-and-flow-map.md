@@ -21,6 +21,13 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hygieia | Domain (Self care) | Yes (products, routines) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
 | Wardrobe | Domain (Wardrobe) | Yes (pieces, outfits, suggestions) | No | Archive store + blobs, agenda + Hermes, WebUI plugin |
 | Plutus | Domain (Finance) | Yes (expenses, budgets, statements) | No | PayPal mails by push (Iris), statement PDF via plugin or chat (Oracle hand-off), Archive `finance-store`, agenda + Hermes, WebUI plugin «Spese» |
+| Apollo | Domain (Images) | Yes (flows per purpose, job queue) | Yes (remote ComfyUI, `APOLLO_COMFYUI_URL`) | The only caller of image generators; ComfyUI websocket push; images in Archive blobs; `callback` push to the requester |
+| Aphrodite | Domain (Appearance) | Yes (which look is on) | No | Profiles, pets, per-client choice; today's moment pushed by Chronos; asks pictures to Apollo; clients read `/now` |
+| Lares | Domain (House) | Yes (devices, quick actions) | Yes (Home Assistant, `LARES_HA_URL`/`LARES_HA_TOKEN`) | The only caller of Home Assistant; websocket push of state changes; presence signal `home.present` |
+| Hera | Domain (People) | Yes (cards, gifts, contacts) | No | Dates as Chronos special events (stable keys), gift ideas on `special_moment`, agenda + Hermes |
+| Demeter | Domain (Nutrition) | Yes (diet, meals, supplements) | No | Coach of the weekly plan (tag `coach`), kcal estimates through Oracle, Archive `food-store` |
+| Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `documento_crea`, file under the Telegram card |
+| Kairos | Domain (Deadlines) | Yes (recurrence, advice, proposals) | No | Mail push (Iris) → proposals confirmed via Hermes, calendar mirror (agenda events), daily notices |
 | Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
@@ -56,6 +63,7 @@ flowchart LR
     HUB --> SC[Scout Real Estate Domain]
     HUB --> PL[Plutus Expenses Domain]
     HUB --> EC[Echo Voice]
+    HUB --> NEW5[Apollo · Aphrodite · Lares · Hera · Demeter · Calliope · Kairos]
     HUB --> AT[Athena Advisory Engine]
     HUB --> AG[Argus Monitoring]
     HUB --> HP[Hephaestus Remediation]
@@ -72,6 +80,8 @@ flowchart LR
     IR -->|doorbell for subscribed mail| SC
     IR -->|doorbell for subscribed mail| PL
     OR -->|chat attachment hand-off| PL
+    IR -->|doorbell for subscribed mail| NEW5
+    CH -->|special_moment push| NEW5
 
     HE --> GP[Google Provider Runtime]
     HE --> OP[Outlook Provider Runtime]
@@ -329,3 +339,17 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 ## Notes
 
 - This file is a quick architecture map. Detailed endpoint contracts remain in each service `hestia-*.md` and in `Hestia-Swagger/swagger.yml`.
+
+### W5 modules (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+1. People: a card's dates → Hera → Chronos `api/special` (key `hera-<id>-<n>`) → lead notice and greeting by Chronos;
+   on the day `special_moment` → Hera (gift ideas notice) and Aphrodite (the owner's own moments change the look).
+2. Deadlines: Hecate → Iris → Kairos `/mail` (doorbell) → proposal card in Hermes → «Aggiungi» → agenda event
+   `kairos.<id>`; agenda job `kairos.daily` → lead/today notices with «Fatto» (recurring ones roll on).
+3. House: Home Assistant websocket → Lares mirror; the owner's person entity → presence `home.present` → Chronos
+   state «Fuori casa» (declared by Hecate with `phone.home`). Commands: tool → Lares → HA REST service.
+4. Images: tool or module → Apollo job → ComfyUI `/prompt` + websocket → `/history` + `/view` → Archive blobs →
+   `callback` push (e.g. Aphrodite) or Hermes notice; tool answers carry `display.files` → Telegram photo.
+5. Documents: tool `documento_crea` → Calliope renders, reopens and checks → Archive blob → `display.files` →
+   Telegram document.
+6. Nutrition: Demeter `/api/coach/needs` (supplements as slots, «with workout») → Chronos weekly plan; intake →
+   `coach.done`; meal without numbers → Oracle `demeter.stima` in the background.

@@ -216,6 +216,13 @@ It stores and serves all persistent state through generic APIs.
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › interno: 1; memoria › Note e preferenze: 1; notifiche › Avvisi automatici: 4; notifiche › Promemoria e allerte: 4; sistema › Avanzate: 1 (area › section: tools).
 
+## Wave 5 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 5)
+- Seven generic module stores (same rows, LWW and cursor as the others): `/api/images-store` (Apollo, `images_records`),
+  `/api/appearance-store` (Aphrodite, `appearance_records`), `/api/home-store` (Lares, `home_records`),
+  `/api/people-store` (Hera, `people_records`), `/api/food-store` (Demeter, `food_records`), `/api/office-store`
+  (Calliope, `office_records`), `/api/deadlines-store` (Kairos, `deadlines_records`). Tables are created at start like
+  the other module stores. Blobs gain the owners `apollo` (images) and `calliope` (documents).
+
 ## Wave 3 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
 - `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals
   (kind `memory_proposal`), generic module-store rows.

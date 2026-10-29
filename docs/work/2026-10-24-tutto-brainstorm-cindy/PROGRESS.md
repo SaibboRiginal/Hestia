@@ -68,10 +68,30 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] Cindy 32 phone (Hecate `/api/gateway/phone/push` + token, presence `phone.home`/`phone.charging`, overlay
       «Fuori casa», feed `phone.notification` → Plutus transactions to review)
 - [x] shared `hestia_common.feeds`; tests (Echo, Hygieia, Athena, Hecate, Hercules, Plutus); docs, swagger, env, TESTING
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #37)
 - Left for W7 (WebUI): page «Voce» → La tua voce (dictionary list, record voiceprint), transcript correction in the
   chat (→ `/dictionary/learn`), Hermes `command` actions opening the tool form (recap «Racconta la giornata»),
   Hecate «Dispositivi» page.
 
-## W5–W8
+## W5 — new modules
+- [x] shared `hestia_common.module_kit` (+ `FakeArchive` with blobs) and `display.file` / `display.files` (Telegram
+      sends them under the card)
+- [x] A4 Hera «Persone» (19025): cards, dates → Chronos special events, gift ideas on `special_moment`, `hera.daily`
+- [x] B7 Kairos «Scadenze» (19028): categories + advice (`kairos.consiglio`), recurrence, calendar mirror, mail push
+      → proposals, `kairos.daily`
+- [x] A5 Demeter «Alimentazione» (19026): diet, meals (`demeter.stima`), supplements + intakes, coach needs
+- [x] A3 Lares «Casa» (19024): HA websocket mirror, commands, scenes, quick actions, `home.present` (+ Hecate
+      «Fuori casa» fix: `== false` per source)
+- [x] Cindy 21 Calliope «Documenti» (19027, `/api/office`): HTML → PDF/DOCX/XLSX, 3 themes, final check, blobs
+- [x] A1 Apollo «Immagini» (19022): flows, job worker, ComfyUI websocket, blobs, callback push, missing-flow notice
+- [x] A2 Aphrodite «Aspetto» (19023): profiles, moments, holidays/seasons, per-client choice, pets, pictures via Apollo
+- [x] Hub allowed tags/domains for the seven modules (CI caught the 422; test covers module_kit registrations)
+- [x] Archive stores (7), compose services, CI matrix, Telegram areas, swagger, .env.example, docs, tests
+- [ ] PR + CI green + merge
+- Left for W7 (WebUI): plugin bundles (`ui/`) of the seven modules (Persone, Scadenze, Alimentazione, Casa,
+  Documenti, Immagini with flow upload, Aspetto settings) and the WebUI drawing `/api/appearance/now` (palette,
+  effect, pet).
+- Left for W8: cloud bench flows (`tools/cloud_test/flows.py`) for the seven modules.
+
+## W6–W8
 - [ ] see SPEC §3

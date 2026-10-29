@@ -3,7 +3,9 @@
 Same contract as ``hercules-store`` / ``selfcare-store`` / ``wardrobe-store`` (PUT/GET ``records``, GET
 ``cursor``), built once for every newer module (Plutus ``finance-store``, Iris ``iris-store``, reflection ``signals-store``,
 Echo ``echo-store``, Oracle ``oracle-store`` pending questions, Argus ``argus-store`` journal, Hermes ``hermes-store`` Web Push
-subscriptions, Chronos ``chronos-store`` routine results).
+subscriptions, Chronos ``chronos-store`` routine results, and the W5 modules: Apollo ``images-store``, Aphrodite
+``appearance-store``, Lares ``home-store``, Hera ``people-store``, Demeter ``food-store``, Calliope ``office-store``,
+Kairos ``deadlines-store``).
 Archive only stores: the owner module gives each ``kind`` its meaning.
 """
 from datetime import datetime, timezone
@@ -115,3 +117,10 @@ argus_router = build_router("/api/argus-store", models.ArgusRecord, "argus")
 hermes_router = build_router("/api/hermes-store", models.HermesRecord, "hermes")
 chronos_router = build_router("/api/chronos-store", models.ChronosRecord, "chronos")
 athena_router = build_router("/api/athena-store", models.AthenaRecord, "athena")
+apollo_router = build_router("/api/images-store", models.ImagesRecord, "apollo")
+aphrodite_router = build_router("/api/appearance-store", models.AppearanceRecord, "aphrodite")
+lares_router = build_router("/api/home-store", models.HomeRecord, "lares")
+hera_router = build_router("/api/people-store", models.PeopleRecord, "hera")
+demeter_router = build_router("/api/food-store", models.FoodRecord, "demeter")
+calliope_router = build_router("/api/office-store", models.OfficeRecord, "calliope")
+kairos_router = build_router("/api/deadlines-store", models.DeadlinesRecord, "kairos")

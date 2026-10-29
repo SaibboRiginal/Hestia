@@ -625,6 +625,221 @@ services:
     networks:
       - hestia_net
 
+  apollo:
+    build:
+      context: .
+      dockerfile: Hestia-Apollo/Dockerfile
+    container_name: hestia_apollo
+    restart: unless-stopped
+    ports:
+      - "19022:19022"  # Apollo API port (Images (remote ComfyUI))
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=apollo
+      - SERVICE_BASE_URL=http://hestia_apollo:19022
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,images
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:images,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+      - APOLLO_COMFYUI_URL=${APOLLO_COMFYUI_URL:-}          # remote ComfyUI (e.g. http://pc-gpu:8188); empty = images not available
+      - APOLLO_COMFYUI_KEY=${APOLLO_COMFYUI_KEY:-}          # optional bearer token of a proxy in front of ComfyUI (secret)
+    volumes:
+      - ./Hestia-Apollo/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  aphrodite:
+    build:
+      context: .
+      dockerfile: Hestia-Aphrodite/Dockerfile
+    container_name: hestia_aphrodite
+    restart: unless-stopped
+    ports:
+      - "19023:19023"  # Aphrodite API port (Appearance (themes, pets))
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=aphrodite
+      - SERVICE_BASE_URL=http://hestia_aphrodite:19023
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,appearance
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:appearance,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Aphrodite/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  lares:
+    build:
+      context: .
+      dockerfile: Hestia-Lares/Dockerfile
+    container_name: hestia_lares
+    restart: unless-stopped
+    ports:
+      - "19024:19024"  # Lares API port (House (Home Assistant))
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=lares
+      - SERVICE_BASE_URL=http://hestia_lares:19024
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,home
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:home,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+      - LARES_HA_URL=${LARES_HA_URL:-}                      # Home Assistant address (e.g. http://homeassistant.local:8123); empty = house not connected
+      - LARES_HA_TOKEN=${LARES_HA_TOKEN:-}                  # Home Assistant long-lived access token (secret, only in .env)
+      # Which person entity is the owner: Themis setting lares.persona (WebUI → Sistema).
+    volumes:
+      - ./Hestia-Lares/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  hera:
+    build:
+      context: .
+      dockerfile: Hestia-Hera/Dockerfile
+    container_name: hestia_hera
+    restart: unless-stopped
+    ports:
+      - "19025:19025"  # Hera API port (People (important people))
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=hera
+      - SERVICE_BASE_URL=http://hestia_hera:19025
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,people
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:people,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Hera/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  demeter:
+    build:
+      context: .
+      dockerfile: Hestia-Demeter/Dockerfile
+    container_name: hestia_demeter
+    restart: unless-stopped
+    ports:
+      - "19026:19026"  # Demeter API port (Nutrition)
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=demeter
+      - SERVICE_BASE_URL=http://hestia_demeter:19026
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,food,coach
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:food,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Demeter/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  calliope:
+    build:
+      context: .
+      dockerfile: Hestia-Calliope/Dockerfile
+    container_name: hestia_calliope
+    restart: unless-stopped
+    ports:
+      - "19027:19027"  # Calliope API port (Documents (PDF, Word, Excel))
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=calliope
+      - SERVICE_BASE_URL=http://hestia_calliope:19027
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,office
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:office,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Calliope/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
+  kairos:
+    build:
+      context: .
+      dockerfile: Hestia-Kairos/Dockerfile
+    container_name: hestia_kairos
+    restart: unless-stopped
+    ports:
+      - "19028:19028"  # Kairos API port (Deadlines)
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=kairos
+      - SERVICE_BASE_URL=http://hestia_kairos:19028
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,deadlines
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:deadlines,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Kairos/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
   wardrobe:
     build:
       context: .

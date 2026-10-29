@@ -679,3 +679,39 @@ SignalRecord = _module_record_model(
     "One row of the reflection signals (docs/work/2026-10-20-riflessione-a-livelli): a module's signal or weekly "
     "metric (ref_id = module), or one of Athena's observations (ref_id = athena). Owner of the semantics: each "
     "writer for its own rows; shape in hestia_common.signals_client.")
+
+
+ImagesRecord = _module_record_model(
+    "ImagesRecord", "images_records",
+    "One row of the image module Hestia-Apollo (flow, job), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Apollo.")
+
+AppearanceRecord = _module_record_model(
+    "AppearanceRecord", "appearance_records",
+    "One row of the appearance module Hestia-Aphrodite (profile, pet, client choice, today's moment), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Aphrodite.")
+
+HomeRecord = _module_record_model(
+    "HomeRecord", "home_records",
+    "One row of the house module Hestia-Lares (quick action), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Lares.")
+
+PeopleRecord = _module_record_model(
+    "PeopleRecord", "people_records",
+    "One row of the people module Hestia-Hera (person card, contact), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Hera.")
+
+FoodRecord = _module_record_model(
+    "FoodRecord", "food_records",
+    "One row of the nutrition module Hestia-Demeter (diet, meal, supplement, intake), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Demeter.")
+
+OfficeRecord = _module_record_model(
+    "OfficeRecord", "office_records",
+    "One row of the documents module Hestia-Calliope (created document), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Calliope.")
+
+DeadlinesRecord = _module_record_model(
+    "DeadlinesRecord", "deadlines_records",
+    "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "Owner of the semantics: Hestia-Kairos.")

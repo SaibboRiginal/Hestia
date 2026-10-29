@@ -34,6 +34,13 @@ jobs:
           - Wardrobe
           - Plutus
           - Echo
+          - Apollo
+          - Aphrodite
+          - Lares
+          - Hera
+          - Demeter
+          - Calliope
+          - Kairos
 
     steps:
       - uses: actions/checkout@v4

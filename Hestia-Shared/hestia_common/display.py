@@ -40,9 +40,10 @@ def action(label: str, tool: str, args: dict | None = None, *, style: str = "") 
 
 def display(title: str, *, subtitle: str = "", lines: Iterable[str] = (), items: Iterable[dict] = (),
             actions: Iterable[dict] = (), footer: str = "", tone: str = "", image: str = "",
-            images: Iterable[str] = ()) -> dict:
+            images: Iterable[str] = (), files: Iterable[dict] = ()) -> dict:
     """The block. ``lines``: plain sentences; ``items``: :func:`item`; ``actions``: :func:`action` (max 6 drawn);
-    ``image``/``images``: public https URLs shown as photo / album."""
+    ``image``/``images``: public https URLs shown as photo / album; ``files``: :func:`file` (Archive blobs the
+    client fetches through Hub and shows as photo or document, max 10)."""
     out: dict[str, Any] = {"title": str(title or "").strip()}
     if subtitle:
         out["subtitle"] = str(subtitle)
@@ -64,7 +65,15 @@ def display(title: str, *, subtitle: str = "", lines: Iterable[str] = (), items:
     images = [str(i) for i in images if str(i).startswith("http")]
     if images:
         out["images"] = images
+    files = [f for f in files if isinstance(f, dict) and f.get("blob_id")][:10]
+    if files:
+        out["files"] = files
     return out
+
+
+def file(blob_id: str, name: str, mime: str = "application/octet-stream") -> dict:
+    """A file kept in Archive blobs (a generated document, an image): the client downloads it through Hub."""
+    return {"blob_id": str(blob_id), "name": str(name or "file")[:120], "mime": str(mime or "application/octet-stream")}
 
 
 def strip(payload: Any) -> Any:

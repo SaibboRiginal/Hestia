@@ -28,6 +28,13 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Wardrobe | 19017 | hestia_wardrobe | wardrobe: pieces, accessories, outfits, «Cosa mi metto», laundry/status, packing lists, stats, photos in Archive blobs, WebUI plugin |
 | Plutus | 19020 | hestia_plutus | expenses «Spese» (domain `finance`): PayPal mails by push, bank statement PDF (Hype) from plugin or chat, categories, budgets, recurring, PayPal↔bank linking, WebUI plugin |
 | Echo | 19021 | hestia_echo | **voice core**: speech → text and text → speech, files and streams in blocks, providers/chains/uses like Oracle a blocchi, keeps audio, WebUI page «Voce» |
+| Apollo | 19022 | hestia_apollo | images through a remote ComfyUI: flows per purpose, job queue, blobs, callback push |
+| Aphrodite | 19023 | hestia_aphrodite | appearance: themes of holidays/seasons/special days, effects, pets; clients read `/api/appearance/now` |
+| Lares | 19024 | hestia_lares | house on Home Assistant: websocket mirror, commands, scenes, quick actions, `home.present` |
+| Hera | 19025 | hestia_hera | important people: dates to the calendar, gift ideas, likes, contacts |
+| Demeter | 19026 | hestia_demeter | nutrition: diet, meals (kcal estimates), supplements; coach of the weekly plan |
+| Calliope | 19027 | hestia_calliope | documents: HTML → PDF/Word/Excel, 3 themes, final check, blobs |
+| Kairos | 19028 | hestia_kairos | deadlines: recurrence, advice, calendar mirror, mail proposals, daily notices |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |
 | Atlas | host | — | HTML fetch/scrape, runs on the host (`run_host.bat`) |

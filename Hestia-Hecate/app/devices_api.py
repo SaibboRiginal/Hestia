@@ -239,8 +239,10 @@ def phone_status():
 # presence: a data-defined overlay so the state line says it (no effect: being out never loosens anything)
 PRESENCE_STATES = {"away_from_home": {
     "kind": "overlay", "priority": 20, "label": "Fuori casa", "icon": "map-pin", "tone": "muted",
-    "help": "Il telefono dice che non sei a casa (Wi-Fi di casa non connesso).",
-    "when": [[{"signal": "phone.home", "op": "false"}]], "effects": {}}}
+    "help": "Il telefono (Wi-Fi di casa non connesso) o la casa dicono che non sei a casa.",
+    # «==» needs the signal to exist: no phone and no house connected → never «Fuori casa»
+    "when": [[{"signal": "phone.home", "op": "==", "value": False}],
+             [{"signal": "home.present", "op": "==", "value": False}]], "effects": {}}}
 
 
 def declare_presence() -> None:
