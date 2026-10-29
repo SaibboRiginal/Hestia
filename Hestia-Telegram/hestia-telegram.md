@@ -35,12 +35,18 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 
 - **Bottom keyboard** (always there): Oggi · Aree · Notifiche · Impostazioni. Tapping a key during a guided action
   leaves it.
-- **`/` menu** (8): `oggi`, `aree`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`, `aiuto`. Old names keep
+- **`/` menu** (10): `oggi`, `aree`, `adesso`, `scopri`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`,
+  `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_adesso`, `metis_scopri`). Old names keep
   working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
-- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + actions), Aree (17 areas + «Usate
+- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
+  `GET /api/metis/adesso?client=telegram`, each with its reason and a button; the fixed «Oggi» actions when Metis has
+  nothing or is away), Aree (17 areas + «Usate
   spesso»), area card (summary tool + primary actions + «Tutte le azioni» by section, «Avanzate» last). One live
   navigation message edited in place; an old message's buttons answer «Questo menu è vecchio» and open a fresh one.
+- **Usage taps** (W6): every action start (`actions.start`) also pushes a tap to Metis in the background
+  (`telegram_bot/usage.py`, `POST /api/metis/usage`); a failed push is only logged (`[🔄]`), the local «Usate
+  spesso» count stays.
 - **W5 areas**: «Scadenze», «Alimentazione», «Persone», «Casa» (Home Assistant; the real-estate area is now labelled
   «Immobili» so the two never look alike), «Documenti», «Immagini e aspetto».
 - **Where the menu comes from** (`telegram_bot/menu/`), later wins:

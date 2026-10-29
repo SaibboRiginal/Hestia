@@ -22,6 +22,7 @@ from .core.hub_client import HubClient
 from .core import dataset_builder
 from .core.insights import build_insights
 from .core.metis_settings import settings as metis_settings
+from .core.usage import CLIENTS, IDEAS_USE, Usage
 
 # ── Shared imports ────────────────────────────────────────────────────────────
 try:
@@ -32,7 +33,10 @@ except ModuleNotFoundError:
     if str(_shared_pkg) not in sys.path:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
-from hestia_common.agenda_client import AgendaClient, daily_window
+from hestia_common.agenda_client import AgendaClient, daily_window, job_rule
+from hestia_common.display import action, display, item
+from hestia_common.module_kit import Hub as RoutedHub, Invalid, Store, StoreUnavailable
+from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase
 from hestia_common.presence_client import PresenceClient
 from hestia_common.plugin_client import PluginClient, page
 
@@ -82,6 +86,13 @@ ui.webui(entry="metis.js", api_prefix="/api/metis/",
 WINDOW_TRAINING = "metis.training"
 agenda = AgendaClient("metis", _HUB_API_URL)
 presence = PresenceClient("metis", _HUB_API_URL)
+
+# ── Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6) ─────────────────────
+# Taps live in Archive ``metis-store`` (Hub-routed mirror); the suggestion engine is core/usage.py.
+usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
+usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
+# Hours the assistant writes fresh «Adesso» ideas: only the seed of agenda jobs, the user moves them in the agenda.
+IDEAS_AT = ("07:00", "12:30", "18:00")
 _DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
 _JOBS_FILE = _DATA_DIR / "lora_jobs.json"
 _jobs_lock = threading.Lock()
@@ -103,10 +114,15 @@ def _oracle_generic_model() -> str:
 def _agenda_rules() -> list[dict]:
     # 01–06 is only the seed of the agenda window: the user moves/skips it in Hestia's agenda
     # (Chronos owns scheduling; user edits win), so it is neither env nor a Themis setting.
+    tz = os.getenv("TZ") or "Europe/Rome"
     return [daily_window(
         WINDOW_TRAINING, "Metis: finestra training modelli", 1, 6,
         description="Training LoRA pianificati (non richiesti da te) partono qui. "
-                    "Sposta/salta la finestra per rimandarli.")]
+                    "Sposta/salta la finestra per rimandarli.")] + [
+        job_rule(f"metis.adesso.{at.replace(':', '')}", "Idee per «Adesso»", service="metis",
+                 path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
+                 description="L'assistente pensa a tre cose utili per le prossime ore (e pulisce i tocchi vecchi).")
+        for at in IDEAS_AT]
 
 
 def _load_jobs() -> dict:
@@ -178,6 +194,71 @@ def get_logs(limit: int = 200, level: str | None = None, contains: str | None = 
         "count": len(log_buffer.query(limit=limit, level=level, contains=contains)),
         "logs": log_buffer.query(limit=limit, level=level, contains=contains),
     }
+
+
+@app.exception_handler(Invalid)
+async def _invalid(_, exc: Invalid):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(StoreUnavailable)
+async def _store_down(_, exc: StoreUnavailable):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=503, content={"detail": "registro non raggiungibile, riprova"})
+
+
+@app.post("/api/metis/usage")
+def metis_usage(body: dict):
+    """Clients push taps: ``{taps: [{client, kind: tool|page|action, ref, label?, at?}]}`` or one tap."""
+    taps = body.get("taps") if isinstance(body.get("taps"), list) else [body]
+    return usage.record([t for t in taps if isinstance(t, dict)])
+
+
+@app.get("/api/metis/usage/stats")
+def metis_usage_stats(days: int = 30):
+    return usage.stats(max(1, min(days, 365)))
+
+
+@app.get("/api/metis/adesso")
+def metis_adesso(client: str = "telegram", limit: int = 6):
+    """What fits now: agenda, habits, recents and the assistant's ideas, each with its reason."""
+    return usage.adesso(client, limit=max(1, min(limit, 12)))
+
+
+@app.post("/api/metis/adesso/refresh")
+def metis_adesso_refresh(body: dict | None = None):
+    """Agenda job ``metis.adesso.*``: fresh ideas for each client + prune of old taps."""
+    clients = [str((body or {}).get("client"))] if (body or {}).get("client") else ["telegram", "webui"]
+    out = {c: usage.refresh_ideas(c) for c in clients if c in CLIENTS}
+    out["pruned"] = usage.prune()
+    logger.info("event=metis_adesso_refresh clients=%s pruned=%s", ",".join(clients), out["pruned"])
+    return out
+
+
+@app.get("/api/metis/scopri")
+def metis_scopri(client: str = "webui", limit: int = 12):
+    """Features never or rarely used, with what they do."""
+    return usage.scopri(client, limit=max(1, min(limit, 50)))
+
+
+def _adesso_card(client: str = "telegram") -> dict:
+    out = usage.adesso(client if client in CLIENTS else "telegram")
+    items = out["items"]
+    return {**out, "display": display(
+        "Adesso", lines=[] if items else ["Ancora niente da suggerire: più usi Hestia, più impara cosa ti serve."],
+        items=[item(i["title"], [i["reason"]]) for i in items],
+        actions=[action(i["title"], i["tool"], i["args"] or None) for i in items])}
+
+
+def _scopri_card(client: str = "telegram") -> dict:
+    out = usage.scopri(client if client in CLIENTS else "telegram", limit=8)
+    items = out["items"]
+    return {**out, "display": display(
+        "Scopri", subtitle=f"{out['total']} funzioni poco usate su {out['tools']}",
+        lines=[] if items else ["Hai già provato tutto."],
+        items=[item(i["title"], [i["description"][:90], i["reason"]]) for i in items],
+        actions=[action(i["title"], i["tool"]) for i in items[:6]])}
 
 
 # ── MCP tools ─────────────────────────────────────────────────────────────────
@@ -615,6 +696,27 @@ try:
             telegram_visible=True,
             telegram_group="sviluppo",
                 telegram={"section": "Dataset e training"}),
+        MCPTool(
+            name="metis_adesso",
+            description="Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle "
+                        "prossime ore e qualche idea dell'assistente, ognuna con il perché.",
+            parameters={"type": "object", "properties": {
+                "client": {"type": "string", "enum": list(CLIENTS), "description": "Dove le mostri"}},
+                "required": []},
+            handler=lambda client="telegram": _adesso_card(client),
+            title="Adesso", method="GET", path="/api/metis/tools/adesso", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
+            telegram={"section": "Adesso", "primary": 1}),
+        MCPTool(
+            name="metis_scopri",
+            description="Funzioni di Hestia che non hai mai usato o quasi, con cosa fanno e un pulsante per provarle.",
+            parameters={"type": "object", "properties": {
+                "client": {"type": "string", "enum": list(CLIENTS), "description": "Dove le mostri"}},
+                "required": []},
+            handler=lambda client="telegram": _scopri_card(client),
+            title="Scopri", method="GET", path="/api/metis/tools/scopri", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
+            telegram={"section": "Scopri"}),
     ]
 
     app.include_router(
@@ -644,7 +746,12 @@ _HUB_REGISTRATION_PAYLOAD = {
     "tags": SERVICE_TAGS,
     "topology_tags": SERVICE_TOPOLOGY_TAGS,
     "capabilities": {
-        "when_to_use": "ricordi, fatti e preferenze dell'utente, note di memoria", "manual": 'Memoria a lungo termine: fatti e preferenze. Per salvare una nota usa memory_note, per cercarla memory_recall.',
+        "when_to_use": "cosa fare adesso, funzioni da scoprire, come migliora l'assistente (voti, dataset, training)",
+        "manual": "Adesso: metis_adesso (abitudini, agenda, idee). Scopri: metis_scopri (funzioni mai usate). "
+                  "Miglioramento: dataset dai voti, benchmark e training LoRA.",
+        "usage": "/api/metis/usage",
+        "adesso": "/api/metis/adesso",
+        "scopri": "/api/metis/scopri",
         "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
         "dataset_build": "/api/metis/dataset/build",
         "dataset_export": "/api/metis/dataset/export",
@@ -654,6 +761,8 @@ _HUB_REGISTRATION_PAYLOAD = {
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
+        **llm_capabilities([usecase(IDEAS_USE, "Adesso · idee", chain="veloce",
+                                    help="Tre azioni utili per le prossime ore, diverse dalle abitudini.")]),
     },
 }
 
@@ -701,6 +810,8 @@ def register_on_hub_startup():
     ).start()
     agenda.register_async(_agenda_rules)
     metis_settings.start()
+    threading.Thread(target=usage_store.refresh, kwargs={"force": True}, daemon=True,
+                     name="metis-usage-warm").start()
 
 
 # Serve declared REST paths of MCP-only tools (Hub/Telegram/MCP gateway call

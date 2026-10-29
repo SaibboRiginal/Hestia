@@ -41,6 +41,7 @@ jobs:
           - Demeter
           - Calliope
           - Kairos
+          - Metis
 
     steps:
       - uses: actions/checkout@v4

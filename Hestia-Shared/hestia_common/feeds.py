@@ -49,7 +49,8 @@ class FeedPublisher:
         self.hub = hub_api_url.rstrip("/")
         self._http = session or requests.Session()
         self._lock = threading.Lock()
-        self._cache: tuple[float, list[dict]] = (0.0, [])
+        # -inf, not 0: monotonic() counts from boot, so a freshly booted host (or CI runner) would take 0 as fresh
+        self._cache: tuple[float, list[dict]] = (float("-inf"), [])
 
     def _services(self) -> list[dict]:
         with self._lock:

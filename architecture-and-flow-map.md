@@ -33,7 +33,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
 | Athena | Core Organ | Yes (proactive advisory cognition: Sistema track idle retrospective, Vita track life reflection on module signals) | No | Advisory hints for Oracle; improvement hand-off to Forge; life observations for the daily recap |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
-| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training |
+| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration, usage log) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training; usage log → «Adesso» and «Scopri» (Archive `metis-store`) |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
 | MCP | Core Gateway | No tool-ownership (aggregates) | No | Hestia's one MCP server: every client (Oracle, Telegram, WebUI, external AIs with an access) lists and runs tools here; owns external accesses |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |

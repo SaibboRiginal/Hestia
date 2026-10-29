@@ -302,7 +302,8 @@ read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Herc
 Hecate owns the devices and only passes data on, as **device feeds** (`hestia_common.feeds`): modules declare
 `capabilities.feeds = {kind: path}` in their Hub registration, Hecate discovers them and POSTs each item through the
 Hub. Kinds: `wearable.daily` (Hercules: activities + morning check-in; Hygieia: sleep), `phone.notification`
-(Plutus: bank app notifications → transactions to review), `phone.state`.
+(Plutus: bank app notifications → transactions to review), `phone.state`. The first push after a restart always
+reads the Hub registry (an empty cache is never taken as fresh, regression test in `tests/test_devices.py`).
 
 - **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» (tool `garmin_collega`) sends a Hermes secret form;
   the password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`; a two-step code comes with a

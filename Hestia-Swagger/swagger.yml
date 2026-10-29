@@ -136,6 +136,8 @@ tags:
     description: Same (kind,id) last-write-wins records and cursor, for Calliope only
   - name: Archive — Kairos store
     description: Same (kind,id) last-write-wins records and cursor, for Kairos only
+  - name: Archive — Metis store
+    description: Same (kind,id) last-write-wins records and cursor, for the Metis usage log only
   - name: Archive — Backup
     description: Encrypted backup of the whole database on Google Drive, monthly verification, rollback with undo (panel in the WebUI settings, agenda jobs, tools/hestia_backup.py)
   - name: Archive — MCP accesses
@@ -7715,6 +7717,92 @@ paths:
       responses:
         "200": {description: "{status, total_feedback, bad_feedback, bad_ratio, weak_domains[]}"}
 
+  /api/metis/usage:
+    post:
+      tags: [Metis]
+      summary: "Clients push taps to the usage log (Archive metis-store)"
+      description: "Body {taps: [{client: telegram|webui|mcp, kind: tool|page|action, ref, label?, at?}]} or one tap. 422 when no tap is valid."
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{recorded}"}
+        "422": {description: invalid taps}
+
+  /api/metis/usage/stats:
+    get:
+      tags: [Metis]
+      summary: Usage totals by client and top tools
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: days, in: query, schema: {type: integer, default: 30}}
+      responses:
+        "200": {description: "{days, taps, by_client{}, top[{tool, uses}]}"}
+
+  /api/metis/adesso:
+    get:
+      tags: [Metis]
+      summary: "«Adesso»: agenda items with a tool (next 3 h), habits at this hour/day, recents, the assistant's ideas"
+      description: "Only tools of the Hub catalog the client can run; no delete/cancel tools. Each item says why."
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: client, in: query, schema: {type: string, enum: [telegram, webui, mcp], default: telegram}}
+        - {name: limit, in: query, schema: {type: integer, default: 6}}
+      responses:
+        "200": {description: "{client, at, items[{tool, title, module, args, reason, source: agenda|habit|recent|idea}], ideas_at}"}
+
+  /api/metis/adesso/refresh:
+    post:
+      tags: [Metis]
+      summary: "Agenda jobs metis.adesso.0700/1230/1800: new ideas (Oracle use case metis.adesso) + prune taps older than 180 days"
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {client: {type: string}}}
+      responses:
+        "200": {description: "{telegram: {ideas}, webui: {ideas}, pruned}"}
+
+  /api/metis/scopri:
+    get:
+      tags: [Metis]
+      summary: "«Scopri»: tools never or rarely used (≤ 2 in 90 days), one per module first"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: client, in: query, schema: {type: string, default: webui}}
+        - {name: limit, in: query, schema: {type: integer, default: 12}}
+      responses:
+        "200": {description: "{client, items[{tool, title, description, module, uses, reason}], total, tools}"}
+
+  /api/metis/tools/adesso:
+    get:
+      tags: [Metis]
+      summary: "Tool metis_adesso: the Adesso list as a display card with one button per item"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: client, in: query, schema: {type: string, default: telegram}}
+      responses:
+        "200": {description: "adesso payload + display"}
+
+  /api/metis/tools/scopri:
+    get:
+      tags: [Metis]
+      summary: "Tool metis_scopri: the Scopri list as a display card"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: client, in: query, schema: {type: string, default: telegram}}
+      responses:
+        "200": {description: "scopri payload + display"}
+
   /api/settings/register:
     post:
       tags: [Themis]
@@ -13303,6 +13391,35 @@ paths:
     get:
       tags: [Archive — Kairos store]
       summary: "Current cursor of the Kairos store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/metis-store/records:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Metis usage-log rows (kinds tap, idea) by kind/ref/parent/at range/since_seq (Metis only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Metis store]
+      summary: "Upsert Metis rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/metis-store/cursor:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Current cursor of the Metis store"
       servers:
         - url: http://localhost:19002
       responses:

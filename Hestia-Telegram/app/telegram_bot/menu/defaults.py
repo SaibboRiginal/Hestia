@@ -20,6 +20,8 @@ DOORS = {
 COMMANDS = [
     ("oggi", "La tua giornata"),
     ("aree", "Tutte le aree e le loro azioni"),
+    ("adesso", "Cosa ti serve adesso"),
+    ("scopri", "Funzioni che non hai ancora provato"),
     ("notifiche", "Notifiche da vedere o rispondere"),
     ("impostazioni", "Chat, menu e impostazioni"),
     ("nuova", "Nuova conversazione"),
@@ -34,6 +36,7 @@ ALIASES = {
     "set": "impostazioni", "live": "voce_on", "chat": "voce_off", "documents": "documenti",
     "create_event": "create_event", "create_reminder": "nuovo_promemoria", "create_task": "nuova_attivita",
     "notifica_add": "nuovo_avviso", "notifica_get": "notifiche_attive", "notifica_remove": "notifica_disattiva",
+    "adesso": "metis_adesso", "scopri": "metis_scopri",
     "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout_listings",
 }
 

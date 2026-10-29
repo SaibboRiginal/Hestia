@@ -26,6 +26,8 @@ EXPECTED_TOOLS = {
     "metis_dataset_status",
     "metis_benchmark_run",
     "metis_loRA_train",
+    "metis_adesso",
+    "metis_scopri",
 }
 
 

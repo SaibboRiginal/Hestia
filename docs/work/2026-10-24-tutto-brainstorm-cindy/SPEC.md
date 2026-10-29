@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.5 |
+| **Version** | 1.6 |
 | **Source** | user via project thread «Implementare tutto il brainstorm e Cindy» (Marko 2026-10-24 18:31: «iniziamo a implementare TUTTO … tutto one shot, poi una volta fatto tutto e collegato tutto e senza bug, fai il test e finalizza solo alla fine fine»); lists: `/mnt/project-files/brainstorm/2026-10-23-review-e-nuove-idee.md` §0 (A–D) + §5, adaptation table `/mnt/project-files/valutazioni/idee-dal-repo-cindy.md` «Adattamento a Hestia»; routed by the project coordinator |
 | **Status** | For the record (Marko asked for no per-item approvals); implementation in waves, merged by Claude when CI is green |
 
@@ -104,6 +104,11 @@ Athena proposals and thoughts, Argus remediation history.
    ref, at}`); clients push taps (`POST /api/metis/usage`), Hub-routed. Suggestions = deterministic frequency per
    weekday/hour bucket + due agenda windows + recents; the LLM fills the invented half a few times a day on events
    (agenda job + signals), never at each open. Telegram and WebUI read the same `GET /api/metis/adesso`.
+   v1.6 (W6): the catalog of tools is the Hub's own discovery (`GET {HUB}/discovery/catalog?type=tool`, the Hub is
+   not a module so no `/route`); only tools the client can run, never delete/cancel tools; ideas are written by three
+   daily agenda jobs `metis.adesso.*` (seeds 07:00, 12:30, 18:00) and kept 8 h; on Telegram «Adesso» lives in the
+   Oggi card (falls back to its fixed actions) plus `/adesso` and `/scopri`, not in the bottom keyboard (four doors
+   stay); the Ctrl+K palette and the WebUI row come with W7.
 2. **Origin and turn authority (Cindy 6)**: the caller's code sets `X-Hestia-Origin` (`hestia_common.origin`);
    Hestia-MCP stamps `esterno:<access>` for external AIs; no header from a non-user client = `autonomo` (fail
    closed); a body field or the model never sets it (v1.1: not stamped by the Hub, which forwards headers and does
