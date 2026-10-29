@@ -6,4 +6,5 @@
 - [x] New `readme.md`
 - [x] Placeholder banners + Gemini prompt (`docs/assets/BANNER.md`)
 - [x] Root CHANGELOG
-- [ ] Marko generates the real banners and overwrites `docs/assets/banner-dark.png` / `banner-light.png`
+- [x] Real banners from Gemini in place (Marko, 2026-10-29)
+- [x] v1.2: How it works in plain words, developer section only links
