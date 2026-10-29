@@ -363,7 +363,8 @@ and «senti …» notices (agenda `hera.daily` + Hermes). Rows in Archive `peopl
 ### Hestia-Kairos ⏳
 Deadlines module «Scadenze» (port 19028, `scadenze_*` tools): bills, insurance, car tax, inspection, documents,
 subscriptions with recurrence, lead time and advice (Oracle `kairos.consiglio`), mirrored as agenda events; mails by
-push (Iris `kairos:mail`) only **propose** a deadline (Hermes card). Rows in Archive `deadlines-store`. Details:
+push (Iris `kairos:mail`) only **propose** a deadline (Hermes card); «Fra N giorni» pauses the notice and then reminds
+again. Rows in Archive `deadlines-store`. Details:
 `Hestia-Kairos/hestia-kairos.md`.
 
 ### Hestia-Demeter 🥗
@@ -594,6 +595,7 @@ No code-only behavior changes are considered complete without synchronized docs.
 2. `check_docs_sync.py` enforces documentation synchronization for behavior changes.
 3. `check_command_contracts.py` enforces command metadata quality and contract-drift safeguards.
 4. Rule updates must keep policy text and automation logic aligned in the same change set.
+5. Every service with a `tests/` folder is in the CI matrix (`.github/workflows/tests.yml`), Hestia-MCP included.
 
 ## Messaging Contract (Global UX Rules)
 
