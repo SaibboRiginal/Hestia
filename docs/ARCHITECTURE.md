@@ -547,7 +547,8 @@ No code-only behavior changes are considered complete without synchronized docs.
    client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action, settings_panel — a panel shown inside the
    module's own settings). Clients load what they support
    and own their configuration (visibility, dashboards) as their own Themis settings — no central UI module. A plugin
-   calls only its own module, under its `api_prefix`. Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
+   calls only its own module, under its `api_prefix` (a route the page needs outside it is served by the
+   module under the prefix too, e.g. Chronos `/api/agenda/routines`; the proxy rule never widens). Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
    Wardrobe 50s, Plutus 60s, Kairos 70s, Demeter 80s, Hera 90s, then — the hundreds 100–190 being core — Calliope 200s,
    Apollo 210s, Aphrodite 220s, Lares 230s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
