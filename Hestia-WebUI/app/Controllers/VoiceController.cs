@@ -26,6 +26,7 @@ public class VoiceController : ControllerBase
     public const string UseListen = "webui.ascolta";
     public const string UseLiveIn = "webui.live.ascolto";
     public const string UseLiveOut = "webui.live.voce";
+    public const string UseDictation = "webui.dettatura";
 
     /// <summary>Declared on the Hub (capabilities.voice_usecases).</summary>
     public static readonly object[] UseCases =
@@ -38,9 +39,11 @@ public class VoiceController : ControllerBase
               help = "Modalità Parla: quello che dici." },
         new { id = UseLiveOut, label = "Sito · Parla (voce)", direction = "voce", chain = "voce", mode = "segui",
               help = "Modalità Parla: le risposte lette mentre si scrivono." },
+        new { id = UseDictation, label = "Sito · dettatura", direction = "ascolto", chain = "ascolto", mode = "segui",
+              help = "Il tasto «Detta» della chat: quello che dici diventa testo da rileggere, senza inviarlo." },
     };
 
-    private static readonly HashSet<string> Uses = new() { UseMessage, UseListen, UseLiveIn, UseLiveOut };
+    private static readonly HashSet<string> Uses = new() { UseMessage, UseListen, UseLiveIn, UseLiveOut, UseDictation };
     private static readonly Regex StreamStep = new("^(listen|say)/[A-Za-z0-9]{6,40}/(chunk|text|end)$", RegexOptions.Compiled);
 
     private readonly HubClient _hub;

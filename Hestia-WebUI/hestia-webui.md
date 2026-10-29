@@ -152,6 +152,31 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   only); off = `DELETE` + unsubscribe. The worker shows `{title, body}` (tag per notification, pending ones stay
   until touched) and a tap opens the notification's `link` page (or *Notifiche*), focusing an open tab.
 
+### Sidebar, conversations, chat parts, live everywhere (2026-10-29, same dossier W7 part 3b)
+
+- **Sidebar** (`layout/shell.component.ts`): SVG logo; under «Crea con Hestia» a visible **Cerca** (opens the Ctrl+K
+  palette through the window event `hestia:palette`) and **Parla**; sections *Generale* (now above) · *Fissati* ·
+  *Conversazioni* (pinned conversations, else the 3 latest; *Tutte le conversazioni* opens the history) ·
+  *Dashboard* · *Moduli*; the system modules' pages are behind one **Sistema** entry at the bottom (sum of their
+  counters) → page `/sistema` (`features/system/`, modules with their pages, pin to *Fissati*, link to the *Sistema*
+  dashboard). A pinned system page still shows in *Fissati*. Compact mode = the collapsed sidebar (icons only).
+- **History** (`features/chat/chat-history.component.ts`, `services/chats.service.ts`): second sidebar, every
+  conversation (pinned first), search in titles and messages, from/to dates, tag filter, *Carica altre*; per
+  conversation pin, title, coloured tags (9 fixed hues). Opening one loads its messages (`/api/ui/chats/{id}/messages`,
+  markdown answers rendered) and sets it as the session the next message goes to. Through the Oracle plugin door.
+- **Answer parts** (`features/chat/answer-blocks.component.ts`): ```` ```hestia-ui ```` blocks (also when the answer
+  arrived as HTML `<pre><code class=language-hestia-ui>`) become card, stat, table, list, checklist, chart (SVG bars or
+  line) and button (sends its text as your message); tone = role colours of the theme.
+- **Ho fatto** (Oracle `changes` frame, Cindy 13; .NET `OracleEvent.items`): the writes of the answer with
+  «Annulla» = the inverse tool through Hestia-MCP `POST /api/mcp/ui/tools/call`; undone rows are struck through.
+- **Origin** (Cindy 6; `final.origin`, .NET `OracleEvent.origin`): a small label above an answer started by a
+  routine, a module or an external AI.
+- **Parla everywhere** (`layout/live-overlay.component.ts`): from the sidebar, the Home header or Ctrl+Shift+Space;
+  live goes on when you leave the chat, a pill at the bottom shows its state with the pet as face (happy while
+  talking), *Interrompi*, *Apri la chat*, close. The Chat page keeps its own panel.
+- **Detta** (chat composer): speak, the text lands in the box to read again; use case `webui.dettatura` (declared by
+  `VoiceController`), nothing is kept.
+
 ### Voce (2026-10-20, dossier `docs/work/2026-10-20-modulo-voce`)
 
 - Chat composer: with an empty field the send button is a **microphone**. Touch: hold to record, release to send,

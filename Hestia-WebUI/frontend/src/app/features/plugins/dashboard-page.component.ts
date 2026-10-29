@@ -3,9 +3,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { map } from 'rxjs';
-import { UI, DialogService } from '../../ui';
+import { UI, DialogService, ToastService } from '../../ui';
 import { uid } from '../../core/uid';
 import { AssistantService } from '../../services/assistant.service';
+import { LiveVoiceService } from '../../services/live-voice.service';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { QuickStripComponent } from './quick-strip.component';
 import { AdessoRowComponent } from './adesso-row.component';
@@ -30,6 +31,10 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
         <button hx-btn variant="ghost" (click)="cancelEdit()">Annulla</button>
         <button hx-btn variant="primary" icon="check" [loading]="saving()" (click)="saveEdit()">Salva</button>
       } @else {
+        @if (isHome()) {
+          <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" icon="waveform" (click)="toggleLive()" [attr.aria-pressed]="live.on"
+                  title="Parla con Hestia a voce (Ctrl+Shift+Spazio)">{{ live.on ? 'Ferma' : 'Parla' }}</button>
+        }
         <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">Crea con Hestia</button>
         <button hx-btn variant="secondary" icon="edit" (click)="startEdit()">Modifica</button>
         <hx-menu [items]="menuItems()" (select)="onMenu($event)">
@@ -190,7 +195,15 @@ export class DashboardPageComponent {
   private router = inject(Router);
   private dialogs = inject(DialogService);
   private assistant = inject(AssistantService);
+  private toasts = inject(ToastService);
+  live = inject(LiveVoiceService);
   readonly sizeLabel = SIZE_LABEL;
+
+  /** «Parla» from the Home (brainstorm C12): the live overlay follows you on every page. */
+  toggleLive(): void {
+    if (this.live.on) { this.live.stop(); return; }
+    void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });
+  }
 
   private routeId = toSignal(this.route.paramMap.pipe(map(p => p.get('id') ?? 'home')), { initialValue: 'home' });
   readonly current = computed<Dashboard | undefined>(() =>

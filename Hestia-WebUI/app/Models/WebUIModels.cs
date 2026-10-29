@@ -161,5 +161,11 @@ public record OracleEvent(
     [property: JsonPropertyName("title")]
     string? Title = null,
     [property: JsonPropertyName("detail")]
-    string? Detail = null
+    string? Detail = null,
+    // changes frame: what the answer changed, each with its undo (Cindy 13)
+    [property: JsonPropertyName("items")]
+    object? Items = null,
+    // final: origin of a turn not typed by the owner (Cindy 6)
+    [property: JsonPropertyName("origin")]
+    object? Origin = null
 );

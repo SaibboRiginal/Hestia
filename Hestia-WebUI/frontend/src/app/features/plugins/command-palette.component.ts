@@ -85,6 +85,10 @@ export class CommandPaletteComponent {
     effect(() => { if (this.open()) queueMicrotask(() => this.input()?.nativeElement.focus()); });
   }
 
+  /** The sidebar «Cerca» button. */
+  @HostListener('window:hestia:palette')
+  fromSidebar() { if (!this.open()) this.show(); }
+
   @HostListener('document:keydown', ['$event'])
   onGlobal(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {

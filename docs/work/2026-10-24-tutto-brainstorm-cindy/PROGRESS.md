@@ -141,13 +141,18 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] Hermes inbox: «Da decidere», secret form (`/api/ui/inbox/{id}/secret`), `execute: command` → Comandi
 - [x] Hestia-MCP Comandi deep link `?command=&args=&run=1`
 - [x] `ng build` ok; Hermes test `test_ui_doors_for_secret_form_and_web_push`; docs (webui, DESIGN-SYSTEM, hermes, mcp), swagger
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #43, f535dce)
 
-## W7 — WebUI, part 3b (Angular shell)
-- [ ] new sidebar: SVG logo, visible Search (opens Ctrl+K), Generale above Fissati, pinned or 3 recent chats, second
-      sidebar with full history (search + date filter), Sistema as one entry with its page, compact icon mode
-- [ ] live overlay from anywhere (pet as face) + dictation in the normal chat
-- [ ] chat components (hxk-* in answers), change-set row with «Annulla», origin label, chat tags
+## W7 — WebUI, part 3b (Angular shell + conversations)
+- [x] Cindy 26 backend: Archive `chat_session_meta` + `/api/chat/sessions/list|tags|{id}/meta`; Oracle
+      `core/services/chat_sessions.py`, tools `chat_tag` (undo) / `chat_list` (Telegram card), `/api/ui/chats*`
+- [x] new sidebar: SVG logo, Cerca + Parla, Generale above Fissati, Conversazioni (pinned or 3 latest), history
+      sidebar (search, dates, tags, pin, title), Sistema as one entry + `/sistema` page
+- [x] live overlay from anywhere (sidebar, Home, Ctrl+Shift+Space; pet as face) + «Detta» in the chat (`webui.dettatura`)
+- [x] answer components (```hestia-ui), «Ho fatto» with «Annulla» (changes frame), origin label; .NET `OracleEvent`
+      gets `items` + `origin` (not built here: no dotnet)
+- [x] tests: Archive `test_chat_sessions.py`, Oracle `test_chat_sessions.py`; `ng build` ok; docs, swagger
+- [ ] PR + CI green + merge
 
 ## W8
 - [ ] see SPEC §3

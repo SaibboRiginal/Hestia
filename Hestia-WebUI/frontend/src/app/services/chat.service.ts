@@ -2,6 +2,7 @@ import { uid } from '../core/uid';
 import { Injectable, Injector, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { marked } from 'marked';
 import { SignalRService } from './signalr.service';
 import { ChatMessage, ChatNotice, ThinkingStep, ServerEvent, PendingQuestion } from '../models/chat.models';
 import { NoticePrefsService } from './notice-prefs.service';
@@ -255,8 +256,16 @@ export class ChatService {
       case 'final':
         if (streamId && event.reply) {
           this.finalizeStreaming(streamId, event.reply, event.domain, event.session_id);
+          if (event.origin?.label) this.patch(streamId, { origin: event.origin });
         }
         break;
+
+      case 'changes': {
+        // «Ho fatto» under the answer (Cindy 13): can arrive before or after `final`.
+        const target = streamId ?? this.lastAssistantId;
+        if (target && event.items?.length) this.patch(target, { changes: event.items.map(c => ({ ...c, done: false })) });
+        break;
+      }
 
       case 'error':
         if (streamId && event.content) {
@@ -392,6 +401,23 @@ export class ChatService {
           : m
       ));
     }
+  }
+
+  /** Merges fields into one message (e.g. a change marked undone). */
+  patch(id: string, fields: Partial<ChatMessage>): void {
+    this.messages.update(msgs => msgs.map(m => m.id === id ? { ...m, ...fields } : m));
+  }
+
+  /** Shows a past conversation (oldest first) instead of the current one; answers continue in it. */
+  showHistory(items: Array<{ role: string; content: string; at?: string }>, sessionId: string): void {
+    this.clearMessages();
+    this.messages.set(items.filter(i => i.role === 'user' || i.role === 'assistant').map(i => ({
+      id: uid(), role: i.role as 'user' | 'assistant', sessionId,
+      // answers are kept as written by the model: markdown becomes HTML like a live answer
+      content: i.role === 'assistant' && !/<[a-z][^>]*>/i.test(i.content || '')
+        ? marked.parse(i.content || '', { gfm: true, async: false }) as string : i.content || '',
+      timestamp: i.at ? new Date(i.at) : new Date(),
+    })));
   }
 
   private appendToStreaming(streamId: string, text: string): void {

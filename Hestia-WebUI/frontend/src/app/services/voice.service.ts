@@ -108,6 +108,11 @@ export class VoiceService {
     });
   }
 
+  /** Dictation (W7, brainstorm C12): the text only, to read again before sending; nothing is kept. */
+  async dictate(blob: Blob, mime: string): Promise<Heard> {
+    return this.post<Heard>('transcribe', { audio_b64: await blobToB64(blob), mime_type: mime, use_case: 'webui.dettatura' });
+  }
+
   /** «Ascolta»: play/stop the reading of a reply (the kept one when it exists). */
   async toggle(messageId: string, html: string): Promise<void> {
     if (this.playing() === messageId || this.loading() === messageId) { this.stop(); return; }

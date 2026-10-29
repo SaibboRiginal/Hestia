@@ -6,7 +6,7 @@ import requests
 import logging
 from pathlib import Path
 import sys
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
+from fastapi import Body, FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
@@ -123,6 +123,45 @@ _oracle_mcp_tools = [
         clients=["telegram", "ui"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memoria",
                 telegram={"section": "Documenti", "primary": 3}),
+    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7) ─────────
+    MCPTool(
+        name="chat_tag",
+        description=("Put coloured tags on this conversation (e.g. lavoro, salute, viaggio) so the owner finds it "
+                     "later; also remove tags, give it a title or pin it. Without session_id: the conversation "
+                     "you are in."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "tags": {"type": "string", "description": "Tags to add, comma separated (max 6 per conversation)"},
+                "remove": {"type": "string", "description": "Tags to remove, comma separated"},
+                "title": {"type": "string", "description": "Short title of the conversation"},
+                "pinned": {"type": "boolean", "description": "Pin it on top of the list"},
+                "color": {"type": "string", "enum": ["gray", "red", "orange", "yellow", "green", "teal", "blue",
+                                                      "purple", "pink"], "description": "Colour of new tags"},
+                "session_id": {"type": "string", "description": "Conversation id (empty = this one)"},
+            },
+        },
+        handler=lambda **kw: _chat_tool(chat_sessions.tool_tag, **kw),
+        title="Etichetta la conversazione", method="POST", path="/api/chats/tag",
+        clients=["ui", "telegram"], response_mode="oracle_natural",
+        telegram_visible=False, telegram_group="sistema",
+                telegram={"section": "Chat"}),
+    MCPTool(
+        name="chat_list",
+        description="The owner's conversations, newest first, with their tags; filter by one tag and/or words.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "tag": {"type": "string", "description": "Only conversations with this tag"},
+                "query": {"type": "string", "description": "Words in the title or messages"},
+                "limit": {"type": "integer", "description": "Max conversations (default 10, max 30)"},
+            },
+        },
+        handler=lambda **kw: _chat_tool(chat_sessions.tool_list, **kw),
+        title="Le tue conversazioni", method="GET", path="/api/chats",
+        clients=["ui", "telegram"], response_mode="direct",
+        telegram_visible=False, telegram_group="sistema",
+                telegram={"section": "Chat"}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -343,6 +382,7 @@ def ui_usage_calls(days: int = 7, module: str = "", session_id: str = "", use_ca
 
 # ── Documenti page (SPEC §A4): documents in Archive, same search and archiving pipeline as the chat ─────────
 from core.services import ui_documents  # noqa: E402
+from core.services import chat_sessions  # noqa: E402
 from core.document.transcription import capabilities as _voice_capabilities  # noqa: E402
 
 
@@ -376,6 +416,64 @@ def ui_memory_forget(memory_id: int):
     if not engine._memory_service.forget(memory_id):
         raise HTTPException(status_code=502, detail="memory not removed")
     return {"status": "forgotten", "id": memory_id}
+
+
+def _chat_route(*args, **kwargs):
+    return engine._memory_service._route_archive(*args, **kwargs)
+
+
+def _chat_tool(fn, **kwargs):
+    try:
+        return fn(_chat_route, **kwargs)
+    except chat_sessions.ChatSessionsError as exc:
+        return {"error": exc.detail, "status": exc.status}
+
+
+def _chats(fn, *args, **kwargs):
+    try:
+        return fn(_chat_route, *args, **kwargs)
+    except chat_sessions.ChatSessionsError as exc:
+        if exc.status >= 500:
+            logger.warning("[🔄] event=ui_chats_archive_failed detail=%s", exc.detail)
+        raise HTTPException(status_code=exc.status, detail=exc.detail)
+
+
+@app.post("/api/chats/tag")
+def chats_tag(body: dict = Body(...)):
+    """``chat_tag`` over REST (same handler)."""
+    return _chats(chat_sessions.tool_tag, **{k: v for k, v in body.items() if k in (
+        "tags", "remove", "title", "pinned", "color", "session_id", "replace")})
+
+
+@app.get("/api/chats")
+def chats_list(tag: str = "", query: str = "", limit: int = 10):
+    """``chat_list`` over REST (same handler)."""
+    return _chats(chat_sessions.tool_list, tag=tag, query=query, limit=limit)
+
+
+@app.get("/api/ui/chats")
+def ui_chats(q: str = "", tag: str = "", since: str = "", until: str = "", pinned: Optional[bool] = None,
+             limit: int = 30, offset: int = 0):
+    """WebUI history sidebar: conversations newest first (pinned on top), search, tag and date filter."""
+    return _chats(chat_sessions.list_chats, q=q, tag=tag, since=since, until=until, pinned=pinned,
+                  limit=limit, offset=offset)
+
+
+@app.get("/api/ui/chats/tags")
+def ui_chats_tags():
+    return _chats(chat_sessions.tags)
+
+
+@app.get("/api/ui/chats/{session_id}/messages")
+def ui_chats_messages(session_id: str, limit: int = 200):
+    """Messages of one conversation (oldest first) to open it again in the chat."""
+    return _chats(chat_sessions.messages, session_id, limit=limit)
+
+
+@app.put("/api/ui/chats/{session_id}")
+def ui_chats_meta(session_id: str, body: dict = Body(...)):
+    """Title, tags (`tags` replace, `add_tags`, `remove_tags`), pinned; returns the previous meta as `before`."""
+    return _chats(chat_sessions.set_meta, session_id, {**body, "client": "webui"})
 
 
 @app.get("/api/ui/documents")

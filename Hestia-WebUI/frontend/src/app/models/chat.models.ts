@@ -21,6 +21,19 @@ export interface ChatMessage {
   audio?: { url: string; seconds: number };
   /** The voice message is being transcribed (the text arrives, then it is sent like a typed one). */
   transcribing?: boolean;
+  /** What this answer changed, each with its «Annulla» (Oracle `changes` frame, Cindy 13). */
+  changes?: ChatChange[];
+  /** Who started this turn when it was not you typing (routine, module, external AI — Cindy 6). */
+  origin?: { kind: string; level: string; label: string };
+}
+
+/** One write of an answer: `undo` runs a tool through Hestia-MCP («Annulla»); `done` once undone. */
+export interface ChatChange {
+  tool: string;
+  title: string;
+  detail: string;
+  undo: { tool: string; args: Record<string, unknown>; label: string } | null;
+  done?: boolean;
 }
 
 /** Standard Oracle `notice` packet — see Hestia-Shared/hestia-shared.md § Response packets. */
@@ -68,6 +81,7 @@ export type ServerEventType =
   | 'needs_input'
   | 'notice'
   | 'resume'
+  | 'changes'
   | 'stream_done';
 
 export interface ServerEvent {
@@ -105,6 +119,10 @@ export interface ServerEvent {
   queue_ids?: number[];
   position?: number;
   message?: string;
+  /** changes frame: what the answer changed. */
+  items?: ChatChange[];
+  /** final: origin of a turn not typed by the owner. */
+  origin?: { kind: string; level: string; label: string };
 }
 
 /** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */

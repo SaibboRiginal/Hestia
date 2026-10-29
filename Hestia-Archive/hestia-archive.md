@@ -204,6 +204,13 @@ It stores and serves all persistent state through generic APIs.
 - `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda
   metadata (type, owner, action, skips, rules). Upserts without `meta` keep the stored value.
 - New `GET /api/chat/sessions?since=` → `{sessions: [...]}` distinct session ids (Athena consolidator).
+- 2026-10-29 (Cindy 26, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W7): table `chat_session_meta`
+  (`session_id` PK, `title`, `tags` JSONB `[{name, color}]`, `pinned`, `client`, `updated_at`; created by
+  `create_all`). `GET /api/chat/sessions/list?q=&tag=&since=&until=&pinned=&limit=&offset=` → `{items: [{session_id,
+  title (own or first user message), first_at, last_at, messages, tags, pinned}], total}`, pinned first then newest;
+  `q` searches titles and message text. `PUT /api/chat/sessions/{id}/meta` `{title?, tags? | add_tags? | remove_tags?,
+  pinned?, client?}` → meta + `before` (for undo); tag names lower-cased, max 6, colours gray red orange yellow green
+  teal blue purple pink. `GET /api/chat/sessions/tags` → tags in use with counts.
 - Session summaries for Athena skills are stored as entities with `domain=session_summary`.
 - Startup waits for Postgres (`ARCHIVE_DB_WAIT_SECONDS`, 0 = forever) and re-registers on Hub every
   `HUB_KEEPALIVE_SECONDS` (Hub restarts no longer drop Archive).

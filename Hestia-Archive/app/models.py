@@ -55,6 +55,19 @@ class ChatHistory(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class ChatSessionMeta(Base):
+    """What the owner sets on a conversation (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7): its own
+    title, coloured tags and «fissata». Messages stay in ``chat_history``; a session without a row has none."""
+    __tablename__ = "chat_session_meta"
+
+    session_id = Column(String, primary_key=True)
+    title = Column(String, nullable=True)
+    tags = Column(JSONB, nullable=True)          # [{"name": "lavoro", "color": "blue"}]
+    pinned = Column(Boolean, nullable=False, default=False)
+    client = Column(String, nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class UserPreference(Base):
     """Memoria a lungo termine: fatti, preferenze, e skill procedurali."""
     __tablename__ = "user_preferences"
