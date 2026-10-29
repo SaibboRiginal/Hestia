@@ -86,6 +86,9 @@ def has_contract_change(path: str) -> bool:
     lower = path.lower()
     if not lower.endswith((".py", ".yml", ".yaml", ".json")):
         return False
+    # Tests and CI workflows check contracts, they do not change them.
+    if "/tests/" in lower or lower.startswith((".github/", "tools/governance/")):
+        return False
     return any(token in lower for token in CONTRACT_KEYWORDS)
 
 

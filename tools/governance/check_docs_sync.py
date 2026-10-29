@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Governance gate: enforce docs synchronization for behavior changes.
 
+Test files (`*/tests/*`), CI workflows and the governance scripts themselves are not behaviour.
+
 Rules enforced:
 1) If runtime behavior files change, documentation must also change.
 2) Root rules doc docs/ARCHITECTURE.md must be updated when behavior changes
@@ -32,9 +34,16 @@ DOC_ALWAYS = {
 
 NON_BEHAVIOR_PREFIXES = (
     ".git/",
+    ".github/",
     ".vscode/",
     "templates/",
     "__pycache__/",
+    "tools/governance/",
+)
+
+# Test code checks behaviour, it is not behaviour: a test-only change needs no doc.
+NON_BEHAVIOR_PARTS = (
+    "/tests/",
 )
 
 NON_BEHAVIOR_SUFFIXES = (
@@ -97,6 +106,8 @@ def is_behavior_file(path: str) -> bool:
     if is_doc_file(path):
         return False
     if any(path.startswith(prefix) for prefix in NON_BEHAVIOR_PREFIXES):
+        return False
+    if any(part in path for part in NON_BEHAVIOR_PARTS):
         return False
     if path.endswith(NON_BEHAVIOR_SUFFIXES):
         return False
