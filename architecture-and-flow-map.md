@@ -208,6 +208,9 @@ flowchart LR
    e.g. Archive's «Backup».
 5. A page may need a route of its module outside the prefix: the module serves the same handler under the prefix
    too (Chronos `/api/agenda/routines`, `/api/agenda/special`), never a wider proxy rule.
+6. The WebUI shell uses the same doors: Metis (taps, «Adesso», «Scopri»), Aphrodite (look of now), Hermes
+   `/api/ui/push/*` (Web Push), Oracle `/api/ui/chats*` (conversation history and tags → Archive
+   `/api/chat/sessions/*`); a suggested tool or an «Annulla» runs through Hestia-MCP `/api/mcp/ui/tools/call`.
 
 ### Assistant agenda flow (rules as data)
 1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.
