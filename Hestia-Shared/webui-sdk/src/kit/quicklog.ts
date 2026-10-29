@@ -72,7 +72,12 @@ export class HxkQuicklog extends LitElement {
     const prev = chip.state;
     const r = await this.host.api(this.action.method, fillPath(this.action.path, { id: chip.id }), { body });
     this._busy = '';
-    if (!r.ok) { this.host.toast(r.error === 'offline' ? 'Sei offline: riprova quando torni in linea' : 'Non sono riuscito a segnarlo', 'danger'); return; }
+    if (!r.ok) {
+      // 409/422: the module says why (e.g. «già segnata oggi»), better than a generic failure.
+      const said = (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : '';
+      this.host.toast(r.error === 'offline' ? 'Sei offline: riprova quando torni in linea' : said || 'Non sono riuscito a segnarlo', 'danger');
+      return;
+    }
     this.setState(chip, 'done');
     const undo = this.action.undo;
     this.host.toast(chip.label, 'success', undo ? { label: 'Annulla', run: () => this.undo(chip, prev) } : undefined);

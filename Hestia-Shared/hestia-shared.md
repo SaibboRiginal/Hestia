@@ -300,6 +300,8 @@ types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). 
 script) — see its `README.md`.
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
 2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
+`hxk-quicklog` chips (2026-10-29): a 409/422 from the module shows its own reason (e.g. «già segnata oggi»)
+instead of a generic «Non sono riuscito a segnarlo».
 
 `settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history")]` (2026-10-21)
 adds a panel that clients show **inside the module's own settings** (WebUI *Impostazioni → Sistema → <module>*),

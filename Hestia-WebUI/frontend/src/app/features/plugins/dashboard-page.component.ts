@@ -33,7 +33,8 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
       } @else {
         @if (isHome()) {
           <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" icon="waveform" (click)="toggleLive()" [attr.aria-pressed]="live.on"
-                  title="Parla con Hestia a voce (Ctrl+Shift+Spazio)">{{ live.on ? 'Ferma' : 'Parla' }}</button>
+                  [attr.aria-label]="live.on ? 'Ferma Parla' : 'Parla'"
+                  title="Parla con Hestia a voce (Ctrl+Shift+Spazio)"><span class="lbl">{{ live.on ? 'Ferma' : 'Parla' }}</span></button>
         }
         <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">Crea con Hestia</button>
         <button hx-btn variant="secondary" icon="edit" (click)="startEdit()">Modifica</button>
@@ -181,7 +182,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
     @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 860px) {
       hx-page-header { padding-left: 56px; }
-      .ask { display: none; }
+      .ask, .lbl { display: none; }
       .body { padding: 14px 12px 28px; }
       .tabs { padding: 6px 12px 0; }
       .grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(150px, auto); }

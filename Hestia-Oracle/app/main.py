@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
+from core.services import chat_sessions
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -125,38 +126,14 @@ _oracle_mcp_tools = [
                 telegram={"section": "Documenti", "primary": 3}),
     # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7) ─────────
     MCPTool(
-        name="chat_tag",
-        description=("Put coloured tags on this conversation (e.g. lavoro, salute, viaggio) so the owner finds it "
-                     "later; also remove tags, give it a title or pin it. Without session_id: the conversation "
-                     "you are in."),
-        parameters={
-            "type": "object",
-            "properties": {
-                "tags": {"type": "string", "description": "Tags to add, comma separated (max 6 per conversation)"},
-                "remove": {"type": "string", "description": "Tags to remove, comma separated"},
-                "title": {"type": "string", "description": "Short title of the conversation"},
-                "pinned": {"type": "boolean", "description": "Pin it on top of the list"},
-                "color": {"type": "string", "enum": ["gray", "red", "orange", "yellow", "green", "teal", "blue",
-                                                      "purple", "pink"], "description": "Colour of new tags"},
-                "session_id": {"type": "string", "description": "Conversation id (empty = this one)"},
-            },
-        },
+        name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_tag, **kw),
         title="Etichetta la conversazione", method="POST", path="/api/chats/tag",
         clients=["ui", "telegram"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "Chat"}),
     MCPTool(
-        name="chat_list",
-        description="The owner's conversations, newest first, with their tags; filter by one tag and/or words.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "tag": {"type": "string", "description": "Only conversations with this tag"},
-                "query": {"type": "string", "description": "Words in the title or messages"},
-                "limit": {"type": "integer", "description": "Max conversations (default 10, max 30)"},
-            },
-        },
+        name="chat_list", description=chat_sessions.LIST_DESCRIPTION, parameters=chat_sessions.LIST_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_list, **kw),
         title="Le tue conversazioni", method="GET", path="/api/chats",
         clients=["ui", "telegram"], response_mode="direct",
@@ -382,7 +359,6 @@ def ui_usage_calls(days: int = 7, module: str = "", session_id: str = "", use_ca
 
 # ── Documenti page (SPEC §A4): documents in Archive, same search and archiving pipeline as the chat ─────────
 from core.services import ui_documents  # noqa: E402
-from core.services import chat_sessions  # noqa: E402
 from core.document.transcription import capabilities as _voice_capabilities  # noqa: E402
 
 

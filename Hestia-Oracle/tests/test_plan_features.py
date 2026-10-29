@@ -326,3 +326,23 @@ class TestCompaction:
         ])
         result = engine.compact_context("short-session")
         assert result.get("note") or result.get("messages_before", 0) <= 6
+
+
+@pytest.mark.unit
+def test_chat_tools_are_in_the_chat_and_tag_the_conversation_of_the_turn(engine):
+    """Regression (bench 2026-10-29): «#tool chat_tag» in the chat → «Unknown tool»: Oracle's own conversation tools
+    were only MCP tools (Telegram), never in the chat's tool set; without session_id they tag this conversation."""
+    engine._module_registry.get_domain_owners = lambda d: []
+    seen = []
+
+    def route(method, endpoint, body=None, query=None, timeout=6):
+        seen.append((method, endpoint))
+        return {"session_id": endpoint.split("/")[3], "title": None, "tags": [{"name": "banco", "color": "blue"}],
+                "pinned": False, "before": {"tags": [], "title": None, "pinned": False}}
+    engine._memory_service._route_archive = route
+    intent = SessionIntent(mode="domain_query", explicit_domain="general", confidence=0.9, valid_domains=["general"])
+    tools = {t.name: t for t in engine._build_domain_tools(intent, "sessione-in-corso", None)}
+    assert {"chat_tag", "chat_list"} <= set(tools) and tools["chat_tag"].writes
+    ok, out = tools["chat_tag"].handler(tags="banco")
+    assert ok and seen == [("PUT", "/chat/sessions/sessione-in-corso/meta")]
+    assert out["undo"]["tool"] == "chat_tag"

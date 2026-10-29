@@ -58,7 +58,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/auth/access` | `{local, tokenRequired}` — asked by the browser at start, no token needed |
 | GET | `/api/webui/plugins/catalog` | Client plugins (Hub catalog `client=webui`), 15 s cache |
 | GET | `/api/webui/plugins/{module}/bundle/{file}` | Module WebUI bundle file (via Hub) |
-| ANY | `/api/webui/plugins/{module}/call/{path}` | Plugin → its own module; 403 outside its `api_prefix` |
+| ANY | `/api/webui/plugins/{module}/call/{path}` | Plugin → its own module; 403 outside its `api_prefix` (the prefix without its last `/` is allowed) |
 | GET | `/api/ai/widgets?q=` · `/api/ai/dashboards` | Assistant tools `webui_widgets` / `webui_dashboards` (internal, via Hub) |
 | POST | `/api/ai/mcp` | Same tools as MCP JSON-RPC (`capabilities.mcp_endpoint`, domains system/settings); was `/mcp` before 2026-10-18 |
 | POST | `/mcp` | **Public MCP door for external AIs** (`McpDoorController`): body + `Authorization: Bearer` → Hub → Hestia-MCP `/mcp/external` (token, scope, rate limit there); no WebUI login, always a token, also at home. GET/DELETE → 405 |
@@ -98,7 +98,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 
 - Modules declare WebUI contributions (pages, widgets, quick actions) with `hestia_common.plugin_client`; the Hub
   catalog lists them. `PluginCatalog` (.NET) caches it 15 s; `PluginsController` serves bundles and proxies each
-  plugin's calls only under its own `api_prefix` (no other module, no Hub admin).
+  plugin's calls only under its own `api_prefix` (no other module, no Hub admin); the prefix without its trailing
+  slash counts too (`/api/deadlines` for `/api/deadlines/`: a module's list and create calls on its API root).
 - `PluginsService` (Angular): polls the catalog (60 s, on focus, on `online`), fetches each bundle with the token and
   imports it as a blob module; the bundle imports the shared SDK (`/plugins/_sdk/sdk.js`, built from
   `Hestia-Shared/webui-sdk` in the Dockerfile) through the import map in `index.html`. Elements get `host` + `ctx`.

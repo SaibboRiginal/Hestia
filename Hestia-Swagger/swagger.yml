@@ -11830,7 +11830,7 @@ paths:
   /api/webui/plugins/{module}/call/{path}:
     get: &plugin_call
       tags: [WebUI]
-      summary: Plugin → its own module (→ Hub route <module>/<path>); path must start with the module's api_prefix
+      summary: Plugin → its own module (→ Hub route <module>/<path>); path must start with the module's api_prefix (or be the prefix without its last /, the API root)
       description: Any method (GET/POST/PUT/PATCH/DELETE). Query and JSON body are forwarded; access_token is never forwarded.
       parameters:
         - {name: module, in: path, required: true, schema: {type: string}}

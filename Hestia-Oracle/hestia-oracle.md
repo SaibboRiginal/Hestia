@@ -220,7 +220,9 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 - `chat_tag` / `chat_list` (2026-10-29, Cindy 26, `core/services/chat_sessions.py`): coloured tags, title and pin on
   a conversation (no `session_id` = the one written last, i.e. the one the turn runs in; result carries `undo` back
   to the previous tags) and the conversations newest first filtered by tag/words (display card for Telegram). Also
-  REST `POST /api/chats/tag`, `GET /api/chats`. Archive keeps everything (`chat_session_meta`).
+  REST `POST /api/chats/tag`, `GET /api/chats`. Archive keeps everything (`chat_session_meta`). They are also in the
+  chat's own tool set (`_build_domain_tools`, schemas `chat_sessions.TAG_*` / `LIST_*`; Oracle's tools are not in the
+  module commands), where `chat_tag` defaults to the session of the turn.
 - Background memory extraction still runs as a safety net, but the primary memory path is tool-driven.
 - Memory taxonomy (P1-8): `conversational_history`, `durable_user_preference`, `task_goal_state`, `domain_fact_entity`, `assistant_commitment`.
 
