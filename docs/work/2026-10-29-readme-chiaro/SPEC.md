@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.2 | user via external chat (project thread «Riscrivere il README più chiaro») | done |
+| 1.3 | user via external chat (project thread «Riscrivere il README più chiaro») | done |
 
 ## Goal
 `readme.md` had grown into a deep reference (every env variable, MCP tool names, tunnel commands). A first-time
@@ -30,3 +30,5 @@ Compact, very clear, well organised visually, with a banner at the top that Mark
 - English stays (repo docs are English, decided in `2026-10-04-readme-rework`).
 - No emoji in headings (clean style, same spirit as the client rule); feature names in Italian quotes «…» as the user
   sees them.
+- v1.3: colour comes from stroke icon tiles drawn from the WebUI icon set (same paths, tone colours), never emoji;
+  regenerate with `python tools/readme_icons.py`. Text inside HTML cells uses `<b>`/`<i>` (renders everywhere).

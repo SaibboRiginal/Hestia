@@ -10,11 +10,13 @@
 
 **A personal AI assistant that lives on your own hardware, looks after your days and improves its own code.**
 
-[![Tests](https://github.com/SaibboRiginal/Hestia/actions/workflows/tests.yml/badge.svg)](https://github.com/SaibboRiginal/Hestia/actions/workflows/tests.yml)
-![Self-hosted](https://img.shields.io/badge/self--hosted-local--first-0f172a)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/SaibboRiginal/Hestia/tests.yml?branch=main&label=tests&style=flat-square&color=22A06B)](https://github.com/SaibboRiginal/Hestia/actions/workflows/tests.yml)
+![Self-hosted](https://img.shields.io/badge/self--hosted-local--first-F59E0B?style=flat-square)
+![Telegram](https://img.shields.io/badge/Telegram-client-229ED9?style=flat-square&logo=telegram&logoColor=white)
+![Voice](https://img.shields.io/badge/voice-in%20and%20out-EC4899?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+[![License](https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square)](LICENSE)
 
 [What it is](#what-it-is) ·
 [What it does](#what-it-does) ·
@@ -25,7 +27,7 @@
 
 </div>
 
----
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
 
 ## What it is
 
@@ -35,59 +37,151 @@ expenses, house and much more. It thinks with a **local model** by default and c
 
 <table>
 <tr>
-<td width="33%" valign="top">
+<td width="33%" align="center" valign="top">
 
-**Private by design**<br>
+<img src="docs/assets/icons/private.svg" width="52" height="52" alt="">
+
+<b>Private by design</b><br>
 Your data stays in your database, on your machine. Cloud models and services are optional, one key at a time.
 
 </td>
-<td width="33%" valign="top">
+<td width="33%" align="center" valign="top">
 
-**One assistant, many skills**<br>
+<img src="docs/assets/icons/skills.svg" width="52" height="52" alt="">
+
+<b>One assistant, many skills</b><br>
 Every area of your life is a small module. Add one and the assistant can use it everywhere, at once.
 
 </td>
-<td width="33%" valign="top">
+<td width="33%" align="center" valign="top">
 
-**It improves itself**<br>
-Say *«sviluppa …»* and Hestia writes the change, tests it, asks you, deploys it and rolls back if it breaks.
+<img src="docs/assets/icons/improves.svg" width="52" height="52" alt="">
+
+<b>It improves itself</b><br>
+Say <i>«sviluppa …»</i> and Hestia writes the change, tests it, asks you, deploys it and rolls back if it breaks.
 
 </td>
 </tr>
 </table>
 
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
+
 ## What it does
 
-| Area | In short |
-|---|---|
-| **Talk** | Chat with visible reasoning and tools, voice in and out, files and photos understood, long-term memory you can review. |
-| **Plan** | Google and Outlook calendars, the assistant's own agenda, a weekly plan built around your events, routines in words, deadlines, a morning and evening recap. |
-| **Look after you** | Gym coach, self care, nutrition, wardrobe and outfits from the weather, important people and their dates. |
-| **Money and home** | Expenses from mails and bank statements with budgets, Home Assistant lights and scenes, real-estate listings from mail. |
-| **Create** | Real PDF, Word and Excel documents, images through your ComfyUI. |
-| **Keep itself well** | Health monitoring with automatic repair, nightly encrypted backup on Google Drive, export and import of your data. |
-| **Be proactive** | Notifications only where you are, «Adesso» (what you usually do now), «Scopri» (what you never tried), ideas from idle reflection. |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/talk.svg" width="40" height="40" alt="">&nbsp; <b>Talk</b>
+
+Chat with visible reasoning and tools, voice in and out, files and photos understood, long-term memory you can review.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/plan.svg" width="40" height="40" alt="">&nbsp; <b>Plan</b>
+
+Google and Outlook calendars, the assistant's own agenda, a weekly plan built around your events, routines in words, deadlines, a morning and evening recap.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/care.svg" width="40" height="40" alt="">&nbsp; <b>Look after you</b>
+
+Gym coach, self care, nutrition, wardrobe and outfits from the weather, important people and their dates.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/money.svg" width="40" height="40" alt="">&nbsp; <b>Money and home</b>
+
+Expenses from mails and bank statements with budgets, Home Assistant lights and scenes, real-estate listings from mail.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/create.svg" width="40" height="40" alt="">&nbsp; <b>Create</b>
+
+Real PDF, Word and Excel documents, images through your ComfyUI.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/health.svg" width="40" height="40" alt="">&nbsp; <b>Keep itself well</b>
+
+Health monitoring with automatic repair, nightly encrypted backup on Google Drive, export and import of your data.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/proactive.svg" width="40" height="40" alt="">&nbsp; <b>Be proactive</b>
+
+Notifications only where you are, «Adesso» (what you usually do now), «Scopri» (what you never tried), ideas from idle reflection.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/assets/icons/improves.svg" width="40" height="40" alt="">&nbsp; <b>Grow with you</b>
+
+New skills arrive as new modules, and you can ask Hestia itself to build them.
+
+</td>
+</tr>
+</table>
 
 Each area has its own page in the web app and its own menu on Telegram: everything you can do in one client, you
 can do in the other.
 
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
+
 ## How it works
 
-1. **You ask.** Write or speak to Hestia from Telegram or the web app, in your own words.
-2. **It takes care of it.** The assistant understands what you want and hands it to the right part of Hestia:
-   agenda, training, expenses, house and so on.
-3. **You decide.** You get the answer, or a button to confirm before anything important happens, and a
-   notification later when something needs you.
+<table>
+<tr>
+<td width="33%" align="center" valign="top">
+
+<img src="docs/assets/icons/ask.svg" width="48" height="48" alt="">
+
+<b>1 · You ask</b><br>
+Write or speak to Hestia from Telegram or the web app, in your own words.
+
+</td>
+<td width="33%" align="center" valign="top">
+
+<img src="docs/assets/icons/handle.svg" width="48" height="48" alt="">
+
+<b>2 · It takes care of it</b><br>
+The assistant understands what you want and hands it to the right part of Hestia: agenda, training, expenses, house and so on.
+
+</td>
+<td width="33%" align="center" valign="top">
+
+<img src="docs/assets/icons/decide.svg" width="48" height="48" alt="">
+
+<b>3 · You decide</b><br>
+You get the answer, or a button to confirm before anything important happens, and a notification later when something needs you.
+
+</td>
+</tr>
+</table>
 
 Everything runs on your own machine. Each skill is a separate piece, so a new one can be added without touching
 the others. Curious about what is under the hood? See the [architecture](docs/ARCHITECTURE.md).
+
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
 
 ## Quick start
 
 **You need** Docker with Compose v2, Python 3, [Ollama](https://ollama.com) on the host and a Telegram bot token
 from [@BotFather](https://t.me/BotFather) (plus your numeric Telegram id, e.g. from [@userinfobot](https://t.me/userinfobot)).
 
-**1. Clone and create the env files**
+<img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Clone and create the env files**
 
 ```bash
 git clone https://github.com/SaibboRiginal/Hestia.git
@@ -95,7 +189,7 @@ cd Hestia
 python tools/init_env.py        # copies every .env.example to .env, never overwrites
 ```
 
-**2. Fill in three values**
+<img src="docs/assets/icons/step-2.svg" width="26" height="26" align="top" alt="2">&nbsp; **Fill in three values**
 
 ```dotenv
 # Hestia-Telegram/app/.env
@@ -106,14 +200,14 @@ ALLOWED_USER_ID=<your numeric Telegram id>
 HESTIA_DB_PASSWORD=<a long random password>
 ```
 
-**3. Pull the local models**
+<img src="docs/assets/icons/step-3.svg" width="26" height="26" align="top" alt="3">&nbsp; **Pull the local models**
 
 ```bash
 ollama pull gemma4:e4b
 ollama pull qwen3-embedding:0.6b
 ```
 
-**4. Start**
+<img src="docs/assets/icons/step-4.svg" width="26" height="26" align="top" alt="4">&nbsp; **Start**
 
 ```bash
 docker network create hestia_net
@@ -122,20 +216,22 @@ docker compose -f docker-compose.global.yml up -d --build
 
 On Windows `up-all.bat --build` does both.
 
-**5. Say hi** to your bot on Telegram, then send `/webui_token` for a login link to the web app.
+<img src="docs/assets/icons/step-5.svg" width="26" height="26" align="top" alt="5">&nbsp; **Say hi** to your bot on Telegram, then send `/webui_token` for a login link to the web app.
 
 > **Just want to look around?** Open it in a [GitHub Codespace](https://codespaces.new/SaibboRiginal/Hestia): the
 > whole stack starts by itself and prints a login link. See [TESTING.md](TESTING.md#banco-di-prova-cloud-whole-stack-no-local-pc).
 
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
+
 ## Using it
 
-| Where | How |
-|---|---|
-| **Telegram** | The main client. Keyboard *Oggi · Aree · Notifiche · Impostazioni*, voice notes, guided actions with confirmation. |
-| **Web app** | <http://localhost:19015>: chat, a page for every area, calendar, settings, development tasks. Opens inside Telegram too. |
-| **Voice** | Speak in either client, listen to any answer, or use the live mode and talk back and forth. |
-| **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in *Sistema › Accessi AI*. |
-| **API** | Swagger for every service at <http://localhost:19000>. |
+| | Where | How |
+|:-:|---|---|
+| <img src="docs/assets/icons/telegram.svg" width="32" height="32" alt=""> | **Telegram** | The main client. Keyboard *Oggi · Aree · Notifiche · Impostazioni*, voice notes, guided actions with confirmation. |
+| <img src="docs/assets/icons/webapp.svg" width="32" height="32" alt=""> | **Web app** | <http://localhost:19015>: chat, a page for every area, calendar, settings, development tasks. Opens inside Telegram too. |
+| <img src="docs/assets/icons/voice.svg" width="32" height="32" alt=""> | **Voice** | Speak in either client, listen to any answer, or use the live mode and talk back and forth. |
+| <img src="docs/assets/icons/external.svg" width="32" height="32" alt=""> | **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in *Sistema › Accessi AI*. |
+| <img src="docs/assets/icons/api.svg" width="32" height="32" alt=""> | **API** | Swagger for every service at <http://localhost:19000>. |
 
 Everything beyond the first start (cloud models, Google Calendar and Gmail, Drive backup, Home Assistant, remote
 access, connecting an external AI) is in **[docs/SETUP.md](docs/SETUP.md)**.
@@ -181,6 +277,8 @@ access, connecting an external AI) is in **[docs/SETUP.md](docs/SETUP.md)**.
 | [Swagger](Hestia-Swagger/swagger.yml) | 19000 | API contract of every service |
 
 </details>
+
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
 
 ## For developers
 
