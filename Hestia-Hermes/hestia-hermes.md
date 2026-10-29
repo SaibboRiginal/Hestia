@@ -140,6 +140,8 @@ within the cooldown window.
 | `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |
 | `GET` | `/api/ui/inbox/{id}/voice?format=mp3` | Audio of a notification sent also as voice (from Echo): `{mime_type, audio_b64, blob_id, duration_s}`; 404 without voice |
 | `POST` | `/api/ui/inbox/{id}/seen` · `/api/ui/inbox/seen-all` · `/api/ui/inbox/{id}/answer` | Same logic as the `/api/notifications/*` actions (body `client` optional, default `webui`; answer body `{action_id}`, 409 = already handled) |
+| `POST` | `/api/ui/inbox/{id}/secret` | Plugin door of the secret form: same as `/api/notifications/{id}/secret` (body `{values, client?}`; values never logged) |
+| `GET` · `POST` · `DELETE` | `/api/ui/push/key` · `/api/ui/push/subscribe` | Plugin doors of Web Push for the WebUI shell (Impostazioni → Personali → Messaggi): same as `/api/push/*` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |
 | `GET` | `/api/module/recap` | Daily recap piece «Notifiche»: how many today, the important ones (warning/error), those still waiting for an answer; the recap itself (`replaces: athena.recap`) is excluded. Capability `recap_endpoint` |
 
@@ -168,6 +170,10 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   The live toasts stay in the WebUI shell (it is the client); the page's *Avvisi a comparsa* select writes the
   shell's own preference (`localStorage` `hestia_notification_prefs`, same origin) and fires the window event
   `hestia:notification-prefs` `{toast}`.
+  Since W7 (dossier 2026-10-24-tutto-brainstorm-cindy) the *Da rispondere* filter reads **Da decidere**; a secret
+  notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
+  values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool
+  on the *Comandi* page (`/p/mcp/comandi?command=…`).
 - sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifiche`): every notification (newest first, paged) with its state on each client
   (consegnata / solo elenco / fallita / abbandonata, attempts, *ritirata* from the chat), *trattenuta* by
   presence (+ released in the digest), *silenziosa* (quiet inbox copy), *sostituita* (repeat chain), the answer

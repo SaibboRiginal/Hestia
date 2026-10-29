@@ -130,14 +130,24 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] Echo «Voce → La tua voce» (voiceprint, dictionary) + «Correggi la trascrizione» → `/dictionary/learn`
 - [x] Hecate plugin «Dispositivi» (Garmin, phone) — first Hecate bundle (Dockerfile Node stage)
 - [x] tests (Chronos plugin routes, Athena proposals, Argus/Athena manifests, Forge counts, Hecate manifest); docs, swagger
+- [x] PR + CI green + merge (PR #41, a7c3aba)
+
+## W7 — WebUI, part 3a (Angular shell)
+- [x] Home «Adesso» row, Ctrl+K group «Adesso», «Scopri» page (`/scopri`), WebUI taps (`services/metis.service.ts`)
+- [x] palette, effect and pet from `GET /api/appearance/now` (`services/appearance.service.ts`, `hx-appearance-layer`,
+      `ThemeService.setPalette`); Personali → Aspetto row
+- [x] Web Push: `services/push.service.ts`, `public/sw.js` push + notificationclick; Personali → Messaggi row;
+      Hermes doors `/api/ui/push/*`
+- [x] Hermes inbox: «Da decidere», secret form (`/api/ui/inbox/{id}/secret`), `execute: command` → Comandi
+- [x] Hestia-MCP Comandi deep link `?command=&args=&run=1`
+- [x] `ng build` ok; Hermes test `test_ui_doors_for_secret_form_and_web_push`; docs (webui, DESIGN-SYSTEM, hermes, mcp), swagger
 - [ ] PR + CI green + merge
 
-## W7 — WebUI, part 3 (Angular shell)
-- [ ] Home «Adesso» row, Ctrl+K entries, «Scopri» page, WebUI taps (`POST /api/metis/usage`)
-- [ ] new sidebar; palette, effect and pet from `GET /api/appearance/now`
-- [ ] live overlay + dictation, chat components, change-set row, origin label, chat tags + history sidebar
-- [ ] Web Push service worker, «Da decidere» counter, secret form
-- [ ] Hermes `command` actions open the tool form
+## W7 — WebUI, part 3b (Angular shell)
+- [ ] new sidebar: SVG logo, visible Search (opens Ctrl+K), Generale above Fissati, pinned or 3 recent chats, second
+      sidebar with full history (search + date filter), Sistema as one entry with its page, compact icon mode
+- [ ] live overlay from anywhere (pet as face) + dictation in the normal chat
+- [ ] chat components (hxk-* in answers), change-set row with «Annulla», origin label, chat tags
 
 ## W8
 - [ ] see SPEC §3

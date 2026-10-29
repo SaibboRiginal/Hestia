@@ -108,7 +108,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   remove; Oracle-created dashboards carry `created_by: oracle`.
 - Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
   Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave
-  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: quick actions,
+  their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: «Adesso», quick actions,
   module pages, dashboards, WebUI pages.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
   `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
@@ -126,6 +126,31 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   Abbonamenti, Importa, Statistiche, Categorie e regole; widgets *Spese del mese* / *Ultimi movimenti*; quick action
   *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Controlla email»). No WebUI code: both
   come from the Hub plugin catalog.
+
+### Adesso, Scopri, aspetto, Web Push (2026-10-29, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W7)
+
+- **Taps** (`services/metis.service.ts`): every page opened (`/p/<module>/<page>` → `<module>.<page>`, WebUI pages
+  → `webui.<path>`) and every quick action or suggested tool run is a tap, sent in batches (20 s, 40 max, on tab
+  hide) to `POST /api/metis/usage` `{taps:[{client: webui, kind: page|action|tool, ref, label, at}]}` through the
+  Metis plugin door. Offline taps wait for the next one.
+- **Adesso** (`features/plugins/adesso-row.component.ts`): Home row above the quick strip, from
+  `GET /api/metis/adesso?client=webui` (up to 6, each with its reason); a tap opens the tool on the *Comandi* page
+  (`/p/mcp/comandi?command=…&args=…&run=1`: run at once when nothing required is missing). Hidden when empty. The
+  Ctrl/⌘+K palette lists the same items first, in the group *Adesso*.
+- **Scopri** (`/scopri`, `features/scopri/`): features never or rarely used (`GET /api/metis/scopri?limit=50`),
+  grouped by module, search, *Prova* opens the tool like *Adesso*.
+- **Aspetto** (`services/appearance.service.ts`, `layout/appearance-layer.component.ts`): `GET /api/appearance/now`
+  through the Aphrodite plugin door at start, when the catalog shows the module and when the tab comes back after
+  30 min. The profile accents (`accent`, `accent2`) go over the user's own theme (`ThemeService.setPalette`:
+  `--accent`, `--accent-hover`, `--accent-soft`, `--accent-2`); the light effect (snow, leaves, petals, confetti,
+  hearts, stars, pumpkins, sun) is a fixed layer with no pointer events, off with *riduci movimento*; the pet sits
+  in the corner (pose `idle`, `sleep` 23–7, `happy` on tap; pictures via `host.image`). No Aphrodite = standard look.
+  Impostazioni → Personali → Aspetto shows the profile of now and links to the *Aspetto* page.
+- **Web Push** (`services/push.service.ts`, `public/sw.js`): Impostazioni → Personali → Messaggi → *Notifiche su
+  questo dispositivo*: VAPID key from `GET /api/ui/push/key` (Hermes door; no key = «Non ancora attive sul
+  server»), `pushManager.subscribe`, `POST /api/ui/push/subscribe {subscription, device}` (device = browser + OS
+  only); off = `DELETE` + unsubscribe. The worker shows `{title, body}` (tag per notification, pending ones stay
+  until touched) and a tap opens the notification's `link` page (or *Notifiche*), focusing an open tab.
 
 ### Voce (2026-10-20, dossier `docs/work/2026-10-20-modulo-voce`)
 

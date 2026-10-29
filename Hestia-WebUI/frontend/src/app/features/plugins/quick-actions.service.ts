@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DialogService, ToastService } from '../../ui';
 import { PluginsService } from './plugins.service';
+import { MetisService } from '../../services/metis.service';
 import { QuickActionDef, QuickChipView } from './plugins.types';
 
 const fill = (path: string, id: string) => path.replace(/\{id\}/g, encodeURIComponent(id));
@@ -14,6 +15,7 @@ export class QuickActionsService {
   private plugins = inject(PluginsService);
   private toasts = inject(ToastService);
   private dialogs = inject(DialogService);
+  private metis = inject(MetisService);
 
   readonly chips = signal<QuickChipView[]>([]);
   readonly loading = signal(false);
@@ -69,6 +71,7 @@ export class QuickActionsService {
   async run(chip: QuickChipView, body?: Record<string, unknown>): Promise<boolean> {
     const a = chip.action;
     if (a.confirm && !(await this.dialogs.confirm(chip.label, a.confirm, 'Conferma'))) return false;
+    this.metis.tap('action', a.id, chip.label);
     this.busy.set(chip.key);
     const r = await this.plugins.call(a.module, a.method, fill(a.path, chip.chipId), { body: body ?? (a.method === 'GET' ? undefined : {}) });
     this.busy.set('');

@@ -166,3 +166,17 @@ class TestUiInbox:
             r = client.post("/api/ui/inbox/n1/answer", json={"action_id": "ok"})
         assert r.status_code == 409 and r.json()["answer"]["by"] == "telegram"
         assert client.post("/api/ui/inbox/n1/answer", json={}).status_code == 422
+
+
+@pytest.mark.unit
+def test_ui_doors_for_secret_form_and_web_push(app_client):
+    """W7: the inbox page and the WebUI shell reach the secret form and Web Push under the plugin prefix /api/ui/."""
+    client, main = app_client
+    with patch.object(main.service.notifications, "submit_secret", return_value=(200, {"status": "ok"})) as sub:
+        r = client.post("/api/ui/inbox/n1/secret", json={"values": {"code": "123456"}})
+    assert r.status_code == 200 and sub.call_args.args[:3] == ("n1", {}, "webui")   # values cleared after use
+    with patch.object(main.webpush, "configured", return_value=False), patch.object(main.webpush, "public_key", return_value=""):
+        assert client.get("/api/ui/push/key").json() == {"enabled": False, "public_key": ""}
+    with patch.object(main.webpush, "subscribe", return_value={"status": "ok"}) as s:
+        assert client.post("/api/ui/push/subscribe", json={"subscription": {"endpoint": "https://x"}}).json()["status"] == "ok"
+    assert s.call_args.args[1] == {"endpoint": "https://x"}

@@ -3,6 +3,8 @@
  * grouped by module; pick one, fill its arguments (from its JSON schema) and run it like Hestia would.
  * Reads GET /api/mcp/ui/tools · POST /api/mcp/ui/tools/call · POST /api/mcp/ui/tools/format (Oracle natural text).
  * Ported from the built-in WebUI page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4).
+ * `?command=<tool>` opens that tool's form (Adesso, Scopri, notification buttons); `&args=<json>` fills it and
+ * `&run=1` runs it at once when nothing required is missing (brainstorm W7).
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
 
@@ -78,6 +80,35 @@ export class McpCommands extends HestiaElement {
     this.error = '';
     this.all = r.data.commands || [];
     if (this.sel) this.sel = this.all!.find(c => c.command === this.sel!.command) ?? null;
+    this.fromQuery();
+  }
+
+  private applied = '';
+
+  /** Opens (and maybe runs) the tool named in the page link; once per distinct link. */
+  private fromQuery() {
+    const q = this.ctx?.query || {};
+    const key = `${q.command || ''}|${q.args || ''}|${q.run || ''}`;
+    if (!q.command || !this.all || key === this.applied) return;
+    this.applied = key;
+    const c = this.all.find(x => x.command === q.command);
+    if (!c) { this.host.toast('Questo comando non è disponibile ora', 'warning'); return; }
+    this.select(c);
+    if (q.args) {
+      try {
+        const a = JSON.parse(q.args);
+        if (a && typeof a === 'object') this.args = Object.fromEntries(Object.entries(a).map(([k, v]) =>
+          [k, typeof v === 'object' ? JSON.stringify(v) : String(v)]));
+      } catch { /* bad link: open the empty form */ }
+    }
+    const props = c.arguments_schema?.properties ?? {};
+    const missing = (c.arguments_schema?.required ?? []).filter(a => a in props && !String(this.args[a] ?? '').trim());
+    if (q.run === '1' && !missing.length) void this.run(c);
+  }
+
+  updated(changed: Map<string, unknown>) {
+    super.updated?.(changed);
+    if (changed.has('ctx')) this.fromQuery();
   }
 
   private groups() {

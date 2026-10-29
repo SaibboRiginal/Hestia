@@ -1,8 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../core/theme/theme.service';
 import { NoticeGroup, NoticeMode, NoticePrefsService, NoticeStyle } from '../../services/notice-prefs.service';
 import { SessionService } from '../../services/session.service';
+import { PushService } from '../../services/push.service';
+import { AppearanceService } from '../../services/appearance.service';
 import { SettingsService, THINKING_DISPLAY_OPTIONS } from '../../services/settings.service';
 import { ButtonComponent, DialogService, IconComponent, SegmentedComponent, SegmentOption, ToastService, ToggleComponent } from '../../ui';
 import { CentralSettingsStore, matches } from './central-settings.store';
@@ -24,12 +27,16 @@ export const PERSONAL_SECTIONS: PersonalSection[] = [
 const ROWS: PersonalRow[] = [
   { id: 'theme', section: 'aspetto', label: 'Tema', wide: true, keywords: 'colori scuro chiaro dark light',
     help: 'Colori dell\'interfaccia su questo browser. «Automatico» segue il sistema.' },
+  { id: 'look', section: 'aspetto', label: 'Temi delle feste e animaletto', keywords: 'compleanno natale stagioni effetti neve animale pet',
+    help: 'Nei giorni speciali (il tuo compleanno, le feste, le stagioni) i colori e un piccolo effetto cambiano da soli, sopra il tuo tema.' },
   { id: 'tone', section: 'assistente', label: 'Tono', keywords: 'stile risposte caldo formale diretto',
     help: 'Il tuo predefinito su ogni client. Una singola chat può cambiarlo dall\'icona delle impostazioni in alto nella chat.' },
   { id: 'thinking', section: 'assistente', label: 'Ragionamento nelle risposte', keywords: 'thinking pensiero',
     help: 'Solo visualizzazione: nascosto, compatto (chiuso), dettagliato (aperto, completo) o dal vivo (aperto mentre lavora). Si cambia anche dall\'icona delle impostazioni della chat.' },
   { id: 'instructions', section: 'assistente', label: 'Istruzioni personali', wide: true, keywords: 'prompt istruzioni',
     help: 'Aggiunte a ogni conversazione, su ogni client (vuoto = nessuna).' },
+  { id: 'push', section: 'messaggi', label: 'Notifiche su questo dispositivo', keywords: 'push notifiche browser telefono pwa avvisi',
+    help: 'Le notifiche arrivano anche a sito chiuso, come su Telegram. Tocca la notifica per aprire la pagina giusta.' },
   { id: 'notice_mode', section: 'messaggi', label: 'Dove mostrarli', keywords: 'avvisi notice popup toast',
     help: 'Avvisi separati dalla risposta: memoria salvata, azioni eseguite, notifiche attivate, errori. Su questo browser.' },
   { id: 'notice_style', section: 'messaggi', label: 'Stile dei messaggi', keywords: 'avvisi compatto dettagliato',
@@ -59,7 +66,7 @@ export function personalHits(query: string): Map<string, number> {
  */
 @Component({
   selector: 'app-personal-settings',
-  imports: [FormsModule, SettingShellComponent, SettingRowComponent, ButtonComponent, IconComponent, SegmentedComponent, ToggleComponent],
+  imports: [FormsModule, RouterLink, SettingShellComponent, SettingRowComponent, ButtonComponent, IconComponent, SegmentedComponent, ToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @for (s of shown(); track s.section.id) {
@@ -82,6 +89,21 @@ export function personalHits(query: string): Map<string, number> {
                       </span>
                       <span>{{ t.label }}</span>
                     </button>
+                  }
+                </div>
+              }
+              @case ('look') {
+                <div class="look">
+                  <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { Aspetto standard }</span>
+                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">Scegli</a>
+                </div>
+              }
+              @case ('push') {
+                <div class="look">
+                  <span>{{ pushLabel() }}</span>
+                  @if (push.state() === 'on') { <button hx-btn size="sm" (click)="push.disable()">Disattiva</button> }
+                  @else if (push.state() === 'off' || push.state() === 'busy') {
+                    <button hx-btn size="sm" variant="primary" icon="bell" [loading]="push.state() === 'busy'" (click)="enablePush()">Attiva</button>
                   }
                 </div>
               }
@@ -128,6 +150,8 @@ export function personalHits(query: string): Map<string, number> {
     .gh h4 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
     .hx-select { width: 100%; }
     textarea { width: 100%; }
+    .look { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; color: var(--text-2); }
+    .look span { flex: 1; min-width: 180px; }
     .toggles { display: flex; flex-wrap: wrap; gap: 12px 22px; }
     .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; width: 100%; }
     .th { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: var(--radius-lg); border: 2px solid transparent; font-size: 13px; text-align: left; color: var(--text-2); }
@@ -140,7 +164,7 @@ export function personalHits(query: string): Map<string, number> {
     .pv.auto { background: linear-gradient(135deg, #faf9f5 50%, #262624 50%); }
   `],
 })
-export class PersonalSettingsComponent {
+export class PersonalSettingsComponent implements OnInit {
   readonly store = inject(CentralSettingsStore);
   section = input<string | null>(null);
   query = input('');
@@ -148,6 +172,8 @@ export class PersonalSettingsComponent {
   theme = inject(ThemeService);
   settings = inject(SettingsService);
   notices = inject(NoticePrefsService);
+  push = inject(PushService);
+  look = inject(AppearanceService);
   private session = inject(SessionService);
   private toast = inject(ToastService);
   private dialogs = inject(DialogService);
@@ -177,6 +203,19 @@ export class PersonalSettingsComponent {
     { id: 'memory', label: 'Memoria' }, { id: 'actions', label: 'Azioni' },
     { id: 'subscriptions', label: 'Notifiche' }, { id: 'other', label: 'Altro (documenti, agenda, sviluppo)' },
   ];
+  readonly pushLabel = computed(() => ({
+    unsupported: 'Questo browser non riceve notifiche push.', unavailable: 'Non ancora attive sul server.',
+    denied: 'Il browser le blocca: consentile dalle impostazioni del sito.', off: 'Spente su questo dispositivo.',
+    on: 'Attive su questo dispositivo.', busy: 'Un momento…',
+  })[this.push.state()]);
+
+  ngOnInit(): void { void this.push.refresh(); }
+
+  async enablePush() {
+    if (await this.push.enable()) this.toast.success('Notifiche attive su questo dispositivo');
+    else if (this.push.state() === 'off') this.toast.error('Non riuscito, riprova');
+  }
+
   setGroup(id: NoticeGroup, on: boolean) {
     this.notices.update({ groups: { ...this.notices.prefs().groups, [id]: on } });
   }

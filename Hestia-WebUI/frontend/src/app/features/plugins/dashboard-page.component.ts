@@ -8,19 +8,20 @@ import { uid } from '../../core/uid';
 import { AssistantService } from '../../services/assistant.service';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { QuickStripComponent } from './quick-strip.component';
+import { AdessoRowComponent } from './adesso-row.component';
 import { PluginsService, SIZE_SPAN } from './plugins.service';
 import { Dashboard, DashboardItem, PluginWidget, WidgetSize } from './plugins.types';
 
 const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'Grande', xl: 'Intero' };
 
 /**
- * Home and dashboards (SPEC §4.6, §4.8): quick actions on top (Home), widgets of every module in a grid.
+ * Home and dashboards (SPEC §4.6, §4.8): «Adesso» and quick actions on top (Home), widgets of every module in a grid.
  * Edit mode: add from the catalog, drag to reorder, size, per-widget params and title, remove.
  * Saved as this client's setting `webui.dashboards` (Themis history/undo).
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent],
+  imports: [...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, AdessoRowComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header [title]="current()?.title || 'Home'" [subtitle]="subtitle()">
@@ -48,7 +49,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
     }
 
     <div class="body">
-      @if (isHome() && !editing()) { <hx-quick-strip /> }
+      @if (isHome() && !editing()) { <hx-adesso-row /><hx-quick-strip /> }
 
       @if (!plugins.catalog() && !plugins.catalogError()) {
         <div class="center"><hx-spinner /></div>

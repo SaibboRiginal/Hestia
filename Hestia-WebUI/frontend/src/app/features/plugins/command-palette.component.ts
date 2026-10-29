@@ -4,12 +4,14 @@ import { IconComponent } from '../../ui';
 import { APP_MODULES } from '../../app.modules';
 import { PluginsService } from './plugins.service';
 import { QuickActionsService } from './quick-actions.service';
+import { MetisService } from '../../services/metis.service';
 
 interface Entry { id: string; label: string; hint: string; icon: string; group: string; run: () => void; }
 
 /**
- * Ctrl/⌘+K palette: every quick action (one tap, same as the Home strip), module pages, dashboards and the
- * WebUI's own pages. Type to filter, ↑/↓ + Enter to run.
+ * Ctrl/⌘+K palette: «Adesso» (what makes sense now, from Metis), every quick action (one tap, same as the Home
+ * strip), module pages, dashboards and the WebUI's own pages. Type to filter, ↑/↓ + Enter to run. Also opened by
+ * the sidebar «Cerca» (`open()`).
  */
 @Component({
   selector: 'hx-command-palette',
@@ -52,6 +54,7 @@ export class CommandPaletteComponent {
   private plugins = inject(PluginsService);
   private qa = inject(QuickActionsService);
   private router = inject(Router);
+  private metis = inject(MetisService);
   readonly open = signal(false);
   readonly query = signal('');
   readonly sel = signal(0);
@@ -60,6 +63,8 @@ export class CommandPaletteComponent {
   private readonly entries = computed<Entry[]>(() => {
     const mod = (m: string) => this.plugins.modules().get(m)?.title ?? m;
     return [
+      ...this.metis.adesso().map(a => ({ id: 'now:' + a.tool + a.title, label: a.title, hint: a.reason || mod(a.module), icon: 'zap',
+        group: 'Adesso', run: () => this.metis.open(a.tool, a.args ?? {}, a.title) })),
       ...this.qa.sorted().map(c => ({ id: 'qa:' + c.key, label: c.label, hint: [c.hint, mod(c.action.module)].filter(Boolean).join(' · '),
         icon: c.state === 'done' ? 'check' : c.icon || 'zap', group: 'Azioni rapide', run: () => void this.qa.run(c) })),
       ...this.plugins.navPages().map(p => ({ id: 'pg:' + p.id, label: p.label, hint: mod(p.module), icon: p.icon || 'puzzle', group: 'Moduli',
@@ -85,8 +90,7 @@ export class CommandPaletteComponent {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       if (this.open()) { this.close(); return; }
-      this.query.set(''); this.sel.set(0); this.open.set(true);
-      void this.qa.reload();
+      this.show();
     } else if (e.key === 'Escape' && this.open()) this.close();
   }
 
@@ -95,6 +99,12 @@ export class CommandPaletteComponent {
     if (e.key === 'ArrowDown') { e.preventDefault(); this.sel.set(n ? (this.sel() + 1) % n : 0); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); this.sel.set(n ? (this.sel() - 1 + n) % n : 0); }
     else if (e.key === 'Enter') { const it = this.results()[this.sel()]; if (it) this.exec(it); }
+  }
+
+  show() {
+    this.query.set(''); this.sel.set(0); this.open.set(true);
+    void this.qa.reload();
+    void this.metis.loadAdesso();
   }
 
   exec(e: Entry) { this.close(); e.run(); }

@@ -84,7 +84,9 @@ mount does not hide it):
   raw result; tools with `response_mode=oracle_natural` then get Oracle's readable text (second call, own 30 s budget
   of the WebUI proxy); *Chiedi a Hestia* opens the assistant with the tool as context. Reads `/api/mcp/ui/tools…`
   (`core/ui_tools.py`): the same `MCPServer.tools_list` / `tools_call` as `/mcp` with client `webui` (same visibility,
-  `X-Hestia-Client: webui` towards the module), call timeout 20 s.
+  `X-Hestia-Client: webui` towards the module), call timeout 20 s. Deep link `?command=<tool>` opens that tool,
+  `&args=<json>` fills its form and `&run=1` runs it at once when no required argument is missing (WebUI «Adesso»,
+  «Scopri», notification buttons with `execute: command`; brainstorm W7).
 - sub-page *Accessi AI* (`accessi` → `mcp-accesses`, parent `comandi`): new token with the ready `claude mcp add` line
   and JSON config, revoke, renew, delete, tool choice; OAuth consent card when opened with `?oauth=<id>`; badge
   *OAuth* on grants; *Servizi esterni* list.

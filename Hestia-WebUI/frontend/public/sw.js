@@ -3,7 +3,9 @@
  * - navigations: network first, cached shell when offline
  * - app assets (hashed js/css), SDK runtime, plugin bundles: stale-while-revalidate
  * - catalog + settings reads: network first, last copy when offline
- * Everything else (/api/* writes, chat, images) goes straight to the network: no silent queue. */
+ * Everything else (/api/* writes, chat, images) goes straight to the network: no silent queue.
+ * Web Push (brainstorm C15): Hermes sends {id, title, body, level, link:{module,page,params?}, pending}; a tap opens
+ * the link's plugin page (or «Notifiche»), focusing an open tab when there is one. No secret ever travels here. */
 const SHELL = 'hestia-shell-v1';
 const DATA = 'hestia-data-v1';
 
@@ -73,4 +75,34 @@ self.addEventListener('fetch', e => {
   if (!p.startsWith('/api/') && /\.(js|css|woff2?|svg|png|ico|webmanifest)$/.test(p)) {
     e.respondWith(staleWhileRevalidate(req, SHELL, e));
   }
+});
+
+self.addEventListener('push', e => {
+  let n = {};
+  try { n = e.data ? e.data.json() : {}; } catch { n = { body: e.data ? e.data.text() : '' }; }
+  const title = n.title || 'Hestia';
+  e.waitUntil(self.registration.showNotification(title, {
+    body: n.body || '', tag: n.id ? `hestia-${n.id}` : undefined, icon: '/icon.svg', badge: '/icon.svg',
+    requireInteraction: !!n.pending, data: { url: linkOf(n) },
+  }));
+});
+
+function linkOf(n) {
+  const l = n && n.link;
+  if (l && l.module && l.page) {
+    const qs = l.params && Object.keys(l.params).length ? '?' + new URLSearchParams(l.params).toString() : '';
+    return `/p/${encodeURIComponent(l.module)}/${String(l.page).replace(/^\//, '')}${qs}`;
+  }
+  return '/p/hermes/notifiche';
+}
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil((async () => {
+    const tabs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const tab = tabs.find(c => new URL(c.url).origin === self.location.origin);
+    if (tab) { await tab.focus(); if ('navigate' in tab) return tab.navigate(url); return; }
+    return self.clients.openWindow(url);
+  })());
 });

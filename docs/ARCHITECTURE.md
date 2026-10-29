@@ -554,7 +554,10 @@ No code-only behavior changes are considered complete without synchronized docs.
    Apollo 210s, Aphrodite 220s, Lares 230s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
    hundreds (Hub 100, Argus 110, Oracle 120, Athena 130, Hermes 140, Chronos 150, Themis 160, Hephaestus 170,
    Metis 180, Hestia-MCP 190); the WebUI groups them under *Sistema* and builds a ready-made *Sistema* dashboard from their `auto` widgets (Home takes the domain ones); Hub, which never registers with itself, folds its own manifest into the catalog and answers its plugin routes locally (`docs/work/2026-10-18-moduli-core-e-mcp-esterno/`). Module notifications carry `_link: {module, page}` so a
-   client can open the plugin page.
+   client can open the plugin page. The WebUI shell itself also talks to modules only through these plugin doors
+   (`PluginsService.call`): usage taps and «Adesso»/«Scopri» via Metis, the look of now via Aphrodite, Web Push
+   keys and subscriptions via Hermes `/api/ui/push/*`; a suggested tool opens on the Hestia-MCP *Comandi* page
+   (`?command=&args=&run=1`) instead of a second tool runner.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth

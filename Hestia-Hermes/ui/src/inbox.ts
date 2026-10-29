@@ -1,7 +1,8 @@
 /**
  * <hermes-inbox> — «Notifiche»: the Hermes inbox, shared by every client (read here = read on Telegram).
- * Filters (da leggere / da rispondere / tutte, modulo, altri client), answers with the notification's buttons
- * (first answer wins), seen / all seen, «Apri» on a module page (`_link`), load more.
+ * Filters (da leggere / da decidere / tutte, modulo, altri client), answers with the notification's buttons
+ * (first answer wins; a button that opens a tool goes to its form in «Comandi»), the secret form (values go to the
+ * module that asked, never stored: Cindy 4), seen / all seen, «Apri» on a module page (`_link`), load more.
  * Ported from the WebUI built-in page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4).
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
@@ -91,10 +92,12 @@ export class HermesInbox extends HestiaElement {
   static properties = { ...HestiaElement.properties, items: { state: true }, counts: { state: true }, filter: { state: true },
                         source: { state: true }, others: { state: true }, error: { state: true }, loading: { state: true },
                         hasMore: { state: true }, busy: { state: true }, toastMode: { state: true },
-                        playing: { state: true }, voiceBusy: { state: true } };
+                        playing: { state: true }, voiceBusy: { state: true }, secrets: { state: true } };
   declare items: any[] | null; declare counts: Counts; declare filter: Filter; declare source: string;
   declare others: boolean; declare error: string; declare loading: boolean; declare hasMore: boolean;
   declare busy: string; declare toastMode: ToastMode; declare playing: string; declare voiceBusy: string;
+  /** Values typed in a secret form, per notification; cleared as soon as they are sent. */
+  declare secrets: Record<string, Record<string, string>>;
   private audio: HTMLAudioElement | null = null;
 
   static styles = [...HestiaElement.styles, hermesStyles, css`
@@ -133,6 +136,11 @@ export class HermesInbox extends HestiaElement {
     .outcome { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--success); margin-top: 4px; }
     .outcome[data-status=expired], .outcome[data-status=error] { color: var(--text-3); }
     .seen { font-size: 12px; color: var(--text-3); }
+    .secret { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; max-width: 360px; }
+    .sf { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--text-2); }
+    .sf input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--text); }
+    .sf input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
     .center { display: flex; justify-content: center; padding: 12px; }
   `];
 
@@ -143,7 +151,7 @@ export class HermesInbox extends HestiaElement {
     super();
     this.items = null; this.counts = { unread: 0, pending: 0 }; this.filter = 'unread'; this.source = '';
     this.others = false; this.error = ''; this.loading = false; this.hasMore = false; this.busy = '';
-    this.playing = ''; this.voiceBusy = '';
+    this.playing = ''; this.voiceBusy = ''; this.secrets = {};
     this.toastMode = readToastMode();
   }
 
@@ -269,7 +277,11 @@ export class HermesInbox extends HestiaElement {
     this.busy = n.id;
     const r = await this.host.api('POST', `${API}/inbox/${encodeURIComponent(n.id)}/answer`, { body: { action_id: a.id } });
     this.busy = '';
-    if (r.ok) {
+    if (r.ok && r.data?.execute === 'command' && r.data.command) {
+      // A button that starts a tool (e.g. «Racconta la giornata»): its form opens in «Comandi».
+      this.applyAnswer(n.id, { label: a.label, by: 'webui', status: 'done' });
+      this.host.navigate('comandi', { command: String(r.data.command) }, 'mcp');
+    } else if (r.ok) {
       this.applyAnswer(n.id, r.data?.answer ?? { label: a.label, by: 'webui', status: 'done' });
       this.host.toast(r.data?.answer?.outcome_text || a.label, 'success');
     } else if (r.status === 409) {
@@ -280,6 +292,41 @@ export class HermesInbox extends HestiaElement {
       this.host.toast(`Non riuscito: ${r.data?.detail || (r.error && r.error !== 'offline' ? r.error : '') || 'riprova più tardi'}`, 'danger');
     }
     void this.loadCounts();
+  }
+
+  private async sendSecret(n: any) {
+    const values = this.secrets[n.id] || {};
+    const missing = (n.secret?.fields || []).filter((f: any) => !String(values[f.name] ?? '').trim());
+    if (missing.length) { this.host.toast(`Manca: ${missing.map((f: any) => f.label || f.name).join(', ')}`, 'warning'); return; }
+    this.busy = n.id;
+    const r = await this.host.api('POST', `${API}/inbox/${encodeURIComponent(n.id)}/secret`, { body: { values } });
+    this.busy = '';
+    const { [n.id]: _sent, ...rest } = this.secrets;
+    this.secrets = rest;                                   // never keep what was typed
+    if (r.ok) {
+      this.applyAnswer(n.id, r.data?.answer ?? { label: 'Inviato', by: 'webui', status: 'done' });
+      this.host.toast(r.data?.message || 'Inviato', 'success');
+    } else if (r.status === 409) {
+      this.applyAnswer(n.id, r.data?.answer ?? {});
+      this.host.toast('Già gestita', 'info');
+    } else {
+      this.host.toast(`Non riuscito: ${r.data?.detail || r.data?.message || 'riprova'}`, 'danger');
+    }
+    void this.loadCounts();
+  }
+
+  private secretForm(n: any) {
+    const busy = this.busy === n.id;
+    const vals = this.secrets[n.id] || {};
+    return html`<form class="secret" @submit=${(e: Event) => { e.preventDefault(); void this.sendSecret(n); }}>
+      ${(n.secret.fields || []).map((f: any) => html`<label class="sf"><span>${f.label || f.name}</span>
+        <input type=${f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'} autocomplete="off"
+          .value=${vals[f.name] || ''} @input=${(e: Event) => (this.secrets = { ...this.secrets,
+            [n.id]: { ...vals, [f.name]: (e.target as HTMLInputElement).value } })}></label>`)}
+      <div class="actions"><hxk-button size="sm" variant="primary" icon="unlock" ?loading=${busy} ?disabled=${busy}
+        @click=${() => this.sendSecret(n)}>Invia</hxk-button>
+        <span class="small muted">Va solo a chi l'ha chiesto, non viene salvato.</span></div>
+    </form>`;
   }
 
   private open(n: any) {
@@ -312,7 +359,7 @@ export class HermesInbox extends HestiaElement {
   private subtitle(): string {
     const c = this.counts;
     if (!c.unread && !c.pending) return 'Tutto letto';
-    return [c.unread ? `${c.unread} da leggere` : '', c.pending ? `${c.pending} da rispondere` : ''].filter(Boolean).join(' · ');
+    return [c.unread ? `${c.unread} da leggere` : '', c.pending ? `${c.pending} da decidere` : ''].filter(Boolean).join(' · ');
   }
 
   private outcome(n: any): string {
@@ -344,6 +391,7 @@ export class HermesInbox extends HestiaElement {
           ${n.voice ? html`<hxk-button size="sm" variant="ghost" icon=${this.playing === n.id ? 'stop' : 'volume'}
             ?loading=${this.voiceBusy === n.id} @click=${() => this.listen(n)}>${this.playing === n.id ? 'Ferma' : 'Ascolta'}</hxk-button>` : nothing}
           ${n.link?.page ? html`<hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>Apri</hxk-button>` : nothing}</div>` : nothing}
+        ${n.pending && n.secret?.fields?.length ? this.secretForm(n) : nothing}
         ${n.pending && n.actions?.length ? html`<div class="actions">
             ${n.actions.map((a: any) => html`<hxk-button size="sm" variant=${this.variant(a.style)} ?loading=${busy} ?disabled=${busy}
               @click=${() => this.answer(n, a)}>${a.label}</hxk-button>`)}</div>`
@@ -358,7 +406,7 @@ export class HermesInbox extends HestiaElement {
     if (this.items === null) return html`<hxk-state kind="loading"></hxk-state>`;
     const shown = this.visible();
     if (!shown.length) {
-      const empty = { unread: 'Nessuna notifica da leggere', pending: 'Niente in attesa di risposta', all: 'Nessuna notifica' }[this.filter];
+      const empty = { unread: 'Nessuna notifica da leggere', pending: 'Niente da decidere', all: 'Nessuna notifica' }[this.filter];
       return html`<hxk-state kind="empty" text=${empty}></hxk-state>`;
     }
     const groups: Array<{ label: string; items: any[] }> = [];
@@ -378,7 +426,7 @@ export class HermesInbox extends HestiaElement {
     const c = this.counts;
     const filters: Array<{ id: Filter; label: string }> = [
       { id: 'unread', label: c.unread ? `Da leggere · ${c.unread}` : 'Da leggere' },
-      { id: 'pending', label: c.pending ? `Da rispondere · ${c.pending}` : 'Da rispondere' },
+      { id: 'pending', label: c.pending ? `Da decidere · ${c.pending}` : 'Da decidere' },
       { id: 'all', label: 'Tutte' },
     ];
     return html`<div class="page">
