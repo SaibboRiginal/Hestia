@@ -4484,6 +4484,84 @@ paths:
       responses:
         "200": {description: "{count, memories: [{fact, domains, since}]}"}
 
+  /oracle/api/ui/chats:
+    get:
+      tags: [Oracle]
+      summary: WebUI history sidebar, conversations (real path /api/ui/chats; Archive /api/chat/sessions/list)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: tag, in: query, schema: {type: string}}
+        - {name: since, in: query, schema: {type: string}}
+        - {name: until, in: query, schema: {type: string}}
+        - {name: pinned, in: query, schema: {type: boolean}}
+        - {name: limit, in: query, schema: {type: integer}}
+        - {name: offset, in: query, schema: {type: integer}}
+      responses:
+        "200": {description: "{items, total}"}
+        "502": {description: Archive down}
+
+  /oracle/api/ui/chats/tags:
+    get:
+      tags: [Oracle]
+      summary: Conversation tags in use (real path /api/ui/chats/tags)
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{items: [{name, color, count}]}"}
+
+  /oracle/api/ui/chats/{session_id}/messages:
+    get:
+      tags: [Oracle]
+      summary: Messages of one conversation, oldest first (real path /api/ui/chats/{id}/messages)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, default: 200}}
+      responses:
+        "200": {description: "{session_id, items: [{role, content, at}]}"}
+
+  /oracle/api/ui/chats/{session_id}:
+    put:
+      tags: [Oracle]
+      summary: Title, tags, pinned of a conversation (real path /api/ui/chats/{id}; client webui)
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{session_id, title, tags, pinned, before}"}
+
+  /oracle/api/chats/tag:
+    post:
+      tags: [Oracle]
+      summary: Tool chat_tag over REST (tags, remove, title, pinned, color, session_id, replace)
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "meta + text + undo"}
+
+  /oracle/api/chats:
+    get:
+      tags: [Oracle]
+      summary: Tool chat_list over REST (tag, query, limit) with a display card
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{items, total, display}"}
+
   /oracle/api/ui/memory:
     get:
       tags: [Oracle]
@@ -4642,6 +4720,56 @@ paths:
         - {name: since, in: query, schema: {type: string, format: date-time}}
       responses:
         "200": {description: "{sessions: [string]}"}
+
+  /api/chat/sessions/list:
+    get:
+      tags: [Archive]
+      summary: Conversations newest first (pinned on top) with title, times, count, tags (Cindy 26)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: q, in: query, schema: {type: string}, description: words in titles or messages}
+        - {name: tag, in: query, schema: {type: string}}
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {name: until, in: query, schema: {type: string, format: date-time}}
+        - {name: pinned, in: query, schema: {type: boolean}}
+        - {name: limit, in: query, schema: {type: integer, default: 30, maximum: 100}}
+        - {name: offset, in: query, schema: {type: integer, default: 0}}
+      responses:
+        "200": {description: "{items: [{session_id, title, first_at, last_at, messages, tags: [{name, color}], pinned}], total}"}
+
+  /api/chat/sessions/tags:
+    get:
+      tags: [Archive]
+      summary: Conversation tags in use with counts
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: "{items: [{name, color, count}], colors}"}
+
+  /api/chat/sessions/{session_id}/meta:
+    put:
+      tags: [Archive]
+      summary: Title, tags (replace / add / remove), pinned of a conversation; returns the previous meta as before
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: {type: string}
+                tags: {type: array, items: {type: object, properties: {name: {type: string}, color: {type: string}}}}
+                add_tags: {type: array, items: {type: object}}
+                remove_tags: {type: array, items: {type: string}}
+                pinned: {type: boolean}
+                client: {type: string}
+      responses:
+        "200": {description: "{session_id, title, tags, pinned, before}"}
 
   /api/agenda:
     get:

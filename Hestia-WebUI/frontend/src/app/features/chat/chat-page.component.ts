@@ -7,7 +7,10 @@ import { SessionService } from '../../services/session.service';
 import { SettingsService } from '../../services/settings.service';
 import { FeedbackService } from '../../services/feedback.service';
 import { SignalRService } from '../../services/signalr.service';
-import { ChatMessage } from '../../models/chat.models';
+import { ChatChange, ChatMessage } from '../../models/chat.models';
+import { AnswerBlocksComponent, AnswerPart, isComps, splitAnswer } from './answer-blocks.component';
+import { ChatsService } from '../../services/chats.service';
+import { PluginsService } from '../plugins/plugins.service';
 import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, ToastService } from '../../ui';
 import { ThinkingStepsComponent } from './thinking-steps.component';
 import { ChatModeComponent } from './chat-mode.component';
@@ -27,10 +30,12 @@ const LIVE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-chat-page',
   imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
-            ChatModeComponent, ChatContextComponent, QuestionCardComponent],
+            ChatModeComponent, ChatContextComponent, QuestionCardComponent, AnswerBlocksComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
+      <button hx-btn variant="ghost" size="sm" icon="history" (click)="chats.historyOpen.set(!chats.historyOpen())"
+              [attr.aria-pressed]="chats.historyOpen()" title="Tutte le conversazioni">Cronologia</button>
       <span class="ttl">{{ chat.messages().length ? 'Conversazione' : '' }}</span>
       <div class="hx-grow"></div>
       <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" (click)="toggleLive()"
@@ -75,8 +80,26 @@ const LIVE_LABELS: Record<string, string> = {
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
                 <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
               }
+              @if (m.origin; as o) { <div class="origin"><hx-icon name="zap" [size]="13" />{{ o.label || 'Avviata in automatico' }}</div> }
               @if (m.error) { <div class="err"><hx-icon name="alert" tone="danger" [size]="15" /><span>{{ m.content }}</span></div> }
-              @else if (m.content) { <div class="hx-prose" [class.queued]="m.queuedId" [innerHTML]="m.content"></div> }
+              @else if (m.content) {
+                @for (p of parts(m); track $index) {
+                  @if (isComps(p)) { <hx-answer-blocks [comps]="p.comps" (send)="use($event)" /> }
+                  @else { <div class="hx-prose" [class.queued]="m.queuedId" [innerHTML]="p.html"></div> }
+                }
+              }
+              @if (m.changes?.length && !m.isStreaming) {
+                <div class="changes" aria-label="Ho fatto">
+                  <div class="ch"><hx-icon name="check-circle" [size]="14" />Ho fatto</div>
+                  @for (c of m.changes; track $index) {
+                    <div class="cr" [class.done]="c.done">
+                      <span class="ct">{{ c.title }}@if (c.detail) {<span class="cd"> · {{ c.detail }}</span>}</span>
+                      @if (c.done) { <span class="cu">Annullato</span> }
+                      @else if (c.undo) { <button hx-btn variant="ghost" size="sm" icon="undo" [loading]="undoing() === m.id + $index" (click)="undo(m, $index, c)">{{ c.undo.label || 'Annulla' }}</button> }
+                    </div>
+                  }
+                </div>
+              }
               @if (m.queuedId) { <div class="inq"><hx-icon name="clock" [size]="14" /> In coda</div> }
               @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
               @if (m.isStreaming && m.content) { <span class="caret"></span> }
@@ -148,6 +171,9 @@ const LIVE_LABELS: Record<string, string> = {
         <div class="tools">
           <input #file type="file" hidden (change)="onFile($event)" />
           <button hx-btn variant="ghost" size="sm" icon="paperclip" iconOnly aria-label="Allega" (click)="file.click()" [disabled]="chat.isStreaming()"></button>
+          <button hx-btn [variant]="dictating() ? 'primary' : 'ghost'" size="sm" [icon]="dictating() ? 'stop' : 'note'" iconOnly
+                  [loading]="dictBusy()" (click)="toggleDictation()" [attr.aria-pressed]="dictating()"
+                  [attr.aria-label]="dictating() ? 'Ferma la dettatura' : 'Detta'" title="Detta: quello che dici diventa testo da rileggere"></button>
           <hx-chat-mode [(mode)]="mode" />
           <div class="hx-grow"></div>
           @if (chat.isStreaming()) {
@@ -207,6 +233,16 @@ const LIVE_LABELS: Record<string, string> = {
                border-radius: var(--radius-lg); padding: 9px 14px; margin-bottom: 10px; font-size: 13.5px; }
     .offline .oe { font-size: 16px; }
     .hx-prose.queued { color: var(--text-2); }
+    .origin { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-3); margin-bottom: 6px;
+              border: 1px solid var(--border); border-radius: var(--radius-full); padding: 2px 9px; }
+    .origin hx-icon { color: var(--accent); }
+    .changes { margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 10px; background: var(--surface); }
+    .ch { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-3); margin-bottom: 4px; }
+    .ch hx-icon { color: var(--success); }
+    .cr { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13.5px; }
+    .cr .ct { flex: 1; min-width: 0; overflow-wrap: anywhere; } .cd { color: var(--text-3); }
+    .cr.done .ct { color: var(--text-3); text-decoration: line-through; }
+    .cu { font-size: 12px; color: var(--text-3); }
     .inq { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--warning); }
     .bubble.voice { min-width: 200px; }
     .vrow { display: flex; align-items: center; gap: 8px; }
@@ -236,6 +272,14 @@ const LIVE_LABELS: Record<string, string> = {
 })
 export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   chat = inject(ChatService);
+  chats = inject(ChatsService);
+  private plugins = inject(PluginsService);
+  readonly isComps = isComps;
+  private partCache = new Map<string, AnswerPart[]>();
+  undoing = signal('');
+  dictating = signal(false);
+  dictBusy = signal(false);
+  private dict = new MicRecorder();
   signalR = inject(SignalRService);
   private session = inject(SessionService);
   private settings = inject(SettingsService);
@@ -284,7 +328,8 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
 
   ngOnDestroy() {
     if (this.recording()) void this.finishRec(true);
-    this.live.stop();
+    if (this.dictating()) void this.dict.stop(true);
+    // live mode goes on over the other pages (layout/live-overlay)
     this.voice.stop();
   }
 
@@ -299,6 +344,54 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   }
 
   use(s: string) { this.text = s; this.send(); }
+
+  /** Prose and component blocks of an answer (cached by content: streaming text changes it each token). */
+  parts(m: ChatMessage): AnswerPart[] {
+    if (m.isStreaming) return [{ html: m.content }];
+    let p = this.partCache.get(m.content);
+    if (!p) {
+      p = splitAnswer(m.content);
+      if (this.partCache.size > 200) this.partCache.clear();
+      this.partCache.set(m.content, p);
+    }
+    return p;
+  }
+
+  /** «Annulla» under «Ho fatto»: the inverse tool, through the commands door (Hestia-MCP). */
+  async undo(m: ChatMessage, i: number, c: ChatChange) {
+    if (!c.undo) return;
+    this.undoing.set(m.id + i);
+    const r = await this.plugins.call<{ ok?: boolean; error?: string }>('mcp', 'POST', '/api/mcp/ui/tools/call',
+      { body: { command: c.undo.tool, args: c.undo.args ?? {} } });
+    this.undoing.set('');
+    if (!r.ok || r.data?.ok === false) { this.toast.error(r.data?.error || 'Non annullato'); return; }
+    this.chat.patch(m.id, { changes: (m.changes ?? []).map((x, k) => k === i ? { ...x, done: true } : x) });
+    this.toast.success('Annullato');
+  }
+
+  /** Dictation (brainstorm C12): speak, the text lands in the box to read again; nothing is sent or kept. */
+  async toggleDictation() {
+    if (!this.dictating()) {
+      try { await this.dict.start(); } catch { this.toast.error('Il browser non mi dà il microfono'); return; }
+      this.dictating.set(true);
+      return;
+    }
+    this.dictating.set(false);
+    const out = await this.dict.stop();
+    if (!out) return;
+    this.dictBusy.set(true);
+    try {
+      const heard = await this.voice.dictate(out.blob, this.dict.mime);
+      const t = (heard.text || '').trim();
+      if (!t) { this.toast.show('Non ho sentito niente', 'warning'); return; }
+      this.text = this.text.trim() ? `${this.text.trim()} ${t}` : t;
+      queueMicrotask(() => { this.grow(); this.ta()?.nativeElement.focus(); });
+    } catch {
+      this.toast.error('Dettatura non disponibile ora');
+    } finally {
+      this.dictBusy.set(false);
+    }
+  }
 
   send() {
     const t = this.text.trim();

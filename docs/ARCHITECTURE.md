@@ -557,7 +557,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    client can open the plugin page. The WebUI shell itself also talks to modules only through these plugin doors
    (`PluginsService.call`): usage taps and «Adesso»/«Scopri» via Metis, the look of now via Aphrodite, Web Push
    keys and subscriptions via Hermes `/api/ui/push/*`; a suggested tool opens on the Hestia-MCP *Comandi* page
-   (`?command=&args=&run=1`) instead of a second tool runner.
+   (`?command=&args=&run=1`) instead of a second tool runner; conversations (history, tags, pin) via Oracle
+   `/api/ui/chats*`, which passes through to Archive (`chat_session_meta`); «Annulla» under «Ho fatto» = the inverse
+   tool through Hestia-MCP.
 5. **Module context**: a domain module that can enrich the assistant's context exposes
    `GET /api/module/context?budget=<chars>` → `{module, domain, updated_at, text}` (one short caveman text, within the
    budget) and advertises it with capability `context_endpoint` and tag `context`. The module decides what is worth

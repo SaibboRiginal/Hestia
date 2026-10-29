@@ -217,6 +217,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   no LLM call; duplicates of an active memory (same words, case/punctuation ignored) are skipped. Origin in
   `extra_data`: `{source: external, access: <X-Hestia-Access>, topic, noted_at}`; Oracle's own saves carry
   `{source: chat}`. `memory_recall` = keyword search, max 20 compact rows. Page **Memoria** lists and forgets them.
+- `chat_tag` / `chat_list` (2026-10-29, Cindy 26, `core/services/chat_sessions.py`): coloured tags, title and pin on
+  a conversation (no `session_id` = the one written last, i.e. the one the turn runs in; result carries `undo` back
+  to the previous tags) and the conversations newest first filtered by tag/words (display card for Telegram). Also
+  REST `POST /api/chats/tag`, `GET /api/chats`. Archive keeps everything (`chat_session_meta`).
 - Background memory extraction still runs as a safety net, but the primary memory path is tool-driven.
 - Memory taxonomy (P1-8): `conversational_history`, `durable_user_preference`, `task_goal_state`, `domain_fact_entity`, `assistant_commitment`.
 
@@ -271,6 +275,9 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `POST` | `/api/ui/documents` | Add a file `{name, mime, data_b64}` → `{status: ingesting, document_id}`; archiving (extract → chunks → embeddings → Archive) runs in background, session `webui-documenti`; 415 type, 413 too big |
 | `PATCH` | `/api/ui/documents/{id}/permanent` | `{is_permanent}`: keep for good (never pruned) or temporary |
 | `DELETE` | `/api/ui/documents/{id}` | Delete document and passages (404 unknown) |
+| `GET` | `/api/ui/chats` · `/api/ui/chats/tags` | WebUI history sidebar: conversations (`q`, `tag`, `since`, `until`, `pinned`, `limit`, `offset`, pinned first) · tags in use; 502 Archive down |
+| `GET` | `/api/ui/chats/{id}/messages?limit=200` | One conversation oldest first `{items: [{role, content, at}]}` to open it again |
+| `PUT` | `/api/ui/chats/{id}` | Title, tags (`tags` replace · `add_tags` · `remove_tags`), `pinned` → meta + `before` |
 | `GET` | `/api/ui/memory` | Memoria page: active user memories `{memories: [{id, fact, domains, source, access, topic, created_at}]}` |
 | `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
 | `POST` | `/api/memory/note` | `memory_note` `{facts, topic?}` (+ `X-Hestia-Access`) → `{status, saved[], skipped[]}`; 422 empty/too many/too long, 502 Archive |

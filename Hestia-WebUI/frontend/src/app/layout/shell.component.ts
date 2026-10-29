@@ -6,7 +6,7 @@ import { AuthService } from '../services/auth.service';
 import { SignalRService } from '../services/signalr.service';
 import { SessionService } from '../services/session.service';
 import { SettingsService } from '../services/settings.service';
-import { ButtonComponent, DialogHostComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, savedWidth } from '../ui';
+import { ButtonComponent, DialogHostComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, ToastService, savedWidth } from '../ui';
 import { AssistantDrawerComponent } from '../features/assistant/assistant-drawer.component';
 import { AssistantService } from '../services/assistant.service';
 import { NotificationsService } from '../services/notifications.service';
@@ -17,21 +17,34 @@ import { CommandPaletteComponent } from '../features/plugins/command-palette.com
 import { MetisService } from '../services/metis.service';
 import { AppearanceService } from '../services/appearance.service';
 import { AppearanceLayerComponent } from './appearance-layer.component';
+import { LiveOverlayComponent } from './live-overlay.component';
+import { ChatHistoryComponent } from '../features/chat/chat-history.component';
+import { ChatsService, TAG_CSS } from '../services/chats.service';
+import { ChatService } from '../services/chat.service';
+import { LiveVoiceService } from '../services/live-voice.service';
 
 interface NavEntry { id: string; label: string; icon: string; link: string; online: boolean; child: boolean; parent: string; badge: number; }
 interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'system'; label: string; items: NavEntry[]; }
+/** Sidebar «Sistema»: one entry to the page that lists every system module page (brainstorm C13). */
+const SYSTEM_ENTRY = 'app.sistema';
 
-/** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays. */
+/** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays.
+ *  Since W7 (brainstorm C13): SVG logo, visible «Cerca» (Ctrl+K) and «Parla» (live voice over any page, Ctrl+Shift+Space),
+ *  Generale above Fissati, the pinned or 3 latest conversations with «Tutte» opening the history sidebar, the system
+ *  modules behind one «Sistema» entry (their page lists them; a pinned one still shows in Fissati). */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
       <aside class="nav" [style.width.px]="collapsed() ? null : navWidth()">
         @if (!collapsed()) { <hx-resize [(width)]="navWidth" [min]="200" [max]="420" [def]="248" key="nav" /> }
         <div class="brand">
-          <span class="logo">◈</span>
+          <svg class="logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M12 2.5 21.5 12 12 21.5 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="M12 7.2 16.8 12 12 16.8 7.2 12Z" fill="currentColor" />
+          </svg>
           <span class="name">Hestia</span>
           @if (!plugins.online()) { <span class="offline" title="Sei offline: i moduli mostrano gli ultimi dati salvati"><hx-icon name="offline" [size]="14" />offline</span> }
           <button class="icon-btn collapse" (click)="toggleCollapse()" [attr.aria-label]="collapsed() ? 'Espandi' : 'Comprimi'">
@@ -41,9 +54,35 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
         <button class="item ask" (click)="assistant.toggle(); mobileOpen.set(false)" title="Crea con Hestia (Ctrl+J)">
           <hx-icon name="sparkle" [size]="18" /><span>Crea con Hestia</span><kbd>Ctrl J</kbd>
         </button>
+        <div class="quick">
+          <button class="item" (click)="openSearch(); mobileOpen.set(false)" title="Cerca azioni, pagine e dashboard (Ctrl+K)">
+            <hx-icon name="search" [size]="18" /><span>Cerca</span><kbd>Ctrl K</kbd>
+          </button>
+          <button class="item" [class.live-on]="live.on" (click)="toggleLive()" [attr.aria-pressed]="live.on" title="Parla con Hestia a voce, da qualsiasi pagina (Ctrl+Shift+Spazio)">
+            <hx-icon name="waveform" [size]="18" /><span>{{ live.on ? 'Ferma Parla' : 'Parla' }}</span>
+          </button>
+        </div>
         <!-- One scroll area between the fixed top and bottom (A5): sections, collapsible, with pinned entries first. -->
         <div class="scroll">
           @for (sec of sections(); track sec.key) {
+            @if (sec.key === 'dashboards') {
+              <button type="button" class="sect" (click)="plugins.toggleNavSection('chats')" [attr.aria-expanded]="!isSectionClosed('chats')">
+                <span>Conversazioni</span><hx-icon [name]="isSectionClosed('chats') ? 'chevron-right' : 'chevron-down'" [size]="13" />
+              </button>
+              @if (!isSectionClosed('chats') || collapsed()) {
+                <nav>
+                  @for (c of chats.recent(); track c.session_id) {
+                    <button class="item chat" [class.active]="c.session_id === session.sessionId() && onChat()" (click)="openChat(c.session_id)" [attr.title]="c.title">
+                      <hx-icon [name]="c.pinned ? 'pin' : 'chat'" [size]="16" /><span>{{ c.title }}</span>
+                      @if (c.tags.length) { <i class="tdot" [style.background]="tagCss(c.tags[0].color)"></i> }
+                    </button>
+                  }
+                  <button class="item chat all" [class.active]="chats.historyOpen()" (click)="chats.historyOpen.set(!chats.historyOpen()); mobileOpen.set(false)" title="Tutte le conversazioni, con ricerca ed etichette">
+                    <hx-icon name="history" [size]="16" /><span>Tutte le conversazioni</span>
+                  </button>
+                </nav>
+              }
+            }
             @if (sec.items.length) {
               <button type="button" class="sect" (click)="plugins.toggleNavSection(sec.key)"
                       [attr.aria-expanded]="!isSectionClosed(sec.key)">
@@ -74,6 +113,12 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
           }
         </div>
         <nav>
+          @if (systemBadge() >= 0) {
+            <a class="item" routerLink="/sistema" routerLinkActive="active" (click)="mobileOpen.set(false)" title="Sistema: tutti i moduli di sistema">
+              <hx-icon name="host" [size]="18" /><span>Sistema</span>
+              @if (systemBadge() > 0) { <b class="count">{{ systemBadge() > 99 ? '99+' : systemBadge() }}</b> }
+            </a>
+          }
           @for (m of bottom; track m.path) {
             <a class="item" [routerLink]="'/' + m.path" routerLinkActive="active" (click)="mobileOpen.set(false)" [attr.title]="m.label">
               <hx-icon [name]="m.icon" [size]="18" /><span>{{ m.label }}</span>
@@ -136,6 +181,7 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
           <span class="dot"></span><span>{{ connLabel() }}</span>
         </div>
       </aside>
+      @if (chats.historyOpen()) { @defer { <hx-chat-history /> } }
       <div class="scrim" (click)="mobileOpen.set(false)"></div>
       <main>
         <button class="icon-btn burger" (click)="mobileOpen.set(true)" aria-label="Menu"><hx-icon name="menu" /></button>
@@ -145,6 +191,7 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
     @defer (when assistant.isOpen()) { <hx-assistant /> }
     @defer (on idle) { <hx-command-palette /> }
     <hx-appearance-layer />
+    @defer (when live.on) { <hx-live-overlay /> }
     <hx-toast-host />
     <hx-dialog-host />
   `,
@@ -156,7 +203,14 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
            display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; transition: width var(--dur) var(--ease); overflow: hidden; }
     .nav hx-resize { right: 0; }
     .brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px 12px 8px; }
-    .logo { color: var(--accent); font-size: 20px; line-height: 1; }
+    .logo { color: var(--accent); flex-shrink: 0; }
+    .quick { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; margin-bottom: 4px; }
+    .item kbd { margin-left: auto; font: 10.5px var(--font-mono, monospace); color: var(--text-3); }
+    .collapsed .item kbd { display: none; }
+    .item.live-on { color: var(--accent); background: var(--accent-soft); } .item.live-on hx-icon { color: var(--accent); }
+    .item.chat { height: 32px; font-size: 13.5px; } .item.chat span { overflow: hidden; text-overflow: ellipsis; }
+    .item.chat.all { color: var(--text-3); }
+    .tdot { width: 7px; height: 7px; border-radius: 50%; margin-left: auto; flex-shrink: 0; }
     .name { font-family: var(--font-serif); font-size: 19px; font-weight: 500; flex: 1; white-space: nowrap; }
     .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-md); display: inline-grid; place-items: center; color: var(--text-3); }
     .icon-btn:hover { background: var(--surface-2); color: var(--text); }
@@ -255,6 +309,7 @@ export class ShellComponent {
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
   plugins = inject(PluginsService);
+  private toasts = inject(ToastService);
   private metis = inject(MetisService);
   private look = inject(AppearanceService);
   /** Module pages (client plugins): parents followed by their sub-pages. */
@@ -289,13 +344,22 @@ export class ShellComponent {
       return [{ ...e, child: false }, ...kids];
     });
     const rest = (list: NavEntry[]) => list.filter(e => !taken.has(e.id));
+    // System pages live behind the «Sistema» entry (bottom); only the pinned ones stay in the list.
     return [
-      { key: 'pinned', label: 'Fissati', items: pinned },
       { key: 'app', label: 'Generale', items: rest(app) },
+      { key: 'pinned', label: 'Fissati', items: pinned },
       { key: 'dashboards', label: 'Dashboard', items: rest(dash) },
       { key: 'modules', label: 'Moduli', items: rest(mods) },
-      { key: 'system', label: 'Sistema', items: rest(sys) },
     ];
+  });
+
+  /** Sum of the system pages' counters (−1 = no system page at all: no entry). */
+  readonly systemBadge = computed(() => {
+    const kinds = this.plugins.modules();
+    const sys = this.pluginNav().filter(p => kinds.get(p.module)?.kind === 'core');
+    if (!sys.length) return -1;
+    const b = this.plugins.badges();
+    return sys.reduce((n, p) => n + (b[p.id] ?? 0), 0);
   });
 
   isSectionClosed(key: string): boolean { return this.plugins.navCollapsed().includes(key); }
@@ -357,7 +421,13 @@ export class ShellComponent {
     return `«Non disturbare»: per ${d} ti arrivano solo le notifiche urgenti; le altre le ricevi in un riepilogo quando finisce.`;
   }
   readonly ago = ago;
-  private session = inject(SessionService);
+  session = inject(SessionService);
+  chats = inject(ChatsService);
+  live = inject(LiveVoiceService);
+  private chat = inject(ChatService);
+  private url = signal('');
+  readonly onChat = computed(() => this.url().startsWith('/chat'));
+  tagCss(c: string) { return TAG_CSS[c] || TAG_CSS['gray']; }
   private settings = inject(SettingsService);
   private router = inject(Router);
   collapsed = signal(this.readCollapsed());
@@ -368,6 +438,15 @@ export class ShellComponent {
   private bootstrapped = false;
 
   constructor() {
+    this.router.events.subscribe(() => this.url.set(this.router.url));
+    // The sidebar's latest conversations follow each finished answer.
+    let streaming = false;
+    effect(() => {
+      const now = this.chat.isStreaming();
+      if (streaming && !now) untracked(() => void this.chats.refreshRecent());
+      streaming = now;
+    });
+    effect(() => { if (this.plugins.modules().has('oracle')) untracked(() => void this.chats.refreshRecent()); });
     // Connect whenever authenticated (URL token or login form); reset on logout.
     effect(() => {
       const authed = this.auth.isAuthenticated();
@@ -388,10 +467,24 @@ export class ShellComponent {
     await Promise.all([this.session.load(), this.settings.load()]);
   }
 
-  /** "Crea con Hestia" from anywhere. */
+  openSearch(): void { window.dispatchEvent(new CustomEvent('hestia:palette')); }
+
+  async openChat(id: string): Promise<void> {
+    this.mobileOpen.set(false);
+    await this.chats.open(id);
+  }
+
+  /** «Parla» from anywhere: same live mode as the chat page (layout/live-overlay shows it on other pages). */
+  toggleLive(): void {
+    if (this.live.on) { this.live.stop(); return; }
+    void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });
+  }
+
+  /** "Crea con Hestia" from anywhere; Ctrl+Shift+Space = «Parla». */
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
     if (e.key === 'Escape' && this.presenceOpen()) { this.presenceOpen.set(false); return; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'Space') { e.preventDefault(); this.toggleLive(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j') {
       e.preventDefault();
       this.assistant.toggle();

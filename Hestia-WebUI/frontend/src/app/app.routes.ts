@@ -18,6 +18,7 @@ export const routes: Routes = [
       { path: 'forge', redirectTo: '/p/hephaestus/sviluppo' },
       { path: 'documents', redirectTo: '/p/oracle/documenti' },
       { path: 'calendar', redirectTo: '/p/chronos/agenda' },
+      { path: 'sistema', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: 'Sistema · Hestia' },
       { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: 'Dashboard · Hestia' },
       { matcher: pluginPageMatcher, loadComponent: () => import('./features/plugins/plugin-page.component').then(m => m.PluginPageComponent), title: 'Hestia' },
       { path: '', pathMatch: 'full' as const, redirectTo: 'home' },
