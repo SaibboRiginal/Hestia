@@ -69,6 +69,21 @@ notification first, then asks Echo (use `hermes.notifica`) and sends an `update`
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
 never changes.
 
+## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-tutto-brainstorm-cindy`)
+
+- **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voce», Telegram «Registra la
+  mia voce», tool `voce_impronta_registra`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
+  ResNet34 ONNX, downloaded on first use into `ECHO_MODELS_DIR/speaker`) in `echo-store` (`kind=voiceprint`) and the
+  recording as a kept `recording`. On the uses in `echo.impronta.usi` (default the WebUI live listening) every 1.5 s
+  window of speech under `echo.impronta.soglia` (cosine, 0.45) becomes silence **before** transcription and before
+  the live end-of-turn check: the TV or other people neither enter the message nor keep a turn open. All windows
+  muted → «non ho sentito la tua voce». No voiceprint = no filter; engine missing → audio unchanged (`[🔄]`).
+- **End of turn**: live mode closes a turn after `echo.live.silence_ms` (1250 ms) of real silence of the owner.
+- **Personal dictionary** (Cindy 17, `app/core/dictionary.py`): names and terms passed to every listening engine as
+  a hint (Whisper `initial_prompt`, OpenAI `prompt`, ≤ 80 words). Words added by hand are confirmed at once; a
+  correction of a transcript (`POST /dictionary/learn`, tool `voce_correzione`) makes the new words candidates,
+  confirmed after `echo.dizionario.conferme` (2) corrections. Rows `kind=word` (id = normalised word).
+
 ## Clients
 
 - **Telegram**: a voice note becomes a chat message (transcript shown, then handled like typed text, recording
@@ -85,8 +100,9 @@ never changes.
 
 `echo.providers`, `echo.chains`, `echo.usecases`, `echo.mode`, `echo.external.provider`, `echo.external.model`,
 `echo.external.fallback`, `echo.language` (it), `echo.voce.max_chars` (1200), `echo.ascolto.max_seconds` (600),
-`echo.live.silence_ms` (900), `echo.chains.cooldown` (60 min), `echo.audio.space_mb` (2048),
-`echo.audio.generated_days` (30), `echo.pricing`.
+`echo.live.silence_ms` (1250), `echo.chains.cooldown` (60 min), `echo.audio.space_mb` (2048),
+`echo.audio.generated_days` (30), `echo.pricing`; group «La tua voce»: `echo.impronta.soglia` (0.45),
+`echo.impronta.usi` (`["webui.live.ascolto"]`), `echo.dizionario.conferme` (2).
 
 ## API (via Hub `/route/echo/...`, prefix `/api/voice`)
 
@@ -96,7 +112,11 @@ never changes.
 | POST | `/speak` | `{text, use_case, format?, voice?, keep?}` → `{audio_b64, mime_type, duration_s, provider, voice, blob_id?}` (reuses kept audio of the same message + text) |
 | POST | `/listen`, `/listen/{sid}/chunk`, `/listen/{sid}/end` | mic stream: open · chunk `{seq, audio_b64, partial?}` → `{partial, silence_ms, duration_s}` · end → like `/transcribe` |
 | POST | `/say`, `/say/{sid}/text`, `/say/{sid}/end` | voice stream: open `{use_case, format}` · text `{delta}` → `{blocks[{seq, text, audio_b64, mime_type}]}` · end `{keep?}` |
-| GET | `/live` | `{silence_ms, language}` for clients' live mode |
+| GET | `/live` | `{silence_ms, language, voiceprint}` for clients' live mode |
+| GET, POST | `/dictionary` | personal dictionary: list · add `{word}` (confirmed) |
+| DELETE | `/dictionary/{word}` | remove a word |
+| POST | `/dictionary/learn` | `{heard, corrected}` → `{confirmed, candidates}` |
+| GET, POST, DELETE | `/voiceprint` | status · record `{audio_b64\|audio:{data_b64, mime}}` (≥ 6 s) · forget |
 | GET | `/standards`, `/providers`, `/providers/options`, `/chains`, `/usecases` | blocks and their state |
 | PUT | `/blocks/{providers\|chains\|usecases}` | the page's edit, stored through Themis |
 | POST | `/providers/{name}/retry` | forget the quota state |
@@ -118,4 +138,9 @@ never changes.
 python -m pytest -q -m "unit or api or format" Hestia-Echo/tests
 ```
 Fake engines and a fake Archive: chains and fallback, quota skip, external mode and its fallback, streams (partials,
-silence, seq dedupe, sentence blocks), keeping (reuse, cleanup, space rule, warning, forget), endpoints, manifest.
+silence, seq dedupe, sentence blocks), keeping (reuse, cleanup, space rule, warning, forget), endpoints, manifest;
+`test_your_voice.py`: dictionary (add, learn to confirmation, hint in the engine options), voiceprint (enroll,
+other voices muted, live cache, unchanged without print or engine).
+
+MCP tools (Telegram + WebUI, section «Voce»): `voce_dizionario`, `voce_parola`, `voce_parola_togli`,
+`voce_correzione`, `voce_impronta`, `voce_impronta_registra` (a voice note), `voce_impronta_togli`.

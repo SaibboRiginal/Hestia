@@ -136,7 +136,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - **Ascolta** (volume icon) under every reply: Echo reads it (kept, a second play is not generated again).
 - **Parla** (header, waveform icon, `services/live-voice.service.ts`): live conversation by voice with the same chat.
   The browser measures the mic level: speech start opens Echo's `listen` stream (chunks every 800 ms, partial text
-  shown), a pause of `echo.live.silence_ms` ends the turn; the answer, while it is written, goes to Echo's `say` stream
+  shown), a pause of `echo.live.silence_ms` (1250 ms; with a voiceprint, other voices are muted by Echo first, so the
+  TV does not keep the turn open) ends the turn; the answer, while it is written, goes to Echo's `say` stream
   and the sentences play in order; speaking again (or «Interrompi») stops the voice and the answer. No external live
   service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando.
 - Hub registration declares `voice_usecases` (`webui.vocale`, `webui.ascolta`, `webui.live.ascolto`, `webui.live.voce`).

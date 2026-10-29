@@ -307,6 +307,19 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
    Echo `speak` (use `hermes.notifica`, kept with the notification) → `update` with `voice` to the clients.
 5. Audio inside a document → Oracle → Echo (use `oracle.documenti`); Oracle has no speech engine.
+6. Before any engine (W4): Echo voiceprint filter (uses in `echo.impronta.usi`: other voices → silence, also before
+   the live end-of-turn check) + personal dictionary hint; a correction (`/dictionary/learn`) teaches new words.
+7. Spoken diary (W4 B9): evening recap → button «Racconta la giornata» (Hygieia piece action, `command`) → Telegram
+   asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diario`) → diary
+   «giornata» → reflection signal `diario`.
+
+### Device feed flow (same dossier, W4)
+- Garmin: agenda job `hecate.garmin.sync` → Hecate (garminconnect, tokens in its data folder) → `FeedPublisher`
+  discovers `capabilities.feeds["wearable.daily"]` on the Hub → Hub → Hercules `/api/hercules/wearable` (activities,
+  check-in) and Hygieia `/api/selfcare/wearable` (sleep); presence signal `wearable.woke_at` → Chronos.
+  «Collega Garmin» → Hermes secret form → Hecate `/api/gateway/garmin/login` (password never stored).
+- Phone: Tasker → tunnel → Hecate `/api/gateway/phone/push` (token) → presence signals `phone.home`/`phone.charging`
+  → Chronos; app notification → feed `phone.notification` → Plutus `/api/finance/phone` (transaction to review).
 
 ### Real-estate extraction flow
 1. Iris rings Scout (`/api/scout/mail`) for listing mails already stored in Archive (`real_estate`).

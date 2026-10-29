@@ -61,7 +61,9 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 - Writes get a **confirmation card** (Conferma); destructive tools get «Elimina» in red and «Non si può annullare».
 - Result: «Un attimo…» then the result card with the module's next-step buttons, «Cambia», «‹ Area», «Di nuovo».
   Images come as photo / album, exports as a document.
-- A file sent while an action waits for one is the answer (Archive blob when the schema asks `blob_id`).
+- A file sent while an action waits for one is the answer (Archive blob when the schema asks `blob_id`). A voice
+  note or audio counts too: a field with `contentMediaType: audio/*` asks «Mandami un vocale» (spoken diary,
+  voiceprint), otherwise voice notes go to the chat as before.
 - Writing a sentence during an action asks «Vuoi uscire da X?»; a spoken answer works like a typed one.
 - Flows, pending confirmations and short callback ids are persisted in `data/telegram_ui.json`
   (`TELEGRAM_UI_STATE_FILE`), so buttons keep working after a restart.

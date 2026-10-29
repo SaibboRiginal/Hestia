@@ -161,6 +161,15 @@ calendar before `fitness_confirm_activity` (all slots, some by number, or times 
 - Store kinds `activity_plan`, `activity` (written by the server only; refused from the offline sync),
   `calendar_link`, `activity_nudge`.
 
+## From the watch (feed `wearable.daily`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W4 B10)
+
+Hecate pushes each day read from Garmin to `POST /api/hercules/wearable` (`hestia_common.feeds`, declared as
+`capabilities.feeds`). Outdoor activities (corsa, bici, camminata, nuoto) become done activities like «Ho corso»
+(`activities.log(..., ext="garmin:<id>")`: a planned slot that day is closed); each device activity is logged once,
+and one the owner deleted never comes back. Strength workouts stay with the gym sessions. Today's sleep score and
+morning body battery (or training readiness), 0–100 → 1–5, become the day's check-in (`source: device`) only when
+there is no check-in made by hand; the adaptation of today's workout reads it like any check-in.
+
 ## Telegram card (`display`)
 `GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
 

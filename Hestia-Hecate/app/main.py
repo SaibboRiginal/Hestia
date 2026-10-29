@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 from hestia_common import recap as recap_contract
 from providers.weather import WeatherError, WeatherService, recap_facts
 from schemas.calendar_events import CalendarEvent
+import devices_api
 
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
 from core.archive_client import ArchiveClient
@@ -247,6 +248,7 @@ try:
                              "con le ore). Se status non è ok spiega cosa serve."),
             telegram_visible=True, telegram_group="giornata",
                 telegram={"section": "Meteo", "label": "Previsioni"}),
+        *devices_api.tools(MCPTool),
     ]
     app.include_router(create_mcp_router(_hecate_mcp_tools, service_name="hecate"))
     logger.info("event=mcp_router_mounted service=hecate")
@@ -255,6 +257,7 @@ except ModuleNotFoundError:
 
 app.include_router(create_log_control_router("hestia_hecate"))
 app.include_router(hecate_settings.router())
+app.include_router(devices_api.router)
 
 vault = ArchiveClient()
 memory = StateManager("data/state.json")  # Move this to a mounted volume!
@@ -562,8 +565,8 @@ def register_on_hub_startup():
             "ingest_trigger": "/api/ingest/trigger",
             "calendar_sync": "/api/ingest/calendar/trigger",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
-            "module_tool_domains": ["calendar", "weather"],
-            "owns_tool_domains": ["weather"],
+            "module_tool_domains": ["calendar", "weather", "devices"],
+            "owns_tool_domains": ["weather", "devices"],
             **recap_contract.capabilities(),
         },
     }
@@ -1279,6 +1282,8 @@ hecate_settings.on_change(_on_mail_settings)
 def start_mail_watch() -> None:
     """Startup: agenda rules (+ retire the renew job when push is not configured), Gmail push listener."""
     mail_agenda.register_async(_mail_agenda_rules)
+    mail_agenda.register_async(devices_api.agenda_rules)          # Garmin daily sync (W4 B10)
+    threading.Thread(target=devices_api.declare_presence, daemon=True, name="hecate-presence-states").start()
     if not gmail_pubsub.configured():
         threading.Thread(target=lambda: mail_agenda.retire([MAIL_RENEW_JOB]), daemon=True,
                          name="hecate-mail-retire").start()

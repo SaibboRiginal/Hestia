@@ -25,6 +25,8 @@ MAIL_WATCH_INTERVAL = "hecate.mail.watch_interval"
 MAIL_SAFETY_INTERVAL = "hecate.mail.safety_interval"
 WEATHER_CACHE_MINUTES = "hecate.weather.cache_minutes"
 PERSONAL_PLACES = "themis.personal.places"
+PHONE_HOME_WIFI = "hecate.telefono.wifi_casa"
+PHONE_APPS = "hecate.telefono.app"
 
 settings = SettingsClient("hecate")
 settings.declare([
@@ -57,4 +59,10 @@ settings.declare([
             unit="min", advanced=True,
             help="Per quanti minuti riuso la previsione già scaricata per un luogo prima di chiederla di nuovo "
                  "(il servizio meteo aggiorna i dati circa ogni ora)."),
+    setting(PHONE_HOME_WIFI, "Wi-Fi di casa", "list", [], group="Telefono",
+            help="Nomi delle reti Wi-Fi di casa: quando il telefono è connesso a una di queste sei «a casa». "
+                 "Vuoto = il telefono deve dirlo da solo (campo home)."),
+    setting(PHONE_APPS, "App da ascoltare", "list", [], group="Telefono",
+            help="Le notifiche di queste app (es. la banca, Satispay) passano ai moduli che le usano, come le spese. "
+                 "Vuoto = tutte quelle che il telefono manda."),
 ]).declare_log_level().follow_personal()

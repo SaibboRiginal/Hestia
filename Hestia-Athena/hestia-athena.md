@@ -215,7 +215,9 @@ One message a day, «com'è andata e cosa c'è domani». `app/core/recap.py` `Re
    Oracle failing → deterministic list per area (`fallback: true`, `[🔄] event=recap_fallback`).
 3. **Quiet day** (every piece empty) → nothing is sent (`event=recap_empty`); proposals belong to other moments.
 4. **Deliver**: Hermes `service.action_required` (domain system, level info, `replaces: athena.recap`, target `owner`,
-   `_link {module: athena, page: recap}`); stored in Archive entities, domain `recap`.
+   `_link {module: athena, page: recap}`); stored in Archive entities, domain `recap`. Buttons the pieces ask for
+   (`piece(..., actions=)`, max 3 overall, ids `<module><n>`) go in `_actions`; an empty piece with actions rides
+   only for its buttons (not in the text, not in the stored pieces). Example: «Racconta la giornata» (Hygieia, B9).
 
 When: agenda job `athena.recap.evening`, daily 21:30, `flex 20:00–23:30` (Chronos moves it around the user's
 events). Morning recap (previous day + today) = agenda template `recap` with `momento: mattina`, added by the user.

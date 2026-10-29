@@ -33,6 +33,7 @@ from hestia_common.display import action, display, item, money
 from hestia_common.agenda_client import AgendaClient, job_rule
 from hestia_common.coach import CoachClient, CoachRouter
 from hestia_common.mail_client import MailClient, mail_rule
+from hestia_common.feeds import capabilities as feed_capabilities
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 from hestia_common.plugin_client import PluginClient, page, quick_action, widget
 from hestia_common.reminders import reminder_event, reminder_settings, voice_setting
@@ -460,6 +461,15 @@ def mail_delivered(body: dict = Body(default={})):
     logger.info("event=plutus_mail_delivered count=%s source=%s", body.get("count"), body.get("source"))
     threading.Thread(target=process_pending_mail, daemon=True, name="plutus-mail").start()
     return {"status": "started"}
+
+
+@app.post(f"{API}/phone")
+def phone_notification(body: dict = Body(...)):
+    """Feed ``phone.notification`` from Hecate (Cindy 32): a bank app notification → transaction to review."""
+    out = plutus.process_phone(body)
+    if out["status"] == "added":
+        signals.changed()
+    return out
 
 
 @app.post(f"{API}/mail/check")
@@ -926,7 +936,8 @@ def _registration() -> dict:
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": [DOMAIN],
             "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS,
             **recap.capabilities(),
-            **llm_capabilities(LLM_USECASES)}
+            **llm_capabilities(LLM_USECASES),
+            **feed_capabilities({"phone.notification": f"{API}/phone"})}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
         caps.update(transfer.capabilities())

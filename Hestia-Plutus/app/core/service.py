@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 
 from hestia_common.signals_client import iso_week, last_weeks, metric, signal
 
-from . import catalog, paypal
+from . import catalog, paypal, phone
 from .store import Store, now_iso
 
 logger = logging.getLogger("hestia_plutus.service")
@@ -27,7 +27,7 @@ logger = logging.getLogger("hestia_plutus.service")
 CURRENCY_KEY = "themis.personal.currency"
 TX_FIELDS = ("date", "amount", "currency", "merchant", "description", "category", "account", "source",
              "external_ref", "linked_to", "notes", "tags", "status", "import_id", "mail_ref")
-SOURCES = ("manual", "chat", "email", "statement", "quick")
+SOURCES = ("manual", "chat", "email", "statement", "quick", "phone")
 
 
 class Invalid(ValueError):
@@ -255,7 +255,7 @@ class Plutus:
             category = self.categorize(merchant, description)
         if not category:
             category = "entrate" if amount > 0 else "altro"
-            status = "to_review" if source in ("email", "statement") else "confirmed"
+            status = "to_review" if source in ("email", "statement", "phone") else "confirmed"
         data = {"date": when.isoformat(), "amount": round(amount, 2),
                 "currency": str(body.get("currency") or self.currency()).upper()[:3],
                 "merchant": merchant, "description": description, "category": category,
@@ -522,6 +522,20 @@ class Plutus:
             raise Invalid("stato: confirmed, dismissed o suggested")
         r = self.get("recurring", id)
         return self.store.upsert("recurring", id, {**{k: v for k, v in r.items() if k != "id"}, "status": status})
+
+    # ── phone notifications (feed phone.notification from Hecate, Cindy 32) ──
+    def process_phone(self, item: dict) -> dict:
+        """A bank/payment app notification → a transaction (always to review: a notification is not a statement)."""
+        parsed = phone.parse(str(item.get("app") or ""), str(item.get("title") or ""), str(item.get("text") or ""))
+        if not parsed:
+            return {"status": "ignored"}
+        when = _d(item.get("at")) or self.today()
+        tx = self.add_tx({"amount": parsed["amount"], "type": parsed["kind"], "currency": parsed["currency"],
+                          "merchant": parsed["merchant"], "description": f"{item.get('app')}: {item.get('title') or ''}"[:200],
+                          "date": when.isoformat(), "external_ref": phone.ref(item), "status": "to_review"},
+                         source="phone")
+        logger.info("event=plutus_phone_processed status=%s", "duplicate" if tx.get("duplicate") else "added")
+        return {"status": "duplicate" if tx.get("duplicate") else "added", "tx_id": tx["id"], "amount": tx["amount"]}
 
     # ── PayPal mails (pushed by Iris) ────────────────────────────────────────
     def process_mail(self, record: dict) -> dict:

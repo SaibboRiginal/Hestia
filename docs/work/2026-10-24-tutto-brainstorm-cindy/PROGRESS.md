@@ -51,9 +51,27 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] F: `system_performance`, `system_incidents`, `settings_proposals`, Athena thinking/signals on Telegram,
       backup tools (Archive), Telegram «Esporta i dati» / «Importa dati» / «Ripristina un backup»
 - [x] tests (Forge review, Athena learning/consolidator, Argus performance, Atlas recipes, Telegram transfer), docs, swagger
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #36)
 - Left for W7 (WebUI): «Cosa ho imparato» in Memoria (learning log + Annulla), Prestazioni page in Sistema, review card
   in Sviluppo.
 
-## W4–W8
+## W4 Echo · Hygieia · Hecate (+ Hercules, Plutus, Athena, Telegram)
+- [x] Cindy 10 voiceprint (Echo `voiceprint.py`, filter before transcription and before live end of turn) + live
+      end of turn on 1250 ms of real silence
+- [x] Cindy 17 personal dictionary (Echo `dictionary.py`, hint to every engine, learns from corrections, tool
+      `voce_correzione`)
+- [x] B9 spoken evening diary (Hygieia `/journal/voice`, tool `selfcare_diario_voce`, use `hygieia.diario`, recap
+      button via `recap.piece(actions=)` + Athena `piece_actions`, signal `diario`; Telegram takes voice notes in
+      file fields)
+- [x] B10 Garmin (Hecate `providers/garmin.py`, `devices_api.py`, secret form login, agenda `hecate.garmin.sync`,
+      feed `wearable.daily` → Hercules activities/check-in, Hygieia sleep; presence `wearable.woke_at`)
+- [x] Cindy 32 phone (Hecate `/api/gateway/phone/push` + token, presence `phone.home`/`phone.charging`, overlay
+      «Fuori casa», feed `phone.notification` → Plutus transactions to review)
+- [x] shared `hestia_common.feeds`; tests (Echo, Hygieia, Athena, Hecate, Hercules, Plutus); docs, swagger, env, TESTING
+- [ ] PR + CI green + merge
+- Left for W7 (WebUI): page «Voce» → La tua voce (dictionary list, record voiceprint), transcript correction in the
+  chat (→ `/dictionary/learn`), Hermes `command` actions opening the tool form (recap «Racconta la giornata»),
+  Hecate «Dispositivi» page.
+
+## W5–W8
 - [ ] see SPEC §3

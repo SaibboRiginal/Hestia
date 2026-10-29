@@ -8,7 +8,8 @@ from datetime import date, datetime
 import pytest
 
 from core import athena_settings as S
-from core.recap import (RecapComposer, build_prompt, clean_text, has_content, moment_days, template_text)
+from core.recap import (RecapComposer, build_prompt, clean_text, has_content, moment_days, piece_actions,
+                         template_text)
 
 pytestmark = pytest.mark.unit
 
@@ -149,3 +150,14 @@ def test_template_escapes_html():
 
 def test_has_content():
     assert not has_content([]) and has_content([PLUTUS])
+
+
+def test_piece_actions_ride_under_the_recap():
+    """B9: a module piece (even an empty one) can ask for a button under the recap; ids unique per module."""
+    pieces = [{"module": "hygieia", "empty": True, "actions": [{"label": "Racconta la giornata",
+                                                                "command": "selfcare_diario_voce"}]},
+              {"module": "hercules", "title": "Allenamento", "done": [{"text": "Push A"}]}]
+    assert piece_actions(pieces) == [{"label": "Racconta la giornata", "command": "selfcare_diario_voce",
+                                      "id": "hygieia0"}]
+    assert has_content(pieces)
+    assert "Racconta" not in template_text(pieces, "sera", date(2026, 10, 29), date(2026, 10, 30))

@@ -33,6 +33,7 @@ from hestia_common.reminders import reminder_event, reminder_settings, voice_set
 from hestia_common.transfer import StoreSection, Transfer
 from hestia_common.settings_client import SettingsClient, setting
 from hestia_common.signals_client import Signals, signals_rule
+from hestia_common.feeds import capabilities as feed_capabilities
 
 from .core import catalog, domain
 from .core.activities import Activities
@@ -427,6 +428,16 @@ def checkin(body: dict = Body(...)):
     out = hercules.checkin(body)
     signals.changed()
     return out
+
+
+@app.post(f"{API}/wearable")
+def wearable(body: dict = Body(...)):
+    """Feed ``wearable.daily`` from Hecate (Garmin, W4 B10): activities + morning readiness."""
+    logged = activities.from_wearable(body)
+    checkin_row = hercules.checkin_from_wearable(body)
+    if logged or checkin_row:
+        signals.changed()
+    return {"status": "ok", "activities": len(logged), "checkin": bool(checkin_row)}
 
 
 @app.post(f"{API}/feedback")
@@ -1280,7 +1291,8 @@ except NameError:
 def _registration() -> dict:
     caps = {"when_to_use": "palestra, allenamenti, schede, esercizi e attività all'aperto", "manual": "Schede e sessioni di allenamento, progressi sugli esercizi, attività all'aperto col meteo. Il piano della settimana lo propone il coach.",
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["fitness"],
-            "context_endpoint": "/api/module/context", **recap.capabilities()}
+            "context_endpoint": "/api/module/context", **recap.capabilities(),
+            **feed_capabilities({"wearable.daily": f"{API}/wearable"})}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
         caps.update(transfer.capabilities())

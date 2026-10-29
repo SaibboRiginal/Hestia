@@ -56,6 +56,16 @@ def moment_days(momento: str, day: date | None = None, *, today: date | None = N
     return d, d + timedelta(days=1)
 
 
+def piece_actions(pieces: list[dict], limit: int = 3) -> list[dict]:
+    """Buttons the modules ask for under the recap (``piece(..., actions=)``), ids made unique per module."""
+    out: list[dict] = []
+    for p in pieces:
+        for i, a in enumerate(p.get("actions") or []):
+            if isinstance(a, dict) and a.get("label"):
+                out.append({**a, "id": f"{str(p.get('module') or 'm')[:12]}{i}"})
+    return out[:limit]
+
+
 def has_content(pieces: list[dict]) -> bool:
     return any(p.get("done") or p.get("missed") or p.get("next") or p.get("note") for p in pieces)
 
@@ -176,7 +186,7 @@ class RecapComposer:
             if status >= 400 or not isinstance(payload, dict):
                 logger.warning("[🔄] event=recap_piece_failed module=%s status=%s fallback=skip", service, status)
                 return None
-            if payload.get("empty"):
+            if payload.get("empty") and not payload.get("actions"):
                 return None
             return {**payload, "module": payload.get("module") or service}
 
@@ -210,14 +220,14 @@ class RecapComposer:
         return clean_text(template_text(pieces, momento, day, nxt), max(max_chars, 1500)), True
 
     # ── 3. deliver + store ────────────────────────────────────────────────────
-    def deliver(self, text: str, momento: str, day: date) -> bool:
+    def deliver(self, text: str, momento: str, day: date, actions: list[dict] | None = None) -> bool:
         title = "Recap della sera" if momento == "sera" else "Recap del mattino"
         event = {"event_type": "service.action_required", "domain": "system",
                  "entity_id": f"athena-recap-{day.isoformat()}-{momento}",
                  "payload": {"kind": "athena.recap", "service": "athena", "source": "athena", "domain": "recap",
                              "_source": "athena", "_title": title, "_message": text, "level": "info",
                              "target": "owner", "replaces": REPLACES_KEY, "emoji": "🌙" if momento == "sera" else "☀️",
-                             "icon": "note", "tone": "info", "_actions": [],
+                             "icon": "note", "tone": "info", "_actions": list(actions or []),
                              "_link": {"module": "athena", "page": "recap"}}}
         try:
             status, payload = self._route("hermes", "POST", "api/events/ingest", body=event, timeout=10)
@@ -268,13 +278,13 @@ class RecapComposer:
     def _compose(self, momento: str, d: date, n: date, deliver: bool, trigger: str) -> dict[str, Any]:
         pieces = self.collect(d, n)
         base = {"id": f"athena-recap-{d.isoformat()}-{momento}", "day": d.isoformat(), "next": n.isoformat(),
-                "momento": momento, "trigger": trigger, "pieces": pieces,
+                "momento": momento, "trigger": trigger, "pieces": [p for p in pieces if not p.get("empty")],
                 "created_at": datetime.now(timezone.utc).isoformat()}
         if not has_content(pieces):
             logger.info("event=recap_empty day=%s momento=%s trigger=%s", d, momento, trigger)
             return {**base, "status": "empty", "text": "", "delivered": False, "fallback": False}
         text, fallback = self.write(pieces, momento, d, n)
-        delivered = self.deliver(text, momento, d) if deliver else False
+        delivered = self.deliver(text, momento, d, piece_actions(pieces)) if deliver else False
         record = {**base, "status": "ok", "text": text, "delivered": delivered, "fallback": fallback}
         if deliver:   # a chat request is an answer, not a recap of the day: not stored, not delivered
             self.store(record)

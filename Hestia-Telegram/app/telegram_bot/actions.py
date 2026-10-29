@@ -170,7 +170,8 @@ def _ask(chat_id, flow: dict, tool: catalog.Tool, f: inputs.Field, problem: str 
     if f.help and not time_step:
         lines.append(ui.esc(f.help))
     if f.kind == "file":
-        lines.append(ui.note("Mandami la foto o il file qui in chat."))
+        lines.append(ui.note("Mandami un vocale qui in chat." if f.media.startswith("audio")
+                             else "Mandami la foto o il file qui in chat."))
     elif f.placeholder and not time_step:
         lines.append(ui.note(f"Es. {f.placeholder}"))
     elif f.kind == "datetime" and not time_step:
@@ -356,7 +357,7 @@ def on_text(chat_id, text: str) -> bool:
     if f.kind == "file":
         if _looks_like_chat(text):
             return _offer_quit(chat_id, flow, tool, text)
-        _ask(chat_id, flow, tool, f, "Aspetto una foto o un file.")
+        _ask(chat_id, flow, tool, f, "Aspetto un vocale." if f.media.startswith("audio") else "Aspetto una foto o un file.")
         return True
     ok, value, problem = inputs.parse(f, text)
     if not ok:
@@ -415,6 +416,10 @@ def on_file(chat_id, message) -> bool:
 def _file_of(message) -> tuple[str, str, str]:
     if message.content_type == "photo":
         return message.photo[-1].file_id, "image/jpeg", "foto.jpg"
+    if message.content_type == "voice":
+        return message.voice.file_id, (message.voice.mime_type or "audio/ogg"), "vocale.ogg"
+    if message.content_type == "audio":
+        return message.audio.file_id, (message.audio.mime_type or "audio/mpeg"), (message.audio.file_name or "audio")
     doc = message.document
     return doc.file_id, (doc.mime_type or "application/octet-stream"), (doc.file_name or "file")
 

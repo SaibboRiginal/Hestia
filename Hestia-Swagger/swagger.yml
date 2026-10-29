@@ -3309,6 +3309,78 @@ paths:
       responses:
         "200": {description: "OK"}
 
+  /api/gateway/garmin/status:
+    get:
+      tags: [Hecate]
+      summary: "Garmin {connected, tokens, env_credentials, waiting_code, last_sync, last_error}"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/garmin/connect:
+    post:
+      tags: [Hecate]
+      summary: "«Collega Garmin»: Hermes secret form (email, password) to the owner {status: asked}"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/garmin/login:
+    post:
+      tags: [Hecate]
+      summary: "Secret form target {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/garmin:
+    delete:
+      tags: [Hecate]
+      summary: "Forget Garmin (delete tokens)"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/garmin/day:
+    get:
+      tags: [Hecate]
+      summary: "One normalised day ?day=YYYY-MM-DD: sleep, steps, resting_hr, body_battery, hrv, readiness, stress_avg, activities"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/garmin/sync:
+    post:
+      tags: [Hecate]
+      summary: "Agenda job hecate.garmin.sync {days (2)} → feed wearable.daily per day {status, days}"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/phone/push:
+    post:
+      tags: [Hecate]
+      summary: "Phone webhook, header X-Hestia-Phone-Token: {type state, wifi, home?, charging, battery} | {type notification, app, title, text}; 401 bad token, 503 not configured"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
+  /api/gateway/phone/status:
+    get:
+      tags: [Hecate]
+      summary: "Last phone state {configured, last, home_wifi, apps}"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+
   /api/gateway/calendar/calendars:
     post:
       tags: [Hecate]
@@ -8407,6 +8479,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/hercules/wearable:
+    post:
+      tags: [Hercules]
+      summary: "Feed wearable.daily from Hecate: outdoor activities logged once + morning check-in from the watch {status, activities, checkin}"
+      servers:
+        - url: http://localhost:19019
+      responses:
+        "200": {description: OK}
+
   /api/hercules/feedback:
     post:
       tags: [Hercules]
@@ -9493,6 +9574,15 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/finance/phone:
+    post:
+      tags: [Plutus]
+      summary: "Feed phone.notification from Hecate {app, title, text, at} → transaction to review {status added|duplicate|ignored, tx_id?}"
+      servers:
+        - url: http://localhost:19020
+      responses:
+        "200": {description: OK}
+
   /api/finance/quick/categories:
     get:
       tags: [Plutus]
@@ -10206,6 +10296,24 @@ paths:
     post:
       tags: [Hygieia]
       summary: "Add {date?, entries[{area, scores{metric:1-5}, tags, note}]}"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/journal/voice:
+    post:
+      tags: [Hygieia]
+      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diario, recording kept) → {item} area giornata, tag voce"
+      servers:
+        - url: http://localhost:19018
+      responses:
+        "200": {description: OK}
+
+  /api/selfcare/wearable:
+    post:
+      tags: [Hygieia]
+      summary: "Feed wearable.daily from Hecate: the night's sleep → diary entry area sonno (one per date) {status, sleep}"
       servers:
         - url: http://localhost:19018
       responses:
@@ -11627,7 +11735,64 @@ paths:
   /api/voice/live:
     get:
       tags: [Echo]
-      summary: "Live mode settings for clients → {silence_ms, language}"
+      summary: "Live mode settings for clients → {silence_ms, language, voiceprint}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/dictionary:
+    get:
+      tags: [Echo]
+      summary: "Personal dictionary → {items[{word, status confirmed|candidate, count, source}], hint}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Echo]
+      summary: "Add a word {word} (confirmed at once)"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/dictionary/{word}:
+    delete:
+      tags: [Echo]
+      summary: "Remove a word from the dictionary"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/dictionary/learn:
+    post:
+      tags: [Echo]
+      summary: "A correction {heard, corrected} → {confirmed, candidates} (confirmed after echo.dizionario.conferme)"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/voice/voiceprint:
+    get:
+      tags: [Echo]
+      summary: "Voiceprint status {enrolled, at, seconds, threshold, uses, engine_error}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Echo]
+      summary: "Record the owner's voice {audio_b64 | audio{data_b64, mime}} (at least 6 s) → status"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Echo]
+      summary: "Forget the voiceprint (filter off)"
       servers:
         - url: http://localhost:19021
       responses:

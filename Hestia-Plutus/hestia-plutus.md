@@ -31,6 +31,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
 |---|---|---|
 | PayPal mails | Iris subscription `plutus:paypal` (senders = `plutus.mail.senders`) stores the mail in Archive under `finance` and rings `POST /api/finance/mail`; Plutus reads `archive/finance/unevaluated`, parses (deterministic, Oracle fallback), marks evaluated | «Ricontrolla email PayPal» (`POST /api/finance/mail/check`, Iris backfill N days) |
 | Bank statement PDF | Sent in chat: Oracle hands the blob to `POST /api/finance/attachments` (declared in `attachment_handlers`), reply = preview + «Li registro?» + import id; «sì» → `finance_import_statement(import_id, commit=true)` | Page *Importa*: upload → preview → confirm; undo |
+| Bank app notifications | Phone → Hecate → feed `phone.notification` (`hestia_common.feeds`, `capabilities.feeds`) → `POST /api/finance/phone`; `app/core/phone.py` (deterministic: amount + «pagamento/addebito…» or «ricevuto/accredito…», merchant after «presso/da/a») → transaction `source: phone`, always `to_review`, `external_ref` `phone:` hash (no duplicates); anything else ignored (dossier `2026-10-24-tutto-brainstorm-cindy` W4, Cindy 32) | — (choose the apps in Hecate's setting «App da ascoltare») |
 | Single expense | — | Quick action «Spesa veloce» (amount + category chip, undo), form in the plugin, chat «ho speso 12 € al bar» (`finance_add`) |
 
 Statement parser: a line with a date at the start and an amount at the end is a row, lines in between continue the
@@ -108,7 +109,7 @@ aloud) (from `hestia_common.reminders`), mail.senders
 ## API (via Hub `/route/plutus/...`)
 
 See `Hestia-Swagger/swagger.yml` tag *Plutus*. Groups under `/api/finance`: meta, categories, rules, accounts,
-budgets, transactions, summary, stats, recurring, export, imports (+commit, undo), attachments, mail (+check),
+budgets, transactions, summary, stats, recurring, export, imports (+commit, undo), attachments, mail (+check), phone,
 quick, alerts/run, review/run, reminders/run|skip, signals/run, tools.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)

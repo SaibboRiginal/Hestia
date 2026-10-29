@@ -430,6 +430,14 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    SPEC criteria, diff, real test output; the engine's story marked unverified) and never replaces the owner's
    approval. Restoring a backup is an owner action only, never an assistant tool. Thresholds of performance and
    storage alerts are Themis settings.
+15. **Devices push through Hecate; voice filtering happens in Echo (same dossier, W4):** the owner's devices (Garmin,
+   the phone) belong to Hecate, which only passes their data on as **device feeds** (`hestia_common.feeds`): a module
+   declares `capabilities.feeds {kind: path}` and receives each item through the Hub (push, never poll); Hecate never
+   decides what the data means. Passwords typed for a device go through the Hermes secret form and are never stored
+   (only tokens, in Hecate's data folder); the phone webhook needs its own secret token. Who is speaking (voiceprint)
+   and which words to expect (personal dictionary) are decided inside Echo before any engine hears the audio. A
+   module may add buttons under the daily recap (`recap.piece(actions=)`); data the owner deleted never comes back
+   with a later sync.
 
 ## Autonomous Remediation Contract
 

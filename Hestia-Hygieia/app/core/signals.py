@@ -104,7 +104,20 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
             out.append(signal(f"streak:{r['id']}", f"{r.get('name')}: obiettivo rispettato {st['streak']} {unit} di fila",
                               kind="milestone", severity="info", metrics={"streak": st["streak"]},
                               page=f"routine/{r['id']}"))
+    told = _told(h, today)
+    if told:
+        # B9 spoken evening diary: the day told by the owner, read by the evening reflection (full text via topic)
+        note = " ".join(str(told.get("note") or "").split())
+        out.append(signal("diario", f"Giornata raccontata: {note[:200]}" + ("…" if len(note) > 200 else ""),
+                          kind="trend", severity="info", metrics={"chars": len(note)}, period=today.isoformat(),
+                          ttl_days=2, page="diario"))
     return out, weekly_metrics(h, weeks, adherence)
+
+
+def _told(h: "Hygieia", day: date) -> dict | None:
+    from .service import DIARY_AREA
+    rows = [j for j in h.items("journal") if j.get("date") == day.isoformat() and j.get("area") == DIARY_AREA]
+    return rows[-1] if rows else None
 
 
 def weekly_metrics(h: "Hygieia", weeks: list[str], adherence: dict[str, dict]) -> list[dict]:
@@ -136,6 +149,9 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
     h.store.refresh()
     today = today or h.today()
     kind, _, ref = (topic or "").partition(":")
+    if topic == "diario":
+        told = _told(h, today)
+        return f"Diario della giornata ({today.isoformat()}): {told.get('note')}" if told else None
     if topic == "adherence_drop":
         weeks = last_weeks(5, today)
         cur = week_adherence(h, weeks[-1], today)

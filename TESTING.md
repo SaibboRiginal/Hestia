@@ -75,6 +75,20 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   Browser «ERR_INVALID_RESPONSE» on the link = the forwarded port talks HTTPS to the WebUI (plain HTTP): *Ports* tab →
   row 19015 → right click → *Change Port Protocol → HTTP* (the devcontainer now sets HTTP for 19015/19000).
 
+## Setups that need Marko's devices (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+
+- **Garmin** (W4 B10): `pip` gets `garminconnect` with the Hecate image (`up-all.bat --build`). Telegram → Sistema →
+  Dispositivi → «Collega Garmin» → «Inserisci» → email + password (+ the code Garmin mails, second form). Then
+  «Leggi Garmin ora»: yesterday's run appears in Allenamento → attività, the night in Cura di sé → diario (sonno).
+- **Phone** (W4 Cindy 32): put a long random `HECATE_PHONE_TOKEN` in `Hestia-Hecate/app/.env`; Tasker profile
+  «Wi-Fi connesso/disconnesso» → HTTP Request POST `https://<tunnel>/api/gateway/phone/push`, header
+  `X-Hestia-Phone-Token: <token>`, body `{"type":"state","wifi":"%WIFII_SSID","charging":%BATT_CHARGING}` (Wi-Fi names
+  in Themis «Wi-Fi di casa»); profile «Notifica» of the bank app → body `{"type":"notification","app":"%an",
+  "title":"%ntitle","text":"%ntext"}` → Spese shows a transaction to review. Telegram «Telefono» shows the last state.
+- **Voice** (W4 Cindy 10/17): Telegram → Voce → «Registra la mia voce» (≥ 6 s); WebUI «Parla» with the TV on: the TV
+  must not end in the transcript. «Parole» → add a name; after two corrections of the same word it is confirmed.
+- **Spoken diary** (W4 B9): after the evening recap tap «Racconta la giornata», send a voice note → Cura di sé → diario.
+
 ## Critical Regressions Log
 
 > Any time a test is written because of a real user-facing bug, document it here.
