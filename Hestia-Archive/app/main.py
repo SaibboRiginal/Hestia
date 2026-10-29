@@ -77,6 +77,7 @@ app.include_router(module_store.oracle_router)    # Oracle (pending questions to
 app.include_router(module_store.argus_router)     # Argus (notable events journal)
 app.include_router(module_store.hermes_router)    # Hermes (Web Push subscriptions)
 app.include_router(module_store.chronos_router)   # Chronos (routine results, smart-calendar choices)
+app.include_router(module_store.athena_router)    # Athena (learning log, memory review proposals)
 app.include_router(module_store.signals_router)   # reflection signals (modules → Athena)
 
 # Backup to Google Drive, verification, rollback (docs/work/2026-10-20-backup-drive) + maintenance gate.
@@ -176,6 +177,33 @@ try:
             response_mode="direct",
             telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "interno"}),
+        # Backup from every client (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F). Restore is NOT a tool:
+        # only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel), never the assistant.
+        MCPTool(
+            name="backup_status",
+            description="Stato dei backup: ultimo backup, ultima verifica, problemi, Google Drive collegato.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **_kw: {"status": "ok"}, title="Stato dei backup", method="GET",
+            path="/api/backup/status", clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt="Due o tre righe: ultimo backup (quando, esito), ultima verifica, eventuale problema.",
+            telegram_visible=True, telegram_group="sistema",
+                telegram={"section": "Dati e backup", "label": "Backup"}),
+        MCPTool(
+            name="backup_list",
+            description="Elenco dei backup su Google Drive (data, dimensione).",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **_kw: {"status": "ok"}, title="Backup salvati", method="GET",
+            path="/api/backup/list", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+                telegram={"section": "Dati e backup"}),
+        MCPTool(
+            name="backup_run",
+            description="Fai subito un backup cifrato di tutti i dati su Google Drive (dura qualche minuto).",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **_kw: {"status": "ok"}, title="Backup adesso", method="POST",
+            path="/api/backup/run", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema",
+                telegram={"section": "Dati e backup", "label": "Backup adesso"}),
     ]
     app.include_router(
         create_mcp_router(_archive_mcp_tools, service_name="archive")

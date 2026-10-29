@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 
 import requests
@@ -18,6 +19,13 @@ def poll_service(service: dict) -> HealthReport:
     name = service.get("name", "unknown")
     base_url = service.get("base_url", "").rstrip("/")
     health_url = f"{base_url}/health"
+    t0 = time.perf_counter()
+    report = _poll(name, health_url)
+    report.ms = int((time.perf_counter() - t0) * 1000)
+    return report
+
+
+def _poll(name: str, health_url: str) -> HealthReport:
     try:
         resp = requests.get(health_url, timeout=_TIMEOUT)
         if resp.status_code == 200:

@@ -33,7 +33,9 @@ def consolidator():
         mock_req.post.return_value.status_code = 200
         mock_req.post.return_value.json.return_value = {"response": "{}"}
         mock_req.patch.return_value.status_code = 200
-        yield MemoryConsolidator(hub_api_url="http://fake-hub:19001/api")
+        c = MemoryConsolidator(hub_api_url="http://fake-hub:19001/api")
+        c.learning._route = lambda *a, **k: (200, {})      # learning log: no network in unit tests
+        yield c
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -88,7 +90,8 @@ class TestConsolidate:
         ])
         # Mock oracle response
         consolidator._analyze_with_oracle = MagicMock(return_value={
-            "facts": [{"fact": "Preferisce appartamenti centro storico", "domain": "scout", "confidence": 0.9}],
+            "facts": [{"fact": "Preferisce appartamenti centro storico", "quote": "preferisco gli appartamenti in centro",
+                       "domain": "scout", "confidence": 0.9}],
             "conflicts": [],
             "patterns": [],
             "summary": "Extracted 1 fact.",
@@ -231,3 +234,40 @@ class TestActiveSessions:
         with patch.object(mod.requests, "get", side_effect=Exception("Connection refused")):
             sessions = consolidator.get_active_sessions()
             assert sessions == []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Cindy 8 (docs/work/2026-10-24-tutto-brainstorm-cindy W3): quote rule, skip without new turns
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+class TestQuoteAndSkip:
+    def test_fact_without_the_owner_words_is_dropped(self, consolidator):
+        consolidator._fetch_chat_history = MagicMock(return_value=[
+            {"role": "user", "content": "Vado in palestra il martedì"}])
+        consolidator._fetch_active_memories = MagicMock(return_value=[])
+        consolidator._analyze_with_oracle = MagicMock(return_value={
+            "facts": [{"fact": "Ama il nuoto", "quote": "adoro nuotare"},
+                      {"fact": "Palestra il martedì", "quote": "palestra il martedì"}],
+            "conflicts": [], "patterns": []})
+        consolidator._save_memory = MagicMock(return_value=True)
+        result = consolidator.consolidate("s1")
+        assert result["facts_extracted"] == 1 and result["facts_unquoted"] == 1
+        assert consolidator._save_memory.call_args.args[1]["fact"] == "Palestra il martedì"
+
+    def test_no_new_owner_message_means_no_model_call(self, consolidator):
+        old = (datetime.now() - timedelta(days=30)).isoformat()
+        consolidator._fetch_chat_history = MagicMock(return_value=[
+            {"role": "user", "content": "ciao", "timestamp": old},
+            {"role": "assistant", "content": "ciao", "timestamp": datetime.now().isoformat()}])
+        consolidator._analyze_with_oracle = MagicMock()
+        result = consolidator.consolidate("s1")
+        assert result["skipped"] == "no_new_user_turns"
+        consolidator._analyze_with_oracle.assert_not_called()
+
+    def test_quote_matching_ignores_case_and_punctuation(self):
+        from core.learning import quote_found
+        assert quote_found("Preferisco Roma!", ["in realtà preferisco roma, non Milano"])
+        assert not quote_found("odio Roma", ["preferisco roma"])
+        assert not quote_found("", ["qualsiasi"])

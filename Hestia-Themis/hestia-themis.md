@@ -126,3 +126,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
+
+## Proposals on Telegram (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
+Tool `settings_proposals(status?)` → `GET /api/settings/proposals` (pending by default): the owner sees on Telegram
+what the assistant proposed and confirms from the notification as usual.

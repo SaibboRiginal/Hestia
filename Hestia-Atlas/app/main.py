@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
 
 from .core.service_contract import HestiaServiceBase, ServiceDescriptor
-from .fetcher import fetch_html
+from . import recipes as site_recipes
+from .fetcher import fetch_html, run_in_edge
 from .schemas import FetchHtmlRequest, FetchHtmlResponse
 
 try:
@@ -235,6 +236,25 @@ def web_search_endpoint(request: Request, q: str = Query(..., description="Searc
         raise HTTPException(status_code=502, detail={"error": str(exc)})
 
 
+# ── Site recipes (Cindy 12): declarative scripts in Hestia-Atlas/recipes, no model per step ──
+
+@app.get("/api/recipes")
+def list_recipes():
+    """Recipes available in the repo (name, title, params, fields)."""
+    return {"items": [site_recipes.describe(r) for r in site_recipes.load_all().values()]}
+
+
+@app.post("/api/recipes/{name}/run")
+def run_recipe(name: str, body: dict | None = None):
+    """Run a recipe in the host Edge: ``{"params": {...}, "timeout_seconds": 30}`` → fields, or status broken."""
+    body = body or {}
+    status, result = site_recipes.run(name, body.get("params") or {}, run_in_edge,
+                                      timeout_seconds=max(5, min(int(body.get("timeout_seconds") or 30), 120)))
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=result)
+    return result
+
+
 # ── MCP tools (Plan 9) ────────────────────────────────────────────────────
 
 _atlas_mcp_tools = [
@@ -272,7 +292,30 @@ _atlas_mcp_tools = [
         clients=["*"], response_mode="raw_json",
         telegram_visible=False, telegram_group="memoria",
                 telegram={"section": "Web", "primary": 4}),
+    MCPTool(
+        name="atlas_ricetta",
+        description=("Usa una ricetta per un sito (passi già scritti, niente esplorazione della pagina): "
+                     "ricetta + parametri → campi estratti. Senza nome elenca le ricette disponibili."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Nome della ricetta (es. duckduckgo, pagina)"},
+                "params": {"type": "object", "description": "Parametri della ricetta (es. {\"q\": \"...\"})"},
+            },
+        },
+        handler=lambda **kw: _recipe_mcp_handler(str(kw.get("name") or ""), kw.get("params") or {}),
+        title="Ricette dei siti", method="POST", path="/api/recipes/{name}/run",
+        clients=["*"], response_mode="raw_json",
+        telegram_visible=False, telegram_group="memoria",
+                telegram={"section": "Web", "label": "Ricette dei siti"}),
 ]
+
+
+def _recipe_mcp_handler(name: str, params: dict) -> tuple[bool, dict]:
+    if not name:
+        return (True, {"items": [site_recipes.describe(r) for r in site_recipes.load_all().values()]})
+    status, result = site_recipes.run(name, params if isinstance(params, dict) else {}, run_in_edge)
+    return (status < 400, result)
 
 
 def _fetch_mcp_handler(url: str, timeout: int = 15) -> tuple[bool, dict]:

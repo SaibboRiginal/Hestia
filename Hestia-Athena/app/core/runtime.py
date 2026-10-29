@@ -891,7 +891,13 @@ class AthenaRuntime:
                      start_at=f"2026-01-01T{EVENING_AT}:00", flex=EVENING_FLEX, timeout_seconds=150,
                      description="Com'è andata oggi e cosa c'è domani, in un messaggio. Può anticipare o "
                                  "posticipare (20:00–23:30) per non cadere sui tuoi impegni."),
+            *self._extra_rules(),
         ]
+
+    @staticmethod
+    def _extra_rules() -> list[dict]:
+        from .memory_api import agenda_rules
+        return agenda_rules()
 
     def _window_open(self, key: str, fallback) -> bool:
         try:

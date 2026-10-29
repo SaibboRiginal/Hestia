@@ -238,6 +238,13 @@ def create_forge_router(forge: Forge) -> APIRouter:
         task = _guard(forge.retry, task_id, b.by)
         return {"status": "ok", "task": _public(task)}
 
+    @router.post("/tasks/{task_id}/resume")
+    def forge_resume(task_id: str, body: ForgeDecision | None = None) -> dict[str, Any]:
+        """One-off agenda task at the Claude reset: a task waiting for the limit starts again (Cindy 15)."""
+        b = body or ForgeDecision()
+        task = _guard(forge.resume, task_id, b.by)
+        return {"status": "ok", "task": _public(task)}
+
     @router.post("/tasks/{task_id}/approve")
     def forge_approve(task_id: str, body: ForgeDecision | None = None) -> dict[str, Any]:
         b = body or ForgeDecision()
@@ -261,7 +268,8 @@ def create_forge_router(forge: Forge) -> APIRouter:
 
 _PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "engine_requested", "source", "requested_by",
                 "summary", "diff_stat", "workdoc", "deploy_plan", "changed_files", "touched_services", "tests",
-                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task", "agenda_parent", "duplicate")
+                "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task", "agenda_parent", "duplicate",
+                "review", "team", "limit_restarts")
 
 
 def _public(task: dict) -> dict:

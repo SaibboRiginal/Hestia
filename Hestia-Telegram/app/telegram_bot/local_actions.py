@@ -268,4 +268,10 @@ def tools() -> list[catalog.Tool]:
           writes=True, handler=_nuovo_avviso),
         T("pausa_voto", "Basta richieste di voto", "Per qualche giorno non ti chiedo di votare le risposte",
           group="sistema", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
+        *transfer_tools(),
     ]
+
+
+def transfer_tools() -> list[catalog.Tool]:
+    from telegram_bot import transfer_actions
+    return transfer_actions.tools()

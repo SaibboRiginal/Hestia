@@ -74,6 +74,24 @@ def list_blobs(owner_module: str, limit: int = 500, db: Session = Depends(databa
     return {"items": [_meta(r) for r in rows], "total_bytes": sum(r.size for r in rows)}
 
 
+@router.get("/usage")
+def storage_usage(db: Session = Depends(database.get_db)):
+    """Size of the database and of the blobs per module — read by the stack monitor for growth alerts
+    (Cindy 25, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3). Read only, no row data."""
+    from sqlalchemy import func as sa_func, text
+    rows = (db.query(models.BlobRecord.owner_module, sa_func.count(models.BlobRecord.blob_id),
+                     sa_func.coalesce(sa_func.sum(models.BlobRecord.size), 0))
+            .group_by(models.BlobRecord.owner_module).all())
+    by_module = {str(m): {"count": int(c), "bytes": int(b)} for m, c, b in rows}
+    try:
+        db_bytes = int(db.execute(text("SELECT pg_database_size(current_database())")).scalar() or 0)
+    except Exception:  # noqa: BLE001 — not Postgres (tests): size unknown
+        db.rollback()
+        db_bytes = None
+    return {"database_bytes": db_bytes, "blob_bytes": sum(v["bytes"] for v in by_module.values()),
+            "blob_count": sum(v["count"] for v in by_module.values()), "blobs_by_module": by_module}
+
+
 @router.get("/{blob_id}/meta")
 def blob_meta(blob_id: str, db: Session = Depends(database.get_db)):
     return _meta(_get(db, blob_id))

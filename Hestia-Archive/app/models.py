@@ -664,6 +664,11 @@ HermesRecord = _module_record_model(
     "One row of Hestia-Hermes (Web Push subscription of a browser, docs/work/2026-10-24-tutto-brainstorm-cindy). "
     "Owner of the semantics: Hestia-Hermes.")
 
+AthenaRecord = _module_record_model(
+    "AthenaRecord", "athena_records",
+    "One row of Hestia-Athena (learning log entry with before/after, memory review proposal, "
+    "docs/work/2026-10-24-tutto-brainstorm-cindy). Owner of the semantics: Hestia-Athena.")
+
 ChronosRecord = _module_record_model(
     "ChronosRecord", "chronos_records",
     "One row of Hestia-Chronos (routine result kept for the recap, smart-calendar «keep as is» choice, "

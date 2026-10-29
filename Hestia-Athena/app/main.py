@@ -184,6 +184,8 @@ ui.webui(
 )
 
 app = FastAPI(title="Hestia Athena", version=SERVICE_VERSION)
+from .core import memory_api  # noqa: E402 — learning log, memory review, docs check (Cindy 8, 18, 29)
+app.include_router(memory_api.router)
 app.include_router(ui.router())
 
 
@@ -475,7 +477,7 @@ try:
             title="Pensieri dell'assistente",
             method="GET",
             path="/api/athena/thinking/summary",
-            clients=["ui", "external"],
+            clients=["telegram", "ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
             telegram_group="sistema",
@@ -500,7 +502,7 @@ try:
             title="Segnali delle aree",
             method="GET",
             path="/api/athena/signals",
-            clients=["ui", "external"],
+            clients=["telegram", "ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
             telegram_group="sistema",
@@ -544,6 +546,8 @@ try:
             telegram_group="sistema",
                 telegram={"section": "Avanzate"}),
     ]
+    from .core import memory_api as _memory_api
+    _athena_mcp_tools += _memory_api.mcp_tools()   # learning log, memory review, docs check (Cindy 8, 18, 29)
     app.include_router(
         create_mcp_router(_athena_mcp_tools, service_name="athena")
     )

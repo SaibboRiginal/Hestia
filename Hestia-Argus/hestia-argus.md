@@ -242,3 +242,15 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 ## Redaction (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 19)
 Log samples sent to Oracle for analysis and the context of Forge proposals pass through
 `hestia_common.redact.redact` first: keys, tokens, emails, phone numbers, chat ids, home paths become placeholders.
+
+## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+- Every `argus.performance.every_cycles` cycles a sample runs in its own thread: per module CPU % (delta between
+  `stats(one_shot)` samples), memory (usage − inactive file cache), start time, restarts (read-only Docker socket),
+  the `/health` response time (`HealthReport.ms`), the Hub round trip; at most hourly the data size from Archive
+  `GET /api/blobs/usage` (database bytes, blobs per module). Without the Docker socket only response times.
+- History in memory: 24 h of samples per module, 7 days of storage sizes.
+- Alerts (kind `performance`, batched and deduplicated per `service + metric` by the alert worker) over the Themis
+  thresholds of group «Prestazioni»: `argus.performance.memory_mb` (1500), `.cpu_percent` (90) and `.response_ms`
+  (3000) for `.cpu_samples` (3) samples in a row, `argus.storage.database_gb` (10), `argus.storage.growth_mb_day` (500).
+- API: `GET /api/argus/performance` (last sample + thresholds) · `GET /api/argus/performance/history?service=&hours=`.
+  Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Salute e log» / «Riparazioni»).

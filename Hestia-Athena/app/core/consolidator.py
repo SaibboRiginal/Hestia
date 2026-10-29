@@ -6,6 +6,10 @@ Runs once per day inside the agenda window "athena.consolidation" (Chronos). For
   3. Cross-session consolidation: conflict detection, reinforcement, decay
   4. Writes consolidated memories to Archive
   5. Publishes insights as Athena hints to Oracle
+
+Cindy 8 (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3): no new message of the owner since the last
+run → no model call; a new fact must cite the owner's exact words (``quote``, checked against the messages);
+every change goes to the learning log with before/after so the owner can undo it (``learning.py``).
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ import requests
 
 from . import athena_settings as S
 from .athena_settings import get_int
+from .learning import Learning, quote_found
 
 logger = logging.getLogger("hestia_athena.consolidator")
 
@@ -39,6 +44,8 @@ class MemoryConsolidator:
         self._archive_route = f"{self._hub_url}/route/archive/api"
         self._oracle_route = f"{self._hub_url}/route/oracle"
         self._last_consolidation: dict[str, float] = {}  # session_id → timestamp
+        self.learning = Learning(self._hub_url)
+        self._session = ""
 
     # ── Scheduling ──────────────────────────────────────────────────────────
 
@@ -90,6 +97,15 @@ class MemoryConsolidator:
             messages = self._fetch_chat_history(session_id)
             if not messages:
                 return result
+            since = (datetime.now() - timedelta(hours=get_int(S.MEMORY_LOOKBACK_HOURS))).isoformat()
+            fresh = [m for m in messages if m.get("role") == "user"
+                     and (not m.get("timestamp") or str(m["timestamp"]) >= since)]
+            if not fresh:
+                logger.info("event=consolidator_skipped session=%s reason=no_new_user_turns", session_id)
+                result["skipped"] = "no_new_user_turns"
+                return result
+            self._session = session_id
+            user_texts = [str(m.get("content") or "") for m in messages if m.get("role") == "user"]
 
             # 2. Read existing active memories
             existing_memories = self._fetch_active_memories()
@@ -102,6 +118,10 @@ class MemoryConsolidator:
             # 4. Process extracted facts
             facts = analysis.get("facts", [])
             for fact in facts:
+                if not quote_found(str(fact.get("quote") or ""), user_texts):
+                    logger.info("event=consolidator_fact_dropped reason=no_exact_quote session=%s", session_id)
+                    result["facts_unquoted"] = result.get("facts_unquoted", 0) + 1
+                    continue
                 if self._save_memory(session_id, fact):
                     result["facts_extracted"] += 1
 
@@ -180,12 +200,13 @@ class MemoryConsolidator:
             "CONVERSATION:\n{history}\n\n"
             "EXISTING MEMORIES:\n{existing}\n\n"
             "Return JSON with:\n"
-            '{{"facts": [{{"fact": "...", "domain": "general", "confidence": 0.8}}],\n'
+            '{{"facts": [{{"fact": "...", "quote": "parole esatte dell\'utente", "domain": "general", "confidence": 0.8}}],\n'
             ' "conflicts": [{{"old_id": 1, "new_fact": "...", "resolution": "replace_new"}}],\n'
             ' "patterns": [{{"fact": "...", "occurrences": 3, "domains": ["scout"]}}],\n'
             ' "summary": "one-line summary of what changed"}}\n\n'
             "Rules:\n"
-            "- facts: only durable, reusable facts (not temporary chat topics)\n"
+            "- facts: only durable, reusable facts (not temporary chat topics), each with 'quote' = the user's "
+            "EXACT words it comes from, copied from a User line (no quote = no fact)\n"
             "- conflicts: when new info contradicts an existing memory ID\n"
             "- patterns: facts mentioned multiple times across sessions\n"
             "- If nothing new, return empty arrays\n"
@@ -229,7 +250,13 @@ class MemoryConsolidator:
             if resp.status_code >= 400:
                 return False
             routed = resp.json() if resp.content else {}
-            return int((routed or {}).get("status_code", 200)) < 400
+            if int((routed or {}).get("status_code", 200)) >= 400:
+                return False
+            created = routed.get("payload", routed) if isinstance(routed, dict) else {}
+            self.learning.record("add", (created or {}).get("id"), before={"is_active": False},
+                                 after={"is_active": True}, quote=str(fact.get("quote") or ""),
+                                 session_id=session_id, fact=str(fact.get("fact") or ""))
+            return True
         except Exception as exc:
             logger.warning("[🔄] event=consolidator_save_memory_failed error=%s", exc)
             return False
@@ -244,6 +271,8 @@ class MemoryConsolidator:
                     json={"is_active": False},
                     timeout=8,
                 )
+                self.learning.record("retire", old_id, before={"is_active": True}, after={"is_active": False},
+                                     session_id=self._session, fact=f"sostituita da: {conflict.get('new_fact', '')}")
             except Exception:
                 pass
 
@@ -281,6 +310,8 @@ class MemoryConsolidator:
                             json={"is_active": False},
                             timeout=8,
                         )
+                        self.learning.record("retire", mem.get("id"), before={"is_active": True},
+                                             after={"is_active": False}, fact=str(mem.get("fact") or ""))
                         decayed += 1
                     except Exception:
                         pass
@@ -292,6 +323,9 @@ class MemoryConsolidator:
                             json={"weight": round(current_weight * 0.7, 2)},
                             timeout=8,
                         )
+                        self.learning.record("decay", mem.get("id"), before={"weight": current_weight},
+                                             after={"weight": round(current_weight * 0.7, 2)},
+                                             fact=str(mem.get("fact") or ""))
                         decayed += 1
                     except Exception:
                         pass

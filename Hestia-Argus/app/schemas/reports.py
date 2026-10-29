@@ -13,6 +13,7 @@ class HealthReport(BaseModel):
     checked_at: datetime = Field(default_factory=datetime.utcnow)
     details: dict[str, Any] = {}
     error: str | None = None
+    ms: int | None = None          # /health response time (performance page, Cindy D16)
 
 
 class LogEvent(BaseModel):
@@ -26,9 +27,10 @@ class LogEvent(BaseModel):
 class ServiceAlert(BaseModel):
     triggered_at: datetime = Field(default_factory=datetime.utcnow)
     service: str
-    kind: str                      # "health" | "log"
+    kind: str                      # "health" | "log" | "performance"
     level: str                     # WARNING | ERROR | CRITICAL | DOWN
     message: str
+    metric: str | None = None      # performance: memory | cpu | response | storage_size | storage_growth
 
 
 class SystemReport(BaseModel):

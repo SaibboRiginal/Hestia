@@ -1,0 +1,16 @@
+{
+  "name": "pagina",
+  "title": "Testo principale di una pagina",
+  "site": "*",
+  "description": "Titolo, descrizione e testo principale di una pagina qualsiasi.",
+  "params": {"url": {"description": "Indirizzo della pagina", "required": true}},
+  "steps": [
+    {"op": "goto", "url": "{url}", "until": "networkidle"}
+  ],
+  "extract": {
+    "title": {"selector": "title", "required": true},
+    "description": {"selector": "meta[name=description]", "attr": "content"},
+    "headings": {"selector": "h1, h2", "all": true, "limit": 15},
+    "text": {"selector": "main, article, body", "limit": 1}
+  }
+}

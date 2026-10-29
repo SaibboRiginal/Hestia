@@ -215,3 +215,11 @@ It stores and serves all persistent state through generic APIs.
 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › interno: 1; memoria › Note e preferenze: 1; notifiche › Avvisi automatici: 4; notifiche › Promemoria e allerte: 4; sistema › Avanzate: 1 (area › section: tools).
+
+## Wave 3 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+- `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals
+  (kind `memory_proposal`), generic module-store rows.
+- `GET /api/memory/{pref_id}`: one memory (Athena's undo checks it is unchanged).
+- `GET /api/blobs/usage`: `{database_bytes, blob_bytes, blob_count, blobs_by_module}` for Argus growth alerts.
+- Backup tools `backup_status`, `backup_list`, `backup_run` (Telegram «Dati e backup»). Restore is deliberately no tool:
+  only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel).

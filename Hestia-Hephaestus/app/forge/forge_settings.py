@@ -27,6 +27,7 @@ AUTO_ROLLBACK = "hephaestus.forge.auto_rollback"
 PUSH_BRANCH = "hephaestus.forge.push_branch"
 VERIFY_DELAY = "hephaestus.forge.verify_delay"
 SCHEDULER_INTERVAL = "hephaestus.forge.scheduler_interval"
+TEAM_MIN_SERVICES = "hephaestus.forge.squadra.min_servizi"
 
 REMEDIATE_TIMEOUT = "hephaestus.remediate.timeout"
 REMEDIATE_REQUIRE_APPROVAL = "hephaestus.remediate.require_approval"
@@ -88,6 +89,10 @@ settings.declare([
     setting(SCHEDULER_INTERVAL, "Controllo finestra Claude", "int", 300, group=_FORGE,
             min=30, max=3600, unit="s", order=11, advanced=True,
             help="Ogni quanto controllo se un task in attesa della finestra Claude Pro può partire."),
+    setting(TEAM_MIN_SERVICES, "Dividi in pezzi i lavori che toccano almeno", "int", 3, group=_FORGE,
+            min=1, max=20, unit="moduli", order=12,
+            help="Un lavoro grande viene diviso in pezzi fatti uno dopo l'altro, ognuno col motore adatto "
+                 "(i pezzi semplici col modello locale, i difficili con Claude), poi rivisto tutto insieme."),
     setting(REMEDIATE_TIMEOUT, "Attesa massima di una riparazione", "float", 25.0, group=_REPAIR,
             min=5, max=600, unit="s", order=20, advanced=True,
             help="Quanto aspetto il servizio quando eseguo un'azione di manutenzione."),

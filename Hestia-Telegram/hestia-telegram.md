@@ -217,3 +217,12 @@ question no longer open answers «⌛ Questa domanda non è più aperta».
 - The `changes` frame becomes «📝 Ho fatto» with one «↩️ Annulla: …» button per change that has an undo; the tap
   (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
 - `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.
+
+## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
+- «Esporta i dati»: Telegram (a client, like the WebUI page) asks every module with the `transfer` capability for its
+  export through Hub and sends `hestia-AAAA-MM-GG.hestia` (gzip JSON, same format, no photos) as a document.
+- «Importa dati»: asks for the file, shows the preview (dry run), «Importa» merges (adds/updates, never deletes) and
+  first sends back the current data of the same modules as `hestia-prima-….hestia` (import it to go back). The file
+  waits in memory 30 min at most, one use, same chat only.
+- «Ripristina un backup» (list of Drive backups → «Ripristina <data>», destructive confirm) and «Annulla ripristino»
+  call Archive `/api/backup/restore` · `/undo`; status, list and «Backup adesso» are Archive tools.

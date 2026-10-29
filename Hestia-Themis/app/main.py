@@ -295,14 +295,14 @@ try:
                     "module": {"type": "string", "description": "modulo opzionale (oracle, argus…)"},
                     "limit": {"type": "integer"}}},
                 handler=_tool_search, title="Cerca impostazioni", method="GET",
-                path="/api/settings/search", clients=["ui", "external"], response_mode="oracle_natural",
+                path="/api/settings/search", clients=["telegram", "ui", "external"], response_mode="oracle_natural",
                 telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "Impostazioni", "primary": 5, "label": "Impostazioni"}),
         MCPTool(name="settings_get",
                 description="Dettaglio di un'impostazione: descrizione, valori ammessi, valore attuale, stato.",
                 parameters={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]},
                 handler=_tool_get, title="Dettaglio impostazione", method="GET",
-                path="/api/settings/key/{key}", clients=["ui", "external"], telegram_visible=False,
+                path="/api/settings/key/{key}", clients=["telegram", "ui", "external"], telegram_visible=False,
                 telegram_group="sistema",
                 telegram={"section": "Impostazioni"}),
         MCPTool(name="settings_propose",
@@ -324,6 +324,18 @@ try:
                 path="/api/settings/key/{key}/undo-propose", clients=["ui"], telegram_visible=False,
                 telegram_group="sistema",
                 telegram={"section": "Impostazioni"}),
+        # Telegram parity (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F): proposals waiting for the owner.
+        MCPTool(name="settings_proposals",
+                description="Proposte di modifica delle impostazioni in attesa della tua conferma (o tutte).",
+                parameters={"type": "object", "properties": {
+                    "status": {"type": "string", "description": "pending (default) · approved · rejected · all"}}},
+                handler=lambda status="pending", **_kw: {"proposals": themis.proposals(
+                    status=None if status in (None, "", "all") else status)},
+                title="Proposte in attesa", method="GET", path="/api/settings/proposals",
+                clients=["telegram", "ui", "external"], response_mode="oracle_natural",
+                response_prompt="Elenco breve: '• impostazione — valore proposto — perché'. Nessuna: una frase.",
+                telegram_visible=True, telegram_group="sistema",
+                telegram={"section": "Impostazioni", "label": "Proposte"}),
     ]
     app.include_router(create_mcp_router(_themis_mcp_tools, service_name="themis"))
 except ModuleNotFoundError:

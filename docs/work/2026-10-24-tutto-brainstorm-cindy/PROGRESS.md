@@ -34,9 +34,26 @@ Resume rule: read SPEC.md §3 (waves), then continue from the first unchecked bo
 - [x] C15 Web Push backend (Hermes `webpush.py`, `/api/push/*`, VAPID env, Archive `hermes-store`)
 - [x] Archive stores `hermes-store`, `chronos-store`
 - [x] tests (Chronos `test_brainstorm_life.py`, Hermes `test_hermes_brainstorm.py`), docs, swagger, changelog
-- [ ] PR + CI green + merge
+- [x] PR + CI green + merge (PR #35)
 - Left for W7 (WebUI): Chronos plugin pages «Routine» and «Eventi speciali» (Hermes `_link` already points to
   `chronos/routine`), secret form and «Da decidere» counter in the inbox, Web Push service worker.
 
-## W3–W8
+## W3 Athena · Argus · Hephaestus · Atlas · Archive · Telegram parity
+- [x] Cindy 3 reviewer (`Hestia-Hephaestus/app/forge/review.py`, state `reviewing`, one fix round, `review.json`)
+- [x] Cindy 31 team plan (≥ `hephaestus.forge.squadra.min_servizi` services, pieces in one worktree, engine per difficulty)
+- [x] Cindy 15 resume after the Claude limit (`waiting_limit`, `refs/forge/resume/<id>`, agenda `forge.resume.<id>`)
+- [x] Cindy 8 quoted facts + skip when nothing new (Athena consolidator)
+- [x] Cindy 18 learning log + undo, «Rivedi cosa sai di me» proposals (`learning.py`, Archive `athena-store`)
+- [x] Cindy 29 docs check (`docs_check.py`, monthly job `athena.docs_check`)
+- [x] D16 + 25 performance and storage growth (Argus `performance.py`, Archive `/api/blobs/usage`, «Prestazioni» settings)
+- [x] Cindy 19 usage: Argus analysis and Forge proposals already redact (W1); verified
+- [x] Cindy 12 site recipes (Atlas `recipes.py`, `Hestia-Atlas/recipes/*.json`, tool `atlas_ricetta`)
+- [x] F: `system_performance`, `system_incidents`, `settings_proposals`, Athena thinking/signals on Telegram,
+      backup tools (Archive), Telegram «Esporta i dati» / «Importa dati» / «Ripristina un backup»
+- [x] tests (Forge review, Athena learning/consolidator, Argus performance, Atlas recipes, Telegram transfer), docs, swagger
+- [ ] PR + CI green + merge
+- Left for W7 (WebUI): «Cosa ho imparato» in Memoria (learning log + Annulla), Prestazioni page in Sistema, review card
+  in Sviluppo.
+
+## W4–W8
 - [ ] see SPEC §3

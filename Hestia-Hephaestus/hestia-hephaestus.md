@@ -388,3 +388,22 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 ## Redaction and Marko's rules (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
 The context of a Forge task prompt passes through `hestia_common.redact.redact` (Cindy 19). The coding engine's
 «read first» list includes `docs/REGOLE-DI-MARKO.md` (dated rules + the new-feature checklist, Cindy 11).
+
+## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+- **Reviewer** (Cindy 3, `app/forge/review.py`): after the tests the task goes to state `reviewing`. A fresh model
+  with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.revisione`, chain potente)
+  gets only labelled evidence: request, acceptance criteria of the task SPEC (`docs/work/<WORKDOC>/SPEC.md`), the
+  diff, the real test output, and the engine's summary marked «autodichiarazione non verificata». Answer =
+  `{verdict ok|problemi|non_disponibile, issues[{priority alta|media|bassa, file, problem, evidence}], blocking}`.
+  Blocking issues (alta/media) go back to the same engine for **one** fix round (`fix_prompt`), then tests and review
+  again. Saved as `review.json` in the task artifacts and `task.review`; the approval card shows «Revisione
+  automatica: …». Auto-merge (permission mode) only when nothing blocking is left. Model down → step skipped `[🔄]`.
+- **Team plan** (Cindy 31): a task touching ≥ `hephaestus.forge.squadra.min_servizi` services (Themis, default 3),
+  not external, is split by the model (use case `forge.piano`) into 2–4 pieces run **one after the other in the same
+  worktree**; `semplice` → engine `oracle` (local chain), `difficile` → `claude` (falls back to the task engine).
+  `task.team` lists the pieces and their outcome; the reviewer runs on the whole result.
+- **Resume after the Claude limit** (Cindy 15): when Claude stops on the usage limit Forge commits the partial work to
+  `refs/forge/resume/<id>`, sets state `waiting_limit` and plans the agenda task `forge.resume.<id>` at the reset time
+  (+30–90 s) → `POST /api/hephaestus/forge/tasks/{id}/resume`; the run restarts from that commit with a «RIPRESA»
+  note. Three restarts without progress (`limit_restarts`) → failed. Budget-window tasks go back to `scheduled`.
+- Endpoint: `POST /api/hephaestus/forge/tasks/{task_id}/resume`. Task fields: `review`, `team`, `limit_restarts`.

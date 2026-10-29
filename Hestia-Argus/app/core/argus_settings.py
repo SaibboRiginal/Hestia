@@ -44,6 +44,13 @@ FORGE_ENABLED = "argus.forge.enabled"
 FORGE_THRESHOLD = "argus.forge.threshold"
 FORGE_WINDOW = "argus.forge.window"
 FORGE_COOLDOWN = "argus.forge.cooldown"
+PERF_EVERY = "argus.performance.every_cycles"
+PERF_MEMORY_MB = "argus.performance.memory_mb"
+PERF_CPU = "argus.performance.cpu_percent"
+PERF_CPU_SAMPLES = "argus.performance.cpu_samples"
+PERF_RESPONSE_MS = "argus.performance.response_ms"
+STORAGE_DB_GB = "argus.storage.database_gb"
+STORAGE_GROWTH_MB = "argus.storage.growth_mb_day"
 
 _REMEDIATE_ON = {"key": REMEDIATE_ENABLED, "equals": True}
 _AUTH_ON = {"key": AUTH_CHECK_ENABLED, "equals": True}
@@ -128,6 +135,24 @@ settings.declare([
     setting(FORGE_COOLDOWN, "Pausa tra proposte uguali", "int", 86400, group="Proposte di correzione", min=60,
             max=2592000, unit="s", order=43, depends_on=_FORGE_ON, advanced=True,
             help="Dopo una proposta per un errore, per quanto tempo non la ripeto."),
+    # ── Prestazioni (Cindy D16 + 25): thresholds of the performance alerts ──
+    setting(PERF_EVERY, "Frequenza misure", "int", 5, group="Prestazioni", min=1, max=1440, unit="cicli",
+            order=50, help="Ogni quanti cicli di controllo misuro memoria, processore e tempi di risposta."),
+    setting(PERF_MEMORY_MB, "Memoria massima per modulo", "int", 1500, group="Prestazioni", min=50,
+            max=65536, unit="MB", order=51, help="Sopra questa memoria usata da un modulo ti avviso."),
+    setting(PERF_CPU, "Processore massimo per modulo", "int", 90, group="Prestazioni", min=10, max=800,
+            unit="%", order=52, help="Sopra questo uso del processore (per più misure di fila) ti avviso."),
+    setting(PERF_CPU_SAMPLES, "Misure di fila sopra il limite", "int", 3, group="Prestazioni", min=1, max=100,
+            unit="misure", order=53, advanced=True,
+            help="Quante misure consecutive sopra il limite del processore prima dell'avviso (un picco breve no)."),
+    setting(PERF_RESPONSE_MS, "Risposta lenta", "int", 3000, group="Prestazioni", min=100, max=60000,
+            unit="ms", order=54, help="Se un modulo risponde più lentamente di così per più misure di fila ti avviso."),
+    setting(STORAGE_DB_GB, "Dimensione massima dei dati", "int", 10, group="Prestazioni", min=1, max=10000,
+            unit="GB", order=55, help="Quando i dati salvati (database e file) superano questa dimensione ti avviso."),
+    setting(STORAGE_GROWTH_MB, "Crescita massima al giorno", "int", 500, group="Prestazioni", min=10,
+            max=100000, unit="MB", order=56,
+            help="Se i dati salvati crescono più di così in un giorno ti avviso (di solito è un errore che "
+                 "scrive troppo)."),
 ]).declare_log_level()
 
 

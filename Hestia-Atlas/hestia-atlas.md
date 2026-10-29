@@ -13,6 +13,7 @@ Policy: Atlas is restricted to Edge CDP attach only (no plain requests, no headl
 
 - GET `/health`
 - POST `/api/fetch/html`
+- GET `/api/recipes` · POST `/api/recipes/{name}/run` (site recipes, below)
 
 Request body:
 
@@ -87,3 +88,15 @@ If direct access is needed, use host address reachable from container (`host.doc
 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: memoria › Web: 4 (area › section: tools).
+
+## Site recipes (Cindy 12, `app/recipes.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` wave 3)
+- A recipe is a JSON file in `Hestia-Atlas/recipes/` (code in the repo, versioned, Forge fixes it): params, steps
+  (`goto`, `fill`, `click`, `press`, `wait`) and fields to extract (selector, `attr`, `all`, `required`, `limit`).
+  Validated at load; a malformed file is skipped with a warning.
+- Run in the same persistent Edge as fetches (`fetcher.run_in_edge`): no model reads the page at every step. Tool
+  `atlas_ricetta(name?, params?)` (no name → list); modules call `POST /api/route/atlas/api/recipes/<name>/run`
+  `{"params": {...}, "timeout_seconds": 30}`.
+- A step that fails or a required field that comes back empty → answer `status: broken` and the log
+  `event=atlas_recipe_broken` (WARNING): Argus alerts on it and, when it repeats, proposes the fix to Forge.
+- Shipped: `duckduckgo` (q → titles, links, snippets), `pagina` (url → title, description, headings, text).
+

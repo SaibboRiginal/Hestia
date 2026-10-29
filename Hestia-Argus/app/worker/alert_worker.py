@@ -128,6 +128,8 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
             lines.append(
                 f"- Servizio '{a.service}': stato {a.level.upper()} — {a.message}"
             )
+        elif a.kind == "performance":
+            lines.append(f"- Servizio '{a.service}' prestazioni: {a.message}")
         else:
             lines.append(
                 f"- Servizio '{a.service}' [{a.level.upper()}]: {a.message[:300]}"
@@ -178,6 +180,8 @@ def send_alert(alert: ServiceAlert) -> None:
     """Enqueue an alert for batched Oracle-narrated dispatch."""
     if alert.kind == "health":
         fp = _health_fingerprint(alert.service, alert.level)
+    elif alert.kind == "performance":
+        fp = f"perf:{alert.service}:{alert.metric}"
     else:
         fp = _log_fingerprint(alert.service, alert.level, alert.message)
 
