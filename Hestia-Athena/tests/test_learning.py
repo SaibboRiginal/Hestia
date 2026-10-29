@@ -81,6 +81,8 @@ def test_review_proposes_and_changes_nothing_until_applied():
     assert out["proposals"] >= 1 and all(m["is_active"] for m in fake.memories.values())
     assert cards[0]["_title"] == "Memoria · Doppione"
     pid = cards[0]["_actions"][0]["path"].split("/")[-2]
+    assert pid in {p["id"] for p in learning.pending_proposals()}        # page «Cosa ho imparato»
     assert learning.apply(pid)[0] == 200 and fake.memories[2]["is_active"] is False
     assert learning.apply(pid)[0] == 409
+    assert pid not in {p["id"] for p in learning.pending_proposals()}
     assert any(e["action"] == "retire" and e["memory_id"] == 2 for e in learning.log())

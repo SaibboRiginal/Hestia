@@ -53,6 +53,13 @@ def memory_review() -> dict[str, Any]:
     return learning.review(_publish)
 
 
+@router.get("/api/athena/memory/proposals")
+def memory_proposals() -> dict[str, Any]:
+    """Clean-up proposals still waiting for the owner (page «Cosa ho imparato»)."""
+    rows = learning.pending_proposals()
+    return {"count": len(rows), "items": rows}
+
+
 @router.post("/api/athena/memory/proposals/{pid}/apply")
 def memory_proposal_apply(pid: str, body: dict | None = None):
     status, out = learning.apply(pid, by=str((body or {}).get("by") or "user"))

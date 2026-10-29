@@ -5424,6 +5424,81 @@ paths:
       responses:
         "200": {description: "OK"}
 
+  /api/agenda/routines:
+    get:
+      tags: [Chronos — Life]
+      summary: "Same as GET /api/routines, under the plugin prefix (page Routine)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{count, items}"}
+    post:
+      tags: [Chronos — Life]
+      summary: "Same as POST /api/routines (page Routine)"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/agenda/routines/templates:
+    get:
+      tags: [Chronos — Life]
+      summary: "Same as GET /api/routines/templates (page Routine)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{templates}"}
+
+  /api/agenda/routines/from-template/{template_id}:
+    post:
+      tags: [Chronos — Life]
+      summary: "Same as POST /api/routines/from-template/{template_id} (page Routine)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: template_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "OK"}
+
+  /api/agenda/special:
+    get:
+      tags: [Chronos — Life]
+      summary: "Same as GET /api/special (page Eventi speciali)"
+      servers:
+        - url: http://localhost:19007
+      responses:
+        "200": {description: "{count, items}"}
+    post:
+      tags: [Chronos — Life]
+      summary: "Same as POST /api/special (page Eventi speciali)"
+      servers:
+        - url: http://localhost:19007
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/agenda/special/{key}:
+    delete:
+      tags: [Chronos — Life]
+      summary: "Same as DELETE /api/special/{key} (page Eventi speciali)"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "OK"}
+
   /api/special/propose:
     post:
       tags: [Chronos — Life]
@@ -11274,6 +11349,15 @@ paths:
         - url: http://localhost:19009
       responses:
         "200": {description: "{memories, proposals}"}
+
+  /api/athena/memory/proposals:
+    get:
+      tags: [Athena]
+      summary: "Clean-up proposals still waiting for the owner (page «Cosa ho imparato»)"
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{count, items[{id, kind, why, facts, retire, keep?, merged?, status}]}"}
 
   /api/athena/memory/proposals/{pid}/apply:
     post:

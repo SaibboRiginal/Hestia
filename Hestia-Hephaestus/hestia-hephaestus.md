@@ -55,6 +55,9 @@ Hephaestus ships its own inside view on the client plugin contract (`hestia_comm
   field `review` (awaiting_review + proposed). Links: `/p/hephaestus/sviluppo?task=<id>` (short ids ok),
   `?view=repo`. What the old WebUI controller added is sent by the plugin: actions `by=user`, new tasks
   `source=ui, requested_by=user` (the Forge defaults are the same).
+  Panoramica shows the **Revisione automatica** card (Cindy 3, W7): verdict, issues by priority with file and
+  evidence, and the round of fixes (`task.review`); states `reviewing` (revisione automatica) and `waiting_limit`
+  (attende il limite di Claude) are labelled and count as open (`/forge/counts`).
 - page **Riparazioni** (`riparazioni`, `hephaestus-repairs`, order 171): remediation tasks from
   `/api/hephaestus/tasks` + `/runbooks` + `/status` — counts per state, filter, per task runbook (title, steps,
   read-only/rollback checkpoints), consent tier, dry-run, environment, attempts, notes timeline, execution result,

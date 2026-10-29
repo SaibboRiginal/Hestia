@@ -181,9 +181,13 @@ class Learning:
                               "method": "POST", "path": f"/api/athena/memory/proposals/{pid}/apply"},
                              {"id": "keep", "label": "Lascia", "service": "athena", "method": "POST",
                               "path": f"/api/athena/memory/proposals/{pid}/dismiss"}],
-                "_link": {"module": "oracle", "page": "memoria"}})
+                "_link": {"module": "athena", "page": "imparato"}})
         logger.info("event=athena_memory_review memories=%d proposals=%d", len(memories), min(10, len(findings)))
         return {"memories": len(memories), "proposals": min(10, len(findings))}
+
+    def pending_proposals(self) -> list[dict]:
+        rows = [r.get("data") or {} for r in self._rows("memory_proposal", 200)]
+        return [p for p in rows if p.get("status") == "pending"]
 
     def _proposal(self, pid: str) -> dict | None:
         return next((r.get("data") for r in self._rows("memory_proposal", 500) if r.get("id") == pid), None)

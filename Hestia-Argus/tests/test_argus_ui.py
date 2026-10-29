@@ -40,8 +40,9 @@ class TestArgusManifest:
         assert m["module"] == "argus" and m["kind"] == "core"
         webui = m["clients"]["webui"]
         assert webui["entry"] == "/ui/webui/argus.js" and webui["api_prefix"] == "/api/argus/"
-        (p,) = webui["page"]
+        p, perf = webui["page"]
         assert (p["id"], p["label"], p["element"], p["order"]) == ("salute", "Salute", "argus-health", 110)
+        assert (perf["id"], perf["element"], perf["order"]) == ("prestazioni", "argus-performance", 111)
         (w,) = webui["widget"]
         assert (w["id"], w["label"], w["element"], w["auto"]) == ("stato", "Stato sistema", "argus-status-widget", True)
         (q,) = webui["quick_action"]

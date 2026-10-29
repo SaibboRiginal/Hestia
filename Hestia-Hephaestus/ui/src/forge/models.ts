@@ -8,7 +8,7 @@ import { API } from '../util';
 export const REPO = `${API}/repo`;
 
 export type ForgeState =
-  | 'new' | 'proposed' | 'scheduled' | 'queued' | 'running' | 'awaiting_review' | 'approved' | 'merging'
+  | 'new' | 'proposed' | 'scheduled' | 'queued' | 'running' | 'reviewing' | 'waiting_limit' | 'awaiting_review' | 'approved' | 'merging'
   | 'merged' | 'deployed' | 'failed' | 'rejected' | 'rolled_back' | 'no_changes';
 
 export interface ForgeEvent { ts: string; state: string; note: string; }
@@ -24,7 +24,14 @@ export interface ForgeTask {
   error?: string | null; created_at: string; updated_at?: string; cost_usd?: number | null; turns?: number;
   engine_ms?: number; parent_task?: string | null; history?: ForgeEvent[]; notes?: ForgeNote[];
   external?: { branch: string; summary?: string; by?: string; at?: string };
+  review?: ForgeReview; team?: { pieces?: Array<{ title: string; difficulty?: string; engine?: string; state?: string }> };
+  limit_restarts?: number;
 }
+
+/** Independent automatic review before the diff reaches you (Cindy 3): only issues with evidence. */
+export interface ForgeReviewIssue { priority: 'alta' | 'media' | 'bassa'; file: string; problem: string; evidence: string; }
+export interface ForgeReview { verdict: 'ok' | 'problemi' | 'non_disponibile'; issues: ForgeReviewIssue[]; blocking: number;
+  rounds?: number; first?: ForgeReviewIssue[]; }
 
 export type TranscriptKind = 'user' | 'text' | 'thinking' | 'tool_use' | 'tool_result' | 'system' | 'result' | 'error';
 export interface TranscriptEvent {
@@ -64,7 +71,7 @@ export interface Dossier {
 }
 
 // ── labels ───────────────────────────────────────────────────────────────
-export const ACTIVE: string[] = ['queued', 'running', 'approved', 'merging'];
+export const ACTIVE: string[] = ['queued', 'running', 'reviewing', 'waiting_limit', 'approved', 'merging'];
 export const CLOSED: string[] = ['merged', 'deployed', 'failed', 'rejected', 'rolled_back', 'no_changes'];
 
 export const STATE_META: Record<string, { label: string; tone: string }> = {
@@ -73,6 +80,8 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
   scheduled: { label: 'programmato', tone: 'info' },
   queued: { label: 'in coda', tone: 'info' },
   running: { label: 'in lavorazione', tone: 'accent' },
+  reviewing: { label: 'revisione automatica', tone: 'accent' },
+  waiting_limit: { label: 'attende il limite di Claude', tone: 'info' },
   awaiting_review: { label: 'diff da rivedere', tone: 'warning' },
   approved: { label: 'merge in corso', tone: 'accent' },
   merging: { label: 'merge in corso', tone: 'accent' },

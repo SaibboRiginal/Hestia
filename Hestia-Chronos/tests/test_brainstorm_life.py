@@ -187,3 +187,26 @@ def test_every_life_tool_has_a_route_and_a_unique_name():
         assert (t.method, re.sub(r"\{[^}]+\}", "{}", t.path)) in routes, t.name
     keys = [r["key"] for r in life_api.boot_rules()]
     assert keys == ["chronos.special.daily", "chronos.smart_calendar"]
+
+
+@pytest.mark.unit
+def test_plugin_pages_reach_routines_and_special_under_the_api_prefix(store):
+    """The WebUI proxy only lets the plugin call /api/agenda/…: «Routine» and «Eventi speciali» live there too."""
+    import re
+    from pathlib import Path
+    from fastapi.testclient import TestClient
+    import main
+    c = TestClient(main.app)
+    created = c.post("/api/agenda/routines", json={"title": "Meteo", "instruction": "dimmi se piove",
+                                                   "recurrence": "FREQ=DAILY"})
+    assert created.status_code == 200
+    assert [r["title"] for r in c.get("/api/agenda/routines").json()["items"]] == ["Meteo"]
+    assert c.get("/api/agenda/routines/templates").json()["templates"][0]["id"] == "radar"
+    assert c.post("/api/agenda/special", json={"title": "Compleanno di Anna", "day": "2000-02-14",
+                                               "kind": "birthday"}).status_code == 200
+    assert c.get("/api/agenda/special").json()["items"][0]["yearly"] is True
+    pages = {p["id"]: p for p in c.get("/api/ui/manifest").json()["clients"]["webui"]["page"]}
+    src = (Path(__file__).parents[1] / "ui" / "src" / "index.ts").read_text(encoding="utf-8")
+    defined = set(re.findall(r"'(chronos-[a-z-]+)'\s*:", src))
+    assert {p["element"] for p in pages.values()} <= defined
+    assert pages["routine"]["element"] == "chronos-routines" and pages["eventi"]["element"] == "chronos-special"
