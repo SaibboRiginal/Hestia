@@ -573,6 +573,38 @@ def ui_inbox_answer(notification_id: str, req: UiAnswerRequest):
                                                                           client=req.client or UI_CLIENT))
 
 
+class UiSecretRequest(BaseModel):
+    values: dict[str, Any] = {}
+    client: str = UI_CLIENT
+
+    def __repr__(self) -> str:          # never print the values
+        return f"UiSecretRequest(client={self.client!r}, fields={sorted(self.values)})"
+
+    __str__ = __repr__
+
+
+@app.post("/api/ui/inbox/{notification_id}/secret")
+def ui_inbox_secret(notification_id: str, req: UiSecretRequest):
+    """Secret form in the inbox page (Cindy 4): same as ``POST /api/notifications/{id}/secret``."""
+    return notification_secret(notification_id, SecretSubmitRequest(client=req.client or UI_CLIENT, values=req.values))
+
+
+@app.get("/api/ui/push/key")
+def ui_push_key():
+    """Web Push for the WebUI shell (C15): same as ``GET /api/push/key``."""
+    return push_key()
+
+
+@app.post("/api/ui/push/subscribe")
+def ui_push_subscribe(req: PushSubscribeRequest):
+    return push_subscribe(req)
+
+
+@app.delete("/api/ui/push/subscribe")
+def ui_push_unsubscribe(req: PushUnsubscribeRequest):
+    return push_unsubscribe(req)
+
+
 @app.get("/api/ui/inbox/{notification_id}/voice")
 def ui_inbox_voice(notification_id: str, format: str = "mp3"):
     """Play button of a notification sent also as voice: the kept audio, from the voice module."""

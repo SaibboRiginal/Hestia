@@ -5939,6 +5939,72 @@ paths:
         "409":
           description: "already_handled, with the winning answer"
 
+  /hermes/api/ui/inbox/{notification_id}/secret:
+    post:
+      tags: [Hermes]
+      summary: Secret form of the inbox page (real path /api/ui/inbox/{id}/secret; same as /api/notifications/{id}/secret, values never stored)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                values: { type: object, additionalProperties: { type: string } }
+                client: { type: string, default: webui }
+      responses:
+        "200": { description: "claimed and forwarded to the module" }
+        "404": { description: not_found }
+        "409": { description: already_handled }
+
+  /hermes/api/ui/push/key:
+    get:
+      tags: [Hermes]
+      summary: Web Push VAPID public key for the WebUI shell (real path /api/ui/push/key; same as /api/push/key)
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": { description: "{enabled, public_key}" }
+
+  /hermes/api/ui/push/subscribe:
+    post:
+      tags: [Hermes]
+      summary: Subscribe this browser to Web Push (real path /api/ui/push/subscribe; same as POST /api/push/subscribe)
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subscription]
+              properties:
+                subscription: { type: object }
+                device: { type: string }
+      responses:
+        "200": { description: saved subscription }
+    delete:
+      tags: [Hermes]
+      summary: Unsubscribe this browser (real path /api/ui/push/subscribe; same as DELETE /api/push/subscribe)
+      servers:
+        - url: http://localhost:19005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint: { type: string }
+      responses:
+        "200": { description: removed }
+
   /api/notifications/seen-all:
     post:
       tags: [Hermes]

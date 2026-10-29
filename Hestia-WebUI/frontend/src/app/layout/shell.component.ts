@@ -14,6 +14,9 @@ import { PresenceService, PresenceState, ago, reasonLabel } from '../services/pr
 import { PluginsService } from '../features/plugins/plugins.service';
 import { PluginPage } from '../features/plugins/plugins.types';
 import { CommandPaletteComponent } from '../features/plugins/command-palette.component';
+import { MetisService } from '../services/metis.service';
+import { AppearanceService } from '../services/appearance.service';
+import { AppearanceLayerComponent } from './appearance-layer.component';
 
 interface NavEntry { id: string; label: string; icon: string; link: string; online: boolean; child: boolean; parent: string; badge: number; }
 interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'system'; label: string; items: NavEntry[]; }
@@ -21,7 +24,7 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
 /** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
@@ -141,6 +144,7 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
     </div>
     @defer (when assistant.isOpen()) { <hx-assistant /> }
     @defer (on idle) { <hx-command-palette /> }
+    <hx-appearance-layer />
     <hx-toast-host />
     <hx-dialog-host />
   `,
@@ -251,6 +255,8 @@ export class ShellComponent {
   notifications = inject(NotificationsService);
   presence = inject(PresenceService);
   plugins = inject(PluginsService);
+  private metis = inject(MetisService);
+  private look = inject(AppearanceService);
   /** Module pages (client plugins): parents followed by their sub-pages. */
   readonly pluginNav = computed(() => {
     const pages = this.plugins.navPages();
@@ -377,6 +383,8 @@ export class ShellComponent {
     this.notifications.start();
     this.presence.start();
     this.plugins.start();
+    this.metis.start();
+    this.look.start();
     await Promise.all([this.session.load(), this.settings.load()]);
   }
 

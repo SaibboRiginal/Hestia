@@ -21,6 +21,8 @@ export const APP_MODULES: AppModule[] = [
     load: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent) },
   { path: 'chat', label: 'Chat', icon: 'chat',
     load: () => import('./features/chat/chat-page.component').then(m => m.ChatPageComponent) },
+  { path: 'scopri', label: 'Scopri', icon: 'sparkle',
+    load: () => import('./features/scopri/scopri-page.component').then(m => m.ScopriPageComponent) },
   { path: 'settings', label: 'Impostazioni', icon: 'settings', bottom: true,
     load: () => import('./features/settings/settings-page.component').then(m => m.SettingsPageComponent) },
 ];

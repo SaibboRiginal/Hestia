@@ -20,6 +20,9 @@ export class ThemeService {
     return THEMES.find(t => t.id === id) ?? THEMES[0];
   });
 
+  /** Accent colours of the active graphic profile (Aphrodite: birthday, holidays, seasons), over this theme. */
+  private overlay: Record<string, string> = {};
+
   constructor() {
     window.matchMedia?.('(prefers-color-scheme: dark)')
       .addEventListener?.('change', e => { this.systemDark.set(e.matches); this.apply(); });
@@ -37,10 +40,28 @@ export class ThemeService {
     this.set(this.active().mode === 'dark' ? DEFAULT_LIGHT : DEFAULT_DARK);
   }
 
+  /** Sets (or clears with {}) the profile accents: `accent`, `accent2` as hex colours. */
+  setPalette(palette: Record<string, string>): void {
+    const hex = (v?: string) => (v && /^#[0-9a-f]{6}$/i.test(v) ? v : '');
+    const a = hex(palette['accent']), b = hex(palette['accent2']);
+    const next: Record<string, string> = {};
+    if (a) {
+      const [r, g, bl] = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16));
+      next['--accent'] = a;
+      next['--accent-hover'] = `color-mix(in srgb, ${a} 86%, #000)`;
+      next['--accent-soft'] = `rgba(${r},${g},${bl},.14)`;
+    }
+    next['--accent-2'] = b || a || '';
+    if (JSON.stringify(next) === JSON.stringify(this.overlay)) return;
+    this.overlay = next;
+    this.apply();
+  }
+
   private apply(): void {
     const theme = this.active();
     const root = document.documentElement;
     for (const [k, v] of Object.entries({ ...BASE_TOKENS, ...theme.tokens })) root.style.setProperty(k, v);
+    for (const [k, v] of Object.entries(this.overlay)) if (v) root.style.setProperty(k, v); else root.style.removeProperty(k);
     root.dataset['theme'] = theme.id;
     root.dataset['mode'] = theme.mode;
     root.style.colorScheme = theme.mode;

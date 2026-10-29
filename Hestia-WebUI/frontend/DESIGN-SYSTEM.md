@@ -28,6 +28,7 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
 | `--border`, `--border-strong` | dividers / control borders |
 | `--text`, `--text-2`, `--text-3` | primary / secondary / muted text |
 | `--accent`, `--accent-hover`, `--accent-contrast`, `--accent-soft` | main action, its hover, text on accent, tinted background |
+| `--accent-2` | second accent of a graphic profile (birthday, holidays; set by `ThemeService.setPalette`, may be unset: use `var(--accent-2, var(--accent))`). The profile overrides the accents only, never surfaces or text |
 | `--danger|success|warning|info` (+ `-soft`) | semantic states |
 | `--focus-ring`, `--overlay`, `--shadow-1..3` | focus outline, modal backdrop, elevation |
 | `--user-bubble`, `--user-bubble-text` | chat user message |
