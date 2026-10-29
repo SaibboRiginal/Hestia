@@ -34,7 +34,7 @@ export class HygieiaTodayWidget extends Widget {
   render() {
     const c = this.plan?.counts;
     return html`<div class="w">
-      <div class="between click" @click=${() => this.host.navigate('oggi')}><span class="small muted">Self care di oggi</span>
+      <div class="between click" @click=${() => this.host.navigate('oggi')}><span></span>
         ${c ? html`<span class="small muted">${c.done ? html`${icon('check', 12, 'success')} ${c.done}` : ''}${c.done && c.due ? ' · ' : ''}${c.due ? `${c.due} da fare` : ''}</span>` : nothing}</div>
       ${this.plan === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${[this.n].map(() => html`<hxk-quicklog .host=${this.host} source=${`${API}/quick/routines`} .action=${ROUTINE_ACTION} @logged=${() => this.load()}></hxk-quicklog>`)}
@@ -73,7 +73,7 @@ export class HygieiaNextWidget extends Widget {
     return html`<div class="w">
       <div class="between"><span class="small muted">Prossima</span><hxk-badge tone=${st.tone}>${st.text}</hxk-badge></div>
       <div class="big truncate click" @click=${() => this.host.navigate('oggi')}>${n.name}</div>
-      <div class="small muted truncate">${n.hint}${steps.length ? ` · ${steps.length} passi` : ''}</div>
+      <div class="small muted truncate">${n.hint}${steps.length ? ` · ${steps.length} ${steps.length === 1 ? 'passo' : 'passi'}` : ''}</div>
       ${this.size !== 's' ? html`<div class="small truncate">${steps.map((s: any) => s.label).join(' → ')}</div>` : nothing}
       <div><hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.done(n)}>Fatta</hxk-button></div>
     </div>`;

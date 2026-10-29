@@ -11,6 +11,7 @@ abstract class Widget extends HestiaElement {
   static styles = [...HestiaElement.styles, herculesStyles, css`
     :host { display: block; height: 100%; }
     .w { display: flex; flex-direction: column; gap: 8px; height: 100%; padding: 2px; }
+    .w > * { flex-shrink: 0; }   /* a short cell must not squash the title line (truncate hides it whole) */
     .big { font-size: 22px; font-weight: 650; line-height: 1.1; }
     .click { cursor: pointer; }
   `];
@@ -46,7 +47,7 @@ export class HerculesNextWidget extends Widget {
       <span class="small muted">${done ? html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> Fatto oggi · prossimo` : n.reason || 'Prossimo allenamento'}</span>
       <div class="big truncate click" @click=${() => this.host.navigate('schede/' + t.id)}>${t.name}</div>
       <div class="small muted">${(t.items || []).length} esercizi${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
-      ${this.size !== 's' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
+      ${this.size === 'l' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
       <div class="row"><hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('allenamento', { scheda: t.id })}>Inizia</hxk-button></div>
     </div>`;
   }

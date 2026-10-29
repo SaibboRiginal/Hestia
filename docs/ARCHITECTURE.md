@@ -602,6 +602,7 @@ No code-only behavior changes are considered complete without synchronized docs.
 8. Before pushing, `python tools/governance/precheck.py` runs every gate locally against `origin/main`.
 9. CI hygiene: a new push to a PR cancels the older run; jobs have a timeout; pip downloads are cached and retried;
    the test report never adds a second red step; all governance gates report in one run.
+10. Home widgets: the dashboard frame draws title and link; a widget body never repeats them (`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`).
 
 ## Messaging Contract (Global UX Rules)
 

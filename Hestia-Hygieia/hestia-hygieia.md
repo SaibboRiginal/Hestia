@@ -104,7 +104,7 @@ Bundle `ui/src/index.ts` → `/ui/webui/hygieia.js` (built in the Dockerfile). P
 routine, steps with reasons, wait timers, "ho usato un prodotto"), routine, routine/:id (editor: steps, order,
 own cadence, pause, goal, zones, never-same-day, reminder, favorite, adherence, versions), prodotti,
 prodotti/:id, diario, statistiche (heatmap, routines, top products, spend, history of
-changes, a past day, JSON export), spesa. Widgets: oggi (quick chips), prossima, prodotti (alerts), settimana.
+changes, a past day, JSON export), spesa. Widgets: oggi (quick chips, counts only: the frame draws the title), prossima, prodotti (alerts), settimana.
 Quick actions: fatta (routines to do today + favorites, undo), uso (favorite products, undo).
 A UI change needs `up-all.bat --build hygieia`.
 

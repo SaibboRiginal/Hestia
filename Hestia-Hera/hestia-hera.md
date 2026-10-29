@@ -37,7 +37,7 @@ a day that does not exist (31/02) is refused; 29/02 falls on 28/02 in common yea
 
 ## WebUI plugin
 
-Pages **Persone** (`hera-people`: list, search, new person, upcoming dates) and **Persona** (`persona/:id`: dates, gift ideas to mark done, likes, notes, «Sentito», delete); widget «Prossime date». Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Persone** (`hera-people`: list, search, new person, upcoming dates) and **Persona** (`persona/:id`: dates, gift ideas to mark done, likes, notes, «Sentito», delete); widget «Prossime date» (only the dates: title and link to the page are the frame's). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

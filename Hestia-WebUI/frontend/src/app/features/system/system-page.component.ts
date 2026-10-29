@@ -60,6 +60,7 @@ import { PluginPage } from '../plugins/plugins.types';
     .pin:hover { background: var(--surface-3); color: var(--text); }
     @media (hover: none) { .pin { opacity: .6; } }
     @media (max-width: 720px) { .body { padding: 14px 12px 28px; } }
+    @media (max-width: 860px) { hx-page-header { padding-left: 56px; } }   /* room for the shell's menu button */
   `],
 })
 export class SystemPageComponent {

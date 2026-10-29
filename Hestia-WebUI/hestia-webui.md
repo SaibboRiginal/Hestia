@@ -138,7 +138,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   `GET /api/metis/adesso?client=webui` (up to 6, each with its reason); a tap opens the tool on the *Comandi* page
   (`/p/mcp/comandi?command=…&args=…&run=1`: run at once when nothing required is missing). Hidden when empty. The
   Ctrl/⌘+K palette lists the same items first, in the group *Adesso*.
-- **Scopri** (`/scopri`, `features/scopri/`): features never or rarely used (`GET /api/metis/scopri?limit=50`),
+- **Scopri** (`/scopri`, `features/scopri/`; like «Sistema», its header leaves 56 px for the phone menu button): features never or rarely used (`GET /api/metis/scopri?limit=50`),
   grouped by module, search, *Prova* opens the tool like *Adesso*.
 - **Aspetto** (`services/appearance.service.ts`, `layout/appearance-layer.component.ts`): `GET /api/appearance/now`
   through the Aphrodite plugin door at start, when the catalog shows the module and when the tab comes back after

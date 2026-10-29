@@ -97,7 +97,7 @@ export class HygieiaRoutines extends HestiaElement {
     const row = (r: any) => { const st = STATE[r.state] || STATE.rest; return html`<div class="li" @click=${() => this.host.navigate('routine/' + r.id)}>
       <div class="ico">${(r.areas || []).length ? icon('droplet', 18, 'info') : slotIcon(r.slot, 18)}</div>
       <div class="grow"><div class="truncate"><b>${r.name}</b></div>
-        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count} passi${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
+        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count} ${r.step_count === 1 ? 'passo' : 'passi'}${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
       ${r.status === 'active' ? html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>` : html`<hxk-badge>${r.status === 'paused' ? 'In pausa' : 'Archiviata'}</hxk-badge>`}
       <button class="star ${r.favorite ? 'on' : ''}" title="Preferita (in Home)" @click=${(e: Event) => this.fav(r, e)}>${icon('star', 18, r.favorite ? 'warning' : 'muted')}</button>
     </div>`; };

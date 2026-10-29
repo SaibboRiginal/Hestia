@@ -164,7 +164,6 @@ export class HeraSoonWidget extends HestiaElement {
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const n = this.ctx?.size === 's' ? 1 : this.ctx?.size === 'm' ? 3 : 6;
     return html`<div class="col" style="gap:6px">
-      <div class="between click" @click=${() => this.host.navigate('persone')}><span class="small muted">Prossime date</span><span class="small">Tutte ›</span></div>
       ${this.items.length ? this.items.slice(0, n).map(s => html`<div class="between small click" @click=${() => this.host.navigate('persona/' + s.person_id)}>
         <span class="truncate">${s.label} di <b>${s.person}</b></span><span class="muted">${inDays(s.in_days)}</span></div>`)
         : html`<div class="small muted">Niente nei prossimi 30 giorni.</div>`}
