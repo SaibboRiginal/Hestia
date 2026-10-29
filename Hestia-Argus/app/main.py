@@ -20,7 +20,7 @@ from core.health_poller import poll_all
 from core.hub_client import discover_services
 from schemas.reports import SystemReport
 from core.ui_plugin import ui
-from services import analysis_service, health_history, monitor_service
+from services import analysis_service, health_history, monitor_service, performance
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -186,6 +186,34 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Riparazioni"}),
+        MCPTool(
+            name="system_performance",
+            description="Prestazioni dei moduli: memoria, processore, tempi di risposta, dimensione dei dati",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "system_performance", "params": kw},
+            title="Prestazioni", method="GET", path="/api/argus/performance",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
+            response_prompt=(
+                "Sii conciso. Una riga di sintesi (es. 'Tutto nella norma'). Poi solo i moduli sopra o vicini ai "
+                "limiti in 'thresholds': '• nome — memoria MB · processore % · risposta ms'. Poi una riga sui "
+                "dati salvati (GB e crescita del giorno) se 'storage' c'è. Nessuna conclusione."
+            ),
+            telegram_visible=True, telegram_group="sistema",
+                telegram={"section": "Salute e log", "label": "Prestazioni"}),
+        MCPTool(
+            name="system_incidents",
+            description="Storico dei problemi e di cosa è stato fatto per ripararli (avvisi, riavvii, ricontrolli)",
+            parameters={"type": "object", "properties": {
+                "limit": {"type": "integer", "description": "Problemi chiusi da mostrare (default 10)"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "system_incidents", "params": kw},
+            title="Storico riparazioni", method="GET", path="/api/argus/incidents",
+            clients=["telegram", "ui", "external"], response_mode="oracle_natural",
+            response_prompt=(
+                "Sii conciso. Prima i problemi aperti, poi quelli chiusi più recenti: '• servizio — quando — "
+                "cosa è stato fatto — com'è finita'. Se non ce ne sono: una frase."
+            ),
+            telegram_visible=True, telegram_group="sistema",
+                telegram={"section": "Riparazioni", "label": "Storico"}),
     ]
     app.include_router(create_mcp_router(_argus_mcp_tools, service_name="argus"))
     logger.info("event=mcp_router_mounted service=argus")
@@ -271,6 +299,22 @@ def get_incidents(limit: int = Query(default=20, ge=0, le=200, description="Clos
     """Open incidents and the journal of closed ones (kept in Archive), each with what Argus did (alert, automatic
     restart, repair, recheck, giving up, recovery)."""
     return health_history.incidents(limit=limit)
+
+
+@app.get("/api/argus/performance", tags=["argus"])
+def get_performance() -> dict:
+    """Last performance sample (no network): per module CPU %, memory, response time, uptime, restarts; Hub
+    round trip; storage size and growth; the Themis thresholds (Cindy D16 + 25)."""
+    return performance.snapshot()
+
+
+@app.get("/api/argus/performance/history", tags=["argus"])
+def get_performance_history(
+    service: str | None = Query(default=None, description="Only this module"),
+    hours: int = Query(default=24, ge=1, le=24, description="Window in hours (max 24, in memory)"),
+) -> dict:
+    """Performance samples over time per module, plus storage size samples (last 7 days)."""
+    return performance.history(service=service, hours=hours)
 
 
 @app.get("/api/argus/recheck-targets", tags=["argus"])

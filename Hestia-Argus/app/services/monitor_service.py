@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 from core import argus_settings as cfg
 from core import docker_client, forge_proposer, health_poller, hub_client
-from services import oracle_watch, health_history, immune
+from services import oracle_watch, health_history, immune, performance
 
 try:
     from hestia_common.agenda_client import AgendaClient, template as agenda_template
@@ -317,6 +317,10 @@ def _check_provider_auth() -> None:
                 svc_name, p_name)
 
 
+def _performance_alert(service: str, metric: str, message: str) -> None:
+    send_alert(ServiceAlert(service=service, kind="performance", level="WARNING", message=message, metric=metric))
+
+
 def _run_once() -> None:
     global _monitor_cycle_count
     t0 = time.perf_counter()
@@ -324,6 +328,9 @@ def _run_once() -> None:
     services = hub_client.discover_services()
     health = health_poller.poll_all(services)
     health_history.record_cycle(health, ms=int((time.perf_counter() - t0) * 1000))
+    # Performance sample every N cycles, in its own thread (Docker stats can be slow).
+    performance.maybe_sample(health, hub_api_url=hub_client.HUB_API_URL, route=hub_client.route,
+                             alert=_performance_alert)
 
     # --- Provider auth check (periodic) ---
     if cfg.get_bool(cfg.AUTH_CHECK_ENABLED):

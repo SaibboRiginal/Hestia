@@ -1,0 +1,16 @@
+{
+  "name": "duckduckgo",
+  "title": "Cerca sul web (risultati completi)",
+  "site": "html.duckduckgo.com",
+  "description": "Risultati di una ricerca: titoli, link e anteprime, senza far leggere la pagina a un modello.",
+  "params": {"q": {"description": "Cosa cercare", "required": true}},
+  "steps": [
+    {"op": "goto", "url": "https://html.duckduckgo.com/html/?q={q}"},
+    {"op": "wait", "selector": ".result"}
+  ],
+  "extract": {
+    "titles": {"selector": ".result__a", "all": true, "limit": 10, "required": true},
+    "links": {"selector": ".result__a", "attr": "href", "all": true, "limit": 10},
+    "snippets": {"selector": ".result__snippet", "all": true, "limit": 10}
+  }
+}

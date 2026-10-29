@@ -424,6 +424,12 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    module adds its own scheduler for it. A value the owner types in a Hermes secret form goes straight to the module
    that asked, through the Hub: Hermes never stores or logs it, and no client asks for it in a chat. A notification
    rings only on the client the owner is using (the others get it silent); Web Push is one more way to ring the WebUI.
+14. **What the assistant learns is evidence-based and undoable; reviews see only evidence (same dossier, W3):** a new
+   memory needs the owner's own words (`quote`); every memory change is logged with before/after and can be undone
+   unless the owner changed it since (owner edits win). The Forge reviewer gets only labelled evidence (request,
+   SPEC criteria, diff, real test output; the engine's story marked unverified) and never replaces the owner's
+   approval. Restoring a backup is an owner action only, never an assistant tool. Thresholds of performance and
+   storage alerts are Themis settings.
 
 ## Autonomous Remediation Contract
 

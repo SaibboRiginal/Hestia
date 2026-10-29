@@ -541,3 +541,6 @@ Uso tab reads the rows kept in Archive):
 ## Assistant presence
 
 Every user chat (text and document, see the rule above) pings Chronos presence (`<client>`, forced) and reads the state from before the ping: if `chronos.presence.oracle_context_line` is on, the system prompt gets one line (state, last interaction, notice) and «Rispondi breve.» when `chat.style=brief`. Code: `app/core/services/oracle_presence.py`.
+
+## Tests note (2026-10-29)
+Tests that stub the chat engine replace `main.engine` with their own `MagicMock` (via `monkeypatch.setattr(main, "engine", …)`) instead of patching attributes of the shared one: other test modules may leave it spec'd, which made `test_chat_endpoint_composes_queued_batch` depend on test order.

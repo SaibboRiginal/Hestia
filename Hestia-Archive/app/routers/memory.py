@@ -48,6 +48,15 @@ def get_active_preferences(
     return q.order_by(models.UserPreference.id.desc()).limit(max(1, min(limit, 5000))).all()
 
 
+@router.get("/api/memory/{pref_id}", response_model=schemas.PreferenceResponse)
+def get_preference(pref_id: int, db: Session = Depends(database.get_db)):
+    """One memory, active or not (Athena's learning log checks it before an undo)."""
+    db_pref = db.query(models.UserPreference).filter(models.UserPreference.id == pref_id).first()
+    if not db_pref:
+        raise HTTPException(status_code=404, detail="Preference not found")
+    return db_pref
+
+
 @router.patch("/api/memory/{pref_id}", response_model=schemas.PreferenceResponse)
 def deprecate_preference(
     pref_id: int,

@@ -16,7 +16,11 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
 # (chosen by Marko in Oracle → Cervello → Modelli; a ``claude`` step there also sets Claude Code's model).
 FORGE_USECASE = "forge.codice"
 LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · sviluppo", chain="codice",
-                            help="Il modello che scrive il codice quando Forge usa il motore Oracle.")]
+                            help="Il modello che scrive il codice quando Forge usa il motore Oracle."),
+                llm_usecase("forge.revisione", "Forge · revisione automatica", chain="potente",
+                            help="Il revisore indipendente che legge diff e test prima che tu approvi."),
+                llm_usecase("forge.piano", "Forge · divisione in pezzi", chain="potente",
+                            help="Divide un lavoro grande in pezzi e sceglie per ognuno se è semplice o difficile.")]
 
 
 def build_capabilities() -> dict[str, Any]:

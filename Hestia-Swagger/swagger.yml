@@ -2139,6 +2139,18 @@ paths:
         "200":
           description: Saved preference
 
+  /api/memory/{pref_id}:
+    get:
+      tags: [Archive]
+      summary: One memory row (Athena's learning undo checks it is unchanged)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: pref_id, in: path, required: true, schema: {type: integer}}
+      responses:
+        "200": {description: "{id, fact, memory_class, weight, is_active, created_at, updated_at, …}"}
+        "404": {description: Not found}
+
   /api/memory/active:
     get:
       tags: [Archive — Memory]
@@ -6874,6 +6886,27 @@ paths:
       responses:
         "200": {description: "{open: [Incident], recent: [Incident], open_count}; Incident = {id, service, status, error, opened_at, closed_at, duration_seconds, actions: [{at, kind: detected|status|alert|restart|restart_result|gave_up|remediation|recheck_planned|recheck|recovered, ok, text}]}"}
 
+  /api/argus/performance:
+    get:
+      tags: [Argus]
+      summary: Last performance sample (Cindy D16 + 25) — per module CPU %, memory, response time, uptime, restarts; Hub round trip; data size; Themis thresholds
+      servers:
+        - url: http://localhost:19008
+      responses:
+        "200": {description: "{at, hub_ms, services: {name: {cpu, mem_mb, mem_limit_mb, ms, status, started_at, uptime_s, restarts}}, storage: {at, database_bytes, blob_bytes, blob_count, blobs_by_module, growth_day_bytes} | null, thresholds: {memory_mb, cpu_percent, response_ms, database_gb, growth_mb_day}}"}
+
+  /api/argus/performance/history:
+    get:
+      tags: [Argus]
+      summary: Performance samples over time (in memory, 24 h) and storage sizes (7 days)
+      servers:
+        - url: http://localhost:19008
+      parameters:
+        - {name: service, in: query, schema: {type: string}}
+        - {name: hours, in: query, schema: {type: integer, default: 24, minimum: 1, maximum: 24}}
+      responses:
+        "200": {description: "{hours, series: {name: [{at, cpu, mem_mb, ms}]}, storage: [{at, database_bytes, blob_bytes, blob_count}]}"}
+
   /api/argus/recheck-targets:
     get:
       tags: [Argus]
@@ -7289,6 +7322,18 @@ paths:
         - {name: task_id, in: path, required: true, schema: {type: string}}
       responses:
         "200": {description: "{status, state, events[{ts, state, note}]}"}
+        "404": {description: Task not found}
+
+  /api/hephaestus/forge/tasks/{task_id}/resume:
+    post:
+      tags: [Hephaestus]
+      summary: "Resume a task stopped by the Claude usage limit (state waiting_limit) from its saved partial commit; fired by the agenda task forge.resume.<id>"
+      servers:
+        - url: http://localhost:19010
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, task} (queued again; task.resumed false when it was not waiting)"}
         "404": {description: Task not found}
 
   /api/hephaestus/forge/tasks/{task_id}/retry:
@@ -9814,6 +9859,40 @@ paths:
         "200": {description: "{reused, access_id, client_id, redirect_uri, code_challenge, scope, tools, name, expires_days, resource, expires_at}"}
         "404": {description: Unknown code}
 
+  /api/recipes:
+    get:
+      tags: [Atlas]
+      summary: Site recipes in the repo (Cindy 12) — name, title, site, params, fields
+      servers:
+        - url: http://localhost:19014
+          description: Atlas (on the host PC)
+      responses:
+        "200": {description: "{items: [{name, title, description, site, params, fields}]}"}
+
+  /api/recipes/{name}/run:
+    post:
+      tags: [Atlas]
+      summary: "Run a recipe in the host Edge: {params, timeout_seconds} → {status: ok|broken, fields, recipe, step?, field?, error?}"
+      servers:
+        - url: http://localhost:19014
+          description: Atlas (on the host PC)
+      parameters:
+        - {name: name, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "ok, or broken (the site changed; logged as event=atlas_recipe_broken)"}
+        "400": {description: Missing parameter}
+        "404": {description: Unknown recipe}
+        "503": {description: Browser not available}
+
+  /api/blobs/usage:
+    get:
+      tags: [Archive — Blobs]
+      summary: "Data size for growth alerts: {database_bytes (null when not Postgres), blob_bytes, blob_count, blobs_by_module: {module: {count, bytes}}}"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: Sizes}
+
   /api/blobs:
     post:
       tags: [Archive — Blobs]
@@ -10930,6 +11009,71 @@ paths:
         - url: http://localhost:19009
       responses:
         "200": {description: "{status: ok|empty, momento, day, text}"}
+
+  /api/athena/learning:
+    get:
+      tags: [Athena]
+      summary: "What the assistant learned (Cindy 18): log of memory changes {id, action add|retire|reinforce|decay|merge, memory_id, fact, before, after, quote, at, undone}"
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 50}}
+      responses:
+        "200": {description: "{count, items: [LearningEntry]}"}
+
+  /api/athena/learning/{entry_id}/undo:
+    post:
+      tags: [Athena]
+      summary: Undo one learning step (restores `before`); 409 changed_since when the owner changed the memory after
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: entry_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: ok, entry, message}"}
+        "404": {description: Not found}
+        "409": {description: already_undone | changed_since}
+
+  /api/athena/memory/review:
+    post:
+      tags: [Athena]
+      summary: "«Rivedi cosa sai di me»: duplicates, contradictions, stale facts → proposals as Hermes cards (nothing changed)"
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{memories, proposals}"}
+
+  /api/athena/memory/proposals/{pid}/apply:
+    post:
+      tags: [Athena]
+      summary: Apply a memory review proposal (retire / merge), logged in the learning log
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: ok, message}"}
+        "409": {description: already_handled}
+
+  /api/athena/memory/proposals/{pid}/dismiss:
+    post:
+      tags: [Athena]
+      summary: Leave the memory as it is
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: pid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status: ok, message}"}
+
+  /api/athena/docs/check:
+    post:
+      tags: [Athena]
+      summary: "Docs follow code (Cindy 29): compare declared tools/settings with module docs and swagger → one Forge proposal per module"
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{findings: [{module, doc, missing_doc, tools, settings, swagger}], proposals}"}
 
   /api/athena/thinking:
     get:

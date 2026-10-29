@@ -124,7 +124,11 @@ def test_chat_endpoint_composes_queued_batch(monkeypatch):
         seen.update(message=message, mode=kw.get("mode"), instructions=kw.get("client_instructions"))
         yield '{"type":"final","reply":"ok"}\n'
 
-    monkeypatch.setattr(main.engine, "chat", fake_chat)
+    # A fresh engine stub: other modules' tests may leave main.engine as a spec'd or sealed mock.
+    from unittest.mock import MagicMock
+    engine = MagicMock()
+    engine.chat = fake_chat
+    monkeypatch.setattr(main, "engine", engine)
     monkeypatch.setattr(main, "_no_usable_model", lambda: False)
     from fastapi.testclient import TestClient
     res = TestClient(main.app).post("/api/chat", json={"message": "", "session_id": "s1", "client": "telegram",

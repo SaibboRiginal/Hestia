@@ -346,3 +346,21 @@ Light work (thinking cycles) waits while presence `work.light=defer`; consolidat
 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Recap: 1; sistema › Assistente: 2; sistema › Avanzate: 1 (area › section: tools).
+
+## What the assistant learned, memory review, docs check (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+- **Only quoted facts** (Cindy 8): the nightly consolidation saves a new memory only with `quote`, the owner's exact
+  words found in their messages (normalized); others are dropped (`facts_unquoted`). No user message newer than the
+  lookback → no model call (`skipped: no_new_user_turns`).
+- **Learning log + undo** (Cindy 18, `app/core/learning.py`): every change to memory (add, retire, reinforce, decay,
+  merge) is a row of Archive `/api/athena-store` (kind `learning`, `before`/`after`, `quote`). «Annulla» restores
+  `before` only while the memory is still as the assistant left it (an owner edit wins → 409 `changed_since`).
+- **«Rivedi cosa sai di me»**: exact duplicates without a model, then one call (`athena.strategia`) for
+  contradictions, near duplicates, stale facts → proposals (kind `memory_proposal`) as Hermes cards «Memoria ·
+  Doppione/Contraddizione/Forse vecchia» with «Applica» / «Lascia». Nothing changes without the owner.
+- **Docs follow code** (Cindy 29, `app/core/docs_check.py`): monthly agenda job `athena.docs_check` (day 1, 04:30)
+  compares what modules declare (MCP tools by `_meta.hestia.service`, Themis keys) with `Hestia-<Name>/hestia-<name>.md`
+  and `Hestia-Swagger/swagger.yml` (read via Forge's repo browser); one Forge proposal per module (source athena).
+- API: `GET /api/athena/learning` · `POST /api/athena/learning/{entry_id}/undo` · `POST /api/athena/memory/review` ·
+  `POST /api/athena/memory/proposals/{pid}/apply|dismiss` · `POST /api/athena/docs/check`.
+  Tools: `memory_rivedi`, `memory_learning`, `memory_learning_undo`, `docs_check`; `athena_thinking` and
+  `athena_signals` are on Telegram too.

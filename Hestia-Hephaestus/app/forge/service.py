@@ -26,7 +26,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,11 +44,12 @@ PresenceClient = import_shared_symbol("hestia_common.presence_client", "Presence
 from .engines import build_engines, select_engine, wait_seconds
 from . import forge_settings
 from .prompts import build_task_prompt, workdoc_name
+from . import review as forge_review
 from .transcript import TaskArtifacts
 
 logger = logging.getLogger("hestia_hephaestus.forge")
 
-ACTIVE_STATES = {"queued", "running", "approved", "merging"}  # "scheduled" = waiting for Claude window
+ACTIVE_STATES = {"queued", "running", "reviewing", "approved", "merging"}  # "scheduled" = waiting for Claude window
 TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "no_changes"}
 
 
@@ -116,6 +117,8 @@ class Forge:
         # Sviluppo page: transcript, full test output, engine/deploy logs per task.
         self.artifacts = TaskArtifacts(cfg.state_file.parent / "tasks", cfg.worktrees_path)
         self._agenda_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="forge-agenda")
+        # Automatic review + team plan (Cindy 3 + 31): a fresh model with no tools, through Oracle.
+        self.reviewer = forge_review.ForgeReviewer(cfg.hub_api_url)
         self._load()
         self._load_settings()
 
@@ -334,7 +337,9 @@ class Forge:
         "proposed": "⏳ da approvare",
         "queued": "🔨 in coda",
         "running": "🔨 in lavorazione",
+        "reviewing": "🔎 revisione automatica",
         "awaiting_review": "👀 diff da rivedere",
+        "waiting_limit": "⏸ attende il limite di Claude",
         "approved": "🔀 merge in corso",
         "merging": "🔀 merge in corso",
     }
@@ -389,7 +394,7 @@ class Forge:
         # Resilience: resume anything interrupted by a restart.
         with self._lock:
             for task in self._tasks.values():
-                if task.get("state") in {"queued", "running"}:
+                if task.get("state") in {"queued", "running", "reviewing"}:
                     task["state"] = "queued"
                     self._queue.put(task["id"])
                 elif task.get("state") in {"approved", "merging"} and not task.get("merge_sha"):
@@ -574,7 +579,8 @@ class Forge:
 
     def reject(self, task_id: str, reason: str = "", rejected_by: str = "user") -> dict[str, Any]:
         task = self._require(task_id)
-        if task.get("state") not in {"proposed", "scheduled", "awaiting_review", "failed", "no_changes"}:
+        if task.get("state") not in {"proposed", "scheduled", "waiting_limit", "awaiting_review", "failed",
+                                     "no_changes"}:
             raise ForgeError(f"Task in state '{task.get('state')}' cannot be rejected")
         self._cleanup(task, delete_branch=True)
         self.agenda.hide_task(task["id"])
@@ -591,7 +597,8 @@ class Forge:
     def retry(self, task_id: str, requested_by: str = "user") -> dict[str, Any]:
         """Same request again as a new task (failed / no changes / rejected / rolled back)."""
         old = self._require(task_id)
-        if old.get("state") in ACTIVE_STATES or old.get("state") in {"proposed", "scheduled", "awaiting_review"}:
+        if old.get("state") in ACTIVE_STATES or old.get("state") in {"proposed", "scheduled", "awaiting_review",
+                                                                        "waiting_limit", "reviewing"}:
             raise ForgeError(f"Task in state '{old.get('state')}' is still open: nothing to retry", 409)
         return self.submit(request=old.get("request", ""), services=old.get("services") or [],
                            engine="" if old.get("engine_requested") in (None, "auto") else old["engine_requested"],
@@ -798,7 +805,10 @@ class Forge:
         self._cleanup(task, delete_branch=True)  # idempotent restart
         base_branch = self._base_branch()
         base_sha = git_ops.rev(repo, base_branch)
-        git_ops.create_worktree(repo, worktree, task["branch"], base_sha)
+        resume_from = task.get("resume_from")       # partial work kept when the Claude limit stopped it
+        if resume_from:
+            base_sha = task.get("resume_base") or base_sha
+        git_ops.create_worktree(repo, worktree, task["branch"], resume_from or base_sha)
         with self._lock:
             task.update({"worktree": str(worktree), "base_branch": base_branch,
                          "base_sha": base_sha, "engine": engine.name})
@@ -818,38 +828,52 @@ class Forge:
             task["workdoc"] = workdoc
         src = (f"{task.get('requested_by') or 'user'} via {task.get('source') or 'hestia'} "
                f"-> Forge task {task['id']} [forge:{task['id']}]")
-        prompt = build_task_prompt(task["request"], task["services"], str(task.get("context") or "") + notes_text(task),
-                                   workdoc, src)
+        context = str(task.get("context") or "") + notes_text(task)
+        if resume_from:
+            context += ("\n\nRIPRESA: il lavoro era stato fermato dal limite di Claude; quello già fatto è nel "
+                        "commit corrente. Continua da lì, non ricominciare.")
         t0 = time.perf_counter()
-        self.artifacts.start_transcript(task["id"], prompt, engine.name)
-        result = engine.run(worktree, prompt, test_runner,
-                            on_event=lambda ev: self.artifacts.append(task["id"], ev))
-        if engine.name == "claude":
-            self.artifacts.import_claude(task["id"])
-        self.artifacts.write_text(task["id"], "engine.log", result.log_tail)
-        if engine.name == "claude" and not result.ok and self.claude_budget.looks_like_limit(
-                f"{result.summary} {result.log_tail}"):
-            until = self.claude_budget.mark_exhausted()
-            self._save_settings()
-            # A fact for the presence engine ("Stanco" overlay): no Claude quota left until the reset.
-            self.presence.signal("resource.claude_quota_left", 0, meta={"until": until},
-                                 ttl_seconds=self._seconds_until(until))
-            self._cleanup(task, delete_branch=True)
-            if task.get("budgeted"):
-                self._set_state(task, "scheduled", f"Claude usage limit: paused until {until}")
-            else:
-                task["error"] = "Claude usage limit reached"
-                self._set_state(task, "failed", f"Claude usage limit: paused until {until}")
-            self._notify(task, f"⛔ Quota Claude esaurita. Riprendo dopo il reset ({_esc(until[:16])}).")
-            return
+        pieces = self._team_plan(task) if not resume_from else []
+        if len(pieces) >= 2:
+            # Cindy 31: one piece after the other in the same worktree, engine by difficulty.
+            with self._lock:
+                task["team"] = [{"title": p["title"], "difficulty": p["difficulty"], "state": "queued"}
+                                for p in pieces]
+            self._notify(task, f"🧩 Forge <code>{task['id'][:6]}</code>: lavoro diviso in {len(pieces)} pezzi.")
+            summaries, all_ok = [], True
+            for n, piece in enumerate(pieces):
+                piece_engine = self._engine_for_piece(piece, engine)
+                prompt = build_task_prompt(
+                    f"[Pezzo {n + 1}/{len(pieces)}: {piece['title']}] {piece['request']}\n\nLavoro completo: "
+                    f"{task['request']}", piece["services"] or task["services"], context, workdoc, src)
+                result = self._engine_pass(task, piece_engine, worktree, prompt, test_runner)
+                if result is None:
+                    return
+                with self._lock:
+                    task["team"][n].update({"state": "done" if result.ok else "failed", "engine": piece_engine.name})
+                summaries.append(f"{n + 1}. {piece['title']} ({piece_engine.name}): {result.summary[:400]}")
+                all_ok = all_ok and result.ok
+            from .engines import EngineResult
+            result = EngineResult(all_ok, "\n".join(summaries), engine.name,
+                                  log_tail=result.log_tail, turns=result.turns)
+        else:
+            prompt = build_task_prompt(task["request"], task["services"], context, workdoc, src)
+            result = self._engine_pass(task, engine, worktree, prompt, test_runner)
+            if result is None:
+                return
         with self._lock:
             task.update({"summary": result.summary, "engine_log_tail": result.log_tail,
                          "turns": result.turns, "cost_usd": result.cost_usd,
                          "engine_ms": int((time.perf_counter() - t0) * 1000)})
+            had_resume = task.pop("resume_from", None)
+            task.pop("resume_base", None)
+        if had_resume:  # the partial work is now in the task branch: the keep-alive ref can go
+            git_ops.git(self.cfg.repo_path, "update-ref", "-d", f"refs/forge/resume/{task['id']}", check=False)
 
         sha = git_ops.commit_all(
             worktree, f"forge({task['id']}): {task['request'][:60]}\n\n{result.summary[:1500]}",
-            self.cfg.git_author_name, self.cfg.git_author_email)
+            self.cfg.git_author_name, self.cfg.git_author_email) or (
+            git_ops.rev(worktree) if git_ops.changed_files(worktree, base_sha) else None)
         if not sha:
             self._cleanup(task, delete_branch=True)
             task["error"] = None if result.ok else result.summary[:500]
@@ -859,15 +883,124 @@ class Forge:
                 f"{_esc(result.summary[:500])}"))
             return
 
-        self._review(task, worktree, base_sha, sha, result.summary, result.ok)
+        self._review(task, worktree, base_sha, sha, result.summary, result.ok, engine=engine,
+                     test_runner=test_runner)
 
-    def _review(self, task: dict, worktree: Path, base_sha: str, sha: str, summary: str, engine_ok: bool,
-                heading: str = "Forge: modifica pronta") -> None:
-        """Forge's own tests on the result, then the owner's approval (or auto merge when allowed)."""
+    # ── engine pass, Claude limit, team plan (Cindy 15 + 31) ────────────────
+    def _engine_pass(self, task: dict, engine, worktree: Path, prompt: str, test_runner):
+        """One engine run in the task worktree. None = stopped by the Claude usage limit (already handled)."""
+        self.artifacts.start_transcript(task["id"], prompt, engine.name)
+        result = engine.run(worktree, prompt, test_runner,
+                            on_event=lambda ev: self.artifacts.append(task["id"], ev))
+        if engine.name == "claude":
+            self.artifacts.import_claude(task["id"])
+        self.artifacts.write_text(task["id"], "engine.log", result.log_tail)
+        if engine.name == "claude" and not result.ok and self.claude_budget.looks_like_limit(
+                f"{result.summary} {result.log_tail}"):
+            self._wait_for_limit(task, worktree)
+            return None
+        return result
+
+    LIMIT_MAX_RESTARTS = 3
+
+    def _wait_for_limit(self, task: dict, worktree: Path) -> None:
+        """Claude limit: the task waits for the reset instead of failing (Cindy 15). Partial work is kept on
+        ``refs/forge/resume/<id>``; a one-off agenda task at the reset time resumes it («continua»)."""
+        until = self.claude_budget.mark_exhausted()
+        self._save_settings()
+        # A fact for the presence engine ("Stanco" overlay): no Claude quota left until the reset.
+        self.presence.signal("resource.claude_quota_left", 0, meta={"until": until},
+                             ttl_seconds=self._seconds_until(until))
+        partial = git_ops.commit_all(worktree, f"forge({task['id']}): lavoro parziale prima del limite",
+                                     self.cfg.git_author_name, self.cfg.git_author_email)
+        head = git_ops.rev(worktree)
+        progressed = bool(partial) or head != task.get("resume_from")
+        if head != task.get("base_sha"):
+            git_ops.git(self.cfg.repo_path, "update-ref", f"refs/forge/resume/{task['id']}", head, check=False)
+        with self._lock:
+            if head != task.get("base_sha"):
+                task["resume_base"] = task.get("resume_base") or task.get("base_sha")
+                task["resume_from"] = head
+            task["limit_restarts"] = 0 if progressed else int(task.get("limit_restarts") or 0) + 1
+            restarts = task["limit_restarts"]
+        self._cleanup(task, delete_branch=True)
+        if restarts >= self.LIMIT_MAX_RESTARTS:
+            task["error"] = "Claude usage limit reached, no progress after 3 restarts"
+            self._set_state(task, "failed", f"Claude usage limit: {restarts} restarts without progress")
+            self._notify(task, f"⛔ Forge <code>{task['id'][:6]}</code>: fermo al limite di Claude per "
+                               f"{restarts} volte senza progressi. Riprova a mano quando vuoi.")
+            return
+        if task.get("budgeted"):
+            self._set_state(task, "scheduled", f"Claude usage limit: paused until {until}")
+        else:
+            self._set_state(task, "waiting_limit", f"Claude usage limit: resumes at {until}")
+            import random
+            at = datetime.fromisoformat(until) if "T" in str(until) else datetime.now(timezone.utc)
+            at = (at if at.tzinfo else at.replace(tzinfo=timezone.utc)) + timedelta(seconds=random.randint(30, 90))
+            self.agenda.plan(f"forge.resume.{task['id']}", f"Forge: riprendi {task['request'][:60]}", at,
+                             action={"service": "hephaestus", "method": "POST",
+                                     "path": f"/api/hephaestus/forge/tasks/{task['id']}/resume",
+                                     "timeout_seconds": 30},
+                             description="Riprende il task di sviluppo fermato dal limite di Claude.")
+        self._notify(task, f"⏸ Limite di Claude raggiunto. Il lavoro <code>{task['id'][:6]}</code> riprende "
+                           f"da dove era alle {_esc(str(until)[11:16] or str(until)[:16])}.")
+
+    def resume(self, task_id: str, by: str = "agenda") -> dict[str, Any]:
+        """One-off agenda task at the Claude reset (or the owner): a task waiting for the limit starts again."""
+        task = self._require(task_id)
+        if task.get("state") != "waiting_limit":
+            return {**task, "resumed": False}
+        self._enqueue(task, f"resumed after the Claude limit by {by}")
+        return task
+
+    def _team_plan(self, task: dict) -> list[dict]:
+        if task.get("external") or len(task.get("services") or []) < forge_settings.get_int(
+                forge_settings.TEAM_MIN_SERVICES, 1):
+            return []
+        return self.reviewer.plan(task["request"], task.get("services") or [])
+
+    def _engine_for_piece(self, piece: dict, default):
+        wanted = "oracle" if piece.get("difficulty") == "semplice" else "claude"
+        engine = self.engines.get(wanted)
+        if engine is not None and engine.available()[0]:
+            return engine
+        return default
+
+    def _run_tests(self, task: dict, worktree: Path, base_sha: str) -> tuple[list[str], Any, str]:
         changed = git_ops.changed_files(worktree, base_sha)
         tests_ok, tests_out = run_test_command(
             worktree, self.cfg.test_cmd, self._test_paths(worktree, changed, task["services"]))
         self.artifacts.write_text(task["id"], "tests.txt", tests_out)
+        return changed, tests_ok, tests_out
+
+    def _auto_review(self, task: dict, worktree: Path, base_sha: str, summary: str, tests_out: str) -> dict:
+        acceptance = forge_review.acceptance_from_workdoc(worktree, task.get("workdoc") or "")
+        return self.reviewer.review(request=task["request"], acceptance=acceptance,
+                                    diff=git_ops.diff(worktree, base_sha, max_chars=60000),
+                                    tests=tests_out, summary=summary)
+
+    def _review(self, task: dict, worktree: Path, base_sha: str, sha: str, summary: str, engine_ok: bool,
+                heading: str = "Forge: modifica pronta", engine=None, test_runner=None) -> None:
+        """Forge's own tests, the automatic review (+ one round of fixes by the engine), then the owner's
+        approval (or auto merge when allowed)."""
+        changed, tests_ok, tests_out = self._run_tests(task, worktree, base_sha)
+        self._set_state(task, "reviewing", f"tests_ok={tests_ok}")
+        review = self._auto_review(task, worktree, base_sha, summary, tests_out)
+        review["rounds"] = 0
+        if review["blocking"] and engine is not None:
+            fix = self._engine_pass(task, engine, worktree, forge_review.fix_prompt(review["issues"]), test_runner)
+            if fix is None:
+                return                          # Claude limit: the task waits and resumes later
+            review["rounds"] = 1
+            new_sha = git_ops.commit_all(worktree, f"forge({task['id']}): correzioni della revisione\n\n"
+                                         f"{fix.summary[:1000]}", self.cfg.git_author_name, self.cfg.git_author_email)
+            if new_sha:
+                sha, summary = new_sha, f"{summary}\n\nCorrezioni dopo la revisione: {fix.summary[:600]}"
+                engine_ok = engine_ok and fix.ok
+                changed, tests_ok, tests_out = self._run_tests(task, worktree, base_sha)
+                second = self._auto_review(task, worktree, base_sha, summary, tests_out)
+                review = {**second, "rounds": 1, "first": review["issues"]}
+        self.artifacts.write_text(task["id"], "review.json", json.dumps(review, ensure_ascii=False, indent=1))
         with self._lock:
             task.update({
                 "commit_sha": sha,
@@ -875,6 +1008,8 @@ class Forge:
                 "touched_services": services_from_paths(changed),
                 "diff_stat": git_ops.diff_stat(worktree, base_sha),
                 "tests": {"ok": tests_ok, "output_tail": tests_out[-3000:]},
+                "review": review,
+                "summary": summary,
             })
         if forge_settings.get_bool(forge_settings.PUSH_BRANCH):
             try:
@@ -887,10 +1022,11 @@ class Forge:
         short = task["id"][:6]
         self._notify(task, (
             f"🧩 <b>{_esc(heading)}</b> <code>{short}</code> · {tests_label}\n"
-            f"{_esc(summary[:900])}\n\n<pre>{_esc(task['diff_stat'][-900:])}</pre>\n"
+            f"{_esc(summary[:900])}\n\n{_esc(forge_review.card(review))}\n\n"
+            f"<pre>{_esc(task['diff_stat'][-900:])}</pre>\n"
             f"Rispondi \"approva sviluppo {short}\" per applicarla, \"rifiuta {short}\" per scartarla."))
 
-        if task.get("auto_merge") and tests_ok is True and engine_ok:
+        if task.get("auto_merge") and tests_ok is True and engine_ok and not review.get("blocking"):
             with self._lock:
                 task["approved_by"] = "policy:auto_merge"
             self._set_state(task, "approved", "auto_merge policy")

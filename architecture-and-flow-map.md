@@ -226,6 +226,19 @@ flowchart LR
 - Secret form: module event `_secret` → client form → Hermes `/api/notifications/{id}/secret` → Hub → the module.
   Hermes never stores or logs the values.
 
+### Forge review, team and limit flow (same dossier, W3)
+- Task run → tests → `reviewing`: Oracle `/api/llm/generate` (`forge.revisione`, evidence only) → blocking issues
+  back to the engine once → `awaiting_review` with the review card. ≥ N services: `forge.piano` pieces first.
+- Claude limit → partial commit `refs/forge/resume/<id>` → `waiting_limit` → agenda one-off `forge.resume.<id>` at the
+  reset → Chronos → Hub → `POST /api/hephaestus/forge/tasks/{id}/resume`.
+
+### Memory learning and performance flow (same dossier, W3)
+- Athena consolidation → Archive memory + `athena-store` learning row; «Annulla» → Athena → Archive PATCH memory.
+  Memory review → proposals → Hermes card → Athena apply/dismiss.
+- Argus monitor cycle → performance sample (Docker socket read-only, Hub `/health`, Archive `/api/blobs/usage` via
+  Hub) → alert worker → Hermes. Atlas recipe broken → WARNING log → Argus log alert / Forge proposal.
+- Telegram export/import: Telegram → Hub → each module `/api/transfer/*` (the client orchestrates, like the WebUI).
+
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate`, Forge and Wardrobe use
 `/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.annunci`, `athena.strategia`,
