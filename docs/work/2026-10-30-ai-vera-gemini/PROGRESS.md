@@ -34,5 +34,7 @@
 ## Voice (2026-10-30, after Marko allowed huggingface.co)
 - [x] Echo /speak with kokoro: 2.5 s ogg, ok
 - [x] Bug: piped WAV header 0xFFFFFFFF → duration 134217 s → «audio troppo lungo» on every transcription; fixed + test
-- [ ] Transcription round trip: model files come from *.hf.co (cas-bridge/xethub), still blocked; containers resolve
-  only domains allowed at session start, so download on the host through the proxy and copy into the echo volume
+- [x] PR #65 merged
+- [x] Transcription round trip (Marko allowed *.hf.co; Whisper small downloaded on the host, copied into the echo
+  volume): failed on every audio, faster-whisper's PyAV call (metadata_errors) breaks on PyAV 19 → Whisper now gets
+  float samples; «Ciao Marko, domani alle nove hai il dentista» → «Ciao Marco, domani alle 9 e il dentista!» in 6 s

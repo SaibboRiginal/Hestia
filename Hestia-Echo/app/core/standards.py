@@ -156,15 +156,20 @@ class WhisperLocal(Standard):
         if not self._installed():
             raise EngineError("faster-whisper non installato")
         m = self._model(model or "small", str(opts.get("device") or "auto"))
-        with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
-            tmp.write(data)
-            tmp.flush()
-            segments, info = m.transcribe(tmp.name, language=None if language in ("", "auto") else language,
-                                          beam_size=int(opts.get("beam_size") or 5),
-                                          vad_filter=bool(opts.get("vad", True)),
-                                          initial_prompt=str(opts.get("initial_prompt") or "") or None)
-            text = " ".join(s.text.strip() for s in segments).strip()
+        segments, info = m.transcribe(_whisper_samples(data), language=None if language in ("", "auto") else language,
+                                      beam_size=int(opts.get("beam_size") or 5),
+                                      vad_filter=bool(opts.get("vad", True)),
+                                      initial_prompt=str(opts.get("initial_prompt") or "") or None)
+        text = " ".join(s.text.strip() for s in segments).strip()
         return {"text": text, "language": getattr(info, "language", language) or language}
+
+
+def _whisper_samples(data: bytes):
+    """16 kHz mono WAV → float32 samples, so faster-whisper never decodes a file itself: its PyAV call breaks on
+    PyAV ≥ 14 («open() got an unexpected keyword argument 'metadata_errors'», bench 2026-10-30)."""
+    import numpy as np
+    frames, rate, width, channels = audio.wav_frames(audio.to_pcm16k(data))
+    return np.frombuffer(frames, dtype="<i2").astype(np.float32) / 32768.0
 
 
 PIPER_ITALIAN = ["it_IT-paola-medium", "it_IT-riccardo-x_low"]

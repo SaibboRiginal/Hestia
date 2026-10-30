@@ -131,7 +131,8 @@ never changes.
 
 Audio plumbing note: ffmpeg writing WAV to a pipe cannot fill the header sizes (0xFFFFFFFF); `to_pcm16k`
 rewrites the header and `wav_duration` counts the frames really there (bench 2026-10-30: a 2.5 s reply was read as
-134217 s and rejected as «audio troppo lungo»).
+134217 s and rejected as «audio troppo lungo»). Local Whisper gets float samples, never a file: faster-whisper's own
+decoding calls PyAV with an argument PyAV ≥ 14 no longer has (every transcription failed, same bench).
 
 ## Configuration (infrastructure only)
 
