@@ -192,6 +192,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   and the sentences play in order; speaking again (or «Interrompi») stops the voice and the answer. No external live
   service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando.
 - Hub registration declares `voice_usecases` (`webui.vocale`, `webui.ascolta`, `webui.live.ascolto`, `webui.live.voce`).
+- Icons `frown`, `meh`, `laugh` (with `smile`: the five mood faces of «Umore», 2026-10-30) in the shared icon set
+  (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.
 - Icons `mic`, `mic-off`, `volume`, `waveform` in the shared icon set (`hx-icon` and the SDK's `hxk-icon`).
 
 ### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifiche`, `services/notifications.service.ts`)
