@@ -12,6 +12,24 @@ from agents.providers import get_provider, is_provider_type
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
+_OPENAPI_KEYS = {"type", "description", "enum", "properties", "required", "items", "format", "nullable",
+                 "minimum", "maximum", "minItems", "maxItems", "anyOf", "default", "title"}
+
+
+def _openapi_subset(schema):
+    """JSON Schema → the subset the old ``parameters`` field takes: unknown keys dropped, arrays get ``items``."""
+    if not isinstance(schema, dict):
+        return schema
+    out = {k: v for k, v in schema.items() if k in _OPENAPI_KEYS}
+    if isinstance(out.get("properties"), dict):
+        out["properties"] = {k: _openapi_subset(v) for k, v in out["properties"].items()}
+    if out.get("type") == "array":
+        out["items"] = _openapi_subset(out.get("items") or {"type": "string"})
+    if isinstance(out.get("anyOf"), list):
+        out["anyOf"] = [_openapi_subset(v) for v in out["anyOf"]]
+    return out
+
+
 class UniversalAgent:
     """One provider + model. *provider* is a named provider (``core.services.llm_providers``: ``ollama``,
     ``gemini``, ``deepseek``…); ``self.provider`` is its type (standard), ``self.provider_name`` its name.
@@ -216,16 +234,17 @@ class UniversalAgent:
         raise RuntimeError(f"Unknown provider: {self.provider}")
 
     def _ask_with_tools_gemini(self, user_message: str, tools: list[dict]) -> dict:
+        # parameters_json_schema takes the tools' JSON Schema as is: the OpenAPI-subset `parameters` field is
+        # refused by the SDK (contentMediaType) or by the API (array without items) and one bad tool fails the call.
         declarations: list[types.FunctionDeclaration] = []
         for tool in tools:
-            declarations.append(
-                types.FunctionDeclaration(
-                    name=str(tool.get("name", "")).strip(),
-                    description=str(tool.get("description", "")).strip(),
-                    parameters=tool.get("parameters") or {
-                        "type": "object", "properties": {}},
-                )
-            )
+            schema = tool.get("parameters") or {"type": "object", "properties": {}}
+            decl = {"name": str(tool.get("name", "")).strip(), "description": str(tool.get("description", "")).strip()}
+            if "parameters_json_schema" in types.FunctionDeclaration.model_fields:
+                decl["parameters_json_schema"] = schema
+            else:   # google-genai < 1.20 (CI pins an older httpx): the OpenAPI subset, cleaned
+                decl["parameters"] = _openapi_subset(schema)
+            declarations.append(types.FunctionDeclaration(**decl))
 
         response = self.client.models.generate_content(
             model=self.model_name,

@@ -210,6 +210,16 @@ def _approval_ttl() -> int:
     return _os.get_int(_os.APPROVAL_TTL, 30)
 
 
+def _error_payload_fails(outcome: tuple[bool, Any]) -> tuple[bool, Any]:
+    """A module answering 200 with ``{"error": …}`` (e.g. «niente da spostare») did not do it: not ok, so the
+    chat never shows «Fatto» nor lists it under «Ho fatto» (bench with a real model, 2026-10-30)."""
+    ok, payload = outcome
+    if ok and isinstance(payload, dict) and payload.get("error") and not payload.get("ok") \
+            and not payload.get("saved"):
+        return False, payload
+    return ok, payload
+
+
 class OracleEngine:
     """Top-level orchestrator — instantiate once per process."""
 
@@ -1354,7 +1364,9 @@ class OracleEngine:
                 kind = "memory.saved" if tname == "memory.save" else (
                     "action.done" if entry.get("ok") else "action.failed")
                 # Agenda / Forge effects get their own kind so clients refresh calendar / Sviluppo.
-                if entry.get("ok") and "agenda_assistente" in tname:
+                if entry.get("ok") and entry.get("confirm"):
+                    kind = "action.needs_approval"   # a proposal (Themis): nothing is done until the user confirms
+                elif entry.get("ok") and "agenda_assistente" in tname:
                     kind = "agenda.planned"
                 elif entry.get("ok") and "forge_develop" in tname:
                     kind = "forge.task"
@@ -2291,8 +2303,11 @@ class OracleEngine:
                 continue
 
             # Schema: Hestia-MCP already gives it (declared arguments, or the variables of the tool's templates).
+            # The tool's own JSON Schema when there is one: enums, array items and nested fields tell the model
+            # the valid values (the flattened arguments_schema lost them; Gemini refused arrays without items).
             args_schema = cmd.get("arguments_schema") or {}
-            schema = {
+            schema = cmd.get("input_schema") if isinstance(cmd.get("input_schema"), dict) \
+                and isinstance(cmd["input_schema"].get("properties"), dict) else {
                 "type": "object",
                 "properties": {k: {"description": str(v.get("description", k)), "type": str(v.get("type", "string"))}
                                for k, v in args_schema.items()},
@@ -2303,13 +2318,13 @@ class OracleEngine:
                 def _hub_command_handler(**kwargs):
                     # Hestia-MCP fills templates/path and routes through Hub (hestia_common.tool_call).
                     args = {k: v for k, v in kwargs.items() if v is not None}
-                    return self._mcp.call(
+                    return _error_payload_fails(self._mcp.call(
                         str(command_def.get("command")), args,
                         session_id=session_id, notify_target=str(notify_target or ""),
                         trace_id=str(trace_id or ""), service=str(command_def.get("service", "")),
                         origin_client=self._session_clients.get(session_id) or "",
                         origin=self._origin_header(session_id),
-                        timeout=self._policy_timeout("action_service_route"))
+                        timeout=self._policy_timeout("action_service_route")))
 
                 return _hub_command_handler
 

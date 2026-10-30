@@ -103,6 +103,18 @@ class TestExtractToolCall:
         assert result is not None
         assert result["name"] == "get_listings"
 
+    def test_python_style_call_as_whole_answer(self):
+        """Gemini Flash-Lite answered «memory.search(query="caffè")» as text: it is a tool call (bench 2026-10-30)."""
+        assert _extract_tool_call('memory.search(query="caffè")') == {"name": "memory.search",
+                                                                      "params": {"query": "caffè"}}
+        assert _extract_tool_call('`agenda(days=2, all=True)`') == {"name": "agenda",
+                                                                     "params": {"days": 2, "all": True}}
+
+    def test_python_style_call_inside_prose_is_not_a_call(self):
+        assert _extract_tool_call('Puoi usare memory.search(query="x") per cercare.') is None
+        assert _extract_tool_call('somma(1, 2)') is None
+        assert _extract_tool_call('f(x=open("a"))') is None
+
     def test_openai_function_wrapper_format(self):
         """OpenAI-style function wrapper is parsed via fenced JSON path."""
         text = "```json\n" + _openai_tool_call("search_scout", {"city": "Torino"}) + "\n```"
@@ -507,3 +519,66 @@ class TestRunAgentLoop:
             action_intent=True,
         )
         assert any("ACTION INTENT" in p for p in captured)
+
+
+@pytest.mark.unit
+class TestFailedWritesNote:
+    """A write that failed is never told as done (bench with a real model 2026-10-30: «Dentista fissato»)."""
+
+    def _run(self, *tools):
+        prompts: list[str] = []
+        replies = iter([_xml_tool_call(tools[0].name, {"title": "Dentista"}), "Fatto."])
+
+        def ask(prompt: str) -> str:
+            prompts.append(prompt)
+            return next(replies, "Fatto.")
+
+        run_agent_loop(user_message="Mettimi il dentista giovedì", history_text="", preference_facts=[],
+                       tools=list(tools), ask_fn=ask)
+        return prompts
+
+    def test_failed_write_puts_the_note_in_the_next_prompt(self):
+        tool = _make_tool("create_event", (False, {"detail": "event: Field required"}))
+        tool.writes, tool.title = True, "Nuovo evento"
+        prompts = self._run(tool)
+        assert "AZIONI NON RIUSCITE: Nuovo evento" in prompts[-1]
+        assert "AZIONI NON RIUSCITE" not in prompts[0]
+
+    def test_failed_read_or_successful_write_adds_no_note(self):
+        read = _make_tool("calendar_list_events", (False, "timeout"))
+        assert not any("AZIONI NON RIUSCITE" in p for p in self._run(read))
+        write = _make_tool("create_event", (True, {"ok": True}))
+        write.writes = True
+        assert not any("AZIONI NON RIUSCITE" in p for p in self._run(write))
+
+
+@pytest.mark.unit
+class TestDuplicateWrites:
+    """The same write twice in one loop runs once (bench 2026-10-30: three identical routines)."""
+
+    def _loop(self, tool, *replies):
+        ask = _ask_fn_sequence(*replies)
+        return run_agent_loop(user_message="Ricordami ogni lunedì di pesarmi", history_text="",
+                              preference_facts=[], tools=[tool], ask_fn=ask)
+
+    def test_same_title_again_is_not_run(self):
+        tool = _make_tool("routine_create", (True, {"id": 42}))
+        tool.writes = True
+        call = _xml_tool_call("routine_create", {"title": "Promemoria peso", "when": "lun 9"})
+        call2 = _xml_tool_call("routine_create", {"title": "promemoria  PESO", "when": "lunedì 09:00"})
+        answer, _, tool_log = self._loop(tool, call, call2, "Fatto: ogni lunedì alle 9.")
+        assert tool.handler.call_count == 1
+        assert len(tool_log) == 1
+        assert answer
+
+    def test_different_titles_and_reads_still_run(self):
+        tool = _make_tool("routine_create", (True, {"id": 42}))
+        tool.writes = True
+        a = _xml_tool_call("routine_create", {"title": "Peso"})
+        b = _xml_tool_call("routine_create", {"title": "Acqua"})
+        self._loop(tool, a, b, "Fatto.")
+        assert tool.handler.call_count == 2
+        read = _make_tool("agenda", (True, {"items": []}))
+        q = _xml_tool_call("agenda", {"title": "x"})
+        self._loop(read, q, q, "Niente.")
+        assert read.handler.call_count >= 1

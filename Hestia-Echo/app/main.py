@@ -501,7 +501,9 @@ app.include_router(create_log_control_router("hestia_echo"))
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
     caps: dict = {"voice": {"api": API, "standards": list(STANDARDS)},
-                  "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["voice"]}
+                  "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["voice"],
+                  # Owner of the "voice" tools in chat: without it Oracle's domain gate dropped them (2026-10-30).
+                  "owns_tool_domains": ["voice"]}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:

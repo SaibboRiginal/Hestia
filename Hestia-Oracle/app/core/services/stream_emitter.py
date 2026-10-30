@@ -74,8 +74,8 @@ def changes_from_log(tool_log: list[dict]) -> list[dict]:
     how to undo it in its result (``{"tool", "args", "label"}``, or a tool name + the call's ``id``)."""
     out = []
     for entry in tool_log or []:
-        if not entry.get("ok") or not entry.get("writes"):
-            continue
+        if not entry.get("ok") or not entry.get("writes") or entry.get("confirm"):
+            continue   # a proposal waiting for the user's confirmation changed nothing yet
         undo = entry.get("undo")
         if isinstance(undo, str) and undo.strip():
             params = entry.get("params") or {}

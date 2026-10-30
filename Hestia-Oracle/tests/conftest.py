@@ -157,9 +157,9 @@ def plain_json_tool_call_factory():
 
 
 # ── Live-LLM marker ───────────────────────────────────────────────────────────
-# llm_live tests are ALWAYS skipped unless --run-live is passed explicitly.
-# They require a running Ollama instance and are too heavy for regular CI/dev loops.
-# Usage: python -m pytest tests/ -m llm_live --run-live
+# llm_live tests are ALWAYS skipped unless --run-live is passed explicitly. They talk to a real model
+# (tests/live_llm.py: local Ollama, or Gemini when ORACLE_KEY_GEMINI is set) and are not deterministic.
+# Usage: python -m pytest Hestia-Oracle/tests -m llm_live --run-live -s
 
 
 def pytest_addoption(parser):
@@ -167,33 +167,31 @@ def pytest_addoption(parser):
         "--run-live",
         action="store_true",
         default=False,
-        help="Run llm_live tests (requires Ollama)",
+        help="Run llm_live tests against a real model (Ollama or Gemini, see tests/live_llm.py)",
     )
 
 
+def pytest_configure(config):
+    """Without --run-live a provider key in the shell (cloud session, Codespace) must not change the
+    deterministic tests: drop every ORACLE_KEY_* so cloud chain steps stay "not available"."""
+    if not config.getoption("--run-live"):
+        for name in [k for k in os.environ if k.startswith("ORACLE_KEY_")]:
+            os.environ.pop(name, None)
+
+
 def pytest_collection_modifyitems(config, items):
-    """Skip llm_live tests unless --run-live is passed AND Ollama is reachable."""
+    """Skip llm_live tests unless --run-live is passed AND the live model is reachable."""
     run_live = config.getoption("--run-live")
-
-    ollama_available = False
+    reason = "--run-live not set. Use: python -m pytest tests/ -m llm_live --run-live"
     if run_live:
-        import urllib.request
-        ollama_url = os.environ.get(
-            "OLLAMA_URL", "http://localhost:11434/api/generate")
-        ollama_base = ollama_url.rsplit("/api/", 1)[0]
-        try:
-            urllib.request.urlopen(f"{ollama_base}/api/tags", timeout=3)
-            ollama_available = True
-        except Exception:
-            pass
-
-    skip_live = pytest.mark.skip(
-        reason="Ollama not reachable or --run-live not set. "
-               "Use: python -m pytest tests/ -m llm_live --run-live")
+        from live_llm import PROVIDER, MODEL, reachable
+        ok, detail = reachable()
+        run_live = ok
+        reason = f"live model {PROVIDER}/{MODEL} not usable: {detail}"
+    skip_live = pytest.mark.skip(reason=reason)
     for item in items:
-        if "llm_live" in item.keywords:
-            if not run_live or not ollama_available:
-                item.add_marker(skip_live)
+        if "llm_live" in item.keywords and not run_live:
+            item.add_marker(skip_live)
 
 
 class HubBackedMCP:

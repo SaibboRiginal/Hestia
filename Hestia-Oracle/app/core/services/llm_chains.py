@@ -31,18 +31,20 @@ def _step(provider: str, model: str, **extra) -> dict:
 
 DEFAULT_CHAINS: dict[str, dict] = {
     # llama-server first (brainstorm D17: slots + saved context); skipped at once when it is not running.
+    # Gemini by alias (…-latest): Google retires dated models for new keys (2.0-flash, 2.5-flash-lite in 2026-10).
     "veloce": {"label": "Veloce", "steps": [
-        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash-lite"),
-        _step("gemini", "gemini-2.0-flash-lite")]},
+        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-lite-latest"),
+        _step("gemini", "gemini-flash-latest")]},
     "potente": {"label": "Potente", "steps": [
-        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash"),
-        _step("gemini", "gemini-2.5-flash-lite")]},
+        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
+        _step("gemini", "gemini-flash-lite-latest")]},
     "codice": {"label": "Codice", "steps": [
-        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash"), _step("gemini", "gemini-2.0-flash")]},
+        _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
+        _step("gemini", "gemini-flash-lite-latest")]},
     # One step only: vectors of different models are not comparable (memory and document search would break).
     "embedding": {"label": "Embedding", "steps": [_step("ollama", "qwen3-embedding:0.6b")]},
     "visione": {"label": "Visione", "steps": [
-        _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-2.5-flash")]},
+        _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest")]},
 }
 EMBEDDING_CHAIN = "embedding"
 DESCRIBE_USECASE = "oracle.descrivi_immagine"

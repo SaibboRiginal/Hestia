@@ -160,8 +160,8 @@ def public_view(check: bool = False) -> list[dict[str, Any]]:
 
 
 # Curated Gemini choices (free text is accepted too).
-GEMINI_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash",
-                 "gemini-2.0-flash-lite", "gemini-embedding-001"]
+GEMINI_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest", "gemini-2.5-flash",
+                 "gemini-2.5-pro", "gemini-embedding-001"]
 
 
 def list_models(name: str) -> list[str]:

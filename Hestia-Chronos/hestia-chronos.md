@@ -104,6 +104,9 @@ Chronos no longer owns provider credentials/OAuth flows and no longer calls Goog
   "target_providers": []
 }
 ```
+The flat shape of the `create_event` / `calendar_create_event` tools is accepted too: `{title, start_datetime,
+end_datetime?, description?, location?, provider?, calendar_id?}` is wrapped into `event` (`provider` →
+`target_providers`); no end = one hour after the start (before 2026-10-30 every assistant call was a 422).
 
 ---
 

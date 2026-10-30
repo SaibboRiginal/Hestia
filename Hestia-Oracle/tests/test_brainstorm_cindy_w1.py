@@ -152,7 +152,9 @@ def test_changes_from_log():
             "undo": {"tool": "finance_delete", "args": {"id": "t1"}}},
            {"tool": "finance_update", "ok": True, "writes": True, "params": {"id": "t2"}, "undo": "finance_restore"},
            {"tool": "finance_search", "ok": True, "writes": False},
-           {"tool": "x", "ok": False, "writes": True}]
+           {"tool": "x", "ok": False, "writes": True},
+           # a proposal waiting for confirmation changed nothing yet (bench 2026-10-30)
+           {"tool": "settings_propose", "ok": True, "writes": True, "confirm": {"question_id": "themis:p1"}}]
     items = stream_emitter.changes_from_log(log)
     assert [i["tool"] for i in items] == ["finance_add", "finance_update"]
     assert items[0]["undo"] == {"tool": "finance_delete", "args": {"id": "t1"}, "label": "Annulla"}

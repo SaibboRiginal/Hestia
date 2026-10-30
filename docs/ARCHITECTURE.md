@@ -542,6 +542,11 @@ No code-only behavior changes are considered complete without synchronized docs.
 2. Command entries must include accurate `service`, `method`, `path`, and argument schema/templates to support deterministic execution.
    Each module also declares in its registration `capabilities.when_to_use` (one line, the assistant's «MODULI»
    index) and `capabilities.manual` (loaded on demand by the tool `module_manual`).
+   The chat keeps a module's tools only when the module owns the turn's domain: `layer:domain`, or — for a core
+   module with assistant tools (Themis `settings`, Echo `voice`, Argus/Hephaestus `system`, Hecate `weather`) —
+   `capabilities.owns_tool_domains`. `module_tool_domains` alone does not keep them (2026-10-30, real-model bench).
+   Argument schemas are full JSON Schema (`items` for arrays, `enum` for choices): models read them to pick valid values.
+   A write that did nothing answers an error status, not 200 `{"error": …}` (Oracle treats that as failed anyway).
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
    `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`

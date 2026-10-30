@@ -22,9 +22,9 @@ What it adapts, and only here (docker-compose.cloud-test.yml + this script; up-a
   official images, untouched.
 - TLS proxy: when a proxy CA exists (HESTIA_CLOUD_TEST_CA, or the Claude session's one) it is layered into
   the base images so pip, npm, NuGet and the services trust it. Nothing of this reaches the real images.
-- Test credentials (Codespaces secrets → environment, never files): GEMINI_API_KEY, TELEGRAM_BOT_TOKEN +
+- Test credentials (Codespaces secrets → environment, never files): GEMINI_API_KEY (or ORACLE_KEY_GEMINI), TELEGRAM_BOT_TOKEN +
   ALLOWED_USER_ID (test bot), GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (temporary "Desktop app" client; Google on).
-- LLM: GEMINI_API_KEY in the environment → Oracle's chat use cases use a Gemini chain (Themis); otherwise a
+- LLM: GEMINI_API_KEY in the environment → every Oracle chain but embedding becomes Gemini (Themis); otherwise a
   deterministic fake Ollama answers "[LLM finto] …" and the report says so.
 Generated .env files hold no personal data and are git-ignored; existing ones are never overwritten.
 SPEC: docs/work/2026-10-19-banco-prova-cloud/SPEC.md
@@ -63,10 +63,15 @@ BASE_IMAGES = {
     "swaggerapi/swagger-ui": f"{MIRROR}/swaggerapi/swagger-ui",
 }
 NEEDS_CA = ("node:22-alpine", "mcr.microsoft.com/dotnet/sdk:9.0")  # build stages that download packages
-# Gemini chain for the bench (Oracle a blocchi: chains + use cases, key ORACLE_KEY_GEMINI from GEMINI_API_KEY).
-GEMINI_CHAIN = {"label": "Gemini (banco)", "steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
-                                                     {"provider": "gemini", "model": "gemini-2.5-flash-lite"}]}
-GEMINI_USECASES = ("oracle.generale", "oracle.ragionamento", "oracle.documenti")
+# Gemini steps of every bench chain (Oracle a blocchi; key ORACLE_KEY_GEMINI from GEMINI_API_KEY). The free tier
+# gives each model about 20 requests a day: four models = four quotas, when one is out (or busy, 503) the chain
+# moves on. Flash-Lite first: seconds per answer, the bigger Flash thinks for a minute on Hestia's 240 tools.
+GEMINI_CHAIN = {"label": "Gemini (banco)", "steps": [
+    {"provider": "gemini", "model": "gemini-flash-lite-latest"}, {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
+    {"provider": "gemini", "model": "gemini-flash-latest"}, {"provider": "gemini", "model": "gemma-4-26b-a4b-it"}]}
+# A Claude cloud environment may hold the key already under Oracle's own name: the bench accepts both.
+if os.getenv("ORACLE_KEY_GEMINI") and not os.getenv("GEMINI_API_KEY"):
+    os.environ["GEMINI_API_KEY"] = os.environ["ORACLE_KEY_GEMINI"]
 WEBUI = "http://localhost:19015"
 
 
@@ -305,17 +310,23 @@ def wait_healthy(names: list[str], timeout: int = 240) -> dict[str, int]:
 
 
 def use_gemini() -> None:
-    """Point Oracle's chat use cases at a Gemini chain through Themis (the key comes from the environment)."""
+    """Real brain on the bench: every chain except embedding becomes the Gemini chain (Themis), so Oracle's and
+    the modules' use cases all answer from Gemini; embeddings stay on the fake LLM. Oracle declares
+    ``oracle.chains`` a little after /health is green: wait for the key (a PUT before that is a 404)."""
     themis = f"http://localhost:{ports().get('themis', 19016)}/api/settings/key"
-    code, body = http("GET", f"http://localhost:{ports().get('oracle', 19004)}/api/llm/chains")
-    chains = {name: {"label": c.get("label", name), "steps": [{"provider": st["provider"], "model": st["model"]}
-                                                           for st in c.get("steps", [])]}
-              for name, c in ((body or {}).get("chains") or {}).items()} if code == 200 and isinstance(body, dict) else {}
-    chains["gemini-banco"] = GEMINI_CHAIN
-    for key, value in (("oracle.chains", chains),
-                       ("oracle.usecases", {uc: {"chain": "gemini-banco"} for uc in GEMINI_USECASES})):
-        code, _ = http("PUT", f"{themis}/{key}", {"value": value, "actor": "cloud-test"})
-        log("setting_set", key=key, status=code)
+    for _ in range(30):
+        code, body = http("GET", f"{themis}/oracle.chains")
+        if code == 200 and isinstance(body, dict):
+            break
+        time.sleep(3)
+    else:
+        log("[🔄] gemini_skipped", reason="oracle.chains not registered in Themis", status=code)
+        return
+    chains = body.get("value") or body.get("default") or {}
+    chains = {name: ({**c, "label": f"{c.get('label', name)} · Gemini (banco)", "steps": GEMINI_CHAIN["steps"]}
+                     if name != "embedding" else c) for name, c in chains.items()}
+    code, _ = http("PUT", f"{themis}/oracle.chains", {"value": chains, "actor": "cloud-test"})
+    log("setting_set", key="oracle.chains", status=code, chains=",".join(sorted(chains)))
 
 
 # ── check ────────────────────────────────────────────────────────────────────

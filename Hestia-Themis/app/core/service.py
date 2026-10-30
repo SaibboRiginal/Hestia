@@ -48,8 +48,12 @@ def _short(value: Any, limit: int = 80) -> str:
 CLIENT_MODULES = {"webui", "telegram"}
 
 
-def _describe(value: Any) -> str:
-    """Readable preview for a confirmation card: lists of titled objects become «A» (3), «B» (5)."""
+def _describe(value: Any, d: dict | None = None) -> str:
+    """Readable preview for a confirmation card: lists of titled objects become «A» (3), «B» (5); a choice
+    shows its label («Diretto», not «direct»)."""
+    for option in (d or {}).get("options") or []:
+        if isinstance(option, dict) and option.get("value") == value and option.get("label"):
+            return str(option["label"])
     if isinstance(value, dict) and len(value) == 1 and isinstance(next(iter(value.values())), list):
         value = next(iter(value.values()))
     if isinstance(value, list) and value and all(isinstance(v, dict) and v.get("title") for v in value):
@@ -377,6 +381,22 @@ class Themis:
         return {"session": session, "copied": sorted(merged), "revision": self.revision}
 
     # ── proposals (assistant → user's confirmation via Hermes) ─────────────
+    def _unknown_key_hint(self, key: str) -> str:
+        """A model guessing a key (``response_style``) gets the real candidates to retry with (bench 2026-10-30)."""
+        words = [w for w in re.split(r"[^a-zà-ù0-9]+", key.lower()) if len(w) > 3]
+        found: list[str] = []
+        for word in words:
+            try:
+                items = self.list(q=word, include_status=False)["items"]
+            except Exception:  # noqa: BLE001 — a hint must never break the error
+                items = []
+            found += [i["key"] for i in items if i["key"] not in found]
+        if not found:   # English guess, Italian labels: the personal settings are what a chat usually means
+            found = sorted((d["key"] for d in self.registry.definitions(None, "") if d.get("scope") == "user"),
+                           key=lambda k: ".chat." not in k)
+        tail = f" Chiavi vicine: {', '.join(found[:8])}." if found else ""
+        return f"impostazione {key} sconosciuta: cerca la chiave esatta con settings_search.{tail}"
+
     def propose(self, key: str, value: Any, *, proposer: str, reason: str = "",
                 scope: str | None = None, scope_id: str | None = None, origin: dict | None = None) -> dict:
         """``origin`` = ``{client, session_id}`` when the proposal is born in a chat: the answer is a
@@ -384,7 +404,7 @@ class Themis:
         Hermes keeps it only as a quiet inbox copy."""
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(self._unknown_key_hint(key), 404)
         if d.get("oracle", "propose") != "propose":
             raise ThemisError("questa impostazione può cambiarla solo l'utente", 403)
         try:
@@ -421,7 +441,7 @@ class Themis:
         if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
             who = f"{who[len('external:'):]} (AI esterna)"
         text = (f"⚙️ {who} propone di cambiare «{d.get('label') or d.get('key')}» "
-                f"({d.get('module')}): {_describe(current)} → {_describe(row.get('value'))}.")
+                f"({d.get('module')}): {_describe(current, d)} → {_describe(row.get('value'), d)}.")
         if row.get("reason"):
             text += f"\nMotivo: {row['reason']}"
         return text
@@ -439,7 +459,7 @@ class Themis:
         """Card for the chat that asked (Oracle ``question`` packet, kind confirm). Answer = one action id,
         routed by Oracle through Hub with ``<client>`` replaced by the answering client."""
         pid = str(row.get("proposal_id") or "")
-        prompt = f"«{d.get('label') or d.get('key')}»: {_describe(current)} → {_describe(row.get('value'))}"
+        prompt = f"«{d.get('label') or d.get('key')}»: {_describe(current, d)} → {_describe(row.get('value'), d)}"
         if row.get("reason"):
             prompt += f"\n{row['reason']}"
         actions = self._decision_actions(pid)
@@ -514,7 +534,7 @@ class Themis:
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),
                     "title": "Impostazione cambiata", "level": "success",
                     "_message": f"✅ Impostazione cambiata: {d.get('label') or proposal['key']} → "
-                                f"{_short(proposal.get('value'))}"})
+                                f"{_describe(proposal.get('value'), d)}"})
         return {"key": proposal["key"], "value": proposal.get("value"), "revision": self.revision}
 
     # ── outbound: always through Hermes ─────────────────────────────────────

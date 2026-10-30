@@ -1,10 +1,10 @@
 """Calendar event schemas shared across the service."""
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CalendarEvent(BaseModel):
@@ -40,8 +40,15 @@ class CalendarEvent(BaseModel):
     )
 
 
+_EVENT_FIELDS = set(CalendarEvent.model_fields)
+
+
 class CreateEventRequest(BaseModel):
-    """Request body for POST /api/calendar/events."""
+    """Request body for POST /api/calendar/events.
+
+    Also takes the flat shape of the ``create_event`` / ``calendar_create_event`` tools ({title, start_datetime,
+    …, provider}): the assistant sends that, and every call was a 422 «event: Field required» (bench with a
+    real model, 2026-10-30). No end = one hour after the start."""
 
     event: CalendarEvent
     target_providers: list[str] = Field(
@@ -54,6 +61,26 @@ class CreateEventRequest(BaseModel):
         description="Calendar identifier within the provider.  "
                     "'primary' selects the user's default calendar.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _flat_tool_shape(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if "event" not in data and "title" in data:
+            data["event"] = {k: data.pop(k) for k in list(data) if k in _EVENT_FIELDS}
+        provider = data.pop("provider", None)
+        if provider and not data.get("target_providers"):
+            data["target_providers"] = [provider]
+        event = data.get("event")
+        if isinstance(event, dict) and event.get("start_datetime") and not event.get("end_datetime"):
+            try:
+                start = datetime.fromisoformat(str(event["start_datetime"]).replace("Z", "+00:00"))
+                data["event"] = {**event, "end_datetime": (start + timedelta(hours=1)).isoformat()}
+            except ValueError:
+                pass  # the field validator reports the bad start
+        return data
 
 
 class ProviderEventResult(BaseModel):
