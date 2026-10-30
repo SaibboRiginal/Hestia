@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.4 | user via external chat (project thread «Riscrivere il README più chiaro») | done |
+| 1.5 | user via external chat (project thread «Riscrivere il README più chiaro») | done |
 
 ## Goal
 `readme.md` had grown into a deep reference (every env variable, MCP tool names, tunnel commands). A first-time
