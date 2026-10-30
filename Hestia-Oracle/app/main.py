@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
 from core.services import chat_sessions
+from core.services import turn_trace
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -398,8 +399,18 @@ def _chat_route(*args, **kwargs):
     return engine._memory_service._route_archive(*args, **kwargs)
 
 
+def _forget_if_excluded(session_id: str, body: dict, out: Any) -> Any:
+    """«Non usare per l'allenamento» (docs/work/2026-10-30-dataset-allenamento): Metis drops the saved turns."""
+    if str(body.get("training_off")).lower() in ("1", "true", "sì", "si", "yes"):
+        sid = str(session_id or (out.get("session_id") if isinstance(out, dict) else "") or "")
+        turn_trace.forget_session(engine._hub, sid)
+    return out
+
+
 def _chat_tool(fn, **kwargs):
     try:
+        if fn is chat_sessions.tool_tag:
+            return _forget_if_excluded(kwargs.get("session_id", ""), kwargs, fn(_chat_route, **kwargs))
         return fn(_chat_route, **kwargs)
     except chat_sessions.ChatSessionsError as exc:
         return {"error": exc.detail, "status": exc.status}
@@ -417,8 +428,9 @@ def _chats(fn, *args, **kwargs):
 @app.post("/api/chats/tag")
 def chats_tag(body: dict = Body(...)):
     """``chat_tag`` over REST (same handler)."""
-    return _chats(chat_sessions.tool_tag, **{k: v for k, v in body.items() if k in (
-        "tags", "remove", "title", "pinned", "color", "session_id", "replace")})
+    out = _chats(chat_sessions.tool_tag, **{k: v for k, v in body.items() if k in (
+        "tags", "remove", "title", "pinned", "color", "session_id", "replace", "training_off")})
+    return _forget_if_excluded(body.get("session_id", ""), body, out)
 
 
 @app.get("/api/chats")
@@ -448,8 +460,9 @@ def ui_chats_messages(session_id: str, limit: int = 200):
 
 @app.put("/api/ui/chats/{session_id}")
 def ui_chats_meta(session_id: str, body: dict = Body(...)):
-    """Title, tags (`tags` replace, `add_tags`, `remove_tags`), pinned; returns the previous meta as `before`."""
-    return _chats(chat_sessions.set_meta, session_id, {**body, "client": "webui"})
+    """Title, tags (`tags` replace, `add_tags`, `remove_tags`), pinned, training_off; returns the previous meta as
+    `before`."""
+    return _forget_if_excluded(session_id, body, _chats(chat_sessions.set_meta, session_id, {**body, "client": "webui"}))
 
 
 @app.get("/api/ui/documents")

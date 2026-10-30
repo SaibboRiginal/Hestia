@@ -14,6 +14,7 @@ logger = logging.getLogger("hestia_archive")
 
 ADDITIVE_COLUMNS = [
     ("calendar_items", "meta", "JSONB"),
+    ("chat_session_meta", "training_off", "BOOLEAN"),
     ("user_preferences", "memory_class", "VARCHAR"),
     ("user_preferences", "embedding", "vector(768)"),
     ("user_preferences", "domains", "JSONB"),

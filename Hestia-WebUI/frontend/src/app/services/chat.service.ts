@@ -257,6 +257,7 @@ export class ChatService {
         if (streamId && event.reply) {
           this.finalizeStreaming(streamId, event.reply, event.domain, event.session_id);
           if (event.origin?.label) this.patch(streamId, { origin: event.origin });
+          if (event.trace_id) this.patch(streamId, { traceId: event.trace_id });
         }
         break;
 

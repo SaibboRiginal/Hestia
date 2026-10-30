@@ -4537,7 +4537,7 @@ paths:
   /oracle/api/ui/chats/{session_id}:
     put:
       tags: [Oracle]
-      summary: Title, tags, pinned of a conversation (real path /api/ui/chats/{id}; client webui)
+      summary: "Title, tags, pinned, training_off of a conversation (real path /api/ui/chats/{id}; client webui; training_off=true also drops its saved turns in Metis)"
       servers:
         - url: http://localhost:19004
       parameters:
@@ -4553,7 +4553,7 @@ paths:
   /oracle/api/chats/tag:
     post:
       tags: [Oracle]
-      summary: Tool chat_tag over REST (tags, remove, title, pinned, color, session_id, replace)
+      summary: Tool chat_tag over REST (tags, remove, title, pinned, training_off, color, session_id, replace)
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -4759,9 +4759,18 @@ paths:
         "200": {description: "{items: [{name, color, count}], colors}"}
 
   /api/chat/sessions/{session_id}/meta:
+    get:
+      tags: [Archive]
+      summary: Title, tags, pinned, training_off of one conversation (defaults when none)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{session_id, title, tags, pinned, training_off}"}
     put:
       tags: [Archive]
-      summary: Title, tags (replace / add / remove), pinned of a conversation; returns the previous meta as before
+      summary: Title, tags (replace / add / remove), pinned, training_off of a conversation; returns the previous meta as before
       servers:
         - url: http://localhost:19002
       parameters:
@@ -4778,9 +4787,10 @@ paths:
                 add_tags: {type: array, items: {type: object}}
                 remove_tags: {type: array, items: {type: string}}
                 pinned: {type: boolean}
+                training_off: {type: boolean, description: "true = never use this conversation for the training dataset"}
                 client: {type: string}
       responses:
-        "200": {description: "{session_id, title, tags, pinned, before}"}
+        "200": {description: "{session_id, title, tags, pinned, training_off, before}"}
 
   /api/agenda:
     get:
@@ -8022,6 +8032,54 @@ paths:
         - {name: days, in: query, schema: {type: integer, default: 30}}
       responses:
         "200": {description: "{days, taps, by_client{}, top[{tool, uses}]}"}
+
+  /api/metis/traces:
+    post:
+      tags: [Metis]
+      summary: "Oracle pushes one finished chat turn for the training dataset (docs/work/2026-10-30-dataset-allenamento)"
+      description: "Body {trace_id, session_id, client, at, route, mode, use_case, model, provider, origin, domains, system,
+        history, user, answer, tools[{name, description, parameters}], steps[{turn, tool, params, ok, writes, result}],
+        total_ms, usage}. Not stored when the conversation is training_off; adds signals rephrase/correction/tool_failed."
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{stored, trace_id, signals[]} or {stored: false, reason: training_off}"}
+        "422": {description: "trace_id, session_id, user, answer missing"}
+        "503": {description: "Archive not reachable"}
+    delete:
+      tags: [Metis]
+      summary: "Drop the saved turns and signals of one conversation (deleted or excluded from training)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: session_id, in: query, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{removed}"}
+
+  /api/metis/traces/status:
+    get:
+      tags: [Metis]
+      summary: "Saved turns for the dataset: total, last 7 days, signals, toolsets, last one, keep_days"
+      servers:
+        - url: http://localhost:19014
+      responses:
+        "200": {description: "{traces, traces_7d, signals, toolsets, last_at, keep_days}"}
+
+  /api/metis/traces/recent:
+    get:
+      tags: [Metis]
+      summary: "Newest saved turns, short (no prompts, no tool results)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 20}}
+      responses:
+        "200": {description: "{items[{trace_id, session_id, at, route, model, client, user, answer, tools[]}]}"}
 
   /api/metis/adesso:
     get:
@@ -13983,6 +14041,47 @@ paths:
         content:
           application/json:
             schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/dataset-store/records:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Metis training dataset rows (kinds trace, toolset, signal) by kind/ref/parent/at range; big rows, always filtered"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Metis store]
+      summary: "Upsert dataset rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/dataset-store/count:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Live rows of one kind (optionally from at_from); every module store has GET /count"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: kind, in: query, schema: {type: string}}
+        - {name: at_from, in: query, schema: {type: string, format: date-time}}
+      responses:
+        "200": {description: "{count}"}
+
+  /api/dataset-store/cursor:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Current cursor of the dataset store"
+      servers:
+        - url: http://localhost:19002
       responses:
         "200": {description: OK}
 

@@ -144,3 +144,25 @@ def test_notification_voice_replies_to_the_text_and_goes_with_it():
     notifications.handle_notify({"kind": "update", "notification_id": "n1", "ref": "5:70", "state": "superseded"})
     deleted = [c.args for c in bot.delete_message.call_args_list]
     assert ("5", 71) in deleted and ("5", 70) in deleted
+
+
+@pytest.mark.unit
+def test_vote_buttons_carry_the_turn_id(env):
+    """Training dataset (docs/work/2026-10-30-dataset-allenamento): 👍/👎 land on the right turn."""
+    from telegram_bot.services import voice_service
+    kb = voice_service.listen_keyboard(True, "abc123")
+    datas = [b.callback_data for b in kb.keyboard[0]]
+    assert "fb:good:abc123" in datas and "fb:bad:abc123" in datas
+    assert [b.callback_data for b in voice_service.listen_keyboard(True).keyboard[0]][1] == "fb:good"
+
+
+@pytest.mark.unit
+def test_vote_sends_the_turn_id_as_interaction(env, monkeypatch):
+    import telegram_bot.core as core_module
+    from telegram_bot.services import chat_service
+    sent = {}
+    monkeypatch.setattr(core_module, "submit_feedback_to_archive", lambda **kw: sent.update(kw) or True)
+    call = MagicMock(data="fb:bad:abc123")
+    call.message.chat.id = 99999
+    chat_service.handle_feedback_callback(call)
+    assert sent["interaction_id"] == "abc123" and sent["quality_label"] == "poor"
