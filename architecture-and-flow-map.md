@@ -185,6 +185,9 @@ flowchart LR
    `hso_…` bearer on `/mcp` exactly like a token access; `refresh_token` rotates, a replay revokes the access.
 6. External AI memory: `memory_note` (write access) → Hestia-MCP → Hub → Oracle `POST /api/memory/note` → Archive
    `/api/memory` (`durable_user_preference`, origin in `extra_data`); `memory_recall` reads them back. Page Memoria lists/forgets.
+7. Hestia inside Claude (mod `claude-plugins/hestia`): band → `/hestia on` → Claude's MCP (OAuth, same door as 5) →
+   `assistant_profile` → Hestia-MCP → Hub → Oracle `GET /api/assistant/profile` (persona + `oracle.chat.*` + memory
+   digest) → one session section of Claude's system prompt; mode *off* refuses every Hestia tool at `tool.check`.
 
 ### Telegram flow (every function, no model in the menus)
 1. Catalog: Telegram → Hub → Hestia-MCP `tools/list` (client `telegram`: input schema + `telegram_group` / `telegram`

@@ -253,6 +253,13 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   no LLM call; duplicates of an active memory (same words, case/punctuation ignored) are skipped. Origin in
   `extra_data`: `{source: external, access: <X-Hestia-Access>, topic, noted_at}`; Oracle's own saves carry
   `{source: chat}`. `memory_recall` = keyword search, max 20 compact rows. Page **Memoria** lists and forgets them.
+- `assistant_profile` (2026-10-30, docs/work/2026-10-30-hestia-in-claude, `core/services/assistant_profile.py`) —
+  external only: the block another AI follows when the user switches Hestia on inside it (Claude Code mod
+  `claude-plugins/hestia`). Same pieces Oracle uses itself: persona (`analyst_persona_default` without the Telegram
+  formatting part), style contract, the user's tone and instructions (`oracle.chat.*`), the client contract
+  `client_contract_claude` (prompt key), and a memory digest (`memory_recall("")`) in what is left of the cap
+  `oracle.chat.profile_max_tokens` (Contesto, default 1500; persona and contract never cut). Returns
+  `{client, revision, text, tokens_estimate, memories, max_tokens}`; `revision` = hash of the text. No LLM call.
 - `chat_tag` / `chat_list` (2026-10-29, Cindy 26, `core/services/chat_sessions.py`): coloured tags, title and pin on
   a conversation (no `session_id` = the one written last, i.e. the one the turn runs in; result carries `undo` back
   to the previous tags) and the conversations newest first filtered by tag/words (display card for Telegram). Also
@@ -320,6 +327,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
 | `POST` | `/api/memory/note` | `memory_note` `{facts, topic?}` (+ `X-Hestia-Access`) → `{status, saved[], skipped[]}`; 422 empty/too many/too long, 502 Archive |
 | `GET` | `/api/memory/recall?query=` | `memory_recall` → `{count, memories: [{fact, domains, since}]}` |
+| `GET` | `/api/assistant/profile?client=claude` | `assistant_profile` → `{client, revision, text, tokens_estimate, memories, max_tokens}` |
 | `GET` | `/health` | Service health; `models` = `ok` · `limited` (only fallback models answer) · `none` (Argus: «Limitato» / «Non disponibile») |
 
 ### Module tools (agent loop)
@@ -340,6 +348,7 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 | `memory.search` | Search saved preferences |
 | `memory_note` | Save facts from an external AI's conversation (clients ui, telegram, external) |
 | `memory_recall` | What Hestia knows on a topic (clients ui, telegram, external) |
+| `assistant_profile` | Persona + user's instructions + memory digest for another AI (client external only) |
 | `documents.search` | Search uploaded documents |
 | `oracle.context_stats` | Session context breakdown |
 | `oracle.compact` | Force context compaction |

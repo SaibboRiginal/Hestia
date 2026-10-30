@@ -4490,6 +4490,17 @@ paths:
       responses:
         "200": {description: "{count, memories: [{fact, domains, since}]}"}
 
+  /oracle/api/assistant/profile:
+    get:
+      tags: [Oracle]
+      summary: "assistant_profile: Hestia's persona, the user's instructions and a memory digest for another AI (Claude mod)"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: client, in: query, schema: {type: string, default: claude}}
+      responses:
+        "200": {description: "{client, revision, text, tokens_estimate, memories, max_tokens}"}
+
   /oracle/api/ui/chats:
     get:
       tags: [Oracle]
