@@ -8,6 +8,8 @@
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
 
+// The «hestia» mod in this repo's Claude Code marketplace (claude-plugins/hestia, dossier 2026-10-30-hestia-in-claude).
+const PLUGIN_INSTALL = '/plugin install hestia --marketplace SaibboRiginal/Hestia';
 const API = '/api/mcp';
 const SCOPES = [{ value: 'read', label: 'Solo lettura' }, { value: 'write', label: 'Lettura e scrittura (task, note, branch, proposte)' }];
 const EXPIRY = [{ value: '30', label: '30 giorni' }, { value: '90', label: '90 giorni' }, { value: '365', label: '1 anno' }, { value: '0', label: 'Mai' }];
@@ -209,6 +211,12 @@ export class McpAccesses extends HestiaElement {
         : this.form || this.created ? nothing : html`<hxk-state kind="empty" text="Nessun accesso: crea un token per collegare Claude Code o un'altra AI."></hxk-state>`}
       <p class="note">claude.ai (web e telefono) e ChatGPT: aggiungi un connettore personalizzato con l'indirizzo pubblico
         ${this.base()}/mcp; Hestia ti chiede qui il consenso.</p>
+      <hxk-card heading="Hestia dentro Claude Code" subtitle="Una barra sopra il prompt: la accendi solo quando vuoi">
+        ${this.copyRow('Installa (terminale di Claude Code)', PLUGIN_INSTALL)}
+        ${this.copyRow('Indirizzo da dare all\'installazione', this.base())}
+        <p class="note">Alla prima accensione Claude apre questa pagina per il consenso. Personalità, istruzioni e ricordi
+          arrivano da Hestia; quello che Claude impara di te torna nella pagina Memoria.</p>
+      </hxk-card>
       ${this.renderOutbound()}
     </div>`;
   }

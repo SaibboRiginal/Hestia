@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
-from core.services import chat_sessions
+from core.services import assistant_profile, chat_sessions
 from core.services import turn_trace
 
 try:
@@ -109,6 +109,22 @@ _oracle_mcp_tools = [
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memoria",
                 telegram={"section": "Note e preferenze", "primary": 2}),
+    # ── Hestia inside another AI (docs/work/2026-10-30-hestia-in-claude) ────
+    MCPTool(
+        name="assistant_profile",
+        description=("Hestia's persona, the user's tone and instructions, and what Hestia remembers about the "
+                     "user, as one block to follow when the user switches Hestia on inside another AI. Same pieces "
+                     "Hestia uses itself; `revision` changes when any of them changes."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "client": {"type": "string", "description": "The AI asking: 'claude'"},
+            },
+        },
+        handler=lambda **kw: (True, assistant_profile.build(
+            engine._memory_service, client=str(kw.get("client", "") or "claude"))),
+        title="Profilo di Hestia", method="GET", path="/api/assistant/profile",
+        clients=["external"], response_mode="direct", telegram_visible=False),
     MCPTool(
         name="documents.search",
         description="Search through uploaded documents and files for relevant content.",
@@ -1342,6 +1358,12 @@ def memory_recall_endpoint(query: str = ""):
     if not ok:
         raise HTTPException(status_code=502, detail="memory recall failed")
     return {"count": len(rows), "memories": rows}
+
+
+@app.get("/api/assistant/profile")
+def assistant_profile_endpoint(client: str = "claude"):
+    """``assistant_profile``: the block another AI follows when the user switches Hestia on inside it."""
+    return assistant_profile.build(engine._memory_service, client=client)
 
 
 @app.get("/api/documents/search")
