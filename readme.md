@@ -19,6 +19,7 @@
 [![License](https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square)](LICENSE)
 
 [What it is](#what-it-is) ·
+[A look inside](#a-look-inside) ·
 [What it does](#what-it-does) ·
 [How it works](#how-it-works) ·
 [Quick start](#quick-start) ·
@@ -64,6 +65,27 @@ Ask it for a new feature and Hestia writes the change, tests it, asks you, deplo
 </td>
 </tr>
 </table>
+
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
+
+## A look inside
+
+<p align="center">
+  <img src="docs/assets/screens/hero.jpg" alt="Hestia's home page on a laptop and on a phone" width="100%">
+</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><img src="docs/assets/screens/chat.png" alt="Chat: deadlines and spending in a table" width="100%"><br><sub>Ask in your own words: it checks deadlines and spending and answers with a table</sub></td>
+<td width="50%" align="center"><img src="docs/assets/screens/home-light.png" alt="Home in the light theme" width="100%"><br><sub>Home with quick actions and a widget for every area, light theme</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><img src="docs/assets/screens/deadlines.png" alt="Deadlines page" width="100%"><br><sub>Deadlines: bills, insurance and renewals with a reminder before they are due</sub></td>
+<td width="50%" align="center"><img src="docs/assets/screens/expenses.png" alt="Expenses overview" width="100%"><br><sub>Expenses: the month at a glance, from mails, statements or a quick note in chat</sub></td>
+</tr>
+</table>
+
+<sub>Screenshots from the test bench with made-up data. Menus and pages are in Italian.</sub>
 
 <img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
 

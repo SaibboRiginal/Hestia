@@ -174,5 +174,6 @@ def test_endpoints_and_tool_cards():
         assert "pruned" in c.post("/api/metis/adesso/refresh", json={}).json()
     rules = main._agenda_rules()
     assert [r["key"] for r in rules if r["type"] == "job"] == ["metis.adesso.0700", "metis.adesso.1230",
-                                                                "metis.adesso.1800"]
-    assert [u["id"] for u in main._HUB_REGISTRATION_PAYLOAD["capabilities"]["llm_usecases"]] == ["metis.adesso"]
+                                                                "metis.adesso.1800", "metis.dataset.review"]
+    assert [u["id"] for u in main._HUB_REGISTRATION_PAYLOAD["capabilities"]["llm_usecases"]] == [
+        "metis.adesso", "metis.dataset.review"]

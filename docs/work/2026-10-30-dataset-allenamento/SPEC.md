@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | user via external chat (Project thread) (Marko 2026-10-30: «salvare come converso con hestia … per contribuire a un dataset mio locale … passarlo ad un modello più inteligente per riformattare o aggiustare le risposte usando il sistema di feedback e altri dati/metadati … per poi permettermi di fare il training? … o aggiungo lora cosi diventa parte della sua conoscenza») |
-| **Status** | Approved 2026-10-30 (v2.0: dataset only; teacher = cloud model with masking) — D1 done, D2–D3 next |
+| **Status** | Approved 2026-10-30 (v2.0: dataset only; teacher = cloud model with masking) — D1 on main (PR #60), D2 done, D3 next |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -132,7 +132,7 @@ Safety rules for corrections:
   side by side, buttons Accetta / Modifica / Scarta. Marko's choice always wins and is itself a signal.
 - Traces with a 👍 and no negative signal are reviewed only lightly (verdict keep unless a rule is broken).
 
-**Where the teacher runs — decided by Marko 2026-10-30: A, cloud with redaction.** The traces contain his life. Two ways:
+**Where the teacher runs — decided by Marko 2026-10-30: A, cloud with redaction.** Built as: use case `metis.dataset.review` with a new default chain `cloud` (Gemini; Marko can point it to Claude in Sistema); turns younger than 30 min wait (the next turns may still signal them); Persone (Hera) unreachable → no turn is sent that night. The traces contain his life. Two ways:
 - **A. Cloud teacher with redaction (recommended)**: Claude (subscription via `claude -p`, already wired) or Gemini.
   Before sending, Metis replaces personal data with stable placeholders (`<PERSONA_1>`, `<EMAIL_1>`, phones,
   IBAN, addresses, names from People/contacts), keeps the map locally, and puts the real values back in the
