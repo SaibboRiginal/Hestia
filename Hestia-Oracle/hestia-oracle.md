@@ -210,6 +210,14 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
   `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
   `memory.search` also matches word forms (stems: «lavoro» finds «lavora»).
+- **Turn guards** (`core/services/turn_guards.py`, 2026-10-30): fixed rules in code in front of every write tool of
+  a chat turn, whatever the model decides: a question or a request for advice writes nothing (`settings_propose`
+  and `forge_develop` excepted); once a module stored what the user said, `memory.save` does not copy it unless the
+  user said «ricorda» (answer `already_known`, no notice); delete/cancel tools need the user's own words for it;
+  `forge_develop` needs an explicit build ask or a «sì» to the proposal (else «chiedi con ask_user»); at most 6
+  writes per turn. On a question a write tool called with no values passes (a read, e.g. `cibo_dieta`). A refused
+  call returns `BLOCCATO: …` to the model and is `refused` in the tool log: no «Non riuscito» notice, no failed-write
+  note. An empty streamed final answer gets one plain ask, then the turn's text (never an empty reply).
 - **Tools per turn** (small-model bench, 2026-10-30): when the classifier is sure (confidence ≥ the quick-chat
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
   (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
