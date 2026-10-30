@@ -89,12 +89,14 @@ def remember_answer(chat_id, message_id, text: str) -> None:
             _answers.popitem(last=False)
 
 
-def listen_keyboard(feedback: bool = False) -> types.InlineKeyboardMarkup:
-    """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons)."""
+def listen_keyboard(feedback: bool = False, trace_id: str = "") -> types.InlineKeyboardMarkup:
+    """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons). ``trace_id``
+    (Oracle's id of the turn) rides in the callback so the vote lands on this answer (training dataset)."""
     row = [types.InlineKeyboardButton("Ascolta", callback_data=LISTEN_CALLBACK)]
     if feedback:
-        row += [types.InlineKeyboardButton("👍", callback_data="fb:good"),
-                types.InlineKeyboardButton("👎", callback_data="fb:bad")]
+        tail = f":{trace_id}" if trace_id else ""
+        row += [types.InlineKeyboardButton("👍", callback_data=f"fb:good{tail}"),
+                types.InlineKeyboardButton("👎", callback_data=f"fb:bad{tail}")]
     return types.InlineKeyboardMarkup(keyboard=[row])
 
 
@@ -107,7 +109,8 @@ def after_reply(chat_id, renderer, *, spoken: bool, reply_to: int | None = None,
     last = ids[-1]
     remember_answer(chat_id, last, answer)
     try:
-        core.bot.edit_message_reply_markup(chat_id, last, reply_markup=listen_keyboard(feedback))
+        core.bot.edit_message_reply_markup(
+            chat_id, last, reply_markup=listen_keyboard(feedback, str(getattr(renderer, "trace_id", "") or "")))
     except Exception as exc:                      # e.g. message already has buttons or was replaced
         logger.debug("event=voice_listen_button_failed chat_id=%s error=%s", chat_id, exc)
     if spoken and is_live(chat_id):

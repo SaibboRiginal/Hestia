@@ -182,6 +182,19 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "- {{\"action\":\"DEPRECATE\",\"id\":<pref_id>}}\n"
         "Output SOLO array JSON oppure NONE."
     ),
+    # Quiet mood capture (docs/work/2026-10-30-diario-umore): runs only after the deterministic gate found a
+    # first-person «sono stanco»-like clause. Caveman: small local models read it every time it runs.
+    "mood_capture_template": (
+        "Leggi come si sente l'utente ADESSO.\n"
+        "MESSAGGIO: \"{user_message}\"\n"
+        "FRASI: {clauses}\n"
+        "REGOLE:\n"
+        "- Solo il suo stato di oggi, in prima persona. Altre persone, ieri, ipotesi, battute, domande -> NONE.\n"
+        "- mood 1-5 (1 a terra, 2 giù, 3 così così, 4 bene, 5 benissimo). energy/stress 1-5 o null.\n"
+        "- labels solo da: {labels}. causes solo da: {causes} (solo se le dice).\n"
+        "Output SOLO JSON {{\"mood\":<1-5>,\"energy\":<1-5|null>,\"stress\":<1-5|null>,\"labels\":[...],\"causes\":[...]}} "
+        "oppure NONE."
+    ),
     "memory_subscriptions_template": (
         "Sei il compilatore di sottoscrizioni di Hestia.\n"
         "Crea sottoscrizioni SOLO se l'utente chiede avvisi/notifiche in modo esplicito.\n"

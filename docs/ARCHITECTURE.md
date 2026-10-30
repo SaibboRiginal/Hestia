@@ -281,6 +281,11 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
   (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
   at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
   the same lists; tools `metis_adesso`, `metis_scopri`.
+- **Owns the training dataset** (dossier `docs/work/2026-10-30-dataset-allenamento`): Oracle pushes one trace per
+  owner turn (`POST /api/metis/traces`: prompt, tool calls and results, answer); Metis keeps it in Archive
+  `dataset-store` with automatic signals; votes join on `interaction_id` = trace_id. Rule: a conversation marked
+  `training_off` or deleted never stays in the dataset; nothing leaves Hestia except, in a later phase, masked text for
+  the cloud correction the owner chose.
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.
@@ -374,6 +379,15 @@ subscriptions with recurrence, lead time and advice (Oracle `kairos.consiglio`),
 push (Iris `kairos:mail`) only **propose** a deadline (Hermes card); «Fra N giorni» pauses the notice and then reminds
 again. Rows in Archive `deadlines-store`. Details:
 `Hestia-Kairos/hestia-kairos.md`.
+
+### Hestia-Psyche 🙂
+Mood module «Umore» (port 19029, `mood_*` tools, dossier `docs/work/2026-10-30-diario-umore`): check-ins of mood,
+energy and stress with words and causes, from a tap, a tool or **Oracle's quiet capture** — when the owner says how
+he feels in chat («oggi sono stanco») Oracle, after the answer, sends it to the service declaring the Hub capability
+`mood_capture_endpoint` with no confirmation (deterministic gate first, then one short prompt, lexicon fallback;
+the reply never claims it, a notice follows; «non segnarlo» undoes). Moods never go to long-term memory. Trend and
+insights are deterministic; reflection signals and weekly metrics feed Athena, which links them with other domains
+(Psyche reads no other module's data). Rows in Archive `mood-store`. Details: `Hestia-Psyche/hestia-psyche.md`.
 
 ### Hestia-Demeter 🥗
 Nutrition module «Alimentazione» (port 19026, `cibo_*` tools): diet, meals (kcal estimate through Oracle
@@ -553,7 +567,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    module with assistant tools (Themis `settings`, Echo `voice`, Argus/Hephaestus `system`, Hecate `weather`) —
    `capabilities.owns_tool_domains`. `module_tool_domains` alone does not keep them (2026-10-30, real-model bench).
    A turn the classifier is sure about gets only its domains' tools (+ a few always-on tools: reminders, routines,
-   asking back); every tool of every module does not fit a local model's context.
+   asking back); every tool of every module does not fit a local model's context. Oracle's turn guards refuse
+   writes the user did not ask for (question/advice, delete without asking, dev task without a yes, a copy of a
+   module write into memory, more than 6 writes per turn), so safety does not depend on the model.
    Argument schemas are full JSON Schema (`items` for arrays, `enum` for choices): models read them to pick valid values.
    A write that did nothing answers an error status, not 200 `{"error": …}` (Oracle treats that as failed anyway).
    A read-or-write tool called only to read (no arguments) answers `unchanged: true` (no «Fatto» in the chat); a
@@ -571,7 +587,7 @@ No code-only behavior changes are considered complete without synchronized docs.
    module under the prefix too, e.g. Chronos `/api/agenda/routines`; the proxy rule never widens; the prefix itself without its last `/`, the API root, is part of it). Contract: `docs/work/2026-10-17-client-plugins/SPEC.md` §4.
    Each module owns one `order` decade for its pages and quick actions (Scout 20s, Hercules 30s, Hygieia 40s,
    Wardrobe 50s, Plutus 60s, Kairos 70s, Demeter 80s, Hera 90s, then — the hundreds 100–190 being core — Calliope 200s,
-   Apollo 210s, Aphrodite 220s, Lares 230s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
+   Apollo 210s, Aphrodite 220s, Lares 230s, Psyche 240s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
    hundreds (Hub 100, Argus 110, Oracle 120, Athena 130, Hermes 140, Chronos 150, Themis 160, Hephaestus 170,
    Metis 180, Hestia-MCP 190); the WebUI groups them under *Sistema* and builds a ready-made *Sistema* dashboard from their `auto` widgets (Home takes the domain ones); Hub, which never registers with itself, folds its own manifest into the catalog and answers its plugin routes locally (`docs/work/2026-10-18-moduli-core-e-mcp-esterno/`). Module notifications carry `_link: {module, page}` so a
    client can open the plugin page. The WebUI shell itself also talks to modules only through these plugin doors

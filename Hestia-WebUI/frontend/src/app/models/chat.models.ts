@@ -25,6 +25,8 @@ export interface ChatMessage {
   changes?: ChatChange[];
   /** Who started this turn when it was not you typing (routine, module, external AI — Cindy 6). */
   origin?: { kind: string; level: string; label: string };
+  /** Oracle's id of this turn: 👍/👎 send it so the vote lands on this answer (training dataset). */
+  traceId?: string;
 }
 
 /** One write of an answer: `undo` runs a tool through Hestia-MCP («Annulla»); `done` once undone. */
@@ -123,6 +125,8 @@ export interface ServerEvent {
   items?: ChatChange[];
   /** final: origin of a turn not typed by the owner. */
   origin?: { kind: string; level: string; label: string };
+  /** final: Oracle's id of the turn (a vote sends it back: training dataset). */
+  trace_id?: string;
 }
 
 /** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */

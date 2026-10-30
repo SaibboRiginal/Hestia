@@ -32,6 +32,7 @@ from core.services.agent_factory import AgentFactory, conversation_style_contrac
 from core.services.hub_client import HubClient
 from core.services import llm_stats
 from core.services import activity_log
+from core.services import turn_trace
 from core.services.chat_classifier import ChatClassifier, QUICK_CHAT_CONFIDENCE_THRESHOLD
 from core.services import stream_emitter
 from core.services import user_questions
@@ -45,6 +46,7 @@ from core.services.memory_intent import (
     has_write_intent,
 )
 from core.services.memory_service import MemoryService
+from core.services.turn_guards import TurnGuards
 from core.services.user_control_service import UserControlService
 from core.services.module_registry import ModuleToolRegistry
 from core.services.retrieval_service import RetrievalService
@@ -300,6 +302,9 @@ class OracleEngine:
             context_builder=self._context_builder,
             pref_domain_classifier=_pref_classifier,
         )
+
+        from core.services.mood_capture import MoodCapture
+        self._mood_capture = MoodCapture(self._hub, self._memory_service._ask)
 
         self._control_service = UserControlService(
             hub_client=self._hub,
@@ -843,13 +848,23 @@ class OracleEngine:
         trace_id = uuid.uuid4().hex[:12]
         usage_before = llm_stats.session_usage(session_id)
 
-        def _record_turn(route: str, domains: list[str] | None = None, tool_log: list | None = None) -> None:
+        def _record_turn(route: str, domains: list[str] | None = None, tool_log: list | None = None,
+                         answer: str = "", trace_parts: dict | None = None) -> None:
             # Inside view (WebUI page Cervello, GET /api/ui/activity): one row per finished turn.
-            activity_log.record_turn(
+            row = activity_log.record_turn(
                 session_id=session_id, client=client, mode=mode, route=route, model=agent.model_name,
                 provider=agent.provider, domains=domains, tool_log=tool_log,
                 total_ms=int((time.perf_counter() - t0) * 1000), message=user_message,
                 usage_before=usage_before, usage_after=llm_stats.session_usage(session_id), trace_id=trace_id)
+            # Training dataset (docs/work/2026-10-30-dataset-allenamento): what the model saw and did → Metis.
+            if turn_trace.wanted(origin=origin, save_history=save_history, session_id=session_id):
+                parts = trace_parts or {}
+                turn_trace.send(self._hub, turn_trace.build(
+                    trace_id=trace_id, session_id=session_id, client=client, route=route, mode=mode,
+                    use_case=chat_use_case, model=agent.model_name, provider=agent.provider, origin=origin,
+                    user_message=user_message, answer=answer, history_text=history_text,
+                    system=parts.get("system", ""), tools=parts.get("tools"), tool_log=tool_log, domains=domains,
+                    total_ms=int((time.perf_counter() - t0) * 1000), usage=(row or {}).get("usage")))
 
         if client and session_id:
             self._session_clients[session_id] = str(client)[:40]
@@ -913,9 +928,10 @@ class OracleEngine:
         if mode == "quick" and not external:
             yield stream_emitter.emit_status("💬 Risposta rapida...")
             temporal_context = self._current_datetime_context()
+            _quick_trace: dict = {}
             answer = self._quick_answer(
                 user_message, history_text, client_instructions,
-                extra_context=None, current_datetime_context=temporal_context,
+                extra_context=None, current_datetime_context=temporal_context, trace_out=_quick_trace,
             )
             logger.trace(
                 "event=chat_quick_answer trace_id=%s session_id=%s answer=%s",
@@ -925,8 +941,8 @@ class OracleEngine:
             )
             if save_history:
                 self._save_history(session_id, user_message, answer, trace_id=trace_id)
-            yield stream_emitter.emit_final(answer, "general")
-            _record_turn("quick")
+            yield stream_emitter.emit_final(answer, "general", trace_id=trace_id)
+            _record_turn("quick", answer=answer, trace_parts=_quick_trace)
             logger.info(
                 "event=chat_done_summary session_id=%s total_ms=%s mode=quick model=%s provider=%s thinking=%s tools=0 answer_len=%s trace_id=%s",
                 session_id,
@@ -1018,12 +1034,14 @@ class OracleEngine:
             if self._doc_rag.message_is_about_docs(user_message):
                 extra_context = self._doc_rag.list_user_docs_brief(
                     chat_id=notify_target, session_id=session_id)
+            _quick_trace = {}
             answer = self._quick_answer(
                 user_message,
                 history_text,
                 client_instructions,
                 extra_context or None,
                 current_datetime_context=temporal_context,
+                trace_out=_quick_trace,
             )
             if save_history:
                 self._save_history(session_id, user_message,
@@ -1062,8 +1080,8 @@ class OracleEngine:
                 len(answer or ""),
                 trace_id,
             )
-            yield stream_emitter.emit_final(answer, "general")
-            _record_turn("quick_chat", ["general"])
+            yield stream_emitter.emit_final(answer, "general", trace_id=trace_id)
+            _record_turn("quick_chat", ["general"], answer=answer, trace_parts=_quick_trace)
             _mem_waiter = self._phase_background_memory(
                 user_message, session_id, notify_target,
                 force_notification_compiler,
@@ -1156,6 +1174,7 @@ class OracleEngine:
 
         domain_tools += self._turn_tools(session_id, origin)
         self._apply_origin_gate(domain_tools, origin)
+        TurnGuards(user_message).wrap(domain_tools)   # fixed rules on writes, whatever the model decides
 
         # Assemble agent loop client instructions
         agent_loop_client_instructions_parts: list[str] = []
@@ -1257,6 +1276,7 @@ class OracleEngine:
 
         answer = None
         _prior_actions: list[dict] = []
+        _loop_trace: dict = {}
         if external:
             yield stream_emitter.emit_status("🤖 Agente esterno al lavoro...")
             try:
@@ -1293,6 +1313,7 @@ class OracleEngine:
                 compact_fn=_auto_compact,
                 guard_checker=loop_guard.llm_checker,
                 prior_actions=_prior_actions,
+                trace_out=_loop_trace,
             )
             tool_log = list(_prior_actions) + list(tool_log)
 
@@ -1375,6 +1396,7 @@ class OracleEngine:
             answer,
             intent.valid_domains[0] if intent.valid_domains else "general",
             origin=origin if origin.get("level") != "utente" or origin.get("kind") == "esterno" else None,
+            trace_id=trace_id,
         )
         # «Cosa ho cambiato» with Annulla per item (Cindy 13): clients draw it under the answer.
         _changes = stream_emitter.changes_from_log(tool_log)
@@ -1386,7 +1408,7 @@ class OracleEngine:
             yield stream_emitter.emit_tool_summary(tool_log)
             # Standard notices for real effects: one per mutating tool call.
             for entry in tool_log:
-                if not entry.get("writes") or entry.get("unchanged"):
+                if not entry.get("writes") or entry.get("unchanged") or entry.get("refused"):
                     continue
                 tname = str(entry.get("tool") or "")
                 kind = "memory.saved" if tname == "memory.save" else "memory.removed" if tname == "memory.forget" else (
@@ -1423,7 +1445,12 @@ class OracleEngine:
                     break
 
         total_ms = int((time.perf_counter() - t0) * 1000)
-        _record_turn("agent", list(intent.valid_domains or []), tool_log)
+        if external and not _loop_trace:
+            _loop_trace = {"system": external_agent_system_prompt(preference_facts, agent_loop_client_instructions),
+                           "tools": [{"name": t.name, "description": t.description, "parameters": t.parameters}
+                                     for t in domain_tools]}
+        _record_turn("agent", list(intent.valid_domains or []), tool_log, answer=answer or "",
+                     trace_parts=_loop_trace)
         logger.info(
             "event=chat_done_summary session_id=%s total_ms=%s mode=%s model=%s provider=%s thinking=%s tools=%s answer_len=%s tokens=%s trace_id=%s",
             session_id,
@@ -1597,8 +1624,10 @@ class OracleEngine:
         return {"ok": False, "message": "⚠️ Nessuna notifica creata. Specifica meglio dominio, evento o filtri.", "signals": signals or []}
 
     def delete_chat_history(self, session_id: str):
-        """Delete chat history for *session_id* via Hub/Archive."""
-        return self._hub.delete(f"/chat/history/{session_id}")
+        """Delete chat history for *session_id* via Hub/Archive (and its training traces in Metis)."""
+        out = self._hub.delete(f"/chat/history/{session_id}")
+        turn_trace.forget_session(self._hub, session_id)
+        return out
 
     def estimate_context_stats(self, session_id: str) -> dict:
         """Return context-window usage estimates for *session_id*.
@@ -2030,17 +2059,25 @@ class OracleEngine:
             compaction_ms = 0
             compacted = False
 
+            # ── Quiet mood capture («oggi sono stanco» → the mood module, no confirmation) ──
+            mood_signals: list[dict] = []
+            try:
+                mood_signals = self._mood_capture.run(user_message)
+            except Exception as exc:
+                logger.warning("[🔄] event=background_mood_capture_failed error=%s fallback=skip", exc)
+
             # ── Memory extraction ──────────────────────────────────────────────
             if not skip_memory_extract:
+                waiter["signals"] = mood_signals
                 try:
                     t_mem = time.perf_counter()
-                    waiter["signals"] = self._memory_service.extract_and_save_preferences(
+                    waiter["signals"] = mood_signals + (self._memory_service.extract_and_save_preferences(
                         user_message, session_id,
                         notify_target=notify_target,
                         force_notification_compiler=force_notification_compiler,
                         memory_by_tool=memory_by_tool,
                         done_actions=done_actions,
-                    ) or []
+                    ) or [])
                     mem_ms = int((time.perf_counter() - t_mem) * 1000)
                     logger.info(
                         "event=background_phase_timing_ms Background phase timing | session=%s phase=memory_extract ms=%s",
@@ -2052,6 +2089,7 @@ class OracleEngine:
                 finally:
                     waiter["done"].set()
             else:
+                waiter["signals"] = mood_signals
                 waiter["done"].set()
                 logger.trace(
                     "event=background_memory_extract_skipped Background memory extraction skipped because sync persistence already ran | session=%s",
@@ -3182,6 +3220,7 @@ class OracleEngine:
         client_instructions: str | None,
         extra_context: str | None,
         current_datetime_context: str | None = None,
+        trace_out: dict | None = None,
     ) -> str:
         # Only when the user asked for a change: otherwise small models repeat the
         # contract to the user ("Non risulta eseguita alcuna azione di modifica").
@@ -3213,6 +3252,8 @@ class OracleEngine:
                 f"MESSAGGIO UTENTE:\n{user_message}",
             ],
         )
+        if trace_out is not None:
+            trace_out["system"] = prompt      # one prompt (instructions + history + message): training dataset
         # The generic chain already tries its fallback steps.
         answer = self._ask_analyst(prompt)
         if _CLAIMED_ACTION.search(answer or ""):

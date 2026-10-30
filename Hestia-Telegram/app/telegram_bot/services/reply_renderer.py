@@ -50,6 +50,7 @@ class ReplyRenderer:
         self.answer_ids: list[int] = []      # message ids holding the final answer
         self.answer_last_html = ""
         self.answer_text = ""                # plain final answer (for «Ascolta»)
+        self.trace_id = ""                   # Oracle's id of this turn: a 👍/👎 lands on it (training dataset)
         self._last_edit = 0.0
         self._last_sent = ""
         self.finalized = False

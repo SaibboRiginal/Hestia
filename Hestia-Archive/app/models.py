@@ -64,6 +64,8 @@ class ChatSessionMeta(Base):
     title = Column(String, nullable=True)
     tags = Column(JSONB, nullable=True)          # [{"name": "lavoro", "color": "blue"}]
     pinned = Column(Boolean, nullable=False, default=False)
+    # «Non usare per l'allenamento» (docs/work/2026-10-30-dataset-allenamento): no trace of it in the dataset.
+    training_off = Column(Boolean, nullable=True, default=False)
     client = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -729,7 +731,18 @@ DeadlinesRecord = _module_record_model(
     "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Kairos.")
 
+MoodRecord = _module_record_model(
+    "MoodRecord", "mood_records",
+    "One row of the mood module Hestia-Psyche (check-in), docs/work/2026-10-30-diario-umore. "
+    "Owner of the semantics: Hestia-Psyche.")
+
 MetisRecord = _module_record_model(
     "MetisRecord", "metis_records",
     "One row of the usage log of Hestia-Metis (tap, idea), docs/work/2026-10-24-tutto-brainstorm-cindy W6. "
+    "Owner of the semantics: Hestia-Metis.")
+
+DatasetRecord = _module_record_model(
+    "DatasetRecord", "dataset_records",
+    "One row of the training dataset of Hestia-Metis (trace of a chat turn, toolset, signal), "
+    "docs/work/2026-10-30-dataset-allenamento. Big rows: read with filters, never mirrored whole. "
     "Owner of the semantics: Hestia-Metis.")

@@ -103,7 +103,9 @@ subscription compile), `pausa_voto`.
 - Notices from Oracle are italic lines inside the answer (🔴 only for errors), per the notice setting.
 - **Reply or quote = context**: replying to (or quoting part of) any message sends
   `quoted: {text, from: assistant|user|notification, at, ref}` with `/api/chat`; Oracle uses it for that turn only.
-- Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`).
+- Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`). The vote buttons carry
+  Oracle's `trace_id` of the turn (`fb:good:<id>`), saved as the feedback `interaction_id`, so the vote lands on that
+  answer in the training dataset (docs/work/2026-10-30-dataset-allenamento).
 - Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
 
 ### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)

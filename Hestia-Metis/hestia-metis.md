@@ -24,6 +24,24 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 - Balances across quality tiers and domains
 - Exports as ChatML, Alpaca, or ShareGPT JSONL for LoRA training
 
+### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-dataset-allenamento`)
+Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.g. online). Phase **D1 «Registra»**:
+- Oracle pushes one **trace** per finished chat turn the owner typed (`POST /api/metis/traces`): system prompt,
+  history text, user message, tool calls with arguments and results, answer, model, route (see `hestia-oracle.md`
+  § Turn traces). `core/traces.py` stores it in Archive **`dataset-store`** (not `metis-store`: big rows, read with
+  filters, never mirrored): kind `trace` (`parent_id` = session), kind `toolset` (tool schemas by hash, once), kind
+  `signal` (`ref_id` = the trace it judges).
+- Automatic **signals**: `rephrase` (next message within 3 min, ≥ 60% similar), `correction` (next message starts
+  with «no», «intendevo», «non è quello»…), both on the previous turn; `tool_failed` on the turn itself. Votes stay in
+  Archive feedback with `interaction_id` = trace_id (Telegram and WebUI now send it).
+- **Privacy**: everything stays in Archive. A conversation with `training_off` (WebUI history «Non usare per
+  l'allenamento», tool `chat_tag`) is never stored and its rows are dropped; deleting a conversation drops them too
+  (`DELETE /api/metis/traces?session_id=`, tombstones with empty data). Archive meta unknown → the trace is skipped.
+- Retention: setting `metis.traces.keep_days` (365), pruned by the agenda jobs `metis.adesso.*` with the taps.
+- `GET /api/metis/traces/status` (counts), `GET /api/metis/traces/recent` (short list, no prompts).
+- Next (SPEC v2.0): D2 nightly correction by a cloud model with personal data masked, «Da rivedere» list; D3 export
+  SFT/DPO/eval as `messages` + `tools` JSONL, downloadable.
+
 ### Benchmark Evaluation
 - Runs held-out eval comparing candidate model vs baseline
 - Scores style adherence, accuracy, and conciseness
@@ -83,6 +101,9 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
 | `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |
+| `POST` | `/api/metis/traces` | Oracle pushes one chat turn trace (422 if trace_id/session_id/user/answer missing; skipped when the chat is `training_off`) |
+| `DELETE` | `/api/metis/traces?session_id=` | Drop a conversation's traces and signals |
+| `GET` | `/api/metis/traces/status` · `/api/metis/traces/recent` | Dataset counts · newest turns, short |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
@@ -132,6 +153,7 @@ Endpoints `GET /api/settings/effective`, `POST /api/settings/reload` (used by Th
 | `metis.dataset.deduplicate` | bool · on | near-duplicate removal when the caller does not say |
 | `metis.dataset.quality_labels` | list · `[excellent, good]` | labels collected when the caller gives none |
 | `metis.insights.good_labels` | list · `[excellent, good]` | labels not counted as weak spots in `/insights` |
+| `metis.traces.keep_days` | int · 365 (7–3650) | days a chat turn trace is kept for the training dataset |
 | `metis.log.level` | enum · `LOG_LEVEL` boot value | log verbosity |
 
 ## Environment Variables (infrastructure only)

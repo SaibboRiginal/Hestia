@@ -35,6 +35,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Demeter | 19026 | hestia_demeter | nutrition: diet, meals (kcal estimates), supplements; coach of the weekly plan |
 | Calliope | 19027 | hestia_calliope | documents: HTML → PDF/Word/Excel, 3 themes, final check, blobs |
 | Kairos | 19028 | hestia_kairos | deadlines: recurrence, advice, calendar mirror, mail proposals, daily notices |
+| Psyche | 19029 | hestia_psyche | mood («Umore»): check-ins, Oracle's quiet capture from chat, trend, insights, signals |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |
 | Atlas | host | — | HTML fetch/scrape, runs on the host (`run_host.bat`) |

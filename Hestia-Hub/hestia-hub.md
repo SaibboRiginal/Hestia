@@ -115,7 +115,7 @@ Themis (`settings` tag, `layer:core`, `domain:settings`) and Metis (`improvement
 `tests/test_compose_registration_tags.py` validates every compose service's tags against these lists (W5: the tags
 and `domain:` values `images, appearance, home, people, food, office, deadlines` of the seven new modules were
 added after CI caught them, and the test also checks each `module_kit` registration). Plutus
-(`finance`, 2026-10-19, then `voice` for Echo on `layer:cognition`, 2026-10-22) were the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here.
+(`finance`, 2026-10-19, then `voice` for Echo on `layer:cognition`, 2026-10-22) were the latest: a new domain module adds its tag to `ALLOWED_TAGS` and `domain:` here. 2026-10-30: `mood` (Psyche, «Umore»).
 
 Tag `coach` (2026-10-20): a module that serves `GET /api/coach/needs` (`hestia_common.coach`) carries it; Chronos
 finds the coaches of the weekly plan with `GET /registry/services` filtered on this tag. `test_coach_modules_carry_the_coach_tag`

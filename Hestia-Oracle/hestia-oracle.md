@@ -108,6 +108,16 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   «ricordami di…» is a reminder and a passing state («stanco oggi») is not a memory. When a module write already
   stored what the turn said (a person, a routine, an expense) the extractor does not run at all, unless the user
   asked to remember it («ricorda che…», `memory_intent.asks_to_remember`).
+- **Quiet mood capture** (2026-10-30, `docs/work/2026-10-30-diario-umore`, `core/services/mood_capture.py`): moods
+  never become memories, they go to the mood module («Umore»). In the same background step, before the memory
+  extractor, a deterministic gate (`mood_clauses`: first-person present cue + mood lexicon per clause; questions,
+  hypotheticals, negations, «ieri», other people and quoted text excluded; a subject-less clause continues the
+  previous first-person one) decides whether to look at all. Only then one short prompt (`mood_capture_template`,
+  same chain as the memory extractor) returns `{mood, energy, stress, labels, causes}` or `NONE`; an offline or
+  unparsable model falls back to the lexicon guess, `NONE` wins. The result is POSTed with the user's words as
+  `quote` to the service that declares the Hub capability `mood_capture_endpoint` (no module name in Oracle); no
+  confirmation. «Non segnarlo» / «togli l'umore» (`is_undo`) calls `<endpoint>/undo`. The reply never claims it:
+  a `notice` `mood.saved` «Umore segnato: 2/5 · stanco» (or `mood.removed`) follows the answer.
 - The "no action executed" contract is injected into quick answers only when the message has write intent
   (`has_write_intent`), so "test" / "ciao" no longer get "Non risulta eseguita alcuna azione".
 
@@ -200,6 +210,14 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
   `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
   `memory.search` also matches word forms (stems: «lavoro» finds «lavora»).
+- **Turn guards** (`core/services/turn_guards.py`, 2026-10-30): fixed rules in code in front of every write tool of
+  a chat turn, whatever the model decides: a question or a request for advice writes nothing (`settings_propose`
+  and `forge_develop` excepted); once a module stored what the user said, `memory.save` does not copy it unless the
+  user said «ricorda» (answer `already_known`, no notice); delete/cancel tools need the user's own words for it;
+  `forge_develop` needs an explicit build ask or a «sì» to the proposal (else «chiedi con ask_user»); at most 6
+  writes per turn. On a question a write tool called with no values passes (a read, e.g. `cibo_dieta`). A refused
+  call returns `BLOCCATO: …` to the model and is `refused` in the tool log: no «Non riuscito» notice, no failed-write
+  note. An empty streamed final answer gets one plain ask, then the turn's text (never an empty reply).
 - **Tools per turn** (small-model bench, 2026-10-30): when the classifier is sure (confidence ≥ the quick-chat
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
   (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
@@ -385,7 +403,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"status","content":"..."}` — progress messages (shown as live status updates).
 - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
-- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."}}` — terminal answer event (`origin` only when the turn was not started by the owner's client).
+- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."},"trace_id":"..."}` — terminal answer event (`origin` only when the turn was not started by the owner's client; `trace_id` names the turn: clients send it back as `interaction_id` with a 👍/👎).
 - `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
@@ -395,6 +413,18 @@ All interfaces consume the same event schema from Oracle:
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
 ---
+
+### Turn traces for the training dataset (dossier `docs/work/2026-10-30-dataset-allenamento`, D1)
+
+After every finished turn the owner typed in a saved conversation (all three routes; not routines, modules or
+external AIs), `core/services/turn_trace.py` pushes in the background `POST /route/metis/api/metis/traces`: system
+prompt (agent loop: preamble + preferences + style + client instructions, from `run_agent_loop(trace_out=…)`;
+quick routes: the one prompt of `_quick_answer`), the history text, user message, tool schemas offered, each tool
+call (`params`, `ok`, `writes`, `result` = what the model read, `tool_log[].result_text`, never sent to clients),
+the final answer, model, provider, use case, route, timings. Metis owns storage, signals and exclusions; a failed
+push is logged `[🔄] event=turn_trace_dropped` and never touches the chat. Deleting a chat (`DELETE /api/chat/{id}`)
+or setting `training_off` (WebUI history «Non usare per l'allenamento», tool `chat_tag training_off`) asks Metis to
+drop that conversation's traces.
 
 ## Settings (Themis, all live)
 

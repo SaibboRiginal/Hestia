@@ -687,7 +687,7 @@ def flow_plugins(ctx: dict) -> None:
         mods = {m["module"]: m for m in cat["modules"]}
         want = {"hercules", "hygieia", "wardrobe", "scout", "hub", "argus", "athena", "chronos", "hermes", "themis",
                 "hephaestus", "metis", "oracle", "mcp", "kairos", "hera", "demeter", "calliope", "apollo",
-                "aphrodite", "lares", "echo", "hecate", "plutus"}
+                "aphrodite", "lares", "echo", "hecate", "plutus", "psyche"}
         need(want <= set(mods), f"plugin mancanti: {sorted(want - set(mods))}")
         offline = [m for m, v in mods.items() if not v.get("online")]
         need(not offline, f"plugin offline: {offline}")
