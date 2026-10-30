@@ -8156,6 +8156,59 @@ paths:
       responses:
         "200": {description: "{trace_id, status, next}"}
 
+  /api/metis/export:
+    post:
+      tags: [Metis]
+      summary: "Training dataset export: zip of sft.jsonl, dpo.jsonl, eval.jsonl (OpenAI messages + tools) and card.json"
+      description: "in_chiaro false (default) hides names of Persone, e-mails, phones, IBAN and addresses; Persone not reachable → 503. Stored as an Archive blob (owner metis)."
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                in_chiaro: {type: boolean, default: false}
+                include_unreviewed: {type: boolean, default: false}
+      responses:
+        "200": {description: "{id, name, blob_id, size, sft, dpo, eval, skipped, corrected, turns, masked, routes, models, first, last, created_at}"}
+        "503": {description: "Archive or Persone not reachable"}
+    get:
+      tags: [Metis]
+      summary: "Recent training dataset exports"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 10}}
+      responses:
+        "200": {description: "{items[{id, name, blob_id, size, sft, dpo, eval, masked, created_at}]}"}
+
+  /api/metis/export/{export_id}/b64:
+    get:
+      tags: [Metis]
+      summary: "An export zip as base64 (WebUI download through Hub)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: export_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{name, mime, data_b64}"}
+        "404": {description: "Unknown export"}
+
+  /api/metis/tools/dataset_esporta:
+    post:
+      tags: [Metis]
+      summary: "Tool metis_dataset_esporta {in_chiaro?, include_unreviewed?}: exports and returns a card with the zip"
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{id, name, blob_id, sft, dpo, eval, masked, display}"}
+
   /api/metis/adesso:
     get:
       tags: [Metis]

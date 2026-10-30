@@ -6,3 +6,4 @@
 - v2.0 — 2026-10-30 — scope cut to dataset only (capture, correction, export + download); training and adapter loading out of scope — Marko: «mi serve solo il dataset» — user via Project thread
 - v2.1 — 2026-10-30 — §3.2 trace shape as built (system/history/user/steps/answer; messages built at export), storage in Archive dataset-store; D1 implemented — implementation refinement — user via external chat
 - v2.2 — 2026-10-30 — D2 as built: chain `cloud`, 30 min minimum age, no run without Persone names — implementation refinement — user via external chat
+- v2.3 — 2026-10-30 — D3 as built: zip in Archive blobs, download from WebUI and Telegram, masked or clear chosen at each export (default masked) — Marko: «opzione durante la esportazione?» — user via external chat
