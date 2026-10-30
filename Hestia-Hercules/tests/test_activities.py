@@ -339,3 +339,12 @@ def test_recap_lines_done_missed_and_tomorrow(env):
     r = a.recap(d2, datetime.fromisoformat(s3["start"]).date())
     assert r["done"] == [{"text": "Corsa: 5.5 km, 30 min", "tone": "success"}] and r["missed"] == []
     assert r["next"][0]["text"].startswith(f"Corsa alle {s3['start'][11:16]}")
+
+
+def test_summary_counts_the_activities_of_the_week(env):
+    """Bench 2026-10-30: «5 km di corsa» logged, then «come sto andando?» said no session this week."""
+    h, _, _, a = env
+    a.log("corsa", minutes=30, km=5)
+    s = h.summary()
+    assert s["activities_week"] and s["activities_week"][0]["km"] == 5
+    assert any(line.startswith("Attività: ") and "5 km" in line for line in s["lines"])

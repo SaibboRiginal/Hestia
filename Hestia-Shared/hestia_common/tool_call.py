@@ -18,7 +18,8 @@ TEMPLATE_VAR = re.compile(r"\$(session_id|chat_id|owner|arg\.[a-zA-Z0-9_]+)")
 PATH_VAR = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}")
 QUERY_METHODS = {"GET", "HEAD", "DELETE"}
 CONTEXT_VARS = {"session_id", "chat_id", "owner"}
-_READ_WORDS = ("search", "list", "query", "status", "stats", "show")
+# «Cosa mi metto» is a POST that only suggests: it showed «Fatto» in the chat (bench 2026-10-30).
+_READ_WORDS = ("search", "list", "query", "status", "stats", "show", "suggest")
 
 
 def _token(var: str, args: dict, ctx: dict) -> Any:
@@ -126,7 +127,9 @@ def build_request(tool: dict, args: dict | None, ctx: dict | None = None) -> dic
         headers["X-Hestia-Origin"] = str(ctx["origin"])
     return {"service": str(tool.get("service") or "").strip(), "method": method, "path": path.lstrip("/"),
             "query": {k: v for k, v in (query or {}).items() if v is not None},
-            "body": (_strip_nones(body) or None) if isinstance(body, dict) else body, "headers": headers}
+            # A POST with no arguments still sends «{}»: a module whose endpoint takes a body model answered 422
+            # «body: Field required» (bench 2026-10-30: «Case disponibili» with no query).
+            "body": _strip_nones(body) if isinstance(body, dict) else body, "headers": headers}
 
 
 def is_write(tool: dict) -> bool:

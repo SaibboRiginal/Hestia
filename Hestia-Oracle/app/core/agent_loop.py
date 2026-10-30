@@ -256,7 +256,21 @@ def _extract_tool_call(text: str) -> dict | None:
         logger.trace("event=agent_loop_parsed_tool_call format=python_call tool=%s", py_call["name"])
         return py_call
 
+    # 5. The whole answer is «<call:cibo_oggi>{…}</call:cibo_oggi>» (Gemini, bench 2026-10-30: it was the answer).
+    tag = _CALL_TAG.fullmatch(text.strip())
+    if tag:
+        try:
+            args = json.loads(tag.group(2)) if tag.group(2).strip() else {}
+        except ValueError:
+            args = None
+        if isinstance(args, dict):
+            logger.trace("event=agent_loop_parsed_tool_call format=call_tag tool=%s", tag.group(1))
+            return {"name": tag.group(1), "params": args}
+
     return None
+
+
+_CALL_TAG = re.compile(r"<call:([\w.\-]+)>(.*?)</call:\1>", re.DOTALL)
 
 
 def _python_style_call(text: str) -> dict | None:
@@ -303,6 +317,27 @@ def _write_key(tool: "ToolDefinition | None", call: dict) -> tuple[str, str] | N
         if isinstance(value, str) and value.strip():
             return tool.name, " ".join(value.lower().split())
     return None
+
+
+def _tool_alias_key(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(name or "").lower()).strip("_")
+
+
+def _resolve_tool_name(name: str, tool_map: dict) -> str:
+    """The manifest's own name for a near miss (``memory:save`` / ``memory_save`` → ``memory.save``); bench
+    with a real model, 2026-10-30: every first memory call was «Unknown tool»."""
+    if not name or name in tool_map:
+        return name
+    key = _tool_alias_key(name)
+    matches = [n for n in tool_map if _tool_alias_key(n) == key]
+    return matches[0] if len(matches) == 1 else name
+
+
+ALREADY_FAILED = "GIÀ FALLITO con gli stessi dati: non riprovarlo uguale, cambia dati o di' all'utente cosa non va."
+
+
+def _call_key(call: dict) -> tuple[str, str]:
+    return str(call.get("name") or ""), json.dumps(call.get("params") or {}, sort_keys=True, default=str)
 
 
 # A write that failed and was never redone: the model must not tell the user it is done (bench with a real
@@ -453,6 +488,7 @@ def run_agent_loop(
     from core.services.loop_guard import STOP_MESSAGE, LoopGuard
     _guard = LoopGuard.from_settings(guard_checker)
     _force_final = False
+    _failed_calls: set[tuple[str, str]] = set()   # (tool, params) of calls that failed in this loop
     _done_writes: set[tuple[str, str]] = set()   # (tool, title) of writes that succeeded in this loop
     # Tool-call log for post-answer summary
     tool_log: list[dict] = []
@@ -659,7 +695,20 @@ def run_agent_loop(
             break
 
         _all_repeated = False
+        for tc in tool_calls_list or []:
+            tc["name"] = _resolve_tool_name(tc.get("name", ""), tool_map)
         if tool_calls_list:
+            # The very same call that already failed: not run again (bench 2026-10-30: four identical
+            # weather_forecast calls on a dead geocoder).
+            _failed_again = [tc for tc in tool_calls_list if _call_key(tc) in _failed_calls]
+            if _failed_again:
+                for tc in _failed_again:
+                    scratchpad.append(ScratchMessage("tool", f"[{tc.get('name')}] → ❌ {ALREADY_FAILED}", turn))
+                logger.info("[🔄] event=agent_loop_failed_call_not_repeated turn=%d tools=%s",
+                            turn, [tc.get("name") for tc in _failed_again])
+                tool_calls_list = [tc for tc in tool_calls_list if tc not in _failed_again]
+                if not tool_calls_list:
+                    _force_final = _all_repeated = True
             # The same write again (same tool, same title): already done, not run twice (bench with a real model,
             # 2026-10-30: «ricordami ogni lunedì di pesarmi» created three identical routines).
             _again = [tc for tc in tool_calls_list if _write_key(tool_map.get(tc.get("name", "")), tc) in _done_writes]
@@ -679,7 +728,7 @@ def run_agent_loop(
                 if _k is not None:
                     _seen_keys.add(_k)
             tool_calls_list = _unique
-            _all_repeated = not tool_calls_list
+            _all_repeated = _all_repeated or not tool_calls_list
         if _all_repeated:
             continue   # next turn is the final answer (_force_final)
         if tool_calls_list:
@@ -763,6 +812,8 @@ def run_agent_loop(
                         },
                     ))
 
+                if not ok:
+                    _failed_calls.add(_call_key({"name": tn, "params": r.get("params") or {}}))
                 if ok:
                     _k = _write_key(tool_map.get(tn), {"name": tn, "params": r.get("params") or {}})
                     if _k is not None:
@@ -793,6 +844,9 @@ def run_agent_loop(
                     "undo": result_raw.get("undo") if ok and isinstance(result_raw, dict)
                     and result_raw.get("undo") else None,
                     "params": r.get("params") or {},
+                    # A write tool that changed nothing (a read call, a fact already known): no «Fatto».
+                    "unchanged": bool(ok and isinstance(result_raw, dict)
+                                      and (result_raw.get("unchanged") or result_raw.get("already_known"))),
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the

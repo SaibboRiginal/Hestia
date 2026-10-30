@@ -415,7 +415,7 @@ if _HAS_MCP:
     def _mcp_scout_stats() -> dict:
         """Return real_estate domain summary: counts, statuses, date ranges."""
         entities = retrieval_service._fetch_archive_entities(
-            RealEstateSearchRequest(domain=TARGET_DOMAIN, limit=100))
+            RealEstateSearchRequest(domain=TARGET_DOMAIN, limit=50))   # le=50: 100 failed every call (bench 2026-10-30)
         total = len(entities)
         status_counts: dict[str, int] = {}
         newest = None

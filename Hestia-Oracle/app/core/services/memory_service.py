@@ -19,6 +19,8 @@ from core.services.memory_intent import (
     has_notification_intent,
     has_deprecate_intent,
     is_memory_worthy,
+    same_fact,
+    _fact_tokens,
 )
 from core.services.memory_parsers import (
     parse_preference_actions,
@@ -227,6 +229,8 @@ class MemoryService:
         signals: list[dict] = []
         for action in actions:
             if action.get("action") == "ADD" and action.get("fact"):
+                if self.find_same(action["fact"]):
+                    continue
                 saved = self._save_memory_fact(
                     fact=action["fact"],
                     domain=action.get("domain", "general"),
@@ -416,6 +420,13 @@ class MemoryService:
 
     # ── Agent-loop tool handlers (public, callable from ToolDefinition) ───────
 
+    def find_same(self, fact: str) -> dict | None:
+        """The active memory that already says *fact* (other words count), or None."""
+        for row in self._get_active_memory(memory_class=MEMORY_CLASS_PREFERENCE) or []:
+            if isinstance(row, dict) and same_fact(fact, str(row.get("fact") or "")):
+                return row
+        return None
+
     def save_memory(self, fact: str, domain: str = "general") -> tuple[bool, str]:
         """Save a durable memory fact. Usable as an agent loop tool handler.
 
@@ -428,6 +439,11 @@ class MemoryService:
         clean_fact = str(fact or "").strip()
         if not clean_fact:
             return (False, "Cannot save empty memory fact.")
+        known = self.find_same(clean_fact)
+        if known:
+            logger.info("event=memory_tool_already_known id=%s fact_preview=%s", known.get("id"), clean_fact[:120])
+            return (True, {"already_known": True, "id": known.get("id"), "fact": known.get("fact"),
+                           "note": "Già in memoria: niente salvato, non dirlo come nuovo."})
 
         # ── Auto-classify domains via embedding (bypass LLM) ──────────────
         if self.pref_domain_classifier is not None:
@@ -485,10 +501,10 @@ class MemoryService:
                 fact_text = str(mem.get("fact", "")).strip().lower()
                 if not fact_text:
                     continue
-                score = sum(
-                    1 for word in clean_query.split()
-                    if word in fact_text
-                )
+                # Stemmed words: «lavoro» finds «L'utente lavora…» (bench 2026-10-30: «dimentica dove lavoro»
+                # found nothing, so nothing was forgotten).
+                score = sum(1 for word in clean_query.split() if word in fact_text) + len(
+                    _fact_tokens(clean_query) & _fact_tokens(fact_text))
                 if score > 0:
                     scored.append((score, mem))
 
@@ -594,6 +610,8 @@ class MemoryService:
         session_id: str,
         notify_target: str | None = None,
         force_notification_compiler: bool = False,
+        memory_by_tool: bool = False,
+        done_actions: list[str] | None = None,
     ) -> list[dict]:
         """Extract and persist user preferences and/or alert subscriptions.
 
@@ -609,6 +627,10 @@ class MemoryService:
             Telegram chat-id or other delivery target for new subscriptions.
         force_notification_compiler:
             When True, subscription extraction runs regardless of intent signals.
+        memory_by_tool:
+            The chat already saved/forgot memories with its tools this turn: no preference extraction.
+        done_actions:
+            Titles of the writes this turn made (routine, event, person…): the extractor never saves them again.
 
         Returns
         -------
@@ -623,7 +645,7 @@ class MemoryService:
         signals: list[dict] = []
         # Selective memory (like Claude): the LLM extractor runs only when the message
         # can carry a durable fact; greetings/tests/questions never touch memory.
-        should_extract_prefs = is_memory_worthy(user_message)
+        should_extract_prefs = not memory_by_tool and is_memory_worthy(user_message)
         should_extract_subs = force_notification_compiler or has_notification_intent(
             user_message)
 
@@ -648,6 +670,7 @@ class MemoryService:
                 domains=", ".join(domains),
                 user_message=user_message,
                 history_text=history_text,
+                done_actions=", ".join(done_actions or []) or "nessuna",
             )
             raw_pref = self._ask(pref_prompt)
             pref_actions = parse_preference_actions(

@@ -9,4 +9,13 @@
 - [x] Full llm_live run on Gemini (2026-10-30, models gemini-flash-lite-latest → 3.1-flash-lite → gemma-4 → 2.5-flash):
       54 passed, 1 skipped (Ollama model list), 3 failed = stale tests, not the model (ChatClassifier takes one agent
       now, its `ask(…, thinking=False)` broke the mocks' side effect, tool_log has no `duration_ms`); fixed, rerun green
-- [ ] precheck 0 failed, PR green and merged
+- [x] precheck 0 failed, PR #53 green and merged
+
+## Round 2 (SPEC v1.1)
+- [x] Bench chain = 6 Gemini models (3.6-flash, 3.5-flash, 3-flash-preview, 3.5-flash-lite, flash-lite-latest, 3.1-flash-lite)
+- [x] Memory scenarios (greeting, passing state, durable fact twice, advice, job, reminder, birthday, recall, forget)
+- [x] Module scenarios (finance, wardrobe, fitness, deadlines, home, calendar, poem, maths, identity, thinking mode)
+- [x] MCP doors: external (token, 18 tools, all reads ok) and internal (252 tools, all reads ok but Garmin not linked)
+- [x] Fixes 11–21 with regression tests; docs (oracle, shared, demeter, hercules)
+- [ ] Recheck on the bench after the fixes, precheck, PR green and merged
+- [ ] Voice: needs huggingface.co allowed in the cloud environment (asked Marko)

@@ -344,9 +344,12 @@ ok, payload = mcp.call("forge_tasks", {"limit": 5}, session_id=sid, notify_targe
 
 `tool_call.build_request(tool, args, ctx)` is the one implementation of how a tool becomes a Hub request (path
 `$x`/`{x}`, templates `$session_id` · `$chat_id`/`$owner` · `$arg.x`, the rest to query or JSON body; `ctx.access`
-→ `X-Hestia-Access`, the access name of an external AI);
+→ `X-Hestia-Access`, the access name of an external AI; a POST/PUT/PATCH with no arguments sends the body `{}`,
+never none, so an endpoint with a body model does not answer 422);
 `tool_call.resolve` / `template_vars` / `is_write` are the pieces. Hestia-MCP uses it; Telegram reuses `resolve`
-for `arg_picker` sources (data reads declared by a tool).
+for `arg_picker` sources (data reads declared by a tool). `is_write`: a POST/PUT/PATCH/DELETE tool writes unless
+its name reads like a lookup (`search`, `list`, `query`, `status`, `stats`, `show`, `suggest`): a read gets
+`readOnlyHint` and no «Fatto» in the chat.
 
 ## Display blocks (`hestia_common.display`)
 Optional card next to a tool's data, so Telegram shows the result without the model (docs/work/2026-10-23-telegram-da-zero §6).
