@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Draft — waiting for Marko's ok |
 
@@ -102,7 +102,7 @@ sentence). State in `<install dir>/.hestia-install/state.json` + log `install.lo
 | 5 | Ollama on the host (native, so Mac uses Metal and Windows the GPU without extra setup) | winget `Ollama.Ollama` | official `install.sh` | Homebrew → app |
 | 6 | Hestia: clone into `C:\Hestia` / `~/Hestia` (asks only if it exists and is not Hestia) or `git pull` | ✔ | ✔ | ✔ |
 | 7 | `.env` files: `tools/init_env.py` run **inside** a throwaway `python:3.12-slim` container (no Python on the host); random `HESTIA_DB_PASSWORD`, `WEBUI_SECRET_KEY`, `WEBUI_ADMIN_SECRET`, `WEBUI_ICS_KEY` generated only where empty | ✔ | ✔ | ✔ |
-| 8 | `hestia_net`; **pull ready images** from `ghcr.io/saibboriginal/hestia-<svc>` (amd64 + arm64, built by CI on every merge to `main`); local `docker compose build` only as fallback (retry per service, then `--no-cache` for the one that failed) | ✔ | ✔ | ✔ |
+| 8 | `hestia_net`; **pull ready images** from `ghcr.io/saibboriginal/hestia-<svc>` (amd64 + arm64, built by CI for every **release**, §4.4); the installer takes the latest release; local `docker compose build` only as fallback (retry per service, then `--no-cache` for the one that failed) | ✔ | ✔ | ✔ |
 | 9 | Start the **minimal set first** (Hub, Archive + DB, Themis, Hephaestus, WebUI): about 1–3 minutes on a normal connection | ✔ | ✔ | ✔ |
 | 10 | Open the browser on `http://localhost:19015/benvenuto` and add a desktop shortcut «Hestia». The rest is pulled and started by Hephaestus **in the background** according to the role chosen in the wizard | ✔ | ✔ | ✔ |
 
@@ -169,11 +169,24 @@ same screen, so changing a key later is also not a `.env` edit).
 
 ### 4.4 Hestia updates itself — «Aggiorna Hestia»
 
-- Hephaestus checks `origin/main` once a day as an **agenda job** (Chronos rule, user-editable) and, if there is
-  something new, Hermes asks «C'è un aggiornamento (N novità). Installo?».
-- On yes: `git pull` in `/repo`, rebuild **only the services whose folder changed**, health check, automatic
-  rollback to the previous commit on failure (same machinery as the Forge deploy). Local Forge work is never lost:
-  if `main` diverged it asks instead of forcing.
+- **Versions = GitHub releases.** A tag `vX.Y.Z` on `main` (semantic versioning: major = breaking change for an
+  install, e.g. a manual step; minor = new features; patch = fixes) triggers a CI workflow that builds the images
+  as `:X.Y.Z` and `:latest`, and creates the GitHub Release with notes taken from the root `CHANGELOG.md` lines since
+  the previous tag. Each merge to `main` also publishes `:edge` images. First release: `v1.0.0` when this work is
+  merged and Marko's real run is ok.
+- **Channel** (Themis setting `hephaestus.update.channel`, a tunable, not a switch): `stabile` = releases (default
+  for every install made by the installer) · `novità` = every merge to `main` (`edge`). Marko's development PC can
+  stay on `novità`.
+- Hephaestus checks for a newer release (GitHub API `releases/latest`, or `origin/main` on `novità`) once a day as
+  an **agenda job** (Chronos rule, user-editable) and, if there is one, Hermes asks «È uscita Hestia 1.3.0: N
+  novità. Installo?» with the release notes in plain words. A major version also says what changes for you.
+- On yes: `git checkout vX.Y.Z` (or `git pull` on `novità`) in `/repo`, `docker compose pull` of **only the services
+  whose image changed** (local build as fallback), health check, automatic rollback to the previous version on
+  failure (same machinery as the Forge deploy). Local Forge work is never lost: if the repo has local commits it
+  asks instead of forcing.
+- Sistema → *Aggiornamenti* shows the installed version on each machine (central + satellites), the available one,
+  the history and «Torna alla 1.2.0». Satellites follow the central's version (same release everywhere, so the Hub
+  contract always matches).
 - Also a button in Sistema and a Telegram command. Host-side things (new Docker/Ollama version) stay with the
   installer's `--update`, which the notice suggests when needed.
 
@@ -186,7 +199,7 @@ same screen, so changing a key later is also not a `.env` edit).
   self-update (changed-folder → services map, rollback).
 - Playwright flow `setup` in `tools/cloud_test/flows.py` for the wizard (all three roles; satellite = a second
   compose project on the bench joining the first) and the Download page with a fake slow download.
-- CI job that builds and pushes the images to GHCR (amd64 + arm64) on merge to `main`.
+- CI job that builds and pushes the images to GHCR (amd64 + arm64) when a tag `vX.Y.Z` is pushed, and on merge to `main` with tag `edge`.
 - Windows/macOS real install: **Marko** (we cannot run Docker Desktop in CI).
 
 ### 4.6 Phases
@@ -196,7 +209,7 @@ same screen, so changing a key later is also not a `.env` edit).
 - **P3** Hephaestus setup endpoint + guided setup «Benvenuto» + Telegram one-time code.
 - **P4** `hestia_common.downloads` + Download page (Oracle models, Hugging Face, Echo voices, images).
 - **P5** Roles and satellites: pairing code/QR, join token in the Hub, *Dispositivi* page, role switch.
-- **P6** «Aggiorna Hestia» (agenda job, notice, selective update, rollback; also on satellites).
+- **P6** Releases (tag → images + GitHub Release with notes) + «Aggiorna Hestia» (channel, agenda job, notice, selective update, rollback; also on satellites).
 - **P7** Docs: README quick start becomes one line; `docs/SETUP.md`, `TESTING.md`, module docs, swagger, ARCHITECTURE.
 
 ## 5. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
@@ -237,5 +250,4 @@ same screen, so changing a key later is also not a `.env` edit).
 2. Secrets written by Hephaestus into `.env` (proposed) vs an encrypted secret store in Archive (bigger change of a
    global rule).
 3. macOS last fallback Colima (no Docker Desktop licence) — ok?
-4. Prebuilt public images on GitHub Container Registry (free for a public repo; the images contain only code,
-   never `.env` or data) — ok?
+4. ~~Prebuilt public images on GitHub Container Registry~~ — ok from Marko 2026-10-30, tied to releases/tags (§4.4).
