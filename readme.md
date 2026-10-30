@@ -34,6 +34,7 @@
 Hestia is a private assistant you run at home, on a PC, a small server or a Raspberry Pi. You talk to it in plain
 language from **Telegram**, from its **web app** or by **voice**, and it takes care of your calendar, mail, training,
 expenses, house and much more. It thinks with a **local model** by default and can use cloud models when you want.
+Menus and pages are in Italian for now.
 
 <table>
 <tr>
@@ -58,7 +59,7 @@ Every area of your life is a small module. Add one and the assistant can use it 
 <img src="docs/assets/icons/improves.svg" width="52" height="52" alt="">
 
 <b>It improves itself</b><br>
-Say <i>«sviluppa …»</i> and Hestia writes the change, tests it, asks you, deploys it and rolls back if it breaks.
+Ask it for a new feature and Hestia writes the change, tests it, asks you, deploys it and rolls back if it breaks.
 
 </td>
 </tr>
@@ -70,68 +71,20 @@ Say <i>«sviluppa …»</i> and Hestia writes the change, tests it, asks you, de
 
 <table>
 <tr>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/talk.svg" width="40" height="40" alt="">&nbsp; <b>Talk</b>
-
-Chat with visible reasoning and tools, voice in and out, files and photos understood, long-term memory you can review.
-
-</td>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/plan.svg" width="40" height="40" alt="">&nbsp; <b>Plan</b>
-
-Google and Outlook calendars, the assistant's own agenda, a weekly plan built around your events, routines in words, deadlines, a morning and evening recap.
-
-</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/talk.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Talk</b><br>Chat with visible reasoning and tools, voice in and out, files and photos understood, long-term memory you can review.</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/plan.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Plan</b><br>Google and Outlook calendars, the assistant's own agenda, a weekly plan built around your events, routines in words, deadlines, a morning and evening recap.</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/care.svg" width="40" height="40" alt="">&nbsp; <b>Look after you</b>
-
-Gym coach, self care, nutrition, wardrobe and outfits from the weather, important people and their dates.
-
-</td>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/money.svg" width="40" height="40" alt="">&nbsp; <b>Money and home</b>
-
-Expenses from mails and bank statements with budgets, Home Assistant lights and scenes, real-estate listings from mail.
-
-</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/care.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Look after you</b><br>Gym coach, self care, nutrition, mood over time, wardrobe and outfits from the weather, important people and their dates.</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/money.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Money and home</b><br>Expenses from mails and bank statements with budgets, Home Assistant lights and scenes, real-estate listings from mail.</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/create.svg" width="40" height="40" alt="">&nbsp; <b>Create</b>
-
-Real PDF, Word and Excel documents, images through your ComfyUI.
-
-</td>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/health.svg" width="40" height="40" alt="">&nbsp; <b>Keep itself well</b>
-
-Health monitoring with automatic repair, nightly encrypted backup on Google Drive, export and import of your data.
-
-</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/create.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Create</b><br>Real PDF, Word and Excel documents, images through your ComfyUI.</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/health.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Keep itself well</b><br>Health monitoring with automatic repair, nightly encrypted backup on Google Drive, export and import of your data.</td>
 </tr>
 <tr>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/proactive.svg" width="40" height="40" alt="">&nbsp; <b>Be proactive</b>
-
-Notifications only where you are, «Adesso» (what you usually do now), «Scopri» (what you never tried), ideas from idle reflection.
-
-</td>
-<td width="50%" valign="top">
-
-<img src="docs/assets/icons/improves.svg" width="40" height="40" alt="">&nbsp; <b>Grow with you</b>
-
-New skills arrive as new modules, and you can ask Hestia itself to build them.
-
-</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/proactive.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Be proactive</b><br>Notifications only where you are, a "right now" strip with what you usually do at this hour, tips on what you never tried, ideas from idle reflection.</td>
+<td width="50%" valign="top"><img src="docs/assets/icons/improves.svg" width="44" height="44" align="left" hspace="10" alt=""><b>Grow with you</b><br>New skills arrive as new modules, and you can ask Hestia itself to build them.</td>
 </tr>
 </table>
 
@@ -181,6 +134,9 @@ the others. Curious about what is under the hood? See the [architecture](docs/AR
 **You need** Docker with Compose v2, Python 3, [Ollama](https://ollama.com) on the host and a Telegram bot token
 from [@BotFather](https://t.me/BotFather) (plus your numeric Telegram id, e.g. from [@userinfobot](https://t.me/userinfobot)).
 
+**Hardware.** Reference setup: an NVIDIA RTX 4080 SUPER (16 GB VRAM) and 64 GB RAM running a local model of about 9B
+parameters. A smaller graphics card works with a smaller model; with cloud models only, no graphics card is needed.
+
 <img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Clone and create the env files**
 
 ```bash
@@ -227,10 +183,10 @@ On Windows `up-all.bat --build` does both.
 
 | | Where | How |
 |:-:|---|---|
-| <img src="docs/assets/icons/telegram.svg" width="32" height="32" alt=""> | **Telegram** | The main client. Keyboard *Oggi · Aree · Notifiche · Impostazioni*, voice notes, guided actions with confirmation. |
+| <img src="docs/assets/icons/telegram.svg" width="32" height="32" alt=""> | **Telegram** | The main client. A keyboard for today, areas, notifications and settings, voice notes, guided actions with confirmation. |
 | <img src="docs/assets/icons/webapp.svg" width="32" height="32" alt=""> | **Web app** | <http://localhost:19015>: chat, a page for every area, calendar, settings, development tasks. Opens inside Telegram too. |
 | <img src="docs/assets/icons/voice.svg" width="32" height="32" alt=""> | **Voice** | Speak in either client, listen to any answer, or use the live mode and talk back and forth. |
-| <img src="docs/assets/icons/external.svg" width="32" height="32" alt=""> | **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in *Sistema › Accessi AI*. |
+| <img src="docs/assets/icons/external.svg" width="32" height="32" alt=""> | **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in the web app. |
 | <img src="docs/assets/icons/api.svg" width="32" height="32" alt=""> | **API** | Swagger for every service at <http://localhost:19000>. |
 
 Everything beyond the first start (cloud models, Google Calendar and Gmail, Drive backup, Home Assistant, remote
@@ -259,19 +215,19 @@ access, connecting an external AI) is in **[docs/SETUP.md](docs/SETUP.md)**.
 | [Metis](Hestia-Metis/hestia-metis.md) | 19014 | Datasets from feedback, benchmarks, LoRA training |
 | [WebUI](Hestia-WebUI/hestia-webui.md) | 19015 | .NET 9 + Angular web app |
 | [Themis](Hestia-Themis/hestia-themis.md) | 19016 | Central settings |
-| [Wardrobe](Hestia-Wardrobe/hestia-wardrobe.md) | 19017 | «Guardaroba»: clothes, outfits, packing |
-| [Hygieia](Hestia-Hygieia/hestia-hygieia.md) | 19018 | «Cura di sé»: routines, products, diary |
-| [Hercules](Hestia-Hercules/hestia-hercules.md) | 19019 | «Allenamento»: gym coach and outdoor activities |
-| [Plutus](Hestia-Plutus/hestia-plutus.md) | 19020 | «Spese»: expenses, budgets, subscriptions |
+| [Wardrobe](Hestia-Wardrobe/hestia-wardrobe.md) | 19017 | clothes, outfits, packing |
+| [Hygieia](Hestia-Hygieia/hestia-hygieia.md) | 19018 | routines, products, diary |
+| [Hercules](Hestia-Hercules/hestia-hercules.md) | 19019 | gym coach and outdoor activities |
+| [Plutus](Hestia-Plutus/hestia-plutus.md) | 19020 | expenses, budgets, subscriptions |
 | [Echo](Hestia-Echo/hestia-echo.md) | 19021 | Voice: speech to text and text to speech |
-| [Apollo](Hestia-Apollo/hestia-apollo.md) | 19022 | «Immagini»: images through ComfyUI |
-| [Aphrodite](Hestia-Aphrodite/hestia-aphrodite.md) | 19023 | «Aspetto»: themes for holidays and seasons, a pet |
-| [Lares](Hestia-Lares/hestia-lares.md) | 19024 | «Casa»: Home Assistant |
-| [Hera](Hestia-Hera/hestia-hera.md) | 19025 | «Persone»: important people, dates, gift ideas |
-| [Demeter](Hestia-Demeter/hestia-demeter.md) | 19026 | «Alimentazione»: diet, meals, supplements |
-| [Calliope](Hestia-Calliope/hestia-calliope.md) | 19027 | «Documenti»: PDF, Word and Excel files |
-| [Kairos](Hestia-Kairos/hestia-kairos.md) | 19028 | «Scadenze»: bills, insurance, renewals |
-| [Psyche](Hestia-Psyche/hestia-psyche.md) | 19029 | «Umore»: how you feel over time, noted from the chat |
+| [Apollo](Hestia-Apollo/hestia-apollo.md) | 19022 | images through ComfyUI |
+| [Aphrodite](Hestia-Aphrodite/hestia-aphrodite.md) | 19023 | themes for holidays and seasons, a pet |
+| [Lares](Hestia-Lares/hestia-lares.md) | 19024 | Home Assistant |
+| [Hera](Hestia-Hera/hestia-hera.md) | 19025 | important people, dates, gift ideas |
+| [Demeter](Hestia-Demeter/hestia-demeter.md) | 19026 | diet, meals, supplements |
+| [Calliope](Hestia-Calliope/hestia-calliope.md) | 19027 | PDF, Word and Excel files |
+| [Kairos](Hestia-Kairos/hestia-kairos.md) | 19028 | bills, insurance, renewals |
+| [Psyche](Hestia-Psyche/hestia-psyche.md) | 19029 | how you feel over time, noted from the chat |
 | [Telegram](Hestia-Telegram/hestia-telegram.md) | — | Main chat client |
 | [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web page fetching, runs outside Docker |
 | [Shared](Hestia-Shared/hestia-shared.md) | — | `hestia_common`, the libraries every Python service uses |

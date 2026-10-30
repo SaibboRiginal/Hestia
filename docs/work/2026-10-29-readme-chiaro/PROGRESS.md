@@ -9,3 +9,4 @@
 - [x] Real banners from Gemini in place (Marko, 2026-10-29)
 - [x] v1.2: How it works in plain words, developer section only links
 - [x] v1.3: icon tiles, numbered steps, dividers, coloured badges
+- [x] v1.4: English only, aligned card icons
