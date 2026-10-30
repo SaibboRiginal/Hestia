@@ -729,6 +729,11 @@ DeadlinesRecord = _module_record_model(
     "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Kairos.")
 
+MoodRecord = _module_record_model(
+    "MoodRecord", "mood_records",
+    "One row of the mood module Hestia-Psyche (check-in), docs/work/2026-10-30-diario-umore. "
+    "Owner of the semantics: Hestia-Psyche.")
+
 MetisRecord = _module_record_model(
     "MetisRecord", "metis_records",
     "One row of the usage log of Hestia-Metis (tap, idea), docs/work/2026-10-24-tutto-brainstorm-cindy W6. "

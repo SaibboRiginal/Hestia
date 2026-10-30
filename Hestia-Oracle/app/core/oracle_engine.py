@@ -301,6 +301,9 @@ class OracleEngine:
             pref_domain_classifier=_pref_classifier,
         )
 
+        from core.services.mood_capture import MoodCapture
+        self._mood_capture = MoodCapture(self._hub, self._memory_service._ask)
+
         self._control_service = UserControlService(
             hub_client=self._hub,
             scribe_agent=self._agents.generic,
@@ -2030,17 +2033,25 @@ class OracleEngine:
             compaction_ms = 0
             compacted = False
 
+            # ── Quiet mood capture («oggi sono stanco» → the mood module, no confirmation) ──
+            mood_signals: list[dict] = []
+            try:
+                mood_signals = self._mood_capture.run(user_message)
+            except Exception as exc:
+                logger.warning("[🔄] event=background_mood_capture_failed error=%s fallback=skip", exc)
+
             # ── Memory extraction ──────────────────────────────────────────────
             if not skip_memory_extract:
+                waiter["signals"] = mood_signals
                 try:
                     t_mem = time.perf_counter()
-                    waiter["signals"] = self._memory_service.extract_and_save_preferences(
+                    waiter["signals"] = mood_signals + (self._memory_service.extract_and_save_preferences(
                         user_message, session_id,
                         notify_target=notify_target,
                         force_notification_compiler=force_notification_compiler,
                         memory_by_tool=memory_by_tool,
                         done_actions=done_actions,
-                    ) or []
+                    ) or [])
                     mem_ms = int((time.perf_counter() - t_mem) * 1000)
                     logger.info(
                         "event=background_phase_timing_ms Background phase timing | session=%s phase=memory_extract ms=%s",
@@ -2052,6 +2063,7 @@ class OracleEngine:
                 finally:
                     waiter["done"].set()
             else:
+                waiter["signals"] = mood_signals
                 waiter["done"].set()
                 logger.trace(
                     "event=background_memory_extract_skipped Background memory extraction skipped because sync persistence already ran | session=%s",

@@ -1,10 +1,10 @@
-# PROGRESS — Diario dell'umore
+# PROGRESS — «Umore» (Hestia-Psyche)
 
-- [x] Read what exists (Hygieia diary + `giornata` + `sonno`, memory rule 2c, quick answer truth check, recap, signals, coach)
-- [x] SPEC v1.0 draft
-- [ ] Marko's ok on §3.1 (new module vs Hygieia) and §3.3 (quiet capture vs ask every time)
-- [ ] P1 module + data + tools + `giornata` migration + recap piece
-- [ ] P2 quiet capture in Oracle + phrase bench (Gemini + small local model)
-- [ ] P3 WebUI page + Home quick action + Telegram + check-in
-- [ ] P4 insights + signals + Athena proposal
-- [ ] Docs, swagger, flow map, Hub tags, precheck 0 failed, PR green and merged
+- [x] Read what exists (Hygieia diary, memory rule 2c, quick answer truth check, recap, signals, coach)
+- [x] SPEC v1.0 draft → Marko's choices → SPEC v2.0
+- [x] P1 module Hestia-Psyche (service, tools, REST, recap, signals, context, check-in, transfer) + tests
+- [x] P1 wiring: Archive mood-store, compose, Hub tags, areas, CI matrix
+- [x] P2 Oracle quiet capture (gate, prompt, fallback, undo, notice) + tests
+- [x] P3 WebUI plugin + icons + quick action; Telegram area
+- [ ] P4 docs (module doc, Oracle doc, swagger, ARCHITECTURE, flow map, AI-GUIDE, README, CHANGELOG), precheck
+- [ ] PR green and merged

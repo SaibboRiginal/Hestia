@@ -33,6 +33,7 @@ ALLOWED_TAGS = {
     "food",         # Demeter
     "office",       # Calliope (documents)
     "deadlines",    # Kairos
+    "mood",         # Psyche (docs/work/2026-10-30-diario-umore)
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {
@@ -75,6 +76,7 @@ ALLOWED_TOPOLOGY_DIMENSIONS = {
         "food",
         "office",
         "deadlines",
+        "mood",
     },
     "status": {
         "alpha",

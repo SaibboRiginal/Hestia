@@ -28,6 +28,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Demeter | Domain (Nutrition) | Yes (diet, meals, supplements) | No | Coach of the weekly plan (tag `coach`), kcal estimates through Oracle, Archive `food-store` |
 | Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `documento_crea`, file under the Telegram card |
 | Kairos | Domain (Deadlines) | Yes (recurrence, advice, proposals) | No | Mail push (Iris) → proposals confirmed via Hermes, calendar mirror (agenda events), daily notices |
+| Psyche | Domain (Mood) | Yes (summaries, insights, signals) | No | Oracle quiet capture from chat (capability `mood_capture_endpoint`, no confirmation), recap piece, evening check-in via agenda + Hermes, weekly metrics for Athena |
 | Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
 | Argus | Core Organ | Yes (monitoring/remediation intent policy) | No | Reads health/logs and emits remediation intents |
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
@@ -344,6 +345,13 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 ## Notes
 
 - This file is a quick architecture map. Detailed endpoint contracts remain in each service `hestia-*.md` and in `Hestia-Swagger/swagger.yml`.
+
+### Mood (dossier `docs/work/2026-10-30-diario-umore`)
+1. Chat «oggi sono stanco» → Oracle answers → background: gate `mood_clauses` → prompt `mood_capture_template` (or
+   lexicon fallback) → Hub `registry/services` (capability `mood_capture_endpoint`) → Psyche `POST /api/mood/capture`
+   (merge within 2 h) → notice `mood.saved` streamed after the answer. «Non segnarlo» → `/api/mood/capture/undo`.
+2. Psyche → `signals-store` (signals + weekly `mood.avg`/`mood.energy`) → Athena reflection; recap piece «Umore»;
+   agenda job `psyche.checkin` → Hermes question with one-tap answers → `POST /api/mood`.
 
 ### W5 modules (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
 1. People: a card's dates → Hera → Chronos `api/special` (key `hera-<id>-<n>`) → lead notice and greeting by Chronos;

@@ -108,6 +108,16 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   «ricordami di…» is a reminder and a passing state («stanco oggi») is not a memory. When a module write already
   stored what the turn said (a person, a routine, an expense) the extractor does not run at all, unless the user
   asked to remember it («ricorda che…», `memory_intent.asks_to_remember`).
+- **Quiet mood capture** (2026-10-30, `docs/work/2026-10-30-diario-umore`, `core/services/mood_capture.py`): moods
+  never become memories, they go to the mood module («Umore»). In the same background step, before the memory
+  extractor, a deterministic gate (`mood_clauses`: first-person present cue + mood lexicon per clause; questions,
+  hypotheticals, negations, «ieri», other people and quoted text excluded; a subject-less clause continues the
+  previous first-person one) decides whether to look at all. Only then one short prompt (`mood_capture_template`,
+  same chain as the memory extractor) returns `{mood, energy, stress, labels, causes}` or `NONE`; an offline or
+  unparsable model falls back to the lexicon guess, `NONE` wins. The result is POSTed with the user's words as
+  `quote` to the service that declares the Hub capability `mood_capture_endpoint` (no module name in Oracle); no
+  confirmation. «Non segnarlo» / «togli l'umore» (`is_undo`) calls `<endpoint>/undo`. The reply never claims it:
+  a `notice` `mood.saved` «Umore segnato: 2/5 · stanco» (or `mood.removed`) follows the answer.
 - The "no action executed" contract is injected into quick answers only when the message has write intent
   (`has_write_intent`), so "test" / "ciao" no longer get "Non risulta eseguita alcuna azione".
 
