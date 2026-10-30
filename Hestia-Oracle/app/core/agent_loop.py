@@ -382,6 +382,7 @@ def run_agent_loop(
     compact_fn: Callable[[], str | None] | None = None,
     guard_checker: Callable[[list[str]], str] | None = None,
     prior_actions: list[dict] | None = None,
+    trace_out: dict | None = None,
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
 
@@ -392,7 +393,8 @@ def run_agent_loop(
     *guard_checker*: light model check of the loop guard (``core.services.loop_guard``); None = a suspected loop
     stops at once. *prior_actions*: tool log entries already executed for this same user message by an earlier
     attempt (external agent that failed midway, Cindy 2): they go in the scratchpad as «già fatto» so the model
-    continues from there instead of redoing them.
+    continues from there instead of redoing them. *trace_out*: filled with the system prompt and the tool schemas
+    of this loop (training dataset, ``core.services.turn_trace``).
     """
     _cfg = _settings()
     resolved_max_turns = max_turns if max_turns is not None else _cfg.get_int(_cfg.MAX_TURNS, 1)
@@ -476,6 +478,9 @@ def run_agent_loop(
         system_prompt += prompt_config.optional_section(
             "CLIENT INSTRUCTIONS", client_instructions)
         logger.trace("event=agent_loop_client_instructions_injected len=%d", len(client_instructions or ""))
+
+    if trace_out is not None:
+        trace_out.update(system=system_prompt, tools=tools_manifest)
 
     # Scratchpad: ephemeral tool-call/result messages for this session turn only
     scratchpad: list[ScratchMessage] = []
@@ -829,6 +834,7 @@ def run_agent_loop(
                     "tool": tn,
                     "ok": ok,
                     "result_preview": result_trunc[:300],
+                    "result_text": result_trunc,      # what the model read (training dataset; not sent to clients)
                     "turn": turn,
                     "writes": bool(getattr(_tdef, "writes", False)),
                     "title": getattr(_tdef, "title", "") or tn,

@@ -281,6 +281,11 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
   (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
   at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
   the same lists; tools `metis_adesso`, `metis_scopri`.
+- **Owns the training dataset** (dossier `docs/work/2026-10-30-dataset-allenamento`): Oracle pushes one trace per
+  owner turn (`POST /api/metis/traces`: prompt, tool calls and results, answer); Metis keeps it in Archive
+  `dataset-store` with automatic signals; votes join on `interaction_id` = trace_id. Rule: a conversation marked
+  `training_off` or deleted never stays in the dataset; nothing leaves Hestia except, in a later phase, masked text for
+  the cloud correction the owner chose.
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.

@@ -22,6 +22,7 @@ MAX_EXAMPLES = "metis.dataset.max_examples"
 DEDUPLICATE = "metis.dataset.deduplicate"
 QUALITY_LABELS = "metis.dataset.quality_labels"
 GOOD_LABELS = "metis.insights.good_labels"
+TRACES_KEEP_DAYS = "metis.traces.keep_days"
 
 _GROUP = "Miglioramento continuo"
 
@@ -36,6 +37,10 @@ settings.declare([
     setting(GOOD_LABELS, "Voti considerati buoni", "list", ["excellent", "good"], group=_GROUP, order=3,
             advanced=True,
             help="Nel resoconto dei punti deboli, le risposte con questi voti non contano come errori."),
+    setting(TRACES_KEEP_DAYS, "Giorni di conversazioni tenute per l'allenamento", "int", 365, group=_GROUP,
+            min=7, max=3650, order=4,
+            help="Ogni tuo scambio con l'assistente resta in locale per costruire il dataset di allenamento; "
+                 "oltre questi giorni viene cancellato."),
 ]).declare_log_level()
 
 
@@ -58,3 +63,10 @@ def deduplicate() -> bool:
     if isinstance(value, str):
         return value.strip().lower() not in {"0", "false", "no", "off"}
     return bool(value)
+
+
+def traces_keep_days() -> int:
+    try:
+        return max(7, int(settings.get(TRACES_KEEP_DAYS)))
+    except (TypeError, ValueError):
+        return 365

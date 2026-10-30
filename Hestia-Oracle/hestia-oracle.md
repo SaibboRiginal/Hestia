@@ -386,7 +386,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"status","content":"..."}` — progress messages (shown as live status updates).
 - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
-- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."}}` — terminal answer event (`origin` only when the turn was not started by the owner's client).
+- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."},"trace_id":"..."}` — terminal answer event (`origin` only when the turn was not started by the owner's client; `trace_id` names the turn: clients send it back as `interaction_id` with a 👍/👎).
 - `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
@@ -396,6 +396,18 @@ All interfaces consume the same event schema from Oracle:
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
 ---
+
+### Turn traces for the training dataset (dossier `docs/work/2026-10-30-dataset-allenamento`, D1)
+
+After every finished turn the owner typed in a saved conversation (all three routes; not routines, modules or
+external AIs), `core/services/turn_trace.py` pushes in the background `POST /route/metis/api/metis/traces`: system
+prompt (agent loop: preamble + preferences + style + client instructions, from `run_agent_loop(trace_out=…)`;
+quick routes: the one prompt of `_quick_answer`), the history text, user message, tool schemas offered, each tool
+call (`params`, `ok`, `writes`, `result` = what the model read, `tool_log[].result_text`, never sent to clients),
+the final answer, model, provider, use case, route, timings. Metis owns storage, signals and exclusions; a failed
+push is logged `[🔄] event=turn_trace_dropped` and never touches the chat. Deleting a chat (`DELETE /api/chat/{id}`)
+or setting `training_off` (WebUI history «Non usare per l'allenamento», tool `chat_tag training_off`) asks Metis to
+drop that conversation's traces.
 
 ## Settings (Themis, all live)
 

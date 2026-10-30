@@ -45,6 +45,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
             renderer.on_token(str(data.get("text") or ""))
         elif kind == "final":
             # Render the answer immediately; notices may still arrive (memory) and are added after.
+            renderer.trace_id = str(data.get("trace_id") or "")[:40]
             renderer.on_final(str(data.get("reply") or ""), data.get("origin"))
         elif kind == "changes":
             renderer.on_changes(data)
