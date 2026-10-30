@@ -6,5 +6,7 @@
 - [x] Chat probes on the bench (personality, quick/auto/thinking/cot, agenda, memory, weather, fitness, finance, people, deadlines, wardrobe, routines, settings, voice)
 - [x] Fixes 1–10 of SPEC §3 with regression tests
 - [x] Docs: hestia-oracle, hestia-themis, hestia-chronos, hestia-echo, swagger, TESTING (root + Oracle), root CHANGELOG
-- [ ] Full llm_live run on Gemini: results in this file
+- [x] Full llm_live run on Gemini (2026-10-30, models gemini-flash-lite-latest → 3.1-flash-lite → gemma-4 → 2.5-flash):
+      54 passed, 1 skipped (Ollama model list), 3 failed = stale tests, not the model (ChatClassifier takes one agent
+      now, its `ask(…, thinking=False)` broke the mocks' side effect, tool_log has no `duration_ms`); fixed, rerun green
 - [ ] precheck 0 failed, PR green and merged

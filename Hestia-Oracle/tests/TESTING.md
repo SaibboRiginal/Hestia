@@ -306,6 +306,7 @@
 four models, 5 s between calls, a per-minute 429 waits, a per-day 429 moves on to the next model. Override with
 `HESTIA_LIVE_PROVIDER`, `HESTIA_LIVE_MODEL` (comma list), `HESTIA_LIVE_PAUSE_SEC`. Without `--run-live` the conftest
 drops every `ORACLE_KEY_*`, so a key in the shell never changes the deterministic tests.
+Last run 2026-10-30 on Gemini: 57 passed, 1 skipped (Ollama-only model list), about 10 minutes.
 
 ### §7.1 Live Tool Calling — Comprehensive (7 cases)
 - ✅ Model calls domain search tool

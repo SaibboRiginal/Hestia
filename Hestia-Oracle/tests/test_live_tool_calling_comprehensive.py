@@ -290,7 +290,7 @@ class TestLiveToolCalling:
         for entry in tool_log:
             assert "tool" in entry
             assert "ok" in entry
-            assert "duration_ms" in entry
+            assert "turn" in entry and "params" in entry   # duration is in the tool_result event, not the log
             assert isinstance(entry["ok"], bool)
 
 
@@ -352,13 +352,13 @@ class TestLiveClassifier:
         router_agent = MagicMock()
         fallback_agent = MagicMock()
 
-        def _real_router(prompt: str) -> str:
+        def _real_router(prompt: str, **_kw) -> str:  # classify passes thinking=False
             return _call_ollama(prompt)
 
         router_agent.ask.side_effect = _real_router
         fallback_agent.ask.side_effect = _real_router
 
-        clf = ChatClassifier(router_agent, fallback_agent)
+        clf = ChatClassifier(router_agent)  # fallback models live in the use case chain now
 
         result = clf.classify(
             "Crea un evento per domani alle 15:00",
@@ -377,13 +377,13 @@ class TestLiveClassifier:
         router_agent = MagicMock()
         fallback_agent = MagicMock()
 
-        def _real_router(prompt: str) -> str:
+        def _real_router(prompt: str, **_kw) -> str:  # classify passes thinking=False
             return _call_ollama(prompt)
 
         router_agent.ask.side_effect = _real_router
         fallback_agent.ask.side_effect = _real_router
 
-        clf = ChatClassifier(router_agent, fallback_agent)
+        clf = ChatClassifier(router_agent)  # fallback models live in the use case chain now
 
         result = clf.classify(
             "Che tempo fa oggi?",
