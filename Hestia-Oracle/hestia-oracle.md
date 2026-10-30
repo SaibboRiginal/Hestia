@@ -28,7 +28,8 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   marks that provider/model pair exhausted until its reset (Retry-After, `retryDelay`, midnight Pacific for Gemini per-day
   quotas, else `oracle.quota.cooldown_minutes` = 60) and every chain skips it until then; any other error just moves
   to the next step. All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `veloce`, `potente`,
-  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable). Gemini steps use the aliases
+  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable), `cloud` (Gemini only, for the
+  Metis dataset review `metis.dataset.review`, 2026-10-30; an owner who saved his own chains adds it in Sistema). Gemini steps use the aliases
   `gemini-flash-latest` / `gemini-flash-lite-latest` (Google stops serving dated models to new keys: 2.0-flash and
   2.5-flash-lite in 2026-10). Gemini native tools send each tool's JSON Schema as `parameters_json_schema` (the
   OpenAPI-subset `parameters` refused `contentMediaType` and arrays without `items`, failing the whole call).

@@ -284,8 +284,9 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
 - **Owns the training dataset** (dossier `docs/work/2026-10-30-dataset-allenamento`): Oracle pushes one trace per
   owner turn (`POST /api/metis/traces`: prompt, tool calls and results, answer); Metis keeps it in Archive
   `dataset-store` with automatic signals; votes join on `interaction_id` = trace_id. Rule: a conversation marked
-  `training_off` or deleted never stays in the dataset; nothing leaves Hestia except, in a later phase, masked text for
-  the cloud correction the owner chose.
+  `training_off` or deleted never stays in the dataset; the only thing that leaves Hestia is the nightly review
+  (`metis.dataset.review`, use case of the same name on the cloud chain the owner chose), and only after masking the
+  names of Persone, e-mails, phones, IBAN and addresses; the owner decides the doubtful corrections («Da rivedere»).
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.

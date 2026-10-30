@@ -7,3 +7,4 @@
 - v1.4 — 2026-10-30 — Italian words translated (pillar, proactive, Telegram keyboard, external AIs, module table), note that menus are in Italian for now, «What it does» icons floated left of the title (was misaligned), mood added — Marko saw Italian parts and misaligned icons — user via external chat
 - v1.4 — 2026-10-30 — hardware line in Quick start (reference setup RTX 4080 SUPER 16 GB, 64 GB RAM, ~9B local model) — Marko's own setup — user via coordinator
 - v1.4 — 2026-10-30 — hardware line removed again — Marko: requirements not needed — user via external chat
+- v1.5 — 2026-10-30 — «A look inside»: hero mockup (Gemini frame + real dark Home on laptop and phone) and four screenshots (chat with table, light Home, deadlines, expenses) from the cloud bench with made-up data — Marko wants screenshots made by Claude — user via external chat
