@@ -1,0 +1,138 @@
+name: Release images
+
+# A tag vX.Y.Z on main = a Hestia release: every service image is built for PC (amd64) and Raspberry/ARM (arm64)
+# on native runners, published in the single package ghcr.io/<owner>/hestia as <service>-<version> and
+# <service>-latest, then the GitHub Release is created. The installer and «Aggiorna Hestia» pull these instead of
+# building (docker-compose.images.yml). Images hold only the code of the tag, never .env or data.
+# SPEC: docs/work/2026-10-30-setup-un-click (§4.4).
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: images-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      services: ${{ steps.list.outputs.services }}
+      version: ${{ steps.list.outputs.version }}
+      package: ${{ steps.list.outputs.package }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - id: list
+        run: |
+          python tools/release/images_compose.py --check
+          echo "services=$(python tools/release/images_compose.py --list)" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "package=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hestia" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        item: ${{ fromJson(needs.plan.outputs.services) }}
+        arch: [amd64, arm64]
+    # An image that does not build on ARM must not block the PC release: the manifest step keeps what exists and
+    # the installer builds the missing one locally.
+    continue-on-error: ${{ matrix.arch == 'arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.item.dockerfile }}
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          provenance: false
+          tags: ${{ needs.plan.outputs.package }}:${{ matrix.item.service }}-${{ needs.plan.outputs.version }}-${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.plan.outputs.version }}
+          cache-from: type=gha,scope=${{ matrix.item.service }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.item.service }}-${{ matrix.arch }}
+
+  manifest:
+    needs: [plan, build]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: One multi-arch tag per service (+ latest)
+        env:
+          SERVICES: ${{ needs.plan.outputs.services }}
+          PKG: ${{ needs.plan.outputs.package }}
+          VER: ${{ needs.plan.outputs.version }}
+        run: |
+          missing=""
+          for svc in $(echo "$SERVICES" | python3 -c 'import json,sys; print(" ".join(i["service"] for i in json.load(sys.stdin)))'); do
+            sources=""
+            for arch in amd64 arm64; do
+              if docker buildx imagetools inspect "$PKG:$svc-$VER-$arch" >/dev/null 2>&1; then
+                sources="$sources $PKG:$svc-$VER-$arch"
+              else
+                missing="$missing $svc/$arch"
+              fi
+            done
+            if [ -z "$sources" ]; then
+              echo "::error::no image built for $svc"
+              continue
+            fi
+            docker buildx imagetools create -t "$PKG:$svc-$VER" -t "$PKG:$svc-latest" $sources
+            echo "event=release_image service=$svc version=$VER sources=$(echo $sources | wc -w)"
+          done
+          if [ -n "$missing" ]; then
+            echo "::warning::images missing (built locally by the installer):$missing"
+          fi
+          if echo "$missing" | grep -q "/amd64"; then exit 1; fi
+
+  release:
+    needs: [plan, manifest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: GitHub Release with notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "event=release_exists tag=$TAG"
+          else
+            gh release create "$TAG" --verify-tag --generate-notes --title "Hestia ${TAG#v}"
+          fi
