@@ -287,6 +287,8 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
   `training_off` or deleted never stays in the dataset; the only thing that leaves Hestia is the nightly review
   (`metis.dataset.review`, use case of the same name on the cloud chain the owner chose), and only after masking the
   names of Persone, e-mails, phones, IBAN and addresses; the owner decides the doubtful corrections («Da rivedere»).
+  The export (`POST /api/metis/export`) is a zip of OpenAI `messages` + `tools` JSONL kept as an Archive blob; the
+  owner chooses masked (default, same masking; Persone unreachable → refused) or in clear at each download.
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.

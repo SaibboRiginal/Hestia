@@ -50,7 +50,15 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   status): `accepted` when confidence ≥ `metis.review.auto_accept` (0.85), no `needs_owner` and no 👎 with words;
   otherwise `pending` → **«Da rivedere»** (WebUI Miglioramento, Telegram `metis_rivedi`): Accetta, Correggi io (your
   answer, status `edited`), Scarta (`rejected`). Teacher away or unusable answer → the run stops there (`[🔄]`).
-- Next: D3 export SFT/DPO/eval as `messages` + `tools` JSONL, downloadable.
+- Phase **D3 «Esporta»** (`core/export.py`): `POST /api/metis/export {in_chiaro, include_unreviewed}` builds a zip
+  with `sft.jsonl` (OpenAI `messages` with `tool_calls` / `tool` roles + `tools` schemas of the turn), `dpo.jsonl`
+  (`prompt`, `chosen` = corrected answer, `rejected` = original), `eval.jsonl` (~10% of the conversations, split by
+  session, never also in sft) and `card.json` (counts, routes, models, dates, masked). Only turns the review kept or
+  corrected and accepted, or that you edited; a fix drops the tool calls the teacher removed and uses the corrected
+  answer. The owner picks at each export: **oscurato** (default, the same masking as the review: Persone names,
+  e-mails, phones, IBAN, addresses; Hera away → refused, never half masked) or **in chiaro**. The zip is an Archive
+  blob (owner `metis`), the export a dataset-store row kind `export`; download from Miglioramento («Scarica
+  oscurato» / «Scarica in chiaro» + the last five) or Telegram `metis_dataset_esporta` (file under the card).
 
 ### Benchmark Evaluation
 - Runs held-out eval comparing candidate model vs baseline
@@ -120,6 +128,9 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/review/pending` | «Da rivedere» (`limit`): `{items[{trace_id, user, answer, fixed, remove, reasons, confidence, needs_owner}], pending, reviews}` |
 | `POST` | `/api/metis/review/{trace_id}` | Owner decision `{decision: accept|reject|edit, answer?}` |
 | `GET`/`POST` | `/api/metis/tools/rivedi` · `/tools/rivedi_decidi` | The two tools (display card) |
+| `POST` | `/api/metis/export` | Build the training zip `{in_chiaro?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
+| `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
+| `POST` | `/api/metis/tools/dataset_esporta` | Tool `metis_dataset_esporta` (card with the file) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
@@ -141,7 +152,8 @@ Metis ships its inside view on the client plugin contract (`hestia_common.plugin
 section *Sistema*), `api_prefix` `/api/metis/`, no new endpoint.
 - page **Miglioramento** (`miglioramento`, `metis-improvement`, order 180): *Dataset di allenamento* from
   `/api/metis/traces/status` (saved turns, last 7 days, signals), *Da rivedere* from `/api/metis/review/pending`
-  (original vs corrected, Accetta / Correggi io with a text box / Scarta → `POST /api/metis/review/{id}`), *Dove sbaglia* from
+  (original vs corrected, Accetta / Correggi io with a text box / Scarta → `POST /api/metis/review/{id}`), *Esporta* (`POST /api/metis/export`, then
+  `/export/{id}/b64` saved as a file; «Scarica oscurato» / «Scarica in chiaro», the last five exports), *Dove sbaglia* from
   `/api/metis/insights` (grades, negatives, negative share, weak domains with labels and examples), *Dataset* from
   `/api/metis/dataset/status` (in-memory, shown only when there are some), *Training LoRA* from `/api/metis/lora/jobs`
   (state, dataset, base model, requester, planned start). Besides the review decisions, building datasets and training
