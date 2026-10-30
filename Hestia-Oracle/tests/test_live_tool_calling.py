@@ -1,7 +1,7 @@
-"""Tests — Live Ollama tool-calling validation (Phase 1.8)
+"""Tests — Live tool-calling validation (Phase 1.8)
 
-These tests exercise real Ollama inference through the run_agent_loop.
-They require a running local Ollama instance and are auto-skipped if not reachable.
+These tests exercise a real model (tests/live_llm.py: local Ollama or Gemini) through run_agent_loop.
+They are skipped unless --run-live is passed and the model is usable.
 Primary test engine for validating that the local model can produce
 correct tool-call format and that the agent loop parses and dispatches it.
 
@@ -19,6 +19,7 @@ import pytest
 from core.agent_loop import ToolDefinition, run_agent_loop
 from core.services import prompt_config
 from agents.universal_agent import UniversalAgent
+import live_llm
 
 _STYLE = prompt_config.conversation_style_contract()
 
@@ -28,19 +29,14 @@ _STYLE = prompt_config.conversation_style_contract()
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _get_ollama_model() -> str:
-    return os.environ.get("OLLAMA_MODEL", "gemma4:e4b")
-
-
 def _make_ollama_agent(thinking: bool = False) -> UniversalAgent:
-    return UniversalAgent(
+    """Live agent (tests/live_llm.py: Ollama or Gemini) with the tool-call contract of these tests."""
+    return live_llm.make_agent(
         role_prompt=(
             "Sei Hestia, un'assistente IA. Quando l'utente chiede dati che richiedono uno strumento, "
             "usa il formato <tool_call>{\"name\": \"nome_tool\", \"params\": {\"chiave\": \"valore\"}}</tool_call>. "
             "Risposta finale SEMPRE in HTML: <b>grassetto</b>, <i>corsivo</i>, bullet con •."
         ),
-        provider="ollama",
-        model_name=_get_ollama_model(),
         thinking=thinking,
     )
 
@@ -61,27 +57,18 @@ def _make_tool(name: str, result: Any = None) -> ToolDefinition:
 
 @pytest.mark.llm_live
 class TestLiveToolCalling:
-    def test_ollama_model_list_reachable(self):
-        """Sanity check: Ollama /api/tags is up."""
-        ollama_url = os.environ.get(
-            "OLLAMA_URL", "http://localhost:11434/api/generate")
-        base = ollama_url.rsplit("/api/", 1)[0]
-        resp = requests.get(f"{base}/api/tags", timeout=5)
-        assert resp.status_code == 200
-        models = [m.get("name", "") for m in resp.json().get("models", [])]
-        assert len(
-            models) > 0, "No models installed in Ollama — install at least one model"
+    def test_live_model_reachable(self):
+        """Sanity check: the live model answers at all."""
+        answer = _make_ollama_agent().ask("Rispondi solo con la parola: pronto")
+        assert "pront" in answer.lower(), f"{live_llm.PROVIDER}/{live_llm.MODEL} answered: {answer!r}"
 
+    @pytest.mark.skipif(live_llm.PROVIDER != "ollama", reason="Ollama only: installed model list")
     def test_configured_model_is_available(self):
         """The OLLAMA_MODEL env var should be installed."""
-        model = _get_ollama_model()
-        ollama_url = os.environ.get(
-            "OLLAMA_URL", "http://localhost:11434/api/generate")
-        base = ollama_url.rsplit("/api/", 1)[0]
-        resp = requests.get(f"{base}/api/tags", timeout=5)
+        resp = requests.get(f"{live_llm.ollama_base()}/api/tags", timeout=5)
         models = [m.get("name", "") for m in resp.json().get("models", [])]
-        assert any(model.split(":")[0] in m for m in models), (
-            f"Model '{model}' not found in Ollama. Available: {models}"
+        assert any(live_llm.MODEL.split(":")[0] in m for m in models), (
+            f"Model '{live_llm.MODEL}' not found in Ollama. Available: {models}"
         )
 
     def test_agent_answers_direct_question_without_tool_call(self):

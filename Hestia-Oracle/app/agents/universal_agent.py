@@ -216,13 +216,15 @@ class UniversalAgent:
         raise RuntimeError(f"Unknown provider: {self.provider}")
 
     def _ask_with_tools_gemini(self, user_message: str, tools: list[dict]) -> dict:
+        # parameters_json_schema takes the tools' JSON Schema as is: the OpenAPI-subset `parameters` field is
+        # refused by the SDK (contentMediaType) or by the API (array without items) and one bad tool fails the call.
         declarations: list[types.FunctionDeclaration] = []
         for tool in tools:
             declarations.append(
                 types.FunctionDeclaration(
                     name=str(tool.get("name", "")).strip(),
                     description=str(tool.get("description", "")).strip(),
-                    parameters=tool.get("parameters") or {
+                    parameters_json_schema=tool.get("parameters") or {
                         "type": "object", "properties": {}},
                 )
             )

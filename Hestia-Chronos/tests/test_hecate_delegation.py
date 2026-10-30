@@ -107,6 +107,30 @@ def test_create_event_delegates_to_hecate(monkeypatch):
     assert "gateway/calendar/events" in calls[0]["path"]
 
 
+def test_create_event_takes_the_flat_tool_shape(monkeypatch):
+    """The create_event tool sends {title, start_datetime, provider}: wrapped into event, end = start + 1h
+    (regression: every assistant call was a 422 «event: Field required», bench with a real model 2026-10-30)."""
+    from fastapi.testclient import TestClient
+
+    calls = []
+
+    def fake_route(*, method, path, body, timeout_seconds):
+        calls.append(body)
+        return 200, {"results": [{"provider": "google", "success": True, "event_id": "e1", "error": None}],
+                     "total_created": 1, "total_failed": 0}
+
+    monkeypatch.setattr(chronos_main, "_route_hecate", fake_route)
+    client = TestClient(chronos_main.app, raise_server_exceptions=True)
+    resp = client.post("/api/calendar/events", json={"title": "Dentista", "start_datetime": "2026-11-05T15:00:00",
+                                                     "location": "Studio", "provider": "google"})
+
+    assert resp.status_code == 200
+    event = calls[0]["event"]
+    assert event["title"] == "Dentista" and event["location"] == "Studio"
+    assert event["end_datetime"].startswith("2026-11-05T16:00")
+    assert calls[0]["target_providers"] == ["google"]
+
+
 # ---------------------------------------------------------------------------
 # list_events delegation
 # ---------------------------------------------------------------------------

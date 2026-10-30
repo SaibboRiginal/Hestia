@@ -1,6 +1,6 @@
 """Live LLM tool-calling tests — validates Oracle's agent loop with real tools.
 
-Requires a running Ollama instance at OLLAMA_URL.
+Requires a real model (tests/live_llm.py: local Ollama or Gemini) and --run-live.
 All tool handlers are mocked to avoid side effects on production services.
 
 Tests:
@@ -13,7 +13,7 @@ Tests:
   - HTML output contract (no Markdown, proper tags)
   - Fallback chain (primary fails → fallback succeeds)
 
-Marked: llm_live — skipped when Ollama is not reachable.
+Marked: llm_live — skipped unless --run-live and the model is usable.
 """
 from __future__ import annotations
 
@@ -116,27 +116,11 @@ def _make_action_tool(name: str, description: str, params: dict) -> ToolDefiniti
     )
 
 
-_LLM_MODEL = os.getenv("MODEL_USECASE_GENERIC_MODEL", os.getenv("OLLAMA_MODEL", "gemma4:e4b"))
-_REASONING_MODEL = os.getenv("MODEL_USECASE_REASONING_MODEL", "gemma-4-26B-A4B-it-UD-IQ4_NL:latest")
-_CODE_MODEL = os.getenv("MODEL_USECASE_CODE_MODEL", "gemma4:e4b")
+import live_llm
 
-
-def _call_ollama(prompt: str, model: str = None) -> str:
-    """Make a single blocking call to Ollama."""
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    chat_url = ollama_url.replace("/api/generate", "/api/chat")
-    resp = requests.post(chat_url, json={
-        "model": model or _LLM_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "think": False,  # Gemma 4: disable thinking to avoid <unused50> tokens
-    }, timeout=120)
-    resp.raise_for_status()
-    return resp.json().get("message", {}).get("content", "")
-
-
-def _ollama_ask_fn(prompt: str) -> str:
-    return _call_ollama(prompt)
+# Real model (Ollama or Gemini, tests/live_llm.py) through the production UniversalAgent.
+_ollama_ask_fn, _ollama_ask_tools_fn = live_llm.ask_fns("You are a helpful assistant with tool access.")
+_call_ollama = _ollama_ask_fn
 
 
 def _run_and_print(user_message, tools, label="", **kwargs):
@@ -164,45 +148,6 @@ def _run_and_print(user_message, tools, label="", **kwargs):
     print(answer[:800] if answer else "(EMPTY)")
     print(f"{'='*60}\n")
     return answer, tokens, tool_log
-
-
-def _ollama_ask_tools_fn(prompt: str, tools: list[dict]) -> dict:
-    """Use Ollama native tool calling."""
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    chat_url = ollama_url.replace("/api/generate", "/api/chat")
-    ollama_tools = [
-        {"type": "function", "function": {
-            "name": t["name"],
-            "description": t.get("description", ""),
-            "parameters": t.get("parameters", {"type": "object", "properties": {}}),
-        }}
-        for t in tools
-    ]
-    resp = requests.post(chat_url, json={
-        "model": _LLM_MODEL,
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant with tool access."},
-            {"role": "user", "content": prompt},
-        ],
-        "tools": ollama_tools,
-        "stream": False,
-        "think": False,  # Gemma 4: disable thinking for clean tool calls
-    }, timeout=120)
-    resp.raise_for_status()
-    data = resp.json()
-    msg = data.get("message", {})
-    tool_calls = msg.get("tool_calls", [])
-    if tool_calls:
-        tc = tool_calls[0]
-        fn = tc.get("function", {})
-        args = fn.get("arguments", {})
-        if isinstance(args, str):
-            try:
-                args = json.loads(args)
-            except Exception:
-                args = {}
-        return {"tool_call": {"name": fn.get("name", ""), "params": args}, "text": ""}
-    return {"tool_call": None, "text": msg.get("content", "")}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -554,30 +499,6 @@ class TestLiveChatModes:
 @pytest.mark.llm_live
 class TestLiveModelUseCase:
     """Verify model selection by use case works — uses models from .env."""
-
-    def test_configured_models_are_available(self):
-        """The models in MODEL_USECASE_* env vars should be pullable in Ollama."""
-        import requests as _r
-        tags = _r.get("http://localhost:11434/api/tags", timeout=5).json()
-        available = {m["name"] for m in tags.get("models", [])}
-
-        models_to_check = [
-            ("GENERIC", _LLM_MODEL),
-            ("REASONING", _REASONING_MODEL),
-            ("CODE", _CODE_MODEL),
-        ]
-        missing = []
-        for label, model in models_to_check:
-            # Match by base name (strip tag suffix like :latest, :Q8_0)
-            base = model.split(":")[0]
-            if not any(base in a for a in available):
-                missing.append(f"{label}={model}")
-
-        if missing:
-            print(f"\n  WARNING: Models not found in Ollama: {missing}")
-            print(f"  Available: {sorted(available)[:10]}...")
-        # Don't fail — user may have models pulled later
-        print(f"\n  Configured models: GENERIC={_LLM_MODEL}, REASONING={_REASONING_MODEL}, CODE={_CODE_MODEL}")
 
     def test_generic_model_can_classify_and_chat(self):
         """The generic model should handle both classification and chat."""

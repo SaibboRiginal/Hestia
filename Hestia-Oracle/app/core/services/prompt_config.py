@@ -49,6 +49,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "8. Nessun tool fa ciò che chiede (es. nuova regola/avviso che non esiste) -> NON dire 'non posso': "
         "proponi sviluppo Forge (nuovo tool MCP / modello agenda nel modulo giusto), chiedi ok, poi forge_develop. "
         "Se c'è voce agenda collegata: passa agenda_parent=chiave.\n"
+        "9. Niente saluto d'apertura (Buongiorno, Ciao) se l'utente non saluta: vai al punto.\n"
         "FORMATO HTML TELEGRAM (obbligatorio):\n"
         "- Tag SOLO: <b> <i> <u> <s> <code> <pre> <a href=\"url\">.\n"
         "- VIETATI: <ul> <ol> <li> <div> <span> <h1>-<h6> <p> <br/>.\n"

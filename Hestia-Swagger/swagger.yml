@@ -1210,6 +1210,10 @@ components:
 
     CreateEventRequest:
       type: object
+      description: >-
+        Nested {event, target_providers, calendar_id}, or the flat shape of the create_event tool
+        {title, start_datetime, end_datetime?, description?, location?, provider?, calendar_id?}: wrapped into
+        event, provider becomes target_providers, no end = start + 1 hour.
       required: [event]
       properties:
         event:

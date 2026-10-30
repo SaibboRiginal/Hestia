@@ -30,80 +30,10 @@ for _p in [str(_APP_PATH), str(_SHARED_PATH)]:
 from core.agent_loop import run_agent_loop, ToolDefinition
 from core.services import prompt_config
 
-# ── Resolve model from env ──────────────────────────────────────────────────
-_LLM_MODEL = os.getenv("MODEL_USECASE_GENERIC_MODEL", os.getenv("OLLAMA_MODEL", "gemma4:e4b"))
-_OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-_CHAT_URL = _OLLAMA_URL.replace("/api/generate", "/api/chat")
+import live_llm
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Helpers
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-def _call_ollama(prompt: str) -> str:
-    """Single blocking call to Ollama /api/chat. Returns content string."""
-    try:
-        resp = requests.post(_CHAT_URL, json={
-            "model": _LLM_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": False,
-            "think": False,  # Gemma 4: disable thinking to avoid <unused50> tokens
-        }, timeout=120)
-        resp.raise_for_status()
-        return (resp.json().get("message", {}).get("content", "") or "").strip()
-    except Exception as exc:
-        return f"[OLLAMA_ERROR: {exc}]"
-
-
-def _ollama_ask(prompt: str) -> str:
-    return _call_ollama(prompt)
-
-
-def _ollama_ask_tools(prompt: str, tools_manifest: list[dict]) -> dict:
-    """Ollama native tool calling via /api/chat.
-
-    Falls back to plain text if native tool calling returns no tool_call.
-    """
-    ollama_tools = [
-        {"type": "function", "function": {
-            "name": t["name"],
-            "description": t.get("description", ""),
-            "parameters": t.get("parameters", {"type": "object", "properties": {}}),
-        }}
-        for t in tools_manifest
-    ]
-    try:
-        resp = requests.post(_CHAT_URL, json={
-            "model": _LLM_MODEL,
-            "messages": [
-                {"role": "system", "content": (
-                    "You are Hestia's tool-calling engine. "
-                    "When the user asks for something you can do with a tool, call it. "
-                    "If no tool matches, respond in plain text."
-                )},
-                {"role": "user", "content": prompt},
-            ],
-            "tools": ollama_tools,
-            "stream": False,
-            "think": False,  # Gemma 4: disable thinking for clean tool calls
-        }, timeout=120)
-        resp.raise_for_status()
-        data = resp.json()
-        msg = data.get("message", {})
-        tool_calls = msg.get("tool_calls", [])
-        if tool_calls:
-            tc = tool_calls[0]
-            fn = tc.get("function", {})
-            args = fn.get("arguments", {})
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except Exception:
-                    args = {}
-            return {"tool_call": {"name": fn.get("name", ""), "params": args}, "text": ""}
-        return {"tool_call": None, "text": msg.get("content", "") or ""}
-    except Exception as exc:
-        return {"tool_call": None, "text": f"[OLLAMA_ERROR: {exc}]"}
+# Real model (Ollama or Gemini, tests/live_llm.py) through the production UniversalAgent.
+_ollama_ask, _ollama_ask_tools = live_llm.ask_fns()
 
 
 # ── Realistic mock responses per tool ──────────────────────────────────────

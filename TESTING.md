@@ -7,7 +7,7 @@
 
 ```
 pytest -m unit          Fast mocked tests (no LLM, no network)
-pytest -m llm_live      Live LLM tests (requires local Ollama)
+pytest -m llm_live --run-live   Real-model tests, not deterministic (local Ollama, or Gemini with ORACLE_KEY_GEMINI)
 pytest -m api           FastAPI TestClient endpoint tests (no LLM)
 pytest -m integration   Cross-service integration (Ollama + mocked Hub/Archive)
 pytest -m format        Message formatting and output contract tests
@@ -55,8 +55,12 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 - `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
   agenda, presence, settings, plugins, mcp, webui, transfer, vita (new modules), shell (Adesso, Scopri, chats, push) (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
-- Brain: `GEMINI_API_KEY` in the environment (cloud environment variable / Codespaces secret, never in the repo)
-  → Oracle's models switch to Gemini; otherwise `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …».
+- Brain: `GEMINI_API_KEY` (or `ORACLE_KEY_GEMINI`) in the environment (cloud environment variable / Codespaces secret,
+  never in the repo) → every Oracle chain except `embedding` becomes a Gemini chain of four models (Flash-Lite
+  first; the free tier gives each model about 20 requests a day, the chain moves on when one is out); otherwise
+  `tools/cloud_test/fake_ollama.py` answers «[LLM finto] …». Same key, no stack needed: the real-model tests
+  `python -m pytest Hestia-Oracle/tests -m llm_live --run-live -s` (`tests/live_llm.py`: provider, model list,
+  pacing; `HESTIA_LIVE_PROVIDER`, `HESTIA_LIVE_MODEL`, `HESTIA_LIVE_PAUSE_SEC`).
   The bench overlay passes it to Oracle as `ORACLE_KEY_GEMINI` (Oracle reads only `ORACLE_KEY_<NAME>`): on the bench
   the secret keeps the name `GEMINI_API_KEY`; on the real stack the key goes in `Hestia-Oracle/app/.env` as `ORACLE_KEY_GEMINI`.
 - Telegram starts only with a (test) `TELEGRAM_BOT_TOKEN`; Google/Microsoft OAuth needs a person in a browser.

@@ -54,6 +54,10 @@ Hub from that module (e.g. `hecate:/api/gateway/weather/places`).
   (contract shared with `docs/work/2026-10-10-hermes-global-notifications/`) → applied (history actor = proposer) → `settings.changed` notice.
   Later answers get `409 {status: already_decided}`. Closing (approved/rejected/expired) emits
   `settings.proposal_closed` with `closes: settings.proposal:<id>`, `decision`, `outcome_text`.
+- **Unknown key** (real-model bench, 2026-10-30): a proposal for a key that does not exist answers 404 «… cerca la
+  chiave esatta con settings_search. Chiavi vicine: …» (keys matching the words of the guess, else the personal
+  ones, chat first) so the model retries with the right key. Confirm cards and messages show option labels
+  («Caldo → Diretto»). Themis declares `owns_tool_domains: ["settings"]`: Oracle's domain gate keeps its tools in chat.
 - **Proposal born in a chat** (client plugins, 2026-10-18): Oracle's tool call carries `X-Session-Id` +
   `X-Hestia-Client` → origin → the answer has `confirm {question_id: "themis:<id>", header, prompt, options,
   actions}` and Oracle shows it as a confirm card in that chat (answer = approve/reject action routed via Hub with

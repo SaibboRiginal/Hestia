@@ -249,7 +249,77 @@ def _extract_tool_call(text: str) -> dict | None:
         except Exception:
             continue
 
+    # 4. The whole answer is a Python-style call: memory.search(query="caffè") (Gemini Flash-Lite writes this as
+    #    text instead of a native call; it reached the user as the answer, bench 2026-10-30).
+    py_call = _python_style_call(text)
+    if py_call:
+        logger.trace("event=agent_loop_parsed_tool_call format=python_call tool=%s", py_call["name"])
+        return py_call
+
     return None
+
+
+def _python_style_call(text: str) -> dict | None:
+    import ast
+    body = text.strip().strip("`").strip()
+    if body.startswith(("python\n", "tool_code\n")):
+        body = body.split("\n", 1)[1].strip()
+    if "\n" in body or not body.endswith(")"):
+        return None
+    try:
+        node = ast.parse(body, mode="eval").body
+    except SyntaxError:
+        return None
+    if not isinstance(node, ast.Call) or node.args:
+        return None
+    parts, func = [], node.func
+    while isinstance(func, ast.Attribute):
+        parts.insert(0, func.attr)
+        func = func.value
+    if not isinstance(func, ast.Name):
+        return None
+    params = {}
+    for kw in node.keywords:
+        if kw.arg is None:
+            return None
+        try:
+            params[kw.arg] = ast.literal_eval(kw.value)
+        except ValueError:
+            return None
+    return {"name": ".".join([func.id, *parts]), "params": params}
+
+
+ALREADY_DONE = "GIÀ FATTO in questo turno (stesso titolo): non ripeterlo, rispondi all'utente."
+_WRITE_KEY_PARAMS = ("title", "name", "titolo", "nome", "text", "fact")
+
+
+def _write_key(tool: "ToolDefinition | None", call: dict) -> tuple[str, str] | None:
+    """(tool, normalized title) of a write call that names what it creates; None = no dedup."""
+    if tool is None or not getattr(tool, "writes", False):
+        return None
+    params = call.get("params") or {}
+    for key in _WRITE_KEY_PARAMS:
+        value = params.get(key)
+        if isinstance(value, str) and value.strip():
+            return tool.name, " ".join(value.lower().split())
+    return None
+
+
+# A write that failed and was never redone: the model must not tell the user it is done (bench with a real
+# model, 2026-10-30: five failed create_event calls, answer «Dentista fissato per giovedì»).
+_FAILED_WRITES_NOTE = ("AZIONI NON RIUSCITE: {titles}. Non dire che sono fatte: di' all'utente in una riga che non "
+                       "è riuscito e perché, e cosa può fare.")
+
+
+def _failed_writes(tool_log: list[dict]) -> list[str]:
+    """Titles of write tools whose every call in this loop failed."""
+    ok = {e["tool"] for e in tool_log if e.get("writes") and e.get("ok")}
+    out: list[str] = []
+    for e in tool_log:
+        title = str(e.get("title") or e.get("tool") or "")
+        if e.get("writes") and not e.get("ok") and e["tool"] not in ok and title not in out:
+            out.append(title)
+    return out
 
 
 def _truncate_tool_result(result: str, max_chars: int | None = None) -> str:
@@ -383,6 +453,7 @@ def run_agent_loop(
     from core.services.loop_guard import STOP_MESSAGE, LoopGuard
     _guard = LoopGuard.from_settings(guard_checker)
     _force_final = False
+    _done_writes: set[tuple[str, str]] = set()   # (tool, title) of writes that succeeded in this loop
     # Tool-call log for post-answer summary
     tool_log: list[dict] = []
     # Track consecutive turns without tool calls for early exit
@@ -397,6 +468,9 @@ def run_agent_loop(
             dynamic_parts.append(action_hint.strip())
         for msg in scratchpad:
             dynamic_parts.append(f"[{msg.role.upper()}]: {msg.content}")
+        _failed = _failed_writes(tool_log)
+        if _failed:
+            dynamic_parts.append(_FAILED_WRITES_NOTE.format(titles=", ".join(_failed)))
         if is_final:
             dynamic_parts.append(
                 "Now provide your final answer to the user (no tool_call blocks):")
@@ -584,6 +658,30 @@ def run_agent_loop(
             final_answer = "⚠️ Il modello non è disponibile. Riprova tra poco."
             break
 
+        _all_repeated = False
+        if tool_calls_list:
+            # The same write again (same tool, same title): already done, not run twice (bench with a real model,
+            # 2026-10-30: «ricordami ogni lunedì di pesarmi» created three identical routines).
+            _again = [tc for tc in tool_calls_list if _write_key(tool_map.get(tc.get("name", "")), tc) in _done_writes]
+            if _again:
+                for tc in _again:
+                    scratchpad.append(ScratchMessage("tool", f"[{tc.get('name')}] → ✅ {ALREADY_DONE}", turn))
+                logger.info("[🔄] event=agent_loop_duplicate_write_skipped turn=%d tools=%s",
+                            turn, [tc.get("name") for tc in _again])
+                tool_calls_list = [tc for tc in tool_calls_list if tc not in _again]
+                _force_final = True
+            _seen_keys: set = set()
+            _unique: list[dict] = []
+            for tc in tool_calls_list:
+                _k = _write_key(tool_map.get(tc.get("name", "")), tc)
+                if _k is None or _k not in _seen_keys:
+                    _unique.append(tc)
+                if _k is not None:
+                    _seen_keys.add(_k)
+            tool_calls_list = _unique
+            _all_repeated = not tool_calls_list
+        if _all_repeated:
+            continue   # next turn is the final answer (_force_final)
         if tool_calls_list:
             # ── Parallel tool execution ─────────────────────────────────────
             # LangChain RunnableParallel pattern: each branch receives the same
@@ -664,6 +762,11 @@ def run_agent_loop(
                             "result_count": result_count,
                         },
                     ))
+
+                if ok:
+                    _k = _write_key(tool_map.get(tn), {"name": tn, "params": r.get("params") or {}})
+                    if _k is not None:
+                        _done_writes.add(_k)
 
                 # Format scratchpad entry
                 _tool_scratch = f"[{tn}] → {'✅' if ok else '❌'} {result_trunc}"

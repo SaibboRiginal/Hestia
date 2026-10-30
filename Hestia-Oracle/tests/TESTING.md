@@ -299,7 +299,13 @@
 
 ---
 
-## §7 Live LLM Tests (llm_live — Requires Ollama)
+## §7 Live LLM Tests (llm_live — real model, not deterministic)
+
+`python -m pytest Hestia-Oracle/tests -m llm_live --run-live -s`. Model from `tests/live_llm.py`: local Ollama
+(`OLLAMA_URL`, `OLLAMA_MODEL`), or Gemini when `ORACLE_KEY_GEMINI` is set (cloud session, Codespace) — a list of
+four models, 5 s between calls, a per-minute 429 waits, a per-day 429 moves on to the next model. Override with
+`HESTIA_LIVE_PROVIDER`, `HESTIA_LIVE_MODEL` (comma list), `HESTIA_LIVE_PAUSE_SEC`. Without `--run-live` the conftest
+drops every `ORACLE_KEY_*`, so a key in the shell never changes the deterministic tests.
 
 ### §7.1 Live Tool Calling — Comprehensive (7 cases)
 - ✅ Model calls domain search tool

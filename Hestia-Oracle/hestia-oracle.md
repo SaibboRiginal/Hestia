@@ -28,7 +28,11 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   marks that provider/model pair exhausted until its reset (Retry-After, `retryDelay`, midnight Pacific for Gemini per-day
   quotas, else `oracle.quota.cooldown_minutes` = 60) and every chain skips it until then; any other error just moves
   to the next step. All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `veloce`, `potente`,
-  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable). Code: `core/services/llm_chains.py`.
+  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable). Gemini steps use the aliases
+  `gemini-flash-latest` / `gemini-flash-lite-latest` (Google stops serving dated models to new keys: 2.0-flash and
+  2.5-flash-lite in 2026-10). Gemini native tools send each tool's JSON Schema as `parameters_json_schema` (the
+  OpenAPI-subset `parameters` refused `contentMediaType` and arrays without `items`, failing the whole call).
+  Code: `core/services/llm_chains.py`.
 - **Use cases** `oracle.usecases` = `{use case: {chain, mode, thinking}}` overrides. Oracle's own: `oracle.generale`
   (chat, classify, tools, memory, format), `oracle.ragionamento`, `oracle.codice`, `oracle.documenti` (vision),
   `oracle.embedding`. Modules **declare** theirs in the Hub registration (`capabilities.llm_usecases`, helper
@@ -171,6 +175,13 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   `oracle.agent.giri.attesa_secondi` after the previous one is a real wait, not a loop. On a suspicion the light use
   case `oracle.controllo_giri` says «aspetta» or «gira» (at most `oracle.agent.giri.verifiche` checks per answer; a
   failure = stop). Stop = one last turn without tools, the model answers with what it has.
+- **Truth about writes** (real-model bench, 2026-10-30, `docs/work/2026-10-30-ai-vera-gemini`): a write tool whose
+  every call failed puts «AZIONI NON RIUSCITE: <title>…» in the next prompt (the model must say it did not work);
+  the same write tool with the same title/name/text again in one loop is not run («GIÀ FATTO», next turn = final);
+  a module answering 200 with `{"error": …}` (no `ok`/`saved`) counts as failed (no «Fatto», not in `changes`);
+  a successful write that returns `confirm` (a Themis proposal) is notice `action.needs_approval` and not a
+  change. A whole answer that is a Python-style call (`memory.search(query="…")`, Flash-Lite does this) is parsed as
+  a tool call. Module tools keep their own JSON Schema (enums, array items) instead of a flattened copy.
 - **No replay** (Cindy 2): when the external brain fails after it already ran tools, its tool log
   (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
 - **Origin** (Cindy 6, `hestia_common.origin`): `/api/chat` reads `X-Hestia-Origin: <kind>[:<ref>]` (+ optional

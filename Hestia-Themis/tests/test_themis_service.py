@@ -144,3 +144,30 @@ def test_external_ai_proposal_names_the_access():
     text = themis._proposal_text({"key": "argus.mode", "label": "Modalità", "module": "argus"},
                                  {"proposer": "external:Claude Code PC", "value": "calm"}, "normal")
     assert text.startswith("⚙️ Claude Code PC (AI esterna) propone")
+
+
+@pytest.mark.unit
+def test_unknown_key_proposal_names_the_close_keys():
+    """A real model guessed «response_style»: the error points at settings_search and the close keys (2026-10-30)."""
+    fake = FakeArchive()
+    themis = Themis(fake, Registry(None))
+    oracle = SettingsClient("oracle", hub_api_url="http://x")
+    oracle.declare([setting("oracle.chat.tone", "Tono delle risposte (stile)", "enum", "warm", scope="user",
+                            options=[("warm", "Caldo"), ("direct", "Diretto")])])
+    themis.register("oracle", list(oracle._defs.values()), [], {})
+    with pytest.raises(ThemisError) as err:
+        themis.propose("response_style", "direct", proposer="oracle")
+    assert "settings_search" in str(err.value) and "oracle.chat.tone" in str(err.value)
+
+
+@pytest.mark.unit
+def test_confirm_card_shows_choice_labels():
+    fake = FakeArchive()
+    themis = Themis(fake, Registry(None))
+    oracle = SettingsClient("oracle", hub_api_url="http://x")
+    oracle.declare([setting("oracle.chat.tone", "Tono delle risposte", "enum", "warm", scope="user",
+                            options=[("warm", "Caldo"), ("direct", "Diretto")])])
+    themis.register("oracle", list(oracle._defs.values()), [], {})
+    themis._emit = lambda *a: None
+    p = themis.propose("oracle.chat.tone", "direct", proposer="oracle", origin={"client": "webui", "session_id": "s"})
+    assert p["confirm"]["prompt"].startswith("«Tono delle risposte»: Caldo → Diretto")

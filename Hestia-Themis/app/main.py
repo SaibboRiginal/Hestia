@@ -307,7 +307,8 @@ try:
                 telegram={"section": "Impostazioni"}),
         MCPTool(name="settings_propose",
                 description="Proponi all'utente di cambiare un'impostazione. NON la applica: l'utente "
-                            "conferma o rifiuta dalla notifica. Dopo, di' all'utente che la proposta è inviata.",
+                            "conferma o rifiuta dalla notifica. Dopo, di' all'utente che la proposta è inviata. "
+                            "key esatta: se non la sai, prima settings_search (es. tono → oracle.chat.tone).",
                 parameters={"type": "object", "properties": {
                     "key": {"type": "string"}, "value": {"description": "nuovo valore (tipo dell'impostazione)"},
                     "reason": {"type": "string", "description": "perché, in una frase"}},
@@ -353,6 +354,9 @@ _REGISTRATION = {
                      "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
                      # Assistant tools appear when the chat is about Hestia itself / its settings.
                      "module_tool_domains": ["system", "settings"],
+                     # Owner of the "settings" tools: without it Oracle's domain gate dropped them, so «rispondimi
+                     # più diretto» became a memory instead of a proposal (bench with a real model, 2026-10-30).
+                     "owns_tool_domains": ["settings"],
                      "settings": "/api/settings", "settings_register": "/api/settings/register",
                      "settings_revision": "/api/settings/revision"},
 }
