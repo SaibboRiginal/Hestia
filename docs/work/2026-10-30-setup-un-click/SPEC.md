@@ -233,7 +233,7 @@ same screen, so changing a key later is also not a `.env` edit).
 
 ## 7. Open points for Marko
 
-1. Ok to go with P1–P5 as above?
+1. Ok to go with P1–P7 as above?
 2. Secrets written by Hephaestus into `.env` (proposed) vs an encrypted secret store in Archive (bigger change of a
    global rule).
 3. macOS last fallback Colima (no Docker Desktop licence) — ok?
