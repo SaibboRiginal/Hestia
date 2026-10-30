@@ -11,7 +11,7 @@ const LEVELS = [
   { v: 2, icon: 'frown', tone: 'warning', label: 'Giù' },
   { v: 3, icon: 'meh', tone: '', label: 'Così così' },
   { v: 4, icon: 'smile', tone: 'info', label: 'Bene' },
-  { v: 5, icon: 'laugh', tone: 'success', label: 'Benissimo' }];
+  { v: 5, icon: 'laugh', tone: 'success', label: 'Ottimo' }];
 const level = (n: number) => LEVELS[Math.min(5, Math.max(1, Math.round(n))) - 1];
 const SOURCES: Record<string, { icon: string; label: string }> = {
   chat: { icon: 'chat', label: 'dalla chat' }, tap: { icon: 'zap', label: 'un tocco' }, webui: { icon: 'edit', label: 'dal sito' },
@@ -25,11 +25,14 @@ async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string,
 }
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const hhmm = (iso: string) => String(iso || '').slice(11, 16);
+/** A day without energy keeps the last known value (a drop to 0 would read as «no energy»). */
+const carry = (vals: Array<number | null>) => { let last = vals.find(v => v) || 3; return vals.map(v => (last = v || last)); };
 
 const styles = css`
   .between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .faces { display: flex; gap: 8px; flex-wrap: wrap; }
-  .face { display: grid; justify-items: center; gap: 4px; padding: 10px 12px; min-width: 64px; border-radius: var(--radius-sm);
+  .faces { display: flex; gap: 6px; }
+  @media (max-width: 480px) { .face { font-size: 11px; } }
+  .face { flex: 1 1 0; display: grid; justify-items: center; gap: 4px; padding: 10px 2px; min-width: 0; text-align: center; overflow: hidden; border-radius: var(--radius-sm);
     border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; font-size: 12px; color: var(--text-2); }
   .face.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -40,7 +43,8 @@ const styles = css`
     font-size: 12px; display: grid; place-items: center; }
   .dot.on { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--accent); }
   .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .cell { aspect-ratio: 1; border-radius: 6px; background: var(--surface-2); display: grid; place-items: center; font-size: 11px; color: var(--text-3); }
+  .cell { aspect-ratio: 1; border-radius: 6px; background: transparent; border: 1px dashed var(--border); display: grid; place-items: center; font-size: 11px; color: var(--text-3); }
+  .cell[class*=' l'] { border-style: solid; border-color: transparent; }
   .cell.l1 { background: var(--danger-soft); color: var(--danger); } .cell.l2 { background: var(--warning-soft); color: var(--warning); }
   .cell.l3 { background: var(--surface-3, var(--border)); color: var(--text-2); } .cell.l4 { background: var(--info-soft); color: var(--info); }
   .cell.l5 { background: var(--success-soft); color: var(--success); }
@@ -134,7 +138,7 @@ export class PsycheMood extends HestiaElement {
         <div class="card col"><h3>Andamento</h3>
           ${days.length >= 2 ? html`<hxk-chart type="line" height="140" .labels=${days.map((d: any) => ddmm(d.date))}
               .series=${[{ name: 'Umore', values: days.map((d: any) => d.mood) },
-                         ...(days.some((d: any) => d.energy) ? [{ name: 'Energia', values: days.map((d: any) => d.energy || 0) }] : [])]}></hxk-chart>` : nothing}
+                         ...(days.some((d: any) => d.energy) ? [{ name: 'Energia', values: carry(days.map((d: any) => d.energy)) }] : [])]}></hxk-chart>` : nothing}
           ${(this.ins?.sentences || []).map((t: string) => html`<div class="small">${t}</div>`)}
         </div>
       </div>

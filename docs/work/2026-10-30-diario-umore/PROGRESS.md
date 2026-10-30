@@ -6,5 +6,5 @@
 - [x] P1 wiring: Archive mood-store, compose, Hub tags, areas, CI matrix
 - [x] P2 Oracle quiet capture (gate, prompt, fallback, undo, notice) + tests
 - [x] P3 WebUI plugin + icons + quick action; Telegram area
-- [ ] P4 docs (module doc, Oracle doc, swagger, ARCHITECTURE, flow map, AI-GUIDE, README, CHANGELOG), precheck
+- [x] P4 docs (module doc, Oracle doc, swagger, ARCHITECTURE, flow map, AI-GUIDE, README, CHANGELOG), precheck
 - [ ] PR green and merged
