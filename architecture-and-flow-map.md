@@ -171,6 +171,13 @@ flowchart LR
 4. Forge commits, runs the touched services' tests, notifies the user via Hub → Hermes → Telegram.
 5. "approva sviluppo <id>" → merge (+ optional deploy, health check via Hub, auto rollback).
 
+### Repair and undo flow (Hephaestus remediation)
+1. Argus/Oracle/user → `POST /api/hephaestus/remediate` → runbook + consent policy → Hub → target module
+   `…/maintenance/reconcile` (Archive deletes incomplete entities and keeps them in `trash:<task_id>`).
+2. The reply's `details.undo_available` marks the task `undoable`.
+3. «Annulla riparazione» → `/remediate/{id}/rollback`: pending/failed → stopped; undoable → Hub → same module
+   `…/maintenance/undo` puts the rows back; otherwise `nothing_to_undo`.
+
 ### Tool flow (one MCP for every client)
 1. Each module declares its tools (`/mcp` or inline commands); Hub's discovery is read only by Hestia-MCP.
 2. Oracle, Telegram and the WebUI call Hestia-MCP `/mcp` through Hub (`tools/list`, `tools/call`); Hestia-MCP builds

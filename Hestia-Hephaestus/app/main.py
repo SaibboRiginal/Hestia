@@ -206,7 +206,8 @@ try:
                 telegram={"section": "Riparazioni"}),
         MCPTool(
             name="hephaestus_rollback",
-            description="Esegue rollback logico di un task remediation",
+            description=("Annulla una riparazione: se non era partita (o era fallita) la ferma; se ha cambiato dati il modulo li "
+                         "ripristina; altrimenti risponde che non c'è niente da ripristinare."),
             parameters={
                 "type": "object",
                 "properties": {

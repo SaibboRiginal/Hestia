@@ -247,7 +247,8 @@ def search_entities(req: schemas.AdvancedSearchRequest, db: Session = Depends(da
 @router.post("/api/entities/cleanup", response_model=schemas.EntityCleanupResponse)
 def cleanup_entities(req: schemas.EntityCleanupRequest, db: Session = Depends(database.get_db)):
     """Delete entity records that are missing required fields."""
-    q = db.query(models.EntityRecord)
+    q = db.query(models.EntityRecord).filter(
+        or_(models.EntityRecord.domain.is_(None), models.EntityRecord.domain != TRASH_DOMAIN))
     if req.domain:
         q = q.filter(models.EntityRecord.domain == req.domain)
 
@@ -273,6 +274,8 @@ def cleanup_entities(req: schemas.EntityCleanupRequest, db: Session = Depends(da
 
     sampled_ids = [r.entity_id for r in to_delete[:50] if r.entity_id]
     if not req.dry_run:
+        if req.trash_key and to_delete:
+            _put_in_trash(db, req.trash_key, to_delete)
         for r in to_delete:
             db.delete(r)
         db.commit()
@@ -305,7 +308,9 @@ def module_maintenance_reconcile(req: schemas.ModuleMaintenanceRequest, db: Sess
     if "delete_limit" in metadata:
         delete_limit = int(metadata.get("delete_limit") or delete_limit)
 
+    task_id = str(req.task_id or uuid4())
     cleanup_req = schemas.EntityCleanupRequest(
+        trash_key=task_id,
         domain=domain,
         required_fields=[str(item)
                          for item in required_fields if str(item).strip()],
@@ -317,7 +322,6 @@ def module_maintenance_reconcile(req: schemas.ModuleMaintenanceRequest, db: Sess
 
     deleted = int(cleanup_result.deleted or 0)
     scanned = int(cleanup_result.scanned or 0)
-    task_id = str(req.task_id or uuid4())
     summary = (
         f"Archive reconcile completed: scanned={scanned}, "
         f"deleted={deleted}, dry_run={req.dry_run}."
@@ -332,7 +336,74 @@ def module_maintenance_reconcile(req: schemas.ModuleMaintenanceRequest, db: Sess
         retriable=True,
         summary=summary,
         mutation_count=deleted,
-        details=cleanup_result.model_dump(),
+        details={**cleanup_result.model_dump(), "undo_available": deleted > 0},
+    )
+
+
+# Undo of a maintenance pass: deleted rows are kept in one trash entity per task (domain TRASH_DOMAIN)
+# and put back on request, so «Annulla riparazione» really restores what the reconcile removed.
+TRASH_DOMAIN = "archive_trash"
+
+
+def _trash_id(task_id: str) -> str:
+    return f"trash:{task_id}"
+
+
+def _put_in_trash(db: Session, task_id: str, records: list) -> None:
+    rows = [{
+        "entity_id": r.entity_id,
+        "domain": r.domain,
+        "status": r.status,
+        "payload": r.payload,
+        "embedding": [float(x) for x in r.embedding] if r.embedding is not None else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in records]
+    _upsert_trash(db, task_id, rows)
+
+
+def _upsert_trash(db: Session, task_id: str, rows: list[dict]) -> None:
+    trash = db.query(models.EntityRecord).filter(models.EntityRecord.entity_id == _trash_id(task_id)).first()
+    payload = {"task_id": task_id, "rows": rows, "deleted_at": datetime.now(timezone.utc).isoformat()}
+    if trash:
+        trash.payload = {**payload, "rows": list((trash.payload or {}).get("rows") or []) + rows}
+    else:
+        db.add(models.EntityRecord(entity_id=_trash_id(task_id), domain=TRASH_DOMAIN,
+                                   status="trash", payload=payload))
+
+
+@router.post("/api/module/maintenance/undo", response_model=schemas.ModuleMaintenanceResponse)
+def module_maintenance_undo(req: schemas.ModuleMaintenanceRequest, db: Session = Depends(database.get_db)):
+    """Put back the rows a maintenance reconcile deleted (task_id = the reconcile's task)."""
+    task_id = str(req.task_id or "").strip()
+    trash = db.query(models.EntityRecord).filter(
+        models.EntityRecord.entity_id == _trash_id(task_id)).first() if task_id else None
+    if not trash:
+        raise HTTPException(status_code=404, detail=f"nothing to undo for task {task_id or '-'}")
+    restored, skipped = 0, []
+    for row in list((trash.payload or {}).get("rows") or []):
+        eid = row.get("entity_id")
+        if db.query(models.EntityRecord.id).filter(models.EntityRecord.entity_id == eid).first():
+            skipped.append(eid)  # recreated meanwhile: the newer row wins
+            continue
+        created = row.get("created_at")
+        db.add(models.EntityRecord(
+            entity_id=eid, domain=row.get("domain"), status=row.get("status") or "active",
+            payload=row.get("payload") or {}, embedding=row.get("embedding"),
+            created_at=datetime.fromisoformat(created) if created else None,
+        ))
+        restored += 1
+    db.delete(trash)
+    db.commit()
+    return schemas.ModuleMaintenanceResponse(
+        status="ok",
+        service="archive",
+        dry_run=False,
+        task_id=task_id,
+        executed_at=datetime.now(timezone.utc),
+        retriable=False,
+        summary=f"Archive undo completed: restored={restored}, skipped={len(skipped)}.",
+        mutation_count=restored,
+        details={"restored": restored, "skipped_ids": skipped[:50]},
     )
 
 

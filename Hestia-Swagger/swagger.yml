@@ -11370,7 +11370,11 @@ paths:
   /api/hephaestus/remediate/{task_id}/rollback:
     post:
       tags: [Hephaestus]
-      summary: Record rollback execution for a remediation task
+      summary: Undo a remediation task for real
+      description: >-
+        pending_approval or failed → stopped (state rolled_back, rollback_result.status cancelled);
+        succeeded with undoable=true → the target module's /api/module/maintenance/undo restores what it changed
+        (restored, or failed and still undoable); otherwise state unchanged and rollback_result.status nothing_to_undo.
       servers:
         - url: http://localhost:19010
       parameters:
@@ -11474,6 +11478,32 @@ paths:
       responses:
         "200":
           description: "Alias response; same as /api/module/maintenance/reconcile"
+
+  /api/module/maintenance/undo:
+    post:
+      tags: [Maintenance]
+      summary: Put back what a maintenance reconcile deleted (Archive keeps the deleted rows per task_id)
+      description: >-
+        The reconcile response says details.undo_available=true when there is something to undo.
+        Used by Hephaestus «Annulla riparazione». Rows recreated meanwhile are kept (skipped_ids).
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_id]
+              properties:
+                task_id:
+                  type: string
+                  description: task_id of the reconcile to undo
+      responses:
+        "200":
+          description: "{status, service, task_id, summary, mutation_count, details: {restored, skipped_ids}}"
+        "404":
+          description: Nothing to undo for this task_id
 
   # ══════════════════════════════════════════════════════════════════════════
   #  ATHENA — 19009

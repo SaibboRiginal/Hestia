@@ -25,7 +25,11 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - POST /api/hephaestus/remediate
 - POST /api/hephaestus/remediate/{task_id}/approve
 - POST /api/hephaestus/remediate/{task_id}/retry (agenda retry of a failed repair)
-- POST /api/hephaestus/remediate/{task_id}/rollback
+- POST /api/hephaestus/remediate/{task_id}/rollback — real undo («Annulla riparazione»): a repair still waiting for
+  approval or failed is stopped (`rolled_back`, `rollback_result.status=cancelled`, no agenda retry); a succeeded one
+  with `undoable=true` (the module's reconcile answered `details.undo_available`) calls the same module's
+  `…/maintenance/undo` through the Hub (`restored`; on error `failed` and still undoable); anything else stays as it is
+  with `nothing_to_undo` (dry run, a pure re-sync). Today only Archive's reconcile is restorable (it deletes rows).
 - POST /api/hephaestus/restart `{service, reason?, attempt?}` — immune system (Argus, oracle-offline v3 B): restarts the
   module's container through the Docker socket, then checks its health → `{status, service, restarted, healthy,
   detail}`; refuses `hephaestus` and bad names, `skipped` while Forge is deploying that module
@@ -33,7 +37,7 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - GET /api/hephaestus/tasks/{task_id}
 - GET /api/ui/manifest · GET /ui/webui/{file} (WebUI plugin, see below)
 
-Execution endpoints above are implemented as policy-gated remediation flows (task creation, approval, rollback metadata) with real Hub-routed maintenance execution against target services.
+Execution endpoints above are implemented as policy-gated remediation flows (task creation, approval, real undo through the target module) with real Hub-routed maintenance execution against target services.
 
 ### WebUI plugin (Sistema)
 

@@ -728,17 +728,6 @@ This creates:
   back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
   missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).
 
-## Roadmap
-
-(Moved here from the public `readme.md` on 2026-10-29.)
-
-- **Real rollback for remediation**: Hephaestus runbook remediation still records rollback as metadata only
-  (Forge already has true git revert).
-- **Metis**: live benchmark runner, persistent datasets, built-in LoRA training script.
-- **Multi-node deployment**: shared Hub discovery across nodes, health-gated progressive rollout, automatic
-  rollback on failed SLO checks.
-- **More domain modules**: every new capability is a new service generated from the template.
-
 ## Dependency and Flow Map
 
 See [`architecture-and-flow-map.md`](../architecture-and-flow-map.md) for a concise dependency graph and end-to-end data flow map.
