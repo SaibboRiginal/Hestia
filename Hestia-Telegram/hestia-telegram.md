@@ -221,6 +221,12 @@ message is the answer). The callback is answered at once, then the answer goes t
 `/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
 question no longer open answers «⌛ Questa domanda non è più aperta».
 
+**Questions in notifications** (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a Hermes notification with `question` gets the same
+keyboard (`assistant_questions.notification_rows`), the answer goes to Hermes `/api/notifications/{id}/reply`
+(first answer wins; «Questa domanda è già stata gestita» otherwise). A notification arrives unasked, so its free answer
+is never the next message written: «Rispondi…» / «Altro…» starts it (callback `askw:`), or a reply to the notification
+message is the answer (`notifications.answer_by_reply`). «Apri» stays under the keyboard.
+
 ## Answer extras (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
 `services/answer_extras.py` + `ReplyRenderer`:
 - ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons

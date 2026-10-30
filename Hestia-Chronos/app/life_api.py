@@ -89,6 +89,18 @@ def routines_mail(req: MailRing) -> dict:
     return _guard(routines.on_mail, req.key, req.reference_ids)
 
 
+class AnswerIn(BaseModel):
+    question_id: str
+    answer: str = ""
+    client: str = ""
+
+
+@router.post("/api/routines/{key}/answer")
+def routines_answer(key: str, req: AnswerIn) -> dict:
+    """Hermes: the owner answered a question of this routine (2026-10-30-domande-nelle-notifiche)."""
+    return _guard(routines.answer, key, req.question_id, req.answer, req.client)
+
+
 @router.post("/api/routines/{key}/run")
 def routines_run(key: str) -> dict:
     """Agenda action and «Esegui adesso»."""

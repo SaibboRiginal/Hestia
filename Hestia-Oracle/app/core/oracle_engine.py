@@ -334,6 +334,7 @@ class OracleEngine:
         # Future: persist to Archive for multi-process / restart resilience.
         self._pending_questions: dict[str, dict] = {}
         self._questions_lock = threading.Lock()
+        self._questions_checked: set[str] = set()   # sessions whose Archive questions were looked at
         # session → client (webui, telegram…) of its last chat turn: tool calls carry it to the modules
         # (X-Hestia-Client), so e.g. a Themis proposal made in a chat is confirmed in that same chat.
         self._session_clients: dict[str, str] = {}
@@ -768,6 +769,39 @@ class OracleEngine:
         if not entry.get("resume"):
             return None
         return user_questions.resume_message(entry, answer)
+
+    def close_open_questions(self, session_id: str) -> int:
+        """The owner wrote (or spoke) in this session: the message itself answers the open ``ask_user`` questions
+        (they are in the history). Closed here and in Archive, so a reload does not draw the card again and a late
+        tap is told the question is closed (dossier docs/work/2026-10-30-domande-nelle-notifiche)."""
+        if not session_id:
+            return 0
+        closed: list[dict] = []
+        with self._questions_lock:
+            for entry in self._pending_questions.values():
+                if entry.get("session_id") == session_id and entry.get("resume") and not entry.get("resolved"):
+                    entry.update(resolved=True, answer=None, closed_by="message")
+                    closed.append(dict(entry))
+            first_look = session_id not in self._questions_checked
+            self._questions_checked.add(session_id)
+        if first_look:   # asked before an Oracle restart: only in Archive
+            known = {e["question_id"] for e in closed}
+            try:
+                rows = user_questions.open_for_session(self._hub, session_id)
+            except Exception as exc:
+                rows = []
+                logger.warning("[🔄] event=user_question_lookup_failed session_id=%s error=%s", session_id, exc)
+            closed += [{**r, "resolved": True, "answer": None, "closed_by": "message"}
+                       for r in rows if r.get("question_id") and r["question_id"] not in known]
+        for entry in closed:
+            try:
+                user_questions.save(self._hub, entry, deleted=True)
+            except Exception as exc:
+                logger.warning("[🔄] event=user_question_store_failed question_id=%s error=%s",
+                               entry.get("question_id"), exc)
+        if closed:
+            logger.info("event=user_questions_closed_by_message session_id=%s count=%d", session_id, len(closed))
+        return len(closed)
 
     def open_questions(self, session_id: str) -> list[dict]:
         """Questions the model asked in this session still waiting for an answer (clients redraw them)."""

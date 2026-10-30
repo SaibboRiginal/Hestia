@@ -175,6 +175,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - **Parla everywhere** (`layout/live-overlay.component.ts`): from the sidebar, the Home header or Ctrl+Shift+Space;
   live goes on when you leave the chat, a pill at the bottom shows its state with the pet as face (happy while
   talking), *Interrompi*, *Apri la chat*, close. The Chat page keeps its own panel.
+  A question of the assistant is read with its options («Puoi dire: A, B o C», `spokenOptions`); the spoken answer is
+  the next message, which closes the question in Oracle (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A Hermes notification with
+  `question` counts as pending in the shell toast («Rispondi»); the card is in the Hermes *Notifiche* page.
 - **Detta** (chat composer): speak, the text lands in the box to read again; use case `webui.dettatura` (declared by
   `VoiceController`), nothing is kept.
 

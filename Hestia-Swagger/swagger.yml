@@ -1062,6 +1062,14 @@ components:
             type: object
             properties: { id: { type: string }, label: { type: string }, style: { type: string } }
         origin: { type: object, nullable: true, properties: { client: { type: string }, session_id: { type: string } } }
+        question:
+          type: object
+          nullable: true
+          description: "A notification that asks like the chat card (_question of the event; never the module route). Answer with POST /api/notifications/{id}/reply"
+          properties:
+            kind: { type: string, enum: [confirm, single_choice, multi_choice, free_text] }
+            options: { type: array, items: { type: object, properties: { value: { type: string }, label: { type: string } } } }
+            allow_other: { type: boolean, description: "A free answer is accepted too («Altro…»)" }
         payload: { type: object, additionalProperties: true }
         state: { type: string, description: "update: seen | answered | expired | superseded (a newer occurrence of the same reminder replaced it: drop it)" }
         superseded_by: { type: string, description: "update superseded: id of the new occurrence" }
@@ -1082,7 +1090,7 @@ components:
         created_at: { type: string, format: date-time }
         state: { type: string }
         read: { type: boolean }
-        pending: { type: boolean, description: has actions and is still answerable }
+        pending: { type: boolean, description: "has actions, a secret form or a question and is still answerable" }
         title: { type: string }
         message: { type: string }
         level: { type: string }
@@ -5501,6 +5509,29 @@ paths:
       responses:
         "200": {description: "{ok, ran, delivered?, reason?, text?}"}
 
+  /api/routines/{key}/answer:
+    post:
+      tags: [Chronos — Life]
+      summary: "Hermes: the owner answered a question of this routine; passed to the assistant, an ask_user answer continues the routine in the background"
+      servers:
+        - url: http://localhost:19007
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question_id]
+              properties:
+                question_id: {type: string}
+                answer: {type: string}
+                client: {type: string}
+      responses:
+        "200": {description: "{ok, resumed, message}"}
+        "409": {description: "the question is no longer open"}
+        "502": {description: "the assistant or the confirmed action failed"}
+
   /api/routines/signal:
     post:
       tags: [Chronos — Life]
@@ -6073,6 +6104,28 @@ paths:
         "409":
           description: "already_handled, with the winning answer"
 
+  /hermes/api/ui/inbox/{notification_id}/reply:
+    post:
+      tags: [Hermes]
+      summary: Question of the inbox page (real path /api/ui/inbox/{id}/reply; same as /api/notifications/{id}/reply)
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answer: { oneOf: [{ type: string }, { type: array, items: { type: string } }] }
+                client: { type: string, default: webui }
+      responses:
+        "200": { description: "claimed and forwarded to the module" }
+        "400": { description: empty_answer / unknown_option }
+        "409": { description: already_handled }
+
   /hermes/api/ui/inbox/{notification_id}/secret:
     post:
       tags: [Hermes]
@@ -6189,6 +6242,32 @@ paths:
         - url: http://localhost:19005
       responses:
         "200": {description: "{reminded}"}
+
+  /api/notifications/{notification_id}/reply:
+    post:
+      tags: [Hermes]
+      summary: "Answer to a notification question {client, answer}: first answer wins, forwarded to the module as {...body, answer, answers, client, notification_id}"
+      servers:
+        - url: http://localhost:19005
+      parameters:
+        - {name: notification_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client]
+              properties:
+                client: {type: string}
+                answer:
+                  description: "Text; multiple choice = one value per line or a list"
+                  oneOf: [{type: string}, {type: array, items: {type: string}}]
+      responses:
+        "200": {description: "{status, answer}"}
+        "400": {description: "empty_answer · unknown_option (not an option and no «Altro…»)"}
+        "404": {description: "not_found · no_question"}
+        "409": {description: "already_handled, with the winning answer"}
+        "502": {description: "the module failed: the claim is released"}
 
   /api/notifications/{notification_id}/secret:
     post:

@@ -12,6 +12,7 @@ from telegram_bot.menu import editor, model
 from telegram_bot.services import answer_extras, assistant_questions, chat_service, chat_settings, voice_service
 from telegram_bot.services.control_service import run_control_api
 from telegram_bot.services.notifications import handle_callback as handle_notification_callback
+from telegram_bot.services.notifications import answer_by_reply as answer_notification_by_reply
 from telegram_bot.services.notifications import mark_seen_on_activity as mark_notifications_seen
 from telegram_bot.services.presence import touch as presence_touch
 
@@ -148,6 +149,8 @@ def on_message(message):
     if actions.on_text(chat_id, text):
         return
     if editor.on_text(chat_id, text) or chat_settings.on_text(chat_id, text):
+        return
+    if answer_notification_by_reply(message, text):
         return
     flow = store.get_flow(chat_id)
     if flow and flow.get("kind") == assistant_questions.TEXT_FLOW:

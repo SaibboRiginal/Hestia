@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { uid } from '../core/uid';
 import { ChatService } from './chat.service';
+import { PendingQuestion } from '../models/chat.models';
 import { SessionService } from './session.service';
 import { PLAY_FORMAT, VoiceService, b64ToBlob, blobToB64, recorderMime, speakableText } from './voice.service';
 
@@ -12,6 +13,8 @@ import { PLAY_FORMAT, VoiceService, b64ToBlob, blobToB64, recorderMime, speakabl
  * - sends the answer to the say stream while it is written and plays the sentences in order;
  * - stops talking when Marko starts speaking again (or taps «Interrompi»).
  * The chat shows everything as usual: voice bubble + transcript, written answer.
+ * A question of the assistant is read with its options; the spoken answer is the next message, which closes it
+ * (dossier docs/work/2026-10-30-domande-nelle-notifiche).
  */
 export type LiveState = 'off' | 'starting' | 'listening' | 'hearing' | 'thinking' | 'speaking';
 
@@ -19,6 +22,16 @@ const TICK_MS = 60;
 const SPEECH_START_MS = 180;
 const BARGE_IN_MS = 450;
 const CHUNK_MS = 800;
+/** The question frame follows the answer's `final`: wait this long before closing the spoken answer. */
+const QUESTION_WAIT_MS = 400;
+
+/** The options of a choice question, to say aloud after its text (confirm needs none: it is a yes/no question). */
+export function spokenOptions(q: PendingQuestion | null): string {
+  const labels = (q?.options || []).map(o => o.label).filter(Boolean);
+  if (!q || q.kind === 'confirm' || labels.length < 2) return '';
+  const list = `${labels.slice(0, -1).join(', ')} o ${labels[labels.length - 1]}`;
+  return q.kind === 'multi_choice' ? `Puoi sceglierne più di una: ${list}.` : `Puoi dire: ${list}.`;
+}
 
 @Injectable({ providedIn: 'root' })
 export class LiveVoiceService {
@@ -209,7 +222,14 @@ export class LiveVoiceService {
         this.answerDone = true;
         window.clearInterval(poll);
         if (msg.error || !text) { this.state.set('listening'); return; }
-        this.pushSay('end', '', this.answerId);
+        // A question with choices arrives right after the answer: its options are said too (the card is not seen).
+        const answerId = this.answerId;
+        window.setTimeout(() => {
+          if (answerId !== this.answerId) return;
+          const extra = spokenOptions(this.chat.pendingQuestion());
+          if (extra) this.pushSay('text', ` ${extra}`);
+          this.pushSay('end', '', answerId);
+        }, QUESTION_WAIT_MS);
       }
     }, 300);
   }

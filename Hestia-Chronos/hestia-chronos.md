@@ -478,6 +478,12 @@ Code: `app/life_api.py` (endpoints, MCP tools, agenda rules), `app/services/rout
   origin `routine:<key>` (writes allowed, no deletes), then the answer goes to Hermes (`routine.result`) or is kept
   for the evening recap (`deliver: recap`, also stored in `chronos-store` kind `routine_result`). The assistant
   answers `NIENTE` when there is nothing to say: nothing is sent. Pause, move, «Esegui adesso» = the agenda.
+- questions (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a `question` frame of the routine turn (the assistant's `ask_user` or a
+  module confirmation) cannot wait for a chat → Hermes `routine.question` with `_question` routed to
+  `POST /api/routines/{key}/answer {question_id, answer, client}`, whatever `deliver` says. Chronos passes the answer
+  to Oracle `/api/chat/question-answer`: a confirmation runs its action there; an `ask_user` answer gives
+  `resume.message`, run in the background as the next turn of session `routine:<key>` and delivered like a run.
+  A question no longer open → 409.
 - gallery: `GET /api/routines/templates` (radar notizie, case nuove, spese da rivedere, la settimana, mail da un
   mittente) → `POST /api/routines/from-template/{id}` with the template's fields.
 
@@ -513,6 +519,7 @@ as `/api/agenda/routines` (GET/POST), `/api/agenda/routines/templates`, `/api/ag
 | `GET` | `/api/routines/templates` | gallery |
 | `POST` | `/api/routines/from-template/{id}` | `{values, recurrence?, title?}` |
 | `POST` | `/api/routines/{key}/run` | agenda action / run now |
+| `POST` | `/api/routines/{key}/answer` | Hermes: the owner answered a question of the routine (`{question_id, answer, client}`) |
 | `POST` | `/api/routines/signal` · `/api/routines/mail` | event triggers (module signal · Iris doorbell) |
 | `GET` / `POST` | `/api/special` | list (with `next`, `in_days`) · add |
 | `DELETE` | `/api/special/{key}` | remove |
