@@ -935,6 +935,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if _no_usable_model():
             logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
             return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
+        if turn_origin["level"] == "utente" and not req.queued:
+            # A written or spoken message answers the assistant's open question (it is in the history).
+            engine.close_open_questions(current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]

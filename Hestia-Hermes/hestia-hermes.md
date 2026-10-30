@@ -121,6 +121,23 @@ within the cooldown window.
   also pushed (title, plain text ≤ 300, link, id; never form values); 404/410 subscriptions are dropped. Env
   `HERMES_VAPID_PUBLIC_KEY` / `HERMES_VAPID_PRIVATE_KEY` / `HERMES_VAPID_SUBJECT`; empty = off.
 
+## Questions (dossier `docs/work/2026-10-30-domande-nelle-notifiche`)
+
+- An event with `_question: {kind, options, allow_other, service, path, method?, body?}` asks like the chat card:
+  `kind` = `confirm` (Sì/No by default) · `single_choice` · `multi_choice` (2–8 options, labels or `{value,
+  label}`) · `free_text`; `allow_other` adds «Altro…». Malformed = ignored (`normalize_question`).
+- Stored as `notification.question`; clients get only `{kind, options, allow_other}` (`question` in the client body
+  and the inbox view). It counts as pending: «Da decidere», the grouped reminder, never retracted while open, never
+  held by presence.
+- `POST /api/notifications/{id}/reply {client, answer}` (plugin door `/api/ui/inbox/{id}/reply`): text, or one value
+  per line / a list for multiple choice; a value outside the options needs `allow_other` (else 400). Claimed with
+  compare-and-set like an action (409 `already_handled` with the winning answer), routed to the module with
+  `{...body, answer, answers, client, notification_id}`, then `update answered` to every client with the answer shown
+  as labels. Module 409 → already handled; module error → claim released (502).
+- WebUI inbox: the same card as a chat question (buttons, toggles + «Invia», field for free text / «Altro…»).
+  Telegram: the chat-question keyboard, free text only after «Rispondi…»/«Altro…» or as a reply to the message.
+- First producer: Chronos routines (the assistant's questions during a routine). Any module: `reminder_event(question=)`.
+
 ## API (MVP)
 
 | Method | Path | Description |
@@ -133,6 +150,7 @@ within the cooldown window.
 | `POST` | `/api/notifications/{id}/answer` · `/answer/outcome` | First answer wins, routed to the asking module |
 | `POST` | `/api/notifications/retract-stale` | Agenda job: retract handled messages from clients |
 | `POST` | `/api/notifications/remind-pending` | Agenda job: one grouped «Da decidere» reminder (Cindy 5) |
+| `POST` | `/api/notifications/{id}/reply` | Answer to a notification question `{client, answer}` → forwarded to the module, first answer wins |
 | `POST` | `/api/notifications/{id}/secret` | Secret form `{client, values}` → forwarded to the module, never stored (Cindy 4) |
 | `GET` · `POST` · `DELETE` | `/api/push/key` · `/api/push/subscribe` | Web Push: VAPID public key · browser subscription on/off (C15) |
 | `GET` | `/api/ui/deliveries` | Delivery log for the plugin page *Consegne* (`since`, `before` cursor, `limit` ≤200, `flag` held/quiet/retracted/failed/answered/superseded/pending, `client`, `source`) → `{items, summary, next_before}`; every row: per-client `{state, at, attempts, retracted, detail}`, flags, answer, message preview (no event payload). 502 = Archive down |
@@ -140,6 +158,7 @@ within the cooldown window.
 | `GET` | `/api/ui/inbox` · `/api/ui/inbox/counts` | Plugin page *Notifiche*: same as `/api/notifications` · `/counts` with `client=webui` by default; `counts` is the sidebar badge source |
 | `GET` | `/api/ui/inbox/{id}/voice?format=mp3` | Audio of a notification sent also as voice (from Echo): `{mime_type, audio_b64, blob_id, duration_s}`; 404 without voice |
 | `POST` | `/api/ui/inbox/{id}/seen` · `/api/ui/inbox/seen-all` · `/api/ui/inbox/{id}/answer` | Same logic as the `/api/notifications/*` actions (body `client` optional, default `webui`; answer body `{action_id}`, 409 = already handled) |
+| `POST` | `/api/ui/inbox/{id}/reply` | Plugin door of a notification question: same as `/api/notifications/{id}/reply` (body `{answer, client?}`) |
 | `POST` | `/api/ui/inbox/{id}/secret` | Plugin door of the secret form: same as `/api/notifications/{id}/secret` (body `{values, client?}`; values never logged) |
 | `GET` · `POST` · `DELETE` | `/api/ui/push/key` · `/api/ui/push/subscribe` | Plugin doors of Web Push for the WebUI shell (Impostazioni → Personali → Messaggi): same as `/api/push/*` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/hermes.js` | WebUI plugin manifest + bundle (plugin contract) |

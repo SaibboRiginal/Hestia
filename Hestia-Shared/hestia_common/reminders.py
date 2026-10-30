@@ -44,13 +44,17 @@ def voice_setting(module: str, default: bool, *, group: str = "Promemoria", help
 
 
 def reminder_event(*, module: str, domain: str, key: str, title: str, text: str, actions: list[dict],
-                   page: str = "", level: str = "info", kind: str = "", voice: bool = False) -> dict[str, Any]:
+                   page: str = "", level: str = "info", kind: str = "", voice: bool = False,
+                   question: dict[str, Any] | None = None) -> dict[str, Any]:
     """Hermes ``/api/events/ingest`` body for a reminder or alert of ``module``.
 
     ``key`` is the thread (one live notification per key, Hermes ``replaces``); actions that end it carry
     ``resolves: true``; ``page`` opens the module's plugin page from the notification (``_link``).
     The envelope domain is ``system``: Hermes' standing owner subscription listens there; the module's
-    own domain travels in the payload."""
+    own domain travels in the payload.
+    ``question`` asks like the chat card (dossier docs/work/2026-10-30-domande-nelle-notifiche): ``{kind:
+    confirm|single_choice|multi_choice|free_text, options, allow_other, service, path, method?, body?}``; the answer
+    reaches ``path`` as ``{...body, answer, answers, client, notification_id}``."""
     payload: dict[str, Any] = {
         "kind": kind or key, "service": module, "source": module, "domain": domain, "_source": module,
         "_title": title, "target": "owner", "replaces": key, "level": level, "_message": text,
@@ -59,4 +63,6 @@ def reminder_event(*, module: str, domain: str, key: str, title: str, text: str,
         payload["_link"] = {"module": module, "page": page}
     if voice:
         payload["_voice"] = True             # Hermes asks the voice module for an audio copy
+    if question:
+        payload["_question"] = dict(question)
     return {"event_type": "service.action_required", "domain": "system", "entity_id": key, "payload": payload}

@@ -14,6 +14,12 @@ stops, «niente di nuovo», no model call), then the assistant runs the instruct
 ``routine:<key>`` (it may write, never delete: ``hestia_common.origin``), then the answer is delivered through
 Hermes only if there is something (the model answers ``NIENTE`` otherwise) or kept for the evening recap.
 Automatic **and** manual: «Esegui adesso» = the agenda's run now. The owner's edits win and pausing is the owner's call (agenda).
+
+A **question** of the turn (the assistant's ``ask_user``, or a module confirmation such as a setting proposal) cannot
+wait for a chat: it goes out as a Hermes notification that asks (``_question``, dossier
+docs/work/2026-10-30-domande-nelle-notifiche), always, whatever ``deliver`` says. The answer comes back to
+``POST /api/routines/{key}/answer``: Chronos hands it to the assistant; an ``ask_user`` answer is the next turn of the
+same routine session (in the background), delivered like a run.
 """
 from __future__ import annotations
 
@@ -194,7 +200,7 @@ def _ask_oracle(key: str, label: str, message: str) -> dict:
         raise RuntimeError(f"assistant {status}: {str(routed.get('payload'))[:160]}")
     payload = routed.get("payload")
     raw = payload.get("raw", "") if isinstance(payload, dict) else str(payload or "")
-    reply, changes = "", []
+    reply, changes, questions = "", [], []
     for line in str(raw).splitlines():
         try:
             frame = json.loads(line)
@@ -204,7 +210,23 @@ def _ask_oracle(key: str, label: str, message: str) -> dict:
             reply = str(frame.get("reply") or "")
         elif frame.get("type") == "changes":
             changes = frame.get("items") or []
-    return {"reply": reply.strip(), "changes": changes}
+        elif frame.get("type") == "question" and frame.get("question_id"):
+            questions.append(frame)
+    return {"reply": reply.strip(), "changes": changes, "questions": questions}
+
+
+def _ask_owner(key: str, title: str, reply: str, question: dict) -> None:
+    """A question of the routine turn → a Hermes notification that asks; the answer comes back to ``answer()``."""
+    qid = str(question["question_id"])
+    # ask_user frames carry no prompt (the question is the reply text); a module confirmation carries its own.
+    text = str(question.get("prompt") or "").strip() or reply
+    hermes_client.publish_event("assistant", "routine.question", key, {
+        "_title": title, "_message": text, "_source": "Routine", "_level": "info",
+        "dedupe_key": f"routine:{key}:{qid}", "_link": {"module": "chronos", "page": "routine"},
+        "_question": {"kind": question.get("kind") or "confirm", "options": question.get("options") or [],
+                      "allow_other": bool(question.get("allow_other")), "service": OWNER, "method": "POST",
+                      "path": f"/api/routines/{key}/answer", "body": {"question_id": qid}}})
+    logger.info("event=routine_question_sent key=%s question_id=%s kind=%s", key, qid, question.get("kind"))
 
 
 def run(key: str, *, by: str = "agenda", context: str = "") -> dict:
@@ -233,7 +255,18 @@ def run(key: str, *, by: str = "agenda", context: str = "") -> dict:
                + (f"Dati del controllo:\n{pre_text}\n" if pre_text else "")
                + f"Se non c'è niente di utile da dire rispondi solo {NOTHING}.")
     out = _ask_oracle(key, "Da una tua routine", message)
+    return _deliver(key, item, r, out, by)
+
+
+def _deliver(key: str, item: dict, r: dict, out: dict, by: str) -> dict:
+    """The answer of a routine turn: its questions to the owner, the text to Hermes or the recap."""
     reply = out["reply"]
+    asked = False
+    for question in out.get("questions") or []:
+        _ask_owner(key, item["title"], reply, question)
+        asked = asked or str(question["question_id"]).startswith("ask_")
+    if asked:   # the reply is the question itself: the routine goes on with the answer
+        return {"ok": True, "ran": True, "delivered": True, "deliver": "question", "text": reply}
     if not reply or reply.strip().strip(".").upper() == NOTHING:
         logger.info("event=routine_quiet key=%s", key)
         return {"ok": True, "ran": True, "delivered": False, "reason": "niente da dire"}
@@ -339,3 +372,36 @@ def results_since(hours: float = 24) -> list[dict]:
     limit = _now() - timedelta(hours=hours)
     with _lock:
         return [r for r in _results if datetime.fromisoformat(r["at"]) >= limit]
+
+
+def answer(key: str, question_id: str, answer_text: str, client: str = "") -> dict:
+    """The owner answered a routine's question (Hermes ``_question`` → here). The assistant gets it: a module
+    confirmation runs its action now; an ``ask_user`` answer continues the routine in the background."""
+    item = agenda.get(key)
+    r = routine_of(item)
+    if not r:
+        raise agenda.AgendaError(f"{key} is not a routine", 404)
+    resp = requests.post(f"{_HUB}/route/oracle/api/chat/question-answer",
+                         json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 20,
+                               "body": {"session_id": f"routine:{key}", "question_id": question_id,
+                                        "answer": answer_text, "client": client or "routine"}}, timeout=25)
+    routed = resp.json() if resp.content else {}
+    status = int(routed.get("status_code", resp.status_code))
+    payload = routed.get("payload") if isinstance(routed.get("payload"), dict) else {}
+    if status == 404:
+        raise agenda.AgendaError("questa domanda non è più aperta", 409)
+    if status >= 400:
+        raise agenda.AgendaError(f"assistant {status}", 502)
+    resume = str((payload.get("resume") or {}).get("message") or "")
+    if resume:
+        def _go_on():
+            try:
+                _deliver(key, item, r, _ask_oracle(key, "Da una tua routine", resume), by="answer")
+            except Exception as exc:
+                logger.warning("[🔄] event=routine_resume_failed key=%s error=%s", key, exc)
+        threading.Thread(target=_go_on, daemon=True, name=f"routine-answer-{key}").start()
+    logger.info("event=routine_question_answered key=%s question_id=%s resumed=%s", key, question_id, bool(resume))
+    action = payload.get("action") if isinstance(payload.get("action"), dict) else None
+    if action and not action.get("ok"):
+        raise agenda.AgendaError("l'azione non è riuscita", 502)
+    return {"ok": True, "resumed": bool(resume), "message": "Ricevuto, continuo" if resume else "Fatto"}

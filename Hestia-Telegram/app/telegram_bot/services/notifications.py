@@ -131,6 +131,16 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         return 400, {"delivered": False, "detail": "message required"}
     rows = action_buttons(notification_id, body.get("actions") or [])
     link = body.get("link") if isinstance(body.get("link"), dict) else {}
+    question = body.get("question") if isinstance(body.get("question"), dict) else None
+    if question:
+        # Asks like the chat card (dossier 2026-10-30-domande-nelle-notifiche): same keyboard, answer → Hermes.
+        from telegram_bot.services import assistant_questions
+        path = f"/p/{link['module']}/{link['page']}" if link.get("module") and link.get("page") else ""
+        question_rows, hint = assistant_questions.notification_rows(chat_id, notification_id, question, path)
+        rows.extend(question_rows)
+        link = {}
+        if hint:
+            html += f"\n{ui.note(hint)}"
     if link.get("module") and link.get("page"):
         from telegram_bot import webapp
         button = webapp.open_button("Apri", f"/p/{link['module']}/{link['page']}")
@@ -242,6 +252,27 @@ def _retract(body: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── Telegram → Hermes ─────────────────────────────────────────────────────────
+
+def reply_question(notification_id: str, answer: str) -> tuple[int, Any]:
+    """Answer to a notification question; Hermes forwards it to the module that asked."""
+    with _unseen_lock:
+        _unseen.discard(notification_id)
+    return _hermes(f"api/notifications/{notification_id}/reply", {"answer": answer, "client": CLIENT_NAME})
+
+
+def answer_by_reply(message, text: str) -> bool:
+    """A reply to a notification that asks: the text is its answer. False when it is not one (a normal chat turn)."""
+    target = getattr(message, "reply_to_message", None)
+    if target is None or not text or text.startswith("/"):
+        return False
+    hit = store.get_pending(f"msg:{message.chat.id}:{target.message_id}") or {}
+    from telegram_bot.services import assistant_questions
+    token = assistant_questions.token_for_notification(str(hit.get("notification_id") or ""))
+    entry = store.get_pending(token) if token else None
+    if not entry or not entry.get("free"):
+        return False
+    return assistant_questions.answer_text(message, {"token": token}, text)
+
 
 def handle_callback(call) -> None:
     """``na:<short id>`` (``ntf:<notification_id>:<action_id>`` on older messages) button pressed."""
