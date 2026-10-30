@@ -21,7 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.hub_client import HubClient
 from .core import dataset_builder
 from .core.insights import build_insights
-from .core.metis_settings import settings as metis_settings, traces_keep_days
+from .core.metis_settings import review_auto_accept, review_batch, settings as metis_settings, traces_keep_days
+from .core.review import USE_CASE as REVIEW_USE, Review
 from .core.traces import Traces
 from .core.usage import CLIENTS, IDEAS_USE, Usage
 
@@ -94,6 +95,9 @@ usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
 # Training dataset (docs/work/2026-10-30-dataset-allenamento): chat turn traces in Archive ``dataset-store``.
 traces = Traces(usage_store.hub, keep_days=traces_keep_days)
+# Nightly correction by the teacher model (cloud, personal data masked) + «Da rivedere» (D2).
+review = Review(usage_store.hub, llm=usage_store.hub.llm, auto_accept=review_auto_accept, batch=review_batch)
+REVIEW_AT = "02:30"
 # Hours the assistant writes fresh «Adesso» ideas: only the seed of agenda jobs, the user moves them in the agenda.
 IDEAS_AT = ("07:00", "12:30", "18:00")
 _DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
@@ -125,7 +129,11 @@ def _agenda_rules() -> list[dict]:
         job_rule(f"metis.adesso.{at.replace(':', '')}", "Idee per «Adesso»", service="metis",
                  path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
                  description="L'assistente pensa a tre cose utili per le prossime ore (e pulisce i tocchi vecchi).")
-        for at in IDEAS_AT]
+        for at in IDEAS_AT] + [
+        job_rule("metis.dataset.review", "Rilettura delle risposte per l'allenamento", service="metis",
+                 path="/api/metis/review/run", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{REVIEW_AT}:00", tz=tz,
+                 description="Un modello più forte rilegge le risposte del giorno (con i tuoi dati oscurati) e "
+                             "corregge quelle sbagliate; i casi dubbi aspettano te in «Da rivedere».")]
 
 
 def _load_jobs() -> dict:
@@ -276,6 +284,47 @@ def metis_traces_status():
 def metis_traces_recent(limit: int = 20):
     """Newest saved turns, short (no prompts, no tool results)."""
     return {"items": _traces_call(traces.recent, limit)}
+
+
+@app.post("/api/metis/review/run")
+def metis_review_run():
+    """Agenda job ``metis.dataset.review``: the teacher re-reads the next batch of saved turns."""
+    return _traces_call(review.run)
+
+
+@app.get("/api/metis/review/pending")
+def metis_review_pending(limit: int = 10):
+    """«Da rivedere»: corrections waiting for the owner (original vs corrected)."""
+    return _traces_call(review.pending, limit)
+
+
+@app.post("/api/metis/review/{trace_id}")
+def metis_review_decide(trace_id: str, body: dict):
+    """The owner decides: ``{decision: accept | reject | edit, answer?}``."""
+    return _traces_call(review.decide, trace_id, str(body.get("decision") or ""), str(body.get("answer") or ""))
+
+
+def _review_card(limit: int = 1) -> dict:
+    out = review.pending(limit)
+    items = out["items"]
+    if not items:
+        return {**out, "display": display("Da rivedere", lines=["Niente da rivedere: le correzioni della notte sono "
+                                                                "tutte sicure o non ce ne sono."])}
+    i = items[0]
+    lines = [f"Tu: {i['user'][:300]}", f"Risposta: {i['answer'][:400]}"]
+    if i["fixed"]:
+        lines.append(f"Correzione: {i['fixed'][:400]}")
+    if i["remove"]:
+        lines.append("Da togliere: " + ", ".join(t for t in i["remove"] if t))
+    if i["needs_owner"]:
+        lines.append("Il revisore non sa correggerla da solo: scrivi tu la risposta giusta.")
+    acts = [action("Scarta", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
+            action("Correggi io", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
+    if not i["needs_owner"]:
+        acts.insert(0, action("Accetta", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
+                              style="primary"))
+    return {**out, "display": display("Da rivedere", subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
+                                      lines=lines, actions=acts)}
 
 
 @app.get("/api/metis/scopri")
@@ -739,6 +788,30 @@ try:
             telegram_group="sviluppo",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
+            name="metis_rivedi",
+            description="Le correzioni notturne delle risposte che aspettano te prima di entrare nel dataset di "
+                        "allenamento: risposta originale, correzione, Accetta / Scarta / Correggi io.",
+            parameters={"type": "object", "properties": {}, "required": []},
+            handler=lambda: _traces_call(_review_card),
+            title="Da rivedere", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
+            telegram={"section": "Dataset e training"}),
+        MCPTool(
+            name="metis_rivedi_decidi",
+            description="Decidi una correzione del dataset di allenamento: accept (va bene), reject (scarta il "
+                        "turno), edit (la risposta giusta la scrivi tu in answer).",
+            parameters={"type": "object", "properties": {
+                "trace_id": {"type": "string", "description": "Turno da decidere"},
+                "decision": {"type": "string", "enum": ["accept", "reject", "edit"]},
+                "answer": {"type": "string", "description": "Con edit: la risposta giusta"}},
+                "required": ["trace_id", "decision"]},
+            handler=lambda trace_id="", decision="", answer="": {
+                **_traces_call(review.decide, trace_id, decision, answer),
+                "next": _traces_call(_review_card).get("display")},
+            title="Decidi una correzione", method="POST", path="/api/metis/tools/rivedi_decidi",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_group="sviluppo",
+            telegram={"section": "Dataset e training"}),
+        MCPTool(
             name="metis_adesso",
             description="Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle "
                         "prossime ore e qualche idea dell'assistente, ognuna con il perché.",
@@ -804,7 +877,10 @@ _HUB_REGISTRATION_PAYLOAD = {
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
         **llm_capabilities([usecase(IDEAS_USE, "Adesso · idee", chain="veloce",
-                                    help="Tre azioni utili per le prossime ore, diverse dalle abitudini.")]),
+                                    help="Tre azioni utili per le prossime ore, diverse dalle abitudini."),
+                            usecase(REVIEW_USE, "Revisione del dataset", chain="cloud", thinking="true",
+                                    help="Di notte rilegge le risposte e corregge quelle sbagliate. Scegli un modello "
+                                         "più forte di quello locale: i tuoi dati personali vengono oscurati.")]),
     },
 }
 
