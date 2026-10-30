@@ -111,3 +111,27 @@ _WRITE_INTENT = re.compile(
 def has_write_intent(user_message: str) -> bool:
     """True when the user asks to change something (save, create, delete, schedule, send…)."""
     return bool(_WRITE_INTENT.search(str(user_message or "")))
+
+
+# ── Same fact, other words (bench with a real model, 2026-10-30: one «lavoro come sviluppatore…» → 3 rows) ──
+_FACT_STOP = frozenset({
+    "utente", "l'utente", "the", "user", "che", "con", "per", "una", "uno", "del", "della", "dello", "dei", "delle",
+    "alla", "alle", "allo", "dalla", "dalle", "dal", "nel", "nella", "sul", "sulla", "come", "suo", "sua", "suoi",
+    "sue", "mio", "mia", "miei", "mie", "sono", "essere", "di", "solito", "anche", "molto",
+})
+
+
+def _fact_tokens(text: str) -> set[str]:
+    out: set[str] = set()
+    for tok in re.findall(r"[a-zà-öø-ÿ0-9]+", str(text or "").lower()):
+        if tok.isdigit():
+            out.add(tok.lstrip("0") or "0")
+        elif len(tok) >= 3 and tok not in _FACT_STOP:
+            out.add(tok[:5])   # crude stem: lavoro/lavora, allergico/allergica
+    return out
+
+
+def same_fact(new_fact: str, old_fact: str, threshold: float = 0.8) -> bool:
+    """True when *new_fact* adds (almost) nothing to *old_fact*: ≥ threshold of its words are already there."""
+    new, old = _fact_tokens(new_fact), _fact_tokens(old_fact)
+    return bool(new) and len(new & old) / len(new) >= threshold

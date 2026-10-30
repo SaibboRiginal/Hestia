@@ -9000,7 +9000,7 @@ paths:
   /api/hercules/summary:
     get:
       tags: [Hercules]
-      summary: "Short text summary for the assistant (flags deload_suggested, stall, missed days)"
+      summary: "Short text summary for the assistant (flags deload_suggested, stall, missed days; activities_week = runs/walks/rides logged this week)"
       servers:
         - url: http://localhost:19019
       responses:

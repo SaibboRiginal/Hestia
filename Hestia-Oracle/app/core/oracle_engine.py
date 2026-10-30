@@ -76,6 +76,13 @@ TaskLifecycleStore = _resolve_task_lifecycle_store()
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 _STARTUP_TS = time.time()
 
+# A quick answer (no tools) that says it did or will do something: «ho registrato», «riduco gli impegni».
+_CLAIMED_ACTION = re.compile(
+    r"(?<!non )\b(?:ho|abbiamo)\s+(?:gi[àa]\s+)?(?:registrat|salvat|annotat|segnat|impostat|creat|aggiunt|rimoss|cancellat|"
+    r"eliminat|spostat|ridott|programmat|memorizzat|attivat|disattivat)\w*"
+    r"|\b(?:registro|annoto|riduco|sposto|cancello|elimino|imposto|programmo|memorizzo)\s+(?:la|il|lo|gli|le|i|per|"
+    r"tutt|ogni)\b", re.IGNORECASE)
+
 _NUMERIC_SHORTHAND_PATTERN = re.compile(
     r"^\s*([0-9]+(?:[\.,][0-9]+)?)\s*([kKmM])\s*$")
 
@@ -1325,12 +1332,21 @@ class OracleEngine:
             self._save_history(session_id, user_message,
                                answer, trace_id=trace_id)
 
+        # What this turn already did: the memory extractor never saves it again (bench 2026-10-30: a routine
+        # «pesarmi ogni lunedì» also became a memory; one memory.save turn ended with three rows).
+        _turn_memory = {
+            "memory_by_tool": any(e.get("ok") and e.get("tool") in ("memory.save", "memory.forget")
+                                  for e in tool_log),
+            "done_actions": [str(e.get("title") or e.get("tool")) for e in tool_log
+                             if e.get("ok") and e.get("writes") and not e.get("unchanged")],
+        }
         # Memory sync (synchronous only for explicit mutation intent)
         sync_signals, sync_attempted = self._sync_memory_if_needed(
             user_message=user_message,
             session_id=session_id,
             notify_target=notify_target,
             force_notification_compiler=force_notification_compiler,
+            **_turn_memory,
         )
         if sync_attempted:
             for signal in (sync_signals or []):
@@ -1358,10 +1374,10 @@ class OracleEngine:
             yield stream_emitter.emit_tool_summary(tool_log)
             # Standard notices for real effects: one per mutating tool call.
             for entry in tool_log:
-                if not entry.get("writes"):
+                if not entry.get("writes") or entry.get("unchanged"):
                     continue
                 tname = str(entry.get("tool") or "")
-                kind = "memory.saved" if tname == "memory.save" else (
+                kind = "memory.saved" if tname == "memory.save" else "memory.removed" if tname == "memory.forget" else (
                     "action.done" if entry.get("ok") else "action.failed")
                 # Agenda / Forge effects get their own kind so clients refresh calendar / Sviluppo.
                 if entry.get("ok") and entry.get("confirm"):
@@ -1439,6 +1455,7 @@ class OracleEngine:
             force_notification_compiler,
             skip_memory_extract=sync_attempted,
             trace_id=trace_id,
+            **_turn_memory,
         )
 
         yield from self._memory_notice_frames(_mem_waiter)
@@ -1977,6 +1994,8 @@ class OracleEngine:
         force_notification_compiler: bool,
         skip_memory_extract: bool = False,
         trace_id: str | None = None,
+        memory_by_tool: bool = False,
+        done_actions: list[str] | None = None,
     ) -> dict:
         """Memory extraction + compaction check in a daemon thread.
 
@@ -2007,6 +2026,8 @@ class OracleEngine:
                         user_message, session_id,
                         notify_target=notify_target,
                         force_notification_compiler=force_notification_compiler,
+                        memory_by_tool=memory_by_tool,
+                        done_actions=done_actions,
                     ) or []
                     mem_ms = int((time.perf_counter() - t_mem) * 1000)
                     logger.info(
@@ -2134,6 +2155,8 @@ class OracleEngine:
         session_id: str,
         notify_target: str | None,
         force_notification_compiler: bool,
+        memory_by_tool: bool = False,
+        done_actions: list[str] | None = None,
     ) -> tuple[list[dict], bool]:
         """Synchronously persist memory/subscription updates on explicit mutation turns.
 
@@ -2152,6 +2175,8 @@ class OracleEngine:
                 session_id=session_id,
                 notify_target=notify_target,
                 force_notification_compiler=force_notification_compiler,
+                memory_by_tool=memory_by_tool,
+                done_actions=done_actions,
             ) or []
             logger.info(
                 "event=memory_sync_persist_result session_id=%s attempted=true signals=%s ms=%s",
@@ -2374,6 +2399,29 @@ class OracleEngine:
             handler=_memory_save_handler,
             writes=True,
             title="💾 Memoria",
+        ))
+
+        def _memory_forget_handler(id: int | str = 0) -> tuple[bool, dict | str]:
+            try:
+                memory_id = int(id)
+            except (TypeError, ValueError):
+                return (False, "id must be the number from memory.search")
+            if not _mem_svc.forget(memory_id):
+                return (False, f"memory {memory_id} not found")
+            return (True, {"forgotten": memory_id})
+
+        tools.append(ToolDefinition(
+            name="memory.forget",
+            description="Forget one saved memory (the user asks to forget/remove it). First memory.search, "
+                        "then call this once per matching id.",
+            parameters={
+                "type": "object",
+                "properties": {"id": {"type": "integer", "description": "The memory id from memory.search"}},
+                "required": ["id"],
+            },
+            handler=_memory_forget_handler,
+            writes=True,
+            title="Memoria dimenticata",
         ))
 
         def _memory_search_handler(query: str = "") -> tuple[bool, list]:
@@ -3154,7 +3202,13 @@ class OracleEngine:
             ],
         )
         # The generic chain already tries its fallback steps.
-        return self._ask_analyst(prompt)
+        answer = self._ask_analyst(prompt)
+        if _CLAIMED_ACTION.search(answer or ""):
+            # No tools here: an answer that says it did something is false (bench 2026-10-30: «oggi sono stanco»
+            # → «Ho registrato la stanchezza, riduco gli impegni»). One more try with the reason spelled out.
+            logger.info("[🔄] event=quick_answer_claimed_action answer=%s", (answer or "")[:120])
+            answer = self._ask_analyst(prompt + "\n\n" + prompt_config.prompt("quick_chat_no_claim_retry")) or answer
+        return answer
 
     def _now_in_oracle_timezone(self) -> datetime:
         """Return timezone-aware current datetime in the container TZ when valid."""

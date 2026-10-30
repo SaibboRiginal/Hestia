@@ -582,3 +582,49 @@ class TestDuplicateWrites:
         q = _xml_tool_call("agenda", {"title": "x"})
         self._loop(read, q, q, "Niente.")
         assert read.handler.call_count >= 1
+
+
+@pytest.mark.unit
+class TestBenchNearMisses:
+    """Real model on the bench, 2026-10-30: «memory:save» / «memory_save» were «Unknown tool»; a dead weather
+    service was called four times with the same city."""
+
+    def _loop(self, tools, *replies):
+        return run_agent_loop(user_message="x", history_text="", preference_facts=[], tools=tools,
+                              ask_fn=_ask_fn_sequence(*replies))
+
+    def test_near_miss_tool_name_runs_the_real_tool(self):
+        tool = _make_tool("memory.save", (True, "saved"))
+        tool.writes = True
+        _, _, log = self._loop([tool], _xml_tool_call("memory:save", {"fact": "a"}), "Fatto.")
+        assert tool.handler.call_count == 1
+        assert log[0]["tool"] == "memory.save" and log[0]["ok"]
+
+    def test_ambiguous_or_unknown_name_stays_unknown(self):
+        a, b = _make_tool("memory.save"), _make_tool("memory_save")
+        _, _, log = self._loop([a, b], _xml_tool_call("memory:save", {"fact": "a"}), "x")
+        assert not log[0]["ok"] and "Unknown tool" in log[0]["result_preview"]
+
+    def test_same_failed_call_is_not_repeated(self):
+        tool = _make_tool("weather_forecast", (False, {"raw": "Internal Server Error"}))
+        call = _xml_tool_call("weather_forecast", {"place": "Trieste"})
+        answer, _, log = self._loop([tool], call, call, "Il meteo non risponde.")
+        assert tool.handler.call_count == 1
+        assert len(log) == 1
+        assert answer
+
+    def test_unchanged_write_is_flagged(self):
+        tool = _make_tool("memory.save", (True, {"already_known": True, "id": 3}))
+        tool.writes = True
+        _, _, log = self._loop([tool], _xml_tool_call("memory.save", {"fact": "a"}), "Lo sapevo già.")
+        assert log[0]["unchanged"] is True
+        from core.services.stream_emitter import changes_from_log
+        assert changes_from_log(log) == []
+
+
+@pytest.mark.unit
+def test_call_tag_answer_is_a_tool_call():
+    """Gemini answered «<call:cibo_oggi></call:cibo_oggi>» and it reached the user (bench 2026-10-30)."""
+    assert _extract_tool_call("<call:cibo_oggi></call:cibo_oggi>") == {"name": "cibo_oggi", "params": {}}
+    assert _extract_tool_call('<call:agenda>{"days": 2}</call:agenda>') == {"name": "agenda", "params": {"days": 2}}
+    assert _extract_tool_call("Usa <call:agenda></call:agenda> per vederla.") is None

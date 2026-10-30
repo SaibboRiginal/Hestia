@@ -100,6 +100,12 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   tests, acknowledgements and plain questions never reach it; only "ricorda / d'ora in poi", removals, notification
   requests and first-person durable facts/preferences do. The extractor prompt (`memory_preferences_template`)
   keeps only durable, user-stated facts. Each save/removal is announced with a `notice`.
+- **One fact = one row** (real-model bench, 2026-10-30, `docs/work/2026-10-30-ai-vera-gemini`): `memory.save` and
+  the extractor skip a fact an active memory already says in other words (`memory_intent.same_fact`: ≥ 80 % of
+  its stemmed words already there; `memory.save` answers `already_known`, no «Ricordato»). When the chat used
+  `memory.save`/`memory.forget` in the turn the extractor does not run; otherwise it gets the turn's successful
+  writes («AZIONI GIÀ FATTE»: a routine, an event, a person are not saved again as memories) and the rule that
+  «ricordami di…» is a reminder and a passing state («stanco oggi») is not a memory.
 - The "no action executed" contract is injected into quick answers only when the message has write intent
   (`has_write_intent`), so "test" / "ciao" no longer get "Non risulta eseguita alcuna azione".
 
@@ -182,6 +188,16 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   a successful write that returns `confirm` (a Themis proposal) is notice `action.needs_approval` and not a
   change. A whole answer that is a Python-style call (`memory.search(query="…")`, Flash-Lite does this) is parsed as
   a tool call. Module tools keep their own JSON Schema (enums, array items) instead of a flattened copy.
+  A near-miss tool name (`memory:save`, `memory_save` → `memory.save`) runs the one manifest tool it matches; the very
+  same call (tool + arguments) that already failed in the loop is not run again («GIÀ FALLITO»). A write tool whose
+  result says `unchanged` / `already_known` (a read call of a read-or-write tool like `cibo_dieta`, a known fact)
+  is no «Fatto» and no change. Analyst rules 10–12: write tools only when the user asks or tells something to
+  record (a question or advice reads only), never «fatto» without a successful tool, memory in third person and
+  «dimentica» = `memory.search` + `memory.forget`; rule 13: a one-off «ricordami» goes to `agenda_assistente_aggiungi`
+  (works with no calendar linked), a repeated one to `routine_create`. Quick chat has no tools and never claims an action: an answer
+  matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
+  `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
+  `memory.search` also matches word forms (stems: «lavoro» finds «lavora»).
 - **No replay** (Cindy 2): when the external brain fails after it already ran tools, its tool log
   (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
 - **Origin** (Cindy 6, `hestia_common.origin`): `/api/chat` reads `X-Hestia-Origin: <kind>[:<ref>]` (+ optional
@@ -222,6 +238,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 ### Memory as First-Class Tools
 - `memory.save` — agent loop tool to persist a durable user fact immediately.
 - `memory.search` — agent loop tool to recall saved preferences/memories during conversation.
+- `memory.forget` — agent loop tool to forget one memory by the id `memory.search` returned (notice `memory.removed`).
 - `memory_note` / `memory_recall` (2026-10-20, docs/work/2026-10-20-memory-note) — also open to external AIs
   (Claude, ChatGPT through Hestia-MCP): `memory_note` saves the durable facts the external AI distilled from its
   conversation (one per line, max 10 × 300 chars) as `durable_user_preference`, domains from the embedding classifier,

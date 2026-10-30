@@ -121,6 +121,8 @@ class TestSharedRules:
         assert req["path"] == "api/forge/tasks/a%20b/approve" and req["body"] == {"note": "x"}
         req = build_request({"service": "x", "method": "GET", "path": "/a/{id}"}, {"id": 3, "f": 1})
         assert req["path"] == "a/3" and req["query"] == {"f": 1} and req["body"] is None
+        req = build_request({"service": "scout", "method": "POST", "path": "/api/tools/real_estate/search"}, {})
+        assert req["body"] == {}   # a body model still gets a body (was None → 422)
 
     def test_client_unwraps_and_converts(self, rig, monkeypatch):
         c, _ = rig

@@ -547,6 +547,10 @@ No code-only behavior changes are considered complete without synchronized docs.
    `capabilities.owns_tool_domains`. `module_tool_domains` alone does not keep them (2026-10-30, real-model bench).
    Argument schemas are full JSON Schema (`items` for arrays, `enum` for choices): models read them to pick valid values.
    A write that did nothing answers an error status, not 200 `{"error": …}` (Oracle treats that as failed anyway).
+   A read-or-write tool called only to read (no arguments) answers `unchanged: true` (no «Fatto» in the chat); a
+   POST tool that only reads has a lookup word in its name (`search`, `list`, `query`, `status`, `stats`, `show`,
+   `suggest`) so it gets `readOnlyHint`. A POST/PUT/PATCH tool called with no arguments receives the body `{}`
+   (2026-10-30, real-model bench round 2).
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
    `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`

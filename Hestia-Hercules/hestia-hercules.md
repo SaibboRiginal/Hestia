@@ -171,6 +171,8 @@ morning body battery (or training readiness), 0–100 → 1–5, become the day'
 there is no check-in made by hand; the adaptation of today's workout reads it like any check-in.
 
 ## Telegram card (`display`)
+`GET /api/hercules/summary` (tool `fitness_summary`) also lists the week's logged activities (runs, walks, rides:
+line «Attività: …», field `activities_week`), not only gym sessions.
 `GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
 
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)

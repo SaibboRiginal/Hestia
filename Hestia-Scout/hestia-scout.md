@@ -271,6 +271,8 @@ mail cycle brings listings back anyway). Settings travel through Themis.
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
 
 ## Telegram card (`display`)
+`scout_stats` counts up to 100 listings (request limit 50 × 5; it used to ask 100 and fail on the limit ≤ 50); the
+search tools called with no arguments get the body `{}` and list the latest houses (2026-10-30).
 `POST /api/tools/real_estate/search` (tools `scout_listings`, `scout.search`) and `scout_stats` return a `display` card: one line per house (title linked to the listing, price, surface, rooms, address) and counts by listing status, with Cerca / Controlla email. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
 
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)

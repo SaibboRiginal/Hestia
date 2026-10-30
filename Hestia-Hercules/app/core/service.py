@@ -789,6 +789,15 @@ class Hercules:
             lines.append(f"{g['label']}: {g['hint']}" + (" (indietro)" if g["behind"] else ""))
         else:
             lines.append(f"Settimana: {week[-1]['sessions']} allenamenti")
+        # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km di corsa» logged, then
+        # «come sto andando?» → «nessuna sessione questa settimana»).
+        week_start = str(week[-1].get("start") or "")[:10]
+        acts = [a for a in self.store.items("activity") if a.get("status", "done") == "done"
+                and str(a.get("date") or "")[:10] >= week_start] if week_start else []
+        if acts:
+            lines.append("Attività: " + ", ".join(
+                f"{a.get('kind')}" + (f" {float(a['km']):g} km" if a.get("km") else "") + (f" {a['minutes']} min" if a.get("minutes") else "")
+                for a in acts[-5:]))
         if prs:
             lines.append("PR: " + ", ".join(f"{p['exercise']} {p['label'].lower()} {progression.fmt_kg(p['value'])}" for p in prs))
         if stalls:
@@ -800,6 +809,7 @@ class Hercules:
         if last:
             lines.append(f"Ultimo: {last.get('name')} {records.local_date(last.get('started_at'), self.tz)}")
         return {"text": " · ".join(lines), "lines": lines, "next": nxt, "week": week[-1], "previous_week": week[0],
+                "activities_week": [{k: a.get(k) for k in ("kind", "date", "km", "minutes")} for a in acts],
                 "goals": [{"label": g["progress"]["label"], **{k: g["progress"][k] for k in ("done", "times", "behind", "streak")}}
                           for g in goals],
                 "recent_prs": prs, "stalls": stalls[:5], "low_energy_checkins_7d": len(low), "flags": flags,

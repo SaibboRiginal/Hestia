@@ -67,8 +67,9 @@ NEEDS_CA = ("node:22-alpine", "mcr.microsoft.com/dotnet/sdk:9.0")  # build stage
 # gives each model about 20 requests a day: four models = four quotas, when one is out (or busy, 503) the chain
 # moves on. Flash-Lite first: seconds per answer, the bigger Flash thinks for a minute on Hestia's 240 tools.
 GEMINI_CHAIN = {"label": "Gemini (banco)", "steps": [
-    {"provider": "gemini", "model": "gemini-flash-lite-latest"}, {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
-    {"provider": "gemini", "model": "gemini-flash-latest"}, {"provider": "gemini", "model": "gemma-4-26b-a4b-it"}]}
+    {"provider": "gemini", "model": m} for m in (
+        "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash-preview", "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest", "gemini-3.1-flash-lite")]}
 # A Claude cloud environment may hold the key already under Oracle's own name: the bench accepts both.
 if os.getenv("ORACLE_KEY_GEMINI") and not os.getenv("GEMINI_API_KEY"):
     os.environ["GEMINI_API_KEY"] = os.environ["ORACLE_KEY_GEMINI"]

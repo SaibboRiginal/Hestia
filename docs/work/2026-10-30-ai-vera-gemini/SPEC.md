@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (Marko, 2026-10-30: «messo chiave e abilitato l'host… i test non deterministici dell'AI ci sono ancora?») |
-| **Status** | Implemented |
+| **Status** | Implemented (round 2: behaviour) |
 
 ## 1. Today (verified in code)
 - The non-deterministic real-model suite still exists: `Hestia-Oracle/tests/test_live_*.py` (4 files, ~58 tests,
@@ -54,3 +54,28 @@ what breaks; make the live suite runnable on Gemini.
   people, deadlines, wardrobe, routines, settings, voice), proposes a setting with a confirm card, never claims a
   failed action, never repeats a write.
 - Unit/api/format tests green; precheck 0 failed.
+
+## 6. Round 2 — behaviour of the whole assistant (v1.1)
+Marko (2026-10-30): test that the AI answers sensibly with every module, does not make a mess, understands when to
+save memories and does not save rubbish, and that the system/orchestrator prompts work. Done on the bench with real
+conversations (memory, 11 modules, modes, MCP doors). Found and fixed, each with a regression test:
+11. A fact said twice or in other words became 2–3 memories (chat tool + background extractor): `same_fact` dedupe in
+    both paths; the extractor stays off when the chat used its memory tools and sees the turn's actions (a routine,
+    a birthday are not saved again as memories); «ricordami di…» = reminder, a passing state is not a memory.
+12. «Dimentica dove lavoro» claimed «rimosso» with nothing removed: new tool `memory.forget`; `memory.search`
+    matches word forms (lavoro/lavora).
+13. Quick chat (no tools) answered «Ho registrato la stanchezza, riduco gli impegni»: rule + one retry when the
+    answer claims an action (`_CLAIMED_ACTION`).
+14. Advice asked («mi consigli una pizza?») registered a dinner: analyst rule 10 (write tools only when asked).
+15. «Riproverò a breve» / promises nobody scheduled: rule 11.
+16. `memory:save`, `memory_save` → «Unknown tool»: near-miss names resolve to the one manifest tool.
+17. The same failing call ran 4 times: an identical failed call is not repeated.
+18. An answer `<call:cibo_oggi></call:cibo_oggi>` reached the user: parsed as a tool call.
+19. Reads shown as «Fatto» (`cibo_dieta` without arguments, `wardrobe_suggest`): `unchanged` result flag, `suggest`
+    is a read word.
+20. MCP: a POST tool called with no arguments sent no body → 422 (Case disponibili); `scout_stats` always failed
+    (limit 100 > 50).
+21. «Come sto andando con l'allenamento?» ignored the run logged a minute before: the fitness summary lists the
+    week's activities.
+Not testable in this cloud session: voice (huggingface.co blocked by the environment network), weather
+(open-meteo blocked), Google Calendar and Telegram (need Marko's accounts).

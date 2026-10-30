@@ -30,7 +30,8 @@
 ## Tools (Telegram area «Alimentazione»)
 
 `cibo_oggi`, `cibo_pasto`, `cibo_pasti`, `cibo_pasto_elimina`, `cibo_dieta`, `cibo_integratori`, `cibo_integratore`,
-`cibo_preso`, `cibo_integratore_elimina`.
+`cibo_preso`, `cibo_integratore_elimina`. `cibo_dieta` without arguments only shows the diet and answers
+`unchanged: true` (the chat shows no «Fatto»).
 
 ## WebUI plugin
 
