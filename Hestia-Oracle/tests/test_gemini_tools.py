@@ -42,9 +42,20 @@ def test_every_schema_is_sent_as_json_schema():
     assert out["tool_call"] == {"name": "calendar_list_events", "params": {"target_providers": ["google"]}}
     decls = models.config.tools[0].function_declarations
     assert [d.name for d in decls] == ["voce_impronta_registra", "calendar_list_events", "no_params"]
-    assert all(d.parameters is None for d in decls)
-    assert decls[0].parameters_json_schema["properties"]["audio"]["contentMediaType"] == "audio/*"
-    assert decls[2].parameters_json_schema == {"type": "object", "properties": {}}
+    if "parameters_json_schema" in type(decls[0]).model_fields:
+        assert all(d.parameters is None for d in decls)
+        assert decls[0].parameters_json_schema["properties"]["audio"]["contentMediaType"] == "audio/*"
+        assert decls[2].parameters_json_schema == {"type": "object", "properties": {}}
+    else:   # older SDK: cleaned OpenAPI subset
+        assert decls[1].parameters.properties["target_providers"].items is not None
+
+
+def test_openapi_subset_cleans_what_the_old_field_refuses():
+    from agents.universal_agent import _openapi_subset
+    out = _openapi_subset(_TOOLS[0]["parameters"])
+    assert out == {"type": "object", "properties": {"audio": {"type": "string"}}}
+    out = _openapi_subset(_TOOLS[1]["parameters"])
+    assert out["properties"]["target_providers"] == {"type": "array", "items": {"type": "string"}}
 
 
 def test_error_payload_is_not_a_success():
