@@ -135,3 +135,9 @@ def same_fact(new_fact: str, old_fact: str, threshold: float = 0.8) -> bool:
     """True when *new_fact* adds (almost) nothing to *old_fact*: ≥ threshold of its words are already there."""
     new, old = _fact_tokens(new_fact), _fact_tokens(old_fact)
     return bool(new) and len(new & old) / len(new) >= threshold
+
+
+def asks_to_remember(user_message: str) -> bool:
+    """«ricorda / tieni a mente / d'ora in poi…»: the user wants it kept as a memory, whatever else the turn did."""
+    low = str(user_message or "").lower()
+    return any(k in low for k in _REMEMBER) and not low.lstrip().startswith("ricordami")

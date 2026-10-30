@@ -60,13 +60,25 @@ def test_extractor_off_when_the_chat_used_its_memory_tools():
     svc._ask.assert_not_called()
 
 
-def test_extractor_sees_what_the_turn_already_did():
+def test_extractor_off_when_an_action_stored_it():
+    """«mia mamma si chiama Laura» → people_add and a memory (small-model bench 2026-10-30)."""
     svc = _service([])
     svc._ask = MagicMock(return_value="NONE")
     svc._build_conversation_context = MagicMock(return_value=([], ["general"], ""))
+    assert svc.extract_and_save_preferences("mia mamma si chiama Laura e vive a Trieste", "s1",
+                                            done_actions=["Aggiungi persona"]) == []
     svc.extract_and_save_preferences("ricordami ogni lunedì alle 9 di pesarmi", "s1", done_actions=["Nuova routine"])
+    svc._ask.assert_not_called()
+
+
+def test_extractor_sees_what_the_turn_already_did_when_asked_to_remember():
+    svc = _service([])
+    svc._ask = MagicMock(return_value="NONE")
+    svc._build_conversation_context = MagicMock(return_value=([], ["general"], ""))
+    svc.extract_and_save_preferences("ricorda che mia mamma si chiama Laura, e segnala nelle persone", "s1",
+                                     done_actions=["Aggiungi persona"])
     prompt = svc._ask.call_args[0][0]
-    assert "AZIONI GIÀ FATTE IN QUESTO TURNO: Nuova routine" in prompt
+    assert "AZIONI GIÀ FATTE IN QUESTO TURNO: Aggiungi persona" in prompt
     assert "promemoria, non memoria" in prompt
 
 

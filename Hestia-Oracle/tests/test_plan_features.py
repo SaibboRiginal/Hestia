@@ -119,6 +119,35 @@ class TestDomainToolFiltering:
         assert "agenda" in names
         assert "unknown_cmd" not in names
 
+    @pytest.mark.unit
+    def test_always_tools_survive_the_domain_gate(self, engine):
+        """A one-off reminder works whatever the turn's domain (bench 2026-10-30, small models)."""
+        engine._module_registry.get_domain_owners = lambda d: ["plutus"] if d == "finance" else []
+        engine._hub.get_commands = lambda: [
+            {"command": "finance_add", "service": "plutus", "method": "POST", "path": "/api/x"},
+            {"command": "agenda_assistente_aggiungi", "service": "chronos", "method": "POST", "path": "/api/y"},
+            {"command": "create_event", "service": "chronos", "method": "POST", "path": "/api/z"},
+        ]
+        intent = SessionIntent(mode="domain_query", explicit_domain="finance", confidence=0.9,
+                               valid_domains=["finance"])
+        names = {t.name for t in engine._build_domain_tools(intent, "s", None, fallback_domains=["finance"])}
+        assert {"finance_add", "agenda_assistente_aggiungi"} <= names
+        assert "create_event" not in names
+
+
+@pytest.mark.unit
+def test_turn_tool_domains_narrow_only_when_sure():
+    """~250 tools / 30k tokens per call overflowed a local model's context: a sure turn gets its domains only."""
+    from core.oracle_engine import _turn_tool_domains
+    every = ["general", "calendar", "finance", "fitness"]
+    sure = SessionIntent(mode="domain_query", explicit_domain="finance", confidence=0.95,
+                         valid_domains=["finance", "general"])
+    assert _turn_tool_domains(every, sure) == ["finance"]
+    unsure = SessionIntent(mode="domain_query", explicit_domain="finance", confidence=0.2, valid_domains=["finance"])
+    assert _turn_tool_domains(every, unsure) == ["calendar", "finance", "fitness"]
+    unknown = SessionIntent(mode="domain_query", explicit_domain="x", confidence=0.95, valid_domains=["x"])
+    assert _turn_tool_domains(every, unknown) == ["calendar", "finance", "fitness"]
+
 
 # ── P1: Mode routing ───────────────────────────────────────────────────────
 

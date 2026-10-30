@@ -105,7 +105,9 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   its stemmed words already there; `memory.save` answers `already_known`, no «Ricordato»). When the chat used
   `memory.save`/`memory.forget` in the turn the extractor does not run; otherwise it gets the turn's successful
   writes («AZIONI GIÀ FATTE»: a routine, an event, a person are not saved again as memories) and the rule that
-  «ricordami di…» is a reminder and a passing state («stanco oggi») is not a memory.
+  «ricordami di…» is a reminder and a passing state («stanco oggi») is not a memory. When a module write already
+  stored what the turn said (a person, a routine, an expense) the extractor does not run at all, unless the user
+  asked to remember it («ricorda che…», `memory_intent.asks_to_remember`).
 - The "no action executed" contract is injected into quick answers only when the message has write intent
   (`has_write_intent`), so "test" / "ciao" no longer get "Non risulta eseguita alcuna azione".
 
@@ -198,6 +200,12 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
   `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
   `memory.search` also matches word forms (stems: «lavoro» finds «lavora»).
+- **Tools per turn** (small-model bench, 2026-10-30): when the classifier is sure (confidence ≥ the quick-chat
+  threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
+  (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
+  unsure or unknown domain → every domain. Every tool of every module was ~250 tools / 30k tokens per call, more
+  than a local model's context (`oracle.provider.ollama.num_ctx` 8192): Ollama cut the start of the prompt (rules
+  and tools).
 - **No replay** (Cindy 2): when the external brain fails after it already ran tools, its tool log
   (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
 - **Origin** (Cindy 6, `hestia_common.origin`): `/api/chat` reads `X-Hestia-Origin: <kind>[:<ref>]` (+ optional

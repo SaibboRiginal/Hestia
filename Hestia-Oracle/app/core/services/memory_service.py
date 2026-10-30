@@ -21,6 +21,7 @@ from core.services.memory_intent import (
     is_memory_worthy,
     same_fact,
     _fact_tokens,
+    asks_to_remember,
 )
 from core.services.memory_parsers import (
     parse_preference_actions,
@@ -645,7 +646,10 @@ class MemoryService:
         signals: list[dict] = []
         # Selective memory (like Claude): the LLM extractor runs only when the message
         # can carry a durable fact; greetings/tests/questions never touch memory.
-        should_extract_prefs = not memory_by_tool and is_memory_worthy(user_message)
+        # A module already stored what the turn said (person, routine, expense…): no second copy as a memory unless
+        # the user asked to remember it (small-model bench 2026-10-30: «mia mamma si chiama Laura» → person + memory).
+        stored_by_action = bool(done_actions) and not asks_to_remember(user_message)
+        should_extract_prefs = not memory_by_tool and not stored_by_action and is_memory_worthy(user_message)
         should_extract_subs = force_notification_compiler or has_notification_intent(
             user_message)
 

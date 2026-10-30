@@ -83,6 +83,18 @@ _CLAIMED_ACTION = re.compile(
     r"|\b(?:registro|annoto|riduco|sposto|cancello|elimino|imposto|programmo|memorizzo)\s+(?:la|il|lo|gli|le|i|per|"
     r"tutt|ogni)\b", re.IGNORECASE)
 
+# Tools every turn keeps whatever its domain: reminders, routines and asking the user back.
+_ALWAYS_TOOLS = frozenset({"agenda_assistente_aggiungi", "routine_create", "ask_user", "module_manual"})
+
+def _turn_tool_domains(available_domains: list[str], intent) -> list[str]:
+    """Domains whose tools the agent gets this turn: the classified ones (+ ``_ALWAYS_TOOLS``) when the classifier
+    is sure, else every domain. Every tool of every module is ~250 tools / 30k tokens per call, more than a local
+    model's whole context (bench 2026-10-30)."""
+    every = [d for d in available_domains if d != "general"]
+    turn = [d for d in (intent.valid_domains or []) if d in every]
+    return turn if turn and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD else every
+
+
 _NUMERIC_SHORTHAND_PATTERN = re.compile(
     r"^\s*([0-9]+(?:[\.,][0-9]+)?)\s*([kKmM])\s*$")
 
@@ -1119,7 +1131,7 @@ class OracleEngine:
             seed=session_id,
         )
 
-        build_domains = [d for d in available_domains if d != "general"]
+        build_domains = _turn_tool_domains(available_domains, intent)
         if not build_domains:
             logger.warning(
                 "event=chat_no_domain_tools_available session_id=%s available_domains=%s",
@@ -2323,7 +2335,7 @@ class OracleEngine:
             # Domain-gate: only include commands from domain-owning services.
             # memory.* / documents.* tools are added separately below.
             cmd_service = str(cmd.get("service", "") or "").strip()
-            if _relevant_services and cmd_service not in _relevant_services:
+            if _relevant_services and cmd_service not in _relevant_services and cmd_name not in _ALWAYS_TOOLS:
                 _filtered_cmds += 1
                 continue
 

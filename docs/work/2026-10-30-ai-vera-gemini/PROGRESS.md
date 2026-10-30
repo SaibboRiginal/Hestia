@@ -17,5 +17,11 @@
 - [x] Module scenarios (finance, wardrobe, fitness, deadlines, home, calendar, poem, maths, identity, thinking mode)
 - [x] MCP doors: external (token, 18 tools, all reads ok) and internal (252 tools, all reads ok but Garmin not linked)
 - [x] Fixes 11–21 with regression tests; docs (oracle, shared, demeter, hercules)
-- [ ] Recheck on the bench after the fixes, precheck, PR green and merged
+- [x] Recheck on the bench after the fixes, precheck, PR #54 green and merged
 - [ ] Voice: needs huggingface.co allowed in the cloud environment (asked Marko)
+
+## Round 3 (SPEC v1.2) — small models
+- [x] Chain Gemma 4 → Flash-Lite on the bench; fallback on quota verified
+- [x] Fix 22 (tools of the turn's domains) + fix 23 (no memory copy of a module write), tests
+- [x] 12 cases of Marko's own use with Gemma
+- [ ] Marko's choice on fix 22 (all models / local only / none), then PR merged
