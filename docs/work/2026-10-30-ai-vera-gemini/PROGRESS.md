@@ -30,3 +30,9 @@
 - [x] turn_guards.py + tests (552 green)
 - [x] Verification round 4 with the small model (10 cases), fixes 29–31 (555 green), pizza cases re-run ok
 - [x] PR #62 merged (e7522b4)
+
+## Voice (2026-10-30, after Marko allowed huggingface.co)
+- [x] Echo /speak with kokoro: 2.5 s ogg, ok
+- [x] Bug: piped WAV header 0xFFFFFFFF → duration 134217 s → «audio troppo lungo» on every transcription; fixed + test
+- [ ] Transcription round trip: model files come from *.hf.co (cas-bridge/xethub), still blocked; containers resolve
+  only domains allowed at session start, so download on the host through the proxy and copy into the echo volume
