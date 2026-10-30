@@ -1,0 +1,11 @@
+{
+  "name": "hestia-dev",
+  "version": "0.1.0",
+  "description": "For working on Hestia's code: the work protocol and the house rules as skills, plus guards that keep secrets and data folders untouched.",
+  "author": { "name": "SaibboRiginal" },
+  "homepage": "https://github.com/SaibboRiginal/Hestia/tree/main/claude-plugins/hestia-dev",
+  "repository": "https://github.com/SaibboRiginal/Hestia",
+  "license": "MIT",
+  "keywords": ["hestia", "development", "skills"],
+  "icon": "./.claude-plugin/icon.png"
+}

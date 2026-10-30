@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "hestia": {
+      "type": "http",
+      "url": "${user_config.url}/mcp"
+    }
+  }
+}
