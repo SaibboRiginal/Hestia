@@ -129,6 +129,10 @@ never changes.
 
 `keep` = `{kind: recording|file|generated|notification, message_id?|notification_id?, session_id?, client?}`.
 
+Audio plumbing note: ffmpeg writing WAV to a pipe cannot fill the header sizes (0xFFFFFFFF); `to_pcm16k`
+rewrites the header and `wav_duration` counts the frames really there (bench 2026-10-30: a 2.5 s reply was read as
+134217 s and rejected as «audio troppo lungo»).
+
 ## Configuration (infrastructure only)
 
 `ECHO_KEY_<NAME>` (keys of cloud providers, `Hestia-Echo/app/.env`), `ECHO_MODELS_DIR` (`/models`, volume

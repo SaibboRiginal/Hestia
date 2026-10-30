@@ -30,6 +30,7 @@ from .modules.schemas import (
     NotificationAnswerRequest,
     NotificationClientRequest,
     NotificationOutcomeRequest,
+    NotificationReplyRequest,
     NotificationSeenAllRequest,
     OutboundEventStateUpdateRequest,
 )
@@ -478,6 +479,13 @@ def notification_answer(notification_id: str, req: NotificationAnswerRequest):
     return JSONResponse(status_code=status, content=body)
 
 
+@app.post("/api/notifications/{notification_id}/reply")
+def notification_reply(notification_id: str, req: NotificationReplyRequest):
+    """Answer to a notification question (``_question``): first answer wins, forwarded to the module that asked."""
+    status, body = service.notifications.reply(notification_id, req.answer, req.client)
+    return JSONResponse(status_code=status, content=body)
+
+
 @app.post("/api/notifications/{notification_id}/answer/outcome")
 def notification_answer_outcome(notification_id: str, req: NotificationOutcomeRequest):
     """Outcome of a legacy command action executed by the answering client."""
@@ -571,6 +579,18 @@ def ui_inbox_answer(notification_id: str, req: UiAnswerRequest):
     """First answer wins (409 ``already_handled`` with the winning ``answer``)."""
     return notification_answer(notification_id, NotificationAnswerRequest(action_id=req.action_id,
                                                                           client=req.client or UI_CLIENT))
+
+
+class UiReplyRequest(BaseModel):
+    answer: str | list[str] = ""
+    client: str = UI_CLIENT
+
+
+@app.post("/api/ui/inbox/{notification_id}/reply")
+def ui_inbox_reply(notification_id: str, req: UiReplyRequest):
+    """Question in the inbox page: same as ``POST /api/notifications/{id}/reply``."""
+    return notification_reply(notification_id, NotificationReplyRequest(answer=req.answer,
+                                                                        client=req.client or UI_CLIENT))
 
 
 class UiSecretRequest(BaseModel):

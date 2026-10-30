@@ -166,6 +166,61 @@ class TestRoutines:
         assert any(r["text"] == "Tre notizie" for r in routines.recap_lines())
         assert put.call_args.args[0] == "routine_result"
 
+    def test_assistant_question_becomes_a_notification_that_asks(self, store):
+        """2026-10-30-domande-nelle-notifiche: ask_user in a routine turn reaches the owner as a question."""
+        from services import routines
+        item = routines.create(title="Spesa", instruction="Cosa manca", recurrence="FREQ=WEEKLY", deliver="recap")
+        frame = {"type": "question", "question_id": "ask_9", "prompt": "", "kind": "multi_choice",
+                 "options": [{"value": "Pane", "label": "Pane"}, {"value": "Latte", "label": "Latte"}],
+                 "allow_other": True}
+        with patch.object(routines, "_ask_oracle", return_value={"reply": "Cosa compro?", "changes": [],
+                                                                 "questions": [frame]}), \
+                patch.object(routines.hermes_client, "publish_event") as pub:
+            out = routines.run(item["key"])
+        assert out["deliver"] == "question" and pub.call_count == 1
+        payload = pub.call_args.args[3]
+        assert pub.call_args.args[1] == "routine.question" and payload["_message"] == "Cosa compro?"
+        q = payload["_question"]
+        assert q["kind"] == "multi_choice" and q["allow_other"] and q["service"] == "chronos"
+        assert q["path"] == f"/api/routines/{item['key']}/answer" and q["body"] == {"question_id": "ask_9"}
+        assert not any(r.get("text") == "Cosa compro?" for r in routines.recap_lines())   # never for the evening
+
+    def test_answer_continues_the_routine(self, store):
+        from unittest.mock import MagicMock
+        from services import routines
+        item = routines.create(title="Spesa", instruction="Cosa manca", recurrence="FREQ=WEEKLY")
+        resp = MagicMock(content=b"x", status_code=200)
+        resp.json.return_value = {"status_code": 200, "payload": {"resolved": True,
+                                                                  "resume": {"message": "Risposta: Pane"}}}
+
+        class NowThread:
+            def __init__(self, target, **kw):
+                self.target = target
+
+            def start(self):
+                self.target()
+        with patch.object(routines.requests, "post", return_value=resp) as post, \
+                patch.object(routines.threading, "Thread", NowThread), \
+                patch.object(routines, "_ask_oracle", return_value={"reply": "Aggiunto il pane", "changes": []}) as ask, \
+                patch.object(routines.hermes_client, "publish_event") as pub:
+            out = routines.answer(item["key"], "ask_9", "Pane", "telegram")
+        assert out["resumed"] is True
+        sent = post.call_args.kwargs["json"]["body"]
+        assert sent == {"session_id": f"routine:{item['key']}", "question_id": "ask_9", "answer": "Pane",
+                        "client": "telegram"}
+        assert ask.call_args.args[2] == "Risposta: Pane"
+        assert pub.call_args.args[3]["_message"] == "Aggiunto il pane"
+
+    def test_answer_to_a_closed_question_is_409(self, store):
+        from unittest.mock import MagicMock
+        from services import agenda, routines
+        item = routines.create(title="Spesa", instruction="Cosa manca", recurrence="FREQ=WEEKLY")
+        resp = MagicMock(content=b"x", status_code=200)
+        resp.json.return_value = {"status_code": 404, "payload": {"detail": "not found"}}
+        with patch.object(routines.requests, "post", return_value=resp), pytest.raises(agenda.AgendaError) as err:
+            routines.answer(item["key"], "ask_9", "Pane")
+        assert err.value.status_code == 409
+
     def test_precheck_empty_shapes(self):
         from services.routines import _empty
         assert _empty([]) and _empty({"count": 0}) and _empty({"items": []})

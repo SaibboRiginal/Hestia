@@ -161,3 +161,41 @@ def test_recent_failure_does_not_refuse_the_chat(monkeypatch):
     monkeypatch.setattr(llm_chains, "models_state", lambda: {"state": "none", "usable_steps": 0, "steps": 2})
     assert main._no_usable_model() is True
 
+
+
+@pytest.mark.unit
+def test_a_new_message_closes_open_questions():
+    """2026-10-30-domande-nelle-notifiche: an answer spoken or typed instead of the card closes the question, here and
+    in Archive (also one asked before a restart), so a reload does not draw it again."""
+    import threading
+    from types import SimpleNamespace
+    from core.oracle_engine import OracleEngine
+    hub = MagicMock()
+    hub.route_to_service.return_value = (True, {"rows": [
+        {"data": {"question_id": "ask_old", "session_id": "s1", "resolved": False,
+                  "expires_at": "2999-01-01T00:00:00+00:00"}}]})
+    fake = SimpleNamespace(_hub=hub, _questions_lock=threading.Lock(), _questions_checked=set(), _pending_questions={
+        "ask_1": {"question_id": "ask_1", "session_id": "s1", "resume": True, "resolved": False},
+        "ask_2": {"question_id": "ask_2", "session_id": "s2", "resume": True, "resolved": False},
+        "card": {"question_id": "card", "session_id": "s1", "resume": False, "resolved": False}})
+    assert OracleEngine.close_open_questions(fake, "s1") == 2
+    assert fake._pending_questions["ask_1"]["resolved"] is True
+    assert fake._pending_questions["ask_2"]["resolved"] is False
+    assert fake._pending_questions["card"]["resolved"] is False      # a module confirmation waits for its answer
+    saved = [c.kwargs["body"]["rows"][0] for c in hub.route_to_service.call_args_list if c.args[2] == "PUT"]
+    assert {r["id"] for r in saved} == {"ask_1", "ask_old"} and all(r["deleted"] for r in saved)
+    hub.route_to_service.reset_mock()
+    assert OracleEngine.close_open_questions(fake, "s1") == 0          # Archive looked at once per session
+    hub.route_to_service.assert_not_called()
+
+
+@pytest.mark.api
+def test_owner_turn_closes_open_questions(monkeypatch):
+    import main
+    engine = MagicMock()
+    engine.chat = lambda message, session_id, **kw: iter(['{"type":"final","reply":"ok"}\n'])
+    monkeypatch.setattr(main, "engine", engine)
+    monkeypatch.setattr(main, "_no_usable_model", lambda: False)
+    from fastapi.testclient import TestClient
+    TestClient(main.app).post("/api/chat", json={"message": "il secondo", "session_id": "s1", "client": "webui"})
+    engine.close_open_questions.assert_called_once_with("s1")
