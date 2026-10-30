@@ -172,7 +172,7 @@ Emitters: `Hestia-Oracle/app/core/services/stream_emitter.py`.
 | `needs_input` | `missing_fields` | ask for missing data |
 | `signal` | `event`, `content`, `data` | legacy machine event (audit); clients show its `notice` twin instead |
 
-`notice.kind` → `memory.saved · memory.removed · memory.updated · subscription.added|changed|removed ·
+`notice.kind` → `memory.saved · memory.removed · memory.updated · mood.saved · mood.removed · subscription.added|changed|removed ·
 action.done · action.failed · action.needs_approval · agenda.planned · forge.task · document.saved · info ·
 warning · error`. `level` = `info|success|warning|error`; `icon` = WebUI `hx-icon` name; `emoji` for text
 clients. Notices may arrive **after** `final` (background memory) — attach them to the last answer.
@@ -313,7 +313,7 @@ below its Themis settings; the element calls only the module's `api_prefix` like
 ## Areas and texts for people (`hestia_common.areas`, 2026-10-29)
 
 People never read module names or text written for the model. `AREAS` (Giornata, Allenamento, Spese, Casa…, with
-`icon` for web clients and `emoji` for Telegram) and `SERVICE_AREAS` are the single list Telegram's menus, the
+`icon` for web clients and `emoji` for Telegram) and `SERVICE_AREAS` (2026-10-30: «Umore», module `psyche`) are the single list Telegram's menus, the
 WebUI «Comandi» page and «Scopri» share. `area_of(tool, module)` = the tool's `telegram_group` when it names an area
 (or an alias), else the module's area, else «Altro». `for_people(tool)` = the tool's own `summary`
 (`MCPTool(..., summary="Che tempo fa.")`, sent in `tools/list` and in the Hub catalog) or, when missing, the first

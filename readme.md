@@ -271,6 +271,7 @@ access, connecting an external AI) is in **[docs/SETUP.md](docs/SETUP.md)**.
 | [Demeter](Hestia-Demeter/hestia-demeter.md) | 19026 | «Alimentazione»: diet, meals, supplements |
 | [Calliope](Hestia-Calliope/hestia-calliope.md) | 19027 | «Documenti»: PDF, Word and Excel files |
 | [Kairos](Hestia-Kairos/hestia-kairos.md) | 19028 | «Scadenze»: bills, insurance, renewals |
+| [Psyche](Hestia-Psyche/hestia-psyche.md) | 19029 | «Umore»: how you feel over time, noted from the chat |
 | [Telegram](Hestia-Telegram/hestia-telegram.md) | — | Main chat client |
 | [Atlas](Hestia-Atlas/hestia-atlas.md) | host | Web page fetching, runs outside Docker |
 | [Shared](Hestia-Shared/hestia-shared.md) | — | `hestia_common`, the libraries every Python service uses |

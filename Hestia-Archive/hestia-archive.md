@@ -229,6 +229,8 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   `/api/people-store` (Hera, `people_records`), `/api/food-store` (Demeter, `food_records`), `/api/office-store`
   (Calliope, `office_records`), `/api/deadlines-store` (Kairos, `deadlines_records`). Tables are created at start like
   the other module stores. Blobs gain the owners `apollo` (images) and `calliope` (documents).
+- 2026-10-30: `/api/mood-store` (Psyche, `mood_records`, kind `mood` with `ref_id` = date; dossier
+  `docs/work/2026-10-30-diario-umore`).
 - Wave 6: `/api/metis-store` (Metis usage log: kind `tap` = one tap of a client, kind `idea` = the assistant's
   «Adesso» ideas per client; `metis_records`).
 

@@ -840,6 +840,36 @@ services:
     networks:
       - hestia_net
 
+  psyche:
+    build:
+      context: .
+      dockerfile: Hestia-Psyche/Dockerfile
+    container_name: hestia_psyche
+    restart: unless-stopped
+    ports:
+      - "19029:19029"  # Psyche API port (Umore: how the owner feels over time)
+    environment:
+      - HUB_API_URL=http://hestia_hub:19001/api              # Hub base URL for routing and service registration
+      - SERVICE_NAME=psyche
+      - SERVICE_BASE_URL=http://hestia_psyche:19029
+      - SERVICE_VERSION=1.0.0
+      - SERVICE_TYPE=module
+      - SERVICE_TAGS=module,mood,context
+      - SERVICE_TOPOLOGY_TAGS=layer:domain,domain:mood,status:alpha
+      - TZ=${TZ:-Europe/Rome}                                # Local day (a check-in belongs to the local date)
+      - LOG_HEALTH_ACCESS_MODE=off
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Hestia-Psyche/app:/code/app
+      - ./Hestia-Shared/hestia_common:/code/hestia_common
+    depends_on:
+      hub:
+        condition: service_started
+      archive:
+        condition: service_started
+    networks:
+      - hestia_net
+
   wardrobe:
     build:
       context: .

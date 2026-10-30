@@ -31,6 +31,7 @@ info:
     | Demeter   | 19026 |
     | Calliope  | 19027 |
     | Kairos    | 19028 |
+    | Psyche    | 19029 |
   version: 1.0.0
 
 servers:
@@ -122,6 +123,8 @@ tags:
     description: Documents — HTML draft → PDF / Word / Excel with three themes and a final check; files in Archive blobs
   - name: Kairos
     description: Deadlines — bills, insurance, car tax…, recurrence, advice, calendar mirror, mail proposals, daily notices
+  - name: Psyche
+    description: Mood («Umore») — check-ins (mood, energy, stress, labels, causes), quiet capture from chat by Oracle, trend and insights, signals for the reflection, evening check-in
   - name: Archive — Apollo store
     description: Same (kind,id) last-write-wins records and cursor, for Apollo only
   - name: Archive — Aphrodite store
@@ -136,6 +139,8 @@ tags:
     description: Same (kind,id) last-write-wins records and cursor, for Calliope only
   - name: Archive — Kairos store
     description: Same (kind,id) last-write-wins records and cursor, for Kairos only
+  - name: Archive — Psyche store
+    description: Same (kind,id) last-write-wins records and cursor, for Psyche only
   - name: Archive — Metis store
     description: Same (kind,id) last-write-wins records and cursor, for the Metis usage log only
   - name: Archive — Backup
@@ -13578,6 +13583,157 @@ paths:
       responses:
         "200": {description: OK}
 
+  # ── Psyche (port 19029) — tools also as REST under /api/mood/tools/<name>; /mcp; /api/module/context; recap/transfer/settings as every module
+
+  /api/mood:
+    get:
+      tags: [Psyche]
+      summary: "History of the last N days (per-day summaries, entries, stats)"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: integer, default: 30}}
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Psyche]
+      summary: "Add a check-in {mood 1-5, energy?, stress?, labels[], causes[], note, date?, source}"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/tap:
+    post:
+      tags: [Psyche]
+      summary: "One tap (Home quick action, widget): {mood}"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/today:
+    get:
+      tags: [Psyche]
+      summary: "Today's check-ins and summary"
+      servers:
+        - url: http://localhost:19029
+      responses:
+        "200": {description: OK}
+
+  /api/mood/history:
+    get:
+      tags: [Psyche]
+      summary: "Same as GET /api/mood"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: integer, default: 30}}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/insights:
+    get:
+      tags: [Psyche]
+      summary: "Trend and insights in plain sentences (deterministic)"
+      servers:
+        - url: http://localhost:19029
+      responses:
+        "200": {description: OK}
+
+  /api/mood/options:
+    get:
+      tags: [Psyche]
+      summary: "Labels, causes and level words"
+      servers:
+        - url: http://localhost:19029
+      responses:
+        "200": {description: OK}
+
+  /api/mood/capture:
+    post:
+      tags: [Psyche]
+      summary: "Oracle's quiet capture from chat (capability mood_capture_endpoint): no confirmation, merged within psyche.capture.merge_minutes"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/capture/undo:
+    post:
+      tags: [Psyche]
+      summary: "«Non segnarlo»: removes today's last chat capture"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/signals/run:
+    post:
+      tags: [Psyche]
+      summary: "Agenda job psyche.signals: reflection signals and weekly metrics"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/checkin:
+    post:
+      tags: [Psyche]
+      summary: "Agenda job psyche.checkin: evening question via Hermes when reminders are on and today has nothing"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/{mid}:
+    put:
+      tags: [Psyche]
+      summary: "Update a check-in"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: mid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Psyche]
+      summary: "Delete a check-in"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: mid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
   /api/images-store/records:
     get:
       tags: [Archive — Apollo store]
@@ -13776,6 +13932,35 @@ paths:
     get:
       tags: [Archive — Kairos store]
       summary: "Current cursor of the Kairos store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
+  /api/mood-store/records:
+    get:
+      tags: [Archive — Psyche store]
+      summary: "Psyche rows (kind mood, ref_id = date) by kind/ref/parent/at range/since_seq (Psyche only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Psyche store]
+      summary: "Upsert Psyche rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood-store/cursor:
+    get:
+      tags: [Archive — Psyche store]
+      summary: "Current cursor of the Psyche store"
       servers:
         - url: http://localhost:19002
       responses:

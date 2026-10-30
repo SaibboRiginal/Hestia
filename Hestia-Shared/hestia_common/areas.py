@@ -28,6 +28,8 @@ AREAS = [
      "aliases": ["cibo", "food", "dieta", "demeter"]},
     {"key": "selfcare", "label": "Cura di sé", "emoji": "✨", "icon": "sparkle", "order": 30,
      "aliases": ["self care", "hygieia"]},
+    {"key": "umore", "label": "Umore", "emoji": "😊", "icon": "smile", "order": 33,
+     "aliases": ["mood", "psyche", "come sto"]},
     {"key": "persone", "label": "Persone", "emoji": "👥", "icon": "heart", "order": 35, "aliases": ["people", "hera"]},
     {"key": "guardaroba", "label": "Guardaroba", "emoji": "👕", "icon": "shirt", "order": 40, "aliases": ["wardrobe"]},
     {"key": "spese", "label": "Spese", "emoji": "💶", "icon": "wallet", "order": 50, "aliases": ["finanze", "soldi"]},
@@ -56,6 +58,7 @@ SERVICE_AREAS = {
     "argus": "sistema", "themis": "sistema", "hub": "sistema", "mcp": "sistema", "echo": "sistema",
     "hermes": "notifiche", "telegram": "sistema", "webui": "sistema", "apollo": "aspetto", "aphrodite": "aspetto",
     "lares": "casa", "hera": "persone", "demeter": "alimentazione", "calliope": "documenti", "kairos": "scadenze",
+    "psyche": "umore",
 }
 
 # What people call each part of Hestia (the WebUI plugin titles say the same): never the module's name.
@@ -66,7 +69,7 @@ MODULE_LABELS = {
     "echo": "Voce", "atlas": "Ricerca sul web", "scout": "Immobili", "hercules": "Allenamento",
     "hygieia": "Self care", "wardrobe": "Guardaroba", "plutus": "Spese", "kairos": "Scadenze", "hera": "Persone",
     "demeter": "Alimentazione", "lares": "Casa", "apollo": "Immagini", "aphrodite": "Aspetto",
-    "calliope": "Documenti", "webui": "Sito", "telegram": "Telegram", "dummy": "Prova",
+    "calliope": "Documenti", "psyche": "Umore", "webui": "Sito", "telegram": "Telegram", "dummy": "Prova",
 }
 
 
