@@ -18,6 +18,10 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
 - Secret form (Cindy 4): ``_secret {service, path, fields: [{name, label, type}]}`` asks the owner for values
   (a password, a token). The client shows a form; ``POST /api/notifications/{id}/secret`` claims the notification
   (first answer wins) and forwards the values to the module through the Hub. Hermes never stores or logs them.
+- Question (dossier 2026-10-30-domande-nelle-notifiche): ``_question {kind, options, allow_other, service, path,
+  method?, body?}`` asks like the chat card (confirm, single/multiple choice, free text, «Altro…»). Clients see only
+  the question; ``POST /api/notifications/{id}/reply {client, answer}`` claims it (first answer wins) and forwards
+  ``{...body, answer, answers, client, notification_id}`` to the module through the Hub.
 - «Da decidere» (Cindy 5): notifications still waiting for an answer after ``hermes.attesa.richiamo_ore`` get ONE
   grouped reminder (agenda job ``hermes.notifications.remind_pending``), once per notification.
 - Active client (Cindy 20): if the owner used a client in the last ``hermes.consegna.client_attivo_minuti``,
@@ -179,6 +183,49 @@ def public_secret(secret: Any) -> dict[str, Any] | None:
     return {"fields": [dict(f) for f in secret["fields"]]}
 
 
+QUESTION_KINDS = ("confirm", "single_choice", "multi_choice", "free_text")
+
+
+def normalize_question(raw: Any) -> dict[str, Any] | None:
+    """``_question`` of an event → ``{kind, options, allow_other, service, method, path, body}`` or None
+    (malformed = ignored). Options: labels or ``{value, label}``, 2–8 for a choice; confirm without options = Sì/No."""
+    if not isinstance(raw, dict) or not raw.get("service") or not str(raw.get("path") or "").startswith("/"):
+        return None
+    kind = raw.get("kind") if raw.get("kind") in QUESTION_KINDS else "confirm"
+    options = []
+    for o in raw.get("options") or []:
+        if isinstance(o, dict):
+            label = str(o.get("label") or o.get("value") or "").strip()
+            value = str(o.get("value") or label).strip()
+        else:
+            label = value = str(o or "").strip()
+        if label and value not in {x["value"] for x in options}:
+            options.append({"value": value[:80], "label": label[:60]})
+    options = options[:8]
+    if kind == "confirm" and not options:
+        options = [{"value": "si", "label": "Sì"}, {"value": "no", "label": "No"}]
+    if kind in ("single_choice", "multi_choice") and len(options) < 2:
+        return None
+    if kind == "free_text":
+        options = []
+    return {"kind": kind, "options": options, "allow_other": bool(raw.get("allow_other")) or kind == "free_text",
+            "service": str(raw["service"]).strip(), "method": str(raw.get("method") or "POST").upper(),
+            "path": str(raw["path"]).strip(), "body": raw.get("body") if isinstance(raw.get("body"), dict) else {}}
+
+
+def public_question(question: Any) -> dict[str, Any] | None:
+    """What clients see of a question: never the module route."""
+    if not isinstance(question, dict) or not question.get("kind"):
+        return None
+    return {"kind": question["kind"], "options": [dict(o) for o in question.get("options") or []],
+            "allow_other": bool(question.get("allow_other"))}
+
+
+def asks(spec: dict[str, Any]) -> bool:
+    """The notification waits for an answer (buttons, a secret form or a question)."""
+    return bool(spec.get("actions") or spec.get("secret") or spec.get("question"))
+
+
 def public_actions(actions: list[dict[str, Any]]) -> list[dict[str, str]]:
     return [{"id": a["id"], "label": a["label"], "style": a.get("style", "default")} for a in actions]
 
@@ -208,6 +255,7 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
     state = str(row.get("lifecycle_state") or "")
     actions = n.get("actions") or []
     secret = public_secret(n.get("secret"))
+    question = public_question(n.get("question"))
     origin = n.get("origin") if isinstance(n.get("origin"), dict) else None
     return {
         "id": row.get("outbound_event_id"),
@@ -215,8 +263,9 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
         "updated_at": row.get("updated_at"),
         "state": state,
         "read": state not in UNREAD_STATES,
-        "pending": bool(actions or secret) and state in ANSWERABLE_STATES,
+        "pending": bool(actions or secret or question) and state in ANSWERABLE_STATES,
         "secret": secret,
+        "question": question,
         "title": n.get("title") or "",
         "message": n.get("message") or "",
         "level": n.get("level") or "info",
@@ -300,6 +349,7 @@ class NotificationCenter:
         quiet: bool = False,
         voice: bool = False,
         secret: dict[str, Any] | None = None,
+        question: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one.
@@ -317,10 +367,12 @@ class NotificationCenter:
         notification_id = str(uuid.uuid4())
         level = level if level in LEVELS else _DEFAULT_LEVELS.get(event_type, "info")
         normalized_actions = normalize_actions(actions)
+        normalized_question = normalize_question(question)
         if audience != "origin" or not (origin or {}).get("client"):
             audience, origin = "global", None
         notify_level = self.presence.effect("notify.level", "all")
-        held = presence_holds(notify_level, level, normalized_actions, event_payload)
+        held = presence_holds(notify_level, level, normalized_actions or ([normalized_question] if normalized_question
+                                                                         else []), event_payload)
         spec = {
             "title": str(title or "")[:200],
             "message": str(message or ""),
@@ -335,6 +387,8 @@ class NotificationCenter:
             spec["link"] = public_link(link)
         if normalize_secret(secret):
             spec["secret"] = normalize_secret(secret)
+        if normalized_question:
+            spec["question"] = normalized_question
         if quiet:   # the answer is asked elsewhere (e.g. a confirm card in the chat): inbox copy, no push
             spec["quiet"] = True
         if held:
@@ -470,6 +524,7 @@ class NotificationCenter:
             "repeat": public_repeat(spec.get("repeat")),
             "link": spec.get("link"),
             "secret": public_secret(spec.get("secret")),
+            "question": public_question(spec.get("question")),
             "payload": event_payload or {},
         }
 
@@ -526,7 +581,7 @@ class NotificationCenter:
             notification_id, "seen", only_if_states=UNREAD_STATES, payload_merge={"read": seen})
         if status == 200 and isinstance(row, dict):
             spec = ((row.get("payload") or {}).get("notification") or {})
-            self._broadcast(row, {"state": "seen", "seen": seen, "pending": bool(spec.get("actions"))})
+            self._broadcast(row, {"state": "seen", "seen": seen, "pending": asks(spec)})
             logger.info("event=notification_seen notification_id=%s client=%s", notification_id, client)
             return {"status": "ok", "changed": True}
         if status == 409:
@@ -627,6 +682,52 @@ class NotificationCenter:
         self.archive.patch_outbound_event(
             notification_id, "seen", only_if_states=["answered"],
             payload_merge={"answer": {**answer, "status": "error"}}, detail=f"secret form failed: {code}")
+        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+
+    def reply(self, notification_id: str, answer: Any, client: str) -> tuple[int, dict[str, Any]]:
+        """The owner's answer to a notification question: first answer wins, forwarded to the module that asked."""
+        row = self.archive.get_outbound_event(notification_id)
+        if not row:
+            return 404, {"status": "not_found"}
+        question = ((row.get("payload") or {}).get("notification") or {}).get("question") or {}
+        if not question.get("kind"):
+            return 404, {"status": "no_question"}
+        parts = answer if isinstance(answer, list) else str(answer or "").split("\n")
+        parts = [str(p).strip() for p in parts if str(p).strip()]
+        if not parts:
+            return 400, {"status": "empty_answer"}
+        if question["kind"] != "multi_choice":
+            parts = parts[:1] if question["kind"] != "free_text" else ["\n".join(parts)]
+        labels = {o["value"]: o["label"] for o in question.get("options") or []}
+        if not question.get("allow_other") and any(p not in labels for p in parts):
+            return 400, {"status": "unknown_option"}
+        shown = ", ".join(labels.get(p, p) for p in parts)
+        claim = {"action_id": "reply", "label": shown[:120], "by": client, "at": _now(), "status": "pending"}
+        status, current = self.archive.patch_outbound_event(
+            notification_id, "answered", only_if_states=ANSWERABLE_STATES,
+            payload_merge={"answer": claim}, detail=f"question answered by {client}")
+        if status == 409:
+            stored = (self.archive.get_outbound_event(notification_id) or {}).get("payload") or {}
+            return 409, {"status": "already_handled", "answer": stored.get("answer"),
+                         "state": (current or {}).get("lifecycle_state") if isinstance(current, dict) else None}
+        if status != 200:
+            return 503, {"status": "error", "detail": "archive unavailable"}
+        body = {**_replace_client(question.get("body") or {}, client), "answer": "\n".join(parts),
+                "answers": parts, "client": client, "notification_id": notification_id}
+        code, payload = self._route(question["service"], question["path"], body,
+                                    method=question.get("method", "POST"), timeout=15, trace_id=notification_id)
+        logger.info("event=notification_question_answered notification_id=%s client=%s kind=%s service=%s status=%s",
+                    notification_id, client, question["kind"], question["service"], code)
+        if code == 409:
+            return self._finish(notification_id, claim, "already_handled", _outcome_text(payload, "Già gestita"),
+                                http=409)
+        if 200 <= code < 300:
+            return self._finish(notification_id, claim, "done", _outcome_text(payload, shown[:120]))
+        self.archive.patch_outbound_event(
+            notification_id, "seen", only_if_states=["answered"],
+            payload_merge={"answer": {**claim, "status": "error"}}, detail=f"question reply failed: {code}")
+        logger.warning("[🔄] event=notification_question_failed notification_id=%s service=%s status=%s",
+                       notification_id, question["service"], code)
         return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
 
     def remind_pending(self, now: datetime | None = None) -> dict[str, int]:
@@ -835,7 +936,7 @@ class NotificationCenter:
             spec = stored.get("notification") or {}
             if not spec.get("held") or stored.get("held_released"):
                 continue
-            if presence_holds(level, spec.get("level", "info"), spec.get("actions") or [],
+            if presence_holds(level, spec.get("level", "info"), spec.get("actions") or ([1] if asks(spec) else []),
                               stored.get("event_payload")):
                 continue   # still held under the new level
             released.append(row)
@@ -876,7 +977,7 @@ class NotificationCenter:
         for row in rows:
             stored = row.get("payload") or {}
             spec = stored.get("notification") or {}
-            if row.get("lifecycle_state") == "seen" and spec.get("actions"):
+            if row.get("lifecycle_state") == "seen" and asks(spec):
                 continue  # still waiting for an answer: never removed
             deliveries = dict(stored.get("deliveries") or {})
             changed = False

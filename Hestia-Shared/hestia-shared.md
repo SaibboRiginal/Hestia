@@ -271,6 +271,10 @@ Voice: `voice_setting("<m>", default)` declares `<m>.notifiche.voce` («Notifich
 default) and `reminder_event(..., voice=settings.get("<m>.notifiche.voce"))` sets `_voice`: Hermes then adds the
 audio made by Echo to the same notification (Telegram voice message, WebUI «Ascolta»). The text never changes.
 
+Question: `reminder_event(..., question={kind, options, allow_other, service, path, method?, body?})` sets
+`_question`: the notification asks like the chat card (confirm, single/multiple choice, free text, «Altro…») on every
+client and the answer reaches `path` as `{...body, answer, answers, client, notification_id}` (dossier `docs/work/2026-10-30-domande-nelle-notifiche`).
+
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
 `<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji. Added 2026-10-20: `bookmark` (Oracle Memoria page).

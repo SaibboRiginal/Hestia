@@ -76,6 +76,10 @@ def test_reminder_event_shape():
     # Regression: Hermes' owner subscription listens on domain "system"; any other envelope domain
     # matched no subscription and the reminder was never delivered.
     assert body["domain"] == "system" and p["domain"] == "wardrobe"
+    assert "_question" not in p
+    q = {"kind": "single_choice", "options": ["Sì", "Dopo"], "service": "wardrobe", "path": "/api/x"}
+    assert reminder_event(module="m", domain="d", key="k", title="t", text="?", actions=[],
+                          question=q)["payload"]["_question"] == q
 
 
 @pytest.mark.unit

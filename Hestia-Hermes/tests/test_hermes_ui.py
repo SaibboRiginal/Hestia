@@ -180,3 +180,12 @@ def test_ui_doors_for_secret_form_and_web_push(app_client):
     with patch.object(main.webpush, "subscribe", return_value={"status": "ok"}) as s:
         assert client.post("/api/ui/push/subscribe", json={"subscription": {"endpoint": "https://x"}}).json()["status"] == "ok"
     assert s.call_args.args[1] == {"endpoint": "https://x"}
+
+
+@pytest.mark.api
+def test_ui_door_for_question_reply(app_client):
+    """Questions in notifications (2026-10-30): the inbox page answers through /api/ui/inbox/{id}/reply."""
+    client, main = app_client
+    with patch.object(main.service.notifications, "reply", return_value=(200, {"status": "done"})) as reply:
+        r = client.post("/api/ui/inbox/n1/reply", json={"answer": ["a", "b"]})
+    assert r.status_code == 200 and reply.call_args.args == ("n1", ["a", "b"], "webui")

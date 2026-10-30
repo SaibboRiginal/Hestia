@@ -37,6 +37,12 @@ class NotificationAnswerRequest(BaseModel):
     client: str
 
 
+class NotificationReplyRequest(BaseModel):
+    """Answer to a notification question: text, or one value per line / a list for multiple choice."""
+    answer: str | list[str] = ""
+    client: str
+
+
 class NotificationOutcomeRequest(BaseModel):
     client: str
     ok: bool = True
