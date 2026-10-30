@@ -220,14 +220,12 @@ class UniversalAgent:
         # refused by the SDK (contentMediaType) or by the API (array without items) and one bad tool fails the call.
         declarations: list[types.FunctionDeclaration] = []
         for tool in tools:
-            declarations.append(
-                types.FunctionDeclaration(
-                    name=str(tool.get("name", "")).strip(),
-                    description=str(tool.get("description", "")).strip(),
-                    parameters_json_schema=tool.get("parameters") or {
-                        "type": "object", "properties": {}},
-                )
-            )
+            # By the API alias: some pydantic/SDK combinations refuse the field name (CI, 2026-10-30).
+            declarations.append(types.FunctionDeclaration.model_validate({
+                "name": str(tool.get("name", "")).strip(),
+                "description": str(tool.get("description", "")).strip(),
+                "parametersJsonSchema": tool.get("parameters") or {"type": "object", "properties": {}},
+            }))
 
         response = self.client.models.generate_content(
             model=self.model_name,
