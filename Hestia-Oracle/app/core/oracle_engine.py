@@ -46,6 +46,7 @@ from core.services.memory_intent import (
     has_write_intent,
 )
 from core.services.memory_service import MemoryService
+from core.services.turn_guards import TurnGuards
 from core.services.user_control_service import UserControlService
 from core.services.module_registry import ModuleToolRegistry
 from core.services.retrieval_service import RetrievalService
@@ -1173,6 +1174,7 @@ class OracleEngine:
 
         domain_tools += self._turn_tools(session_id, origin)
         self._apply_origin_gate(domain_tools, origin)
+        TurnGuards(user_message).wrap(domain_tools)   # fixed rules on writes, whatever the model decides
 
         # Assemble agent loop client instructions
         agent_loop_client_instructions_parts: list[str] = []
@@ -1406,7 +1408,7 @@ class OracleEngine:
             yield stream_emitter.emit_tool_summary(tool_log)
             # Standard notices for real effects: one per mutating tool call.
             for entry in tool_log:
-                if not entry.get("writes") or entry.get("unchanged"):
+                if not entry.get("writes") or entry.get("unchanged") or entry.get("refused"):
                     continue
                 tname = str(entry.get("tool") or "")
                 kind = "memory.saved" if tname == "memory.save" else "memory.removed" if tname == "memory.forget" else (

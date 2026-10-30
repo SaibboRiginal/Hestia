@@ -24,4 +24,9 @@
 - [x] Chain Gemma 4 → Flash-Lite on the bench; fallback on quota verified
 - [x] Fix 22 (tools of the turn's domains) + fix 23 (no memory copy of a module write), tests
 - [x] 12 cases of Marko's own use with Gemma
-- [ ] Marko's choice on fix 22 (all models / local only / none), then PR merged
+- [x] Marko chose fix 22 for every model; PR #55 merged
+
+## Safeguards (SPEC v1.3)
+- [x] turn_guards.py + tests (552 green)
+- [x] Verification round 4 with the small model (10 cases), fixes 29–31 (555 green), pizza cases re-run ok
+- [x] PR #62 merged (e7522b4)
