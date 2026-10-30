@@ -560,7 +560,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    module with assistant tools (Themis `settings`, Echo `voice`, Argus/Hephaestus `system`, Hecate `weather`) —
    `capabilities.owns_tool_domains`. `module_tool_domains` alone does not keep them (2026-10-30, real-model bench).
    A turn the classifier is sure about gets only its domains' tools (+ a few always-on tools: reminders, routines,
-   asking back); every tool of every module does not fit a local model's context.
+   asking back); every tool of every module does not fit a local model's context. Oracle's turn guards refuse
+   writes the user did not ask for (question/advice, delete without asking, dev task without a yes, a copy of a
+   module write into memory, more than 6 writes per turn), so safety does not depend on the model.
    Argument schemas are full JSON Schema (`items` for arrays, `enum` for choices): models read them to pick valid values.
    A write that did nothing answers an error status, not 200 `{"error": …}` (Oracle treats that as failed anyway).
    A read-or-write tool called only to read (no arguments) answers `unchanged: true` (no «Fatto» in the chat); a
