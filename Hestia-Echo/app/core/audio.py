@@ -52,8 +52,18 @@ def is_wav16k(data: bytes) -> bool:
 def to_pcm16k(data: bytes, mime_type: str = "") -> bytes:
     """Any audio (ogg, webm, m4a, mp3, wav, mp4…) → 16 kHz mono 16-bit WAV."""
     if is_wav16k(data):
+        return _fixed_header(data)
+    return _fixed_header(_ffmpeg(data, ["-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav"]))
+
+
+def _fixed_header(data: bytes) -> bytes:
+    """ffmpeg writing WAV to a pipe cannot seek back: the header says 0xFFFFFFFF frames (a 2.5 s answer read as
+    134217 s → «audio troppo lungo», bench 2026-10-30). Rewrite the header from the frames really there."""
+    try:
+        frames, rate, width, channels = wav_frames(data)
+    except Exception:
         return data
-    return _ffmpeg(data, ["-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", "-f", "wav"])
+    return wav_bytes(frames, rate, width, channels)
 
 
 def encode(data: bytes, fmt: str) -> tuple[bytes, str]:
@@ -86,8 +96,8 @@ def wav_frames(data: bytes) -> tuple[bytes, int, int, int]:
 
 def wav_duration(data: bytes) -> float:
     try:
-        with wave.open(io.BytesIO(data)) as w:
-            return round(w.getnframes() / float(w.getframerate() or 1), 2)
+        frames, rate, width, channels = wav_frames(data)   # real length, not the header's (see _fixed_header)
+        return round(len(frames) / float((width * channels) or 1) / float(rate or 1), 2)
     except Exception:
         return 0.0
 
