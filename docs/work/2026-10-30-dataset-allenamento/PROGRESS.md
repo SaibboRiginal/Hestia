@@ -18,10 +18,17 @@ Scope v2.0: dataset only (capture, correction, export + download); training and 
 - [ ] Undo signal (an «Annulla» of this turn's write) — moved to D2 (needs the undo path to name the trace)
 - [ ] Marko: real run (.NET build, a few chats, `GET /api/metis/traces/status`)
 
-## D2 Correggi (next)
-- [ ] Oracle use case `metis.dataset.review` (cloud chain), rules sheet, masking of personal data (names from People,
-      emails, phones, IBAN, addresses) with local map, verdict keep/fix/drop + confidence
-- [ ] Nightly agenda job, «Da rivedere» on the Miglioramento page + Telegram tool, undo signal
+D1 merged to main via PR #60 (47cdc98) on 2026-10-30.
+
+## D2 Correggi
+- [x] `Hestia-Metis/app/core/review.py`: Masker (Persone names from Hera, e-mails, phones, IBAN, addresses; local
+      map, unmask), rules sheet R1–R8, teacher prompt, strict JSON verdict, auto-accept / pending, owner decisions
+- [x] Use case `metis.dataset.review` (default chain `cloud`, new in Oracle `DEFAULT_CHAINS`), agenda job
+      `metis.dataset.review` 02:30, settings `metis.review.auto_accept` / `metis.review.batch`
+- [x] Endpoints `/api/metis/review/run|pending|{id}`, tools `metis_rivedi` + `metis_rivedi_decidi` (Telegram),
+      WebUI Miglioramento: «Dataset di allenamento» + «Da rivedere» (Accetta / Correggi io / Scarta)
+- [x] Tests `Hestia-Metis/tests/test_review.py`; docs metis/oracle.md, swagger
+- [ ] Undo signal (an «Annulla» of this turn's write) — later, needs the undo path to name the trace
 
 ## D3 Esporta (next)
 - [ ] `sft.jsonl`, `dpo.jsonl`, `eval.jsonl` (split by session), `card.json`; download zip (WebUI + Telegram);

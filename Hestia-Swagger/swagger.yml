@@ -8081,6 +8081,70 @@ paths:
       responses:
         "200": {description: "{items[{trace_id, session_id, at, route, model, client, user, answer, tools[]}]}"}
 
+  /api/metis/review/run:
+    post:
+      tags: [Metis]
+      summary: "Agenda job metis.dataset.review: the teacher model re-reads the next batch of saved turns (personal data masked)"
+      servers:
+        - url: http://localhost:19014
+      responses:
+        "200": {description: "{reviewed, failed, accepted, pending, rejected, edited} or {reviewed: 0, skipped: people_unavailable}"}
+        "503": {description: "Archive not reachable"}
+
+  /api/metis/review/pending:
+    get:
+      tags: [Metis]
+      summary: "«Da rivedere»: corrections waiting for the owner"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 10}}
+      responses:
+        "200": {description: "{items[{trace_id, at, user, answer, verdict, fixed, remove[], tools[], reasons[], confidence, needs_owner}], pending, reviews}"}
+
+  /api/metis/review/{trace_id}:
+    post:
+      tags: [Metis]
+      summary: "Owner decision on a correction: accept, reject or edit with the right answer"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: trace_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision: {type: string, enum: [accept, reject, edit]}
+                answer: {type: string, description: "With edit: the right answer"}
+      responses:
+        "200": {description: "{trace_id, status}"}
+        "422": {description: "Unknown decision, review not found, edit without answer"}
+
+  /api/metis/tools/rivedi:
+    get:
+      tags: [Metis]
+      summary: "Tool metis_rivedi: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
+      servers:
+        - url: http://localhost:19014
+      responses:
+        "200": {description: "{items, pending, reviews, display}"}
+
+  /api/metis/tools/rivedi_decidi:
+    post:
+      tags: [Metis]
+      summary: "Tool metis_rivedi_decidi {trace_id, decision, answer?}: decides and returns the next card"
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{trace_id, status, next}"}
+
   /api/metis/adesso:
     get:
       tags: [Metis]

@@ -41,6 +41,10 @@ DEFAULT_CHAINS: dict[str, dict] = {
     "codice": {"label": "Codice", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
         _step("gemini", "gemini-flash-lite-latest")]},
+    # Cloud only (training dataset review, docs/work/2026-10-30-dataset-allenamento): the owner chose a model stronger
+    # than the local one; personal data is masked by Metis before the call.
+    "cloud": {"label": "Cloud", "steps": [
+        _step("gemini", "gemini-flash-latest"), _step("gemini", "gemini-flash-lite-latest")]},
     # One step only: vectors of different models are not comparable (memory and document search would break).
     "embedding": {"label": "Embedding", "steps": [_step("ollama", "qwen3-embedding:0.6b")]},
     "visione": {"label": "Visione", "steps": [

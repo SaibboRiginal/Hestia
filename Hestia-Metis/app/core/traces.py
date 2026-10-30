@@ -174,7 +174,7 @@ class Traces:
         cutoff = datetime.now(timezone.utc) - timedelta(days=max(1, int(self.keep_days())))
         removed = 0
         for _ in range(20):
-            old = self._rows(kind="trace,signal", at_to=cutoff.isoformat(), limit=1000)
+            old = self._rows(kind="trace,signal,review", at_to=cutoff.isoformat(), limit=1000)
             if not old:
                 break
             removed += self._tombstone(old)
