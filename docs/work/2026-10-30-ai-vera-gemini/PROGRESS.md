@@ -29,4 +29,4 @@
 ## Safeguards (SPEC v1.3)
 - [x] turn_guards.py + tests (552 green)
 - [x] Verification round 4 with the small model (10 cases), fixes 29–31 (555 green), pizza cases re-run ok
-- [ ] PR merged
+- [x] PR #62 merged (e7522b4)
