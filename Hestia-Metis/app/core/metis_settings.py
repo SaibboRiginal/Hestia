@@ -22,6 +22,9 @@ MAX_EXAMPLES = "metis.dataset.max_examples"
 DEDUPLICATE = "metis.dataset.deduplicate"
 QUALITY_LABELS = "metis.dataset.quality_labels"
 GOOD_LABELS = "metis.insights.good_labels"
+TRACES_KEEP_DAYS = "metis.traces.keep_days"
+REVIEW_AUTO_ACCEPT = "metis.review.auto_accept"
+REVIEW_BATCH = "metis.review.batch"
 
 _GROUP = "Miglioramento continuo"
 
@@ -36,6 +39,16 @@ settings.declare([
     setting(GOOD_LABELS, "Voti considerati buoni", "list", ["excellent", "good"], group=_GROUP, order=3,
             advanced=True,
             help="Nel resoconto dei punti deboli, le risposte con questi voti non contano come errori."),
+    setting(TRACES_KEEP_DAYS, "Giorni di conversazioni tenute per l'allenamento", "int", 365, group=_GROUP,
+            min=7, max=3650, order=4,
+            help="Ogni tuo scambio con l'assistente resta in locale per costruire il dataset di allenamento; "
+                 "oltre questi giorni viene cancellato."),
+    setting(REVIEW_AUTO_ACCEPT, "Sicurezza minima per accettare da sola una correzione", "float", 0.85,
+            group=_GROUP, min=0.5, max=1.0, order=5,
+            help="Di notte un modello più forte rilegge le risposte e le corregge; sotto questa sicurezza la "
+                 "correzione aspetta te in «Da rivedere»."),
+    setting(REVIEW_BATCH, "Risposte rilette per notte", "int", 30, group=_GROUP, min=1, max=500, order=6,
+            advanced=True, help="Quante risposte il revisore rilegge a ogni giro notturno."),
 ]).declare_log_level()
 
 
@@ -58,3 +71,24 @@ def deduplicate() -> bool:
     if isinstance(value, str):
         return value.strip().lower() not in {"0", "false", "no", "off"}
     return bool(value)
+
+
+def traces_keep_days() -> int:
+    try:
+        return max(7, int(settings.get(TRACES_KEEP_DAYS)))
+    except (TypeError, ValueError):
+        return 365
+
+
+def review_auto_accept() -> float:
+    try:
+        return min(1.0, max(0.5, float(settings.get(REVIEW_AUTO_ACCEPT))))
+    except (TypeError, ValueError):
+        return 0.85
+
+
+def review_batch() -> int:
+    try:
+        return max(1, int(settings.get(REVIEW_BATCH)))
+    except (TypeError, ValueError):
+        return 30

@@ -167,5 +167,8 @@ public record OracleEvent(
     object? Items = null,
     // final: origin of a turn not typed by the owner (Cindy 6)
     [property: JsonPropertyName("origin")]
-    object? Origin = null
+    object? Origin = null,
+    // final: Oracle's id of the turn; a 👍/👎 sends it back (training dataset, docs/work/2026-10-30-dataset-allenamento)
+    [property: JsonPropertyName("trace_id")]
+    string? TraceId = null
 );

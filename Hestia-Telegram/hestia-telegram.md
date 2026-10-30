@@ -103,7 +103,9 @@ subscription compile), `pausa_voto`.
 - Notices from Oracle are italic lines inside the answer (🔴 only for errors), per the notice setting.
 - **Reply or quote = context**: replying to (or quoting part of) any message sends
   `quoted: {text, from: assistant|user|notification, at, ref}` with `/api/chat`; Oracle uses it for that turn only.
-- Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`).
+- Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`). The vote buttons carry
+  Oracle's `trace_id` of the turn (`fb:good:<id>`), saved as the feedback `interaction_id`, so the vote lands on that
+  answer in the training dataset (docs/work/2026-10-30-dataset-allenamento).
 - Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
 
 ### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)
@@ -220,6 +222,12 @@ buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Invia»),
 message is the answer). The callback is answered at once, then the answer goes to Oracle
 `/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
 question no longer open answers «⌛ Questa domanda non è più aperta».
+
+**Questions in notifications** (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a Hermes notification with `question` gets the same
+keyboard (`assistant_questions.notification_rows`), the answer goes to Hermes `/api/notifications/{id}/reply`
+(first answer wins; «Questa domanda è già stata gestita» otherwise). A notification arrives unasked, so its free answer
+is never the next message written: «Rispondi…» / «Altro…» starts it (callback `askw:`), or a reply to the notification
+message is the answer (`notifications.answer_by_reply`). «Apri» stays under the keyboard.
 
 ## Answer extras (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
 `services/answer_extras.py` + `ReplyRenderer`:

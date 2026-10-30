@@ -121,7 +121,7 @@ with a direction `ascolto` or `voce` (quota skip until reset), uses declared by 
 `hestia_common.voice_usecases`) and mode interna/esterna (Echo as the door of one engine, fallback to the chains).
 Keeps audio in Archive (blobs + `echo-store`): Marko's recordings never deleted, generated audio while useful
 (`echo.audio.generated_days`, regenerated from the text), space limit drops regenerable audio first. Live mode on every
-client = the same Oracle chat + Echo; no external live service. Callers use `hestia_common.voice_client`.
+client = the same Oracle chat + Echo; no external live service. Callers use `hestia_common.voice_client`. Audio is normalised to 16 kHz WAV with a rewritten header (ffmpeg pipes leave the size unset).
 Details: `Hestia-Echo/hestia-echo.md`.
 
 ### Hestia-Hermes 📨
@@ -215,7 +215,7 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   Night = agenda window `assistant.sleep`. **Oracle offline** (Oracle down past `argus.oracle.grace`): Argus sets
   signal `oracle.offline` → overlay «⏳ Non disponibile» (`chat.reply = queued`) + one Hermes notice; chat clients
   queue what Oracle cannot take in Archive (`/api/chat-queue`) and answer it when Chronos says Oracle is back
-  (`capabilities.chat_queue_drain`), each chat in one turn (`queued`: the model decides how to answer), then Chronos runs the «Mentre non c'ero» catch-up. Only fallback models left → overlay «Limitato» (`oracle.limited`); none left = «Non disponibile». Argus immune system: a module down for long is restarted via Hephaestus `/api/hephaestus/restart` up to `argus.repair.max_restarts` times, then one notice; incidents persist in Archive as the «Registro». Questions from the assistant (tool `ask_user`, `question` frame `ask_…`): the answer comes back as the next chat turn (`resume`), never a paused thread. SPEC `docs/work/2026-10-19-oracle-offline` (v3). WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
+  (`capabilities.chat_queue_drain`), each chat in one turn (`queued`: the model decides how to answer), then Chronos runs the «Mentre non c'ero» catch-up. Only fallback models left → overlay «Limitato» (`oracle.limited`); none left = «Non disponibile». Argus immune system: a module down for long is restarted via Hephaestus `/api/hephaestus/restart` up to `argus.repair.max_restarts` times, then one notice; incidents persist in Archive as the «Registro». Questions from the assistant (tool `ask_user`, `question` frame `ask_…`): the answer comes back as the next chat turn (`resume`), never a paused thread. A new owner message closes the session's open questions (an answer by voice or typed). Outside a chat a module asks with a Hermes notification `_question` (same kinds, same card on every client, first answer wins, answer routed to the module); routines forward the assistant's questions this way (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). SPEC `docs/work/2026-10-19-oracle-offline` (v3). WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -281,6 +281,14 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
   (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
   at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
   the same lists; tools `metis_adesso`, `metis_scopri`.
+- **Owns the training dataset** (dossier `docs/work/2026-10-30-dataset-allenamento`): Oracle pushes one trace per
+  owner turn (`POST /api/metis/traces`: prompt, tool calls and results, answer); Metis keeps it in Archive
+  `dataset-store` with automatic signals; votes join on `interaction_id` = trace_id. Rule: a conversation marked
+  `training_off` or deleted never stays in the dataset; the only thing that leaves Hestia is the nightly review
+  (`metis.dataset.review`, use case of the same name on the cloud chain the owner chose), and only after masking the
+  names of Persone, e-mails, phones, IBAN and addresses; the owner decides the doubtful corrections («Da rivedere»).
+  The export (`POST /api/metis/export`) is a zip of OpenAI `messages` + `tools` JSONL kept as an Archive blob; the
+  owner chooses masked (default, same masking; Persone unreachable → refused) or in clear at each download.
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.
@@ -312,6 +320,13 @@ Hestia's one MCP server (`POST /mcp`, standard MCP over Streamable HTTP).
   consent card of *Accessi AI* (behind the WebUI login). A grant is an access of kind `oauth` in the same list.
 - Outbound (third-party MCP servers Hestia may use): credentials are Hecate's, in its `.env` only
   (`HECATE_MCP_<NAME>_URL/_KEY`); Hecate lists names and status, never a value.
+- **Hestia inside another AI** (2026-10-30): the repo is also a Claude Code plugin marketplace
+  (`.claude-plugin/marketplace.json` → `claude-plugins/hestia`, `claude-plugins/hestia-dev`). The `hestia` mod is a
+  client like Telegram: a band above Claude's prompt with modes *off · strumenti · Hestia* (default off: no network,
+  Hestia's tools refused, nothing in the prompt). In *Hestia* mode it adds one session section with Oracle's
+  `assistant_profile` (persona, the user's instructions, memory digest, capped by `oracle.chat.profile_max_tokens`),
+  so persona and memory have one source: Oracle. It reaches Hestia only through this MCP door with OAuth; what Claude
+  learns goes back with `memory_note`. The mod holds no Hestia logic and never calls a model of its own.
 
 ---
 
@@ -555,7 +570,9 @@ No code-only behavior changes are considered complete without synchronized docs.
    module with assistant tools (Themis `settings`, Echo `voice`, Argus/Hephaestus `system`, Hecate `weather`) —
    `capabilities.owns_tool_domains`. `module_tool_domains` alone does not keep them (2026-10-30, real-model bench).
    A turn the classifier is sure about gets only its domains' tools (+ a few always-on tools: reminders, routines,
-   asking back); every tool of every module does not fit a local model's context.
+   asking back); every tool of every module does not fit a local model's context. Oracle's turn guards refuse
+   writes the user did not ask for (question/advice, delete without asking, dev task without a yes, a copy of a
+   module write into memory, more than 6 writes per turn), so safety does not depend on the model.
    Argument schemas are full JSON Schema (`items` for arrays, `enum` for choices): models read them to pick valid values.
    A write that did nothing answers an error status, not 200 `{"error": …}` (Oracle treats that as failed anyway).
    A read-or-write tool called only to read (no arguments) answers `unchanged: true` (no «Fatto» in the chat); a

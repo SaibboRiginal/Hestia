@@ -481,7 +481,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     const msgs = this.chat.messages();
     const idx = msgs.findIndex(x => x.id === m.id);
     const prompt = msgs.slice(0, Math.max(0, idx)).reverse().find(x => x.role === 'user')?.content || '';
-    if (await this.fb.submit(label, '', { interactionId: m.id, prompt, response: m.content.replace(/<[^>]+>/g, '') })) {
+    if (await this.fb.submit(label, '', { interactionId: m.traceId || m.id, prompt, response: m.content.replace(/<[^>]+>/g, '') })) {
       this.rated.update(r => ({ ...r, [m.id]: label }));
       this.toast.success('Grazie del feedback');
     }

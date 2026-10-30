@@ -336,6 +336,19 @@ class TestRunAgentLoop:
         )
         assert tokens == tokens_out
 
+    def test_empty_streamed_final_falls_back_to_a_plain_ask(self):
+        """A small model streamed nothing after a refused call: the pizza advice ended empty (bench 2026-10-30)."""
+        ask = _ask_fn_sequence(_xml_tool_call("get_weather", {}), "", "Prova una margherita.")
+        answer, tokens, _ = run_agent_loop(
+            user_message="mi consigli una pizza?",
+            history_text="",
+            preference_facts=[],
+            tools=[_make_tool("get_weather")],
+            ask_fn=ask,
+            stream_fn=lambda prompt: iter(()),
+        )
+        assert answer.strip() and tokens == [answer]
+
     def test_max_turns_reached_returns_final_non_empty(self, monkeypatch):
         # LLM always emits a tool call → loop should terminate at oracle.agent.max_turns
         from core.services import oracle_settings

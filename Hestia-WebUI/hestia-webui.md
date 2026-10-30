@@ -79,7 +79,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | PUT/DELETE | `/api/webui/central-settings/key/{key}` | change (`{value}`) / reset to default — actor `webui` |
 | POST | `/api/webui/central-settings/key/{key}/undo` · `presets/{module}/{id}/apply` | undo · apply a preset |
 | POST | `/api/webui/central-settings/proposals/{id}/{approve,reject}` | answer an assistant proposal (`by: webui`, first answer wins) |
-| POST | `/api/webui/feedback` | Submit feedback |
+| POST | `/api/webui/feedback` | Submit feedback (`interactionId` = the turn's `trace_id` from Oracle's `final` frame, training dataset) |
 | GET | `/api/webui/chat/pending` | After a reload: open questions of the assistant + messages still queued in the current chat `{session_id, questions, queued}` (oracle-offline v3 G) |
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
@@ -163,7 +163,8 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   dashboard). A pinned system page still shows in *Fissati*. Compact mode = the collapsed sidebar (icons only).
 - **History** (`features/chat/chat-history.component.ts`, `services/chats.service.ts`): second sidebar, every
   conversation (pinned first), search in titles and messages, from/to dates, tag filter, *Carica altre*; per
-  conversation pin, title, coloured tags (9 fixed hues). Opening one loads its messages (`/api/ui/chats/{id}/messages`,
+  conversation pin, title, coloured tags (9 fixed hues) and, in the same panel, «Non usare per l'allenamento»
+  (`training_off`: its turns never enter the training dataset and the saved ones are dropped). Opening one loads its messages (`/api/ui/chats/{id}/messages`,
   markdown answers rendered) and sets it as the session the next message goes to. Through the Oracle plugin door.
 - **Answer parts** (`features/chat/answer-blocks.component.ts`): ```` ```hestia-ui ```` blocks (also when the answer
   arrived as HTML `<pre><code class=language-hestia-ui>`) become card, stat, table, list, checklist, chart (SVG bars or
@@ -175,6 +176,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - **Parla everywhere** (`layout/live-overlay.component.ts`): from the sidebar, the Home header or Ctrl+Shift+Space;
   live goes on when you leave the chat, a pill at the bottom shows its state with the pet as face (happy while
   talking), *Interrompi*, *Apri la chat*, close. The Chat page keeps its own panel.
+  A question of the assistant is read with its options («Puoi dire: A, B o C», `spokenOptions`); the spoken answer is
+  the next message, which closes the question in Oracle (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A Hermes notification with
+  `question` counts as pending in the shell toast («Rispondi»); the card is in the Hermes *Notifiche* page.
 - **Detta** (chat composer): speak, the text lands in the box to read again; use case `webui.dettatura` (declared by
   `VoiceController`), nothing is kept.
 

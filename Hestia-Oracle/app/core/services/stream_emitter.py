@@ -60,10 +60,13 @@ def emit_thinking(
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 
-def emit_final(reply: str, domain: str = "none", origin: dict | None = None) -> str:
+def emit_final(reply: str, domain: str = "none", origin: dict | None = None, trace_id: str = "") -> str:
     """Return the terminal final-type NDJSON line. ``origin`` (Cindy 6) is set when the turn was not typed by the
-    owner: clients show its ``label`` as a small tag («Da una tua routine»)."""
+    owner: clients show its ``label`` as a small tag («Da una tua routine»). ``trace_id`` names the turn: clients
+    send it back with a 👍/👎 so the vote lands on this turn (docs/work/2026-10-30-dataset-allenamento)."""
     payload = {"type": "final", "reply": reply, "domain": domain}
+    if trace_id:
+        payload["trace_id"] = trace_id
     if origin:
         payload["origin"] = {k: origin.get(k, "") for k in ("kind", "level", "label")}
     return json.dumps(payload) + "\n"
@@ -219,5 +222,5 @@ def emit_tool_summary(tool_log: list[dict]) -> str:
     return emit_signal(
         event="tool.summary",
         message="Riepilogo strumenti utilizzati",
-        data={"calls": tool_log},
+        data={"calls": [{k: v for k, v in e.items() if k != "result_text"} for e in tool_log]},
     )

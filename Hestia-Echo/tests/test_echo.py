@@ -166,6 +166,16 @@ def test_sentence_cutter_joins_short_pieces():
     assert c.feed("Sì. Ok. Ecco la frase vera e lunga. ") == ["Sì. Ok. Ecco la frase vera e lunga."]
 
 
+def test_piped_wav_header_does_not_make_audio_endless():
+    """ffmpeg piping WAV writes 0xFFFFFFFF as size: a 2.5 s answer read as 134217 s, «audio troppo lungo» (bench)."""
+    wav = bytearray(tone(1.0))
+    wav[4:8] = b"\xff\xff\xff\xff"
+    wav[40:44] = b"\xff\xff\xff\xff"
+    assert audio.wav_duration(bytes(wav)) == 1.0
+    fixed = audio.to_pcm16k(bytes(wav))
+    assert audio.wav_duration(fixed) == 1.0 and fixed[40:44] != b"\xff\xff\xff\xff"
+
+
 def test_trailing_silence():
     assert audio.trailing_silence_ms(tone(0.5, silence_tail=1.0)) >= 900
     assert audio.trailing_silence_ms(tone(0.5)) == 0

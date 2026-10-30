@@ -233,6 +233,11 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   `docs/work/2026-10-30-diario-umore`).
 - Wave 6: `/api/metis-store` (Metis usage log: kind `tap` = one tap of a client, kind `idea` = the assistant's
   «Adesso» ideas per client; `metis_records`).
+- 2026-10-30 (training dataset, dossier `docs/work/2026-10-30-dataset-allenamento`): `/api/dataset-store`
+  (`dataset_records`, owner Metis): kinds `trace` (one chat turn: prompt, tool calls, answer; `parent_id` = session),
+  `toolset` (tool schemas by hash), `signal` (`ref_id` = trace). Big rows: Metis reads them with filters, never as a
+  mirror. Every module store gains `GET /count?kind=&at_from=` → `{count}` (live rows). Chat meta gains
+  `training_off` (additive column; `GET /api/chat/sessions/{id}/meta` reads one, the PUT and the list carry it).
 
 ## Wave 3 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
 - `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals

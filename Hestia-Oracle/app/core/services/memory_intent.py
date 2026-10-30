@@ -104,7 +104,8 @@ def is_memory_worthy(user_message: str) -> bool:
 
 _WRITE_INTENT = re.compile(
     r"\b(salva|ricorda|memorizza|cancella|elimina|rimuovi|dimentica|aggiungi|crea|imposta|modifica|cambia|"
-    r"sposta|annulla|attiva|disattiva|avvisami|notificami|prenota|programma|pianifica|invia|manda|segna)\w*",
+    r"sposta|annulla|attiva|disattiva|avvisami|notificami|prenota|programma|pianifica|invia|manda|segna|registr|"
+    r"inserisci|metti|annota|aggiorna|fissa|spunta|carica|togli|sviluppa)\w*",
     re.IGNORECASE)
 
 

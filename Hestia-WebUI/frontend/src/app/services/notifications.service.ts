@@ -188,7 +188,8 @@ export class NotificationsService {
     const n: HestiaNotification = {
       id: push.notification_id,
       created_at: String(push['created_at'] ?? new Date().toISOString()),
-      state: 'delivered', read: false, pending: actions.length > 0,
+      // Buttons, a secret form or a question (2026-10-30-domande-nelle-notifiche): it waits for an answer.
+      state: 'delivered', read: false, pending: actions.length > 0 || !!push['question'] || !!push['secret'],
       title: String(push['title'] ?? ''), message: String(push['message'] ?? ''),
       level: (push['level'] as NotificationLevel) ?? 'info', source: String(push['source'] ?? ''),
       event_type: String(push['event_type'] ?? ''), actions,

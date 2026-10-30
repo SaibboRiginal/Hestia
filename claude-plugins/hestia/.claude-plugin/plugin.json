@@ -1,0 +1,40 @@
+{
+  "name": "hestia",
+  "version": "0.1.0",
+  "description": "Hestia inside Claude: a band above the prompt to switch Hestia on when you want (off, tools, Hestia) with her personality, your instructions and shared memory.",
+  "author": {
+    "name": "SaibboRiginal"
+  },
+  "homepage": "https://github.com/SaibboRiginal/Hestia/tree/main/claude-plugins/hestia",
+  "repository": "https://github.com/SaibboRiginal/Hestia",
+  "license": "MIT",
+  "keywords": [
+    "hestia",
+    "assistant",
+    "memory",
+    "persona",
+    "mcp"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "url": {
+      "type": "string",
+      "title": "Indirizzo di Hestia",
+      "description": "The public address of your Hestia (the tunnel hostname, e.g. https://hestia.example.org). Claude connects to <address>/mcp and asks you to allow it on the Accessi AI page.",
+      "default": ""
+    },
+    "default_mode": {
+      "type": "string",
+      "title": "Modalità iniziale",
+      "description": "How every new session starts: off (plain Claude), strumenti (Hestia's tools, Claude's voice), hestia (Claude is Hestia).",
+      "options": [
+        "off",
+        "strumenti",
+        "hestia"
+      ],
+      "default": "off"
+    }
+  },
+  "icon": "./.claude-plugin/icon.png",
+  "privacyPolicyUrl": "https://github.com/SaibboRiginal/Hestia/tree/main/claude-plugins/hestia#privacy"
+}

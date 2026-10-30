@@ -29,6 +29,8 @@ TAG_PARAMETERS = {
         "remove": {"type": "string", "description": "Tags to remove, comma separated"},
         "title": {"type": "string", "description": "Short title of the conversation"},
         "pinned": {"type": "boolean", "description": "Pin it on top of the list"},
+        "training_off": {"type": "boolean", "description": "true = never use this conversation to train Hestia "
+                                                             "(its saved turns are dropped); false = use it again"},
         "color": {"type": "string", "enum": ["gray", "red", "orange", "yellow", "green", "teal", "blue",
                                           "purple", "pink"], "description": "Colour of new tags"},
         "session_id": {"type": "string", "description": "Conversation id (empty = this one)"},
@@ -79,7 +81,8 @@ def messages(route: Route, session_id: str, limit: int = 200) -> dict:
 def set_meta(route: Route, session_id: str, body: dict) -> dict:
     if not str(session_id or "").strip():
         raise ChatSessionsError(422, "conversazione mancante")
-    allowed = {k: body[k] for k in ("title", "tags", "add_tags", "remove_tags", "pinned", "client") if k in body}
+    allowed = {k: body[k] for k in ("title", "tags", "add_tags", "remove_tags", "pinned", "training_off", "client")
+               if k in body}
     return _need(route("PUT", f"/chat/sessions/{session_id}/meta", body=allowed))
 
 
@@ -102,7 +105,7 @@ def _words(v: Any) -> list[str]:
 # ── tools ──────────────────────────────────────────────────────────────────────
 
 def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pinned: Any = None,
-             session_id: str = "", color: str = "", replace: Any = None) -> dict:
+             session_id: str = "", color: str = "", replace: Any = None, training_off: Any = None) -> dict:
     """``chat_tag``: tags (and maybe a title / pinned) on this conversation; ``replace`` (list) sets the tags
     exactly (used by «Annulla»); returns ``undo`` back to the previous ones."""
     sid = str(session_id or "").strip() or _current(route)
@@ -120,11 +123,16 @@ def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pi
         body["title"] = str(title).strip()
     if pinned not in (None, ""):
         body["pinned"] = str(pinned).lower() in ("1", "true", "sì", "si", "yes")
+    if training_off not in (None, ""):
+        body["training_off"] = str(training_off).lower() in ("1", "true", "sì", "si", "yes")
     out = set_meta(route, sid, body)
     names = ", ".join(t["name"] for t in out.get("tags") or []) or "nessuna"
     logger.info("event=chat_tagged session_id=%s tags=%d", sid, len(out.get("tags") or []))
     before = out.get("before") or {}
-    return {**out, "text": f"Etichette della conversazione: {names}.",
+    text = f"Etichette della conversazione: {names}."
+    if "training_off" in body:
+        text += (" Non la userò per allenarmi." if body["training_off"] else " La userò di nuovo per allenarmi.")
+    return {**out, "text": text,
             "undo": undo("chat_tag", session_id=sid, replace=before.get("tags") or [],
                          title=before.get("title") or "", pinned=bool(before.get("pinned")))}
 

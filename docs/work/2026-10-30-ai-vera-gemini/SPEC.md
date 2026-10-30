@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.4 |
 | **Source** | user via external chat (Marko, 2026-10-30: «messo chiave e abilitato l'host… i test non deterministici dell'AI ci sono ancora?») |
 | **Status** | Implemented (round 2: behaviour) |
 
@@ -94,4 +94,19 @@ quota, with cases like his own use. Chain on the bench: Gemma 4 26B-A4B → Gemm
 recall, shorter answers, new command, «spegni tutto», thanks): right tool and honest answers in all of them.
 Open: the agenda prompt is still ~9.5k tokens, over the 8192 default context of Ollama (raise `num_ctx` to 16384 on
 the PC, or slim the agenda tools).
+
+## 8. Safeguards in code (v1.3)
+Marko (2026-10-30): the AI must have safeguards and not be free to make trivial mistakes. Rules in code, not in the
+prompt (`turn_guards.py`): 24. a question or advice writes nothing; 25. one thing in one place (module write →
+no memory copy unless «ricorda»); 26. delete/cancel only with the user's own words; 27. `forge_develop` only after
+an explicit build ask or a «sì»; 28. at most 6 writes per turn. `has_write_intent` also knows registra, inserisci,
+metti, annota, aggiorna, fissa, spunta, carica, togli, sviluppa.
+
+Verification round 4 (Gemma 26B chain, 10 cases): person detail only in Persone, «vorrei un comando…» → asks
+first then develops after «sì», spending, «cosa sai di me», «dimentica», «buonanotte» all right. Fixed (v1.4):
+29. a write tool called with no values on a question is a read (`cibo_dieta`), it passes; 30. a refused call is
+`refused` in the tool log: no «Non riuscito» notice and no failed-write note (nothing was tried); 31. an empty
+streamed final answer gets one plain ask, then the turn's text, never an empty reply. Re-run: both advice cases
+answer with no writes and no notices. The ```hestia-ui``` block in answers is the intended card format (rendered by
+WebUI and Telegram).
 

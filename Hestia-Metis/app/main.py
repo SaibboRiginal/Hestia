@@ -21,7 +21,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.hub_client import HubClient
 from .core import dataset_builder
 from .core.insights import build_insights
-from .core.metis_settings import settings as metis_settings
+from .core.metis_settings import review_auto_accept, review_batch, settings as metis_settings, traces_keep_days
+from .core.export import Exporter
+from .core.review import USE_CASE as REVIEW_USE, Review
+from .core.traces import Traces
 from .core.usage import CLIENTS, IDEAS_USE, Usage
 
 # ── Shared imports ────────────────────────────────────────────────────────────
@@ -34,7 +37,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 from hestia_common.agenda_client import AgendaClient, daily_window, job_rule
-from hestia_common.display import action, display, item
+from hestia_common.display import action, display, file, item
 from hestia_common.module_kit import Hub as RoutedHub, Invalid, Store, StoreUnavailable
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase
 from hestia_common.presence_client import PresenceClient
@@ -91,6 +94,12 @@ presence = PresenceClient("metis", _HUB_API_URL)
 # Taps live in Archive ``metis-store`` (Hub-routed mirror); the suggestion engine is core/usage.py.
 usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
+# Training dataset (docs/work/2026-10-30-dataset-allenamento): chat turn traces in Archive ``dataset-store``.
+traces = Traces(usage_store.hub, keep_days=traces_keep_days)
+# Nightly correction by the teacher model (cloud, personal data masked) + «Da rivedere» (D2).
+review = Review(usage_store.hub, llm=usage_store.hub.llm, auto_accept=review_auto_accept, batch=review_batch)
+exporter = Exporter(usage_store.hub, people=review.people)
+REVIEW_AT = "02:30"
 # Hours the assistant writes fresh «Adesso» ideas: only the seed of agenda jobs, the user moves them in the agenda.
 IDEAS_AT = ("07:00", "12:30", "18:00")
 _DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
@@ -122,7 +131,11 @@ def _agenda_rules() -> list[dict]:
         job_rule(f"metis.adesso.{at.replace(':', '')}", "Idee per «Adesso»", service="metis",
                  path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
                  description="L'assistente pensa a tre cose utili per le prossime ore (e pulisce i tocchi vecchi).")
-        for at in IDEAS_AT]
+        for at in IDEAS_AT] + [
+        job_rule("metis.dataset.review", "Rilettura delle risposte per l'allenamento", service="metis",
+                 path="/api/metis/review/run", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{REVIEW_AT}:00", tz=tz,
+                 description="Un modello più forte rilegge le risposte del giorno (con i tuoi dati oscurati) e "
+                             "corregge quelle sbagliate; i casi dubbi aspettano te in «Da rivedere».")]
 
 
 def _load_jobs() -> dict:
@@ -232,8 +245,120 @@ def metis_adesso_refresh(body: dict | None = None):
     clients = [str((body or {}).get("client"))] if (body or {}).get("client") else ["telegram", "webui"]
     out = {c: usage.refresh_ideas(c) for c in clients if c in CLIENTS}
     out["pruned"] = usage.prune()
+    try:
+        out["pruned_traces"] = traces.prune()
+    except Exception as exc:  # noqa: BLE001 — the next run retries
+        logger.warning("[🔄] event=traces_prune_failed error=%s", exc)
     logger.info("event=metis_adesso_refresh clients=%s pruned=%s", ",".join(clients), out["pruned"])
     return out
+
+
+def _traces_call(fn, *args):
+    try:
+        return fn(*args)
+    except Invalid:
+        raise
+    except Exception as exc:  # noqa: BLE001 — Archive away
+        from fastapi import HTTPException
+        logger.warning("[🔄] event=traces_archive_failed fn=%s error=%s", fn.__name__, str(exc)[:200])
+        raise HTTPException(status_code=503, detail="archivio non raggiungibile, riprova")
+
+
+@app.post("/api/metis/traces")
+def metis_traces_add(body: dict):
+    """Oracle pushes one finished chat turn (what the model saw and did) for the training dataset."""
+    return _traces_call(traces.receive, body)
+
+
+@app.delete("/api/metis/traces")
+def metis_traces_forget(session_id: str = ""):
+    """The owner deleted a conversation or excluded it from training: its traces and signals go."""
+    return _traces_call(traces.forget_session, session_id)
+
+
+@app.get("/api/metis/traces/status")
+def metis_traces_status():
+    """How many turns are saved for the dataset (total, last 7 days), signals, last one."""
+    return _traces_call(traces.status)
+
+
+@app.get("/api/metis/traces/recent")
+def metis_traces_recent(limit: int = 20):
+    """Newest saved turns, short (no prompts, no tool results)."""
+    return {"items": _traces_call(traces.recent, limit)}
+
+
+@app.post("/api/metis/review/run")
+def metis_review_run():
+    """Agenda job ``metis.dataset.review``: the teacher re-reads the next batch of saved turns."""
+    return _traces_call(review.run)
+
+
+@app.get("/api/metis/review/pending")
+def metis_review_pending(limit: int = 10):
+    """«Da rivedere»: corrections waiting for the owner (original vs corrected)."""
+    return _traces_call(review.pending, limit)
+
+
+@app.post("/api/metis/review/{trace_id}")
+def metis_review_decide(trace_id: str, body: dict):
+    """The owner decides: ``{decision: accept | reject | edit, answer?}``."""
+    return _traces_call(review.decide, trace_id, str(body.get("decision") or ""), str(body.get("answer") or ""))
+
+
+def _review_card(limit: int = 1) -> dict:
+    out = review.pending(limit)
+    items = out["items"]
+    if not items:
+        return {**out, "display": display("Da rivedere", lines=["Niente da rivedere: le correzioni della notte sono "
+                                                                "tutte sicure o non ce ne sono."])}
+    i = items[0]
+    lines = [f"Tu: {i['user'][:300]}", f"Risposta: {i['answer'][:400]}"]
+    if i["fixed"]:
+        lines.append(f"Correzione: {i['fixed'][:400]}")
+    if i["remove"]:
+        lines.append("Da togliere: " + ", ".join(t for t in i["remove"] if t))
+    if i["needs_owner"]:
+        lines.append("Il revisore non sa correggerla da solo: scrivi tu la risposta giusta.")
+    acts = [action("Scarta", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
+            action("Correggi io", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
+    if not i["needs_owner"]:
+        acts.insert(0, action("Accetta", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
+                              style="primary"))
+    return {**out, "display": display("Da rivedere", subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
+                                      lines=lines, actions=acts)}
+
+
+@app.post("/api/metis/export")
+def metis_export(body: dict | None = None):
+    """«Esporta»: JSONL zip (sft, dpo, eval, card). ``{in_chiaro: false}`` = names and contacts hidden (default)."""
+    b = body or {}
+    return _traces_call(exporter.build, not bool(b.get("in_chiaro")), bool(b.get("include_unreviewed")))
+
+
+@app.get("/api/metis/export")
+def metis_export_list(limit: int = 10):
+    """Recent exports (name, counts, masked or not)."""
+    return {"items": _traces_call(exporter.list, limit)}
+
+
+@app.get("/api/metis/export/{export_id}/b64")
+def metis_export_b64(export_id: str):
+    """The zip as base64 for the WebUI plugin (its calls go through Hub as JSON)."""
+    try:
+        return _traces_call(exporter.file_b64, export_id)
+    except KeyError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="esportazione non trovata")
+
+
+def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> dict:
+    out = exporter.build(not in_chiaro, include_unreviewed)
+    lines = [f"{out['sft']} esempi per l'allenamento, {out['eval']} per la prova, {out['dpo']} coppie corretta/originale",
+             f"{out['skipped']} turni lasciati fuori (non riletti, scartati o in attesa)",
+             "Nomi e contatti oscurati" if out["masked"] else "Dati in chiaro: non condividere il file"]
+    return {**out, "display": display("Dataset esportato", subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
+                                      lines=lines, files=[file(out["blob_id"], out["name"], "application/zip")])}
 
 
 @app.get("/api/metis/scopri")
@@ -697,6 +822,45 @@ try:
             telegram_group="sviluppo",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
+            name="metis_rivedi",
+            description="Le correzioni notturne delle risposte che aspettano te prima di entrare nel dataset di "
+                        "allenamento: risposta originale, correzione, Accetta / Scarta / Correggi io.",
+            parameters={"type": "object", "properties": {}, "required": []},
+            handler=lambda: _traces_call(_review_card),
+            title="Da rivedere", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
+            telegram={"section": "Dataset e training"}),
+        MCPTool(
+            name="metis_rivedi_decidi",
+            description="Decidi una correzione del dataset di allenamento: accept (va bene), reject (scarta il "
+                        "turno), edit (la risposta giusta la scrivi tu in answer).",
+            parameters={"type": "object", "properties": {
+                "trace_id": {"type": "string", "description": "Turno da decidere"},
+                "decision": {"type": "string", "enum": ["accept", "reject", "edit"]},
+                "answer": {"type": "string", "description": "Con edit: la risposta giusta"}},
+                "required": ["trace_id", "decision"]},
+            handler=lambda trace_id="", decision="", answer="": {
+                **_traces_call(review.decide, trace_id, decision, answer),
+                "next": _traces_call(_review_card).get("display")},
+            title="Decidi una correzione", method="POST", path="/api/metis/tools/rivedi_decidi",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_group="sviluppo",
+            telegram={"section": "Dataset e training"}),
+        MCPTool(
+            name="metis_dataset_esporta",
+            description="Esporta il dataset di allenamento (file JSONL zippati: sft, dpo, eval, scheda) da scaricare. "
+                        "in_chiaro=false (predefinito) oscura nomi delle persone, e-mail, telefoni, IBAN e "
+                        "indirizzi; in_chiaro=true lascia i dati veri.",
+            parameters={"type": "object", "properties": {
+                "in_chiaro": {"type": "boolean", "description": "true = dati veri, false = oscurati (predefinito)"},
+                "include_unreviewed": {"type": "boolean",
+                                       "description": "true = anche i turni non ancora riletti"}},
+                "required": []},
+            handler=lambda in_chiaro=False, include_unreviewed=False: _traces_call(
+                _export_card, bool(in_chiaro), bool(include_unreviewed)),
+            title="Esporta il dataset", method="POST", path="/api/metis/tools/dataset_esporta",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
+            telegram={"section": "Dataset e training", "label": "Esporta"}),
+        MCPTool(
             name="metis_adesso",
             description="Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle "
                         "prossime ore e qualche idea dell'assistente, ognuna con il perché.",
@@ -762,7 +926,10 @@ _HUB_REGISTRATION_PAYLOAD = {
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
         **llm_capabilities([usecase(IDEAS_USE, "Adesso · idee", chain="veloce",
-                                    help="Tre azioni utili per le prossime ore, diverse dalle abitudini.")]),
+                                    help="Tre azioni utili per le prossime ore, diverse dalle abitudini."),
+                            usecase(REVIEW_USE, "Revisione del dataset", chain="cloud", thinking="true",
+                                    help="Di notte rilegge le risposte e corregge quelle sbagliate. Scegli un modello "
+                                         "più forte di quello locale: i tuoi dati personali vengono oscurati.")]),
     },
 }
 

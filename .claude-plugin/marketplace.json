@@ -1,0 +1,17 @@
+{
+  "name": "hestia",
+  "owner": { "name": "SaibboRiginal" },
+  "metadata": { "description": "Hestia, the personal assistant you host at home, inside Claude." },
+  "plugins": [
+    {
+      "name": "hestia",
+      "source": "./claude-plugins/hestia",
+      "description": "A band above the prompt to switch Hestia on when you want: her personality, your instructions, shared memory, her tools."
+    },
+    {
+      "name": "hestia-dev",
+      "source": "./claude-plugins/hestia-dev",
+      "description": "For working on Hestia's code: the work protocol and the house rules as skills, plus guards on secrets and data."
+    }
+  ]
+}

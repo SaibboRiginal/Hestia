@@ -34,7 +34,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hephaestus | Core Organ | Yes (remediation + Forge self-development) | No | Policy-gated remediation; Forge codes/tests/merges Hestia itself |
 | Athena | Core Organ | Yes (proactive advisory cognition: Sistema track idle retrospective, Vita track life reflection on module signals) | No | Advisory hints for Oracle; improvement hand-off to Forge; life observations for the daily recap |
 | Atlas | Shared Integration | No domain logic | No | Host-side fetch helper routed via Hub |
-| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration, usage log) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training; usage log → «Adesso» and «Scopri» (Archive `metis-store`) |
+| Metis | Core Organ | Yes (dataset curation, benchmark, training orchestration, usage log) | No | Builds datasets from feedback, runs benchmarks, orchestrates LoRA training; usage log → «Adesso» and «Scopri» (Archive `metis-store`); chat turn traces for the training dataset (Archive `dataset-store`) |
 | Dummy | Test Module | Generic integration testing behavior | No | Deterministic target for routing/policy/execution tests |
 | MCP | Core Gateway | No tool-ownership (aggregates) | No | Hestia's one MCP server: every client (Oracle, Telegram, WebUI, external AIs with an access) lists and runs tools here; owns external accesses |
 | Swagger | Documentation Aggregator | No | No | Canonical API contract surface (`swagger.yml`) |
@@ -186,6 +186,9 @@ flowchart LR
    `hso_…` bearer on `/mcp` exactly like a token access; `refresh_token` rotates, a replay revokes the access.
 6. External AI memory: `memory_note` (write access) → Hestia-MCP → Hub → Oracle `POST /api/memory/note` → Archive
    `/api/memory` (`durable_user_preference`, origin in `extra_data`); `memory_recall` reads them back. Page Memoria lists/forgets.
+7. Hestia inside Claude (mod `claude-plugins/hestia`): band → `/hestia on` → Claude's MCP (OAuth, same door as 5) →
+   `assistant_profile` → Hestia-MCP → Hub → Oracle `GET /api/assistant/profile` (persona + `oracle.chat.*` + memory
+   digest) → one session section of Claude's system prompt; mode *off* refuses every Hestia tool at `tool.check`.
 
 ### Telegram flow (every function, no model in the menus)
 1. Catalog: Telegram → Hub → Hestia-MCP `tools/list` (client `telegram`: input schema + `telegram_group` / `telegram`
@@ -212,6 +215,10 @@ flowchart LR
 6. The WebUI shell uses the same doors: Metis (taps, «Adesso», «Scopri»), Aphrodite (look of now), Hermes
    `/api/ui/push/*` (Web Push), Oracle `/api/ui/chats*` (conversation history and tags → Archive
    `/api/chat/sessions/*`); a suggested tool or an «Annulla» runs through Hestia-MCP `/api/mcp/ui/tools/call`.
+7. Training dataset (docs/work/2026-10-30-dataset-allenamento): after each owner turn Oracle → Hub →
+   `metis /api/metis/traces` (background) → Archive `/api/dataset-store`; Metis reads chat meta `training_off`
+   (`/api/chat/sessions/{id}/meta`); a deleted or excluded chat → Oracle → `DELETE metis /api/metis/traces`. The
+   `final` frame carries `trace_id`; Telegram/WebUI votes send it as feedback `interaction_id`.
 
 ### Assistant agenda flow (rules as data)
 1. Modules register default rules in Chronos (`POST /api/agenda/register`, idempotent by key) at startup.

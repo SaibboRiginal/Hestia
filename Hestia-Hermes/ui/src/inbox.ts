@@ -92,12 +92,16 @@ export class HermesInbox extends HestiaElement {
   static properties = { ...HestiaElement.properties, items: { state: true }, counts: { state: true }, filter: { state: true },
                         source: { state: true }, others: { state: true }, error: { state: true }, loading: { state: true },
                         hasMore: { state: true }, busy: { state: true }, toastMode: { state: true },
-                        playing: { state: true }, voiceBusy: { state: true }, secrets: { state: true } };
+                        playing: { state: true }, voiceBusy: { state: true }, secrets: { state: true },
+                        picks: { state: true }, others_text: { state: true } };
   declare items: any[] | null; declare counts: Counts; declare filter: Filter; declare source: string;
   declare others: boolean; declare error: string; declare loading: boolean; declare hasMore: boolean;
   declare busy: string; declare toastMode: ToastMode; declare playing: string; declare voiceBusy: string;
   /** Values typed in a secret form, per notification; cleared as soon as they are sent. */
   declare secrets: Record<string, Record<string, string>>;
+  /** A notification question (2026-10-30-domande-nelle-notifiche): options picked (multiple) and the free answer. */
+  declare picks: Record<string, string[]>;
+  declare others_text: Record<string, string>;
   private audio: HTMLAudioElement | null = null;
 
   static styles = [...HestiaElement.styles, hermesStyles, css`
@@ -142,6 +146,11 @@ export class HermesInbox extends HestiaElement {
       background: var(--surface); color: var(--text); }
     .sf input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
     .center { display: flex; justify-content: center; padding: 12px; }
+    .question { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .question .free { display: flex; gap: 6px; flex-wrap: wrap; max-width: 480px; }
+    .question .free input { flex: 1; min-width: 160px; font: inherit; font-size: 14px; padding: 6px 8px;
+      border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+    .question .free input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
   `];
 
   private seenTimer: ReturnType<typeof setTimeout> | null = null;
@@ -151,7 +160,7 @@ export class HermesInbox extends HestiaElement {
     super();
     this.items = null; this.counts = { unread: 0, pending: 0 }; this.filter = 'unread'; this.source = '';
     this.others = false; this.error = ''; this.loading = false; this.hasMore = false; this.busy = '';
-    this.playing = ''; this.voiceBusy = ''; this.secrets = {};
+    this.playing = ''; this.voiceBusy = ''; this.secrets = {}; this.picks = {}; this.others_text = {};
     this.toastMode = readToastMode();
   }
 
@@ -315,6 +324,65 @@ export class HermesInbox extends HestiaElement {
     void this.loadCounts();
   }
 
+  private async reply(n: any, answer: string | string[]) {
+    this.busy = n.id;
+    const r = await this.host.api('POST', `${API}/inbox/${encodeURIComponent(n.id)}/reply`, { body: { answer } });
+    this.busy = '';
+    if (r.ok || r.status === 409) {
+      const { [n.id]: _p, ...picks } = this.picks; const { [n.id]: _t, ...texts } = this.others_text;
+      this.picks = picks; this.others_text = texts;
+    }
+    if (r.ok) {
+      this.applyAnswer(n.id, r.data?.answer ?? { label: String(answer), by: 'webui', status: 'done' });
+      this.host.toast(r.data?.answer?.outcome_text || 'Risposta inviata', 'success');
+    } else if (r.status === 409) {
+      const a = r.data?.answer ?? {};
+      this.applyAnswer(n.id, a);
+      this.host.toast(a.by && a.by !== 'webui' ? `Già gestita da ${clientLabel(a.by)}` : 'Già gestita', 'info');
+    } else {
+      this.host.toast(`Non riuscito: ${r.data?.detail || 'riprova più tardi'}`, 'danger');
+    }
+    void this.loadCounts();
+  }
+
+  private togglePick(n: any, value: string) {
+    const now = this.picks[n.id] || [];
+    this.picks = { ...this.picks, [n.id]: now.includes(value) ? now.filter(v => v !== value) : [...now, value] };
+  }
+
+  private sendQuestion(n: any) {
+    const other = String(this.others_text[n.id] || '').trim();
+    if (n.question.kind === 'multi_choice') {
+      const all = [...(this.picks[n.id] || []), ...(other ? [other] : [])];
+      if (all.length) void this.reply(n, all);
+    } else if (other) {
+      void this.reply(n, other);
+    }
+  }
+
+  /** The same card as a question in the chat: buttons, toggles + «Invia», a field for a free answer. */
+  private questionCard(n: any) {
+    const q = n.question;
+    const busy = this.busy === n.id;
+    const multi = q.kind === 'multi_choice';
+    const picked = this.picks[n.id] || [];
+    const free = q.kind === 'free_text' || !q.options?.length || q.allow_other;
+    const text = this.others_text[n.id] || '';
+    return html`<div class="question">
+      ${q.options?.length ? html`<div class="actions">${q.options.map((o: any) => multi
+        ? html`<hxk-button size="sm" variant=${picked.includes(o.value) ? 'primary' : 'default'} icon=${picked.includes(o.value) ? 'check' : 'plus'}
+            aria-pressed=${picked.includes(o.value)} ?disabled=${busy} @click=${() => this.togglePick(n, o.value)}>${o.label}</hxk-button>`
+        : html`<hxk-button size="sm" ?loading=${busy} ?disabled=${busy} @click=${() => this.reply(n, o.value)}>${o.label}</hxk-button>`)}</div>` : nothing}
+      ${free || multi ? html`<div class="free">
+        ${free ? html`<input .value=${text} placeholder=${q.options?.length ? 'Altro…' : 'Rispondi…'} aria-label="Risposta"
+          @input=${(e: Event) => (this.others_text = { ...this.others_text, [n.id]: (e.target as HTMLInputElement).value })}
+          @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.sendQuestion(n); }}>` : nothing}
+        <hxk-button size="sm" variant="primary" icon="send" ?loading=${busy}
+          ?disabled=${busy || (!text.trim() && !(multi && picked.length))} @click=${() => this.sendQuestion(n)}>Invia</hxk-button>
+      </div>` : nothing}
+    </div>`;
+  }
+
   private secretForm(n: any) {
     const busy = this.busy === n.id;
     const vals = this.secrets[n.id] || {};
@@ -392,6 +460,7 @@ export class HermesInbox extends HestiaElement {
             ?loading=${this.voiceBusy === n.id} @click=${() => this.listen(n)}>${this.playing === n.id ? 'Ferma' : 'Ascolta'}</hxk-button>` : nothing}
           ${n.link?.page ? html`<hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>Apri</hxk-button>` : nothing}</div>` : nothing}
         ${n.pending && n.secret?.fields?.length ? this.secretForm(n) : nothing}
+        ${n.pending && n.question?.kind ? this.questionCard(n) : nothing}
         ${n.pending && n.actions?.length ? html`<div class="actions">
             ${n.actions.map((a: any) => html`<hxk-button size="sm" variant=${this.variant(a.style)} ?loading=${busy} ?disabled=${busy}
               @click=${() => this.answer(n, a)}>${a.label}</hxk-button>`)}</div>`

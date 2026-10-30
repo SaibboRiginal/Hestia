@@ -24,6 +24,42 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 - Balances across quality tiers and domains
 - Exports as ChatML, Alpaca, or ShareGPT JSONL for LoRA training
 
+### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-dataset-allenamento`)
+Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.g. online). Phase **D1 «Registra»**:
+- Oracle pushes one **trace** per finished chat turn the owner typed (`POST /api/metis/traces`): system prompt,
+  history text, user message, tool calls with arguments and results, answer, model, route (see `hestia-oracle.md`
+  § Turn traces). `core/traces.py` stores it in Archive **`dataset-store`** (not `metis-store`: big rows, read with
+  filters, never mirrored): kind `trace` (`parent_id` = session), kind `toolset` (tool schemas by hash, once), kind
+  `signal` (`ref_id` = the trace it judges).
+- Automatic **signals**: `rephrase` (next message within 3 min, ≥ 60% similar), `correction` (next message starts
+  with «no», «intendevo», «non è quello»…), both on the previous turn; `tool_failed` on the turn itself. Votes stay in
+  Archive feedback with `interaction_id` = trace_id (Telegram and WebUI now send it).
+- **Privacy**: everything stays in Archive. A conversation with `training_off` (WebUI history «Non usare per
+  l'allenamento», tool `chat_tag`) is never stored and its rows are dropped; deleting a conversation drops them too
+  (`DELETE /api/metis/traces?session_id=`, tombstones with empty data). Archive meta unknown → the trace is skipped.
+- Retention: setting `metis.traces.keep_days` (365), pruned by the agenda jobs `metis.adesso.*` with the taps.
+- `GET /api/metis/traces/status` (counts), `GET /api/metis/traces/recent` (short list, no prompts).
+- Phase **D2 «Correggi»** (`core/review.py`): agenda job `metis.dataset.review` (seed 02:30, move it in the agenda)
+  → `POST /api/metis/review/run` re-reads the next `metis.review.batch` turns older than 30 min (where the last run
+  stopped, Archive kind `state`) with their signals and votes (Archive feedback by session, `interaction_id`).
+  Teacher = Oracle use case `metis.dataset.review` (default chain `cloud`, Marko's choice: a cloud model). Before the
+  call everything is **masked**: names of Persone (Hera `GET /api/people`), e-mails, phones, IBAN, street addresses
+  → `<PERSONA_1>`…; the corrected text gets the real values back. Hera away → no turn is sent that night. The
+  teacher answers JSON `verdict keep|fix|drop, confidence, answer, remove_steps, reasons (R1–R8), needs_owner`; it may
+  drop wrong tool calls and rewrite the answer, never invent a tool result. Kind `review` (id = trace, `ref_id` =
+  status): `accepted` when confidence ≥ `metis.review.auto_accept` (0.85), no `needs_owner` and no 👎 with words;
+  otherwise `pending` → **«Da rivedere»** (WebUI Miglioramento, Telegram `metis_rivedi`): Accetta, Correggi io (your
+  answer, status `edited`), Scarta (`rejected`). Teacher away or unusable answer → the run stops there (`[🔄]`).
+- Phase **D3 «Esporta»** (`core/export.py`): `POST /api/metis/export {in_chiaro, include_unreviewed}` builds a zip
+  with `sft.jsonl` (OpenAI `messages` with `tool_calls` / `tool` roles + `tools` schemas of the turn), `dpo.jsonl`
+  (`prompt`, `chosen` = corrected answer, `rejected` = original), `eval.jsonl` (~10% of the conversations, split by
+  session, never also in sft) and `card.json` (counts, routes, models, dates, masked). Only turns the review kept or
+  corrected and accepted, or that you edited; a fix drops the tool calls the teacher removed and uses the corrected
+  answer. The owner picks at each export: **oscurato** (default, the same masking as the review: Persone names,
+  e-mails, phones, IBAN, addresses; Hera away → refused, never half masked) or **in chiaro**. The zip is an Archive
+  blob (owner `metis`), the export a dataset-store row kind `export`; download from Miglioramento («Scarica
+  oscurato» / «Scarica in chiaro» + the last five) or Telegram `metis_dataset_esporta` (file under the card).
+
 ### Benchmark Evaluation
 - Runs held-out eval comparing candidate model vs baseline
 - Scores style adherence, accuracy, and conciseness
@@ -68,6 +104,8 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `metis_loRA_train` | Orchestrate LoRA fine-tuning run |
 | `metis_adesso` | «Adesso» card: what fits now, each with why and a button |
 | `metis_scopri` | «Scopri» card: features never or rarely used |
+| `metis_rivedi` | «Da rivedere»: the next nightly correction waiting for the owner, Accetta / Correggi io / Scarta |
+| `metis_rivedi_decidi` | `trace_id`, `decision` accept / reject / edit, `answer` (edit); returns the next card |
 
 ## API Endpoints
 
@@ -83,6 +121,16 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 | `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
 | `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |
+| `POST` | `/api/metis/traces` | Oracle pushes one chat turn trace (422 if trace_id/session_id/user/answer missing; skipped when the chat is `training_off`) |
+| `DELETE` | `/api/metis/traces?session_id=` | Drop a conversation's traces and signals |
+| `GET` | `/api/metis/traces/status` · `/api/metis/traces/recent` | Dataset counts · newest turns, short |
+| `POST` | `/api/metis/review/run` | Agenda job: the teacher reviews the next batch → `{reviewed, failed, accepted, pending, …}` |
+| `GET` | `/api/metis/review/pending` | «Da rivedere» (`limit`): `{items[{trace_id, user, answer, fixed, remove, reasons, confidence, needs_owner}], pending, reviews}` |
+| `POST` | `/api/metis/review/{trace_id}` | Owner decision `{decision: accept|reject|edit, answer?}` |
+| `GET`/`POST` | `/api/metis/tools/rivedi` · `/tools/rivedi_decidi` | The two tools (display card) |
+| `POST` | `/api/metis/export` | Build the training zip `{in_chiaro?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
+| `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
+| `POST` | `/api/metis/tools/dataset_esporta` | Tool `metis_dataset_esporta` (card with the file) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
@@ -102,11 +150,14 @@ Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle 
 Metis ships its inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
 section *Sistema*), `api_prefix` `/api/metis/`, no new endpoint.
-- page **Miglioramento** (`miglioramento`, `metis-improvement`, order 180): *Dove sbaglia* from
+- page **Miglioramento** (`miglioramento`, `metis-improvement`, order 180): *Dataset di allenamento* from
+  `/api/metis/traces/status` (saved turns, last 7 days, signals), *Da rivedere* from `/api/metis/review/pending`
+  (original vs corrected, Accetta / Correggi io with a text box / Scarta → `POST /api/metis/review/{id}`), *Esporta* (`POST /api/metis/export`, then
+  `/export/{id}/b64` saved as a file; «Scarica oscurato» / «Scarica in chiaro», the last five exports), *Dove sbaglia* from
   `/api/metis/insights` (grades, negatives, negative share, weak domains with labels and examples), *Dataset* from
   `/api/metis/dataset/status` (in-memory, shown only when there are some), *Training LoRA* from `/api/metis/lora/jobs`
-  (state, dataset, base model, requester, planned start). Read only: building datasets and training stay chat/agenda
-  actions; a planned training is moved/cancelled from the agenda window `metis.training`.
+  (state, dataset, base model, requester, planned start). Besides the review decisions, building datasets and training
+  stay chat/agenda actions; a planned training is moved/cancelled from the agenda window `metis.training`.
 - No widgets, no quick actions. Metis unreachable → "non raggiungibile"; Archive feedback unavailable → only that
   card shows an error.
 Bundle: `Hestia-Metis/ui/src` (Lit, `@hestia/webui-sdk`), built by the Node stage of the Dockerfile into
@@ -132,6 +183,9 @@ Endpoints `GET /api/settings/effective`, `POST /api/settings/reload` (used by Th
 | `metis.dataset.deduplicate` | bool · on | near-duplicate removal when the caller does not say |
 | `metis.dataset.quality_labels` | list · `[excellent, good]` | labels collected when the caller gives none |
 | `metis.insights.good_labels` | list · `[excellent, good]` | labels not counted as weak spots in `/insights` |
+| `metis.traces.keep_days` | int · 365 (7–3650) | days a chat turn trace is kept for the training dataset |
+| `metis.review.auto_accept` | float · 0.85 (0.5–1) | teacher confidence above which a correction is accepted alone |
+| `metis.review.batch` | int · 30 | turns the teacher re-reads per nightly run |
 | `metis.log.level` | enum · `LOG_LEVEL` boot value | log verbosity |
 
 ## Environment Variables (infrastructure only)
@@ -156,7 +210,7 @@ import. Volume `./Hestia-Metis/data:/code/data`.
 Window-mode trainings also wait for presence `work.heavy` allow/local: held → re-planned +30 min (agenda key `metis.train.<job>.<ts>`). A running training is activity `metis.training.<job>` (heavy, gpu).
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 5 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 7 (area › section: tools).
 
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and

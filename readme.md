@@ -19,6 +19,7 @@
 [![License](https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square)](LICENSE)
 
 [What it is](#what-it-is) ·
+[A look inside](#a-look-inside) ·
 [What it does](#what-it-does) ·
 [How it works](#how-it-works) ·
 [Quick start](#quick-start) ·
@@ -64,6 +65,27 @@ Ask it for a new feature and Hestia writes the change, tests it, asks you, deplo
 </td>
 </tr>
 </table>
+
+<img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
+
+## A look inside
+
+<p align="center">
+  <img src="docs/assets/screens/hero.jpg" alt="Hestia's home page on a laptop and on a phone" width="100%">
+</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><img src="docs/assets/screens/chat.png" alt="Chat: deadlines and spending in a table" width="100%"><br><sub>Ask in your own words: it checks deadlines and spending and answers with a table</sub></td>
+<td width="50%" align="center"><img src="docs/assets/screens/home-light.png" alt="Home in the light theme" width="100%"><br><sub>Home with quick actions and a widget for every area, light theme</sub></td>
+</tr>
+<tr>
+<td width="50%" align="center"><img src="docs/assets/screens/deadlines.png" alt="Deadlines page" width="100%"><br><sub>Deadlines: bills, insurance and renewals with a reminder before they are due</sub></td>
+<td width="50%" align="center"><img src="docs/assets/screens/expenses.png" alt="Expenses overview" width="100%"><br><sub>Expenses: the month at a glance, from mails, statements or a quick note in chat</sub></td>
+</tr>
+</table>
+
+<sub>Screenshots from the test bench with made-up data. Menus and pages are in Italian.</sub>
 
 <img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
 
@@ -134,9 +156,6 @@ the others. Curious about what is under the hood? See the [architecture](docs/AR
 **You need** Docker with Compose v2, Python 3, [Ollama](https://ollama.com) on the host and a Telegram bot token
 from [@BotFather](https://t.me/BotFather) (plus your numeric Telegram id, e.g. from [@userinfobot](https://t.me/userinfobot)).
 
-**Hardware.** Reference setup: an NVIDIA RTX 4080 SUPER (16 GB VRAM) and 64 GB RAM running a local model of about 9B
-parameters. A smaller graphics card works with a smaller model; with cloud models only, no graphics card is needed.
-
 <img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Clone and create the env files**
 
 ```bash
@@ -187,6 +206,7 @@ On Windows `up-all.bat --build` does both.
 | <img src="docs/assets/icons/webapp.svg" width="32" height="32" alt=""> | **Web app** | <http://localhost:19015>: chat, a page for every area, calendar, settings, development tasks. Opens inside Telegram too. |
 | <img src="docs/assets/icons/voice.svg" width="32" height="32" alt=""> | **Voice** | Speak in either client, listen to any answer, or use the live mode and talk back and forth. |
 | <img src="docs/assets/icons/external.svg" width="32" height="32" alt=""> | **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in the web app. |
+| <img src="claude-plugins/hestia/.claude-plugin/icon.png" width="32" height="32" alt=""> | **Inside Claude** | A Claude Code plugin: a band above the prompt turns Claude into Hestia only when you want, with her personality and your memory. `/plugin install hestia --marketplace SaibboRiginal/Hestia` |
 | <img src="docs/assets/icons/api.svg" width="32" height="32" alt=""> | **API** | Swagger for every service at <http://localhost:19000>. |
 
 Everything beyond the first start (cloud models, Google Calendar and Gmail, Drive backup, Home Assistant, remote

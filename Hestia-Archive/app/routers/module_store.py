@@ -5,7 +5,8 @@ Same contract as ``hercules-store`` / ``selfcare-store`` / ``wardrobe-store`` (P
 Echo ``echo-store``, Oracle ``oracle-store`` pending questions, Argus ``argus-store`` journal, Hermes ``hermes-store`` Web Push
 subscriptions, Chronos ``chronos-store`` routine results, and the W5 modules: Apollo ``images-store``, Aphrodite
 ``appearance-store``, Lares ``home-store``, Hera ``people-store``, Demeter ``food-store``, Calliope ``office-store``,
-Kairos ``deadlines-store``; W6: Metis ``metis-store`` usage log; Psyche ``mood-store``).
+Kairos ``deadlines-store``; W6: Metis ``metis-store`` usage log; Psyche ``mood-store``; Metis ``dataset-store``
+training traces).
 Archive only stores: the owner module gives each ``kind`` its meaning.
 """
 from datetime import datetime, timezone
@@ -105,6 +106,17 @@ def build_router(prefix: str, model, tag: str) -> APIRouter:
         rows = q.order_by(col).limit(max(1, min(int(limit), _MAX_LIMIT))).all()
         return {"rows": [view(r) for r in rows], "cursor": cursor(db), "epoch": maintenance.epoch()}
 
+    @router.get("/count")
+    def count_records(kind: Optional[str] = None, at_from: Optional[datetime] = None,
+                      db: Session = Depends(database.get_db)) -> dict:
+        """How many live rows (one kind, from a date): a status page without pulling big rows."""
+        q = db.query(func.count()).select_from(model).filter(model.deleted.is_(False))
+        if kind:
+            q = q.filter(model.kind.in_([v for v in kind.split(",") if v]))
+        if at_from:
+            q = q.filter(model.at >= _utc(at_from))
+        return {"count": int(q.scalar() or 0)}
+
     return router
 
 
@@ -126,3 +138,4 @@ calliope_router = build_router("/api/office-store", models.OfficeRecord, "callio
 kairos_router = build_router("/api/deadlines-store", models.DeadlinesRecord, "kairos")
 psyche_router = build_router("/api/mood-store", models.MoodRecord, "psyche")
 metis_router = build_router("/api/metis-store", models.MetisRecord, "metis")
+dataset_router = build_router("/api/dataset-store", models.DatasetRecord, "metis")

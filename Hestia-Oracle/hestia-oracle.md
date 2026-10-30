@@ -28,7 +28,8 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   marks that provider/model pair exhausted until its reset (Retry-After, `retryDelay`, midnight Pacific for Gemini per-day
   quotas, else `oracle.quota.cooldown_minutes` = 60) and every chain skips it until then; any other error just moves
   to the next step. All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `veloce`, `potente`,
-  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable). Gemini steps use the aliases
+  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable), `cloud` (Gemini only, for the
+  Metis dataset review `metis.dataset.review`, 2026-10-30; an owner who saved his own chains adds it in Sistema). Gemini steps use the aliases
   `gemini-flash-latest` / `gemini-flash-lite-latest` (Google stops serving dated models to new keys: 2.0-flash and
   2.5-flash-lite in 2026-10). Gemini native tools send each tool's JSON Schema as `parameters_json_schema` (the
   OpenAPI-subset `parameters` refused `contentMediaType` and arrays without `items`, failing the whole call).
@@ -210,6 +211,14 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
   `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
   `memory.search` also matches word forms (stems: «lavoro» finds «lavora»).
+- **Turn guards** (`core/services/turn_guards.py`, 2026-10-30): fixed rules in code in front of every write tool of
+  a chat turn, whatever the model decides: a question or a request for advice writes nothing (`settings_propose`
+  and `forge_develop` excepted); once a module stored what the user said, `memory.save` does not copy it unless the
+  user said «ricorda» (answer `already_known`, no notice); delete/cancel tools need the user's own words for it;
+  `forge_develop` needs an explicit build ask or a «sì» to the proposal (else «chiedi con ask_user»); at most 6
+  writes per turn. On a question a write tool called with no values passes (a read, e.g. `cibo_dieta`). A refused
+  call returns `BLOCCATO: …` to the model and is `refused` in the tool log: no «Non riuscito» notice, no failed-write
+  note. An empty streamed final answer gets one plain ask, then the turn's text (never an empty reply).
 - **Tools per turn** (small-model bench, 2026-10-30): when the classifier is sure (confidence ≥ the quick-chat
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
   (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
@@ -263,6 +272,13 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   no LLM call; duplicates of an active memory (same words, case/punctuation ignored) are skipped. Origin in
   `extra_data`: `{source: external, access: <X-Hestia-Access>, topic, noted_at}`; Oracle's own saves carry
   `{source: chat}`. `memory_recall` = keyword search, max 20 compact rows. Page **Memoria** lists and forgets them.
+- `assistant_profile` (2026-10-30, docs/work/2026-10-30-hestia-in-claude, `core/services/assistant_profile.py`) —
+  external only: the block another AI follows when the user switches Hestia on inside it (Claude Code mod
+  `claude-plugins/hestia`). Same pieces Oracle uses itself: persona (`analyst_persona_default` without the Telegram
+  formatting part), style contract, the user's tone and instructions (`oracle.chat.*`), the client contract
+  `client_contract_claude` (prompt key), and a memory digest (`memory_recall("")`) in what is left of the cap
+  `oracle.chat.profile_max_tokens` (Contesto, default 1500; persona and contract never cut). Returns
+  `{client, revision, text, tokens_estimate, memories, max_tokens}`; `revision` = hash of the text. No LLM call.
 - `chat_tag` / `chat_list` (2026-10-29, Cindy 26, `core/services/chat_sessions.py`): coloured tags, title and pin on
   a conversation (no `session_id` = the one written last, i.e. the one the turn runs in; result carries `undo` back
   to the previous tags) and the conversations newest first filtered by tag/words (display card for Telegram). Also
@@ -330,6 +346,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
 | `POST` | `/api/memory/note` | `memory_note` `{facts, topic?}` (+ `X-Hestia-Access`) → `{status, saved[], skipped[]}`; 422 empty/too many/too long, 502 Archive |
 | `GET` | `/api/memory/recall?query=` | `memory_recall` → `{count, memories: [{fact, domains, since}]}` |
+| `GET` | `/api/assistant/profile?client=claude` | `assistant_profile` → `{client, revision, text, tokens_estimate, memories, max_tokens}` |
 | `GET` | `/health` | Service health; `models` = `ok` · `limited` (only fallback models answer) · `none` (Argus: «Limitato» / «Non disponibile») |
 
 ### Module tools (agent loop)
@@ -350,6 +367,7 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 | `memory.search` | Search saved preferences |
 | `memory_note` | Save facts from an external AI's conversation (clients ui, telegram, external) |
 | `memory_recall` | What Hestia knows on a topic (clients ui, telegram, external) |
+| `assistant_profile` | Persona + user's instructions + memory digest for another AI (client external only) |
 | `documents.search` | Search uploaded documents |
 | `oracle.context_stats` | Session context breakdown |
 | `oracle.compact` | Force context compaction |
@@ -386,16 +404,28 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"status","content":"..."}` — progress messages (shown as live status updates).
 - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
-- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."}}` — terminal answer event (`origin` only when the turn was not started by the owner's client).
+- `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."},"trace_id":"..."}` — terminal answer event (`origin` only when the turn was not started by the owner's client; `trace_id` names the turn: clients send it back as `interaction_id` with a 👍/👎).
 - `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
-  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404.
+  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404. A new owner turn in the session (origin `utente`, not a queued batch) closes its open `ask_user` questions (`engine.close_open_questions`, here and in Archive): an answer spoken in live voice or typed instead of tapping the card is the message itself, so a reload does not draw the card again and a late tap gets 404 (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A routine turn's questions reach the owner as Hermes notifications that ask (Chronos `routines.py`).
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
 ---
+
+### Turn traces for the training dataset (dossier `docs/work/2026-10-30-dataset-allenamento`, D1)
+
+After every finished turn the owner typed in a saved conversation (all three routes; not routines, modules or
+external AIs), `core/services/turn_trace.py` pushes in the background `POST /route/metis/api/metis/traces`: system
+prompt (agent loop: preamble + preferences + style + client instructions, from `run_agent_loop(trace_out=…)`;
+quick routes: the one prompt of `_quick_answer`), the history text, user message, tool schemas offered, each tool
+call (`params`, `ok`, `writes`, `result` = what the model read, `tool_log[].result_text`, never sent to clients),
+the final answer, model, provider, use case, route, timings. Metis owns storage, signals and exclusions; a failed
+push is logged `[🔄] event=turn_trace_dropped` and never touches the chat. Deleting a chat (`DELETE /api/chat/{id}`)
+or setting `training_off` (WebUI history «Non usare per l'allenamento», tool `chat_tag training_off`) asks Metis to
+drop that conversation's traces.
 
 ## Settings (Themis, all live)
 

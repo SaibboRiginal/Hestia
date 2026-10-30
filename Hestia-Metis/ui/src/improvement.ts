@@ -1,7 +1,10 @@
 /**
  * <metis-improvement> — "Miglioramento": where Hestia does worse according to your grades (weak domains,
  * labels, examples), the datasets built from them and the LoRA training jobs (planned in the agenda window,
- * running, finished). Read only: building a dataset or starting a training stays a chat / agenda action.
+ * running, finished). Building a dataset or starting a training stays a chat / agenda action.
+ * Training dataset (docs/work/2026-10-30-dataset-allenamento): saved turns and «Da rivedere», the nightly
+ * corrections that wait for you (Accetta / Scarta / Correggi with your own answer) and «Esporta», the JSONL zip
+ * to download, with names and contacts hidden (default) or in clear: the owner picks at each export.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Every path is under the api_prefix /api/metis/.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
@@ -28,9 +31,13 @@ const pairs = (o: Record<string, number> | undefined) => Object.entries(o || {})
 
 export class MetisImprovement extends HestiaElement {
   static properties = { ...HestiaElement.properties, insights: { state: true }, insightsError: { state: true },
-                        jobs: { state: true }, datasets: { state: true }, error: { state: true }, loaded: { state: true } };
+                        jobs: { state: true }, datasets: { state: true }, error: { state: true }, loaded: { state: true },
+                        traces: { state: true }, review: { state: true }, editing: { state: true }, busy: { state: true },
+                        exports: { state: true } };
   declare insights: any; declare insightsError: string; declare jobs: any; declare datasets: any[];
-  declare error: string; declare loaded: boolean;
+  declare error: string; declare loaded: boolean; declare traces: any; declare review: any;
+  declare editing: string; declare busy: string; declare exports: any[] | null;
+  private draft = '';
   static styles = [...HestiaElement.styles, css`
     .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     h1 { font-size: 20px; margin: 0; } h2 { font-size: 15px; margin: 0 0 8px; }
@@ -42,19 +49,29 @@ export class MetisImprovement extends HestiaElement {
     .sample { font-size: 13px; margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--border); }
     .sample div { overflow-wrap: anywhere; }
     .note { font-size: 12px; color: var(--text-3); }
+    .was { color: var(--text-3); text-decoration: line-through; }
+    .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    textarea { width: 100%; min-height: 70px; box-sizing: border-box; margin-top: 6px; font: inherit; }
   `];
   constructor() {
     super(); this.insights = null; this.insightsError = ''; this.jobs = null; this.datasets = []; this.error = ''; this.loaded = false;
+    this.traces = null; this.review = null; this.editing = ''; this.busy = ''; this.exports = null;
   }
 
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
 
   private async load() {
-    const [j, i, d] = await Promise.all([
+    const [j, i, d, t, r, x] = await Promise.all([
       this.host.api('GET', `${API}/lora/jobs`),
       this.host.api('GET', `${API}/insights`, { query: { limit: 500 } }),
       this.host.api('GET', `${API}/dataset/status`),
+      this.host.api('GET', `${API}/traces/status`),
+      this.host.api('GET', `${API}/review/pending`, { query: { limit: 10 } }),
+      this.host.api('GET', `${API}/export`, { query: { limit: 5 } }),
     ]);
+    this.traces = t.ok ? t.data : null;
+    this.exports = x.ok ? x.data?.items || [] : null;
+    this.review = r.ok ? r.data : null;
     if (!j.ok && !i.ok) { this.error = j.status === 0 || !j.error ? 'Metis non raggiungibile' : j.error; return; }
     this.error = '';
     this.jobs = j.ok ? j.data : null;
@@ -84,6 +101,95 @@ export class MetisImprovement extends HestiaElement {
         </div>`)
         : html`<hxk-state kind="empty" text="Nessun punto debole: nessun voto negativo."></hxk-state>`}
       <p class="note">Athena usa questi punti deboli per proporre miglioramenti (Forge).</p>
+    </hxk-card>`;
+  }
+
+  private async decide(id: string, decision: string, answer = '') {
+    this.busy = id;
+    const r = await this.host.api('POST', `${API}/review/${encodeURIComponent(id)}`, { body: { decision, answer } });
+    this.busy = '';
+    if (!r.ok) { this.host.toast(r.error || 'Non salvato', 'danger'); return; }
+    this.editing = ''; this.draft = '';
+    this.host.toast(decision === 'reject' ? 'Scartata' : 'Salvata', 'info');
+    this.load();
+  }
+
+  private async exportNow(clear: boolean) {
+    this.busy = clear ? 'export-clear' : 'export';
+    const r = await this.host.api('POST', `${API}/export`, { body: { in_chiaro: clear } });
+    this.busy = '';
+    if (!r.ok) { this.host.toast(r.error || 'Esportazione non riuscita', 'danger'); return; }
+    await this.download(r.data.id);
+    this.load();
+  }
+
+  private async download(id: string) {
+    const r = await this.host.api('GET', `${API}/export/${encodeURIComponent(id)}/b64`);
+    if (!r.ok) { this.host.toast('Non riesco a scaricarlo adesso', 'warning'); return; }
+    const bytes = Uint8Array.from(atob(r.data.data_b64), c => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: r.data.mime }));
+    const a = document.createElement('a');
+    a.href = url; a.download = r.data.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  private renderExport() {
+    if (!this.traces) return nothing;
+    const list = this.exports || [];
+    return html`<hxk-card heading="Esporta" subtitle="File JSONL (sft, dpo, eval) da usare per allenare un modello dove vuoi">
+      <div class="row">
+        <hxk-button variant="primary" icon="download" ?loading=${this.busy === 'export'}
+          @click=${() => this.exportNow(false)}>Scarica oscurato</hxk-button>
+        <hxk-button variant="ghost" icon="download" ?loading=${this.busy === 'export-clear'}
+          @click=${() => this.exportNow(true)}>Scarica in chiaro</hxk-button></div>
+      <p class="note">Oscurato: nomi delle persone, e-mail, telefoni, IBAN e indirizzi diventano &lt;PERSONA_1&gt;…
+        In chiaro: i dati veri, non condividere il file. Entrano i turni riletti e tenuti o corretti.</p>
+      ${list.map((e: any) => html`<div class="item">
+        <div class="top"><div class="grow"><b>${when(e.created_at)}</b>
+          <span class="small muted"> · ${e.sft ?? 0} esempi · ${e.eval ?? 0} prova · ${e.dpo ?? 0} coppie</span></div>
+          <hxk-badge tone=${e.masked ? 'info' : 'warning'}>${e.masked ? 'oscurato' : 'in chiaro'}</hxk-badge>
+          <hxk-button size="sm" variant="ghost" icon="download" @click=${() => this.download(e.id)}>Scarica</hxk-button></div>
+      </div>`)}
+    </hxk-card>`;
+  }
+
+  private renderTraces() {
+    const t = this.traces;
+    if (!t) return html`<hxk-card heading="Dataset di allenamento"><hxk-state kind="error" text="Archivio non raggiungibile"></hxk-state></hxk-card>`;
+    return html`<hxk-card heading="Dataset di allenamento" subtitle="I tuoi scambi con l'assistente, salvati solo qui">
+      <hxk-stat .items=${[
+        { label: 'Scambi salvati', value: t.traces ?? 0 },
+        { label: 'Ultimi 7 giorni', value: t.traces_7d ?? 0 },
+        { label: 'Segnali', value: t.signals ?? 0 },
+      ]}></hxk-stat>
+      <p class="note">Ultimo ${when(t.last_at)} · tenuti ${t.keep_days} giorni. Una conversazione esclusa dalla cronologia
+        («Non usare per l'allenamento») o cancellata non resta qui.</p>
+    </hxk-card>`;
+  }
+
+  private renderReview() {
+    const r = this.review;
+    if (!r) return nothing;
+    const items = r.items || [];
+    return html`<hxk-card heading="Da rivedere" subtitle="Correzioni della notte su cui il revisore non è sicuro">
+      ${items.length ? items.map((x: any) => html`<div class="item">
+        <div class="top"><div class="grow small muted">${when(x.at)}${x.reasons?.length ? ` · regole ${x.reasons.join(', ')}` : ''}</div>
+          <hxk-badge tone=${x.needs_owner ? 'warning' : 'info'}>${x.needs_owner ? 'serve te' : pct(x.confidence)}</hxk-badge></div>
+        <div class="sample"><div><span class="muted">Tu:</span> ${x.user}</div>
+          <div class=${x.fixed ? 'was' : ''}><span class="muted">Hestia:</span> ${x.answer}</div>
+          ${x.fixed ? html`<div><span class="muted">Corretta:</span> ${x.fixed}</div>` : nothing}
+          ${x.remove?.length ? html`<div class="muted">Da togliere: ${x.remove.join(', ')}</div>` : nothing}</div>
+        ${this.editing === x.trace_id ? html`<textarea placeholder="La risposta giusta" .value=${this.draft}
+            @input=${(e: Event) => { this.draft = (e.target as HTMLTextAreaElement).value; }}></textarea>
+          <div class="row"><hxk-button variant="primary" ?loading=${this.busy === x.trace_id}
+              @click=${() => this.decide(x.trace_id, 'edit', this.draft)}>Salva</hxk-button>
+            <hxk-button variant="ghost" @click=${() => { this.editing = ''; }}>Annulla</hxk-button></div>`
+        : html`<div class="row">
+          ${x.needs_owner ? nothing : html`<hxk-button variant="primary" icon="check" ?loading=${this.busy === x.trace_id}
+            @click=${() => this.decide(x.trace_id, 'accept')}>Accetta</hxk-button>`}
+          <hxk-button variant="ghost" icon="edit" @click=${() => { this.editing = x.trace_id; this.draft = x.fixed || x.answer || ''; }}>Correggi io</hxk-button>
+          <hxk-button variant="ghost" icon="x" @click=${() => this.decide(x.trace_id, 'reject')}>Scarta</hxk-button></div>`}
+      </div>`) : html`<hxk-state kind="empty" text="Niente da rivedere."></hxk-state>`}
     </hxk-card>`;
   }
 
@@ -123,7 +229,7 @@ export class MetisImprovement extends HestiaElement {
     return html`<div class="page">
       <div class="head"><h1>Miglioramento</h1><span class="sub">Come Hestia impara dai tuoi voti</span><span class="grow"></span>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>Aggiorna</hxk-button></div>
-      ${this.renderInsights()}${this.renderDatasets()}${this.renderJobs()}
+      ${this.renderTraces()}${this.renderReview()}${this.renderExport()}${this.renderInsights()}${this.renderDatasets()}${this.renderJobs()}
     </div>`;
   }
 }

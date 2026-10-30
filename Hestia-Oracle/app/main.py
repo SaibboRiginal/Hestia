@@ -12,7 +12,8 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
-from core.services import chat_sessions
+from core.services import assistant_profile, chat_sessions
+from core.services import turn_trace
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -108,6 +109,22 @@ _oracle_mcp_tools = [
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memoria",
                 telegram={"section": "Note e preferenze", "primary": 2}),
+    # ── Hestia inside another AI (docs/work/2026-10-30-hestia-in-claude) ────
+    MCPTool(
+        name="assistant_profile",
+        description=("Hestia's persona, the user's tone and instructions, and what Hestia remembers about the "
+                     "user, as one block to follow when the user switches Hestia on inside another AI. Same pieces "
+                     "Hestia uses itself; `revision` changes when any of them changes."),
+        parameters={
+            "type": "object",
+            "properties": {
+                "client": {"type": "string", "description": "The AI asking: 'claude'"},
+            },
+        },
+        handler=lambda **kw: (True, assistant_profile.build(
+            engine._memory_service, client=str(kw.get("client", "") or "claude"))),
+        title="Profilo di Hestia", method="GET", path="/api/assistant/profile",
+        clients=["external"], response_mode="direct", telegram_visible=False),
     MCPTool(
         name="documents.search",
         description="Search through uploaded documents and files for relevant content.",
@@ -398,8 +415,18 @@ def _chat_route(*args, **kwargs):
     return engine._memory_service._route_archive(*args, **kwargs)
 
 
+def _forget_if_excluded(session_id: str, body: dict, out: Any) -> Any:
+    """«Non usare per l'allenamento» (docs/work/2026-10-30-dataset-allenamento): Metis drops the saved turns."""
+    if str(body.get("training_off")).lower() in ("1", "true", "sì", "si", "yes"):
+        sid = str(session_id or (out.get("session_id") if isinstance(out, dict) else "") or "")
+        turn_trace.forget_session(engine._hub, sid)
+    return out
+
+
 def _chat_tool(fn, **kwargs):
     try:
+        if fn is chat_sessions.tool_tag:
+            return _forget_if_excluded(kwargs.get("session_id", ""), kwargs, fn(_chat_route, **kwargs))
         return fn(_chat_route, **kwargs)
     except chat_sessions.ChatSessionsError as exc:
         return {"error": exc.detail, "status": exc.status}
@@ -417,8 +444,9 @@ def _chats(fn, *args, **kwargs):
 @app.post("/api/chats/tag")
 def chats_tag(body: dict = Body(...)):
     """``chat_tag`` over REST (same handler)."""
-    return _chats(chat_sessions.tool_tag, **{k: v for k, v in body.items() if k in (
-        "tags", "remove", "title", "pinned", "color", "session_id", "replace")})
+    out = _chats(chat_sessions.tool_tag, **{k: v for k, v in body.items() if k in (
+        "tags", "remove", "title", "pinned", "color", "session_id", "replace", "training_off")})
+    return _forget_if_excluded(body.get("session_id", ""), body, out)
 
 
 @app.get("/api/chats")
@@ -448,8 +476,9 @@ def ui_chats_messages(session_id: str, limit: int = 200):
 
 @app.put("/api/ui/chats/{session_id}")
 def ui_chats_meta(session_id: str, body: dict = Body(...)):
-    """Title, tags (`tags` replace, `add_tags`, `remove_tags`), pinned; returns the previous meta as `before`."""
-    return _chats(chat_sessions.set_meta, session_id, {**body, "client": "webui"})
+    """Title, tags (`tags` replace, `add_tags`, `remove_tags`), pinned, training_off; returns the previous meta as
+    `before`."""
+    return _forget_if_excluded(session_id, body, _chats(chat_sessions.set_meta, session_id, {**body, "client": "webui"}))
 
 
 @app.get("/api/ui/documents")
@@ -906,6 +935,9 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if _no_usable_model():
             logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
             return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
+        if turn_origin["level"] == "utente" and not req.queued:
+            # A written or spoken message answers the assistant's open question (it is in the history).
+            engine.close_open_questions(current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
@@ -1326,6 +1358,12 @@ def memory_recall_endpoint(query: str = ""):
     if not ok:
         raise HTTPException(status_code=502, detail="memory recall failed")
     return {"count": len(rows), "memories": rows}
+
+
+@app.get("/api/assistant/profile")
+def assistant_profile_endpoint(client: str = "claude"):
+    """``assistant_profile``: the block another AI follows when the user switches Hestia on inside it."""
+    return assistant_profile.build(engine._memory_service, client=client)
 
 
 @app.get("/api/documents/search")
