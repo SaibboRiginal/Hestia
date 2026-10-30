@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat (Marko, 2026-10-30: «messo chiave e abilitato l'host… i test non deterministici dell'AI ci sono ancora?») |
 | **Status** | Implemented (round 2: behaviour) |
 
@@ -79,3 +79,19 @@ conversations (memory, 11 modules, modes, MCP doors). Found and fixed, each with
     week's activities.
 Not testable in this cloud session: voice (huggingface.co blocked by the environment network), weather
 (open-meteo blocked), Google Calendar and Telegram (need Marko's accounts).
+
+## 7. Round 3 — small models (v1.2)
+Marko (2026-10-30): he may run a local 9B model; test again with weaker models, models moving on when one is out of
+quota, with cases like his own use. Chain on the bench: Gemma 4 26B-A4B → Gemma 4 31B → three Flash-Lite.
+- Fallback between models verified: per-minute and per-day 429 move to the next step; all out → «no model» (503).
+22. Every turn sent every tool of every module (~250 tools, ~30k tokens): Gemma's per-minute token quota refused it
+    and a local model with `num_ctx` 8192 would lose the start of the prompt (rules, tools). A turn the classifier is
+    sure about now gets only its domains' tools + `_ALWAYS_TOOLS` (53 tools, ~9.5k tokens for the agenda).
+    Marko asked to choose (decision card): recommended = for every model.
+23. «Mia mamma si chiama Laura» → person card and also a memory: when a module write stored it, no memory unless the
+    user says «ricorda».
+12 cases of his own use with Gemma (agenda, gym sets, expenses, houses, low mood, reminder in 2 hours, mother,
+recall, shorter answers, new command, «spegni tutto», thanks): right tool and honest answers in all of them.
+Open: the agenda prompt is still ~9.5k tokens, over the 8192 default context of Ollama (raise `num_ctx` to 16384 on
+the PC, or slim the agenda tools).
+
