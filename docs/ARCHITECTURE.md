@@ -317,6 +317,13 @@ Hestia's one MCP server (`POST /mcp`, standard MCP over Streamable HTTP).
   consent card of *Accessi AI* (behind the WebUI login). A grant is an access of kind `oauth` in the same list.
 - Outbound (third-party MCP servers Hestia may use): credentials are Hecate's, in its `.env` only
   (`HECATE_MCP_<NAME>_URL/_KEY`); Hecate lists names and status, never a value.
+- **Hestia inside another AI** (2026-10-30): the repo is also a Claude Code plugin marketplace
+  (`.claude-plugin/marketplace.json` → `claude-plugins/hestia`, `claude-plugins/hestia-dev`). The `hestia` mod is a
+  client like Telegram: a band above Claude's prompt with modes *off · strumenti · Hestia* (default off: no network,
+  Hestia's tools refused, nothing in the prompt). In *Hestia* mode it adds one session section with Oracle's
+  `assistant_profile` (persona, the user's instructions, memory digest, capped by `oracle.chat.profile_max_tokens`),
+  so persona and memory have one source: Oracle. It reaches Hestia only through this MCP door with OAuth; what Claude
+  learns goes back with `memory_note`. The mod holds no Hestia logic and never calls a model of its own.
 
 ---
 

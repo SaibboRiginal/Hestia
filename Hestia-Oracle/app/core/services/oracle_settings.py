@@ -83,6 +83,7 @@ _TONE_SENTENCE = {"warm": "Tono: caldo e amichevole.", "neutral": "",
                   "direct": "Tono: diretto, essenziale, niente preamboli.", "formal": "Tono: formale."}
 TONE, INSTRUCTIONS = "oracle.chat.tone", "oracle.chat.instructions"
 MODE = "oracle.chat.mode"
+PROFILE_MAX_TOKENS = "oracle.chat.profile_max_tokens"
 # Conversation modes (process, not brain): quick = one call no tools · auto = classifier decides ·
 # thinking = always agent loop + model reasoning · cot = deep reasoning, more turns, step-by-step plan.
 MODES = [("auto", "Auto"), ("quick", "Rapida"), ("thinking", "Pensata"), ("cot", "CoT · passo passo")]
@@ -109,6 +110,10 @@ OPENAI_CACHE_PROMPT = "oracle.provider.openai.cache_prompt"
 _KEEP_ALIVE = [("5m", "5 minuti"), ("30m", "30 minuti"), ("2h", "2 ore"), ("always", "Sempre")]
 
 _CONTEXT = [
+    setting(PROFILE_MAX_TOKENS, "Hestia in altre AI · spazio massimo", "int", 1500, group="Contesto", order=20,
+            min=300, max=8000, unit="token",
+            help="Quanto pesa al massimo la personalità di Hestia (con istruzioni e ricordi) quando la attivi "
+                 "dentro un'altra AI, per esempio Claude."),
     setting(NUM_CTX, "Ollama · finestra di contesto", "int", 8192, group="Contesto", min=2048, max=262144,
             unit="token", order=0,
             help="Token che il modello locale tiene in memoria per ogni richiesta. Più alto = ricorda di più "

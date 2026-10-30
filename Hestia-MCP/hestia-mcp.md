@@ -51,8 +51,13 @@ the WebUI uses `HubClient.McpListToolsAsync` / `McpCallToolAsync`.
   (`/api/dispatch/send` with `metadata.quiet`), no push.
 - Tools open to external AIs today: `forge_tasks`, `forge_task`, `forge_task_diff`, `forge_dossier`, `forge_status`,
   `forge_develop`, `forge_task_note`, `forge_submit_branch` (Hephaestus), `system_status`, `system_log` (Argus),
-  `settings_search`, `settings_get`, `settings_propose` (Themis), `memory_note` (write), `memory_recall` (Oracle:
+  `settings_search`, `settings_get`, `settings_propose` (Themis), `memory_note` (write), `memory_recall`, `assistant_profile` (Oracle:
   conversations with an external AI end up in Hestia's memory, page Memoria). Approve, reject, merge and rollback never leave.
+
+**Hestia dentro Claude Code** (2026-10-30, `claude-plugins/hestia`, dossier `docs/work/2026-10-30-hestia-in-claude`):
+the *Accessi AI* page shows a card with the install line (`/plugin install hestia --marketplace SaibboRiginal/Hestia`)
+and the address to give it. The mod connects to this same door with OAuth (no token), so its grant is an `oauth`
+access in the list like claude.ai's.
 
 ## OAuth 2.1 (claude.ai web/mobile, ChatGPT)
 

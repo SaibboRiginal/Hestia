@@ -79,6 +79,15 @@ writes show up silently in Notifiche; revoke or renew a token in one tap.
 consent card ("Collegare Claude?") where you pick read or read-write, the tools and the expiry; *Consenti* sends you
 back to the app. The connection shows up in the same list (badge *OAuth*): revoke it there whenever you want.
 
+**Hestia inside Claude Code (plugin).** The repo is a Claude Code marketplace. In a terminal session of Claude Code:
+`/plugin install hestia --marketplace SaibboRiginal/Hestia` (desktop app: **+** → Plugins → Add marketplace
+`SaibboRiginal/Hestia` → Add plugin). Give it your public address (named tunnel below). A band appears above the
+prompt with *off · strumenti · Hestia*: off by default (nothing reaches Hestia, no context used); *Hestia* makes
+Claude speak as Hestia with your tone, instructions and memory, read live from Hestia; *Ricorda* saves what Claude
+learned into Hestia's memory. The first switch-on asks consent on *Accessi AI*. Details: `claude-plugins/hestia/README.md`.
+Working on Hestia's code with Claude Code? `hestia-dev` from the same marketplace adds the work protocol as skills and
+guards on `.env` and `data/`.
+
 **Fixed address (named tunnel).** The quick tunnel of `cloudflare-tunnel.bat` changes URL at every start; connectors
 need a fixed one. Once, with a free Cloudflare account and a domain on it:
 

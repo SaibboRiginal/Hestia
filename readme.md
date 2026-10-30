@@ -184,6 +184,7 @@ On Windows `up-all.bat --build` does both.
 | <img src="docs/assets/icons/webapp.svg" width="32" height="32" alt=""> | **Web app** | <http://localhost:19015>: chat, a page for every area, calendar, settings, development tasks. Opens inside Telegram too. |
 | <img src="docs/assets/icons/voice.svg" width="32" height="32" alt=""> | **Voice** | Speak in either client, listen to any answer, or use the live mode and talk back and forth. |
 | <img src="docs/assets/icons/external.svg" width="32" height="32" alt=""> | **External AIs** | Claude, ChatGPT, Cursor and other MCP clients can connect with a token you create in the web app. |
+| <img src="claude-plugins/hestia/.claude-plugin/icon.png" width="32" height="32" alt=""> | **Inside Claude** | A Claude Code plugin: a band above the prompt turns Claude into Hestia only when you want, with her personality and your memory. `/plugin install hestia --marketplace SaibboRiginal/Hestia` |
 | <img src="docs/assets/icons/api.svg" width="32" height="32" alt=""> | **API** | Swagger for every service at <http://localhost:19000>. |
 
 Everything beyond the first start (cloud models, Google Calendar and Gmail, Drive backup, Home Assistant, remote
