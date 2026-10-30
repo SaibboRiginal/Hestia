@@ -86,3 +86,27 @@ def test_review_proposes_and_changes_nothing_until_applied():
     assert learning.apply(pid)[0] == 409
     assert pid not in {p["id"] for p in learning.pending_proposals()}
     assert any(e["action"] == "retire" and e["memory_id"] == 2 for e in learning.log())
+
+
+# ── Telegram parity: memory clean-ups and commitments are tools too (docs/work/2026-10-30-cose-aperte) ──
+@pytest.mark.unit
+def test_memory_tools_point_at_real_routes():
+    import re
+
+    from core import memory_api
+
+    routes = {(m, r.path) for r in memory_api.router.routes for m in r.methods}
+    tools = {t.name: t for t in memory_api.mcp_tools()}
+    for name in ("memory_proposals", "memory_proposal_apply", "memory_proposal_dismiss"):
+        t = tools[name]
+        assert (t.method, t.path) in routes, name
+        assert all(p in (t.parameters.get("properties") or {}) for p in re.findall(r"\{(\w+)\}", t.path))
+
+
+@pytest.mark.unit
+def test_commitment_tools_declared():
+    from pathlib import Path
+
+    src = (Path(__file__).parents[1] / "app" / "main.py").read_text(encoding="utf-8")
+    assert 'name="athena_commitments"' in src and 'path="/api/athena/commitments"' in src
+    assert 'path="/api/athena/commitments/{brief_id}/resolve"' in src
