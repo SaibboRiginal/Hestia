@@ -18,7 +18,7 @@
 - [x] MCP doors: external (token, 18 tools, all reads ok) and internal (252 tools, all reads ok but Garmin not linked)
 - [x] Fixes 11–21 with regression tests; docs (oracle, shared, demeter, hercules)
 - [x] Recheck on the bench after the fixes, precheck, PR #54 green and merged
-- [ ] Voice: needs huggingface.co allowed in the cloud environment (asked Marko)
+- [x] Voice: needs huggingface.co allowed in the cloud environment (asked Marko) — dropped 2026-10-30 (Marko: open items done or dropped)
 
 ## Round 3 (SPEC v1.2) — small models
 - [x] Chain Gemma 4 → Flash-Lite on the bench; fallback on quota verified
@@ -34,5 +34,5 @@
 ## Voice (2026-10-30, after Marko allowed huggingface.co)
 - [x] Echo /speak with kokoro: 2.5 s ogg, ok
 - [x] Bug: piped WAV header 0xFFFFFFFF → duration 134217 s → «audio troppo lungo» on every transcription; fixed + test
-- [ ] Transcription round trip: model files come from *.hf.co (cas-bridge/xethub), still blocked; containers resolve
+- [x] Transcription round trip: model files come from *.hf.co (cas-bridge/xethub), still blocked; containers resolve — dropped 2026-10-30 (Marko: open items done or dropped)
   only domains allowed at session start, so download on the host through the proxy and copy into the echo volume

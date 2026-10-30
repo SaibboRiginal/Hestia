@@ -6,4 +6,4 @@
 - [x] `precheck.py` and CLAUDE.md step 7
 - [x] Workflows: concurrency, timeouts, pip cache and retries, single red step, all gates report
 - [x] Docs: ARCHITECTURE governance, TESTING, root CHANGELOG
-- [ ] PR green and merged
+- [x] PR green and merged — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)

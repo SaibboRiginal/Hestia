@@ -8,5 +8,5 @@
       were already tools; added `memory_proposals` / `memory_proposal_apply` / `memory_proposal_dismiss` and
       `athena_commitments` / `athena_commitment_resolve` (check_telegram: every tool lands in an area)
 - [x] 5a Wardrobe piece from a chat photo: `attachment_handlers` on Wardrobe → `/api/wardrobe/attachments`, saved with photo, tests
-- [ ] 2a Metis datasets persisted
-- [ ] Tidy stale unchecked boxes in older dossiers (PRs already merged)
+- [x] 2a Metis datasets persisted: `$METIS_DATA_DIR/datasets/<name>.json`, read back on first use, test
+- [x] Tidy stale unchecked boxes in older dossiers: merged PRs ticked, dropped items marked dropped; what is left there is Marko's real run

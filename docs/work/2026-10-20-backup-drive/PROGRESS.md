@@ -12,7 +12,7 @@
 - [x] P5 docs (swagger, Hecate, Shared, ARCHITECTURE, AI-GUIDE, README, TESTING, root CHANGELOG) + bench run: whole stack
       healthy, backup with Drive away kept locally, CLI `restore --file` rolled back a record written after the backup,
       new epoch, `undo` and redo OK (2026-10-22)
-- [ ] PR, CI green, merge
+- [x] PR, CI green, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Marko: one-time setup (SPEC §9) and real run
 
 ## Notes

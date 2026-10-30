@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat (Marko, thread «README chiaro», 2026-10-30) | in progress |
+| 1.0 | user via external chat (Marko, thread «README chiaro», 2026-10-30) | done (PR #69) |
 
 ## Goal
 Marko: no roadmap anywhere («non ce ne facciamo niente»). What is still open in the code is either done now or

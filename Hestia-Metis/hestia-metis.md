@@ -23,6 +23,8 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 - Deduplicates near-identical user messages
 - Balances across quality tiers and domains
 - Exports as ChatML, Alpaca, or ShareGPT JSONL for LoRA training
+- Built datasets are saved as `$METIS_DATA_DIR/datasets/<name>.json` (mounted `Hestia-Metis/data`) and read back after
+  a restart (`docs/work/2026-10-30-cose-aperte`)
 
 ### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-dataset-allenamento`)
 Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.g. online). Phase **D1 «Registra»**:
