@@ -134,6 +134,9 @@ the others. Curious about what is under the hood? See the [architecture](docs/AR
 **You need** Docker with Compose v2, Python 3, [Ollama](https://ollama.com) on the host and a Telegram bot token
 from [@BotFather](https://t.me/BotFather) (plus your numeric Telegram id, e.g. from [@userinfobot](https://t.me/userinfobot)).
 
+**Hardware.** Reference setup: an NVIDIA RTX 4080 SUPER (16 GB VRAM) and 64 GB RAM running a local model of about 9B
+parameters. A smaller graphics card works with a smaller model; with cloud models only, no graphics card is needed.
+
 <img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Clone and create the env files**
 
 ```bash
