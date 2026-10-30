@@ -21,7 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.hub_client import HubClient
 from .core import dataset_builder
 from .core.insights import build_insights
-from .core.metis_settings import settings as metis_settings
+from .core.metis_settings import settings as metis_settings, traces_keep_days
+from .core.traces import Traces
 from .core.usage import CLIENTS, IDEAS_USE, Usage
 
 # ── Shared imports ────────────────────────────────────────────────────────────
@@ -91,6 +92,8 @@ presence = PresenceClient("metis", _HUB_API_URL)
 # Taps live in Archive ``metis-store`` (Hub-routed mirror); the suggestion engine is core/usage.py.
 usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
+# Training dataset (docs/work/2026-10-30-dataset-allenamento): chat turn traces in Archive ``dataset-store``.
+traces = Traces(usage_store.hub, keep_days=traces_keep_days)
 # Hours the assistant writes fresh «Adesso» ideas: only the seed of agenda jobs, the user moves them in the agenda.
 IDEAS_AT = ("07:00", "12:30", "18:00")
 _DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
@@ -232,8 +235,47 @@ def metis_adesso_refresh(body: dict | None = None):
     clients = [str((body or {}).get("client"))] if (body or {}).get("client") else ["telegram", "webui"]
     out = {c: usage.refresh_ideas(c) for c in clients if c in CLIENTS}
     out["pruned"] = usage.prune()
+    try:
+        out["pruned_traces"] = traces.prune()
+    except Exception as exc:  # noqa: BLE001 — the next run retries
+        logger.warning("[🔄] event=traces_prune_failed error=%s", exc)
     logger.info("event=metis_adesso_refresh clients=%s pruned=%s", ",".join(clients), out["pruned"])
     return out
+
+
+def _traces_call(fn, *args):
+    try:
+        return fn(*args)
+    except Invalid:
+        raise
+    except Exception as exc:  # noqa: BLE001 — Archive away
+        from fastapi import HTTPException
+        logger.warning("[🔄] event=traces_archive_failed fn=%s error=%s", fn.__name__, str(exc)[:200])
+        raise HTTPException(status_code=503, detail="archivio non raggiungibile, riprova")
+
+
+@app.post("/api/metis/traces")
+def metis_traces_add(body: dict):
+    """Oracle pushes one finished chat turn (what the model saw and did) for the training dataset."""
+    return _traces_call(traces.receive, body)
+
+
+@app.delete("/api/metis/traces")
+def metis_traces_forget(session_id: str = ""):
+    """The owner deleted a conversation or excluded it from training: its traces and signals go."""
+    return _traces_call(traces.forget_session, session_id)
+
+
+@app.get("/api/metis/traces/status")
+def metis_traces_status():
+    """How many turns are saved for the dataset (total, last 7 days), signals, last one."""
+    return _traces_call(traces.status)
+
+
+@app.get("/api/metis/traces/recent")
+def metis_traces_recent(limit: int = 20):
+    """Newest saved turns, short (no prompts, no tool results)."""
+    return {"items": _traces_call(traces.recent, limit)}
 
 
 @app.get("/api/metis/scopri")

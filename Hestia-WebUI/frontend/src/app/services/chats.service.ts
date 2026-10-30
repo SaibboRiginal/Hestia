@@ -8,6 +8,8 @@ export interface ChatTag { name: string; color: string; }
 export interface ChatSummary {
   session_id: string; title: string; first_at: string | null; last_at: string | null; messages: number;
   tags: ChatTag[]; pinned: boolean;
+  /** «Non usare per l'allenamento»: no turn of it goes in the training dataset. */
+  training_off?: boolean;
 }
 export interface ChatQuery { q?: string; tag?: string; since?: string; until?: string; limit?: number; offset?: number; }
 
@@ -53,7 +55,7 @@ export class ChatsService {
     if (r.ok) this.tags.set(r.data?.items ?? []);
   }
 
-  async setMeta(sessionId: string, body: { title?: string; tags?: ChatTag[]; add_tags?: ChatTag[]; remove_tags?: string[]; pinned?: boolean }) {
+  async setMeta(sessionId: string, body: { title?: string; tags?: ChatTag[]; add_tags?: ChatTag[]; remove_tags?: string[]; pinned?: boolean; training_off?: boolean }) {
     const r = await this.plugins.call<ChatSummary & { before: Partial<ChatSummary> }>('oracle', 'PUT', `/api/ui/chats/${encodeURIComponent(sessionId)}`, { body });
     if (r.ok) { void this.refreshRecent(); void this.loadTags(); }
     return r;

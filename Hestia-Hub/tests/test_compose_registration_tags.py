@@ -99,7 +99,7 @@ def test_echo_default_tags_pass_hub_validation():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("module", ["Apollo", "Aphrodite", "Lares", "Hera", "Demeter", "Calliope", "Kairos"])
+@pytest.mark.parametrize("module", ["Apollo", "Aphrodite", "Lares", "Hera", "Demeter", "Calliope", "Kairos", "Psyche"])
 def test_module_kit_registrations_pass_hub_validation(module):
     """W5: the modules built on hestia_common.module_kit register with tags module,<domain>[,coach]."""
     source = (_ROOT / f"Hestia-{module}" / "app" / "main.py").read_text(encoding="utf-8")

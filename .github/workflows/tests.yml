@@ -49,6 +49,7 @@ jobs:
           - Demeter
           - Calliope
           - Kairos
+          - Psyche
           - Metis
           - MCP
 

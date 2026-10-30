@@ -53,6 +53,10 @@ const PAGE = 30;
                 <button class="sw" [class.on]="color() === k" [style.background]="css(k)" (click)="color.set(k)" [attr.aria-label]="k"></button> }</div>
               @if (c.tags.length) { <div class="ct">@for (t of c.tags; track t.name) {
                 <button class="chip rm" [style.--c]="css(t.color)" (click)="dropTag(c, t)" [attr.title]="'Togli ' + t.name"><i></i>{{ t.name }}<hx-icon name="x" [size]="11" /></button> }</div> }
+              <label class="train" title="Le conversazioni restano solo sul tuo computer; quelle escluse non entrano nel dataset di allenamento.">
+                <input type="checkbox" [checked]="!!c.training_off" (change)="trainingOff(c, $any($event.target).checked)">
+                <hx-icon name="eye-off" [size]="13" /> Non usare per l'allenamento
+              </label>
             </div>
           }
         } @empty {
@@ -89,6 +93,7 @@ const PAGE = 30;
     @media (hover: none) { .mini { opacity: .7; } }
     .ed { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 10px; border-bottom: 1px solid var(--border); }
     .ed .row { display: flex; gap: 6px; } .ed .row input { flex: 1; min-width: 0; }
+    .train { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); cursor: pointer; }
     .colors { display: flex; gap: 5px; } .sw { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; }
     .sw.on { border-color: var(--text); }
     .none { text-align: center; color: var(--text-3); font-size: 13px; padding: 18px 0; display: grid; place-items: center; }
@@ -153,10 +158,11 @@ export class ChatHistoryComponent implements OnInit {
   private async save(c: ChatSummary, body: Parameters<ChatsService['setMeta']>[1]): Promise<void> {
     const r = await this.chats.setMeta(c.session_id, body);
     if (!r.ok) { this.toast.error('Non salvato'); return; }
-    this.items.update(x => x.map(i => i.session_id === c.session_id ? { ...i, title: r.data.title || i.title, tags: r.data.tags, pinned: r.data.pinned } : i));
+    this.items.update(x => x.map(i => i.session_id === c.session_id ? { ...i, title: r.data.title || i.title, tags: r.data.tags, pinned: r.data.pinned, training_off: r.data.training_off } : i));
   }
 
   pin(c: ChatSummary) { void this.save(c, { pinned: !c.pinned }); }
+  trainingOff(c: ChatSummary, off: boolean) { void this.save(c, { training_off: off }); }
   rename(c: ChatSummary, title: string) { if (title.trim() && title.trim() !== c.title) void this.save(c, { title: title.trim() }); }
   addTag(c: ChatSummary, name: string, color: string) { if (name.trim()) void this.save(c, { add_tags: [{ name: name.trim(), color }] }); }
   dropTag(c: ChatSummary, t: ChatTag) { void this.save(c, { remove_tags: [t.name] }); }

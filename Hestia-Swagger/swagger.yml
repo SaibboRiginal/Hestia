@@ -31,6 +31,7 @@ info:
     | Demeter   | 19026 |
     | Calliope  | 19027 |
     | Kairos    | 19028 |
+    | Psyche    | 19029 |
   version: 1.0.0
 
 servers:
@@ -122,6 +123,8 @@ tags:
     description: Documents — HTML draft → PDF / Word / Excel with three themes and a final check; files in Archive blobs
   - name: Kairos
     description: Deadlines — bills, insurance, car tax…, recurrence, advice, calendar mirror, mail proposals, daily notices
+  - name: Psyche
+    description: Mood («Umore») — check-ins (mood, energy, stress, labels, causes), quiet capture from chat by Oracle, trend and insights, signals for the reflection, evening check-in
   - name: Archive — Apollo store
     description: Same (kind,id) last-write-wins records and cursor, for Apollo only
   - name: Archive — Aphrodite store
@@ -136,6 +139,8 @@ tags:
     description: Same (kind,id) last-write-wins records and cursor, for Calliope only
   - name: Archive — Kairos store
     description: Same (kind,id) last-write-wins records and cursor, for Kairos only
+  - name: Archive — Psyche store
+    description: Same (kind,id) last-write-wins records and cursor, for Psyche only
   - name: Archive — Metis store
     description: Same (kind,id) last-write-wins records and cursor, for the Metis usage log only
   - name: Archive — Backup
@@ -4540,7 +4545,7 @@ paths:
   /oracle/api/ui/chats/{session_id}:
     put:
       tags: [Oracle]
-      summary: Title, tags, pinned of a conversation (real path /api/ui/chats/{id}; client webui)
+      summary: "Title, tags, pinned, training_off of a conversation (real path /api/ui/chats/{id}; client webui; training_off=true also drops its saved turns in Metis)"
       servers:
         - url: http://localhost:19004
       parameters:
@@ -4556,7 +4561,7 @@ paths:
   /oracle/api/chats/tag:
     post:
       tags: [Oracle]
-      summary: Tool chat_tag over REST (tags, remove, title, pinned, color, session_id, replace)
+      summary: Tool chat_tag over REST (tags, remove, title, pinned, training_off, color, session_id, replace)
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -4762,9 +4767,18 @@ paths:
         "200": {description: "{items: [{name, color, count}], colors}"}
 
   /api/chat/sessions/{session_id}/meta:
+    get:
+      tags: [Archive]
+      summary: Title, tags, pinned, training_off of one conversation (defaults when none)
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{session_id, title, tags, pinned, training_off}"}
     put:
       tags: [Archive]
-      summary: Title, tags (replace / add / remove), pinned of a conversation; returns the previous meta as before
+      summary: Title, tags (replace / add / remove), pinned, training_off of a conversation; returns the previous meta as before
       servers:
         - url: http://localhost:19002
       parameters:
@@ -4781,9 +4795,10 @@ paths:
                 add_tags: {type: array, items: {type: object}}
                 remove_tags: {type: array, items: {type: string}}
                 pinned: {type: boolean}
+                training_off: {type: boolean, description: "true = never use this conversation for the training dataset"}
                 client: {type: string}
       responses:
-        "200": {description: "{session_id, title, tags, pinned, before}"}
+        "200": {description: "{session_id, title, tags, pinned, training_off, before}"}
 
   /api/agenda:
     get:
@@ -8096,6 +8111,54 @@ paths:
         - {name: days, in: query, schema: {type: integer, default: 30}}
       responses:
         "200": {description: "{days, taps, by_client{}, top[{tool, uses}]}"}
+
+  /api/metis/traces:
+    post:
+      tags: [Metis]
+      summary: "Oracle pushes one finished chat turn for the training dataset (docs/work/2026-10-30-dataset-allenamento)"
+      description: "Body {trace_id, session_id, client, at, route, mode, use_case, model, provider, origin, domains, system,
+        history, user, answer, tools[{name, description, parameters}], steps[{turn, tool, params, ok, writes, result}],
+        total_ms, usage}. Not stored when the conversation is training_off; adds signals rephrase/correction/tool_failed."
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{stored, trace_id, signals[]} or {stored: false, reason: training_off}"}
+        "422": {description: "trace_id, session_id, user, answer missing"}
+        "503": {description: "Archive not reachable"}
+    delete:
+      tags: [Metis]
+      summary: "Drop the saved turns and signals of one conversation (deleted or excluded from training)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: session_id, in: query, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{removed}"}
+
+  /api/metis/traces/status:
+    get:
+      tags: [Metis]
+      summary: "Saved turns for the dataset: total, last 7 days, signals, toolsets, last one, keep_days"
+      servers:
+        - url: http://localhost:19014
+      responses:
+        "200": {description: "{traces, traces_7d, signals, toolsets, last_at, keep_days}"}
+
+  /api/metis/traces/recent:
+    get:
+      tags: [Metis]
+      summary: "Newest saved turns, short (no prompts, no tool results)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 20}}
+      responses:
+        "200": {description: "{items[{trace_id, session_id, at, route, model, client, user, answer, tools[]}]}"}
 
   /api/metis/adesso:
     get:
@@ -13657,6 +13720,157 @@ paths:
       responses:
         "200": {description: OK}
 
+  # ── Psyche (port 19029) — tools also as REST under /api/mood/tools/<name>; /mcp; /api/module/context; recap/transfer/settings as every module
+
+  /api/mood:
+    get:
+      tags: [Psyche]
+      summary: "History of the last N days (per-day summaries, entries, stats)"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: integer, default: 30}}
+      responses:
+        "200": {description: OK}
+    post:
+      tags: [Psyche]
+      summary: "Add a check-in {mood 1-5, energy?, stress?, labels[], causes[], note, date?, source}"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/tap:
+    post:
+      tags: [Psyche]
+      summary: "One tap (Home quick action, widget): {mood}"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/today:
+    get:
+      tags: [Psyche]
+      summary: "Today's check-ins and summary"
+      servers:
+        - url: http://localhost:19029
+      responses:
+        "200": {description: OK}
+
+  /api/mood/history:
+    get:
+      tags: [Psyche]
+      summary: "Same as GET /api/mood"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: integer, default: 30}}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/insights:
+    get:
+      tags: [Psyche]
+      summary: "Trend and insights in plain sentences (deterministic)"
+      servers:
+        - url: http://localhost:19029
+      responses:
+        "200": {description: OK}
+
+  /api/mood/options:
+    get:
+      tags: [Psyche]
+      summary: "Labels, causes and level words"
+      servers:
+        - url: http://localhost:19029
+      responses:
+        "200": {description: OK}
+
+  /api/mood/capture:
+    post:
+      tags: [Psyche]
+      summary: "Oracle's quiet capture from chat (capability mood_capture_endpoint): no confirmation, merged within psyche.capture.merge_minutes"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/capture/undo:
+    post:
+      tags: [Psyche]
+      summary: "«Non segnarlo»: removes today's last chat capture"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/signals/run:
+    post:
+      tags: [Psyche]
+      summary: "Agenda job psyche.signals: reflection signals and weekly metrics"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/checkin:
+    post:
+      tags: [Psyche]
+      summary: "Agenda job psyche.checkin: evening question via Hermes when reminders are on and today has nothing"
+      servers:
+        - url: http://localhost:19029
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood/{mid}:
+    put:
+      tags: [Psyche]
+      summary: "Update a check-in"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: mid, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      tags: [Psyche]
+      summary: "Delete a check-in"
+      servers:
+        - url: http://localhost:19029
+      parameters:
+        - {name: mid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+
   /api/images-store/records:
     get:
       tags: [Archive — Apollo store]
@@ -13860,6 +14074,35 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/mood-store/records:
+    get:
+      tags: [Archive — Psyche store]
+      summary: "Psyche rows (kind mood, ref_id = date) by kind/ref/parent/at range/since_seq (Psyche only)"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Psyche store]
+      summary: "Upsert Psyche rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/mood-store/cursor:
+    get:
+      tags: [Archive — Psyche store]
+      summary: "Current cursor of the Psyche store"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+
   /api/metis-store/records:
     get:
       tags: [Archive — Metis store]
@@ -13877,6 +14120,47 @@ paths:
         content:
           application/json:
             schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/dataset-store/records:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Metis training dataset rows (kinds trace, toolset, signal) by kind/ref/parent/at range; big rows, always filtered"
+      servers:
+        - url: http://localhost:19002
+      responses:
+        "200": {description: OK}
+    put:
+      tags: [Archive — Metis store]
+      summary: "Upsert dataset rows {rows} (LWW)"
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+
+  /api/dataset-store/count:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Live rows of one kind (optionally from at_from); every module store has GET /count"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: kind, in: query, schema: {type: string}}
+        - {name: at_from, in: query, schema: {type: string, format: date-time}}
+      responses:
+        "200": {description: "{count}"}
+
+  /api/dataset-store/cursor:
+    get:
+      tags: [Archive — Metis store]
+      summary: "Current cursor of the dataset store"
+      servers:
+        - url: http://localhost:19002
       responses:
         "200": {description: OK}
 

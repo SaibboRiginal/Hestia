@@ -85,7 +85,9 @@ app.include_router(module_store.hera_router)      # Hera (people-store)
 app.include_router(module_store.demeter_router)   # Demeter (food-store)
 app.include_router(module_store.calliope_router)  # Calliope (office-store)
 app.include_router(module_store.kairos_router)    # Kairos (deadlines-store)
+app.include_router(module_store.psyche_router)    # Psyche (mood-store)
 app.include_router(module_store.metis_router)     # Metis (metis-store usage log)
+app.include_router(module_store.dataset_router)   # Metis (dataset-store: chat turn traces for training)
 app.include_router(module_store.signals_router)   # reflection signals (modules → Athena)
 
 # Backup to Google Drive, verification, rollback (docs/work/2026-10-20-backup-drive) + maintenance gate.

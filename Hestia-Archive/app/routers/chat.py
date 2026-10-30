@@ -60,7 +60,7 @@ def _clean_tags(raw) -> list[dict]:
 
 def _meta_out(m: Optional[models.ChatSessionMeta]) -> dict:
     return {"title": (m.title if m else None) or None, "tags": (m.tags if m else None) or [],
-            "pinned": bool(m.pinned) if m else False}
+            "pinned": bool(m.pinned) if m else False, "training_off": bool(m.training_off) if m else False}
 
 
 @router.get("/sessions/list")
@@ -120,9 +120,15 @@ def list_chat_tags(db: Session = Depends(database.get_db)):
     return {"items": sorted(counts.values(), key=lambda t: (-t["count"], t["name"] or "")), "colors": list(TAG_COLORS)}
 
 
+@router.get("/sessions/{session_id}/meta")
+def get_chat_session_meta(session_id: str, db: Session = Depends(database.get_db)):
+    """Title, tags, pinned, training_off of one conversation (defaults when it has none)."""
+    return {"session_id": session_id, **_meta_out(db.get(models.ChatSessionMeta, session_id))}
+
+
 @router.put("/sessions/{session_id}/meta")
 def set_chat_session_meta(session_id: str, body: dict = Body(...), db: Session = Depends(database.get_db)):
-    """Title, tags (replace, or ``add_tags`` / ``remove_tags``), pinned. Returns the meta and the previous one
+    """Title, tags (replace, or ``add_tags`` / ``remove_tags``), pinned, training_off. Returns the meta and the previous one
     (so a client can undo)."""
     if not session_id.strip():
         raise HTTPException(status_code=422, detail="session_id required")
@@ -144,6 +150,8 @@ def set_chat_session_meta(session_id: str, body: dict = Body(...), db: Session =
     m.tags = tags
     if "pinned" in body:
         m.pinned = bool(body.get("pinned"))
+    if "training_off" in body:
+        m.training_off = bool(body.get("training_off"))
     if body.get("client"):
         m.client = str(body["client"])[:20]
     m.updated_at = datetime.now(timezone.utc)

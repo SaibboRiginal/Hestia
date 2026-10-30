@@ -352,7 +352,8 @@ def _failed_writes(tool_log: list[dict]) -> list[str]:
     out: list[str] = []
     for e in tool_log:
         title = str(e.get("title") or e.get("tool") or "")
-        if e.get("writes") and not e.get("ok") and e["tool"] not in ok and title not in out:
+        if (e.get("writes") and not e.get("ok") and not e.get("refused") and e["tool"] not in ok
+                and title not in out):
             out.append(title)
     return out
 
@@ -382,6 +383,7 @@ def run_agent_loop(
     compact_fn: Callable[[], str | None] | None = None,
     guard_checker: Callable[[list[str]], str] | None = None,
     prior_actions: list[dict] | None = None,
+    trace_out: dict | None = None,
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
 
@@ -392,7 +394,8 @@ def run_agent_loop(
     *guard_checker*: light model check of the loop guard (``core.services.loop_guard``); None = a suspected loop
     stops at once. *prior_actions*: tool log entries already executed for this same user message by an earlier
     attempt (external agent that failed midway, Cindy 2): they go in the scratchpad as «già fatto» so the model
-    continues from there instead of redoing them.
+    continues from there instead of redoing them. *trace_out*: filled with the system prompt and the tool schemas
+    of this loop (training dataset, ``core.services.turn_trace``).
     """
     _cfg = _settings()
     resolved_max_turns = max_turns if max_turns is not None else _cfg.get_int(_cfg.MAX_TURNS, 1)
@@ -476,6 +479,9 @@ def run_agent_loop(
         system_prompt += prompt_config.optional_section(
             "CLIENT INSTRUCTIONS", client_instructions)
         logger.trace("event=agent_loop_client_instructions_injected len=%d", len(client_instructions or ""))
+
+    if trace_out is not None:
+        trace_out.update(system=system_prompt, tools=tools_manifest)
 
     # Scratchpad: ephemeral tool-call/result messages for this session turn only
     scratchpad: list[ScratchMessage] = []
@@ -829,6 +835,7 @@ def run_agent_loop(
                     "tool": tn,
                     "ok": ok,
                     "result_preview": result_trunc[:300],
+                    "result_text": result_trunc,      # what the model read (training dataset; not sent to clients)
                     "turn": turn,
                     "writes": bool(getattr(_tdef, "writes", False)),
                     "title": getattr(_tdef, "title", "") or tn,
@@ -847,6 +854,9 @@ def run_agent_loop(
                     # A write tool that changed nothing (a read call, a fact already known): no «Fatto».
                     "unchanged": bool(ok and isinstance(result_raw, dict)
                                       and (result_raw.get("unchanged") or result_raw.get("already_known"))),
+                    # Refused by the turn guards (turn_guards.py): the model was told why; not a failure
+                    # to show the user, nothing was tried.
+                    "refused": bool(not ok and str(result_raw or "").startswith("BLOCCATO")),
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the
@@ -927,6 +937,17 @@ def run_agent_loop(
                         for token in stream_fn(final_prompt):
                             final_tokens.append(token)
                         final_answer = "".join(final_tokens)
+                        if not final_answer.strip():
+                            # A small model sometimes streams nothing after a refused call (bench 2026-10-30):
+                            # one plain ask, then the turn's own text, never an empty reply.
+                            logger.warning("[🔄] event=agent_loop_empty_final turn=%d retry=plain", turn)
+                            try:
+                                final_answer = _TOOL_CALL_PATTERN.sub("", str(ask_fn(final_prompt) or "")).strip()
+                            except Exception as exc:
+                                logger.warning("[🔄] event=agent_loop_empty_final_retry_failed error=%s", exc)
+                                final_answer = ""
+                            final_answer = final_answer or clean
+                            final_tokens = [final_answer] if final_answer else []
                         logger.trace("event=agent_loop_streaming_done turn=%d token_count=%d "
                                     "final_len=%d answer_preview=%s",
                                     turn, len(final_tokens), len(final_answer),
