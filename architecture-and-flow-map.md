@@ -159,7 +159,8 @@ flowchart LR
 1. A file sent in chat (Telegram/WebUI) → Oracle `/api/chat/document`.
 2. Oracle checks modules' `attachment_handlers` (Hub capabilities: mime + words). Match → file stored as Archive blob
    (`owner_module=chat`) → `POST route/<module>/<path>` with the blob id → the module's `{handled, text}` is the reply.
-3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms.
+3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms;
+   photo with «aggiungi al guardaroba» → Wardrobe recognises and saves the piece with its photo.
 
 ### Self-development flow (Forge)
 1. User on Telegram: "aggiungi X" → Oracle (classifier: domain `system`) → tool `forge_develop` → Hub → Hephaestus.

@@ -9754,6 +9754,16 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/wardrobe/attachments:
+    post:
+      tags: [Wardrobe]
+      summary: "Photo sent in chat with «guardaroba» (Oracle attachment hand-off) → piece saved with the photo"
+      description: "Body {blob_id, filename?, mime?, message?, session_id?} → {handled, text, piece_id?}; not recognised → handled with a question, nothing saved"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
   /api/wardrobe/export:
     get:
       tags: [Wardrobe]
