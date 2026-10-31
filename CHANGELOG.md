@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-10-31
+- Hestia installs with one line (or a double-click on Windows): it checks the PC, installs what is missing (WSL2 and Docker Desktop on Windows, Docker on Linux, git, Ollama and the default models), downloads Hestia, creates its passwords, starts it, waits until every module answers and opens the browser; every step retries and has a plan B, a stop says in one sentence what to do, and running the same line again resumes, repairs or updates (after the WSL2 reboot it goes on by itself). Releases: a tag `vX.Y.Z` publishes ready-made images for PC and Raspberry, so an install downloads instead of building for half an hour. Next: guided setup in the browser, downloads page, satellites, «Aggiorna Hestia» → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
+
 ## 2026-10-30
 - Your training dataset can now be downloaded: on the Miglioramento page (or from Telegram) «Scarica oscurato» gives a zip of JSONL files ready for any trainer, online too (examples to imitate, corrected vs original pairs, a test set and a summary card) with the names of your people, e-mails, phones, IBAN and addresses replaced; «Scarica in chiaro» gives the same with the real data. Only the answers the night review kept or corrected, or that you fixed yourself, go in → `docs/work/2026-10-30-dataset-allenamento/` [ext-chat]
 - Voice tried for real on the cloud bench: Hestia's spoken answers work (2.5 s of natural Italian voice), and a bug that made every converted recording look endless («audio troppo lungo», so nothing could be transcribed) is fixed → `docs/work/2026-10-30-ai-vera-gemini/` [ext-chat]
