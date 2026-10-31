@@ -34,6 +34,12 @@ Shared library: `Hestia-Shared` (common logging, startup, and lifecycle utilitie
 
 ### Setup
 
+One line installs or repairs everything (prerequisites, `.env` with generated secrets, images, health): `install.ps1`
+/ `Installa-Hestia.cmd` on Windows, `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
+CI publishes every service image in `ghcr.io/saibboriginal/hestia` (`<service>-<version>`) and the installer pulls
+them through `docker-compose.images.yml`; without that override compose builds locally as always (development,
+Forge). Details: [docs/SETUP.md](SETUP.md#installer). By hand:
+
 ```bash
 docker network create hestia_net
 ```
