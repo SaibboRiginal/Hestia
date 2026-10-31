@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Hestia installer for Linux (main target) and macOS (only the simple path: Homebrew + Docker Desktop).
-# Written for bash 3.2 too (macOS): no mapfile, no ${var,,}, empty arrays expanded with ${a[@]+"${a[@]}"}.
+# Written for bash 3.2 too (macOS): no mapfile, no ${var,,}, empty arrays expanded with ${a[@]+"${a[@]}"}, and
+# ${VAR} in braces before a non-ASCII character (3.2 glues the first UTF-8 byte to the name).
 #
 #   curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | bash
 #   bash install.sh [--dir PATH] [--channel stabile|novita] [--update] [--uninstall [--purge]] [--dry-run] [--yes]
@@ -335,7 +336,7 @@ ensure_code() {
   elif [ -d "$HESTIA_DIR" ] && [ -n "$(ls -A "$HESTIA_DIR" 2>/dev/null)" ]; then
     fail "$HESTIA_DIR esiste e non è vuota. Scegli un'altra cartella con --dir."
   else
-    say "Scarico Hestia in $HESTIA_DIR…"
+    say "Scarico Hestia in ${HESTIA_DIR}…"
     if has git; then
       retry "Download di Hestia" run git clone --quiet "$HESTIA_REPO_URL" "$HESTIA_DIR" \
         || fail "non riesco a scaricare Hestia da GitHub. Controlla la connessione."
@@ -392,7 +393,7 @@ start_stack() {
   dk network inspect hestia_net >/dev/null 2>&1 || run "${DOCKER[@]}" network create hestia_net \
     || fail "non riesco a creare la rete Docker hestia_net."
   if [ -n "$VERSION_TAG" ]; then
-    say "Scarico i moduli pronti della versione $VERSION_TAG…"
+    say "Scarico i moduli pronti della versione ${VERSION_TAG}…"
     retry "Download dei moduli" run_quiet_compose pull --ignore-pull-failures \
       || note "Alcuni moduli non si sono scaricati: li costruisco qui."
   else
