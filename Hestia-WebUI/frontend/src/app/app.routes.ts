@@ -23,6 +23,7 @@ export const routes: Routes = [
       { path: 'documents', redirectTo: '/p/oracle/documenti' },
       { path: 'calendar', redirectTo: '/p/chronos/agenda' },
       { path: 'download', loadComponent: () => import('./features/downloads/downloads-page.component').then(m => m.DownloadsPageComponent), title: 'Download · Hestia' },
+      { path: 'macchine', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: 'Macchine · Hestia' },
       { path: 'sistema', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: 'Sistema · Hestia' },
       { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: 'Dashboard · Hestia' },
       { matcher: pluginPageMatcher, loadComponent: () => import('./features/plugins/plugin-page.component').then(m => m.PluginPageComponent), title: 'Hestia' },

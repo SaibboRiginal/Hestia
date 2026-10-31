@@ -179,6 +179,39 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None) ->
     return {"ok": True, "detail": text, "chains": chains}
 
 
+def machine() -> dict[str, Any]:
+    """Where the local models run now: ``{address, label}`` (empty address = this machine)."""
+    from urllib.parse import urlsplit
+    from core.services import llm_providers, oracle_settings
+    current = oracle_settings.settings.get(oracle_settings.PROVIDERS_KEY)
+    provs = current if isinstance(current, dict) and current else llm_providers.DEFAULT_PROVIDERS
+    entry = provs.get("ollama") or {}
+    return {"address": urlsplit(str(entry.get("url") or "")).hostname or "", "label": entry.get("label") or ""}
+
+
+def use_machine(address: str, name: str = "") -> dict[str, Any]:
+    """«Usa la sua scheda video» on the Macchine page: the local provider ``ollama`` points at a satellite's Ollama
+    (``http://<address>:11434``); empty address = back to this machine's own (infrastructure env)."""
+    import re
+    from core.services import llm_providers, oracle_settings
+    address = str(address or "").strip()
+    if address and not re.fullmatch(r"[A-Za-z0-9.-]{1,120}", address):
+        return {"ok": False, "detail": "Indirizzo non valido."}
+    current = oracle_settings.settings.get(oracle_settings.PROVIDERS_KEY)
+    provs = {k: dict(v) for k, v in (current if isinstance(current, dict) and current
+                                     else llm_providers.DEFAULT_PROVIDERS).items()}
+    entry = provs.get("ollama") or {"type": "ollama", "label": "Ollama (locale)", "url": ""}
+    entry["url"] = f"http://{address}:11434" if address else ""
+    entry["label"] = f"Ollama ({name or address})" if address else "Ollama (locale)"
+    provs["ollama"] = entry
+    if not oracle_settings.settings.put(oracle_settings.PROVIDERS_KEY, provs, actor="user",
+                                        reason=f"Macchine: modelli locali su {name or address or 'questa macchina'}"):
+        return {"ok": False, "detail": "Le impostazioni non hanno accettato la scelta."}
+    logger.info("event=llm_setup_machine address=%s", address or "local")
+    return {"ok": True, "detail": f"I modelli locali ora girano su {name or address}." if address
+            else "I modelli locali tornano su questa macchina."}
+
+
 # ── Download dei modelli (Ollama) — hestia_common.downloads, page «Download» ──────────────
 
 _downloads = None

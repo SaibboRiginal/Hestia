@@ -46,6 +46,12 @@ class Claim(BaseModel):
     user_id: str
 
 
+class Machine(BaseModel):
+    id: str = ""
+    address: str = ""
+    name: str = ""
+
+
 class Passphrase(BaseModel):
     passphrase: str = Field(min_length=12)
 
@@ -146,6 +152,43 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str) -> tuple[A
             return {"status": "ok", **service.claim(req.code, req.user_id)}
         except secrets.SecretRefused as exc:
             refused(exc)
+
+    # ── Macchine: central and satellites (Hub /api/nodes, §4.0) ──
+    def hub_own(method: str, path: str) -> dict:
+        resp = requests.request(method, f"{hub_api_url}/{path}", timeout=10)
+        if resp.status_code >= 400:
+            detail = (resp.json() or {}).get("detail") if "json" in resp.headers.get("content-type", "") else ""
+            raise HTTPException(status_code=resp.status_code, detail=str(detail or resp.status_code))
+        return resp.json()
+
+    @router.get("/machines")
+    def machines():
+        """This machine (role, hardware) and every satellite with its modules."""
+        try:
+            brain = service.oracle("GET", "/api/llm/setup/machine", timeout=8)
+        except Exception as exc:                       # the brain off: the page still lists the machines
+            logger.warning("[🔄] event=setup_machines_brain_unknown error=%s", str(exc)[:120])
+            brain = {}
+        return {"status": "ok", "this": {"role": service.role(), "hardware": service.hardware()},
+                "nodes": hub_own("GET", "nodes").get("nodes", []), "brain_on": (brain or {}).get("address", "")}
+
+    @router.post("/machines/pair")
+    def machines_pair():
+        """A pairing code for a new satellite, with the command to run on it."""
+        out = hub_own("POST", "nodes/pair")
+        return {"status": "ok", "code": out["code"], "expires_in": out["expires_in"],
+                "central": service.hardware().get("lan_ip", "")}
+
+    @router.post("/machines/revoke")
+    def machines_revoke(req: Machine):
+        if not req.id.isalnum():
+            raise HTTPException(status_code=400, detail="id required")
+        return {"status": "ok", **hub_own("DELETE", f"nodes/{req.id}")}
+
+    @router.post("/machines/brain")
+    def machines_brain(req: Machine):
+        """Local models on that satellite's video card (empty address = back on this machine)."""
+        return service.oracle("POST", "/api/llm/setup/machine", body={"address": req.address, "name": req.name})
 
     # ── Backup ──
     @router.post("/backup")

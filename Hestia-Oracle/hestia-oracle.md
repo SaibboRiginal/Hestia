@@ -652,3 +652,7 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per
   model; a missing model or a full disk is a final error in plain words. Tools `modelli_download`,
   `modelli_scarica` (Telegram «Download»).
+- `GET /api/llm/setup/machine` → `{address, label}` and `POST /api/llm/setup/machine {address, name}` (2026-10-31,
+  page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
+  «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own
+  (infrastructure env). The chains do not change: the same local models now run on that video card.

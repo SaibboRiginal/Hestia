@@ -1,11 +1,13 @@
 # Hestia installer for Windows 10/11 (PowerShell 5.1+). Double-click Installa-Hestia.cmd, or in PowerShell:
 #   irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1))) -Dir D:\Hestia
+#   ... -Join 123456 -Central 192.168.1.10     this PC becomes a satellite of the central one (code: Sistema -> Macchine)
+#   ... -Role tutto|centrale|satellite
 #
 # Every step checks before acting, retries (2/4/8 s), has a fallback, and records where it got to: running it again
 # resumes or repairs (also by itself after the WSL2 reboot). When it truly cannot go on it stops with one sentence
-# saying what to do. It never prints or logs secrets, never overwrites an existing .env value, never deletes data
-# without -Purge. Windows asks for administrator confirmation only for WSL2 and Docker Desktop.
+# saying what to do. It never prints or logs secrets, never overwrites an existing .env value (only the machine link
+# keys HUB_UPSTREAM_URL, HUB_NODE_TOKEN, HUB_NODE_ADDRESS, on -Join or a role change), never deletes data without -Purge. Windows asks for administrator confirmation only for WSL2 and Docker Desktop.
 # ASCII only on purpose: PowerShell 5.1 reads a BOM-less file as ANSI, and a BOM breaks `irm | iex`. Accented letters
 # in messages are written ~e ~a ~o ~u ~i ~E (e/a/o/u/i with grave accent, e acute) and << >> (Italian quotes);
 # Expand-Text turns them back at print time.
@@ -20,7 +22,10 @@ param(
     [switch]$Purge,
     [switch]$DryRun,
     [switch]$NoBrowser,
-    [switch]$Resume
+    [switch]$Resume,
+    [ValidateSet('tutto', 'centrale', 'satellite')][string]$Role,
+    [string]$Join = '',
+    [string]$Central = ''
 )
 
 # Continue, not Stop: on Windows PowerShell 5.1 any stderr line of a native program (docker, git, winget) would
@@ -46,6 +51,10 @@ $script:Notes = New-Object System.Collections.Generic.List[string]
 $script:VersionTag = ''
 $script:RamGb = 0
 $script:FreeGb = 0
+$script:Role = $Role        # tutto (one machine) - centrale (always on, no heavy modules) - satellite (voice + training)
+$script:LanIp = ''
+$SatelliteServices = @('hub', 'echo', 'metis')
+$HeavyServices = @('echo', 'metis')
 
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 
@@ -187,7 +196,8 @@ function Test-Preflight {
 function Test-Ports {
     if ((Test-Docker) -and ((& docker ps --format '{{.Names}}' 2>$null) -contains 'hestia_hub')) { return }
     $busy = @()
-    foreach ($port in 19001, 19002, 19015, 5432) {
+    $ports = if ($script:Role -eq 'satellite') { @(19001, 19021, 19014) } else { @(19001, 19002, 19015, 5432) }
+    foreach ($port in $ports) {
         if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) { $busy += $port }
     }
     if ($busy.Count) { Stop-Install "queste porte sono gi~a occupate da un altro programma: $($busy -join ', '). Chiudilo e rilancia." }
@@ -208,6 +218,8 @@ function Register-Resume {
     if ($PSCommandPath -and (Test-Path $PSCommandPath)) { Copy-Item -ErrorAction Stop $PSCommandPath $SavedScript -Force }
     else { try { Get-File $ScriptUrl $SavedScript | Out-Null } catch { Write-Log "$R resume_download_failed" } }
     $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$SavedScript`" -Resume -Dir `"$Dir`" -Channel $Channel"
+    if ($script:Role) { $cmd += " -Role $($script:Role)" }
+    if ($Join) { $cmd += " -Join $Join -Central $Central" }
     Set-ItemProperty -ErrorAction Stop -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'HestiaInstall' -Value $cmd
     Write-Log 'resume_registered'
 }
@@ -272,7 +284,21 @@ function Install-OllamaIfMissing {
     }
     if (-not $ok) { Note 'Ollama non si ~e installato: Hestia user~a i modelli nel cloud. Puoi installarlo dopo da https://ollama.com.'; return }
     Start-OllamaApp
+    if ($script:Role -eq 'satellite') { Set-OllamaOnLan }
     Get-DefaultModels
+}
+
+# On a satellite the central one's brain uses this graphics card: Ollama must listen on the home network too.
+function Set-OllamaOnLan {
+    if ($DryRun) { Write-Host '  [dry-run] OLLAMA_HOST=0.0.0.0 (user)'; return }
+    if ([Environment]::GetEnvironmentVariable('OLLAMA_HOST', 'User') -eq '0.0.0.0') { return }
+    [Environment]::SetEnvironmentVariable('OLLAMA_HOST', '0.0.0.0', 'User')
+    $env:OLLAMA_HOST = '0.0.0.0'
+    Get-Process -Name 'ollama*' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Start-OllamaApp
+    Write-Log 'ollama_bind_all reason=satellite'
+    Note 'Ollama ora ascolta sulla rete di casa (porta 11434): se Windows chiede di consentirlo sulle reti private, rispondi Consenti. Non aprire quella porta sul router.'
 }
 
 # Oracle's default chains (llm_chains.py): the embedding model is needed for memory, the chat one for local answers.
@@ -366,9 +392,95 @@ function Write-Hardware {
     }
     $dirInfo = Join-Path $Dir '.hestia-install'
     New-Item -ItemType Directory -Force -Path $dirInfo | Out-Null
-    $json = @{ os = 'windows'; ram_gb = $script:RamGb; free_gb = $script:FreeGb; gpu = $gpu; vram_gb = $vram } | ConvertTo-Json -Compress
+    $json = @{ os = 'windows'; ram_gb = $script:RamGb; free_gb = $script:FreeGb; gpu = $gpu; vram_gb = $vram
+               role = $script:Role; lan_ip = $script:LanIp } | ConvertTo-Json -Compress
     Set-Content -Path (Join-Path $dirInfo 'hardware.json') -Value $json -Encoding ASCII
-    Write-Log "hardware gpu=`"$gpu`" vram_gb=$vram"
+    Write-Log "hardware gpu=`"$gpu`" vram_gb=$vram role=$($script:Role) lan_ip=$($script:LanIp)"
+}
+
+# -- machines: role, LAN address, link to the central one (docs/work/2026-10-30-setup-un-click 4.0) -------------
+function Resolve-Role {
+    if ($Join) {
+        if ($script:Role -and $script:Role -ne 'satellite') { Stop-Install '-Join serve solo per un satellite.' }
+        $script:Role = 'satellite'
+        if (-not $Central) { Stop-Install "con -Join serve anche -Central (l'indirizzo della casa centrale, es. 192.168.1.10)." }
+    }
+    if (-not $script:Role) {   # a re-run keeps the role chosen before
+        $hw = Join-Path $Dir '.hestia-install\hardware.json'
+        if (Test-Path $hw) { try { $script:Role = [string](Get-Content $hw -Raw | ConvertFrom-Json).role } catch { } }
+        if (-not $script:Role) { $script:Role = 'tutto' }
+    }
+    $envFile = Join-Path $Dir '.env'
+    $linked = (Test-Path $envFile) -and [bool](Select-String -Path $envFile -Pattern '^HUB_NODE_TOKEN=.+' -Quiet)
+    if ($script:Role -eq 'satellite' -and -not $Join -and -not $linked) {
+        Stop-Install 'per collegare questo PC serve il codice: sulla casa centrale apri Sistema -> Macchine -> Collega una macchina, poi rilancia con -Join CODICE -Central INDIRIZZO.'
+    }
+    try {
+        $script:LanIp = [string](Get-NetIPConfiguration -ErrorAction Stop | Where-Object { $_.IPv4DefaultGateway } |
+            Select-Object -First 1).IPv4Address.IPAddress
+    } catch { $script:LanIp = '' }
+    Write-Log "role role=$($script:Role) lan_ip=$($script:LanIp)"
+}
+
+function Get-CentralUrl {   # 192.168.1.10 -> http://192.168.1.10:19001
+    $url = $Central.Trim().TrimEnd('/')
+    if ($url.EndsWith('/api')) { $url = $url.Substring(0, $url.Length - 4) }
+    if ($url -notmatch '^https?://') { $url = "http://$url" }
+    if (($url -replace '^https?://', '') -notmatch ':') { $url = "${url}:19001" }
+    return $url
+}
+
+function Set-RootEnv([string]$Key, [string]$Value) {   # the value is never printed or logged
+    if ($DryRun) { Write-Host "  [dry-run] .env $Key=..."; return }
+    $file = Join-Path $Dir '.env'
+    $lines = @()
+    if (Test-Path $file) { $lines = @(Get-Content $file | Where-Object { $_ -notmatch "^$Key=" }) }
+    $lines += "$Key=$Value"
+    [IO.File]::WriteAllLines($file, [string[]]$lines)
+    Write-Log "env_set key=$Key"
+}
+
+function Connect-Machine {
+    $envFile = Join-Path $Dir '.env'
+    if ($script:Role -ne 'satellite') {
+        # Not (or no longer) a satellite: its Hub is the central one again.
+        if ((Test-Path $envFile) -and [bool](Select-String -Path $envFile -Pattern '^HUB_UPSTREAM_URL=.+' -Quiet)) {
+            Write-Log "$R machine_unlink reason=role_$($script:Role)"
+            Set-RootEnv 'HUB_UPSTREAM_URL' ''; Set-RootEnv 'HUB_NODE_TOKEN' ''; Set-RootEnv 'HUB_NODE_ADDRESS' ''
+        }
+        return
+    }
+    if (-not $Join) { return }   # already linked (re-run): keep the token
+    if (-not $script:LanIp) { Stop-Install "non trovo l'indirizzo di questo PC sulla rete di casa: collegalo al Wi-Fi o al cavo e rilancia." }
+    $url = Get-CentralUrl
+    Say "Collego questo PC alla casa centrale ($url)..."
+    if ($DryRun) { Write-Host "  [dry-run] POST $url/api/nodes/join"; return }
+    $name = ($env:COMPUTERNAME -replace '[^A-Za-z0-9 ._-]', '')
+    $body = @{ code = ($Join -replace '[^0-9]', ''); name = $name; address = $script:LanIp } | ConvertTo-Json -Compress
+    $status = 0; $token = ''
+    try {
+        $resp = Invoke-RestMethod -ErrorAction Stop -Method Post -Uri "$url/api/nodes/join" -ContentType 'application/json' -Body $body -TimeoutSec 15
+        $status = 200; $token = [string]$resp.token
+    } catch {
+        if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
+    }
+    Write-Log "machine_join status=$status"
+    if ($status -eq 0) { Stop-Install "non raggiungo la casa centrale a ${url}: controlla che sia accesa e sulla stessa rete." }
+    if ($status -eq 403) { Stop-Install 'il codice ~e sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema -> Macchine).' }
+    if ($status -ne 200) { Stop-Install "la casa centrale ha rifiutato il collegamento (errore $status)." }
+    if (-not $token) { Stop-Install 'la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia.' }
+    Set-RootEnv 'HUB_UPSTREAM_URL' "$url/api"
+    Set-RootEnv 'HUB_NODE_TOKEN' $token
+    Set-RootEnv 'HUB_NODE_ADDRESS' $script:LanIp
+    $token = ''
+    Ok 'Collegato alla casa centrale.'
+}
+
+function Get-RoleServices {   # empty = all of them
+    if ($script:Role -eq 'satellite') { return $SatelliteServices }
+    if ($script:Role -ne 'centrale' -or $DryRun) { return @() }
+    Push-Location $Dir; $all = & docker compose -f docker-compose.global.yml config --services; Pop-Location
+    return @($all | Where-Object { $HeavyServices -notcontains $_ })
 }
 
 # -- 7. .env files with generated secrets (python in a throwaway container: none needed on Windows) -------------
@@ -392,14 +504,16 @@ function Test-TelegramConfigured {  # the value is never read into a variable or
 function Start-Stack {
     & docker network inspect hestia_net 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0 -and -not (Invoke-Step 'docker' @('network', 'create', 'hestia_net'))) { Stop-Install 'non riesco a creare la rete Docker hestia_net.' }
+    $roleServices = @(Get-RoleServices)
     if ($script:VersionTag) {
         Say "Scarico i moduli pronti della versione $($script:VersionTag)..."
-        if (-not (Invoke-Retry 'Download dei moduli' { Invoke-Compose pull --ignore-pull-failures })) { Note 'Alcuni moduli non si sono scaricati: li costruisco qui.' }
+        if (-not (Invoke-Retry 'Download dei moduli' { Invoke-Compose pull --ignore-pull-failures @roleServices })) { Note 'Alcuni moduli non si sono scaricati: li costruisco qui.' }
     } else {
         Say 'Costruisco i moduli (la prima volta ci vuole un po'', poi ~e veloce)...'
-        if (-not (Invoke-Retry 'Costruzione dei moduli' { Invoke-Compose build })) {
+        if (-not (Invoke-Retry 'Costruzione dei moduli' { Invoke-Compose build @roleServices })) {
             $bad = @()
-            Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location
+            $services = $roleServices
+            if (-not $services.Count) { Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location }
             foreach ($svc in $services) {
                 if (Invoke-Compose build $svc) { continue }
                 Write-Log "$R build_no_cache service=$svc"
@@ -409,12 +523,25 @@ function Start-Stack {
         }
     }
     Say 'Avvio Hestia...'
-    $upArgs = @('up', '-d', '--remove-orphans')
+    if ($script:Role -eq 'satellite') {
+        # Only the satellite's own modules: everything else (memory, settings, the WebUI) lives on the central one.
+        if (-not $DryRun) {
+            Push-Location $Dir; $all = & docker compose -f docker-compose.global.yml config --services; Pop-Location
+            $others = @($all | Where-Object { $SatelliteServices -notcontains $_ })
+            if ($others.Count) { Invoke-Compose stop @others | Out-Null }
+        }
+        $satArgs = @('up', '-d', '--no-deps', '--remove-orphans') + $SatelliteServices
+        if (-not (Invoke-Retry 'Avvio dei moduli' { Invoke-Compose @satArgs })) { Stop-Install "i moduli non partono. Guarda $LogFile o rilancia." }
+        return
+    }
+    if ($script:Role -eq 'centrale') { Invoke-Compose stop @HeavyServices | Out-Null }
+    $upArgs = @('up', '-d', '--remove-orphans') + $roleServices
     if (-not $DryRun -and -not (Test-TelegramConfigured)) {
         # No bot token yet: Telegram would only crash-loop. Its container is created, not started: the guided
         # setup writes the token and starts it.
-        Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location
-        $upArgs += ($services | Where-Object { $_ -ne 'telegram' })
+        $services = $roleServices
+        if (-not $services.Count) { Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location }
+        $upArgs = @('up', '-d', '--remove-orphans') + @($services | Where-Object { $_ -ne 'telegram' })
         Note 'Telegram si collega nel setup guidato che si apre nel browser.'
     }
     if (-not (Invoke-Retry 'Avvio dei moduli' { Invoke-Compose @upArgs })) { Stop-Install "i moduli non partono. Guarda $LogFile o rilancia." }
@@ -432,9 +559,13 @@ function Wait-Healthy {
     }
     $waited = 0
     while ($true) {
-        $down = @(& docker ps -a --filter 'name=hestia_' --format '{{.Names}} {{.Status}}' | Where-Object { $_ -notmatch ' (Up|Created)' } | ForEach-Object { ($_ -split ' ')[0] })
-        $webui = $false
-        try { $webui = ((Invoke-WebRequest -ErrorAction Stop $WebUiUrl -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { }
+        $down = @(& docker ps -a --filter 'name=hestia_' --format '{{.Names}} {{.Status}}' | Where-Object { $_ -notmatch ' (Up|Created)' } | ForEach-Object { ($_ -split ' ')[0] } |
+            Where-Object {   # the containers this machine's role keeps stopped on purpose
+                $svc = $_ -replace '^hestia_', ''
+                if ($script:Role -eq 'satellite') { $SatelliteServices -contains $svc } elseif ($script:Role -eq 'centrale') { $HeavyServices -notcontains $svc } else { $true }
+            })
+        $webui = ($script:Role -eq 'satellite')
+        if (-not $webui) { try { $webui = ((Invoke-WebRequest -ErrorAction Stop $WebUiUrl -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { } }
         if (-not $down.Count -and $webui) { Ok 'Tutti i moduli sono accesi.'; return }
         if ($waited -ge 600) {
             foreach ($c in $down) { Write-Log "container_down name=$c"; & docker logs --tail 20 $c 2>&1 | ForEach-Object { Write-Log "  | $_" } }
@@ -447,6 +578,14 @@ function Wait-Healthy {
 
 # -- 10. browser + shortcut ---------------------------------------------------------------------------------------
 function Complete-Install {
+    if ($script:Role -eq 'satellite') {
+        Write-Host ''
+        Ok "Questo PC ~e un satellite di $(Get-CentralUrl): voce e allenamento girano qui."
+        Write-Host '         Lo gestisci dalla casa centrale: Sistema -> Macchine (anche <<Usa la sua scheda video>>).'
+        foreach ($n in $script:Notes) { Write-Host (Expand-Text "         - $n") }
+        Write-Log "install_done role=satellite notes=$($script:Notes.Count)"
+        return
+    }
     if (-not $DryRun) {
         $desktop = [Environment]::GetFolderPath('Desktop')
         Set-Content -Path (Join-Path $desktop 'Hestia.url') -Value "[InternetShortcut]`r`nURL=$WebUiUrl" -Encoding ASCII
@@ -482,6 +621,7 @@ if ($Uninstall) { Remove-Hestia; exit 0 }
 if ($Resume) { Say 'Riprendo l''installazione dopo il riavvio...' }
 Say "Installo Hestia in $Dir (canale $Channel)."
 Test-Preflight
+Resolve-Role
 Install-GitIfMissing;    Set-StepDone 'git'
 Install-DockerIfMissing; Set-StepDone 'docker'
 Test-Ports
@@ -489,6 +629,7 @@ Install-OllamaIfMissing; Set-StepDone 'ollama'
 Get-Code;                Set-StepDone 'code'
 Write-Hardware
 Initialize-Env;          Set-StepDone 'env'
+Connect-Machine
 Start-Stack;             Set-StepDone 'started'
 Wait-Healthy;            Set-StepDone 'healthy'
 Complete-Install

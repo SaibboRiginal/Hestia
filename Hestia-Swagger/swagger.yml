@@ -1365,6 +1365,58 @@ paths:
         "200":
           description: Registered
 
+  /api/nodes/pair:
+    post:
+      tags: [Hub]
+      summary: "Pairing code for a new satellite machine (6 digits, 10 minutes, single use)"
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200": {description: "{code, expires_in}"}
+
+  /api/nodes/join:
+    post:
+      tags: [Hub]
+      summary: "Satellite installer: pairing code to node token (shown once)"
+      servers:
+        - url: http://localhost:19001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, address]
+              properties:
+                code: {type: string}
+                name: {type: string}
+                address: {type: string, description: "bare LAN host or IP of the satellite"}
+      responses:
+        "200": {description: "{node_id, token, name}"}
+        "400": {description: address not a bare host}
+        "403": {description: wrong or expired code}
+
+  /api/nodes:
+    get:
+      tags: [Hub]
+      summary: "Satellite machines with their modules and whether they answer"
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200": {description: "{nodes[{id, name, role, address, joined_at, last_seen, online, modules[{name, online}]}]}"}
+
+  /api/nodes/{node_id}:
+    delete:
+      tags: [Hub]
+      summary: "Unlink a satellite: revoke its token and drop its modules"
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - {name: node_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{revoked: name}"}
+        "404": {description: unknown machine}
+
   /api/registry/deregister:
     post:
       tags: [Hub]
@@ -4763,6 +4815,32 @@ paths:
       responses:
         "200": {description: "{downloads[{id, what, source, state in_coda|in_corso|fatto|errore, size, done, error}]}"}
 
+  /api/llm/setup/machine:
+    get:
+      tags: [Oracle]
+      summary: "Where the local models run now (empty address = this machine)"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{address, label}"}
+    post:
+      tags: [Oracle]
+      summary: "Run the local models on a satellite's Ollama (empty address = back here)"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address: {type: string}
+                name: {type: string}
+      responses:
+        "200": {description: "{ok, detail}"}
+        "400": {description: invalid address or settings refused}
+
   /api/llm/code:
     post:
       tags: [Oracle]
@@ -7622,6 +7700,59 @@ paths:
         - url: http://localhost:19010
       responses:
         "200": {description: ok}
+
+  /api/setup/machines:
+    get:
+      tags: [Hephaestus]
+      summary: "This machine (role, hardware) and its satellites (Macchine page)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{this{role, hardware}, nodes[], brain_on}"}
+
+  /api/setup/machines/pair:
+    post:
+      tags: [Hephaestus]
+      summary: "Pairing code for a satellite plus this machine's LAN address (→ Hub)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{code, expires_in, central}"}
+
+  /api/setup/machines/revoke:
+    post:
+      tags: [Hephaestus]
+      summary: "Unlink a satellite (→ Hub)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: {type: string}
+      responses:
+        "200": {description: "{revoked}"}
+
+  /api/setup/machines/brain:
+    post:
+      tags: [Hephaestus]
+      summary: "Local models on a satellite's video card, or back here (→ Oracle)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address: {type: string}
+                name: {type: string}
+      responses:
+        "200": {description: "{ok, detail}"}
 
   /api/setup/telegram/token:
     post:

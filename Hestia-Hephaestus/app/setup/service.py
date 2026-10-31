@@ -52,9 +52,16 @@ class SetupService:
         tmp.replace(self.state_path)
 
     def hardware(self) -> dict[str, Any]:
+        data = self.hardware_raw()
+        return {k: data.get(k) for k in ("os", "ram_gb", "gpu", "vram_gb", "free_gb", "lan_ip") if k in data}
+
+    def role(self) -> str:
+        """«tutto» (whole stack here), «centrale» (always-on core) or «satellite»: written by the installer."""
+        return str(self.hardware_raw().get("role") or "tutto")
+
+    def hardware_raw(self) -> dict[str, Any]:
         try:
-            data = json.loads((self.repo / ".hestia-install" / "hardware.json").read_text(encoding="utf-8-sig"))
-            return {k: data.get(k) for k in ("os", "ram_gb", "gpu", "vram_gb", "free_gb") if k in data}
+            return json.loads((self.repo / ".hestia-install" / "hardware.json").read_text(encoding="utf-8-sig"))
         except Exception:
             return {}
 

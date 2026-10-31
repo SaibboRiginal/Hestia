@@ -393,6 +393,11 @@ class SetupPull(BaseModel):
     model: str
 
 
+class SetupMachine(BaseModel):
+    address: str = ""
+    name: str = ""
+
+
 @app.get("/api/llm/setup/catalog")
 def llm_setup_catalog(vram_gb: float = 0, ram_gb: float = 0):
     """Guided setup «Cervello»: recommended models for this hardware, installed ones, cloud providers (no keys)."""
@@ -425,6 +430,23 @@ def llm_setup_pull(req: SetupPull):
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result.get("detail"))
     return {"status": "ok", "download": result}
+
+
+@app.get("/api/llm/setup/machine")
+def llm_setup_machine_get():
+    """Where the local models run now (empty address = this machine)."""
+    from core.services import llm_setup
+    return {"status": "ok", **llm_setup.machine()}
+
+
+@app.post("/api/llm/setup/machine")
+def llm_setup_machine(req: SetupMachine):
+    """Local models on another machine (a satellite's Ollama), or back on this one (empty address)."""
+    from core.services import llm_setup
+    result = llm_setup.use_machine(req.address, req.name)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("detail"))
+    return {"status": "ok", **result}
 
 
 @app.get("/api/llm/setup/pulls")
