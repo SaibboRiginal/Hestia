@@ -47,8 +47,9 @@ New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 # -- output -------------------------------------------------------------------------------------------------------
 $R = '[' + [char]::ConvertFromUtf32(0x1F504) + ']'   # recovery marker of the log convention
 function Expand-Text([string]$Text) {
-    $map = @{ '~e' = 0xE8; '~a' = 0xE0; '~o' = 0xF2; '~u' = 0xF9; '~i' = 0xEC; '~E' = 0xE9; '<<' = 0xAB; '>>' = 0xBB }
-    foreach ($k in $map.Keys) { $Text = $Text.Replace($k, [string][char]$map[$k]) }
+    # Pairs, not a hashtable: hashtable keys ignore case, and ~e (grave) and ~E (acute) must both exist.
+    $pairs = @(@('~e', 0xE8), @('~E', 0xE9), @('~a', 0xE0), @('~o', 0xF2), @('~u', 0xF9), @('~i', 0xEC), @('<<', 0xAB), @('>>', 0xBB))
+    foreach ($p in $pairs) { $Text = $Text.Replace($p[0], [string][char]$p[1]) }
     return $Text
 }
 function Write-Log([string]$Text) {
