@@ -37,7 +37,9 @@ Claude subscription; the local model for this video card is downloaded at once; 
 before it counts) → **Telegram** (paste the BotFather token, then write the 6-digit code it shows to your bot: no
 need to know your Telegram id) → **backup passphrase** → calendar/mail/devices links → summary. Secrets go through
 the Hub to Hephaestus, which writes only whitelisted keys into the right `.env` and re-creates just that container;
-they are never shown again. Steps left for later stay as a «Da finire» card in Home. Reopen it any time at
+they are never shown again. The voice screen queues the local voices. Steps left for later stay as a «Da finire» card in Home. Everything
+being downloaded (brain models, voices) is in Sistema → **Download**: progress, pause, resume, retry, and «Elimina»
+to free space; a download checks the free disk before starting and resumes after an interruption. Reopen it any time at
 `/benvenuto`.
 
 **Releases and ready-made images.** A tag `vX.Y.Z` on `main` runs `.github/workflows/images.yml`: every service is

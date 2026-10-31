@@ -39,6 +39,8 @@ export class SetupApi {
   apply(recipe: string, local_model: string, cloud: string[], claude_token = '') {
     return this.post<Outcome>('brain/apply', { recipe, local_model, cloud, claude_token });
   }
+  /** Echo's local voice models (through the WebUI voice door, not Hephaestus). */
+  prefetchVoice() { return firstValueFrom(this.http.post<{ queued: string[] }>('/api/webui/voice/models/prefetch', {})); }
   pulls() { return this.get<{ downloads: Download[] }>('brain/pulls').then(r => r.downloads || []); }
   telegramToken(token: string) { return this.post<Outcome & { code?: string; expires_in?: number }>('telegram/token', { token }); }
   telegramCode() { return this.post<{ code: string; expires_in: number }>('telegram/code'); }

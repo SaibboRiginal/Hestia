@@ -333,6 +333,13 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
 4. Backup passphrase → root `.env` → `hestia_archive` re-created.
 
+### Download flow (page «Download», `hestia_common.downloads`)
+1. WebUI `/api/webui/downloads` → Hub registry (capability `downloads`) → each module `GET /api/downloads` via Hub.
+2. Oracle: setup or tool `modelli_scarica` → job source `ollama` → Ollama `/api/pull` stream. Echo: `/api/voice/
+   models/prefetch` or first use → source `http` (Range resume) / `whisper`.
+3. Buttons → WebUI `POST /api/webui/downloads/{module}/{op}` → module `/api/downloads/{id}/{op}`. Failure or big
+   finished download → Hermes `/api/events/ingest` → Notifiche.
+
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).
 2. Phone: the final `localhost` page fails (expected); user pastes the URL in Telegram → Telegram forwards it

@@ -30,6 +30,57 @@ logger = logging.getLogger("hestia_echo.standards")
 MODELS_DIR = Path(os.getenv("ECHO_MODELS_DIR", "/models"))
 
 
+# ── downloads (hestia_common.downloads, page «Download»): set by main; tests and tools go direct ──────────
+DOWNLOADS = None
+WHISPER_MB = {"tiny": 75, "base": 145, "small": 484, "medium": 1530, "large-v3": 3090, "large-v3-turbo": 1620}
+
+
+def fetch(job_id: str, what: str, url: str, dest: Path, size_mb: int = 0) -> Path:
+    """The file at ``dest``, downloaded now if missing: through the download manager (progress, resume, retries,
+    shown on the Download page) when Echo runs, else directly."""
+    if dest.exists():
+        return dest
+    if DOWNLOADS is None:
+        resp = requests.get(url, timeout=600)
+        if resp.status_code != 200:
+            raise EngineError(f"download {what}: HTTP {resp.status_code}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(resp.content)
+        return dest
+    DOWNLOADS.file(job_id, what, url, dest, size_hint=size_mb * 1_000_000)
+    job = DOWNLOADS.wait(job_id, 1800)
+    if job.get("state") != "fatto" or not dest.exists():
+        raise EngineError(job.get("error") or f"{what}: download non finito")
+    return dest
+
+
+def whisper_download(job) -> None:
+    """Source ``whisper``: faster-whisper's own download into the folder ``WhisperModel`` reads (no byte progress)."""
+    from faster_whisper.utils import download_model
+    job.check()
+    download_model(job.params["size"], cache_dir=str(MODELS_DIR / "whisper"))
+
+
+def prefetch(provider_type: str, model: str = "", voice: str = "") -> list[str]:
+    """Queue what a local step needs, without waiting (setup «Voce», Download page). Returns the job ids."""
+    if DOWNLOADS is None:
+        return []
+    if provider_type == "whisper_local":
+        size = model or "small"
+        DOWNLOADS.add(f"whisper:{size}", f"Ascolto ({size})", "whisper", {"size": size},
+                      size_hint=WHISPER_MB.get(size, 0) * 1_000_000)
+        return [f"whisper:{size}"]
+    if provider_type == "piper":
+        name = voice or model or PIPER_ITALIAN[0]
+        return [DOWNLOADS.file(f"piper:{name}{suffix}", Piper.title(name, suffix), url,
+                               MODELS_DIR / "piper" / f"{name}{suffix}", size_hint=size)["id"]
+                for suffix, url, size in Piper.files(name)]
+    if provider_type == "kokoro":
+        return [DOWNLOADS.file(f"kokoro:{name}", KOKORO_TITLES[name], url, MODELS_DIR / "kokoro" / name,
+                               size_hint=KOKORO_MB[name] * 1_000_000)["id"] for name, url in KOKORO_FILES.items()]
+    return []
+
+
 class EngineError(RuntimeError):
     """An engine failed; ``status`` 429 = out of quota (the chain skips the pair until its reset)."""
 
@@ -200,25 +251,30 @@ class Piper(Standard):
         return [{"id": n, "label": n.split("-")[1].capitalize() + " · " + n.split("-")[-1] if n.count("-") >= 2 else n}
                 for n in sorted(names)]
 
-    def _download(self, name: str) -> Path:
-        d = MODELS_DIR / "piper"
-        d.mkdir(parents=True, exist_ok=True)
-        onnx = d / f"{name}.onnx"
-        if onnx.exists() and (d / f"{name}.onnx.json").exists():
-            return onnx
+    @staticmethod
+    def title(name: str, suffix: str = ".onnx") -> str:
+        """«Voce Paola» for it_IT-paola-medium (the small .json is its settings)."""
+        speaker = name.split("-")[1].capitalize() if name.count("-") >= 2 else name
+        return f"Voce {speaker}" + (" · impostazioni" if suffix.endswith(".json") else "")
+
+    @staticmethod
+    def files(name: str) -> list[tuple[str, str, int]]:
+        """(suffix, url, size in bytes) of a Piper voice on Hugging Face."""
         try:
             locale, speaker, quality = name.split("-")
         except ValueError:
             raise EngineError(f"voce Piper {name!r} non valida (es. it_IT-paola-medium)")
         base = (f"https://huggingface.co/rhasspy/piper-voices/resolve/main/{locale.split('_')[0]}/{locale}/"
                 f"{speaker}/{quality}/{name}")
-        for suffix in (".onnx", ".onnx.json"):
-            resp = requests.get(base + suffix, timeout=300)
-            if resp.status_code != 200:
-                raise EngineError(f"download voce Piper {name}: HTTP {resp.status_code}")
-            (d / f"{name}{suffix}").write_bytes(resp.content)
-        logger.info("event=voice_piper_downloaded voice=%s", name)
-        return onnx
+        size = {"x_low": 21, "low": 63, "medium": 63, "high": 114}.get(quality, 63) * 1_000_000
+        return [(".onnx", base + ".onnx", size), (".onnx.json", base + ".onnx.json", 5_000)]
+
+    def _download(self, name: str) -> Path:
+        d = MODELS_DIR / "piper"
+        for suffix, url, size in self.files(name):
+            fetch(f"piper:{name}{suffix}", self.title(name, suffix), url, d / f"{name}{suffix}", size // 1_000_000)
+        logger.info("event=voice_piper_ready voice=%s", name)
+        return d / f"{name}.onnx"
 
     def _voice(self, name: str):
         with self._lock:
@@ -249,6 +305,8 @@ class Piper(Standard):
 
 KOKORO_VOICES = {"it": [("if_sara", "Sara"), ("im_nicola", "Nicola")],
                  "en": [("af_heart", "Heart"), ("af_bella", "Bella"), ("am_michael", "Michael"), ("bf_emma", "Emma")]}
+KOKORO_TITLES = {"kokoro-v1.0.onnx": "Voce naturale", "voices-v1.0.bin": "Voce naturale · timbri"}
+KOKORO_MB = {"kokoro-v1.0.onnx": 326, "voices-v1.0.bin": 28}
 KOKORO_FILES = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
                 "voices-v1.0.bin": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"}
 
@@ -282,12 +340,7 @@ class Kokoro(Standard):
                 d = MODELS_DIR / "kokoro"
                 d.mkdir(parents=True, exist_ok=True)
                 for name, url in KOKORO_FILES.items():
-                    if not (d / name).exists():
-                        resp = requests.get(url, timeout=600)
-                        if resp.status_code != 200:
-                            raise EngineError(f"download Kokoro {name}: HTTP {resp.status_code}")
-                        (d / name).write_bytes(resp.content)
-                        logger.info("event=voice_kokoro_downloaded file=%s", name)
+                    fetch(f"kokoro:{name}", KOKORO_TITLES[name], url, d / name, KOKORO_MB[name])
                 from kokoro_onnx import Kokoro as Engine
                 self._engine = Engine(str(d / "kokoro-v1.0.onnx"), str(d / "voices-v1.0.bin"))
             return self._engine

@@ -18,7 +18,6 @@ import wave
 from pathlib import Path
 from typing import Any
 
-import requests
 
 from .standards import MODELS_DIR
 
@@ -119,11 +118,12 @@ class SpeakerEngine:
                 self.dir.mkdir(parents=True, exist_ok=True)
                 path = self.dir / MODEL_FILE
                 if not path.exists():
-                    resp = requests.get(MODEL_URL, timeout=600)
-                    if resp.status_code != 200:
-                        raise VoiceprintError(f"download modello voce: HTTP {resp.status_code}")
-                    path.write_bytes(resp.content)
-                    logger.info("event=voiceprint_model_downloaded bytes=%d", len(resp.content))
+                    from .standards import EngineError, fetch
+                    try:
+                        fetch("impronta:resnet34", "Riconoscere la tua voce", MODEL_URL, path, 27)
+                    except EngineError as exc:
+                        raise VoiceprintError(f"download modello voce: {exc}")
+                    logger.info("event=voiceprint_model_downloaded")
                 self._session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
             return self._session
 

@@ -28,6 +28,7 @@ except ModuleNotFoundError:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 
 from hestia_common.agenda_client import AgendaClient, job_rule
+from hestia_common.downloads import Downloads
 from hestia_common.plugin_client import PluginClient, page
 from hestia_common.reminders import reminder_event
 from hestia_common.settings_client import SettingsClient, setting
@@ -41,7 +42,8 @@ from .core.dictionary import Dictionary
 from .core.keep import Keep
 from .core.voiceprint import Voiceprint, VoiceprintError
 from .core.service import Echo, Invalid, NotFound
-from .core.standards import STANDARDS
+from .core import standards as _standards
+from .core.standards import MODELS_DIR, STANDARDS
 
 logger, log_buffer = setup_service_logging("hestia_echo")
 
@@ -120,6 +122,12 @@ settings.declare([
 ])
 
 hub = Hub(HUB_API_URL)
+
+# Voice models (Whisper, Piper, Kokoro, the voiceprint) go through the shared download manager: progress, resume,
+# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-setup-un-click §4.3).
+downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voce")
+downloads.source("whisper", _standards.whisper_download)
+_standards.DOWNLOADS = downloads
 
 
 def _registry() -> list[dict]:
@@ -470,6 +478,10 @@ def _t(name, title, description, method, path, props=None, required=None, label=
 
 
 _echo_tools = [
+    _t("voce_download", "Download della voce", "Le voci e l'ascolto che sto scaricando o ho scaricato, con "
+       "l'avanzamento.", "GET", "/api/downloads", label="Download"),
+    _t("voce_scarica", "Scarica le voci", "Scarica adesso (o riprova) le voci e l'ascolto locali delle catene "
+       "in uso, così la prima frase non aspetta.", "POST", f"{API}/models/prefetch", label="Scarica voci"),
     _t("voce_dizionario", "Dizionario della voce", "Le parole tue (nomi, termini) che passo al riconoscimento "
        "della voce, e quelle che sto imparando dalle tue correzioni.", "GET", f"{API}/dictionary",
        label="Dizionario"),
@@ -496,6 +508,25 @@ app.include_router(create_mcp_router(_echo_tools, service_name="echo"))
 app.include_router(ui.router())
 app.include_router(settings.router())
 app.include_router(create_log_control_router("hestia_echo"))
+app.include_router(downloads.router())
+
+
+@app.post(f"{API}/models/prefetch")
+def models_prefetch():
+    """Queue the local models of the first steps of the «ascolto» and «voce» chains (guided setup, Download page),
+    so the first spoken sentence does not wait for them. Cloud steps need nothing."""
+    providers = settings.get(PROVIDERS_KEY, DEFAULT_PROVIDERS) or {}
+    chains = settings.get(CHAINS_KEY, DEFAULT_CHAINS) or {}
+    queued: list[str] = []
+    for name in ("ascolto", "voce"):
+        for step in (chains.get(name) or {}).get("steps") or []:
+            kind = (providers.get(step.get("provider")) or {}).get("type", "")
+            ids = _standards.prefetch(kind, step.get("model") or "", step.get("voice") or "")
+            if ids:
+                queued += ids
+                break
+    logger.info("event=voice_models_prefetch jobs=%d", len(queued))
+    return {"queued": queued, "downloads": downloads.list()}
 
 
 # ── Hub registration ─────────────────────────────────────────────────────────
@@ -503,7 +534,7 @@ def _registration() -> dict:
     caps: dict = {"voice": {"api": API, "standards": list(STANDARDS)},
                   "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["voice"],
                   # Owner of the "voice" tools in chat: without it Oracle's domain gate dropped them (2026-10-30).
-                  "owns_tool_domains": ["voice"]}
+                  "owns_tool_domains": ["voice"], **downloads.capabilities()}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
     except Exception as exc:

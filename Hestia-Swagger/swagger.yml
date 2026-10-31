@@ -12451,6 +12451,31 @@ paths:
       responses:
         "200": {description: ok}
 
+  /api/webui/downloads:
+    get:
+      tags: [WebUI]
+      summary: "Page «Download»: every module's downloads (→ each module with capability downloads, /api/downloads) → {downloads[], offline[]}"
+      responses:
+        "200": {description: OK}
+        "503": {description: Hub unreachable}
+
+  /api/webui/downloads/{module}/{op}:
+    post:
+      tags: [WebUI]
+      summary: "Download button {id} → module /api/downloads/{id}/{op} (pause, resume, retry, cancel, remove)"
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: op, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: the job}
+
+  /api/webui/voice/models/prefetch:
+    post:
+      tags: [WebUI]
+      summary: "Queue the local voice models (→ Echo /api/voice/models/prefetch)"
+      responses:
+        "200": {description: OK}
+
   /api/webui/presence:
     get:
       tags: [WebUI]
@@ -12587,6 +12612,40 @@ paths:
   #  ECHO — 19021  (voice core — docs/work/2026-10-20-modulo-voce)
   #  Errors: 422 invalid input {detail}, 404 not found {detail}, 503 chain exhausted {detail, tried}.
   # ══════════════════════════════════════════════════════════════════════════
+
+  /api/downloads:
+    get:
+      tags: [Oracle, Echo]
+      summary: "hestia_common.downloads, served by every module with capability downloads (Oracle, Echo): {module, downloads[{id, what, source, module, size, done, speed, eta_s, state in_coda|in_corso|in_pausa|fatto|errore, error}]}"
+      servers:
+        - url: http://localhost:19004
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/downloads/{id}/{op}:
+    post:
+      tags: [Oracle, Echo]
+      summary: "Download button: op pause | resume | retry | cancel (partial file deleted) | remove (frees the disk: file or Ollama model)"
+      servers:
+        - url: http://localhost:19004
+        - url: http://localhost:19021
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}, description: "e.g. ollama:qwen3:8b, piper:it_IT-paola-medium.onnx"}
+        - {name: op, in: path, required: true, schema: {type: string, enum: [pause, resume, retry, cancel, remove]}}
+      responses:
+        "200": {description: the job}
+        "404": {description: unknown job or operation}
+        "409": {description: remove while it is still downloading}
+
+  /api/voice/models/prefetch:
+    post:
+      tags: [Echo]
+      summary: "Queue the local models of the first local step of the «ascolto» and «voce» chains → {queued[], downloads[]}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
 
   /echo/health:
     get:

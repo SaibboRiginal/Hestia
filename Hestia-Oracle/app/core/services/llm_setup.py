@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("hestia_oracle.llm_setup")
@@ -177,70 +179,75 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None) ->
     return {"ok": True, "detail": text, "chains": chains}
 
 
-# ── Download dei modelli (Ollama) ─────────────────────────────────────────────
+# ── Download dei modelli (Ollama) — hestia_common.downloads, page «Download» ──────────────
 
-_pulls: dict[str, dict[str, Any]] = {}
-_plock = threading.Lock()
+_downloads = None
+_dlock = threading.Lock()
+
+
+def downloads():
+    """Oracle's download manager (source ``ollama``): jobs in ``data/downloads.json``, notices through Hermes."""
+    global _downloads
+    with _dlock:
+        if _downloads is None:
+            from hestia_common.downloads import Downloads
+            from hestia_common.module_kit import Hub
+            hub = Hub(os.getenv("HUB_API_URL", "http://hestia_hub:19001/api"))
+            _downloads = Downloads("oracle", state_path=Path(os.getenv("ORACLE_DATA_DIR", "data")) / "downloads.json",
+                                   hub=hub, page="cervello")
+            _downloads.source("ollama", _run_pull, remove=_remove_model)
+        return _downloads
 
 
 def pulls() -> list[dict[str, Any]]:
-    with _plock:
-        return [dict(p) for p in _pulls.values()]
+    return [j for j in downloads().list() if j["source"] == "ollama"]
 
 
 def pull(model: str) -> dict[str, Any]:
-    """Start (or report) the background download of an Ollama model. Idempotent per model."""
+    """Queue (or report) the download of an Ollama model. Idempotent per model."""
     model = str(model or "").strip()
     if not model or len(model) > 120 or any(c.isspace() for c in model):
         return {"ok": False, "detail": "Nome del modello non valido."}
-    with _plock:
-        job = _pulls.get(model)
-        if job and job["state"] in ("in_coda", "in_corso"):
-            return {"ok": True, **job}
-        job = {"id": model, "what": model, "source": "ollama", "state": "in_coda", "size": 0, "done": 0,
-               "error": "", "started_at": time.time()}
-        _pulls[model] = job
-    threading.Thread(target=_run_pull, args=(model,), daemon=True, name=f"pull-{model}").start()
-    return {"ok": True, **job}
+    size = next((int(m["size_gb"] * 1e9) for t in CATALOG for m in t["chat"] if m["model"] == model),
+                int(EMBEDDING_MODEL["size_gb"] * 1e9) if model == EMBEDDING_MODEL["model"] else 0)
+    return {"ok": True, **downloads().add(f"ollama:{model}", model, "ollama", {"model": model}, size_hint=size)}
 
 
-def _set(model: str, **kw) -> None:
-    with _plock:
-        if model in _pulls:
-            _pulls[model].update(kw)
+def _run_pull(job) -> None:
+    """``ollama pull`` with progress summed over its layers; Ollama resumes a broken pull by itself."""
+    import requests
+    from hestia_common.downloads import DownloadError
+    from core.services import llm_providers
+    model = job.params["model"]
+    layers: dict[str, tuple[int, int]] = {}
+    with requests.post(f"{llm_providers.url('ollama')}/api/pull", json={"model": model, "stream": True},
+                       stream=True, timeout=(10, 600)) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            data = json.loads(line)
+            if data.get("error"):
+                text = str(data["error"])
+                if "not found" in text.lower() or "manifest" in text.lower():
+                    raise DownloadError(f"Il modello {model} non esiste su Ollama.", final=True)
+                if "space" in text.lower():
+                    raise DownloadError("Il disco è pieno: libera spazio o scegli un modello più piccolo.", final=True)
+                raise RuntimeError(text)
+            if data.get("total") and data.get("digest"):
+                layers[data["digest"]] = (int(data.get("completed") or 0), int(data["total"]))
+                job.progress(sum(c for c, _ in layers.values()), sum(t for _, t in layers.values()))
+            else:
+                job.check()
+            if data.get("status") == "success":
+                logger.info("event=llm_setup_pull_done model=%s", model)
+                return
+    raise RuntimeError("download interrotto")
 
 
-def _run_pull(model: str) -> None:
+def _remove_model(job) -> None:
     import requests
     from core.services import llm_providers
-    delay = 2
-    for attempt in range(1, 4):
-        _set(model, state="in_corso", error="")
-        try:
-            with requests.post(f"{llm_providers.url('ollama')}/api/pull", json={"model": model, "stream": True},
-                               stream=True, timeout=(10, 600)) as resp:
-                resp.raise_for_status()
-                for line in resp.iter_lines():
-                    if not line:
-                        continue
-                    data = json.loads(line)
-                    if data.get("error"):
-                        raise RuntimeError(data["error"])
-                    if data.get("total"):
-                        _set(model, size=int(data["total"]), done=int(data.get("completed") or 0))
-                    if data.get("status") == "success":
-                        _set(model, state="fatto", done=_pulls[model].get("size", 0))
-                        logger.info("event=llm_setup_pull_done model=%s", model)
-                        return
-            raise RuntimeError("download interrotto")
-        except Exception as exc:
-            text = str(exc)
-            logger.warning("[🔄] event=llm_setup_pull_failed model=%s attempt=%s error=%s", model, attempt, text[:200])
-            if "not found" in text.lower() or "manifest" in text.lower():
-                _set(model, state="errore", error=f"Il modello {model} non esiste su Ollama.")
-                return
-            if attempt == 3:
-                _set(model, state="errore", error="Download non riuscito: " + text[:160])
-                return
-            time.sleep(delay)
-            delay *= 2
+    requests.delete(f"{llm_providers.url('ollama')}/api/delete", json={"model": job.params["model"]},
+                    timeout=30).raise_for_status()
+    logger.info("event=llm_setup_model_removed model=%s", job.params["model"])
