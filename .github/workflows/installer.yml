@@ -1,0 +1,108 @@
+name: Installer
+
+# Checks the one-click installers (SPEC docs/work/2026-10-30-setup-un-click §4.5) on the systems they target:
+# shellcheck + dry run on Linux and macOS, parse + dry run on Windows, and the images override in step with compose.
+# A real end-to-end install (build of the whole stack) runs by hand (workflow_dispatch) on Linux.
+
+on:
+  pull_request:
+    paths:
+      - "install.sh"
+      - "install.ps1"
+      - "Installa-Hestia.cmd"
+      - "up-all.sh"
+      - "tools/init_env.py"
+      - "tools/release/**"
+      - "docker-compose.global.yml"
+      - "docker-compose.images.yml"
+      - ".github/workflows/installer.yml"
+      - ".github/workflows/images.yml"
+  workflow_dispatch:
+    inputs:
+      real_run:
+        description: "Also run a real install on Linux (builds the whole stack, ~30 min)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: installer-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          if ! command -v shellcheck >/dev/null; then
+            if command -v brew >/dev/null; then brew install shellcheck; else sudo apt-get install -y -qq shellcheck; fi
+          fi
+          shellcheck -S warning install.sh up-all.sh
+      - name: bash 3.2 syntax (macOS default bash)
+        if: runner.os == 'macOS'
+        run: /bin/bash -n install.sh && /bin/bash -n up-all.sh
+      - name: Dry run
+        run: bash install.sh --dry-run --no-browser --dir "$RUNNER_TEMP/hestia"
+      - name: Images override in step with compose
+        run: python3 tools/release/images_compose.py --check
+      - name: Generated secrets (fresh install, then idempotent)
+        run: |
+          python3 tools/init_env.py --generate-secrets --new-db
+          grep -Eq '^HESTIA_DB_PASSWORD=.{20,}$' .env
+          ! grep -q '^HESTIA_DB_PASSWORD=super_secret_local_password$' .env
+          grep -Eq '^WEBUI_SECRET_KEY=.{20,}$' .env
+          before=$(sha256sum .env 2>/dev/null || shasum -a 256 .env)
+          python3 tools/init_env.py --generate-secrets --new-db
+          after=$(sha256sum .env 2>/dev/null || shasum -a 256 .env)
+          [ "$before" = "$after" ]
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse with Windows PowerShell 5.1 (file, with BOM, and as downloaded text for irm | iex)
+        shell: powershell
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD\install.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Error $_.ToString() }; exit 1 }
+          $bytes = [IO.File]::ReadAllBytes("$PWD\install.ps1")
+          if (-not ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)) { Write-Error 'install.ps1 must be UTF-8 with BOM'; exit 1 }
+          $text = [Text.Encoding]::UTF8.GetString($bytes)   # keeps a leading U+FEFF, like a raw download may
+          [scriptblock]::Create($text) | Out-Null
+          [scriptblock]::Create(($text -replace '^﻿', '')) | Out-Null
+          Write-Host 'parse ok'
+      - name: Dry run (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          $out = & powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DryRun -NoBrowser -Dir "$env:RUNNER_TEMP\hestia" 2>&1
+          $out | ForEach-Object { Write-Host $_ }
+          # The runner has no virtualization for Docker Desktop: reaching that check (or further) means the script ran.
+          if (($out -join "`n") -notmatch 'Hestia') { exit 1 }
+      - name: Launcher is CRLF
+        shell: bash
+        run: |
+          file Installa-Hestia.cmd | grep -q CRLF
+
+  real-linux:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.real_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Install from this branch (no Ollama on the runner)
+        run: |
+          git clone --branch "${GITHUB_REF_NAME}" "https://github.com/${GITHUB_REPOSITORY}.git" "$HOME/Hestia"
+          HESTIA_REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git" HESTIA_CHANNEL=novita \
+            bash "$HOME/Hestia/install.sh" --no-browser
+      - name: Health
+        run: curl -fsS http://localhost:19001/health && curl -fsS -o /dev/null http://localhost:19015
+      - name: Log on failure
+        if: failure()
+        run: tail -n 200 ~/.local/state/hestia-install/install.log || true

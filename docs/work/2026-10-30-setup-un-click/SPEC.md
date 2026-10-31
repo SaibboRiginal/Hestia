@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 2.2 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
-| **Status** | Draft — waiting for Marko's ok |
+| **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -56,6 +56,10 @@ hand and Hestia updates itself.
 
 ## 4. Scope and design
 
+**Priorities (Marko 2026-10-30):** Windows and Linux are the main targets and must be solid. macOS only where it
+stays simple: Homebrew + Docker Desktop + Ollama, no Colima, no special cases; if something is missing it says what
+to install and stops. Every important part (above all **Oracle**) must be easy to configure from the setup.
+
 ### 4.0 Roles of a machine (asked once, first screen after the language)
 
 | Role | What runs there | When |
@@ -96,7 +100,7 @@ sentence). State in `<install dir>/.hestia-install/state.json` + log `install.lo
 |---|---|---|---|---|
 | 0 | Preflight: OS/arch, RAM ≥ 8 GB (warn), disk ≥ 30 GB free, internet, virtualization, ports 19000-19030/5432 free | ✔ | ✔ | ✔ |
 | 1 | git (fallback: download the zip of `main`, switch to git later) | winget `Git.Git` → direct installer | apt/dnf/pacman/zypper | `xcode-select --install` → Homebrew |
-| 2 | Docker | WSL2 (`wsl --install`, reboot + resume via RunOnce) → winget `Docker.DockerDesktop` → direct installer | `get.docker.com` → distro package; add user to `docker` group | Homebrew cask → `.dmg` → **Colima** (no GUI, no licence) as last fallback |
+| 2 | Docker | WSL2 (`wsl --install`, reboot + resume via RunOnce) → winget `Docker.DockerDesktop` → direct installer | `get.docker.com` → distro package; add user to `docker` group | Homebrew cask (else: «installa Docker Desktop da docker.com e rilancia») |
 | 3 | Start Docker and wait until `docker info` answers (up to 5 min, progress shown) | ✔ | systemd | ✔ |
 | 4 | GPU: detect NVIDIA; Linux installs `nvidia-container-toolkit`; none = CPU + cloud models (said once, not an error) | driver check | ✔ | Metal via native Ollama |
 | 5 | Ollama on the host (native, so Mac uses Metal and Windows the GPU without extra setup) | winget `Ollama.Ollama` | official `install.sh` | Homebrew → app |
@@ -128,9 +132,24 @@ answer makes them needed**, not at the end.
 2. **Questo dispositivo**: role (§4.0), with the hardware it detected in plain words («Scheda video da 16 GB:
    ottima per i modelli locali»). Satellite → pairing code screen, then jumps to step 8.
 3. **Account**: create the WebUI admin login.
-4. **Cervello**: «Sul tuo computer» (local), «Nel cloud», «Tutti e due» (default when a GPU is found). Local:
-   suggested models by VRAM/RAM (chat, embedding; Ollama tags and Hugging Face `.gguf` for llama-server), each with
-   size and «Scarica»; download starts in background right away. Cloud: paste a key, «Prova» does one real call.
+4. **Cervello (Oracle)** — the most important screen, built so that a non-technical person gets a working brain in
+   one or two taps, and an expert can still go to Modelli later:
+   - **Ricetta** (one big choice, preselected by hardware): «Sul tuo computer» (local only) · «Nel cloud» · «Tutti e
+     due» (local first, cloud when the local one is busy/off; default with a GPU ≥ 8 GB) · «Abbonamento Claude»
+     (Claude Pro/Max via `claude setup-token`, optional brain mode esterna).
+   - **Local**: a small catalog in Oracle (`core/services/setup_catalog.py`, data not code paths) of recommended
+     models per tier (VRAM/RAM: CPU-only, 8 GB, 12 GB, 16 GB, 24 GB+) for chat, reasoning, vision and embedding, each
+     with size and what it is good for; one is preselected, «Scarica» starts the Ollama pull (or the `.gguf` from
+     Hugging Face for llama-server) in Download right away. Models already in Ollama are shown as «già presente».
+   - **Cloud**: one card per provider (Gemini — free key, link to Google AI Studio; DeepSeek; Claude API; any
+     OpenAI-compatible address), paste the key, «Prova» makes one real tiny call and says «funziona» or the reason
+     in plain words. Keys go to `Hestia-Oracle/app/.env` as `ORACLE_KEY_<NAME>` through the Hephaestus setup
+     endpoint, then Oracle restarts.
+   - **Result**: the setup writes `oracle.providers`, `oracle.chains` (veloce, potente, codice, visione, embedding
+     with the steps in the chosen order) and `oracle.usecases`, and shows it in one sentence: «Ti risponde Qwen sul
+     tuo PC; se non c'è, Gemini Flash.» A last «Prova il cervello» sends one real chat message.
+   - Embedding: always one model (vectors must stay comparable): local if Ollama is there, else the cloud one; the
+     setup warns that changing it later re-indexes the memory.
    Choices become Themis values (the user is the one choosing, so no extra confirmation).
 5. **Voce** (optional): language and voice; the Echo models (Hugging Face) go in the download list.
 6. **Telegram**: paste the BotFather token, «Prova» checks it; then the screen shows a one-time code «scrivi questo
@@ -138,6 +157,8 @@ answer makes them needed**, not at the end.
    to know your own Telegram id. `ALLOWED_USER_ID` stays fail-closed for everyone else.
 7. **Account esterni** (optional): Google Calendar/Gmail with the existing Hecate OAuth flow; Garmin, Home
    Assistant, ComfyUI as «collega più tardi» links.
+   **Da fuori casa** (optional): remote access to the WebUI through a Cloudflare tunnel run as a container (compose
+   profile `tunnel`, no host install): quick address now, fixed address explained in one screen.
 8. **Backup** (optional): passphrase, shown with «salvala nel tuo password manager».
 9. **Quasi pronto**: the download list (§4.3) and every module's health in plain words; «Inizia» is active as soon
    as the minimum works (account + one brain reachable), even if big models are still downloading: chat uses the
@@ -200,7 +221,10 @@ same screen, so changing a key later is also not a `.env` edit).
 - Playwright flow `setup` in `tools/cloud_test/flows.py` for the wizard (all three roles; satellite = a second
   compose project on the bench joining the first) and the Download page with a fake slow download.
 - CI job that builds and pushes the images to GHCR (amd64 + arm64) when a tag `vX.Y.Z` is pushed, and on merge to `main` with tag `edge`.
-- Windows/macOS real install: **Marko** (we cannot run Docker Desktop in CI).
+- Windows real install: **Marko** (we cannot run Docker Desktop in CI). macOS: dry-run only in CI.
+- Every setup screen stays reachable after the first run: Impostazioni → Sistema → **Configura** reopens any step
+  (Cervello, Telegram, Account esterni, Backup, Da fuori casa) with the current values, so changing the brain later
+  is the same easy screen.
 
 ### 4.6 Phases
 
@@ -246,8 +270,9 @@ same screen, so changing a key later is also not a `.env` edit).
 
 ## 7. Open points for Marko
 
-1. Ok to go with P1–P7 as above?
-2. Secrets written by Hephaestus into `.env` (proposed) vs an encrypted secret store in Archive (bigger change of a
-   global rule).
-3. macOS last fallback Colima (no Docker Desktop licence) — ok?
+1. ~~Phases P1–P7~~ — ok (Marko 2026-10-30).
+2. ~~Secrets~~ — written by Hephaestus into `.env` (explained to Marko 2026-10-30, he went on).
+3. ~~Colima~~ — dropped: macOS only if simple.
 4. ~~Prebuilt public images on GitHub Container Registry~~ — ok from Marko 2026-10-30, tied to releases/tags (§4.4).
+
+No open points left.

@@ -283,7 +283,22 @@ ensure_ollama() {
     [ "$DRY_RUN" = 1 ] || sleep 3
   fi
   [ "$OS" = linux ] && ollama_reachable_from_docker
+  pull_default_models
   return 0
+}
+
+# Oracle's default chains (llm_chains.py): the embedding model is needed for memory, the chat one for local answers.
+DEFAULT_MODELS="qwen3-embedding:0.6b gemma4:e4b"
+
+pull_default_models() {
+  has ollama || return 0
+  local model
+  for model in $DEFAULT_MODELS; do
+    if [ "$DRY_RUN" = 0 ] && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$model"; then continue; fi
+    say "Scarico il modello $model (una volta sola)…"
+    retry "Download di $model" run ollama pull "$model" \
+      || note "Il modello $model non si è scaricato: rilancia più tardi, nel frattempo Hestia usa il cloud se hai una chiave."
+  done
 }
 
 ollama_reachable_from_docker() {
