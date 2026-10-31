@@ -152,6 +152,9 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
 def is_authorized(message) -> bool:
     user_id = str(message.from_user.id)
     if not core.is_allowed_user(user_id):
+        from .setup_link import try_claim   # no owner yet: the one-time code of the guided setup
+        if try_claim(message):
+            return False
         logger.warning("event=unauthorized_access_attempt user_id=%s allowed_configured=%s",
                        user_id, bool(core.ALLOWED_USER_ID))
         core.bot.reply_to(message, "Questo è un assistente privato.")

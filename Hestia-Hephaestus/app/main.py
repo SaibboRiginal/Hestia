@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 import time
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
@@ -19,6 +20,7 @@ from .forge.config import load_forge_config
 from .forge.router import create_forge_router, create_repo_router
 from .forge.service import Forge
 from .forge import forge_settings
+from .setup.router import create_setup_router
 
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils",
@@ -138,6 +140,9 @@ app.include_router(create_forge_router(forge))
 app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
 app.include_router(webui_plugin.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
+setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click)
+    forge.cfg.repo_path, Path(os.getenv("HEPHAESTUS_DATA_DIR", "/code/data")), config.hub_api_url)
+app.include_router(setup_router)
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools
