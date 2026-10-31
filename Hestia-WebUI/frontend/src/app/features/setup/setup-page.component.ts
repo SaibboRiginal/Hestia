@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { BrainCatalog, CloudProvider, Download, SetupApi, SetupState, setupError } from './setup.api';
 
-type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'claude' | 'cervello' | 'telegram' | 'backup' | 'esterni' | 'pronto';
+type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'claude' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'pronto';
 type Recipe = 'locale' | 'cloud' | 'entrambi' | 'claude';
 
 const RECIPES: { id: Recipe; label: string; text: string; icon: string }[] = [
@@ -138,6 +138,13 @@ function store(key: string, value: string): void {
               <h1>Il cervello è pronto</h1>
               <p class="lead">{{ state()!.brain.summary || 'Fatto.' }}</p>
               <ng-container *ngTemplateOutlet="downloadsTpl" />
+            }
+
+            @case ('voce') {
+              <hx-icon name="volume" [size]="30" tone="accent" />
+              <h1>Vuoi parlare con Hestia a voce?</h1>
+              <p class="lead">Scarico adesso le voci e l'ascolto, così la prima volta che parli non devi aspettare. Funzionano sul tuo computer, senza servizi a pagamento.</p>
+              @if (voiceQueued()) { <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Le sto scaricando: le trovi nella pagina Download.</p> }
             }
 
             @case ('telegram') {
@@ -297,10 +304,12 @@ export class SetupPageComponent {
       ...(this.needsLocal() ? ['locale' as Screen] : []),
       ...(r === 'cloud' || r === 'entrambi' ? ['cloud' as Screen] : []),
       ...(r === 'claude' ? ['claude' as Screen] : []),
-      'cervello', 'telegram', 'backup', 'esterni', 'pronto'];
+      'cervello', 'voce', 'telegram', 'backup', 'esterni', 'pronto'];
   });
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
-  optional = computed(() => ['telegram', 'backup'].includes(this.screen()) && !this.stepDone(this.screen()));
+  optional = computed(() => (this.screen() === 'voce' && !this.voiceQueued())
+    || (['telegram', 'backup'].includes(this.screen()) && !this.stepDone(this.screen())));
+  voiceQueued = signal(false);
   providerInfo = computed(() => this.catalog()?.cloud.find(p => p.name === this.provider()) ?? null);
 
   constructor() {
@@ -370,6 +379,7 @@ export class SetupPageComponent {
       case 'cloud': return 'Conferma';
       case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? 'Avanti' : 'Collega';
       case 'backup': return this.state()!.backup.passphrase ? 'Avanti' : 'Salva';
+      case 'voce': return this.voiceQueued() ? 'Avanti' : 'Sì, scarica';
       case 'pronto': return 'Inizia';
       default: return 'Avanti';
     }
@@ -381,6 +391,12 @@ export class SetupPageComponent {
     this.busy.set(true);
     try {
       if (following === 'cervello' && screen !== 'ricetta') { await this.applyBrain(); return; }
+      if (screen === 'voce' && !this.voiceQueued()) {
+        await this.api.prefetchVoice();
+        this.voiceQueued.set(true);
+        void this.refreshDownloads();
+        return;
+      }
       if (screen === 'telegram' && !this.state()!.telegram.linked) { await this.linkTelegram(); return; }
       if (screen === 'backup' && !this.state()!.backup.passphrase) {
         const r = await this.api.backup(this.passphrase);

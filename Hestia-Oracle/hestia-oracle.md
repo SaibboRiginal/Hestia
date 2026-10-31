@@ -647,5 +647,8 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   provider, `embedding` is left as it is (changing it re-indexes the memory). Recipe `claude` also sets the brain
   mode `esterna` with agent `claude` and fallback `interna`. Answer: one sentence («Ti risponde X sul tuo computer;
   se non c'è, Y nel cloud.»).
-- `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: background Ollama downloads with progress
-  (`in_coda → in_corso → fatto | errore`, 3 retries), idempotent per model.
+- `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: Ollama downloads through
+  `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at
+  `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per
+  model; a missing model or a full disk is a final error in plain words. Tools `modelli_download`,
+  `modelli_scarica` (Telegram «Download»).

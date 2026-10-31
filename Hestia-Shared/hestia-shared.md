@@ -436,6 +436,20 @@ link, value/unit/progress); unknown fields are refused. `CoachClient(module).don
 call Hecate through Hub (`/api/gateway/weather/*`); `is_rainy(day_or_hour)` and `day_summary(day)` give one shared
 reading. Failures answer `{status: "unavailable"}`; never raises. Place = saved place name/id, a city, or empty = Casa.
 
+## Downloads (`hestia_common.downloads`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
+
+Each module downloads its own things; `Downloads(module, state_path, hub, page)` gives them one job format and one
+door. `file(id, what, url, dest, size_hint, sha256)` = built-in source `http` (resumes from `dest.part` with HTTP
+Range, checks free disk **before** starting — «Servono X GB, ne hai Y…» —, optional sha256, rename when complete);
+`source(name, run, remove)` adds a custom source (`run(job)` reports `job.progress(done, size)`, which raises
+`Stopped` on pause/cancel; `DownloadError(msg, final=True)` = no retry). One worker per module; 3 retries
+(2/4/8 s, `[🔄] event=download_retry`). Job `{id, what, source, module, size, done, speed, eta_s, state, error}`,
+states `in_coda · in_corso · in_pausa · fatto · errore`; jobs persist in `state_path` (a running one comes back
+paused). `wait(id)` blocks a caller that needs the file now. Router `GET /api/downloads`, `POST
+/api/downloads/{id}/{pause|resume|retry|cancel|remove}`; `capabilities()` → `downloads` (the WebUI page finds the
+modules by it). A failure, or a finished download over 200 MB, goes to Notifiche through Hermes. Used by Oracle
+(source `ollama`) and Echo (`http`, `whisper`).
+
 ## Constraints
 
 - No domain logic — pure library code.

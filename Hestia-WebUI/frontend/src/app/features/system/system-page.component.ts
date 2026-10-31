@@ -15,6 +15,7 @@ import { PluginPage } from '../plugins/plugins.types';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header title="Sistema" subtitle="Come sta Hestia e come lavora: salute, modelli, notifiche, agenda, impostazioni, sviluppo">
+      <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">Download</a>
       @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/sistema">Dashboard</a> }
     </hx-page-header>
     <div class="body">

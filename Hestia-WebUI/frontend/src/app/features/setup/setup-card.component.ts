@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { SetupApi, SetupState } from './setup.api';
 
-const LABELS: Record<string, string> = { cervello: 'cervello', telegram: 'Telegram', backup: 'backup', esterni: 'account esterni' };
+const LABELS: Record<string, string> = { cervello: 'cervello', voce: 'voce', telegram: 'Telegram', backup: 'backup', esterni: 'account esterni' };
 
 /** Home card «Da finire»: what the guided setup left for later (no nag, it just stays here until done). */
 @Component({

@@ -156,6 +156,24 @@ _oracle_mcp_tools = [
         clients=["ui", "telegram"], response_mode="direct",
         telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "Chat"}),
+    # ── downloads of the brain's models (docs/work/2026-10-30-setup-un-click §4.3) ──
+    MCPTool(
+        name="modelli_download", description=("The brain's model downloads: what is downloading, done or failed, "
+                                              "with progress and time left."),
+        parameters={"type": "object", "properties": {}},
+        handler=lambda **_kw: {"downloads": _llm_setup.pulls()},
+        title="Download dei modelli", method="GET", path="/api/llm/setup/pulls",
+        clients=["ui", "telegram"], response_mode="oracle_natural",
+        telegram_visible=True, telegram_group="sistema", telegram={"section": "Download", "label": "Modelli"}),
+    MCPTool(
+        name="modelli_scarica", description=("Download (or retry, or resume) a local model for the brain, by its "
+                                             "Ollama name, e.g. qwen3:8b. It runs in the background."),
+        parameters={"type": "object", "properties": {"model": {"type": "string", "description": "Ollama model name"}},
+                    "required": ["model"]},
+        handler=lambda **kw: _llm_setup.pull(str(kw.get("model", ""))),
+        title="Scarica un modello", method="POST", path="/api/llm/setup/pull",
+        clients=["ui", "telegram"], response_mode="oracle_natural",
+        telegram_visible=True, telegram_group="sistema", telegram={"section": "Download", "label": "Scarica modello"}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -263,6 +281,11 @@ from core.services.memory_transfer import MemorySection
 
 transfer = Transfer("oracle", sections=[MemorySection(lambda *a, **kw: engine._memory_service._route_archive(*a, **kw))])
 app.include_router(transfer.router())
+
+# ── downloads (hestia_common.downloads): the Ollama models the setup or the Download page asked for ──────────
+from core.services import llm_setup as _llm_setup  # noqa: E402
+
+app.include_router(_llm_setup.downloads().router())
 
 
 @app.get("/api/ui/activity")
@@ -717,6 +740,7 @@ def _register_on_hub():
             **ui.capabilities(service_base_url),
             **_voice_capabilities(),
             **transfer.capabilities(),
+            **_llm_setup.downloads().capabilities(),
         },
     }
     try:

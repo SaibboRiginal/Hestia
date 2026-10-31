@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.3 |
+| **Version** | 2.4 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
 
@@ -197,6 +197,14 @@ takes part through the one-time code.
 - Finished or failed downloads go to Notifiche (silent when the user is on the page).
 - Hugging Face: public models need no account; a token (`HF_TOKEN`, a secret) is asked only when a gated model is
   chosen.
+
+**What P4 built (v2.4).** `hestia_common.downloads` (job format, HTTP resume, disk check, sha256, retries, persisted
+jobs, pause/resume/retry/cancel/remove, notices for failures and finished downloads over 200 MB); Oracle's Ollama
+models and Echo's Whisper/Piper/Kokoro/voiceprint files go through it; WebUI page `/download` (button in Sistema)
+and the setup's «Voce» screen (queues the voices); Telegram tools `modelli_download`, `modelli_scarica`,
+`voce_download`, `voce_scarica`. Moved: Docker images to P6 (the updater pulls them), the «machine» column to P5
+(satellites). Not built: `.gguf` downloads for llama-server (Oracle has no llama-server download path yet) and the
+«silent while on the page» notice rule (notices are already only for failures and big downloads) — flagged to Marko.
 
 ### 4.4 Hestia updates itself — «Aggiorna Hestia»
 

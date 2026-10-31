@@ -126,6 +126,12 @@ never changes.
 | GET | `/audio`, `/audio/{id}?format=`, `/audio-for?ref_id=` | kept audio (list with space, one, the one of a message) |
 | DELETE | `/audio/{id}`, `/audio?notification_id=\|message_id=` | delete one; drop regenerable audio of a removed notification |
 | POST | `/audio/cleanup` | agenda job |
+| POST | `/models/prefetch` | queue the local models of the first local step of the «ascolto» and «voce» chains (guided setup «Voce», Download page) → `{queued, downloads}` |
+
+Downloads (`/api/downloads`, `hestia_common.downloads`, state `/models/downloads.json`): Whisper (source `whisper`,
+faster-whisper's own download, no byte progress), Piper voices and Kokoro files (source `http`, resumable), the
+voiceprint model. A model still missing on first use is downloaded through the same manager (`standards.fetch`),
+so it shows on the Download page and the call waits for it.
 
 `keep` = `{kind: recording|file|generated|notification, message_id?|notification_id?, session_id?, client?}`.
 
@@ -136,7 +142,7 @@ rewrites the header and `wav_duration` counts the frames really there (bench 202
 ## Configuration (infrastructure only)
 
 `ECHO_KEY_<NAME>` (keys of cloud providers, `Hestia-Echo/app/.env`), `ECHO_MODELS_DIR` (`/models`, volume
-`hestia_echo_models`: Whisper, Piper and Kokoro files are downloaded on first use), `HUB_API_URL`, `TZ`.
+`hestia_echo_models`: Whisper, Piper and Kokoro files are downloaded on first use or by `/models/prefetch`), `HUB_API_URL`, `TZ`.
 
 ## Tests
 

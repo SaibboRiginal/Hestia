@@ -21,7 +21,7 @@ from . import secrets
 
 logger = logging.getLogger("hestia_hephaestus.setup")
 
-STEPS = ("cervello", "telegram", "backup", "esterni")
+STEPS = ("cervello", "voce", "telegram", "backup", "esterni")
 CODE_TTL = 600
 CODE_TRIES = 5
 EMBEDDING_MODEL = "qwen3-embedding:0.6b"   # same as Oracle's llm_setup.EMBEDDING_MODEL

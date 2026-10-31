@@ -433,7 +433,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   The container is re-created through the Docker API with the same image, mounts, ports, networks/aliases, restart
   policy and healthcheck plus the changed variables; the old one is renamed and kept until the new one starts, and
   comes back on failure (`[🔄] event=setup_recreate_failed`).
-- `setup/service.py`: state in `data/setup.json` (completed, steps left for later, brain choice), hardware from
+- `setup/service.py`: state in `data/setup.json` (completed, steps left for later — cervello, voce, telegram, backup, esterni —, brain choice), hardware from
   `/repo/.hestia-install/hardware.json` (written by the installer). Telegram link: a 6-digit one-time code (10
   minutes, 5 tries, compared in constant time); the bot, while `ALLOWED_USER_ID` is empty, forwards a 6-digit
   message to `telegram/claim` and the sender becomes the owner (the bot is re-created 3 s later, after its reply).
