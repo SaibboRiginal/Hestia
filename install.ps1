@@ -23,7 +23,9 @@ param(
     [switch]$Resume
 )
 
-$ErrorActionPreference = 'Stop'
+# Continue, not Stop: on Windows PowerShell 5.1 any stderr line of a native program (docker, git, winget) would
+# otherwise become a terminating error. Native calls are checked by exit code; cmdlets that must stop say -ErrorAction Stop.
+$ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest is 10x slower with the progress bar on 5.1
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
@@ -78,9 +80,10 @@ function Invoke-Step {  # run an external program; output to the log; $true on e
     $line = "$File $($Arguments -join ' ')"
     if ($DryRun) { Write-Host "  [dry-run] $line"; return $true }
     Write-Log "run cmd=`"$line`" elevated=$([bool]$Elevated)"
+    if (-not (Test-Command $File) -and -not (Test-Path $File)) { Write-Log "$R run_missing cmd=`"$File`""; return $false }
     try {
         if ($Elevated) {
-            $p = Start-Process -FilePath $File -ArgumentList $Arguments -Verb RunAs -Wait -PassThru
+            $p = Start-Process -FilePath $File -ArgumentList $Arguments -Verb RunAs -Wait -PassThru -ErrorAction Stop
             return ($p.ExitCode -eq 0)
         }
         $out = & $File @Arguments 2>&1
@@ -122,7 +125,7 @@ function Update-PathFromRegistry {  # programs installed a moment ago are not on
 function Get-File([string]$Url, [string]$Target) {
     if ($DryRun) { Write-Host "  [dry-run] download $Url"; return $true }
     Write-Log "download url=$Url"
-    Invoke-WebRequest -Uri $Url -OutFile $Target -UseBasicParsing
+    Invoke-WebRequest -ErrorAction Stop -Uri $Url -OutFile $Target -UseBasicParsing
     return (Test-Path $Target)
 }
 
@@ -160,18 +163,18 @@ function Invoke-Compose {
 # -- 0. preflight -------------------------------------------------------------------------------------------------
 function Test-Preflight {
     Say 'Controllo il computer...'
-    $ramGb = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+    $ramGb = [math]::Floor((Get-CimInstance -ErrorAction Stop Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
     $drive = (Split-Path -Qualifier $Dir).TrimEnd(':')
-    $freeGb = [math]::Floor((Get-PSDrive $drive).Free / 1GB)
+    $freeGb = [math]::Floor((Get-PSDrive -ErrorAction Stop $drive).Free / 1GB)
     Write-Log "preflight ram_gb=$ramGb free_gb=$freeGb"
     if ($ramGb -lt 8) { Note "Hai $ramGb GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud." }
     if ($freeGb -lt 20) { Stop-Install "servono almeno 20 GB liberi (meglio 30) sul disco ${drive}:, ce ne sono $freeGb. Libera spazio." }
     if ($freeGb -lt 30) { Note "Spazio libero: $freeGb GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare." }
     $probe = "$($RepoUrl -replace '\.git$', '').git/info/refs?service=git-upload-pack"
-    $online = Invoke-Retry 'Connessione a internet' { (Invoke-WebRequest -Uri $probe -UseBasicParsing -TimeoutSec 15).StatusCode -eq 200 }
+    $online = Invoke-Retry 'Connessione a internet' { (Invoke-WebRequest -ErrorAction Stop -Uri $probe -UseBasicParsing -TimeoutSec 15).StatusCode -eq 200 }
     if (-not $online) { Stop-Install 'non riesco a raggiungere github.com: controlla la connessione a internet.' }
-    $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
-    $hyperv = (Get-CimInstance Win32_ComputerSystem).HypervisorPresent
+    $cpu = Get-CimInstance -ErrorAction Stop Win32_Processor | Select-Object -First 1
+    $hyperv = (Get-CimInstance -ErrorAction Stop Win32_ComputerSystem).HypervisorPresent
     if (-not $hyperv -and -not $cpu.VirtualizationFirmwareEnabled) {
         Stop-Install "la virtualizzazione ~e spenta nel BIOS/UEFI: riavvia, entra nel BIOS e attiva <<Intel VT-x>> o <<AMD-V / SVM>>, poi rilancia."
     }
@@ -198,10 +201,10 @@ function Install-GitIfMissing {
 # -- 2-3. WSL2 + Docker Desktop -----------------------------------------------------------------------------------
 function Register-Resume {
     if ($DryRun) { return }
-    if ($PSCommandPath -and (Test-Path $PSCommandPath)) { Copy-Item $PSCommandPath $SavedScript -Force }
-    else { Get-File $ScriptUrl $SavedScript | Out-Null }
+    if ($PSCommandPath -and (Test-Path $PSCommandPath)) { Copy-Item -ErrorAction Stop $PSCommandPath $SavedScript -Force }
+    else { try { Get-File $ScriptUrl $SavedScript | Out-Null } catch { Write-Log "$R resume_download_failed" } }
     $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$SavedScript`" -Resume -Dir `"$Dir`" -Channel $Channel"
-    Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'HestiaInstall' -Value $cmd
+    Set-ItemProperty -ErrorAction Stop -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'HestiaInstall' -Value $cmd
     Write-Log 'resume_registered'
 }
 
@@ -251,7 +254,7 @@ function Install-DockerIfMissing {
 }
 
 # -- 5. Ollama (native: uses the GPU without extra setup) --------------------------------------------------------
-function Test-Ollama { try { return ((Invoke-WebRequest 'http://127.0.0.1:11434/api/version' -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { return $false } }
+function Test-Ollama { try { return ((Invoke-WebRequest -ErrorAction Stop 'http://127.0.0.1:11434/api/version' -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { return $false } }
 
 function Install-OllamaIfMissing {
     Update-PathFromRegistry
@@ -315,8 +318,8 @@ function Get-Code {
             if ($ok -and -not $DryRun) {
                 $tmp = Join-Path $env:TEMP 'hestia-main'
                 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-                Expand-Archive $zip $tmp -Force
-                Move-Item (Get-ChildItem $tmp | Select-Object -First 1).FullName $Dir
+                Expand-Archive -ErrorAction Stop $zip $tmp -Force
+                Move-Item -ErrorAction Stop (Get-ChildItem $tmp | Select-Object -First 1).FullName $Dir
             }
         }
         if (-not $ok) { Stop-Install 'non riesco a scaricare Hestia da GitHub. Controlla la connessione.' }
@@ -402,7 +405,7 @@ function Wait-Healthy {
     Say 'Aspetto che tutti i moduli rispondano...'
     $waited = 0
     while ($true) {
-        try { if ((Invoke-WebRequest "$HubUrl/health" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) { break } } catch { }
+        try { if ((Invoke-WebRequest -ErrorAction Stop "$HubUrl/health" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) { break } } catch { }
         if ($waited -ge 300) { Stop-Install 'il centro di Hestia (Hub) non risponde dopo 5 minuti.' }
         Start-Sleep -Seconds 5; $waited += 5
     }
@@ -410,7 +413,7 @@ function Wait-Healthy {
     while ($true) {
         $down = @(& docker ps -a --filter 'name=hestia_' --format '{{.Names}} {{.Status}}' | Where-Object { $_ -notmatch ' Up ' } | ForEach-Object { ($_ -split ' ')[0] })
         $webui = $false
-        try { $webui = ((Invoke-WebRequest $WebUiUrl -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { }
+        try { $webui = ((Invoke-WebRequest -ErrorAction Stop $WebUiUrl -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { }
         if (-not $down.Count -and $webui) { Ok 'Tutti i moduli sono accesi.'; return }
         if ($waited -ge 600) {
             foreach ($c in $down) { Write-Log "container_down name=$c"; & docker logs --tail 20 $c 2>&1 | ForEach-Object { Write-Log "  | $_" } }

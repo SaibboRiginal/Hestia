@@ -81,10 +81,14 @@ jobs:
       - name: Dry run (Windows PowerShell 5.1)
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Continue'   # the child's stderr lines must not stop this step
           $out = & powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DryRun -NoBrowser -Dir "$env:RUNNER_TEMP\hestia" 2>&1
           $out | ForEach-Object { Write-Host $_ }
           # The runner has no virtualization for Docker Desktop: reaching that check (or further) means the script ran.
-          if (($out -join "`n") -notmatch 'Hestia') { exit 1 }
+          $text = $out -join "`n"
+          if ($text -notmatch 'Hestia') { exit 1 }
+          if ($text -match 'ParseException|CommandNotFoundException|RuntimeException') { exit 1 }
+          exit 0
       - name: Launcher is CRLF
         shell: bash
         run: |
