@@ -21,6 +21,8 @@ inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on 
 | `--channel stabile` (default) / `novita` | latest release with ready-made images · latest code on `main`, built locally |
 | `--uninstall` / `-Uninstall` | stop and remove the containers, data kept; add `--purge` / `-Purge` (type CANCELLA) to delete data too |
 | `--dry-run` / `-DryRun`, `--no-browser` / `-NoBrowser` | print the steps only · do not open the browser |
+| `--role tutto\|centrale\|satellite` / `-Role` | everything here (default) · always-on home without voice and training · only voice and training, near a video card (a re-run keeps the role) |
+| `--join CODE --central IP` / `-Join CODE -Central IP` | link this machine as a satellite (code from Sistema → Macchine on the central one) |
 
 Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installer; get.docker.com → distro package;
 git → zip download; pull → local build); a stop always says the one thing to do, and running the same line again
@@ -41,6 +43,15 @@ they are never shown again. The voice screen queues the local voices. Steps left
 being downloaded (brain models, voices) is in Sistema → **Download**: progress, pause, resume, retry, and «Elimina»
 to free space; a download checks the free disk before starting and resumes after an interruption. Reopen it any time at
 `/benvenuto`.
+
+**Più macchine (central + satellites).** On the always-on machine (a Pi, a mini PC) install with `--role centrale`;
+on the PC with the video card open Sistema → **Macchine** → «Collega una macchina» on the central one and paste the
+command it shows on the PC (`… --join CODE --central IP`, code valid 10 minutes). The PC then runs only voice and
+model training plus a small Hub that passes everything to the central one; its Ollama listens on the home network
+(Linux: systemd drop-in, ufw opened to the LAN for 11434/19021/19014; Windows: `OLLAMA_HOST=0.0.0.0` for the user,
+answer «Consenti» if Windows asks). «Usa la sua scheda video» runs the brain's local models there. When the PC is
+off its parts show «Non disponibile» and the central's own copy (if any) answers. «Scollega» revokes it. Never open
+these ports on the router.
 
 **Releases and ready-made images.** A tag `vX.Y.Z` on `main` runs `.github/workflows/images.yml`: every service is
 built for amd64 and arm64 and published in the single package `ghcr.io/saibboriginal/hestia` as `<service>-<version>`

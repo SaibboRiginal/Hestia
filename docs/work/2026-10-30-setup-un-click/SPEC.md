@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.4 |
+| **Version** | 2.5 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
 
@@ -80,6 +80,16 @@ to install and stops. Every important part (above all **Oracle**) must be easy t
   stay).
 - Out of v1: running two centrals, moving the database from a PC to a Pi automatically (it is the existing
   export/import `.hestia` + backup flow, linked from the page).
+- **As built (v2.5, P5):** the page is **«Macchine»** (Sistema → Macchine; «Dispositivi» already is the page of
+  phones and watches). The central shows the code and the one-line command for the satellite (`install.sh --join
+  CODE --central IP` / `install.ps1 -Join CODE -Central IP`); the satellite's installer joins, writes
+  `HUB_UPSTREAM_URL`/`HUB_NODE_TOKEN`/`HUB_NODE_ADDRESS` in the root `.env` and starts only `hub` (relay mode),
+  `echo`, `metis`; Ollama listens on the LAN. Its Hub forwards everything to the central and registers its modules
+  at `<LAN IP>:<port>` with the token; a satellite instance answers first, the central's own copy is the fallback.
+  «Usa la sua scheda video» points the brain's local provider at the satellite's Ollama. **Casa centrale** = the
+  global set without voice and training (not the rpi compose: same images, same WebUI). Role change = rerun the
+  installer with `--role` (data stay). Not built: QR, mDNS discovery (the command carries the address), role
+  switch from the page, a satellite's downloads on the page (flagged to Marko).
 
 ### 4.1 Host installer (bootstrap) — `install.sh` (Linux + macOS) and `install.ps1` (Windows)
 
@@ -250,7 +260,7 @@ and the setup's «Voce» screen (queues the voices); Telegram tools `modelli_dow
 - **P2** `install.ps1` + `Installa-Hestia.cmd` (Windows, WSL2 resume).
 - **P3** Hephaestus setup endpoint + guided setup «Benvenuto» + Telegram one-time code.
 - **P4** `hestia_common.downloads` + Download page (Oracle models, Hugging Face, Echo voices, images).
-- **P5** Roles and satellites: pairing code/QR, join token in the Hub, *Dispositivi* page, role switch.
+- **P5** Roles and satellites: pairing code, join token in the Hub, *Macchine* page, role from the installer; «Da fuori casa».
 - **P6** Releases (tag → images + GitHub Release with notes) + «Aggiorna Hestia» (channel, agenda job, notice, selective update, rollback; also on satellites).
 - **P7** Docs: README quick start becomes one line; `docs/SETUP.md`, `TESTING.md`, module docs, swagger, ARCHITECTURE.
 

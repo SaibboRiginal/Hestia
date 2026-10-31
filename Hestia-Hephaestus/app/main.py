@@ -152,6 +152,34 @@ try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
 
     _hephaestus_mcp_tools = [
+        # ── Macchine: central and satellites (docs/work/2026-10-30-setup-un-click §4.0) ──
+        MCPTool(
+            name="macchine_elenco", description="Le macchine di Hestia: questa e i satelliti, accesi o spenti, con "
+                                                "i moduli che ci girano.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok"}, title="Macchine", method="GET", path="/api/setup/machines",
+            clients=["telegram", "ui"], response_mode="oracle_natural", telegram_visible=True,
+            telegram_group="sistema", telegram={"section": "Macchine", "label": "Elenco"}),
+        MCPTool(
+            name="macchine_codice", description="Un codice di collegamento (10 minuti) per aggiungere un satellite: "
+                                                "si scrive nell'installazione dell'altra macchina.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok"}, title="Collega una macchina", method="POST",
+            path="/api/setup/machines/pair", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Collega"}),
+        MCPTool(
+            name="macchine_scollega", description="Scollega un satellite (per id dall'elenco): i suoi moduli escono.",
+            parameters={"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+            handler=lambda **kw: {"status": "ok"}, title="Scollega una macchina", method="POST",
+            path="/api/setup/machines/revoke", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Scollega"}),
+        MCPTool(
+            name="macchine_cervello", description=("Fai girare i modelli locali sulla scheda video di un satellite "
+                                                   "(indirizzo dall'elenco); indirizzo vuoto = di nuovo su questa."),
+            parameters={"type": "object", "properties": {"address": {"type": "string"}, "name": {"type": "string"}}},
+            handler=lambda **kw: {"status": "ok"}, title="Modelli su un'altra macchina", method="POST",
+            path="/api/setup/machines/brain", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Cervello"}),
         MCPTool(
             name="hephaestus_status",
             description="Mostra lo stato del motore di remediation",

@@ -340,6 +340,18 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 3. Buttons → WebUI `POST /api/webui/downloads/{module}/{op}` → module `/api/downloads/{id}/{op}`. Failure or big
    finished download → Hermes `/api/events/ingest` → Notifiche.
 
+### Machines flow (central + satellites, page «Macchine»)
+1. Central: WebUI `/api/webui/setup/machines/pair` → Hub → Hephaestus → Hub `POST /api/nodes/pair` → code shown with
+   the one-line command.
+2. Satellite installer `--join CODE --central IP` → central Hub `POST /api/nodes/join {code, name, address}` →
+   token → satellite root `.env` (`HUB_UPSTREAM_URL`, `HUB_NODE_TOKEN`, `HUB_NODE_ADDRESS`) → starts hub (relay),
+   echo, metis.
+3. Satellite module → its Hub (relay) → central Hub `/api/registry/register` with `X-Hestia-Node-Token`, base URL
+   rewritten to `<LAN IP>:<port>` → central routes to it first; every other call of the satellite's modules goes
+   through the relay to the central Hub (Themis, Archive, Oracle stay there).
+4. «Usa la sua scheda video» → Hephaestus → Oracle `POST /api/llm/setup/machine` → Themis `oracle.providers.ollama.url`
+   = `http://<satellite>:11434`. «Scollega» → Hub `DELETE /api/nodes/{id}`.
+
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).
 2. Phone: the final `localhost` page fails (expected); user pastes the URL in Telegram → Telegram forwards it

@@ -14,10 +14,11 @@ using Hestia.WebUI.Services;
 public class SetupController : ControllerBase
 {
     private const string Svc = "hephaestus";
-    private static readonly HashSet<string> Gets = new() { "state", "brain/catalog", "brain/pulls" };
+    private static readonly HashSet<string> Gets = new() { "state", "brain/catalog", "brain/pulls", "machines" };
     private static readonly HashSet<string> Posts = new()
     {
         "later", "complete", "brain/test", "brain/apply", "brain/pull", "telegram/token", "telegram/code", "backup",
+        "machines/pair", "machines/revoke", "machines/brain",
     };
     private readonly HubClient _hub;
 

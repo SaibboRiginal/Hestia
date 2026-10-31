@@ -439,3 +439,10 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   message to `telegram/claim` and the sender becomes the owner (the bot is re-created 3 s later, after its reply).
   The brain itself is Oracle's (`/api/llm/setup/*`): Hephaestus writes the keys, waits for Oracle's health, then
   forwards the choice and starts the downloads (chat model + `qwen3-embedding:0.6b`).
+- **Macchine** (§4.0, 2026-10-31): `GET /api/setup/machines` → `{this: {role, hardware}, nodes, brain_on}` (role
+  from `hardware.json`, written by the installer: `tutto` · `centrale` · `satellite`; `hardware.lan_ip`; `brain_on` =
+  the address whose Ollama the brain uses, empty = this machine). `POST /api/setup/machines/pair` → Hub
+  `/api/nodes/pair` plus `central` (this machine's LAN address, for the command shown to the user);
+  `POST /api/setup/machines/revoke {id}` → Hub `DELETE /api/nodes/{id}`; `POST /api/setup/machines/brain
+  {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `macchine_elenco`,
+  `macchine_codice`, `macchine_scollega`, `macchine_cervello` (Telegram section «Macchine»).

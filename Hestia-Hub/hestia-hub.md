@@ -48,6 +48,26 @@ SPEC `docs/work/2026-10-20-hub-registro-persistente`. Code: `src/modules/snapsho
 ### Health Snapshot
 - Poll or cache health status for each registered service.
 
+### Machines: central and satellites (2026-10-31, `src/modules/nodes.py`, `src/modules/relay.py`)
+One Hestia can run on several machines of the home network: the **central** one (always on: memory, settings,
+WebUI, Telegram) and **satellites** (voice and model training near a video card). SPEC
+`docs/work/2026-10-30-setup-un-click` §4.0.
+- **Pairing**: `POST /api/nodes/pair` gives a code (6 digits, 10 minutes, single use, burned after 5 wrong tries).
+  The satellite's installer sends it to `POST /api/nodes/join {code, name, address}` and gets a **token** (shown
+  once; the Hub keeps only its sha256 in `/code/data/nodes.json`).
+- **Registration with a token**: header `X-Hestia-Node-Token`. Unknown/revoked token → 401; a module whose
+  `base_url` host is not the satellite's `address` → 403. Admitted instances carry `node: <id>`.
+- **Satellite first**: when a name has both a satellite instance that re-registered in the last 180 s and the
+  central's own copy, routes go to the satellite first; the central's copy is the fallback (`registry.get`).
+- **Relay mode** (the satellite's own Hub): env `HUB_UPSTREAM_URL` (central Hub API), `HUB_NODE_TOKEN`,
+  `HUB_NODE_ADDRESS` (its LAN address), written by the installer on `--join`. An ASGI middleware forwards every
+  `/api/*` call (except `/api/logs`) to the central, streams included; registrations get the token and their
+  addresses rewritten `http://hestia_echo:19021` → `http://<HUB_NODE_ADDRESS>:19021` (base URL and absolute URLs in
+  capabilities; compose publishes the same port). Central unreachable → `502 {"detail": "central Hub unreachable"}`,
+  log `[🔄] event=hub_relay_upstream_unreachable`. The satellite's modules keep `HUB_API_URL=http://hestia_hub:19001/api`.
+- **Scollega**: `DELETE /api/nodes/{id}` revokes the token and drops that satellite's instances from the table.
+- Docker Desktop hides the caller's IP, so the token, not the source address, is what admits a satellite.
+
 ---
 
 ## API (MVP)
@@ -64,6 +84,10 @@ SPEC `docs/work/2026-10-20-hub-registro-persistente`. Code: `src/modules/snapsho
 | `GET` | `/api/ui/map` | *Mappa* read model (WebUI plugin): every service (newest instance, `instances` count) **plus Hub itself**: `online` (re-registered in the last 180 s), `node` (`capabilities.node` or base-URL host), `version`, `last_heartbeat`, `age_seconds`, `topology_tags` + parsed `topology`, `has_ui`, `has_mcp`; top level `revision`, `updated_at`, `online_count`, `offline_count`. `?probe=true` also calls each health endpoint in parallel (`health`: healthy · degraded · unavailable) |
 | `GET` | `/api/ui/manifest` | Hub's own plugin manifest (also folded into the catalog in-process) |
 | `GET` | `/ui/webui/{file}` | Hub's plugin bundle file (`hub.js`) |
+| `POST` | `/api/nodes/pair` | Pairing code for a new satellite `{code, expires_in}` |
+| `POST` | `/api/nodes/join` | Satellite installer: `{code, name, address}` → `{node_id, token, name}` (token shown once); 403 wrong/expired code |
+| `GET` | `/api/nodes` | Satellites (no token hash) with `modules [{name, online}]` and `online` |
+| `DELETE` | `/api/nodes/{node_id}` | «Scollega»: revoke the token, deregister its modules |
 | `GET` | `/health` | Hub health |
 
 ---

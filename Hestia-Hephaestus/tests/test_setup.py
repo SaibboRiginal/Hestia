@@ -105,3 +105,13 @@ def test_hardware_from_installer_file(tmp_path):
     (repo / ".hestia-install").mkdir()
     (repo / ".hestia-install/hardware.json").write_text('{"os": "windows", "ram_gb": 64, "gpu": "RTX", "vram_gb": 16}')
     assert SetupService(repo, tmp_path / "data").hardware()["vram_gb"] == 16
+
+
+def test_role_and_lan_ip_from_installer(tmp_path):
+    (tmp_path / ".hestia-install").mkdir()
+    (tmp_path / ".hestia-install" / "hardware.json").write_text(
+        '{"role": "centrale", "lan_ip": "192.168.1.10", "ram_gb": 8}', encoding="utf-8")
+    svc = SetupService(tmp_path, tmp_path / "data")
+    assert svc.role() == "centrale"
+    assert svc.hardware()["lan_ip"] == "192.168.1.10"
+    assert SetupService(tmp_path / "none", tmp_path / "data").role() == "tutto"

@@ -507,6 +507,16 @@ for later. Backend: `SetupController` forwards only the screens' paths of `/api/
 `/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home
 network, or token).
 
+## Macchine page (`/macchine`, dossier `docs/work/2026-10-30-setup-un-click` §4.0)
+
+`features/machines/` (button «Macchine» in Sistema; «Dispositivi» is the page of phones and watches): this machine
+(role, video card, LAN address) and its satellites (address, online, what they do in plain words: voce, allenamento
+dei modelli). «Collega una macchina» shows the 6-digit code (10 minutes) and the one-line command for Windows
+(PowerShell) and Linux with `--join CODE --central <address>`; the list refreshes every 5 s while a code waits and
+says when the machine joined. «Usa la sua scheda video» / «Riporta qui i modelli» move the brain's local models;
+«Scollega» asks first (and brings the models back first when they were there). Backend: `SetupController`
+whitelist `GET machines`, `POST machines/pair|revoke|brain` (→ Hephaestus `/api/setup/machines*`).
+
 ## Download page (`/download`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
 
 `features/downloads/` (button «Download» in Sistema): every download of every module with the `downloads`

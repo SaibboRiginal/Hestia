@@ -548,7 +548,12 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    Test bench without the local PC: `tools/cloud_test.py` (Claude cloud session or GitHub Codespace); test
    credentials come only from the environment (Codespaces secrets) through `docker-compose.cloud-test.yml`, never files.
    In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`; no Docker = rebuild the container; devcontainer image pinned to Debian 12 for docker-in-docker; runs as a non-root user, so the bench never needs root-only paths; ports 19015/19000 forwarded as plain HTTP; `cloud_test.py` with no argument = start if off + login link + guide).
-2. Future target: multi-node/cluster delivery with shared Hub discovery.
+2. Several machines at home (2026-10-31): one **central** Hub owns the routing table; a **satellite**'s Hub runs
+   in relay mode (`HUB_UPSTREAM_URL`, `HUB_NODE_TOKEN`, `HUB_NODE_ADDRESS`) and registers its modules (voice,
+   training) on the central with a pairing token, at `<satellite LAN address>:<module port>`. A satellite's module
+   answers first, the central's own copy is the fallback. The brain's local models can run on a satellite's video
+   card (Oracle provider `ollama` → `http://<satellite>:11434`). Roles from the installer: `tutto`, `centrale`,
+   `satellite`. Detail: `Hestia-Hub/hestia-hub.md` «Machines».
 3. Required for remote rollout:
    - deployment controller contract,
    - health-gated progressive rollout,

@@ -90,3 +90,18 @@ def test_test_bad_key_in_plain_words(monkeypatch):
 def test_pull_rejects_bad_names():
     assert llm_setup.pull("rm -rf")["ok"] is False
     assert llm_setup.pull("")["ok"] is False
+
+
+def test_use_machine_points_ollama_at_satellite(monkeypatch):
+    stored = {}
+    monkeypatch.setattr(oracle_settings.settings, "get", lambda key, default=None: stored.get(key, default))
+    monkeypatch.setattr(oracle_settings.settings, "put",
+                        lambda key, value, **kw: stored.__setitem__(key, value) or True)
+    assert llm_setup.use_machine("192.168.1.20", "PC studio")["ok"]
+    assert stored[oracle_settings.PROVIDERS_KEY]["ollama"]["url"] == "http://192.168.1.20:11434"
+    assert llm_setup.machine()["address"] == "192.168.1.20"
+    assert "gemini" in stored[oracle_settings.PROVIDERS_KEY]            # the other providers stay
+    assert llm_setup.use_machine("")["ok"]
+    assert stored[oracle_settings.PROVIDERS_KEY]["ollama"]["url"] == ""
+    assert llm_setup.machine()["address"] == ""
+    assert llm_setup.use_machine("bad host/x")["ok"] is False

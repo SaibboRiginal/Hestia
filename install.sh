@@ -5,10 +5,13 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | bash
 #   bash install.sh [--dir PATH] [--channel stabile|novita] [--update] [--uninstall [--purge]] [--dry-run] [--yes]
+#   bash install.sh --join CODE --central IP        this machine becomes a satellite of the central one
+#   bash install.sh --role tutto|centrale|satellite
 #
 # Every step checks before acting, retries (2/4/8 s), has a fallback, and records where it got to: running the same
 # command again resumes or repairs. When it truly cannot go on it stops with one sentence saying what to do.
-# It never prints or logs secrets, never overwrites an existing .env value, never deletes data without --purge.
+# It never prints or logs secrets, never overwrites an existing .env value (only the machine link keys HUB_UPSTREAM_URL,
+# HUB_NODE_TOKEN, HUB_NODE_ADDRESS, on --join or a role change), never deletes data without --purge.
 # SPEC: docs/work/2026-10-30-setup-un-click
 set -Eeuo pipefail
 
@@ -35,6 +38,12 @@ OS=""
 PKG=""
 VERSION_TAG=""
 NOTES=()
+ROLE=""            # tutto (one machine) · centrale (always on, no heavy modules) · satellite (voice + training near a GPU)
+JOIN_CODE=""
+CENTRAL_URL=""
+LAN_IP=""
+SATELLITE_SERVICES="hub echo metis"
+HEAVY_SERVICES="echo metis"
 
 # ── output ─────────────────────────────────────────────────────────────────────────────────────────────────────
 say()  { printf '\033[1;33m[Hestia]\033[0m %s\n' "$*"; log "say msg=\"$*\""; }
@@ -62,6 +71,10 @@ Hestia installer (Linux, macOS)
   --uninstall [--purge] stop Hestia (data kept); --purge also deletes data after typing CANCELLA
   --dry-run             only print what it would do
   --no-browser          do not open the browser at the end
+  --role tutto          everything on this machine (default)
+  --role centrale       always-on home (e.g. Raspberry Pi): everything but voice and training, which go on satellites
+  --role satellite      voice and training here, near the graphics card; the rest stays on the central one
+  --join CODE --central IP   link this machine as a satellite (code from Sistema -> Macchine on the central one)
 TXT
   exit 0
 }
@@ -167,7 +180,9 @@ ports_check() {
   # Only on a first install: a running Hestia of course holds its own ports.
   dk ps --format '{{.Names}}' 2>/dev/null | grep -q '^hestia_hub$' && return 0
   local busy="" port
-  for port in 19001 19002 19015 5432; do
+  local ports="19001 19002 19015 5432"
+  [ "$ROLE" = satellite ] && ports="19001 19021 19014"
+  for port in $ports; do
     if { has ss && ss -ltn 2>/dev/null | grep -q "[:.]$port "; } || \
        { has lsof && lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; }; then
       busy="$busy $port"
@@ -287,6 +302,7 @@ ensure_ollama() {
     [ "$DRY_RUN" = 1 ] || sleep 3
   fi
   [ "$OS" = linux ] && ollama_reachable_from_docker
+  [ "$ROLE" = satellite ] && ollama_bind_all   # the central one's brain uses this graphics card
   pull_default_models
   return 0
 }
@@ -315,16 +331,39 @@ ollama_reachable_from_docker() {
     note "Ollama non è raggiungibile dai container: avvialo con OLLAMA_HOST=0.0.0.0 ollama serve."
     return 0; }
   log "[🔄] ollama_bind_all reason=containers_cannot_reach"
-  run $SUDO mkdir -p /etc/systemd/system/ollama.service.d
-  run_sh "printf '[Service]\nEnvironment=OLLAMA_HOST=0.0.0.0:11434\n' | $SUDO tee /etc/systemd/system/ollama.service.d/hestia.conf"
-  run $SUDO systemctl daemon-reload && run $SUDO systemctl restart ollama || true
-  sleep 3
+  ollama_bind_all
+  dk "${probe[@]}" >/dev/null 2>&1 || note "Ollama non risponde ai container: Hestia userà i modelli nel cloud finché non lo sistemi."
+}
+
+# Ollama listening on every address: the containers (Docker bridge) and, on a satellite, the central one over the LAN.
+ollama_bind_all() {
+  if [ "$OS" = mac ]; then
+    run launchctl setenv OLLAMA_HOST 0.0.0.0:11434 || true
+    run brew services restart ollama || true
+    note "Ollama ora ascolta sulla rete di casa (porta 11434): non aprire quella porta sul router."
+    return 0
+  fi
+  if has systemctl && systemctl list-unit-files ollama.service >/dev/null 2>&1; then
+    if ! grep -qs 'OLLAMA_HOST=0.0.0.0' /etc/systemd/system/ollama.service.d/hestia.conf; then
+      run $SUDO mkdir -p /etc/systemd/system/ollama.service.d
+      run_sh "printf '[Service]\nEnvironment=OLLAMA_HOST=0.0.0.0:11434\n' | $SUDO tee /etc/systemd/system/ollama.service.d/hestia.conf"
+      run $SUDO systemctl daemon-reload && run $SUDO systemctl restart ollama || true
+      [ "$DRY_RUN" = 1 ] || sleep 3
+    fi
+  else
+    note "Per farlo vedere alle altre macchine avvia Ollama con: OLLAMA_HOST=0.0.0.0 ollama serve"
+    return 0
+  fi
   if has ufw && $SUDO ufw status 2>/dev/null | grep -q "Status: active"; then
     run $SUDO ufw allow from 172.16.0.0/12 to any port 11434 proto tcp || true
+    if [ "$ROLE" = satellite ]; then   # the central one reaches this machine's modules and Ollama over the LAN
+      local p
+      for p in 11434 19021 19014; do run $SUDO ufw allow from 192.168.0.0/16 to any port "$p" proto tcp || true; done
+      for p in 11434 19021 19014; do run $SUDO ufw allow from 10.0.0.0/8 to any port "$p" proto tcp || true; done
+    fi
   else
-    note "Ollama ora ascolta anche sulla rete di casa (porta 11434), così i container lo vedono: non aprire quella porta sul router."
+    note "Ollama ora ascolta anche sulla rete di casa (porta 11434): non aprire quella porta sul router."
   fi
-  dk "${probe[@]}" >/dev/null 2>&1 || note "Ollama non risponde ai container: Hestia userà i modelli nel cloud finché non lo sistemi."
 }
 
 # ── 6. Hestia code ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -390,9 +429,100 @@ write_hardware() {
     gpu="Apple"; vram=$(( RAM_GB * 2 / 3 ))   # unified memory: Ollama may use about two thirds
   fi
   mkdir -p "$HESTIA_DIR/.hestia-install"
-  printf '{"os": "%s", "ram_gb": %s, "free_gb": %s, "gpu": "%s", "vram_gb": %s}\n' \
-    "$OS" "$RAM_GB" "$FREE_GB" "$gpu" "${vram:-0}" > "$HESTIA_DIR/.hestia-install/hardware.json"
-  log "hardware gpu=\"$gpu\" vram_gb=${vram:-0}"
+  printf '{"os": "%s", "ram_gb": %s, "free_gb": %s, "gpu": "%s", "vram_gb": %s, "role": "%s", "lan_ip": "%s"}\n' \
+    "$OS" "$RAM_GB" "$FREE_GB" "$gpu" "${vram:-0}" "$ROLE" "$LAN_IP" > "$HESTIA_DIR/.hestia-install/hardware.json"
+  log "hardware gpu=\"$gpu\" vram_gb=${vram:-0} role=$ROLE lan_ip=$LAN_IP"
+}
+
+# ── machines: role, LAN address, link to the central one (docs/work/2026-10-30-setup-un-click §4.0) ─────────────
+resolve_role() {
+  if [ -z "$ROLE" ]; then   # a re-run keeps the role chosen before
+    ROLE="$(sed -n 's/.*"role": *"\([a-z]*\)".*/\1/p' "$HESTIA_DIR/.hestia-install/hardware.json" 2>/dev/null || true)"
+    [ -n "$ROLE" ] || ROLE=tutto
+  fi
+  if [ "$ROLE" = satellite ] && [ -z "$JOIN_CODE" ] && ! grep -Eq '^HUB_NODE_TOKEN=.+' "$HESTIA_DIR/.env" 2>/dev/null; then
+    fail "per collegare questa macchina serve il codice: sulla casa centrale apri Sistema → Macchine → Collega una macchina, poi rilancia con --join CODICE --central INDIRIZZO."
+  fi
+  LAN_IP="$(detect_lan_ip)"
+  log "role role=$ROLE lan_ip=$LAN_IP"
+}
+
+detect_lan_ip() {
+  local ip=""
+  if [ "$OS" = mac ]; then
+    ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+  else
+    has ip && ip="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n1)"
+    [ -n "$ip" ] || ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+  printf '%s' "$ip"
+}
+
+set_root_env() {  # set_root_env KEY VALUE: replaces or appends in the root .env; the value is never printed or logged
+  local file="$HESTIA_DIR/.env" tmp
+  if [ "$DRY_RUN" = 1 ]; then printf '  [dry-run] .env %s=…\n' "$1"; return 0; fi
+  touch "$file"; tmp="$file.hestia-tmp"
+  grep -v "^$1=" "$file" > "$tmp" || true
+  printf '%s=%s\n' "$1" "$2" >> "$tmp"
+  cat "$tmp" > "$file"; rm -f "$tmp"
+  log "env_set key=$1"
+}
+
+link_machine() {
+  if [ "$ROLE" != satellite ]; then
+    # Not (or no longer) a satellite: its Hub is the central one again.
+    grep -Eq '^HUB_UPSTREAM_URL=.+' "$HESTIA_DIR/.env" 2>/dev/null || return 0
+    log "[🔄] machine_unlink reason=role_$ROLE"
+    set_root_env HUB_UPSTREAM_URL ""; set_root_env HUB_NODE_TOKEN ""; set_root_env HUB_NODE_ADDRESS ""
+    return 0
+  fi
+  [ -n "$JOIN_CODE" ] || return 0   # already linked (re-run): keep the token
+  [ -n "$LAN_IP" ] || fail "non trovo l'indirizzo di questa macchina sulla rete di casa: collegala al Wi-Fi o al cavo e rilancia."
+  say "Collego questa macchina alla casa centrale ($CENTRAL_URL)…"
+  if [ "$DRY_RUN" = 1 ]; then printf '  [dry-run] POST %s/api/nodes/join\n' "$CENTRAL_URL"; return 0; fi
+  local name out code token
+  name="$(hostname 2>/dev/null | tr -cd 'A-Za-z0-9 ._-' | cut -c1-40)"
+  out="$STATE_DIR/join.json"
+  ( umask 077; : > "$out" )
+  code="$(curl -sS --max-time 15 -o "$out" -w '%{http_code}' -H 'Content-Type: application/json' \
+          -d "{\"code\": \"$JOIN_CODE\", \"name\": \"${name:-satellite}\", \"address\": \"$LAN_IP\"}" \
+          "$CENTRAL_URL/api/nodes/join" 2>>"$LOG_FILE" || true)"
+  token="$(sed -n 's/.*"token": *"\([A-Za-z0-9_-]*\)".*/\1/p' "$out")"
+  rm -f "$out"
+  log "machine_join status=$code"
+  case "$code" in
+    200) ;;
+    000) fail "non raggiungo la casa centrale a $CENTRAL_URL: controlla che sia accesa e sulla stessa rete." ;;
+    403) fail "il codice è sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema → Macchine)." ;;
+    *) fail "la casa centrale ha rifiutato il collegamento (errore $code)." ;;
+  esac
+  [ -n "$token" ] || fail "la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia."
+  set_root_env HUB_UPSTREAM_URL "$CENTRAL_URL/api"
+  set_root_env HUB_NODE_TOKEN "$token"
+  set_root_env HUB_NODE_ADDRESS "$LAN_IP"
+  token=""
+  ok "Collegata alla casa centrale."
+}
+
+# Drops the containers this machine's role keeps stopped on purpose (reads names from stdin).
+not_my_role() {
+  local c
+  while IFS= read -r c; do
+    case "$ROLE" in
+      satellite) case " $SATELLITE_SERVICES " in *" ${c#hestia_} "*) printf '%s\n' "$c" ;; esac ;;
+      centrale) case " $HEAVY_SERVICES " in *" ${c#hestia_} "*) ;; *) printf '%s\n' "$c" ;; esac ;;
+      *) printf '%s\n' "$c" ;;
+    esac
+  done
+}
+
+# The services of this machine's role (empty = all of them).
+role_services() {
+  case "$ROLE" in
+    satellite) printf '%s\n' $SATELLITE_SERVICES ;;
+    centrale) compose config --services 2>/dev/null | grep -vxE "$(printf '%s' "$HEAVY_SERVICES" | tr ' ' '|')" || true ;;
+    *) ;;
+  esac
 }
 
 # ── 7. .env files with generated secrets (python runs in a throwaway container, none needed on the host) ────────
@@ -414,21 +544,34 @@ ensure_env() {
 start_stack() {
   dk network inspect hestia_net >/dev/null 2>&1 || run "${DOCKER[@]}" network create hestia_net \
     || fail "non riesco a creare la rete Docker hestia_net."
+  local services=() svc
+  while IFS= read -r svc; do [ -n "$svc" ] && services+=("$svc"); done < <(role_services)
   if [ -n "$VERSION_TAG" ]; then
     say "Scarico i moduli pronti della versione ${VERSION_TAG}…"
-    retry "Download dei moduli" run_quiet_compose pull --ignore-pull-failures \
+    retry "Download dei moduli" run_quiet_compose pull --ignore-pull-failures ${services[@]+"${services[@]}"} \
       || note "Alcuni moduli non si sono scaricati: li costruisco qui."
   else
     say "Costruisco i moduli (la prima volta ci vuole un po', poi è veloce)…"
-    build_all
+    build_all ${services[@]+"${services[@]}"}
   fi
   say "Avvio Hestia…"
-  local services=()
+  if [ "$ROLE" = satellite ]; then
+    # Only the satellite's own modules: everything else (memory, settings, the WebUI) lives on the central one.
+    local others
+    others="$(compose config --services 2>/dev/null | { grep -vxE "$(printf '%s' "$SATELLITE_SERVICES" | tr ' ' '|')" || true; } | tr '\n' ' ' || true)"
+    [ -z "$others" ] || run_quiet_compose stop $others || true
+    retry "Avvio dei moduli" run_quiet_compose up -d --no-deps --remove-orphans "${services[@]}" \
+      || fail "i moduli non partono. Guarda $LOG_FILE (ultime righe) o rilancia."
+    return 0
+  fi
+  [ "$ROLE" = centrale ] && { run_quiet_compose stop $HEAVY_SERVICES || true; }
   if ! telegram_configured; then
     # No bot token yet: Telegram would only crash-loop. Its container is created, not started: the guided setup
     # writes the token and starts it.
-    local svc
-    while IFS= read -r svc; do services+=("$svc"); done < <(compose config --services 2>/dev/null | grep -vx telegram)
+    [ ${#services[@]} -gt 0 ] || while IFS= read -r svc; do services+=("$svc"); done < <(compose config --services 2>/dev/null)
+    local kept=()
+    for svc in ${services[@]+"${services[@]}"}; do [ "$svc" = telegram ] || kept+=("$svc"); done
+    services=(${kept[@]+"${kept[@]}"})
     note "Telegram si collega nel setup guidato che si apre nel browser."
   fi
   retry "Avvio dei moduli" run_quiet_compose up -d --remove-orphans ${services[@]+"${services[@]}"} \
@@ -446,11 +589,12 @@ run_quiet_compose() {
   compose "$@" >> "$LOG_FILE" 2>&1
 }
 
-build_all() {
-  retry "Costruzione dei moduli" run_quiet_compose build && return 0
+build_all() {  # build_all [service...]: none = all
+  retry "Costruzione dei moduli" run_quiet_compose build "$@" && return 0
   # Find the one that breaks, rebuild it from scratch, then the rest.
-  local svc bad=""
-  for svc in $(compose config --services 2>/dev/null); do
+  local svc bad="" list="$*"
+  [ -n "$list" ] || list="$(compose config --services 2>/dev/null)"
+  for svc in $list; do
     run_quiet_compose build "$svc" && continue
     log "[🔄] build_no_cache service=$svc"
     run_quiet_compose build --no-cache "$svc" || bad="$bad $svc"
@@ -469,8 +613,8 @@ wait_healthy() {
   waited=0
   while :; do
     local down
-    down="$(dk ps -a --filter "name=hestia_" --format '{{.Names}} {{.Status}}' | grep -Ev ' (Up|Created)' | awk '{print $1}' | tr '\n' ' ')"
-    if [ -z "$down" ] && curl -fsS --max-time 3 "$WEBUI_URL" >/dev/null 2>&1; then
+    down="$(dk ps -a --filter "name=hestia_" --format '{{.Names}} {{.Status}}' | { grep -Ev ' (Up|Created)' || true; } | awk '{print $1}' | not_my_role | tr '\n' ' ')"
+    if [ -z "$down" ] && { [ "$ROLE" = satellite ] || curl -fsS --max-time 3 "$WEBUI_URL" >/dev/null 2>&1; }; then
       ok "Tutti i moduli sono accesi."
       return 0
     fi
@@ -486,6 +630,15 @@ wait_healthy() {
 
 # ── 10. browser + shortcut ─────────────────────────────────────────────────────────────────────────────────────
 finish() {
+  if [ "$ROLE" = satellite ]; then
+    echo
+    ok "Questa macchina è un satellite di ${CENTRAL_URL:-la casa centrale}: voce e allenamento girano qui."
+    printf '         La gestisci dalla casa centrale: Sistema → Macchine (anche «Usa la sua scheda video»).\n'
+    local n
+    for n in ${NOTES[@]+"${NOTES[@]}"}; do printf '         · %s\n' "$n"; done
+    log "install_done role=satellite version=${VERSION_TAG:-dev} notes=${#NOTES[@]}"
+    return 0
+  fi
   if [ "$OS" = linux ] && [ "$DRY_RUN" = 0 ]; then
     local apps="$HOME/.local/share/applications"
     mkdir -p "$apps"
@@ -536,6 +689,12 @@ parse_args() {
       --purge) PURGE=1 ;;
       --dry-run) DRY_RUN=1 ;;
       --no-browser) OPEN_BROWSER=0 ;;
+      --role) ROLE="$2"; shift ;;
+      --role=*) ROLE="${1#*=}" ;;
+      --join) JOIN_CODE="$2"; shift ;;
+      --join=*) JOIN_CODE="${1#*=}" ;;
+      --central) CENTRAL_URL="$2"; shift ;;
+      --central=*) CENTRAL_URL="${1#*=}" ;;
       -h|--help) usage ;;
       *) fail "opzione sconosciuta: $1 (vedi --help)" ;;
     esac
@@ -543,6 +702,18 @@ parse_args() {
   done
   case "$CHANNEL" in stabile|novita|novità) ;; *) fail "canale sconosciuto: $CHANNEL (stabile o novita)" ;; esac
   [ "$CHANNEL" = novità ] && CHANNEL=novita
+  case "$ROLE" in ''|tutto|centrale|satellite) ;; *) fail "ruolo sconosciuto: $ROLE (tutto, centrale o satellite)" ;; esac
+  if [ -n "$JOIN_CODE" ]; then
+    [ -z "$ROLE" ] || [ "$ROLE" = satellite ] || fail "--join serve solo per un satellite."
+    ROLE=satellite
+    [ -n "$CENTRAL_URL" ] || fail "con --join serve anche --central (l'indirizzo della casa centrale, es. 192.168.1.10)."
+    JOIN_CODE="$(printf '%s' "$JOIN_CODE" | tr -cd '0-9')"
+  fi
+  if [ -n "$CENTRAL_URL" ]; then   # 192.168.1.10 → http://192.168.1.10:19001
+    CENTRAL_URL="${CENTRAL_URL%/}"; CENTRAL_URL="${CENTRAL_URL%/api}"
+    case "$CENTRAL_URL" in http://*|https://*) ;; *) CENTRAL_URL="http://$CENTRAL_URL" ;; esac
+    case "${CENTRAL_URL#*://}" in *:*) ;; *) CENTRAL_URL="$CENTRAL_URL:19001" ;; esac
+  fi
   return 0
 }
 
@@ -554,6 +725,7 @@ main() {
   if [ "$ACTION" = uninstall ]; then uninstall; return 0; fi
   say "Installo Hestia in $HESTIA_DIR (canale $CHANNEL). Ti chiederò la password del computer al massimo una volta."
   preflight
+  resolve_role
   ensure_git;    state_mark git
   ensure_docker; state_mark docker
   ports_check
@@ -561,6 +733,7 @@ main() {
   ensure_code;   state_mark code
   write_hardware
   ensure_env;    state_mark env
+  link_machine
   start_stack;   state_mark started
   wait_healthy;  state_mark healthy
   finish
