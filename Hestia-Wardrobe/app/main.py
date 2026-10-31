@@ -391,6 +391,16 @@ def collection_delete(id: str):
 
 
 # ── AI help, export / import ─────────────────────────────────────────────────
+# A photo sent in chat with these words in its caption comes here (Oracle attachment hand-off, Telegram and WebUI).
+ATTACHMENT_HANDLERS = [{"mime": ["image/jpeg", "image/png", "image/webp"], "label": "Capo del guardaroba",
+                        "path": f"{API}/attachments", "match": ["guardaroba", "armadio", "nuovo capo"]}]
+
+
+@app.post(f"{API}/attachments")
+def attachment(body: dict = Body(...)):
+    return wardrobe.from_chat_photo(str(body.get("blob_id") or ""))
+
+
 @app.post(f"{API}/describe-photo")
 def describe_photo(body: dict = Body(...)):
     return wardrobe.describe_photo(body.get("photo") or body)
@@ -871,7 +881,7 @@ LLM_USECASES = [llm_usecase("wardrobe.foto", "Guardaroba · foto dei capi", chai
 def _registration() -> dict:
     caps = {"when_to_use": 'vestiti, guardaroba, outfit, cosa mettersi', "manual": 'Capi del guardaroba con foto, outfit, suggerimenti in base al meteo e agli impegni.',
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["wardrobe"],
-            "context_endpoint": "/api/module/context", **recap.capabilities(), **llm_capabilities(LLM_USECASES)}
+            "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS, **recap.capabilities(), **llm_capabilities(LLM_USECASES)}
     try:
         caps.update(ui.capabilities(SERVICE_BASE_URL))
         caps.update(transfer.capabilities())

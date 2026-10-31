@@ -8,5 +8,5 @@
 - [x] P4 WebUI TransferController + restore points setting + page «Esporta e importa» (ng build, dotnet build ok); CLI
 - [x] P5 docs (shared, modules, swagger, ARCHITECTURE, AI-GUIDE, README, TESTING, root CHANGELOG)
 - [x] Cloud bench: `flows transfer` 6/6 (fixed: WebUI POST route used the reserved `{action}` token → 405; empty settings sections hidden in import)
-- [ ] PR #20 (draft open), CI green, merge
+- [x] PR #20 (draft open), CI green, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Marko: real run (export from Codespace, import at home)

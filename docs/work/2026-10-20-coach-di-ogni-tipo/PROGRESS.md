@@ -7,5 +7,5 @@
 - [x] C2 re-plan triggers, change notices, WebUI «Settimana» + widget, module Oggi pages show their plan item
 - [x] C3 Plutus adapter (budget targets, «Rivedi spese» block); weather rule deferred (weather not on main); review shape = signals for reflection
 - [x] C4 study: automatic food data (/mnt/project-files/valutazioni/spesa-automatica.md)
-- [ ] C5 docs (module docs, shared, ARCHITECTURE, AI-GUIDE, swagger, root CHANGELOG) · tests green · PR #14 merged
+- [x] C5 docs (module docs, shared, ARCHITECTURE, AI-GUIDE, swagger, root CHANGELOG) · tests green · PR #14 merged — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - Note: module Oggi pages: Hercules summary says «Nel piano: …»; Hygieia shows routines as before (plan item visible in «La tua settimana»)

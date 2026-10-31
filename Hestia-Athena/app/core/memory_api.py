@@ -119,6 +119,16 @@ def mcp_tools() -> list:
         tool("memory_learning_undo", "Annulla una cosa imparata (id da memory_learning).", "POST",
              "/api/athena/learning/{entry_id}/undo", "Annulla cosa imparata", params={"entry_id": {"type": "string"}},
              required=["entry_id"]),
+        tool("memory_proposals", "Le pulizie della memoria proposte da «Rivedi cosa sai di me» che aspettano ancora "
+             "una risposta (doppioni, contraddizioni, cose vecchie).", "GET", "/api/athena/memory/proposals",
+             "Pulizie da decidere", label="Pulizie da decidere",
+             prompt="Elenco breve: cosa propone e perché. Niente id."),
+        tool("memory_proposal_apply", "Applica una pulizia proposta (id da memory_proposals): solo se l'utente dice sì.",
+             "POST", "/api/athena/memory/proposals/{pid}/apply", "Applica pulizia", params={"pid": {"type": "string"}},
+             required=["pid"]),
+        tool("memory_proposal_dismiss", "Scarta una pulizia proposta (id da memory_proposals).", "POST",
+             "/api/athena/memory/proposals/{pid}/dismiss", "Scarta pulizia", params={"pid": {"type": "string"}},
+             required=["pid"]),
         tool("docs_check", "Controlla se la documentazione del repo segue il codice e propone le correzioni allo "
              "sviluppo.", "POST", "/api/athena/docs/check", "Controlla i documenti", section="Sviluppo",
              group="sviluppo", label="Controlla documenti"),

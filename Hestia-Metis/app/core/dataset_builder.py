@@ -1,17 +1,18 @@
 """Dataset Builder — pulls graded feedback, deduplicates, balances, stores.
 
-In-memory dataset store (a dict keyed by dataset name). For production,
-this would be persisted to Archive or a local file. For now, it lives in
-the Metis process — datasets are rebuilt on restart, which is acceptable
-for an on-demand tool.
+Datasets are kept in memory and saved as ``<METIS_DATA_DIR>/datasets/<name>.json`` (the mounted data folder, next to
+the exports and training logs), so a restart no longer loses them; they are read back on first use.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
+import os
+import re
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from . import metis_settings as ms
@@ -19,8 +20,38 @@ from .hub_client import HubClient
 
 logger = logging.getLogger("hestia_metis.dataset_builder")
 
-# In-memory dataset store: name → {metadata, examples}
+# Dataset store: name → {metadata, examples}; files in _DIR, loaded once.
 _datasets: dict[str, dict[str, Any]] = {}
+_loaded = False
+
+
+def _dir() -> Path:
+    return Path(os.getenv("METIS_DATA_DIR", "/code/data")) / "datasets"
+
+
+def _file(name: str) -> Path:
+    return _dir() / f'{re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._") or "dataset"}.json'
+
+
+def _store() -> dict[str, dict[str, Any]]:
+    global _loaded
+    if not _loaded:
+        _loaded = True
+        for path in sorted(_dir().glob("*.json")) if _dir().is_dir() else []:
+            try:
+                ds = json.loads(path.read_text(encoding="utf-8"))
+                _datasets.setdefault(ds["metadata"]["name"], ds)
+            except Exception as exc:  # noqa: BLE001 — one bad file never hides the others
+                logger.warning("[🔄] event=dataset_load_failed file=%s error=%s fallback=skip", path.name, exc)
+    return _datasets
+
+
+def _save(name: str) -> None:
+    try:
+        _dir().mkdir(parents=True, exist_ok=True)
+        _file(name).write_text(json.dumps(_datasets[name], ensure_ascii=False), encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 — the dataset still works for this run
+        logger.warning("[🔄] event=dataset_save_failed name=%s error=%s fallback=memory_only", name, exc)
 
 
 def _normalize_text(text: str) -> str:
@@ -135,7 +166,7 @@ def build_dataset(
         if len(examples) >= max_examples:
             break
 
-    _datasets[name] = {
+    _store()[name] = {
         "metadata": {
             "name": name,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -157,13 +188,14 @@ def build_dataset(
         skipped_duplicate, skipped_no_payload,
         len(domains),
     )
+    _save(name)
     return _datasets[name]["metadata"]
 
 
 def get_dataset_status(name: str | None = None) -> dict[str, Any]:
     """Return metadata for one or all datasets."""
     if name:
-        ds = _datasets.get(name)
+        ds = _store().get(name)
         if not ds:
             return {"status": "not_found", "name": name}
         return {"status": "ok", "dataset": ds["metadata"]}
@@ -172,14 +204,14 @@ def get_dataset_status(name: str | None = None) -> dict[str, Any]:
         "status": "ok",
         "datasets": [
             {"name": k, **v["metadata"]}
-            for k, v in _datasets.items()
+            for k, v in _store().items()
         ],
     }
 
 
 def get_dataset_examples(name: str) -> list[dict[str, Any]]:
     """Return the raw examples for a dataset."""
-    ds = _datasets.get(name)
+    ds = _store().get(name)
     if not ds:
         return []
     return ds.get("examples", [])

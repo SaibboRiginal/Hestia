@@ -159,7 +159,8 @@ flowchart LR
 1. A file sent in chat (Telegram/WebUI) → Oracle `/api/chat/document`.
 2. Oracle checks modules' `attachment_handlers` (Hub capabilities: mime + words). Match → file stored as Archive blob
    (`owner_module=chat`) → `POST route/<module>/<path>` with the blob id → the module's `{handled, text}` is the reply.
-3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms.
+3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms;
+   photo with «aggiungi al guardaroba» → Wardrobe recognises and saves the piece with its photo.
 
 ### Self-development flow (Forge)
 1. User on Telegram: "aggiungi X" → Oracle (classifier: domain `system`) → tool `forge_develop` → Hub → Hephaestus.
@@ -170,6 +171,13 @@ flowchart LR
    - `claude` → Claude Code CLI inside Hephaestus.
 4. Forge commits, runs the touched services' tests, notifies the user via Hub → Hermes → Telegram.
 5. "approva sviluppo <id>" → merge (+ optional deploy, health check via Hub, auto rollback).
+
+### Repair and undo flow (Hephaestus remediation)
+1. Argus/Oracle/user → `POST /api/hephaestus/remediate` → runbook + consent policy → Hub → target module
+   `…/maintenance/reconcile` (Archive deletes incomplete entities and keeps them in `trash:<task_id>`).
+2. The reply's `details.undo_available` marks the task `undoable`.
+3. «Annulla riparazione» → `/remediate/{id}/rollback`: pending/failed → stopped; undoable → Hub → same module
+   `…/maintenance/undo` puts the rows back; otherwise `nothing_to_undo`.
 
 ### Tool flow (one MCP for every client)
 1. Each module declares its tools (`/mcp` or inline commands); Hub's discovery is read only by Hestia-MCP.

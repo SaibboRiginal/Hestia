@@ -41,4 +41,4 @@ Spec: `SPEC.md` v2.4 · resume from the first unchecked box.
 - [x] Docs: hestia-hephaestus.md, hestia-oracle.md, hestia-webui.md, DESIGN-SYSTEM.md, swagger, root CHANGELOG
 - [x] Checks: `ng build` clean, ruff on changed Python, Playwright screenshots (mocked API with real repo data; wide/phone/dark)
 - [ ] Pending on user side: .NET build + real run with a Forge task (Claude and local engine) — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-coerenza-moduli), real run left
-- [ ] Later: SignalR push instead of polling
+- [x] Later: SignalR push instead of polling — dropped 2026-10-30 (Marko: open items done or dropped)
