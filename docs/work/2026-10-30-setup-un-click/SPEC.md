@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.5 |
+| **Version** | 2.6 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
 
@@ -90,6 +90,11 @@ to install and stops. Every important part (above all **Oracle**) must be easy t
   global set without voice and training (not the rpi compose: same images, same WebUI). Role change = rerun the
   installer with `--role` (data stay). Not built: QR, mDNS discovery (the command carries the address), role
   switch from the page, a satellite's downloads on the page (flagged to Marko).
+- **Da fuori casa (v2.6, P5b):** a Cloudflare *quick* tunnel (no account): Hephaestus creates/starts/stops the
+  `hestia_tunnel` container through the Docker API (not in compose, so nothing opens Hestia to the internet unless
+  the user says so), from the setup screen «Usare Hestia fuori casa», the Macchine page or Telegram. The WebUI learns
+  the address from the tunnel and requires the token on it. The fixed-address named tunnel stays
+  `cloudflare-tunnel.bat` + `.env` (setting it up from the page is not built).
 
 ### 4.1 Host installer (bootstrap) — `install.sh` (Linux + macOS) and `install.ps1` (Windows)
 

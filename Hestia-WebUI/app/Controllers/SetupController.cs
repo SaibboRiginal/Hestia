@@ -14,11 +14,11 @@ using Hestia.WebUI.Services;
 public class SetupController : ControllerBase
 {
     private const string Svc = "hephaestus";
-    private static readonly HashSet<string> Gets = new() { "state", "brain/catalog", "brain/pulls", "machines" };
+    private static readonly HashSet<string> Gets = new() { "state", "brain/catalog", "brain/pulls", "machines", "tunnel" };
     private static readonly HashSet<string> Posts = new()
     {
         "later", "complete", "brain/test", "brain/apply", "brain/pull", "telegram/token", "telegram/code", "backup",
-        "machines/pair", "machines/revoke", "machines/brain",
+        "machines/pair", "machines/revoke", "machines/brain", "tunnel",
     };
     private readonly HubClient _hub;
 
@@ -28,11 +28,12 @@ public class SetupController : ControllerBase
     public Task<IActionResult> Get(string path)
         => Gets.Contains(path) ? Forward(HttpMethod.Get, path, null, 30) : Task.FromResult<IActionResult>(NotFound());
 
-    /// <summary>A key test or a brain change re-creates Oracle and waits for it: up to two minutes.</summary>
+    /// <summary>A key test or a brain change re-creates Oracle and waits for it, and the outside address may first
+    /// download cloudflared: up to three minutes.</summary>
     [HttpPost("{**path}")]
     public Task<IActionResult> Post(string path, [FromBody] JsonElement? body = null)
         => Posts.Contains(path)
-            ? Forward(HttpMethod.Post, path, body is JsonElement b ? b : new { }, path.StartsWith("brain/") ? 180 : 60)
+            ? Forward(HttpMethod.Post, path, body is JsonElement b ? b : new { }, path.StartsWith("brain/") || path == "tunnel" ? 180 : 60)
             : Task.FromResult<IActionResult>(NotFound());
 
     private async Task<IActionResult> Forward(HttpMethod method, string path, object? body, double timeout)

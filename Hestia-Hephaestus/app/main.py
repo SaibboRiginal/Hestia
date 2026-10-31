@@ -181,6 +181,19 @@ try:
             path="/api/setup/machines/brain", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Cervello"}),
         MCPTool(
+            name="fuori_casa_stato", description="Hestia è raggiungibile da fuori casa? Con quale indirizzo.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok"}, title="Da fuori casa", method="GET", path="/api/setup/tunnel",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Da fuori casa"}),
+        MCPTool(
+            name="fuori_casa_attiva", description=("Accende (on=true) o spegne (on=false) l'indirizzo per usare Hestia "
+                                                   "da fuori casa; solo su richiesta esplicita dell'utente."),
+            parameters={"type": "object", "properties": {"on": {"type": "boolean"}}, "required": ["on"]},
+            handler=lambda **kw: {"status": "ok"}, title="Accendi o spegni da fuori casa", method="POST",
+            path="/api/setup/tunnel", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Fuori casa on/off"}),
+        MCPTool(
             name="hephaestus_status",
             description="Mostra lo stato del motore di remediation",
             parameters={"type": "object", "properties": {}},

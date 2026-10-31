@@ -3,9 +3,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
-import { BrainCatalog, CloudProvider, Download, SetupApi, SetupState, setupError } from './setup.api';
+import { BrainCatalog, CloudProvider, Download, SetupApi, SetupState, TunnelState, setupError } from './setup.api';
 
-type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'claude' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'pronto';
+type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'claude' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
 type Recipe = 'locale' | 'cloud' | 'entrambi' | 'claude';
 
 const RECIPES: { id: Recipe; label: string; text: string; icon: string }[] = [
@@ -194,6 +194,22 @@ function store(key: string, value: string): void {
               </ul>
             }
 
+            @case ('fuori') {
+              <hx-icon name="cloud" [size]="30" tone="accent" />
+              <h1>Usare Hestia fuori casa</h1>
+              @if (tunnel()?.on && tunnel()!.url) {
+                <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Attivo. Fuori casa apri:</p>
+                <div class="code mono small">{{ tunnel()!.url }}</div>
+                <p class="hint">Da fuori chiede sempre l'accesso. L'indirizzo cambia quando Hestia si riavvia: il bot su Telegram ti dà sempre quello giusto.</p>
+                <div class="row"><button hx-btn variant="ghost" icon="x" [loading]="busy()" (click)="switchTunnel(false)">Spegni</button></div>
+              } @else if (tunnel()?.on) {
+                <p class="hint"><hx-spinner /> {{ tunnel()!.detail || 'Sto preparando l\'indirizzo…' }}</p>
+              } @else {
+                <p class="lead">Dal telefono, fuori casa, apri Hestia con un indirizzo sicuro (Cloudflare, gratis, senza account). Senza, Hestia si usa solo in casa e da Telegram.</p>
+                <p class="hint">Da fuori chiede sempre l'accesso; in casa resta come ora.</p>
+              }
+            }
+
             @case ('pronto') {
               <hx-icon name="sparkle" [size]="30" tone="accent" />
               <h1>Quasi pronto</h1>
@@ -204,6 +220,8 @@ function store(key: string, value: string): void {
                   <span><b>Telegram</b><small>{{ state()!.telegram.linked ? 'Collegato.' : 'Più tardi.' }}</small></span></li>
                 <li><hx-icon [name]="state()!.backup.passphrase ? 'check-circle' : 'clock'" [size]="18" [tone]="state()!.backup.passphrase ? 'success' : 'muted'" />
                   <span><b>Backup</b><small>{{ state()!.backup.passphrase ? 'Pronto.' : 'Più tardi.' }}</small></span></li>
+                <li><hx-icon [name]="tunnel()?.on ? 'check-circle' : 'clock'" [size]="18" [tone]="tunnel()?.on ? 'success' : 'muted'" />
+                  <span><b>Fuori casa</b><small>{{ tunnel()?.on ? (tunnel()!.url || 'Attivo.') : 'Solo in casa e da Telegram.' }}</small></span></li>
               </ul>
               <ng-container *ngTemplateOutlet="downloadsTpl" />
             }
@@ -260,6 +278,7 @@ function store(key: string, value: string): void {
     .rec { align-self: flex-start; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: var(--radius-full); }
     .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .code { font-size: 38px; letter-spacing: .25em; text-align: center; padding: 14px; border-radius: var(--radius-md); background: var(--surface-2); color: var(--text); }
+    .code.small { font-size: 14px; letter-spacing: 0; overflow-wrap: anywhere; user-select: all; }
     .list { list-style: none; display: flex; flex-direction: column; gap: 12px; padding: 0; margin: 0; }
     .list li { display: flex; gap: 10px; align-items: flex-start; }
     .list li > span { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
@@ -304,12 +323,14 @@ export class SetupPageComponent {
       ...(this.needsLocal() ? ['locale' as Screen] : []),
       ...(r === 'cloud' || r === 'entrambi' ? ['cloud' as Screen] : []),
       ...(r === 'claude' ? ['claude' as Screen] : []),
-      'cervello', 'voce', 'telegram', 'backup', 'esterni', 'pronto'];
+      'cervello', 'voce', 'telegram', 'backup', 'esterni', 'fuori', 'pronto'];
   });
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
   optional = computed(() => (this.screen() === 'voce' && !this.voiceQueued())
+    || (this.screen() === 'fuori' && !this.tunnel()?.on)
     || (['telegram', 'backup'].includes(this.screen()) && !this.stepDone(this.screen())));
   voiceQueued = signal(false);
+  tunnel = signal<TunnelState | null>(null);
   providerInfo = computed(() => this.catalog()?.cloud.find(p => p.name === this.provider()) ?? null);
 
   constructor() {
@@ -333,6 +354,7 @@ export class SetupPageComponent {
       }
       const saved = stored(SCREEN_KEY) as Screen;
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
+      this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
     } catch (e) {
       this.loadError.set(setupError(e));
@@ -353,6 +375,7 @@ export class SetupPageComponent {
 
   private go(screen: Screen) {
     this.formError.set('');
+    if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
     this.screen.set(screen);
     store(SCREEN_KEY, screen);
   }
@@ -380,6 +403,7 @@ export class SetupPageComponent {
       case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? 'Avanti' : 'Collega';
       case 'backup': return this.state()!.backup.passphrase ? 'Avanti' : 'Salva';
       case 'voce': return this.voiceQueued() ? 'Avanti' : 'Sì, scarica';
+      case 'fuori': return this.tunnel()?.on ? 'Avanti' : 'Attiva';
       case 'pronto': return 'Inizia';
       default: return 'Avanti';
     }
@@ -405,6 +429,7 @@ export class SetupPageComponent {
         await this.refresh();
       }
       if (screen === 'esterni') await this.api.later('esterni').then(s => this.state.set(s)).catch(() => undefined);
+      if (screen === 'fuori' && !this.tunnel()?.on) { await this.switchTunnel(true); return; }
       if (screen === 'pronto') {
         await this.api.complete();
         try { localStorage.removeItem(SCREEN_KEY); } catch { /* ignore */ }
@@ -482,6 +507,18 @@ export class SetupPageComponent {
   }
 
   // ── polling: the code being claimed, the downloads ──
+  async switchTunnel(on: boolean) {
+    this.busy.set(true);
+    this.formError.set('');
+    try {
+      this.tunnel.set(await this.api.setTunnel(on));
+    } catch (e) {
+      this.formError.set(setupError(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   private async refresh() { try { this.state.set(await this.api.state()); } catch { /* keep the last one */ } }
 
   private async refreshDownloads() { try { this.downloads.set(await this.api.pulls()); } catch { /* not ready yet */ } }
@@ -494,6 +531,9 @@ export class SetupPageComponent {
     const list = this.downloads();
     if ((screen === 'cervello' || screen === 'pronto') && (!list.length || list.some(d => d.state === 'in_coda' || d.state === 'in_corso'))) {
       void this.refreshDownloads();
+    }
+    if (screen === 'fuori' && this.tunnel()?.on && !this.tunnel()!.url) {
+      this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
     }
   }
 

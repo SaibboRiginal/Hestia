@@ -22,6 +22,7 @@ export interface BrainCatalog {
 }
 export interface Download { id: string; what: string; state: 'in_coda' | 'in_corso' | 'fatto' | 'errore'; size: number; done: number; error?: string; }
 export interface Outcome { ok: boolean; detail?: string; }
+export interface TunnelState { on: boolean; url: string; detail?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class SetupApi {
@@ -45,6 +46,9 @@ export class SetupApi {
   telegramToken(token: string) { return this.post<Outcome & { code?: string; expires_in?: number }>('telegram/token', { token }); }
   telegramCode() { return this.post<{ code: string; expires_in: number }>('telegram/code'); }
   backup(passphrase: string) { return this.post<Outcome>('backup', { passphrase }); }
+  /** «Da fuori casa»: the Cloudflare quick tunnel to this WebUI (Hephaestus starts/stops it). */
+  tunnel() { return this.get<TunnelState>('tunnel'); }
+  setTunnel(on: boolean) { return this.post<TunnelState>('tunnel', { on }); }
 }
 
 /** Plain words for an HTTP error of these endpoints. */

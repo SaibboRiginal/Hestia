@@ -9,7 +9,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from . import secrets
+from . import secrets, tunnel
 from .service import STEPS, SetupService
 
 logger = logging.getLogger("hestia_hephaestus.setup.router")
@@ -44,6 +44,10 @@ class Token(BaseModel):
 class Claim(BaseModel):
     code: str
     user_id: str
+
+
+class Tunnel(BaseModel):
+    on: bool = True
 
 
 class Machine(BaseModel):
@@ -189,6 +193,24 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str) -> tuple[A
     def machines_brain(req: Machine):
         """Local models on that satellite's video card (empty address = back on this machine)."""
         return service.oracle("POST", "/api/llm/setup/machine", body={"address": req.address, "name": req.name})
+
+    # ── Da fuori casa (Cloudflare quick tunnel, setup/tunnel.py) ──
+    @router.get("/tunnel")
+    def tunnel_status():
+        """Whether the WebUI is reachable from outside home, and at which address."""
+        return {"status": "ok", **tunnel.status()}
+
+    @router.post("/tunnel")
+    def tunnel_switch(req: Tunnel):
+        """Turn the outside address on (waits up to 40 s for it) or off; the WebUI then asks the login token there."""
+        try:
+            out = tunnel.start() if req.on else tunnel.stop()
+        except Exception as exc:
+            logger.warning("[🔄] event=setup_tunnel_failed on=%s error=%s", req.on, str(exc)[:200])
+            raise HTTPException(status_code=502, detail="Non sono riuscito a cambiare il collegamento da fuori casa: "
+                                                        "controlla che Docker sia acceso e riprova.")
+        service.mark("fuori")
+        return {"status": "ok", **out}
 
     # ── Backup ──
     @router.post("/backup")

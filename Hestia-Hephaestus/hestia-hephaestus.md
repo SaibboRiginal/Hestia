@@ -446,3 +446,9 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `POST /api/setup/machines/revoke {id}` → Hub `DELETE /api/nodes/{id}`; `POST /api/setup/machines/brain
   {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `macchine_elenco`,
   `macchine_codice`, `macchine_scollega`, `macchine_cervello` (Telegram section «Macchine»).
+- **Da fuori casa** (`setup/tunnel.py`, P5b): `GET /api/setup/tunnel` → `{on, url}`; `POST /api/setup/tunnel {on}`
+  creates (first time, Docker API, never in compose so `up-all`/the installer never open Hestia to the internet by
+  themselves) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
+  `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
+  waits up to 40 s for the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
+  after a reboot). Setup step `fuori`. MCP tools `fuori_casa_stato`, `fuori_casa_attiva` (Telegram «Macchine»).

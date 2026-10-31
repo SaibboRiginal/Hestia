@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { UI, DialogService, ToastService } from '../../ui';
-import { setupError } from '../setup/setup.api';
+import { TunnelState, setupError } from '../setup/setup.api';
 
 export interface MachineNode {
   id: string; name: string; role: string; address: string; joined_at: number; last_seen: number | null;
@@ -92,6 +92,22 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
             </li>
           }
         </ul>
+        <section class="row hx-card outside">
+          <hx-icon name="cloud" [size]="20" [tone]="tunnel()?.on ? 'success' : 'muted'" />
+          <div class="main">
+            <div class="top"><b>Da fuori casa</b>
+              @if (tunnel()?.on) { <span class="tag">attivo</span> } @else { <span class="tag">solo in casa e da Telegram</span> }</div>
+            <div class="sub">
+              @if (tunnel()?.on && tunnel()!.url) { <a [href]="tunnel()!.url" target="_blank" rel="noopener">{{ tunnel()!.url }}</a> · chiede sempre l'accesso; cambia a ogni riavvio
+              } @else if (tunnel()?.on) { L'indirizzo compare tra poco.
+              } @else { Un indirizzo sicuro (Cloudflare, gratis) per aprire Hestia dal telefono quando sei fuori. }
+            </div>
+          </div>
+          <div class="acts">
+            <button hx-btn size="sm" [variant]="tunnel()?.on ? 'ghost' : 'primary'" [icon]="tunnel()?.on ? 'x' : 'cloud'"
+                    [loading]="busy() === 'tunnel'" (click)="switchTunnel(!tunnel()?.on)">{{ tunnel()?.on ? 'Spegni' : 'Attiva' }}</button>
+          </div>
+        </section>
         @if (!state()!.nodes.length && !pairing()) {
           <p class="note">Hestia gira tutta qui. Se hai un altro computer con una buona scheda video, collegalo: voce e modelli
             locali girano lì, il resto (memoria, impostazioni, questa pagina) resta su questa macchina sempre accesa.</p>
@@ -110,6 +126,8 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
     .tag, .sub { font-size: 12.5px; color: var(--text-3); }
     .acts { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
     .using { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--text-2); padding: 0 8px; }
+    .outside { max-width: 860px; }
+    .outside a { color: var(--accent); overflow-wrap: anywhere; }
     .pair { max-width: 860px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
     .pair p { margin: 0; font-size: 13px; color: var(--text-2); }
     .code-line { display: flex; align-items: center; gap: 12px; }
@@ -134,6 +152,7 @@ export class MachinesPageComponent {
   error = signal('');
   busy = signal('');
   pairing = signal<Pairing | null>(null);
+  tunnel = signal<TunnelState | null>(null);
   private pairedAt = 0;
   private now = signal(Date.now());
 
@@ -175,6 +194,7 @@ export class MachinesPageComponent {
       }
       this.state.set({ ...s, nodes: s.nodes || [] });
       this.error.set('');
+      this.http.get<TunnelState>('/api/webui/setup/tunnel').subscribe({ next: t => this.tunnel.set(t), error: () => undefined });
     } catch (e: any) {
       if (!this.state()) this.error.set(setupError(e));
     }
@@ -227,6 +247,21 @@ export class MachinesPageComponent {
       this.busy.set('');
     }
     await this.load();
+  }
+
+  async switchTunnel(on: boolean) {
+    if (on && !await this.dialogs.confirm('Aprire Hestia da fuori casa?',
+      'Hestia avrà un indirizzo su internet. Da lì chiede sempre l\'accesso; puoi spegnerlo quando vuoi.', 'Attiva')) return;
+    this.busy.set('tunnel');
+    try {
+      const t = await firstValueFrom(this.http.post<TunnelState>('/api/webui/setup/tunnel', { on }));
+      this.tunnel.set(t);
+      if (t.detail) this.toasts.success(t.detail);
+    } catch (e: any) {
+      this.toasts.error(setupError(e));
+    } finally {
+      this.busy.set('');
+    }
   }
 
   async revoke(n: MachineNode) {
