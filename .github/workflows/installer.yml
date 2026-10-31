@@ -67,17 +67,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Parse with Windows PowerShell 5.1 (file, with BOM, and as downloaded text for irm | iex)
+      - name: Parse with Windows PowerShell 5.1 (file, and as downloaded text for irm | iex)
         shell: powershell
         run: |
           $errors = $null
           [System.Management.Automation.Language.Parser]::ParseFile("$PWD\install.ps1", [ref]$null, [ref]$errors) | Out-Null
           if ($errors) { $errors | ForEach-Object { Write-Error $_.ToString() }; exit 1 }
           $bytes = [IO.File]::ReadAllBytes("$PWD\install.ps1")
-          if (-not ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)) { Write-Error 'install.ps1 must be UTF-8 with BOM'; exit 1 }
-          $text = [Text.Encoding]::UTF8.GetString($bytes)   # keeps a leading U+FEFF, like a raw download may
-          [scriptblock]::Create($text) | Out-Null
-          [scriptblock]::Create(($text -replace '^﻿', '')) | Out-Null
+          # ASCII only: 5.1 reads a BOM-less file as ANSI, and a leading BOM breaks [scriptblock]::Create / iex.
+          if ($bytes | Where-Object { $_ -gt 127 }) { Write-Error 'install.ps1 must be ASCII only (accents as ~e, see its header)'; exit 1 }
+          [scriptblock]::Create([Text.Encoding]::ASCII.GetString($bytes)) | Out-Null
           Write-Host 'parse ok'
       - name: Dry run (Windows PowerShell 5.1)
         shell: powershell

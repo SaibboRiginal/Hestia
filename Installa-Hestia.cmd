@@ -6,7 +6,7 @@ set "HERE=%~dp0"
 if exist "%HERE%install.ps1" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%install.ps1" %*
 ) else (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create(((Invoke-RestMethod -UseBasicParsing 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1') -replace '^\uFEFF',''))) %*"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Invoke-RestMethod -UseBasicParsing 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1'))) %*"
 )
 echo.
 pause

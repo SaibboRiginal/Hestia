@@ -39,7 +39,7 @@ Run critical only: `pytest -m "unit or api or format" --tb=short -v`
 ## Installer (one-click setup)
 
 CI `.github/workflows/installer.yml` on every change to the installers: shellcheck + `--dry-run` on Ubuntu and
-macOS (also macOS's bash 3.2), Windows PowerShell 5.1 parse (file with BOM and as downloaded text) + `-DryRun`,
+macOS (also macOS's bash 3.2), Windows PowerShell 5.1 parse (file and as downloaded text; the script must stay ASCII) + `-DryRun`,
 `docker-compose.images.yml` in step with compose, generated secrets idempotent. A real install of the whole stack
 runs by hand: Actions → Installer → Run workflow → «real_run». Windows end to end (Docker Desktop, WSL2 reboot):
 Marko. Dossier: `docs/work/2026-10-30-setup-un-click/`.
