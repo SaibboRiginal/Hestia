@@ -248,3 +248,11 @@ message is the answer (`notifications.answer_by_reply`). «Apri» stays under th
   call Archive `/api/backup/restore` · `/undo`; status, list and «Backup adesso» are Archive tools.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).
+
+## Setup mode: link the owner with a code (`services/setup_link.py`, dossier `docs/work/2026-10-30-setup-un-click`)
+
+While `ALLOWED_USER_ID` is empty the bot answers nobody, except a message of exactly 6 digits: it is sent to
+Hephaestus (`POST /route/hephaestus/api/setup/telegram/claim {code, user_id}`); the right code (shown by the guided
+setup in the browser) makes the sender the owner («Fatto, ti riconosco!»), a wrong one says so, no active code says
+to open the setup. Hephaestus then writes `ALLOWED_USER_ID` and re-creates the bot. The guided setup itself stays in
+the browser on purpose: tokens and keys must not travel in a chat.

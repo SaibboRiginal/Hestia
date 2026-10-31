@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
 
@@ -131,7 +131,8 @@ answer makes them needed**, not at the end.
 1. **Lingua e nome**: language, how Hestia calls you, time zone (detected).
 2. **Questo dispositivo**: role (§4.0), with the hardware it detected in plain words («Scheda video da 16 GB:
    ottima per i modelli locali»). Satellite → pairing code screen, then jumps to step 8.
-3. **Account**: create the WebUI admin login.
+3. ~~**Account**~~ (v2.3: dropped — the WebUI has no accounts: the home network opens without a token, from outside
+   the token comes from Telegram `/webui_token`).
 4. **Cervello (Oracle)** — the most important screen, built so that a non-technical person gets a working brain in
    one or two taps, and an expert can still go to Modelli later:
    - **Ricetta** (one big choice, preselected by hardware): «Sul tuo computer» (local only) · «Nel cloud» · «Tutti e
@@ -161,7 +162,7 @@ answer makes them needed**, not at the end.
    profile `tunnel`, no host install): quick address now, fixed address explained in one screen.
 8. **Backup** (optional): passphrase, shown with «salvala nel tuo password manager».
 9. **Quasi pronto**: the download list (§4.3) and every module's health in plain words; «Inizia» is active as soon
-   as the minimum works (account + one brain reachable), even if big models are still downloading: chat uses the
+   as the minimum works (one brain reachable), even if big models are still downloading: chat uses the
    cloud or says «il modello locale arriva tra ~8 min».
 
 Where secrets go: env stays the home of secrets (rule). The wizard sends them through the Hub to a **small setup
@@ -170,6 +171,15 @@ the right `.env`, never echoes them back, then restarts only the affected contai
 Every write logs `event=setup_secret_set key=<name> service=<svc>` (never the value). After setup is complete the
 endpoint accepts writes only from a logged-in admin (Impostazioni → Sistema → «Chiavi e collegamenti» reuses the
 same screen, so changing a key later is also not a `.env` edit).
+
+**What P3 built (v2.3).** Screens: Benvenuto (hardware in plain words) → Ricetta → Locale / Cloud («Prova») /
+Claude token → Cervello pronto (summary + downloads) → Telegram (token + one-time code) → Backup → Account esterni
+(links: «collega Google Calendar» to the bot, Dispositivi page) → Quasi pronto. Moved: **Voce** (step 5) to P4 with
+the Download page (the Echo models are downloads); **Da fuori casa** (tunnel container) to P5 with satellites (both
+are about reaching Hestia from elsewhere); **Lingua e nome** (step 1) is not built: Hestia speaks Italian, there is
+no personal setting for the name or the time zone today, and the name is learnt in chat — flagged to Marko.
+Telegram parity: the setup stays in the browser on purpose (tokens and keys must not travel in a chat); Telegram
+takes part through the one-time code.
 
 ### 4.3 Downloads that keep track of themselves — «Download»
 

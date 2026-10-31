@@ -1,15 +1,19 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
+import { setupGuard } from './guards/setup.guard';
 import { APP_MODULES } from './app.modules';
 import { ShellComponent } from './layout/shell.component';
 import { pluginPageMatcher } from './features/plugins/plugin-routes';
 
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login-page.component').then(m => m.LoginPageComponent) },
+  // Guided setup after the install (docs/work/2026-10-30-setup-un-click §4.2): full screen, outside the shell.
+  { path: 'benvenuto', canActivate: [authGuard], title: 'Benvenuto · Hestia',
+    loadComponent: () => import('./features/setup/setup-page.component').then(m => m.SetupPageComponent) },
   {
     path: '',
     component: ShellComponent,
-    canActivate: [authGuard],
+    canActivate: [authGuard, setupGuard],
     children: [
       ...APP_MODULES.map(m => ({ path: m.path, loadComponent: m.load, title: `${m.label} · Hestia` })),
       // Built-in pages that moved into their module as plugins (old links, bookmarks, ?task=… keep working).

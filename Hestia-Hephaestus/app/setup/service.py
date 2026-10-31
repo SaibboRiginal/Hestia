@@ -24,6 +24,7 @@ logger = logging.getLogger("hestia_hephaestus.setup")
 STEPS = ("cervello", "telegram", "backup", "esterni")
 CODE_TTL = 600
 CODE_TRIES = 5
+EMBEDDING_MODEL = "qwen3-embedding:0.6b"   # same as Oracle's llm_setup.EMBEDDING_MODEL
 
 
 class SetupService:
@@ -151,7 +152,9 @@ class SetupService:
         result = self.oracle("POST", "/api/llm/setup/apply",
                              body={"recipe": recipe, "local_model": local_model, "cloud": cloud})
         if local_model and recipe != "cloud":
-            self.oracle("POST", "/api/llm/setup/pull", body={"model": local_model})
+            # The memory's model too: the installer already pulls it, so this is usually a quick «già presente».
+            for model in (local_model, EMBEDDING_MODEL):
+                self.oracle("POST", "/api/llm/setup/pull", body={"model": model})
         self.mark("cervello", brain={"recipe": recipe, "local_model": local_model, "cloud": cloud,
                                      "summary": result.get("detail", "")})
         return {"ok": True, "detail": result.get("detail", "")}

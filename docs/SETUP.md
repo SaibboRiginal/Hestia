@@ -25,9 +25,20 @@ inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on 
 Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installer; get.docker.com → distro package;
 git → zip download; pull → local build); a stop always says the one thing to do, and running the same line again
 resumes. Log (no secrets): `%LOCALAPPDATA%\Hestia\install\install.log` / `~/.local/state/hestia-install/install.log`.
-Telegram is started only once its token is in `Hestia-Telegram/app/.env` (otherwise it would crash-loop).
+The installer writes what it detected (RAM, video card, free disk) in `.hestia-install/hardware.json` (git-ignored)
+and opens the **guided setup** `http://localhost:19015/benvenuto` (below). Without a Telegram token the bot container
+is only created, not started (otherwise it would crash-loop): the guided setup starts it.
 On Linux, if containers cannot reach Ollama (it listens on 127.0.0.1), the installer makes it listen on all
 interfaces through a systemd drop-in and, with ufw active, allows only Docker's networks to port 11434.
+
+**Guided setup «Benvenuto».** One question per screen, the recommended answer preselected, «Più tardi» on the
+optional ones, resumes where it was: **brain** (where Hestia thinks: on this computer, in the cloud, both, or the
+Claude subscription; the local model for this video card is downloaded at once; a cloud key is tried with «Prova»
+before it counts) → **Telegram** (paste the BotFather token, then write the 6-digit code it shows to your bot: no
+need to know your Telegram id) → **backup passphrase** → calendar/mail/devices links → summary. Secrets go through
+the Hub to Hephaestus, which writes only whitelisted keys into the right `.env` and re-creates just that container;
+they are never shown again. Steps left for later stay as a «Da finire» card in Home. Reopen it any time at
+`/benvenuto`.
 
 **Releases and ready-made images.** A tag `vX.Y.Z` on `main` runs `.github/workflows/images.yml`: every service is
 built for amd64 and arm64 and published in the single package `ghcr.io/saibboriginal/hestia` as `<service>-<version>`

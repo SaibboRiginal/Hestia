@@ -416,3 +416,26 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
 - Endpoint: `POST /api/hephaestus/forge/tasks/{task_id}/resume`. Task fields: `review`, `team`, `limit_restarts`.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Sviluppo»; agenda titles «Sviluppo programmato» and «Riprendi lo sviluppo: …».
+
+## Guided setup «Benvenuto» (`app/setup/`, dossier `docs/work/2026-10-30-setup-un-click`)
+
+Hephaestus owns the setup's writes because it already has the repo (`/repo`, where the `.env` files are) and the
+Docker socket. Endpoints `/api/setup/*` (state, later, complete, brain/catalog|test|apply|pull|pulls,
+telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/api/webui/setup/*`) and, for
+`telegram/claim` only, by the Telegram bot.
+
+- `setup/secrets.py`: whitelist `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID` (→ `Hestia-Telegram/app/.env`, telegram),
+  `CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `ORACLE_KEY_<NAME>` (→ `Hestia-Oracle/app/.env`, oracle),
+  `HESTIA_BACKUP_PASSPHRASE` (→ root `.env`, archive). Values: one line of printable ASCII; ids numeric; bot token
+  in BotFather form. Written atomically (active line, else the commented `# KEY=` line, else appended); a value is
+  never logged or returned (`event=setup_secret_set key=… file=… services=…`).
+- `recreate_with_env`: `env_file` is read only when a container is created, so a restart would not see a new key.
+  The container is re-created through the Docker API with the same image, mounts, ports, networks/aliases, restart
+  policy and healthcheck plus the changed variables; the old one is renamed and kept until the new one starts, and
+  comes back on failure (`[🔄] event=setup_recreate_failed`).
+- `setup/service.py`: state in `data/setup.json` (completed, steps left for later, brain choice), hardware from
+  `/repo/.hestia-install/hardware.json` (written by the installer). Telegram link: a 6-digit one-time code (10
+  minutes, 5 tries, compared in constant time); the bot, while `ALLOWED_USER_ID` is empty, forwards a 6-digit
+  message to `telegram/claim` and the sender becomes the owner (the bot is re-created 3 s later, after its reply).
+  The brain itself is Oracle's (`/api/llm/setup/*`): Hephaestus writes the keys, waits for Oracle's health, then
+  forwards the choice and starts the downloads (chat model + `qwen3-embedding:0.6b`).
