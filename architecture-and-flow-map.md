@@ -351,6 +351,8 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    through the relay to the central Hub (Themis, Archive, Oracle stay there).
 4. «Usa la sua scheda video» → Hephaestus → Oracle `POST /api/llm/setup/machine` → Themis `oracle.providers.ollama.url`
    = `http://<satellite>:11434`. «Scollega» → Hub `DELETE /api/nodes/{id}`.
+5. «Da fuori casa» → WebUI `/api/webui/setup/tunnel` → Hub → Hephaestus `/api/setup/tunnel` → Docker API starts
+   `hestia_tunnel` (cloudflared → `hestia_webui:19015`); WebUI `PublicUrlService` ← `hestia_tunnel:20241/quicktunnel`.
 
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).

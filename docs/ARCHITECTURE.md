@@ -554,6 +554,9 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    answers first, the central's own copy is the fallback. The brain's local models can run on a satellite's video
    card (Oracle provider `ollama` → `http://<satellite>:11434`). Roles from the installer: `tutto`, `centrale`,
    `satellite`. Detail: `Hestia-Hub/hestia-hub.md` «Machines».
+   Outside home: only through a Cloudflare tunnel to the WebUI (never a router port). The quick tunnel container
+   `hestia_tunnel` exists only when the user turns «Da fuori casa» on (Hephaestus, Docker API); the WebUI requires the
+   token on its host.
 3. Required for remote rollout:
    - deployment controller contract,
    - health-gated progressive rollout,

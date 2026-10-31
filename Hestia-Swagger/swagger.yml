@@ -7754,6 +7754,31 @@ paths:
       responses:
         "200": {description: "{ok, detail}"}
 
+  /api/setup/tunnel:
+    get:
+      tags: [Hephaestus]
+      summary: "Da fuori casa: whether the outside address is on, and which"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{on, url}"}
+    post:
+      tags: [Hephaestus]
+      summary: "Turn the Cloudflare quick tunnel to the WebUI on or off (waits up to 40 s for the address)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                on: {type: boolean}
+      responses:
+        "200": {description: "{on, url, detail?}"}
+        "502": {description: Docker not answering}
+
   /api/setup/telegram/token:
     post:
       tags: [Hephaestus]
@@ -12573,12 +12598,12 @@ paths:
   /api/webui/setup/{path}:
     get:
       tags: [WebUI]
-      summary: "Guided setup «Benvenuto» reads: state, brain/catalog, brain/pulls (→ Hephaestus /api/setup/*)"
+      summary: "Guided setup «Benvenuto» and Macchine reads: state, brain/catalog, brain/pulls, machines, tunnel (→ Hephaestus /api/setup/*)"
       responses:
         "200": {description: ok}
     post:
       tags: [WebUI]
-      summary: "Guided setup «Benvenuto» writes: later, complete, brain/test|apply|pull, telegram/token|code, backup (→ Hephaestus; telegram/claim is not forwarded)"
+      summary: "Guided setup «Benvenuto» and Macchine writes: later, complete, brain/test|apply|pull, telegram/token|code, backup, machines/pair|revoke|brain, tunnel (→ Hephaestus; telegram/claim is not forwarded)"
       responses:
         "200": {description: ok}
 

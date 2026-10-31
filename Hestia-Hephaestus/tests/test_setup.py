@@ -115,3 +115,55 @@ def test_role_and_lan_ip_from_installer(tmp_path):
     assert svc.role() == "centrale"
     assert svc.hardware()["lan_ip"] == "192.168.1.10"
     assert SetupService(tmp_path / "none", tmp_path / "data").role() == "tutto"
+
+
+class _Box:
+    def __init__(self):
+        self.status = "created"
+        self.stopped = False
+
+    def start(self):
+        self.status = "running"
+
+    def stop(self, timeout=10):
+        self.status = "exited"
+        self.stopped = True
+
+    def reload(self):
+        pass
+
+    def logs(self, tail=200):
+        return b"INF |  https://quiet-river-blue.trycloudflare.com  |\n"
+
+
+class _Docker:
+    def __init__(self):
+        self.box = None
+        self.created = {}
+        self.containers = self
+        self.images = self
+
+    def get(self, name):                      # containers.get and images.get
+        if name == "hestia_tunnel":
+            if self.box is None:
+                raise LookupError(name)
+            return self.box
+        return object()
+
+    def create(self, image, **kw):
+        self.created = {"image": image, **kw}
+        self.box = _Box()
+        return self.box
+
+
+def test_tunnel_created_off_compose_started_then_stopped(monkeypatch):
+    from app.setup import tunnel
+    monkeypatch.setattr(tunnel.requests, "get", lambda *a, **kw: (_ for _ in ()).throw(OSError("no metrics")))
+    monkeypatch.setattr(tunnel.time, "sleep", lambda s: None)
+    dock = _Docker()
+    assert tunnel.status(dock) == {"on": False, "url": ""}
+    out = tunnel.start(dock)
+    assert out == {"on": True, "url": "https://quiet-river-blue.trycloudflare.com"}     # from the log, metrics down
+    assert dock.created["network"] == "hestia_net" and dock.created["restart_policy"]["Name"] == "unless-stopped"
+    assert "http://hestia_webui:19015" in dock.created["command"]
+    assert tunnel.stop(dock)["on"] is False and dock.box.stopped

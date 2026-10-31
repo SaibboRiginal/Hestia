@@ -516,6 +516,10 @@ dei modelli). «Collega una macchina» shows the 6-digit code (10 minutes) and t
 says when the machine joined. «Usa la sua scheda video» / «Riporta qui i modelli» move the brain's local models;
 «Scollega» asks first (and brings the models back first when they were there). Backend: `SetupController`
 whitelist `GET machines`, `POST machines/pair|revoke|brain` (→ Hephaestus `/api/setup/machines*`).
+Card «Da fuori casa»: *Attiva* (asks first) / *Spegni* the Cloudflare quick tunnel (`GET|POST /api/webui/setup/tunnel`,
+also the setup screen `fuori`). `PublicUrlService` reads the tunnel's address from `http://hestia_tunnel:20241/quicktunnel`
+at most once a minute in the background (never blocking a request; a manual URL wins; the address is forgotten when
+the tunnel is off), so the login links follow it; requests to that host always need the token.
 
 ## Download page (`/download`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
 
