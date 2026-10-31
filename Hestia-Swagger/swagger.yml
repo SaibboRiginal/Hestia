@@ -4690,6 +4690,79 @@ paths:
         "200": {description: "{status: deleted, document_id}"}
         "404": {description: Document not found}
 
+  /api/llm/setup/catalog:
+    get:
+      tags: [Oracle]
+      summary: "Guided setup «Cervello» — recommended models for the hardware (query vram_gb, ram_gb), installed Ollama models, cloud providers (no keys)"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{recommended {tier,label,chat[],model,embedding,recipe}, tiers, installed, ollama, cloud[{name,label,type,key_env,key_set,available}], recipes}"}
+
+  /api/llm/setup/test:
+    post:
+      tags: [Oracle]
+      summary: "Guided setup «Prova» — one tiny real call to a provider, answer in plain words"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: {type: string}
+                model: {type: string, description: empty = the provider's default}
+      responses:
+        "200": {description: "{ok, detail}"}
+
+  /api/llm/setup/apply:
+    post:
+      tags: [Oracle]
+      summary: "Guided setup choice → oracle.chains (and brain mode for recipe claude) through Themis, actor user"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipe: {type: string, enum: [locale, cloud, entrambi, claude]}
+                local_model: {type: string}
+                cloud: {type: array, items: {type: string}}
+      responses:
+        "200": {description: "{ok, detail} (detail = one-sentence summary)"}
+        "502": {description: Themis refused or unreachable}
+
+  /api/llm/setup/pull:
+    post:
+      tags: [Oracle]
+      summary: "Start the background download of an Ollama model (idempotent, 3 retries)"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: {type: string}
+      responses:
+        "200": {description: download row}
+
+  /api/llm/setup/pulls:
+    get:
+      tags: [Oracle]
+      summary: "Model downloads started by the setup"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{downloads[{id, what, source, state in_coda|in_corso|fatto|errore, size, done, error}]}"}
+
   /api/llm/code:
     post:
       tags: [Oracle]
@@ -7438,6 +7511,180 @@ paths:
   # ══════════════════════════════════════════════════════════════════════════
   #  HEPHAESTUS — 19010
   # ══════════════════════════════════════════════════════════════════════════
+
+  /api/setup/state:
+    get:
+      tags: [Hephaestus]
+      summary: "Guided setup state: completed, steps left for later, brain choice, detected hardware, which secrets are set (never their values)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/later:
+    post:
+      tags: [Hephaestus]
+      summary: "Leave a step for later (cervello, telegram, backup, esterni)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                step: {type: string}
+      responses:
+        "200": {description: ok}
+
+  /api/setup/complete:
+    post:
+      tags: [Hephaestus]
+      summary: "Mark the guided setup completed"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/brain/catalog:
+    get:
+      tags: [Hephaestus]
+      summary: "Oracle's setup catalog for the detected hardware (→ Oracle via Hub)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/brain/test:
+    post:
+      tags: [Hephaestus]
+      summary: Save ORACLE_KEY_<PROVIDER> (if given), re-create Oracle, then «Prova» (→ Oracle via Hub)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: {type: string}
+                model: {type: string}
+                key: {type: string, description: written to Hestia-Oracle/app/.env, never returned}
+      responses:
+        "200": {description: "{ok, detail}"}
+        "400": {description: key or value refused}
+
+  /api/setup/brain/apply:
+    post:
+      tags: [Hephaestus]
+      summary: Write keys / Claude token, re-create Oracle, apply the brain choice, start the model downloads
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipe: {type: string}
+                local_model: {type: string}
+                cloud: {type: array, items: {type: string}}
+                keys: {type: object, description: provider → key}
+                claude_token: {type: string}
+      responses:
+        "200": {description: "{ok, detail}"}
+
+  /api/setup/brain/pull:
+    post:
+      tags: [Hephaestus]
+      summary: "Download one Ollama model (→ Oracle)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: {type: string}
+      responses:
+        "200": {description: ok}
+
+  /api/setup/brain/pulls:
+    get:
+      tags: [Hephaestus]
+      summary: "Model downloads (→ Oracle)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/telegram/token:
+    post:
+      tags: [Hephaestus]
+      summary: "Save the BotFather token, re-create the bot, return a one-time code to write to the bot"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: {type: string}
+      responses:
+        "200": {description: "{ok, code, expires_in}"}
+        "400": {description: not a BotFather token}
+
+  /api/setup/telegram/code:
+    post:
+      tags: [Hephaestus]
+      summary: "New one-time code (6 digits, 10 minutes, 5 tries)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{code, expires_in}"}
+        "409": {description: bot token not set}
+
+  /api/setup/telegram/claim:
+    post:
+      tags: [Hephaestus]
+      summary: "Called by Telegram in setup mode (no owner yet): right code → the sender becomes ALLOWED_USER_ID"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: {type: string}
+                user_id: {type: string}
+      responses:
+        "200": {description: "{ok, reason?: no_code|wrong_code}"}
+
+  /api/setup/backup:
+    post:
+      tags: [Hephaestus]
+      summary: "Save HESTIA_BACKUP_PASSPHRASE (min 12 chars) and re-create Archive"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                passphrase: {type: string}
+      responses:
+        "200": {description: ok}
 
   /hephaestus/health:
     get:
@@ -12191,6 +12438,18 @@ paths:
       summary: Assistant tool webui_dashboards — current value of webui.dashboards (client layer webui)
       responses:
         "200": {description: "{key, note, value: {dashboards: [...]}}"}
+
+  /api/webui/setup/{path}:
+    get:
+      tags: [WebUI]
+      summary: "Guided setup «Benvenuto» reads: state, brain/catalog, brain/pulls (→ Hephaestus /api/setup/*)"
+      responses:
+        "200": {description: ok}
+    post:
+      tags: [WebUI]
+      summary: "Guided setup «Benvenuto» writes: later, complete, brain/test|apply|pull, telegram/token|code, backup (→ Hephaestus; telegram/claim is not forwarded)"
+      responses:
+        "200": {description: ok}
 
   /api/webui/presence:
     get:

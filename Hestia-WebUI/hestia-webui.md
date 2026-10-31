@@ -494,3 +494,14 @@ SPEC `docs/work/2026-10-20-icone-nei-client`. The WebUI and plugins draw `<hx-ic
 `tone` colour, never emoji. Presence popover: the `icon` + `tone` of the top overlay, else of the base state. Chat:
 `ChatMessage.icon` (paperclip = file, zap = command) and `error` (alert icon, danger). Toasts and the Hermes inbox hide the
 emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
+
+## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
+
+`/benvenuto` (`features/setup/`) is a full-screen page outside the shell: one question per screen (brain recipe →
+local model / cloud key with «Prova» / Claude token → result and downloads → Telegram token and one-time code →
+backup passphrase → calendar, mail and devices → summary), recommended answer preselected, «Più tardi» on the
+optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
+the setup is not completed (Hestia not answering → straight in); the Home shows a «Da finire» card for the steps left
+for later. Backend: `SetupController` forwards only the screens' paths of `/api/webui/setup/*` to Hephaestus
+`/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home
+network, or token).

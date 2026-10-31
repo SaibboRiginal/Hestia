@@ -323,6 +323,16 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    stores answer `epoch`, module mirrors (Hercules, Hygieia, Wardrobe, Plutus) reload. SPEC
    `docs/work/2026-10-20-backup-drive`.
 
+### Guided setup flow («Benvenuto», dossier `docs/work/2026-10-30-setup-un-click`)
+1. Installer → `.hestia-install/hardware.json` → browser `/benvenuto` → WebUI `/api/webui/setup/*` → Hub →
+   Hephaestus `/api/setup/*` (state in `Hestia-Hephaestus/data/setup.json`).
+2. Brain: Hephaestus → Hub → Oracle `/api/llm/setup/catalog`; a key → Hephaestus writes `ORACLE_KEY_<NAME>` into
+   `Hestia-Oracle/app/.env`, re-creates `hestia_oracle` (Docker API), waits for health → Oracle `setup/test`;
+   choice → Oracle `setup/apply` → Themis `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads).
+3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
+   bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
+4. Backup passphrase → root `.env` → `hestia_archive` re-created.
+
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).
 2. Phone: the final `localhost` page fails (expected); user pastes the URL in Telegram → Telegram forwards it

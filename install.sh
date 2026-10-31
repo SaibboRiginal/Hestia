@@ -17,10 +17,13 @@ HESTIA_TARBALL_URL="${HESTIA_TARBALL_URL:-https://codeload.github.com/SaibboRigi
 HESTIA_DIR="${HESTIA_DIR:-$HOME/Hestia}"
 CHANNEL="${HESTIA_CHANNEL:-stabile}"
 ACTION="install"
+RAM_GB=0
+FREE_GB=0
 PURGE=0
 DRY_RUN=0
 OPEN_BROWSER=1
 WEBUI_URL="http://localhost:19015"
+SETUP_URL="$WEBUI_URL/benvenuto"
 HUB_URL="http://localhost:19001"
 PROJECT="hestia"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hestia-install"
@@ -138,20 +141,20 @@ pkg_install() {  # pkg_install <package...>
 
 preflight() {
   say "Controllo il computer…"
-  local ram_gb=0 free_gb=0 parent
+  local parent
   if [ "$OS" = linux ]; then
-    ram_gb=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 / 1024 ))
+    RAM_GB=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 / 1024 ))
   else
-    ram_gb=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
+    RAM_GB=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
   fi
   parent="$HESTIA_DIR"; while [ ! -d "$parent" ]; do parent="$(dirname "$parent")"; done
-  free_gb=$(( $(df -Pk "$parent" | awk 'NR==2 {print $4}') / 1024 / 1024 ))
-  log "preflight ram_gb=$ram_gb free_gb=$free_gb"
-  [ "$ram_gb" -lt 8 ] && note "Hai ${ram_gb} GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud."
-  if [ "$free_gb" -lt 20 ]; then
-    fail "servono almeno 20 GB liberi (meglio 30) su $parent, ce ne sono ${free_gb}. Libera spazio."
+  FREE_GB=$(( $(df -Pk "$parent" | awk 'NR==2 {print $4}') / 1024 / 1024 ))
+  log "preflight ram_gb=$RAM_GB free_gb=$FREE_GB"
+  [ "$RAM_GB" -lt 8 ] && note "Hai ${RAM_GB} GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud."
+  if [ "$FREE_GB" -lt 20 ]; then
+    fail "servono almeno 20 GB liberi (meglio 30) su $parent, ce ne sono ${FREE_GB}. Libera spazio."
   fi
-  [ "$free_gb" -lt 30 ] && note "Spazio libero: ${free_gb} GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare."
+  [ "$FREE_GB" -lt 30 ] && note "Spazio libero: ${FREE_GB} GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare."
   has curl || pkg_install curl || fail "manca 'curl' e non riesco a installarlo."
   retry "Connessione a internet" curl -fsS --max-time 15 -o /dev/null "${HESTIA_REPO_URL%.git}.git/info/refs?service=git-upload-pack" \
     || fail "non riesco a raggiungere github.com: controlla la connessione a internet."
@@ -373,6 +376,25 @@ pick_version() {
     || note "Il codice locale non segue più quello di GitHub: l'ho lasciato com'è."
 }
 
+# What the guided setup shows («Scheda video da 16 GB») and uses to suggest models: git-ignored, no personal data.
+write_hardware() {
+  [ "$DRY_RUN" = 1 ] && return 0
+  local gpu="" vram=0 line mib
+  if has nvidia-smi; then
+    line="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1)"
+    gpu="$(printf '%s' "${line%,*}" | tr -d '"\\')"
+    mib="${line##*, }"
+    case "$mib" in ''|*[!0-9]*) mib=0 ;; esac
+    vram=$(( mib / 1024 ))
+  elif [ "$OS" = mac ] && [ "$(uname -m)" = arm64 ]; then
+    gpu="Apple"; vram=$(( RAM_GB * 2 / 3 ))   # unified memory: Ollama may use about two thirds
+  fi
+  mkdir -p "$HESTIA_DIR/.hestia-install"
+  printf '{"os": "%s", "ram_gb": %s, "free_gb": %s, "gpu": "%s", "vram_gb": %s}\n' \
+    "$OS" "$RAM_GB" "$FREE_GB" "$gpu" "${vram:-0}" > "$HESTIA_DIR/.hestia-install/hardware.json"
+  log "hardware gpu=\"$gpu\" vram_gb=${vram:-0}"
+}
+
 # ── 7. .env files with generated secrets (python runs in a throwaway container, none needed on the host) ────────
 ensure_env() {
   local args=(--generate-secrets)
@@ -403,13 +425,15 @@ start_stack() {
   say "Avvio Hestia…"
   local services=()
   if ! telegram_configured; then
-    # No bot token yet: Telegram would only crash-loop. It starts once the token is set.
+    # No bot token yet: Telegram would only crash-loop. Its container is created, not started: the guided setup
+    # writes the token and starts it.
     local svc
     while IFS= read -r svc; do services+=("$svc"); done < <(compose config --services 2>/dev/null | grep -vx telegram)
-    note "Telegram non è ancora collegato: metti il token del bot in Hestia-Telegram/app/.env e rilancia."
+    note "Telegram si collega nel setup guidato che si apre nel browser."
   fi
   retry "Avvio dei moduli" run_quiet_compose up -d --remove-orphans ${services[@]+"${services[@]}"} \
     || fail "i moduli non partono. Guarda $LOG_FILE (ultime righe) o rilancia."
+  if ! telegram_configured; then run_quiet_compose create telegram || true; fi
 }
 
 telegram_configured() {  # the value is never read into a variable or printed
@@ -445,7 +469,7 @@ wait_healthy() {
   waited=0
   while :; do
     local down
-    down="$(dk ps -a --filter "name=hestia_" --format '{{.Names}} {{.Status}}' | grep -Ev ' Up ' | awk '{print $1}' | tr '\n' ' ')"
+    down="$(dk ps -a --filter "name=hestia_" --format '{{.Names}} {{.Status}}' | grep -Ev ' (Up|Created)' | awk '{print $1}' | tr '\n' ' ')"
     if [ -z "$down" ] && curl -fsS --max-time 3 "$WEBUI_URL" >/dev/null 2>&1; then
       ok "Tutti i moduli sono accesi."
       return 0
@@ -469,11 +493,11 @@ finish() {
     [ -d "$HOME/Desktop" ] && cp "$apps/hestia.desktop" "$HOME/Desktop/hestia.desktop" 2>/dev/null || true
   fi
   if [ "$OPEN_BROWSER" = 1 ] && [ "$DRY_RUN" = 0 ]; then
-    if [ "$OS" = mac ]; then open "$WEBUI_URL" || true
-    elif has xdg-open && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then xdg-open "$WEBUI_URL" >/dev/null 2>&1 || true; fi
+    if [ "$OS" = mac ]; then open "$SETUP_URL" || true
+    elif has xdg-open && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then xdg-open "$SETUP_URL" >/dev/null 2>&1 || true; fi
   fi
   echo
-  ok "Hestia è pronta: $WEBUI_URL"
+  ok "Hestia è pronta: $WEBUI_URL (il setup guidato è su $SETUP_URL)"
   local n
   for n in ${NOTES[@]+"${NOTES[@]}"}; do printf '         · %s\n' "$n"; done
   printf '         Per aggiornare o riparare: rilancia questo stesso comando.\n'
@@ -535,6 +559,7 @@ main() {
   ports_check
   ensure_ollama; state_mark ollama
   ensure_code;   state_mark code
+  write_hardware
   ensure_env;    state_mark env
   start_stack;   state_mark started
   wait_healthy;  state_mark healthy

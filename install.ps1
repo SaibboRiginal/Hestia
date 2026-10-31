@@ -36,6 +36,7 @@ $ScriptUrl  = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/insta
 $DockerUrl  = 'https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe'
 $OllamaUrl  = 'https://ollama.com/download/OllamaSetup.exe'
 $WebUiUrl   = 'http://localhost:19015'
+$SetupUrl   = "$WebUiUrl/benvenuto"
 $HubUrl     = 'http://localhost:19001'
 $Project    = 'hestia'
 $StateDir   = Join-Path $env:LOCALAPPDATA 'Hestia\install'
@@ -43,6 +44,8 @@ $LogFile    = Join-Path $StateDir 'install.log'
 $SavedScript = Join-Path $StateDir 'install.ps1'
 $script:Notes = New-Object System.Collections.Generic.List[string]
 $script:VersionTag = ''
+$script:RamGb = 0
+$script:FreeGb = 0
 
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 
@@ -166,6 +169,7 @@ function Test-Preflight {
     $ramGb = [math]::Floor((Get-CimInstance -ErrorAction Stop Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
     $drive = (Split-Path -Qualifier $Dir).TrimEnd(':')
     $freeGb = [math]::Floor((Get-PSDrive -ErrorAction Stop $drive).Free / 1GB)
+    $script:RamGb = $ramGb; $script:FreeGb = $freeGb
     Write-Log "preflight ram_gb=$ramGb free_gb=$freeGb"
     if ($ramGb -lt 8) { Note "Hai $ramGb GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud." }
     if ($freeGb -lt 20) { Stop-Install "servono almeno 20 GB liberi (meglio 30) sul disco ${drive}:, ce ne sono $freeGb. Libera spazio." }
@@ -352,6 +356,21 @@ function Select-Version {
     }
 }
 
+# What the guided setup shows (<<Scheda video da 16 GB>>) and uses to suggest models: git-ignored, no personal data.
+function Write-Hardware {
+    if ($DryRun) { return }
+    $gpu = ''; $vram = 0
+    if (Test-Command 'nvidia-smi') {
+        $line = (& nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>$null | Select-Object -First 1)
+        if ($line -match '^(.+),\s*(\d+)\s*$') { $gpu = $Matches[1].Trim(); $vram = [math]::Floor([int]$Matches[2] / 1024) }
+    }
+    $dirInfo = Join-Path $Dir '.hestia-install'
+    New-Item -ItemType Directory -Force -Path $dirInfo | Out-Null
+    $json = @{ os = 'windows'; ram_gb = $script:RamGb; free_gb = $script:FreeGb; gpu = $gpu; vram_gb = $vram } | ConvertTo-Json -Compress
+    Set-Content -Path (Join-Path $dirInfo 'hardware.json') -Value $json -Encoding ASCII
+    Write-Log "hardware gpu=`"$gpu`" vram_gb=$vram"
+}
+
 # -- 7. .env files with generated secrets (python in a throwaway container: none needed on Windows) -------------
 function Initialize-Env {
     $envArgs = @('--generate-secrets')
@@ -392,12 +411,14 @@ function Start-Stack {
     Say 'Avvio Hestia...'
     $upArgs = @('up', '-d', '--remove-orphans')
     if (-not $DryRun -and -not (Test-TelegramConfigured)) {
-        # No bot token yet: Telegram would only crash-loop. It starts once the token is set.
+        # No bot token yet: Telegram would only crash-loop. Its container is created, not started: the guided
+        # setup writes the token and starts it.
         Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location
         $upArgs += ($services | Where-Object { $_ -ne 'telegram' })
-        Note 'Telegram non ~e ancora collegato: metti il token del bot in Hestia-Telegram\app\.env e rilancia.'
+        Note 'Telegram si collega nel setup guidato che si apre nel browser.'
     }
     if (-not (Invoke-Retry 'Avvio dei moduli' { Invoke-Compose @upArgs })) { Stop-Install "i moduli non partono. Guarda $LogFile o rilancia." }
+    if (-not $DryRun -and -not (Test-TelegramConfigured)) { Invoke-Compose create telegram | Out-Null }
 }
 
 function Wait-Healthy {
@@ -411,7 +432,7 @@ function Wait-Healthy {
     }
     $waited = 0
     while ($true) {
-        $down = @(& docker ps -a --filter 'name=hestia_' --format '{{.Names}} {{.Status}}' | Where-Object { $_ -notmatch ' Up ' } | ForEach-Object { ($_ -split ' ')[0] })
+        $down = @(& docker ps -a --filter 'name=hestia_' --format '{{.Names}} {{.Status}}' | Where-Object { $_ -notmatch ' (Up|Created)' } | ForEach-Object { ($_ -split ' ')[0] })
         $webui = $false
         try { $webui = ((Invoke-WebRequest -ErrorAction Stop $WebUiUrl -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { }
         if (-not $down.Count -and $webui) { Ok 'Tutti i moduli sono accesi.'; return }
@@ -429,10 +450,10 @@ function Complete-Install {
     if (-not $DryRun) {
         $desktop = [Environment]::GetFolderPath('Desktop')
         Set-Content -Path (Join-Path $desktop 'Hestia.url') -Value "[InternetShortcut]`r`nURL=$WebUiUrl" -Encoding ASCII
-        if (-not $NoBrowser) { Start-Process $WebUiUrl | Out-Null }
+        if (-not $NoBrowser) { Start-Process $SetupUrl | Out-Null }
     }
     Write-Host ''
-    Ok "Hestia ~e pronta: $WebUiUrl"
+    Ok "Hestia ~e pronta: $WebUiUrl (il setup guidato ~e su $SetupUrl)"
     foreach ($n in $script:Notes) { Write-Host (Expand-Text "         - $n") }
     Write-Host '         Per aggiornare o riparare: rilancia questo stesso comando (o Installa-Hestia.cmd).'
     Write-Log "install_done version=$(if ($script:VersionTag) { $script:VersionTag } else { 'dev' }) notes=$($script:Notes.Count)"
@@ -466,6 +487,7 @@ Install-DockerIfMissing; Set-StepDone 'docker'
 Test-Ports
 Install-OllamaIfMissing; Set-StepDone 'ollama'
 Get-Code;                Set-StepDone 'code'
+Write-Hardware
 Initialize-Env;          Set-StepDone 'env'
 Start-Stack;             Set-StepDone 'started'
 Wait-Healthy;            Set-StepDone 'healthy'

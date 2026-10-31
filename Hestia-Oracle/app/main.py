@@ -355,6 +355,62 @@ def ui_models_write(part: str, req: UiModelsWrite):
     return {"status": "ok", "key": key}
 
 
+class SetupTest(BaseModel):
+    provider: str
+    model: str = ""
+
+
+class SetupApply(BaseModel):
+    recipe: Literal["locale", "cloud", "entrambi", "claude"]
+    local_model: str = ""
+    cloud: list[str] = Field(default_factory=list)
+
+
+class SetupPull(BaseModel):
+    model: str
+
+
+@app.get("/api/llm/setup/catalog")
+def llm_setup_catalog(vram_gb: float = 0, ram_gb: float = 0):
+    """Guided setup «Cervello»: recommended models for this hardware, installed ones, cloud providers (no keys)."""
+    from core.services import llm_setup
+    return {"status": "ok", **llm_setup.catalog(vram_gb, ram_gb)}
+
+
+@app.post("/api/llm/setup/test")
+def llm_setup_test(req: SetupTest):
+    """«Prova»: one tiny real call to a provider → ``{ok, detail}`` in plain words."""
+    from core.services import llm_setup
+    return {"status": "ok", **llm_setup.test(req.provider, req.model)}
+
+
+@app.post("/api/llm/setup/apply")
+def llm_setup_apply(req: SetupApply):
+    """The user's choice in the setup → ``oracle.chains`` (+ brain mode for «claude») through Themis."""
+    from core.services import llm_setup
+    result = llm_setup.apply(req.recipe, req.local_model, req.cloud)
+    if not result.get("ok"):
+        raise HTTPException(status_code=502, detail=result.get("detail"))
+    return {"status": "ok", **result}
+
+
+@app.post("/api/llm/setup/pull")
+def llm_setup_pull(req: SetupPull):
+    """Start downloading an Ollama model in the background (idempotent)."""
+    from core.services import llm_setup
+    result = llm_setup.pull(req.model)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("detail"))
+    return {"status": "ok", "download": result}
+
+
+@app.get("/api/llm/setup/pulls")
+def llm_setup_pulls():
+    """Model downloads started by the setup: ``{id, what, source, state, size, done, error}``."""
+    from core.services import llm_setup
+    return {"status": "ok", "downloads": llm_setup.pulls()}
+
+
 @app.post("/api/ui/models/quota/reset")
 def ui_models_quota_reset(provider: str = "", model: str = ""):
     """«Riprova adesso»: forget a model's quota state (all when no provider)."""

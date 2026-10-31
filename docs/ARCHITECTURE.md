@@ -38,7 +38,11 @@ One line installs or repairs everything (prerequisites, `.env` with generated se
 / `Installa-Hestia.cmd` on Windows, `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
 CI publishes every service image in `ghcr.io/saibboriginal/hestia` (`<service>-<version>`) and the installer pulls
 them through `docker-compose.images.yml`; without that override compose builds locally as always (development,
-Forge). Details: [docs/SETUP.md](SETUP.md#installer). By hand:
+Forge). After the install the WebUI opens the guided setup `/benvenuto`: the only writer of secrets from a screen
+is Hephaestus (`/api/setup/*`, whitelisted keys into the right `.env`, then only that container is re-created
+through the Docker API; values never echoed or logged); the brain choice is Oracle's (`/api/llm/setup/*` → Themis
+`oracle.chains`); Telegram, while it has no owner, only forwards a 6-digit one-time code. Details:
+[docs/SETUP.md](SETUP.md#installer). By hand:
 
 ```bash
 docker network create hestia_net
