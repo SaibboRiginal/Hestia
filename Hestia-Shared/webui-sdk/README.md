@@ -55,7 +55,7 @@ Types: `src/types.ts`. Context (`el.ctx`): module, surface, id, route/widget par
 
 `hxk-icon` · `hxk-button` (variant default|primary|ghost|danger, icon, loading) · `hxk-badge` (tone) · `hxk-card`
 (heading, subtitle, clickable, slot actions) · `hxk-stat` (.items KPI) · `hxk-state` (loading|empty|error|offline,
-event retry) · `hxk-list` (.items, event item-click) · `hxk-chart` (line|bar|donut) · `hxk-field` (Themis types,
+event retry) · `hxk-list` (.items, event item-click) · `hxk-chart` (line|bar|donut) · `hxk-field` (Themis types plus `password` and `email`,
 event change) · `hxk-image-picker` (.host, photos) · `hxk-quicklog` (one-tap chips, Annulla, ⋯ other day, progress
 hint). Utility classes in every `HestiaElement`: `.page .card .grid .row .col .grow .muted .small .truncate`.
 

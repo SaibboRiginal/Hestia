@@ -207,3 +207,18 @@ def test_devices_page_is_a_plugin_under_the_gateway_prefix():
     assert {p["element"] for p in web["page"]} <= set(re.findall(r"'(hecate-[a-z-]+)'\s*:", src))
     assert web["api_prefix"] == "/api/gateway/" and web["entry"] == "/ui/webui/hecate.js"
     assert main.ui.capabilities("http://h:1")["ui_manifest"] == "http://h:1/api/ui/manifest"
+
+
+def test_login_from_the_devices_page_asks_the_code_there(tmp_path, monkeypatch):
+    """Marko 2026-11-06: «Collega Garmin» lives in the Dispositivi page; the two-step code is asked there too, not by
+    a notification he may miss."""
+    svc = GarminService(tmp_path / "g", factory=lambda e=None, p=None: FakeGarmin(e, p, mfa=bool(e)), env=lambda k: None)
+    monkeypatch.setattr(devices_api, "garmin", svc)
+    monkeypatch.setattr(devices_api, "_ask_secret", lambda step: pytest.fail("no Hermes form from the page"))
+    monkeypatch.setattr(devices_api.threading, "Thread", lambda target, **kw: type("T", (), {"start": lambda s: None})())
+    app = FastAPI()
+    app.include_router(devices_api.router)
+    client = TestClient(app)
+    out = client.post(devices_api.LOGIN_PATH, json={"direct": True, "values": {"email": "me@example.org", "password": "pw"}}).json()
+    assert out["status"] == "needs_code"
+    assert client.post(devices_api.LOGIN_PATH, json={"direct": True, "values": {"code": "123456"}}).json()["status"] == "connected"

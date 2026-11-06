@@ -6,8 +6,9 @@ Echo owns the speech providers, so the screen asks Echo only:
   models and voices once its key is there) and the step the chain uses now;
 - ``check(blocks, name, language)``: «Prova» without spending anything: a cloud service's model or voice list read
   with its key proves the key;
-- ``plan(chains, listen, speak)``: the chosen step first in the ``ascolto`` / ``voce`` chains, the other steps kept
-  after it as fallbacks (pure, for the tests); ``apply`` writes it through Themis.
+- ``plan(chains, listen, speak)``: the chosen steps first, in order, in the ``ascolto`` / ``voce`` chains (one local
+  engine, then any cloud services as fallbacks), the other steps kept after them (pure, for the tests); ``apply``
+  writes it through Themis.
 """
 from __future__ import annotations
 
@@ -24,6 +25,12 @@ logger = logging.getLogger("hestia_echo.voice_setup")
 LOCAL_TYPES = {"whisper_local", "piper", "kokoro"}
 # Shown first and preselected when nothing is chosen yet.
 PREFERRED = {"ascolto": ("whisper_local", "small"), "voce": ("kokoro", "")}
+# One line per engine, so the user knows what to pick (Marko: «che ne so se scegliere Kokoro o Piper?»).
+ENGINE_NOTES = {
+    "whisper_local": "Capisce quello che dici sul tuo computer, gratis e privato. Più grande = più preciso e più lento.",
+    "kokoro": "La voce più naturale, quasi umana. Circa 350 MB, va bene anche senza scheda video. Consigliata.",
+    "piper": "Leggerissima e istantanea (circa 60 MB a voce), anche su computer vecchi; suona più da sintetizzatore.",
+}
 WHISPER_NOTES = {"tiny": "Il più leggero, sbaglia di più.", "base": "Leggero.",
                  "small": "Buon equilibrio: consigliato.", "medium": "Più preciso, più lento.",
                  "large-v3": "Il più preciso, serve una buona scheda video."}
@@ -51,14 +58,16 @@ def catalog(blocks, language: str = "it") -> dict[str, Any]:
             if p["type"] == "whisper_local":
                 models = [{**m, "note": WHISPER_NOTES.get(m["id"], "")} for m in models]
             rows.append({"name": p["name"], "label": p["label"], "type": p["type"], "local": p["type"] in LOCAL_TYPES,
+                         "note": ENGINE_NOTES.get(p["type"], ""),
                          "needs_key": bool(std.needs_key) or state == "no_key", "key": bool(p["key"]),
                          "state": state, "models": models, "voices": voices})
         rows.sort(key=lambda r: (not r["local"], r["type"] != PREFERRED[direction][0]))
         chain = chains.get(direction) or {"steps": []}
-        current = (chain.get("steps") or [{}])[0] if chain.get("steps") else {}
-        out[direction] = {"providers": rows, "current": {"provider": current.get("provider", ""),
-                                                         "model": current.get("model", ""),
-                                                         "voice": current.get("voice", "")}}
+        steps = [{"provider": s.get("provider", ""), "model": s.get("model", ""), "voice": s.get("voice", "")}
+                 for s in chain.get("steps") or [] if s.get("provider")]
+        # ``current`` = the first step (kept for older pages), ``steps`` = the whole chain in order.
+        out[direction] = {"providers": rows, "current": steps[0] if steps else {"provider": "", "model": "", "voice": ""},
+                          "steps": steps}
     return out
 
 
@@ -93,30 +102,48 @@ def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
         if not resp.ok and resp.status_code != 429:
             return {"ok": False, "detail": f"Non risponde (errore {resp.status_code})."}
     logger.info("event=voice_setup_check_ok provider=%s", name)
-    return {"ok": True, "detail": "La chiave funziona.", "models": _items(std.models(p)),
-            "voices": _items(std.voices(p, language))}
+    models, voices = _items(std.models(p)), _items(std.voices(p, language))
+    # Preselected once the key works, so nothing is asked: the first model and the first voice it lists.
+    return {"ok": True, "detail": "La chiave funziona.", "models": models, "voices": voices,
+            "recommended": {"ascolto": [m["id"] for m in models[:1]], "voce": [v["id"] for v in voices[:1]]}}
 
 
-def plan(chains: dict[str, dict], listen: dict | None, speak: dict | None) -> dict[str, dict]:
-    """New ``echo.chains``: the chosen step first in ``ascolto`` / ``voce``; the other steps stay after it as
-    fallbacks (a provider appears once). Pure function."""
-    out = {name: dict(c) for name, c in (chains or DEFAULT_CHAINS).items()}
-    for direction, choice in (("ascolto", listen), ("voce", speak)):
-        if not choice or not choice.get("provider"):
+def _steps(choice: dict | list | None) -> list[dict]:
+    """The setup's choice for one direction: one step or several in order (a local engine, then cloud services)."""
+    rows = [choice] if isinstance(choice, dict) else list(choice or [])
+    out, seen = [], set()
+    for c in rows:
+        if not isinstance(c, dict) or not c.get("provider"):
             continue
-        step = {"provider": choice["provider"], "model": str(choice.get("model") or ""),
-                "voice": str(choice.get("voice") or ""), "options": {}}
-        base = out.get(direction) or DEFAULT_CHAINS[direction]
-        rest = [dict(s) for s in base.get("steps") or [] if s.get("provider") != step["provider"]]
-        out[direction] = {"label": base.get("label") or direction.capitalize(), "direction": direction,
-                          "steps": [step] + rest}
+        step = {"provider": str(c["provider"]), "model": str(c.get("model") or ""), "voice": str(c.get("voice") or ""),
+                "options": {}}
+        key = (step["provider"], step["model"], step["voice"])
+        if key not in seen:
+            seen.add(key)
+            out.append(step)
     return out
 
 
-def apply(blocks, put: Callable[..., Any], listen: dict | None, speak: dict | None) -> dict[str, Any]:
+def plan(chains: dict[str, dict], listen: dict | list | None, speak: dict | list | None) -> dict[str, dict]:
+    """New ``echo.chains``: the chosen steps first, in order, in ``ascolto`` / ``voce``; the other steps of providers
+    not chosen stay after them as fallbacks. Pure function."""
+    out = {name: dict(c) for name, c in (chains or DEFAULT_CHAINS).items()}
+    for direction, choice in (("ascolto", listen), ("voce", speak)):
+        chosen = _steps(choice)
+        if not chosen:
+            continue
+        names = {s["provider"] for s in chosen}
+        base = out.get(direction) or DEFAULT_CHAINS[direction]
+        rest = [dict(s) for s in base.get("steps") or [] if s.get("provider") not in names]
+        out[direction] = {"label": base.get("label") or direction.capitalize(), "direction": direction,
+                          "steps": chosen + rest}
+    return out
+
+
+def apply(blocks, put: Callable[..., Any], listen: dict | list | None, speak: dict | list | None) -> dict[str, Any]:
     chains = plan(blocks.chains(), listen, speak)
     if not put(CHAINS_KEY, chains, actor="user", reason="Setup guidato: voce"):
         return {"ok": False, "detail": "Le impostazioni non hanno accettato la scelta."}
-    logger.info("event=voice_setup_applied listen=%s speak=%s", (listen or {}).get("provider", "-"),
-                (speak or {}).get("provider", "-"))
+    logger.info("event=voice_setup_applied listen=%s speak=%s", ",".join(s["provider"] for s in _steps(listen)) or "-",
+                ",".join(s["provider"] for s in _steps(speak)) or "-")
     return {"ok": True, "chains": chains}

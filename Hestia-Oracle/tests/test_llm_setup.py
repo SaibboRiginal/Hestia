@@ -236,3 +236,25 @@ def test_apply_replaces_a_retired_default_with_a_listed_model(monkeypatch):
     assert llm_setup.apply("cloud", "", ["gemini"])["ok"]
     steps = stored[oracle_settings.CHAINS_KEY]["veloce"]["steps"]
     assert {s["model"] for s in steps} <= {"gemini-flash-latest", "gemini-3-flash"}
+
+
+def test_key_ok_preselects_more_than_one_model_in_order(monkeypatch):
+    """Marko 2026-11-06 (fourth time): a working key must not stop on «pick a model»: two models are preselected,
+    the second as the fallback, and speech/picture models are never among them."""
+    _keys(monkeypatch, "gemini")
+    import requests
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _ListResp({"models": [
+        {"name": f"models/{m}", "supportedGenerationMethods": ["generateContent"]}
+        for m in ("gemini-2.5-flash-preview-tts", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-flash-lite-latest")]}))
+    result = llm_setup.test("gemini")
+    assert result["recommended"] == ["gemini-flash-lite-latest", "gemini-2.5-flash"]
+
+
+def test_plan_puts_every_chosen_model_of_a_service_in_order(monkeypatch):
+    _keys(monkeypatch, "gemini")
+    monkeypatch.setattr(llm_providers, "is_local", lambda name: name == "ollama")
+    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+                                cloud_models={"gemini": ["gemini-a", "gemini-b", "gemini-a"]})
+    assert out["veloce"]["steps"] == [{"provider": "ollama", "model": "qwen3:8b"},
+                                      {"provider": "gemini", "model": "gemini-a"},
+                                      {"provider": "gemini", "model": "gemini-b"}]

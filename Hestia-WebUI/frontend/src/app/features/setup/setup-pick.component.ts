@@ -8,7 +8,8 @@ export interface PickItem { id: string; title: string; note?: string; warn?: boo
 /**
  * The one selector of the guided setup (docs/work/2026-10-30-setup-un-click): cards, a search box when the list is long,
  * the first few shown and «Mostra tutti». Used for local models, the memory's model, cloud models and voices, so every
- * choice looks and works the same.
+ * choice looks and works the same. ``multi``: several chosen in order (``chosen``), each card shows its place
+ * (1º, 2º…): the first is used, the next ones take over when it fails; a click adds or removes one.
  */
 @Component({
   selector: 'app-setup-pick',
@@ -21,11 +22,11 @@ export interface PickItem { id: string; title: string; note?: string; warn?: boo
         <input class="hx-input" type="search" [placeholder]="placeholder()" [ngModel]="query()" (ngModelChange)="query.set($event)" autocomplete="off" spellcheck="false" />
       </label>
     }
-    <div class="choices" role="radiogroup">
+    <div class="choices" [attr.role]="multi() ? 'group' : 'radiogroup'">
       @for (it of visible(); track it.id) {
-        <button type="button" class="choice" role="radio" [attr.aria-checked]="it.id === selected()" [class.sel]="it.id === selected()" (click)="picked.emit(it.id)">
-          <hx-icon [name]="it.warn ? 'alert' : (it.icon || 'host')" [size]="18" [tone]="it.id === selected() ? 'accent' : (it.warn ? 'warning' : 'muted')" />
-          <span class="ct"><b>{{ it.title }}</b>@if (it.tag) { <span class="rec">{{ it.tag }}</span> }
+        <button type="button" class="choice" [attr.role]="multi() ? 'checkbox' : 'radio'" [attr.aria-checked]="on(it.id)" [class.sel]="on(it.id)" (click)="picked.emit(it.id)">
+          <hx-icon [name]="multi() && on(it.id) ? 'check-circle' : it.warn ? 'alert' : (it.icon || 'host')" [size]="18" [tone]="on(it.id) ? 'accent' : (it.warn ? 'warning' : 'muted')" />
+          <span class="ct"><b>{{ it.title }}</b>@if (place(it.id); as n) { <span class="rec">{{ n }}º</span> } @else if (it.tag) { <span class="rec">{{ it.tag }}</span> }
             @if (it.note) { <small>{{ it.note }}</small> }</span>
         </button>
       } @empty {
@@ -57,6 +58,9 @@ export interface PickItem { id: string; title: string; note?: string; warn?: boo
 export class SetupPickComponent {
   items = input<PickItem[]>([]);
   selected = input<string>('');
+  /** Several in order instead of one. */
+  multi = input<boolean>(false);
+  chosen = input<string[]>([]);
   placeholder = input<string>('Cerca');
   empty = input<string>('Niente da scegliere.');
   /** Cards before «Mostra tutti». */
@@ -66,6 +70,10 @@ export class SetupPickComponent {
   query = signal('');
   all = signal(false);
 
+  on(id: string): boolean { return this.multi() ? this.chosen().includes(id) : id === this.selected(); }
+  /** The place of a chosen card when more than one is chosen (0 = none). */
+  place(id: string): number { return this.multi() && this.chosen().length > 1 ? this.chosen().indexOf(id) + 1 : 0; }
+
   filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     return q ? this.items().filter(i => `${i.title} ${i.note || ''}`.toLowerCase().includes(q)) : this.items();
@@ -74,8 +82,8 @@ export class SetupPickComponent {
     const list = this.filtered();
     if (this.all() || this.query().trim() || list.length <= this.limit()) return list;
     const head = list.slice(0, this.limit());
-    const sel = list.find(i => i.id === this.selected());   // the chosen one always stays in sight
-    return sel && !head.includes(sel) ? [...head, sel] : head;
+    const sel = list.filter(i => this.on(i.id) && !head.includes(i));   // the chosen ones always stay in sight
+    return [...head, ...sel];
   });
   hidden = computed(() => this.filtered().length - this.visible().length);
 }

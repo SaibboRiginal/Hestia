@@ -301,7 +301,8 @@ registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest +
 Validation at declare time: element names `<module>-…`, every path under `api_prefix`, known parents/sizes/param
 types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). The browser side is
 `Hestia-Shared/webui-sdk/` (`@hestia/webui-sdk`: host API types, `HestiaElement`, shared Lit kit `hxk-*`, build
-script) — see its `README.md`.
+script) — see its `README.md`. `hxk-field` also takes `type="password"` and `type="email"` (2026-11-06: the Garmin
+login form in Dispositivi).
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
 2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
 SDK helpers (2026-10-29): `plural(n, 'esercizio', 'esercizi')` → «1 esercizio» / «3 esercizi»; a widget calls

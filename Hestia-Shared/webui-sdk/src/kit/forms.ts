@@ -3,7 +3,7 @@ import { tokens } from '../styles';
 import type { HestiaHost, Upload } from '../types';
 
 /**
- * One labelled control: type text | textarea | int | float | bool | enum | date | time | list.
+ * One labelled control: type text | textarea | int | float | bool | enum | date | time | list | password | email.
  * Same types as Themis settings / manifest params. Emits 'change' with detail = new value.
  */
 export class HxkField extends LitElement {
@@ -48,6 +48,9 @@ export class HxkField extends LitElement {
       case 'int': case 'float':
         return html`<input type="number" step=${this.type === 'int' ? '1' : 'any'} .value=${String(v)} placeholder=${this.placeholder}
           @input=${(e: any) => this.emit(e.target.value === '' ? null : Number(e.target.value))}>`;
+      case 'password': case 'email':
+        return html`<input type=${this.type} autocomplete=${this.type === 'password' ? 'current-password' : 'email'} .value=${String(v)}
+          placeholder=${this.placeholder} @input=${(e: any) => this.emit(e.target.value)}>`;
       case 'date': case 'time':
         return html`<input type=${this.type} .value=${String(v)} @change=${(e: any) => this.emit(e.target.value)}>`;
       case 'list':

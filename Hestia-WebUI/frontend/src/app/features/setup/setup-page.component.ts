@@ -1,14 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, WritableSignal, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { SetupPickComponent, PickItem } from './setup-pick.component';
-import { BrainCatalog, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceProvider, VoiceStep, setupError } from './setup.api';
+import { ServiceCheck, ServiceRow, SetupServicesComponent } from './setup-services.component';
+import { BrainCatalog, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
 /** What the server stores: derived from the two boxes (computer, cloud). «claude» (Claude Code as the whole brain)
  * is no longer offered here: the Claude subscription is one of the cloud services, in the chain like the others. */
 type Recipe = 'locale' | 'cloud' | 'entrambi';
+type VoiceDir = 'ascolto' | 'voce';
 const CLAUDE_TYPE = 'claude_cli';
 /** Where to get a key, by provider type or name. */
 const KEY_LINKS: Record<string, string> = {
@@ -42,7 +44,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [...UI, FormsModule, RouterLink, SetupPickComponent],
+  imports: [...UI, FormsModule, RouterLink, SetupPickComponent, SetupServicesComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap">
@@ -163,11 +165,8 @@ function store(key: string, value: string): void {
               }
               <div class="row"><button hx-btn variant="ghost" icon="refresh" [loading]="searching()" (click)="searchAgain()">Cerca di nuovo</button></div>
               @if (found().length) {
-                <details class="adv">
-                  <summary>Avanzate</summary>
-                  <p class="hint">Modello per la memoria: serve a ritrovare ricordi e documenti. Se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</p>
-                  <app-setup-pick [items]="embedItems()" [selected]="embeddingKey()" placeholder="Cerca" (picked)="embeddingKey.set($event)" />
-                </details>
+                <div class="sub">Per la memoria <small>serve a ritrovare ricordi e documenti. Se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</small></div>
+                <app-setup-pick [items]="embedItems()" [selected]="embeddingSelected()" [limit]="3" placeholder="Cerca" (picked)="pickEmbedding($event)" />
               }
             }
 
@@ -175,46 +174,8 @@ function store(key: string, value: string): void {
               <hx-icon name="zap" [size]="30" tone="accent" />
               <h1>Quali servizi nel cloud?</h1>
               <p class="lead">Scegline uno o più: li usa in quest'ordine, il secondo se il primo non risponde o ha finito la quota.</p>
-              <div class="choices">
-                @for (p of catalog()?.cloud || []; track p.name) {
-                  <div class="opt" [class.sel]="picked(p.name)">
-                    <button type="button" class="choice" role="checkbox" [attr.aria-checked]="picked(p.name)" (click)="toggleProvider(p.name)">
-                      <hx-icon [name]="picked(p.name) ? 'check-circle' : (p.type === claudeType ? 'brain' : 'unlock')" [size]="20" [tone]="picked(p.name) ? 'accent' : 'muted'" />
-                      <span class="ct"><b>@if (cloudOrder(p.name) > 0) { {{ cloudOrder(p.name) }}. }{{ p.label || p.name }}</b>
-                        @if (p.type === 'gemini') { <span class="rec">Gratis</span> }
-                        <small>{{ providerText(p) }}</small></span>
-                      @if (picked(p.name)) { <hx-icon [name]="ready(p.name) ? 'check-circle' : 'clock'" [size]="16" [tone]="ready(p.name) ? 'success' : 'warning'" /> }
-                    </button>
-                    @if (picked(p.name)) {
-                      <div class="cfg">
-                        @if (p.type === claudeType) {
-                          <p class="hint">Nel terminale scrivi <code>claude setup-token</code>, accedi con il tuo account Claude (Pro o Max), poi incolla qui il codice che ti dà.</p>
-                          <hx-field label="Codice dell'abbonamento Claude" [hint]="state()!.claude.token ? 'Codice già inserito: lascia vuoto per tenerlo.' : ''">
-                            <input class="hx-input mono" type="password" autocomplete="off" [(ngModel)]="claudeToken" placeholder="sk-ant-oat…" />
-                          </hx-field>
-                        } @else {
-                          <hx-field [label]="'Chiave di ' + (p.label || p.name)" [error]="testError()[p.name] || ''"
-                                    [hint]="testNote()[p.name] || (p.key_set ? 'Lascia vuoto per tenere quella che c\\'è.' : '')">
-                            <input class="hx-input mono" type="password" autocomplete="off" [ngModel]="keys[p.name] || ''" (ngModelChange)="typeKey(p.name, $event)" [placeholder]="p.key_set ? 'chiave salvata' : 'incolla qui la chiave'" />
-                          </hx-field>
-                          @if (modelsOf()[p.name]?.length) {
-                            <div class="sub">Modello <small>(la lista viene dal servizio: leggerla non consuma niente)</small></div>
-                            <app-setup-pick [items]="cloudItems(p.name)" [selected]="cloudModel()[p.name] || ''" [limit]="4" placeholder="Cerca un modello"
-                                            (picked)="pickCloudModel(p.name, $event)" />
-                          }
-                          <div class="row">
-                            @if (keyLink(p)) { <a hx-btn variant="ghost" icon="external" [href]="keyLink(p)" target="_blank" rel="noopener">Prendi la chiave</a> }
-                            <button hx-btn variant="secondary" icon="play" [loading]="testing() === p.name" [disabled]="!keys[p.name] && !p.key_set" (click)="testKey(p.name)">{{ keys[p.name] ? 'Salva e prova' : 'Prova' }}</button>
-                          </div>
-                        }
-                        @if (cloudOrder(p.name) > 1) {
-                          <div class="row"><button hx-btn variant="ghost" size="sm" icon="chevron-up" (click)="moveUp(p.name)">Prima di {{ before(p.name) }}</button></div>
-                        }
-                      </div>
-                    }
-                  </div>
-                } @empty { <p class="lead">Nessun servizio cloud configurato.</p> }
-              </div>
+              <app-setup-services [services]="cloudRows()" [tester]="brainTester" optionsLabel="Modelli"
+                                  [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" />
             }
 
             @case ('cervello') {
@@ -232,37 +193,24 @@ function store(key: string, value: string): void {
                 @if (voiceError()) { <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
               } @else {
                 @for (dir of voiceDirs; track dir.id) {
-                  <div class="sub">{{ dir.title }} <small>{{ dir.help }}</small></div>
-                  <div class="choices">
-                    @for (p of voiceCat()![dir.id].providers; track p.name) {
-                      <div class="opt" [class.sel]="voicePick()[dir.id].provider === p.name">
-                        <button type="button" class="choice" role="radio" [attr.aria-checked]="voicePick()[dir.id].provider === p.name" (click)="pickVoiceProvider(dir.id, p.name)">
-                          <hx-icon [name]="voicePick()[dir.id].provider === p.name ? 'check-circle' : (p.local ? 'host' : 'zap')" [size]="20" [tone]="voicePick()[dir.id].provider === p.name ? 'accent' : 'muted'" />
-                          <span class="ct"><b>{{ p.label }}</b>@if (p.local) { <span class="rec">Sul tuo computer</span> }
-                            <small>{{ voiceProviderText(p) }}</small></span>
-                          @if (voicePick()[dir.id].provider === p.name) { <hx-icon [name]="voiceReady(p) ? 'check-circle' : 'clock'" [size]="16" [tone]="voiceReady(p) ? 'success' : 'warning'" /> }
-                        </button>
-                        @if (voicePick()[dir.id].provider === p.name) {
-                          <div class="cfg">
-                            @if (!p.local) {
-                              <hx-field [label]="'Chiave di ' + p.label" [error]="voiceTestError()[p.name] || ''" [hint]="voiceTestNote()[p.name] || ''">
-                                <input class="hx-input mono" type="password" autocomplete="off" [ngModel]="voiceKeys[p.name] || ''" (ngModelChange)="voiceKeys[p.name] = $event"
-                                       [placeholder]="p.key ? 'chiave salvata' : 'incolla qui la chiave'" />
-                              </hx-field>
-                              <div class="row">
-                                <button hx-btn variant="secondary" icon="play" [loading]="voiceTesting() === p.name" [disabled]="!voiceKeys[p.name] && !p.key" (click)="testVoice(p.name)">{{ voiceKeys[p.name] ? 'Salva e prova' : 'Prova' }}</button>
-                              </div>
-                            }
-                            @if (voiceOptions(p, dir.id).length) {
-                              <div class="sub">{{ dir.id === 'ascolto' ? 'Modello' : 'Voce' }}</div>
-                              <app-setup-pick [items]="voiceOptions(p, dir.id)" [limit]="4" [selected]="dir.id === 'ascolto' ? voicePick()[dir.id].model : voicePick()[dir.id].voice"
-                                              placeholder="Cerca" (picked)="pickVoiceOption(dir.id, $event)" />
-                            }
-                          </div>
-                        }
-                      </div>
+                  <section class="vdir">
+                    <h2><hx-icon [name]="dir.id === 'ascolto' ? 'mic' : 'volume'" [size]="18" tone="accent" /> {{ dir.title }} <small>{{ dir.help }}</small></h2>
+                    @if (voiceLocal(dir.id).length) {
+                      <div class="sub">Sul tuo computer <small>uno solo: gratis e privato</small></div>
+                      <ul class="engines">
+                        @for (p of voiceLocal(dir.id); track p.name) { <li><b>{{ engineName(p) }}</b> {{ p.note }}</li> }
+                      </ul>
+                      <app-setup-pick [items]="voiceLocalItems(dir.id)" [selected]="voiceLocalPick()[dir.id]" [limit]="4" placeholder="Cerca"
+                                      (picked)="setVoice(voiceLocalPick, dir.id, $event)" />
                     }
-                  </div>
+                    @if (voiceCloudRows(dir.id).length) {
+                      <div class="sub">Nel cloud <small>facoltativo: uno o più, in ordine, se il computer non ce la fa</small></div>
+                      <app-setup-services [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)" [optionsLabel]="dir.id === 'ascolto' ? 'Modelli' : 'Voci'"
+                                          [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
+                                          [picks]="voicePicks()[dir.id]" (picksChange)="setVoice(voicePicks, dir.id, $event)"
+                                          [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)" />
+                    }
+                  </section>
                 }
               }
             }
@@ -311,7 +259,7 @@ function store(key: string, value: string): void {
               <ul class="list">
                 <li><hx-icon name="calendar" [size]="18" tone="info" /><span><b>Google Calendar e Gmail</b><small>Scrivi al bot «collega Google Calendar».</small></span></li>
                 <li><hx-icon name="pulse" [size]="18" tone="success" /><span><b>Orologio Garmin e telefono</b>
-                  <small><a href="/p/hecate/dispositivi" target="_blank" rel="noopener">Apri Dispositivi <hx-icon name="external" [size]="12" /></a></small></span></li>
+                  <small>In Dispositivi premi «Collega Garmin» e metti lì email e password. <a href="/p/hecate/dispositivi" target="_blank" rel="noopener">Apri Dispositivi <hx-icon name="external" [size]="12" /></a></small></span></li>
               </ul>
             }
 
@@ -320,12 +268,13 @@ function store(key: string, value: string): void {
               <h1>Usare Hestia fuori casa</h1>
               @if (tunnel()?.on && tunnel()!.url) {
                 <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Fatto. Da fuori casa, anche senza il Wi-Fi di casa, apri:</p>
-                <div class="code mono small">{{ tunnel()!.url }}</div>
-                <p class="hint">Ti chiede l'accesso, come qui. L'indirizzo cambia quando Hestia si riavvia: il bot su Telegram ti dà sempre quello giusto.</p>
-                <div class="row">
-                  <a hx-btn variant="secondary" icon="external" [href]="tunnel()!.url" target="_blank" rel="noopener">Provalo</a>
-                  <button hx-btn variant="ghost" icon="x" [loading]="busy()" (click)="switchTunnel(false)">Spegni</button>
+                <div class="urlrow">
+                  <span class="code mono small">{{ tunnel()!.url }}</span>
+                  <a hx-btn variant="primary" icon="external" [href]="tunnel()!.url" target="_blank" rel="noopener">Provalo</a>
+                  <button hx-btn variant="ghost" icon="copy" (click)="copyUrl()">{{ copied() ? 'Copiato' : 'Copia' }}</button>
                 </div>
+                <p class="hint">Ti chiede l'accesso, come qui. L'indirizzo cambia quando Hestia si riavvia: il bot su Telegram ti dà sempre quello giusto.</p>
+                <div class="row"><button hx-btn variant="ghost" size="sm" icon="x" [loading]="busy()" (click)="switchTunnel(false)">Spegni</button></div>
               } @else if (busy() || tunnel()?.on || tunnel()?.phase === 'error') {
                 @if (tunnel()?.phase === 'error' || tunnelLate()) {
                   <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ tunnel()?.phase === 'error' ? tunnel()!.detail : 'L\'indirizzo non arriva. Di solito è la rete che blocca Cloudflare (ufficio, scuola) o internet che non va.' }}</p>
@@ -349,6 +298,7 @@ function store(key: string, value: string): void {
               } @else {
                 <p class="lead">Dal telefono, fuori casa, apri Hestia con un indirizzo internet sicuro. Senza, Hestia si usa solo in casa e da Telegram.</p>
                 <p class="hint">Se lo attivi: scarico e avvio un piccolo programma di Cloudflare (gratis, senza account) che crea un indirizzo che porta qui. Da quell'indirizzo Hestia chiede sempre l'accesso; in casa resta come ora. Lo spegni quando vuoi da questa pagina.</p>
+                <div class="row start"><button hx-btn variant="primary" icon="cloud" [loading]="busy()" (click)="switchTunnel(true)">Attiva l'indirizzo</button></div>
               }
               @if (formError()) { <p class="warn"><hx-icon name="alert" [size]="15" tone="danger" /> {{ formError() }}</p> }
             }
@@ -436,7 +386,15 @@ function store(key: string, value: string): void {
     .group { display: flex; flex-direction: column; gap: 8px; }
     .gh { display: flex; gap: 6px; align-items: center; font-size: 14px; }
     .gh small { color: var(--text-3); font-size: 12px; }
-    .adv summary { font-size: 13px; color: var(--text-2); cursor: pointer; margin-bottom: 8px; }
+    .vdir { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+    .vdir + .vdir { border-top: 1px solid var(--border); padding-top: 16px; }
+    .vdir h2 { display: flex; gap: 8px; align-items: center; font-size: 17px; font-weight: 600; color: var(--text); }
+    .vdir h2 small { font-size: 13px; font-weight: 400; color: var(--text-3); }
+    .engines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-2); line-height: 1.45; }
+    .engines b { color: var(--text); font-weight: 600; }
+    .urlrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .urlrow .code { flex: 1 1 220px; min-width: 0; text-align: left; }
+    .row.start { justify-content: flex-start; }
     select.hx-input { width: 100%; }
     .ct { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
     .ct b { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
@@ -498,16 +456,10 @@ export class SetupPageComponent {
   embeddingKey = signal('');
   /** The chosen cloud services, in the order they are tried. */
   cloudPicked = signal<string[]>([]);
-  /** Per service: the model picked, the chat models it really has (after «Prova»), the result of «Prova». */
-  cloudModel = signal<Record<string, string>>({});
-  modelsOf = signal<Record<string, string[]>>({});
-  testNote = signal<Record<string, string>>({});
-  testError = signal<Record<string, string>>({});
-  /** Services whose key passed «Prova» in this run (with a model that answers). */
-  tested = signal<string[]>([]);
-  testing = signal('');
-  keys: Record<string, string> = {};
-  claudeToken = '';
+  /** Per service: the models chosen, in order (the next takes over when the first fails); usable or not; the Claude code. */
+  cloudModel = signal<Record<string, string[]>>({});
+  cloudReady = signal<Record<string, boolean>>({});
+  cloudTokens = signal<Record<string, string>>({});
   botToken = '';
   passphrase = '';
 
@@ -526,7 +478,6 @@ export class SetupPageComponent {
   });
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
   optional = computed(() => (this.screen() === 'voce' && !this.voiceQueued())
-    || (this.screen() === 'fuori' && !this.tunnel()?.on)
     || (['telegram', 'backup'].includes(this.screen()) && !this.stepDone(this.screen())));
   voiceQueued = signal(false);
   tunnel = signal<TunnelState | null>(null);
@@ -551,13 +502,11 @@ export class SetupPageComponent {
   ];
   voiceCat = signal<VoiceCatalog | null>(null);
   voiceError = signal('');
-  voicePick = signal<{ ascolto: VoiceStep; voce: VoiceStep }>({ ascolto: { provider: '', model: '', voice: '' }, voce: { provider: '', model: '', voice: '' } });
-  voiceKeys: Record<string, string> = {};
-  voiceLists = signal<Record<string, { models: { id: string; label: string; note?: string }[]; voices: { id: string; label: string }[] }>>({});
-  voiceTested = signal<string[]>([]);
-  voiceTesting = signal('');
-  voiceTestNote = signal<Record<string, string>>({});
-  voiceTestError = signal<Record<string, string>>({});
+  /** Per direction: the local engine and its model/voice as «provider|id» (one), then cloud services in order. */
+  voiceLocalPick = signal<Record<VoiceDir, string>>({ ascolto: '', voce: '' });
+  voiceOrder = signal<Record<VoiceDir, string[]>>({ ascolto: [], voce: [] });
+  voicePicks = signal<Record<VoiceDir, Record<string, string[]>>>({ ascolto: {}, voce: {} });
+  voiceReadyMap = signal<Record<VoiceDir, Record<string, boolean>>>({ ascolto: {}, voce: {} });
 
   async loadVoice() {
     this.voiceError.set('');
@@ -565,77 +514,94 @@ export class SetupPageComponent {
       const cat = await this.api.voiceCatalog();
       this.voiceCat.set(cat);
       const saved = this.state()?.voice || {};
-      const first = (d: 'ascolto' | 'voce', s?: VoiceStep): VoiceStep => {
-        const cur = s?.provider ? s : cat[d].current;
-        const p = cat[d].providers.find(x => x.name === cur.provider) || cat[d].providers[0];
-        if (!p) return { provider: '', model: '', voice: '' };
-        return { provider: p.name, model: cur.provider === p.name ? cur.model || p.models[0]?.id || '' : p.models[0]?.id || '',
-                 voice: cur.provider === p.name ? cur.voice || p.voices[0]?.id || '' : p.voices[0]?.id || '' };
-      };
-      this.voicePick.set({ ascolto: first('ascolto', saved.listen), voce: first('voce', saved.speak) });
+      const local: Record<VoiceDir, string> = { ascolto: '', voce: '' };
+      const order: Record<VoiceDir, string[]> = { ascolto: [], voce: [] };
+      const picks: Record<VoiceDir, Record<string, string[]>> = { ascolto: {}, voce: {} };
+      for (const d of this.voiceDirs) {
+        const own = d.id === 'ascolto' ? saved.listen : saved.speak;
+        const steps: VoiceStep[] = (Array.isArray(own) ? own : own?.provider ? [own] : null) || cat[d.id].steps || (cat[d.id].current?.provider ? [cat[d.id].current] : []);
+        const byName = (n: string) => cat[d.id].providers.find(p => p.name === n);
+        for (const st of steps) {
+          const p = byName(st.provider);
+          if (!p) continue;
+          const id = d.id === 'ascolto' ? st.model : st.voice;
+          if (p.local) { if (!local[d.id]) local[d.id] = `${p.name}|${id || this.optionsOf(p, d.id)[0]?.id || ''}`; }
+          else {
+            if (!order[d.id].includes(p.name)) order[d.id].push(p.name);
+            if (id) picks[d.id][p.name] = [...(picks[d.id][p.name] || []), id];
+          }
+        }
+        if (!local[d.id]) local[d.id] = this.voiceLocalItems(d.id, cat)[0]?.id || '';
+      }
+      this.voiceLocalPick.set(local);
+      this.voiceOrder.set(order);
+      this.voicePicks.set(picks);
     } catch (e) {
       this.voiceError.set(setupError(e));
     }
   }
-  private voiceProvider(dir: 'ascolto' | 'voce', name: string): VoiceProvider | undefined { return this.voiceCat()?.[dir].providers.find(p => p.name === name); }
-  pickVoiceProvider(dir: 'ascolto' | 'voce', name: string) {
-    const p = this.voiceProvider(dir, name);
-    const opts = p ? this.voiceOptions(p, dir) : [];
-    this.voicePick.set({ ...this.voicePick(), [dir]: { provider: name, model: dir === 'ascolto' ? opts[0]?.id || '' : '', voice: dir === 'voce' ? opts[0]?.id || '' : '' } });
-    if (p && !p.local && p.key && !this.voiceLists()[name] && !this.voiceKeys[name]) void this.testVoice(name);
-  }
-  pickVoiceOption(dir: 'ascolto' | 'voce', id: string) {
-    const cur = this.voicePick()[dir];
-    this.voicePick.set({ ...this.voicePick(), [dir]: dir === 'ascolto' ? { ...cur, model: id } : { ...cur, voice: id } });
-  }
-  voiceOptions(p: VoiceProvider, dir: 'ascolto' | 'voce'): PickItem[] {
-    const listed = this.voiceLists()[p.name];
-    const rows = dir === 'ascolto' ? (listed?.models.length ? listed.models : p.models) : (listed?.voices.length ? listed.voices : p.voices);
-    return rows.map(r => ({ id: r.id, title: r.label, note: (r as { note?: string }).note || '', icon: dir === 'ascolto' ? 'mic' : 'volume' }));
-  }
-  voiceReady(p: VoiceProvider): boolean {
-    if (p.local) return true;
-    return this.voiceTested().includes(p.name) || (p.key && !this.voiceKeys[p.name] && !this.voiceTestError()[p.name]);
-  }
-  voiceProviderText(p: VoiceProvider): string {
-    if (p.local) return p.state === 'ready' ? 'Pronto.' : 'Lo scarico quando confermi.';
-    return p.key ? 'Chiave già inserita.' : 'Serve una chiave.';
-  }
-  async testVoice(name: string): Promise<void> {
-    this.voiceTesting.set(name);
-    this.voiceTestError.set({ ...this.voiceTestError(), [name]: '' });
-    this.voiceTestNote.set({ ...this.voiceTestNote(), [name]: '' });
-    const typed = (this.voiceKeys[name] || '').trim();
-    try {
-      const r = await this.api.voiceTest(name, typed);
-      if (typed) { this.voiceKeys[name] = ''; this.markVoiceKey(name); }
-      this.voiceLists.set({ ...this.voiceLists(), [name]: { models: r.models || [], voices: r.voices || [] } });
-      if (r.ok) {
-        this.voiceTested.set([...this.voiceTested().filter(n => n !== name), name]);
-        this.voiceTestNote.set({ ...this.voiceTestNote(), [name]: r.detail || 'Funziona.' });
-        for (const d of this.voiceDirs) if (this.voicePick()[d.id].provider === name) {
-          const opts = this.voiceOptions(this.voiceProvider(d.id, name)!, d.id);
-          const cur = this.voicePick()[d.id];
-          const has = opts.some(o => o.id === (d.id === 'ascolto' ? cur.model : cur.voice));
-          if (!has && opts[0]) this.pickVoiceOption(d.id, opts[0].id);
-        }
-      } else {
-        this.voiceTested.set(this.voiceTested().filter(n => n !== name));
-        this.voiceTestError.set({ ...this.voiceTestError(), [name]: r.detail || 'Non funziona.' });
-      }
-    } catch (e) {
-      const saved = typed ? await this.api.voiceCatalog().then(c => [...c.ascolto.providers, ...c.voce.providers].some(p => p.name === name && p.key)).catch(() => false) : false;
-      if (saved) { this.voiceKeys[name] = ''; this.markVoiceKey(name); this.voiceTesting.set(''); return this.testVoice(name); }
-      this.voiceTestError.set({ ...this.voiceTestError(), [name]: setupError(e) });
-    } finally {
-      this.voiceTesting.set('');
+  setVoice<T>(sig: WritableSignal<Record<VoiceDir, T>>, dir: VoiceDir, value: T) { sig.set({ ...sig(), [dir]: value }); }
+  private optionsOf(p: VoiceProvider, dir: VoiceDir) { return dir === 'ascolto' ? p.models : p.voices; }
+  voiceLocal(dir: VoiceDir): VoiceProvider[] { return (this.voiceCat()?.[dir].providers || []).filter(p => p.local); }
+  engineName(p: VoiceProvider): string { return p.label.replace(/\s*\(.*\)\s*$/, ''); }
+  /** Every local engine's models (listening) or voices (speaking) in one list: one is chosen. */
+  voiceLocalItems(dir: VoiceDir, cat = this.voiceCat()): PickItem[] {
+    const out: PickItem[] = [];
+    for (const p of (cat?.[dir].providers || []).filter(x => x.local)) {
+      const many = (cat?.[dir].providers || []).filter(x => x.local).length > 1;
+      this.optionsOf(p, dir).forEach((o, i) => out.push({
+        id: `${p.name}|${o.id}`, title: many ? `${this.engineName(p)} · ${o.label}` : o.label, icon: dir === 'ascolto' ? 'mic' : 'volume',
+        note: o.note || (p.state === 'ready' ? '' : 'Lo scarico quando confermi.'),
+        tag: dir === 'voce' && i === 0 && out.length === 0 ? 'Consigliato' : '' }));
     }
+    return out;
+  }
+  voiceCloudRows(dir: VoiceDir): ServiceRow[] {
+    return (this.voiceCat()?.[dir].providers || []).filter(p => !p.local).map(p => ({
+      name: p.name, label: p.label, icon: 'zap', kind: p.needs_key ? 'key' as const : 'none' as const, keySet: p.key, note: p.note || (p.key ? '' : 'Serve una chiave.') }));
+  }
+  private voiceTesters: Partial<Record<VoiceDir, (name: string, key: string) => Promise<ServiceCheck>>> = {};
+  /** «Prova» of a voice service (a typed key is saved first, then its list is read: nothing spent). */
+  voiceTester(dir: VoiceDir) {
+    return this.voiceTesters[dir] ||= async (name: string, key: string): Promise<ServiceCheck> => {
+      const toCheck = (r: { ok: boolean; detail?: string; models?: VoiceOption[]; voices?: VoiceOption[]; recommended?: Record<string, string[]> }): ServiceCheck => {
+        const rows = (dir === 'ascolto' ? r.models : r.voices) || [];
+        return { ok: r.ok, detail: r.detail, recommended: r.recommended?.[dir] || [],
+                 options: rows.map(o => ({ id: o.id, title: o.label, note: o.note || '', icon: dir === 'ascolto' ? 'mic' : 'volume' })) };
+      };
+      try {
+        const r = await this.api.voiceTest(name, key);
+        if (key) this.markVoiceKey(name);
+        return toCheck(r);
+      } catch (e) {
+        // A slow restart can drop the answer while the key was saved: if it is there, read the list again.
+        const saved = key ? await this.api.voiceCatalog().then(c => [...c.ascolto.providers, ...c.voce.providers].some(p => p.name === name && p.key)).catch(() => false) : false;
+        if (saved) { this.markVoiceKey(name); return toCheck(await this.api.voiceTest(name, '')); }
+        throw new Error(setupError(e));
+      }
+    };
   }
   private markVoiceKey(name: string) {
     const c = this.voiceCat();
     if (!c) return;
     const mark = (list: VoiceProvider[]) => list.map(p => p.name === name ? { ...p, key: true } : p);
     this.voiceCat.set({ ascolto: { ...c.ascolto, providers: mark(c.ascolto.providers) }, voce: { ...c.voce, providers: mark(c.voce.providers) } });
+  }
+  /** The chain of one direction: the local choice, then each cloud service with its models/voices in order. */
+  private voiceSteps(dir: VoiceDir): VoiceStep[] {
+    const out: VoiceStep[] = [];
+    const [lp, ...lid] = (this.voiceLocalPick()[dir] || '').split('|');
+    const one = (provider: string, id: string): VoiceStep => ({ provider, model: dir === 'ascolto' ? id : '', voice: dir === 'voce' ? id : '' });
+    if (lp) out.push(one(lp, lid.join('|')));
+    for (const n of this.voiceOrder()[dir]) {
+      const ids = this.voicePicks()[dir][n] || [];
+      if (ids.length) ids.forEach(id => out.push(one(n, id)));
+      else out.push(one(n, ''));
+    }
+    return out;
+  }
+  voiceOk(): boolean {
+    return !!this.voiceCat() && this.voiceDirs.every(d => this.voiceOrder()[d.id].every(n => this.voiceReadyMap()[d.id][n]));
   }
 
   constructor() {
@@ -653,7 +619,6 @@ export class SetupPageComponent {
       const saved = stored(SCREEN_KEY) as Screen;
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
       this.reached.set(state.brain.recipe ? this.screens().length - 1 : this.index());
-      if (this.screen() === 'cloud') for (const n of this.cloudPicked()) this.autoList(n);
       if (this.screen() === 'voce') void this.loadVoice();
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
@@ -701,7 +666,9 @@ export class SetupPageComponent {
         picked = one ? [one] : [];
       }
       this.cloudPicked.set(picked);
-      this.cloudModel.set({ ...(state.brain.cloud_models || {}) });
+      const models: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(state.brain.cloud_models || {})) models[k] = (Array.isArray(v) ? v : [v]).filter(Boolean);
+      this.cloudModel.set(models);
     }
   }
 
@@ -720,7 +687,6 @@ export class SetupPageComponent {
   private go(screen: Screen) {
     this.formError.set('');
     if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
-    if (screen === 'cloud') for (const n of this.cloudPicked()) this.autoList(n);
     if (screen === 'voce' && !this.voiceCat()) void this.loadVoice();
     this.screen.set(screen);
     this.reached.set(Math.max(this.reached(), this.screens().indexOf(screen)));
@@ -783,11 +749,8 @@ export class SetupPageComponent {
     switch (this.screen()) {
       case 'ricetta': return this.useLocal() || this.useCloud();
       case 'locale': return !!this.localModel();
-      case 'voce': return this.voiceQueued() || (!!this.voiceCat() && this.voiceDirs.every(d => {
-        const p = this.voiceCat()![d.id].providers.find(x => x.name === this.voicePick()[d.id].provider);
-        return !p || this.voiceReady(p);
-      }));
-      case 'cloud': return this.cloudPicked().length > 0 && this.cloudPicked().every(n => this.ready(n));
+      case 'voce': return this.voiceQueued() || this.voiceOk();
+      case 'cloud': return this.cloudPicked().length > 0 && this.cloudPicked().every(n => this.cloudReady()[n]);
       case 'telegram': return this.state()!.telegram.linked || (!this.code() && !this.state()!.telegram.token && !!this.botToken.trim());
       case 'backup': return this.state()!.backup.passphrase || this.passphrase.length >= 12;
       default: return true;
@@ -802,7 +765,7 @@ export class SetupPageComponent {
       case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? 'Avanti' : 'Collega';
       case 'backup': return this.state()!.backup.passphrase ? 'Avanti' : 'Salva';
       case 'voce': return this.voiceQueued() ? 'Avanti' : 'Conferma';
-      case 'fuori': return this.tunnel()?.on ? 'Avanti' : 'Attiva';
+      case 'fuori': return this.tunnel()?.on ? 'Avanti' : 'Più tardi';
       case 'pronto': return 'Inizia';
       default: return 'Avanti';
     }
@@ -815,8 +778,7 @@ export class SetupPageComponent {
     try {
       if (following === 'cervello' && screen !== 'ricetta') { await this.applyBrain(); return; }
       if (screen === 'voce' && !this.voiceQueued()) {
-        const pick = this.voicePick();
-        const out = await this.api.voiceApply(pick.ascolto.provider ? pick.ascolto : null, pick.voce.provider ? pick.voce : null);
+        const out = await this.api.voiceApply(this.voiceSteps('ascolto'), this.voiceSteps('voce'));
         if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }
         this.voiceQueued.set(true);
         void this.refreshDownloads();
@@ -831,7 +793,7 @@ export class SetupPageComponent {
         await this.refresh();
       }
       if (screen === 'esterni') await this.api.later('esterni').then(s => this.state.set(s)).catch(() => undefined);
-      if (screen === 'fuori' && !this.tunnel()?.on) { this.busy.set(false); await this.switchTunnel(true); return; }
+      if (screen === 'fuori' && !this.tunnel()?.on) await this.api.later('fuori').then(s => this.state.set(s)).catch(() => undefined);
       if (screen === 'pronto') {
         await this.api.complete();
         try { localStorage.removeItem(SCREEN_KEY); } catch { /* ignore */ }
@@ -878,8 +840,6 @@ export class SetupPageComponent {
     return out;
   });
   pickLocalKey(key: string) { const [p, ...m] = key.split('|'); this.pickLocal(p, m.join('|')); }
-  embedItems = computed<PickItem[]>(() => this.embedChoices().map((e, i) => ({ id: e.key, title: e.label, icon: 'memory', tag: i === 0 && !e.key ? 'Ora' : '' })));
-  cloudItems(name: string): PickItem[] { return (this.modelsOf()[name] || []).map(m => ({ id: m, title: m, icon: 'zap' })); }
   otherModel = signal('');
   isLocal(provider: string, model: string): boolean { return this.localProvider() === provider && this.localModel() === model && !this.otherModel(); }
   pickLocal(provider: string, model: string) { this.localProvider.set(provider); this.localModel.set(model); this.otherModel.set(''); }
@@ -906,115 +866,68 @@ export class SetupPageComponent {
     this.searching.set(true);
     try { this.useCatalog(await this.api.catalog(), this.state()!, false); } catch { /* keep the last list */ } finally { this.searching.set(false); }
   }
-  /** The memory's model: the current one, then every embedding model the programs found have. */
-  embedChoices = computed(() => {
+  /** The memory's model, chosen like the chat model: the one in use, every embedding model the programs found have,
+   * and when Ollama has none the recommended one (Ollama downloads it). */
+  embedItems = computed<PickItem[]>(() => {
     const now = this.catalog()?.embedding;
-    const out: { key: string; label: string }[] = [];
-    if (now?.model) out.push({ key: '', label: `${now.model} (${this.runtimeLabel(now.provider)})` });
+    const nowKey = now?.model ? `${now.provider || 'ollama'}|${now.model}` : '';
+    const many = this.found().length > 1;
+    const out: PickItem[] = [];
+    if (nowKey) out.push({ id: nowKey, title: now!.model, icon: 'memory', tag: 'Ora', note: many ? this.runtimeLabel(now!.provider) : '' });
     for (const r of this.found()) {
-      for (const m of r.embed) {
-        if (now && r.name === now.provider && m === now.model) continue;
-        out.push({ key: `${r.name}|${m}`, label: `${m} (${r.label})` });
+      for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, icon: 'memory', note: many ? r.label : '' });
+      const rec = this.catalog()?.recommended?.embedding;
+      if (r.name === 'ollama' && rec && !r.embed.includes(rec.model) && `ollama|${rec.model}` !== nowKey) {
+        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowKey ? '' : 'Consigliato',
+                   note: `${rec.good} ${this.gb(rec.size_gb)} GB: Ollama lo scarica mentre finisci il resto.` });
       }
     }
-    if (!out.length) out.push({ key: '', label: 'Quello consigliato' });
     return out;
   });
+  embeddingSelected = computed(() => this.embeddingKey() || this.embedItems()[0]?.id || '');
+  /** The one in use = nothing to change (the memory is not re-read). */
+  pickEmbedding(id: string) { this.embeddingKey.set(this.embedItems()[0]?.tag === 'Ora' && id === this.embedItems()[0].id ? '' : id); }
 
-  // ── Servizi cloud ──
+  // ── Servizi cloud (the same cards as the voice's cloud services) ──
   keyLink(p: CloudProvider): string { return KEY_LINKS[p.type] || KEY_LINKS[p.name] || ''; }
   cloudLabel(name: string): string { const p = this.catalog()?.cloud.find(c => c.name === name); return p?.label || name; }
-  picked(name: string): boolean { return this.cloudPicked().includes(name); }
-  cloudOrder(name: string): number { return this.cloudPicked().length > 1 ? this.cloudPicked().indexOf(name) + 1 : 0; }
-  before(name: string): string { const l = this.cloudPicked(); return this.cloudLabel(l[l.indexOf(name) - 1]); }
-  toggleProvider(name: string) {
-    const list = this.cloudPicked();
-    const adding = !list.includes(name);
-    this.cloudPicked.set(adding ? [...list, name] : list.filter(n => n !== name));
-    if (adding) this.autoList(name);
-  }
-  /** A service whose key is already saved: read its model list at once (it costs nothing) for the picker. */
-  private autoList(name: string) {
-    const p = this.catalog()?.cloud.find(c => c.name === name);
-    if (p && p.type !== CLAUDE_TYPE && p.key_set && !this.modelsOf()[name] && !this.keys[name] && this.testing() !== name) void this.testKey(name);
-  }
-  moveUp(name: string) {
-    const l = [...this.cloudPicked()];
-    const i = l.indexOf(name);
-    if (i > 0) { [l[i - 1], l[i]] = [l[i], l[i - 1]]; this.cloudPicked.set(l); }
-  }
-  typeKey(name: string, value: string) {
-    this.keys[name] = value;
-    this.modelsOf.set({ ...this.modelsOf(), [name]: [] });
-    this.tested.set(this.tested().filter(n => n !== name));
-    this.testNote.set({ ...this.testNote(), [name]: '' });
-    this.testError.set({ ...this.testError(), [name]: '' });
-  }
-  pickCloudModel(name: string, model: string) { this.cloudModel.set({ ...this.cloudModel(), [name]: model }); }
-  /** A chosen service can be used: key already there or just tried, and a model it has; Claude: the code. */
-  ready(name: string): boolean {
-    const p = this.catalog()?.cloud.find(c => c.name === name);
-    if (!p) return false;
-    if (p.type === CLAUDE_TYPE) return !!this.state()?.claude.token || !!this.claudeToken.trim() || p.available;
-    return this.tested().includes(name) || (p.key_set && !this.keys[name] && !this.testError()[name]);
-  }
-  providerText(p: CloudProvider): string {
-    if (p.type === CLAUDE_TYPE) return this.ready(p.name) ? 'Abbonamento collegato.' : 'Il tuo abbonamento Claude Pro o Max.';
-    const model = this.cloudModel()[p.name];
-    return (p.key_set ? 'Chiave già inserita.' : 'Serve una chiave.') + (model ? ` Modello: ${model}.` : '');
-  }
-
-  /** «Prova» / «Salva e prova»: a typed key is saved once, then the service's model list is read (no tokens spent).
-   * The field then shows «chiave salvata»: nothing to type again. */
-  async testKey(name: string): Promise<void> {
-    this.testing.set(name);
-    this.testError.set({ ...this.testError(), [name]: '' });
-    this.testNote.set({ ...this.testNote(), [name]: '' });
+  cloudRows = computed<ServiceRow[]>(() => (this.catalog()?.cloud || []).map(p => p.type === CLAUDE_TYPE ? {
+      name: p.name, label: p.label || p.name, icon: 'brain', kind: 'token' as const, keySet: !!this.state()?.claude.token || p.available,
+      note: 'Il tuo abbonamento Claude Pro o Max.', tokenLabel: 'Codice dell\'abbonamento Claude', tokenPlaceholder: 'sk-ant-oat…',
+      tokenHint: 'Nel terminale scrivi «claude setup-token», accedi con il tuo account Claude (Pro o Max), poi incolla qui il codice che ti dà.',
+    } : {
+      name: p.name, label: p.label || p.name, icon: 'unlock', kind: 'key' as const, keySet: p.key_set, keyLink: this.keyLink(p),
+      tag: p.type === 'gemini' ? 'Gratis' : '', note: p.type === 'gemini' ? 'Chiave gratis da Google.' : 'Serve una chiave.',
+    }));
+  /** «Prova» of a brain service: a typed key is saved once, then its model list is read (no tokens spent). */
+  readonly brainTester = async (name: string, key: string): Promise<ServiceCheck> => {
+    const toCheck = (r: { ok: boolean; detail?: string; models?: string[]; recommended?: string[] }): ServiceCheck => ({
+      ok: r.ok, detail: r.detail, recommended: r.recommended || [], options: (r.models || []).map(m => ({ id: m, title: m, icon: 'zap' })) });
+    const markKey = () => this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
     try {
-      const typed = (this.keys[name] || '').trim();
-      const r = await this.api.test(name, typed, this.cloudModel()[name] || '');
-      if (typed) {
-        // Saved even when it is wrong: mark it so the card says «chiave salvata» and the field empties.
-        this.keys[name] = '';
-        this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
-      }
-      this.modelsOf.set({ ...this.modelsOf(), [name]: r.models || [] });
-      if (r.ok) {
-        if (r.model) this.cloudModel.set({ ...this.cloudModel(), [name]: r.model });
-        this.tested.set([...this.tested().filter(n => n !== name), name]);
-        this.testNote.set({ ...this.testNote(), [name]: r.detail || 'Funziona.' });
-      } else {
-        this.tested.set(this.tested().filter(n => n !== name));
-        this.testError.set({ ...this.testError(), [name]: r.detail || 'Non funziona.' });
-      }
+      const r = await this.api.test(name, key);
+      if (key) markKey();
+      return toCheck(r);
     } catch (e) {
-      // A slow restart can drop the answer while the key was saved: check, and if it is there read the list again.
-      const typed = (this.keys[name] || '').trim();
-      const saved = typed ? await this.api.catalog().then(c => c.cloud.find(x => x.name === name)?.key_set).catch(() => false) : false;
-      if (saved) {
-        this.keys[name] = '';
-        this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
-        this.testing.set('');
-        return this.testKey(name);
-      }
-      this.testError.set({ ...this.testError(), [name]: setupError(e) });
-    } finally {
-      this.testing.set('');
+      // A slow restart can drop the answer while the key was saved: if it is there, read the list again.
+      const saved = key ? await this.api.catalog().then(c => c.cloud.find(x => x.name === name)?.key_set).catch(() => false) : false;
+      if (saved) { markKey(); return toCheck(await this.api.test(name, '')); }
+      throw new Error(setupError(e));
     }
-  }
+  };
 
   private async applyBrain() {
     const r = this.recipe();
     const local = this.needsLocal() ? this.localModel() : '';
     const cloud = this.useCloud() ? this.cloudPicked() : [];
-    const claudeChosen = cloud.some(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
-    const models: Record<string, string> = {};
-    for (const n of cloud) if (this.cloudModel()[n]) models[n] = this.cloudModel()[n];
+    const claude = cloud.find(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
+    const models: Record<string, string[]> = {};
+    for (const n of cloud) if (this.cloudModel()[n]?.length) models[n] = this.cloudModel()[n];
     const [ep, em] = this.embeddingKey() ? this.embeddingKey().split('|') : ['', ''];
-    const out = await this.api.apply(r, local, cloud, claudeChosen ? this.claudeToken.trim() : '', {
+    const out = await this.api.apply(r, local, cloud, claude ? (this.cloudTokens()[claude] || '').trim() : '', {
       local_provider: this.localProvider(), cloud_models: models, embedding: em ? { provider: ep, model: em } : null,
     });
-    this.claudeToken = '';
+    this.cloudTokens.set({});
     if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }
     await Promise.all([this.refresh(), this.refreshDownloads()]);
     this.forward();
@@ -1056,6 +969,10 @@ export class SetupPageComponent {
     } finally {
       this.busy.set(false);
     }
+  }
+  copied = signal(false);
+  async copyUrl() {
+    try { await navigator.clipboard.writeText(this.tunnel()?.url || ''); this.copied.set(true); setTimeout(() => this.copied.set(false), 2000); } catch { /* no clipboard: the address is selectable */ }
   }
   async retryTunnel() { await this.switchTunnel(false); await this.switchTunnel(true); }
 
