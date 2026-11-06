@@ -11,3 +11,4 @@
 - v2.7 — 2026-11-06 — P6 built: versions from git tags, notes in Italian via Oracle, no :edge images (novità builds locally), satellites and Hephaestus's own image updated by the installer — implementation — user via Project thread
 - v2.8 — 2026-11-06 — P7 docs: README quick start rewritten around the guided setup; all phases done — implementation — user via Project thread
 - v2.9 — 2026-11-06 — installer messages in English by default and Italian when the computer is in Italian — Marko «deve essere in multilingua, default inglese, e poi capire il locale» — user via Project thread
+- v2.10 — 2026-11-06 — brain screen = two boxes (computer, cloud) with the Claude subscription as a cloud service, «claude» recipe (external brain) no longer offered in the setup; installer folder = where it is launched — Marko «non dovrebbe funzionare in tutti e 3 i modi?», «lo mette dove lo faccio partire» — user via Project thread

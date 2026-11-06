@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-06
+- The installer puts Hestia where you launch it (that folder if it is already Hestia, otherwise a `Hestia` folder inside it), and the guided setup's «Dove pensa Hestia?» is two boxes, your computer and the cloud, with the Claude subscription as one of the cloud services next to Gemini; the setup page scrolls again → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - README: how to choose the installer's language (`HESTIA_LANG=en|it`) and that the Windows line goes in PowerShell → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - The installer speaks your language: English by default, Italian when the computer is in Italian (or `--lang it`); options also take English names (`--channel stable|latest`, `--role all|central|satellite`) → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: the Windows one-liner (`irm … | iex`) stopped at once with «potrebbe rendere non valida la variabile Role»; it runs again, and CI now also tries the script the way it is downloaded → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

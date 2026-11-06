@@ -503,8 +503,9 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
 
-`/benvenuto` (`features/setup/`) is a full-screen page outside the shell: one question per screen (brain recipe →
-local model / cloud key with «Prova» / Claude token → result and downloads → voice (queues Echo's local models) →
+`/benvenuto` (`features/setup/`) is a full-screen page outside the shell (it scrolls by itself): one question per screen (where the brain
+thinks: two boxes, «Il tuo computer» and «Cloud» → local model → cloud services, one or more in the order they are
+tried, each with its key and «Prova», the Claude subscription as one of them with its `claude setup-token` code → result and downloads → voice (queues Echo's local models) →
 Telegram token and one-time code →
 backup passphrase → calendar, mail and devices → summary), recommended answer preselected, «Più tardi» on the
 optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while

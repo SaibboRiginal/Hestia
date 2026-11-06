@@ -14,7 +14,7 @@
 # SPEC: docs/work/2026-10-30-setup-un-click
 [CmdletBinding()]
 param(
-    [string]$Dir = (Join-Path $env:USERPROFILE 'Hestia'),
+    [string]$Dir = '',                 # empty = where it is launched (see below)
     [string]$Channel = 'stabile',      # stabile | novita (checked below: no ValidateSet, see the note after param)
     [switch]$Update,
     [switch]$Repair,
@@ -38,6 +38,16 @@ $script:Lang = if ($Lang) { $Lang } elseif ($env:HESTIA_LANG) { $env:HESTIA_LANG
     try { (Get-UICulture).TwoLetterISOLanguageName } catch { try { (Get-Culture).TwoLetterISOLanguageName } catch { 'en' } } }
 $script:Lang = if ([string]$script:Lang -like 'it*') { 'it' } else { 'en' }
 function T([string]$En, [string]$It) { if ($script:Lang -eq 'it') { return $It } return $En }
+# Folder: where it is launched. A Hestia folder (it has docker-compose.global.yml) is used as it is, otherwise Hestia goes
+# in a «Hestia» folder inside it. Launched from a system folder (an administrator PowerShell opens in System32) or a
+# drive root: the user's folder instead.
+if (-not $Dir) {
+    $here = (Get-Location).ProviderPath
+    $system = @($env:windir, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
+    if (Test-Path (Join-Path $here 'docker-compose.global.yml')) { $Dir = $here }
+    elseif (($system | Where-Object { $here -like "$_*" }) -or ($here -match '^[A-Za-z]:\\?$')) { $Dir = Join-Path $env:USERPROFILE 'Hestia' }
+    else { $Dir = Join-Path $here 'Hestia' }
+}
 # English names of the options work too.
 $Channel = switch ($Channel) { 'stable' { 'stabile' } 'latest' { 'novita' } default { $Channel } }
 $Role = switch ($Role) { 'all' { 'tutto' } 'central' { 'centrale' } default { $Role } }
