@@ -18,10 +18,11 @@ inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on 
 |---|---|
 | none, `--update`, `--repair` / `-Update`, `-Repair` | install, or resume / repair / update an existing one |
 | `--dir PATH` / `-Dir PATH` | install folder |
-| `--channel stabile` (default) / `novita` | latest release with ready-made images · latest code on `main`, built locally |
+| `--channel stable` (default) / `latest` (also `stabile` / `novita`) | latest release with ready-made images · latest code on `main`, built locally |
+| `--lang en\|it` / `-Lang en\|it` | language of the messages; default the computer's (Italian when it is in Italian, otherwise English); `HESTIA_LANG` does the same for `irm \| iex` |
 | `--uninstall` / `-Uninstall` | stop and remove the containers, data kept; add `--purge` / `-Purge` (type CANCELLA) to delete data too |
 | `--dry-run` / `-DryRun`, `--no-browser` / `-NoBrowser` | print the steps only · do not open the browser |
-| `--role tutto\|centrale\|satellite` / `-Role` | everything here (default) · always-on home without voice and training · only voice and training, near a video card (a re-run keeps the role) |
+| `--role all\|central\|satellite` / `-Role` (also `tutto` / `centrale`) | everything here (default) · always-on home without voice and training · only voice and training, near a video card (a re-run keeps the role) |
 | `--join CODE --central IP` / `-Join CODE -Central IP` | link this machine as a satellite (code from Sistema → Macchine on the central one) |
 
 Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installer; get.docker.com → distro package;

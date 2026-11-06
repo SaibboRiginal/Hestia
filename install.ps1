@@ -25,14 +25,24 @@ param(
     [switch]$Resume,
     [string]$Role = '',                # tutto | centrale | satellite | empty = keep / tutto
     [string]$Join = '',
-    [string]$Central = ''
+    [string]$Central = '',
+    [string]$Lang = ''                 # en | it | empty = the language of Windows
 )
 
 # No [ValidateSet] in param: with `irm | iex` the block runs as plain statements and an attribute on a variable
 # without a value (Role) fails at once ("potrebbe rendere non valida la variabile Role"). Checked here instead.
 if ($env:HESTIA_INSTALL_DRY_RUN -eq '1') { $DryRun = [switch]$true; $NoBrowser = [switch]$true }   # CI: iex has no arguments
-if (@('stabile', 'novita') -notcontains $Channel) { Write-Host "Canale sconosciuto: $Channel. Usa stabile o novita."; return }
-if ($Role -and @('tutto', 'centrale', 'satellite') -notcontains $Role) { Write-Host "Ruolo sconosciuto: $Role. Usa tutto, centrale o satellite."; return }
+# Language: English by default, Italian when Windows is in Italian (or -Lang / HESTIA_LANG). Every message is written
+# as (T 'english' 'italiano'): a new language = one more branch in T and one more argument.
+$script:Lang = if ($Lang) { $Lang } elseif ($env:HESTIA_LANG) { $env:HESTIA_LANG } else {
+    try { (Get-UICulture).TwoLetterISOLanguageName } catch { try { (Get-Culture).TwoLetterISOLanguageName } catch { 'en' } } }
+$script:Lang = if ([string]$script:Lang -like 'it*') { 'it' } else { 'en' }
+function T([string]$En, [string]$It) { if ($script:Lang -eq 'it') { return $It } return $En }
+# English names of the options work too.
+$Channel = switch ($Channel) { 'stable' { 'stabile' } 'latest' { 'novita' } default { $Channel } }
+$Role = switch ($Role) { 'all' { 'tutto' } 'central' { 'centrale' } default { $Role } }
+if (@('stabile', 'novita') -notcontains $Channel) { Write-Host (T "Unknown channel: $Channel. Use stable or latest." "Canale sconosciuto: $Channel. Usa stabile o novita."); return }
+if ($Role -and @('tutto', 'centrale', 'satellite') -notcontains $Role) { Write-Host (T "Unknown role: $Role. Use all, central or satellite." "Ruolo sconosciuto: $Role. Usa tutto, centrale o satellite."); return }
 
 # Continue, not Stop: on Windows PowerShell 5.1 any stderr line of a native program (docker, git, winget) would
 # otherwise become a terminating error. Native calls are checked by exit code; cmdlets that must stop say -ErrorAction Stop.
@@ -80,11 +90,11 @@ function Ok([string]$Text)   { Write-Host (Expand-Text "[Hestia] $Text") -Foregr
 function Note([string]$Text) { $script:Notes.Add($Text) }
 function Stop-Install([string]$Reason) {
     Write-Host ''
-    Write-Host (Expand-Text "[Hestia] Mi sono fermato: $Reason") -ForegroundColor Red
-    Write-Host '         Rilancia lo stesso comando quando hai fatto: riprendo da qui.'
-    Write-Host "         Dettagli: $LogFile"
+    Write-Host (Expand-Text ("[Hestia] " + (T 'I stopped: ' 'Mi sono fermato: ') + $Reason)) -ForegroundColor Red
+    Write-Host (T '         Run the same command again when done: I pick up from here.' '         Rilancia lo stesso comando quando hai fatto: riprendo da qui.')
+    Write-Host ((T '         Details: ' '         Dettagli: ') + $LogFile)
     Write-Log "install_failed reason=`"$Reason`""
-    if (Test-Interactive) { Read-Host 'Premi Invio per chiudere' | Out-Null }
+    if (Test-Interactive) { Read-Host (T 'Press Enter to close' 'Premi Invio per chiudere') | Out-Null }
     exit 1
 }
 
@@ -122,7 +132,7 @@ function Invoke-Retry {  # Invoke-Retry 'what' { scriptblock returning $true/$fa
         if ($result) { return $true }
         if ($i -lt 3) {
             Write-Log "$R retry what=`"$What`" attempt=$i next_in=${delay}s"
-            Say "${What}: non ~e andata, riprovo tra ${delay}s..."
+            Say (T "${What}: did not work, retrying in ${delay}s..." "${What}: non ~e andata, riprovo tra ${delay}s...")
             Start-Sleep -Seconds $delay
             $delay *= 2
         }
@@ -180,22 +190,22 @@ function Invoke-Compose {
 
 # -- 0. preflight -------------------------------------------------------------------------------------------------
 function Test-Preflight {
-    Say 'Controllo il computer...'
+    Say (T 'Checking the computer...' 'Controllo il computer...')
     $ramGb = [math]::Floor((Get-CimInstance -ErrorAction Stop Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
     $drive = (Split-Path -Qualifier $Dir).TrimEnd(':')
     $freeGb = [math]::Floor((Get-PSDrive -ErrorAction Stop $drive).Free / 1GB)
     $script:RamGb = $ramGb; $script:FreeGb = $freeGb
     Write-Log "preflight ram_gb=$ramGb free_gb=$freeGb"
-    if ($ramGb -lt 8) { Note "Hai $ramGb GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud." }
-    if ($freeGb -lt 20) { Stop-Install "servono almeno 20 GB liberi (meglio 30) sul disco ${drive}:, ce ne sono $freeGb. Libera spazio." }
-    if ($freeGb -lt 30) { Note "Spazio libero: $freeGb GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare." }
+    if ($ramGb -lt 8) { Note (T "You have $ramGb GB of RAM: Hestia works, but local models need at least 16. Use cloud models." "Hai $ramGb GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud.") }
+    if ($freeGb -lt 20) { Stop-Install (T "at least 20 GB free (better 30) are needed on drive ${drive}:, there are $freeGb. Free some space." "servono almeno 20 GB liberi (meglio 30) sul disco ${drive}:, ce ne sono $freeGb. Libera spazio.") }
+    if ($freeGb -lt 30) { Note (T "Free space: $freeGb GB. Enough for Hestia; it may not be enough for large local models." "Spazio libero: $freeGb GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare.") }
     $probe = "$($RepoUrl -replace '\.git$', '').git/info/refs?service=git-upload-pack"
-    $online = Invoke-Retry 'Connessione a internet' { (Invoke-WebRequest -ErrorAction Stop -Uri $probe -UseBasicParsing -TimeoutSec 15).StatusCode -eq 200 }
-    if (-not $online) { Stop-Install 'non riesco a raggiungere github.com: controlla la connessione a internet.' }
+    $online = Invoke-Retry (T 'Internet connection' 'Connessione a internet') { (Invoke-WebRequest -ErrorAction Stop -Uri $probe -UseBasicParsing -TimeoutSec 15).StatusCode -eq 200 }
+    if (-not $online) { Stop-Install (T 'I cannot reach github.com: check the internet connection.' 'non riesco a raggiungere github.com: controlla la connessione a internet.') }
     $cpu = Get-CimInstance -ErrorAction Stop Win32_Processor | Select-Object -First 1
     $hyperv = (Get-CimInstance -ErrorAction Stop Win32_ComputerSystem).HypervisorPresent
     if (-not $hyperv -and -not $cpu.VirtualizationFirmwareEnabled) {
-        Stop-Install "la virtualizzazione ~e spenta nel BIOS/UEFI: riavvia, entra nel BIOS e attiva <<Intel VT-x>> o <<AMD-V / SVM>>, poi rilancia."
+        Stop-Install (T "virtualization is off in the BIOS/UEFI: restart, enter the BIOS and turn on <<Intel VT-x>> or <<AMD-V / SVM>>, then run again." "la virtualizzazione ~e spenta nel BIOS/UEFI: riavvia, entra nel BIOS e attiva <<Intel VT-x>> o <<AMD-V / SVM>>, poi rilancia.")
     }
 }
 
@@ -206,15 +216,15 @@ function Test-Ports {
     foreach ($port in $ports) {
         if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) { $busy += $port }
     }
-    if ($busy.Count) { Stop-Install "queste porte sono gi~a occupate da un altro programma: $($busy -join ', '). Chiudilo e rilancia." }
+    if ($busy.Count) { Stop-Install (T "these ports are already used by another program: $($busy -join ', '). Close it and run again." "queste porte sono gi~a occupate da un altro programma: $($busy -join ', '). Chiudilo e rilancia.") }
 }
 
 # -- 1. git -------------------------------------------------------------------------------------------------------
 function Install-GitIfMissing {
     if (Test-Command 'git') { return }
-    Say 'Installo git...'
-    if (-not (Invoke-Retry 'Installazione di git' { Install-Winget 'Git.Git' })) {
-        Note 'git non si ~e installato: scarico Hestia come archivio (gli aggiornamenti useranno git quando ci sar~a).'
+    Say (T 'Installing git...' 'Installo git...')
+    if (-not (Invoke-Retry (T 'Installing git' 'Installazione di git') { Install-Winget 'Git.Git' })) {
+        Note (T 'git did not install: I download Hestia as an archive (updates will use git once it is there).' 'git non si ~e installato: scarico Hestia come archivio (gli aggiornamenti useranno git quando ci sar~a).')
     }
 }
 
@@ -223,7 +233,7 @@ function Register-Resume {
     if ($DryRun) { return }
     if ($PSCommandPath -and (Test-Path $PSCommandPath)) { Copy-Item -ErrorAction Stop $PSCommandPath $SavedScript -Force }
     else { try { Get-File $ScriptUrl $SavedScript | Out-Null } catch { Write-Log "$R resume_download_failed" } }
-    $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$SavedScript`" -Resume -Dir `"$Dir`" -Channel $Channel"
+    $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$SavedScript`" -Resume -Dir `"$Dir`" -Channel $Channel -Lang $($script:Lang)"
     if ($script:Role) { $cmd += " -Role $($script:Role)" }
     if ($Join) { $cmd += " -Join $Join -Central $Central" }
     Set-ItemProperty -ErrorAction Stop -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'HestiaInstall' -Value $cmd
@@ -234,13 +244,13 @@ function Install-Wsl {
     $ready = $false
     try { & wsl.exe --status 2>&1 | Out-Null; $ready = ($LASTEXITCODE -eq 0) } catch { }
     if ($ready -or (Test-StepDone 'wsl')) { return }
-    Say 'Attivo WSL2 (serve a Docker). Windows ti chiede conferma di amministratore.'
-    $ok = Invoke-Retry 'Attivazione di WSL2' { Invoke-Step 'wsl.exe' @('--install', '--no-distribution') -Elevated }
-    if (-not $ok) { Stop-Install "WSL2 non si attiva. Apri PowerShell come amministratore, lancia <<wsl --install>> e rilancia." }
+    Say (T 'Turning on WSL2 (Docker needs it). Windows asks for administrator confirmation.' 'Attivo WSL2 (serve a Docker). Windows ti chiede conferma di amministratore.')
+    $ok = Invoke-Retry (T 'Turning on WSL2' 'Attivazione di WSL2') { Invoke-Step 'wsl.exe' @('--install', '--no-distribution') -Elevated }
+    if (-not $ok) { Stop-Install (T "WSL2 does not turn on. Open PowerShell as administrator, run <<wsl --install>> and run this again." "WSL2 non si attiva. Apri PowerShell come amministratore, lancia <<wsl --install>> e rilancia.") }
     Set-StepDone 'wsl'
     Register-Resume
-    Say 'Per finire WSL2 serve un riavvio. Dopo il riavvio l''installazione riparte da sola.'
-    $answer = if (Test-Interactive) { Read-Host '[Hestia] Riavvio adesso? [S/n]' } else { 'n' }
+    Say (T 'WSL2 needs a restart to finish. After the restart the install resumes by itself.' 'Per finire WSL2 serve un riavvio. Dopo il riavvio l''installazione riparte da sola.')
+    $answer = if (Test-Interactive) { Read-Host (T '[Hestia] Restart now? [Y/n]' '[Hestia] Riavvio adesso? [S/n]') } else { 'n' }
     if ($answer -notmatch '^[nN]') { if (-not $DryRun) { Restart-Computer -Force } }
     exit 0
 }
@@ -251,28 +261,28 @@ function Install-DockerIfMissing {
     $exe = "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
     if (-not (Test-Path $exe)) {
         Install-Wsl
-        Say 'Installo Docker Desktop (qualche minuto). Windows ti chiede conferma di amministratore.'
-        $ok = Invoke-Retry 'Installazione di Docker Desktop' { Install-Winget 'Docker.DockerDesktop' 'install --quiet --accept-license' }
+        Say (T 'Installing Docker Desktop (a few minutes). Windows asks for administrator confirmation.' 'Installo Docker Desktop (qualche minuto). Windows ti chiede conferma di amministratore.')
+        $ok = Invoke-Retry (T 'Installing Docker Desktop' 'Installazione di Docker Desktop') { Install-Winget 'Docker.DockerDesktop' 'install --quiet --accept-license' }
         if (-not $ok) {
             Write-Log "$R docker_fallback via=direct_installer"
             $installer = Join-Path $env:TEMP 'DockerDesktopInstaller.exe'
-            $ok = (Invoke-Retry 'Download di Docker Desktop' { Get-File $DockerUrl $installer }) -and
+            $ok = (Invoke-Retry (T 'Downloading Docker Desktop' 'Download di Docker Desktop') { Get-File $DockerUrl $installer }) -and
                   (Invoke-Step $installer @('install', '--quiet', '--accept-license') -Elevated)
         }
-        if (-not $ok) { Stop-Install 'Docker Desktop non si installa: scaricalo da https://docker.com/products/docker-desktop, installalo e rilancia.' }
+        if (-not $ok) { Stop-Install (T 'Docker Desktop does not install: download it from https://docker.com/products/docker-desktop, install it and run again.' 'Docker Desktop non si installa: scaricalo da https://docker.com/products/docker-desktop, installalo e rilancia.') }
         Update-PathFromRegistry
-        Note 'Docker Desktop parte da solo quando accendi il computer: lascialo cos~i, Hestia si riaccende con lui.'
+        Note (T 'Docker Desktop starts by itself with the computer: leave it so, Hestia comes back with it.' 'Docker Desktop parte da solo quando accendi il computer: lascialo cos~i, Hestia si riaccende con lui.')
     }
     if ($DryRun) { return }
-    Say 'Avvio Docker Desktop: se ~e la prima volta, accetta le condizioni nella sua finestra.'
+    Say (T 'Starting Docker Desktop: if it is the first time, accept the terms in its window.' 'Avvio Docker Desktop: se ~e la prima volta, accetta le condizioni nella sua finestra.')
     Start-Process $exe | Out-Null
     $waited = 0
     while (-not (Test-Docker)) {
-        if ($waited -ge 300) { Stop-Install 'Docker Desktop non risponde: aprilo, aspetta che dica <<Engine running>> e rilancia. Se chiede di uscire e rientrare in Windows, fallo.' }
+        if ($waited -ge 300) { Stop-Install (T 'Docker Desktop does not answer: open it, wait for <<Engine running>> and run again. If it asks you to sign out of Windows and back in, do it.' 'Docker Desktop non risponde: aprilo, aspetta che dica <<Engine running>> e rilancia. Se chiede di uscire e rientrare in Windows, fallo.') }
         Start-Sleep -Seconds 5; $waited += 5
-        if ($waited % 30 -eq 0) { Say "...aspetto ancora Docker ($waited s)" }
+        if ($waited % 30 -eq 0) { Say (T "...still waiting for Docker ($waited s)" "...aspetto ancora Docker ($waited s)") }
     }
-    if (-not ((& docker compose version 2>$null) -match 'version')) { Stop-Install 'manca <<docker compose>>: aggiorna Docker Desktop e rilancia.' }
+    if (-not ((& docker compose version 2>$null) -match 'version')) { Stop-Install (T '<<docker compose>> is missing: update Docker Desktop and run again.' 'manca <<docker compose>>: aggiorna Docker Desktop e rilancia.') }
 }
 
 # -- 5. Ollama (native: uses the GPU without extra setup) --------------------------------------------------------
@@ -281,14 +291,14 @@ function Test-Ollama { try { return ((Invoke-WebRequest -ErrorAction Stop 'http:
 function Install-OllamaIfMissing {
     Update-PathFromRegistry
     if ((Test-Command 'ollama') -or (Test-Ollama)) { if (-not (Test-Ollama)) { Start-OllamaApp }; Get-DefaultModels; return }
-    Say 'Installo Ollama (i modelli sul tuo computer)...'
-    $ok = Invoke-Retry 'Installazione di Ollama' { Install-Winget 'Ollama.Ollama' }
+    Say (T 'Installing Ollama (the models on your computer)...' 'Installo Ollama (i modelli sul tuo computer)...')
+    $ok = Invoke-Retry (T 'Installing Ollama' 'Installazione di Ollama') { Install-Winget 'Ollama.Ollama' }
     if (-not $ok) {
         Write-Log "$R ollama_fallback via=direct_installer"
         $installer = Join-Path $env:TEMP 'OllamaSetup.exe'
-        $ok = (Invoke-Retry 'Download di Ollama' { Get-File $OllamaUrl $installer }) -and (Invoke-Step $installer @('/VERYSILENT', '/NORESTART'))
+        $ok = (Invoke-Retry (T 'Downloading Ollama' 'Download di Ollama') { Get-File $OllamaUrl $installer }) -and (Invoke-Step $installer @('/VERYSILENT', '/NORESTART'))
     }
-    if (-not $ok) { Note 'Ollama non si ~e installato: Hestia user~a i modelli nel cloud. Puoi installarlo dopo da https://ollama.com.'; return }
+    if (-not $ok) { Note (T 'Ollama did not install: Hestia will use cloud models. You can install it later from https://ollama.com.' 'Ollama non si ~e installato: Hestia user~a i modelli nel cloud. Puoi installarlo dopo da https://ollama.com.'); return }
     Start-OllamaApp
     if ($script:Role -eq 'satellite') { Set-OllamaOnLan }
     Get-DefaultModels
@@ -304,7 +314,7 @@ function Set-OllamaOnLan {
     Start-Sleep -Seconds 2
     Start-OllamaApp
     Write-Log 'ollama_bind_all reason=satellite'
-    Note 'Ollama ora ascolta sulla rete di casa (porta 11434): se Windows chiede di consentirlo sulle reti private, rispondi Consenti. Non aprire quella porta sul router.'
+    Note (T 'Ollama now listens on the home network (port 11434): if Windows asks to allow it on private networks, answer Allow. Do not open that port on the router.' 'Ollama ora ascolta sulla rete di casa (porta 11434): se Windows chiede di consentirlo sulle reti private, rispondi Consenti. Non aprire quella porta sul router.')
 }
 
 # Oracle's default chains (llm_chains.py): the embedding model is needed for memory, the chat one for local answers.
@@ -317,9 +327,9 @@ function Get-DefaultModels {
     if (-not $DryRun) { $have = @(& ollama list 2>$null | ForEach-Object { ($_ -split '\s+')[0] }) }
     foreach ($model in $DefaultModels) {
         if ($have -contains $model) { continue }
-        Say "Scarico il modello $model (una volta sola)..."
-        if (-not (Invoke-Retry "Download di $model" { Invoke-Step 'ollama' @('pull', $model) })) {
-            Note "Il modello $model non si ~e scaricato: rilancia pi~u tardi, nel frattempo Hestia usa il cloud se hai una chiave."
+        Say (T "Downloading the model $model (only once)..." "Scarico il modello $model (una volta sola)...")
+        if (-not (Invoke-Retry (T "Downloading $model" "Download di $model") { Invoke-Step 'ollama' @('pull', $model) })) {
+            Note (T "The model $model did not download: run again later, meanwhile Hestia uses the cloud if you have a key." "Il modello $model non si ~e scaricato: rilancia pi~u tardi, nel frattempo Hestia usa il cloud se hai una chiave.")
         }
     }
 }
@@ -335,22 +345,22 @@ function Start-OllamaApp {
 function Get-Code {
     if (Test-Path (Join-Path $Dir '.git')) {
         $origin = (& git -C $Dir remote get-url origin 2>$null)
-        if ($origin -notmatch 'hestia') { Stop-Install "$Dir esiste ma non ~e Hestia. Scegli un'altra cartella con -Dir." }
-        if (-not (Invoke-Retry 'Aggiornamento del codice' { Invoke-Step 'git' @('-C', $Dir, 'fetch', '--tags', '--prune', 'origin') })) {
-            Note 'Non ho potuto scaricare le novit~a del codice: uso la versione che c''~e.'
+        if ($origin -notmatch 'hestia') { Stop-Install (T "$Dir exists but is not Hestia. Choose another folder with -Dir." "$Dir esiste ma non ~e Hestia. Scegli un'altra cartella con -Dir.") }
+        if (-not (Invoke-Retry (T 'Updating the code' 'Aggiornamento del codice') { Invoke-Step 'git' @('-C', $Dir, 'fetch', '--tags', '--prune', 'origin') })) {
+            Note (T 'I could not download the code changes: I use the version already here.' 'Non ho potuto scaricare le novit~a del codice: uso la versione che c''~e.')
         }
     } elseif (Test-Path (Join-Path $Dir 'docker-compose.global.yml')) {
         Write-Log "code_existing_without_git dir=$Dir"
     } elseif ((Test-Path $Dir) -and (Get-ChildItem $Dir -Force | Select-Object -First 1)) {
-        Stop-Install "$Dir esiste e non ~e vuota. Scegli un'altra cartella con -Dir."
+        Stop-Install (T "$Dir exists and is not empty. Choose another folder with -Dir." "$Dir esiste e non ~e vuota. Scegli un'altra cartella con -Dir.")
     } else {
-        Say "Scarico Hestia in $Dir..."
+        Say (T "Downloading Hestia into $Dir..." "Scarico Hestia in $Dir...")
         if (Test-Command 'git') {
-            $ok = Invoke-Retry 'Download di Hestia' { Invoke-Step 'git' @('clone', '--quiet', '-c', 'core.autocrlf=false', $RepoUrl, $Dir) }
+            $ok = Invoke-Retry (T 'Downloading Hestia' 'Download di Hestia') { Invoke-Step 'git' @('clone', '--quiet', '-c', 'core.autocrlf=false', $RepoUrl, $Dir) }
         } else {
             Write-Log "$R code_zip reason=no_git"
             $zip = Join-Path $env:TEMP 'hestia-main.zip'
-            $ok = Invoke-Retry 'Download di Hestia' { Get-File $ZipUrl $zip }
+            $ok = Invoke-Retry (T 'Downloading Hestia' 'Download di Hestia') { Get-File $ZipUrl $zip }
             if ($ok -and -not $DryRun) {
                 $tmp = Join-Path $env:TEMP 'hestia-main'
                 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
@@ -358,7 +368,7 @@ function Get-Code {
                 Move-Item -ErrorAction Stop (Get-ChildItem $tmp | Select-Object -First 1).FullName $Dir
             }
         }
-        if (-not $ok) { Stop-Install 'non riesco a scaricare Hestia da GitHub. Controlla la connessione.' }
+        if (-not $ok) { Stop-Install (T 'I cannot download Hestia from GitHub. Check the connection.' 'non riesco a scaricare Hestia da GitHub. Controlla la connessione.') }
     }
     Select-Version
 }
@@ -367,7 +377,7 @@ function Select-Version {
     $script:VersionTag = ''
     if (-not (Test-Path (Join-Path $Dir '.git'))) { return }
     if (& git -C $Dir status --porcelain --untracked-files=no 2>$null) {
-        Note 'Nella cartella di Hestia ci sono modifiche locali: non ho cambiato versione del codice.'
+        Note (T 'The Hestia folder has local changes: I did not change the code version.' 'Nella cartella di Hestia ci sono modifiche locali: non ho cambiato versione del codice.')
         $script:VersionTag = [string](& git -C $Dir describe --tags --exact-match 2>$null)
         return
     }
@@ -376,15 +386,15 @@ function Select-Version {
         if ($tag) {
             Invoke-Step 'git' @('-C', $Dir, '-c', 'advice.detachedHead=false', 'checkout', '--quiet', $tag) | Out-Null
             $script:VersionTag = $tag
-            Ok "Versione $tag"
+            Ok (T "Version $tag" "Versione $tag")
             return
         }
-        Note 'Non c''~e ancora una versione pubblicata: installo l''ultima di sviluppo e la costruisco qui (pi~u lento, una volta sola).'
+        Note (T 'There is no published version yet: I install the latest development one and build it here (slower, only once).' 'Non c''~e ancora una versione pubblicata: installo l''ultima di sviluppo e la costruisco qui (pi~u lento, una volta sola).')
     }
     $branch = & git -C $Dir rev-parse --abbrev-ref HEAD
     if ($branch -eq 'HEAD') { Invoke-Step 'git' @('-C', $Dir, 'checkout', '--quiet', 'main') | Out-Null; $branch = 'main' }
     if (-not (Invoke-Step 'git' @('-C', $Dir, 'pull', '--quiet', '--ff-only', 'origin', $branch))) {
-        Note 'Il codice locale non segue pi~u quello di GitHub: l''ho lasciato com''~e.'
+        Note (T 'The local code no longer follows GitHub: I left it as it is.' 'Il codice locale non segue pi~u quello di GitHub: l''ho lasciato com''~e.')
     }
 }
 
@@ -407,9 +417,9 @@ function Write-Hardware {
 # -- machines: role, LAN address, link to the central one (docs/work/2026-10-30-setup-un-click 4.0) -------------
 function Resolve-Role {
     if ($Join) {
-        if ($script:Role -and $script:Role -ne 'satellite') { Stop-Install '-Join serve solo per un satellite.' }
+        if ($script:Role -and $script:Role -ne 'satellite') { Stop-Install (T '-Join is only for a satellite.' '-Join serve solo per un satellite.') }
         $script:Role = 'satellite'
-        if (-not $Central) { Stop-Install "con -Join serve anche -Central (l'indirizzo della casa centrale, es. 192.168.1.10)." }
+        if (-not $Central) { Stop-Install (T "-Join also needs -Central (the address of the central home, e.g. 192.168.1.10)." "con -Join serve anche -Central (l'indirizzo della casa centrale, es. 192.168.1.10).") }
     }
     if (-not $script:Role) {   # a re-run keeps the role chosen before
         $hw = Join-Path $Dir '.hestia-install\hardware.json'
@@ -419,7 +429,7 @@ function Resolve-Role {
     $envFile = Join-Path $Dir '.env'
     $linked = (Test-Path $envFile) -and [bool](Select-String -Path $envFile -Pattern '^HUB_NODE_TOKEN=.+' -Quiet)
     if ($script:Role -eq 'satellite' -and -not $Join -and -not $linked) {
-        Stop-Install 'per collegare questo PC serve il codice: sulla casa centrale apri Sistema -> Macchine -> Collega una macchina, poi rilancia con -Join CODICE -Central INDIRIZZO.'
+        Stop-Install (T 'to link this PC you need the code: on the central home open System -> Machines -> Link a machine, then run again with -Join CODE -Central ADDRESS.' 'per collegare questo PC serve il codice: sulla casa centrale apri Sistema -> Macchine -> Collega una macchina, poi rilancia con -Join CODICE -Central INDIRIZZO.')
     }
     try {
         $script:LanIp = [string](Get-NetIPConfiguration -ErrorAction Stop | Where-Object { $_.IPv4DefaultGateway } |
@@ -457,9 +467,9 @@ function Connect-Machine {
         return
     }
     if (-not $Join) { return }   # already linked (re-run): keep the token
-    if (-not $script:LanIp) { Stop-Install "non trovo l'indirizzo di questo PC sulla rete di casa: collegalo al Wi-Fi o al cavo e rilancia." }
+    if (-not $script:LanIp) { Stop-Install (T "I cannot find this PC's address on the home network: connect it to Wi-Fi or cable and run again." "non trovo l'indirizzo di questo PC sulla rete di casa: collegalo al Wi-Fi o al cavo e rilancia.") }
     $url = Get-CentralUrl
-    Say "Collego questo PC alla casa centrale ($url)..."
+    Say (T "Linking this PC to the central home ($url)..." "Collego questo PC alla casa centrale ($url)...")
     if ($DryRun) { Write-Host "  [dry-run] POST $url/api/nodes/join"; return }
     $name = ($env:COMPUTERNAME -replace '[^A-Za-z0-9 ._-]', '')
     $body = @{ code = ($Join -replace '[^0-9]', ''); name = $name; address = $script:LanIp } | ConvertTo-Json -Compress
@@ -471,15 +481,15 @@ function Connect-Machine {
         if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
     }
     Write-Log "machine_join status=$status"
-    if ($status -eq 0) { Stop-Install "non raggiungo la casa centrale a ${url}: controlla che sia accesa e sulla stessa rete." }
-    if ($status -eq 403) { Stop-Install 'il codice ~e sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema -> Macchine).' }
-    if ($status -ne 200) { Stop-Install "la casa centrale ha rifiutato il collegamento (errore $status)." }
-    if (-not $token) { Stop-Install 'la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia.' }
+    if ($status -eq 0) { Stop-Install (T "I cannot reach the central home at ${url}: check that it is on and on the same network." "non raggiungo la casa centrale a ${url}: controlla che sia accesa e sulla stessa rete.") }
+    if ($status -eq 403) { Stop-Install (T 'the code is wrong or expired: ask the central home for a new one (System -> Machines).' 'il codice ~e sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema -> Macchine).') }
+    if ($status -ne 200) { Stop-Install (T "the central home refused the link (error $status)." "la casa centrale ha rifiutato il collegamento (errore $status).") }
+    if (-not $token) { Stop-Install (T 'the central home gave no link key: ask for a new code and run again.' 'la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia.') }
     Set-RootEnv 'HUB_UPSTREAM_URL' "$url/api"
     Set-RootEnv 'HUB_NODE_TOKEN' $token
     Set-RootEnv 'HUB_NODE_ADDRESS' $script:LanIp
     $token = ''
-    Ok 'Collegato alla casa centrale.'
+    Ok (T 'Linked to the central home.' 'Collegato alla casa centrale.')
 }
 
 function Get-RoleServices {   # empty = all of them
@@ -495,10 +505,10 @@ function Initialize-Env {
     & docker volume inspect "${Project}_hestia_archive_pgdata" 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { $envArgs += '--new-db' }
     $dockerArgs = @('run', '--rm', '-v', "${Dir}:/w", '-w', '/w', 'python:3.12-slim', 'python', 'tools/init_env.py') + $envArgs
-    if (Invoke-Retry 'Preparazione della configurazione' { Invoke-Step 'docker' $dockerArgs }) { return }
+    if (Invoke-Retry (T 'Preparing the configuration' 'Preparazione della configurazione') { Invoke-Step 'docker' $dockerArgs }) { return }
     Write-Log "$R env_host_python reason=container_failed"
     if ((Test-Command 'py') -and (Invoke-Step 'py' (@('-3', (Join-Path $Dir 'tools\init_env.py')) + $envArgs))) { return }
-    Stop-Install 'non riesco a preparare i file di configurazione (.env).'
+    Stop-Install (T 'I cannot prepare the configuration files (.env).' 'non riesco a preparare i file di configurazione (.env).')
 }
 
 # -- 8-9. images, start, health -----------------------------------------------------------------------------------
@@ -509,14 +519,14 @@ function Test-TelegramConfigured {  # the value is never read into a variable or
 
 function Start-Stack {
     & docker network inspect hestia_net 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0 -and -not (Invoke-Step 'docker' @('network', 'create', 'hestia_net'))) { Stop-Install 'non riesco a creare la rete Docker hestia_net.' }
+    if ($LASTEXITCODE -ne 0 -and -not (Invoke-Step 'docker' @('network', 'create', 'hestia_net'))) { Stop-Install (T 'I cannot create the Docker network hestia_net.' 'non riesco a creare la rete Docker hestia_net.') }
     $roleServices = @(Get-RoleServices)
     if ($script:VersionTag) {
-        Say "Scarico i moduli pronti della versione $($script:VersionTag)..."
-        if (-not (Invoke-Retry 'Download dei moduli' { Invoke-Compose pull --ignore-pull-failures @roleServices })) { Note 'Alcuni moduli non si sono scaricati: li costruisco qui.' }
+        Say (T "Downloading the ready-made modules of version $($script:VersionTag)..." "Scarico i moduli pronti della versione $($script:VersionTag)...")
+        if (-not (Invoke-Retry (T 'Downloading the modules' 'Download dei moduli') { Invoke-Compose pull --ignore-pull-failures @roleServices })) { Note (T 'Some modules did not download: I build them here.' 'Alcuni moduli non si sono scaricati: li costruisco qui.') }
     } else {
-        Say 'Costruisco i moduli (la prima volta ci vuole un po'', poi ~e veloce)...'
-        if (-not (Invoke-Retry 'Costruzione dei moduli' { Invoke-Compose build @roleServices })) {
+        Say (T 'Building the modules (the first time takes a while, then it is quick)...' 'Costruisco i moduli (la prima volta ci vuole un po'', poi ~e veloce)...')
+        if (-not (Invoke-Retry (T 'Building the modules' 'Costruzione dei moduli') { Invoke-Compose build @roleServices })) {
             $bad = @()
             $services = $roleServices
             if (-not $services.Count) { Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location }
@@ -525,10 +535,10 @@ function Start-Stack {
                 Write-Log "$R build_no_cache service=$svc"
                 if (-not (Invoke-Compose build --no-cache $svc)) { $bad += $svc }
             }
-            if ($bad.Count) { Stop-Install "non riesco a costruire: $($bad -join ', '). Guarda $LogFile." }
+            if ($bad.Count) { Stop-Install (T "I cannot build: $($bad -join ', '). See $LogFile." "non riesco a costruire: $($bad -join ', '). Guarda $LogFile.") }
         }
     }
-    Say 'Avvio Hestia...'
+    Say (T 'Starting Hestia...' 'Avvio Hestia...')
     if ($script:Role -eq 'satellite') {
         # Only the satellite's own modules: everything else (memory, settings, the WebUI) lives on the central one.
         if (-not $DryRun) {
@@ -537,7 +547,7 @@ function Start-Stack {
             if ($others.Count) { Invoke-Compose stop @others | Out-Null }
         }
         $satArgs = @('up', '-d', '--no-deps', '--remove-orphans') + $SatelliteServices
-        if (-not (Invoke-Retry 'Avvio dei moduli' { Invoke-Compose @satArgs })) { Stop-Install "i moduli non partono. Guarda $LogFile o rilancia." }
+        if (-not (Invoke-Retry (T 'Starting the modules' 'Avvio dei moduli') { Invoke-Compose @satArgs })) { Stop-Install (T "the modules do not start. See $LogFile or run again." "i moduli non partono. Guarda $LogFile o rilancia.") }
         return
     }
     if ($script:Role -eq 'centrale') { Invoke-Compose stop @HeavyServices | Out-Null }
@@ -548,19 +558,19 @@ function Start-Stack {
         $services = $roleServices
         if (-not $services.Count) { Push-Location $Dir; $services = & docker compose -f docker-compose.global.yml config --services; Pop-Location }
         $upArgs = @('up', '-d', '--remove-orphans') + @($services | Where-Object { $_ -ne 'telegram' })
-        Note 'Telegram si collega nel setup guidato che si apre nel browser.'
+        Note (T 'Telegram is linked in the guided setup that opens in the browser.' 'Telegram si collega nel setup guidato che si apre nel browser.')
     }
-    if (-not (Invoke-Retry 'Avvio dei moduli' { Invoke-Compose @upArgs })) { Stop-Install "i moduli non partono. Guarda $LogFile o rilancia." }
+    if (-not (Invoke-Retry (T 'Starting the modules' 'Avvio dei moduli') { Invoke-Compose @upArgs })) { Stop-Install (T "the modules do not start. See $LogFile or run again." "i moduli non partono. Guarda $LogFile o rilancia.") }
     if (-not $DryRun -and -not (Test-TelegramConfigured)) { Invoke-Compose create telegram | Out-Null }
 }
 
 function Wait-Healthy {
     if ($DryRun) { return }
-    Say 'Aspetto che tutti i moduli rispondano...'
+    Say (T 'Waiting for every module to answer...' 'Aspetto che tutti i moduli rispondano...')
     $waited = 0
     while ($true) {
         try { if ((Invoke-WebRequest -ErrorAction Stop "$HubUrl/health" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) { break } } catch { }
-        if ($waited -ge 300) { Stop-Install 'il centro di Hestia (Hub) non risponde dopo 5 minuti.' }
+        if ($waited -ge 300) { Stop-Install (T 'the heart of Hestia (Hub) does not answer after 5 minutes.' 'il centro di Hestia (Hub) non risponde dopo 5 minuti.') }
         Start-Sleep -Seconds 5; $waited += 5
     }
     $waited = 0
@@ -572,10 +582,10 @@ function Wait-Healthy {
             })
         $webui = ($script:Role -eq 'satellite')
         if (-not $webui) { try { $webui = ((Invoke-WebRequest -ErrorAction Stop $WebUiUrl -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) } catch { } }
-        if (-not $down.Count -and $webui) { Ok 'Tutti i moduli sono accesi.'; return }
+        if (-not $down.Count -and $webui) { Ok (T 'Every module is on.' 'Tutti i moduli sono accesi.'); return }
         if ($waited -ge 600) {
             foreach ($c in $down) { Write-Log "container_down name=$c"; & docker logs --tail 20 $c 2>&1 | ForEach-Object { Write-Log "  | $_" } }
-            Note "Questi moduli non sono partiti: $($down -join ', ') (ultime righe in $LogFile). Hestia funziona lo stesso senza di loro."
+            Note (T "These modules did not start: $($down -join ', ') (last lines in $LogFile). Hestia works without them anyway." "Questi moduli non sono partiti: $($down -join ', ') (ultime righe in $LogFile). Hestia funziona lo stesso senza di loro.")
             return
         }
         Start-Sleep -Seconds 10; $waited += 10
@@ -586,8 +596,8 @@ function Wait-Healthy {
 function Complete-Install {
     if ($script:Role -eq 'satellite') {
         Write-Host ''
-        Ok "Questo PC ~e un satellite di $(Get-CentralUrl): voce e allenamento girano qui."
-        Write-Host '         Lo gestisci dalla casa centrale: Sistema -> Macchine (anche <<Usa la sua scheda video>>).'
+        Ok (T "This PC is a satellite of $(Get-CentralUrl): voice and training run here." "Questo PC ~e un satellite di $(Get-CentralUrl): voce e allenamento girano qui.")
+        Write-Host (Expand-Text (T '         You manage it from the central home: System -> Machines (also <<Use its graphics card>>).' '         Lo gestisci dalla casa centrale: Sistema -> Macchine (anche <<Usa la sua scheda video>>).'))
         foreach ($n in $script:Notes) { Write-Host (Expand-Text "         - $n") }
         Write-Log "install_done role=satellite notes=$($script:Notes.Count)"
         return
@@ -598,34 +608,35 @@ function Complete-Install {
         if (-not $NoBrowser) { Start-Process $SetupUrl | Out-Null }
     }
     Write-Host ''
-    Ok "Hestia ~e pronta: $WebUiUrl (il setup guidato ~e su $SetupUrl)"
+    Ok (T "Hestia is ready: $WebUiUrl (the guided setup is at $SetupUrl)" "Hestia ~e pronta: $WebUiUrl (il setup guidato ~e su $SetupUrl)")
     foreach ($n in $script:Notes) { Write-Host (Expand-Text "         - $n") }
-    Write-Host '         Per aggiornare o riparare: rilancia questo stesso comando (o Installa-Hestia.cmd).'
+    Write-Host (T '         To update or repair: run this same command again (or Installa-Hestia.cmd).' '         Per aggiornare o riparare: rilancia questo stesso comando (o Installa-Hestia.cmd).')
     Write-Log "install_done version=$(if ($script:VersionTag) { $script:VersionTag } else { 'dev' }) notes=$($script:Notes.Count)"
 }
 
 # -- uninstall ----------------------------------------------------------------------------------------------------
 function Remove-Hestia {
-    if (-not (Test-Path (Join-Path $Dir 'docker-compose.global.yml'))) { Stop-Install "non trovo Hestia in $Dir (usa -Dir)." }
-    if (-not (Test-Docker)) { Stop-Install 'Docker non risponde: avvia Docker Desktop e rilancia.' }
+    if (-not (Test-Path (Join-Path $Dir 'docker-compose.global.yml'))) { Stop-Install (T "I cannot find Hestia in $Dir (use -Dir)." "non trovo Hestia in $Dir (usa -Dir).") }
+    if (-not (Test-Docker)) { Stop-Install (T 'Docker does not answer: start Docker Desktop and run again.' 'Docker non risponde: avvia Docker Desktop e rilancia.') }
     if ($Purge) {
-        Say 'ATTENZIONE: cancello Hestia E TUTTI I SUOI DATI (memorie, chat, impostazioni). Non si torna indietro.'
-        $typed = if (Test-Interactive) { Read-Host '[Hestia] Scrivi CANCELLA per confermare' } else { '' }
-        if ($typed -cne 'CANCELLA') { Stop-Install 'non ho cancellato niente (conferma non data).' }
+        Say (T 'WARNING: I delete Hestia AND ALL ITS DATA (memories, chats, settings). There is no way back.' 'ATTENZIONE: cancello Hestia E TUTTI I SUOI DATI (memorie, chat, impostazioni). Non si torna indietro.')
+        $word = T 'DELETE' 'CANCELLA'
+        $typed = if (Test-Interactive) { Read-Host (T "[Hestia] Type $word to confirm" "[Hestia] Scrivi $word per confermare") } else { '' }
+        if ($typed -cne $word) { Stop-Install (T 'I deleted nothing (no confirmation).' 'non ho cancellato niente (conferma non data).') }
         Invoke-Compose down -v --remove-orphans | Out-Null
         if (-not $DryRun) { Remove-Item $Dir -Recurse -Force; Remove-Item $StateDir -Recurse -Force -ErrorAction SilentlyContinue }
-        Ok 'Hestia e i suoi dati sono stati cancellati.'
+        Ok (T 'Hestia and its data have been deleted.' 'Hestia e i suoi dati sono stati cancellati.')
     } else {
         Invoke-Compose down --remove-orphans | Out-Null
-        Ok "Hestia ~e spenta e i container rimossi. I dati restano (cartella $Dir e volumi Docker); -Purge per cancellarli."
+        Ok (T "Hestia is off and the containers removed. The data stay (folder $Dir and Docker volumes); -Purge to delete them." "Hestia ~e spenta e i container rimossi. I dati restano (cartella $Dir e volumi Docker); -Purge per cancellarli.")
     }
 }
 
 # -- main ---------------------------------------------------------------------------------------------------------
 Write-Log "install_start uninstall=$([bool]$Uninstall) channel=$Channel dry_run=$([bool]$DryRun) resume=$([bool]$Resume)"
 if ($Uninstall) { Remove-Hestia; exit 0 }
-if ($Resume) { Say 'Riprendo l''installazione dopo il riavvio...' }
-Say "Installo Hestia in $Dir (canale $Channel)."
+if ($Resume) { Say (T 'Resuming the install after the restart...' 'Riprendo l''installazione dopo il riavvio...') }
+Say (T "Installing Hestia in $Dir (channel $Channel)." "Installo Hestia in $Dir (canale $Channel).")
 Test-Preflight
 Resolve-Role
 Install-GitIfMissing;    Set-StepDone 'git'

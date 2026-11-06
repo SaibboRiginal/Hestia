@@ -10,3 +10,4 @@
 - v2.6 — 2026-10-31 — P5b «Da fuori casa» built as a Cloudflare quick tunnel container started by Hephaestus (Docker API, not compose); setup screen, Macchine card, Telegram tools; named tunnel from the page not built — implementation — user via Project thread
 - v2.7 — 2026-11-06 — P6 built: versions from git tags, notes in Italian via Oracle, no :edge images (novità builds locally), satellites and Hephaestus's own image updated by the installer — implementation — user via Project thread
 - v2.8 — 2026-11-06 — P7 docs: README quick start rewritten around the guided setup; all phases done — implementation — user via Project thread
+- v2.9 — 2026-11-06 — installer messages in English by default and Italian when the computer is in Italian — Marko «deve essere in multilingua, default inglese, e poi capire il locale» — user via Project thread

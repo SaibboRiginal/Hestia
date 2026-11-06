@@ -45,6 +45,19 @@ LAN_IP=""
 SATELLITE_SERVICES="hub echo metis"
 HEAVY_SERVICES="echo metis"
 
+# ── language ───────────────────────────────────────────────────────────────────────────────────────────────────
+# English by default, Italian when the computer is in Italian (or --lang / HESTIA_LANG). Every message is written as
+# "$(t "english" "italiano")": a new language = one more branch in t() and one more argument.
+detect_lang() {
+  local l="${HESTIA_LANG:-${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}}"
+  if [ -z "$l" ] || [ "$l" = C ] || [ "$l" = POSIX ] || [ "${l#C.}" != "$l" ]; then
+    l="$(defaults read -g AppleLocale 2>/dev/null || true)"
+  fi
+  case "$l" in it*) printf it ;; *) printf en ;; esac
+}
+UI_LANG="$(detect_lang)"
+t() { if [ "$UI_LANG" = it ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+
 # ── output ─────────────────────────────────────────────────────────────────────────────────────────────────────
 say()  { printf '\033[1;33m[Hestia]\033[0m %s\n' "$*"; log "say msg=\"$*\""; }
 ok()   { printf '\033[1;32m[Hestia]\033[0m %s\n' "$*"; log "ok msg=\"$*\""; }
@@ -52,9 +65,9 @@ note() { NOTES+=("$*"); }
 log()  { mkdir -p "$STATE_DIR" 2>/dev/null && printf '%s event=%s\n' "$(date -u +%FT%TZ)" "$*" >> "$LOG_FILE" || true; }
 
 fail() {
-  printf '\n\033[1;31m[Hestia] Mi sono fermato:\033[0m %s\n' "$1"
-  printf '         Rilancia lo stesso comando quando hai fatto: riprendo da qui.\n'
-  printf '         Dettagli: %s\n' "$LOG_FILE"
+  printf '\n\033[1;31m[Hestia] %s\033[0m %s\n' "$(t 'I stopped:' 'Mi sono fermato:')" "$1"
+  printf '         %s\n' "$(t 'Run the same command again when done: I pick up from here.' 'Rilancia lo stesso comando quando hai fatto: riprendo da qui.')"
+  printf '         %s %s\n' "$(t 'Details:' 'Dettagli:')" "$LOG_FILE"
   log "install_failed reason=\"$1\""
   exit 1
 }
@@ -65,14 +78,15 @@ usage() {
   cat <<'TXT'
 Hestia installer (Linux, macOS)
   --dir PATH            install folder (default ~/Hestia)
-  --channel stabile     latest release, ready-made images (default)
-  --channel novita      latest code on main, built here
+  --channel stable      latest release, ready-made images (default; also «stabile»)
+  --channel latest      latest code on main, built here (also «novita»)
+  --lang en|it          language of the messages (default: the computer's)
   --update / --repair   same as no option: resume, repair, update
-  --uninstall [--purge] stop Hestia (data kept); --purge also deletes data after typing CANCELLA
+  --uninstall [--purge] stop Hestia (data kept); --purge also deletes data after typing DELETE (CANCELLA in Italian)
   --dry-run             only print what it would do
   --no-browser          do not open the browser at the end
-  --role tutto          everything on this machine (default)
-  --role centrale       always-on home (e.g. Raspberry Pi): everything but voice and training, which go on satellites
+  --role all            everything on this machine (default; also «tutto»)
+  --role central        always-on home, e.g. Raspberry Pi (also «centrale»): everything but voice and training
   --role satellite      voice and training here, near the graphics card; the rest stays on the central one
   --join CODE --central IP   link this machine as a satellite (code from Sistema -> Macchine on the central one)
 TXT
@@ -99,7 +113,7 @@ retry() {  # retry <what> <cmd...>: 3 tries, backoff 2/4/8 s
     if "$@"; then return 0; fi
     [ "$i" = 3 ] && break
     log "[🔄] retry what=\"$what\" attempt=$i next_in=${delay}s"
-    say "$what: non è andata, riprovo tra ${delay}s…"
+    say "$(t "$what: did not work, retrying in ${delay}s…" "$what: non è andata, riprovo tra ${delay}s…")"
     sleep "$delay"; delay=$((delay * 2))
   done
   return 1
@@ -124,10 +138,10 @@ detect_os() {
   case "$(uname -s)" in
     Linux)  OS=linux ;;
     Darwin) OS=mac ;;
-    *) fail "questo installer è per Linux e macOS. Su Windows usa Installa-Hestia.cmd (o install.ps1)." ;;
+    *) fail "$(t "this installer is for Linux and macOS. On Windows use Installa-Hestia.cmd (or install.ps1)." "questo installer è per Linux e macOS. Su Windows usa Installa-Hestia.cmd (o install.ps1).")" ;;
   esac
   if [ "$(id -u)" != 0 ]; then
-    has sudo || [ "$OS" = mac ] || fail "serve 'sudo' (o lancia come root)."
+    has sudo || [ "$OS" = mac ] || fail "$(t "'sudo' is needed (or run as root)." "serve 'sudo' (o lancia come root).")"
     SUDO="sudo"
   fi
   if [ "$OS" = linux ]; then
@@ -153,7 +167,7 @@ pkg_install() {  # pkg_install <package...>
 }
 
 preflight() {
-  say "Controllo il computer…"
+  say "$(t "Checking the computer…" "Controllo il computer…")"
   local parent
   if [ "$OS" = linux ]; then
     RAM_GB=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 / 1024 ))
@@ -163,16 +177,16 @@ preflight() {
   parent="$HESTIA_DIR"; while [ ! -d "$parent" ]; do parent="$(dirname "$parent")"; done
   FREE_GB=$(( $(df -Pk "$parent" | awk 'NR==2 {print $4}') / 1024 / 1024 ))
   log "preflight ram_gb=$RAM_GB free_gb=$FREE_GB"
-  [ "$RAM_GB" -lt 8 ] && note "Hai ${RAM_GB} GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud."
+  [ "$RAM_GB" -lt 8 ] && note "$(t "You have ${RAM_GB} GB of RAM: Hestia works, but local models need at least 16. Use cloud models." "Hai ${RAM_GB} GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud.")"
   if [ "$FREE_GB" -lt 20 ]; then
-    fail "servono almeno 20 GB liberi (meglio 30) su $parent, ce ne sono ${FREE_GB}. Libera spazio."
+    fail "$(t "at least 20 GB free (better 30) are needed on $parent, there are ${FREE_GB}. Free some space." "servono almeno 20 GB liberi (meglio 30) su $parent, ce ne sono ${FREE_GB}. Libera spazio.")"
   fi
-  [ "$FREE_GB" -lt 30 ] && note "Spazio libero: ${FREE_GB} GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare."
-  has curl || pkg_install curl || fail "manca 'curl' e non riesco a installarlo."
-  retry "Connessione a internet" curl -fsS --max-time 15 -o /dev/null "${HESTIA_REPO_URL%.git}.git/info/refs?service=git-upload-pack" \
-    || fail "non riesco a raggiungere github.com: controlla la connessione a internet."
+  [ "$FREE_GB" -lt 30 ] && note "$(t "Free space: ${FREE_GB} GB. Enough for Hestia; it may not be enough for large local models." "Spazio libero: ${FREE_GB} GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare.")"
+  has curl || pkg_install curl || fail "$(t "'curl' is missing and I cannot install it." "manca 'curl' e non riesco a installarlo.")"
+  retry "$(t "Internet connection" "Connessione a internet")" curl -fsS --max-time 15 -o /dev/null "${HESTIA_REPO_URL%.git}.git/info/refs?service=git-upload-pack" \
+    || fail "$(t "I cannot reach github.com: check the internet connection." "non riesco a raggiungere github.com: controlla la connessione a internet.")"
   if [ "$OS" = linux ] && [ "$(uname -m)" = x86_64 ] && ! grep -Eq 'vmx|svm|hypervisor' /proc/cpuinfo; then
-    note "La virtualizzazione non risulta attiva nel BIOS: a Docker di solito non serve su Linux, ma se qualcosa non parte attivala."
+    note "$(t "Virtualization does not look on in the BIOS: Docker usually does not need it on Linux, but if something does not start, turn it on." "La virtualizzazione non risulta attiva nel BIOS: a Docker di solito non serve su Linux, ma se qualcosa non parte attivala.")"
   fi
 }
 
@@ -188,21 +202,21 @@ ports_check() {
       busy="$busy $port"
     fi
   done
-  [ -n "$busy" ] && fail "queste porte sono già occupate da un altro programma:$busy. Chiudilo e rilancia."
+  [ -n "$busy" ] && fail "$(t "these ports are already used by another program:$busy. Close it and run again." "queste porte sono già occupate da un altro programma:$busy. Chiudilo e rilancia.")"
   return 0
 }
 
 # ── 1. git ─────────────────────────────────────────────────────────────────────────────────────────────────────
 ensure_git() {
   has git && return 0
-  say "Installo git…"
+  say "$(t "Installing git…" "Installo git…")"
   if [ "$OS" = mac ]; then
-    [ -n "$PKG" ] && retry "Installazione di git" pkg_install git && return 0
+    [ -n "$PKG" ] && retry "$(t "Installing git" "Installazione di git")" pkg_install git && return 0
     run xcode-select --install || true
-    fail "su macOS serve git: conferma la finestra «Strumenti da riga di comando» che si è aperta (oppure installa Homebrew da https://brew.sh)."
+    fail "$(t "macOS needs git: confirm the «Command Line Tools» window that opened (or install Homebrew from https://brew.sh)." "su macOS serve git: conferma la finestra «Strumenti da riga di comando» che si è aperta (oppure installa Homebrew da https://brew.sh).")"
   fi
-  retry "Installazione di git" pkg_install git && return 0
-  note "git non si è installato: scarico Hestia come archivio (gli aggiornamenti useranno git quando ci sarà)."
+  retry "$(t "Installing git" "Installazione di git")" pkg_install git && return 0
+  note "$(t "git did not install: I download Hestia as an archive (updates will use git once it is there)." "git non si è installato: scarico Hestia come archivio (gli aggiornamenti useranno git quando ci sarà).")"
   return 0
 }
 
@@ -215,8 +229,8 @@ docker_ready() {
 }
 
 install_docker_linux() {
-  say "Installo Docker (ci vuole qualche minuto)…"
-  if retry "Installazione di Docker" run_sh "curl -fsSL https://get.docker.com | $SUDO sh"; then return 0; fi
+  say "$(t "Installing Docker (it takes a few minutes)…" "Installo Docker (ci vuole qualche minuto)…")"
+  if retry "$(t "Installing Docker" "Installazione di Docker")" run_sh "curl -fsSL https://get.docker.com | $SUDO sh"; then return 0; fi
   log "[🔄] docker_fallback via=distro_package"
   case "$PKG" in
     apt) pkg_install docker.io docker-compose-v2 || pkg_install docker.io docker-compose-plugin ;;
@@ -225,7 +239,7 @@ install_docker_linux() {
     zypper) pkg_install docker docker-compose ;;
     apk) pkg_install docker docker-cli-compose ;;
     *) false ;;
-  esac || fail "non riesco a installare Docker. Installalo seguendo https://docs.docker.com/engine/install/ e rilancia."
+  esac || fail "$(t "I cannot install Docker. Install it following https://docs.docker.com/engine/install/ and run again." "non riesco a installare Docker. Installalo seguendo https://docs.docker.com/engine/install/ e rilancia.")"
 }
 
 ensure_compose() {
@@ -239,10 +253,10 @@ ensure_compose() {
   # Last fallback: the official compose plugin binary, user-wide.
   local arch; arch="$(uname -m)"; [ "$arch" = arm64 ] && arch=aarch64
   run mkdir -p "$HOME/.docker/cli-plugins"
-  retry "Download di docker compose" run curl -fsSL -o "$HOME/.docker/cli-plugins/docker-compose" \
+  retry "$(t "Downloading docker compose" "Download di docker compose")" run curl -fsSL -o "$HOME/.docker/cli-plugins/docker-compose" \
     "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$arch" \
     && run chmod +x "$HOME/.docker/cli-plugins/docker-compose" && dk compose version >/dev/null 2>&1 \
-    || fail "manca 'docker compose' e non riesco a installarlo."
+    || fail "$(t "'docker compose' is missing and I cannot install it." "manca 'docker compose' e non riesco a installarlo.")"
 }
 
 wait_docker() {  # wait_docker <seconds> <message>
@@ -252,7 +266,7 @@ wait_docker() {  # wait_docker <seconds> <message>
   until docker_ready; do
     [ "$waited" -ge "$limit" ] && return 1
     sleep 5; waited=$((waited + 5))
-    [ $((waited % 30)) = 0 ] && say "…aspetto ancora Docker (${waited}s)"
+    [ $((waited % 30)) = 0 ] && say "$(t "…still waiting for Docker (${waited}s)" "…aspetto ancora Docker (${waited}s)")"
   done
 }
 
@@ -261,22 +275,22 @@ ensure_docker() {
   if [ "$OS" = linux ]; then
     has docker || install_docker_linux
     run $SUDO systemctl enable --now docker || run $SUDO service docker start || true
-    wait_docker 120 "Avvio Docker…" || fail "Docker è installato ma non parte. Prova: sudo systemctl start docker"
+    wait_docker 120 "$(t "Starting Docker…" "Avvio Docker…")" || fail "$(t "Docker is installed but does not start. Try: sudo systemctl start docker" "Docker è installato ma non parte. Prova: sudo systemctl start docker")"
     if [ -n "$SUDO" ] && ! id -nG "$USER" | grep -qw docker; then
       run $SUDO usermod -aG docker "$USER" || true
-      note "Ti ho aggiunto al gruppo 'docker': dal prossimo accesso i comandi docker non chiedono più sudo."
+      note "$(t "I added you to the 'docker' group: from your next login docker commands no longer ask for sudo." "Ti ho aggiunto al gruppo 'docker': dal prossimo accesso i comandi docker non chiedono più sudo.")"
     fi
     ensure_compose
   else
     if [ ! -d /Applications/Docker.app ]; then
-      [ "$PKG" = brew ] || fail "su macOS serve Homebrew (https://brew.sh) oppure Docker Desktop (https://docker.com/products/docker-desktop)."
-      say "Installo Docker Desktop…"
-      retry "Installazione di Docker Desktop" run brew install --cask docker \
-        || fail "Docker Desktop non si installa: scaricalo da https://docker.com/products/docker-desktop e rilancia."
+      [ "$PKG" = brew ] || fail "$(t "macOS needs Homebrew (https://brew.sh) or Docker Desktop (https://docker.com/products/docker-desktop)." "su macOS serve Homebrew (https://brew.sh) oppure Docker Desktop (https://docker.com/products/docker-desktop).")"
+      say "$(t "Installing Docker Desktop…" "Installo Docker Desktop…")"
+      retry "$(t "Installing Docker Desktop" "Installazione di Docker Desktop")" run brew install --cask docker \
+        || fail "$(t "Docker Desktop does not install: download it from https://docker.com/products/docker-desktop and run again." "Docker Desktop non si installa: scaricalo da https://docker.com/products/docker-desktop e rilancia.")"
     fi
     run open -a Docker || true
     wait_docker 300 "Apro Docker Desktop: se è la prima volta, accetta la licenza nella sua finestra." \
-      || fail "Docker Desktop non risponde: aprilo, accetta la licenza, aspetta che dica «running» e rilancia."
+      || fail "$(t "Docker Desktop does not answer: open it, accept the license, wait for «running» and run again." "Docker Desktop non risponde: aprilo, accetta la licenza, aspetta che dica «running» e rilancia.")"
   fi
 }
 
@@ -285,14 +299,14 @@ ollama_up() { curl -fsS --max-time 3 http://127.0.0.1:11434/api/version >/dev/nu
 
 ensure_ollama() {
   if ! has ollama && ! ollama_up; then
-    say "Installo Ollama (i modelli sul tuo computer)…"
+    say "$(t "Installing Ollama (the models on your computer)…" "Installo Ollama (i modelli sul tuo computer)…")"
     if [ "$OS" = linux ]; then
-      retry "Installazione di Ollama" run_sh "curl -fsSL https://ollama.com/install.sh | sh" || {
-        note "Ollama non si è installato: Hestia userà i modelli nel cloud. Puoi installarlo dopo da https://ollama.com."
+      retry "$(t "Installing Ollama" "Installazione di Ollama")" run_sh "curl -fsSL https://ollama.com/install.sh | sh" || {
+        note "$(t "Ollama did not install: Hestia will use cloud models. You can install it later from https://ollama.com." "Ollama non si è installato: Hestia userà i modelli nel cloud. Puoi installarlo dopo da https://ollama.com.")"
         return 0; }
     else
-      { [ "$PKG" = brew ] && retry "Installazione di Ollama" run brew install ollama; } || {
-        note "Ollama non si è installato: Hestia userà i modelli nel cloud. Puoi installarlo da https://ollama.com."
+      { [ "$PKG" = brew ] && retry "$(t "Installing Ollama" "Installazione di Ollama")" run brew install ollama; } || {
+        note "$(t "Ollama did not install: Hestia will use cloud models. You can install it from https://ollama.com." "Ollama non si è installato: Hestia userà i modelli nel cloud. Puoi installarlo da https://ollama.com.")"
         return 0; }
     fi
   fi
@@ -315,9 +329,9 @@ pull_default_models() {
   local model
   for model in $DEFAULT_MODELS; do
     if [ "$DRY_RUN" = 0 ] && ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$model"; then continue; fi
-    say "Scarico il modello $model (una volta sola)…"
-    retry "Download di $model" run ollama pull "$model" \
-      || note "Il modello $model non si è scaricato: rilancia più tardi, nel frattempo Hestia usa il cloud se hai una chiave."
+    say "$(t "Downloading the model $model (only once)…" "Scarico il modello $model (una volta sola)…")"
+    retry "$(t "Downloading $model" "Download di $model")" run ollama pull "$model" \
+      || note "$(t "The model $model did not download: run again later, meanwhile Hestia uses the cloud if you have a key." "Il modello $model non si è scaricato: rilancia più tardi, nel frattempo Hestia usa il cloud se hai una chiave.")"
   done
 }
 
@@ -328,11 +342,11 @@ ollama_reachable_from_docker() {
                http://host.docker.internal:11434/api/version)
   dk "${probe[@]}" >/dev/null 2>&1 && return 0
   has systemctl && systemctl list-unit-files ollama.service >/dev/null 2>&1 || {
-    note "Ollama non è raggiungibile dai container: avvialo con OLLAMA_HOST=0.0.0.0 ollama serve."
+    note "$(t "The containers cannot reach Ollama: start it with OLLAMA_HOST=0.0.0.0 ollama serve." "Ollama non è raggiungibile dai container: avvialo con OLLAMA_HOST=0.0.0.0 ollama serve.")"
     return 0; }
   log "[🔄] ollama_bind_all reason=containers_cannot_reach"
   ollama_bind_all
-  dk "${probe[@]}" >/dev/null 2>&1 || note "Ollama non risponde ai container: Hestia userà i modelli nel cloud finché non lo sistemi."
+  dk "${probe[@]}" >/dev/null 2>&1 || note "$(t "Ollama does not answer the containers: Hestia will use cloud models until you fix it." "Ollama non risponde ai container: Hestia userà i modelli nel cloud finché non lo sistemi.")"
 }
 
 # Ollama listening on every address: the containers (Docker bridge) and, on a satellite, the central one over the LAN.
@@ -340,7 +354,7 @@ ollama_bind_all() {
   if [ "$OS" = mac ]; then
     run launchctl setenv OLLAMA_HOST 0.0.0.0:11434 || true
     run brew services restart ollama || true
-    note "Ollama ora ascolta sulla rete di casa (porta 11434): non aprire quella porta sul router."
+    note "$(t "Ollama now listens on the home network (port 11434): do not open that port on the router." "Ollama ora ascolta sulla rete di casa (porta 11434): non aprire quella porta sul router.")"
     return 0
   fi
   if has systemctl && systemctl list-unit-files ollama.service >/dev/null 2>&1; then
@@ -351,7 +365,7 @@ ollama_bind_all() {
       [ "$DRY_RUN" = 1 ] || sleep 3
     fi
   else
-    note "Per farlo vedere alle altre macchine avvia Ollama con: OLLAMA_HOST=0.0.0.0 ollama serve"
+    note "$(t "To let the other machines see it, start Ollama with: OLLAMA_HOST=0.0.0.0 ollama serve" "Per farlo vedere alle altre macchine avvia Ollama con: OLLAMA_HOST=0.0.0.0 ollama serve")"
     return 0
   fi
   if has ufw && $SUDO ufw status 2>/dev/null | grep -q "Status: active"; then
@@ -362,7 +376,7 @@ ollama_bind_all() {
       for p in 11434 19021 19014; do run $SUDO ufw allow from 10.0.0.0/8 to any port "$p" proto tcp || true; done
     fi
   else
-    note "Ollama ora ascolta anche sulla rete di casa (porta 11434): non aprire quella porta sul router."
+    note "$(t "Ollama now also listens on the home network (port 11434): do not open that port on the router." "Ollama ora ascolta anche sulla rete di casa (porta 11434): non aprire quella porta sul router.")"
   fi
 }
 
@@ -370,23 +384,23 @@ ollama_bind_all() {
 ensure_code() {
   if [ -d "$HESTIA_DIR/.git" ]; then
     git -C "$HESTIA_DIR" remote get-url origin 2>/dev/null | grep -qi 'hestia' \
-      || fail "$HESTIA_DIR esiste ma non è Hestia. Scegli un'altra cartella con --dir."
-    retry "Aggiornamento del codice" run git -C "$HESTIA_DIR" fetch --tags --prune origin \
-      || note "Non ho potuto scaricare le novità del codice: uso la versione che c'è."
+      || fail "$(t "$HESTIA_DIR exists but is not Hestia. Choose another folder with --dir." "$HESTIA_DIR esiste ma non è Hestia. Scegli un'altra cartella con --dir.")"
+    retry "$(t "Updating the code" "Aggiornamento del codice")" run git -C "$HESTIA_DIR" fetch --tags --prune origin \
+      || note "$(t "I could not download the code changes: I use the version already here." "Non ho potuto scaricare le novità del codice: uso la versione che c'è.")"
   elif [ -f "$HESTIA_DIR/docker-compose.global.yml" ]; then
     log "code_existing_without_git dir=$HESTIA_DIR"
   elif [ -d "$HESTIA_DIR" ] && [ -n "$(ls -A "$HESTIA_DIR" 2>/dev/null)" ]; then
-    fail "$HESTIA_DIR esiste e non è vuota. Scegli un'altra cartella con --dir."
+    fail "$(t "$HESTIA_DIR exists and is not empty. Choose another folder with --dir." "$HESTIA_DIR esiste e non è vuota. Scegli un'altra cartella con --dir.")"
   else
-    say "Scarico Hestia in ${HESTIA_DIR}…"
+    say "$(t "Downloading Hestia into ${HESTIA_DIR}…" "Scarico Hestia in ${HESTIA_DIR}…")"
     if has git; then
-      retry "Download di Hestia" run git clone --quiet "$HESTIA_REPO_URL" "$HESTIA_DIR" \
-        || fail "non riesco a scaricare Hestia da GitHub. Controlla la connessione."
+      retry "$(t "Downloading Hestia" "Download di Hestia")" run git clone --quiet "$HESTIA_REPO_URL" "$HESTIA_DIR" \
+        || fail "$(t "I cannot download Hestia from GitHub. Check the connection." "non riesco a scaricare Hestia da GitHub. Controlla la connessione.")"
     else
       log "[🔄] code_tarball reason=no_git"
       run mkdir -p "$HESTIA_DIR"
-      retry "Download di Hestia" run_sh "curl -fsSL '$HESTIA_TARBALL_URL' | tar -xz -C '$HESTIA_DIR' --strip-components=1" \
-        || fail "non riesco a scaricare Hestia da GitHub. Controlla la connessione."
+      retry "$(t "Downloading Hestia" "Download di Hestia")" run_sh "curl -fsSL '$HESTIA_TARBALL_URL' | tar -xz -C '$HESTIA_DIR' --strip-components=1" \
+        || fail "$(t "I cannot download Hestia from GitHub. Check the connection." "non riesco a scaricare Hestia da GitHub. Controlla la connessione.")"
     fi
   fi
   pick_version
@@ -395,7 +409,7 @@ ensure_code() {
 pick_version() {
   [ -d "$HESTIA_DIR/.git" ] || { VERSION_TAG=""; return 0; }
   if [ -n "$(git -C "$HESTIA_DIR" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
-    note "Nella cartella di Hestia ci sono modifiche locali: non ho cambiato versione del codice."
+    note "$(t "The Hestia folder has local changes: I did not change the code version." "Nella cartella di Hestia ci sono modifiche locali: non ho cambiato versione del codice.")"
     VERSION_TAG="$(git -C "$HESTIA_DIR" describe --tags --exact-match 2>/dev/null || true)"
     return 0
   fi
@@ -403,16 +417,16 @@ pick_version() {
     VERSION_TAG="$(git -C "$HESTIA_DIR" tag -l 'v*.*.*' --sort=-v:refname | head -n1)"
     if [ -n "$VERSION_TAG" ]; then
       run git -C "$HESTIA_DIR" -c advice.detachedHead=false checkout --quiet "$VERSION_TAG"
-      ok "Versione $VERSION_TAG"
+      ok "$(t "Version $VERSION_TAG" "Versione $VERSION_TAG")"
       return 0
     fi
-    note "Non c'è ancora una versione pubblicata: installo l'ultima di sviluppo e la costruisco qui (più lento, una volta sola)."
+    note "$(t "There is no published version yet: I install the latest development one and build it here (slower, only once)." "Non c'è ancora una versione pubblicata: installo l'ultima di sviluppo e la costruisco qui (più lento, una volta sola).")"
   fi
   VERSION_TAG=""
   local branch; branch="$(git -C "$HESTIA_DIR" rev-parse --abbrev-ref HEAD)"
   if [ "$branch" = HEAD ]; then run git -C "$HESTIA_DIR" checkout --quiet main; branch=main; fi
   run git -C "$HESTIA_DIR" pull --quiet --ff-only origin "$branch" \
-    || note "Il codice locale non segue più quello di GitHub: l'ho lasciato com'è."
+    || note "$(t "The local code no longer follows GitHub: I left it as it is." "Il codice locale non segue più quello di GitHub: l'ho lasciato com'è.")"
 }
 
 # What the guided setup shows («Scheda video da 16 GB») and uses to suggest models: git-ignored, no personal data.
@@ -441,7 +455,7 @@ resolve_role() {
     [ -n "$ROLE" ] || ROLE=tutto
   fi
   if [ "$ROLE" = satellite ] && [ -z "$JOIN_CODE" ] && ! grep -Eq '^HUB_NODE_TOKEN=.+' "$HESTIA_DIR/.env" 2>/dev/null; then
-    fail "per collegare questa macchina serve il codice: sulla casa centrale apri Sistema → Macchine → Collega una macchina, poi rilancia con --join CODICE --central INDIRIZZO."
+    fail "$(t "to link this machine you need the code: on the central home open System → Machines → Link a machine, then run again with --join CODE --central ADDRESS." "per collegare questa macchina serve il codice: sulla casa centrale apri Sistema → Macchine → Collega una macchina, poi rilancia con --join CODICE --central INDIRIZZO.")"
   fi
   LAN_IP="$(detect_lan_ip)"
   log "role role=$ROLE lan_ip=$LAN_IP"
@@ -477,8 +491,8 @@ link_machine() {
     return 0
   fi
   [ -n "$JOIN_CODE" ] || return 0   # already linked (re-run): keep the token
-  [ -n "$LAN_IP" ] || fail "non trovo l'indirizzo di questa macchina sulla rete di casa: collegala al Wi-Fi o al cavo e rilancia."
-  say "Collego questa macchina alla casa centrale ($CENTRAL_URL)…"
+  [ -n "$LAN_IP" ] || fail "$(t "I cannot find this machine's address on the home network: connect it to Wi-Fi or cable and run again." "non trovo l'indirizzo di questa macchina sulla rete di casa: collegala al Wi-Fi o al cavo e rilancia.")"
+  say "$(t "Linking this machine to the central home ($CENTRAL_URL)…" "Collego questa macchina alla casa centrale ($CENTRAL_URL)…")"
   if [ "$DRY_RUN" = 1 ]; then printf '  [dry-run] POST %s/api/nodes/join\n' "$CENTRAL_URL"; return 0; fi
   local name out code token
   name="$(hostname 2>/dev/null | tr -cd 'A-Za-z0-9 ._-' | cut -c1-40)"
@@ -492,16 +506,16 @@ link_machine() {
   log "machine_join status=$code"
   case "$code" in
     200) ;;
-    000) fail "non raggiungo la casa centrale a $CENTRAL_URL: controlla che sia accesa e sulla stessa rete." ;;
-    403) fail "il codice è sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema → Macchine)." ;;
-    *) fail "la casa centrale ha rifiutato il collegamento (errore $code)." ;;
+    000) fail "$(t "I cannot reach the central home at $CENTRAL_URL: check that it is on and on the same network." "non raggiungo la casa centrale a $CENTRAL_URL: controlla che sia accesa e sulla stessa rete.")" ;;
+    403) fail "$(t "the code is wrong or expired: ask the central home for a new one (System → Machines)." "il codice è sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema → Macchine).")" ;;
+    *) fail "$(t "the central home refused the link (error $code)." "la casa centrale ha rifiutato il collegamento (errore $code).")" ;;
   esac
-  [ -n "$token" ] || fail "la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia."
+  [ -n "$token" ] || fail "$(t "the central home gave no link key: ask for a new code and run again." "la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia.")"
   set_root_env HUB_UPSTREAM_URL "$CENTRAL_URL/api"
   set_root_env HUB_NODE_TOKEN "$token"
   set_root_env HUB_NODE_ADDRESS "$LAN_IP"
   token=""
-  ok "Collegata alla casa centrale."
+  ok "$(t "Linked to the central home." "Collegata alla casa centrale.")"
 }
 
 # Drops the containers this machine's role keeps stopped on purpose (reads names from stdin).
@@ -531,37 +545,37 @@ ensure_env() {
   dk volume inspect "${PROJECT}_hestia_archive_pgdata" >/dev/null 2>&1 || args+=(--new-db)
   local user=()
   [ "$OS" = linux ] && user=(--user "$(id -u):$(id -g)")
-  if retry "Preparazione della configurazione" run "${DOCKER[@]}" run --rm ${user[@]+"${user[@]}"} -v "$HESTIA_DIR:/w" -w /w \
+  if retry "$(t "Preparing the configuration" "Preparazione della configurazione")" run "${DOCKER[@]}" run --rm ${user[@]+"${user[@]}"} -v "$HESTIA_DIR:/w" -w /w \
        python:3.12-slim python tools/init_env.py "${args[@]}"; then
     return 0
   fi
   log "[🔄] env_host_python reason=container_failed"
   has python3 && run_sh "cd '$HESTIA_DIR' && python3 tools/init_env.py ${args[*]}" && return 0
-  fail "non riesco a preparare i file di configurazione (.env)."
+  fail "$(t "I cannot prepare the configuration files (.env)." "non riesco a preparare i file di configurazione (.env).")"
 }
 
 # ── 8–9. images, start, health ─────────────────────────────────────────────────────────────────────────────────
 start_stack() {
   dk network inspect hestia_net >/dev/null 2>&1 || run "${DOCKER[@]}" network create hestia_net \
-    || fail "non riesco a creare la rete Docker hestia_net."
+    || fail "$(t "I cannot create the Docker network hestia_net." "non riesco a creare la rete Docker hestia_net.")"
   local services=() svc
   while IFS= read -r svc; do [ -n "$svc" ] && services+=("$svc"); done < <(role_services)
   if [ -n "$VERSION_TAG" ]; then
-    say "Scarico i moduli pronti della versione ${VERSION_TAG}…"
-    retry "Download dei moduli" run_quiet_compose pull --ignore-pull-failures ${services[@]+"${services[@]}"} \
-      || note "Alcuni moduli non si sono scaricati: li costruisco qui."
+    say "$(t "Downloading the ready-made modules of version ${VERSION_TAG}…" "Scarico i moduli pronti della versione ${VERSION_TAG}…")"
+    retry "$(t "Downloading the modules" "Download dei moduli")" run_quiet_compose pull --ignore-pull-failures ${services[@]+"${services[@]}"} \
+      || note "$(t "Some modules did not download: I build them here." "Alcuni moduli non si sono scaricati: li costruisco qui.")"
   else
-    say "Costruisco i moduli (la prima volta ci vuole un po', poi è veloce)…"
+    say "$(t "Building the modules (the first time takes a while, then it is quick)…" "Costruisco i moduli (la prima volta ci vuole un po', poi è veloce)…")"
     build_all ${services[@]+"${services[@]}"}
   fi
-  say "Avvio Hestia…"
+  say "$(t "Starting Hestia…" "Avvio Hestia…")"
   if [ "$ROLE" = satellite ]; then
     # Only the satellite's own modules: everything else (memory, settings, the WebUI) lives on the central one.
     local others
     others="$(compose config --services 2>/dev/null | { grep -vxE "$(printf '%s' "$SATELLITE_SERVICES" | tr ' ' '|')" || true; } | tr '\n' ' ' || true)"
     [ -z "$others" ] || run_quiet_compose stop $others || true
-    retry "Avvio dei moduli" run_quiet_compose up -d --no-deps --remove-orphans "${services[@]}" \
-      || fail "i moduli non partono. Guarda $LOG_FILE (ultime righe) o rilancia."
+    retry "$(t "Starting the modules" "Avvio dei moduli")" run_quiet_compose up -d --no-deps --remove-orphans "${services[@]}" \
+      || fail "$(t "the modules do not start. See $LOG_FILE (last lines) or run again." "i moduli non partono. Guarda $LOG_FILE (ultime righe) o rilancia.")"
     return 0
   fi
   [ "$ROLE" = centrale ] && { run_quiet_compose stop $HEAVY_SERVICES || true; }
@@ -572,10 +586,10 @@ start_stack() {
     local kept=()
     for svc in ${services[@]+"${services[@]}"}; do [ "$svc" = telegram ] || kept+=("$svc"); done
     services=(${kept[@]+"${kept[@]}"})
-    note "Telegram si collega nel setup guidato che si apre nel browser."
+    note "$(t "Telegram is linked in the guided setup that opens in the browser." "Telegram si collega nel setup guidato che si apre nel browser.")"
   fi
-  retry "Avvio dei moduli" run_quiet_compose up -d --remove-orphans ${services[@]+"${services[@]}"} \
-    || fail "i moduli non partono. Guarda $LOG_FILE (ultime righe) o rilancia."
+  retry "$(t "Starting the modules" "Avvio dei moduli")" run_quiet_compose up -d --remove-orphans ${services[@]+"${services[@]}"} \
+    || fail "$(t "the modules do not start. See $LOG_FILE (last lines) or run again." "i moduli non partono. Guarda $LOG_FILE (ultime righe) o rilancia.")"
   if ! telegram_configured; then run_quiet_compose create telegram || true; fi
 }
 
@@ -590,7 +604,7 @@ run_quiet_compose() {
 }
 
 build_all() {  # build_all [service...]: none = all
-  retry "Costruzione dei moduli" run_quiet_compose build "$@" && return 0
+  retry "$(t "Building the modules" "Costruzione dei moduli")" run_quiet_compose build "$@" && return 0
   # Find the one that breaks, rebuild it from scratch, then the rest.
   local svc bad="" list="$*"
   [ -n "$list" ] || list="$(compose config --services 2>/dev/null)"
@@ -599,15 +613,15 @@ build_all() {  # build_all [service...]: none = all
     log "[🔄] build_no_cache service=$svc"
     run_quiet_compose build --no-cache "$svc" || bad="$bad $svc"
   done
-  [ -z "$bad" ] || fail "non riesco a costruire:$bad. Guarda $LOG_FILE."
+  [ -z "$bad" ] || fail "$(t "I cannot build:$bad. See $LOG_FILE." "non riesco a costruire:$bad. Guarda $LOG_FILE.")"
 }
 
 wait_healthy() {
   [ "$DRY_RUN" = 1 ] && return 0
-  say "Aspetto che tutti i moduli rispondano…"
+  say "$(t "Waiting for every module to answer…" "Aspetto che tutti i moduli rispondano…")"
   local waited=0
   until curl -fsS --max-time 3 "$HUB_URL/health" >/dev/null 2>&1; do
-    [ "$waited" -ge 300 ] && fail "il centro di Hestia (Hub) non risponde dopo 5 minuti."
+    [ "$waited" -ge 300 ] && fail "$(t "the heart of Hestia (Hub) does not answer after 5 minutes." "il centro di Hestia (Hub) non risponde dopo 5 minuti.")"
     sleep 5; waited=$((waited + 5))
   done
   waited=0
@@ -615,13 +629,13 @@ wait_healthy() {
     local down
     down="$(dk ps -a --filter "name=hestia_" --format '{{.Names}} {{.Status}}' | { grep -Ev ' (Up|Created)' || true; } | awk '{print $1}' | not_my_role | tr '\n' ' ')"
     if [ -z "$down" ] && { [ "$ROLE" = satellite ] || curl -fsS --max-time 3 "$WEBUI_URL" >/dev/null 2>&1; }; then
-      ok "Tutti i moduli sono accesi."
+      ok "$(t "Every module is on." "Tutti i moduli sono accesi.")"
       return 0
     fi
     if [ "$waited" -ge 600 ]; then
       local c
       for c in $down; do log "container_down name=$c"; dk logs --tail 20 "$c" >> "$LOG_FILE" 2>&1 || true; done
-      note "Questi moduli non sono partiti: $down(ultime righe in $LOG_FILE). Hestia funziona lo stesso senza di loro."
+      note "$(t "These modules did not start: $down(last lines in $LOG_FILE). Hestia works without them anyway." "Questi moduli non sono partiti: $down(ultime righe in $LOG_FILE). Hestia funziona lo stesso senza di loro.")"
       return 0
     fi
     sleep 10; waited=$((waited + 10))
@@ -632,8 +646,8 @@ wait_healthy() {
 finish() {
   if [ "$ROLE" = satellite ]; then
     echo
-    ok "Questa macchina è un satellite di ${CENTRAL_URL:-la casa centrale}: voce e allenamento girano qui."
-    printf '         La gestisci dalla casa centrale: Sistema → Macchine (anche «Usa la sua scheda video»).\n'
+    ok "$(t "This machine is a satellite of ${CENTRAL_URL:-the central home}: voice and training run here." "Questa macchina è un satellite di ${CENTRAL_URL:-la casa centrale}: voce e allenamento girano qui.")"
+    printf '         %s\n' "$(t 'You manage it from the central home: System → Machines (also «Use its graphics card»).' 'La gestisci dalla casa centrale: Sistema → Macchine (anche «Usa la sua scheda video»).')"
     local n
     for n in ${NOTES[@]+"${NOTES[@]}"}; do printf '         · %s\n' "$n"; done
     log "install_done role=satellite version=${VERSION_TAG:-dev} notes=${#NOTES[@]}"
@@ -650,29 +664,30 @@ finish() {
     elif has xdg-open && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then xdg-open "$SETUP_URL" >/dev/null 2>&1 || true; fi
   fi
   echo
-  ok "Hestia è pronta: $WEBUI_URL (il setup guidato è su $SETUP_URL)"
+  ok "$(t "Hestia is ready: $WEBUI_URL (the guided setup is at $SETUP_URL)" "Hestia è pronta: $WEBUI_URL (il setup guidato è su $SETUP_URL)")"
   local n
   for n in ${NOTES[@]+"${NOTES[@]}"}; do printf '         · %s\n' "$n"; done
-  printf '         Per aggiornare o riparare: rilancia questo stesso comando.\n'
+  printf '         %s\n' "$(t 'To update or repair: run this same command again.' 'Per aggiornare o riparare: rilancia questo stesso comando.')"
   log "install_done version=${VERSION_TAG:-dev} notes=${#NOTES[@]}"
 }
 
 # ── uninstall ──────────────────────────────────────────────────────────────────────────────────────────────────
 uninstall() {
-  [ -f "$HESTIA_DIR/docker-compose.global.yml" ] || fail "non trovo Hestia in $HESTIA_DIR (usa --dir)."
-  docker_ready || fail "Docker non risponde: avvialo e rilancia."
+  [ -f "$HESTIA_DIR/docker-compose.global.yml" ] || fail "$(t "I cannot find Hestia in $HESTIA_DIR (use --dir)." "non trovo Hestia in $HESTIA_DIR (usa --dir).")"
+  docker_ready || fail "$(t "Docker does not answer: start it and run again." "Docker non risponde: avvialo e rilancia.")"
   if [ "$PURGE" = 1 ]; then
-    say "ATTENZIONE: cancello Hestia E TUTTI I SUOI DATI (memorie, chat, impostazioni). Non si torna indietro."
+    say "$(t "WARNING: I delete Hestia AND ALL ITS DATA (memories, chats, settings). There is no way back." "ATTENZIONE: cancello Hestia E TUTTI I SUOI DATI (memorie, chat, impostazioni). Non si torna indietro.")"
     local typed=""
-    [ -r /dev/tty ] && read -r -p "[Hestia] Scrivi CANCELLA per confermare: " typed < /dev/tty || true
-    [ "$typed" = CANCELLA ] || fail "non ho cancellato niente (conferma non data)."
+    word="$(t DELETE CANCELLA)"
+    [ -r /dev/tty ] && read -r -p "[Hestia] $(t "Type $word to confirm" "Scrivi $word per confermare"): " typed < /dev/tty || true
+    [ "$typed" = "$word" ] || fail "$(t "I deleted nothing (no confirmation)." "non ho cancellato niente (conferma non data).")"
     run_quiet_compose down -v --remove-orphans || true
     run rm -rf "$HESTIA_DIR"
     run rm -rf "$STATE_DIR"
-    ok "Hestia e i suoi dati sono stati cancellati."
+    ok "$(t "Hestia and its data have been deleted." "Hestia e i suoi dati sono stati cancellati.")"
   else
     run_quiet_compose down --remove-orphans || true
-    ok "Hestia è spenta e i container rimossi. I dati restano (cartella $HESTIA_DIR e volumi Docker); --purge per cancellarli."
+    ok "$(t "Hestia is off and the containers removed. The data stay (folder $HESTIA_DIR and Docker volumes); --purge to delete them." "Hestia è spenta e i container rimossi. I dati restano (cartella $HESTIA_DIR e volumi Docker); --purge per cancellarli.")"
   fi
 }
 
@@ -689,6 +704,8 @@ parse_args() {
       --purge) PURGE=1 ;;
       --dry-run) DRY_RUN=1 ;;
       --no-browser) OPEN_BROWSER=0 ;;
+      --lang) case "$2" in it*) UI_LANG=it ;; *) UI_LANG=en ;; esac; shift ;;
+      --lang=*) case "${1#*=}" in it*) UI_LANG=it ;; *) UI_LANG=en ;; esac ;;
       --role) ROLE="$2"; shift ;;
       --role=*) ROLE="${1#*=}" ;;
       --join) JOIN_CODE="$2"; shift ;;
@@ -696,17 +713,19 @@ parse_args() {
       --central) CENTRAL_URL="$2"; shift ;;
       --central=*) CENTRAL_URL="${1#*=}" ;;
       -h|--help) usage ;;
-      *) fail "opzione sconosciuta: $1 (vedi --help)" ;;
+      *) fail "$(t "unknown option: $1 (see --help)" "opzione sconosciuta: $1 (vedi --help)")" ;;
     esac
     shift
   done
-  case "$CHANNEL" in stabile|novita|novità) ;; *) fail "canale sconosciuto: $CHANNEL (stabile o novita)" ;; esac
+  case "$CHANNEL" in stable) CHANNEL=stabile ;; latest) CHANNEL=novita ;; esac
+  case "$ROLE" in all) ROLE=tutto ;; central) ROLE=centrale ;; esac
+  case "$CHANNEL" in stabile|novita|novità) ;; *) fail "$(t "unknown channel: $CHANNEL (stable or latest)" "canale sconosciuto: $CHANNEL (stabile o novita)")" ;; esac
   [ "$CHANNEL" = novità ] && CHANNEL=novita
-  case "$ROLE" in ''|tutto|centrale|satellite) ;; *) fail "ruolo sconosciuto: $ROLE (tutto, centrale o satellite)" ;; esac
+  case "$ROLE" in ''|tutto|centrale|satellite) ;; *) fail "$(t "unknown role: $ROLE (all, central or satellite)" "ruolo sconosciuto: $ROLE (tutto, centrale o satellite)")" ;; esac
   if [ -n "$JOIN_CODE" ]; then
-    [ -z "$ROLE" ] || [ "$ROLE" = satellite ] || fail "--join serve solo per un satellite."
+    [ -z "$ROLE" ] || [ "$ROLE" = satellite ] || fail "$(t "--join is only for a satellite." "--join serve solo per un satellite.")"
     ROLE=satellite
-    [ -n "$CENTRAL_URL" ] || fail "con --join serve anche --central (l'indirizzo della casa centrale, es. 192.168.1.10)."
+    [ -n "$CENTRAL_URL" ] || fail "$(t "--join also needs --central (the address of the central home, e.g. 192.168.1.10)." "con --join serve anche --central (l'indirizzo della casa centrale, es. 192.168.1.10).")"
     JOIN_CODE="$(printf '%s' "$JOIN_CODE" | tr -cd '0-9')"
   fi
   if [ -n "$CENTRAL_URL" ]; then   # 192.168.1.10 → http://192.168.1.10:19001
@@ -723,7 +742,7 @@ main() {
   log "install_start action=$ACTION channel=$CHANNEL dry_run=$DRY_RUN"
   detect_os
   if [ "$ACTION" = uninstall ]; then uninstall; return 0; fi
-  say "Installo Hestia in $HESTIA_DIR (canale $CHANNEL). Ti chiederò la password del computer al massimo una volta."
+  say "$(t "Installing Hestia in $HESTIA_DIR (channel $CHANNEL). I will ask for the computer password at most once." "Installo Hestia in $HESTIA_DIR (canale $CHANNEL). Ti chiederò la password del computer al massimo una volta.")"
   preflight
   resolve_role
   ensure_git;    state_mark git

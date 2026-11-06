@@ -47,8 +47,12 @@ jobs:
       - name: bash 3.2 syntax (macOS default bash)
         if: runner.os == 'macOS'
         run: /bin/bash -n install.sh && /bin/bash -n up-all.sh
-      - name: Dry run
-        run: bash install.sh --dry-run --no-browser --dir "$RUNNER_TEMP/hestia"
+      - name: Dry run (English by default, Italian with --lang it)
+        run: |
+          LANG=en_US.UTF-8 bash install.sh --dry-run --no-browser --dir "$RUNNER_TEMP/hestia" | tee out-en.txt
+          grep -q 'Installing Hestia' out-en.txt
+          bash install.sh --dry-run --no-browser --lang it --dir "$RUNNER_TEMP/hestia" | tee out-it.txt
+          grep -q 'Installo Hestia' out-it.txt
       - name: Images override in step with compose
         run: python3 tools/release/images_compose.py --check
       - name: Generated secrets (fresh install, then idempotent)
@@ -97,8 +101,11 @@ jobs:
           $out = & powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1
           $out | ForEach-Object { Write-Host $_ }
           $text = $out -join "`n"
-          if ($text -notmatch 'Installo Hestia') { exit 1 }
+          if ($text -notmatch 'Installing Hestia') { exit 1 }   # the runner is in English
           if ($text -match 'ValidationMetadataException|ParseException|CommandNotFoundException') { exit 1 }
+          $cmd = "`$env:HESTIA_INSTALL_DRY_RUN='1'; `$env:HESTIA_LANG='it'; Get-Content -Raw .\install.ps1 | Invoke-Expression"
+          $out = & powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1
+          if (($out -join "`n") -notmatch 'Installo Hestia') { $out | ForEach-Object { Write-Host $_ }; exit 1 }
           exit 0
       - name: Launcher is CRLF
         shell: bash
