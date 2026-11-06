@@ -105,3 +105,26 @@ def test_use_machine_points_ollama_at_satellite(monkeypatch):
     assert stored[oracle_settings.PROVIDERS_KEY]["ollama"]["url"] == ""
     assert llm_setup.machine()["address"] == ""
     assert llm_setup.use_machine("bad host/x")["ok"] is False
+
+
+def test_local_models_lists_ollama_chat_models_with_fit_warning(monkeypatch):
+    """The setup shows what is already in Ollama (not a hand list): embedding models out, too-big ones flagged."""
+    class _Resp:
+        ok = True
+        def raise_for_status(self): pass
+        def json(self):
+            return {"models": [
+                {"name": "qwen3:14b", "size": 9.3e9, "details": {"family": "qwen3", "parameter_size": "14.8B"}},
+                {"name": "llama3.3:70b", "size": 42e9, "details": {"family": "llama"}},
+                {"name": "qwen3-embedding:0.6b", "size": 0.6e9, "details": {"family": "qwen3"}},
+                {"name": "nomic-bert", "size": 0.3e9, "details": {"family": "nomic-bert", "families": ["nomic-bert"]}},
+                {"name": "gemma4:e4b", "size": 3.3e9, "details": {}}]}
+    import requests
+    monkeypatch.setattr(llm_providers, "get", lambda name: {"type": "ollama"})
+    monkeypatch.setattr(llm_providers, "url", lambda name: "http://ollama")
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Resp())
+    rows = llm_setup.local_models(16)
+    assert [r["model"] for r in rows] == ["qwen3:14b", "gemma4:e4b", "llama3.3:70b"]
+    assert [r["fits"] for r in rows] == [True, True, False]
+    assert rows[0]["params"] == "14.8B"
+    assert all(r["fits"] for r in llm_setup.local_models(0))      # card unknown: no warning

@@ -1,7 +1,8 @@
 """Guided setup of the brain (docs/work/2026-10-30-setup-un-click §4.2 «Cervello»).
 
 What the setup screen needs from Oracle, and only from Oracle (it owns the providers):
-- ``CATALOG``: recommended local models per hardware tier (data, edit freely; any other Ollama name works too);
+- ``local_models(vram_gb)``: the chat models already in Ollama, with a warning on those bigger than the video card;
+- ``CATALOG``: a few suggested models per hardware tier, shown only when Ollama has none (any Ollama name works);
 - ``recommend(vram_gb, ram_gb)``: the tier for this PC and its preselected models;
 - ``test(provider, model)``: one tiny real call, answer in plain words;
 - ``apply(recipe, local_model, cloud)``: writes ``oracle.chains`` (and the brain mode for the Claude subscription)
@@ -47,6 +48,37 @@ def recommend(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
             "embedding": EMBEDDING_MODEL, "recipe": recipe}
 
 
+def local_models(vram_gb: float = 0) -> list[dict[str, Any]]:
+    """Every chat model already in Ollama (embedding models left out), biggest first, each with ``fits``: False when
+    the file is bigger than the video card (it still runs, slower, partly on the CPU). Ollama knows the models; the
+    curated ``CATALOG`` is only a suggestion when Ollama has none."""
+    import requests
+    from core.services import llm_providers
+    if not llm_providers.get("ollama"):
+        return []
+    try:
+        resp = requests.get(f"{llm_providers.url('ollama')}/api/tags", timeout=5)
+        resp.raise_for_status()
+        rows = (resp.json() or {}).get("models", [])
+    except Exception as exc:
+        logger.warning("[🔄] event=llm_setup_local_models_failed error=%s", str(exc)[:160])
+        return []
+    vram = float(vram_gb or 0)
+    out = []
+    for m in rows:
+        name = m.get("name") or m.get("model") or ""
+        details = m.get("details") or {}
+        family = " ".join([str(details.get("family") or "")] + [str(f) for f in details.get("families") or []]).lower()
+        if not name or "embed" in name.lower() or "bert" in family:
+            continue
+        size_gb = round(float(m.get("size") or 0) / 1e9, 1)
+        out.append({"model": name, "size_gb": size_gb, "params": details.get("parameter_size") or "",
+                    "quant": details.get("quantization_level") or "",
+                    # ~10% over the file for the context; unknown card → no warning
+                    "fits": not vram or size_gb * 1.1 <= vram})
+    return sorted(out, key=lambda r: (not r["fits"], -r["size_gb"]))
+
+
 def catalog(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
     from core.services import llm_providers
     installed = llm_providers.list_models("ollama") if llm_providers.get("ollama") else []
@@ -54,6 +86,7 @@ def catalog(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
               "key_set": p["key_set"], "available": p["available"]}
              for p in llm_providers.public_view() if p["type"] not in LOCAL_TYPES]
     return {"recommended": recommend(vram_gb, ram_gb), "tiers": CATALOG, "installed": installed,
+            "local": local_models(vram_gb),
             "ollama": bool(llm_providers.get("ollama")) and _ollama_up(), "cloud": cloud, "recipes": list(RECIPES)}
 
 

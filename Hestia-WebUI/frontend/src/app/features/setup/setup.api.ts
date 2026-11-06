@@ -13,10 +13,13 @@ export interface SetupState {
   claude: { token: boolean };
 }
 export interface CatalogModel { model: string; size_gb: number; good: string; }
+/** A chat model already in Ollama on this computer. */
+export interface LocalModel { model: string; size_gb: number; params: string; quant: string; fits: boolean; }
 export interface CloudProvider { name: string; label: string; type: string; key_set: boolean; available: boolean; }
 export interface BrainCatalog {
   recommended: { tier: string; label: string; chat: CatalogModel[]; model: string; embedding: CatalogModel; recipe: string };
   installed: string[];
+  local?: LocalModel[];
   ollama: boolean;
   cloud: CloudProvider[];
 }

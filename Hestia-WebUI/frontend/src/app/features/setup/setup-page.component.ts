@@ -3,7 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
-import { BrainCatalog, CloudProvider, Download, SetupApi, SetupState, TunnelState, setupError } from './setup.api';
+import { BrainCatalog, CloudProvider, Download, LocalModel, SetupApi, SetupState, TunnelState, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
 /** What the server stores: derived from the two boxes (computer, cloud). «claude» (Claude Code as the whole brain)
@@ -87,16 +87,32 @@ function store(key: string, value: string): void {
             @case ('locale') {
               <hx-icon name="host" [size]="30" tone="accent" />
               <h1>Quale modello sul tuo computer?</h1>
-              <p class="lead">{{ catalog()?.recommended?.label }}. Lo scarico subito, mentre finisci il resto.</p>
-              <div class="choices">
-                @for (m of catalog()?.recommended?.chat || []; track m.model; let first = $first) {
-                  <button type="button" class="choice" [class.sel]="localModel() === m.model" (click)="localModel.set(m.model)">
-                    <hx-icon name="download" [size]="20" [tone]="localModel() === m.model ? 'accent' : 'muted'" />
-                    <span class="ct"><b>{{ m.model }}</b>@if (first) { <span class="rec">Consigliato</span> }
-                      <small>{{ m.good }} {{ installed(m.model) ? 'Già presente.' : gb(m.size_gb) + ' GB da scaricare.' }}</small></span>
-                  </button>
-                }
-              </div>
+              @if (localList().length) {
+                <p class="lead">Quelli che hai già in Ollama.</p>
+                <div class="choices">
+                  @for (m of localList(); track m.model) {
+                    <button type="button" class="choice" [class.sel]="localModel() === m.model" (click)="pickLocal(m.model)">
+                      <hx-icon [name]="m.fits ? 'host' : 'alert'" [size]="20" [tone]="localModel() === m.model ? 'accent' : (m.fits ? 'muted' : 'warning')" />
+                      <span class="ct"><b>{{ m.model }}</b>
+                        <small>{{ localText(m) }}</small></span>
+                    </button>
+                  }
+                </div>
+              } @else {
+                <p class="lead">Ollama non ha ancora modelli. Per la tua scheda video ti propongo questi: lo scarico subito, mentre finisci il resto.</p>
+                <div class="choices">
+                  @for (m of catalog()?.recommended?.chat || []; track m.model; let first = $first) {
+                    <button type="button" class="choice" [class.sel]="localModel() === m.model" (click)="pickLocal(m.model)">
+                      <hx-icon name="download" [size]="20" [tone]="localModel() === m.model ? 'accent' : 'muted'" />
+                      <span class="ct"><b>{{ m.model }}</b>@if (first) { <span class="rec">Consigliato</span> }
+                        <small>{{ m.good }} {{ gb(m.size_gb) }} GB da scaricare.</small></span>
+                    </button>
+                  }
+                </div>
+              }
+              <hx-field label="Oppure un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b. Se non c'è lo scarico.">
+                <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
+              </hx-field>
             }
 
             @case ('cloud') {
@@ -357,7 +373,9 @@ export class SetupPageComponent {
         // «claude» was the old fourth choice (Claude as the whole brain, chains as fallback): computer + cloud with Claude.
         this.useLocal.set(saved !== 'cloud');
         this.useCloud.set(saved !== 'locale');
-        this.localModel.set(state.brain.local_model || catalog.recommended.model);
+        const local = catalog.local || [];
+        this.localModel.set(state.brain.local_model || local.find(m => m.fits)?.model || local[0]?.model || catalog.recommended.model);
+        if (this.localModel() && local.length && !local.some(m => m.model === this.localModel())) this.otherModel.set(this.localModel());
         const cloud = catalog.cloud;
         let picked = (state.brain.cloud || []).filter(n => cloud.some(p => p.name === n));
         if (saved === 'claude') {
@@ -474,6 +492,22 @@ export class SetupPageComponent {
 
   // ── Cervello ──
   gb(n: number): string { return String(n).replace('.', ','); }
+  localList = computed(() => this.catalog()?.local || []);
+  otherModel = signal('');
+  pickLocal(model: string) { this.localModel.set(model); this.otherModel.set(''); }
+  typeLocal(name: string) {
+    this.otherModel.set(name);
+    const clean = name.trim();
+    if (clean) this.localModel.set(clean);
+    else this.localModel.set(this.localList().find(m => m.fits)?.model || this.catalog()?.recommended?.model || '');
+  }
+  localText(m: LocalModel): string {
+    const what = [m.params, m.quant].filter(Boolean).join(' · ');
+    const size = m.size_gb ? `${this.gb(m.size_gb)} GB` : '';
+    const vram = Math.round(this.state()?.hardware?.vram_gb || 0);
+    const warn = m.fits ? '' : `Più grande della scheda video (${vram} GB): funziona, ma più lento.`;
+    return [[what, size].filter(Boolean).join(', '), warn].filter(Boolean).join(' ');
+  }
   installed(model: string): boolean { return (this.catalog()?.installed || []).some(m => m === model || m.startsWith(model + ':')); }
   keyLink(p: CloudProvider): string { return KEY_LINKS[p.type] || KEY_LINKS[p.name] || ''; }
   picked(name: string): boolean { return this.cloudPicked().includes(name); }
