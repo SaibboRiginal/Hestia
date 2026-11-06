@@ -171,7 +171,8 @@ Linux (and macOS with Homebrew)
 curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | bash
 ```
 
-The installer speaks your computer's language (Italian on an Italian PC, English otherwise). To choose it yourself, put
+Hestia goes in the folder you launch it from (inside a `Hestia` folder, or right there if it already is one). The
+installer speaks your computer's language (Italian on an Italian PC, English otherwise). To choose it yourself, put
 `$env:HESTIA_LANG='en';` before the PowerShell line, or `HESTIA_LANG=en` before `bash` (`it` for Italian).
 
 <img src="docs/assets/icons/step-2.svg" width="26" height="26" align="top" alt="2">&nbsp; **Answer a few questions**: at the

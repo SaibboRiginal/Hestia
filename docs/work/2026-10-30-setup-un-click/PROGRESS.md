@@ -19,5 +19,6 @@
 - [x] Fix 2026-11-06: `features/downloads/` was ignored by `.gitignore` (`downloads/`), so main did not build; negation added and file committed
 - [x] Fix 2026-11-06 (Marko's first real try): `irm | iex` failed on `[ValidateSet]` of `$Role` without a value; values checked after param, CI dry run through iex added
 - [x] Installer in more languages (Marko 2026-11-06): English default, Italian from the computer's language, `--lang`/`-Lang`/`HESTIA_LANG`, English option names; CI dry runs in both
-- [ ] Guided setup «Dove pensa Hestia?»: «Il tuo computer» + «Cloud» with one or more providers (Gemini, Claude subscription, Claude key…) instead of four exclusive choices; «Esterna» stays in Settings (proposed to Marko)
+- [x] Guided setup «Dove pensa Hestia?»: «Il tuo computer» + «Cloud» with one or more providers in order (Gemini, Claude subscription, keys…) instead of four exclusive choices; «Esterna» stays in Settings; page scrolls (Marko 2026-11-06)
+- [x] Installer folder = where it is launched (a Hestia folder as it is, otherwise `Hestia` inside; system folders → user folder) (Marko 2026-11-06)
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), first tag v1.0.0 + GHCR package public, two-machine run, real tunnel, .NET build

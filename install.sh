@@ -17,7 +17,15 @@ set -Eeuo pipefail
 
 HESTIA_REPO_URL="${HESTIA_REPO_URL:-https://github.com/SaibboRiginal/Hestia.git}"
 HESTIA_TARBALL_URL="${HESTIA_TARBALL_URL:-https://codeload.github.com/SaibboRiginal/Hestia/tar.gz/refs/heads/main}"
-HESTIA_DIR="${HESTIA_DIR:-$HOME/Hestia}"
+# Folder: where it is launched. A Hestia folder (it has docker-compose.global.yml) is used as it is, otherwise Hestia
+# goes in a «Hestia» folder inside it; from / or a system folder, ~/Hestia instead. --dir / HESTIA_DIR win.
+default_dir() {
+  local here; here="$(pwd -P 2>/dev/null || pwd)"
+  if [ -f "$here/docker-compose.global.yml" ]; then printf '%s' "$here"; return; fi
+  case "$here" in /|/bin*|/sbin*|/usr*|/etc*|/var*|/opt*|/System*|/Library*|/private*|/tmp|/root) [ "$here" = "$HOME" ] || { printf '%s' "$HOME/Hestia"; return; } ;; esac
+  printf '%s' "$here/Hestia"
+}
+HESTIA_DIR="${HESTIA_DIR:-$(default_dir)}"
 CHANNEL="${HESTIA_CHANNEL:-stabile}"
 ACTION="install"
 RAM_GB=0
@@ -77,7 +85,7 @@ trap 'log "[🔄] unexpected_error line=$LINENO cmd=\"$BASH_COMMAND\""' ERR
 usage() {
   cat <<'TXT'
 Hestia installer (Linux, macOS)
-  --dir PATH            install folder (default ~/Hestia)
+  --dir PATH            install folder (default: where you launch it; a Hestia folder is used as it is)
   --channel stable      latest release, ready-made images (default; also «stabile»)
   --channel latest      latest code on main, built here (also «novita»)
   --lang en|it          language of the messages (default: the computer's)

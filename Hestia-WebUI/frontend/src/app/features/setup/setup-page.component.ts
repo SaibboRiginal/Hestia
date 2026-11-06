@@ -5,15 +5,11 @@ import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { BrainCatalog, CloudProvider, Download, SetupApi, SetupState, TunnelState, setupError } from './setup.api';
 
-type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'claude' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
-type Recipe = 'locale' | 'cloud' | 'entrambi' | 'claude';
-
-const RECIPES: { id: Recipe; label: string; text: string; icon: string }[] = [
-  { id: 'entrambi', label: 'Tutti e due', text: 'Prima il tuo computer; se è occupato o spento, il cloud.', icon: 'repeat' },
-  { id: 'locale', label: 'Sul tuo computer', text: 'Privato e gratis. Serve una buona scheda video.', icon: 'host' },
-  { id: 'cloud', label: 'Nel cloud', text: 'Veloce su ogni computer. Serve una chiave: quella di Gemini è gratis.', icon: 'zap' },
-  { id: 'claude', label: 'Abbonamento Claude', text: 'Se hai già Claude Pro o Max.', icon: 'brain' },
-];
+type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
+/** What the server stores: derived from the two boxes (computer, cloud). «claude» (Claude Code as the whole brain)
+ * is no longer offered here: the Claude subscription is one of the cloud services, in the chain like the others. */
+type Recipe = 'locale' | 'cloud' | 'entrambi';
+const CLAUDE_TYPE = 'claude_cli';
 /** Where to get a key, by provider type or name. */
 const KEY_LINKS: Record<string, string> = {
   gemini: 'https://aistudio.google.com/apikey',
@@ -69,19 +65,23 @@ function store(key: string, value: string): void {
             @case ('ricetta') {
               <hx-icon name="brain" [size]="30" tone="accent" />
               <h1>Dove pensa Hestia?</h1>
-              <p class="lead">Puoi cambiarlo quando vuoi da Impostazioni.</p>
+              <p class="lead">Scegli una o tutte e due: Hestia usa prima il tuo computer e, se è occupato o spento, il cloud.</p>
               <div class="choices">
-                @for (r of recipes; track r.id) {
-                  <button type="button" class="choice" [class.sel]="recipe() === r.id" (click)="recipe.set(r.id)">
-                    <hx-icon [name]="r.icon" [size]="20" [tone]="recipe() === r.id ? 'accent' : 'muted'" />
-                    <span class="ct"><b>{{ r.label }}</b>@if (r.id === catalog()?.recommended?.recipe) { <span class="rec">Consigliato</span> }
-                      <small>{{ r.text }}</small></span>
-                  </button>
-                }
+                <button type="button" class="choice" role="checkbox" [attr.aria-checked]="useLocal()" [class.sel]="useLocal()" (click)="useLocal.set(!useLocal())">
+                  <hx-icon [name]="useLocal() ? 'check-circle' : 'host'" [size]="20" [tone]="useLocal() ? 'accent' : 'muted'" />
+                  <span class="ct"><b>Il tuo computer</b>@if (recommendLocal()) { <span class="rec">Consigliato</span> }
+                    <small>Privato e gratis. Serve una buona scheda video.</small></span>
+                </button>
+                <button type="button" class="choice" role="checkbox" [attr.aria-checked]="useCloud()" [class.sel]="useCloud()" (click)="useCloud.set(!useCloud())">
+                  <hx-icon [name]="useCloud() ? 'check-circle' : 'zap'" [size]="20" [tone]="useCloud() ? 'accent' : 'muted'" />
+                  <span class="ct"><b>Cloud</b><span class="rec">Consigliato</span>
+                    <small>Veloce su ogni computer. Gemini (chiave gratis), il tuo abbonamento Claude o un'altra chiave: li scegli dopo.</small></span>
+                </button>
               </div>
               @if (needsLocal() && catalog() && !catalog()!.ollama) {
                 <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> Ollama non risponde su questo computer: i modelli locali arrivano quando lo avvii.</p>
               }
+              <p class="hint">Puoi cambiarlo quando vuoi da Impostazioni.</p>
             }
 
             @case ('locale') {
@@ -101,17 +101,26 @@ function store(key: string, value: string): void {
 
             @case ('cloud') {
               <hx-icon name="zap" [size]="30" tone="accent" />
-              <h1>Quale servizio nel cloud?</h1>
+              <h1>Quali servizi nel cloud?</h1>
+              <p class="lead">Scegline uno o più: li usa in quest'ordine, il secondo se il primo non risponde o ha finito la quota.</p>
               <div class="choices">
                 @for (p of catalog()?.cloud || []; track p.name) {
-                  <button type="button" class="choice" [class.sel]="provider() === p.name" (click)="pickProvider(p.name)">
-                    <hx-icon [name]="p.key_set ? 'check-circle' : 'unlock'" [size]="20" [tone]="p.key_set ? 'success' : 'muted'" />
-                    <span class="ct"><b>{{ p.label || p.name }}</b>@if (p.type === 'gemini') { <span class="rec">Gratis</span> }
-                      <small>{{ p.key_set ? 'Chiave già inserita.' : 'Serve una chiave.' }}</small></span>
+                  <button type="button" class="choice" role="checkbox" [attr.aria-checked]="picked(p.name)" [class.sel]="picked(p.name)" (click)="toggleProvider(p.name)">
+                    <hx-icon [name]="picked(p.name) ? 'check-circle' : (p.type === claudeType ? 'brain' : 'unlock')" [size]="20" [tone]="picked(p.name) ? 'accent' : 'muted'" />
+                    <span class="ct"><b>@if (picked(p.name) && cloudOrder(p.name) > 0) { {{ cloudOrder(p.name) }}. }{{ p.label || p.name }}</b>
+                      @if (p.type === 'gemini') { <span class="rec">Gratis</span> }
+                      <small>{{ providerText(p) }}</small></span>
                   </button>
                 } @empty { <p class="lead">Nessun servizio cloud configurato.</p> }
               </div>
               @if (providerInfo(); as p) {
+                @if (p.type === claudeType) {
+                  <p class="lead">Nel terminale scrivi <code>claude setup-token</code>, accedi con il tuo account Claude (Pro o Max), poi incolla qui il codice che ti dà.</p>
+                  @if (state()!.claude.token) { <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Codice già inserito: lascia vuoto per tenerlo.</p> }
+                  <hx-field label="Codice dell'abbonamento Claude">
+                    <input class="hx-input mono" type="password" autocomplete="off" [(ngModel)]="claudeToken" placeholder="sk-ant-oat…" />
+                  </hx-field>
+                } @else {
                 <hx-field [label]="'Chiave di ' + (p.label || p.name)" [error]="testError()"
                           [hint]="testOk() ? 'Funziona.' : (p.key_set ? 'Lascia vuoto per tenere quella che c\\'è.' : '')">
                   <input class="hx-input mono" type="password" autocomplete="off" [(ngModel)]="key" placeholder="incolla qui la chiave" />
@@ -120,17 +129,8 @@ function store(key: string, value: string): void {
                   @if (keyLink(p)) { <a hx-btn variant="ghost" icon="external" [href]="keyLink(p)" target="_blank" rel="noopener">Prendi la chiave</a> }
                   <button hx-btn variant="secondary" icon="play" [loading]="busy()" [disabled]="!key && !p.key_set" (click)="testKey()">Prova</button>
                 </div>
+                }
               }
-            }
-
-            @case ('claude') {
-              <hx-icon name="brain" [size]="30" tone="accent" />
-              <h1>Collega il tuo abbonamento Claude</h1>
-              <p class="lead">Nel terminale scrivi <code>claude setup-token</code>, accedi, poi incolla qui il codice che ti dà.</p>
-              @if (state()!.claude.token) { <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Codice già inserito: lascia vuoto per tenerlo.</p> }
-              <hx-field label="Codice">
-                <input class="hx-input mono" type="password" autocomplete="off" [(ngModel)]="claudeToken" placeholder="sk-ant-oat…" />
-              </hx-field>
             }
 
             @case ('cervello') {
@@ -253,7 +253,7 @@ function store(key: string, value: string): void {
       </main>
     </div>`,
   styles: [`
-    :host { display: block; min-height: 100vh; background: var(--backdrop, var(--bg)); }
+    :host { display: block; height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--backdrop, var(--bg)); }
     .wrap { max-width: 560px; margin: 0 auto; padding: 18px 16px 32px; display: flex; flex-direction: column; gap: 14px; }
     .top { display: flex; align-items: center; gap: 12px; min-height: 32px; }
     .dots { flex: 1; display: flex; gap: 6px; }
@@ -293,7 +293,7 @@ function store(key: string, value: string): void {
 export class SetupPageComponent {
   private api = inject(SetupApi);
   private router = inject(Router);
-  readonly recipes = RECIPES;
+  readonly claudeType = CLAUDE_TYPE;
 
   state = signal<SetupState | null>(null);
   catalog = signal<BrainCatalog | null>(null);
@@ -306,23 +306,30 @@ export class SetupPageComponent {
   showPass = signal(false);
   code = signal('');
 
-  recipe = signal<Recipe>('entrambi');
+  useLocal = signal(true);
+  useCloud = signal(true);
+  recipe = computed<Recipe>(() => this.useLocal() && this.useCloud() ? 'entrambi' : this.useLocal() ? 'locale' : 'cloud');
   localModel = signal('');
+  /** The chosen cloud services, in the order they are tried. */
+  cloudPicked = signal<string[]>([]);
+  /** The one whose key is being typed (the last one clicked). */
   provider = signal('');
+  /** Services whose key passed «Prova» in this run. */
+  tested = signal<string[]>([]);
   key = '';
   claudeToken = '';
   botToken = '';
   passphrase = '';
 
   screen = signal<Screen>('benvenuto');
-  needsLocal = computed(() => this.recipe() === 'locale' || this.recipe() === 'entrambi');
+  needsLocal = computed(() => this.useLocal());
+  recommendLocal = computed(() => this.catalog()?.recommended?.recipe !== 'cloud');
   /** The screens of this run: the brain's sub-screens follow the recipe. */
   screens = computed<Screen[]>(() => {
     const r = this.recipe();
     return ['benvenuto', 'ricetta',
       ...(this.needsLocal() ? ['locale' as Screen] : []),
       ...(r === 'cloud' || r === 'entrambi' ? ['cloud' as Screen] : []),
-      ...(r === 'claude' ? ['claude' as Screen] : []),
       'cervello', 'voce', 'telegram', 'backup', 'esterni', 'fuori', 'pronto'];
   });
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
@@ -346,11 +353,23 @@ export class SetupPageComponent {
       this.state.set(state);
       if (catalog) {
         this.catalog.set(catalog);
-        this.recipe.set((state.brain.recipe || catalog.recommended.recipe || 'entrambi') as Recipe);
+        const saved = state.brain.recipe || catalog.recommended.recipe || 'entrambi';
+        // «claude» was the old fourth choice (Claude as the whole brain, chains as fallback): computer + cloud with Claude.
+        this.useLocal.set(saved !== 'cloud');
+        this.useCloud.set(saved !== 'locale');
         this.localModel.set(state.brain.local_model || catalog.recommended.model);
         const cloud = catalog.cloud;
-        this.provider.set(state.brain.cloud?.[0] || cloud.find(p => p.key_set)?.name
-          || cloud.find(p => p.type === 'gemini')?.name || cloud[0]?.name || '');
+        let picked = (state.brain.cloud || []).filter(n => cloud.some(p => p.name === n));
+        if (saved === 'claude') {
+          const claude = cloud.find(p => p.type === CLAUDE_TYPE)?.name;
+          if (claude && !picked.includes(claude)) picked = [claude, ...picked];
+        }
+        if (!picked.length) {
+          const first = cloud.find(p => p.key_set)?.name || cloud.find(p => p.type === 'gemini')?.name || cloud[0]?.name;
+          picked = first ? [first] : [];
+        }
+        this.cloudPicked.set(picked);
+        this.provider.set(picked[0] || '');
       }
       const saved = stored(SCREEN_KEY) as Screen;
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
@@ -388,7 +407,8 @@ export class SetupPageComponent {
 
   canNext(): boolean {
     switch (this.screen()) {
-      case 'cloud': return !!this.providerInfo() && (this.testOk() || (!this.key && !!this.providerInfo()!.key_set));
+      case 'ricetta': return this.useLocal() || this.useCloud();
+      case 'cloud': return this.cloudPicked().length > 0 && this.cloudPicked().every(n => this.ready(n));
       case 'telegram': return this.state()!.telegram.linked || (!this.code() && !this.state()!.telegram.token && !!this.botToken.trim());
       case 'backup': return this.state()!.backup.passphrase || this.passphrase.length >= 12;
       default: return true;
@@ -398,7 +418,7 @@ export class SetupPageComponent {
   nextLabel(): string {
     switch (this.screen()) {
       case 'benvenuto': return 'Iniziamo';
-      case 'locale': case 'claude': return this.screens()[this.index() + 1] === 'cervello' ? 'Conferma' : 'Avanti';
+      case 'locale': return this.screens()[this.index() + 1] === 'cervello' ? 'Conferma' : 'Avanti';
       case 'cloud': return 'Conferma';
       case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? 'Avanti' : 'Collega';
       case 'backup': return this.state()!.backup.passphrase ? 'Avanti' : 'Salva';
@@ -456,7 +476,32 @@ export class SetupPageComponent {
   gb(n: number): string { return String(n).replace('.', ','); }
   installed(model: string): boolean { return (this.catalog()?.installed || []).some(m => m === model || m.startsWith(model + ':')); }
   keyLink(p: CloudProvider): string { return KEY_LINKS[p.type] || KEY_LINKS[p.name] || ''; }
-  pickProvider(name: string) { this.provider.set(name); this.testOk.set(false); this.testError.set(''); this.key = ''; }
+  picked(name: string): boolean { return this.cloudPicked().includes(name); }
+  cloudOrder(name: string): number { return this.cloudPicked().length > 1 ? this.cloudPicked().indexOf(name) + 1 : 0; }
+  toggleProvider(name: string) {
+    const list = this.cloudPicked();
+    if (list.includes(name) && this.provider() === name) {
+      this.cloudPicked.set(list.filter(n => n !== name));
+      this.provider.set(this.cloudPicked().find(n => !this.ready(n)) || '');
+    } else {
+      if (!list.includes(name)) this.cloudPicked.set([...list, name]);
+      this.provider.set(name);
+    }
+    this.testOk.set(this.tested().includes(this.provider()));
+    this.testError.set('');
+    this.key = '';
+  }
+  /** A chosen service can be used: key already there or just tried; Claude: the subscription code is there or typed. */
+  ready(name: string): boolean {
+    const p = this.catalog()?.cloud.find(c => c.name === name);
+    if (!p) return false;
+    if (p.type === CLAUDE_TYPE) return !!this.state()?.claude.token || !!this.claudeToken.trim() || p.available;
+    return this.tested().includes(name) || (p.key_set && !(this.provider() === name && this.key));
+  }
+  providerText(p: CloudProvider): string {
+    if (p.type === CLAUDE_TYPE) return this.ready(p.name) ? 'Abbonamento collegato.' : 'Il tuo abbonamento Claude Pro o Max.';
+    return p.key_set ? 'Chiave già inserita.' : 'Serve una chiave.';
+  }
 
   async testKey() {
     this.busy.set(true);
@@ -464,7 +509,7 @@ export class SetupPageComponent {
     this.testOk.set(false);
     try {
       const r = await this.api.test(this.provider(), this.key.trim());
-      if (r.ok) this.testOk.set(true); else this.testError.set(r.detail || 'Non funziona.');
+      if (r.ok) { this.testOk.set(true); this.tested.set([...this.tested().filter(n => n !== this.provider()), this.provider()]); } else this.testError.set(r.detail || 'Non funziona.');
     } catch (e) {
       this.testError.set(setupError(e));
     } finally {
@@ -474,9 +519,10 @@ export class SetupPageComponent {
 
   private async applyBrain() {
     const r = this.recipe();
-    const local = this.needsLocal() || (r === 'claude' && !!this.catalog()?.ollama) ? this.localModel() : '';
-    const cloud = r === 'cloud' || r === 'entrambi' ? [this.provider()].filter(Boolean) : [];
-    const out = await this.api.apply(r, local, cloud, r === 'claude' ? this.claudeToken.trim() : '');
+    const local = this.needsLocal() ? this.localModel() : '';
+    const cloud = this.useCloud() ? this.cloudPicked() : [];
+    const claudeChosen = cloud.some(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
+    const out = await this.api.apply(r, local, cloud, claudeChosen ? this.claudeToken.trim() : '');
     this.claudeToken = '';
     if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }
     await Promise.all([this.refresh(), this.refreshDownloads()]);
