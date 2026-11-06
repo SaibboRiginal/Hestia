@@ -11,4 +11,5 @@
 - [x] Tests (Oracle 659, Metis 61, Telegram 149, Hermes 91), docs, swagger
 - [x] Root CHANGELOG
 - [x] precheck (reaction emoji list exempted from the icon gate as chat content)
-- [ ] PR, merge
+- [x] PR #79 opened
+- [ ] Merge once CI is green
