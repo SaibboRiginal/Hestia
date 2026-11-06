@@ -159,7 +159,7 @@ Docker Desktop, plus one reboot if WSL2 was missing: the install resumes by itse
 
 <img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Install**
 
-Windows: download and double-click [`Installa-Hestia.cmd`](https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/Installa-Hestia.cmd), or in PowerShell
+Windows: download and double-click [`Installa-Hestia.cmd`](https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/Installa-Hestia.cmd), or in PowerShell (not the black Command Prompt)
 
 ```powershell
 irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
@@ -170,6 +170,9 @@ Linux (and macOS with Homebrew)
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | bash
 ```
+
+The installer speaks your computer's language (Italian on an Italian PC, English otherwise). To choose it yourself, put
+`$env:HESTIA_LANG='en';` before the PowerShell line, or `HESTIA_LANG=en` before `bash` (`it` for Italian).
 
 <img src="docs/assets/icons/step-2.svg" width="26" height="26" align="top" alt="2">&nbsp; **Answer a few questions**: at the
 end the browser opens a guided setup, like a new phone. Choose where Hestia thinks (your computer, the cloud, both, or
