@@ -529,7 +529,7 @@ prima». Backend: `SetupController` whitelist `GET update`, `POST update/check|a
 
 ## Download page (`/download`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
 
-`features/downloads/` (button «Download» in Sistema): every download of every module with the `downloads`
+`features/downloads/` (kept in git by a `!` line in `.gitignore`, whose generic `downloads/` rule would hide it; button «Download» in Sistema): every download of every module with the `downloads`
 capability (Oracle's models, Echo's voices), progress, speed, time left; Pausa · Riprendi · Riprova · Annulla ·
 Elimina (to free space, asks first); «Scarica le voci» (→ Echo `/api/voice/models/prefetch`). Polls every 2 s while
 something moves, every 10 s otherwise. Backend `DownloadsController`: `GET /api/webui/downloads` (asks each module
