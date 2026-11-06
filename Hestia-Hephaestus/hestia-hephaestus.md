@@ -427,7 +427,8 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
 - `setup/secrets.py`: whitelist `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID` (→ `Hestia-Telegram/app/.env`, telegram),
   `CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `ORACLE_KEY_<NAME>` (→ `Hestia-Oracle/app/.env`, oracle), `ECHO_KEY_<NAME>`
   (→ `Hestia-Echo/app/.env`, echo: the speech services' keys of the setup «Voce», `/api/setup/voice/*` forwards to
-  Echo's `/api/voice/setup/*`),
+  Echo's `/api/voice/setup/*`; `voice/apply` takes per direction a list of steps in order, and `brain/apply` takes
+  `cloud_models {service: [models]}` in order, both passed on as they are),
   `HESTIA_BACKUP_PASSPHRASE` (→ root `.env`, archive). Values: one line of printable ASCII; ids numeric; bot token
   in BotFather form. Written atomically (active line, else the commented `# KEY=` line, else appended); a value is
   never logged or returned (`event=setup_secret_set key=… file=… services=…`).

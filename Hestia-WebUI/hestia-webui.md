@@ -505,15 +505,21 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
 `/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell (it scrolls by itself): one question per screen (where the brain
 thinks: two boxes, «Il tuo computer» and «Cloud» → local model, one list with search of the models every program found on the PC really has (Ollama, LM
-Studio, Jan, llama.cpp, vLLM; the program is the card's note), a warning on those bigger than the video card, links
-to install Ollama or LM Studio when none is found, «Cerca di nuovo», and «Avanzate» → the memory's (embedding) model
-→ cloud services, one or more in the order they are tried («Prima di …» to reorder), each configured inside its own
-card: key, «Prova», and the model picked from the service's own list; the Claude subscription as one of them with its
-`claude setup-token` code → result and downloads → voice, configured like the models: «Ascolto» and «Voce» each
-pick a service (local first; a cloud one gets key, «Prova» from its voice/model list, then its model or voice) and
-«Conferma» puts that step first in Echo's chains, the old steps kept as fallbacks, and queues the local downloads → Telegram token and one-time
-code → backup passphrase → calendar, mail and devices (the Devices page opens in another tab) → outside home (what
-turning it on does, the two steps while it starts, «Provalo», a warning with «Riprova» when no address comes in 90 s)
+Studio, Jan, llama.cpp, vLLM; the program is the card's note), and under it «Per la memoria», the embedding model
+chosen the same way (the one in use, the programs' embedding models, and when Ollama has none the recommended one
+that Ollama downloads), a warning on those bigger than the video card, links
+to install Ollama or LM Studio when none is found, «Cerca di nuovo»
+→ cloud services, one or more in the order they are tried («Prima di …» to reorder), all through the one component
+`setup-services` (also used by the voice): key typed once, «Salva e prova» reads the service's list (a saved key is
+checked by itself), and when it works the card closes on «La chiave funziona» with the models already chosen, more
+than one in order as fallbacks (`recommended` from the service), «Cambia» to change them; the Claude subscription as one of them with its
+`claude setup-token` code → result and downloads → voice, configured like the models: for «Ascolto» and «Voce» one
+local engine (one list of every local engine's models or voices, with a line on each engine: Kokoro natural, Piper
+light) and then, optionally, cloud services in order through the same `setup-services` cards; «Conferma» writes
+those steps first in Echo's chains, the other steps kept as fallbacks, and queues the local downloads → Telegram token and one-time
+code → backup passphrase → calendar, mail and devices (Garmin connects from the Dispositivi page, opened in another tab, with the form in its card) → outside home (what
+turning it on does and «Attiva l'indirizzo» right there, the steps while it starts, then the address with «Provalo»
+and «Copia» beside it, a warning with «Riprova» when no address comes in 90 s)
 → summary). Beside the card: «Riepilogo» (every screen with its answer; a row jumps back to that screen) and, under it,
 «Download» (every module's downloads, models through Ollama and voices in Hestia's data folder, with progress and time
 left, `/api/webui/downloads`); on a phone both are a side panel opened from the «Riepilogo» button at the top (with

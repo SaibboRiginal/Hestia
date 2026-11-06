@@ -3446,7 +3446,7 @@ paths:
   /api/gateway/garmin/login:
     post:
       tags: [Hecate]
-      summary: "Secret form target {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
+      summary: "Secret form target, and the Dispositivi page form ({direct: true}: the two-step code is asked in the page, no Hermes form) {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
       servers:
         - url: http://localhost:19003
       responses:
@@ -4797,7 +4797,7 @@ paths:
                 provider: {type: string}
                 model: {type: string, description: "empty = Hestia's default if the provider lists it, else its first chat model"}
       responses:
-        "200": {description: "{ok, detail, model, models[]} (ok with model '' = the key works but that model does not answer: pick one of models)"}
+        "200": {description: "{ok, detail, model, models[], recommended[]} (recommended = the models preselected in order once the key works: defaults still listed, then the cheapest-looking chat models; never speech/picture ones)"}
 
   /api/llm/setup/apply:
     post:
@@ -4816,7 +4816,7 @@ paths:
                 local_model: {type: string}
                 local_provider: {type: string, description: "provider block or found program (ollama, lmstudio, jan, llamacpp-pc, vllm); a found program becomes a block", default: ollama}
                 cloud: {type: array, items: {type: string}}
-                cloud_models: {type: object, additionalProperties: {type: string}, description: "provider → model picked from its list"}
+                cloud_models: {type: object, additionalProperties: {oneOf: [{type: array, items: {type: string}}, {type: string}]}, description: "provider → models picked from its list, in order (the next takes over when the first fails); a single name is still accepted"}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model; only a different one changes the chain (re-index)"}
       responses:
         "200": {description: "{ok, detail} (detail = one-sentence summary)"}
@@ -7924,8 +7924,8 @@ paths:
             schema:
               type: object
               properties:
-                listen: {type: object, properties: {provider: {type: string}, model: {type: string}}}
-                speak: {type: object, properties: {provider: {type: string}, voice: {type: string}, model: {type: string}}}
+                listen: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "steps in order: the local engine, then cloud services as fallbacks (one object still accepted)"}
+                speak: {type: array, items: {type: object, properties: {provider: {type: string}, voice: {type: string}, model: {type: string}}}}
       responses:
         "200": {description: "{ok, queued[], downloads[]}"}
 
@@ -12996,7 +12996,7 @@ paths:
       servers:
         - url: http://localhost:19021
       responses:
-        "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,models[],voices[]}], current {provider,model,voice}}, voce {…}}"}
+        "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,note,models[],voices[]}], current {provider,model,voice}, steps[] (the whole chain)}, voce {…}}; note = one line on what the engine is (Kokoro vs Piper)"}
 
   /api/voice/setup/test:
     post:
@@ -13010,12 +13010,12 @@ paths:
           application/json:
             schema: {type: object, properties: {provider: {type: string}}}
       responses:
-        "200": {description: "{ok, detail, models[], voices[]}"}
+        "200": {description: "{ok, detail, models[], voices[], recommended {ascolto[], voce[]}}"}
 
   /api/voice/setup/apply:
     post:
       tags: [Echo]
-      summary: "Setup choice → echo.chains (chosen step first in ascolto/voce, the others kept as fallbacks), then the local models are queued"
+      summary: "Setup choice → echo.chains (the chosen steps first, in order, in ascolto/voce: one local engine then cloud services; the others kept as fallbacks), then the local models are queued"
       servers:
         - url: http://localhost:19021
       requestBody:
@@ -13025,8 +13025,8 @@ paths:
             schema:
               type: object
               properties:
-                listen: {type: object}
-                speak: {type: object}
+                listen: {type: array, items: {type: object}, description: "steps in order ({provider, model, voice}); one object still accepted"}
+                speak: {type: array, items: {type: object}}
       responses:
         "200": {description: "{queued[], downloads[]}"}
         "502": {description: Themis refused}

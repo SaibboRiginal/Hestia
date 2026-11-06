@@ -31,7 +31,7 @@ class BrainApply(BaseModel):
     local_model: str = ""
     local_provider: str = "ollama"
     cloud: list[str] = Field(default_factory=list)
-    cloud_models: dict[str, str] = Field(default_factory=dict)
+    cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
@@ -43,8 +43,9 @@ class VoiceTest(BaseModel):
 
 
 class VoiceApply(BaseModel):
-    listen: dict = Field(default_factory=dict)
-    speak: dict = Field(default_factory=dict)
+    # one step or several in order (a local engine, then cloud services as fallbacks)
+    listen: dict | list = Field(default_factory=list)
+    speak: dict | list = Field(default_factory=list)
 
 
 class Model(BaseModel):

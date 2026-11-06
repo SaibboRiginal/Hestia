@@ -441,6 +441,17 @@ def test_voice_setup_plan_puts_the_choice_first_and_keeps_the_rest():
     assert voice_setup.plan(DEFAULT_CHAINS, None, None)["voce"] == DEFAULT_CHAINS["voce"]
 
 
+def test_voice_setup_plan_takes_several_steps_in_order():
+    """Marko 2026-11-06: one local engine, then more cloud services as fallbacks, like the models."""
+    from app.core import voice_setup
+    from app.core.blocks import DEFAULT_CHAINS
+    out = voice_setup.plan(DEFAULT_CHAINS, [{"provider": "whisper-locale", "model": "small"},
+                                            {"provider": "groq", "model": "whisper-large-v3-turbo"},
+                                            {"provider": "groq", "model": "whisper-large-v3-turbo"}], None)
+    assert [(s["provider"], s["model"]) for s in out["ascolto"]["steps"]] == [
+        ("whisper-locale", "small"), ("groq", "whisper-large-v3-turbo")]
+
+
 def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
     from app.core import voice_setup
     from app.core.blocks import Blocks
@@ -454,6 +465,7 @@ def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
     assert groq["needs_key"] and not groq["key"] and groq["models"] == []      # no key: nothing to list yet
     speak = cat["voce"]["providers"]
     assert speak[0]["type"] == "kokoro" and speak[0]["voices"]
+    assert "naturale" in speak[0]["note"] and any("sintetizzatore" in p["note"] for p in speak)   # Kokoro vs Piper
     assert cat["ascolto"]["current"]["provider"] == "whisper-locale"
 
 

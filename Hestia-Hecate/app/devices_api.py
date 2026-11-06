@@ -101,7 +101,10 @@ def garmin_connect():
 
 @router.post(LOGIN_PATH)
 def garmin_login(body: dict = Body(...)):
-    """Target of the secret form: ``{values: {email, password} | {code}}``. Values are never logged."""
+    """Target of the secret form, and of the form in the Dispositivi page (``direct: true``): ``{values: {email,
+    password} | {code}}``. Values are never logged. From the page the two-step code is asked there too, not by a
+    notification (Marko 2026-11-06: «perché passa da Hermes? mettilo direttamente nei dispositivi»)."""
+    direct = bool(body.get("direct"))
     values = body.get("values") if isinstance(body.get("values"), dict) else body
     try:
         if values.get("code"):
@@ -114,6 +117,8 @@ def garmin_login(body: dict = Body(...)):
         logger.warning("event=garmin_login_failed error=%s", type(exc).__name__)
         raise HTTPException(status_code=422, detail="Garmin non ha accettato l'accesso, riprova")
     if out["status"] == "needs_code":
+        if direct:
+            return {**out, "message": "Garmin ti ha mandato un codice: scrivilo qui."}
         _ask_secret("code")
         return {**out, "message": "Serve il codice che Garmin ti ha mandato: ti ho mandato il modulo."}
     threading.Thread(target=lambda: garmin_sync({"days": 2}), daemon=True, name="garmin-first-sync").start()

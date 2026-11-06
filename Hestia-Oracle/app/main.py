@@ -391,7 +391,7 @@ class SetupApply(BaseModel):
     local_model: str = ""
     local_provider: str = "ollama"
     cloud: list[str] = Field(default_factory=list)
-    cloud_models: dict[str, str] = Field(default_factory=dict)
+    cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
 
 

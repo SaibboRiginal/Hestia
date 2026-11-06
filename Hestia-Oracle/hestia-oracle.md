@@ -670,14 +670,17 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
 - `POST /api/llm/setup/test {provider, model?}`: the «Prova» spends no tokens: it reads the provider's model list
   with its key (Gemini `v1beta/models`, OpenAI-compatible `/models`, Anthropic `/v1/models`); the list answering
   proves the key, 400/401/403 = «La chiave non è valida.», 429 = works but out of quota. Answer `{ok, detail, model,
-  models[]}`: `models` = the chat models for the picker, `model` = the one to preselect (the one asked if listed,
-  else Hestia's default if listed, else the cheapest-looking: Gemini «flash-lite», then «flash»). Only a service
+  models[], recommended[]}`: `models` = the chat models for the picker, `model` = the one to try (the one asked if
+  listed, else Hestia's default if listed, else the cheapest-looking: Gemini «flash-lite», then «flash»),
+  `recommended` = the models preselected in order once the key works (`recommended()`: defaults still listed, then
+  for Gemini a stable «flash-lite» and «flash», never speech/picture/live models), so nothing is asked. Only a service
   with no list to read (Claude subscription) gets one tiny real call.
 - `POST /api/llm/setup/apply {recipe, local_model, local_provider?, cloud[], cloud_models?, embedding?}`: a program
   picked from `runtimes` that is not a block yet becomes one (`ensure_runtime`: type `openai`, its address, label
   «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Setup guidato»):
   `veloce/potente/codice/visione` get the local step (`local_provider`/`local_model`) and the cloud services in the
-  chosen order, each with the model picked for it (`cloud_models`) or its default models; a chosen service that no
+  chosen order, each with the models picked for it in order (`cloud_models {service: [models]}`, a single name still
+  accepted; the next model takes over when the first fails) or its default models; a chosen service that no
   longer lists its default model (a retired alias) gets one it lists. `cloud` gets the cloud services; `embedding`
   changes only when `embedding {provider, model}` names another model (changing it re-indexes the memory). Recipe
   `claude` also sets the brain mode `esterna` with agent `claude` and fallback `interna`. Answer: one sentence («Ti

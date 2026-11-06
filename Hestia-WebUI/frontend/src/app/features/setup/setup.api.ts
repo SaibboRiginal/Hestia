@@ -6,9 +6,9 @@ import { firstValueFrom } from 'rxjs';
 export interface SetupState {
   completed: boolean;
   later: string[];
-  voice?: { listen?: VoiceStep; speak?: VoiceStep };
+  voice?: { listen?: VoiceStep | VoiceStep[]; speak?: VoiceStep | VoiceStep[] };
   brain: { recipe?: string; local_model?: string; local_provider?: string; cloud?: string[];
-           cloud_models?: Record<string, string>; summary?: string };
+           cloud_models?: Record<string, string | string[]>; summary?: string };
   hardware: { os?: string; ram_gb?: number; gpu?: string; vram_gb?: number; free_gb?: number };
   telegram: { token: boolean; owner: boolean; linked: boolean; code_active: boolean };
   backup: { passphrase: boolean };
@@ -35,16 +35,18 @@ export interface BrainCatalog {
 /** A speech service of the setup «Voce» (Echo's blocks): local engines first, then cloud ones (key needed). */
 export interface VoiceOption { id: string; label: string; note?: string; }
 export interface VoiceProvider { name: string; label: string; type: string; local: boolean; needs_key: boolean; key: boolean;
-  state: string; models: VoiceOption[]; voices: VoiceOption[]; }
+  state: string; models: VoiceOption[]; voices: VoiceOption[]; note?: string; }
 export interface VoiceStep { provider: string; model: string; voice: string; }
-export interface VoiceCatalog { ascolto: { providers: VoiceProvider[]; current: VoiceStep }; voce: { providers: VoiceProvider[]; current: VoiceStep }; }
+/** Per direction: the services, the first step now and the whole chain in order. */
+export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep; steps?: VoiceStep[]; }
+export interface VoiceCatalog { ascolto: VoiceDirection; voce: VoiceDirection; }
 export interface Download { module?: string; id: string; what: string; source?: string;
   state: 'in_coda' | 'in_corso' | 'in_pausa' | 'fatto' | 'errore'; size: number; done: number;
   speed?: number; eta_s?: number | null; error?: string; }
 export interface Outcome { ok: boolean; detail?: string; }
 /** «Prova»: the model tried ('' = pick another) and the chat models the service really has. */
-export interface TestOutcome extends Outcome { model?: string; models?: string[]; }
-export interface BrainChoice { local_provider: string; cloud_models: Record<string, string>; embedding: { provider: string; model: string } | null; }
+export interface TestOutcome extends Outcome { model?: string; models?: string[]; recommended?: string[]; }
+export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>; embedding: { provider: string; model: string } | null; }
 export interface TunnelState { on: boolean; url: string; detail?: string; phase?: '' | 'start' | 'download' | 'address' | 'ready' | 'error'; }
 
 @Injectable({ providedIn: 'root' })
@@ -66,8 +68,11 @@ export class SetupApi {
   }
   /** Setup «Voce»: the speech services (Echo), «Prova» (a typed key is saved first), the choice → Echo's chains. */
   voiceCatalog() { return this.get<VoiceCatalog>('voice/catalog'); }
-  voiceTest(provider: string, key = '') { return this.post<Outcome & { models?: VoiceOption[]; voices?: VoiceOption[] }>('voice/test', { provider, key }); }
-  voiceApply(listen: VoiceStep | null, speak: VoiceStep | null) { return this.post<Outcome & { queued?: string[] }>('voice/apply', { listen: listen || {}, speak: speak || {} }); }
+  voiceTest(provider: string, key = '') {
+    return this.post<Outcome & { models?: VoiceOption[]; voices?: VoiceOption[]; recommended?: Record<string, string[]> }>('voice/test', { provider, key });
+  }
+  /** Per direction the steps in order: the local engine, then the cloud services as fallbacks. */
+  voiceApply(listen: VoiceStep[], speak: VoiceStep[]) { return this.post<Outcome & { queued?: string[] }>('voice/apply', { listen, speak }); }
   /** Echo's local voice models (through the WebUI voice door, not Hephaestus). */
   prefetchVoice() { return firstValueFrom(this.http.post<{ queued: string[] }>('/api/webui/voice/models/prefetch', {})); }
   pulls() { return this.get<{ downloads: Download[] }>('brain/pulls').then(r => r.downloads || []); }

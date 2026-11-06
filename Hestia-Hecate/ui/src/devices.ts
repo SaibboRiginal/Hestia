@@ -1,6 +1,7 @@
 /**
- * <hecate-devices> — «Dispositivi»: Garmin (connected or not, «Collega» sends the secret form so the password never
- * passes through the assistant, «Leggi adesso», «Scollega», last reading and error) and the Android phone as a
+ * <hecate-devices> — «Dispositivi»: Garmin (connected or not; «Collega Garmin» opens the form right in the card:
+ * email and password go straight to the login and are never stored, then the two-step code in the same card, so no
+ * notification to chase and the password never passes through the assistant, «Leggi adesso», «Scollega», last reading and error) and the Android phone as a
  * sensor (configured or not, last state at home / charging / battery, home Wi-Fi names and apps passed on, how to
  * set it up). Calls /api/gateway/garmin/* and /api/gateway/phone/status. Dossier 2026-10-24-tutto-brainstorm-cindy
  * B10 + Cindy 32 (W4) + W7.
@@ -17,8 +18,11 @@ function when(iso?: string | null): string {
 
 export class HecateDevices extends HestiaElement {
   static properties = { ...HestiaElement.properties, garmin: { state: true }, phone: { state: true },
-                        error: { state: true }, busy: { state: true } };
+                        error: { state: true }, busy: { state: true }, form: { state: true }, formError: { state: true } };
   declare garmin: any; declare phone: any; declare error: string; declare busy: string;
+  /** The Garmin form in the card: '' closed, 'login' email + password, 'code' the two-step code. */
+  declare form: '' | 'login' | 'code'; declare formError: string;
+  private email = ''; private password = ''; private code = '';
 
   static styles = [...HestiaElement.styles, css`
     .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -28,10 +32,11 @@ export class HecateDevices extends HestiaElement {
     dt { color: var(--text-3); }
     dd { margin: 0; overflow-wrap: anywhere; }
     code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-2); padding: 1px 4px; border-radius: var(--radius-sm); }
+    .form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     ol { margin: 6px 0 0 18px; padding: 0; font-size: 13px; color: var(--text-2); }
   `];
 
-  constructor() { super(); this.garmin = null; this.phone = null; this.error = ''; this.busy = ''; }
+  constructor() { super(); this.garmin = null; this.phone = null; this.error = ''; this.busy = ''; this.form = ''; this.formError = ''; }
 
   connectedCallback() {
     super.connectedCallback();
@@ -57,6 +62,38 @@ export class HecateDevices extends HestiaElement {
     this.load();
   }
 
+  /** Email + password, or the code: straight to Hecate's login (``direct``: the code is asked here, not by a notification). */
+  private async login() {
+    const values = this.form === 'code' ? { code: this.code.trim() } : { email: this.email.trim(), password: this.password };
+    this.busy = 'login';
+    this.formError = '';
+    const r = await this.host.api('POST', `${API}/garmin/login`, { body: { direct: true, values } });
+    this.busy = '';
+    this.password = '';
+    if (!r.ok) { this.formError = r.data?.detail || r.error || 'Garmin non ha accettato l\'accesso, riprova'; return; }
+    if (r.data?.status === 'needs_code') { this.form = 'code'; this.code = ''; return; }
+    this.form = '';
+    this.email = '';
+    this.host.toast(r.data?.message || 'Garmin collegato', 'success');
+    this.load();
+  }
+
+  private garminForm() {
+    const code = this.form === 'code';
+    return html`<div class="form">
+      ${code ? html`<div class="small">Garmin ti ha mandato un codice (mail o SMS): scrivilo qui.</div>
+        <hxk-field label="Codice di Garmin" placeholder="123456" .value=${this.code} @change=${(e: CustomEvent) => { this.code = String(e.detail); }}></hxk-field>`
+      : html`<hxk-field label="Email di Garmin Connect" type="email" .value=${this.email} @change=${(e: CustomEvent) => { this.email = String(e.detail); }}></hxk-field>
+        <hxk-field label="Password" type="password" .value=${this.password} @change=${(e: CustomEvent) => { this.password = String(e.detail); }}></hxk-field>
+        <div class="small muted">Le uso una volta sola per collegare l'orologio e non le salvo: resta solo l'accesso che dà Garmin.</div>`}
+      ${this.formError ? html`<div class="small" style="color:var(--danger)">${this.formError}</div>` : nothing}
+      <div class="row wrap">
+        <hxk-button variant="primary" icon="link" ?loading=${this.busy === 'login'} @click=${() => this.login()}>${code ? 'Conferma' : 'Collega'}</hxk-button>
+        <hxk-button variant="ghost" @click=${() => { this.form = ''; this.formError = ''; this.password = ''; }}>Annulla</hxk-button>
+      </div>
+    </div>`;
+  }
+
   private async forget() {
     if (!(await this.host.confirm('Scollegare Garmin?', 'Non leggerò più sonno e attività. Per ricollegarlo servirà di nuovo l\'accesso.', { label: 'Scollega', danger: true }))) return;
     this.run('forget', 'DELETE', '/garmin', 'Garmin scollegato');
@@ -78,10 +115,10 @@ export class HecateDevices extends HestiaElement {
         ${g.connected ? html`
           <hxk-button icon="refresh" ?loading=${this.busy === 'sync'} @click=${() => this.run('sync', 'POST', '/garmin/sync', 'Letto', { days: 2 })}>Leggi adesso</hxk-button>
           ${g.tokens ? html`<hxk-button variant="ghost" icon="trash" ?loading=${this.busy === 'forget'} @click=${() => this.forget()}>Scollega</hxk-button>` : nothing}`
-        : html`<hxk-button variant="primary" icon="link" ?loading=${this.busy === 'connect'} @click=${() => this.run('connect', 'POST', '/garmin/connect', 'Ti ho mandato il modulo')}>Collega Garmin</hxk-button>`}
+        : this.form ? nothing
+        : html`<hxk-button variant="primary" icon="link" @click=${() => { this.form = g.waiting_code ? 'code' : 'login'; }}>${g.waiting_code ? 'Scrivi il codice' : 'Collega Garmin'}</hxk-button>`}
       </div>
-      ${g.connected ? nothing : html`<div class="small muted" style="margin-top:8px">Ti arriva un modulo tra le notifiche: email e password vanno
-        direttamente al collegamento e non vengono salvate (resta solo l'accesso di Garmin).</div>`}
+      ${!g.connected && this.form ? this.garminForm() : nothing}
     </hxk-card>`;
   }
 

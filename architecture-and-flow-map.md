@@ -336,8 +336,10 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    (a found program becomes a block) and `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads only).
 2b. Voice: Hephaestus → Hub → Echo `/api/voice/setup/catalog` (Echo's blocks per direction ascolto/voce); a key →
    Hephaestus writes `ECHO_KEY_<NAME>` into `Hestia-Echo/app/.env`, re-creates `hestia_echo`, waits for health → Echo
-   `setup/test` (the service's voice/model list, no audio) → `setup/apply` → Themis `echo.chains` (chosen step first,
-   others kept) → Echo queues the local models (download source `http`/`whisper`).
+   `setup/test` (the service's voice/model list, no audio; `recommended` preselected) → `setup/apply` with the steps
+   in order per direction (one local engine, then cloud services) → Themis `echo.chains` (those first, others kept) →
+   Echo queues the local models (download source `http`/`whisper`). The brain's cloud services work the same way:
+   Oracle `setup/test` returns `recommended`, `setup/apply` takes `cloud_models {service: [models]}` in order.
 3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
    bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
 4. Backup passphrase → root `.env` → `hestia_archive` re-created.

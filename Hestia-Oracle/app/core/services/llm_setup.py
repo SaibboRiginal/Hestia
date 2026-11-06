@@ -266,8 +266,31 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
         chosen = _pick_model(provider, model, models)
         logger.info("event=llm_setup_test_ok provider=%s models=%s via=list", provider, len(models))
         return {"ok": True, "detail": f"La chiave funziona: {len(models)} modelli disponibili.", "model": chosen,
-                "models": models}
+                "models": models, "recommended": recommended(provider, models)}
     return _tiny_call(provider, model or _default_model(provider))
+
+
+# Names that are not for chatting (speech, pictures, live audio…): never preselected.
+_NOT_CHAT = ("tts", "image", "audio", "live", "native", "embed", "aqa", "imagen", "veo", "computer-use", "robotics")
+
+
+def recommended(provider: str, listed: list[str], limit: int = 2) -> list[str]:
+    """The models preselected for a service once its key works, in order (the first answers, the next ones take over
+    when it fails or its quota ends): Hestia's default models that the service still lists, then the cheapest-looking
+    chat models it lists. The user may change them; nothing is asked when the key is right."""
+    from core.services import llm_chains, llm_providers
+    chat = [m for m in listed if not _is_embedding(m) and not any(w in m.lower() for w in _NOT_CHAT)]
+    out: list[str] = []
+    for chain in llm_chains.DEFAULT_CHAINS.values():
+        for step in chain["steps"]:
+            if step["provider"] == provider and step["model"] in chat and step["model"] not in out:
+                out.append(step["model"])
+    if llm_providers.type_of(provider) == "gemini":
+        stable = [m for m in chat if "preview" not in m and "exp" not in m]
+        for word in ("flash-lite", "flash"):
+            out += [m for m in stable if word in m and m not in out][:1]
+    out += [m for m in chat if m not in out]
+    return out[:limit]
 
 
 def _tiny_call(provider: str, model: str) -> dict[str, Any]:
@@ -308,21 +331,22 @@ def _default_model(provider: str) -> str:
 # ── Applica la scelta ───────────────────────────────────────────────────────
 
 def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[str, dict],
-                local_provider: str = "ollama", cloud_models: dict[str, str] | None = None,
+                local_provider: str = "ollama", cloud_models: dict[str, list[str] | str] | None = None,
                 embedding: dict[str, str] | None = None) -> dict[str, dict]:
     """New ``oracle.chains`` for a recipe. Pure function (tests): local steps use ``local_provider``/``local_model``;
-    each chosen cloud service uses the model picked for it (``cloud_models``), or its default models; the embedding
+    each chosen cloud service uses the models picked for it in order (``cloud_models``, one or more: the next one takes
+    over when the first fails), or its default models; the embedding
     chain changes only when ``embedding`` names another model; chains the setup does not know stay."""
     from core.services import llm_chains, llm_providers
     out = {name: dict(chain) for name, chain in current.items()}
     cloud = [c for c in cloud if c]
-    picked = {k: v for k, v in (cloud_models or {}).items() if v}
+    picked = _as_lists(cloud_models)
 
     def cloud_steps_of(default_steps: list[dict]) -> list[dict]:
         steps: list[dict] = []
         for provider in cloud:
             if provider in picked:
-                steps.append({"provider": provider, "model": picked[provider]})
+                steps.extend({"provider": provider, "model": m} for m in picked[provider])
                 continue
             own = [dict(s) for s in default_steps if s["provider"] == provider]
             if not own:   # a chosen provider the default chain does not list: its first default model
@@ -356,6 +380,17 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
     return out
 
 
+def _as_lists(cloud_models: dict | None) -> dict[str, list[str]]:
+    """``{service: [models]}`` from the setup's choice (a single name is still accepted)."""
+    out: dict[str, list[str]] = {}
+    for k, v in (cloud_models or {}).items():
+        models = [v] if isinstance(v, str) else list(v or [])
+        models = [str(m) for m in models if m]
+        if models:
+            out[k] = list(dict.fromkeys(models))
+    return out
+
+
 def summary(chains: dict[str, dict]) -> str:
     """One sentence: who answers first, and who if not («Ti risponde X sul tuo computer; se non c'è, Y.»)."""
     from core.services import llm_providers
@@ -372,26 +407,27 @@ def summary(chains: dict[str, dict]) -> str:
     return text + "."
 
 
-def _live_models(cloud: list[str], picked: dict[str, str]) -> dict[str, str]:
+def _live_models(cloud: list[str], picked: dict[str, list[str]]) -> dict[str, list[str]]:
     """For each chosen service without a picked model whose default models it no longer lists (a retired alias),
     a model it does list: the chains never start with a name that answers «not found»."""
     from core.services import llm_chains, llm_providers
-    out: dict[str, str] = {}
+    out: dict[str, list[str]] = {}
     for provider in cloud:
         if picked.get(provider) or llm_providers.type_of(provider) == "claude_cli":
             continue
         listed = llm_providers.list_models(provider)
         defaults = {s["model"] for c in llm_chains.DEFAULT_CHAINS.values() for s in c["steps"] if s["provider"] == provider}
         if listed and defaults and not defaults <= set(listed):
-            model = _pick_model(provider, "", listed)
-            if model:
-                out[provider] = model
+            models = recommended(provider, listed)
+            if models:
+                out[provider] = models
+                model = models[0]
                 logger.info("[🔄] event=llm_setup_default_model_gone provider=%s using=%s", provider, model)
     return out
 
 
 def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, local_provider: str = "ollama",
-          cloud_models: dict[str, str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
+          cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
     from core.services import llm_chains, oracle_settings
     if recipe not in RECIPES:
         return {"ok": False, "detail": "Scelta non valida."}
@@ -400,7 +436,8 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
         return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
     if (embedding or {}).get("model") and not ensure_runtime((embedding or {}).get("provider") or "ollama"):
         return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
-    cloud_models = {**_live_models(list(cloud or []), cloud_models or {}), **{k: v for k, v in (cloud_models or {}).items() if v}}
+    chosen = _as_lists(cloud_models)
+    cloud_models = {**_live_models(list(cloud or []), chosen), **chosen}
     chains = plan_chains(recipe, local_model if recipe != "cloud" else "", list(cloud or []), llm_chains.chains(),
                          local_provider=local_provider, cloud_models=cloud_models, embedding=embedding)
     if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason="Setup guidato"):

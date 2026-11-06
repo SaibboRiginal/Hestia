@@ -88,7 +88,7 @@ Adding a new data source = implementing this interface and registering the conne
 | `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
 | `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, env_credentials, waiting_code, last_sync, last_error}` |
 | `POST` | `/api/gateway/garmin/connect` | «Collega Garmin»: Hermes secret form (email + password) to the owner |
-| `POST` | `/api/gateway/garmin/login` | Target of the secret form `{values: {email, password} \| {code}}` → `connected \| needs_code` (second form) |
+| `POST` | `/api/gateway/garmin/login` | Target of the secret form and of the Dispositivi form `{direct?, values: {email, password} \| {code}}` → `connected \| needs_code` (second form, or with `direct` the code asked in the page) |
 | `DELETE` | `/api/gateway/garmin` | Forget Garmin (delete the tokens) |
 | `GET` | `/api/gateway/garmin/day?day=` | One normalised day (sleep, steps, resting HR, body battery, HRV, readiness, stress, activities) |
 | `POST` | `/api/gateway/garmin/sync` | `{days}` (default 2) → feed `wearable.daily` per day (agenda job `hecate.garmin.sync`, daily 09:30) |
@@ -306,9 +306,10 @@ Hub. Kinds: `wearable.daily` (Hercules: activities + morning check-in; Hygieia: 
 (Plutus: bank app notifications → transactions to review), `phone.state`. The first push after a restart always
 reads the Hub registry (an empty cache is never taken as fresh, regression test in `tests/test_devices.py`).
 
-- **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» (tool `garmin_collega`) sends a Hermes secret form;
-  the password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`; a two-step code comes with a
-  second form. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
+- **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» in the Dispositivi page opens the form right in the
+  card (email, password, then the two-step code there too: `POST /api/gateway/garmin/login {direct: true, values}`),
+  so there is no notification to chase; from Telegram or the assistant (tool `garmin_collega`) a Hermes secret form
+  is sent instead. The password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
   signal `wearable.woke_at`. A missing part (e.g. HRV on an older watch) is skipped, the day stays.
 - **Phone** (Cindy 32): Tasker / MacroDroid POST `https://<tunnel>/api/gateway/phone/push` with header
   `X-Hestia-Phone-Token: <HECATE_PHONE_TOKEN>`. On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
@@ -319,7 +320,7 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
 - Tools (Telegram + WebUI, section «Dispositivi»): `garmin_stato`, `garmin_collega`, `garmin_sincronizza`,
   `garmin_giorno`, `garmin_scollega`, `telefono_stato`. Tests: `tests/test_devices.py`.
 - WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `dispositivi` →
-  `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (sends the secret form), «Leggi adesso», «Scollega»,
+  `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (form in the card, code included), «Leggi adesso», «Scollega»,
   last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built
   by the Dockerfile Node stage into `/ui/dist/webui/hecate.js` (`HECATE_UI_DIST`, outside `/code`); `ui_manifest` /
   `ui_version` in the Hub registration.

@@ -149,7 +149,7 @@ class SetupService:
 
     def apply_brain(self, recipe: str, local_model: str, cloud: list[str], keys: dict[str, str],
                     claude_token: str = "", local_provider: str = "ollama",
-                    cloud_models: dict[str, str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
+                    cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
         values = {f"ORACLE_KEY_{name.upper().replace('-', '_')}": key for name, key in keys.items() if key}
         if claude_token:
             values["CLAUDE_CODE_OAUTH_TOKEN"] = claude_token
