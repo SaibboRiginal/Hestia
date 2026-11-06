@@ -10,4 +10,5 @@
 - [x] F5 Hermes option `hermes.notifiche.stile` (SPEC v1.2)
 - [x] Tests (Oracle 659, Metis 61, Telegram 149, Hermes 91), docs, swagger
 - [x] Root CHANGELOG
-- [ ] precheck, PR, merge
+- [x] precheck (reaction emoji list exempted from the icon gate as chat content)
+- [ ] PR, merge

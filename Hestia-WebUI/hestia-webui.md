@@ -200,7 +200,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - **Reactions** (dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame shows Hestia's emoji on the
   owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
   six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =
-  taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons.
+  taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons; the list lives in `features/chat/reaction-emoji.ts`, the one file the icon gate (`check_icons.py`) exempts.
 - Hub registration declares `voice_usecases` (`webui.vocale`, `webui.ascolta`, `webui.live.ascolto`, `webui.live.voce`).
 - Icons `frown`, `meh`, `laugh` (with `smile`: the five mood faces of «Umore», 2026-10-30) in the shared icon set
   (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.

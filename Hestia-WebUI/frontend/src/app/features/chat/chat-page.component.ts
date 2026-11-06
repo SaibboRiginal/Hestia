@@ -21,6 +21,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
 import { PresenceService } from '../../services/presence.service';
 import { MicRecorder, VoiceService } from '../../services/voice.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
+import { REACTION_EMOJI } from './reaction-emoji';
 
 const LIVE_LABELS: Record<string, string> = {
   starting: 'Accendo il microfono…', listening: 'Ti ascolto', hearing: 'Ti sento…', thinking: 'Ci penso…', speaking: 'Sto parlando',
@@ -328,7 +329,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   mode = signal('auto');   // hx-chat-mode: this conversation's mode (Themis), sent with every message
   rated = signal<Record<string, 'good' | 'bad'>>({});
   /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-hestia-viva F4). */
-  readonly reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  readonly reactions = REACTION_EMOJI;
   picker = signal<string | null>(null);
 
   react(m: ChatMessage, emoji: string): void {

@@ -4,6 +4,8 @@
 2. WebUI code and module plugin code draw no emoji or pictographs (comments are ignored).
    Telegram is not checked here: it has no icons; its rule (one area emoji, tone dots, no emoji in tool titles)
    is checked by ``check_telegram.py``.
+   Exempt: ``CHAT_CONTENT`` (the chat's emoji reactions are chat content, real emoji like any chat app; Marko
+   2026-11-06, docs/work/2026-11-06-hestia-viva F4).
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ SUFFIXES = {".ts", ".html", ".scss", ".css"}
 GLYPH = re.compile("[\U0001F300-\U0001FAFF☀-➿⭐⭕⏩-⏺⌚⌛™ℹ️]")
 COMMENT = re.compile(r"^\s*(//|\*|/\*)")
 DUPLICATES: list[str] = []
+CHAT_CONTENT = {ROOT / "Hestia-WebUI/frontend/src/app/features/chat/reaction-emoji.ts"}
 
 
 def icon_set(path: Path) -> dict[str, str]:
@@ -43,7 +46,8 @@ def main() -> int:
             errors.append(f"icon '{name}' differs between hx-icon and hxk-icon (add it to both, same path)")
     for base in CLIENT_DIRS:
         for path in sorted(base.rglob("*")):
-            if path.suffix not in SUFFIXES or "node_modules" in path.parts or not path.is_file():
+            if path.suffix not in SUFFIXES or "node_modules" in path.parts or not path.is_file() \
+                    or path in CHAT_CONTENT:
                 continue
             for no, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
                 if COMMENT.match(line):
