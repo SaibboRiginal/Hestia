@@ -15,7 +15,7 @@
 [CmdletBinding()]
 param(
     [string]$Dir = (Join-Path $env:USERPROFILE 'Hestia'),
-    [ValidateSet('stabile', 'novita')][string]$Channel = 'stabile',
+    [string]$Channel = 'stabile',      # stabile | novita (checked below: no ValidateSet, see the note after param)
     [switch]$Update,
     [switch]$Repair,
     [switch]$Uninstall,
@@ -23,10 +23,16 @@ param(
     [switch]$DryRun,
     [switch]$NoBrowser,
     [switch]$Resume,
-    [ValidateSet('tutto', 'centrale', 'satellite')][string]$Role,
+    [string]$Role = '',                # tutto | centrale | satellite | empty = keep / tutto
     [string]$Join = '',
     [string]$Central = ''
 )
+
+# No [ValidateSet] in param: with `irm | iex` the block runs as plain statements and an attribute on a variable
+# without a value (Role) fails at once ("potrebbe rendere non valida la variabile Role"). Checked here instead.
+if ($env:HESTIA_INSTALL_DRY_RUN -eq '1') { $DryRun = [switch]$true; $NoBrowser = [switch]$true }   # CI: iex has no arguments
+if (@('stabile', 'novita') -notcontains $Channel) { Write-Host "Canale sconosciuto: $Channel. Usa stabile o novita."; return }
+if ($Role -and @('tutto', 'centrale', 'satellite') -notcontains $Role) { Write-Host "Ruolo sconosciuto: $Role. Usa tutto, centrale o satellite."; return }
 
 # Continue, not Stop: on Windows PowerShell 5.1 any stderr line of a native program (docker, git, winget) would
 # otherwise become a terminating error. Native calls are checked by exit code; cmdlets that must stop say -ErrorAction Stop.

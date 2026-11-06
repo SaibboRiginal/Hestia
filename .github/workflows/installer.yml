@@ -89,6 +89,17 @@ jobs:
           if ($text -notmatch 'Hestia') { exit 1 }
           if ($text -match 'ParseException|CommandNotFoundException|RuntimeException') { exit 1 }
           exit 0
+      - name: Dry run as downloaded text (irm | iex, no arguments)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $cmd = "`$env:HESTIA_INSTALL_DRY_RUN='1'; Get-Content -Raw .\install.ps1 | Invoke-Expression"
+          $out = & powershell -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1
+          $out | ForEach-Object { Write-Host $_ }
+          $text = $out -join "`n"
+          if ($text -notmatch 'Installo Hestia') { exit 1 }
+          if ($text -match 'ValidationMetadataException|ParseException|CommandNotFoundException') { exit 1 }
+          exit 0
       - name: Launcher is CRLF
         shell: bash
         run: |
