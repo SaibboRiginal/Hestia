@@ -6,25 +6,38 @@ import { firstValueFrom } from 'rxjs';
 export interface SetupState {
   completed: boolean;
   later: string[];
-  brain: { recipe?: string; local_model?: string; cloud?: string[]; summary?: string };
+  brain: { recipe?: string; local_model?: string; local_provider?: string; cloud?: string[];
+           cloud_models?: Record<string, string>; summary?: string };
   hardware: { os?: string; ram_gb?: number; gpu?: string; vram_gb?: number; free_gb?: number };
   telegram: { token: boolean; owner: boolean; linked: boolean; code_active: boolean };
   backup: { passphrase: boolean };
   claude: { token: boolean };
 }
 export interface CatalogModel { model: string; size_gb: number; good: string; }
-/** A chat model already in Ollama on this computer. */
+/** A chat model a program on this computer already has (size 0 = the program does not say). */
 export interface LocalModel { model: string; size_gb: number; params: string; quant: string; fits: boolean; }
+/** A program for local models (Ollama, LM Studio, Jan, llama.cpp, vLLM): found on its usual port or not. */
+export interface Runtime { name: string; label: string; url: string; site: string; found: boolean; configured: boolean;
+  models: LocalModel[]; embed: string[]; }
 export interface CloudProvider { name: string; label: string; type: string; key_set: boolean; available: boolean; }
 export interface BrainCatalog {
   recommended: { tier: string; label: string; chat: CatalogModel[]; model: string; embedding: CatalogModel; recipe: string };
   installed: string[];
   local?: LocalModel[];
+  runtimes?: Runtime[];
+  /** The memory's model now (one step: changing it re-indexes the memory). */
+  embedding?: { provider: string; model: string };
   ollama: boolean;
   cloud: CloudProvider[];
 }
-export interface Download { id: string; what: string; state: 'in_coda' | 'in_corso' | 'fatto' | 'errore'; size: number; done: number; error?: string; }
+/** Any module's download (models through Ollama, voices in Hestia's data folder), as the Download page lists them. */
+export interface Download { module?: string; id: string; what: string; source?: string;
+  state: 'in_coda' | 'in_corso' | 'in_pausa' | 'fatto' | 'errore'; size: number; done: number;
+  speed?: number; eta_s?: number | null; error?: string; }
 export interface Outcome { ok: boolean; detail?: string; }
+/** «Prova»: the model tried ('' = pick another) and the chat models the service really has. */
+export interface TestOutcome extends Outcome { model?: string; models?: string[]; }
+export interface BrainChoice { local_provider: string; cloud_models: Record<string, string>; embedding: { provider: string; model: string } | null; }
 export interface TunnelState { on: boolean; url: string; detail?: string; }
 
 @Injectable({ providedIn: 'root' })
@@ -39,13 +52,18 @@ export class SetupApi {
   later(step: string) { return this.post<SetupState>('later', { step }); }
   complete() { return this.post<SetupState>('complete'); }
   catalog() { return this.get<BrainCatalog>('brain/catalog'); }
-  test(provider: string, key = '', model = '') { return this.post<Outcome>('brain/test', { provider, key, model }); }
-  apply(recipe: string, local_model: string, cloud: string[], claude_token = '') {
-    return this.post<Outcome>('brain/apply', { recipe, local_model, cloud, claude_token });
+  test(provider: string, key = '', model = '') { return this.post<TestOutcome>('brain/test', { provider, key, model }); }
+  apply(recipe: string, local_model: string, cloud: string[], claude_token: string, choice: BrainChoice) {
+    return this.post<Outcome>('brain/apply', { recipe, local_model, cloud, claude_token, local_provider: choice.local_provider,
+      cloud_models: choice.cloud_models, embedding: choice.embedding || {} });
   }
   /** Echo's local voice models (through the WebUI voice door, not Hephaestus). */
   prefetchVoice() { return firstValueFrom(this.http.post<{ queued: string[] }>('/api/webui/voice/models/prefetch', {})); }
   pulls() { return this.get<{ downloads: Download[] }>('brain/pulls').then(r => r.downloads || []); }
+  /** Every download of every module (models and voices): the same list as the Download page. */
+  allDownloads() {
+    return firstValueFrom(this.http.get<{ downloads: Download[] }>('/api/webui/downloads')).then(r => r.downloads || []);
+  }
   telegramToken(token: string) { return this.post<Outcome & { code?: string; expires_in?: number }>('telegram/token', { token }); }
   telegramCode() { return this.post<{ code: string; expires_in: number }>('telegram/code'); }
   backup(passphrase: string) { return this.post<Outcome>('backup', { passphrase }); }

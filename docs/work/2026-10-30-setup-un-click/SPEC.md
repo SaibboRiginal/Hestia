@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.10 |
+| **Version** | 2.11 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -153,19 +153,25 @@ answer makes them needed**, not at the end.
    - **Ricetta** (one big choice, preselected by hardware): «Sul tuo computer» (local only) · «Nel cloud» · «Tutti e
      due» (local first, cloud when the local one is busy/off; default with a GPU ≥ 8 GB) · «Abbonamento Claude»
      (Claude Pro/Max via `claude setup-token`, optional brain mode esterna).
-   - **Local**: a small catalog in Oracle (`core/services/setup_catalog.py`, data not code paths) of recommended
-     models per tier (VRAM/RAM: CPU-only, 8 GB, 12 GB, 16 GB, 24 GB+) for chat, reasoning, vision and embedding, each
-     with size and what it is good for; one is preselected, «Scarica» starts the Ollama pull (or the `.gguf` from
-     Hugging Face for llama-server) in Download right away. Models already in Ollama are shown as «già presente».
-   - **Cloud**: one card per provider (Gemini — free key, link to Google AI Studio; DeepSeek; Claude API; any
-     OpenAI-compatible address), paste the key, «Prova» makes one real tiny call and says «funziona» or the reason
-     in plain words. Keys go to `Hestia-Oracle/app/.env` as `ORACLE_KEY_<NAME>` through the Hephaestus setup
-     endpoint, then Oracle restarts.
+   - **Local** (v2.11): the models come from the programs on the PC, never from a list of Hestia's: Oracle asks the
+     usual port of Ollama (11434), LM Studio (1234), Jan (1337), llama.cpp (8080) and vLLM (8000) on the host and
+     shows, program by program, the models each has (Ollama also says size and quantization: a warning only on
+     those bigger than the video card; they can still be chosen). A program picked for the first time becomes a
+     provider block (`openai` type, its address), so in Modelli every program is a block with its own models and
+     any of them can go in a chain. Nothing found: links to install Ollama (Hestia then downloads the model by
+     itself) or LM Studio, «Cerca di nuovo». A small suggested list per tier stays only for an empty Ollama.
+     «Avanzate»: the memory's (embedding) model, from the embedding models the programs have.
+   - **Cloud**: one card per provider (Gemini — free key, link to Google AI Studio; DeepSeek; Claude API; Claude
+     subscription), configured inside its own card: paste the key, «Prova» makes one real tiny call with a model the
+     service really lists and says «funziona» or the reason in plain words, then the model is picked from the
+     service's own list (Gemini `models.list`). A model that disappeared never blocks: the key still counts as
+     working and the user picks another; on apply a retired default is replaced by a listed one. Keys go to
+     `Hestia-Oracle/app/.env` as `ORACLE_KEY_<NAME>` through the Hephaestus setup endpoint, then Oracle restarts.
    - **Result**: the setup writes `oracle.providers`, `oracle.chains` (veloce, potente, codice, visione, embedding
      with the steps in the chosen order) and `oracle.usecases`, and shows it in one sentence: «Ti risponde Qwen sul
      tuo PC; se non c'è, Gemini Flash.» A last «Prova il cervello» sends one real chat message.
-   - Embedding: always one model (vectors must stay comparable): local if Ollama is there, else the cloud one; the
-     setup warns that changing it later re-indexes the memory.
+   - Embedding: always one model (vectors must stay comparable), changed only from «Avanzate»; the setup warns that
+     changing it re-indexes the memory.
    Choices become Themis values (the user is the one choosing, so no extra confirmation).
 5. **Voce** (optional): language and voice; the Echo models (Hugging Face) go in the download list.
 6. **Telegram**: paste the BotFather token, «Prova» checks it; then the screen shows a one-time code «scrivi questo

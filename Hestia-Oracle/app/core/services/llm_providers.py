@@ -159,13 +159,62 @@ def public_view(check: bool = False) -> list[dict[str, Any]]:
     return out
 
 
-# Curated Gemini choices (free text is accepted too).
+# Used only when Google's model list cannot be read (no key yet, network down); free text is accepted too.
 GEMINI_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest", "gemini-2.5-flash",
                  "gemini-2.5-pro", "gemini-embedding-001"]
 
+_LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1", "host.docker.internal", "host-gateway")
+
+
+def is_local(name: str) -> bool:
+    """True for a provider that runs on the user's machines (Ollama, llama-server, LM Studio, Jan… on this PC or the
+    home network), False for a cloud service. Decided by type, then by address: an OpenAI-compatible block on
+    ``localhost:1234`` is local, the same type on ``api.deepseek.com`` is cloud."""
+    import ipaddress
+    from urllib.parse import urlsplit
+    prov = get(name)
+    if not prov:
+        return False
+    if prov["type"] in ("ollama", "llamacpp"):
+        return True
+    if prov["type"] != "openai":
+        return False
+    host = (urlsplit(url(name)).hostname or "").lower()
+    if not host:
+        return False
+    if host in _LOCAL_HOSTS or host.startswith("hestia_") or host.endswith(".local") or "." not in host:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_private
+    except ValueError:
+        return False
+
+
+def _gemini_models(name: str) -> list[str]:
+    """Google's own list for this key (``models.list``): only models that can chat (``generateContent``) or embed,
+    so a retired alias never shows up. Curated list when it cannot be read."""
+    import requests
+    key = api_key(name)
+    if not key:
+        return list(GEMINI_MODELS)
+    try:
+        resp = requests.get(f"{url(name).rstrip('/')}/v1beta/models", params={"key": key, "pageSize": 1000}, timeout=8)
+        resp.raise_for_status()
+        out = []
+        for m in (resp.json() or {}).get("models") or []:
+            methods = m.get("supportedGenerationMethods") or []
+            model = str(m.get("name") or "").removeprefix("models/")
+            if model and ("generateContent" in methods or "embedContent" in methods):
+                out.append(model)
+        return out or list(GEMINI_MODELS)
+    except Exception as exc:
+        logger.warning("[🔄] event=llm_list_models_failed provider=%s error=%s fallback=curated", name, str(exc)[:160])
+        return list(GEMINI_MODELS)
+
 
 def list_models(name: str) -> list[str]:
-    """Model names of a provider (Ollama: installed models; others: their API or a curated list)."""
+    """Model names of a provider, from the provider itself (Ollama: installed models; Gemini, OpenAI-compatible servers
+    such as LM Studio, Jan, vLLM, DeepSeek: their ``models`` API; Claude: its CLI/API list)."""
     import requests
     ptype = type_of(name)
     if ptype == "ollama":
@@ -177,7 +226,7 @@ def list_models(name: str) -> list[str]:
             logger.warning("[🔄] event=llm_list_models_failed provider=%s error=%s", name, exc)
             return []
     if ptype == "gemini":
-        return list(GEMINI_MODELS)
+        return _gemini_models(name)
     if ptype:
         from agents.providers import get_provider
         try:

@@ -504,11 +504,18 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
 
 `/benvenuto` (`features/setup/`) is a full-screen page outside the shell (it scrolls by itself): one question per screen (where the brain
-thinks: two boxes, «Il tuo computer» and «Cloud» → local model → cloud services, one or more in the order they are
-tried, each with its key and «Prova», the Claude subscription as one of them with its `claude setup-token` code → result and downloads → voice (queues Echo's local models) →
-Telegram token and one-time code →
-backup passphrase → calendar, mail and devices → summary), recommended answer preselected, «Più tardi» on the
-optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
+thinks: two boxes, «Il tuo computer» and «Cloud» → local model, grouped by the programs found on the PC (Ollama, LM
+Studio, Jan, llama.cpp, vLLM) with the models each really has, a warning on those bigger than the video card, links
+to install Ollama or LM Studio when none is found, «Cerca di nuovo», and «Avanzate» → the memory's (embedding) model
+→ cloud services, one or more in the order they are tried («Prima di …» to reorder), each configured inside its own
+card: key, «Prova», and the model picked from the service's own list; the Claude subscription as one of them with its
+`claude setup-token` code → result and downloads → voice (queues Echo's local models) → Telegram token and one-time
+code → backup passphrase → calendar, mail and devices (the Devices page opens in another tab) → outside home (what
+turning it on does, the two steps while it starts, «Provalo», a warning with «Riprova» when no address comes in 90 s)
+→ summary). Downloads of every module (models through Ollama, voices in Hestia's data folder) show with progress and
+time left on the result, voice and summary screens (`/api/webui/downloads`). A «Riepilogo» beside the card (folded
+above it on a phone) lists every screen with its answer; a row jumps back to that screen. Recommended answer
+preselected, «Più tardi» on the optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
 the setup is not completed (Hestia not answering → straight in); the Home shows a «Da finire» card for the steps left
 for later. Backend: `SetupController` forwards only the screens' paths of `/api/webui/setup/*` to Hephaestus
 `/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home

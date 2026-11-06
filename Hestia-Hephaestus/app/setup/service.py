@@ -147,7 +147,8 @@ class SetupService:
         return self.hub_call("oracle", path, method=method, body=body, query=query, timeout=timeout)
 
     def apply_brain(self, recipe: str, local_model: str, cloud: list[str], keys: dict[str, str],
-                    claude_token: str = "") -> dict[str, Any]:
+                    claude_token: str = "", local_provider: str = "ollama",
+                    cloud_models: dict[str, str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
         values = {f"ORACLE_KEY_{name.upper().replace('-', '_')}": key for name, key in keys.items() if key}
         if claude_token:
             values["CLAUDE_CODE_OAUTH_TOKEN"] = claude_token
@@ -156,13 +157,22 @@ class SetupService:
             if not done["services"].get("oracle", {}).get("recreated", True):
                 return {"ok": False, "detail": "Non sono riuscito a riavviare il cervello con le chiavi nuove."}
             self._wait_oracle()
+        local_provider = local_provider or "ollama"
+        emb = {k: v for k, v in (embedding or {}).items() if v}
         result = self.oracle("POST", "/api/llm/setup/apply",
-                             body={"recipe": recipe, "local_model": local_model, "cloud": cloud})
-        if local_model and recipe != "cloud":
-            # The memory's model too: the installer already pulls it, so this is usually a quick «già presente».
-            for model in (local_model, EMBEDDING_MODEL):
-                self.oracle("POST", "/api/llm/setup/pull", body={"model": model})
-        self.mark("cervello", brain={"recipe": recipe, "local_model": local_model, "cloud": cloud,
+                             body={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
+                                   "cloud": cloud, "cloud_models": cloud_models or {}, "embedding": emb})
+        # Only Ollama downloads by itself; LM Studio, Jan… already have the model the user picked from their list.
+        pulls = []
+        if local_model and recipe != "cloud" and local_provider == "ollama":
+            pulls.append(local_model)
+        if (emb.get("provider") or "ollama") == "ollama" and (emb or (local_model and recipe != "cloud")):
+            # The memory's model: the installer already pulls the default one, so this is usually «già presente».
+            pulls.append(emb.get("model") or EMBEDDING_MODEL)
+        for model in pulls:
+            self.oracle("POST", "/api/llm/setup/pull", body={"model": model})
+        self.mark("cervello", brain={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
+                                     "cloud": cloud, "cloud_models": cloud_models or {},
                                      "summary": result.get("detail", "")})
         return {"ok": True, "detail": result.get("detail", "")}
 
