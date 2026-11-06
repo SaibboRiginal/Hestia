@@ -7,7 +7,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Service | Role Type | Owns Business Logic | Owns Provider Runtime/Auth | Main Dependency Pattern |
 |---|---|---|---|---|
 | Hub | Core | No | No | Registry + routing for all services |
-| Archive | Core | No | No | Persistent storage gateway |
+| Archive | Core | No | No | Persistent storage gateway; vector search ranked in Postgres (pgvector) |
 | Oracle | Core | No | No | Uses Hub discovery and routes commands |
 | Hermes | Core | No | No | Dispatches events/notifications (audio from Echo when the module wants voice) |
 | Echo | Core | No | Speech engines only (keys `ECHO_KEY_<NAME>`) | The only caller of speech-to-text/text-to-speech; providers → chains → uses like Oracle; audio kept in Archive |
