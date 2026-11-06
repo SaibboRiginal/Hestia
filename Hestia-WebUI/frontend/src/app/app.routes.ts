@@ -8,8 +8,10 @@ import { pluginPageMatcher } from './features/plugins/plugin-routes';
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login-page.component').then(m => m.LoginPageComponent) },
   // Guided setup after the install (docs/work/2026-10-30-setup-un-click §4.2): full screen, outside the shell.
-  { path: 'benvenuto', canActivate: [authGuard], title: 'Benvenuto · Hestia',
+  // The address is the same in every language (the installer prints it); the old Italian one still works.
+  { path: 'setup', canActivate: [authGuard], title: 'Setup · Hestia',
     loadComponent: () => import('./features/setup/setup-page.component').then(m => m.SetupPageComponent) },
+  { path: 'benvenuto', redirectTo: 'setup' },
   {
     path: '',
     component: ShellComponent,

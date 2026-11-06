@@ -41,7 +41,7 @@ computer is (`T 'en' 'it'` / `$(t "en" "it")`, `--lang` / `-Lang` / `HESTIA_LANG
 otherwise `Hestia` inside it), `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
 CI publishes every service image in `ghcr.io/saibboriginal/hestia` (`<service>-<version>`) and the installer pulls
 them through `docker-compose.images.yml`; without that override compose builds locally as always (development,
-Forge). After the install the WebUI opens the guided setup `/benvenuto`: the only writer of secrets from a screen
+Forge). After the install the WebUI opens the guided setup `/setup`: the only writer of secrets from a screen
 is Hephaestus (`/api/setup/*`, whitelisted keys into the right `.env`, then only that container is re-created
 through the Docker API; values never echoed or logged); the brain choice is Oracle's (`/api/llm/setup/*` → Themis
 `oracle.providers` + `oracle.chains`; model names always come from the program or service that serves them, never

@@ -4784,7 +4784,7 @@ paths:
   /api/llm/setup/test:
     post:
       tags: [Oracle]
-      summary: "Guided setup «Prova» — one tiny real call to a provider with a model it really lists, answer in plain words"
+      summary: "Guided setup «Prova» — reads the provider's model list with its key (no tokens spent; one tiny call only when there is no list), answer in plain words"
       servers:
         - url: http://localhost:19004
       requestBody:

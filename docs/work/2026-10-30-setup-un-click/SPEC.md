@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.11 |
+| **Version** | 2.12 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -162,8 +162,8 @@ answer makes them needed**, not at the end.
      itself) or LM Studio, «Cerca di nuovo». A small suggested list per tier stays only for an empty Ollama.
      «Avanzate»: the memory's (embedding) model, from the embedding models the programs have.
    - **Cloud**: one card per provider (Gemini — free key, link to Google AI Studio; DeepSeek; Claude API; Claude
-     subscription), configured inside its own card: paste the key, «Prova» makes one real tiny call with a model the
-     service really lists and says «funziona» or the reason in plain words, then the model is picked from the
+     subscription), configured inside its own card: paste the key, «Prova» reads the service's model list with the key
+     (no tokens spent) and says «funziona» or the reason in plain words, then the model is picked from the
      service's own list (Gemini `models.list`). A model that disappeared never blocks: the key still counts as
      working and the user picks another; on apply a retired default is replaced by a listed one. Keys go to
      `Hestia-Oracle/app/.env` as `ORACLE_KEY_<NAME>` through the Hephaestus setup endpoint, then Oracle restarts.

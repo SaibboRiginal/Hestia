@@ -75,16 +75,11 @@ def test_test_without_key_says_so(monkeypatch):
 
 def test_test_bad_key_in_plain_words(monkeypatch):
     _keys(monkeypatch, "gemini")
+    import requests
 
-    class _Bad:
-        def __init__(self, **kw):
-            pass
-
-        def ask(self, prompt):
-            raise RuntimeError("401 API key not valid")
-    import agents.universal_agent as ua
-    monkeypatch.setattr(ua, "UniversalAgent", _Bad)
-    monkeypatch.setattr(llm_providers, "list_models", lambda name: [])
+    class _Resp:
+        status_code, ok = 400, False
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Resp())
     assert llm_setup.test("gemini")["detail"] == "La chiave non è valida."
 
 
@@ -131,37 +126,53 @@ def test_local_models_lists_ollama_chat_models_with_fit_warning(monkeypatch):
     assert all(r["fits"] for r in llm_setup.local_models(0))      # card unknown: no warning
 
 
-def _agent(fail_on=()):
+class _ListResp:
+    status_code, ok = 200, True
+
+    def __init__(self, data):
+        self.data = data
+
+    def json(self):
+        return self.data
+
+
+def test_test_reads_the_model_list_and_spends_no_tokens(monkeypatch):
+    """Marko 2026-11-06: «Prova» must cost (almost) nothing and never ask the key twice: the list is the check."""
+    _keys(monkeypatch, "gemini")
+    import requests
+    import agents.universal_agent as ua
+    monkeypatch.setattr(ua, "UniversalAgent", lambda **kw: pytest.fail("no model call when the list can be read"))
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _ListResp({"models": [
+        {"name": "models/gemini-3-flash", "supportedGenerationMethods": ["generateContent"]},
+        {"name": "models/gemini-3-flash-lite", "supportedGenerationMethods": ["generateContent"]},
+        {"name": "models/gemini-embedding-002", "supportedGenerationMethods": ["embedContent"]}]}))
+    result = llm_setup.test("gemini")
+    assert result["ok"] and result["models"] == ["gemini-3-flash", "gemini-3-flash-lite"]
+    assert result["model"] == "gemini-3-flash-lite"            # the default alias is gone: the cheapest-looking one
+    assert llm_setup.test("gemini", "gemini-3-flash")["model"] == "gemini-3-flash"
+
+
+def test_test_without_a_list_makes_one_tiny_call(monkeypatch):
+    monkeypatch.setattr(llm_setup, "_list_checked", lambda provider: (None, ""))
+    import agents.universal_agent as ua
+
     class _Agent:
         def __init__(self, **kw):
-            self.model = kw["model_name"]
+            pass
 
         def ask(self, prompt):
-            if self.model in fail_on:
-                raise RuntimeError("404 models/x is not found")
             return "ok"
-    return _Agent
+    monkeypatch.setattr(ua, "UniversalAgent", _Agent)
+    monkeypatch.setattr(llm_providers, "available", lambda name: (True, "ok"))
+    result = llm_setup.test("deepseek", "deepseek-chat")
+    assert result["ok"] and result["model"] == "deepseek-chat"
 
 
-def test_test_tries_a_model_the_provider_really_lists(monkeypatch):
-    """Marko 2026-11-06: «gemini-flash-lite-latest non c'è» blocked the setup. The «Prova» now uses the real list."""
-    _keys(monkeypatch, "gemini")
-    import agents.universal_agent as ua
-    monkeypatch.setattr(ua, "UniversalAgent", _agent())
-    monkeypatch.setattr(llm_providers, "list_models", lambda name: ["gemini-3-flash", "gemini-3-pro", "gemini-embedding-002"])
-    result = llm_setup.test("gemini")
-    assert result["ok"] and result["model"] == "gemini-3-flash"
-    assert result["models"] == ["gemini-3-flash", "gemini-3-pro"]          # embedding models are not for chat
-
-
-def test_test_model_gone_is_not_a_dead_end(monkeypatch):
-    _keys(monkeypatch, "gemini")
-    import agents.universal_agent as ua
-    monkeypatch.setattr(ua, "UniversalAgent", _agent(fail_on=("gemini-flash-latest",)))
-    monkeypatch.setattr(llm_providers, "list_models", lambda name: ["gemini-flash-latest", "gemini-pro-latest"])
-    result = llm_setup.test("gemini", "gemini-flash-latest")
-    assert result["ok"] is True and result["model"] == "" and "scegli un altro modello" in result["detail"]
-    assert result["models"] == ["gemini-flash-latest", "gemini-pro-latest"]
+def test_pull_skips_a_model_already_in_ollama(monkeypatch):
+    """A model made from a Modelfile is on no registry: «già presente», not «non esiste su Ollama»."""
+    monkeypatch.setattr(llm_providers, "list_models", lambda name: ["gemma-4-26B-A4B-it-UD-IQ4_NL:latest"])
+    out = llm_setup.pull("gemma-4-26B-A4B-it-UD-IQ4_NL:latest")
+    assert out["ok"] and out["already"] and out["state"] == "fatto"
 
 
 def test_is_local_by_type_then_address(monkeypatch):

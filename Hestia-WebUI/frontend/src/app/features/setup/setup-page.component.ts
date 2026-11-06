@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
@@ -42,7 +41,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [...UI, FormsModule, RouterLink, NgTemplateOutlet],
+  imports: [...UI, FormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap">
@@ -50,15 +49,22 @@ function store(key: string, value: string): void {
         <div class="dots" aria-hidden="true">
           @for (s of screens(); track s; let i = $index) { <span [class.on]="i <= index()"></span> }
         </div>
+        @if (state()) {
+          <button type="button" class="sumbtn" (click)="sheet.set(true)" aria-label="Riepilogo e download">
+            <hx-icon name="list" [size]="15" /> Riepilogo
+            @if (activeDownloads()) { <span class="badge">{{ activeDownloads() }}</span> }
+          </button>
+        }
         <a class="out" routerLink="/home" (click)="leave()">Finisco dopo</a>
       </div>
 
       <div class="cols">
       @if (state()) {
-        <nav class="side hx-card" aria-label="Riepilogo">
-          <details class="sum" [open]="wide">
-            <summary><hx-icon name="list" [size]="15" tone="muted" /> Riepilogo</summary>
-            <ol>
+        <aside class="side" [class.open]="sheet()" aria-label="Riepilogo e download">
+          <div class="sheet-head"><button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi" (click)="sheet.set(false)"></button></div>
+          <nav class="hx-card panel">
+            <div class="ph"><hx-icon name="list" [size]="15" tone="muted" /> Riepilogo</div>
+            <ol class="sum">
               @for (s of screens(); track s; let i = $index) {
                 <li>
                   <button type="button" [class.cur]="s === screen()" [disabled]="!canJump(s)" (click)="jump(s)">
@@ -68,8 +74,27 @@ function store(key: string, value: string): void {
                 </li>
               }
             </ol>
-          </details>
-        </nav>
+          </nav>
+          @if (downloads().length) {
+            <section class="hx-card panel">
+              <div class="ph"><hx-icon name="download" [size]="15" tone="muted" /> Download</div>
+              <p class="note">I modelli li scarica Ollama sul tuo computer, le voci finiscono nella cartella di Hestia. Vanno avanti da soli mentre continui.</p>
+              <ul class="list dl">
+                @for (d of downloads(); track (d.module || '') + d.id) {
+                  <li>
+                    <hx-icon [name]="d.state === 'fatto' ? 'check-circle' : d.state === 'errore' ? 'alert' : 'download'" [size]="16"
+                             [tone]="d.state === 'fatto' ? 'success' : d.state === 'errore' ? 'danger' : 'info'" />
+                    <span><b>{{ d.what }}</b><small>{{ downloadText(d) }}</small>
+                      @if (d.state === 'in_corso' && d.size) { <span class="bar"><span [style.width.%]="100 * d.done / d.size"></span></span> }
+                    </span>
+                  </li>
+                }
+              </ul>
+              <a class="more" href="/download" target="_blank" rel="noopener">Apri la pagina Download <hx-icon name="external" [size]="13" /></a>
+            </section>
+          }
+        </aside>
+        @if (sheet()) { <div class="scrim" (click)="sheet.set(false)"></div> }
       }
 
       <main class="card hx-card">
@@ -119,11 +144,14 @@ function store(key: string, value: string): void {
                     <div class="gh"><hx-icon name="check-circle" [size]="15" tone="success" /><b>{{ r.label }}</b><small>trovato</small></div>
                     @if (r.models.length) {
                       <div class="choices">
-                        @for (m of r.models; track m.model) {
+                        @for (m of shown(r); track m.model) {
                           <button type="button" class="choice" [class.sel]="isLocal(r.name, m.model)" (click)="pickLocal(r.name, m.model)">
                             <hx-icon [name]="m.fits ? 'host' : 'alert'" [size]="20" [tone]="isLocal(r.name, m.model) ? 'accent' : (m.fits ? 'muted' : 'warning')" />
                             <span class="ct"><b>{{ m.model }}</b>@if (localText(m); as t) { <small>{{ t }}</small> }</span>
                           </button>
+                        }
+                        @if (r.models.length > shortList && !expanded().includes(r.name)) {
+                          <button type="button" class="linkbtn" (click)="expand(r.name)">Mostra tutti ({{ r.models.length }})</button>
                         }
                       </div>
                     } @else if (r.name === 'ollama') {
@@ -159,9 +187,6 @@ function store(key: string, value: string): void {
                   }
                 </div>
                 <p class="hint">Oppure torna indietro e usa solo il cloud.</p>
-              }
-              @if (found().length && missing().length) {
-                <p class="hint">Non trovati: {{ missingNames() }}. Se ne usi uno, aprilo e premi «Cerca di nuovo».</p>
               }
               <div class="row"><button hx-btn variant="ghost" icon="refresh" [loading]="searching()" (click)="searchAgain()">Cerca di nuovo</button></div>
               @if (found().length) {
@@ -200,10 +225,10 @@ function store(key: string, value: string): void {
                         } @else {
                           <hx-field [label]="'Chiave di ' + (p.label || p.name)" [error]="testError()[p.name] || ''"
                                     [hint]="testNote()[p.name] || (p.key_set ? 'Lascia vuoto per tenere quella che c\\'è.' : '')">
-                            <input class="hx-input mono" type="password" autocomplete="off" [ngModel]="keys[p.name] || ''" (ngModelChange)="typeKey(p.name, $event)" placeholder="incolla qui la chiave" />
+                            <input class="hx-input mono" type="password" autocomplete="off" [ngModel]="keys[p.name] || ''" (ngModelChange)="typeKey(p.name, $event)" [placeholder]="p.key_set ? 'chiave salvata' : 'incolla qui la chiave'" />
                           </hx-field>
                           @if (modelsOf()[p.name]?.length) {
-                            <hx-field label="Modello" hint="La lista viene dal servizio stesso.">
+                            <hx-field label="Modello" hint="La lista viene dal servizio: leggerla non consuma niente.">
                               <select class="hx-input" [ngModel]="cloudModel()[p.name] || ''" (ngModelChange)="pickCloudModel(p.name, $event)">
                                 <option value="" disabled>Scegli un modello</option>
                                 @for (m of modelsOf()[p.name]; track m) { <option [value]="m">{{ m }}</option> }
@@ -212,7 +237,7 @@ function store(key: string, value: string): void {
                           }
                           <div class="row">
                             @if (keyLink(p)) { <a hx-btn variant="ghost" icon="external" [href]="keyLink(p)" target="_blank" rel="noopener">Prendi la chiave</a> }
-                            <button hx-btn variant="secondary" icon="play" [loading]="testing() === p.name" [disabled]="!keys[p.name] && !p.key_set" (click)="testKey(p.name)">Prova</button>
+                            <button hx-btn variant="secondary" icon="play" [loading]="testing() === p.name" [disabled]="!keys[p.name] && !p.key_set" (click)="testKey(p.name)">{{ keys[p.name] ? 'Salva e prova' : 'Prova' }}</button>
                           </div>
                         }
                         @if (cloudOrder(p.name) > 1) {
@@ -229,15 +254,14 @@ function store(key: string, value: string): void {
               <hx-icon name="check-circle" [size]="30" tone="success" />
               <h1>I modelli sono pronti</h1>
               <p class="lead">{{ state()!.brain.summary || 'Fatto.' }}</p>
-              <ng-container *ngTemplateOutlet="downloadsTpl" />
+              @if (activeDownloads()) { <p class="hint"><hx-icon name="download" [size]="15" tone="info" /> {{ downloadHint() }}</p> }
             }
 
             @case ('voce') {
               <hx-icon name="volume" [size]="30" tone="accent" />
               <h1>Vuoi parlare con Hestia a voce?</h1>
               <p class="lead">Scarico adesso le voci e l'ascolto, così la prima volta che parli non devi aspettare. Funzionano sul tuo computer, senza servizi a pagamento.</p>
-              @if (voiceQueued()) { <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Le sto scaricando: puoi andare avanti, continuano da sole.</p> }
-              <ng-container *ngTemplateOutlet="downloadsTpl" />
+              @if (voiceQueued()) { <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Le sto scaricando: le vedi nei download.</p> }
             }
 
             @case ('telegram') {
@@ -284,7 +308,7 @@ function store(key: string, value: string): void {
               <ul class="list">
                 <li><hx-icon name="calendar" [size]="18" tone="info" /><span><b>Google Calendar e Gmail</b><small>Scrivi al bot «collega Google Calendar».</small></span></li>
                 <li><hx-icon name="pulse" [size]="18" tone="success" /><span><b>Orologio Garmin e telefono</b>
-                  <small><a href="/p/hecate/dispositivi" target="_blank" rel="noopener">Pagina Dispositivi</a>: si apre in un'altra scheda, questa resta qui.</small></span></li>
+                  <small><a href="/p/hecate/dispositivi" target="_blank" rel="noopener">Apri Dispositivi <hx-icon name="external" [size]="12" /></a></small></span></li>
               </ul>
             }
 
@@ -333,29 +357,8 @@ function store(key: string, value: string): void {
                 <li><hx-icon [name]="tunnel()?.on ? 'check-circle' : 'clock'" [size]="18" [tone]="tunnel()?.on ? 'success' : 'muted'" />
                   <span><b>Fuori casa</b><small>{{ tunnel()?.on ? (tunnel()!.url || 'Attivo.') : 'Solo in casa e da Telegram.' }}</small></span></li>
               </ul>
-              <ng-container *ngTemplateOutlet="downloadsTpl" />
             }
           }
-
-          <ng-template #downloadsTpl>
-            @if (downloads().length) {
-              <div class="dlbox">
-                <p class="hint">I modelli li scarica Ollama sul tuo computer, le voci finiscono nella cartella di Hestia. Puoi andare avanti: continuano da sole.
-                  <a href="/download" target="_blank" rel="noopener">Pagina Download</a></p>
-                <ul class="list dl">
-                  @for (d of downloads(); track (d.module || '') + d.id) {
-                    <li>
-                      <hx-icon [name]="d.state === 'fatto' ? 'check-circle' : d.state === 'errore' ? 'alert' : 'download'" [size]="18"
-                               [tone]="d.state === 'fatto' ? 'success' : d.state === 'errore' ? 'danger' : 'info'" />
-                      <span><b>{{ d.what }}</b><small>{{ downloadText(d) }}</small>
-                        @if (d.state === 'in_corso' && d.size) { <span class="bar"><span [style.width.%]="100 * d.done / d.size"></span></span> }
-                      </span>
-                    </li>
-                  }
-                </ul>
-              </div>
-            }
-          </ng-template>
 
           <div class="nav">
             @if (index() > 0) { <button hx-btn variant="ghost" icon="chevron-left" (click)="back()">Indietro</button> }
@@ -373,16 +376,21 @@ function store(key: string, value: string): void {
   styles: [`
     :host { display: block; height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--backdrop, var(--bg)); }
     .wrap { max-width: 860px; margin: 0 auto; padding: 18px 16px 32px; display: flex; flex-direction: column; gap: 14px; }
-    .top { display: flex; align-items: center; gap: 12px; min-height: 32px; max-width: 560px; width: 100%; margin-left: auto; }
+    .top { display: flex; align-items: center; gap: 12px; min-height: 32px; }
+    .sumbtn { display: none; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); padding: 4px 10px; }
+    .badge { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-full); padding: 0 6px; }
     .dots { flex: 1; display: flex; gap: 6px; }
     .dots span { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--surface-3); transition: background var(--dur) var(--ease); }
     .dots span.on { background: var(--accent); }
-    .out { font-size: 13px; color: var(--text-3); }
+    .out { font-size: 13px; color: var(--text-3); white-space: nowrap; }
     .cols { display: grid; grid-template-columns: 240px minmax(0, 560px); gap: 16px; align-items: start; justify-content: end; }
-    .side { position: sticky; top: 0; padding: 12px 10px; }
-    .sum summary { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; list-style: none; padding: 2px 4px 8px; }
-    .sum summary::-webkit-details-marker { display: none; }
-    .sum ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 12px; }
+    .sheet-head { display: none; }
+    .panel { padding: 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+    .ph { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: var(--text-2); padding: 0 4px; }
+    .note { font-size: 12px; color: var(--text-3); line-height: 1.4; padding: 0 4px; }
+    .more { font-size: 12px; display: inline-flex; gap: 4px; align-items: center; padding: 0 4px; }
+    .sum { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
     .sum button { display: flex; gap: 8px; align-items: flex-start; width: 100%; text-align: left; padding: 6px; border-radius: var(--radius-sm); background: none; color: var(--text); border: 0; }
     .sum button:hover:not(:disabled) { background: var(--surface-2); }
     .sum button.cur { background: var(--accent-soft); }
@@ -390,6 +398,11 @@ function store(key: string, value: string): void {
     .sum button span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
     .sum b { font-size: 13px; font-weight: 600; }
     .sum small { font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
+    .dl { gap: 10px; padding: 0 4px; }
+    .dl b { font-size: 13px; overflow-wrap: anywhere; }
+    .dl small { font-size: 12px; }
+    .linkbtn { align-self: flex-start; background: none; border: 0; color: var(--accent); font-size: 13px; padding: 2px 0; }
+    .scrim { display: none; }
     .card { padding: 28px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
     .center { display: grid; place-items: center; gap: 12px; padding: 40px 0; text-align: center; color: var(--text-2); }
     h1 { font-family: var(--font-serif); font-weight: 500; font-size: 26px; line-height: 1.2; color: var(--text); }
@@ -434,7 +447,14 @@ function store(key: string, value: string): void {
     @media (max-width: 860px) {
       .wrap { max-width: 560px; }
       .cols { grid-template-columns: minmax(0, 1fr); }
-      .side { position: static; order: -1; }
+      .sumbtn { display: inline-flex; }
+      /* Phone: the summary and the downloads are a panel from the button at the top, not a block above the question. */
+      .side { position: fixed; z-index: 41; top: 0; right: 0; bottom: 0; width: min(340px, 88vw); overflow-y: auto; padding: 14px 12px;
+              background: var(--bg); box-shadow: var(--shadow-lg, 0 0 24px rgba(0,0,0,.2)); transform: translateX(100%);
+              transition: transform var(--dur) var(--ease); visibility: hidden; }
+      .side.open { transform: none; visibility: visible; }
+      .sheet-head { display: flex; justify-content: flex-end; }
+      .scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.35); }
     }
     @media (max-width: 480px) { .card { padding: 22px 16px 16px; } h1 { font-size: 22px; } .code { font-size: 30px; } }
   `],
@@ -443,8 +463,11 @@ export class SetupPageComponent {
   private api = inject(SetupApi);
   private router = inject(Router);
   readonly claudeType = CLAUDE_TYPE;
-  /** The summary starts open beside the card, folded above it on a phone. */
-  readonly wide = typeof window === 'undefined' || window.matchMedia?.('(min-width: 861px)').matches !== false;
+  /** Phone: the summary + downloads panel, opened from the button at the top. */
+  sheet = signal(false);
+  /** Models shown per program before «Mostra tutti». */
+  readonly shortList = 4;
+  expanded = signal<string[]>([]);
 
   state = signal<SetupState | null>(null);
   catalog = signal<BrainCatalog | null>(null);
@@ -517,6 +540,7 @@ export class SetupPageComponent {
       const saved = stored(SCREEN_KEY) as Screen;
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
       this.reached.set(state.brain.recipe ? this.screens().length - 1 : this.index());
+      if (this.screen() === 'cloud') for (const n of this.cloudPicked()) this.autoList(n);
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
     } catch (e) {
@@ -582,6 +606,7 @@ export class SetupPageComponent {
   private go(screen: Screen) {
     this.formError.set('');
     if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
+    if (screen === 'cloud') for (const n of this.cloudPicked()) this.autoList(n);
     this.screen.set(screen);
     this.reached.set(Math.max(this.reached(), this.screens().indexOf(screen)));
     store(SCREEN_KEY, screen);
@@ -600,7 +625,7 @@ export class SetupPageComponent {
     if (s === 'cervello') return !!this.state()?.brain.recipe;
     return i <= this.reached();
   }
-  jump(s: Screen) { if (this.canJump(s)) this.go(s); }
+  jump(s: Screen) { if (this.canJump(s)) { this.go(s); this.sheet.set(false); } }
   private isDone(s: Screen): boolean {
     const st = this.state();
     if (!st) return false;
@@ -674,6 +699,7 @@ export class SetupPageComponent {
         await this.api.prefetchVoice();
         this.voiceQueued.set(true);
         void this.refreshDownloads();
+        this.forward();   // the downloads go on by themselves, shown at the side
         return;
       }
       if (screen === 'telegram' && !this.state()!.telegram.linked) { await this.linkTelegram(); return; }
@@ -710,7 +736,13 @@ export class SetupPageComponent {
   gb(n: number): string { return String(n).replace('.', ','); }
   found = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => r.found));
   missing = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => !r.found));
-  missingNames(): string { return this.missing().map(r => r.label).join(', '); }
+  shown(r: Runtime): LocalModel[] {
+    if (r.models.length <= this.shortList || this.expanded().includes(r.name)) return r.models;
+    const head = r.models.slice(0, this.shortList);
+    const sel = r.models.find(m => this.isLocal(r.name, m.model));   // the chosen one always stays visible
+    return sel && !head.includes(sel) ? [...head, sel] : head;
+  }
+  expand(name: string) { this.expanded.set([...this.expanded(), name]); }
   otherModel = signal('');
   isLocal(provider: string, model: string): boolean { return this.localProvider() === provider && this.localModel() === model && !this.otherModel(); }
   pickLocal(provider: string, model: string) { this.localProvider.set(provider); this.localModel.set(model); this.otherModel.set(''); }
@@ -760,7 +792,14 @@ export class SetupPageComponent {
   before(name: string): string { const l = this.cloudPicked(); return this.cloudLabel(l[l.indexOf(name) - 1]); }
   toggleProvider(name: string) {
     const list = this.cloudPicked();
-    this.cloudPicked.set(list.includes(name) ? list.filter(n => n !== name) : [...list, name]);
+    const adding = !list.includes(name);
+    this.cloudPicked.set(adding ? [...list, name] : list.filter(n => n !== name));
+    if (adding) this.autoList(name);
+  }
+  /** A service whose key is already saved: read its model list at once (it costs nothing) for the picker. */
+  private autoList(name: string) {
+    const p = this.catalog()?.cloud.find(c => c.name === name);
+    if (p && p.type !== CLAUDE_TYPE && p.key_set && !this.modelsOf()[name] && !this.keys[name] && this.testing() !== name) void this.testKey(name);
   }
   moveUp(name: string) {
     const l = [...this.cloudPicked()];
@@ -769,23 +808,18 @@ export class SetupPageComponent {
   }
   typeKey(name: string, value: string) {
     this.keys[name] = value;
+    this.modelsOf.set({ ...this.modelsOf(), [name]: [] });
     this.tested.set(this.tested().filter(n => n !== name));
     this.testNote.set({ ...this.testNote(), [name]: '' });
     this.testError.set({ ...this.testError(), [name]: '' });
   }
-  pickCloudModel(name: string, model: string) {
-    this.cloudModel.set({ ...this.cloudModel(), [name]: model });
-    // A model picked from the service's own list after a working key: nothing more to try.
-    if (model && this.modelsOf()[name]?.includes(model) && !this.tested().includes(name)) this.tested.set([...this.tested(), name]);
-  }
+  pickCloudModel(name: string, model: string) { this.cloudModel.set({ ...this.cloudModel(), [name]: model }); }
   /** A chosen service can be used: key already there or just tried, and a model it has; Claude: the code. */
   ready(name: string): boolean {
     const p = this.catalog()?.cloud.find(c => c.name === name);
     if (!p) return false;
     if (p.type === CLAUDE_TYPE) return !!this.state()?.claude.token || !!this.claudeToken.trim() || p.available;
-    const listed = this.modelsOf()[name];
-    if (listed?.length && !this.cloudModel()[name]) return false;
-    return this.tested().includes(name) || (p.key_set && !this.keys[name]);
+    return this.tested().includes(name) || (p.key_set && !this.keys[name] && !this.testError()[name]);
   }
   providerText(p: CloudProvider): string {
     if (p.type === CLAUDE_TYPE) return this.ready(p.name) ? 'Abbonamento collegato.' : 'Il tuo abbonamento Claude Pro o Max.';
@@ -793,21 +827,27 @@ export class SetupPageComponent {
     return (p.key_set ? 'Chiave già inserita.' : 'Serve una chiave.') + (model ? ` Modello: ${model}.` : '');
   }
 
+  /** «Prova» / «Salva e prova»: a typed key is saved once, then the service's model list is read (no tokens spent).
+   * The field then shows «chiave salvata»: nothing to type again. */
   async testKey(name: string) {
     this.testing.set(name);
     this.testError.set({ ...this.testError(), [name]: '' });
     this.testNote.set({ ...this.testNote(), [name]: '' });
     try {
-      const r = await this.api.test(name, (this.keys[name] || '').trim(), this.cloudModel()[name] || '');
-      if (r.models?.length) this.modelsOf.set({ ...this.modelsOf(), [name]: r.models });
-      if (r.ok && r.model) this.cloudModel.set({ ...this.cloudModel(), [name]: r.model });
-      if (r.ok && r.model === '') this.cloudModel.set({ ...this.cloudModel(), [name]: '' });
-      if (r.ok) {
+      const typed = (this.keys[name] || '').trim();
+      const r = await this.api.test(name, typed, this.cloudModel()[name] || '');
+      if (typed) {
+        // Saved even when it is wrong: mark it so the card says «chiave salvata» and the field empties.
         this.keys[name] = '';
+        this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
+      }
+      this.modelsOf.set({ ...this.modelsOf(), [name]: r.models || [] });
+      if (r.ok) {
+        if (r.model) this.cloudModel.set({ ...this.cloudModel(), [name]: r.model });
         this.tested.set([...this.tested().filter(n => n !== name), name]);
         this.testNote.set({ ...this.testNote(), [name]: r.detail || 'Funziona.' });
-        void this.api.catalog().then(c => this.catalog.set({ ...c, runtimes: this.catalog()?.runtimes ?? c.runtimes })).catch(() => undefined);
       } else {
+        this.tested.set(this.tested().filter(n => n !== name));
         this.testError.set({ ...this.testError(), [name]: r.detail || 'Non funziona.' });
       }
     } catch (e) {
@@ -881,17 +921,19 @@ export class SetupPageComponent {
     try { this.downloads.set(await this.api.pulls()); } catch { /* not ready yet */ }
   }
 
+  activeDownloads = computed(() => this.downloads().filter(d => d.state === 'in_coda' || d.state === 'in_corso').length);
+  downloadHint(): string { return this.activeDownloads() === 1 ? 'Un download in corso: lo vedi nel riepilogo.' : `${this.activeDownloads()} download in corso: li vedi nel riepilogo.`; }
+  private ticks = 0;
+
   private poll() {
     this.now.set(Date.now());
+    this.ticks++;
     const screen = this.screen();
     if (screen === 'telegram' && this.code()) {
       void this.refresh().then(() => { if (this.state()?.telegram.linked) this.code.set(''); });
     }
     const list = this.downloads();
-    if ((screen === 'cervello' || screen === 'voce' || screen === 'pronto')
-        && (!list.length || list.some(d => d.state === 'in_coda' || d.state === 'in_corso'))) {
-      void this.refreshDownloads();
-    }
+    if (this.activeDownloads() || (!list.length && this.ticks % 5 === 0) || this.ticks % 20 === 0) void this.refreshDownloads();
     if (screen === 'fuori' && this.tunnel()?.on && !this.tunnel()!.url) {
       if (!this.tunnelSince()) this.tunnelSince.set(Date.now());
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);

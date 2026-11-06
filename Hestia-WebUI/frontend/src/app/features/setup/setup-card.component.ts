@@ -12,7 +12,7 @@ const LABELS: Record<string, string> = { cervello: 'cervello', voce: 'voce', tel
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (open().length) {
-      <a class="card hx-card" routerLink="/benvenuto">
+      <a class="card hx-card" routerLink="/setup">
         <hx-icon name="sparkle" [size]="18" tone="accent" />
         <span class="t"><b>Da finire</b><small>{{ open().join(' · ') }}</small></span>
         <hx-icon name="chevron-right" [size]="16" tone="muted" />

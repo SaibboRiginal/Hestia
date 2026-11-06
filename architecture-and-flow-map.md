@@ -327,7 +327,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    `docs/work/2026-10-20-backup-drive`.
 
 ### Guided setup flow («Benvenuto», dossier `docs/work/2026-10-30-setup-un-click`)
-1. Installer → `.hestia-install/hardware.json` → browser `/benvenuto` → WebUI `/api/webui/setup/*` → Hub →
+1. Installer → `.hestia-install/hardware.json` → browser `/setup` → WebUI `/api/webui/setup/*` → Hub →
    Hephaestus `/api/setup/*` (state in `Hestia-Hephaestus/data/setup.json`).
 2. Brain: Hephaestus → Hub → Oracle `/api/llm/setup/catalog` (Oracle asks the PC's model programs on their ports:
    Ollama `/api/tags`, LM Studio/Jan/llama.cpp/vLLM `/v1/models` on the host); a key → Hephaestus writes

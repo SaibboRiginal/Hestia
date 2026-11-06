@@ -202,49 +202,96 @@ def _pick_model(provider: str, wanted: str, listed: list[str]) -> str:
     if default and (not listed or default in listed):
         return default
     from core.services import llm_providers
-    preferred = [m for m in chat if "flash" in m] if llm_providers.type_of(provider) == "gemini" else []
+    preferred = ([m for m in chat if "flash-lite" in m] or [m for m in chat if "flash" in m]
+                 if llm_providers.type_of(provider) == "gemini" else [])
     return (preferred or chat or [wanted or default])[0]
 
 
+def _list_checked(provider: str) -> tuple[list[str] | None, str]:
+    """The provider's model list read with its key, without generating anything (zero tokens). Returns
+    ``(models, "")`` when the service answered, ``(None, reason)`` when the key is wrong or it does not answer, and
+    ``(None, "")`` when this kind of service has no list to read (then a tiny call is the only check)."""
+    import requests
+    from core.services import llm_providers
+    ptype = llm_providers.type_of(provider)
+    key = llm_providers.api_key(provider)
+    base = llm_providers.url(provider).rstrip("/")
+    try:
+        if ptype == "gemini":
+            resp = requests.get(f"{base}/v1beta/models", params={"key": key, "pageSize": 1000}, timeout=10)
+            ids = lambda data: [str(m.get("name") or "").removeprefix("models/") for m in data.get("models") or []
+                                if "generateContent" in (m.get("supportedGenerationMethods") or [])]
+        elif ptype in ("openai", "llamacpp"):
+            resp = requests.get(f"{base}/models", headers={"Authorization": f"Bearer {key}"} if key else {}, timeout=10)
+            ids = lambda data: [str(m.get("id")) for m in data.get("data") or [] if m.get("id")]
+        elif ptype == "anthropic":
+            resp = requests.get(f"{base or 'https://api.anthropic.com'}/v1/models", timeout=10,
+                                headers={"x-api-key": key, "anthropic-version": "2023-06-01"})
+            ids = lambda data: [str(m.get("id")) for m in data.get("data") or [] if m.get("id")]
+        else:
+            return None, ""
+    except Exception as exc:
+        logger.info("[🔄] event=llm_setup_list_failed provider=%s error=%s", provider, str(exc)[:160])
+        return None, "Non risponde: controlla la connessione."
+    if resp.status_code in (400, 401, 403):
+        return None, "La chiave non è valida."
+    if resp.status_code == 429:
+        return [], ""
+    if not resp.ok:
+        return None, f"Non risponde (errore {resp.status_code})."
+    try:
+        return [m for m in ids(resp.json() or {}) if m and not _is_embedding(m)], ""
+    except ValueError:
+        return None, "Risposta non valida dal servizio."
+
+
 def test(provider: str, model: str = "") -> dict[str, Any]:
-    """One tiny real call. Returns ``{ok, detail, model, models}``: a reason a person understands, the model tried
-    and the chat models the provider really has (for the model picker next to the key)."""
-    from agents.universal_agent import UniversalAgent
+    """«Prova» without spending tokens: reading the model list with the key proves the key works and gives the models
+    for the picker. Returns ``{ok, detail, model, models}`` in words a person understands; ``model`` = the one to
+    preselect (the one asked, else Hestia's default, else the cheapest-looking listed). Only a service with no list
+    to read gets one tiny real call."""
     from core.services import llm_providers
     if not llm_providers.get(provider):
         return {"ok": False, "detail": "Questo servizio non è configurato."}
     ok, why = llm_providers.available(provider)
     if not ok:
         return {"ok": False, "detail": "Manca la chiave." if "not set" in why else why}
-    listed = [] if llm_providers.type_of(provider) == "claude_cli" else llm_providers.list_models(provider)
-    models = [m for m in listed if not _is_embedding(m)]
-    model = _pick_model(provider, model, listed)
+    models, error = _list_checked(provider)
+    if error:
+        return {"ok": False, "detail": error, "models": []}
+    if models is not None:
+        if not models:
+            return {"ok": True, "detail": "La chiave funziona (per oggi la quota potrebbe essere finita).",
+                    "model": model or _default_model(provider), "models": []}
+        chosen = _pick_model(provider, model, models)
+        logger.info("event=llm_setup_test_ok provider=%s models=%s via=list", provider, len(models))
+        return {"ok": True, "detail": f"La chiave funziona: {len(models)} modelli disponibili.", "model": chosen,
+                "models": models}
+    return _tiny_call(provider, model or _default_model(provider))
+
+
+def _tiny_call(provider: str, model: str) -> dict[str, Any]:
+    """One tiny real call («ok»), for services whose model list cannot be read."""
+    from agents.universal_agent import UniversalAgent
     if not model:
-        return {"ok": False, "detail": "Nessun modello da provare.", "models": models}
+        return {"ok": False, "detail": "Nessun modello da provare.", "models": []}
     started = time.monotonic()
     try:
         answer = UniversalAgent(role_prompt="", provider=provider, model_name=model, thinking=False,
-                                label="oracle.setup").ask("Rispondi solo con la parola: ok")
+                                label="oracle.setup").ask("Rispondi solo con: ok")
     except Exception as exc:
         text = str(exc)
         logger.info("[🔄] event=llm_setup_test_failed provider=%s model=%s error=%s", provider, model, text[:200])
         low = text.lower()
         if any(w in low for w in ("401", "403", "api key", "invalid", "permission", "unauthorized")):
-            return {"ok": False, "detail": "La chiave non è valida.", "models": models}
+            return {"ok": False, "detail": "La chiave non è valida.", "models": []}
         if any(w in low for w in ("429", "quota", "resource_exhausted")):
-            return {"ok": True, "detail": "La chiave funziona, ma per oggi la quota è finita.", "model": model,
-                    "models": models}
-        if "not found" in low or "404" in low:
-            # The key is fine (the list was read with it): another model, not a dead end.
-            if models:
-                return {"ok": True, "detail": f"La chiave funziona, ma {model} non risponde: scegli un altro modello.",
-                        "model": "", "models": models}
-            return {"ok": False, "detail": f"Il modello {model} non c'è: scegline un altro.", "models": models}
-        return {"ok": False, "detail": "Non risponde: " + text[:160], "models": models}
+            return {"ok": True, "detail": "La chiave funziona, ma per oggi la quota è finita.", "model": model, "models": []}
+        return {"ok": False, "detail": "Non risponde: " + text[:160], "models": []}
     ms = int((time.monotonic() - started) * 1000)
-    logger.info("event=llm_setup_test_ok provider=%s model=%s ms=%s", provider, model, ms)
+    logger.info("event=llm_setup_test_ok provider=%s model=%s ms=%s via=call", provider, model, ms)
     return {"ok": bool(str(answer or "").strip()), "detail": f"Funziona ({model}, {ms / 1000:.1f} s).", "model": model,
-            "models": models}
+            "models": []}
 
 
 def _default_model(provider: str) -> str:
@@ -432,6 +479,11 @@ def pull(model: str) -> dict[str, Any]:
     model = str(model or "").strip()
     if not model or len(model) > 120 or any(c.isspace() for c in model):
         return {"ok": False, "detail": "Nome del modello non valido."}
+    from core.services import llm_providers
+    have = llm_providers.list_models("ollama") if llm_providers.get("ollama") else []
+    if model in have or f"{model}:latest" in have:
+        # Already on the computer (also one made from a Modelfile, which is on no registry): nothing to download.
+        return {"ok": True, "id": f"ollama:{model}", "state": "fatto", "already": True}
     size = next((int(m["size_gb"] * 1e9) for t in CATALOG for m in t["chat"] if m["model"] == model),
                 int(EMBEDDING_MODEL["size_gb"] * 1e9) if model == EMBEDDING_MODEL["model"] else 0)
     return {"ok": True, **downloads().add(f"ollama:{model}", model, "ollama", {"model": model}, size_hint=size)}
@@ -454,7 +506,8 @@ def _run_pull(job) -> None:
             if data.get("error"):
                 text = str(data["error"])
                 if "not found" in text.lower() or "manifest" in text.lower():
-                    raise DownloadError(f"Il modello {model} non esiste su Ollama.", final=True)
+                    raise DownloadError(f"{model} non è nella libreria di Ollama: se l'hai creato tu (Modelfile) o "
+                                        "viene da un altro posto, caricalo in Ollama e scegli quello.", final=True)
                 if "space" in text.lower():
                     raise DownloadError("Il disco è pieno: libera spazio o scegli un modello più piccolo.", final=True)
                 raise RuntimeError(text)
