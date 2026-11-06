@@ -92,7 +92,6 @@ Marko's PC is read from these logs in his real run (cloud tests use fake models)
 
 ### 3.6 Coordination
 The Verity thread (branch `claude/project-thread-j7apmm`, dossier `docs/work/2026-11-06-hestia-viva`) keeps the classifier untouched and adds no «voice without classifier». Agents use its persona from `prompt_config.analyst_persona_default()` (key `analyst_persona_default`) and, on spoken turns, `voice_turn_contract()`. Its reaction marker is filtered in `main.py`, outside `chat()`.
-moot here (no classifier at all). The persona text it writes is the one the agents use.
 
 ## 4. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 1. Real job for the owner: faster chit-chat, domain answers that fit a local model, parallel work, visible agents.
