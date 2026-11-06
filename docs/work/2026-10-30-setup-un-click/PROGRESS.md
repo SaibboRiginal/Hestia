@@ -18,4 +18,6 @@
 - [x] P7 Docs: README quick start = installer + guided setup (no manual .env), SETUP minimum points to the guided setup, TESTING lists the updater tests; module docs, swagger, ARCHITECTURE and flow map were updated with each phase
 - [x] Fix 2026-11-06: `features/downloads/` was ignored by `.gitignore` (`downloads/`), so main did not build; negation added and file committed
 - [x] Fix 2026-11-06 (Marko's first real try): `irm | iex` failed on `[ValidateSet]` of `$Role` without a value; values checked after param, CI dry run through iex added
+- [x] Installer in more languages (Marko 2026-11-06): English default, Italian from the computer's language, `--lang`/`-Lang`/`HESTIA_LANG`, English option names; CI dry runs in both
+- [ ] Guided setup «Dove pensa Hestia?»: «Il tuo computer» + «Cloud» with one or more providers (Gemini, Claude subscription, Claude key…) instead of four exclusive choices; «Esterna» stays in Settings (proposed to Marko)
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), first tag v1.0.0 + GHCR package public, two-machine run, real tunnel, .NET build

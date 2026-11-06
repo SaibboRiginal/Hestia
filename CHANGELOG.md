@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-06
+- The installer speaks your language: English by default, Italian when the computer is in Italian (or `--lang it`); options also take English names (`--channel stable|latest`, `--role all|central|satellite`) → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: the Windows one-liner (`irm … | iex`) stopped at once with «potrebbe rendere non valida la variabile Role»; it runs again, and CI now also tries the script the way it is downloaded → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: the WebUI builds again from a fresh clone; the Download page file was never in the repo because a generic `downloads/` rule in `.gitignore` hid it → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - The README's quick start is now two lines: run the installer, then answer the guided setup in the browser (no `.env` to edit by hand); it also says where updates and a second computer live → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
