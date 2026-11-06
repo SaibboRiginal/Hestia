@@ -31,9 +31,12 @@ builder.Services.AddSingleton<PluginCatalog>();
 builder.Services.AddSingleton<ChatQueueService>();
 builder.Services.AddHostedService<WebUISettingsRegistrar>();
 
+// No overall cap: each HubClient call sets its own deadline (quick reads 30 s, a route its timeout_seconds + 5).
+// A fixed 30 s here cut the setup's long calls (a key re-creates Oracle, the tunnel downloads cloudflared) even when
+// they asked for three minutes: «The request was canceled due to the configured HttpClient.Timeout of 30 seconds».
 builder.Services.AddHttpClient<HubClient>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30);
+    client.Timeout = Timeout.InfiniteTimeSpan;
 });
 
 // OracleStreamService is registered as a typed HttpClient so it receives

@@ -1,7 +1,7 @@
 """Secrets the guided setup may write (docs/work/2026-10-30-setup-un-click §4.2).
 
 Secrets stay where the rules want them, in the ``.env`` files of the repo (mounted at ``/repo``), so a later
-``docker compose up`` keeps them. Only the keys of ``WHITELIST`` (and ``ORACLE_KEY_<NAME>``) are accepted, a value is
+``docker compose up`` keeps them. Only the keys of ``WHITELIST`` (and ``ORACLE_KEY_<NAME>``, ``ECHO_KEY_<NAME>``) are accepted, a value is
 never logged nor returned, and the affected containers get the new value without a whole-stack restart:
 ``env_file`` values are read only when a container is *created*, so a plain restart would not see them —
 ``recreate_with_env`` re-creates the container through the Docker socket with the same image, mounts, ports and
@@ -33,6 +33,7 @@ WHITELIST: dict[str, Target] = {
     "HF_TOKEN": Target("Hestia-Oracle/app/.env", ("oracle",)),
 }
 _ORACLE_KEY = re.compile(r"^ORACLE_KEY_[A-Z0-9_]{1,40}$")
+_ECHO_KEY = re.compile(r"^ECHO_KEY_[A-Z0-9_]{1,40}$")     # speech services' keys (setup «Voce»)
 _VALUE_OK = re.compile(r"^[\x21-\x7e]{1,4096}$")          # printable ASCII, no spaces, no newlines, no quotes issues
 _USER_IDS = re.compile(r"^\d{1,20}(,\d{1,20}){0,9}$")
 
@@ -47,6 +48,8 @@ def target_for(key: str) -> Target:
         return WHITELIST[key]
     if _ORACLE_KEY.match(key):
         return Target("Hestia-Oracle/app/.env", ("oracle",))
+    if _ECHO_KEY.match(key):
+        return Target("Hestia-Echo/app/.env", ("echo",))
     raise SecretRefused(f"key not allowed: {key[:60]}")
 
 

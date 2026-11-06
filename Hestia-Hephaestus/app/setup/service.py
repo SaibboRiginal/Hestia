@@ -74,6 +74,7 @@ class SetupService:
             "completed_at": saved.get("completed_at"),
             "later": saved.get("later", []),
             "brain": saved.get("brain", {}),
+            "voice": saved.get("voice", {}),
             "hardware": self.hardware(),
             "telegram": {**telegram, "linked": telegram["token"] and telegram["owner"],
                          "code_active": self._code_active()},
@@ -175,6 +176,27 @@ class SetupService:
                                      "cloud": cloud, "cloud_models": cloud_models or {},
                                      "summary": result.get("detail", "")})
         return {"ok": True, "detail": result.get("detail", "")}
+
+    def echo(self, method: str, path: str, body: dict | None = None, timeout: float = 30) -> dict:
+        if self.hub_call is None:
+            raise RuntimeError("hub not available")
+        return self.hub_call("echo", path, method=method, body=body, timeout=timeout)
+
+    def voice_key(self, provider: str, key: str) -> bool:
+        """«Salva e prova» of a speech service: ``ECHO_KEY_<NAME>`` into Echo's .env, Echo re-created and waited for."""
+        name = "ECHO_KEY_" + "".join(c if c.isalnum() else "_" for c in provider.upper())
+        done = self.set_secrets({name: key})
+        if not done["services"].get("echo", {}).get("recreated"):
+            return False
+        deadline = time.time() + 90
+        while time.time() < deadline:
+            try:
+                self.echo("GET", "/health", timeout=3)
+                return True
+            except Exception:
+                time.sleep(2)
+        logger.warning("[🔄] event=setup_echo_slow_restart waited=90")
+        return True
 
     def _wait_oracle(self, timeout: float = 90) -> None:
         deadline = time.time() + timeout

@@ -52,4 +52,5 @@ def build_capabilities() -> dict[str, Any]:
         },
         "self_development": True,
         **llm_capabilities(LLM_USECASES),
+        "downloads": {"endpoint": "/api/downloads"},   # the cloudflared image of «Fuori casa» (setup/tunnel.py)
     }

@@ -425,7 +425,9 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
 `telegram/claim` only, by the Telegram bot.
 
 - `setup/secrets.py`: whitelist `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID` (→ `Hestia-Telegram/app/.env`, telegram),
-  `CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `ORACLE_KEY_<NAME>` (→ `Hestia-Oracle/app/.env`, oracle),
+  `CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `ORACLE_KEY_<NAME>` (→ `Hestia-Oracle/app/.env`, oracle), `ECHO_KEY_<NAME>`
+  (→ `Hestia-Echo/app/.env`, echo: the speech services' keys of the setup «Voce», `/api/setup/voice/*` forwards to
+  Echo's `/api/voice/setup/*`),
   `HESTIA_BACKUP_PASSPHRASE` (→ root `.env`, archive). Values: one line of printable ASCII; ids numeric; bot token
   in BotFather form. Written atomically (active line, else the commented `# KEY=` line, else appended); a value is
   never logged or returned (`event=setup_secret_set key=… file=… services=…`).
@@ -448,11 +450,13 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `POST /api/setup/machines/revoke {id}` → Hub `DELETE /api/nodes/{id}`; `POST /api/setup/machines/brain
   {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `macchine_elenco`,
   `macchine_codice`, `macchine_scollega`, `macchine_cervello` (Telegram section «Macchine»).
-- **Da fuori casa** (`setup/tunnel.py`, P5b): `GET /api/setup/tunnel` → `{on, url}`; `POST /api/setup/tunnel {on}`
-  creates (first time, Docker API, never in compose so `up-all`/the installer never open Hestia to the internet by
+- **Da fuori casa** (`setup/tunnel.py`, P5b): `GET /api/setup/tunnel` → `{on, url, phase}` (`start` · `download` ·
+  `address` · `ready` · `error`); `POST /api/setup/tunnel {on}` answers within 15 s while a thread downloads the image
+  the first time (a job of Hephaestus' `hestia_common.downloads`, source `docker`, progress summed over the layers,
+  `/api/downloads`, page Download) and creates (first time, Docker API, never in compose so `up-all`/the installer never open Hestia to the internet by
   themselves) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
   `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
-  waits up to 40 s for the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
+  reads the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
   after a reboot). Setup step `fuori`. MCP tools `fuori_casa_stato`, `fuori_casa_attiva` (Telegram «Macchine»).
 - **Aggiorna Hestia** (`setup/updater.py`, P6): versions = git tags `vX.Y.Z`; channel Themis
   `hephaestus.update.channel` (`stabile` newest tag · `novita` `origin/main`). `GET /api/setup/update` (installed,

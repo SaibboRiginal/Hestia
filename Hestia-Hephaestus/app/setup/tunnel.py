@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -56,47 +58,114 @@ def address(client=None, container=None) -> str:
         return ""
 
 
+# ── Background start: the first time the cloudflared image is downloaded (a job on the Download page), then the
+# container starts and the address arrives. The request answers at once; the screen polls ``status``.
+_downloads = None
+_starting = {"phase": "", "error": ""}
+_slock = threading.Lock()
+
+
+def init(data_dir: Path | str) -> None:
+    """Hephaestus' download manager (source ``docker``: an image pulled with progress), state in ``data_dir``."""
+    global _downloads
+    from hestia_common.downloads import Downloads
+    with _slock:
+        if _downloads is None:
+            _downloads = Downloads("hephaestus", state_path=Path(data_dir) / "downloads.json", page="")
+            _downloads.source("docker", _pull_image)
+
+
+def downloads():
+    return _downloads
+
+
+def _pull_image(job) -> None:
+    """``docker pull`` with the bytes summed over the layers (Docker API stream)."""
+    client = _client()
+    layers: dict[str, tuple[int, int]] = {}
+    repo, _, tag = job.params["image"].partition(":")
+    for line in client.api.pull(repo, tag=tag or "latest", stream=True, decode=True):
+        if line.get("error"):
+            raise RuntimeError(str(line["error"]))
+        detail = line.get("progressDetail") or {}
+        if line.get("id") and detail.get("total"):
+            layers[line["id"]] = (int(detail.get("current") or 0), int(detail["total"]))
+            job.progress(sum(c for c, _ in layers.values()), sum(t for _, t in layers.values()))
+        else:
+            job.check()
+
+
 def status(client=None) -> dict[str, Any]:
+    with _slock:
+        phase, error = _starting["phase"], _starting["error"]
+    if error:
+        return {"on": False, "url": "", "phase": "error", "detail": error}
+    if phase:
+        return {"on": True, "url": "", "phase": phase,
+                "detail": "Scarico il programma di Cloudflare…" if phase == "download" else "Avvio il collegamento…"}
     try:
         client = client or _client()
         box = _container(client)
     except Exception as exc:
         return {"on": False, "url": "", "detail": f"Docker non risponde: {str(exc)[:80]}"}
     on = bool(box) and box.status == "running"
-    return {"on": on, "url": address(client, box) if on else ""}
+    url = address(client, box) if on else ""
+    return {"on": on, "url": url, "phase": "ready" if url else ("address" if on else "")}
 
 
-def start(client=None, wait: float = 40) -> dict[str, Any]:
-    client = client or _client()
-    box = _container(client)
-    if box is None:
-        try:
-            client.images.get(IMAGE)
-        except Exception:
-            logger.info("event=setup_tunnel_pull image=%s", IMAGE)
-            client.images.pull(IMAGE)
-        box = client.containers.create(IMAGE, command=COMMAND, name=NAME, network=NETWORK, detach=True,
-                                       restart_policy={"Name": "unless-stopped"},
-                                       labels={"hestia.role": "tunnel"})
-    if box.status != "running":
-        box.start()
-    logger.info("event=setup_tunnel_started")
-    deadline = time.time() + wait
-    url = ""
-    while not url and time.time() < deadline:
-        time.sleep(2)
-        box.reload()
+def start(client=None, wait: float = 0) -> dict[str, Any]:
+    """Turn it on without making the caller wait: a thread downloads the image if needed, creates and starts the
+    container; ``status`` tells where it is (download → start → address → ready)."""
+    with _slock:
+        if _starting["phase"]:
+            return status(client)
+        _starting.update(phase="start", error="")
+    threading.Thread(target=_start_now, args=(client,), name="tunnel-start", daemon=True).start()
+    if wait:
+        deadline = time.time() + wait
+        while time.time() < deadline and status(client).get("phase") not in ("ready", "error"):
+            time.sleep(0.2)
+    return status(client)
+
+
+def _start_now(client=None) -> None:
+    try:
+        client = client or _client()
+        box = _container(client)
+        if box is None:
+            try:
+                client.images.get(IMAGE)
+            except Exception:
+                logger.info("event=setup_tunnel_pull image=%s", IMAGE)
+                with _slock:
+                    _starting["phase"] = "download"
+                if _downloads is not None:
+                    _downloads.add(f"docker:{IMAGE}", "Collegamento da fuori casa (Cloudflare)", "docker",
+                                   {"image": IMAGE}, size_hint=25_000_000)
+                    job = _downloads.wait(f"docker:{IMAGE}", timeout=900)
+                    if job.get("state") != "fatto":
+                        raise RuntimeError(job.get("error") or "download non riuscito")
+                else:
+                    client.images.pull(IMAGE)
+                with _slock:
+                    _starting["phase"] = "start"
+            box = client.containers.create(IMAGE, command=COMMAND, name=NAME, network=NETWORK, detach=True,
+                                           restart_policy={"Name": "unless-stopped"},
+                                           labels={"hestia.role": "tunnel"})
         if box.status != "running":
-            break
-        url = address(client, box)
-    if not url:
-        logger.warning("[🔄] event=setup_tunnel_no_address status=%s", box.status)
-        return {"on": box.status == "running", "url": "",
-                "detail": "Il collegamento sta partendo: l'indirizzo compare tra poco."}
-    return {"on": True, "url": url}
+            box.start()
+        logger.info("event=setup_tunnel_started")
+        with _slock:
+            _starting.update(phase="", error="")
+    except Exception as exc:
+        logger.warning("[🔄] event=setup_tunnel_start_failed error=%s", str(exc)[:200])
+        with _slock:
+            _starting.update(phase="", error="Non sono riuscito ad avviarlo: " + str(exc)[:120])
 
 
 def stop(client=None) -> dict[str, Any]:
+    with _slock:
+        _starting.update(phase="", error="")
     client = client or _client()
     box = _container(client)
     if box is not None and box.status == "running":

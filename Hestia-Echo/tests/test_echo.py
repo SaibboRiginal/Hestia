@@ -424,3 +424,49 @@ def test_blocks_write_goes_through_settings(monkeypatch):
     assert client.put("/api/voice/blocks/chains", json={"value": {"x": {"direction": "boh", "steps": []}}}).status_code == 422
     assert client.put("/api/voice/blocks/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 422
     assert client.put("/api/voice/blocks/altro", json={"value": {}}).status_code == 404
+
+
+# ── Setup guidato «Voce» (core/voice_setup.py) ─────────────────────────────────────────────
+
+def test_voice_setup_plan_puts_the_choice_first_and_keeps_the_rest():
+    """Marko 2026-11-06: voice is configured like the models: the chosen provider first, the others stay as fallback."""
+    from app.core import voice_setup
+    from app.core.blocks import DEFAULT_CHAINS
+    out = voice_setup.plan(DEFAULT_CHAINS, {"provider": "groq", "model": "whisper-large-v3-turbo"},
+                           {"provider": "piper", "voice": "it_IT-paola-medium"})
+    assert [s["provider"] for s in out["ascolto"]["steps"]] == ["groq", "whisper-locale"]
+    assert out["ascolto"]["steps"][0]["model"] == "whisper-large-v3-turbo"
+    assert [s["provider"] for s in out["voce"]["steps"]] == ["piper", "kokoro"]
+    assert out["voce-naturale"] == DEFAULT_CHAINS["voce-naturale"]         # chains the setup does not show stay
+    assert voice_setup.plan(DEFAULT_CHAINS, None, None)["voce"] == DEFAULT_CHAINS["voce"]
+
+
+def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
+    from app.core import voice_setup
+    from app.core.blocks import Blocks
+    monkeypatch.delenv("ECHO_KEY_GROQ", raising=False)
+    b = Blocks(lambda key, default=None: default)
+    cat = voice_setup.catalog(b, "it")
+    listen = cat["ascolto"]["providers"]
+    assert listen[0]["type"] == "whisper_local" and listen[0]["local"]
+    assert any(m["id"] == "small" and m["note"] for m in listen[0]["models"])
+    groq = next(p for p in listen if p["name"] == "groq")
+    assert groq["needs_key"] and not groq["key"] and groq["models"] == []      # no key: nothing to list yet
+    speak = cat["voce"]["providers"]
+    assert speak[0]["type"] == "kokoro" and speak[0]["voices"]
+    assert cat["ascolto"]["current"]["provider"] == "whisper-locale"
+
+
+def test_voice_setup_check_reads_the_list_with_the_key(monkeypatch):
+    from app.core import voice_setup
+    from app.core.blocks import Blocks
+    import requests
+    monkeypatch.setenv("ECHO_KEY_GROQ", "k")
+
+    class _Bad:
+        status_code, ok = 401, False
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Bad())
+    b = Blocks(lambda key, default=None: default)
+    assert voice_setup.check(b, "groq")["detail"] == "La chiave non è valida."
+    monkeypatch.delenv("ECHO_KEY_GROQ")
+    assert voice_setup.check(b, "groq")["detail"] == "Manca la chiave."

@@ -161,9 +161,38 @@ def test_tunnel_created_off_compose_started_then_stopped(monkeypatch):
     monkeypatch.setattr(tunnel.requests, "get", lambda *a, **kw: (_ for _ in ()).throw(OSError("no metrics")))
     monkeypatch.setattr(tunnel.time, "sleep", lambda s: None)
     dock = _Docker()
-    assert tunnel.status(dock) == {"on": False, "url": ""}
-    out = tunnel.start(dock)
-    assert out == {"on": True, "url": "https://quiet-river-blue.trycloudflare.com"}     # from the log, metrics down
+    assert tunnel.status(dock) == {"on": False, "url": "", "phase": ""}
+    out = tunnel.start(dock, wait=5)        # the request does not wait for it: here the test waits
+    assert out == {"on": True, "url": "https://quiet-river-blue.trycloudflare.com", "phase": "ready"}   # from the log
     assert dock.created["network"] == "hestia_net" and dock.created["restart_policy"]["Name"] == "unless-stopped"
     assert "http://hestia_webui:19015" in dock.created["command"]
     assert tunnel.stop(dock)["on"] is False and dock.box.stopped
+
+
+def test_tunnel_first_start_downloads_the_image_as_a_tracked_job(monkeypatch, tmp_path):
+    """Marko 2026-11-06: the Cloudflare download was not in Download and the screen timed out after 30 s."""
+    from app.setup import tunnel
+
+    class _NoImage(_Docker):
+        def __init__(self):
+            super().__init__()
+            self.pulled = False
+
+        def get(self, name):
+            if name == tunnel.IMAGE and not self.pulled:
+                raise LookupError(name)
+            return super().get(name)
+    dock = _NoImage()
+    monkeypatch.setattr(tunnel.requests, "get", lambda *a, **kw: (_ for _ in ()).throw(OSError("no metrics")))
+    monkeypatch.setattr(tunnel, "_client", lambda: dock)
+
+    def pull(job):
+        job.progress(10, 20)
+        dock.pulled = True
+    tunnel.init(tmp_path)
+    tunnel.downloads()._sources["docker"] = pull
+    out = tunnel.start(dock, wait=10)
+    assert out["phase"] == "ready" and out["url"].endswith("trycloudflare.com")
+    job = next(j for j in tunnel.downloads().list() if j["source"] == "docker")
+    assert job["state"] == "fatto" and job["module"] == "hephaestus"
+    tunnel.stop(dock)

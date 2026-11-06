@@ -515,8 +515,13 @@ app.include_router(downloads.router())
 def models_prefetch():
     """Queue the local models of the first steps of the «ascolto» and «voce» chains (guided setup, Download page),
     so the first spoken sentence does not wait for them. Cloud steps need nothing."""
+    return _prefetch()
+
+
+def _prefetch(chains: dict | None = None) -> dict:
+    """``chains`` = the ones just written (Themis pushes the new value back a moment later)."""
     providers = settings.get(PROVIDERS_KEY, DEFAULT_PROVIDERS) or {}
-    chains = settings.get(CHAINS_KEY, DEFAULT_CHAINS) or {}
+    chains = chains or settings.get(CHAINS_KEY, DEFAULT_CHAINS) or {}
     queued: list[str] = []
     for name in ("ascolto", "voce"):
         for step in (chains.get(name) or {}).get("steps") or []:
@@ -527,6 +532,33 @@ def models_prefetch():
                 break
     logger.info("event=voice_models_prefetch jobs=%d", len(queued))
     return {"queued": queued, "downloads": downloads.list()}
+
+
+# ── Setup guidato «Voce» (core/voice_setup.py): same shape as the models screen ─────────────
+@app.get(f"{API}/setup/catalog")
+def voice_setup_catalog():
+    """Providers per direction (listening, speaking), local first, with their models/voices and the current step."""
+    from .core import voice_setup
+    return {"status": "ok", **voice_setup.catalog(blocks, echo.language())}
+
+
+@app.post(f"{API}/setup/test")
+def voice_setup_test(body: dict = Body(...)):
+    """«Prova» of a speech service: its list read with the key, nothing spent."""
+    from .core import voice_setup
+    return {"status": "ok", **voice_setup.check(blocks, str(body.get("provider") or ""), echo.language())}
+
+
+@app.post(f"{API}/setup/apply")
+def voice_setup_apply(body: dict = Body(...)):
+    """The choice → ``echo.chains`` (chosen step first, the others as fallbacks), then the local models it needs
+    are queued in Download."""
+    from .core import voice_setup
+    listen, speak = body.get("listen") or None, body.get("speak") or None
+    result = voice_setup.apply(blocks, settings.put, listen, speak)
+    if not result.get("ok"):
+        raise HTTPException(status_code=502, detail=result.get("detail"))
+    return {"status": "ok", **_prefetch(result["chains"])}
 
 
 # ── Hub registration ─────────────────────────────────────────────────────────
