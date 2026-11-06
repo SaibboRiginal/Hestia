@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Source** | user via project chat (Marko, 2026-11-06: «non sarebbe più giusto che ogni modulo fosse un agente collegato ad Oracle?») |
 | **Status** | Draft — waiting for Marko's approval |
 
@@ -46,6 +46,20 @@ turn works. It is not an on/off switch: it is a choice among ways of working, an
   meant for the local model (one GPU). Max agents per turn = `oracle.agenti.max_per_turno` (default 4).
 The mode is chosen in WebUI Impostazioni (Cervello) and from Telegram settings like every Themis setting; Oracle
 or Athena may only propose a change, Marko confirms. Clients get the mode used in `final.funzionamento`.
+
+### 3.0a How the modes fit the rest
+| Thing | classica | agenti / agenti_in_serie |
+|---|---|---|
+| Chat mode `quick` | one ask, no tools | the same (no agents) |
+| `auto` | classifier → quick or loop | main brain decides: answers or calls agents |
+| `thinking` / `cot` | think level on the loop | same think level on main **and** agents; `cot` keeps the «Passi:» recap on main |
+| Brain `esterna` (Claude CLI) | Claude gets the domains' tools | Claude gets the small manifest; agents run in Oracle on their chains (in series: one at a time) |
+| Chains, quota fallback | per use case | the same; each agent has use case `agente.<modulo>` |
+| Origin levels, turn guards, Annulla, `ask_user`, Themis proposals | today | the same, inside each agent |
+| Conversation goal rounds | loop with tools | rounds use the same small manifest |
+| Spoken turns (Verity thread) | voice contract | voice contract on whoever answers (agent on a direct answer) |
+| `oracle.agent.max_turns` | loop cap | main brain cap; each agent has `oracle.agenti.passi` |
+| `oracle.agent.max_parallel_tools` | parallel tools | parallel tools inside an agent; agents capped by `oracle.agenti.max_paralleli` (ignored in series) |
 
 ### 3.0b Chats and clients
 Agents live **inside one turn** of one conversation: they are not separate chats. Each client keeps its own
