@@ -354,6 +354,13 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 5. «Da fuori casa» → WebUI `/api/webui/setup/tunnel` → Hub → Hephaestus `/api/setup/tunnel` → Docker API starts
    `hestia_tunnel` (cloudflared → `hestia_webui:19015`); WebUI `PublicUrlService` ← `hestia_tunnel:20241/quicktunnel`.
 
+### Update flow («Aggiorna Hestia»)
+1. Chronos job `hephaestus.update_check` → Hephaestus `/api/setup/update/daily` → `git fetch` → newer tag (or
+   `origin/main`) → Oracle `/api/llm/generate` (notes in Italian) → Hermes event with `_question` «Installo?».
+2. «Sì» (notification, page `/aggiornamenti` → WebUI → Hub, or Telegram tool) → `/api/setup/update/apply` → git
+   checkout → per changed service: restart, or new image (GHCR pull / SDK build) + re-create → Hub health → on
+   failure checkout back + previous images → Hermes notice.
+
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).
 2. Phone: the final `localhost` page fails (expected); user pastes the URL in Telegram → Telegram forwards it

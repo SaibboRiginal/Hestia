@@ -125,8 +125,10 @@ def merged_env(env: list[str], updates: dict[str, str]) -> list[str]:
     return out
 
 
-def recreate_with_env(service: str, updates: dict[str, str], start: bool = True, client=None) -> tuple[bool, str]:
-    """Re-create ``hestia_<service>`` with ``updates`` applied to its environment. Returns (ok, detail)."""
+def recreate_with_env(service: str, updates: dict[str, str], start: bool = True, client=None,
+                      image: str = "") -> tuple[bool, str]:
+    """Re-create ``hestia_<service>`` with ``updates`` applied to its environment (and on ``image`` when given:
+    «Aggiorna Hestia»). Returns (ok, detail)."""
     import docker
     name = f"hestia_{service}"
     api = (client or docker.from_env()).api
@@ -136,6 +138,8 @@ def recreate_with_env(service: str, updates: dict[str, str], start: bool = True,
         return False, f"container {name} not found: {exc}"
     config = {k: attrs["Config"].get(k) for k in _CONFIG_KEEP if attrs["Config"].get(k) is not None}
     config["Env"] = merged_env(attrs["Config"].get("Env") or [], updates)
+    if image:
+        config["Image"] = image
     networks = attrs.get("NetworkSettings", {}).get("Networks", {}) or {}
     endpoints = {net: {"Aliases": [a for a in (cfg.get("Aliases") or []) if a != attrs["Id"][:12]]}
                  for net, cfg in networks.items()}

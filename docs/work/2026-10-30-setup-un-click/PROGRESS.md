@@ -12,5 +12,6 @@
 - [x] P5 Roles and satellites: Hub pairing code + node token + relay mode (satellite Hub forwards to the central, registrations rewritten to the LAN address; tried with two Hubs), satellite instance first / central copy as fallback, Oracle `use_machine` (local models on a satellite's Ollama), Hephaestus `/api/setup/machines*` + MCP tools `macchine_*`, installers `--role` / `--join --central` (`-Role`, `-Join -Central`), compose hub env, WebUI page «Macchine» (Marko real run with two machines pending)
 - [x] P5 merged PR #73 (fd6e1be) 2026-10-31
 - [x] P5b «Da fuori casa»: Hephaestus `setup/tunnel.py` (cloudflared quick tunnel container via Docker API, address from metrics or log) + `/api/setup/tunnel` + MCP tools, setup screen `fuori`, card on Macchine, WebUI PublicUrlService follows the tunnel (real tunnel not tried: the cloud bench blocks trycloudflare.com; Marko real run pending)
-- [ ] P6 «Aggiorna Hestia»
+- [x] P5b merged PR #74 (14f6c29) 2026-10-31
+- [x] P6 «Aggiorna Hestia»: Hephaestus `setup/updater.py` (tags/main, notes from CHANGELOG in Italian via Oracle, daily agenda job + Hermes question, apply with restart / GHCR pull / SDK build + recreate, health check, automatic way back, refuses local work), channel setting, endpoints, MCP tools, WebUI page «Aggiornamenti» (tests with real git; Marko real run pending, needs a first tag v1.0.0)
 - [ ] P7 Docs (readme, SETUP, TESTING, module docs, swagger, ARCHITECTURE)

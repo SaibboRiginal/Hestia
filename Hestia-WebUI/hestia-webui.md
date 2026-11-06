@@ -521,6 +521,12 @@ also the setup screen `fuori`). `PublicUrlService` reads the tunnel's address fr
 at most once a minute in the background (never blocking a request; a manual URL wins; the address is forgotten when
 the tunnel is off), so the login links follow it; requests to that host always need the token.
 
+## Aggiornamenti page (`/aggiornamenti`, dossier `docs/work/2026-10-30-setup-un-click` §4.4)
+
+`features/updates/` (button «Aggiornamenti» in Sistema): installed version and channel (link to the setting), the new
+version with what's new, «Installa» (asks first), the running step every 3 s, history, «Torna alla versione di
+prima». Backend: `SetupController` whitelist `GET update`, `POST update/check|apply|back` (180 s; → Hephaestus).
+
 ## Download page (`/download`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
 
 `features/downloads/` (button «Download» in Sistema): every download of every module with the `downloads`

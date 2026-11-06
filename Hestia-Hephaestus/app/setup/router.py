@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from . import secrets, tunnel
+from .updater import UpdateRefused, Updater
 from .service import STEPS, SetupService
 
 logger = logging.getLogger("hestia_hephaestus.setup.router")
@@ -46,6 +47,14 @@ class Claim(BaseModel):
     user_id: str
 
 
+class UpdateApply(BaseModel):
+    ref: str = ""
+
+
+class UpdateAnswer(BaseModel):
+    answer: str = ""
+
+
 class Tunnel(BaseModel):
     on: bool = True
 
@@ -77,9 +86,47 @@ def hub_caller(hub_api_url: str):
     return call
 
 
-def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str) -> tuple[APIRouter, SetupService]:
+def hermes_notifier(hub_api_url: str):
+    """Update notices for the owner through Hermes (one live notice, key ``hephaestus.update``)."""
+    from ..core.shared_imports import import_shared_symbol
+    reminder_event = import_shared_symbol("hestia_common.reminders", "reminder_event")
+
+    def send(ev: dict) -> None:
+        body = reminder_event(module="hephaestus", domain="system", key=ev["key"], title=ev["title"], text=ev["text"],
+                              actions=[], level=ev.get("level", "info"), question=ev.get("question"))
+        requests.post(f"{hub_api_url}/route/hermes/api/events/ingest",
+                      json={"method": "POST", "headers": {}, "query": {}, "body": body, "timeout_seconds": 10},
+                      timeout=15)
+    return send
+
+
+NOTES_PROMPT = ("Riscrivi ogni riga in italiano semplice, breve, al «tu», senza nomi di moduli. Una riga per riga, "
+                "stesso ordine, niente numeri né elenchi puntati, niente altro.\n\n{lines}")
+
+
+def notes_translator(hub_api_url: str):
+    """What's new of an update, in Italian (Oracle use case ``hephaestus.aggiornamenti``)."""
+    def translate(notes: list[str]) -> list[str] | None:
+        resp = requests.post(f"{hub_api_url}/route/oracle/api/llm/generate",
+                             json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 90,
+                                   "body": {"prompt": NOTES_PROMPT.replace("{lines}", "\n".join(notes)),
+                                            "use_case": "hephaestus.aggiornamenti"}}, timeout=95)
+        routed = resp.json() if resp.content else {}
+        if resp.status_code != 200 or int(routed.get("status_code", 500)) >= 400:
+            return None
+        payload = routed.get("payload")
+        text = str(payload.get("response") or payload.get("text") or "") if isinstance(payload, dict) else str(payload)
+        return [line.strip(" -•\t") for line in text.splitlines() if line.strip(" -•\t")]
+    return translate
+
+
+def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel=lambda: "stabile",
+                        unhealthy=None) -> tuple[APIRouter, SetupService]:
     service = SetupService(repo, data_dir, hub_call=hub_caller(hub_api_url))
     router = APIRouter(prefix="/api/setup", tags=["setup"])
+    updater = Updater(repo, data_dir, channel=channel, unhealthy=unhealthy, notify=hermes_notifier(hub_api_url),
+                      translate=notes_translator(hub_api_url))
+    router.updater = updater   # main.py registers the daily check in the agenda
 
     def refused(exc: secrets.SecretRefused):
         raise HTTPException(status_code=400, detail=str(exc))
@@ -193,6 +240,52 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str) -> tuple[A
     def machines_brain(req: Machine):
         """Local models on that satellite's video card (empty address = back on this machine)."""
         return service.oracle("POST", "/api/llm/setup/machine", body={"address": req.address, "name": req.name})
+
+    # ── Aggiorna Hestia (setup/updater.py) ──
+    def refused_update(exc: UpdateRefused):
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    @router.get("/update")
+    def update_status():
+        """Installed version, channel, the newer one (with what's new), the job running, history."""
+        return {"status": "ok", **updater.status()}
+
+    @router.post("/update/check")
+    def update_check():
+        updater.check(notify=False)
+        return {"status": "ok", **updater.status()}
+
+    @router.post("/update/daily")
+    def update_daily():
+        """Agenda job ``hephaestus.update_check``: look for a newer version; if there is one, ask once."""
+        updater.check(notify=True)
+        return {"status": "ok"}
+
+    @router.post("/update/apply")
+    def update_apply(req: UpdateApply):
+        try:
+            return {"status": "ok", **updater.apply(req.ref)}
+        except UpdateRefused as exc:
+            refused_update(exc)
+
+    @router.post("/update/back")
+    def update_back():
+        """«Torna alla versione di prima» (the one before the last update)."""
+        try:
+            return {"status": "ok", **updater.apply(back=True)}
+        except UpdateRefused as exc:
+            refused_update(exc)
+
+    @router.post("/update/answer")
+    def update_answer(req: UpdateAnswer):
+        """The answer to the «Installo?» notification (Hermes question)."""
+        if req.answer.strip().lower() not in {"si", "sì", "yes", "ok"}:
+            return {"status": "ok", "message": "Va bene, non installo. Lo trovi in Sistema → Aggiornamenti."}
+        try:
+            updater.apply()
+        except UpdateRefused as exc:
+            return {"status": "ok", "message": str(exc)}
+        return {"status": "ok", "message": "Installo l'aggiornamento: ti scrivo quando ho finito."}
 
     # ── Da fuori casa (Cloudflare quick tunnel, setup/tunnel.py) ──
     @router.get("/tunnel")

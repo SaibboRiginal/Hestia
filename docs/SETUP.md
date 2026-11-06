@@ -67,6 +67,16 @@ and `<service>-latest`, then the GitHub Release is created. `docker-compose.imag
 install downloads instead of building. Images hold only the tag's code, never `.env` or data. The first time, the
 package must be made public once on GitHub (Packages → hestia → Package settings → Change visibility).
 
+**Aggiorna Hestia.** Once a day (agenda job «Cerca aggiornamenti di Hestia», editable in the calendar) Hestia looks
+for a newer version: on channel *Versioni pubblicate* the newest tag, on *Ogni novità* the latest `main` (Sistema →
+Impostazioni → Hephaestus → «Quali aggiornamenti»). If there is one, a notification asks «Installo?» with what's new
+in plain Italian; Sistema → **Aggiornamenti** (or Telegram) shows the same with «Installa», the history and «Torna
+alla versione di prima». Installing moves the code to the new version, restarts only the parts that changed, takes
+the new image of a part whose dependencies changed (ready-made on *Versioni pubblicate*, built here otherwise),
+checks that everything answers and, if not, goes back to the previous version by itself. It never overwrites local
+changes or Forge work not on GitHub (it says so and waits). Docker/Ollama on the computer, an image change of
+Hephaestus itself and the satellites still update by rerunning the installer.
+
 ## Manual install
 
 ```bash
