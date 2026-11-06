@@ -329,9 +329,11 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 ### Guided setup flow («Benvenuto», dossier `docs/work/2026-10-30-setup-un-click`)
 1. Installer → `.hestia-install/hardware.json` → browser `/benvenuto` → WebUI `/api/webui/setup/*` → Hub →
    Hephaestus `/api/setup/*` (state in `Hestia-Hephaestus/data/setup.json`).
-2. Brain: Hephaestus → Hub → Oracle `/api/llm/setup/catalog`; a key → Hephaestus writes `ORACLE_KEY_<NAME>` into
-   `Hestia-Oracle/app/.env`, re-creates `hestia_oracle` (Docker API), waits for health → Oracle `setup/test`;
-   choice → Oracle `setup/apply` → Themis `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads).
+2. Brain: Hephaestus → Hub → Oracle `/api/llm/setup/catalog` (Oracle asks the PC's model programs on their ports:
+   Ollama `/api/tags`, LM Studio/Jan/llama.cpp/vLLM `/v1/models` on the host); a key → Hephaestus writes
+   `ORACLE_KEY_<NAME>` into `Hestia-Oracle/app/.env`, re-creates `hestia_oracle` (Docker API), waits for health →
+   Oracle `setup/test` (model from the service's own list); choice → Oracle `setup/apply` → Themis `oracle.providers`
+   (a found program becomes a block) and `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads only).
 3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
    bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
 4. Backup passphrase → root `.env` → `hestia_archive` re-created.
