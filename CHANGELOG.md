@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-06
+- Fix: the Windows one-liner (`irm … | iex`) stopped at once with «potrebbe rendere non valida la variabile Role»; it runs again, and CI now also tries the script the way it is downloaded → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: the WebUI builds again from a fresh clone; the Download page file was never in the repo because a generic `downloads/` rule in `.gitignore` hid it → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - The README's quick start is now two lines: run the installer, then answer the guided setup in the browser (no `.env` to edit by hand); it also says where updates and a second computer live → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Hestia updates itself: once a day it looks for a new version and asks «Installo?» with what's new in plain Italian; Sistema → Aggiornamenti (or Telegram) shows the same with «Installa», the history and «Torna alla versione di prima». Only the parts that changed restart, and if something does not answer it goes back to the previous version by itself; your local changes and Forge work are never overwritten → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
