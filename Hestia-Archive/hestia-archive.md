@@ -200,6 +200,10 @@ It stores and serves all persistent state through generic APIs.
 - `PATCH /api/memory/{id}`: every field optional (`is_active`, `weight`, `extra_data` merge).
 - `POST /api/memory/search/similar`: pgvector values are numpy arrays — they were skipped, so results were always empty.
   Response no longer echoes the embedding.
+- `POST /api/memory/search/similar` ranks inside Postgres (pgvector `<=>`, `ORDER BY … LIMIT`): only the top rows leave
+  the DB, `_similarity = 1 - cosine distance`. Non-numeric embedding → 400; wrong size or zero vector → `[]`
+  (`[🔄] event=memory_search_dim_mismatch`). Exact search, no HNSW index on purpose (filters + approximate index can
+  drop matches) → `docs/work/2026-11-06-ricerca-memorie-in-db`.
 - `POST /api/entities/search`: numeric filters (`filters_gt/lt`) evaluated over a wider window (was LIMIT 100 before
   filtering) and parsed leniently (`"350.000 €"`); unparsable values exclude the row instead of failing the search.
 - `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda
