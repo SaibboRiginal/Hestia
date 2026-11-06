@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-06
+- Fix: the WebUI builds again from a fresh clone; the Download page file was never in the repo because a generic `downloads/` rule in `.gitignore` hid it → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - The README's quick start is now two lines: run the installer, then answer the guided setup in the browser (no `.env` to edit by hand); it also says where updates and a second computer live → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Hestia updates itself: once a day it looks for a new version and asks «Installo?» with what's new in plain Italian; Sistema → Aggiornamenti (or Telegram) shows the same with «Installa», the history and «Torna alla versione di prima». Only the parts that changed restart, and if something does not answer it goes back to the previous version by itself; your local changes and Forge work are never overwritten → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - The assistant looks up what it learned (its skills) faster: the search now runs inside the database and only the best matches come out, instead of reading every memory each time; same results. LEANN was evaluated and not adopted (it saves disk only on millions of documents and would slow every search) → `docs/work/2026-11-06-ricerca-memorie-in-db/` [ext-chat]

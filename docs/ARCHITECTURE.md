@@ -579,6 +579,8 @@ For every behavior or contract change, update documentation in the same change s
 
 No code-only behavior changes are considered complete without synchronized docs.
 
+Source folders named like a generic `.gitignore` rule (`downloads/`, `build/`, `lib/`, `dist/`…) are hidden from git: give each one a `!path/` line in `.gitignore` and check `git status --ignored` before pushing new folders.
+
 ## Capability Discovery Contract (Mandatory)
 
 1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
