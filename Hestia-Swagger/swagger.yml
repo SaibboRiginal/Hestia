@@ -4775,16 +4775,16 @@ paths:
   /api/llm/setup/catalog:
     get:
       tags: [Oracle]
-      summary: "Guided setup «Cervello» — recommended models for the hardware (query vram_gb, ram_gb), installed Ollama models, cloud providers (no keys)"
+      summary: "Guided setup «Cervello» — programs for local models found on the PC (Ollama, LM Studio, Jan, llama.cpp, vLLM) with their real models, suggestions for the hardware (query vram_gb, ram_gb), cloud providers (no keys)"
       servers:
         - url: http://localhost:19004
       responses:
-        "200": {description: "{recommended {tier,label,chat[],model,embedding,recipe}, tiers, installed, ollama, cloud[{name,label,type,key_env,key_set,available}], recipes}"}
+        "200": {description: "{recommended {tier,label,chat[],model,embedding,recipe}, tiers, installed, local[], runtimes[{name,label,url,site,found,configured,models[{model,size_gb,params,quant,fits}],embed[]}], embedding {provider,model}, ollama, cloud[{name,label,type,key_env,key_set,available}], recipes}"}
 
   /api/llm/setup/test:
     post:
       tags: [Oracle]
-      summary: "Guided setup «Prova» — one tiny real call to a provider, answer in plain words"
+      summary: "Guided setup «Prova» — one tiny real call to a provider with a model it really lists, answer in plain words"
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -4795,9 +4795,9 @@ paths:
               type: object
               properties:
                 provider: {type: string}
-                model: {type: string, description: empty = the provider's default}
+                model: {type: string, description: "empty = Hestia's default if the provider lists it, else its first chat model"}
       responses:
-        "200": {description: "{ok, detail}"}
+        "200": {description: "{ok, detail, model, models[]} (ok with model '' = the key works but that model does not answer: pick one of models)"}
 
   /api/llm/setup/apply:
     post:
@@ -4814,7 +4814,10 @@ paths:
               properties:
                 recipe: {type: string, enum: [locale, cloud, entrambi, claude]}
                 local_model: {type: string}
+                local_provider: {type: string, description: "provider block or found program (ollama, lmstudio, jan, llamacpp-pc, vllm); a found program becomes a block", default: ollama}
                 cloud: {type: array, items: {type: string}}
+                cloud_models: {type: object, additionalProperties: {type: string}, description: "provider → model picked from its list"}
+                embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model; only a different one changes the chain (re-index)"}
       responses:
         "200": {description: "{ok, detail} (detail = one-sentence summary)"}
         "502": {description: Themis refused or unreachable}
@@ -7681,13 +7684,13 @@ paths:
                 model: {type: string}
                 key: {type: string, description: written to Hestia-Oracle/app/.env, never returned}
       responses:
-        "200": {description: "{ok, detail}"}
+        "200": {description: "{ok, detail, model, models[]} (Oracle's answer)"}
         "400": {description: key or value refused}
 
   /api/setup/brain/apply:
     post:
       tags: [Hephaestus]
-      summary: Write keys / Claude token, re-create Oracle, apply the brain choice, start the model downloads
+      summary: Write keys / Claude token, re-create Oracle, apply the brain choice, start the Ollama downloads (other programs already have the model)
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -7699,7 +7702,10 @@ paths:
               properties:
                 recipe: {type: string}
                 local_model: {type: string}
+                local_provider: {type: string, default: ollama}
                 cloud: {type: array, items: {type: string}}
+                cloud_models: {type: object, additionalProperties: {type: string}}
+                embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}}
                 keys: {type: object, description: provider → key}
                 claude_token: {type: string}
       responses:

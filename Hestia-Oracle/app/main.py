@@ -389,7 +389,10 @@ class SetupTest(BaseModel):
 class SetupApply(BaseModel):
     recipe: Literal["locale", "cloud", "entrambi", "claude"]
     local_model: str = ""
+    local_provider: str = "ollama"
     cloud: list[str] = Field(default_factory=list)
+    cloud_models: dict[str, str] = Field(default_factory=dict)
+    embedding: dict[str, str] = Field(default_factory=dict)
 
 
 class SetupPull(BaseModel):
@@ -419,7 +422,8 @@ def llm_setup_test(req: SetupTest):
 def llm_setup_apply(req: SetupApply):
     """The user's choice in the setup → ``oracle.chains`` (+ brain mode for «claude») through Themis."""
     from core.services import llm_setup
-    result = llm_setup.apply(req.recipe, req.local_model, req.cloud)
+    result = llm_setup.apply(req.recipe, req.local_model, req.cloud, local_provider=req.local_provider,
+                             cloud_models=req.cloud_models, embedding=req.embedding)
     if not result.get("ok"):
         raise HTTPException(status_code=502, detail=result.get("detail"))
     return {"status": "ok", **result}

@@ -438,7 +438,9 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   minutes, 5 tries, compared in constant time); the bot, while `ALLOWED_USER_ID` is empty, forwards a 6-digit
   message to `telegram/claim` and the sender becomes the owner (the bot is re-created 3 s later, after its reply).
   The brain itself is Oracle's (`/api/llm/setup/*`): Hephaestus writes the keys, waits for Oracle's health, then
-  forwards the choice and starts the downloads (chat model + `qwen3-embedding:0.6b`).
+  forwards the choice (local program and model, cloud services with their models, the memory's model) and starts
+  the Ollama downloads (chat model when the program is Ollama + the memory's model when it is Ollama's); LM Studio,
+  Jan, llama.cpp and vLLM already have the model the user picked from their own list.
 - **Macchine** (§4.0, 2026-10-31): `GET /api/setup/machines` → `{this: {role, hardware}, nodes, brain_on}` (role
   from `hardware.json`, written by the installer: `tutto` · `centrale` · `satellite`; `hardware.lan_ip`; `brain_on` =
   the address whose Ollama the brain uses, empty = this machine). `POST /api/setup/machines/pair` → Hub

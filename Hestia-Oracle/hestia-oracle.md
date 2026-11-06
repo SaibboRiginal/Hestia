@@ -657,17 +657,31 @@ Tests that stub the chat engine replace `main.engine` with their own `MagicMock`
 
 The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a model provider directly:
 
-- `GET /api/llm/setup/catalog?vram_gb=&ram_gb=`: recommended models per tier (`CATALOG`: no video card → `gemma4:e4b`;
-  6–11 GB → `qwen3:8b`; 12 GB+ → `qwen3:14b`; embedding always `qwen3-embedding:0.6b`), the preselected recipe
-  (`entrambi` with ≥ 8 GB of video memory; `cloud` with little RAM), models already in Ollama, cloud providers
-  (`key_set` only, never the key).
-- `POST /api/llm/setup/test {provider, model?}`: one tiny real call («Rispondi solo con la parola: ok»), the reason
-  in plain words («Manca la chiave.», «La chiave non è valida.»…).
-- `POST /api/llm/setup/apply {recipe, local_model, cloud[]}`: writes `oracle.chains` through Themis (actor user,
-  reason «Setup guidato»): `veloce/potente/codice/visione` get the steps in the chosen order, `cloud` gets the cloud
-  provider, `embedding` is left as it is (changing it re-indexes the memory). Recipe `claude` also sets the brain
-  mode `esterna` with agent `claude` and fallback `interna`. Answer: one sentence («Ti risponde X sul tuo computer;
-  se non c'è, Y nel cloud.»).
+- `GET /api/llm/setup/catalog?vram_gb=&ram_gb=`: `runtimes` = the programs for local models on this PC, found by
+  asking their usual port on the same host as Ollama (`host.docker.internal`): Ollama (11434, `/api/tags` with size,
+  parameters, quantization), LM Studio (1234), Jan (1337), llama.cpp (8080), vLLM (8000) through their
+  OpenAI-compatible `/v1/models`. Each row: `{name, label, url, site, found, configured, models[], embed[]}`; a model
+  has `fits: false` when its file is bigger than the video card (programs that do not say the size: no warning).
+  Hestia keeps no model list for them: the program knows. `CATALOG` (no video card → `gemma4:e4b`; 6–11 GB →
+  `qwen3:8b`; 12 GB+ → `qwen3:14b`) is only a suggestion for Ollama when it has nothing. Also: the preselected recipe
+  (`entrambi` with ≥ 8 GB of video memory; `cloud` with little RAM), the memory's `embedding` model now, cloud
+  providers (`key_set` only, never the key; a provider is cloud when `llm_providers.is_local` says no: type, then
+  address, so an OpenAI-compatible block on `localhost` or a home address is local).
+- `POST /api/llm/setup/test {provider, model?}`: one tiny real call («Rispondi solo con la parola: ok») with a model
+  the provider really lists (`list_models`: Gemini through Google's `models.list` with the key, OpenAI-compatible
+  servers through `/models`): the one asked if listed, else Hestia's default if listed, else the first chat model
+  (Gemini: a «flash» one). Answer `{ok, detail, model, models[]}` in plain words («Manca la chiave.», «La chiave non è
+  valida.»); a model that answers «not found» while the key works is `ok` with `model: ""` and the list, so the user
+  picks another instead of being stuck.
+- `POST /api/llm/setup/apply {recipe, local_model, local_provider?, cloud[], cloud_models?, embedding?}`: a program
+  picked from `runtimes` that is not a block yet becomes one (`ensure_runtime`: type `openai`, its address, label
+  «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Setup guidato»):
+  `veloce/potente/codice/visione` get the local step (`local_provider`/`local_model`) and the cloud services in the
+  chosen order, each with the model picked for it (`cloud_models`) or its default models; a chosen service that no
+  longer lists its default model (a retired alias) gets one it lists. `cloud` gets the cloud services; `embedding`
+  changes only when `embedding {provider, model}` names another model (changing it re-indexes the memory). Recipe
+  `claude` also sets the brain mode `esterna` with agent `claude` and fallback `interna`. Answer: one sentence («Ti
+  risponde X sul tuo computer; se non c'è, Y nel cloud.»).
 - `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: Ollama downloads through
   `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at
   `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per

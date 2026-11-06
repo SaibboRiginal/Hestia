@@ -171,13 +171,19 @@ Linux (and macOS with Homebrew)
 curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | bash
 ```
 
-Hestia goes in the folder you launch it from (inside a `Hestia` folder, or right there if it already is one). The
-installer speaks your computer's language (Italian on an Italian PC, English otherwise). To choose it yourself, put
-`$env:HESTIA_LANG='en';` before the PowerShell line, or `HESTIA_LANG=en` before `bash` (`it` for Italian).
+Run it from the folder where you want Hestia. Another language (`en`, `it`; default: your PC's):
+
+```powershell
+$env:HESTIA_LANG='en'; irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
+```
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | HESTIA_LANG=en bash
+```
 
 <img src="docs/assets/icons/step-2.svg" width="26" height="26" align="top" alt="2">&nbsp; **Answer a few questions**: at the
-end the browser opens a guided setup, like a new phone. Choose where Hestia thinks (your computer, the cloud, both, or
-your Claude subscription: the right model for your graphics card downloads by itself), paste your Telegram bot token
+end the browser opens a guided setup, like a new phone. Choose where Hestia thinks (your computer, the cloud, or both;
+in the cloud Gemini, your Claude subscription or another key; the right model for your graphics card downloads by itself), paste your Telegram bot token
 from [@BotFather](https://t.me/BotFather) and write to the bot the code it shows, pick a backup passphrase, and turn
 on access from outside home if you want it. Anything can wait: it stays as a «Da finire» card in Home.
 
