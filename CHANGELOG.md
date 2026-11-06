@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-06
+- README: how to choose the installer's language (`HESTIA_LANG=en|it`) and that the Windows line goes in PowerShell → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - The installer speaks your language: English by default, Italian when the computer is in Italian (or `--lang it`); options also take English names (`--channel stable|latest`, `--role all|central|satellite`) → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: the Windows one-liner (`irm … | iex`) stopped at once with «potrebbe rendere non valida la variabile Role»; it runs again, and CI now also tries the script the way it is downloaded → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: the WebUI builds again from a fresh clone; the Download page file was never in the repo because a generic `downloads/` rule in `.gitignore` hid it → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
