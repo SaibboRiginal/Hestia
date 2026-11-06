@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 export interface SetupState {
   completed: boolean;
   later: string[];
+  voice?: { listen?: VoiceStep; speak?: VoiceStep };
   brain: { recipe?: string; local_model?: string; local_provider?: string; cloud?: string[];
            cloud_models?: Record<string, string>; summary?: string };
   hardware: { os?: string; ram_gb?: number; gpu?: string; vram_gb?: number; free_gb?: number };
@@ -31,6 +32,12 @@ export interface BrainCatalog {
   cloud: CloudProvider[];
 }
 /** Any module's download (models through Ollama, voices in Hestia's data folder), as the Download page lists them. */
+/** A speech service of the setup «Voce» (Echo's blocks): local engines first, then cloud ones (key needed). */
+export interface VoiceOption { id: string; label: string; note?: string; }
+export interface VoiceProvider { name: string; label: string; type: string; local: boolean; needs_key: boolean; key: boolean;
+  state: string; models: VoiceOption[]; voices: VoiceOption[]; }
+export interface VoiceStep { provider: string; model: string; voice: string; }
+export interface VoiceCatalog { ascolto: { providers: VoiceProvider[]; current: VoiceStep }; voce: { providers: VoiceProvider[]; current: VoiceStep }; }
 export interface Download { module?: string; id: string; what: string; source?: string;
   state: 'in_coda' | 'in_corso' | 'in_pausa' | 'fatto' | 'errore'; size: number; done: number;
   speed?: number; eta_s?: number | null; error?: string; }
@@ -38,7 +45,7 @@ export interface Outcome { ok: boolean; detail?: string; }
 /** «Prova»: the model tried ('' = pick another) and the chat models the service really has. */
 export interface TestOutcome extends Outcome { model?: string; models?: string[]; }
 export interface BrainChoice { local_provider: string; cloud_models: Record<string, string>; embedding: { provider: string; model: string } | null; }
-export interface TunnelState { on: boolean; url: string; detail?: string; }
+export interface TunnelState { on: boolean; url: string; detail?: string; phase?: '' | 'start' | 'download' | 'address' | 'ready' | 'error'; }
 
 @Injectable({ providedIn: 'root' })
 export class SetupApi {
@@ -57,6 +64,10 @@ export class SetupApi {
     return this.post<Outcome>('brain/apply', { recipe, local_model, cloud, claude_token, local_provider: choice.local_provider,
       cloud_models: choice.cloud_models, embedding: choice.embedding || {} });
   }
+  /** Setup «Voce»: the speech services (Echo), «Prova» (a typed key is saved first), the choice → Echo's chains. */
+  voiceCatalog() { return this.get<VoiceCatalog>('voice/catalog'); }
+  voiceTest(provider: string, key = '') { return this.post<Outcome & { models?: VoiceOption[]; voices?: VoiceOption[] }>('voice/test', { provider, key }); }
+  voiceApply(listen: VoiceStep | null, speak: VoiceStep | null) { return this.post<Outcome & { queued?: string[] }>('voice/apply', { listen: listen || {}, speak: speak || {} }); }
   /** Echo's local voice models (through the WebUI voice door, not Hephaestus). */
   prefetchVoice() { return firstValueFrom(this.http.post<{ queued: string[] }>('/api/webui/voice/models/prefetch', {})); }
   pulls() { return this.get<{ downloads: Download[] }>('brain/pulls').then(r => r.downloads || []); }

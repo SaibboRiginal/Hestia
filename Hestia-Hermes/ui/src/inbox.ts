@@ -93,7 +93,9 @@ export class HermesInbox extends HestiaElement {
                         source: { state: true }, others: { state: true }, error: { state: true }, loading: { state: true },
                         hasMore: { state: true }, busy: { state: true }, toastMode: { state: true },
                         playing: { state: true }, voiceBusy: { state: true }, secrets: { state: true },
-                        picks: { state: true }, others_text: { state: true } };
+                        picks: { state: true }, others_text: { state: true }, focusId: { state: true } };
+  /** The notification opened from a toast (``?focus=<id>``): shown first and highlighted. */
+  declare focusId: string;
   declare items: any[] | null; declare counts: Counts; declare filter: Filter; declare source: string;
   declare others: boolean; declare error: string; declare loading: boolean; declare hasMore: boolean;
   declare busy: string; declare toastMode: ToastMode; declare playing: string; declare voiceBusy: string;
@@ -121,6 +123,7 @@ export class HermesInbox extends HestiaElement {
     .ntf { display: flex; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-lg);
       background: var(--surface); }
     .ntf.unread { border-color: var(--border-strong); box-shadow: var(--shadow-1); }
+    .ntf.focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     .ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
       background: var(--surface-2); color: var(--text-3); }
     .ntf[data-level=warning] .ico { background: var(--warning-soft); color: var(--warning); }
@@ -158,7 +161,7 @@ export class HermesInbox extends HestiaElement {
 
   constructor() {
     super();
-    this.items = null; this.counts = { unread: 0, pending: 0 }; this.filter = 'unread'; this.source = '';
+    this.items = null; this.counts = { unread: 0, pending: 0 }; this.filter = 'unread'; this.source = ''; this.focusId = '';
     this.others = false; this.error = ''; this.loading = false; this.hasMore = false; this.busy = '';
     this.playing = ''; this.voiceBusy = ''; this.secrets = {}; this.picks = {}; this.others_text = {};
     this.toastMode = readToastMode();
@@ -168,6 +171,8 @@ export class HermesInbox extends HestiaElement {
     super.connectedCallback();
     const q = this.ctx?.query || {};
     if (q.filter === 'unread' || q.filter === 'pending' || q.filter === 'all') this.filter = q.filter;
+    // «Rispondi»/«Apri» on a toast: that notification, first and highlighted, whatever the filter would hide.
+    if (q.focus) { this.focusId = String(q.focus); this.filter = 'all'; }
     if (q.source) this.source = q.source;
     this.reload();
     this.onHost('refresh', () => this.reload());
@@ -229,6 +234,13 @@ export class HermesInbox extends HestiaElement {
     this.error = '';
     const items = r.data?.items ?? [];
     this.items = more ? [...(this.items || []), ...items] : items;
+    if (this.focusId && !more) {
+      const hit = this.items!.find(n => n.id === this.focusId);
+      if (hit) {
+        this.items = [hit, ...this.items!.filter(n => n.id !== this.focusId)];
+        this.updateComplete.then(() => this.renderRoot.querySelector('.ntf.focus')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+      }
+    }
     this.hasMore = items.length >= PAGE;
     if (r.data?.counts) this.counts = r.data.counts;
   }
@@ -404,7 +416,7 @@ export class HermesInbox extends HestiaElement {
     this.host.navigate(link.page, link.params || {}, link.module || undefined);
   }
 
-  private setFilter(f: Filter) { this.filter = f; this.items = null; this.reload(); }
+  private setFilter(f: Filter) { this.filter = f; this.focusId = ''; this.items = null; this.reload(); }
   private setSource(e: Event) { this.source = (e.target as HTMLSelectElement).value; this.items = null; this.reload(); }
 
   /** Toasts are drawn by the WebUI shell: the choice is stored where the shell reads it, and announced. */
@@ -443,7 +455,7 @@ export class HermesInbox extends HestiaElement {
 
   private renderItem(n: any) {
     const busy = this.busy === n.id;
-    return html`<article class="ntf ${n.read ? '' : 'unread'}" data-level=${n.level || 'info'}>
+    return html`<article class="ntf ${n.read ? '' : 'unread'} ${n.id === this.focusId ? 'focus' : ''}" data-level=${n.level || 'info'}>
       <div class="ico">${icon(LEVEL_ICON[n.level] || 'bell')}</div>
       <div class="main">
         <div class="meta">
@@ -479,7 +491,10 @@ export class HermesInbox extends HestiaElement {
       return html`<hxk-state kind="empty" text=${empty}></hxk-state>`;
     }
     const groups: Array<{ label: string; items: any[] }> = [];
+    const top = this.focusId ? shown.find(n => n.id === this.focusId) : null;
+    if (top) groups.push({ label: 'Questa', items: [top] });
     for (const n of shown) {
+      if (n === top) continue;
       const label = dayLabel(n.created_at);
       const last = groups.at(-1);
       if (last && last.label === label) last.items.push(n); else groups.push({ label, items: [n] });

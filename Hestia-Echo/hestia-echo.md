@@ -126,6 +126,9 @@ never changes.
 | GET | `/audio`, `/audio/{id}?format=`, `/audio-for?ref_id=` | kept audio (list with space, one, the one of a message) |
 | DELETE | `/audio/{id}`, `/audio?notification_id=\|message_id=` | delete one; drop regenerable audio of a removed notification |
 | POST | `/audio/cleanup` | agenda job |
+| GET | `/setup/catalog` | guided setup «Voce» (`core/voice_setup.py`): providers per direction, local first, with their models/voices (a cloud one once its key is there) and the chain's current first step |
+| POST | `/setup/test` | «Prova» of a speech service `{provider}`: its list read with the key (no audio made) → `{ok, detail, models, voices}` |
+| POST | `/setup/apply` | `{listen, speak}` → `echo.chains` (the chosen step first in `ascolto`/`voce`, the other steps kept as fallbacks), then the local models are queued → `{queued, downloads}` |
 | POST | `/models/prefetch` | queue the local models of the first local step of the «ascolto» and «voce» chains (guided setup «Voce», Download page) → `{queued, downloads}` |
 
 Downloads (`/api/downloads`, `hestia_common.downloads`, state `/models/downloads.json`): Whisper (source `whisper`,

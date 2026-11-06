@@ -7865,10 +7865,10 @@ paths:
       servers:
         - url: http://localhost:19010
       responses:
-        "200": {description: "{on, url}"}
+        "200": {description: "{on, url, phase (start|download|address|ready|error), detail?}"}
     post:
       tags: [Hephaestus]
-      summary: "Turn the Cloudflare quick tunnel to the WebUI on or off (waits up to 40 s for the address)"
+      summary: "Turn the Cloudflare quick tunnel to the WebUI on or off; on answers at once, a thread downloads the cloudflared image (a job in Download) and starts it, GET tells the phase"
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -7880,8 +7880,63 @@ paths:
               properties:
                 on: {type: boolean}
       responses:
-        "200": {description: "{on, url, detail?}"}
+        "200": {description: "{on, url, phase, detail?}"}
         "502": {description: Docker not answering}
+
+  /api/setup/voice/catalog:
+    get:
+      tags: [Hephaestus]
+      summary: "Setup «Voce»: Echo's speech services per direction (→ Echo /api/voice/setup/catalog)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{ascolto {providers[], current}, voce {providers[], current}}"}
+
+  /api/setup/voice/test:
+    post:
+      tags: [Hephaestus]
+      summary: "Save ECHO_KEY_<PROVIDER> (if given), re-create Echo, then «Prova» (→ Echo /api/voice/setup/test)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: {type: string}
+                key: {type: string, description: written to Hestia-Echo/app/.env, never returned}
+      responses:
+        "200": {description: "{ok, detail, models[], voices[]}"}
+        "400": {description: key or value refused}
+
+  /api/setup/voice/apply:
+    post:
+      tags: [Hephaestus]
+      summary: "The voice choice → Echo /api/voice/setup/apply (chains + local downloads); remembered in the setup state"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listen: {type: object, properties: {provider: {type: string}, model: {type: string}}}
+                speak: {type: object, properties: {provider: {type: string}, voice: {type: string}, model: {type: string}}}
+      responses:
+        "200": {description: "{ok, queued[], downloads[]}"}
+
+  /api/downloads:
+    get:
+      tags: [Hephaestus]
+      summary: "Hephaestus' downloads (hestia_common.downloads): the cloudflared image of «Fuori casa»; pause/resume/retry/cancel as every module"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{downloads[]}"}
 
   /api/setup/telegram/token:
     post:
@@ -12933,6 +12988,48 @@ paths:
         - url: http://localhost:19021
       responses:
         "200": {description: OK}
+
+  /api/voice/setup/catalog:
+    get:
+      tags: [Echo]
+      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,models[],voices[]}], current {provider,model,voice}}, voce {…}}"}
+
+  /api/voice/setup/test:
+    post:
+      tags: [Echo]
+      summary: "Setup «Prova» of a speech service: its model/voice list read with the key, no audio made"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {provider: {type: string}}}
+      responses:
+        "200": {description: "{ok, detail, models[], voices[]}"}
+
+  /api/voice/setup/apply:
+    post:
+      tags: [Echo]
+      summary: "Setup choice → echo.chains (chosen step first in ascolto/voce, the others kept as fallbacks), then the local models are queued"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listen: {type: object}
+                speak: {type: object}
+      responses:
+        "200": {description: "{queued[], downloads[]}"}
+        "502": {description: Themis refused}
 
   /echo/health:
     get:

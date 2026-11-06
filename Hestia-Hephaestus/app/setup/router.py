@@ -37,6 +37,16 @@ class BrainApply(BaseModel):
     claude_token: str = ""
 
 
+class VoiceTest(BaseModel):
+    provider: str
+    key: str = ""
+
+
+class VoiceApply(BaseModel):
+    listen: dict = Field(default_factory=dict)
+    speak: dict = Field(default_factory=dict)
+
+
 class Model(BaseModel):
     model: str
 
@@ -126,6 +136,7 @@ def notes_translator(hub_api_url: str):
 def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel=lambda: "stabile",
                         unhealthy=None) -> tuple[APIRouter, SetupService]:
     service = SetupService(repo, data_dir, hub_call=hub_caller(hub_api_url))
+    tunnel.init(data_dir)   # downloads of Hephaestus (the cloudflared image): /api/downloads, page Download
     router = APIRouter(prefix="/api/setup", tags=["setup"])
     updater = Updater(repo, data_dir, channel=channel, unhealthy=unhealthy, notify=hermes_notifier(hub_api_url),
                       translate=notes_translator(hub_api_url))
@@ -167,6 +178,28 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
             service._wait_oracle()
         return service.oracle("POST", "/api/llm/setup/test", body={"provider": req.provider, "model": req.model},
                               timeout=60)
+
+    # ── Voce (Echo owns the speech providers: /api/voice/setup/*) ──
+    @router.get("/voice/catalog")
+    def voice_catalog():
+        return service.echo("GET", "/api/voice/setup/catalog", timeout=30)
+
+    @router.post("/voice/test")
+    def voice_test(req: VoiceTest):
+        if req.key:
+            try:
+                if not service.voice_key(req.provider, req.key):
+                    return {"status": "ok", "ok": False, "detail": "Non sono riuscito a salvare la chiave."}
+            except secrets.SecretRefused as exc:
+                refused(exc)
+        return service.echo("POST", "/api/voice/setup/test", body={"provider": req.provider}, timeout=30)
+
+    @router.post("/voice/apply")
+    def voice_apply(req: VoiceApply):
+        out = service.echo("POST", "/api/voice/setup/apply", body={"listen": req.listen or None,
+                                                                   "speak": req.speak or None}, timeout=60)
+        service.mark("voce", voice={"listen": req.listen, "speak": req.speak})
+        return {"status": "ok", "ok": True, **{k: v for k, v in out.items() if k != "status"}}
 
     @router.post("/brain/apply")
     def brain_apply(req: BrainApply):
@@ -302,7 +335,9 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     def tunnel_switch(req: Tunnel):
         """Turn the outside address on (waits up to 40 s for it) or off; the WebUI then asks the login token there."""
         try:
-            out = tunnel.start() if req.on else tunnel.stop()
+            # Up to 15 s for the address (a chat/Telegram answer can then give it); a first start still downloading
+            # answers with its phase, and the setup page follows it.
+            out = tunnel.start(wait=15) if req.on else tunnel.stop()
         except Exception as exc:
             logger.warning("[🔄] event=setup_tunnel_failed on=%s error=%s", req.on, str(exc)[:200])
             raise HTTPException(status_code=502, detail="Non sono riuscito a cambiare il collegamento da fuori casa: "

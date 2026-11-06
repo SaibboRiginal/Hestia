@@ -195,7 +195,8 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   = page badge `{source: /api/ui/inbox/counts, field: unread}`. Deep link `?filter=unread|pending|all&source=`.
   The live toasts stay in the WebUI shell (it is the client); the page's *Avvisi a comparsa* select writes the
   shell's own preference (`localStorage` `hestia_notification_prefs`, same origin) and fires the window event
-  `hestia:notification-prefs` `{toast}`.
+  `hestia:notification-prefs` `{toast}`. «Rispondi»/«Apri» on a toast opens `?focus=<id>`: filter «Tutte», that
+  notification first under «Questa», highlighted and scrolled into view (a filter change drops it).
   Since W7 (dossier 2026-10-24-tutto-brainstorm-cindy) the *Da rispondere* filter reads **Da decidere**; a secret
   notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
   values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool

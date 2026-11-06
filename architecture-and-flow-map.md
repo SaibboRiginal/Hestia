@@ -334,6 +334,10 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    `ORACLE_KEY_<NAME>` into `Hestia-Oracle/app/.env`, re-creates `hestia_oracle` (Docker API), waits for health →
    Oracle `setup/test` (model from the service's own list); choice → Oracle `setup/apply` → Themis `oracle.providers`
    (a found program becomes a block) and `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads only).
+2b. Voice: Hephaestus → Hub → Echo `/api/voice/setup/catalog` (Echo's blocks per direction ascolto/voce); a key →
+   Hephaestus writes `ECHO_KEY_<NAME>` into `Hestia-Echo/app/.env`, re-creates `hestia_echo`, waits for health → Echo
+   `setup/test` (the service's voice/model list, no audio) → `setup/apply` → Themis `echo.chains` (chosen step first,
+   others kept) → Echo queues the local models (download source `http`/`whisper`).
 3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
    bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
 4. Backup passphrase → root `.env` → `hestia_archive` re-created.
@@ -357,7 +361,8 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 4. «Usa la sua scheda video» → Hephaestus → Oracle `POST /api/llm/setup/machine` → Themis `oracle.providers.ollama.url`
    = `http://<satellite>:11434`. «Scollega» → Hub `DELETE /api/nodes/{id}`.
 5. «Da fuori casa» → WebUI `/api/webui/setup/tunnel` → Hub → Hephaestus `/api/setup/tunnel` → Docker API starts
-   `hestia_tunnel` (cloudflared → `hestia_webui:19015`); WebUI `PublicUrlService` ← `hestia_tunnel:20241/quicktunnel`.
+   `hestia_tunnel` (cloudflared → `hestia_webui:19015`) in a background thread (phases start/download/address/ready/
+   error; a missing image is pulled as a Hephaestus download, source `docker`); WebUI `PublicUrlService` ← `hestia_tunnel:20241/quicktunnel`.
 
 ### Update flow («Aggiorna Hestia»)
 1. Chronos job `hephaestus.update_check` → Hephaestus `/api/setup/update/daily` → `git fetch` → newer tag (or

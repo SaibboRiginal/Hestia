@@ -214,7 +214,8 @@ export class NotificationsService {
     const text = n.repeat ? `${base} · ${n.repeat.text}` : base;
     this.toast.show(text, toneOf(n.level), {
       label: n.pending ? 'Rispondi' : 'Apri',
-      run: () => void this.router.navigateByUrl(PAGE),
+      // That notification, first and highlighted (the page's filter would otherwise hide an answered or read one).
+      run: () => void this.router.navigateByUrl(`${PAGE}?focus=${encodeURIComponent(n.id)}`),
     }, n.pending ? 10000 : 6000);
     if (visible) void this.markSeen(n);
   }

@@ -16,7 +16,7 @@ const STATE: Record<DownloadRow['state'], { label: string; icon: string; tone: s
   fatto: { label: 'Fatto', icon: 'check-circle', tone: 'success' },
   errore: { label: 'Non riuscito', icon: 'alert', tone: 'danger' },
 };
-const SOURCE: Record<string, string> = { ollama: 'Modello', whisper: 'Ascolto', http: 'File' };
+const SOURCE: Record<string, string> = { ollama: 'Modello', whisper: 'Ascolto', http: 'File', docker: 'Programma' };
 const ORDER: DownloadRow['state'][] = ['in_corso', 'in_coda', 'in_pausa', 'errore', 'fatto'];
 
 /** Bytes in Italian: «3,1 GB», «420 MB». */

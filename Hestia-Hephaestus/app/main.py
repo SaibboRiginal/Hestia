@@ -152,6 +152,9 @@ setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto�
     channel=lambda: str(forge_settings.settings.get(forge_settings.UPDATE_CHANNEL) or "stabile"),
     unhealthy=forge.unhealthy)
 app.include_router(setup_router)
+from .setup import tunnel as _tunnel  # noqa: E402
+if _tunnel.downloads() is not None:
+    app.include_router(_tunnel.downloads().router())   # /api/downloads (the cloudflared image, page Download)
 
 # ─────────────────────────────────────────────────────────────────────
 #  MCP tools

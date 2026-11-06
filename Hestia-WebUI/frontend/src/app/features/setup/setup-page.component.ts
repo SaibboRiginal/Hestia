@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signa
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
-import { BrainCatalog, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, setupError } from './setup.api';
+import { SetupPickComponent, PickItem } from './setup-pick.component';
+import { BrainCatalog, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
 /** What the server stores: derived from the two boxes (computer, cloud). «claude» (Claude Code as the whole brain)
@@ -41,7 +42,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [...UI, FormsModule, RouterLink],
+  imports: [...UI, FormsModule, RouterLink, SetupPickComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap">
@@ -138,42 +139,14 @@ function store(key: string, value: string): void {
               <hx-icon name="host" [size]="30" tone="accent" />
               <h1>Quale modello sul tuo computer?</h1>
               @if (found().length) {
-                <p class="lead">I modelli che hai già, programma per programma.</p>
-                @for (r of found(); track r.name) {
-                  <div class="group">
-                    <div class="gh"><hx-icon name="check-circle" [size]="15" tone="success" /><b>{{ r.label }}</b><small>trovato</small></div>
-                    @if (r.models.length) {
-                      <div class="choices">
-                        @for (m of shown(r); track m.model) {
-                          <button type="button" class="choice" [class.sel]="isLocal(r.name, m.model)" (click)="pickLocal(r.name, m.model)">
-                            <hx-icon [name]="m.fits ? 'host' : 'alert'" [size]="20" [tone]="isLocal(r.name, m.model) ? 'accent' : (m.fits ? 'muted' : 'warning')" />
-                            <span class="ct"><b>{{ m.model }}</b>@if (localText(m); as t) { <small>{{ t }}</small> }</span>
-                          </button>
-                        }
-                        @if (r.models.length > shortList && !expanded().includes(r.name)) {
-                          <button type="button" class="linkbtn" (click)="expand(r.name)">Mostra tutti ({{ r.models.length }})</button>
-                        }
-                      </div>
-                    } @else if (r.name === 'ollama') {
-                      <p class="hint">Ollama non ha ancora modelli. Per la tua scheda video ti propongo questi: Ollama lo scarica sul tuo computer mentre finisci il resto.</p>
-                      <div class="choices">
-                        @for (m of catalog()?.recommended?.chat || []; track m.model; let first = $first) {
-                          <button type="button" class="choice" [class.sel]="isLocal('ollama', m.model)" (click)="pickLocal('ollama', m.model)">
-                            <hx-icon name="download" [size]="20" [tone]="isLocal('ollama', m.model) ? 'accent' : 'muted'" />
-                            <span class="ct"><b>{{ m.model }}</b>@if (first) { <span class="rec">Consigliato</span> }
-                              <small>{{ m.good }} {{ gb(m.size_gb) }} GB da scaricare.</small></span>
-                          </button>
-                        }
-                      </div>
-                    } @else {
-                      <p class="hint">Nessun modello caricato: aprilo, scaricane uno da lì e premi «Cerca di nuovo».</p>
-                    }
-                    @if (r.name === 'ollama') {
-                      <hx-field label="Oppure un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b. Se non c'è, Ollama lo scarica.">
-                        <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
-                      </hx-field>
-                    }
-                  </div>
+                <p class="lead">I modelli che hai già su {{ foundNames() }}.</p>
+                <app-setup-pick [items]="localItems()" [selected]="localKey()" placeholder="Cerca un modello"
+                                empty="Nessun modello caricato: aprilo, scaricane uno da lì e premi «Cerca di nuovo»."
+                                (picked)="pickLocalKey($event)" />
+                @if (hasOllama()) {
+                  <hx-field label="Oppure un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b. Se non c'è, Ollama lo scarica.">
+                    <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
+                  </hx-field>
                 }
               } @else {
                 <p class="lead">Sul tuo computer non ho trovato programmi per i modelli. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo».</p>
@@ -192,11 +165,8 @@ function store(key: string, value: string): void {
               @if (found().length) {
                 <details class="adv">
                   <summary>Avanzate</summary>
-                  <hx-field label="Modello per la memoria" hint="Serve a ritrovare ricordi e documenti. Se lo cambi, Hestia rilegge la memoria: ci vuole un po'.">
-                    <select class="hx-input" [ngModel]="embeddingKey()" (ngModelChange)="embeddingKey.set($event)">
-                      @for (e of embedChoices(); track e.key) { <option [value]="e.key">{{ e.label }}</option> }
-                    </select>
-                  </hx-field>
+                  <p class="hint">Modello per la memoria: serve a ritrovare ricordi e documenti. Se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</p>
+                  <app-setup-pick [items]="embedItems()" [selected]="embeddingKey()" placeholder="Cerca" (picked)="embeddingKey.set($event)" />
                 </details>
               }
             }
@@ -228,12 +198,9 @@ function store(key: string, value: string): void {
                             <input class="hx-input mono" type="password" autocomplete="off" [ngModel]="keys[p.name] || ''" (ngModelChange)="typeKey(p.name, $event)" [placeholder]="p.key_set ? 'chiave salvata' : 'incolla qui la chiave'" />
                           </hx-field>
                           @if (modelsOf()[p.name]?.length) {
-                            <hx-field label="Modello" hint="La lista viene dal servizio: leggerla non consuma niente.">
-                              <select class="hx-input" [ngModel]="cloudModel()[p.name] || ''" (ngModelChange)="pickCloudModel(p.name, $event)">
-                                <option value="" disabled>Scegli un modello</option>
-                                @for (m of modelsOf()[p.name]; track m) { <option [value]="m">{{ m }}</option> }
-                              </select>
-                            </hx-field>
+                            <div class="sub">Modello <small>(la lista viene dal servizio: leggerla non consuma niente)</small></div>
+                            <app-setup-pick [items]="cloudItems(p.name)" [selected]="cloudModel()[p.name] || ''" [limit]="4" placeholder="Cerca un modello"
+                                            (picked)="pickCloudModel(p.name, $event)" />
                           }
                           <div class="row">
                             @if (keyLink(p)) { <a hx-btn variant="ghost" icon="external" [href]="keyLink(p)" target="_blank" rel="noopener">Prendi la chiave</a> }
@@ -259,9 +226,45 @@ function store(key: string, value: string): void {
 
             @case ('voce') {
               <hx-icon name="volume" [size]="30" tone="accent" />
-              <h1>Vuoi parlare con Hestia a voce?</h1>
-              <p class="lead">Scarico adesso le voci e l'ascolto, così la prima volta che parli non devi aspettare. Funzionano sul tuo computer, senza servizi a pagamento.</p>
-              @if (voiceQueued()) { <p class="ok"><hx-icon name="check-circle" [size]="16" tone="success" /> Le sto scaricando: le vedi nei download.</p> }
+              <h1>Come ti ascolta e ti risponde a voce?</h1>
+              <p class="lead">Sul tuo computer è gratis e privato: scarico subito quello che serve, così la prima volta non aspetti. Nel cloud serve una chiave.</p>
+              @if (!voiceCat()) {
+                @if (voiceError()) { <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
+              } @else {
+                @for (dir of voiceDirs; track dir.id) {
+                  <div class="sub">{{ dir.title }} <small>{{ dir.help }}</small></div>
+                  <div class="choices">
+                    @for (p of voiceCat()![dir.id].providers; track p.name) {
+                      <div class="opt" [class.sel]="voicePick()[dir.id].provider === p.name">
+                        <button type="button" class="choice" role="radio" [attr.aria-checked]="voicePick()[dir.id].provider === p.name" (click)="pickVoiceProvider(dir.id, p.name)">
+                          <hx-icon [name]="voicePick()[dir.id].provider === p.name ? 'check-circle' : (p.local ? 'host' : 'zap')" [size]="20" [tone]="voicePick()[dir.id].provider === p.name ? 'accent' : 'muted'" />
+                          <span class="ct"><b>{{ p.label }}</b>@if (p.local) { <span class="rec">Sul tuo computer</span> }
+                            <small>{{ voiceProviderText(p) }}</small></span>
+                          @if (voicePick()[dir.id].provider === p.name) { <hx-icon [name]="voiceReady(p) ? 'check-circle' : 'clock'" [size]="16" [tone]="voiceReady(p) ? 'success' : 'warning'" /> }
+                        </button>
+                        @if (voicePick()[dir.id].provider === p.name) {
+                          <div class="cfg">
+                            @if (!p.local) {
+                              <hx-field [label]="'Chiave di ' + p.label" [error]="voiceTestError()[p.name] || ''" [hint]="voiceTestNote()[p.name] || ''">
+                                <input class="hx-input mono" type="password" autocomplete="off" [ngModel]="voiceKeys[p.name] || ''" (ngModelChange)="voiceKeys[p.name] = $event"
+                                       [placeholder]="p.key ? 'chiave salvata' : 'incolla qui la chiave'" />
+                              </hx-field>
+                              <div class="row">
+                                <button hx-btn variant="secondary" icon="play" [loading]="voiceTesting() === p.name" [disabled]="!voiceKeys[p.name] && !p.key" (click)="testVoice(p.name)">{{ voiceKeys[p.name] ? 'Salva e prova' : 'Prova' }}</button>
+                              </div>
+                            }
+                            @if (voiceOptions(p, dir.id).length) {
+                              <div class="sub">{{ dir.id === 'ascolto' ? 'Modello' : 'Voce' }}</div>
+                              <app-setup-pick [items]="voiceOptions(p, dir.id)" [limit]="4" [selected]="dir.id === 'ascolto' ? voicePick()[dir.id].model : voicePick()[dir.id].voice"
+                                              placeholder="Cerca" (picked)="pickVoiceOption(dir.id, $event)" />
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              }
             }
 
             @case ('telegram') {
@@ -323,18 +326,25 @@ function store(key: string, value: string): void {
                   <a hx-btn variant="secondary" icon="external" [href]="tunnel()!.url" target="_blank" rel="noopener">Provalo</a>
                   <button hx-btn variant="ghost" icon="x" [loading]="busy()" (click)="switchTunnel(false)">Spegni</button>
                 </div>
-              } @else if (busy() || tunnel()?.on) {
-                @if (tunnelLate()) {
-                  <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> L'indirizzo non arriva. Di solito è la rete che blocca Cloudflare (ufficio, scuola) o internet che non va.</p>
+              } @else if (busy() || tunnel()?.on || tunnel()?.phase === 'error') {
+                @if (tunnel()?.phase === 'error' || tunnelLate()) {
+                  <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ tunnel()?.phase === 'error' ? tunnel()!.detail : 'L\'indirizzo non arriva. Di solito è la rete che blocca Cloudflare (ufficio, scuola) o internet che non va.' }}</p>
                   <div class="row">
                     <button hx-btn variant="ghost" icon="x" (click)="switchTunnel(false)">Spegni</button>
                     <button hx-btn variant="secondary" icon="refresh" (click)="retryTunnel()">Riprova</button>
                   </div>
                 } @else {
                   <ol class="steps">
-                    <li [class.done]="!!tunnel()?.on"><hx-icon [name]="tunnel()?.on ? 'check-circle' : 'download'" [size]="16" [tone]="tunnel()?.on ? 'success' : 'info'" /> Scarico e avvio il programma di Cloudflare</li>
-                    <li><hx-spinner /> Aspetto l'indirizzo da Cloudflare (fino a un minuto)</li>
+                    @for (st of tunnelSteps; track st.id; let i = $index) {
+                      <li>
+                        @if (tunnelStep() > i) { <hx-icon name="check-circle" [size]="16" tone="success" /> }
+                        @else if (tunnelStep() === i) { <hx-spinner /> }
+                        @else { <hx-icon name="minus" [size]="16" tone="muted" /> }
+                        {{ st.label }}
+                      </li>
+                    }
                   </ol>
+                  <p class="hint">Puoi andare avanti: continua da solo, il download lo vedi a lato.</p>
                 }
               } @else {
                 <p class="lead">Dal telefono, fuori casa, apri Hestia con un indirizzo internet sicuro. Senza, Hestia si usa solo in casa e da Telegram.</p>
@@ -401,6 +411,8 @@ function store(key: string, value: string): void {
     .dl { gap: 10px; padding: 0 4px; }
     .dl b { font-size: 13px; overflow-wrap: anywhere; }
     .dl small { font-size: 12px; }
+    .sub { font-size: 13px; font-weight: 600; color: var(--text-2); }
+    .sub small { font-weight: 400; color: var(--text-3); }
     .linkbtn { align-self: flex-start; background: none; border: 0; color: var(--accent); font-size: 13px; padding: 2px 0; }
     .scrim { display: none; }
     .card { padding: 28px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
@@ -465,9 +477,6 @@ export class SetupPageComponent {
   readonly claudeType = CLAUDE_TYPE;
   /** Phone: the summary + downloads panel, opened from the button at the top. */
   sheet = signal(false);
-  /** Models shown per program before «Mostra tutti». */
-  readonly shortList = 4;
-  expanded = signal<string[]>([]);
 
   state = signal<SetupState | null>(null);
   catalog = signal<BrainCatalog | null>(null);
@@ -523,7 +532,111 @@ export class SetupPageComponent {
   tunnel = signal<TunnelState | null>(null);
   private tunnelSince = signal(0);
   private now = signal(Date.now());
-  tunnelLate = computed(() => !!this.tunnelSince() && !this.tunnel()?.url && this.now() - this.tunnelSince() > TUNNEL_PATIENCE_MS);
+  /** Patience counts only while waiting for the address (the download before it can take longer). */
+  tunnelLate = computed(() => this.tunnel()?.phase === 'address' && !!this.tunnelSince() && this.now() - this.tunnelSince() > TUNNEL_PATIENCE_MS);
+  readonly tunnelSteps = [
+    { id: 'download', label: 'Scarico il programma di Cloudflare (solo la prima volta)' },
+    { id: 'start', label: 'Lo avvio' },
+    { id: 'address', label: 'Aspetto l\'indirizzo da Cloudflare' },
+  ];
+  tunnelStep = computed(() => {
+    const ph = this.tunnel()?.phase || (this.busy() ? 'start' : '');
+    return ph === 'download' ? 0 : ph === 'start' ? 1 : ph === 'address' ? 2 : ph === 'ready' ? 3 : 1;
+  });
+
+  // ── Voce (Echo's blocks, the same cards as the cloud services) ──
+  readonly voiceDirs = [
+    { id: 'ascolto' as const, title: 'Ascolto', help: 'capire quello che dici' },
+    { id: 'voce' as const, title: 'Voce', help: 'come ti risponde' },
+  ];
+  voiceCat = signal<VoiceCatalog | null>(null);
+  voiceError = signal('');
+  voicePick = signal<{ ascolto: VoiceStep; voce: VoiceStep }>({ ascolto: { provider: '', model: '', voice: '' }, voce: { provider: '', model: '', voice: '' } });
+  voiceKeys: Record<string, string> = {};
+  voiceLists = signal<Record<string, { models: { id: string; label: string; note?: string }[]; voices: { id: string; label: string }[] }>>({});
+  voiceTested = signal<string[]>([]);
+  voiceTesting = signal('');
+  voiceTestNote = signal<Record<string, string>>({});
+  voiceTestError = signal<Record<string, string>>({});
+
+  async loadVoice() {
+    this.voiceError.set('');
+    try {
+      const cat = await this.api.voiceCatalog();
+      this.voiceCat.set(cat);
+      const saved = this.state()?.voice || {};
+      const first = (d: 'ascolto' | 'voce', s?: VoiceStep): VoiceStep => {
+        const cur = s?.provider ? s : cat[d].current;
+        const p = cat[d].providers.find(x => x.name === cur.provider) || cat[d].providers[0];
+        if (!p) return { provider: '', model: '', voice: '' };
+        return { provider: p.name, model: cur.provider === p.name ? cur.model || p.models[0]?.id || '' : p.models[0]?.id || '',
+                 voice: cur.provider === p.name ? cur.voice || p.voices[0]?.id || '' : p.voices[0]?.id || '' };
+      };
+      this.voicePick.set({ ascolto: first('ascolto', saved.listen), voce: first('voce', saved.speak) });
+    } catch (e) {
+      this.voiceError.set(setupError(e));
+    }
+  }
+  private voiceProvider(dir: 'ascolto' | 'voce', name: string): VoiceProvider | undefined { return this.voiceCat()?.[dir].providers.find(p => p.name === name); }
+  pickVoiceProvider(dir: 'ascolto' | 'voce', name: string) {
+    const p = this.voiceProvider(dir, name);
+    const opts = p ? this.voiceOptions(p, dir) : [];
+    this.voicePick.set({ ...this.voicePick(), [dir]: { provider: name, model: dir === 'ascolto' ? opts[0]?.id || '' : '', voice: dir === 'voce' ? opts[0]?.id || '' : '' } });
+    if (p && !p.local && p.key && !this.voiceLists()[name] && !this.voiceKeys[name]) void this.testVoice(name);
+  }
+  pickVoiceOption(dir: 'ascolto' | 'voce', id: string) {
+    const cur = this.voicePick()[dir];
+    this.voicePick.set({ ...this.voicePick(), [dir]: dir === 'ascolto' ? { ...cur, model: id } : { ...cur, voice: id } });
+  }
+  voiceOptions(p: VoiceProvider, dir: 'ascolto' | 'voce'): PickItem[] {
+    const listed = this.voiceLists()[p.name];
+    const rows = dir === 'ascolto' ? (listed?.models.length ? listed.models : p.models) : (listed?.voices.length ? listed.voices : p.voices);
+    return rows.map(r => ({ id: r.id, title: r.label, note: (r as { note?: string }).note || '', icon: dir === 'ascolto' ? 'mic' : 'volume' }));
+  }
+  voiceReady(p: VoiceProvider): boolean {
+    if (p.local) return true;
+    return this.voiceTested().includes(p.name) || (p.key && !this.voiceKeys[p.name] && !this.voiceTestError()[p.name]);
+  }
+  voiceProviderText(p: VoiceProvider): string {
+    if (p.local) return p.state === 'ready' ? 'Pronto.' : 'Lo scarico quando confermi.';
+    return p.key ? 'Chiave già inserita.' : 'Serve una chiave.';
+  }
+  async testVoice(name: string): Promise<void> {
+    this.voiceTesting.set(name);
+    this.voiceTestError.set({ ...this.voiceTestError(), [name]: '' });
+    this.voiceTestNote.set({ ...this.voiceTestNote(), [name]: '' });
+    const typed = (this.voiceKeys[name] || '').trim();
+    try {
+      const r = await this.api.voiceTest(name, typed);
+      if (typed) { this.voiceKeys[name] = ''; this.markVoiceKey(name); }
+      this.voiceLists.set({ ...this.voiceLists(), [name]: { models: r.models || [], voices: r.voices || [] } });
+      if (r.ok) {
+        this.voiceTested.set([...this.voiceTested().filter(n => n !== name), name]);
+        this.voiceTestNote.set({ ...this.voiceTestNote(), [name]: r.detail || 'Funziona.' });
+        for (const d of this.voiceDirs) if (this.voicePick()[d.id].provider === name) {
+          const opts = this.voiceOptions(this.voiceProvider(d.id, name)!, d.id);
+          const cur = this.voicePick()[d.id];
+          const has = opts.some(o => o.id === (d.id === 'ascolto' ? cur.model : cur.voice));
+          if (!has && opts[0]) this.pickVoiceOption(d.id, opts[0].id);
+        }
+      } else {
+        this.voiceTested.set(this.voiceTested().filter(n => n !== name));
+        this.voiceTestError.set({ ...this.voiceTestError(), [name]: r.detail || 'Non funziona.' });
+      }
+    } catch (e) {
+      const saved = typed ? await this.api.voiceCatalog().then(c => [...c.ascolto.providers, ...c.voce.providers].some(p => p.name === name && p.key)).catch(() => false) : false;
+      if (saved) { this.voiceKeys[name] = ''; this.markVoiceKey(name); this.voiceTesting.set(''); return this.testVoice(name); }
+      this.voiceTestError.set({ ...this.voiceTestError(), [name]: setupError(e) });
+    } finally {
+      this.voiceTesting.set('');
+    }
+  }
+  private markVoiceKey(name: string) {
+    const c = this.voiceCat();
+    if (!c) return;
+    const mark = (list: VoiceProvider[]) => list.map(p => p.name === name ? { ...p, key: true } : p);
+    this.voiceCat.set({ ascolto: { ...c.ascolto, providers: mark(c.ascolto.providers) }, voce: { ...c.voce, providers: mark(c.voce.providers) } });
+  }
 
   constructor() {
     const timer = setInterval(() => this.poll(), 3000);
@@ -541,6 +654,7 @@ export class SetupPageComponent {
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
       this.reached.set(state.brain.recipe ? this.screens().length - 1 : this.index());
       if (this.screen() === 'cloud') for (const n of this.cloudPicked()) this.autoList(n);
+      if (this.screen() === 'voce') void this.loadVoice();
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
     } catch (e) {
@@ -607,6 +721,7 @@ export class SetupPageComponent {
     this.formError.set('');
     if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
     if (screen === 'cloud') for (const n of this.cloudPicked()) this.autoList(n);
+    if (screen === 'voce' && !this.voiceCat()) void this.loadVoice();
     this.screen.set(screen);
     this.reached.set(Math.max(this.reached(), this.screens().indexOf(screen)));
     store(SCREEN_KEY, screen);
@@ -635,7 +750,7 @@ export class SetupPageComponent {
       case 'voce': return this.voiceQueued();
       case 'telegram': return st.telegram.linked;
       case 'backup': return st.backup.passphrase;
-      case 'esterni': return this.reached() > this.screens().indexOf('esterni');
+      case 'esterni': return false;   // nothing to fill in: it only says where to connect them
       case 'fuori': return !!this.tunnel()?.on;
       default: return false;
     }
@@ -668,6 +783,10 @@ export class SetupPageComponent {
     switch (this.screen()) {
       case 'ricetta': return this.useLocal() || this.useCloud();
       case 'locale': return !!this.localModel();
+      case 'voce': return this.voiceQueued() || (!!this.voiceCat() && this.voiceDirs.every(d => {
+        const p = this.voiceCat()![d.id].providers.find(x => x.name === this.voicePick()[d.id].provider);
+        return !p || this.voiceReady(p);
+      }));
       case 'cloud': return this.cloudPicked().length > 0 && this.cloudPicked().every(n => this.ready(n));
       case 'telegram': return this.state()!.telegram.linked || (!this.code() && !this.state()!.telegram.token && !!this.botToken.trim());
       case 'backup': return this.state()!.backup.passphrase || this.passphrase.length >= 12;
@@ -682,7 +801,7 @@ export class SetupPageComponent {
       case 'cloud': return 'Conferma';
       case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? 'Avanti' : 'Collega';
       case 'backup': return this.state()!.backup.passphrase ? 'Avanti' : 'Salva';
-      case 'voce': return this.voiceQueued() ? 'Avanti' : 'Sì, scarica';
+      case 'voce': return this.voiceQueued() ? 'Avanti' : 'Conferma';
       case 'fuori': return this.tunnel()?.on ? 'Avanti' : 'Attiva';
       case 'pronto': return 'Inizia';
       default: return 'Avanti';
@@ -696,7 +815,9 @@ export class SetupPageComponent {
     try {
       if (following === 'cervello' && screen !== 'ricetta') { await this.applyBrain(); return; }
       if (screen === 'voce' && !this.voiceQueued()) {
-        await this.api.prefetchVoice();
+        const pick = this.voicePick();
+        const out = await this.api.voiceApply(pick.ascolto.provider ? pick.ascolto : null, pick.voce.provider ? pick.voce : null);
+        if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }
         this.voiceQueued.set(true);
         void this.refreshDownloads();
         this.forward();   // the downloads go on by themselves, shown at the side
@@ -736,13 +857,29 @@ export class SetupPageComponent {
   gb(n: number): string { return String(n).replace('.', ','); }
   found = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => r.found));
   missing = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => !r.found));
-  shown(r: Runtime): LocalModel[] {
-    if (r.models.length <= this.shortList || this.expanded().includes(r.name)) return r.models;
-    const head = r.models.slice(0, this.shortList);
-    const sel = r.models.find(m => this.isLocal(r.name, m.model));   // the chosen one always stays visible
-    return sel && !head.includes(sel) ? [...head, sel] : head;
-  }
-  expand(name: string) { this.expanded.set([...this.expanded(), name]); }
+  foundNames(): string { const l = this.found().map(r => r.label); return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || ''; }
+  hasOllama = computed(() => this.found().some(r => r.name === 'ollama'));
+  localKey = computed(() => this.otherModel() ? '' : `${this.localProvider()}|${this.localModel()}`);
+  /** Every model of every program found, in one searchable list; an empty Ollama gets the suggestions to download. */
+  localItems = computed<PickItem[]>(() => {
+    const many = this.found().length > 1;
+    const out: PickItem[] = [];
+    for (const r of this.found()) {
+      for (const m of r.models) {
+        out.push({ id: `${r.name}|${m.model}`, title: m.model, warn: !m.fits,
+                   note: [many ? r.label : '', this.localText(m)].filter(Boolean).join(' · ') });
+      }
+      if (r.name === 'ollama' && !r.models.length) {
+        (this.catalog()?.recommended?.chat || []).forEach((m, i) => out.push({
+          id: `ollama|${m.model}`, title: m.model, icon: 'download', tag: i === 0 ? 'Consigliato' : '',
+          note: `${m.good} ${this.gb(m.size_gb)} GB da scaricare: Ollama lo scarica mentre finisci il resto.` }));
+      }
+    }
+    return out;
+  });
+  pickLocalKey(key: string) { const [p, ...m] = key.split('|'); this.pickLocal(p, m.join('|')); }
+  embedItems = computed<PickItem[]>(() => this.embedChoices().map((e, i) => ({ id: e.key, title: e.label, icon: 'memory', tag: i === 0 && !e.key ? 'Ora' : '' })));
+  cloudItems(name: string): PickItem[] { return (this.modelsOf()[name] || []).map(m => ({ id: m, title: m, icon: 'zap' })); }
   otherModel = signal('');
   isLocal(provider: string, model: string): boolean { return this.localProvider() === provider && this.localModel() === model && !this.otherModel(); }
   pickLocal(provider: string, model: string) { this.localProvider.set(provider); this.localModel.set(model); this.otherModel.set(''); }
@@ -773,7 +910,7 @@ export class SetupPageComponent {
   embedChoices = computed(() => {
     const now = this.catalog()?.embedding;
     const out: { key: string; label: string }[] = [];
-    if (now?.model) out.push({ key: '', label: `${now.model} (${this.runtimeLabel(now.provider)}, quello di ora)` });
+    if (now?.model) out.push({ key: '', label: `${now.model} (${this.runtimeLabel(now.provider)})` });
     for (const r of this.found()) {
       for (const m of r.embed) {
         if (now && r.name === now.provider && m === now.model) continue;
@@ -829,7 +966,7 @@ export class SetupPageComponent {
 
   /** «Prova» / «Salva e prova»: a typed key is saved once, then the service's model list is read (no tokens spent).
    * The field then shows «chiave salvata»: nothing to type again. */
-  async testKey(name: string) {
+  async testKey(name: string): Promise<void> {
     this.testing.set(name);
     this.testError.set({ ...this.testError(), [name]: '' });
     this.testNote.set({ ...this.testNote(), [name]: '' });
@@ -851,6 +988,15 @@ export class SetupPageComponent {
         this.testError.set({ ...this.testError(), [name]: r.detail || 'Non funziona.' });
       }
     } catch (e) {
+      // A slow restart can drop the answer while the key was saved: check, and if it is there read the list again.
+      const typed = (this.keys[name] || '').trim();
+      const saved = typed ? await this.api.catalog().then(c => c.cloud.find(x => x.name === name)?.key_set).catch(() => false) : false;
+      if (saved) {
+        this.keys[name] = '';
+        this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
+        this.testing.set('');
+        return this.testKey(name);
+      }
       this.testError.set({ ...this.testError(), [name]: setupError(e) });
     } finally {
       this.testing.set('');
@@ -934,9 +1080,10 @@ export class SetupPageComponent {
     }
     const list = this.downloads();
     if (this.activeDownloads() || (!list.length && this.ticks % 5 === 0) || this.ticks % 20 === 0) void this.refreshDownloads();
-    if (screen === 'fuori' && this.tunnel()?.on && !this.tunnel()!.url) {
-      if (!this.tunnelSince()) this.tunnelSince.set(Date.now());
-      this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
+    const t = this.tunnel();
+    if (t?.on && !t.url) {
+      if (t.phase !== 'address' || !this.tunnelSince()) this.tunnelSince.set(Date.now());
+      this.api.tunnel().then(x => this.tunnel.set(x)).catch(() => undefined);
     }
   }
 

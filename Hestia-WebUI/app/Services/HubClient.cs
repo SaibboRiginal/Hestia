@@ -24,10 +24,19 @@ public class HubClient
 
     // ── Registry / Discovery ───────────────────────────────────────────
 
+    /// <summary>The HttpClient has no overall timeout (Program.cs): every call sets its own. Quick reads: 30 s.</summary>
+    private static CancellationTokenSource Short(CancellationToken ct)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        return cts;
+    }
+
     /// <summary>Get all registered services and their status.</summary>
     public async Task<JsonElement> GetRegistryAsync(CancellationToken ct = default)
     {
-        var resp = await _http.GetAsync($"{_hubUrl}/status", ct);
+        using var cts = Short(ct);
+        var resp = await _http.GetAsync($"{_hubUrl}/status", cts.Token);
         resp.EnsureSuccessStatusCode();
         return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
     }
@@ -35,7 +44,8 @@ public class HubClient
     /// <summary>Registered services (registry only, no health probe — fast).</summary>
     public async Task<JsonElement> GetServicesAsync(CancellationToken ct = default)
     {
-        var resp = await _http.GetAsync($"{_hubUrl}/registry/services", ct);
+        using var cts = Short(ct);
+        var resp = await _http.GetAsync($"{_hubUrl}/registry/services", cts.Token);
         resp.EnsureSuccessStatusCode();
         return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
     }
@@ -143,8 +153,9 @@ public class HubClient
     {
         try
         {
+            using var cts = Short(ct);
             var resp = await _http.GetAsync(
-                $"{_hubUrl}/discovery/catalog?client={Uri.EscapeDataString(client)}&type={Uri.EscapeDataString(types)}", ct);
+                $"{_hubUrl}/discovery/catalog?client={Uri.EscapeDataString(client)}&type={Uri.EscapeDataString(types)}", cts.Token);
             resp.EnsureSuccessStatusCode();
             return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
         }
