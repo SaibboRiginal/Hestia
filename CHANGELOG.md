@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-06
+- The assistant looks up what it learned (its skills) faster: the search now runs inside the database and only the best matches come out, instead of reading every memory each time; same results. LEANN was evaluated and not adopted (it saves disk only on millions of documents and would slow every search) → `docs/work/2026-11-06-ricerca-memorie-in-db/` [ext-chat]
+
 ## 2026-10-31
 - Hestia from outside home in one tap: in the guided setup, on Sistema → Macchine or from Telegram, «Attiva» gives Hestia a safe internet address (Cloudflare, free, no account) to open it from the phone when you are out; from there it always asks the login, at home nothing changes, and «Spegni» closes it. The bot's login link follows the address by itself → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Hestia can use more than one computer at home: an always-on machine (a Raspberry or a mini PC) keeps memory, settings, the site and Telegram, and your PC with the video card does the voice and the model training and, with «Usa la sua scheda video», runs the brain's local models. On the central one open Sistema → Macchine → «Collega una macchina»: it shows a code and one line to paste on the PC, which installs what it needs and links itself; when the PC is off its parts are simply «Non disponibile», and «Scollega» removes it → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

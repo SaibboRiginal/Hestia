@@ -1,6 +1,8 @@
 """Long-term memory endpoints — preferences, subscriptions, and dispatch logs."""
 from datetime import datetime, timedelta, timezone
 import json
+import logging
+import math
 import uuid
 from typing import Iterator, List, Optional
 
@@ -11,6 +13,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, database
 
 router = APIRouter(tags=["memory"])
+logger = logging.getLogger("hestia_archive")
 
 
 # ── User preferences ──────────────────────────────────────────────────────────
@@ -89,16 +92,33 @@ def search_similar_memories(
     """Return active memories ranked by cosine similarity to *embedding*.
 
     Body: {"embedding": [...], "memory_class": "skill", "domain": "calendar", "limit": 5}
+
+    Ranking runs inside Postgres (pgvector ``<=>``) and only the top rows leave the DB: it used to load every
+    candidate with its 768 floats and score them one by one in Python (docs/work/2026-11-06-ricerca-memorie-in-db).
     """
     query_embedding = body.get("embedding")
     if not isinstance(query_embedding, list) or not query_embedding:
         raise HTTPException(status_code=400, detail="embedding vector required")
+    try:
+        query_embedding = [float(x) for x in query_embedding]
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="embedding must be numbers")
+
+    dims = getattr(models.UserPreference.embedding.type, "dim", None)
+    if dims and len(query_embedding) != dims:
+        # A different embedding model: the old Python loop silently compared truncated vectors.
+        logger.warning("[🔄] event=memory_search_dim_mismatch got=%d expected=%d (no results)",
+                       len(query_embedding), dims)
+        return []
+    if not any(query_embedding):
+        return []  # zero vector: cosine similarity undefined
 
     memory_class = body.get("memory_class")
     domain = body.get("domain")
-    limit = min(int(body.get("limit", 5)), 20)
+    limit = max(1, min(int(body.get("limit", 5)), 20))
 
-    q = db.query(models.UserPreference).filter(
+    distance = models.UserPreference.embedding.cosine_distance(query_embedding).label("distance")
+    q = db.query(models.UserPreference, distance).filter(
         models.UserPreference.is_active == True,  # noqa: E712
         models.UserPreference.embedding.isnot(None),
     )
@@ -108,40 +128,14 @@ def search_similar_memories(
         q = q.filter(
             models.UserPreference.domain.in_([domain, "general"]))
 
-    candidates = q.all()
-    if not candidates:
-        return []
+    # +limit spare rows: a stored zero vector gives NaN (sorted last) and is skipped below.
+    rows = q.order_by(distance).limit(limit * 2).all()
 
-    # Cosine similarity ranking
-    from math import sqrt
-
-    def dot(a, b):
-        return sum(x * y for x, y in zip(a, b))
-
-    def norm(v):
-        return sqrt(sum(x * x for x in v))
-
-    qn = norm(query_embedding)
-    scored = []
-    for row in candidates:
-        # pgvector yields numpy arrays (not list): the old isinstance(list)
-        # check skipped every row, so similarity search always returned [].
-        emb = [float(x) for x in row.embedding] if row.embedding is not None else []
-        if not emb:
-            continue
-        rn = norm(emb)
-        if qn == 0.0 or rn == 0.0:
-            continue
-        sim = dot(query_embedding, emb) / (qn * rn)
-        scored.append((sim, row))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top = scored[:limit]
-
-    # Serialize top matches
     results = []
-    for sim, row in top:
-        d = {
+    for row, dist in rows:
+        if dist is None or math.isnan(float(dist)):
+            continue
+        results.append({
             "id": row.id,
             "fact": row.fact,
             "domain": row.domain,
@@ -152,9 +146,10 @@ def search_similar_memories(
             "extra_data": row.extra_data,
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-            "_similarity": round(sim, 4),
-        }
-        results.append(d)
+            "_similarity": round(1.0 - float(dist), 4),
+        })
+        if len(results) >= limit:
+            break
     return results
 
 

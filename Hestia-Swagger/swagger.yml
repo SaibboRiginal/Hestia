@@ -2333,8 +2333,11 @@ paths:
       responses:
         "200":
           description: >
-            [{id, fact, domain, memory_class, embedding, domains,
-              extra_data, _similarity}, ...] ranked by cosine distance
+            [{id, fact, domain, weight, is_active, memory_class, domains, extra_data,
+              created_at, updated_at, _similarity}, ...] ranked inside Postgres by cosine distance
+            (_similarity = 1 - distance). A wrong-size or zero embedding returns [].
+        "400":
+          description: embedding missing, empty or not numbers
 
   /api/subscriptions:
     post:

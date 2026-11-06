@@ -100,6 +100,9 @@ Service registry + routing gateway.
 Single database gateway.
 - Stores records, entities, memory, sessions.
 - Exposes generic search/filter/query APIs.
+- Vector search (memories, documents, entities) ranks inside Postgres with pgvector and returns only the top rows;
+  no vector is scored in Python and no second vector store exists (LEANN evaluated 2026-11-06 and not adopted,
+  `docs/work/2026-11-06-ricerca-memorie-in-db`).
 - Stores **subscriptions** and **dispatch logs** for proactive notifications.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered archive hygiene tasks.
 - **Backup** (2026-10-21, `docs/work/2026-10-20-backup-drive`): encrypted `pg_dump` of the whole database to
