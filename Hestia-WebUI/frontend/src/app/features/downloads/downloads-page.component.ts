@@ -38,7 +38,7 @@ export function bytes(n: number): string {
   template: `
     <hx-page-header title="Download" subtitle="Modelli e voci che Hestia scarica: avanzamento, pausa, riprova, spazio">
       <button hx-btn size="sm" icon="volume" [loading]="busy() === 'voice'" (click)="prefetchVoice()" title="Scarica le voci"><span class="lbl">Scarica le voci</span></button>
-      <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/benvenuto" title="Scegli il cervello"><span class="lbl">Scegli il cervello</span></a>
+      <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup" title="Scegli il cervello"><span class="lbl">Scegli il cervello</span></a>
     </hx-page-header>
     <div class="body">
       @if (error()) {

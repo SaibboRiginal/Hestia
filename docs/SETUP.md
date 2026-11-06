@@ -30,7 +30,7 @@ Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installe
 git → zip download; pull → local build); a stop always says the one thing to do, and running the same line again
 resumes. Log (no secrets): `%LOCALAPPDATA%\Hestia\install\install.log` / `~/.local/state/hestia-install/install.log`.
 The installer writes what it detected (RAM, video card, free disk) in `.hestia-install/hardware.json` (git-ignored)
-and opens the **guided setup** `http://localhost:19015/benvenuto` (below). Without a Telegram token the bot container
+and opens the **guided setup** `http://localhost:19015/setup` (below). Without a Telegram token the bot container
 is only created, not started (otherwise it would crash-loop): the guided setup starts it.
 On Linux, if containers cannot reach Ollama (it listens on 127.0.0.1), the installer makes it listen on all
 interfaces through a systemd drop-in and, with ufw active, allows only Docker's networks to port 11434.
@@ -44,7 +44,7 @@ the Hub to Hephaestus, which writes only whitelisted keys into the right `.env` 
 they are never shown again. The voice screen queues the local voices. Steps left for later stay as a «Da finire» card in Home. Everything
 being downloaded (brain models, voices) is in Sistema → **Download**: progress, pause, resume, retry, and «Elimina»
 to free space; a download checks the free disk before starting and resumes after an interruption. Reopen it any time at
-`/benvenuto`.
+`/setup`.
 
 **Più macchine (central + satellites).** On the always-on machine (a Pi, a mini PC) install with `--role centrale`;
 on the PC with the video card open Sistema → **Macchine** → «Collega una macchina» on the central one and paste the

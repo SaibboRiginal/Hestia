@@ -667,12 +667,12 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   (`entrambi` with ≥ 8 GB of video memory; `cloud` with little RAM), the memory's `embedding` model now, cloud
   providers (`key_set` only, never the key; a provider is cloud when `llm_providers.is_local` says no: type, then
   address, so an OpenAI-compatible block on `localhost` or a home address is local).
-- `POST /api/llm/setup/test {provider, model?}`: one tiny real call («Rispondi solo con la parola: ok») with a model
-  the provider really lists (`list_models`: Gemini through Google's `models.list` with the key, OpenAI-compatible
-  servers through `/models`): the one asked if listed, else Hestia's default if listed, else the first chat model
-  (Gemini: a «flash» one). Answer `{ok, detail, model, models[]}` in plain words («Manca la chiave.», «La chiave non è
-  valida.»); a model that answers «not found» while the key works is `ok` with `model: ""` and the list, so the user
-  picks another instead of being stuck.
+- `POST /api/llm/setup/test {provider, model?}`: the «Prova» spends no tokens: it reads the provider's model list
+  with its key (Gemini `v1beta/models`, OpenAI-compatible `/models`, Anthropic `/v1/models`); the list answering
+  proves the key, 400/401/403 = «La chiave non è valida.», 429 = works but out of quota. Answer `{ok, detail, model,
+  models[]}`: `models` = the chat models for the picker, `model` = the one to preselect (the one asked if listed,
+  else Hestia's default if listed, else the cheapest-looking: Gemini «flash-lite», then «flash»). Only a service
+  with no list to read (Claude subscription) gets one tiny real call.
 - `POST /api/llm/setup/apply {recipe, local_model, local_provider?, cloud[], cloud_models?, embedding?}`: a program
   picked from `runtimes` that is not a block yet becomes one (`ensure_runtime`: type `openai`, its address, label
   «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Setup guidato»):
@@ -685,7 +685,8 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
 - `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: Ollama downloads through
   `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at
   `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per
-  model; a missing model or a full disk is a final error in plain words. Tools `modelli_download`,
+  model; a model Ollama already has (also one made from a Modelfile, which is on no registry) is answered «fatto»
+  without a job; a missing model or a full disk is a final error in plain words. Tools `modelli_download`,
   `modelli_scarica` (Telegram «Download»).
 - `GET /api/llm/setup/machine` → `{address, label}` and `POST /api/llm/setup/machine {address, name}` (2026-10-31,
   page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label

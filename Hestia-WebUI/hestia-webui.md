@@ -503,7 +503,7 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
 
-`/benvenuto` (`features/setup/`) is a full-screen page outside the shell (it scrolls by itself): one question per screen (where the brain
+`/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell (it scrolls by itself): one question per screen (where the brain
 thinks: two boxes, «Il tuo computer» and «Cloud» → local model, grouped by the programs found on the PC (Ollama, LM
 Studio, Jan, llama.cpp, vLLM) with the models each really has, a warning on those bigger than the video card, links
 to install Ollama or LM Studio when none is found, «Cerca di nuovo», and «Avanzate» → the memory's (embedding) model
@@ -512,9 +512,13 @@ card: key, «Prova», and the model picked from the service's own list; the Clau
 `claude setup-token` code → result and downloads → voice (queues Echo's local models) → Telegram token and one-time
 code → backup passphrase → calendar, mail and devices (the Devices page opens in another tab) → outside home (what
 turning it on does, the two steps while it starts, «Provalo», a warning with «Riprova» when no address comes in 90 s)
-→ summary). Downloads of every module (models through Ollama, voices in Hestia's data folder) show with progress and
-time left on the result, voice and summary screens (`/api/webui/downloads`). A «Riepilogo» beside the card (folded
-above it on a phone) lists every screen with its answer; a row jumps back to that screen. Recommended answer
+→ summary). Beside the card: «Riepilogo» (every screen with its answer; a row jumps back to that screen) and, under it,
+«Download» (every module's downloads, models through Ollama and voices in Hestia's data folder, with progress and time
+left, `/api/webui/downloads`); on a phone both are a side panel opened from the «Riepilogo» button at the top (with
+the number of downloads running). «Sì, scarica» on the voice screen queues and goes on. In the cloud cards a saved key
+is never typed again: its model list is read at once (no tokens), «Salva e prova» saves a new one. `setupGuard`
+redirects only when Hestia itself is opened (home), so a link opened from the setup in another tab (Download,
+Dispositivi) opens that page. Recommended answer
 preselected, «Più tardi» on the optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
 the setup is not completed (Hestia not answering → straight in); the Home shows a «Da finire» card for the steps left
 for later. Backend: `SetupController` forwards only the screens' paths of `/api/webui/setup/*` to Hephaestus
