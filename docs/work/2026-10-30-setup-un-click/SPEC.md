@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.6 |
+| **Version** | 2.7 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
 
@@ -243,6 +243,11 @@ and the setup's «Voce» screen (queues the voices); Telegram tools `modelli_dow
   contract always matches).
 - Also a button in Sistema and a Telegram command. Host-side things (new Docker/Ollama version) stay with the
   installer's `--update`, which the notice suggests when needed.
+- **As built (v2.7, P6):** versions come from `git fetch --tags` (no GitHub API, no token); notes are the root
+  CHANGELOG lines between the versions, rewritten in Italian by Oracle. No `:edge` images: channel `novità` builds
+  the changed images locally. Satellites are not updated from the central (they run no Hephaestus): rerun the
+  installer there, as the page says. An image change of Hephaestus itself is left to the installer. The page shows
+  only this machine's version (flagged to Marko).
 
 ### 4.5 Tests
 

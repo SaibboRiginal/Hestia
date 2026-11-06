@@ -452,3 +452,16 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
   waits up to 40 s for the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
   after a reboot). Setup step `fuori`. MCP tools `fuori_casa_stato`, `fuori_casa_attiva` (Telegram «Macchine»).
+- **Aggiorna Hestia** (`setup/updater.py`, P6): versions = git tags `vX.Y.Z`; channel Themis
+  `hephaestus.update.channel` (`stabile` newest tag · `novita` `origin/main`). `GET /api/setup/update` (installed,
+  channel, available with notes, job, history, previous, blocked) · `POST update/check` · `POST update/apply {ref?}` ·
+  `POST update/back` · `POST update/answer {answer}` (the Hermes question «Installo?») · `POST update/daily` (agenda
+  job `hephaestus.update_check`, daily 11:00, asks once per version). Notes = root `CHANGELOG.md` lines added between
+  the versions, rewritten in Italian by Oracle use case `hephaestus.aggiornamenti` (English when the brain is off).
+  Apply (thread, state `data/update.json`): refused with a reason when tracked files are modified or HEAD has commits
+  not on GitHub; `git checkout <tag>` / `merge --ff-only origin/main`; `forge.deployer.plan` on the diff; only running
+  containers: image change → pull `ghcr.io/saibboriginal/hestia:<svc>-<ver>` when the container runs a ready-made
+  image, else Docker SDK build from the compose `build` (read as text), then `recreate_with_env(image=…)`; others
+  restart; health through the Hub; any error/unhealthy → previous commit and previous images, restart, notice.
+  Hephaestus restarts itself last; its own image change is left to the installer. MCP tools `aggiornamenti_stato`,
+  `aggiornamenti_installa`, `aggiornamenti_indietro` (Telegram «Aggiornamenti»).

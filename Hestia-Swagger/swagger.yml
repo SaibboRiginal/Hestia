@@ -7757,6 +7757,74 @@ paths:
       responses:
         "200": {description: "{ok, detail}"}
 
+  /api/setup/update:
+    get:
+      tags: [Hephaestus]
+      summary: "Aggiorna Hestia: installed version, channel, newer version with notes, job, history"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{installed{version, tag, commit, label}, channel, available{ref, label, notes, major?, commits?}, checked_at, check_error, job{state, step, detail}, history[], previous, blocked}"}
+
+  /api/setup/update/check:
+    post:
+      tags: [Hephaestus]
+      summary: "Look for a newer version now (git fetch)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "status"}
+
+  /api/setup/update/daily:
+    post:
+      tags: [Hephaestus]
+      summary: "Agenda job hephaestus.update_check: check and ask once per version via Hermes"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "ok"}
+
+  /api/setup/update/apply:
+    post:
+      tags: [Hephaestus]
+      summary: "Install the newer version (background; health check, automatic way back); 409 with the reason when refused"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ref: {type: string}
+      responses:
+        "200": {description: "status"}
+
+  /api/setup/update/back:
+    post:
+      tags: [Hephaestus]
+      summary: "Go back to the version before the last update; 409 when refused"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "status"}
+
+  /api/setup/update/answer:
+    post:
+      tags: [Hephaestus]
+      summary: "Answer of the Hermes question «Installo?» (si = install)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answer: {type: string}
+      responses:
+        "200": {description: "{message}"}
+
   /api/setup/tunnel:
     get:
       tags: [Hephaestus]
@@ -12601,12 +12669,12 @@ paths:
   /api/webui/setup/{path}:
     get:
       tags: [WebUI]
-      summary: "Guided setup «Benvenuto» and Macchine reads: state, brain/catalog, brain/pulls, machines, tunnel (→ Hephaestus /api/setup/*)"
+      summary: "Guided setup «Benvenuto» and Macchine reads: state, brain/catalog, brain/pulls, machines, tunnel, update (→ Hephaestus /api/setup/*)"
       responses:
         "200": {description: ok}
     post:
       tags: [WebUI]
-      summary: "Guided setup «Benvenuto» and Macchine writes: later, complete, brain/test|apply|pull, telegram/token|code, backup, machines/pair|revoke|brain, tunnel (→ Hephaestus; telegram/claim is not forwarded)"
+      summary: "Guided setup «Benvenuto» and Macchine writes: later, complete, brain/test|apply|pull, telegram/token|code, backup, machines/pair|revoke|brain, tunnel, update/check|apply|back (→ Hephaestus; telegram/claim is not forwarded)"
       responses:
         "200": {description: ok}
 

@@ -65,6 +65,8 @@ remediation_service = RemediationService(
 )
 
 forge = Forge(load_forge_config())
+_update_agenda = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")("hephaestus", config.hub_api_url)
+_job_rule = import_shared_symbol("hestia_common.agenda_client", "job_rule")
 
 
 def _escalate_to_forge(task: dict) -> str | None:
@@ -128,6 +130,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     threading.Thread(target=_hub_keepalive, daemon=True,
                      name="hub-keepalive").start()
     forge_settings.settings.start()
+    _update_agenda.register_async([_job_rule(
+        "hephaestus.update_check", "Cerca aggiornamenti di Hestia", service="hephaestus",
+        path="/api/setup/update/daily", recurrence="FREQ=DAILY", start_at="2026-01-01T11:00:00",
+        tz=os.getenv("TZ") or None, timeout_seconds=240,
+        description="Se c'è una versione nuova ti chiedo se installarla (Sistema → Aggiornamenti).")])
     if forge.cfg.enabled:
         forge.start()
     yield
@@ -141,7 +148,9 @@ app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
 app.include_router(webui_plugin.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
 setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click)
-    forge.cfg.repo_path, Path(os.getenv("HEPHAESTUS_DATA_DIR", "/code/data")), config.hub_api_url)
+    forge.cfg.repo_path, Path(os.getenv("HEPHAESTUS_DATA_DIR", "/code/data")), config.hub_api_url,
+    channel=lambda: str(forge_settings.settings.get(forge_settings.UPDATE_CHANNEL) or "stabile"),
+    unhealthy=forge.unhealthy)
 app.include_router(setup_router)
 
 # ─────────────────────────────────────────────────────────────────────
@@ -193,6 +202,25 @@ try:
             handler=lambda **kw: {"status": "ok"}, title="Accendi o spegni da fuori casa", method="POST",
             path="/api/setup/tunnel", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Fuori casa on/off"}),
+        MCPTool(
+            name="aggiornamenti_stato", description="Versione di Hestia installata, se ce n'è una nuova e cosa porta.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok"}, title="Aggiornamenti", method="POST", path="/api/setup/update/check",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Aggiornamenti", "primary": True}),
+        MCPTool(
+            name="aggiornamenti_installa", description=("Installa la versione nuova di Hestia (torna da sola indietro se "
+                                                        "qualcosa non risponde); solo su richiesta esplicita."),
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok"}, title="Installa l'aggiornamento", method="POST",
+            path="/api/setup/update/apply", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Aggiornamenti", "label": "Installa"}),
+        MCPTool(
+            name="aggiornamenti_indietro", description="Torna alla versione di Hestia di prima dell'ultimo aggiornamento.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok"}, title="Torna alla versione di prima", method="POST",
+            path="/api/setup/update/back", clients=["telegram", "ui"], response_mode="oracle_natural",
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Aggiornamenti", "label": "Indietro"}),
         MCPTool(
             name="hephaestus_status",
             description="Mostra lo stato del motore di remediation",

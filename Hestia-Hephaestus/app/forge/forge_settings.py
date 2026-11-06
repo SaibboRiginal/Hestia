@@ -34,12 +34,14 @@ REMEDIATE_REQUIRE_APPROVAL = "hephaestus.remediate.require_approval"
 REMEDIATE_AUTO_APPROVE_NON_PROD = "hephaestus.remediate.auto_approve_non_prod"
 REPAIR_RETRY_MINUTES = "hephaestus.remediate.retry_minutes"
 REPAIR_MAX_ATTEMPTS = "hephaestus.remediate.max_attempts"
+UPDATE_CHANNEL = "hephaestus.update.channel"
 
 _ENGINES = [("oracle", "Oracle (catena «Forge · sviluppo»)"), ("claude", "Claude Code")]
 _MODES = [("ask", "Chiedi sempre"), ("auto", "Sviluppa da solo, il merge chiede"),
           ("full_auto", "Tutto da solo se i test passano")]
 _FORGE = "Sviluppo (Forge)"
 _REPAIR = "Riparazioni"
+_UPDATE = "Aggiornamenti"
 
 settings = SettingsClient("hephaestus")
 settings.declare([
@@ -107,6 +109,10 @@ settings.declare([
             help="Dopo una riparazione fallita riprovo dopo questo tempo × numero di tentativi."),
     setting(REPAIR_MAX_ATTEMPTS, "Tentativi massimi", "int", 3, group=_REPAIR, min=1, max=20, order=24,
             help="Dopo l'ultimo tentativo fallito il problema passa a Forge come correzione del codice."),
+    setting(UPDATE_CHANNEL, "Quali aggiornamenti", "enum", "stabile", group=_UPDATE, order=30, oracle="read",
+            options=[("stabile", "Versioni pubblicate (consigliato)"), ("novita", "Ogni novità appena è pronta")],
+            help="Versioni pubblicate: provate e con le note. Ogni novità: l'ultimo codice, prima ma meno provato. "
+                 "Ti chiedo sempre prima di installare."),
 ]).declare_log_level()
 
 
