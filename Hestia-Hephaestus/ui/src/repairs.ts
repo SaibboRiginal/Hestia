@@ -1,6 +1,6 @@
 /**
  * <hephaestus-repairs> — "Riparazioni": the remediation tasks of Hephaestus (runbook, consent, dry-run,
- * outcome, rollback point, notes). Read only: approving or undoing a repair keeps its consent path
+ * outcome, whether it can be undone, notes). Read only: approving or undoing a repair keeps its consent path
  * (chat / Telegram tools). SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
@@ -10,6 +10,10 @@ const FILTERS = [
   { value: '', label: 'Tutte' }, { value: 'pending_approval', label: 'Da approvare' }, { value: 'failed', label: 'Fallite' },
   { value: 'succeeded', label: 'Riuscite' }, { value: 'rolled_back', label: 'Annullate' }, { value: 'escalated', label: 'Passate a Forge' },
 ];
+const UNDO: Record<string, string> = {
+  restored: 'dati ripristinati', cancelled: 'fermata prima di cambiare qualcosa',
+  nothing_to_undo: 'niente da ripristinare', failed: 'ripristino non riuscito, si può riprovare',
+};
 
 export class HephaestusRepairs extends HestiaElement {
   static properties = { ...HestiaElement.properties, tasks: { state: true }, runbooks: { state: true }, info: { state: true },
@@ -73,7 +77,8 @@ export class HephaestusRepairs extends HestiaElement {
         <span>Gravità</span><span>${t.severity || '–'}</span>
         <span>Origine</span><span>${t.source || '–'}${t.auto_approve ? ' · auto-approvazione richiesta' : ''}</span>
         <span>Tentativi</span><span>${t.attempts ?? 1}</span>
-        <span>Ritorno indietro</span><span><code>${t.rollback_ref || '–'}</code></span>
+        <span>Si può annullare</span><span>${t.undoable ? 'sì, i dati cambiati vengono ripristinati' : 'no, non ha cambiato dati da ripristinare'}</span>
+        ${t.rollback_result ? html`<span>Annullamento</span><span>${UNDO[t.rollback_result.status] || t.rollback_result.status}</span>` : nothing}
         <span>Branch</span><span><code>${t.branch || '–'}</code></span>
         ${t.forge_task_id ? html`<span>Forge</span><span>passata allo sviluppo: <a href=${this.host.link('sviluppo', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('sviluppo', { task: t.forge_task_id }); }}>task <code>${short(t.forge_task_id)}</code> in Sviluppo</a></span>` : nothing}
         <span>Id</span><span><code>${t.task_id}</code></span>
@@ -84,7 +89,7 @@ export class HephaestusRepairs extends HestiaElement {
         ${t.notifications.map((n: any) => html`<div><span class="muted">${when(n.ts)}</span> · ${n.note}</div>`)}</div></div>` : nothing}
       ${res ? html`<div><div class="small muted">Esito</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
       ${t.state === 'pending_approval' ? html`<p class="note">Per approvarla scrivi a Hestia «approva la riparazione ${t.task_id}» (chat o Telegram).</p>`
-        : t.state === 'succeeded' ? html`<p class="note">Per annullarla scrivi a Hestia «annulla la riparazione ${t.task_id}».</p>` : nothing}
+        : t.state === 'succeeded' && t.undoable ? html`<p class="note">Per annullarla scrivi a Hestia «annulla la riparazione ${t.task_id}».</p>` : nothing}
     </div>`;
   }
 

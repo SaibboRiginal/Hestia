@@ -10,5 +10,5 @@
 - [x] Oracle closes open questions on a new owner turn + test
 - [x] WebUI live voice reads the options
 - [x] Docs (module docs, swagger, ARCHITECTURE, root CHANGELOG)
-- [ ] precheck, PR, CI green, merge
+- [x] precheck, PR, CI green, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Marko's real run (Telegram + WebUI notification questions, routine question, live voice)

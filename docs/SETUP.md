@@ -5,6 +5,80 @@
 > Settings that are not secrets or infrastructure are **not** here: they live in *Impostazioni* (Themis) and you
 > change them from the WebUI or Telegram.
 
+## Installer
+
+`install.ps1` (Windows; `Installa-Hestia.cmd` is its double-click launcher) and `install.sh` (Linux; macOS only on the
+simple path, Homebrew + Docker Desktop) do, in order: check the PC (RAM, disk ≥ 20 GB, internet, virtualization,
+free ports) → git → WSL2 + Docker Desktop (Windows) / Docker Engine + compose (Linux) → Ollama on the host and the
+default models → Hestia in `%USERPROFILE%\Hestia` / `~/Hestia` → `.env` files (`tools/init_env.py --generate-secrets`
+inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on a new database and
+`WEBUI_SECRET_KEY`, existing values never touched) → images → start → wait for health → browser + desktop shortcut.
+
+| Option (`install.sh` / `install.ps1`) | What it does |
+|---|---|
+| none, `--update`, `--repair` / `-Update`, `-Repair` | install, or resume / repair / update an existing one |
+| `--dir PATH` / `-Dir PATH` | install folder |
+| `--channel stabile` (default) / `novita` | latest release with ready-made images · latest code on `main`, built locally |
+| `--uninstall` / `-Uninstall` | stop and remove the containers, data kept; add `--purge` / `-Purge` (type CANCELLA) to delete data too |
+| `--dry-run` / `-DryRun`, `--no-browser` / `-NoBrowser` | print the steps only · do not open the browser |
+| `--role tutto\|centrale\|satellite` / `-Role` | everything here (default) · always-on home without voice and training · only voice and training, near a video card (a re-run keeps the role) |
+| `--join CODE --central IP` / `-Join CODE -Central IP` | link this machine as a satellite (code from Sistema → Macchine on the central one) |
+
+Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installer; get.docker.com → distro package;
+git → zip download; pull → local build); a stop always says the one thing to do, and running the same line again
+resumes. Log (no secrets): `%LOCALAPPDATA%\Hestia\install\install.log` / `~/.local/state/hestia-install/install.log`.
+The installer writes what it detected (RAM, video card, free disk) in `.hestia-install/hardware.json` (git-ignored)
+and opens the **guided setup** `http://localhost:19015/benvenuto` (below). Without a Telegram token the bot container
+is only created, not started (otherwise it would crash-loop): the guided setup starts it.
+On Linux, if containers cannot reach Ollama (it listens on 127.0.0.1), the installer makes it listen on all
+interfaces through a systemd drop-in and, with ufw active, allows only Docker's networks to port 11434.
+
+**Guided setup «Benvenuto».** One question per screen, the recommended answer preselected, «Più tardi» on the
+optional ones, resumes where it was: **brain** (where Hestia thinks: on this computer, in the cloud, both, or the
+Claude subscription; the local model for this video card is downloaded at once; a cloud key is tried with «Prova»
+before it counts) → **Telegram** (paste the BotFather token, then write the 6-digit code it shows to your bot: no
+need to know your Telegram id) → **backup passphrase** → calendar/mail/devices links → summary. Secrets go through
+the Hub to Hephaestus, which writes only whitelisted keys into the right `.env` and re-creates just that container;
+they are never shown again. The voice screen queues the local voices. Steps left for later stay as a «Da finire» card in Home. Everything
+being downloaded (brain models, voices) is in Sistema → **Download**: progress, pause, resume, retry, and «Elimina»
+to free space; a download checks the free disk before starting and resumes after an interruption. Reopen it any time at
+`/benvenuto`.
+
+**Più macchine (central + satellites).** On the always-on machine (a Pi, a mini PC) install with `--role centrale`;
+on the PC with the video card open Sistema → **Macchine** → «Collega una macchina» on the central one and paste the
+command it shows on the PC (`… --join CODE --central IP`, code valid 10 minutes). The PC then runs only voice and
+model training plus a small Hub that passes everything to the central one; its Ollama listens on the home network
+(Linux: systemd drop-in, ufw opened to the LAN for 11434/19021/19014; Windows: `OLLAMA_HOST=0.0.0.0` for the user,
+answer «Consenti» if Windows asks). «Usa la sua scheda video» runs the brain's local models there. When the PC is
+off its parts show «Non disponibile» and the central's own copy (if any) answers. «Scollega» revokes it. Never open
+these ports on the router.
+
+**Da fuori casa.** Sistema → Macchine → «Da fuori casa» → *Attiva* (or the same screen in the guided setup, or
+from Telegram): Hephaestus starts a `cloudflared` quick tunnel container (`hestia_tunnel`, no Cloudflare account)
+pointing at the WebUI and shows its `https://….trycloudflare.com` address. From that address Hestia always asks the
+login; at home nothing changes. The address changes when the tunnel restarts (the WebUI reads the new one by itself
+and the bot's login link follows it). *Spegni* stops it, also after a reboot. A fixed address for claude.ai/ChatGPT
+connectors is still the named tunnel below.
+
+**Releases and ready-made images.** A tag `vX.Y.Z` on `main` runs `.github/workflows/images.yml`: every service is
+built for amd64 and arm64 and published in the single package `ghcr.io/saibboriginal/hestia` as `<service>-<version>`
+and `<service>-latest`, then the GitHub Release is created. `docker-compose.images.yml` (generated by
+`tools/release/images_compose.py`, kept in step by CI) points compose at them; channel `stabile` uses it, so an
+install downloads instead of building. Images hold only the tag's code, never `.env` or data. The first time, the
+package must be made public once on GitHub (Packages → hestia → Package settings → Change visibility).
+
+## Manual install
+
+```bash
+git clone https://github.com/SaibboRiginal/Hestia.git && cd Hestia
+python tools/init_env.py --generate-secrets --new-db   # .env files from the templates, random DB password
+ollama pull gemma4:e4b && ollama pull qwen3-embedding:0.6b
+docker network create hestia_net
+docker compose -f docker-compose.global.yml up -d --build   # Windows: up-all.bat --build · Linux/macOS: ./up-all.sh --build
+```
+
+Then set `TELEGRAM_BOT_TOKEN` and `ALLOWED_USER_ID` in `Hestia-Telegram/app/.env` and restart Telegram.
+
 ## Configuration
 
 Every `.env` is documented in its `.env.example`, and every compose variable has an inline comment.

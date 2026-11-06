@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.2 |
+| **Version** | 2.3 |
 | **Source** | user via external chat (Project thread) (Marko 2026-10-30: «salvare come converso con hestia … per contribuire a un dataset mio locale … passarlo ad un modello più inteligente per riformattare o aggiustare le risposte usando il sistema di feedback e altri dati/metadati … per poi permettermi di fare il training? … o aggiungo lora cosi diventa parte della sua conoscenza») |
-| **Status** | Approved 2026-10-30 (v2.0: dataset only; teacher = cloud model with masking) — D1 on main (PR #60), D2 done, D3 next |
+| **Status** | Approved 2026-10-30 (v2.0: dataset only; teacher = cloud model with masking) — D1 on main (PR #60), D2 on main (PR #64), D3 done |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -143,6 +143,14 @@ Safety rules for corrections:
   title/tags/pin) never enter the dataset.
 
 ### 3.4 Esporta
+**As built (v2.3)**: `POST /api/metis/export` / tool `metis_dataset_esporta` → zip in Archive blobs (owner `metis`),
+row kind `export` in dataset-store, download from WebUI Miglioramento and Telegram. Files `sft.jsonl`, `dpo.jsonl`,
+`eval.jsonl`, `card.json` as below; turns used = review accepted keep/fix or edited by Marko (`include_unreviewed`
+adds the not yet reviewed ones). **Masked or clear is chosen at each export** (Marko: «a me non dispiacerebbe
+averli in chiaro ma anche non, opzione durante la esportazione?»): «oscurato» (default, same masker as the review,
+refused when Persone is unreachable) or «in chiaro». Domain balancing and the long-result cut are left to the
+trainer for now (the card lists routes and models). The original plan follows.
+
 `metis_dataset_build` gains `source=traces` (default) next to the old feedback path. Output in
 `METIS_DATA_DIR/datasets/<name>/` (Docker volume, gitignored, included in the Drive backup like other data):
 - `sft.jsonl` — OpenAI-style `messages` with `tool_calls` / `tool` roles + `tools` schemas, from traces with

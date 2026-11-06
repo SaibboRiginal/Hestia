@@ -2,6 +2,8 @@ import threading
 import time
 from typing import Any
 
+NODE_FRESH_SECONDS = 180   # a satellite module re-registered within this window counts as answering
+
 
 class ServiceRegistry:
     def __init__(self):
@@ -79,7 +81,14 @@ class ServiceRegistry:
 
     def get(self, name: str) -> list[dict[str, Any]]:
         """Instances for *name*, most recently refreshed first, so a dead
-        instance that stopped re-registering is tried last (failover latency)."""
+        instance that stopped re-registering is tried last (failover latency).
+        A satellite's copy (``node``) that answers comes before the central's own: the module runs where the
+        hardware is, and the central's copy is the fallback (docs/work/2026-10-30-setup-un-click §4.0)."""
         with self._lock:
             items = list(self._services.get(name.strip().lower(), []))
-        return sorted(items, key=lambda it: float(it.get("updated_at") or 0), reverse=True)
+        now = time.time()
+
+        def rank(it: dict[str, Any]) -> tuple[bool, float]:
+            seen = float(it.get("updated_at") or 0)
+            return bool(it.get("node")) and now - seen < NODE_FRESH_SECONDS, seen
+        return sorted(items, key=rank, reverse=True)

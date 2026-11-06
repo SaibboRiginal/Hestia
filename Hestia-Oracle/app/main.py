@@ -156,6 +156,24 @@ _oracle_mcp_tools = [
         clients=["ui", "telegram"], response_mode="direct",
         telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "Chat"}),
+    # ── downloads of the brain's models (docs/work/2026-10-30-setup-un-click §4.3) ──
+    MCPTool(
+        name="modelli_download", description=("The brain's model downloads: what is downloading, done or failed, "
+                                              "with progress and time left."),
+        parameters={"type": "object", "properties": {}},
+        handler=lambda **_kw: {"downloads": _llm_setup.pulls()},
+        title="Download dei modelli", method="GET", path="/api/llm/setup/pulls",
+        clients=["ui", "telegram"], response_mode="oracle_natural",
+        telegram_visible=True, telegram_group="sistema", telegram={"section": "Download", "label": "Modelli"}),
+    MCPTool(
+        name="modelli_scarica", description=("Download (or retry, or resume) a local model for the brain, by its "
+                                             "Ollama name, e.g. qwen3:8b. It runs in the background."),
+        parameters={"type": "object", "properties": {"model": {"type": "string", "description": "Ollama model name"}},
+                    "required": ["model"]},
+        handler=lambda **kw: _llm_setup.pull(str(kw.get("model", ""))),
+        title="Scarica un modello", method="POST", path="/api/llm/setup/pull",
+        clients=["ui", "telegram"], response_mode="oracle_natural",
+        telegram_visible=True, telegram_group="sistema", telegram={"section": "Download", "label": "Scarica modello"}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -264,6 +282,11 @@ from core.services.memory_transfer import MemorySection
 transfer = Transfer("oracle", sections=[MemorySection(lambda *a, **kw: engine._memory_service._route_archive(*a, **kw))])
 app.include_router(transfer.router())
 
+# ── downloads (hestia_common.downloads): the Ollama models the setup or the Download page asked for ──────────
+from core.services import llm_setup as _llm_setup  # noqa: E402
+
+app.include_router(_llm_setup.downloads().router())
+
 
 @app.get("/api/ui/activity")
 def ui_activity(limit: int = 30):
@@ -353,6 +376,84 @@ def ui_models_write(part: str, req: UiModelsWrite):
     if not _oracle_settings.settings.put(key, value, actor="user", reason="WebUI Cervello → Modelli"):
         raise HTTPException(status_code=502, detail="Themis did not accept the change")
     return {"status": "ok", "key": key}
+
+
+class SetupTest(BaseModel):
+    provider: str
+    model: str = ""
+
+
+class SetupApply(BaseModel):
+    recipe: Literal["locale", "cloud", "entrambi", "claude"]
+    local_model: str = ""
+    cloud: list[str] = Field(default_factory=list)
+
+
+class SetupPull(BaseModel):
+    model: str
+
+
+class SetupMachine(BaseModel):
+    address: str = ""
+    name: str = ""
+
+
+@app.get("/api/llm/setup/catalog")
+def llm_setup_catalog(vram_gb: float = 0, ram_gb: float = 0):
+    """Guided setup «Cervello»: recommended models for this hardware, installed ones, cloud providers (no keys)."""
+    from core.services import llm_setup
+    return {"status": "ok", **llm_setup.catalog(vram_gb, ram_gb)}
+
+
+@app.post("/api/llm/setup/test")
+def llm_setup_test(req: SetupTest):
+    """«Prova»: one tiny real call to a provider → ``{ok, detail}`` in plain words."""
+    from core.services import llm_setup
+    return {"status": "ok", **llm_setup.test(req.provider, req.model)}
+
+
+@app.post("/api/llm/setup/apply")
+def llm_setup_apply(req: SetupApply):
+    """The user's choice in the setup → ``oracle.chains`` (+ brain mode for «claude») through Themis."""
+    from core.services import llm_setup
+    result = llm_setup.apply(req.recipe, req.local_model, req.cloud)
+    if not result.get("ok"):
+        raise HTTPException(status_code=502, detail=result.get("detail"))
+    return {"status": "ok", **result}
+
+
+@app.post("/api/llm/setup/pull")
+def llm_setup_pull(req: SetupPull):
+    """Start downloading an Ollama model in the background (idempotent)."""
+    from core.services import llm_setup
+    result = llm_setup.pull(req.model)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("detail"))
+    return {"status": "ok", "download": result}
+
+
+@app.get("/api/llm/setup/machine")
+def llm_setup_machine_get():
+    """Where the local models run now (empty address = this machine)."""
+    from core.services import llm_setup
+    return {"status": "ok", **llm_setup.machine()}
+
+
+@app.post("/api/llm/setup/machine")
+def llm_setup_machine(req: SetupMachine):
+    """Local models on another machine (a satellite's Ollama), or back on this one (empty address)."""
+    from core.services import llm_setup
+    result = llm_setup.use_machine(req.address, req.name)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("detail"))
+    return {"status": "ok", **result}
+
+
+@app.get("/api/llm/setup/pulls")
+def llm_setup_pulls():
+    """Model downloads started by the setup: ``{id, what, source, state, size, done, error}``."""
+    from core.services import llm_setup
+    return {"status": "ok", "downloads": llm_setup.pulls()}
 
 
 @app.post("/api/ui/models/quota/reset")
@@ -661,6 +762,7 @@ def _register_on_hub():
             **ui.capabilities(service_base_url),
             **_voice_capabilities(),
             **transfer.capabilities(),
+            **_llm_setup.downloads().capabilities(),
         },
     }
     try:

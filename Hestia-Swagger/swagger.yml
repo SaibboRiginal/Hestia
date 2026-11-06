@@ -1365,6 +1365,58 @@ paths:
         "200":
           description: Registered
 
+  /api/nodes/pair:
+    post:
+      tags: [Hub]
+      summary: "Pairing code for a new satellite machine (6 digits, 10 minutes, single use)"
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200": {description: "{code, expires_in}"}
+
+  /api/nodes/join:
+    post:
+      tags: [Hub]
+      summary: "Satellite installer: pairing code to node token (shown once)"
+      servers:
+        - url: http://localhost:19001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, address]
+              properties:
+                code: {type: string}
+                name: {type: string}
+                address: {type: string, description: "bare LAN host or IP of the satellite"}
+      responses:
+        "200": {description: "{node_id, token, name}"}
+        "400": {description: address not a bare host}
+        "403": {description: wrong or expired code}
+
+  /api/nodes:
+    get:
+      tags: [Hub]
+      summary: "Satellite machines with their modules and whether they answer"
+      servers:
+        - url: http://localhost:19001
+      responses:
+        "200": {description: "{nodes[{id, name, role, address, joined_at, last_seen, online, modules[{name, online}]}]}"}
+
+  /api/nodes/{node_id}:
+    delete:
+      tags: [Hub]
+      summary: "Unlink a satellite: revoke its token and drop its modules"
+      servers:
+        - url: http://localhost:19001
+      parameters:
+        - {name: node_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{revoked: name}"}
+        "404": {description: unknown machine}
+
   /api/registry/deregister:
     post:
       tags: [Hub]
@@ -4690,6 +4742,105 @@ paths:
         "200": {description: "{status: deleted, document_id}"}
         "404": {description: Document not found}
 
+  /api/llm/setup/catalog:
+    get:
+      tags: [Oracle]
+      summary: "Guided setup «Cervello» — recommended models for the hardware (query vram_gb, ram_gb), installed Ollama models, cloud providers (no keys)"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{recommended {tier,label,chat[],model,embedding,recipe}, tiers, installed, ollama, cloud[{name,label,type,key_env,key_set,available}], recipes}"}
+
+  /api/llm/setup/test:
+    post:
+      tags: [Oracle]
+      summary: "Guided setup «Prova» — one tiny real call to a provider, answer in plain words"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: {type: string}
+                model: {type: string, description: empty = the provider's default}
+      responses:
+        "200": {description: "{ok, detail}"}
+
+  /api/llm/setup/apply:
+    post:
+      tags: [Oracle]
+      summary: "Guided setup choice → oracle.chains (and brain mode for recipe claude) through Themis, actor user"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipe: {type: string, enum: [locale, cloud, entrambi, claude]}
+                local_model: {type: string}
+                cloud: {type: array, items: {type: string}}
+      responses:
+        "200": {description: "{ok, detail} (detail = one-sentence summary)"}
+        "502": {description: Themis refused or unreachable}
+
+  /api/llm/setup/pull:
+    post:
+      tags: [Oracle]
+      summary: "Start the background download of an Ollama model (idempotent, 3 retries)"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: {type: string}
+      responses:
+        "200": {description: download row}
+
+  /api/llm/setup/pulls:
+    get:
+      tags: [Oracle]
+      summary: "Model downloads started by the setup"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{downloads[{id, what, source, state in_coda|in_corso|fatto|errore, size, done, error}]}"}
+
+  /api/llm/setup/machine:
+    get:
+      tags: [Oracle]
+      summary: "Where the local models run now (empty address = this machine)"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{address, label}"}
+    post:
+      tags: [Oracle]
+      summary: "Run the local models on a satellite's Ollama (empty address = back here)"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address: {type: string}
+                name: {type: string}
+      responses:
+        "200": {description: "{ok, detail}"}
+        "400": {description: invalid address or settings refused}
+
   /api/llm/code:
     post:
       tags: [Oracle]
@@ -7439,6 +7590,258 @@ paths:
   #  HEPHAESTUS — 19010
   # ══════════════════════════════════════════════════════════════════════════
 
+  /api/setup/state:
+    get:
+      tags: [Hephaestus]
+      summary: "Guided setup state: completed, steps left for later, brain choice, detected hardware, which secrets are set (never their values)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/later:
+    post:
+      tags: [Hephaestus]
+      summary: "Leave a step for later (cervello, telegram, backup, esterni)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                step: {type: string}
+      responses:
+        "200": {description: ok}
+
+  /api/setup/complete:
+    post:
+      tags: [Hephaestus]
+      summary: "Mark the guided setup completed"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/brain/catalog:
+    get:
+      tags: [Hephaestus]
+      summary: "Oracle's setup catalog for the detected hardware (→ Oracle via Hub)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/brain/test:
+    post:
+      tags: [Hephaestus]
+      summary: Save ORACLE_KEY_<PROVIDER> (if given), re-create Oracle, then «Prova» (→ Oracle via Hub)
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: {type: string}
+                model: {type: string}
+                key: {type: string, description: written to Hestia-Oracle/app/.env, never returned}
+      responses:
+        "200": {description: "{ok, detail}"}
+        "400": {description: key or value refused}
+
+  /api/setup/brain/apply:
+    post:
+      tags: [Hephaestus]
+      summary: Write keys / Claude token, re-create Oracle, apply the brain choice, start the model downloads
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipe: {type: string}
+                local_model: {type: string}
+                cloud: {type: array, items: {type: string}}
+                keys: {type: object, description: provider → key}
+                claude_token: {type: string}
+      responses:
+        "200": {description: "{ok, detail}"}
+
+  /api/setup/brain/pull:
+    post:
+      tags: [Hephaestus]
+      summary: "Download one Ollama model (→ Oracle)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: {type: string}
+      responses:
+        "200": {description: ok}
+
+  /api/setup/brain/pulls:
+    get:
+      tags: [Hephaestus]
+      summary: "Model downloads (→ Oracle)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: ok}
+
+  /api/setup/machines:
+    get:
+      tags: [Hephaestus]
+      summary: "This machine (role, hardware) and its satellites (Macchine page)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{this{role, hardware}, nodes[], brain_on}"}
+
+  /api/setup/machines/pair:
+    post:
+      tags: [Hephaestus]
+      summary: "Pairing code for a satellite plus this machine's LAN address (→ Hub)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{code, expires_in, central}"}
+
+  /api/setup/machines/revoke:
+    post:
+      tags: [Hephaestus]
+      summary: "Unlink a satellite (→ Hub)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: {type: string}
+      responses:
+        "200": {description: "{revoked}"}
+
+  /api/setup/machines/brain:
+    post:
+      tags: [Hephaestus]
+      summary: "Local models on a satellite's video card, or back here (→ Oracle)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address: {type: string}
+                name: {type: string}
+      responses:
+        "200": {description: "{ok, detail}"}
+
+  /api/setup/tunnel:
+    get:
+      tags: [Hephaestus]
+      summary: "Da fuori casa: whether the outside address is on, and which"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{on, url}"}
+    post:
+      tags: [Hephaestus]
+      summary: "Turn the Cloudflare quick tunnel to the WebUI on or off (waits up to 40 s for the address)"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                on: {type: boolean}
+      responses:
+        "200": {description: "{on, url, detail?}"}
+        "502": {description: Docker not answering}
+
+  /api/setup/telegram/token:
+    post:
+      tags: [Hephaestus]
+      summary: "Save the BotFather token, re-create the bot, return a one-time code to write to the bot"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: {type: string}
+      responses:
+        "200": {description: "{ok, code, expires_in}"}
+        "400": {description: not a BotFather token}
+
+  /api/setup/telegram/code:
+    post:
+      tags: [Hephaestus]
+      summary: "New one-time code (6 digits, 10 minutes, 5 tries)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{code, expires_in}"}
+        "409": {description: bot token not set}
+
+  /api/setup/telegram/claim:
+    post:
+      tags: [Hephaestus]
+      summary: "Called by Telegram in setup mode (no owner yet): right code → the sender becomes ALLOWED_USER_ID"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: {type: string}
+                user_id: {type: string}
+      responses:
+        "200": {description: "{ok, reason?: no_code|wrong_code}"}
+
+  /api/setup/backup:
+    post:
+      tags: [Hephaestus]
+      summary: "Save HESTIA_BACKUP_PASSPHRASE (min 12 chars) and re-create Archive"
+      servers:
+        - url: http://localhost:19010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                passphrase: {type: string}
+      responses:
+        "200": {description: ok}
+
   /hephaestus/health:
     get:
       tags: [Hephaestus]
@@ -8234,6 +8637,59 @@ paths:
             schema: {type: object}
       responses:
         "200": {description: "{trace_id, status, next}"}
+
+  /api/metis/export:
+    post:
+      tags: [Metis]
+      summary: "Training dataset export: zip of sft.jsonl, dpo.jsonl, eval.jsonl (OpenAI messages + tools) and card.json"
+      description: "in_chiaro false (default) hides names of Persone, e-mails, phones, IBAN and addresses; Persone not reachable → 503. Stored as an Archive blob (owner metis)."
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                in_chiaro: {type: boolean, default: false}
+                include_unreviewed: {type: boolean, default: false}
+      responses:
+        "200": {description: "{id, name, blob_id, size, sft, dpo, eval, skipped, corrected, turns, masked, routes, models, first, last, created_at}"}
+        "503": {description: "Archive or Persone not reachable"}
+    get:
+      tags: [Metis]
+      summary: "Recent training dataset exports"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 10}}
+      responses:
+        "200": {description: "{items[{id, name, blob_id, size, sft, dpo, eval, masked, created_at}]}"}
+
+  /api/metis/export/{export_id}/b64:
+    get:
+      tags: [Metis]
+      summary: "An export zip as base64 (WebUI download through Hub)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: export_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{name, mime, data_b64}"}
+        "404": {description: "Unknown export"}
+
+  /api/metis/tools/dataset_esporta:
+    post:
+      tags: [Metis]
+      summary: "Tool metis_dataset_esporta {in_chiaro?, include_unreviewed?}: exports and returns a card with the zip"
+      servers:
+        - url: http://localhost:19014
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object}
+      responses:
+        "200": {description: "{id, name, blob_id, sft, dpo, eval, masked, display}"}
 
   /api/metis/adesso:
     get:
@@ -9749,6 +10205,16 @@ paths:
     post:
       tags: [Wardrobe]
       summary: "Photo → proposed piece fields through Oracle (never saves); ok=false when the AI is away"
+      servers:
+        - url: http://localhost:19017
+      responses:
+        "200": {description: OK}
+
+  /api/wardrobe/attachments:
+    post:
+      tags: [Wardrobe]
+      summary: "Photo sent in chat with «guardaroba» (Oracle attachment hand-off) → piece saved with the photo"
+      description: "Body {blob_id, filename?, mime?, message?, session_id?} → {handled, text, piece_id?}; not recognised → handled with a question, nothing saved"
       servers:
         - url: http://localhost:19017
       responses:
@@ -11370,7 +11836,11 @@ paths:
   /api/hephaestus/remediate/{task_id}/rollback:
     post:
       tags: [Hephaestus]
-      summary: Record rollback execution for a remediation task
+      summary: Undo a remediation task for real
+      description: >-
+        pending_approval or failed → stopped (state rolled_back, rollback_result.status cancelled);
+        succeeded with undoable=true → the target module's /api/module/maintenance/undo restores what it changed
+        (restored, or failed and still undoable); otherwise state unchanged and rollback_result.status nothing_to_undo.
       servers:
         - url: http://localhost:19010
       parameters:
@@ -11474,6 +11944,32 @@ paths:
       responses:
         "200":
           description: "Alias response; same as /api/module/maintenance/reconcile"
+
+  /api/module/maintenance/undo:
+    post:
+      tags: [Maintenance]
+      summary: Put back what a maintenance reconcile deleted (Archive keeps the deleted rows per task_id)
+      description: >-
+        The reconcile response says details.undo_available=true when there is something to undo.
+        Used by Hephaestus «Annulla riparazione». Rows recreated meanwhile are kept (skipped_ids).
+      servers:
+        - url: http://localhost:19002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_id]
+              properties:
+                task_id:
+                  type: string
+                  description: task_id of the reconcile to undo
+      responses:
+        "200":
+          description: "{status, service, task_id, summary, mutation_count, details: {restored, skipped_ids}}"
+        "404":
+          description: Nothing to undo for this task_id
 
   # ══════════════════════════════════════════════════════════════════════════
   #  ATHENA — 19009
@@ -12099,6 +12595,43 @@ paths:
       responses:
         "200": {description: "{key, note, value: {dashboards: [...]}}"}
 
+  /api/webui/setup/{path}:
+    get:
+      tags: [WebUI]
+      summary: "Guided setup «Benvenuto» and Macchine reads: state, brain/catalog, brain/pulls, machines, tunnel (→ Hephaestus /api/setup/*)"
+      responses:
+        "200": {description: ok}
+    post:
+      tags: [WebUI]
+      summary: "Guided setup «Benvenuto» and Macchine writes: later, complete, brain/test|apply|pull, telegram/token|code, backup, machines/pair|revoke|brain, tunnel (→ Hephaestus; telegram/claim is not forwarded)"
+      responses:
+        "200": {description: ok}
+
+  /api/webui/downloads:
+    get:
+      tags: [WebUI]
+      summary: "Page «Download»: every module's downloads (→ each module with capability downloads, /api/downloads) → {downloads[], offline[]}"
+      responses:
+        "200": {description: OK}
+        "503": {description: Hub unreachable}
+
+  /api/webui/downloads/{module}/{op}:
+    post:
+      tags: [WebUI]
+      summary: "Download button {id} → module /api/downloads/{id}/{op} (pause, resume, retry, cancel, remove)"
+      parameters:
+        - {name: module, in: path, required: true, schema: {type: string}}
+        - {name: op, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: the job}
+
+  /api/webui/voice/models/prefetch:
+    post:
+      tags: [WebUI]
+      summary: "Queue the local voice models (→ Echo /api/voice/models/prefetch)"
+      responses:
+        "200": {description: OK}
+
   /api/webui/presence:
     get:
       tags: [WebUI]
@@ -12235,6 +12768,40 @@ paths:
   #  ECHO — 19021  (voice core — docs/work/2026-10-20-modulo-voce)
   #  Errors: 422 invalid input {detail}, 404 not found {detail}, 503 chain exhausted {detail, tried}.
   # ══════════════════════════════════════════════════════════════════════════
+
+  /api/downloads:
+    get:
+      tags: [Oracle, Echo]
+      summary: "hestia_common.downloads, served by every module with capability downloads (Oracle, Echo): {module, downloads[{id, what, source, module, size, done, speed, eta_s, state in_coda|in_corso|in_pausa|fatto|errore, error}]}"
+      servers:
+        - url: http://localhost:19004
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
+
+  /api/downloads/{id}/{op}:
+    post:
+      tags: [Oracle, Echo]
+      summary: "Download button: op pause | resume | retry | cancel (partial file deleted) | remove (frees the disk: file or Ollama model)"
+      servers:
+        - url: http://localhost:19004
+        - url: http://localhost:19021
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}, description: "e.g. ollama:qwen3:8b, piper:it_IT-paola-medium.onnx"}
+        - {name: op, in: path, required: true, schema: {type: string, enum: [pause, resume, retry, cancel, remove]}}
+      responses:
+        "200": {description: the job}
+        "404": {description: unknown job or operation}
+        "409": {description: remove while it is still downloading}
+
+  /api/voice/models/prefetch:
+    post:
+      tags: [Echo]
+      summary: "Queue the local models of the first local step of the «ascolto» and «voce» chains → {queued[], downloads[]}"
+      servers:
+        - url: http://localhost:19021
+      responses:
+        "200": {description: OK}
 
   /echo/health:
     get:

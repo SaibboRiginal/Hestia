@@ -14,4 +14,4 @@
 - [x] P6a Docs (module docs, swagger, ARCHITECTURE, AI-GUIDE, root CHANGELOG), governance checks, Angular build
 - [x] PR #24 opened; main merged again (reflection signals) 2026-10-22
 - [x] P6b PR #24 merged 2026-10-22
-- [ ] P5 follow-up PR: CI green, merge (Marko: merge without asking unless a question is open)
+- [x] P5 follow-up PR: CI green, merge (Marko: merge without asking unless a question is open) — on main (PR #25)

@@ -494,3 +494,38 @@ SPEC `docs/work/2026-10-20-icone-nei-client`. The WebUI and plugins draw `<hx-ic
 `tone` colour, never emoji. Presence popover: the `icon` + `tone` of the top overlay, else of the base state. Chat:
 `ChatMessage.icon` (paperclip = file, zap = command) and `error` (alert icon, danger). Toasts and the Hermes inbox hide the
 emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
+
+## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
+
+`/benvenuto` (`features/setup/`) is a full-screen page outside the shell: one question per screen (brain recipe →
+local model / cloud key with «Prova» / Claude token → result and downloads → voice (queues Echo's local models) →
+Telegram token and one-time code →
+backup passphrase → calendar, mail and devices → summary), recommended answer preselected, «Più tardi» on the
+optional screens, the current screen remembered in the browser. `setupGuard` opens it once per browser session while
+the setup is not completed (Hestia not answering → straight in); the Home shows a «Da finire» card for the steps left
+for later. Backend: `SetupController` forwards only the screens' paths of `/api/webui/setup/*` to Hephaestus
+`/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home
+network, or token).
+
+## Macchine page (`/macchine`, dossier `docs/work/2026-10-30-setup-un-click` §4.0)
+
+`features/machines/` (button «Macchine» in Sistema; «Dispositivi» is the page of phones and watches): this machine
+(role, video card, LAN address) and its satellites (address, online, what they do in plain words: voce, allenamento
+dei modelli). «Collega una macchina» shows the 6-digit code (10 minutes) and the one-line command for Windows
+(PowerShell) and Linux with `--join CODE --central <address>`; the list refreshes every 5 s while a code waits and
+says when the machine joined. «Usa la sua scheda video» / «Riporta qui i modelli» move the brain's local models;
+«Scollega» asks first (and brings the models back first when they were there). Backend: `SetupController`
+whitelist `GET machines`, `POST machines/pair|revoke|brain` (→ Hephaestus `/api/setup/machines*`).
+Card «Da fuori casa»: *Attiva* (asks first) / *Spegni* the Cloudflare quick tunnel (`GET|POST /api/webui/setup/tunnel`,
+also the setup screen `fuori`). `PublicUrlService` reads the tunnel's address from `http://hestia_tunnel:20241/quicktunnel`
+at most once a minute in the background (never blocking a request; a manual URL wins; the address is forgotten when
+the tunnel is off), so the login links follow it; requests to that host always need the token.
+
+## Download page (`/download`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
+
+`features/downloads/` (button «Download» in Sistema): every download of every module with the `downloads`
+capability (Oracle's models, Echo's voices), progress, speed, time left; Pausa · Riprendi · Riprova · Annulla ·
+Elimina (to free space, asks first); «Scarica le voci» (→ Echo `/api/voice/models/prefetch`). Polls every 2 s while
+something moves, every 10 s otherwise. Backend `DownloadsController`: `GET /api/webui/downloads` (asks each module
+through the Hub; one not answering is listed as offline, never named to the user) and `POST
+/api/webui/downloads/{module}/{op}` with body `{id}` (ids carry «:»).

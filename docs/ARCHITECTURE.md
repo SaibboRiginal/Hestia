@@ -34,6 +34,18 @@ Shared library: `Hestia-Shared` (common logging, startup, and lifecycle utilitie
 
 ### Setup
 
+One line installs or repairs everything (prerequisites, `.env` with generated secrets, images, health): `install.ps1`
+/ `Installa-Hestia.cmd` on Windows, `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
+CI publishes every service image in `ghcr.io/saibboriginal/hestia` (`<service>-<version>`) and the installer pulls
+them through `docker-compose.images.yml`; without that override compose builds locally as always (development,
+Forge). After the install the WebUI opens the guided setup `/benvenuto`: the only writer of secrets from a screen
+is Hephaestus (`/api/setup/*`, whitelisted keys into the right `.env`, then only that container is re-created
+through the Docker API; values never echoed or logged); the brain choice is Oracle's (`/api/llm/setup/*` → Themis
+`oracle.chains`); Telegram, while it has no owner, only forwards a 6-digit one-time code. Big downloads (models,
+voices) go through `hestia_common.downloads` in the module that owns them (capability `downloads`, page
+«Download»), never through ad-hoc `requests.get` of a whole file. Details:
+[docs/SETUP.md](SETUP.md#installer). By hand:
+
 ```bash
 docker network create hestia_net
 ```
@@ -287,6 +299,8 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
   `training_off` or deleted never stays in the dataset; the only thing that leaves Hestia is the nightly review
   (`metis.dataset.review`, use case of the same name on the cloud chain the owner chose), and only after masking the
   names of Persone, e-mails, phones, IBAN and addresses; the owner decides the doubtful corrections («Da rivedere»).
+  The export (`POST /api/metis/export`) is a zip of OpenAI `messages` + `tools` JSONL kept as an Archive blob; the
+  owner chooses masked (default, same masking; Persone unreachable → refused) or in clear at each download.
 
 ### Hestia-Themis ⚖️
 Central settings — one place for every module's settings.
@@ -534,7 +548,15 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    Test bench without the local PC: `tools/cloud_test.py` (Claude cloud session or GitHub Codespace); test
    credentials come only from the environment (Codespaces secrets) through `docker-compose.cloud-test.yml`, never files.
    In Codespaces the stack starts by itself (`cloud_test.py start`, waits for Docker, log `.cloud-test/start.log`; no Docker = rebuild the container; devcontainer image pinned to Debian 12 for docker-in-docker; runs as a non-root user, so the bench never needs root-only paths; ports 19015/19000 forwarded as plain HTTP; `cloud_test.py` with no argument = start if off + login link + guide).
-2. Future target: multi-node/cluster delivery with shared Hub discovery.
+2. Several machines at home (2026-10-31): one **central** Hub owns the routing table; a **satellite**'s Hub runs
+   in relay mode (`HUB_UPSTREAM_URL`, `HUB_NODE_TOKEN`, `HUB_NODE_ADDRESS`) and registers its modules (voice,
+   training) on the central with a pairing token, at `<satellite LAN address>:<module port>`. A satellite's module
+   answers first, the central's own copy is the fallback. The brain's local models can run on a satellite's video
+   card (Oracle provider `ollama` → `http://<satellite>:11434`). Roles from the installer: `tutto`, `centrale`,
+   `satellite`. Detail: `Hestia-Hub/hestia-hub.md` «Machines».
+   Outside home: only through a Cloudflare tunnel to the WebUI (never a router port). The quick tunnel container
+   `hestia_tunnel` exists only when the user turns «Da fuori casa» on (Hephaestus, Docker API); the WebUI requires the
+   token on its host.
 3. Required for remote rollout:
    - deployment controller contract,
    - health-gated progressive rollout,
@@ -727,17 +749,6 @@ This creates:
 - Hub registry is in memory: every service (Python ones, Hermes, the .NET WebUI) re-registers every 60 s, so it comes
   back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
   missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).
-
-## Roadmap
-
-(Moved here from the public `readme.md` on 2026-10-29.)
-
-- **Real rollback for remediation**: Hephaestus runbook remediation still records rollback as metadata only
-  (Forge already has true git revert).
-- **Metis**: live benchmark runner, persistent datasets, built-in LoRA training script.
-- **Multi-node deployment**: shared Hub discovery across nodes, health-gated progressive rollout, automatic
-  rollback on failed SLO checks.
-- **More domain modules**: every new capability is a new service generated from the template.
 
 ## Dependency and Flow Map
 

@@ -9,7 +9,7 @@
 - [x] Plugins: Hygieia, Hercules, Wardrobe, Argus, Hephaestus, Scout, Plutus, Oracle, Hermes, SDK quicklog
 - [x] Check script (no emoji in client code) + DESIGN-SYSTEM rule + module docs + root CHANGELOG
 - [x] Builds: Angular app, every plugin bundle + tsc, SDK tsc; Chronos tests
-- [ ] PR, merge
+- [x] PR, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Bench screenshots (WebUI + a plugin page)
 
 ## Notes

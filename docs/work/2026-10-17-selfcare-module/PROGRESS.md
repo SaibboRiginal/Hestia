@@ -11,7 +11,7 @@ Read SPEC.md first. Resume from the first unchecked box.
 - [x] Phase 2 — tracking & insight (events, stats, finish prediction, alerts, conflicts + step alternation, timeline, period, journal, shopping)
 - [x] Phase 3 — reminders (agenda jobs hygieia.planner / hygieia.alerts, Hermes `replaces` chains, buttons, snooze)
 - [x] Phase 4 — UI plugin: 8 pages, 4 widgets, 2 Home quick actions (tsc + esbuild OK locally)
-- [ ] Phase 5 — extras (photos, barcode/Open Beauty Facts, import/export)
+- [x] Phase 5 — extras (photos, barcode/Open Beauty Facts, import/export) — dropped 2026-10-30 (Marko: open items done or dropped)
 - [x] Docs: hestia-hygieia.md, swagger, Archive doc, AI-GUIDE table, root CHANGELOG, compose, CI
 - [ ] Marko: `up-all.bat --build hygieia archive` and a real run (Docker build of the UI bundle, Themis/agenda registration, Hermes buttons)
 - [x] Journal: always available, no on/off setting (Marko 2026-10-18, SPEC v2.5)

@@ -12,7 +12,7 @@
 - [x] Cloud bench run (`python tools/cloud_test.py all`): all up and smoke ok except Hephaestus crash-looping on `from core.capabilities` (bare import, hidden by the test sys.path) → relative import + regression test that imports the engine like the container
 - [x] Bench re-run after the Hephaestus fix: 22 containers up, smoke all ✅, WebUI 37 pages 0 JS errors
 - [x] Merged main again (email push + Plutus): Plutus moved from `plutus.ai.profile` to use case `plutus.lettura`; attachment hand-off test without `fallback_analyst`
-- [ ] PR #9 CI green, merged
+- [x] PR #9 CI green, merged — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Marko real run: add keys `ORACLE_KEY_*`, check Cervello → Modelli and Uso, try brain mode Esterna with Claude Code
 
 Tests: Oracle 465, Archive 23, Hephaestus 43, Scout 21, Athena 102, Argus 18, Chronos 41, Metis 25, Wardrobe 19 pass;

@@ -15,7 +15,8 @@
 - [x] T7 Mini App: `webapp.py` buttons + menu button, Telegram `/api/webapp/verify`, WebUI `/api/webui/auth/telegram`,
       frontend login from `tgWebAppData` (frontend build ok; .NET build not verifiable in the cloud session)
 - [x] T6 docs: SPEC v3.2 section 10, `hestia-telegram.md`, ARCHITECTURE, swagger, flow map, module docs, root CHANGELOG
-- [ ] Parity list — WebUI actions still without a tool (to add in their own modules, next wave):
+- [x] Parity list (closed 2026-10-30 in `docs/work/2026-10-30-cose-aperte`: export/import/restore, backup, presence and
+      repair history already had tools; memory clean-ups and Athena commitments added) — WebUI actions still without a tool (to add in their own modules, next wave):
       export/import `.hestia` (Archive transfer), backup now / restore (Archive), presence state change (Chronos),
       Athena proposals / thoughts list, Argus remediation history. Hermes inbox is the «Notifiche» door already.
 - [ ] Marko real run: bot conversation on the real stack (`up-all.bat --build`), Mini App with the tunnel address

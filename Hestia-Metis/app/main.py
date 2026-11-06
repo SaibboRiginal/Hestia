@@ -22,6 +22,7 @@ from .core.hub_client import HubClient
 from .core import dataset_builder
 from .core.insights import build_insights
 from .core.metis_settings import review_auto_accept, review_batch, settings as metis_settings, traces_keep_days
+from .core.export import Exporter
 from .core.review import USE_CASE as REVIEW_USE, Review
 from .core.traces import Traces
 from .core.usage import CLIENTS, IDEAS_USE, Usage
@@ -36,7 +37,7 @@ except ModuleNotFoundError:
         sys.path.insert(0, str(_shared_pkg))
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
 from hestia_common.agenda_client import AgendaClient, daily_window, job_rule
-from hestia_common.display import action, display, item
+from hestia_common.display import action, display, file, item
 from hestia_common.module_kit import Hub as RoutedHub, Invalid, Store, StoreUnavailable
 from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase
 from hestia_common.presence_client import PresenceClient
@@ -97,6 +98,7 @@ usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/R
 traces = Traces(usage_store.hub, keep_days=traces_keep_days)
 # Nightly correction by the teacher model (cloud, personal data masked) + «Da rivedere» (D2).
 review = Review(usage_store.hub, llm=usage_store.hub.llm, auto_accept=review_auto_accept, batch=review_batch)
+exporter = Exporter(usage_store.hub, people=review.people)
 REVIEW_AT = "02:30"
 # Hours the assistant writes fresh «Adesso» ideas: only the seed of agenda jobs, the user moves them in the agenda.
 IDEAS_AT = ("07:00", "12:30", "18:00")
@@ -325,6 +327,38 @@ def _review_card(limit: int = 1) -> dict:
                               style="primary"))
     return {**out, "display": display("Da rivedere", subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
                                       lines=lines, actions=acts)}
+
+
+@app.post("/api/metis/export")
+def metis_export(body: dict | None = None):
+    """«Esporta»: JSONL zip (sft, dpo, eval, card). ``{in_chiaro: false}`` = names and contacts hidden (default)."""
+    b = body or {}
+    return _traces_call(exporter.build, not bool(b.get("in_chiaro")), bool(b.get("include_unreviewed")))
+
+
+@app.get("/api/metis/export")
+def metis_export_list(limit: int = 10):
+    """Recent exports (name, counts, masked or not)."""
+    return {"items": _traces_call(exporter.list, limit)}
+
+
+@app.get("/api/metis/export/{export_id}/b64")
+def metis_export_b64(export_id: str):
+    """The zip as base64 for the WebUI plugin (its calls go through Hub as JSON)."""
+    try:
+        return _traces_call(exporter.file_b64, export_id)
+    except KeyError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="esportazione non trovata")
+
+
+def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> dict:
+    out = exporter.build(not in_chiaro, include_unreviewed)
+    lines = [f"{out['sft']} esempi per l'allenamento, {out['eval']} per la prova, {out['dpo']} coppie corretta/originale",
+             f"{out['skipped']} turni lasciati fuori (non riletti, scartati o in attesa)",
+             "Nomi e contatti oscurati" if out["masked"] else "Dati in chiaro: non condividere il file"]
+    return {**out, "display": display("Dataset esportato", subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
+                                      lines=lines, files=[file(out["blob_id"], out["name"], "application/zip")])}
 
 
 @app.get("/api/metis/scopri")
@@ -811,6 +845,21 @@ try:
             title="Decidi una correzione", method="POST", path="/api/metis/tools/rivedi_decidi",
             clients=["telegram", "ui"], response_mode="raw_json", telegram_group="sviluppo",
             telegram={"section": "Dataset e training"}),
+        MCPTool(
+            name="metis_dataset_esporta",
+            description="Esporta il dataset di allenamento (file JSONL zippati: sft, dpo, eval, scheda) da scaricare. "
+                        "in_chiaro=false (predefinito) oscura nomi delle persone, e-mail, telefoni, IBAN e "
+                        "indirizzi; in_chiaro=true lascia i dati veri.",
+            parameters={"type": "object", "properties": {
+                "in_chiaro": {"type": "boolean", "description": "true = dati veri, false = oscurati (predefinito)"},
+                "include_unreviewed": {"type": "boolean",
+                                       "description": "true = anche i turni non ancora riletti"}},
+                "required": []},
+            handler=lambda in_chiaro=False, include_unreviewed=False: _traces_call(
+                _export_card, bool(in_chiaro), bool(include_unreviewed)),
+            title="Esporta il dataset", method="POST", path="/api/metis/tools/dataset_esporta",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
+            telegram={"section": "Dataset e training", "label": "Esporta"}),
         MCPTool(
             name="metis_adesso",
             description="Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle "

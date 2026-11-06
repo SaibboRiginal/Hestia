@@ -631,3 +631,28 @@ Every user chat (text and document, see the rule above) pings Chronos presence (
 Tests that stub the chat engine replace `main.engine` with their own `MagicMock` (via `monkeypatch.setattr(main, "engine", …)`) instead of patching attributes of the shared one: other test modules may leave it spec'd, which made `test_chat_endpoint_composes_queued_batch` depend on test order.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Assistente»; the brain page is «Richieste e modelli» («Cosa fa l'assistente: richieste, modelli, token»); widget offline text «Assistente non raggiungibile».
+
+## Guided setup «Cervello» (`core/services/llm_setup.py`, dossier `docs/work/2026-10-30-setup-un-click`)
+
+The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a model provider directly:
+
+- `GET /api/llm/setup/catalog?vram_gb=&ram_gb=`: recommended models per tier (`CATALOG`: no video card → `gemma4:e4b`;
+  6–11 GB → `qwen3:8b`; 12 GB+ → `qwen3:14b`; embedding always `qwen3-embedding:0.6b`), the preselected recipe
+  (`entrambi` with ≥ 8 GB of video memory; `cloud` with little RAM), models already in Ollama, cloud providers
+  (`key_set` only, never the key).
+- `POST /api/llm/setup/test {provider, model?}`: one tiny real call («Rispondi solo con la parola: ok»), the reason
+  in plain words («Manca la chiave.», «La chiave non è valida.»…).
+- `POST /api/llm/setup/apply {recipe, local_model, cloud[]}`: writes `oracle.chains` through Themis (actor user,
+  reason «Setup guidato»): `veloce/potente/codice/visione` get the steps in the chosen order, `cloud` gets the cloud
+  provider, `embedding` is left as it is (changing it re-indexes the memory). Recipe `claude` also sets the brain
+  mode `esterna` with agent `claude` and fallback `interna`. Answer: one sentence («Ti risponde X sul tuo computer;
+  se non c'è, Y nel cloud.»).
+- `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: Ollama downloads through
+  `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at
+  `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per
+  model; a missing model or a full disk is a final error in plain words. Tools `modelli_download`,
+  `modelli_scarica` (Telegram «Download»).
+- `GET /api/llm/setup/machine` → `{address, label}` and `POST /api/llm/setup/machine {address, name}` (2026-10-31,
+  page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
+  «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own
+  (infrastructure env). The chains do not change: the same local models now run on that video card.

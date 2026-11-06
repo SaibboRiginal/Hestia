@@ -10,6 +10,7 @@ import { LiveVoiceService } from '../../services/live-voice.service';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { QuickStripComponent } from './quick-strip.component';
 import { AdessoRowComponent } from './adesso-row.component';
+import { SetupCardComponent } from '../setup/setup-card.component';
 import { PluginsService, SIZE_SPAN } from './plugins.service';
 import { Dashboard, DashboardItem, PluginWidget, WidgetSize } from './plugins.types';
 
@@ -22,7 +23,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, AdessoRowComponent],
+  imports: [...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, AdessoRowComponent, SetupCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header [title]="current()?.title || 'Home'" [subtitle]="subtitle()">
@@ -55,7 +56,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
     }
 
     <div class="body">
-      @if (isHome() && !editing()) { <hx-adesso-row /><hx-quick-strip /> }
+      @if (isHome() && !editing()) { <hx-setup-card /><hx-adesso-row /><hx-quick-strip /> }
 
       @if (!plugins.catalog() && !plugins.catalogError()) {
         <div class="center"><hx-spinner /></div>

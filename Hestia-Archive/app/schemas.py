@@ -87,6 +87,7 @@ class EntityCleanupRequest(BaseModel):
     require_created_at: bool = True
     delete_limit: int = 500
     dry_run: bool = False
+    trash_key: Optional[str] = None  # set by maintenance reconcile: deleted rows kept for undo
 
 
 class EntityCleanupResponse(BaseModel):

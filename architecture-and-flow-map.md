@@ -159,7 +159,8 @@ flowchart LR
 1. A file sent in chat (Telegram/WebUI) → Oracle `/api/chat/document`.
 2. Oracle checks modules' `attachment_handlers` (Hub capabilities: mime + words). Match → file stored as Archive blob
    (`owner_module=chat`) → `POST route/<module>/<path>` with the blob id → the module's `{handled, text}` is the reply.
-3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms.
+3. No match or failure → normal document analysis. Example: Hype statement PDF → Plutus preview → user confirms;
+   photo with «aggiungi al guardaroba» → Wardrobe recognises and saves the piece with its photo.
 
 ### Self-development flow (Forge)
 1. User on Telegram: "aggiungi X" → Oracle (classifier: domain `system`) → tool `forge_develop` → Hub → Hephaestus.
@@ -170,6 +171,13 @@ flowchart LR
    - `claude` → Claude Code CLI inside Hephaestus.
 4. Forge commits, runs the touched services' tests, notifies the user via Hub → Hermes → Telegram.
 5. "approva sviluppo <id>" → merge (+ optional deploy, health check via Hub, auto rollback).
+
+### Repair and undo flow (Hephaestus remediation)
+1. Argus/Oracle/user → `POST /api/hephaestus/remediate` → runbook + consent policy → Hub → target module
+   `…/maintenance/reconcile` (Archive deletes incomplete entities and keeps them in `trash:<task_id>`).
+2. The reply's `details.undo_available` marks the task `undoable`.
+3. «Annulla riparazione» → `/remediate/{id}/rollback`: pending/failed → stopped; undoable → Hub → same module
+   `…/maintenance/undo` puts the rows back; otherwise `nothing_to_undo`.
 
 ### Tool flow (one MCP for every client)
 1. Each module declares its tools (`/mcp` or inline commands); Hub's discovery is read only by Hestia-MCP.
@@ -314,6 +322,37 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    compare → gate (503) → rename swap, old database kept as `hestia_memory_prev` for undo → new data epoch: module
    stores answer `epoch`, module mirrors (Hercules, Hygieia, Wardrobe, Plutus) reload. SPEC
    `docs/work/2026-10-20-backup-drive`.
+
+### Guided setup flow («Benvenuto», dossier `docs/work/2026-10-30-setup-un-click`)
+1. Installer → `.hestia-install/hardware.json` → browser `/benvenuto` → WebUI `/api/webui/setup/*` → Hub →
+   Hephaestus `/api/setup/*` (state in `Hestia-Hephaestus/data/setup.json`).
+2. Brain: Hephaestus → Hub → Oracle `/api/llm/setup/catalog`; a key → Hephaestus writes `ORACLE_KEY_<NAME>` into
+   `Hestia-Oracle/app/.env`, re-creates `hestia_oracle` (Docker API), waits for health → Oracle `setup/test`;
+   choice → Oracle `setup/apply` → Themis `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads).
+3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
+   bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
+4. Backup passphrase → root `.env` → `hestia_archive` re-created.
+
+### Download flow (page «Download», `hestia_common.downloads`)
+1. WebUI `/api/webui/downloads` → Hub registry (capability `downloads`) → each module `GET /api/downloads` via Hub.
+2. Oracle: setup or tool `modelli_scarica` → job source `ollama` → Ollama `/api/pull` stream. Echo: `/api/voice/
+   models/prefetch` or first use → source `http` (Range resume) / `whisper`.
+3. Buttons → WebUI `POST /api/webui/downloads/{module}/{op}` → module `/api/downloads/{id}/{op}`. Failure or big
+   finished download → Hermes `/api/events/ingest` → Notifiche.
+
+### Machines flow (central + satellites, page «Macchine»)
+1. Central: WebUI `/api/webui/setup/machines/pair` → Hub → Hephaestus → Hub `POST /api/nodes/pair` → code shown with
+   the one-line command.
+2. Satellite installer `--join CODE --central IP` → central Hub `POST /api/nodes/join {code, name, address}` →
+   token → satellite root `.env` (`HUB_UPSTREAM_URL`, `HUB_NODE_TOKEN`, `HUB_NODE_ADDRESS`) → starts hub (relay),
+   echo, metis.
+3. Satellite module → its Hub (relay) → central Hub `/api/registry/register` with `X-Hestia-Node-Token`, base URL
+   rewritten to `<LAN IP>:<port>` → central routes to it first; every other call of the satellite's modules goes
+   through the relay to the central Hub (Themis, Archive, Oracle stay there).
+4. «Usa la sua scheda video» → Hephaestus → Oracle `POST /api/llm/setup/machine` → Themis `oracle.providers.ollama.url`
+   = `http://<satellite>:11434`. «Scollega» → Hub `DELETE /api/nodes/{id}`.
+5. «Da fuori casa» → WebUI `/api/webui/setup/tunnel` → Hub → Hephaestus `/api/setup/tunnel` → Docker API starts
+   `hestia_tunnel` (cloudflared → `hestia_webui:19015`); WebUI `PublicUrlService` ← `hestia_tunnel:20241/quicktunnel`.
 
 ### Google OAuth flow
 1. "collega Google Calendar" → Oracle → Hecate `POST /api/gateway/auth/initiate/google` → link (loopback + PKCE).

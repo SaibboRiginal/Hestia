@@ -300,6 +300,7 @@ class RemediationService:
         task["updated_at"] = datetime.now(timezone.utc).isoformat()
         task["execution_result"] = execution_result
         task["commit_ref"] = None
+        task["undoable"] = bool(succeeded and not task.get("dry_run") and self._undo_available(execution_result))
         self._append_task_note(
             task, "Execution completed" if succeeded else "Execution failed")
         if note:
@@ -415,30 +416,64 @@ class RemediationService:
         )
         return task
 
+    @staticmethod
+    def _undo_available(execution_result: dict[str, Any]) -> bool:
+        response = execution_result.get("response") if isinstance(execution_result, dict) else None
+        details = response.get("details") if isinstance(response, dict) else None
+        return bool(isinstance(details, dict) and details.get("undo_available"))
+
+    def _undo_on_target(self, task: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+        """Ask the module that ran the maintenance to put back what it changed (its …/maintenance/undo)."""
+        result = task.get("execution_result") if isinstance(task.get("execution_result"), dict) else {}
+        path = str(result.get("maintenance_path") or "")
+        if not path.endswith("/reconcile"):
+            return False, {"status": "error", "error": "unknown_maintenance_path"}
+        return self._route_through_hub(
+            service=str(task.get("service") or "").strip().lower(),
+            path=path[: -len("reconcile")] + "undo",
+            body={"source": "hephaestus", "task_id": str(task.get("task_id") or ""), "dry_run": False},
+        )
+
     def rollback_task(self, task_id: str, request: RemediationRollbackRequest) -> dict[str, Any] | None:
+        """Undo a repair for real: stop it if it never ran (or failed), or have the target module restore what it
+        changed. A repair that changed nothing restorable (dry run, a re-sync) stays as it is."""
         t_rollback = time.perf_counter()
         with self._tasks_lock:
             task = self._tasks.get(task_id)
             if not task:
                 return None
-            task["state"] = "rolled_back"
+            state = str(task.get("state") or "")
+            if state == "rolled_back":
+                return task
+            if state in {"pending_approval", "failed"}:
+                # never ran, or failed without changes: undo = stop it (no approval wait, no agenda retry)
+                outcome: dict[str, Any] = {"status": "cancelled", "detail": "Riparazione fermata: non aveva cambiato nulla."}
+            elif state == "succeeded" and task.get("undoable"):
+                ok, payload = self._undo_on_target(task)
+                outcome = {"status": "restored" if ok else "failed", "response": payload}
+            else:
+                outcome = {"status": "nothing_to_undo",
+                           "detail": "Questa riparazione non ha cambiato dati da ripristinare."}
+            if outcome["status"] in {"cancelled", "restored"}:
+                task["state"] = "rolled_back"
+                task["undoable"] = False
+            task["rollback_result"] = outcome
             task["updated_at"] = datetime.now(timezone.utc).isoformat()
             self._append_task_note(
-                task, f"Rollback requested by {request.requested_by}: {request.reason}")
+                task, f"Rollback requested by {request.requested_by}: {request.reason} -> {outcome['status']}")
             self._tasks[task_id] = task
         self._agenda_sync(task)
 
-        self._notify_change(
-            event_type="remediation.rolled_back",
-            task=task,
-            message=(
-                f"Hephaestus rollback executed for task={task_id} "
-                f"to rollback_ref={task.get('rollback_ref')}"
-            ),
-        )
+        if task["state"] == "rolled_back":
+            self._notify_change(
+                event_type="remediation.rolled_back",
+                task=task,
+                message=f"Hephaestus rollback for task={task_id}: {outcome['status']}",
+            )
         self._logger.info(
-            "event=remediation_rollback_done ms=%d task_id=%s",
+            "event=remediation_rollback_done ms=%d task_id=%s outcome=%s",
             int((time.perf_counter() - t_rollback) * 1000),
             task_id,
+            outcome["status"],
         )
         return task

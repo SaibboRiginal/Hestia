@@ -10,4 +10,4 @@
 - [x] R3b — Chronos flex timing + standard activities restore + WebUI panel + tool agenda_standard
 - [x] R4a — docs sync (ARCHITECTURE Capability Discovery §9 + Chronos/Athena, swagger, module docs, hestia-shared), governance checks
 - [x] R4b — PR #21 opened, main merged in twice (weather, coaches, reflection, import/export, backup), CI green (cloud bench not run: no Docker)
-- [ ] R4c — Marko's ok, PR merged
+- [x] R4c — Marko's ok, PR merged — on main (PR #21)

@@ -1,0 +1,6 @@
+# Shell scripts must keep LF on every checkout (a Windows clone with autocrlf would break them on Linux/macOS).
+*.sh text eol=lf
+# Windows launchers keep CRLF (cmd.exe misreads labels in LF batch files).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

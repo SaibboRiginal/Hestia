@@ -81,6 +81,10 @@ public class VoiceController : ControllerBase
         return Forward(path, body, null, step == "end" ? 120 : 60);
     }
 
+    /// <summary>Queue the local voice models (guided setup «Voce», Download page): Echo picks them from its chains.</summary>
+    [HttpPost("models/prefetch")]
+    public Task<IActionResult> Prefetch() => Raw(HttpMethod.Post, "models/prefetch", new { }, null, 30);
+
     [HttpGet("live")]
     public Task<IActionResult> Live() => Raw(HttpMethod.Get, "live", null, null, 10);
 

@@ -366,7 +366,8 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   and `Hestia-Swagger/swagger.yml` (read via Forge's repo browser); one Forge proposal per module (source athena).
 - API: `GET /api/athena/learning` · `POST /api/athena/learning/{entry_id}/undo` · `POST /api/athena/memory/review` ·
   `POST /api/athena/memory/proposals/{pid}/apply|dismiss` · `POST /api/athena/docs/check`.
-  Tools: `memory_rivedi`, `memory_learning`, `memory_learning_undo`, `docs_check`; `athena_thinking` and
-  `athena_signals` are on Telegram too.
+  Tools: `memory_rivedi`, `memory_learning`, `memory_learning_undo`, `memory_proposals`, `memory_proposal_apply`,
+  `memory_proposal_dismiss`, `docs_check`; `athena_thinking`, `athena_signals`, `athena_commitments` and
+  `athena_commitment_resolve` (`status` resolved | dismissed) are on Telegram too (parity, `docs/work/2026-10-30-cose-aperte`).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Pensieri»; agenda titles for people: «Riordina la memoria», «Cura delle abilità», «Riflessione nei momenti liberi»; offline text «Pensieri non raggiungibili».

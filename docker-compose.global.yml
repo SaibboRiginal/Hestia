@@ -15,6 +15,10 @@ services:
       - LOG_LEVEL=INFO               # logging verbosity: DEBUG | INFO | WARNING | ERROR
       - LOG_HEALTH_ACCESS_MODE=off   # suppress uvicorn access logs for /health-style probes
       - PYTHONUNBUFFERED=1           # flush stdout/stderr immediately (required for Docker log streaming)
+      # Satellite machine only (written by the installer on --join; empty = this Hub is the central one):
+      - HUB_UPSTREAM_URL=${HUB_UPSTREAM_URL:-}     # central Hub API, e.g. http://192.168.1.10:19001/api → relay mode
+      - HUB_NODE_TOKEN=${HUB_NODE_TOKEN:-}         # secret from pairing (Sistema → Macchine), sent with registrations
+      - HUB_NODE_ADDRESS=${HUB_NODE_ADDRESS:-}     # this machine's LAN address: the central routes to <it>:<module port>
     volumes:
       - ./Hestia-Hub/src:/code/src
       - ./Hestia-Shared/hestia_common:/code/hestia_common

@@ -25,7 +25,11 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - POST /api/hephaestus/remediate
 - POST /api/hephaestus/remediate/{task_id}/approve
 - POST /api/hephaestus/remediate/{task_id}/retry (agenda retry of a failed repair)
-- POST /api/hephaestus/remediate/{task_id}/rollback
+- POST /api/hephaestus/remediate/{task_id}/rollback — real undo («Annulla riparazione»): a repair still waiting for
+  approval or failed is stopped (`rolled_back`, `rollback_result.status=cancelled`, no agenda retry); a succeeded one
+  with `undoable=true` (the module's reconcile answered `details.undo_available`) calls the same module's
+  `…/maintenance/undo` through the Hub (`restored`; on error `failed` and still undoable); anything else stays as it is
+  with `nothing_to_undo` (dry run, a pure re-sync). Today only Archive's reconcile is restorable (it deletes rows).
 - POST /api/hephaestus/restart `{service, reason?, attempt?}` — immune system (Argus, oracle-offline v3 B): restarts the
   module's container through the Docker socket, then checks its health → `{status, service, restarted, healthy,
   detail}`; refuses `hephaestus` and bad names, `skipped` while Forge is deploying that module
@@ -33,7 +37,7 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - GET /api/hephaestus/tasks/{task_id}
 - GET /api/ui/manifest · GET /ui/webui/{file} (WebUI plugin, see below)
 
-Execution endpoints above are implemented as policy-gated remediation flows (task creation, approval, rollback metadata) with real Hub-routed maintenance execution against target services.
+Execution endpoints above are implemented as policy-gated remediation flows (task creation, approval, real undo through the target module) with real Hub-routed maintenance execution against target services.
 
 ### WebUI plugin (Sistema)
 
@@ -412,3 +416,39 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
 - Endpoint: `POST /api/hephaestus/forge/tasks/{task_id}/resume`. Task fields: `review`, `team`, `limit_restarts`.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Sviluppo»; agenda titles «Sviluppo programmato» and «Riprendi lo sviluppo: …».
+
+## Guided setup «Benvenuto» (`app/setup/`, dossier `docs/work/2026-10-30-setup-un-click`)
+
+Hephaestus owns the setup's writes because it already has the repo (`/repo`, where the `.env` files are) and the
+Docker socket. Endpoints `/api/setup/*` (state, later, complete, brain/catalog|test|apply|pull|pulls,
+telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/api/webui/setup/*`) and, for
+`telegram/claim` only, by the Telegram bot.
+
+- `setup/secrets.py`: whitelist `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID` (→ `Hestia-Telegram/app/.env`, telegram),
+  `CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `ORACLE_KEY_<NAME>` (→ `Hestia-Oracle/app/.env`, oracle),
+  `HESTIA_BACKUP_PASSPHRASE` (→ root `.env`, archive). Values: one line of printable ASCII; ids numeric; bot token
+  in BotFather form. Written atomically (active line, else the commented `# KEY=` line, else appended); a value is
+  never logged or returned (`event=setup_secret_set key=… file=… services=…`).
+- `recreate_with_env`: `env_file` is read only when a container is created, so a restart would not see a new key.
+  The container is re-created through the Docker API with the same image, mounts, ports, networks/aliases, restart
+  policy and healthcheck plus the changed variables; the old one is renamed and kept until the new one starts, and
+  comes back on failure (`[🔄] event=setup_recreate_failed`).
+- `setup/service.py`: state in `data/setup.json` (completed, steps left for later — cervello, voce, telegram, backup, esterni —, brain choice), hardware from
+  `/repo/.hestia-install/hardware.json` (written by the installer). Telegram link: a 6-digit one-time code (10
+  minutes, 5 tries, compared in constant time); the bot, while `ALLOWED_USER_ID` is empty, forwards a 6-digit
+  message to `telegram/claim` and the sender becomes the owner (the bot is re-created 3 s later, after its reply).
+  The brain itself is Oracle's (`/api/llm/setup/*`): Hephaestus writes the keys, waits for Oracle's health, then
+  forwards the choice and starts the downloads (chat model + `qwen3-embedding:0.6b`).
+- **Macchine** (§4.0, 2026-10-31): `GET /api/setup/machines` → `{this: {role, hardware}, nodes, brain_on}` (role
+  from `hardware.json`, written by the installer: `tutto` · `centrale` · `satellite`; `hardware.lan_ip`; `brain_on` =
+  the address whose Ollama the brain uses, empty = this machine). `POST /api/setup/machines/pair` → Hub
+  `/api/nodes/pair` plus `central` (this machine's LAN address, for the command shown to the user);
+  `POST /api/setup/machines/revoke {id}` → Hub `DELETE /api/nodes/{id}`; `POST /api/setup/machines/brain
+  {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `macchine_elenco`,
+  `macchine_codice`, `macchine_scollega`, `macchine_cervello` (Telegram section «Macchine»).
+- **Da fuori casa** (`setup/tunnel.py`, P5b): `GET /api/setup/tunnel` → `{on, url}`; `POST /api/setup/tunnel {on}`
+  creates (first time, Docker API, never in compose so `up-all`/the installer never open Hestia to the internet by
+  themselves) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
+  `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
+  waits up to 40 s for the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
+  after a reboot). Setup step `fuori`. MCP tools `fuori_casa_stato`, `fuori_casa_attiva` (Telegram «Macchine»).

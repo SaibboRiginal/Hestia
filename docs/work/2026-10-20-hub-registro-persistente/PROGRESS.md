@@ -8,4 +8,4 @@
 - [x] Compose volume in both compose files
 - [x] Unit tests
 - [x] Docs: hestia-hub.md, swagger, ARCHITECTURE, root CHANGELOG
-- [ ] PR, CI green, merge
+- [x] PR, CI green, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)

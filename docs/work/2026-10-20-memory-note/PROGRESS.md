@@ -7,7 +7,7 @@
 - [x] Oracle plugin: Memoria page (list, search, origin filter, forget); icon `bookmark` in both icon sets
 - [x] Tests: `Hestia-Oracle/tests/test_memory_note.py` (Oracle suite 468 passed) + plugin build + tsc + check_icons
 - [x] Docs (oracle md, mcp md, swagger, ARCHITECTURE, flow map, root CHANGELOG)
-- [ ] PR, CI green, merge
+- [x] PR, CI green, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Marko real run: connect Claude with a write access, say a fact, ask it to note it, see it in Memoria and in a WebUI chat
 
 ## Notes

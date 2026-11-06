@@ -30,6 +30,13 @@ D1 merged to main via PR #60 (47cdc98) on 2026-10-30.
 - [x] Tests `Hestia-Metis/tests/test_review.py`; docs metis/oracle.md, swagger
 - [ ] Undo signal (an «Annulla» of this turn's write) — later, needs the undo path to name the trace
 
-## D3 Esporta (next)
-- [ ] `sft.jsonl`, `dpo.jsonl`, `eval.jsonl` (split by session), `card.json`; download zip (WebUI + Telegram);
-      export option real vs masked data (default masked, question open to Marko)
+D2 merged to main via PR #64 (9aaa5f5) on 2026-10-30.
+
+## D3 Esporta
+- [x] `Hestia-Metis/app/core/export.py`: `sft.jsonl`, `dpo.jsonl`, `eval.jsonl` (split by session), `card.json`, zip
+      as Archive blob, row kind `export`
+- [x] Option at each export: «oscurato» (default) or «in chiaro» (Marko 2026-10-30)
+- [x] Endpoints `/api/metis/export`, `/export/{id}/b64`, tool `metis_dataset_esporta` (Telegram, file under the card),
+      WebUI Miglioramento card «Esporta» (Scarica oscurato / Scarica in chiaro, last five)
+- [x] Tests `Hestia-Metis/tests/test_export.py`; docs metis.md, swagger
+- [ ] Marko: real run (a few chats, a night of review, «Scarica oscurato», open the zip)

@@ -1,5 +1,7 @@
 namespace Hestia.WebUI.Services;
 
+using System.Text.Json;
+
 /// <summary>
 /// Tracks the public-facing URL of the WebUI (e.g. Cloudflare tunnel domain).
 /// Auto-detected from Host header on external requests, or set manually via API.
@@ -9,6 +11,14 @@ public class PublicUrlService
 {
     private string? _publicUrl;
     private bool _manual;            // set explicitly (tunnel script / admin) → never overridden by Host
+    private bool _fromTunnel;        // read from the «Da fuori casa» tunnel container (Hephaestus starts it)
+    private DateTime _tunnelChecked = DateTime.MinValue;
+    private int _tunnelChecking;
+
+    // «Da fuori casa» (docs/work/2026-10-30-setup-un-click): cloudflared's metrics give the quick tunnel's address.
+    // Infrastructure address on hestia_net like Ollama's; the container exists only while the user wants it.
+    private const string TunnelQuickUrl = "http://hestia_tunnel:20241/quicktunnel";
+    private static readonly HttpClient TunnelHttp = new() { Timeout = TimeSpan.FromSeconds(2) };
     private readonly object _lock = new();
     private readonly ILogger<PublicUrlService> _logger;
 
@@ -83,6 +93,52 @@ public class PublicUrlService
     /// <summary>Get the current public URL, or null if not detected.</summary>
     public string? GetPublicUrl()
     {
+        RefreshFromTunnel();
         lock (_lock) return _publicUrl;
+    }
+
+    /// <summary>
+    /// At most once a minute, in the background (never blocks a request): the tunnel's current address, or none
+    /// when the tunnel is off (an address that came from it is then forgotten). A manual URL always wins.
+    /// </summary>
+    private void RefreshFromTunnel()
+    {
+        lock (_lock)
+        {
+            if (_manual || DateTime.UtcNow - _tunnelChecked < TimeSpan.FromSeconds(60)) return;
+            _tunnelChecked = DateTime.UtcNow;
+        }
+        if (Interlocked.Exchange(ref _tunnelChecking, 1) == 1) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(await TunnelHttp.GetStringAsync(TunnelQuickUrl));
+                var host = doc.RootElement.TryGetProperty("hostname", out var h) ? h.GetString() : null;
+                if (string.IsNullOrWhiteSpace(host)) return;
+                lock (_lock)
+                {
+                    if (_manual) return;
+                    _fromTunnel = true;
+                }
+                SetPublicUrl($"https://{host}", manual: false);
+            }
+            catch (Exception)
+            {
+                lock (_lock)
+                {
+                    if (_fromTunnel)
+                    {
+                        _logger.LogInformation("event=public_url_tunnel_gone");
+                        _publicUrl = null;
+                        _fromTunnel = false;
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _tunnelChecking, 0);
+            }
+        });
     }
 }

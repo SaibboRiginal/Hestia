@@ -487,6 +487,35 @@ try:
             telegram_group="sistema",
                 telegram={"section": "Assistente"}),
         MCPTool(
+            name="athena_commitments",
+            description="Gli impegni presi dall'assistente (cose promesse o da seguire) ancora aperti.",
+            parameters={"type": "object", "properties": {
+                "include_resolved": {"type": "boolean", "description": "Anche quelli chiusi"}}},
+            handler=lambda **kw: {"status": "ok", "tool": "athena_commitments", "params": kw},
+            title="Impegni aperti",
+            method="GET",
+            path="/api/athena/commitments",
+            clients=["telegram", "ui"],
+            response_mode="oracle_natural",
+            response_prompt="Elenco breve: cosa, da quando. Niente id.",
+            telegram_group="sistema",
+                telegram={"section": "Assistente"}),
+        MCPTool(
+            name="athena_commitment_resolve",
+            description="Chiude un impegno dell'assistente (id da athena_commitments): fatto o non serve più.",
+            parameters={"type": "object", "properties": {
+                "brief_id": {"type": "string"},
+                "status": {"type": "string", "enum": ["resolved", "dismissed"]},
+                "note": {"type": "string"}}, "required": ["brief_id"]},
+            handler=lambda **kw: {"status": "ok", "tool": "athena_commitment_resolve", "params": kw},
+            title="Chiudi impegno",
+            method="POST",
+            path="/api/athena/commitments/{brief_id}/resolve",
+            clients=["telegram", "ui"],
+            response_mode="oracle_natural",
+            telegram_group="sistema",
+                telegram={"section": "Assistente"}),
+        MCPTool(
             name="athena_signals",
             description=(
                 "Segnali brevi che ogni area (allenamento, cura di sé, spese, guardaroba…) pubblica sui suoi dati, "

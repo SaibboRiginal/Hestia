@@ -466,3 +466,50 @@ def test_api_writes_ask_signals_and_run_syncs(api, monkeypatch):
     assert {r["id"] for r in put["rows"] if r["kind"] == "signal"} == {"wardrobe:to_repair"}
     job = next(r for r in main._agenda_rules() if r["key"] == "wardrobe.signals")
     assert "/api/wardrobe/signals/run" in str(job)
+
+
+# ── photo sent in chat «aggiungi al guardaroba» (docs/work/2026-10-30-cose-aperte) ──
+def _chat_photo(wd, answer: str) -> str:
+    """Oracle's vision answers ``answer``; returns the blob id of a photo sent in chat."""
+    orig = wd.hub.ok
+
+    def ok(service, method, path, **kw):
+        if service == "oracle":
+            return {"choices": [{"message": {"content": answer}}]}
+        return orig(service, method, path, **kw)
+    wd.hub.ok = ok
+    try:
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (600, 800), (140, 180, 230)).save(buf, "JPEG")
+        raw = base64.b64encode(buf.getvalue()).decode()
+    except ModuleNotFoundError:                       # no Pillow: bytes are stored as they are
+        raw = base64.b64encode(b"\xff\xd8\xff fake jpeg").decode()
+    return orig("archive", "POST", "api/blobs", body={"owner_module": "chat", "content_type": "image/jpeg",
+                                                      "data_base64": raw})["blob_id"]
+
+
+@pytest.mark.unit
+def test_chat_photo_becomes_a_piece_with_its_photo(wd):
+    bid = _chat_photo(wd, '{"name": "Camicia Oxford azzurra", "category": "shirt", "colors": ["light_blue"]}')
+    out = wd.from_chat_photo(bid)
+    assert out["handled"] is True and "Camicia Oxford azzurra" in out["text"] and out["piece_id"] in out["text"]
+    piece = wd.piece_detail(out["piece_id"])
+    assert piece["subcategory"] == "shirt" and len(piece["photos"]) == 1
+    assert "(Camicia; azzurro)" in out["text"]
+
+
+@pytest.mark.unit
+def test_chat_photo_not_recognised_asks_instead_of_saving(wd):
+    bid = _chat_photo(wd, "non lo so")
+    out = wd.from_chat_photo(bid)
+    assert out["handled"] is True and "Dimmi cos'è" in out["text"]
+    assert not wd.pieces()["items"]
+
+
+@pytest.mark.format
+def test_chat_photo_handler_declared():
+    from app import main
+    h = main.ATTACHMENT_HANDLERS[0]
+    assert "image/jpeg" in h["mime"] and "guardaroba" in h["match"] and h["path"] == "/api/wardrobe/attachments"

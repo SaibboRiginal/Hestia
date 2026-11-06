@@ -862,6 +862,32 @@ class Wardrobe:
         return {"ok": True, "fields": {k: v for k, v in fields.items() if v not in (None, [], "")},
                 "message": "Controlla i campi proposti e salva"}
 
+    def from_chat_photo(self, blob_id: str) -> dict:
+        """A photo sent in chat with «aggiungi al guardaroba» (Telegram or WebUI): recognise it and save the piece
+        with the photo. Answer ``{handled, text}`` for Oracle's attachment hand-off; the text carries the piece id so
+        the next turn («no, è nera») reaches the edit tools."""
+        blob = self.hub.ok("archive", "GET", f"api/blobs/{blob_id}/base64", timeout=30) or {}
+        upload = {"name": "foto.jpg", "mime": blob.get("mime") or "image/jpeg",
+                  "data_b64": blob.get("data_b64") or ""}
+        guess = self.describe_photo(upload)
+        fields = guess.get("fields") or {}
+        if not fields.get("category"):
+            return {"handled": True, "text": "Non sono riuscita a capire che capo è dalla foto. Dimmi cos'è "
+                                             "(per esempio «camicia azzurra») e lo aggiungo al guardaroba."}
+        fields.setdefault("name", self.vocab_map("category").get(fields.get("subcategory") or fields["category"],
+                                                                   {}).get("label") or "Nuovo capo")
+        created = self.save_piece(fields)
+        created = self.add_photo("piece", created["id"], upload, cover=True)["item"]
+        colors = self.vocab_map("color")
+        color_names = [(colors.get(c.get("key") if isinstance(c, dict) else c) or {}).get("label") or ""
+                       for c in created.get("colors") or []]
+        bits = [b for b in (created.get("subcategory_label") or created.get("category_label"),
+                            ", ".join(n.lower() for n in color_names if n)) if b]
+        logger.info("event=wardrobe_piece_from_chat_photo id=%s category=%s", created["id"], created.get("category"))
+        return {"handled": True, "piece_id": created["id"],
+                "text": f"Aggiunto al guardaroba: {created['name']}" + (f" ({'; '.join(bits)})" if bits else "")
+                        + f". Se qualcosa non torna dimmelo e lo correggo. [capo {created['id']}]"}
+
     # ── collections (capsule, packing lists, shopping) ─────────────────────
     def collections(self, *, type: str = "", include_archived: bool = False) -> dict:
         pieces = {p["id"]: p for p in self.store.items("piece")}

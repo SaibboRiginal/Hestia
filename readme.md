@@ -153,45 +153,38 @@ the others. Curious about what is under the hood? See the [architecture](docs/AR
 
 ## Quick start
 
-**You need** Docker with Compose v2, Python 3, [Ollama](https://ollama.com) on the host and a Telegram bot token
-from [@BotFather](https://t.me/BotFather) (plus your numeric Telegram id, e.g. from [@userinfobot](https://t.me/userinfobot)).
+**One line installs everything** (Docker, Ollama, Hestia, its passwords and the default local models), with retries
+and fallbacks; run it again any time to repair or update. Windows asks for administrator confirmation once (WSL2 and
+Docker Desktop, plus one reboot if WSL2 was missing: the install resumes by itself).
 
-<img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Clone and create the env files**
+<img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Install**
 
-```bash
-git clone https://github.com/SaibboRiginal/Hestia.git
-cd Hestia
-python tools/init_env.py        # copies every .env.example to .env, never overwrites
+Windows: download and double-click [`Installa-Hestia.cmd`](https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/Installa-Hestia.cmd), or in PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
 ```
 
-<img src="docs/assets/icons/step-2.svg" width="26" height="26" align="top" alt="2">&nbsp; **Fill in three values**
+Linux (and macOS with Homebrew)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.sh | bash
+```
+
+<img src="docs/assets/icons/step-2.svg" width="26" height="26" align="top" alt="2">&nbsp; **Connect Telegram**: put the
+token from [@BotFather](https://t.me/BotFather) and your numeric id (e.g. from [@userinfobot](https://t.me/userinfobot))
+in `Hestia-Telegram/app/.env`, then run the same line again.
 
 ```dotenv
-# Hestia-Telegram/app/.env
 TELEGRAM_BOT_TOKEN=<token from @BotFather>
 ALLOWED_USER_ID=<your numeric Telegram id>
-
-# .env (repository root)
-HESTIA_DB_PASSWORD=<a long random password>
 ```
 
-<img src="docs/assets/icons/step-3.svg" width="26" height="26" align="top" alt="3">&nbsp; **Pull the local models**
+<img src="docs/assets/icons/step-3.svg" width="26" height="26" align="top" alt="3">&nbsp; **Say hi** to your bot, then
+send `/webui_token` for a login link to the web app (also at `http://localhost:19015`).
 
-```bash
-ollama pull gemma4:e4b
-ollama pull qwen3-embedding:0.6b
-```
-
-<img src="docs/assets/icons/step-4.svg" width="26" height="26" align="top" alt="4">&nbsp; **Start**
-
-```bash
-docker network create hestia_net
-docker compose -f docker-compose.global.yml up -d --build
-```
-
-On Windows `up-all.bat --build` does both.
-
-<img src="docs/assets/icons/step-5.svg" width="26" height="26" align="top" alt="5">&nbsp; **Say hi** to your bot on Telegram, then send `/webui_token` for a login link to the web app.
+Prefer doing it by hand, or developing Hestia? [docs/SETUP.md](docs/SETUP.md#manual-install) has the manual steps,
+the installer options and where everything goes.
 
 > **Just want to look around?** Open it in a [GitHub Codespace](https://codespaces.new/SaibboRiginal/Hestia): the
 > whole stack starts by itself and prints a login link. See [TESTING.md](TESTING.md#banco-di-prova-cloud-whole-stack-no-local-pc).

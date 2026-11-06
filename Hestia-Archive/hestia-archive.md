@@ -81,6 +81,7 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/entities/records` | Raw rows (domain, status, limit); `include_embedding=false` drops the vectors (module UIs) |
 | `POST` | `/api/module/maintenance/reconcile` | Run generic maintenance reconcile (standard contract) |
 | `POST` | `/api/maintenance/reconcile` | Compatibility alias for maintenance reconcile |
+| `POST` | `/api/module/maintenance/undo` | Put back what a reconcile deleted (rows kept per `task_id` in one `archive_trash` entity, never scanned by cleanup); 404 = nothing to undo |
 | `GET` | `/api/memory/active` | Active preferences |
 | `POST` | `/api/subscriptions` | Create/update subscription |
 | `GET` | `/api/subscriptions/active` | List active subscriptions |

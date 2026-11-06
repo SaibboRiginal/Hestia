@@ -104,8 +104,16 @@ week start (weekly goal) are the personal settings `themis.personal.*`.
 
 See `Hestia-Swagger/swagger.yml` tag *Wardrobe*. Groups: meta, vocabularies, pieces (+bulk, photos, cover),
 files/{photo_id} (`{mime, data_b64}`), outfits (+photos, worn), wears, suggest (+save), stats, summary,
-collections (+packing, check), describe-photo, export/import (JSON), quick (Home chips), reminder/check,
+collections (+packing, check), describe-photo, attachments, export/import (JSON), quick (Home chips), reminder/check,
 reminder/skip, review/run, signals/run.
+
+## Photo sent in chat («aggiungi al guardaroba»)
+
+A photo (jpeg/png/webp) sent on Telegram or in the WebUI chat with «guardaroba», «armadio» or «nuovo capo» in the
+caption reaches `POST /api/wardrobe/attachments {blob_id}` through Oracle's attachment hand-off (capability
+`attachment_handlers`). The piece is recognised with `describe-photo` and saved right away with the photo as cover;
+the reply names it and carries `[capo <id>]` so «no, è nera» edits it. Not recognised (AI away, unknown category) →
+nothing is saved and the reply asks what it is. Dossier `docs/work/2026-10-30-cose-aperte`.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 

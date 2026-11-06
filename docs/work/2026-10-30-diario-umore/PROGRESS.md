@@ -7,4 +7,4 @@
 - [x] P2 Oracle quiet capture (gate, prompt, fallback, undo, notice) + tests
 - [x] P3 WebUI plugin + icons + quick action; Telegram area
 - [x] P4 docs (module doc, Oracle doc, swagger, ARCHITECTURE, flow map, AI-GUIDE, README, CHANGELOG), precheck
-- [ ] PR green and merged
+- [x] PR green and merged — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)

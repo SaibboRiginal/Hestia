@@ -33,5 +33,5 @@ Screenshots: /mnt/project-files/cervello-offline/screenshots/ (taken before the 
 - [x] D. «Mentre non c'ero» catch-up from Chronos
 - [x] G. WebUI hourglass after reload
 - [x] Docs, swagger, root CHANGELOG
-- [ ] PR, CI green, merge
+- [x] PR, CI green, merge — on main (checked 2026-10-30, docs/work/2026-10-30-cose-aperte)
 - [ ] Marko real run: Telegram questions, WebUI build (.NET), reload with queued messages

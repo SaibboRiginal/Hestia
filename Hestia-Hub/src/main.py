@@ -43,7 +43,9 @@ from .modules.discovery import (
 )
 from .modules.events import RegistryEvents
 from .modules import inside
-from .modules.registry import ServiceRegistry
+from .modules.nodes import NODE_HEADER, NodeError, Nodes
+from .modules.registry import NODE_FRESH_SECONDS, ServiceRegistry
+from .modules import relay
 from .modules.router import proxy_request
 from .modules.snapshot import RegistrySnapshot
 from .modules.schemas import (
@@ -67,6 +69,14 @@ events = RegistryEvents(
 )
 _health_timeout = float(os.getenv("HUB_HEALTHCHECK_TIMEOUT", "3"))
 snapshot = RegistrySnapshot()
+nodes = Nodes()
+
+# Satellite (docs/work/2026-10-30-setup-un-click §4.0): HUB_UPSTREAM_URL set → this Hub only relays to the central.
+_relay = relay.config()
+if _relay:
+    app.add_middleware(relay.RelayMiddleware, cfg=_relay)
+    log_event(logger, logging.INFO, "hub_relay_mode", service="hub", upstream=_relay["upstream"],
+              address=_relay["address"], token_set=bool(_relay["token"]))
 
 
 def _restore_registry() -> None:
@@ -119,8 +129,17 @@ app.include_router(inside.ui.router())   # GET /api/ui/manifest · GET /ui/webui
 
 
 @app.post("/api/registry/register")
-def register_service(req: RegisterServiceRequest):
+def register_service(req: RegisterServiceRequest, request: Request):
     service = req.model_dump()
+    token = request.headers.get(NODE_HEADER, "")
+    if token:                                      # a satellite's module, relayed by its Hub
+        try:
+            node = nodes.admit(token, req.base_url)
+        except NodeError as exc:
+            log_event(logger, logging.WARNING, "hub_node_register_refused", service="hub", name=req.name,
+                      reason=str(exc))
+            raise HTTPException(status_code=exc.status, detail=str(exc))
+        service["node"] = node["id"]
     register_status = registry.register(service)
     if register_status != "refreshed":
         events.bump(registry.all_services(), reason="register")
@@ -154,6 +173,54 @@ def deregister_service(req: DeregisterServiceRequest):
         base_url=redact_sensitive_text(req.base_url),
     )
     return {"status": "ok"}
+
+
+# ── Machines: central and satellites (docs/work/2026-10-30-setup-un-click §4.0) ─────────────
+def _node_error(exc: NodeError):
+    raise HTTPException(status_code=exc.status, detail=str(exc))
+
+
+@app.post("/api/nodes/pair")
+def nodes_pair():
+    """A pairing code for a new satellite (6 digits, 10 minutes, 5 tries)."""
+    return {"status": "ok", **nodes.new_code()}
+
+
+@app.post("/api/nodes/join")
+def nodes_join(body: dict):
+    """Called by the satellite's installer: ``{code, name, address}`` → ``{node_id, token}`` (shown once)."""
+    try:
+        return {"status": "ok", **nodes.join(body.get("code", ""), body.get("name", ""), body.get("address", ""),
+                                             str(body.get("role") or "satellite"))}
+    except NodeError as exc:
+        _node_error(exc)
+
+
+@app.get("/api/nodes")
+def nodes_list():
+    """Every satellite with its modules and whether they answer (fresh heartbeat)."""
+    now = time.time()
+    services = registry.all_services()
+    out = []
+    for node in nodes.list():
+        mods = [{"name": s["name"], "online": now - float(s.get("updated_at") or 0) < NODE_FRESH_SECONDS}
+                for s in services if s.get("node") == node["id"]]
+        out.append({**node, "modules": mods, "online": any(m["online"] for m in mods)})
+    return {"status": "ok", "nodes": out}
+
+
+@app.delete("/api/nodes/{node_id}")
+def nodes_revoke(node_id: str):
+    """«Scollega»: the token stops working and the satellite's modules leave the routing table."""
+    try:
+        node = nodes.revoke(node_id)
+    except NodeError as exc:
+        _node_error(exc)
+    for svc in [s for s in registry.all_services() if s.get("node") == node_id]:
+        registry.deregister(svc["name"], svc.get("base_url"))
+    events.bump(registry.all_services(), reason="node_revoked")
+    _save_registry(force=True)
+    return {"status": "ok", "revoked": node["name"]}
 
 
 @app.get("/api/registry/revision")

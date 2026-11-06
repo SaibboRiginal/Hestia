@@ -149,3 +149,6 @@ tools/cloud_test/base/ca/
 
 # llama-server model files (compose profile llamacpp)
 /models/
+
+# One-click installer: detected hardware for the guided setup (no personal data, never committed)
+.hestia-install/
