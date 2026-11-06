@@ -307,7 +307,7 @@ def _strings(path: Path):
 def test_client_strings_have_no_stray_emoji():
     bad = []
     for path in sorted(APP.rglob("*.py")):
-        if path.name == "defaults.py":           # the area emoji live here, once
+        if path.name in ("defaults.py", "reactions.py"):  # area emoji · Telegram's reaction list (data, not text)
             continue
         for line, text in _strings(path):
             if "event=" in text:                 # log lines

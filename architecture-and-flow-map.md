@@ -206,7 +206,10 @@ flowchart LR
    writes → Hestia-MCP `tools/call` → module → result card from the module's `display` block (Hestia-MCP keeps it
    only for Telegram) or the generic renderer; next-step buttons start other tools with preset arguments.
 4. Reply / quote of a message + text → Oracle `/api/chat` with `quoted` (context for that turn only).
-5. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
+5. Emoji reactions: Oracle stream `reaction` → Telegram `setMessageReaction` / WebUI bubble; the owner's reaction →
+   client → Oracle `/api/chat/reaction` (one history line). Owner turns also read Psyche `/api/mood/today`, Hermes
+   `/api/notifications` and Metis `/api/metis/usage/recent` through Hub for the awareness lines.
+6. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
    Telegram `POST /api/webapp/verify` (bot-token HMAC, owner only) → 12-hour session token.
 
 ### Plugin flow (module pages and widgets)

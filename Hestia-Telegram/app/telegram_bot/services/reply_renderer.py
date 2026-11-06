@@ -54,6 +54,7 @@ class ReplyRenderer:
         self._last_edit = 0.0
         self._last_sent = ""
         self.finalized = False
+        self.reaction = ""                   # Hestia's emoji on the owner's message (hestia-viva F4)
         self.origin_label = ""               # who started the turn when it is not the owner (Cindy 6)
         self.buttons: list[dict] = []        # hestia-ui buttons of the answer (Cindy 9)
         self.changes: dict | None = None     # `changes` frame: writes of this turn with undo (Cindy 13)

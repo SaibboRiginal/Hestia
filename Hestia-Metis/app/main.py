@@ -233,6 +233,12 @@ def metis_usage_stats(days: int = 30):
     return usage.stats(max(1, min(days, 365)))
 
 
+@app.get("/api/metis/usage/recent")
+def metis_usage_recent(limit: int = 5, hours: int = 12):
+    """The owner's last taps, newest first: ``{items: [{client, kind, ref, label, at}]}``."""
+    return usage.recent(limit=limit, hours=max(1, min(hours, 72)))
+
+
 @app.get("/api/metis/adesso")
 def metis_adesso(client: str = "telegram", limit: int = 6):
     """What fits now: agenda, habits, recents and the assistant's ideas, each with its reason."""

@@ -83,6 +83,14 @@ class Usage:
                 out.append({**r["data"], "at": at})
         return sorted(out, key=lambda t: t["at"])
 
+    def recent(self, limit: int = 5, hours: int = 12) -> dict:
+        """The owner's last taps, newest first (Oracle's awareness lines, docs/work/2026-11-06-hestia-viva F3)."""
+        taps = self.taps(days=max(1, (int(hours) + 23) // 24))
+        since = datetime.now(timezone.utc) - timedelta(hours=max(1, int(hours)))
+        rows = [t for t in reversed(taps) if t["at"] >= since][:max(1, min(int(limit), 20))]
+        return {"items": [{"client": t.get("client"), "kind": t.get("kind"), "ref": t.get("ref"),
+                           "label": t.get("label") or "", "at": t["at"].isoformat()} for t in rows]}
+
     def prune(self) -> int:
         """Taps older than KEEP_DAYS go (called by the agenda job)."""
         cut = datetime.now(timezone.utc) - timedelta(days=KEEP_DAYS)

@@ -27,6 +27,9 @@ export interface ChatMessage {
   origin?: { kind: string; level: string; label: string };
   /** Oracle's id of this turn: 👍/👎 send it so the vote lands on this answer (training dataset). */
   traceId?: string;
+  /** Emoji reaction on this bubble, like any chat (docs/work/2026-11-06-hestia-viva F4): on the owner's message it
+   *  is Hestia's, on Hestia's message it is the owner's. */
+  reaction?: string;
 }
 
 /** One write of an answer: `undo` runs a tool through Hestia-MCP («Annulla»); `done` once undone. */
@@ -71,6 +74,7 @@ export interface ThinkingMetadata {
 // ── SignalR / Server Events ───────────────────────────────────────────────
 
 export type ServerEventType =
+  | 'reaction'
   | 'queued'
   | 'queued_answer'
   | 'token'
@@ -127,6 +131,8 @@ export interface ServerEvent {
   origin?: { kind: string; level: string; label: string };
   /** final: Oracle's id of the turn (a vote sends it back: training dataset). */
   trace_id?: string;
+  /** final: the answer is only Hestia's reaction (no text bubble). */
+  reaction_only?: boolean;
 }
 
 /** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */
@@ -154,6 +160,8 @@ export interface ClientMessage {
   answer?: string;
   /** "Crea con Hestia" drawer: page context packet, appended to this turn's client instructions. */
   context?: string;
+  /** Live mode «Parla»: the turn is heard and answered aloud (short, speakable). */
+  spoken?: boolean;
 }
 
 // ── Session ───────────────────────────────────────────────────────────────

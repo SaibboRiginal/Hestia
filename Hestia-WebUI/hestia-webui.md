@@ -80,6 +80,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/api/webui/central-settings/key/{key}/undo` · `presets/{module}/{id}/apply` | undo · apply a preset |
 | POST | `/api/webui/central-settings/proposals/{id}/{approve,reject}` | answer an assistant proposal (`by: webui`, first answer wins) |
 | POST | `/api/webui/feedback` | Submit feedback (`interactionId` = the turn's `trace_id` from Oracle's `final` frame, training dataset) |
+| POST | `/api/webui/chat/reaction` | The owner's emoji on one of Hestia's messages `{emoji, text}` → Oracle `/api/chat/reaction` of the current chat |
 | GET | `/api/webui/chat/pending` | After a reload: open questions of the assistant + messages still queued in the current chat `{session_id, questions, queued}` (oracle-offline v3 G) |
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
@@ -194,7 +195,12 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   shown), a pause of `echo.live.silence_ms` (1250 ms; with a voiceprint, other voices are muted by Echo first, so the
   TV does not keep the turn open) ends the turn; the answer, while it is written, goes to Echo's `say` stream
   and the sentences play in order; speaking again (or «Interrompi») stops the voice and the answer. No external live
-  service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando.
+  service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando. Its turns go to Oracle with
+  `spoken: true` (SignalR `chat` message → `ChatHubMessage.Spoken`): short spoken answers, no lists.
+- **Reactions** (dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame shows Hestia's emoji on the
+  owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
+  six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =
+  taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons.
 - Hub registration declares `voice_usecases` (`webui.vocale`, `webui.ascolta`, `webui.live.ascolto`, `webui.live.voce`).
 - Icons `frown`, `meh`, `laugh` (with `smile`: the five mood faces of «Umore», 2026-10-30) in the shared icon set
   (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.

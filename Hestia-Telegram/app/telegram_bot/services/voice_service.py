@@ -89,6 +89,12 @@ def remember_answer(chat_id, message_id, text: str) -> None:
             _answers.popitem(last=False)
 
 
+def answer_text(chat_id, message_id) -> str:
+    """The reply text of one of Hestia's messages, when this bot still remembers it ("" otherwise)."""
+    with _answers_lock:
+        return _answers.get((int(chat_id), int(message_id))) or ""
+
+
 def listen_keyboard(feedback: bool = False, trace_id: str = "") -> types.InlineKeyboardMarkup:
     """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons). ``trace_id``
     (Oracle's id of the turn) rides in the callback so the vote lands on this answer (training dataset)."""

@@ -49,7 +49,7 @@ export class ChatService {
   }
 
   async sendMessage(text: string, sessionId: string, mode = 'auto', model = 'generic', context?: string,
-                    userMessageId?: string): Promise<void> {
+                    userMessageId?: string, spoken = false): Promise<void> {
     this.signalR.claim(this.channel);
     this.isStreaming.set(true);
     this.thinkingBuffer = [];
@@ -91,6 +91,8 @@ export class ChatService {
         mode,
         model,
         ...(context ? { context } : {}),
+        // Live mode «Parla»: Hestia answers as speech, short (docs/work/2026-11-06-hestia-viva F1).
+        ...(spoken ? { spoken: true } : {}),
       });
     } catch (err: any) {
       // Do not leave the placeholder "streaming" forever.
@@ -253,7 +255,25 @@ export class ChatService {
         this.handleThinking(event);
         break;
 
+      case 'reaction': {
+        // Hestia reacts to the owner's message of this turn (the last user bubble before the answer).
+        if (!event.emoji) break;
+        const msgs = this.messages();
+        const at = streamId ? msgs.findIndex(m => m.id === streamId) : msgs.length;
+        for (let i = (at < 0 ? msgs.length : at) - 1; i >= 0; i--) {
+          if (msgs[i].role === 'user') { this.patch(msgs[i].id, { reaction: event.emoji }); break; }
+        }
+        break;
+      }
+
       case 'final':
+        if (streamId && event.reaction_only) {
+          // The reaction is the whole answer: no empty bubble.
+          this.finalizeStreaming(streamId, '');
+          this.messages.update(list => list.filter(m => m.id !== streamId));
+          if (this.lastAssistantId === streamId) this.lastAssistantId = null;
+          break;
+        }
         if (streamId && event.reply) {
           this.finalizeStreaming(streamId, event.reply, event.domain, event.session_id);
           if (event.origin?.label) this.patch(streamId, { origin: event.origin });
@@ -427,6 +447,21 @@ export class ChatService {
         ? { ...m, content: m.content + text }
         : m
     ));
+  }
+
+  /** The owner reacts to one of Hestia's messages (same emoji again = take it away): shown at once, then told to
+   *  Hestia so the next turn knows it. */
+  async reactTo(messageId: string, emoji: string): Promise<void> {
+    const msg = this.messages().find(m => m.id === messageId);
+    if (!msg || msg.role !== 'assistant') return;
+    const next = msg.reaction === emoji ? '' : emoji;
+    this.patch(messageId, { reaction: next || undefined });
+    try {
+      await firstValueFrom(this.injector.get(HttpClient).post('/api/webui/chat/reaction',
+        { emoji: next, text: String(msg.content || '').slice(0, 300) }));
+    } catch {
+      this.patch(messageId, { reaction: msg.reaction });   // not saved: back as it was
+    }
   }
 
   private finalizeStreaming(streamId: string, content: string | null, domain?: string, sessionId?: string, error = false): void {

@@ -11,7 +11,7 @@ using Hestia.WebUI.Services;
 /// to Oracle NDJSON stream and back as typed JSON events.
 ///
 /// Protocol (browser → server):
-///   {"type":"chat","message":"...","session_id":"...","mode":"auto|quick|thinking|cot|","model":"generic"}
+///   {"type":"chat","message":"...","session_id":"...","mode":"auto|quick|thinking|cot|","model":"generic","spoken":false}
 ///   {"type":"cancel"}
 ///   {"type":"retry"}
 ///   {"type":"question_answer","question_id":"...","answer":"..."}
@@ -163,7 +163,8 @@ public class ChatHub : Hub
         try
         {
             await foreach (var evt in _oracleStream.StreamChatAsync(
-                userMessage, sessionId, mode, model, clientInstructions, cts.Token))
+                userMessage, sessionId, mode, model, clientInstructions, cts.Token,
+                spoken: message.Spoken == true))
             {
                 if (evt.Type == OracleStreamService.UnavailableType && pageContext.Length == 0)
                 {

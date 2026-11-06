@@ -247,6 +247,9 @@ except Exception as exc:
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
 from core.services import activity_log  # noqa: E402
+from core.services import prompt_config as _prompt_config  # noqa: E402
+from core.services import awareness  # noqa: E402
+from core.services import reaction_marker  # noqa: E402
 from core.services import queued_chat  # noqa: E402
 from core.services import quoted_context  # noqa: E402
 
@@ -799,6 +802,9 @@ class ChatRequest(BaseModel):
     # The earlier message the user replied to or quoted ({text, from: assistant|user|notification, at, ref}):
     # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-da-zero §5.10).
     quoted: Optional[dict] = None
+    # The turn was heard and is answered aloud (WebUI «Parla», Telegram voice note with spoken replies): the answer
+    # follows the voice contract (docs/work/2026-11-06-hestia-viva F1).
+    spoken: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -1017,8 +1023,18 @@ def _with_personal_settings(client_instructions: Optional[str], client: Optional
     + one line of assistant presence (state, last interaction, style/notice effects)."""
     parts = [str(client_instructions or "").strip(),
              *_oracle_settings.chat_instructions(client=client or "", session=session),
-             *presence_instructions(presence_state)]
+             *presence_instructions(presence_state),
+             *(_awareness_lines() if presence_state is not None else [])]
     return "\n".join(p for p in parts if p)
+
+
+def _awareness_lines() -> list[str]:
+    """Owner turns only: today's mood, the last notifications sent, the last things opened (hestia-viva F3)."""
+    try:
+        return awareness.lines_for_turn(engine._hub, _oracle_settings.get_int(_oracle_settings.AWARENESS_ITEMS, 0))
+    except Exception as exc:  # never blocks a turn
+        logger.warning("[🔄] event=awareness_failed error=%s fallback=no_lines", exc)
+        return []
 
 
 @app.post("/api/chat")
@@ -1042,6 +1058,12 @@ def chat_endpoint(req: ChatRequest, request: Request):
             engine.close_open_questions(current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
+        if req.spoken:
+            instructions = "\n".join(p for p in (instructions, _prompt_config.voice_turn_contract()) if p)
+        # Emoji reactions (hestia-viva F4): only clients that can show them get the prompt line and the filter.
+        reacts = (req.client or "") in reaction_marker.CLIENTS and turn_origin["level"] == "utente"
+        if reacts:
+            instructions = "\n".join(p for p in (instructions, reaction_marker.INSTRUCTION) if p)
         queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
         if queued:
             message = queued_chat.compose(queued)
@@ -1049,8 +1071,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             mode = "thinking" if len(queued) > 1 else mode  # the agent loop: ask_user may be needed
             logger.info("event=chat_queued_batch session_id=%s items=%d", current_session, len(queued))
         # Return the Engine's output as a continuous stream (LLM usage counted for this session)
-        return StreamingResponse(
-            llm_stats.bind_session(current_session, engine.chat(
+        stream = engine.chat(
                 message, current_session,
                 notify_target=req.notify_target,
                 force_notification_compiler=bool(req.force_notification_compiler),
@@ -1060,7 +1081,11 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 mode=mode,
                 model=req.model,
                 client=req.client or "",
-                origin=turn_origin), client=req.client or ""),
+                origin=turn_origin)
+        if reacts:
+            stream = reaction_marker.filter_stream(stream)
+        return StreamingResponse(
+            llm_stats.bind_session(current_session, stream, client=req.client or ""),
             media_type="application/x-ndjson"
         )
     except Exception as e:
@@ -1255,6 +1280,33 @@ def compile_subscription_endpoint(req: NotificationCompileRequest):
         logger.exception(
             "event=unhandled_error_compile_endpoint Unhandled error in compile endpoint")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class ChatReactionRequest(BaseModel):
+    session_id: str
+    emoji: str = ""          # "" = the owner took the reaction away
+    text: str = ""           # start of the assistant message he reacted to (context for the next turn)
+
+
+@app.post("/api/chat/reaction")
+def chat_reaction(req: ChatReactionRequest):
+    """The owner reacted with an emoji to one of Hestia's messages (WebUI, Telegram): one short history line so the
+    next turn knows it (docs/work/2026-11-06-hestia-viva F4). No LLM call."""
+    emoji = str(req.emoji or "").strip()[:8]
+    quoted = " ".join(str(req.text or "").split())[:120]
+    if not req.session_id.strip():
+        raise HTTPException(status_code=400, detail="session_id mancante")
+    line = (f"(reazione {emoji} al tuo messaggio «{quoted}»)" if emoji and quoted
+            else f"(reazione {emoji} al tuo ultimo messaggio)" if emoji
+            else f"(ha tolto la reazione al tuo messaggio «{quoted}»)" if quoted
+            else "(ha tolto la reazione al tuo ultimo messaggio)")
+    try:
+        engine._hub.post("/chat/history", {"session_id": req.session_id, "role": "user", "content": line})
+    except Exception as exc:
+        logger.warning("[🔄] event=chat_reaction_not_saved session_id=%s error=%s", req.session_id, exc)
+        raise HTTPException(status_code=502, detail="reazione non salvata, riprova")
+    logger.info("event=chat_reaction_saved session_id=%s emoji=%s", req.session_id, emoji or "-")
+    return {"ok": True, "line": line}
 
 
 @app.post("/api/chat/question-answer")

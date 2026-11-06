@@ -100,6 +100,11 @@ public record ChatHubMessage
     /// Appended to the client instructions of this turn only.</summary>
     [JsonPropertyName("context")]
     public string? Context { get; init; }
+
+    /// <summary>Live mode «Parla»: the turn was heard and is answered aloud (Oracle keeps it short and speakable,
+    /// docs/work/2026-11-06-hestia-viva F1).</summary>
+    [JsonPropertyName("spoken")]
+    public bool? Spoken { get; init; }
 }
 
 // ── Oracle NDJSON event (generic) ───────────────────────────────────────
@@ -170,5 +175,8 @@ public record OracleEvent(
     object? Origin = null,
     // final: Oracle's id of the turn; a 👍/👎 sends it back (training dataset, docs/work/2026-10-30-dataset-allenamento)
     [property: JsonPropertyName("trace_id")]
-    string? TraceId = null
+    string? TraceId = null,
+    // final: the answer is only Hestia's emoji reaction (no text bubble, docs/work/2026-11-06-hestia-viva F4)
+    [property: JsonPropertyName("reaction_only")]
+    bool? ReactionOnly = null
 );

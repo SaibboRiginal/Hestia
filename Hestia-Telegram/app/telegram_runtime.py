@@ -161,11 +161,18 @@ def on_message(message):
 
 # ── boot ─────────────────────────────────────────────────────────────────────
 
+ALLOWED_UPDATES = ["message", "edited_message", "callback_query", "inline_query", "my_chat_member",
+                   "message_reaction"]
+
+
 def register_handlers() -> None:
     core.bot.register_callback_query_handler(on_callback, func=_allowed)
     core.bot.register_message_handler(on_file, content_types=["document", "photo", "audio", "voice", "video",
                                                          "video_note"])
     core.bot.register_message_handler(on_message, func=lambda message: True)
+    # The owner's emoji on Hestia's messages (hestia-viva F4)
+    from telegram_bot.services import reactions
+    core.bot.register_message_reaction_handler(reactions.on_owner_reaction, func=lambda update: True)
 
 
 def setup_bot_profile() -> None:
@@ -214,7 +221,8 @@ def run():
     from telegram_bot.services.chat_queue import drain_async
     drain_async("startup")
     logger.info("event=telegram_interface_starting")
-    core.bot.infinity_polling()
+    # message_reaction is not in Telegram's default updates: list what the bot handles (hestia-viva F4)
+    core.bot.infinity_polling(allowed_updates=ALLOWED_UPDATES)
 
 
 if __name__ == "__main__":

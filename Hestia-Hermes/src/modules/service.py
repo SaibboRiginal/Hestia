@@ -13,7 +13,7 @@ from .entity_batch_dispatcher import (
 from .matcher import subscription_matches
 from .notifications import NotificationCenter
 from .oracle_client import narrate
-from .hermes_settings import DEDUPE_RECURRING_MAX_AGE, recurring_event_types, settings
+from .hermes_settings import DEDUPE_RECURRING_MAX_AGE, notification_style, recurring_event_types, settings
 
 logger = logging.getLogger("hestia_hermes.service")
 
@@ -89,6 +89,27 @@ def _entity_message(payload: dict[str, Any], domain: str) -> str:
     if url:
         return f'🔔 <a href="{escape(url, quote=True)}"><b>{label}</b></a>'
     return f"🔔 <b>{label}</b>"
+
+
+_ALERT_TYPES = {"service.action_required", "service.health"}
+
+
+def conversational_message(message: str, title: str, *, level: str, event_type: str, payload: dict[str, Any],
+                           style: str) -> str:
+    """Style «Frase di Hestia» (docs/work/2026-11-06-hestia-viva F5): an informative notification is said as one
+    short sentence of hers, like in chat. Warnings, errors and notifications with buttons, questions or secrets
+    stay cards; Oracle down → the card text, unchanged."""
+    if style != "frase" or not str(message or "").strip():
+        return message
+    if str(level or "").lower() in ("warning", "error") or event_type in _ALERT_TYPES:
+        return message
+    if any(payload.get(k) for k in ("_actions", "_question", "_secret")):
+        return message
+    said = narrate(
+        "Sei Hestia, l'amica che vive con l'utente. Digli questa notifica in UNA frase breve e naturale, come in "
+        "chat. Niente saluti, niente emoji. Tieni numeri, orari e link (HTML <a href> solo se c'è un link).\n\n"
+        f"Titolo: {str(title or '').strip()[:120]}\nTesto: {str(message)[:1200]}")
+    return said.strip() if said and said.strip() else message
 
 
 class HermesService:
@@ -179,6 +200,10 @@ class HermesService:
         message = payload.get("_message")
         if not message:
             message = _entity_message(payload, domain)
+        message = conversational_message(
+            str(message), str(payload.get("_title") or payload.get("title") or ""),
+            level=str(payload.get("_level") or payload.get("level") or ""), event_type=event_type, payload=payload,
+            style=notification_style())
         result = self.notifications.publish(
             message=str(message),
             title=str(payload.get("_title") or payload.get("title") or ""),

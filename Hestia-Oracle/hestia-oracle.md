@@ -81,6 +81,25 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   layers. `/api/chat` with an empty `mode` uses it (`oracle_settings.chat_mode`); an explicit mode wins
   (WebUI composer sends it and saves it for the conversation; Telegram Impostazioni → Modalità).
 
+### Hestia viva: persona, spoken turns, awareness, reactions (dossier `docs/work/2026-11-06-hestia-viva`)
+- **Persona** (`prompt_config` key `analyst_persona_default`, also served by `assistant_profile` to other AIs): a
+  person who lives with the owner (CHI SEI · RAPPORTO · CARATTERE · MEMORIA · TONO · LUNGHEZZA 1–2 frasi · VERITÀ),
+  then the operating rules 1–13 and the Telegram format, unchanged.
+- **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
+  `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
+- **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today
+  (Psyche `/api/mood/today`), the last notifications sent today (Hermes `/api/notifications`), the last things he
+  opened or started (Metis `/api/metis/usage/recent`); read in parallel through Hub, 2 s each, cached 60 s; a source
+  down leaves its line out (`[🔄] event=awareness_source_*`). Items per line: `oracle.chat.consapevolezza_righe`
+  (3; 0 = none).
+- **Reactions** (`core/services/reaction_marker.py`): for `webui`/`telegram` owner turns the prompt allows a leading
+  `[[r:EMOJI]]`; the stream filter turns it into `{"type":"reaction","emoji"}` before the text, strips it from
+  tokens, `final.reply` and the saved history; a marker-only answer → `final.reaction_only: true`, `reply: ""`.
+  The owner's reactions to her messages: `POST /api/chat/reaction {session_id, emoji, text}` saves one history line
+  «(reazione 👍 al tuo messaggio «…»)» (empty emoji = taken away). No LLM call.
+- **Controls extraction gate** (`user_control_service.looks_like_control`): the background controls LLM call runs
+  only for messages about notifications, reminders, quiet hours, «non chiedermi», «smetti»… (was every turn).
+
 ### Session Management
 - Each interface (e.g. Telegram) has one active session at a time.
 - Sessions store the full conversation history.
@@ -306,7 +325,8 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `quoted: {text, from, at, ref}` = the message the user replied to or quoted (one context line for this turn, `core/services/quoted_context.py`; the saved user message stays `message`); `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
+| `POST` | `/api/chat/reaction` | The owner's emoji on one of Hestia's messages `{session_id, emoji, text}` → one history line `{ok, line}` (empty emoji = taken away) |
+| `POST` | `/api/chat` | Send a message, receive NDJSON stream; `spoken: true` = heard and answered aloud (voice contract); `quoted: {text, from, at, ref}` = the message the user replied to or quoted (one context line for this turn, `core/services/quoted_context.py`; the saved user message stays `message`); `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
 | `GET` | `/api/chat/questions?session_id=` | Questions the assistant asked and still open in that session (clients draw them again after a reload) |
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
@@ -403,6 +423,7 @@ All interfaces consume the same event schema from Oracle:
 
 - `{"type":"status","content":"..."}` — progress messages (shown as live status updates).
 - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility events.
+- `{"type":"reaction","emoji":"👍"}` — Hestia's emoji on the owner's message of this turn, before the text (webui/telegram owner turns; `final` then has `reaction`, and `reaction_only: true` when there is no text).
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
 - `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."},"trace_id":"..."}` — terminal answer event (`origin` only when the turn was not started by the owner's client; `trace_id` names the turn: clients send it back as `interaction_id` with a 👍/👎).
 - `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
@@ -441,7 +462,7 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 | Modelli | `oracle.providers`, `oracle.chains`, `oracle.usecases` (object, editor Cervello → Modelli), `oracle.quota.cooldown_minutes` (60), `oracle.brain.mode` (interna), `.agent` (claude), `.model` (sonnet), `.fallback` (interna) |
 | Uso | `oracle.usage.retention_days` (90), `oracle.pricing` (`{"provider/model": {in, out, cached}}` $ per Mtok, `{}`) |
 | Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8); loop guard `oracle.agent.giri.{ripetizioni 4, finestra 12, attesa_secondi 30, verifiche 3}`; goal `oracle.obiettivo.giri` (8), `.giri_per_risposta` (3) |
-| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…); `oracle.provider.llamacpp.slots` (3) |
+| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.chat.consapevolezza_righe` (3); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…); `oracle.provider.llamacpp.slots` (3) |
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
 | Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
 | Domande | `oracle.ask.timeout` (24 h, 1–720): how long a question of the assistant stays open |

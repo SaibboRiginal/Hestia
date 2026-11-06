@@ -24,7 +24,8 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 ## Visual grammar (`telegram_bot/ui.py`)
 
 - **Markers (hybrid)**: tone dots 🔴🟠🟢🔵 only on a title line (errors, warnings, outcomes, notifications);
-  one emoji per area only on area buttons and result titles; 👍 / 👎 for the vote. No other emoji in texts or buttons
+  one emoji per area only on area buttons and result titles; 👍 / 👎 for the vote; chat reactions are real emoji. No
+  other emoji in texts or buttons
   (tests scan the strings; module titles are checked by `tools/governance/check_telegram.py`).
 - **Card** = bold title (optional crumbs `Aree › Spese`), italic subtitle, `•` lines, footer. HTML parse mode only.
 - **Buttons**: labels ≤ 24 characters cut on a word, two per row (longer than 18 alone); Telegram styles
@@ -114,6 +115,12 @@ subscription compile), `pausa_voto`.
   puoi scrivermelo?» (`[🔄]`).
 - «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.risposta`), kept so a second tap does not regenerate.
 - `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
+  With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
+- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame →
+  `setMessageReaction` on the owner's message (Telegram's own emoji list; a near one is mapped, 😂 → 🤣, otherwise
+  skipped); `final.reaction_only` → no text, the «Sto pensando…» message is deleted. The owner's reactions on her
+  messages (`message_reaction` updates, asked for in `ALLOWED_UPDATES`) → Oracle `POST /api/chat/reaction` with the
+  reacted text when the bot still has it.
 - Hermes `update` with `voice.audio_b64` → voice message replying to the notification.
 
 ### Settings (`services/chat_settings.py`)

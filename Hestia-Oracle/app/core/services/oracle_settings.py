@@ -109,7 +109,13 @@ STUB_AFTER_TURNS = "oracle.context.tool_result_stub_after_turns"
 OPENAI_CACHE_PROMPT = "oracle.provider.openai.cache_prompt"
 _KEEP_ALIVE = [("5m", "5 minuti"), ("30m", "30 minuti"), ("2h", "2 ore"), ("always", "Sempre")]
 
+AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
+
 _CONTEXT = [
+    setting(AWARENESS_ITEMS, "Consapevolezza · cose recenti per riga", "int", 3, group="Contesto", order=21,
+            min=0, max=6, unit="elementi",
+            help="Nelle tue conversazioni Hestia sa il tuo umore di oggi, le ultime notifiche che ti ha mandato e "
+                 "le ultime cose che hai aperto: quante di ciascuna (0 = nessuna)."),
     setting(PROFILE_MAX_TOKENS, "Hestia in altre AI · spazio massimo", "int", 1500, group="Contesto", order=20,
             min=300, max=8000, unit="token",
             help="Quanto pesa al massimo la personalità di Hestia (con istruzioni e ricordi) quando la attivi "
