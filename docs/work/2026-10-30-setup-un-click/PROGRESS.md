@@ -14,4 +14,6 @@
 - [x] P5b «Da fuori casa»: Hephaestus `setup/tunnel.py` (cloudflared quick tunnel container via Docker API, address from metrics or log) + `/api/setup/tunnel` + MCP tools, setup screen `fuori`, card on Macchine, WebUI PublicUrlService follows the tunnel (real tunnel not tried: the cloud bench blocks trycloudflare.com; Marko real run pending)
 - [x] P5b merged PR #74 (14f6c29) 2026-10-31
 - [x] P6 «Aggiorna Hestia»: Hephaestus `setup/updater.py` (tags/main, notes from CHANGELOG in Italian via Oracle, daily agenda job + Hermes question, apply with restart / GHCR pull / SDK build + recreate, health check, automatic way back, refuses local work), channel setting, endpoints, MCP tools, WebUI page «Aggiornamenti» (tests with real git; Marko real run pending, needs a first tag v1.0.0)
-- [ ] P7 Docs (readme, SETUP, TESTING, module docs, swagger, ARCHITECTURE)
+- [x] P6 merged PR #76 (f33f825) 2026-11-06
+- [x] P7 Docs: README quick start = installer + guided setup (no manual .env), SETUP minimum points to the guided setup, TESTING lists the updater tests; module docs, swagger, ARCHITECTURE and flow map were updated with each phase
+- Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), first tag v1.0.0 + GHCR package public, two-machine run, real tunnel, .NET build
