@@ -176,6 +176,14 @@ def test_piped_wav_header_does_not_make_audio_endless():
     assert audio.wav_duration(fixed) == 1.0 and fixed[40:44] != b"\xff\xff\xff\xff"
 
 
+def test_whisper_gets_samples_not_a_file():
+    """faster-whisper decoding a file broke on PyAV ≥ 14 (metadata_errors): it gets float samples (bench)."""
+    np = pytest.importorskip("numpy")
+    from app.core.standards import _whisper_samples
+    samples = _whisper_samples(tone(0.5))
+    assert samples.dtype == np.float32 and len(samples) == 8000 and 0.25 < float(abs(samples).max()) < 0.35
+
+
 def test_trailing_silence():
     assert audio.trailing_silence_ms(tone(0.5, silence_tail=1.0)) >= 900
     assert audio.trailing_silence_ms(tone(0.5)) == 0
