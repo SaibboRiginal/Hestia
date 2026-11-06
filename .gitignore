@@ -25,6 +25,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+!Hestia-WebUI/frontend/src/app/features/downloads/
 eggs/
 .eggs/
 lib/
