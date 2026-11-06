@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 2.7 |
+| **Version** | 2.8 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
-| **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implementing |
+| **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 

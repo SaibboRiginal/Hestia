@@ -95,6 +95,8 @@ Every `.env` is documented in its `.env.example`, and every compose variable has
 
 ### Minimum
 
+The guided setup («Benvenuto», after the installer) writes these for you; by hand:
+
 | Where | Variable | Purpose |
 |---|---|---|
 | `Hestia-Telegram/app/.env` | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather. |
