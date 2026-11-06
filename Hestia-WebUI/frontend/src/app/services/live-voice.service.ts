@@ -194,7 +194,7 @@ export class LiveVoiceService {
     if (!text) { this.state.set('listening'); return; }
     this.chat.messages.update(msgs => [...msgs, { id, role: 'user', content: text, timestamp: new Date(),
                                                   audio: { url: URL.createObjectURL(blob), seconds } }]);
-    await this.chat.sendMessage(text, this.session.sessionId() || '', this.mode, 'generic', undefined, id);
+    await this.chat.sendMessage(text, this.session.sessionId() || '', this.mode, 'generic', undefined, id, true);
     this.followAnswer();
   }
 

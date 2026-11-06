@@ -76,7 +76,8 @@ public class OracleStreamService
         string mode = "", string model = "generic",
         string? clientInstructions = null,
         CancellationToken ct = default,
-        IReadOnlyList<object>? queued = null)
+        IReadOnlyList<object>? queued = null,
+        bool spoken = false)
     {
         var body = new Dictionary<string, object>
         {
@@ -90,6 +91,9 @@ public class OracleStreamService
         // Messages queued while the assistant could not answer: one turn, the model decides how (oracle-offline v3 C).
         if (queued is { Count: > 0 })
             body["queued"] = queued;
+        // Live mode «Parla»: answered aloud (hestia-viva F1).
+        if (spoken)
+            body["spoken"] = true;
 
         _logger.LogInformation("event=oracle_stream_start session={S} mode={M} model={D} msg_len={L}",
             sessionId, mode, model, message.Length);

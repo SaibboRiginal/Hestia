@@ -138,6 +138,13 @@ within the cooldown window.
   Telegram: the chat-question keyboard, free text only after «Rispondi…»/«Altro…» or as a reply to the message.
 - First producer: Chronos routines (the assistant's questions during a routine). Any module: `reminder_event(question=)`.
 
+## Notification style «Frase di Hestia» (dossier `docs/work/2026-11-06-hestia-viva` F5)
+
+Setting `hermes.notifiche.stile`: `scheda` (default, unchanged) or `frase`. With `frase`, before publishing,
+`conversational_message()` asks Oracle (`/api/llm/generate` via `narrate`) to say an informative notification as
+one short sentence of Hestia, like in chat. Warnings, errors, `service.action_required` / `service.health`, and
+events with `_actions`, `_question` or `_secret` stay cards. Oracle down or empty answer → the card text as is.
+
 ## API (MVP)
 
 | Method | Path | Description |
@@ -254,6 +261,7 @@ Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router
 | `hermes.batch.max_attempts` | int 6 | Attempts for a failed batch before giving up |
 | `hermes.retract.after` | int 6 h (1–46) | Handled notifications are retracted from Telegram after this delay |
 | `hermes.repeat.reset_after_days` | int 30 days (1–365) | A repeat chain idle longer than this starts again from zero |
+| `hermes.notifiche.stile` | enum `scheda` (default) · `frase` | `frase` = informative notifications said as one sentence of Hestia (see below) |
 | `hermes.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
 
 Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,

@@ -120,6 +120,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
 | `POST` | `/api/metis/usage` | Taps `{taps:[{client, kind, ref, label?, at?}]}` (422 if none valid) |
 | `GET` | `/api/metis/usage/stats` | Taps by client, top tools |
+| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-viva`) |
 | `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
 | `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |

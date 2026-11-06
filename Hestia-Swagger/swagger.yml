@@ -512,6 +512,10 @@ components:
             from: {type: string, enum: [assistant, user, notification]}
             at: {type: string, format: date-time}
             ref: {type: string, description: "Client id of that message (e.g. Telegram message id), optional"}
+        spoken:
+          type: boolean
+          default: false
+          description: "The turn was heard and is answered aloud (WebUI Parla, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-hestia-viva"
 
     DisplayBlock:
       type: object
@@ -4003,6 +4007,29 @@ paths:
           description: "{resolved, question_id, action?: {ok, result}, resume?: {message}} — action = the module action bound to the answer (confirm cards, e.g. Themis proposals); resume = a question the assistant asked (ask_user): the client sends `message` as the next chat turn of the same session (oracle-offline v3 A)"
         "404":
           description: "question not found, already resolved or expired (oracle.ask.timeout)"
+
+  /api/chat/reaction:
+    post:
+      tags: [Oracle]
+      summary: "The owner reacted with an emoji to one of Hestia's messages: one history line so the next turn knows it (no LLM call). docs/work/2026-11-06-hestia-viva"
+      description: "Stream side: for webui/telegram owner turns /api/chat may emit {type: reaction, emoji} before the text; final then carries reaction and, for a reaction-only answer, reaction_only: true with reply ''."
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id: {type: string}
+                emoji: {type: string, description: "empty = the reaction was taken away"}
+                text: {type: string, description: "start of the reacted message (context)"}
+      responses:
+        "200": {description: "{ok, line}"}
+        "400": {description: "session_id missing"}
+        "502": {description: "history not saved"}
 
   /api/chat/questions:
     get:
@@ -8597,6 +8624,18 @@ paths:
       responses:
         "200": {description: "{days, taps, by_client{}, top[{tool, uses}]}"}
 
+  /api/metis/usage/recent:
+    get:
+      tags: [Metis]
+      summary: "The owner's last taps, newest first (Oracle awareness lines, docs/work/2026-11-06-hestia-viva)"
+      servers:
+        - url: http://localhost:19014
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 5, maximum: 20}}
+        - {name: hours, in: query, schema: {type: integer, default: 12, maximum: 72}}
+      responses:
+        "200": {description: "{items[{client, kind, ref, label, at}]}"}
+
   /api/metis/traces:
     post:
       tags: [Metis]
@@ -12580,6 +12619,21 @@ paths:
       summary: "What still waits in the current conversation, drawn again after a reload: the assistant's open questions (→ Oracle /api/chat/questions) and the messages still in the queue (Archive chat-queue)"
       responses:
         "200": {description: "{session_id, questions: [...], queued: [{queue_id, text, created_at}]}"}
+
+  /api/webui/chat/reaction:
+    post:
+      tags: [WebUI]
+      summary: "The owner's emoji on one of Hestia's messages in the current chat (→ Oracle /api/chat/reaction)"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emoji: {type: string, description: "empty = taken away"}
+                text: {type: string}
+      responses:
+        "200": {description: "{ok, line}"}
 
   /api/webui/chat/compact:
     post:

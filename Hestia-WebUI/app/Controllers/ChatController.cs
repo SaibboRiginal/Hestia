@@ -65,6 +65,24 @@ public class ChatController : ControllerBase
         return Ok(new { session_id = sid, questions, queued });
     }
 
+    public record ReactionBody(string? Emoji, string? Text);
+
+    /// <summary>The owner reacted with an emoji to one of Hestia's messages (docs/work/2026-11-06-hestia-viva F4):
+    /// Oracle keeps one history line so the next turn knows it. Empty emoji = reaction taken away.</summary>
+    [HttpPost("reaction")]
+    public async Task<IActionResult> Reaction([FromBody] ReactionBody body)
+    {
+        var sid = _sessionManager.GetSession();
+        var emoji = (body.Emoji ?? "").Trim();
+        if (emoji.Length > 16) emoji = emoji[..16];
+        var text = (body.Text ?? "").Trim();
+        if (text.Length > 300) text = text[..300];
+        var (status, payload) = await _hub.RouteRawAsync("oracle", "/api/chat/reaction", HttpMethod.Post,
+            body: new { session_id = sid, emoji, text }, timeoutSeconds: 10);
+        _logger.LogInformation("event=webui_chat_reaction session={S} status={St}", sid, status);
+        return StatusCode(status, payload);
+    }
+
     /// <summary>Summarise older messages of the current conversation (frees context).</summary>
     [HttpPost("compact")]
     public async Task<IActionResult> Compact()

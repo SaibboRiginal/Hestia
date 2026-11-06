@@ -17,7 +17,7 @@ from typing import Any
 import requests
 
 from telegram_bot import core, store, ui
-from telegram_bot.services import assistant_questions, chat_queue, voice_service
+from telegram_bot.services import assistant_questions, chat_queue, reactions, voice_service
 from telegram_bot.services.reply_renderer import ReplyRenderer
 
 logger = logging.getLogger("hestia_telegram.chat_service")
@@ -43,9 +43,21 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
             renderer.on_thinking(data)
         elif kind == "token":
             renderer.on_token(str(data.get("text") or ""))
+        elif kind == "reaction":
+            # Hestia reacts to the owner's message (hestia-viva F4): applied by run_chat_turn on that message.
+            renderer.reaction = str(data.get("emoji") or "")[:16]
         elif kind == "final":
-            # Render the answer immediately; notices may still arrive (memory) and are added after.
             renderer.trace_id = str(data.get("trace_id") or "")[:40]
+            if data.get("reaction_only"):
+                # The reaction is the whole answer: no text bubble, the «Sto pensando…» message goes away.
+                renderer.reaction = renderer.reaction or str(data.get("reaction") or "")[:16]
+                renderer.finalized = True
+                try:
+                    core.bot.delete_message(renderer.chat_id, renderer.msg_id)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("event=reaction_only_status_delete_failed error=%s", exc)
+                continue
+            # Render the answer immediately; notices may still arrive (memory) and are added after.
             renderer.on_final(str(data.get("reply") or ""), data.get("origin"))
         elif kind == "changes":
             renderer.on_changes(data)
@@ -109,8 +121,9 @@ def quoted_of(message) -> dict | None:
 
 def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
                extra_instructions: str = "", queued: list[dict] | None = None,
-               quoted: dict | None = None) -> OracleResult:
+               quoted: dict | None = None, spoken: bool = False) -> OracleResult:
     """Stream one chat turn from Oracle into a renderer on ``status_message_id``.
+    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (hestia-viva F1).
     ``queued``: messages written while the assistant could not answer ([{text, written_at}]), answered in one turn
     where the assistant decides how (oracle-offline v3 C). ``quoted``: the message replied to (context).
     Raises ``OracleUnavailable`` when Oracle did not accept the request."""
@@ -133,6 +146,7 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
                 "client": "telegram",
                 **({"queued": queued} if queued else {}),
                 **({"quoted": quoted} if quoted else {}),
+                **({"spoken": True} if spoken else {}),
             },
             stream=True,
             # (connect, max silence between chunks)
@@ -189,7 +203,11 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
             status_msg = core.bot.send_message(chat_id, WORKING, parse_mode="HTML")
     stop_typing = _typing(chat_id)
     try:
-        result = ask_oracle(chat_id, session_id, user_text, status_msg.message_id, quoted=quoted)
+        # A voice note answered by voice too (spoken replies on): Oracle answers as speech.
+        speak = bool(spoken and voice_service.is_live(chat_id))
+        result = ask_oracle(chat_id, session_id, user_text, status_msg.message_id, quoted=quoted, spoken=speak)
+        if getattr(result.renderer, "reaction", "") and message is not None:
+            reactions.react(chat_id, getattr(message, "message_id", None), result.renderer.reaction)
         feedback = core.should_show_feedback_prompt(str(chat_id), str(user_text or "").strip())
         try:
             voice_service.after_reply(chat_id, result.renderer, spoken=spoken, feedback=feedback,

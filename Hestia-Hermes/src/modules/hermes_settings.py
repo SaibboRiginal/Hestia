@@ -26,6 +26,8 @@ RETRACT_AFTER = "hermes.retract.after"
 REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
 PENDING_REMIND_HOURS = "hermes.attesa.richiamo_ore"
 ACTIVE_CLIENT_MINUTES = "hermes.consegna.client_attivo_minuti"
+NOTIFICATION_STYLE = "hermes.notifiche.stile"
+STYLES = [("scheda", "Scheda"), ("frase", "Frase di Hestia")]
 
 settings = SettingsClient("hermes")
 settings.declare([
@@ -66,7 +68,15 @@ settings.declare([
             min=0, max=240, unit="min",
             help="Se mi hai usato da un'app (Telegram, WebUI) in questi minuti, la notifica suona solo lì; "
                  "nelle altre arriva in silenzio. 0 = suona dappertutto."),
+    setting(NOTIFICATION_STYLE, "Stile delle notifiche", "enum", "scheda", group="Consegna", options=STYLES,
+            help="Scheda: come sempre. Frase di Hestia: le notifiche informative arrivano come una sua frase "
+                 "breve, come in chat; avvisi, errori e quelle con pulsanti o domande restano schede."),
 ]).declare_log_level()
+
+
+def notification_style() -> str:
+    value = str(settings.get(NOTIFICATION_STYLE) or "scheda")
+    return value if value in {k for k, _ in STYLES} else "scheda"
 
 
 def recurring_event_types() -> frozenset[str]:

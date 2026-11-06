@@ -21,6 +21,7 @@ import { NoticePrefsService } from '../../services/notice-prefs.service';
 import { PresenceService } from '../../services/presence.service';
 import { MicRecorder, VoiceService } from '../../services/voice.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
+import { REACTION_EMOJI } from './reaction-emoji';
 
 const LIVE_LABELS: Record<string, string> = {
   starting: 'Accendo il microfono…', listening: 'Ti ascolto', hearing: 'Ti sento…', thinking: 'Ci penso…', speaking: 'Sto parlando',
@@ -71,9 +72,10 @@ const LIVE_LABELS: Record<string, string> = {
                 </div>
                 @if (m.transcribing) { <div class="vtext muted">Trascrivo…</div> }
                 @else if (m.content) { <div class="vtext" [class.verr]="m.error">{{ m.content }}</div> }
+                @if (m.reaction) { <span class="rx" title="Reazione di Hestia">{{ m.reaction }}</span> }
               </div></div>
             } @else {
-              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}</div></div>
+              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}@if (m.reaction) { <span class="rx" title="Reazione di Hestia">{{ m.reaction }}</span> }</div></div>
             }
           } @else {
             <div class="msg asst hx-fade-in">
@@ -114,8 +116,19 @@ const LIVE_LABELS: Record<string, string> = {
                   }
                 </div>
               }
+              @if (m.reaction && !m.isStreaming) {
+                <button class="rx mine" (click)="chat.reactTo(m.id, m.reaction!)" title="Togli la reazione">{{ m.reaction }}</button>
+              }
               @if (!m.isStreaming && m.content && !m.queuedId) {
                 <div class="foot">
+                  <span class="rxw">
+                    <button class="fb" [class.on]="picker() === m.id" (click)="picker.set(picker() === m.id ? null : m.id)" title="Reagisci" aria-haspopup="true"><hx-icon name="smile" [size]="15" /></button>
+                    @if (picker() === m.id) {
+                      <span class="rxp hx-fade-in" role="menu">
+                        @for (e of reactions; track e) { <button role="menuitem" [class.on]="m.reaction === e" (click)="react(m, e)">{{ e }}</button> }
+                      </span>
+                    }
+                  </span>
                   <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)" title="Utile"><hx-icon name="thumb-up" [size]="15" /></button>
                   <button class="fb" [class.on]="rated()[m.id] === 'bad'" (click)="feedback('bad', m)" title="Non utile"><hx-icon name="thumb-down" [size]="15" /></button>
                   <button class="fb" (click)="copy(m)" title="Copia"><hx-icon name="copy" [size]="15" /></button>
@@ -216,6 +229,15 @@ const LIVE_LABELS: Record<string, string> = {
     .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: hx-pulse 1.2s infinite; }
     .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
     .foot { display: flex; gap: 2px; margin-top: 8px; opacity: 0; transition: opacity var(--dur); }
+    .bubble { position: relative; }
+    .rx { position: absolute; bottom: -12px; left: -6px; font-size: 14px; line-height: 1; padding: 3px 5px; border-radius: var(--radius-full);
+          background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); white-space: nowrap; }
+    .rx.mine { position: static; display: inline-block; margin-top: 6px; cursor: pointer; }
+    .rxw { position: relative; display: inline-flex; }
+    .rxp { position: absolute; bottom: 100%; left: 0; margin-bottom: 4px; display: flex; gap: 2px; padding: 4px; z-index: 5;
+           background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); box-shadow: var(--shadow-md); }
+    .rxp button { font-size: 18px; line-height: 1; padding: 5px; border-radius: var(--radius-full); }
+    .rxp button:hover, .rxp button.on { background: var(--surface-2); }
     .msg.asst:hover .foot, .msg.asst:last-child .foot { opacity: 1; }
     .fb { width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--text-3); }
     .fb:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
@@ -306,6 +328,14 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   text = '';
   mode = signal('auto');   // hx-chat-mode: this conversation's mode (Themis), sent with every message
   rated = signal<Record<string, 'good' | 'bad'>>({});
+  /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-hestia-viva F4). */
+  readonly reactions = REACTION_EMOJI;
+  picker = signal<string | null>(null);
+
+  react(m: ChatMessage, emoji: string): void {
+    this.picker.set(null);
+    void this.chat.reactTo(m.id, emoji);
+  }
   private lastCount = 0;
   private lastLen = 0;
 

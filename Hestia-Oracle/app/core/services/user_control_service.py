@@ -22,6 +22,21 @@ _ALLOWED_AGGRESSIVENESS = {"low", "normal", "high"}
 _DEFAULT_CATEGORIES = ["alerts", "tasks", "reminders", "insights"]
 
 
+# Deterministic gate before the extraction LLM call (docs/work/2026-11-06-hestia-viva F2): only a message that talks
+# about how/when the assistant writes, reminds or asks can change a control. Everything else skips the call, so the
+# GPU is free for the next turn. Italian + English stems, lowercase.
+_CONTROL_HINT = re.compile(
+    r"notific|avvis|promemori|ricord(?:a|ami|armi)|sollecit|insist|disturb|silenz|zitt|non\s+scriv|"
+    r"non\s+chieder|smetti|basta\s+(?:con|di|mandar|scriver)|di\s+notte|orari|quiet|proattiv|"
+    r"di\s+(?:più|meno)\s+spesso|ogni\s+tanto|remind|notif|stop\s+(?:asking|sending)|don'?t\s+ask|"
+    r"\b(?:alle|dalle|fino\s+alle)\s+\d", re.IGNORECASE)
+
+
+def looks_like_control(user_message: str) -> bool:
+    """True when the message may change a control (proactivity, quiet hours, reminders, "don't ask again")."""
+    return bool(_CONTROL_HINT.search(str(user_message or "")))
+
+
 class UserControlService:
     """Durable control storage and extraction."""
 
@@ -208,6 +223,9 @@ class UserControlService:
         return merged, saved
 
     def extract_and_save_controls(self, user_message: str) -> list[dict]:
+        if not looks_like_control(user_message):
+            logger.debug("event=controls_extract_skipped reason=no_control_hint")
+            return []
         prompt = prompt_config.prompt(
             "user_control_extract_template",
             user_message=user_message,

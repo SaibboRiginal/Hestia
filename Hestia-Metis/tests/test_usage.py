@@ -177,3 +177,16 @@ def test_endpoints_and_tool_cards():
                                                                 "metis.adesso.1800", "metis.dataset.review"]
     assert [u["id"] for u in main._HUB_REGISTRATION_PAYLOAD["capabilities"]["llm_usecases"]] == [
         "metis.adesso", "metis.dataset.review"]
+
+
+def test_recent_lists_last_taps_newest_first_within_hours():
+    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-hestia-viva F3)."""
+    u, _ = _usage()
+    now = datetime.now(timezone.utc)
+    u.record([{"client": "telegram", "kind": "tool", "ref": "palestra_oggi", "at": (now - timedelta(hours=30)).isoformat()},
+              {"client": "webui", "kind": "page", "ref": "spese", "label": "Spese", "at": (now - timedelta(hours=2)).isoformat()},
+              {"client": "telegram", "kind": "tool", "ref": "meteo_oggi", "at": (now - timedelta(minutes=5)).isoformat()}])
+    items = u.recent(limit=5, hours=12)["items"]
+    assert [i["ref"] for i in items] == ["meteo_oggi", "spese"]
+    assert items[1]["label"] == "Spese" and items[0]["client"] == "telegram"
+    assert len(u.recent(limit=1)["items"]) == 1
