@@ -39,7 +39,7 @@ $script:Lang = if ($Lang) { $Lang } elseif ($env:HESTIA_LANG) { $env:HESTIA_LANG
 $script:Lang = if ([string]$script:Lang -like 'it*') { 'it' } else { 'en' }
 function T([string]$En, [string]$It) { if ($script:Lang -eq 'it') { return $It } return $En }
 # Folder: where it is launched. A Hestia folder (it has docker-compose.global.yml) is used as it is, otherwise Hestia goes
-# in a «Hestia» folder inside it. Launched from a system folder (an administrator PowerShell opens in System32) or a
+# in a "Hestia" folder inside it. Launched from a system folder (an administrator PowerShell opens in System32) or a
 # drive root: the user's folder instead.
 if (-not $Dir) {
     $here = (Get-Location).ProviderPath
