@@ -301,20 +301,12 @@ class UniversalAgent:
             }
             for t in tools
         ]
-        # Use a dedicated tool-calling system prompt — the general Hestia persona
-        # is too chatty and dilutes tool-use instructions when 40+ tools are
-        # available.  The full agent-loop preamble (with tool manifest) is
-        # already inside *user_message*.
-        _TOOL_CALLING_SYSTEM = (
-            "You are Hestia's tool-calling engine. "
-            "DOMAIN QUERY MODE: The classifier has already determined this message "
-            "requires data retrieval. Domain search tools matching the query are "
-            "available — call the most relevant one BEFORE producing text. "
-            "Never respond with conversation text when a matching tool exists. "
-            "If you are unsure which tool to call, call the domain search tool "
-            "that best matches the user's topic. Tool-less responses in domain "
-            "query mode are a critical error."
-        )
+        # Hestia's persona stays the system prompt (identity and tone: a separate «tool-calling engine» prompt made
+        # local models answer «sono il motore di ragionamento di Hestia», docs/work/2026-11-06-hestia-viva v1.3);
+        # a short tool rule is added after it. The agent-loop preamble with the tool list is in *user_message*.
+        _TOOL_CALLING_SYSTEM = "\n\n".join(p for p in (self.role_prompt.strip(), (
+            "STRUMENTI: se un tool serve per rispondere o agire, chiamalo prima di scrivere. "
+            "Se nessuno serve, rispondi e basta, come Hestia.")) if p)
         payload = {
             "model": self.model_name,
             "messages": [

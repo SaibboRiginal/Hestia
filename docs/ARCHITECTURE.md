@@ -702,6 +702,7 @@ Applies to every user-facing Telegram delivery path (chat replies, tool results,
    client; nobody else sends to the user's clients.
 11. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
 12. **Chat reactions** (dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame is Hestia's emoji on the owner's message; clients that can show reactions draw it (Telegram natively), and send the owner's reactions to her messages to Oracle `POST /api/chat/reaction`. Chat reactions are real emoji (chat content); UI chrome keeps stroke icons. A spoken turn (live voice, voice note answered aloud) sends `spoken: true`.
+13. **One identity**: Hestia's persona (`analyst_persona_default`) is the system prompt of every chat path and provider, tool calling included; no prompt may give the model another identity (e.g. «motore di ragionamento», «tool-calling engine»). Tool rules are added after the persona, never instead of it.
 
 ## Logging Contract (Global Observability)
 

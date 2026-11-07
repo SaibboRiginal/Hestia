@@ -171,3 +171,27 @@ def test_spoken_turn_and_reaction_line_reach_the_engine(client):
     assert res.status_code == 200
     instructions = main.engine.chat.call_args.kwargs["client_instructions"]
     assert "TURNO A VOCE" in instructions and "[[r:EMOJI]]" in instructions
+
+
+# ── v1.3 identity: never «il motore di ragionamento di Hestia» (Marko's real run 2026-11-07) ──────────────────
+
+@pytest.mark.unit
+def test_agent_loop_preambles_speak_as_hestia():
+    for key in ("agent_loop_system_preamble", "agent_loop_system_preamble_compact"):
+        text = prompt_config.prompt(key, tools_json="[]", tools_list="")
+        assert "motore" not in text and text.startswith("Sei Hestia, la persona descritta sopra")
+    assert "1-2 frasi" in prompt_config.prompt("quick_chat_static_instruction")
+    assert "NOME: Hestia" in prompt_config.analyst_persona_default()
+
+
+@pytest.mark.unit
+def test_ollama_native_tools_keep_the_persona_as_system(monkeypatch):
+    from agents.universal_agent import UniversalAgent
+    monkeypatch.setenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+    agent = UniversalAgent(role_prompt="Sei Hestia. PERSONA", provider="ollama", model_name="m", thinking=False)
+    resp = MagicMock()
+    resp.json.return_value = {"message": {"content": "Bene, tu?"}}
+    with patch("agents.universal_agent.requests.post", return_value=resp) as post:
+        agent._ask_with_tools_ollama_native("ciao", [{"name": "t", "description": "d", "parameters": {}}])
+    system = post.call_args.kwargs["json"]["messages"][0]["content"]
+    assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "STRUMENTI" in system
