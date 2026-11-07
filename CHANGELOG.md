@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-07
+- Connected services in one list: Google, Garmin and the phone have the same card and connect the same way (open it, what to do is right there), in the setup and in Dispositivi; a new service is just one more row → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Voice in the language you speak: a reply in English is read in English by an English voice (any language, the same kind of voice you chose), listening recognises the language by itself; the setup lists every local voice with its language and offers the free programs with more natural voices (Chatterbox); voices tried never play over each other → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Sound in the site works again: «Ascolta» in the chat and the voice try in the setup played nothing (the browser blocked it); in the setup every voice in the list can be heard (and every listening engine tried) before choosing it; the assistant's greeting in the setup looks exactly like the chat; Garmin connects again with the new Garmin sign-in and says why when it refuses → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup: in Ragionamento, Codice and Immagini a cloud service with a working key (e.g. Gemini) shows its models again instead of «niente da scegliere» → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

@@ -3472,6 +3472,48 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/gateway/connections:
+    get:
+      tags: [Hecate]
+      summary: "Every service Hecate can link, the same shape for all {items[{id, label, icon, what, state connected|waiting|not_connected, detail, step{kind form|wait, text, fields[], submit, guide?, link?, url?}, actions[]}]}; place=setup → only the ones offered in the guided setup"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: place, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/gateway/connections/{cid}:
+    post:
+      tags: [Hecate]
+      summary: "The current step's values {values} (never logged) → {item, open_url?, message?}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
+    delete:
+      tags: [Hecate]
+      summary: "Unlink the service → {item}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/gateway/connections/{cid}/{action}:
+    post:
+      tags: [Hecate]
+      summary: "A button of a service's card (sync, again, cancel, client) → {item, open_url?, message?}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+        - {name: action, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
   /api/gateway/garmin/login:
     post:
       tags: [Hecate]

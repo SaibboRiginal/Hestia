@@ -3,8 +3,7 @@
  * Page declared in Hestia-Hecate/app/main.py (PluginClient.webui); every element is `hecate-*`.
  */
 import { definePlugin } from '@hestia/webui-sdk';
+import { HecateConnections } from './connections';
 import { HecateDevices } from './devices';
-import { HecateGarmin } from './garmin';
-import { HecateGoogle } from './google';
 
-definePlugin({ 'hecate-devices': HecateDevices, 'hecate-google': HecateGoogle, 'hecate-garmin': HecateGarmin });
+definePlugin({ 'hecate-devices': HecateDevices, 'hecate-connections': HecateConnections });

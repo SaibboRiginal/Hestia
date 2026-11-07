@@ -234,11 +234,10 @@ function store(key: string, value: string): void {
             }
 
             @case ('esterni') {
-              <h1>Calendario, mail e Garmin</h1>
+              <h1>I tuoi servizi</h1>
               <p class="lead">Se vuoi, collegali ora. Puoi farlo anche dopo dalla pagina Dispositivi.</p>
               <div class="outlets">
-                <hx-plugin-outlet module="hecate" element="hecate-google" />
-                <hx-plugin-outlet module="hecate" element="hecate-garmin" />
+                <hx-plugin-outlet module="hecate" element="hecate-connections" [ctx]="{ params: { place: 'setup' } }" />
               </div>
             }
 

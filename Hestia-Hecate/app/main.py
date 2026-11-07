@@ -19,6 +19,7 @@ from hestia_common import recap as recap_contract
 from providers.weather import WeatherError, WeatherService, recap_facts
 from schemas.calendar_events import CalendarEvent
 import devices_api
+import connections
 
 from core.registry import get_fetcher_class, FETCHER_REGISTRY
 from core.archive_client import ArchiveClient
@@ -1912,3 +1913,33 @@ def _poll_microsoft_oauth() -> dict:
     except Exception as exc:
         logger.error("event=microsoft_oauth_poll_error error=%s", exc)
         return {"status": "error", "provider": "microsoft", "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Connected services as one list (connections.py): every account/device the same card, Dispositivi + setup.
+# ---------------------------------------------------------------------------
+def _google_words(fn):
+    """Google's HTTP errors ({error, hint} or text) → one sentence for the card."""
+    def run(*args):
+        try:
+            return fn(*args)
+        except HTTPException as exc:
+            d = exc.detail
+            if isinstance(d, dict):
+                d = " ".join(str(d.get(k) or "") for k in ("error", "hint")).strip()
+            raise connections.ConnectError(str(d or "Google non ha accettato.")[:300])
+    return run
+
+
+connections.register(connections.GoogleConnector(
+    state=gateway_auth_google_state,
+    save_client=_google_words(lambda v: gateway_auth_google_client(v)),
+    initiate=_google_words(_initiate_google_oauth),
+    complete=_google_words(lambda code: _complete_google_oauth({"code": code})),
+    cancel=lambda: gateway_auth_cancel("google")))
+connections.register(connections.GarminConnector(
+    devices_api.garmin, sync=lambda: devices_api.garmin_sync({"days": 2}),
+    first_sync=lambda: threading.Thread(target=lambda: devices_api.garmin_sync({"days": 2}), daemon=True,
+                                        name="garmin-first-sync").start()))
+connections.register(connections.PhoneConnector(devices_api.phone_status))
+app.include_router(connections.router)

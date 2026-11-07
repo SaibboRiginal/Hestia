@@ -538,8 +538,9 @@ language, and under the local list (in every step) «Altri programmi gratis» li
 (Modelli: LM Studio…; Voce: Chatterbox, Kokoro-FastAPI, Speaches) with their site. Memoria is the same step with `single`: one embedding model in all,
 local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
-Voce writes both chains and queues the downloads. The «Calendario, mail e Garmin» screen mounts only Hecate's own
-cards `<hecate-google>` and `<hecate-garmin>` through `hx-plugin-outlet` (the same ones as the Dispositivi page):
+Voce writes both chains and queues the downloads. The «I tuoi servizi» screen mounts Hecate's one list of
+services `<hecate-connections>` (ctx `params.place = setup`) through `hx-plugin-outlet`, the same list as the
+Dispositivi page (every service the same card):
 Google connects by hand there (OAuth client with a short guide, «Collega Google», pasted address as fallback).
 «Fuori casa»: one line on what it is, «Attiva» right there, the steps while it starts, then the address with «Apri»
 and «Copia», a warning with «Riprova» when no address comes in 90 s. «Tutto pronto»: each choice as a row that goes
