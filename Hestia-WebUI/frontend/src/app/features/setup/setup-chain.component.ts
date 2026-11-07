@@ -174,7 +174,8 @@ export function keyStep(key: string, home: string): { provider: string; model: s
                   } @else if (p.kind === 'none') {
                     <div class="row"><button hx-btn [variant]="inUse(p.name) ? 'ghost' : 'primary'" (click)="useService(p.name)">{{ inUse(p.name) ? 'Togli' : 'Usa' }}</button></div>
                   } @else {
-                    <p class="none">{{ emptyList() }}</p>
+                    @if (testing() === p.name || !listed(p.name)) { <p class="hint"><hx-spinner /> Leggo i modelli…</p> }
+                    @else { <p class="none">{{ emptyList() }}</p> }
                   }
                 }
               </div>
@@ -304,6 +305,7 @@ export class SetupChainComponent {
 
   private row(name: string): ServiceRow | undefined { return this.services().find(s => s.name === name); }
   private mark(name: string, ok: boolean) { if (!!this.ready()[name] !== ok) this.ready.set({ ...this.ready(), [name]: ok }); }
+  listed(name: string): boolean { return name in this.lists(); }
   inUse(name: string): boolean { return this.order().includes(name); }
 
   /** «Scelti»: every choice, in the user's order (by default the local one first, then each service's models). */
@@ -369,7 +371,9 @@ export class SetupChainComponent {
   toggleOpen(p: ServiceRow) {
     const opening = this.open() !== p.name;
     this.open.set(opening ? p.name : '');
-    if (opening && p.kind === 'key' && p.keySet && !this.ready()[p.name] && !this.asked.has(p.name)) { this.asked.add(p.name); void this.check(p.name, false); }
+    // the list is read here when this step has not read it yet: the key can be ready from another step (each mode
+    // of Modelli is its own step sharing the same keys), so «ready» alone does not mean the models are known
+    if (opening && p.kind === 'key' && (p.keySet || this.ready()[p.name]) && !(p.name in this.lists()) && this.testing() !== p.name) void this.check(p.name, false);
   }
   typeToken(name: string, value: string) {
     this.tokens.set({ ...this.tokens(), [name]: value });
