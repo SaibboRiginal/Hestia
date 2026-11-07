@@ -321,6 +321,21 @@ def test_plan_chains_per_mode_model_goes_first_with_general_as_fallback():
     assert out["veloce"]["steps"] == out["potente"]["steps"]
 
 
+def test_plan_chains_follows_the_users_order_across_services():
+    """Round 7: «Scelti» reordered freely (a cloud model before the local one, models of two services mixed)."""
+    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini", "claude"], dict(llm_chains.DEFAULT_CHAINS),
+                                cloud_models={"gemini": ["gemini-2.5-flash", "gemini-2.5-pro"]},
+                                order=[{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "claude", "model": ""},
+                                       {"provider": "ollama", "model": "qwen3:8b"}])
+    steps = out["veloce"]["steps"]
+    assert steps[0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
+    assert steps[1]["provider"] == "claude"
+    assert steps[2] == {"provider": "ollama", "model": "qwen3:8b"}
+    assert steps[-1] == {"provider": "gemini", "model": "gemini-2.5-flash"}   # not named: after the named ones
+    assert llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+                                 cloud_models={"gemini": ["gemini-2.5-flash"]})["veloce"]["steps"][0]["provider"] == "ollama"
+
+
 def test_test_lists_only_chat_models_and_embed_apart(monkeypatch):
     """Round 6 filter: «Modelli» shows chat models only, «Memoria» the embedding ones (Gemini has them too)."""
     _keys(monkeypatch, "gemini")

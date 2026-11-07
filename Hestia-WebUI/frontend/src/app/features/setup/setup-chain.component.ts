@@ -23,7 +23,29 @@ export interface ServiceRow {
 /** «Prova»: the key works or not, what the service has (models or voices) and the ones to choose by themselves. */
 export interface ServiceCheck { ok: boolean; detail?: string; options: PickItem[]; recommended: string[]; }
 
-interface ChosenRow { key: string; title: string; where: string; waiting: boolean; kind: 'home' | 'model' | 'service'; svc?: string; id?: string; up: boolean; }
+interface ChosenRow { key: string; title: string; where: string; waiting: boolean; kind: 'home' | 'model' | 'service'; svc?: string; id?: string; }
+
+/** The keys of «Scelti» in their natural order: 'h' (the local choice), 'm:<service>:<model>', 's:<service>' (a
+ * service with nothing to pick, e.g. the Claude subscription). */
+export function chosenKeys(home: string, order: string[], picks: Record<string, string[]>): string[] {
+  const out = home ? ['h'] : [];
+  for (const svc of order) {
+    const ids = picks[svc] || [];
+    if (ids.length) ids.forEach(id => out.push(`m:${svc}:${id}`)); else out.push(`s:${svc}`);
+  }
+  return out;
+}
+/** The same keys in the user's order (``rank``, set by ↑ ↓); keys it does not name keep their place after. */
+export function ranked(keys: string[], rank: string[]): string[] {
+  const pos = (k: string, i: number) => { const r = rank.indexOf(k); return r < 0 ? rank.length + i : r; };
+  return keys.map((k, i) => ({ k, p: pos(k, i) })).sort((a, b) => a.p - b.p).map(x => x.k);
+}
+/** A «Scelti» key as a chain step: the local choice is «program|model». */
+export function keyStep(key: string, home: string): { provider: string; model: string } {
+  if (key === 'h') { const [provider, ...rest] = home.split('|'); return { provider, model: rest.join('|') }; }
+  const [, svc, ...id] = key.split(':');
+  return { provider: svc, model: id.join(':') };
+}
 
 /**
  * THE step of the guided setup (docs/work/2026-10-30-setup-un-click, round 7): Modelli, Memoria, Ascolto and Voce are
@@ -49,7 +71,10 @@ interface ChosenRow { key: string; title: string; where: string; waiting: boolea
         <div class="crow">
           <span class="num">{{ i + 1 }}</span>
           <span class="ct"><b>{{ r.title }}</b><small>{{ r.where }}@if (r.waiting) { · <span class="warn">manca la chiave</span> }</small></span>
-          @if (r.up) { <button type="button" class="ib" aria-label="Sposta prima" (click)="up(r)"><hx-icon name="chevron-up" [size]="16" /></button> }
+          @if (!single() && rows().length > 1) {
+            <button type="button" class="ib" aria-label="Sposta prima" [disabled]="i === 0" (click)="move(i, -1)"><hx-icon name="chevron-up" [size]="16" /></button>
+            <button type="button" class="ib" aria-label="Sposta dopo" [disabled]="i === rows().length - 1" (click)="move(i, 1)"><hx-icon name="chevron-down" [size]="16" /></button>
+          }
           <button type="button" class="ib" aria-label="Togli" (click)="remove(r)"><hx-icon name="x" [size]="16" /></button>
         </div>
       } @empty { <p class="none">Niente ancora: scegli qui sotto.</p> }
@@ -161,7 +186,8 @@ interface ChosenRow { key: string; title: string; where: string; waiting: boolea
     .ct small { font-size: 12px; color: var(--text-3); line-height: 1.4; }
     .warn { color: var(--warning); }
     .ib { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-sm); border: 0; background: none; color: var(--text-3); }
-    .ib:hover { background: var(--surface-2); color: var(--text); }
+    .ib:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+    .ib:disabled { opacity: .3; cursor: default; }
     .none { font-size: 13px; color: var(--text-3); }
     .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--surface-2); }
     .tabs button { display: flex; flex-direction: column; gap: 1px; align-items: center; justify-content: center; padding: 8px; border: 0; border-radius: var(--radius-sm);
@@ -214,6 +240,8 @@ export class SetupChainComponent {
   ready = model<Record<string, boolean>>({});
   /** Codes typed for 'token' services (sent with the choice). */
   tokens = model<Record<string, string>>({});
+  /** «Scelti» in the user's order (keys of ``chosenKeys``), set by ↑ ↓: local and cloud mixed freely. */
+  rank = model<string[]>([]);
 
   addHost = output<string>();
   removeHost = output<string>();
@@ -260,35 +288,30 @@ export class SetupChainComponent {
   private mark(name: string, ok: boolean) { if (!!this.ready()[name] !== ok) this.ready.set({ ...this.ready(), [name]: ok }); }
   inUse(name: string): boolean { return this.order().includes(name); }
 
-  /** «Scelti»: the local choice first, then each service's models in order (or the service itself when it has none). */
+  /** «Scelti»: every choice, in the user's order (by default the local one first, then each service's models). */
   rows = computed<ChosenRow[]>(() => {
-    const out: ChosenRow[] = [];
     const home = this.home();
-    if (home) {
-      const it = this.homeItems().find(i => i.id === home);
-      out.push({ key: 'h', title: it?.title || home.split('|').slice(1).join('|'), where: 'Locale', waiting: false, kind: 'home', up: false });
-    }
-    this.order().forEach((svc, si) => {
-      const p = this.row(svc);
-      const label = p?.label || svc;
-      const ids = this.picks()[svc] || [];
+    return ranked(chosenKeys(home, this.order(), this.picks()), this.rank()).map(key => {
+      if (key === 'h') {
+        const it = this.homeItems().find(i => i.id === home);
+        return { key, title: it?.title || home.split('|').slice(1).join('|'), where: 'Locale', waiting: false, kind: 'home' as const };
+      }
+      const { provider: svc, model: id } = keyStep(key, home);
+      const label = this.row(svc)?.label || svc;
       const waiting = !this.ready()[svc];
-      if (!ids.length) { out.push({ key: `s:${svc}`, title: label, where: 'Cloud', waiting, kind: 'service', svc, up: si > 0 }); return; }
-      const items = this.lists()[svc] || [];
-      ids.forEach((id, mi) => out.push({ key: `m:${svc}:${id}`, title: items.find(i => i.id === id)?.title || id, where: `Cloud · ${label}`,
-        waiting, kind: 'model', svc, id, up: mi > 0 || si > 0 }));
+      if (key.startsWith('s:')) return { key, title: label, where: 'Cloud', waiting, kind: 'service' as const, svc };
+      const title = (this.lists()[svc] || []).find(i => i.id === id)?.title || id;
+      return { key, title, where: `Cloud · ${label}`, waiting, kind: 'model' as const, svc, id };
     });
-    return out;
   });
 
-  up(r: ChosenRow) {
-    if (!r.svc) return;
-    const ids = [...(this.picks()[r.svc] || [])];
-    const mi = r.id ? ids.indexOf(r.id) : -1;
-    if (mi > 0) { [ids[mi - 1], ids[mi]] = [ids[mi], ids[mi - 1]]; this.picks.set({ ...this.picks(), [r.svc]: ids }); return; }
-    const l = [...this.order()];
-    const i = l.indexOf(r.svc);
-    if (i > 0) { [l[i - 1], l[i]] = [l[i], l[i - 1]]; this.order.set(l); }
+  /** ↑ ↓: swap with the neighbour; the whole order is kept from then on. */
+  move(i: number, d: -1 | 1) {
+    const keys = this.rows().map(r => r.key);
+    const j = i + d;
+    if (j < 0 || j >= keys.length) return;
+    [keys[i], keys[j]] = [keys[j], keys[i]];
+    this.rank.set(keys);
   }
   remove(r: ChosenRow) {
     if (r.kind === 'home') { this.home.set(''); return; }

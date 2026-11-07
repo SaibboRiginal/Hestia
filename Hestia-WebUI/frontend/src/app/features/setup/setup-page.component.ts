@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
 import { PluginsService } from '../plugins/plugins.service';
-import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent } from './setup-chain.component';
+import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
@@ -124,7 +124,7 @@ function store(key: string, value: string): void {
               <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
                                homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo»."
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
-                               [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens">
+                               [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" [(rank)]="cloudRank">
                 <div home-extra>
                   @if (hasOllama()) {
                     @if (otherOpen() || otherModel()) {
@@ -291,7 +291,8 @@ function store(key: string, value: string): void {
                                [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)"
                                [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
                                [picks]="voicePicks()[dir.id]" (picksChange)="setVoice(voicePicks, dir.id, $event)"
-                               [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)">
+                               [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)"
+                               [rank]="voiceRank()[dir.id]" (rankChange)="setVoice(voiceRank, dir.id, $event)">
                 <div home-extra>
                   @if (voiceLocal(dir.id).length > 1) {
                     <ul class="engines">
@@ -449,6 +450,8 @@ export class SetupPageComponent {
   cloudModel = signal<Record<string, string[]>>({});
   cloudReady = signal<Record<string, boolean>>({});
   cloudTokens = signal<Record<string, string>>({});
+  /** «Scelti» of Modelli in the user's order (local and cloud mixed), sent as ``order``. */
+  cloudRank = signal<string[]>([]);
   botToken = '';
   passphrase = '';
 
@@ -490,6 +493,7 @@ export class SetupPageComponent {
   voiceOrder = signal<Record<VoiceDir, string[]>>({ ascolto: [], voce: [] });
   voicePicks = signal<Record<VoiceDir, Record<string, string[]>>>({ ascolto: {}, voce: {} });
   voiceReadyMap = signal<Record<VoiceDir, Record<string, boolean>>>({ ascolto: {}, voce: {} });
+  voiceRank = signal<Record<VoiceDir, string[]>>({ ascolto: [], voce: [] });
 
   async loadVoice() {
     this.voiceError.set('');
@@ -500,6 +504,7 @@ export class SetupPageComponent {
       const local: Record<VoiceDir, string> = { ascolto: '', voce: '' };
       const order: Record<VoiceDir, string[]> = { ascolto: [], voce: [] };
       const picks: Record<VoiceDir, Record<string, string[]>> = { ascolto: {}, voce: {} };
+      const rank: Record<VoiceDir, string[]> = { ascolto: [], voce: [] };
       for (const d of this.voiceDirs) {
         const own = d.id === 'ascolto' ? saved.listen : saved.speak;
         // what the user chose in the setup, else the chain in use; never Hestia's defaults for services without a key
@@ -509,17 +514,20 @@ export class SetupPageComponent {
           const p = byName(st.provider);
           if (!p) continue;
           const id = d.id === 'ascolto' ? st.model : st.voice;
-          if (p.local) { if (!local[d.id]) local[d.id] = `${p.name}|${id || this.optionsOf(p, d.id)[0]?.id || ''}`; }
+          if (p.local) { if (!local[d.id]) { local[d.id] = `${p.name}|${id || this.optionsOf(p, d.id)[0]?.id || ''}`; rank[d.id].push('h'); } }
           else if (p.key || !p.needs_key) {   // a cloud service is preselected only when its key is saved
             if (!order[d.id].includes(p.name)) order[d.id].push(p.name);
             if (id) picks[d.id][p.name] = [...(picks[d.id][p.name] || []), id];
+            rank[d.id].push(id ? `m:${p.name}:${id}` : `s:${p.name}`);   // the saved order, local and cloud mixed
           }
         }
         if (!local[d.id]) local[d.id] = this.voiceLocalItems(d.id, cat)[0]?.id || '';
+        if (local[d.id] && !rank[d.id].includes('h')) rank[d.id].unshift('h');
       }
       this.voiceLocalPick.set(local);
       this.voiceOrder.set(order);
       this.voicePicks.set(picks);
+      this.voiceRank.set(rank);
     } catch (e) {
       this.voiceError.set(setupError(e));
     }
@@ -573,19 +581,14 @@ export class SetupPageComponent {
   }
   /** The chain of one direction: the local choice, then each cloud service with its models/voices in order. */
   private voiceSteps(dir: VoiceDir): VoiceStep[] {
-    const out: VoiceStep[] = [];
-    const [lp, ...lid] = (this.voiceLocalPick()[dir] || '').split('|');
-    const one = (provider: string, id: string): VoiceStep => ({ provider, model: dir === 'ascolto' ? id : '', voice: dir === 'voce' ? id : '' });
-    if (lp) {
-      const p = this.voiceLocal(dir).find(x => x.name === lp);
-      out.push({ ...one(lp, lid.join('|')), ...(p?.found && p.url ? { url: p.url, type: p.type, label: p.label } : {}) });
-    }
-    for (const n of this.voiceOrder()[dir]) {
-      const ids = this.voicePicks()[dir][n] || [];
-      if (ids.length) ids.forEach(id => out.push(one(n, id)));
-      else out.push(one(n, ''));
-    }
-    return out;
+    const home = this.voiceLocalPick()[dir] || '';
+    const keys = ranked(chosenKeys(home, this.voiceOrder()[dir], this.voicePicks()[dir]), this.voiceRank()[dir]);
+    return keys.map(k => {
+      const { provider, model: id } = keyStep(k, home);
+      const step: VoiceStep = { provider, model: dir === 'ascolto' ? id : '', voice: dir === 'voce' ? id : '' };
+      const p = k === 'h' ? this.voiceLocal(dir).find(x => x.name === provider) : undefined;
+      return p?.found && p.url ? { ...step, url: p.url, type: p.type, label: p.label } : step;
+    });
   }
   /** One direction can go on: something chosen at home or in the cloud, and every cloud service chosen usable. */
   voiceOk(dir: VoiceDir): boolean {
@@ -645,6 +648,11 @@ export class SetupPageComponent {
       const modes: Record<string, string> = {};
       for (const [k, v] of Object.entries(state.brain.modes || {})) if (v?.model) modes[k] = `${v.provider || 'ollama'}|${v.model}`;
       this.modes.set(modes);
+      // «Scelti» in the saved order (local and cloud mixed)
+      const lk = this.localKey();
+      const rank = (state.brain.order || []).map(o => lk && o.provider === this.localProvider() && o.model === this.localModel() ? 'h'
+        : o.model ? `m:${o.provider}:${o.model}` : `s:${o.provider}`);
+      this.cloudRank.set(rank.length && lk && !rank.includes('h') ? ['h', ...rank] : rank);
       // «Memoria»: the model in use (at home or in the cloud), else the recommended one at home
       const now = catalog.embedding;
       const nowProvider = now?.provider || 'ollama';
@@ -1027,6 +1035,7 @@ export class SetupPageComponent {
     const out = await this.api.apply(r, local, cloud, claude ? (this.cloudTokens()[claude] || '').trim() : '', {
       local_provider: this.localProvider(), cloud_models: models, embedding: this.embeddingChoice(),
       local_runtime: local ? this.runtimeOf(this.localProvider()) : {}, modes,
+      order: ranked(chosenKeys(local ? this.localKey() : '', cloud, models), this.cloudRank()).map(k => keyStep(k, this.localKey())),
     });
     this.cloudTokens.set({});
     if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }

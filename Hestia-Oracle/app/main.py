@@ -395,6 +395,7 @@ class SetupApply(BaseModel):
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
     modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # per mode (potente, codice, visione): its own model
+    order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
 
 
 class SetupPull(BaseModel):
@@ -433,7 +434,7 @@ def llm_setup_apply(req: SetupApply):
     from core.services import llm_setup
     result = llm_setup.apply(req.recipe, req.local_model, req.cloud, local_provider=req.local_provider,
                              cloud_models=req.cloud_models, embedding=req.embedding, local_runtime=req.local_runtime,
-                             modes=req.modes)
+                             modes=req.modes, order=req.order)
     if not result.get("ok"):
         raise HTTPException(status_code=502, detail=result.get("detail"))
     return {"status": "ok", **result}

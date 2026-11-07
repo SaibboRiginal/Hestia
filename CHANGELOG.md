@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-07
+- Guided setup: the chosen models (and voices) can be put in any order with ↑ and ↓, a cloud model even before the local one, and Hestia tries them in that order → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup redone: one clean column with the step on top (a tap shows every step and the downloads) and the buttons always at the bottom; Modelli, Memoria, Ascolto and Voce show what is chosen on top, in order, and below two tabs, Locale and Cloud; every screen has one short line of text, nothing about things that do not matter for the setup → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup: «Locale» and «Cloud» instead of «In casa» and «Nel cloud», and the local list looks exactly the same in Modelli, Memoria, Ascolto and Voce (search always there, same icons and text) → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup, sixth round: a key is tried in a second (the module re-reads it, no restart); Modelli, Memoria, Ascolto and Voce are the very same step (in casa one choice, then cloud services in order) and nothing in the cloud is preselected without a saved key; Modelli lists only chat models, Memoria also offers cloud memory models like Gemini's, long lists have filter chips; «Per modalità» gives Ragionamento, Codice or Immagini their own model; Google Calendar and Gmail connect by hand from the setup or Dispositivi → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

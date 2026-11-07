@@ -438,7 +438,8 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   container is re-created as below. Each service result says `reloaded`, `recreated`, `applied`; `brain/test`,
   `brain/apply` and `voice/test` wait for health only after a re-create. `brain/apply` also takes `modes`
   («Per modalità»: `potente|codice|visione` → `{provider, model}`, passed to Oracle and kept in the brain state with
-  the memory's `embedding`; an Ollama model named there is downloaded too).
+  the memory's `embedding`; an Ollama model named there is downloaded too) and `order` (the «Scelti» list in the
+  user's order, local and cloud mixed: passed to Oracle and kept in the brain state, so the setup shows it again).
 - `recreate_with_env`: `env_file` is read only when a container is created, so a restart would not see a new key.
   The container is re-created through the Docker API with the same image, mounts, ports, networks/aliases, restart
   policy and healthcheck plus the changed variables; the old one is renamed and kept until the new one starts, and

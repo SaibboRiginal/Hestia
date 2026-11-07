@@ -510,8 +510,9 @@ the step («3/11 Memoria», with the number of downloads running) that opens a d
 back) and the downloads (every module's, with progress and time left, `/api/webui/downloads`), and «Finisco dopo»;
 a thin progress line; the buttons (Indietro · Più tardi · Avanti) in a footer always visible. One short line under
 each title, nothing about modules or features outside the setup. The four bold steps are ONE component,
-`setup-chain`, only the module behind it changes: on top «Scelti» (what is used, in order, each with ↑ and ×; the
-local one first), below two tabs. «Locale» (this computer or another of the home network) = one choice from
+`setup-chain`, only the module behind it changes: on top «Scelti» (what is used, in order, each with ↑ ↓ and ×;
+the local one first by default, then any order, local and cloud models mixed: sent as `order` for the models,
+as the order of the steps for the voice), below two tabs. «Locale» (this computer or another of the home network) = one choice from
 `setup-pick` (search box always shown, the same icons in every step, filter chips by model family / program /
 engine, first few and «Mostra tutti»; tap the chosen one again to leave it out), the links to install Ollama or LM
 Studio when nothing is found, and «È su un altro computer della rete?» (remembered in the browser, sent as `?hosts=`
