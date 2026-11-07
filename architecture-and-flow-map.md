@@ -334,7 +334,9 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    `ORACLE_KEY_<NAME>` into `Hestia-Oracle/app/.env`, re-creates `hestia_oracle` (Docker API), waits for health →
    Oracle `setup/test` (model from the service's own list); choice → Oracle `setup/apply` → Themis `oracle.providers`
    (a found program becomes a block) and `oracle.chains` (actor user) → Oracle `setup/pull` (Ollama downloads only).
-2b. Voice: Hephaestus → Hub → Echo `/api/voice/setup/catalog` (Echo's blocks per direction ascolto/voce); a key →
+2b. Voice: Hephaestus → Hub → Echo `/api/voice/setup/catalog?hosts=` (Echo's blocks per direction ascolto/voce, plus
+   speech programs found at home: Speaches/LocalAI `/v1/models`, Wyoming `describe`, on this computer and the named
+   ones; the brain catalog takes the same `hosts`); a key →
    Hephaestus writes `ECHO_KEY_<NAME>` into `Hestia-Echo/app/.env`, re-creates `hestia_echo`, waits for health → Echo
    `setup/test` (the service's voice/model list, no audio; `recommended` preselected) → `setup/apply` with the steps
    in order per direction (one local engine, then cloud services) → Themis `echo.chains` (those first, others kept) →

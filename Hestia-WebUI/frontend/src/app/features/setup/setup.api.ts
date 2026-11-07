@@ -18,8 +18,9 @@ export interface CatalogModel { model: string; size_gb: number; good: string; }
 /** A chat model a program on this computer already has (size 0 = the program does not say). */
 export interface LocalModel { model: string; size_gb: number; params: string; quant: string; fits: boolean; }
 /** A program for local models (Ollama, LM Studio, Jan, llama.cpp, vLLM): found on its usual port or not. */
+/** ``host`` empty = this computer; else another computer of the house (``type`` ollama | openai). */
 export interface Runtime { name: string; label: string; url: string; site: string; found: boolean; configured: boolean;
-  models: LocalModel[]; embed: string[]; }
+  models: LocalModel[]; embed: string[]; host?: string; type?: string; }
 export interface CloudProvider { name: string; label: string; type: string; key_set: boolean; available: boolean; }
 export interface BrainCatalog {
   recommended: { tier: string; label: string; chat: CatalogModel[]; model: string; embedding: CatalogModel; recipe: string };
@@ -35,8 +36,9 @@ export interface BrainCatalog {
 /** A speech service of the setup «Voce» (Echo's blocks): local engines first, then cloud ones (key needed). */
 export interface VoiceOption { id: string; label: string; note?: string; }
 export interface VoiceProvider { name: string; label: string; type: string; local: boolean; needs_key: boolean; key: boolean;
-  state: string; models: VoiceOption[]; voices: VoiceOption[]; note?: string; }
-export interface VoiceStep { provider: string; model: string; voice: string; }
+  state: string; models: VoiceOption[]; voices: VoiceOption[]; note?: string; found?: boolean; url?: string; }
+/** ``url``/``type``/``label`` only for a speech program found at home that is not a block yet. */
+export interface VoiceStep { provider: string; model: string; voice: string; url?: string; type?: string; label?: string; }
 /** Per direction: the services, the first step now and the whole chain in order. */
 export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep; steps?: VoiceStep[]; }
 export interface VoiceCatalog { ascolto: VoiceDirection; voce: VoiceDirection; }
@@ -45,8 +47,10 @@ export interface Download { module?: string; id: string; what: string; source?: 
   speed?: number; eta_s?: number | null; error?: string; }
 export interface Outcome { ok: boolean; detail?: string; }
 /** «Prova»: the model tried ('' = pick another) and the chat models the service really has. */
-export interface TestOutcome extends Outcome { model?: string; models?: string[]; recommended?: string[]; }
-export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>; embedding: { provider: string; model: string } | null; }
+export interface TestOutcome extends Outcome { model?: string; models?: string[]; recommended?: string[]; embed?: string[]; }
+type RuntimeRef = { url?: string; type?: string; label?: string };
+export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>;
+  embedding: ({ provider: string; model: string } & RuntimeRef) | null; local_runtime: RuntimeRef; }
 export interface TunnelState { on: boolean; url: string; detail?: string; phase?: '' | 'start' | 'download' | 'address' | 'ready' | 'error'; }
 
 @Injectable({ providedIn: 'root' })
@@ -60,14 +64,15 @@ export class SetupApi {
   state() { return this.get<SetupState>('state'); }
   later(step: string) { return this.post<SetupState>('later', { step }); }
   complete() { return this.post<SetupState>('complete'); }
-  catalog() { return this.get<BrainCatalog>('brain/catalog'); }
+  /** ``hosts``: other computers of the house to look on too. */
+  catalog(hosts: string[] = []) { return this.get<BrainCatalog>('brain/catalog' + (hosts.length ? `?hosts=${encodeURIComponent(hosts.join(','))}` : '')); }
   test(provider: string, key = '', model = '') { return this.post<TestOutcome>('brain/test', { provider, key, model }); }
   apply(recipe: string, local_model: string, cloud: string[], claude_token: string, choice: BrainChoice) {
     return this.post<Outcome>('brain/apply', { recipe, local_model, cloud, claude_token, local_provider: choice.local_provider,
-      cloud_models: choice.cloud_models, embedding: choice.embedding || {} });
+      cloud_models: choice.cloud_models, embedding: choice.embedding || {}, local_runtime: choice.local_runtime || {} });
   }
   /** Setup «Voce»: the speech services (Echo), «Prova» (a typed key is saved first), the choice → Echo's chains. */
-  voiceCatalog() { return this.get<VoiceCatalog>('voice/catalog'); }
+  voiceCatalog(hosts: string[] = []) { return this.get<VoiceCatalog>('voice/catalog' + (hosts.length ? `?hosts=${encodeURIComponent(hosts.join(','))}` : '')); }
   voiceTest(provider: string, key = '') {
     return this.post<Outcome & { models?: VoiceOption[]; voices?: VoiceOption[]; recommended?: Record<string, string[]> }>('voice/test', { provider, key });
   }

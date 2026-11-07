@@ -33,6 +33,7 @@ class BrainApply(BaseModel):
     cloud: list[str] = Field(default_factory=list)
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
+    local_runtime: dict[str, str] = Field(default_factory=dict)
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
 
@@ -162,10 +163,11 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
 
     # ── Cervello ──
     @router.get("/brain/catalog")
-    def brain_catalog():
+    def brain_catalog(hosts: str = ""):
+        """``hosts``: other computers of the home network to look on too (comma separated)."""
         hw = service.hardware()
-        return service.oracle("GET", "/api/llm/setup/catalog",
-                              query={"vram_gb": hw.get("vram_gb") or 0, "ram_gb": hw.get("ram_gb") or 0})
+        return service.oracle("GET", "/api/llm/setup/catalog", timeout=40,
+                              query={"vram_gb": hw.get("vram_gb") or 0, "ram_gb": hw.get("ram_gb") or 0, "hosts": hosts})
 
     @router.post("/brain/test")
     def brain_test(req: BrainTest):
@@ -182,8 +184,8 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
 
     # ── Voce (Echo owns the speech providers: /api/voice/setup/*) ──
     @router.get("/voice/catalog")
-    def voice_catalog():
-        return service.echo("GET", "/api/voice/setup/catalog", timeout=30)
+    def voice_catalog(hosts: str = ""):
+        return service.echo("GET", "/api/voice/setup/catalog", timeout=30, query={"hosts": hosts} if hosts else None)
 
     @router.post("/voice/test")
     def voice_test(req: VoiceTest):
@@ -207,7 +209,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         try:
             result = service.apply_brain(req.recipe, req.local_model, req.cloud, req.keys, req.claude_token,
                                          local_provider=req.local_provider, cloud_models=req.cloud_models,
-                                         embedding=req.embedding)
+                                         embedding=req.embedding, local_runtime=req.local_runtime)
         except secrets.SecretRefused as exc:
             refused(exc)
         return {"status": "ok", **result}

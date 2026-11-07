@@ -149,7 +149,8 @@ class SetupService:
 
     def apply_brain(self, recipe: str, local_model: str, cloud: list[str], keys: dict[str, str],
                     claude_token: str = "", local_provider: str = "ollama",
-                    cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
+                    cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
+                    local_runtime: dict[str, str] | None = None) -> dict[str, Any]:
         values = {f"ORACLE_KEY_{name.upper().replace('-', '_')}": key for name, key in keys.items() if key}
         if claude_token:
             values["CLAUDE_CODE_OAUTH_TOKEN"] = claude_token
@@ -162,7 +163,8 @@ class SetupService:
         emb = {k: v for k, v in (embedding or {}).items() if v}
         result = self.oracle("POST", "/api/llm/setup/apply",
                              body={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
-                                   "cloud": cloud, "cloud_models": cloud_models or {}, "embedding": emb})
+                                   "cloud": cloud, "cloud_models": cloud_models or {}, "embedding": emb,
+                                   "local_runtime": local_runtime or {}})
         # Only Ollama downloads by itself; LM Studio, Jan… already have the model the user picked from their list.
         pulls = []
         if local_model and recipe != "cloud" and local_provider == "ollama":
@@ -177,10 +179,11 @@ class SetupService:
                                      "summary": result.get("detail", "")})
         return {"ok": True, "detail": result.get("detail", "")}
 
-    def echo(self, method: str, path: str, body: dict | None = None, timeout: float = 30) -> dict:
+    def echo(self, method: str, path: str, body: dict | None = None, timeout: float = 30,
+             query: dict | None = None) -> dict:
         if self.hub_call is None:
             raise RuntimeError("hub not available")
-        return self.hub_call("echo", path, method=method, body=body, timeout=timeout)
+        return self.hub_call("echo", path, method=method, body=body, query=query, timeout=timeout)
 
     def voice_key(self, provider: str, key: str) -> bool:
         """«Salva e prova» of a speech service: ``ECHO_KEY_<NAME>`` into Echo's .env, Echo re-created and waited for."""

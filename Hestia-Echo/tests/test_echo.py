@@ -456,6 +456,7 @@ def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
     from app.core import voice_setup
     from app.core.blocks import Blocks
     monkeypatch.delenv("ECHO_KEY_GROQ", raising=False)
+    monkeypatch.setattr(voice_setup, "found_programs", lambda blocks, hosts=None: [])
     b = Blocks(lambda key, default=None: default)
     cat = voice_setup.catalog(b, "it")
     listen = cat["ascolto"]["providers"]
@@ -482,3 +483,33 @@ def test_voice_setup_check_reads_the_list_with_the_key(monkeypatch):
     assert voice_setup.check(b, "groq")["detail"] == "La chiave non è valida."
     monkeypatch.delenv("ECHO_KEY_GROQ")
     assert voice_setup.check(b, "groq")["detail"] == "Manca la chiave."
+
+
+def test_voice_setup_finds_speech_programs_at_home_and_adds_the_chosen_one(monkeypatch):
+    """Marko 2026-11-06: the voice finds the programs at home like the models screen finds Ollama/LM Studio, also on
+    another computer of the house."""
+    from app.core import voice_setup
+    from app.core.blocks import Blocks, PROVIDERS_KEY
+
+    def fake_openai(base):
+        return ({"ascolto": [{"id": "Systran/faster-whisper-small", "label": "Systran/faster-whisper-small"}],
+                 "voce": [{"id": "speaches-ai/Kokoro-82M", "label": "speaches-ai/Kokoro-82M"}],
+                 "voices": [{"id": "af_heart", "label": "af_heart"}]} if base == "http://192.168.1.20:8000/v1" else None)
+    monkeypatch.setattr(voice_setup, "_probe_openai", fake_openai)
+    monkeypatch.setattr(voice_setup, "_probe_wyoming", lambda host, port: (
+        {"ascolto": [], "voce": [], "voices": [{"id": "it_IT-paola-medium", "label": "it_IT-paola-medium"}]}
+        if (host, port) == ("host.docker.internal", 10200) else None))
+    stored = {}
+    b = Blocks(lambda key, default=None: stored.get(key, default))
+    cat = voice_setup.catalog(b, "it", "192.168.1.20")
+    speak = {p["name"]: p for p in cat["voce"]["providers"]}
+    assert speak["wyoming-piper"]["local"] and speak["wyoming-piper"]["found"]
+    assert speak["speaches-192-168-1-20"]["voices"][0]["id"] == "af_heart"
+    listen = {p["name"]: p for p in cat["ascolto"]["providers"]}
+    assert "Trovato su 192.168.1.20" in listen["speaches-192-168-1-20"]["note"]
+    put = lambda key, value, **kw: stored.__setitem__(key, value) or True
+    out = voice_setup.apply(b, put, [{"provider": "speaches-192-168-1-20", "model": "Systran/faster-whisper-small",
+                                      "url": "http://192.168.1.20:8000/v1", "type": "openai", "label": "Speaches · 192.168.1.20"}], None)
+    assert out["ok"] and stored[PROVIDERS_KEY]["speaches-192-168-1-20"]["url"] == "http://192.168.1.20:8000/v1"
+    assert "_new" not in out["chains"]["ascolto"]["steps"][0]
+    assert voice_setup.is_home("http://192.168.1.20:8000/v1") and not voice_setup.is_home("https://api.groq.com/openai/v1")

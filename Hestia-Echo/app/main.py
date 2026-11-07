@@ -536,10 +536,11 @@ def _prefetch(chains: dict | None = None) -> dict:
 
 # ── Setup guidato «Voce» (core/voice_setup.py): same shape as the models screen ─────────────
 @app.get(f"{API}/setup/catalog")
-def voice_setup_catalog():
-    """Providers per direction (listening, speaking), local first, with their models/voices and the current step."""
+def voice_setup_catalog(hosts: str = ""):
+    """Providers per direction (listening, speaking), local first, with their models/voices and the current step;
+    plus the speech programs found at home (this computer and the computers named in ``hosts``)."""
     from .core import voice_setup
-    return {"status": "ok", **voice_setup.catalog(blocks, echo.language())}
+    return {"status": "ok", **voice_setup.catalog(blocks, echo.language(), hosts)}
 
 
 @app.post(f"{API}/setup/test")

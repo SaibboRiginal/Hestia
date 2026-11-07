@@ -455,7 +455,8 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `address` · `ready` · `error`); `POST /api/setup/tunnel {on}` answers within 15 s while a thread downloads the image
   the first time (a job of Hephaestus' `hestia_common.downloads`, source `docker`, progress summed over the layers,
   `/api/downloads`, page Download) and creates (first time, Docker API, never in compose so `up-all`/the installer never open Hestia to the internet by
-  themselves) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
+  themselves; it carries the compose labels of Hestia's own project, read from this container, so Docker Desktop shows
+  it in the «hestia» group, service `tunnel`; an older one without them is made again) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
   `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
   reads the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
   after a reboot). Setup step `fuori`. MCP tools `fuori_casa_stato`, `fuori_casa_attiva` (Telegram «Macchine»).

@@ -657,10 +657,15 @@ Tests that stub the chat engine replace `main.engine` with their own `MagicMock`
 
 The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a model provider directly:
 
-- `GET /api/llm/setup/catalog?vram_gb=&ram_gb=`: `runtimes` = the programs for local models on this PC, found by
-  asking their usual port on the same host as Ollama (`host.docker.internal`): Ollama (11434, `/api/tags` with size,
+- `GET /api/llm/setup/catalog?vram_gb=&ram_gb=&hosts=`: `runtimes` = the programs for local models at home, found by
+  asking their usual port on the same host as Ollama (`host.docker.internal`) and on each other computer of `hosts`
+  (e.g. Hestia on a Raspberry, the models on the PC): Ollama (11434, `/api/tags` with size,
   parameters, quantization), LM Studio (1234), Jan (1337), llama.cpp (8080), vLLM (8000) through their
-  OpenAI-compatible `/v1/models`. Each row: `{name, label, url, site, found, configured, models[], embed[]}`; a model
+  OpenAI-compatible `/v1/models`. Each row: `{name, label, type, url, host, site, found, configured, models[],
+  embed[]}` (`host` empty = this PC; on another computer only what answers, named `<program>-<address>`, and the
+  setup sends `local_runtime {url, type, label}` / `embedding {…, url, type, label}` so `ensure_runtime` makes it a
+  block of type `ollama` or `openai`); `setup/test` also returns `embed[]` (the service's embedding models, e.g.
+  Gemini's, used for the memory when nothing runs at home); a model
   has `fits: false` when its file is bigger than the video card (programs that do not say the size: no warning).
   Hestia keeps no model list for them: the program knows. `CATALOG` (no video card → `gemma4:e4b`; 6–11 GB →
   `qwen3:8b`; 12 GB+ → `qwen3:14b`) is only a suggestion for Ollama when it has nothing. Also: the preselected recipe

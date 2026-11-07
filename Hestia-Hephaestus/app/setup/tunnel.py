@@ -2,7 +2,9 @@
 
 Single responsibility: start, stop and read the ``hestia_tunnel`` container. It is created here through the Docker API
 (not in compose: ``up-all`` and the installer must never open Hestia to the internet by themselves), on ``hestia_net``,
-``restart: unless-stopped`` (on after a reboot until the user turns it off). cloudflared needs no account: it gives a
+``restart: unless-stopped`` (on after a reboot until the user turns it off). It carries the compose labels of
+Hestia's own project (read from this container), so Docker Desktop shows it inside the «hestia» group with the
+others (Marko 2026-11-06); compose itself only lists it as an extra container and never starts it. cloudflared needs no account: it gives a
 random ``https://<words>.trycloudflare.com`` address, new at every start. The WebUI asks the tunnel for it (metrics
 ``/quicktunnel``) and, from that host, always requires the login token.
 """
@@ -128,10 +130,42 @@ def start(client=None, wait: float = 0) -> dict[str, Any]:
     return status(client)
 
 
+def compose_labels(client) -> dict[str, str]:
+    """The compose project of the stack this Hephaestus runs in (its own container's label), as labels for the
+    tunnel: same group in Docker Desktop, service «tunnel». Empty when not run by compose."""
+    import socket
+    try:
+        own = client.containers.get(socket.gethostname())
+    except Exception:
+        try:
+            own = client.containers.get("hestia_hephaestus")
+        except Exception:
+            return {}
+    try:
+        labels = getattr(own, "labels", None) or (own.attrs.get("Config") or {}).get("Labels") or {}
+    except Exception:
+        return {}
+    project = labels.get("com.docker.compose.project", "")
+    if not project:
+        return {}
+    out = {"com.docker.compose.project": project, "com.docker.compose.service": "tunnel",
+           "com.docker.compose.oneoff": "False", "com.docker.compose.container-number": "1"}
+    for key in ("com.docker.compose.project.working_dir", "com.docker.compose.project.config_files"):
+        if labels.get(key):
+            out[key] = labels[key]
+    return out
+
+
 def _start_now(client=None) -> None:
     try:
         client = client or _client()
         box = _container(client)
+        group = compose_labels(client)
+        if box is not None and group and (getattr(box, "labels", None) or {}).get("com.docker.compose.project") != group["com.docker.compose.project"]:
+            # made before it joined the group: labels cannot change, so it is made again (same image, new address)
+            box.remove(force=True)
+            box = None
+            logger.info("event=setup_tunnel_regrouped project=%s", group["com.docker.compose.project"])
         if box is None:
             try:
                 client.images.get(IMAGE)
@@ -151,7 +185,7 @@ def _start_now(client=None) -> None:
                     _starting["phase"] = "start"
             box = client.containers.create(IMAGE, command=COMMAND, name=NAME, network=NETWORK, detach=True,
                                            restart_policy={"Name": "unless-stopped"},
-                                           labels={"hestia.role": "tunnel"})
+                                           labels={"hestia.role": "tunnel", **group})
         if box.status != "running":
             box.start()
         logger.info("event=setup_tunnel_started")

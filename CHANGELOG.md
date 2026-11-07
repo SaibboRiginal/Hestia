@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-07
+- Guided setup, fifth round: «In casa» instead of «Il tuo computer»: models and voice programs are also looked for on another computer of the house (an address, e.g. Hestia on a Raspberry and the models on the PC); the memory works with nothing at home (the cloud service's model, e.g. Gemini's, chosen by itself); voice also finds Speaches/LocalAI and Home Assistant's voice server at home; the outside-home tunnel shows in Docker inside the «hestia» group → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
+
 ## 2026-11-06
 - Guided setup, fourth round: models and voice now use the same cards. A working key closes its card on «La chiave funziona» with the models already chosen, more than one and in order as fallbacks (no more «pick a model»); voice has one local engine (with a line on Kokoro vs Piper) plus optional cloud services in order; the memory's model is chosen like the chat model, with Ollama's recommended one to download; Garmin connects right in the Dispositivi page (code included, no notification to chase); «Fuori casa» has its button and «Provalo»/«Copia» next to the address → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup, third round: one card picker with search for every choice (local, memory and cloud models, voices); voice is configured like the models (listening and speaking each pick a service, a cloud one with key and «Prova» from its list); a saved key is no longer asked again (a 30-second limit cut the save); «Da fuori casa» starts in the background and its download is in Download; «Rispondi» on a popup (e.g. Garmin) opens that very notification, highlighted on top → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
