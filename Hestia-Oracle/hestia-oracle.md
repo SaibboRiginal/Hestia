@@ -687,7 +687,9 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   the names that have a value (never a value). Hephaestus calls it right after writing a key, so a key is tried in a
   second instead of re-creating the container; also run at startup.
 - `POST /api/llm/setup/apply {recipe, local_model, local_provider?, cloud[], cloud_models?, embedding?, modes?, order?}`
-  (`order` = the setup's «Scelti» list `[{provider, model}]`, model empty = every model of that service: the chat
+  (`modes {potente|codice|visione: {steps: [{provider, model}]}}` = a mode's own whole list in order, a step without
+  model takes the service's default; the old single `{provider, model}` still goes first before Generale;
+  `order` = the setup's «Scelti» list `[{provider, model}]`, model empty = every model of that service: the chat
   steps follow it, so a cloud model can come before the local one; steps it does not name stay after): a program
   picked from `runtimes` that is not a block yet becomes one (`ensure_runtime`: type `openai`, its address, label
   «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Setup guidato»):

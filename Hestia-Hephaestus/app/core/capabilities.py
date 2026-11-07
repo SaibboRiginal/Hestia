@@ -22,7 +22,9 @@ LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · sviluppo", chain="codice",
                 llm_usecase("forge.piano", "Forge · divisione in pezzi", chain="potente",
                             help="Divide un lavoro grande in pezzi e sceglie per ognuno se è semplice o difficile."),
                 llm_usecase("hephaestus.aggiornamenti", "Novità di un aggiornamento", chain="veloce",
-                            help="Riscrive in italiano semplice le novità di una versione nuova prima di chiederti se installarla.")]
+                            help="Riscrive in italiano semplice le novità di una versione nuova prima di chiederti se installarla."),
+                llm_usecase("hephaestus.setup", "Primo saluto del setup", chain="veloce",
+                            help="Il messaggio con cui l'assistente ti saluta appena hai scelto i modelli nel setup.")]
 
 
 def build_capabilities() -> dict[str, Any]:

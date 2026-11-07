@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import requests
 from fastapi import APIRouter, HTTPException
@@ -34,7 +35,7 @@ class BrainApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)
-    modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # «Per modalità»: potente/codice/visione
+    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode potente/codice/visione: {steps: [{provider, model}]}
     order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
@@ -222,6 +223,10 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     @router.post("/brain/pull")
     def brain_pull(req: Model):
         return service.oracle("POST", "/api/llm/setup/pull", body={"model": req.model})
+
+    @router.post("/brain/hello")
+    def brain_hello():
+        return {"status": "ok", **service.brain_hello()}
 
     @router.get("/brain/pulls")
     def brain_pulls():

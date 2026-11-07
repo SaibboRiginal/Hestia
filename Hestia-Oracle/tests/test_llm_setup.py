@@ -321,6 +321,15 @@ def test_plan_chains_per_mode_model_goes_first_with_general_as_fallback():
     assert out["veloce"]["steps"] == out["potente"]["steps"]
 
 
+def test_plan_chains_mode_with_its_own_whole_list():
+    """Round 7: a mode (Codice) has its own «Scelti» list in order, not just one model before Generale."""
+    own = [{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "ollama", "model": "qwen2.5-coder:14b"}]
+    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+                                cloud_models={"gemini": ["gemini-2.5-flash"]}, modes={"codice": {"steps": own}})
+    assert out["codice"]["steps"] == own
+    assert out["veloce"]["steps"][0] == {"provider": "ollama", "model": "qwen3:8b"}
+
+
 def test_plan_chains_follows_the_users_order_across_services():
     """Round 7: «Scelti» reordered freely (a cloud model before the local one, models of two services mixed)."""
     out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini", "claude"], dict(llm_chains.DEFAULT_CHAINS),

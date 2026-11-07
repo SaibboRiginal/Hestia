@@ -394,7 +394,7 @@ class SetupApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
-    modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # per mode (potente, codice, visione): its own model
+    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode (potente, codice, visione): {steps: [...]} its own list, or one model
     order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
 
 

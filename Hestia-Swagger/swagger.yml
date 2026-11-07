@@ -7774,6 +7774,15 @@ paths:
       responses:
         "200": {description: ok}
 
+  /api/setup/brain/hello:
+    post:
+      tags: [Hephaestus]
+      summary: "«I modelli sono pronti»: the assistant's first message, written with the models just chosen (→ Oracle /api/llm/generate, use case hephaestus.setup)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{ok, text, model, provider} or {ok: false, detail}"}
+
   /api/setup/brain/pulls:
     get:
       tags: [Hephaestus]
