@@ -131,14 +131,14 @@ export class VoiceService {
   }
 
   /** Plays a blob (a recorded voice message or a reading); one sound at a time. */
-  play(id: string, blob: Blob): HTMLAudioElement {
+  play(id: string, blob: Blob, onFail?: (err: unknown) => void, onEnd?: () => void): HTMLAudioElement {
     this.stop();
     this.playerUrl = URL.createObjectURL(blob);
     const el = new Audio(this.playerUrl);
     this.player = el;
     this.playing.set(id);
-    el.onended = () => { if (this.player === el) this.stop(); };
-    el.play().catch(() => this.stop());
+    el.onended = () => { if (this.player === el) { this.stop(); onEnd?.(); } };
+    el.play().catch(err => { if (this.player === el) this.stop(); onFail?.(err); });
     return el;
   }
 

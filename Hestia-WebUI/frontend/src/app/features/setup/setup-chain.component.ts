@@ -78,7 +78,7 @@ export function keyStep(key: string, home: string): { provider: string; model: s
               <button type="button" class="ib try" [class.rec]="trialState()?.key === r.key && trialState()!.recording"
                       [attr.aria-label]="trial() === 'voce' ? 'Ascolta' : (trialState()?.key === r.key && trialState()!.recording ? 'Ferma e prova' : 'Prova a parlare')"
                       (click)="emitTry(r.key)">
-                <hx-icon [name]="trial() === 'voce' ? 'play' : (trialState()?.key === r.key && trialState()!.recording ? 'stop' : 'mic')" [size]="16" />
+                <hx-icon [name]="trialState()?.key === r.key && (trialState()!.recording || trialState()!.playing) ? 'stop' : (trial() === 'voce' ? 'play' : 'mic')" [size]="16" />
               </button>
             }
           }
@@ -252,7 +252,7 @@ export class SetupChainComponent {
   single = input<boolean>(false);
   /** «Prova» on each chosen row: hear a voice ('voce') or speak and see what it understood ('ascolto'). */
   trial = input<'' | 'voce' | 'ascolto'>('');
-  trialState = input<{ key: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  trialState = input<{ key: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   tryRow = output<{ key: string; provider: string; model: string }>();
 
   /** The local choice («program|id»), '' = none. */

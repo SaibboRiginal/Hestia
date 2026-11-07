@@ -53,7 +53,7 @@ export function family(id: string): string {
             @else {
               <button type="button" class="try" [class.rec]="!!trying(it.id)?.recording" (click)="tried.emit(it.id)"
                       [attr.aria-label]="trial() === 'voce' ? 'Ascolta ' + it.title : (trying(it.id)?.recording ? 'Ferma e prova' : 'Prova a parlare con ' + it.title)">
-                <hx-icon [name]="trial() === 'voce' ? 'play' : (trying(it.id)?.recording ? 'stop' : 'mic')" [size]="16" />
+                <hx-icon [name]="trying(it.id)?.recording || trying(it.id)?.playing ? 'stop' : (trial() === 'voce' ? 'play' : 'mic')" [size]="16" />
               </button>
             }
           }
@@ -107,7 +107,7 @@ export class SetupPickComponent {
   /** A try button on every card: «voce» = hear it, «ascolto» = speak and see what it understood ('' = none). */
   trial = input<'voce' | 'ascolto' | ''>('');
   /** The try in progress or just done, by card id. */
-  trialState = input<{ id: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  trialState = input<{ id: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   tried = output<string>();
   trying(id: string) { const t = this.trialState(); return t && t.id === id ? t : null; }
   /** Chips only on lists long enough to need them (the search box is always there: every list looks the same). */
