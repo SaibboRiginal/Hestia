@@ -27,7 +27,7 @@ export function family(id: string): string {
   imports: [...UI, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (items().length > searchFrom) {
+    @if (items().length) {
       <label class="search">
         <hx-icon name="search" [size]="15" tone="muted" />
         <input class="hx-input" type="search" [placeholder]="placeholder()" [ngModel]="query()" (ngModelChange)="query.set($event)" autocomplete="off" spellcheck="false" />
@@ -86,6 +86,7 @@ export class SetupPickComponent {
   /** Cards before «Mostra tutti». */
   limit = input<number>(5);
   picked = output<string>();
+  /** Chips only on lists long enough to need them (the search box is always there: every list looks the same). */
   readonly searchFrom = 6;
   query = signal('');
   all = signal(false);

@@ -45,7 +45,7 @@ Forge). After the install the WebUI opens the guided setup `/setup`: the only wr
 is Hephaestus (`/api/setup/*`, whitelisted keys into the right `.env`; Oracle and Echo then re-read their own `.env`
 (`hestia_common.env_keys`, `…/setup/reload-keys`) so a key works in a second, any other key re-creates only that
 container through the Docker API; values never echoed or logged); every setup step that picks models or voices is the
-same component (in casa one choice, then cloud services in order); Google connects by hand from Hecate's own card; the brain choice is Oracle's (`/api/llm/setup/*` → Themis
+same component («Scelti» on top in order, then the tabs «Locale»: one choice on this computer or the home network, and «Cloud»: services in order), in one column with the step bar on top and the buttons always at the bottom; Google connects by hand from Hecate's own card; the brain choice is Oracle's (`/api/llm/setup/*` → Themis
 `oracle.providers` + `oracle.chains`; model names always come from the program or service that serves them, never
 from a list kept by Hestia); the voice choice is Echo's (`/api/voice/setup/*` → Themis `echo.chains`, keys `ECHO_KEY_<NAME>` through Hephaestus); cloud services of both are added with the same screen cards: a key checked by reading the service's list, and several models or voices in order as fallbacks; «local» means in the house, not only this computer (a private address counts as local, and both catalogs also look on the other computers the user names); Telegram, while it has no owner, only forwards a 6-digit one-time code. Big downloads (models,
 voices) go through `hestia_common.downloads` in the module that owns them (capability `downloads`, page

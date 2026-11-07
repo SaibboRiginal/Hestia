@@ -503,33 +503,36 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
 
-`/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell (it scrolls
-by itself), one question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram →
-Backup → calendar, mail and devices → outside home → summary. The four bold steps are ONE component, `setup-chain`
-(round 6), only the module behind it changes: «In casa» = one choice from `setup-pick` (search, filter chips by model
-family / program / engine, first few and «Mostra tutti»; tap the chosen one again to leave it out), the links to
-install Ollama or LM Studio when nothing is found, and the field for another computer of the house (remembered in the
-browser, sent as `?hosts=` to both catalogs, «Cerca di nuovo» looks again for models and speech programs); «Nel cloud»
-= the shared `setup-services` cards, one or more in order (key typed once and tried in a second, a saved key checked by
-itself, the card closes on «La chiave funziona» with the models already chosen, «Cambia» to change them). A cloud
-service is preselected only when its key (or the Claude code) is already saved, in every step. Modelli lists only
-chat models; below it «Per modalità»: Ragionamento, Codice and Immagini follow Generale unless one gets its own model
-(same picker; sent as `modes`). Memoria is the same step with `single`: one embedding model in all, at home or one
-cloud model (Gemini's `gemini-embedding-001` too). There is no separate «where does it think» screen: the recipe comes
-from what is chosen. Ascolto and Voce: one local engine (with a line per engine: Kokoro natural, Piper light, the
-speech programs found at home), then optional cloud services; «Conferma» on Voce writes both chains and queues the
-downloads. The «calendar, mail and devices» screen mounts Hecate's own cards `<hecate-google>` and `<hecate-garmin>`
-through `hx-plugin-outlet` (the same ones as the Dispositivi page): Google connects by hand there (OAuth client with a
-short guide, «Collega Google», pasted address as fallback). «Da fuori casa»: what turning it on does and «Attiva
-l'indirizzo» right there, the steps while it starts, then the address with «Provalo» and «Copia», a warning with
-«Riprova» when no address comes in 90 s. Beside the card: «Riepilogo» (every screen with its answer; a row jumps back
-to that screen) and, under it, «Download» (every module's downloads with progress and time left,
-`/api/webui/downloads`); on a phone both are a side panel opened from the «Riepilogo» button at the top (with the
-number of downloads running). «Sì, scarica» on the voice screen queues and goes on. In the cloud cards a saved key
+`/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell, one
+question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram → Backup →
+calendar, mail and Garmin → outside home → «Tutto pronto». Layout (round 7): one centred column; a bar on top with
+the step («3/11 Memoria», with the number of downloads running) that opens a drop-down with every step (a row jumps
+back) and the downloads (every module's, with progress and time left, `/api/webui/downloads`), and «Finisco dopo»;
+a thin progress line; the buttons (Indietro · Più tardi · Avanti) in a footer always visible. One short line under
+each title, nothing about modules or features outside the setup. The four bold steps are ONE component,
+`setup-chain`, only the module behind it changes: on top «Scelti» (what is used, in order, each with ↑ and ×; the
+local one first), below two tabs. «Locale» (this computer or another of the home network) = one choice from
+`setup-pick` (search box always shown, the same icons in every step, filter chips by model family / program /
+engine, first few and «Mostra tutti»; tap the chosen one again to leave it out), the links to install Ollama or LM
+Studio when nothing is found, and «È su un altro computer della rete?» (remembered in the browser, sent as `?hosts=`
+to both catalogs, «Cerca di nuovo» looks again for models and speech programs). «Cloud» = one row per service that
+opens in place: key typed once and tried in a second (a saved key is checked by itself), «La chiave funziona» with
+the models already chosen in the same picker, «Cambia chiave». A cloud service is preselected only when its key (or
+the Claude code) is already saved, in every step. Modelli lists only chat models; below it the closed optional
+section «Un modello diverso per alcune modalità»: Ragionamento, Codice and Immagini follow Generale unless one gets
+its own model (same picker; sent as `modes`). Memoria is the same step with `single`: one embedding model in all,
+local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
+Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
+Voce writes both chains and queues the downloads. The «Calendario, mail e Garmin» screen mounts only Hecate's own
+cards `<hecate-google>` and `<hecate-garmin>` through `hx-plugin-outlet` (the same ones as the Dispositivi page):
+Google connects by hand there (OAuth client with a short guide, «Collega Google», pasted address as fallback).
+«Fuori casa»: one line on what it is, «Attiva» right there, the steps while it starts, then the address with «Apri»
+and «Copia», a warning with «Riprova» when no address comes in 90 s. «Tutto pronto»: each choice as a row that goes
+back to it. In the cloud rows a saved key
 is never typed again: its model list is read at once (no tokens), «Salva e prova» saves a new one. `setupGuard`
 redirects only when Hestia itself is opened (home), so a link opened from the setup in another tab (Download,
 Dispositivi) opens that page. Every choice (local, memory's, cloud models, voices) uses the same card picker
-`setup-pick` (search over 6 items, first 5 and «Mostra tutti», the chosen one always visible). The Hub client has no
+`setup-pick` (search always, first 5 and «Mostra tutti», the chosen one always visible). The Hub client has no
 global timeout (the old 30 s cap cut the 180 s setup calls, e.g. saving a key while the module restarts); each call
 sets its own, and the setup re-reads the state when an answer is lost. «Da fuori casa» starts in the background
 (phases: image download, shown in Download as «Programma», then address). Recommended answer

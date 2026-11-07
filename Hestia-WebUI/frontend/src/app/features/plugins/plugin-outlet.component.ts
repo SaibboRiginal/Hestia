@@ -13,9 +13,9 @@ import { PluginsService } from './plugins.service';
   template: `
     @switch (state()) {
       @case ('loading') { <div class="st"><hx-spinner [size]="18" /></div> }
-      @case ('offline') { <div class="st"><hx-icon name="offline" [size]="20" /><span>{{ title() }} non raggiungibile</span>
+      @case ('offline') { <div class="st"><hx-icon name="offline" [size]="20" /><span>Non raggiungibile in questo momento</span>
         <button class="retry" (click)="mount(true)">Riprova</button></div> }
-      @case ('error') { <div class="st"><hx-icon name="alert" [size]="20" /><span>Interfaccia di {{ title() }} non disponibile</span>
+      @case ('error') { <div class="st"><hx-icon name="alert" [size]="20" /><span>Non disponibile in questo momento</span>
         <button class="retry" (click)="mount(true)">Riprova</button></div> }
     }
     <div #slot class="slot" [hidden]="state() !== 'ready'"></div>`,
@@ -35,7 +35,6 @@ export class PluginOutletComponent implements OnDestroy {
   ctx = input<object>({});
 
   readonly state = signal<'loading' | 'ready' | 'offline' | 'error'>('loading');
-  readonly title = computed(() => this.plugins.modules().get(this.module())?.title ?? this.module());
   private slot = viewChild.required<ElementRef<HTMLElement>>('slot');
   private el: (HTMLElement & { host?: object; ctx?: object }) | null = null;
   private mounted = '';
