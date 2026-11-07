@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.16 |
+| **Version** | 2.17 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -292,6 +292,7 @@ and the setup's «Voce» screen (queues the voices); Telegram tools `modelli_dow
   cloud (Gemini's included) as one choice; the picker has filter chips by family/program/engine on long lists.
 - **Per modalità**: Ragionamento/Codice/Immagini follow Generale unless one gets its own model → `modes` in
   `setup/apply`, first step of `potente/codice/visione`, the general chain after.
+- **v2.17 (Marko, same day)**: «In casa»/«Nel cloud» renamed «Locale»/«Cloud» (Marko: «in casa» is not Italian for this); the Locale list looks the same in all four steps (search always shown, same icons, same text).
 - **Google by hand**: Hecate `<hecate-google>` card (OAuth client typed or JSON pasted, kept in `data/`; «Collega
   Google»; pasted address fallback), shown in Dispositivi and in the setup screen through the plugin outlet, next to
   `<hecate-garmin>`.

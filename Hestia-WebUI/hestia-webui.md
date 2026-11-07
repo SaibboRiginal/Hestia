@@ -506,10 +506,10 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 `/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell (it scrolls
 by itself), one question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram →
 Backup → calendar, mail and devices → outside home → summary. The four bold steps are ONE component, `setup-chain`
-(round 6), only the module behind it changes: «In casa» = one choice from `setup-pick` (search, filter chips by model
+(round 6), only the module behind it changes: «Locale» (this computer or another of the home network) = one choice from `setup-pick` (search box always shown, the same icons in every step, filter chips by model
 family / program / engine, first few and «Mostra tutti»; tap the chosen one again to leave it out), the links to
 install Ollama or LM Studio when nothing is found, and the field for another computer of the house (remembered in the
-browser, sent as `?hosts=` to both catalogs, «Cerca di nuovo» looks again for models and speech programs); «Nel cloud»
+browser, sent as `?hosts=` to both catalogs, «Cerca di nuovo» looks again for models and speech programs); «Cloud»
 = the shared `setup-services` cards, one or more in order (key typed once and tried in a second, a saved key checked by
 itself, the card closes on «La chiave funziona» with the models already chosen, «Cambia» to change them). A cloud
 service is preselected only when its key (or the Claude code) is already saved, in every step. Modelli lists only

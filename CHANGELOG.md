@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-07
+- Guided setup: «Locale» and «Cloud» instead of «In casa» and «Nel cloud», and the local list looks exactly the same in Modelli, Memoria, Ascolto and Voce (search always there, same icons and text) → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup, sixth round: a key is tried in a second (the module re-reads it, no restart); Modelli, Memoria, Ascolto and Voce are the very same step (in casa one choice, then cloud services in order) and nothing in the cloud is preselected without a saved key; Modelli lists only chat models, Memoria also offers cloud memory models like Gemini's, long lists have filter chips; «Per modalità» gives Ragionamento, Codice or Immagini their own model; Google Calendar and Gmail connect by hand from the setup or Dispositivi → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup, fifth round: «In casa» instead of «Il tuo computer»: models and voice programs are also looked for on another computer of the house (an address, e.g. Hestia on a Raspberry and the models on the PC); the memory works with nothing at home (the cloud service's model, e.g. Gemini's, chosen by itself); voice also finds Speaches/LocalAI and Home Assistant's voice server at home; the outside-home tunnel shows in Docker inside the «hestia» group → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 

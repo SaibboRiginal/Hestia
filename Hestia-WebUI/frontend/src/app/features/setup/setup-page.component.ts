@@ -126,9 +126,9 @@ function store(key: string, value: string): void {
             @case ('modelli') {
               <hx-icon name="brain" [size]="30" tone="accent" />
               <h1>Con quali modelli pensa?</h1>
-              <p class="lead">Rispondono a tutto (modalità Generale): prima quello in casa, poi i servizi cloud in ordine, se il primo non risponde o ha finito la quota. Scegli almeno uno.</p>
+              <p class="lead">Rispondono a tutto (modalità Generale): prima quello locale, poi i servizi cloud in ordine, se il primo non risponde o ha finito la quota. Scegli almeno uno.</p>
               <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
-                               homeEmpty="In casa non ho trovato programmi per i modelli. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo», oppure usa solo il cloud."
+                               homeEmpty="Non ho trovato programmi per i modelli su questo computer né nella tua rete. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo», oppure usa solo il cloud."
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens">
                 <div home-extra>
@@ -157,9 +157,9 @@ function store(key: string, value: string): void {
             @case ('memoria') {
               <hx-icon name="memory" [size]="30" tone="accent" />
               <h1>Con quale modello ricorda?</h1>
-              <p class="lead">Serve a ritrovare ricordi e documenti. Uno solo, in casa o nel cloud: se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</p>
+              <p class="lead">Serve a ritrovare ricordi e documenti. Uno solo, locale o cloud: se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</p>
               <app-setup-chain [single]="true" [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
-                               homeEmpty="In casa non ho trovato programmi per i modelli: usa un modello per la memoria di un servizio cloud, oppure installa Ollama e premi «Cerca di nuovo»."
+                               homeEmpty="Non ho trovato programmi per i modelli su questo computer né nella tua rete: usa un modello per la memoria di un servizio cloud, oppure installa Ollama e premi «Cerca di nuovo»."
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="embedRows()" [tester]="embedTester" optionsLabel="Modello" cloudEmpty="Nessun servizio cloud con modelli per la memoria."
                                [(order)]="embedOrder" [(picks)]="embedPicks" [(ready)]="embedReady" [(tokens)]="embedTokens" />
@@ -285,7 +285,7 @@ function store(key: string, value: string): void {
               @if (voiceError()) { <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
             } @else {
               <app-setup-chain [homeItems]="voiceLocalItems(dir.id)" [home]="voiceLocalPick()[dir.id]" (homeChange)="setVoice(voiceLocalPick, dir.id, $event)"
-                               homeEmpty="In casa non ho trovato programmi per la voce."
+                               homeEmpty="Non ho trovato programmi per la voce su questo computer né nella tua rete."
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)" [optionsLabel]="dir.id === 'ascolto' ? 'Modelli' : 'Voci'"
                                [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
@@ -486,8 +486,8 @@ export class SetupPageComponent {
 
   // ── Voce (Echo's blocks, the same cards as the cloud services) ──
   readonly voiceDirs = [
-    { id: 'ascolto' as const, question: 'Come ti ascolta?', lead: 'Per capire quello che dici. In casa è gratis e privato: scarico subito quello che serve, così la prima volta non aspetti. Nel cloud serve una chiave.' },
-    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'In casa è gratis e privato: scarico subito la voce, così la prima volta non aspetti. Nel cloud serve una chiave.' },
+    { id: 'ascolto' as const, question: 'Come ti ascolta?', lead: 'Per capire quello che dici. In locale è gratis e privato: scarico subito quello che serve, così la prima volta non aspetti. Nel cloud serve una chiave.' },
+    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'In locale è gratis e privato: scarico subito la voce, così la prima volta non aspetti. Nel cloud serve una chiave.' },
   ];
   /** The voice screen open now (Ascolto or Voce): the same step, one direction each. */
   voiceDir = computed(() => this.voiceDirs.find(d => d.id === this.screen()) || null);
@@ -542,7 +542,7 @@ export class SetupPageComponent {
     for (const p of (cat?.[dir].providers || []).filter(x => x.local)) {
       const many = (cat?.[dir].providers || []).filter(x => x.local).length > 1;
       this.optionsOf(p, dir).forEach((o, i) => out.push({
-        id: `${p.name}|${o.id}`, title: many ? `${this.engineName(p)} · ${o.label}` : o.label, icon: dir === 'ascolto' ? 'mic' : 'volume',
+        id: `${p.name}|${o.id}`, title: many ? `${this.engineName(p)} · ${o.label}` : o.label, group: many ? this.engineName(p) : '',
         note: o.note || (p.state === 'ready' ? '' : 'Lo scarico quando confermi.'),
         tag: dir === 'voce' && p.type === 'kokoro' && i === 0 ? 'Consigliato' : '' }));
     }
@@ -559,7 +559,7 @@ export class SetupPageComponent {
       const toCheck = (r: { ok: boolean; detail?: string; models?: VoiceOption[]; voices?: VoiceOption[]; recommended?: Record<string, string[]> }): ServiceCheck => {
         const rows = (dir === 'ascolto' ? r.models : r.voices) || [];
         return { ok: r.ok, detail: r.detail, recommended: r.recommended?.[dir] || [],
-                 options: rows.map(o => ({ id: o.id, title: o.label, note: o.note || '', icon: dir === 'ascolto' ? 'mic' : 'volume' })) };
+                 options: rows.map(o => ({ id: o.id, title: o.label, note: o.note || '', icon: 'zap', group: family(o.id) })) };
       };
       try {
         const r = await this.api.voiceTest(name, key);
@@ -887,9 +887,9 @@ export class SetupPageComponent {
     const many = this.found().length > 1;
     const out: PickItem[] = [];
     const nowHome = nowKey && this.found().some(r => r.name === (now!.provider || 'ollama'));
-    if (nowHome) out.push({ id: nowKey, title: now!.model, icon: 'memory', tag: 'Ora', note: many ? this.runtimeLabel(now!.provider || 'ollama') : '' });
+    if (nowHome) out.push({ id: nowKey, title: now!.model, tag: 'Ora', note: many ? this.runtimeLabel(now!.provider || 'ollama') : '' });
     for (const r of this.found()) {
-      for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, icon: 'memory', note: many ? r.label : '', group: many ? r.label : '' });
+      for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, note: many ? r.label : '', group: many ? r.label : family(m) });
       const rec = this.catalog()?.recommended?.embedding;
       if (r.name === 'ollama' && rec && !r.embed.includes(rec.model) && `ollama|${rec.model}` !== nowKey) {
         out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowHome ? '' : 'Consigliato',
@@ -936,7 +936,7 @@ export class SetupPageComponent {
   /** Same as Generale, then every model the step can use: the programs at home and the cloud services that work. */
   modeItems = computed<PickItem[]>(() => {
     const out: PickItem[] = [{ id: '', title: 'Come Generale', icon: 'check', note: 'Gli stessi modelli scelti qui sopra.' }];
-    for (const it of this.localItems()) out.push({ ...it, group: 'In casa' });
+    for (const it of this.localItems()) out.push({ ...it, group: 'Locale' });
     for (const n of this.cloudPicked()) {
       if (!this.cloudReady()[n]) continue;
       for (const it of this.cloudLists()[n] || []) out.push({ ...it, id: `${n}|${it.id}`, note: this.cloudLabel(n), group: this.cloudLabel(n) });
@@ -997,7 +997,7 @@ export class SetupPageComponent {
     const ok = r.ok && embed.length > 0;
     return { ok, detail: ok ? `La chiave funziona: ${embed.length === 1 ? 'un modello' : embed.length + ' modelli'} per la memoria.`
                             : r.ok ? 'Questo servizio non ha modelli per la memoria.' : r.detail,
-             recommended: embed.slice(0, 1), options: embed.map(m => ({ id: m, title: m, icon: 'memory', group: family(m) })) };
+             recommended: embed.slice(0, 1), options: embed.map(m => ({ id: m, title: m, icon: 'zap', group: family(m) })) };
   };
 
   private async applyBrain() {

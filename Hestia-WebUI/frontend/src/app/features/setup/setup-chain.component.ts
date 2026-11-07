@@ -11,10 +11,10 @@ export interface HomeProgram { name: string; label: string; site: string; note: 
  * ONE step of the guided setup, the same for Modelli, Memoria, Ascolto and Voce (docs/work/2026-10-30-setup-un-click,
  * round 6): only the module behind it changes.
  *
- * «In casa»: one choice (tap again to leave it out), with search, filters, the programs to install when none is found
- * and the field to look on another computer of the house. «Nel cloud»: the shared services cards (key typed once,
+ * «Locale»: one choice (tap again to leave it out), with search, filters, the programs to install when none is found
+ * and the field to look on another computer of the house. «Cloud»: the shared services cards (key typed once,
  * checked by itself when saved; nothing preselected without a key), one or more in order. Hestia uses the home choice
- * first, then the cloud ones in order. ``single``: one choice in all (the memory: a model in casa OR one in the cloud).
+ * first, then the cloud ones in order. ``single``: one choice in all (the memory: a local model OR one in the cloud).
  */
 @Component({
   selector: 'app-setup-chain',
@@ -22,8 +22,8 @@ export interface HomeProgram { name: string; label: string; site: string; note: 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="part">
-      <div class="sub"><hx-icon name="host" [size]="15" tone="muted" /> In casa
-        <small>{{ single() ? 'gratis e privato, su questo computer o su un altro di casa' : 'uno: gratis e privato, su questo computer o su un altro di casa. Tocca di nuovo per toglierlo.' }}</small></div>
+      <div class="sub"><hx-icon name="host" [size]="15" tone="muted" /> Locale
+        <small>uno, gratis e privato: su questo computer o su un altro della tua rete. Tocca di nuovo per toglierlo.</small></div>
       @if (homeItems().length) {
         <app-setup-pick [items]="homeItems()" [selected]="home()" [limit]="4" placeholder="Cerca" (picked)="pickHome($event)" />
       } @else if (programs().length) {
@@ -41,7 +41,7 @@ export interface HomeProgram { name: string; label: string; site: string; note: 
       }
       <ng-content select="[home-extra]" />
       <div class="hostrow">
-        <input class="hx-input mono" autocomplete="off" spellcheck="false" aria-label="Indirizzo di un altro computer di casa"
+        <input class="hx-input mono" autocomplete="off" spellcheck="false" aria-label="Indirizzo di un altro computer della tua rete"
                [ngModel]="draft()" (ngModelChange)="draft.set($event)" (keydown.enter)="add()" placeholder="Altro computer: 192.168.1.20" />
         <button hx-btn variant="secondary" icon="search" [disabled]="!draft().trim()" [loading]="searching()" (click)="add()">Cerca lì</button>
         <button hx-btn variant="ghost" icon="refresh" [loading]="searching()" (click)="again.emit()">Cerca di nuovo</button>
@@ -51,8 +51,8 @@ export interface HomeProgram { name: string; label: string; site: string; note: 
       }
     </section>
     <section class="part">
-      <div class="sub"><hx-icon name="zap" [size]="15" tone="muted" /> Nel cloud
-        <small>{{ single() ? 'oppure un modello di un servizio cloud' : 'facoltativo: uno o più, in ordine, se in casa non c\\'è o non ce la fa' }}</small></div>
+      <div class="sub"><hx-icon name="zap" [size]="15" tone="muted" /> Cloud
+        <small>{{ single() ? 'oppure un modello di un servizio cloud' : 'facoltativo: uno o più, in ordine, se il locale non c\\'è o non ce la fa' }}</small></div>
       <app-setup-services [services]="services()" [tester]="tester()" [optionsLabel]="optionsLabel()" [max]="single() ? 1 : 0" [empty]="cloudEmpty()"
                           [order]="order()" (orderChange)="setOrder($event)" [(picks)]="picks" [(ready)]="ready" [(tokens)]="tokens" />
     </section>
@@ -78,7 +78,7 @@ export interface HomeProgram { name: string; label: string; site: string; note: 
 })
 export class SetupChainComponent {
   homeItems = input<PickItem[]>([]);
-  homeEmpty = input<string>('In casa non ho trovato niente.');
+  homeEmpty = input<string>('Non ho trovato niente su questo computer né nella tua rete.');
   programs = input<HomeProgram[]>([]);
   hosts = input<string[]>([]);
   searching = input<boolean>(false);
