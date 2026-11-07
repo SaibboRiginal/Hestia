@@ -302,7 +302,7 @@ def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
     env = tmp_path / ".env"
     env.write_text("# ORACLE_KEY_OLD=x\nORACLE_KEY_GEMINI=\"abc\"\nOTHER_SECRET=no\nORACLE_KEY_EMPTY=\n")
     monkeypatch.setattr(llm_providers, "env_path", lambda: env)
-    monkeypatch.delenv("ORACLE_KEY_GEMINI", raising=False)
+    monkeypatch.setenv("ORACLE_KEY_GEMINI", "old")   # registers the undo: the reloaded value must not leak
     monkeypatch.delenv("OTHER_SECRET", raising=False)
     assert llm_providers.reload_keys() == ["ORACLE_KEY_GEMINI"]
     assert llm_providers.api_key("gemini") == "abc"

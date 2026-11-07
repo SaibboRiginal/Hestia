@@ -522,7 +522,7 @@ def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
     env = tmp_path / ".env"
     env.write_text("ECHO_KEY_GROQ=k1\nORACLE_KEY_X=no\n")
     monkeypatch.setattr(blocks_mod, "env_path", lambda: env)
-    monkeypatch.delenv("ECHO_KEY_GROQ", raising=False)
+    monkeypatch.setenv("ECHO_KEY_GROQ", "old")   # registers the undo: the reloaded value must not leak
     assert blocks_mod.reload_keys() == ["ECHO_KEY_GROQ"]
     import os
     assert os.environ["ECHO_KEY_GROQ"] == "k1" and "ORACLE_KEY_X" not in os.environ
