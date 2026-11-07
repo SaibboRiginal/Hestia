@@ -56,6 +56,8 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/gateway/auth/status` | Auth/configuration state by provider |
 | `GET` | `/api/gateway/outbound/mcp` | Outbound MCP servers (third-party MCP servers Hestia may use): `{servers: [{name, host, auth, status}], how_to}` from `HECATE_MCP_<NAME>_URL/_KEY`, never a key (`app/core/outbound.py`); shown on WebUI *Accessi AI → Servizi esterni* |
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
+| `GET` | `/api/gateway/auth/google` | «Google» card (Dispositivi and the guided setup): `{client_set, linked, pending, auth_url, redirect_uri, public_redirect, error}` (never the secret) |
+| `POST` | `/api/gateway/auth/google/client` | The OAuth client typed in the page `{client_id, client_secret}` or the downloaded JSON `{json}` (`installed`/`web`) → kept in `data/google_client.json` (owner-only), used at once; env `GOOGLE_CLIENT_ID/SECRET` still wins |
 | `POST` | `/api/gateway/auth/initiate/{provider}` | Start OAuth flow: Google redirect URL or Microsoft device-code |
 | `GET` | `/api/gateway/auth/poll/{provider}` | Poll completion of pending OAuth device-code flow |
 | `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code (or full pasted redirect URL) for token; returns `granted_scopes`, reloads Calendar + Gmail |
@@ -136,6 +138,15 @@ Adding a new data source = implementing this interface and registering the conne
 | `invalid_grant` on complete | Code already used/expired (~10 min) → initiate again. |
 | No `refresh_token` returned | Remove the app at myaccount.google.com/permissions, re-authorize. |
 | `state mismatch` | URL from an older attempt → use the latest link. |
+
+### «Collega Google» by hand (round 6 of the guided setup)
+
+The WebUI element `<hecate-google>` (bundle `ui/src/google.ts`) is the one way to connect Google from a page: the
+Dispositivi page shows it next to `<hecate-garmin>` (`ui/src/garmin.ts`) and the phone card, and the setup screen
+«Calendario, mail e dispositivi» mounts the same two elements through the plugin outlet. Steps: the OAuth client
+(type «App desktop», with a short guide; `POST /api/gateway/auth/google/client`), then «Collega Google» →
+`initiate/google`, Google's page opens in a new tab and the card polls `poll/google`; when the return page cannot
+load (phone, no public address) the user pastes its address or the code → `complete/google`. No chat needed.
 
 ### OAuth Flow (API)
 

@@ -3191,6 +3191,35 @@ paths:
         "200":
           description: "{status, providers[]}"
 
+  /api/gateway/auth/google:
+    get:
+      tags: [Hecate]
+      summary: "«Google» card (Dispositivi and guided setup): OAuth client there, account linked, pending flow, redirect"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: "{status, client_set, linked, pending, auth_url, redirect_uri, public_redirect, error} (never the secret)"}
+
+  /api/gateway/auth/google/client:
+    post:
+      tags: [Hecate]
+      summary: "Save the Google OAuth client typed in the page (id + secret, or the downloaded JSON); used at once, kept in Hecate's data folder"
+      servers:
+        - url: http://localhost:19003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id: {type: string}
+                client_secret: {type: string}
+                json: {type: string, description: "the client JSON from Google Cloud ({installed|web: {client_id, client_secret}})"}
+      responses:
+        "200": {description: "{status, client_set: true}"}
+        "400": {description: "not a Google OAuth client (plain-words detail)"}
+
   /api/gateway/auth/status:
     get:
       tags: [Hecate]
@@ -4799,7 +4828,16 @@ paths:
                 provider: {type: string}
                 model: {type: string, description: "empty = Hestia's default if the provider lists it, else its first chat model"}
       responses:
-        "200": {description: "{ok, detail, model, models[], recommended[]} (recommended = the models preselected in order once the key works: defaults still listed, then the cheapest-looking chat models; never speech/picture ones)"}
+        "200": {description: "{ok, detail, model, models[], recommended[], embed[]} (models = chat models only; embed = the embedding models for «Memoria»; recommended = the models preselected in order once the key works: defaults still listed, then the cheapest-looking chat models; never speech/picture ones)"}
+
+  /api/llm/setup/reload-keys:
+    post:
+      tags: [Oracle]
+      summary: "Re-read the ORACLE_KEY_* lines of Oracle's own .env (no restart): a key saved by the guided setup works at once"
+      servers:
+        - url: http://localhost:19004
+      responses:
+        "200": {description: "{status, keys[]} (names that have a value, never a value)"}
 
   /api/llm/setup/apply:
     post:
@@ -4819,7 +4857,8 @@ paths:
                 local_provider: {type: string, description: "provider block or found program (ollama, lmstudio, jan, llamacpp-pc, vllm); a found program becomes a block", default: ollama}
                 cloud: {type: array, items: {type: string}}
                 cloud_models: {type: object, additionalProperties: {oneOf: [{type: array, items: {type: string}}, {type: string}]}, description: "provider → models picked from its list, in order (the next takes over when the first fails); a single name is still accepted"}
-                embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model; only a different one changes the chain (re-index)"}
+                embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model (at home or a cloud one, e.g. gemini-embedding-001); only a different one changes the chain (re-index)"}
+                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Per modalità»: potente|codice|visione → its own model, first in that chain, the general choice after"}
       responses:
         "200": {description: "{ok, detail} (detail = one-sentence summary)"}
         "502": {description: Themis refused or unreachable}
@@ -7710,7 +7749,8 @@ paths:
                 cloud: {type: array, items: {type: string}}
                 cloud_models: {type: object, additionalProperties: {type: string}}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}}
-                keys: {type: object, description: provider → key}
+                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Per modalità»: potente|codice|visione → its own model, first in that chain, the general choice after"}
+                keys: {type: object, description: "provider → key (written to Oracle's .env, then Oracle re-reads it; re-create only as fallback)"}
                 claude_token: {type: string}
       responses:
         "200": {description: "{ok, detail}"}
@@ -13005,6 +13045,15 @@ paths:
         - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
         "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,note,models[],voices[],found?,url?}] (found = a program at home, not a block yet: its url comes back with the step and apply adds it), current {provider,model,voice}, steps[] (the whole chain)}, voce {…}}; note = one line on what the engine is (Kokoro vs Piper)"}
+
+  /api/voice/setup/reload-keys:
+    post:
+      tags: [Echo]
+      summary: "Re-read the ECHO_KEY_* lines of Echo's own .env (no restart): a speech key saved by the setup works at once"
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: "{status, keys[]} (names only)"}
 
   /api/voice/setup/test:
     post:

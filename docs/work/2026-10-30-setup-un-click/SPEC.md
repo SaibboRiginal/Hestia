@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.15 |
+| **Version** | 2.16 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -279,6 +279,22 @@ and the setup's «Voce» screen (queues the voices); Telegram tools `modelli_dow
 - **P5** Roles and satellites: pairing code, join token in the Hub, *Macchine* page, role from the installer; «Da fuori casa».
 - **P6** Releases (tag → images + GitHub Release with notes) + «Aggiorna Hestia» (channel, agenda job, notice, selective update, rollback; also on satellites).
 - **P7** Docs: README quick start becomes one line; `docs/SETUP.md`, `TESTING.md`, module docs, swagger, ARCHITECTURE.
+
+### 4.9 Round 6 (Marko 2026-11-07)
+
+- **Key in seconds**: Hephaestus writes the key into the module's `.env`, then Oracle/Echo re-read their own `.env`
+  (`hestia_common.env_keys`, `POST /api/llm/setup/reload-keys`, `/api/voice/setup/reload-keys`, also at startup);
+  the container is re-created only when that fails. Before, every key re-created the container and waited up to 90 s.
+- **One step, four times**: `setup-chain` is Modelli, Memoria, Ascolto and Voce (in casa one choice + host field;
+  cloud services in order with `setup-services`); the «Dove pensa» screen is gone, the recipe comes from the choices.
+  A cloud service is preselected only with its key saved (voice no longer shows Groq chosen without a key).
+- **Filters**: Modelli lists chat models only (`llm_setup.is_chat`); Memoria the embedding ones, at home or in the
+  cloud (Gemini's included) as one choice; the picker has filter chips by family/program/engine on long lists.
+- **Per modalità**: Ragionamento/Codice/Immagini follow Generale unless one gets its own model → `modes` in
+  `setup/apply`, first step of `potente/codice/visione`, the general chain after.
+- **Google by hand**: Hecate `<hecate-google>` card (OAuth client typed or JSON pasted, kept in `data/`; «Collega
+  Google»; pasted address fallback), shown in Dispositivi and in the setup screen through the plugin outlet, next to
+  `<hecate-garmin>`.
 
 ## 5. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 
