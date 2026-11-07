@@ -34,6 +34,7 @@ class BrainApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)
+    modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # «Per modalità»: potente/codice/visione
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
 
@@ -176,9 +177,11 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
                 done = service.set_secrets({f"ORACLE_KEY_{req.provider.upper().replace('-', '_')}": req.key})
             except secrets.SecretRefused as exc:
                 refused(exc)
-            if not done["services"].get("oracle", {}).get("recreated"):
+            oracle = done["services"].get("oracle", {})
+            if not oracle.get("applied"):
                 return {"status": "ok", "ok": False, "detail": "Non sono riuscito a salvare la chiave."}
-            service._wait_oracle()
+            if oracle.get("recreated"):
+                service._wait_oracle()
         return service.oracle("POST", "/api/llm/setup/test", body={"provider": req.provider, "model": req.model},
                               timeout=60)
 
@@ -209,7 +212,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         try:
             result = service.apply_brain(req.recipe, req.local_model, req.cloud, req.keys, req.claude_token,
                                          local_provider=req.local_provider, cloud_models=req.cloud_models,
-                                         embedding=req.embedding, local_runtime=req.local_runtime)
+                                         embedding=req.embedding, local_runtime=req.local_runtime, modes=req.modes)
         except secrets.SecretRefused as exc:
             refused(exc)
         return {"status": "ok", **result}

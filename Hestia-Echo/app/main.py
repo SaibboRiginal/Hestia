@@ -550,6 +550,13 @@ def voice_setup_test(body: dict = Body(...)):
     return {"status": "ok", **voice_setup.check(blocks, str(body.get("provider") or ""), echo.language())}
 
 
+@app.post(f"{API}/setup/reload-keys")
+def voice_setup_reload_keys():
+    """Re-read the ``ECHO_KEY_*`` lines of Echo's own .env (no restart) → the names that have a value."""
+    from .core import blocks as _blocks
+    return {"status": "ok", "keys": _blocks.reload_keys()}
+
+
 @app.post(f"{API}/setup/apply")
 def voice_setup_apply(body: dict = Body(...)):
     """The choice → ``echo.chains`` (chosen step first, the others as fallbacks), then the local models it needs
@@ -587,6 +594,11 @@ def _register() -> None:
 
 @app.on_event("startup")
 def startup():
+    try:   # keys saved by the setup after the container was created
+        from .core import blocks as _blocks
+        _blocks.reload_keys()
+    except Exception as exc:
+        logger.warning("[🔄] event=echo_keys_reload_failed error=%s", exc)
     if not audio.ffmpeg_available():
         logger.error("event=echo_ffmpeg_missing (conversions will fail)")
     try:

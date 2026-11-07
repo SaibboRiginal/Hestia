@@ -394,6 +394,7 @@ class SetupApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
+    modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # per mode (potente, codice, visione): its own model
 
 
 class SetupPull(BaseModel):
@@ -419,12 +420,20 @@ def llm_setup_test(req: SetupTest):
     return {"status": "ok", **llm_setup.test(req.provider, req.model)}
 
 
+@app.post("/api/llm/setup/reload-keys")
+def llm_setup_reload_keys():
+    """Re-read the ``ORACLE_KEY_*`` lines of Oracle's own .env (no restart) → the names that have a value."""
+    from core.services import llm_providers
+    return {"status": "ok", "keys": llm_providers.reload_keys()}
+
+
 @app.post("/api/llm/setup/apply")
 def llm_setup_apply(req: SetupApply):
     """The user's choice in the setup → ``oracle.chains`` (+ brain mode for «claude») through Themis."""
     from core.services import llm_setup
     result = llm_setup.apply(req.recipe, req.local_model, req.cloud, local_provider=req.local_provider,
-                             cloud_models=req.cloud_models, embedding=req.embedding, local_runtime=req.local_runtime)
+                             cloud_models=req.cloud_models, embedding=req.embedding, local_runtime=req.local_runtime,
+                             modes=req.modes)
     if not result.get("ok"):
         raise HTTPException(status_code=502, detail=result.get("detail"))
     return {"status": "ok", **result}
@@ -723,6 +732,11 @@ def llm_usage_calls_endpoint(days: int = 7, module: str = "", session_id: str = 
 def register_on_hub_startup():
     """Register on Hub now and keep re-registering (Hub restarts lose the registry)."""
     _oracle_settings.settings.start()
+    try:   # keys saved by the setup after the container was created
+        from core.services import llm_providers
+        llm_providers.reload_keys()
+    except Exception as exc:
+        logger.warning("[🔄] event=oracle_keys_reload_failed error=%s", exc)
     threading.Thread(target=_log_ollama_context, daemon=True, name="ollama-context-check").start()
     _register_on_hub()
     try:

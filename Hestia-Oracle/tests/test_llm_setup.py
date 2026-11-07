@@ -295,3 +295,38 @@ def test_key_check_also_gives_the_cloud_memory_models(monkeypatch):
         {"name": "models/gemini-embedding-001", "supportedGenerationMethods": ["embedContent"]}]}))
     result = llm_setup.test("gemini")
     assert result["models"] == ["gemini-2.5-flash"] and result["embed"] == ["gemini-embedding-001"]
+
+
+def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
+    """Round 6: the setup writes the key in Oracle's .env and Oracle re-reads it at once (no re-create)."""
+    env = tmp_path / ".env"
+    env.write_text("# ORACLE_KEY_OLD=x\nORACLE_KEY_GEMINI=\"abc\"\nOTHER_SECRET=no\nORACLE_KEY_EMPTY=\n")
+    monkeypatch.setattr(llm_providers, "env_path", lambda: env)
+    monkeypatch.delenv("ORACLE_KEY_GEMINI", raising=False)
+    monkeypatch.delenv("OTHER_SECRET", raising=False)
+    assert llm_providers.reload_keys() == ["ORACLE_KEY_GEMINI"]
+    assert llm_providers.api_key("gemini") == "abc"
+    import os
+    assert "OTHER_SECRET" not in os.environ      # only its own provider keys
+
+
+def test_plan_chains_per_mode_model_goes_first_with_general_as_fallback():
+    """Round 6 «Per modalità»: Codice gets its own model, the general choice stays behind it; Generale unchanged."""
+    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+                                cloud_models={"gemini": ["gemini-2.5-flash"]},
+                                modes={"codice": {"provider": "gemini", "model": "gemini-2.5-pro"}})
+    assert out["codice"]["steps"][0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
+    assert {"provider": "ollama", "model": "qwen3:8b"} in out["codice"]["steps"]
+    assert out["veloce"]["steps"][0] == {"provider": "ollama", "model": "qwen3:8b"}
+    assert out["veloce"]["steps"] == out["potente"]["steps"]
+
+
+def test_test_lists_only_chat_models_and_embed_apart(monkeypatch):
+    """Round 6 filter: «Modelli» shows chat models only, «Memoria» the embedding ones (Gemini has them too)."""
+    _keys(monkeypatch, "gemini")
+    listed = ["gemini-2.5-flash", "gemini-2.5-flash-preview-tts", "imagen-4.0-generate-001", "gemini-embedding-001",
+              "gemini-2.5-flash-native-audio-dialog"]
+    monkeypatch.setattr(llm_setup, "_list_checked", lambda provider: (listed, ""))
+    out = llm_setup.test("gemini")
+    assert out["models"] == ["gemini-2.5-flash"]
+    assert out["embed"] == ["gemini-embedding-001"]

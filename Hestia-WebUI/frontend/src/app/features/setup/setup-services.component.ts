@@ -74,8 +74,8 @@ export interface ServiceCheck { ok: boolean; detail?: string; options: PickItem[
                 }
                 @if (ready()[p.name] && (lists()[p.name] || []).length) {
                   @if (editPicks().includes(p.name)) {
-                    <div class="sub">{{ optionsLabel() }} <small>in ordine: il primo risponde, gli altri se non va. Tocca per aggiungere o togliere.</small></div>
-                    <app-setup-pick [items]="lists()[p.name]" [multi]="true" [chosen]="picks()[p.name] || []" [limit]="4" placeholder="Cerca"
+                    <div class="sub">{{ optionsLabel() }} <small>{{ max() === 1 ? 'uno solo: tocca quello che vuoi.' : 'in ordine: il primo risponde, gli altri se non va. Tocca per aggiungere o togliere.' }}</small></div>
+                    <app-setup-pick [items]="lists()[p.name]" [multi]="max() !== 1" [selected]="(picks()[p.name] || [])[0] || ''" [chosen]="picks()[p.name] || []" [limit]="4" placeholder="Cerca"
                                     (picked)="togglePick(p.name, $event)" />
                     <div class="row"><button hx-btn variant="ghost" size="sm" icon="check" (click)="closePicks(p.name)">Fatto</button></div>
                   } @else {
@@ -121,6 +121,8 @@ export class SetupServicesComponent {
   /** «Modelli» or «Voci». */
   optionsLabel = input<string>('Modelli');
   empty = input<string>('Nessun servizio cloud configurato.');
+  /** At most this many models per service (0 = no limit): the memory uses one model only. */
+  max = input<number>(0);
   /** Reads the service's list with the key (a typed key is saved first). Throws when the answer is lost. */
   tester = input.required<(name: string, key: string) => Promise<ServiceCheck>>();
 
@@ -191,7 +193,7 @@ export class SetupServicesComponent {
   }
   togglePick(name: string, id: string) {
     const cur = this.picks()[name] || [];
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    const next = this.max() === 1 ? [id] : cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id].slice(-(this.max() || 99));
     if (next.length) this.picks.set({ ...this.picks(), [name]: next });   // at least one stays chosen
   }
   openPicks(name: string) { this.editPicks.set([...this.editPicks().filter(n => n !== name), name]); }
@@ -212,7 +214,7 @@ export class SetupServicesComponent {
         const kept = (this.picks()[name] || []).filter(id => !ids.size || ids.has(id));
         const rec = r.recommended?.length ? r.recommended : (r.options || []).slice(0, 1).map(o => o.id);
         // what was chosen stays first; the recommended ones follow as fallbacks (more than one, as the chains want)
-        const chosen = [...kept, ...rec.filter(id => !kept.includes(id))].slice(0, Math.max(kept.length, rec.length));
+        const chosen = [...kept, ...rec.filter(id => !kept.includes(id))].slice(0, this.max() || Math.max(kept.length, rec.length));
         this.picks.set({ ...this.picks(), [name]: chosen });
         this.notes.set({ ...this.notes(), [name]: r.detail || 'La chiave funziona.' });
         this.editKey.set(this.editKey().filter(n => n !== name));

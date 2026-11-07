@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -1336,6 +1336,33 @@ def gateway_mail_watch_renew():
 # In-memory store for pending device-code auth sessions.  Each entry is keyed
 # by provider name and holds the data needed to poll for completion.
 _pending_auth: dict[str, dict] = {}
+
+
+@app.get("/api/gateway/auth/google")
+def gateway_auth_google_state():
+    """«Collega Google» card (Dispositivi and the guided setup): is the OAuth client there, is the account linked,
+    is a flow waiting, and where Google sends back (public = it completes by itself from any device)."""
+    cid, secret = google_oauth.client_credentials()
+    session = google_oauth.pending() or {}
+    redirect = google_oauth.redirect_uri()
+    return {"status": "ok", "client_set": bool(cid and secret), "linked": "google" in _calendar_registry.active_names,
+            "pending": bool(session), "auth_url": session.get("auth_url") or "", "redirect_uri": redirect,
+            "public_redirect": google_oauth.is_public_redirect(redirect),
+            "error": "" if "google" in _calendar_registry.active_names
+            else str(_calendar_registry.unavailable.get("google") or "")[:300]}
+
+
+@app.post("/api/gateway/auth/google/client")
+def gateway_auth_google_client(body: dict = Body(...)):
+    """The OAuth client typed in the WebUI (id + secret, or the JSON downloaded from Google Cloud): kept in Hecate's
+    data folder, used at once (no restart). The secret never comes back."""
+    try:
+        cid, secret = google_oauth.parse_client(str(body.get("client_id") or ""), str(body.get("client_secret") or ""),
+                                                str(body.get("json") or ""))
+    except google_oauth.GoogleOAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    google_oauth.save_client(cid, secret)
+    return {"status": "ok", "client_set": True}
 
 
 @app.post("/api/gateway/auth/initiate/{provider}")

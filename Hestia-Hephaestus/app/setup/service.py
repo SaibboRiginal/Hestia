@@ -24,6 +24,9 @@ logger = logging.getLogger("hestia_hephaestus.setup")
 STEPS = ("cervello", "voce", "telegram", "backup", "esterni", "fuori")
 CODE_TTL = 600
 CODE_TRIES = 5
+# Modules that re-read their provider keys from their own .env without a restart: (path, key prefix).
+LIVE = {"oracle": ("/api/llm/setup/reload-keys", "ORACLE_KEY_"),
+        "echo": ("/api/voice/setup/reload-keys", "ECHO_KEY_")}
 EMBEDDING_MODEL = "qwen3-embedding:0.6b"   # same as Oracle's llm_setup.EMBEDDING_MODEL
 
 
@@ -98,7 +101,9 @@ class SetupService:
 
     # ── secrets ──────────────────────────────────────────────────────────
     def set_secrets(self, values: dict[str, str]) -> dict[str, Any]:
-        """Write each secret into its .env, then re-create each affected container once with all of its values."""
+        """Write each secret into its .env, then make each affected container see it: Oracle and Echo re-read
+        their provider keys in a second (``LIVE``); any other key, or a failed re-read, re-creates the
+        container once with all of its values. ``applied`` = the container has the new values."""
         by_service: dict[str, dict[str, str]] = {}
         for key, value in values.items():
             target = secrets.set_secret(self.repo, key, value)
@@ -106,10 +111,33 @@ class SetupService:
                 by_service.setdefault(service, {})[key] = secrets.validate(key, value)
         results = {}
         for service, updates in by_service.items():
+            if self._reload_live(service, updates):
+                results[service] = {"reloaded": True, "recreated": False, "applied": True, "healthy": True,
+                                    "detail": ""}
+                continue
             ok, detail = self.recreate(service, updates)
             healthy = ok and (self.health(service) if self.health else True)
-            results[service] = {"recreated": ok, "healthy": healthy, "detail": "" if ok else detail}
+            results[service] = {"reloaded": False, "recreated": ok, "applied": ok, "healthy": healthy,
+                                "detail": "" if ok else detail}
         return {"keys": sorted(values), "services": results}
+
+    def _reload_live(self, service: str, updates: dict[str, str]) -> bool:
+        """The module re-reads its own .env (``POST …/setup/reload-keys``) and names the keys it now has."""
+        live = LIVE.get(service)
+        if not live or self.hub_call is None or not all(k.startswith(live[1]) for k in updates):
+            return False
+        try:
+            answer = self.hub_call(service, live[0], method="POST", body={}, timeout=10)
+            names = set((answer or {}).get("keys") or [])
+        except Exception as exc:
+            logger.warning("[🔄] event=setup_reload_keys_failed service=%s error=%s — re-creating", service,
+                           str(exc)[:160])
+            return False
+        if not set(updates) <= names:
+            logger.warning("[🔄] event=setup_reload_keys_missing service=%s — re-creating", service)
+            return False
+        logger.info("event=setup_keys_reloaded service=%s keys=%s", service, ",".join(sorted(updates)))
+        return True
 
     # ── Telegram: link the owner with a one-time code ────────────────────────
     def _code_active(self) -> bool:
@@ -150,21 +178,24 @@ class SetupService:
     def apply_brain(self, recipe: str, local_model: str, cloud: list[str], keys: dict[str, str],
                     claude_token: str = "", local_provider: str = "ollama",
                     cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
-                    local_runtime: dict[str, str] | None = None) -> dict[str, Any]:
+                    local_runtime: dict[str, str] | None = None,
+                    modes: dict[str, dict[str, str]] | None = None) -> dict[str, Any]:
         values = {f"ORACLE_KEY_{name.upper().replace('-', '_')}": key for name, key in keys.items() if key}
         if claude_token:
             values["CLAUDE_CODE_OAUTH_TOKEN"] = claude_token
         if values:
             done = self.set_secrets(values)
-            if not done["services"].get("oracle", {}).get("recreated", True):
+            oracle = done["services"].get("oracle", {})
+            if not oracle.get("applied", True):
                 return {"ok": False, "detail": "Non sono riuscito a riavviare il cervello con le chiavi nuove."}
-            self._wait_oracle()
+            if oracle.get("recreated"):
+                self._wait_oracle()
         local_provider = local_provider or "ollama"
         emb = {k: v for k, v in (embedding or {}).items() if v}
         result = self.oracle("POST", "/api/llm/setup/apply",
                              body={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
                                    "cloud": cloud, "cloud_models": cloud_models or {}, "embedding": emb,
-                                   "local_runtime": local_runtime or {}})
+                                   "local_runtime": local_runtime or {}, "modes": modes or {}})
         # Only Ollama downloads by itself; LM Studio, Jan… already have the model the user picked from their list.
         pulls = []
         if local_model and recipe != "cloud" and local_provider == "ollama":
@@ -172,10 +203,15 @@ class SetupService:
         if (emb.get("provider") or "ollama") == "ollama" and (emb or (local_model and recipe != "cloud")):
             # The memory's model: the installer already pulls the default one, so this is usually «già presente».
             pulls.append(emb.get("model") or EMBEDDING_MODEL)
+        pulls += [v["model"] for v in (modes or {}).values()
+                  if (v.get("provider") or "ollama") == "ollama" and v.get("model") and v["model"] not in pulls]
         for model in pulls:
             self.oracle("POST", "/api/llm/setup/pull", body={"model": model})
         self.mark("cervello", brain={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
                                      "cloud": cloud, "cloud_models": cloud_models or {},
+                                     "embedding": emb, "modes": {k: {"provider": v.get("provider", ""),
+                                                                      "model": v.get("model", "")}
+                                                                  for k, v in (modes or {}).items()},
                                      "summary": result.get("detail", "")})
         return {"ok": True, "detail": result.get("detail", "")}
 
@@ -186,11 +222,14 @@ class SetupService:
         return self.hub_call("echo", path, method=method, body=body, query=query, timeout=timeout)
 
     def voice_key(self, provider: str, key: str) -> bool:
-        """«Salva e prova» of a speech service: ``ECHO_KEY_<NAME>`` into Echo's .env, Echo re-created and waited for."""
+        """«Salva e prova» of a speech service: ``ECHO_KEY_<NAME>`` into Echo's .env, which Echo re-reads at once
+        (re-created and waited for only when that fails)."""
         name = "ECHO_KEY_" + "".join(c if c.isalnum() else "_" for c in provider.upper())
-        done = self.set_secrets({name: key})
-        if not done["services"].get("echo", {}).get("recreated"):
+        echo = self.set_secrets({name: key})["services"].get("echo", {})
+        if not echo.get("applied"):
             return False
+        if echo.get("reloaded"):
+            return True
         deadline = time.time() + 90
         while time.time() < deadline:
             try:

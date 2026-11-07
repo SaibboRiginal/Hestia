@@ -67,6 +67,30 @@ def test_set_secrets_recreates_each_service_once_and_never_logs_values(tmp_path,
     assert "secret" not in str(service.state())
 
 
+def test_set_secrets_live_reload_skips_the_recreate(tmp_path):
+    """Round 6: a key is tried in seconds — Oracle re-reads its .env, no container re-create, no 90s wait."""
+    hub, recreated = [], []
+    def hub_call(svc, path, method="GET", body=None, query=None, timeout=30):
+        hub.append((svc, path))
+        return {"keys": ["ORACLE_KEY_GEMINI"]}
+    service = SetupService(_repo(tmp_path), tmp_path / "data", hub_call=hub_call,
+                           recreate=lambda svc, updates, **kw: recreated.append(svc) or (True, "ok"))
+    out = service.set_secrets({"ORACLE_KEY_GEMINI": "k"})
+    assert hub == [("oracle", "/api/llm/setup/reload-keys")] and recreated == []
+    assert out["services"]["oracle"]["reloaded"] and out["services"]["oracle"]["applied"]
+
+
+def test_set_secrets_falls_back_to_recreate_when_reload_misses(tmp_path):
+    recreated = []
+    service = SetupService(_repo(tmp_path), tmp_path / "data", hub_call=lambda *a, **k: {"keys": []},
+                           recreate=lambda svc, updates, **kw: recreated.append(svc) or (True, "ok"))
+    out = service.set_secrets({"ORACLE_KEY_GEMINI": "k"})
+    assert recreated == ["oracle"] and out["services"]["oracle"]["recreated"]
+    # not a provider key → always re-created (Claude token), never re-read
+    out = service.set_secrets({"CLAUDE_CODE_OAUTH_TOKEN": "tok"})
+    assert recreated == ["oracle", "oracle"]
+
+
 def test_telegram_code_claim(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr("app.setup.service.threading.Timer",
