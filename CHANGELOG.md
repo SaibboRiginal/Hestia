@@ -3,6 +3,8 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-07
+- Sound in the site works again: «Ascolta» in the chat and the voice try in the setup played nothing (the browser blocked it); in the setup every voice in the list can be heard (and every listening engine tried) before choosing it; the assistant's greeting in the setup looks exactly like the chat; Garmin connects again with the new Garmin sign-in and says why when it refuses → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
+- Guided setup: in Ragionamento, Codice and Immagini a cloud service with a working key (e.g. Gemini) shows its models again instead of «niente da scegliere» → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Fix: Hestia no longer says «Sono il motore di ragionamento di Hestia» or «pronta ad assisterti»: her personality now reaches the model on every path, also when she uses tools on a local model, and quick answers are one or two sentences → `docs/work/2026-11-06-hestia-viva/` [ext-chat]
 - Guided setup: Modelli has a tab for each mode (Generale, Ragionamento, Codice, Immagini), each with its own list in order or the same as Generale; when the models are ready the assistant greets you with a message written by them; chosen voices can be heard and listening tried by speaking, right in the setup → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup: the chosen models (and voices) can be put in any order with ↑ and ↓, a cloud model even before the local one, and Hestia tries them in that order → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

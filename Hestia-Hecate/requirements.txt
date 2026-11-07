@@ -1,6 +1,6 @@
 fastapi==0.109.2
 uvicorn==0.27.1
-requests==2.31.0
+requests==2.33.1   # garminconnect >= 0.3.20 needs requests >= 2.33
 python-dotenv==1.0.1
 google-api-python-client>=2.126.0
 google-auth>=2.29.0
@@ -9,4 +9,4 @@ google-auth-oauthlib>=1.2.0
 msal>=1.28.0
 # optional Gmail push (Pub/Sub streaming pull), imported only when configured
 google-cloud-pubsub>=2.21.0
-garminconnect>=0.2.19
+garminconnect>=0.3.20

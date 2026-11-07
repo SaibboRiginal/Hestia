@@ -102,6 +102,20 @@ def wav_duration(data: bytes) -> float:
         return 0.0
 
 
+def peak(wav: bytes) -> float:
+    """Loudest sample of a 16-bit WAV, 0..1 (0 = silent or unreadable). A voice that answers with a mute file
+    is an error to say, never a «played» with nothing heard."""
+    try:
+        frames, _, width, _ = wav_frames(wav)
+    except Exception:
+        return 0.0
+    if width != 2 or len(frames) < 2:
+        return 0.0
+    n = len(frames) // 2
+    vals = struct.unpack(f"<{n}h", frames[: n * 2])
+    return max(abs(v) for v in vals) / 32768.0
+
+
 def float_to_wav(samples, rate: int) -> bytes:
     """Float samples in [-1, 1] (numpy array or list) → 16-bit WAV."""
     ints = bytearray()

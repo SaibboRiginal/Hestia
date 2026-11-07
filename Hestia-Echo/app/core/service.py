@@ -26,6 +26,7 @@ logger = logging.getLogger("hestia_echo.service")
 
 STREAM_IDLE_SECONDS = 60
 PARTIAL_MAX_SECONDS = 90
+MUTE_PEAK = 0.003          # under this the loudest sample is silence: a mute voice is an error, not a «played»
 
 
 class Invalid(ValueError):
@@ -202,11 +203,16 @@ class Echo:
         text = str(body.get("text") or "Ciao, sono Hestia. Questa è la mia voce.")[:200]
         try:
             data, mime = std.speak(p, step["model"], step["voice"], text, self.language(), _opts(std, p, step, "voce"))
+            pcm = audio.to_pcm16k(data, mime)
             out, out_mime = audio.encode(data, str(body.get("format") or "mp3"))
         except Exception as exc:  # noqa: BLE001 — a failed try is an answer, not an error page
             logger.warning("[🔄] event=voice_setup_preview_failed provider=%s error=%s", p["name"], str(exc)[:200])
             return {"ok": False, "detail": f"Non ha risposto: {str(exc)[:160]}"}
-        return {"ok": True, "audio_b64": base64.b64encode(out).decode(), "mime_type": out_mime}
+        seconds = audio.wav_duration(pcm)
+        if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:
+            logger.warning("[🔄] event=voice_setup_preview_mute provider=%s bytes=%s seconds=%s", p["name"], len(data), seconds)
+            return {"ok": False, "detail": "Ha risposto con un audio muto: prova un'altra voce."}
+        return {"ok": True, "audio_b64": base64.b64encode(out).decode(), "mime_type": out_mime, "duration_s": seconds}
 
     def setup_hear(self, body: dict) -> dict:
         """«Prova» of listening in the setup: what the user said, heard by that provider and model (no chain)."""
@@ -268,6 +274,9 @@ class Echo:
         except audio.AudioError as exc:
             raise Invalid(f"conversione audio: {exc}")
         seconds = audio.wav_duration(pcm)
+        if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:   # «Ascolta» that plays nothing: say why instead
+            logger.warning("[🔄] event=voice_speak_mute provider=%s bytes=%s seconds=%s", info["provider"], len(data), seconds)
+            raise Invalid(f"la voce ({info['provider']}) ha risposto con un audio muto")
         blob_id = None
         if keep:
             kept = out if fmt == "ogg_opus" else audio.encode(data, "ogg_opus")[0]

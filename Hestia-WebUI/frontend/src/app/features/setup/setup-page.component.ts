@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, WritableSignal, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { marked } from 'marked';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
 import { PluginsService } from '../plugins/plugins.service';
 import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
+import { AssistantTextComponent } from '../chat/assistant-text.component';
 import { MicRecorder, b64ToBlob, blobToB64 } from '../../services/voice.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
@@ -52,7 +54,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [...UI, FormsModule, RouterLink, SetupPickComponent, SetupChainComponent, PluginOutletComponent],
+  imports: [...UI, FormsModule, RouterLink, SetupPickComponent, SetupChainComponent, PluginOutletComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="bar">
@@ -180,17 +182,13 @@ function store(key: string, value: string): void {
             @case ('cervello') {
               <h1>I modelli sono pronti</h1>
               <div class="msg">
-                <span class="av"><hx-icon name="sparkle" [size]="18" tone="accent" /></span>
-                <div class="bubble">
-                  <b>Hestia</b>
-                  @if (hello(); as h) {
-                    @if (h.ok) { <p>{{ h.text }}</p><small>Scritto con {{ h.model }}</small> }
-                    @else {
-                      <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ activeDownloads() ? 'Il modello si sta ancora scaricando: ti scrivo appena è pronto.' : h.detail }}</p>
-                      @if (!activeDownloads()) { <div class="row start"><button hx-btn variant="secondary" size="sm" icon="refresh" [loading]="helloBusy()" (click)="sayHello()">Riprova</button></div> }
-                    }
-                  } @else { <p class="typing"><hx-spinner /> Sta scrivendo…</p> }
-                </div>
+                @if (hello(); as h) {
+                  @if (h.ok) { <hx-assistant-text [html]="h.html || ''" /><small>Scritto con {{ h.model }}</small> }
+                  @else {
+                    <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ activeDownloads() ? 'Il modello si sta ancora scaricando: ti scrivo appena è pronto.' : h.detail }}</p>
+                    @if (!activeDownloads()) { <div class="row start"><button hx-btn variant="secondary" size="sm" icon="refresh" [loading]="helloBusy()" (click)="sayHello()">Riprova</button></div> }
+                  }
+                } @else { <hx-assistant-text [streaming]="true" /> }
               </div>
               @if (activeDownloads()) { <p class="note">{{ downloadHint() }}</p> }
             }
@@ -418,15 +416,9 @@ function store(key: string, value: string): void {
     .recap { display: flex; flex-direction: column; gap: 6px; }
     .rrow { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); }
     .rrow:hover { border-color: var(--border-strong); }
-    .msg { display: flex; gap: 10px; align-items: flex-start; }
-    .av { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--radius-full); background: var(--accent-soft); }
-    .bubble { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 4px var(--radius-lg, 14px) var(--radius-lg, 14px) var(--radius-lg, 14px);
-              background: var(--surface); border: 1px solid var(--border); }
-    .bubble b { font-size: 13px; font-weight: 600; color: var(--text-2); }
-    .bubble p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-line; }
-    .bubble small { font-size: 12px; color: var(--text-3); }
-    .bubble .warn { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--text-2); }
-    .typing { display: flex; gap: 8px; align-items: center; color: var(--text-3) !important; font-size: 14px !important; }
+    .msg { display: flex; flex-direction: column; gap: 6px; }
+    .msg small { font-size: 12px; color: var(--text-3); }
+    .msg .warn { display: flex; gap: 6px; align-items: center; margin: 0; font-size: 14px; color: var(--text-2); }
     .foot { background: var(--surface); border-top: 1px solid var(--border); }
     .foot .col { padding-top: 12px; padding-bottom: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
     .navrow { display: flex; align-items: center; gap: 8px; }
@@ -561,7 +553,8 @@ export class SetupPageComponent {
       this.voiceError.set(setupError(e));
     }
   }
-  // «Prova» on a chosen voice (hear it) or listening engine (speak, see what it understood): nothing saved.
+  // «Prova» on a voice (hear it) or listening engine (speak, see what it understood), chosen or still in the lists:
+  // nothing saved.
   trialState = signal<{ key: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
   private mic: MicRecorder | null = null;
   async tryVoice(dir: VoiceDir, row: { key: string; provider: string; model: string }) {
@@ -574,8 +567,13 @@ export class SetupPageComponent {
           const url = URL.createObjectURL(b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'));
           const a = new Audio(url);
           a.onended = () => URL.revokeObjectURL(url);
-          await a.play().catch(() => undefined);
-          this.trialState.set(null);
+          try {
+            await a.play();
+            this.trialState.set(null);
+          } catch (err) {               // never a silent «played»: say why the browser did not play it
+            URL.revokeObjectURL(url);
+            this.trialState.set({ key: row.key, text: `Il browser non l'ha riprodotta (${(err as Error)?.name || 'errore'}): riprova.` });
+          }
         } else this.trialState.set({ key: row.key, text: r.detail || 'Non ha risposto.' });
       } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
       return;
@@ -815,12 +813,16 @@ export class SetupPageComponent {
   }
 
   // ── «I modelli sono pronti»: the assistant's first message, written with the models just chosen ──
-  hello = signal<{ ok: boolean; text?: string; model?: string; detail?: string } | null>(null);
+  hello = signal<{ ok: boolean; text?: string; html?: string; model?: string; detail?: string } | null>(null);
   helloBusy = signal(false);
   async sayHello() {
     if (this.helloBusy()) return;
     this.helloBusy.set(true);
-    try { this.hello.set(await this.api.hello()); }
+    try {
+      const h = await this.api.hello();
+      // Same rendering as the chat: markdown → HTML, then the chat's own assistant text component.
+      this.hello.set(h.ok ? { ...h, html: marked.parse(h.text || '', { gfm: true, async: false }) as string } : h);
+    }
     catch (e) { this.hello.set({ ok: false, detail: setupError(e) }); }
     finally { this.helloBusy.set(false); }
     this.helloWait = this.hello()?.ok === false && this.activeDownloads() > 0;

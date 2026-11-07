@@ -8,7 +8,7 @@ import { SettingsService } from '../../services/settings.service';
 import { FeedbackService } from '../../services/feedback.service';
 import { SignalRService } from '../../services/signalr.service';
 import { ChatChange, ChatMessage } from '../../models/chat.models';
-import { AnswerBlocksComponent, AnswerPart, isComps, splitAnswer } from './answer-blocks.component';
+import { AssistantTextComponent } from './assistant-text.component';
 import { ChatsService } from '../../services/chats.service';
 import { PluginsService } from '../plugins/plugins.service';
 import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, ToastService } from '../../ui';
@@ -31,7 +31,7 @@ const LIVE_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-chat-page',
   imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
-            ChatModeComponent, ChatContextComponent, QuestionCardComponent, AnswerBlocksComponent],
+            ChatModeComponent, ChatContextComponent, QuestionCardComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
@@ -84,12 +84,7 @@ const LIVE_LABELS: Record<string, string> = {
               }
               @if (m.origin; as o) { <div class="origin"><hx-icon name="zap" [size]="13" />{{ o.label || 'Avviata in automatico' }}</div> }
               @if (m.error) { <div class="err"><hx-icon name="alert" tone="danger" [size]="15" /><span>{{ m.content }}</span></div> }
-              @else if (m.content) {
-                @for (p of parts(m); track $index) {
-                  @if (isComps(p)) { <hx-answer-blocks [comps]="p.comps" (send)="use($event)" /> }
-                  @else { <div class="hx-prose" [class.queued]="m.queuedId" [innerHTML]="p.html"></div> }
-                }
-              }
+              @else { <hx-assistant-text [html]="m.content" [streaming]="!!m.isStreaming" [queued]="!!m.queuedId" (send)="use($event)" /> }
               @if (m.changes?.length && !m.isStreaming) {
                 <div class="changes" aria-label="Ho fatto">
                   <div class="ch"><hx-icon name="check-circle" [size]="14" />Ho fatto</div>
@@ -103,8 +98,6 @@ const LIVE_LABELS: Record<string, string> = {
                 </div>
               }
               @if (m.queuedId) { <div class="inq"><hx-icon name="clock" [size]="14" /> In coda</div> }
-              @else if (m.isStreaming) { <div class="typing"><span></span><span></span><span></span></div> }
-              @if (m.isStreaming && m.content) { <span class="caret"></span> }
               @if (m.notices?.length && notices.inline()) {
                 <div class="hx-notices" [class.rich]="notices.prefs().style === 'rich'">
                   @for (n of m.notices; track n.id) {
@@ -224,10 +217,6 @@ const LIVE_LABELS: Record<string, string> = {
     .bubble { background: var(--user-bubble); color: var(--user-bubble-text); padding: 10px 15px; border-radius: var(--radius-xl);
               max-width: 80%; white-space: pre-wrap; word-wrap: break-word; font-size: 15px; }
     .msg.asst { position: relative; }
-    .caret { display: inline-block; width: 8px; height: 17px; background: var(--accent); vertical-align: text-bottom; margin-left: 2px; animation: hx-pulse 1s infinite; border-radius: 2px; }
-    .typing { display: inline-flex; gap: 4px; padding: 6px 0; }
-    .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: hx-pulse 1.2s infinite; }
-    .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
     .foot { display: flex; gap: 2px; margin-top: 8px; opacity: 0; transition: opacity var(--dur); }
     .bubble { position: relative; }
     .rx { position: absolute; bottom: -12px; left: -6px; font-size: 14px; line-height: 1; padding: 3px 5px; border-radius: var(--radius-full);
@@ -254,7 +243,6 @@ const LIVE_LABELS: Record<string, string> = {
     .offline { display: flex; align-items: center; gap: 8px; background: var(--warning-soft); color: var(--text);
                border-radius: var(--radius-lg); padding: 9px 14px; margin-bottom: 10px; font-size: 13.5px; }
     .offline .oe { font-size: 16px; }
-    .hx-prose.queued { color: var(--text-2); }
     .origin { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-3); margin-bottom: 6px;
               border: 1px solid var(--border); border-radius: var(--radius-full); padding: 2px 9px; }
     .origin hx-icon { color: var(--accent); }
@@ -296,8 +284,6 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   chat = inject(ChatService);
   chats = inject(ChatsService);
   private plugins = inject(PluginsService);
-  readonly isComps = isComps;
-  private partCache = new Map<string, AnswerPart[]>();
   undoing = signal('');
   dictating = signal(false);
   dictBusy = signal(false);
@@ -374,18 +360,6 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   }
 
   use(s: string) { this.text = s; this.send(); }
-
-  /** Prose and component blocks of an answer (cached by content: streaming text changes it each token). */
-  parts(m: ChatMessage): AnswerPart[] {
-    if (m.isStreaming) return [{ html: m.content }];
-    let p = this.partCache.get(m.content);
-    if (!p) {
-      p = splitAnswer(m.content);
-      if (this.partCache.size > 200) this.partCache.clear();
-      this.partCache.set(m.content, p);
-    }
-    return p;
-  }
 
   /** «Annulla» under «Ho fatto»: the inverse tool, through the commands door (Hestia-MCP). */
   async undo(m: ChatMessage, i: number, c: ChatChange) {

@@ -3480,6 +3480,7 @@ paths:
         - url: http://localhost:19003
       responses:
         "200": {description: OK}
+        "422": {description: "Garmin refused the login: detail says why in words (email/password, too many attempts, not answering)"}
 
   /api/gateway/garmin:
     delete:
@@ -7956,7 +7957,7 @@ paths:
       servers:
         - url: http://localhost:19010
       responses:
-        "200": {description: "{ok, audio_b64, mime_type} or {ok: false, detail}"}
+        "200": {description: "{ok, audio_b64, mime_type, duration_s} or {ok: false, detail} (also when the voice answers with a mute file)"}
 
   /api/setup/voice/hear:
     post:
@@ -13110,7 +13111,7 @@ paths:
           application/json:
             schema: {type: object, properties: {provider: {type: string}, voice: {type: string}, model: {type: string}, text: {type: string}}}
       responses:
-        "200": {description: "{ok, audio_b64, mime_type} or {ok: false, detail}"}
+        "200": {description: "{ok, audio_b64, mime_type, duration_s} or {ok: false, detail} (also when the voice answers with a mute file)"}
 
   /api/voice/setup/hear:
     post:
