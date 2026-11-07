@@ -85,6 +85,10 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - **Persona** (`prompt_config` key `analyst_persona_default`, also served by `assistant_profile` to other AIs): a
   person who lives with the owner (CHI SEI · RAPPORTO · CARATTERE · MEMORIA · TONO · LUNGHEZZA 1–2 frasi · VERITÀ),
   then the operating rules 1–13 and the Telegram format, unchanged.
+- **One identity on every path**: the persona is the system prompt of every chain, also on Ollama native tool
+  calling (persona + a short STRUMENTI rule, no separate «tool-calling engine» prompt); the agent-loop preambles
+  open with «Sei Hestia, la persona descritta sopra» and the quick answer asks 1–2 sentences. Before (Marko's
+  real run 2026-11-07) a local model answered «Sono il motore di ragionamento di Hestia».
 - **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
   `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
 - **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today
