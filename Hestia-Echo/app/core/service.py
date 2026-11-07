@@ -181,6 +181,56 @@ class Echo:
         self._record("voce", info, ms=int((time.monotonic() - started) * 1000), ok=True, chars=len(text))
         return data, mime, info
 
+    # ── setup «Prova»: one provider tried directly, before the choice is saved ──
+    def _setup_provider(self, name: str, direction: str) -> tuple[dict | None, str]:
+        p = self.blocks.providers().get(name)
+        if p is None or direction not in STANDARDS[p["type"]].directions:
+            return None, "Non si può provare da qui."
+        state = self.blocks.provider_state(p)
+        if state != "ready":
+            return None, ("Si può provare quando è scaricata: la scarico quando confermi."
+                          if p["type"] in {"whisper_local", "piper", "kokoro"} else "Prima metti la chiave.")
+        return p, ""
+
+    def setup_preview(self, body: dict) -> dict:
+        """«Ascolta» on a voice of the setup: a short sentence spoken by that provider and voice (no chain)."""
+        p, why = self._setup_provider(str(body.get("provider") or ""), "voce")
+        if p is None:
+            return {"ok": False, "detail": why}
+        std = STANDARDS[p["type"]]
+        step = {"provider": p["name"], "model": str(body.get("model") or ""), "voice": str(body.get("voice") or "")}
+        text = str(body.get("text") or "Ciao, sono Hestia. Questa è la mia voce.")[:200]
+        try:
+            data, mime = std.speak(p, step["model"], step["voice"], text, self.language(), _opts(std, p, step, "voce"))
+            out, out_mime = audio.encode(data, str(body.get("format") or "mp3"))
+        except Exception as exc:  # noqa: BLE001 — a failed try is an answer, not an error page
+            logger.warning("[🔄] event=voice_setup_preview_failed provider=%s error=%s", p["name"], str(exc)[:200])
+            return {"ok": False, "detail": f"Non ha risposto: {str(exc)[:160]}"}
+        return {"ok": True, "audio_b64": base64.b64encode(out).decode(), "mime_type": out_mime}
+
+    def setup_hear(self, body: dict) -> dict:
+        """«Prova» of listening in the setup: what the user said, heard by that provider and model (no chain)."""
+        p, why = self._setup_provider(str(body.get("provider") or ""), "ascolto")
+        if p is None:
+            return {"ok": False, "detail": why}
+        raw = _b64(body.get("audio_b64"))
+        mime = str(body.get("mime_type") or "audio/webm").split(";")[0].strip().lower()
+        try:
+            pcm = audio.to_pcm16k(raw, mime) if raw else b""
+        except audio.AudioError:
+            pcm = b""
+        if not pcm or audio.wav_duration(pcm) <= 0.3:
+            return {"ok": False, "detail": "Non ho sentito niente: riprova parlando un po' più a lungo."}
+        std = STANDARDS[p["type"]]
+        step = {"provider": p["name"], "model": str(body.get("model") or ""), "voice": ""}
+        try:
+            result = std.transcribe(p, step["model"], pcm, "audio/wav", self.language(), _opts(std, p, step, "ascolto"))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[🔄] event=voice_setup_hear_failed provider=%s error=%s", p["name"], str(exc)[:200])
+            return {"ok": False, "detail": f"Non ha risposto: {str(exc)[:160]}"}
+        text = str((result or {}).get("text") or "").strip()
+        return {"ok": bool(text), "text": text, "detail": "" if text else "Non ho capito niente: riprova."}
+
     def prepare_text(self, text: str) -> str:
         clean = audio.speakable(text)
         short, cut = audio.shorten(clean, int(self.get("echo.voce.max_chars", 1200) or 1200))

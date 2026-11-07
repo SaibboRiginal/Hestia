@@ -445,7 +445,12 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
             steps = local_steps + cloud_steps
         steps = _in_order(steps, order)
         own = (modes or {}).get(name) or {}
-        if own.get("model"):
+        own_steps = [{"provider": p, "model": m} for p, m in
+                     ((s.get("provider") or "ollama", s.get("model") or _default_model(s.get("provider") or "ollama"))
+                      for s in (own.get("steps") or []) if isinstance(s, dict)) if m]
+        if own_steps:   # the mode has its own whole list, in the user's order
+            steps = own_steps
+        elif own.get("model"):
             first = {"provider": own.get("provider") or "ollama", "model": own["model"]}
             steps = [first] + [s for s in steps if s != first]
         if steps:
@@ -538,10 +543,12 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     if emb.get("model") and not ensure_runtime(emb.get("provider") or "ollama",
                                                {k: emb.get(k, "") for k in ("url", "type", "label")}):
         return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
-    modes = {k: v for k, v in (modes or {}).items() if k in CHAT_CHAINS and isinstance(v, dict) and v.get("model")}
+    modes = {k: v for k, v in (modes or {}).items()
+             if k in CHAT_CHAINS and isinstance(v, dict) and (v.get("model") or v.get("steps"))}
     for own in modes.values():
-        if not ensure_runtime(own.get("provider") or "ollama", {k: own.get(k, "") for k in ("url", "type", "label")}):
-            return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
+        for step in ([s for s in own.get("steps") or [] if isinstance(s, dict)] or [own]):
+            if (step.get("model") or step.get("url")) and not ensure_runtime(step.get("provider") or "ollama", {k: step.get(k, "") for k in ("url", "type", "label")}):
+                return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
     chosen = _as_lists(cloud_models)
     cloud_models = {**_live_models(list(cloud or []), chosen), **chosen}
     chains = plan_chains(recipe, local_model if recipe != "cloud" else "", list(cloud or []), llm_chains.chains(),

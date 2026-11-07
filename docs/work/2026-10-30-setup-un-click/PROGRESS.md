@@ -30,4 +30,6 @@
 - [x] v2.17 (Marko 2026-11-07): Locale/Cloud wording, one look for the local list in every step
 - [x] v2.18 round 7 (Marko 2026-11-07): new layout (top bar + steps drop-down + fixed footer), `setup-chain` with «Scelti» + Locale/Cloud tabs and the cloud services inside, `setup-services` removed, texts shortened on every screen, outlet fallback generic; ng build + screenshots desktop/phone
 - [x] v2.19 (Marko 2026-11-07): ↑ ↓ on every «Scelti» row, free order; `order` in Oracle/Hephaestus apply + brain state; test `plan_chains` order; Oracle 29 + Hephaestus 18 setup tests, ng build
+- [x] v2.20 (Marko 2026-11-07): mode tabs with own lists (Oracle `modes.steps`, Hephaestus pulls + state), `brain/hello` + use case `hephaestus.setup` + WebUI whitelist, greeting bubble with retry after downloads; Oracle 30, Hephaestus 92, ng build, screenshots
+- [x] v2.21 (Marko 2026-11-07): Echo `setup_preview`/`setup_hear` + endpoints, Hephaestus `voice/preview|hear`, WebUI whitelist, chain `trial` buttons; Echo 46, ng build
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), first tag v1.0.0 + GHCR package public, two-machine run, real tunnel, .NET build

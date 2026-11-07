@@ -9,7 +9,7 @@ export interface SetupState {
   voice?: { listen?: VoiceStep | VoiceStep[]; speak?: VoiceStep | VoiceStep[] };
   brain: { recipe?: string; local_model?: string; local_provider?: string; cloud?: string[];
            cloud_models?: Record<string, string | string[]>; summary?: string;
-           embedding?: { provider?: string; model?: string }; modes?: Record<string, { provider?: string; model?: string }>;
+           embedding?: { provider?: string; model?: string }; modes?: Record<string, { provider?: string; model?: string; steps?: { provider: string; model: string }[] }>;
            order?: { provider: string; model: string }[] };
   hardware: { os?: string; ram_gb?: number; gpu?: string; vram_gb?: number; free_gb?: number };
   telegram: { token: boolean; owner: boolean; linked: boolean; code_active: boolean };
@@ -54,7 +54,7 @@ type RuntimeRef = { url?: string; type?: string; label?: string };
 export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>;
   embedding: ({ provider: string; model: string } & RuntimeRef) | null; local_runtime: RuntimeRef;
   /** «Per modalità»: potente / codice / visione with their own model (first there, the general choice after). */
-  modes: Record<string, { provider: string; model: string } & RuntimeRef>;
+  modes: Record<string, { steps: ({ provider: string; model: string } & RuntimeRef)[] }>;
   /** «Scelti» in the user's order, local and cloud mixed. */
   order?: { provider: string; model: string }[]; }
 export interface TunnelState { on: boolean; url: string; detail?: string; phase?: '' | 'start' | 'download' | 'address' | 'ready' | 'error'; }
@@ -72,6 +72,15 @@ export class SetupApi {
   complete() { return this.post<SetupState>('complete'); }
   /** ``hosts``: other computers of the house to look on too. */
   catalog(hosts: string[] = []) { return this.get<BrainCatalog>('brain/catalog' + (hosts.length ? `?hosts=${encodeURIComponent(hosts.join(','))}` : '')); }
+  /** «Ascolta» on a chosen voice / «Prova» of listening, with that provider only (nothing saved). */
+  voicePreview(provider: string, voice: string, model = '') {
+    return this.post<{ ok: boolean; audio_b64?: string; mime_type?: string; detail?: string }>('voice/preview', { provider, voice, model });
+  }
+  voiceHear(provider: string, model: string, audio_b64: string, mime_type: string) {
+    return this.post<{ ok: boolean; text?: string; detail?: string }>('voice/hear', { provider, model, audio_b64, mime_type });
+  }
+  /** «I modelli sono pronti»: the assistant's first message, written with the models just chosen. */
+  hello() { return this.post<{ ok: boolean; text?: string; model?: string; provider?: string; detail?: string }>('brain/hello'); }
   test(provider: string, key = '', model = '') { return this.post<TestOutcome>('brain/test', { provider, key, model }); }
   apply(recipe: string, local_model: string, cloud: string[], claude_token: string, choice: BrainChoice) {
     return this.post<Outcome>('brain/apply', { recipe, local_model, cloud, claude_token, local_provider: choice.local_provider,

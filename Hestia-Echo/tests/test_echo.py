@@ -526,3 +526,18 @@ def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
     assert blocks_mod.reload_keys() == ["ECHO_KEY_GROQ"]
     import os
     assert os.environ["ECHO_KEY_GROQ"] == "k1" and "ORACLE_KEY_X" not in os.environ
+
+
+def test_setup_hear_tries_that_provider_only(world):
+    """Round 7: «Prova» of listening in the setup uses the provider and model picked, not the saved chain."""
+    out = world["echo"].setup_hear({"provider": "due", "model": "m2", "audio_b64": b64(tone(1)), "mime_type": "audio/wav"})
+    assert out == {"ok": True, "text": "ciao da due", "detail": ""}
+    assert world["engine"].calls[-1][:3] == ("t", "due", "m2")
+    assert world["echo"].setup_hear({"provider": "chiuso", "audio_b64": b64(tone(1))})["ok"] is False   # no key
+    assert world["echo"].setup_hear({"provider": "due", "audio_b64": ""})["ok"] is False
+
+
+@needs_ffmpeg
+def test_setup_preview_speaks_with_that_voice(world):
+    out = world["echo"].setup_preview({"provider": "due", "voice": "v9"})
+    assert out["ok"] and out["audio_b64"] and world["engine"].calls[-1][:3] == ("s", "due", "v9")

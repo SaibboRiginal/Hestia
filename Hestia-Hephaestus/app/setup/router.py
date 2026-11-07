@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import requests
 from fastapi import APIRouter, HTTPException
@@ -34,7 +35,7 @@ class BrainApply(BaseModel):
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)
-    modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # «Per modalità»: potente/codice/visione
+    modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode potente/codice/visione: {steps: [{provider, model}]}
     order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
@@ -191,6 +192,18 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     def voice_catalog(hosts: str = ""):
         return service.echo("GET", "/api/voice/setup/catalog", timeout=30, query={"hosts": hosts} if hosts else None)
 
+    @router.post("/voice/preview")
+    def voice_preview(body: dict):
+        """«Ascolta» on a voice of the setup (→ Echo, nothing saved)."""
+        keep = {k: body.get(k) for k in ("provider", "model", "voice", "text") if body.get(k)}
+        return service.echo("POST", "/api/voice/setup/preview", body=keep, timeout=90)
+
+    @router.post("/voice/hear")
+    def voice_hear(body: dict):
+        """«Prova» of listening in the setup: the recording heard by that provider (→ Echo, nothing saved)."""
+        keep = {k: body.get(k) for k in ("provider", "model", "audio_b64", "mime_type") if body.get(k)}
+        return service.echo("POST", "/api/voice/setup/hear", body=keep, timeout=120)
+
     @router.post("/voice/test")
     def voice_test(req: VoiceTest):
         if req.key:
@@ -222,6 +235,10 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     @router.post("/brain/pull")
     def brain_pull(req: Model):
         return service.oracle("POST", "/api/llm/setup/pull", body={"model": req.model})
+
+    @router.post("/brain/hello")
+    def brain_hello():
+        return {"status": "ok", **service.brain_hello()}
 
     @router.get("/brain/pulls")
     def brain_pulls():

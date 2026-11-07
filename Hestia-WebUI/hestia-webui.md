@@ -519,9 +519,14 @@ Studio when nothing is found, and «È su un altro computer della rete?» (remem
 to both catalogs, «Cerca di nuovo» looks again for models and speech programs). «Cloud» = one row per service that
 opens in place: key typed once and tried in a second (a saved key is checked by itself), «La chiave funziona» with
 the models already chosen in the same picker, «Cambia chiave». A cloud service is preselected only when its key (or
-the Claude code) is already saved, in every step. Modelli lists only chat models; below it the closed optional
-section «Un modello diverso per alcune modalità»: Ragionamento, Codice and Immagini follow Generale unless one gets
-its own model (same picker; sent as `modes`). Memoria is the same step with `single`: one embedding model in all,
+the Claude code) is already saved, in every step. Modelli lists only chat models and has a tab per mode
+(Generale, Ragionamento, Codice, Immagini): the three others say «Gli stessi di Generale» (ticked by default);
+unticked, the mode gets its own copy of the same step, with its own «Scelti» to change and reorder (sent as
+`modes {mode: {steps: [{provider, model}]}}`). «I modelli sono pronti» shows the assistant's first message, written
+with the models just chosen (`brain/hello`, «Scritto con <model>»); when the local model is still downloading it
+writes again once the download is over. In Voce every chosen row has «Ascolta» (a short sentence with that voice,
+`voice/preview`), in Ascolto «Prova a parlare» (tap, speak, tap: «Ho capito: …», `voice/hear`); a local engine not
+downloaded yet says it can be tried after «Conferma». Memoria is the same step with `single`: one embedding model in all,
 local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
 Voce writes both chains and queues the downloads. The «Calendario, mail e Garmin» screen mounts only Hecate's own

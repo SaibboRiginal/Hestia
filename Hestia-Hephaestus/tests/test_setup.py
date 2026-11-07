@@ -239,3 +239,35 @@ def test_tunnel_joins_the_compose_group_of_the_stack(monkeypatch):
     labels = dock.created["labels"]
     assert labels["com.docker.compose.project"] == "hestia" and labels["com.docker.compose.service"] == "tunnel"
     tunnel.stop(dock)
+
+
+def test_apply_brain_mode_lists_and_order_pass_through_and_are_kept(tmp_path):
+    """Round 7: each mode can have its own ordered list; Ollama models in it are pulled; state keeps it for the page."""
+    calls = []
+    def hub_call(svc, path, method="GET", body=None, query=None, timeout=30):
+        calls.append((path, body))
+        return {"detail": "ok"}
+    service = SetupService(_repo(tmp_path), tmp_path / "data", hub_call=hub_call)
+    steps = [{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "ollama", "model": "qwen2.5-coder:14b"}]
+    order = [{"provider": "gemini", "model": "gemini-2.5-flash"}, {"provider": "ollama", "model": "qwen3:8b"}]
+    service.apply_brain("entrambi", "qwen3:8b", ["gemini"], {}, modes={"codice": {"steps": steps}}, order=order)
+    apply = next(b for p, b in calls if p == "/api/llm/setup/apply")
+    assert apply["modes"]["codice"]["steps"] == steps and apply["order"] == order
+    assert {"model": "qwen2.5-coder:14b"} in [b for p, b in calls if p == "/api/llm/setup/pull"]
+    brain = service._load()["brain"]
+    assert brain["modes"]["codice"]["steps"] == steps and brain["order"] == order
+
+
+def test_brain_hello_is_written_by_the_chosen_models(tmp_path):
+    """Round 7: «I modelli sono pronti» shows the assistant's own first message (Oracle, use case hephaestus.setup)."""
+    seen = []
+    def hub_call(svc, path, method="GET", body=None, query=None, timeout=30):
+        seen.append((svc, path, body.get("use_case")))
+        return {"response": "Ciao, sono pronta.", "model": "qwen3:8b", "provider": "ollama"}
+    repo = _repo(tmp_path)
+    out = SetupService(repo, tmp_path / "data", hub_call=hub_call).brain_hello()
+    assert out == {"ok": True, "text": "Ciao, sono pronta.", "model": "qwen3:8b", "provider": "ollama"}
+    assert seen == [("oracle", "/api/llm/generate", "hephaestus.setup")]
+    def down(*a, **k):
+        raise RuntimeError("503")
+    assert SetupService(repo, tmp_path / "data", hub_call=down).brain_hello()["ok"] is False

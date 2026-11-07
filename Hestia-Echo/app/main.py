@@ -550,6 +550,18 @@ def voice_setup_test(body: dict = Body(...)):
     return {"status": "ok", **voice_setup.check(blocks, str(body.get("provider") or ""), echo.language())}
 
 
+@app.post(f"{API}/setup/preview")
+def voice_setup_preview(body: dict = Body(...)):
+    """«Ascolta» in the setup: a short sentence with that provider and voice, before the choice is saved."""
+    return {"status": "ok", **echo.setup_preview(body)}
+
+
+@app.post(f"{API}/setup/hear")
+def voice_setup_hear(body: dict = Body(...)):
+    """«Prova» of listening in the setup: the recording heard by that provider and model, before saving."""
+    return {"status": "ok", **echo.setup_hear(body)}
+
+
 @app.post(f"{API}/setup/reload-keys")
 def voice_setup_reload_keys():
     """Re-read the ``ECHO_KEY_*`` lines of Echo's own .env (no restart) → the names that have a value."""

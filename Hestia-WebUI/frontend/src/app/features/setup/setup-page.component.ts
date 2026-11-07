@@ -6,6 +6,7 @@ import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
 import { PluginsService } from '../plugins/plugins.service';
 import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
+import { MicRecorder, b64ToBlob, blobToB64 } from '../../services/voice.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
@@ -13,6 +14,8 @@ type Screen = 'benvenuto' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'vo
  * (Claude Code as the whole brain) is not offered here: the Claude subscription is one of the cloud services. */
 type Recipe = 'locale' | 'cloud' | 'entrambi';
 type VoiceDir = 'ascolto' | 'voce';
+/** A mode with its own list: the same four choices as the step of Generale. */
+interface ModeChoice { home: string; order: string[]; picks: Record<string, string[]>; rank: string[]; }
 const CLAUDE_TYPE = 'claude_cli';
 /** Where to get a key, by provider type or name. */
 const KEY_LINKS: Record<string, string> = {
@@ -120,42 +123,48 @@ function store(key: string, value: string): void {
 
             @case ('modelli') {
               <h1>Con quali modelli pensa?</h1>
-              <p class="lead">Scegline almeno uno, locale o cloud.</p>
-              <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
-                               homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo»."
-                               [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
-                               [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" [(rank)]="cloudRank">
-                <div home-extra>
-                  @if (hasOllama()) {
-                    @if (otherOpen() || otherModel()) {
-                      <hx-field label="Un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b: Ollama lo scarica.">
-                        <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
-                      </hx-field>
-                    } @else { <button type="button" class="link" (click)="otherOpen.set(true)">Un altro modello di Ollama</button> }
-                  }
-                </div>
-              </app-setup-chain>
-              <section class="extra">
-                <button type="button" class="extra-head" [attr.aria-expanded]="modesOpen()" (click)="modesOpen.set(!modesOpen())">
-                  <span><b>Un modello diverso per alcune modalità</b><small>{{ modesSummary() }}</small></span>
-                  <hx-icon [name]="modesOpen() ? 'chevron-up' : 'chevron-down'" [size]="16" tone="muted" />
-                </button>
-                @if (modesOpen()) {
-                  <div class="extra-body">
-                    @for (m of modeList; track m.id) {
-                      <button type="button" class="mrow" [class.on]="openMode() === m.id" (click)="openMode.set(openMode() === m.id ? '' : m.id)">
-                        <span><b>{{ m.label }}</b><small>{{ m.help }}</small></span>
-                        <span class="mval">{{ modeText(m.id) }}</span>
-                        <hx-icon [name]="openMode() === m.id ? 'chevron-up' : 'chevron-down'" [size]="15" tone="muted" />
-                      </button>
-                      @if (openMode() === m.id) {
-                        <app-setup-pick [items]="modeItems()" [selected]="modes()[m.id] || ''" [limit]="5" placeholder="Cerca"
-                                        empty="Scegli prima un modello qui sopra." (picked)="pickMode(m.id, $event)" />
-                      }
+              <p class="lead">Scegline almeno uno, locale o cloud. Ogni modalità può avere i suoi.</p>
+              <div class="modetabs" role="tablist" aria-label="Modalità">
+                @for (m of modeList; track m.id) {
+                  <button type="button" role="tab" [attr.aria-selected]="modeTab() === m.id" [class.on]="modeTab() === m.id" (click)="modeTab.set(m.id)">
+                    {{ m.label }}<small>{{ m.id === 'generale' ? 'per tutto' : modeOwn()[m.id] ? 'propri' : 'come Generale' }}</small>
+                  </button>
+                }
+              </div>
+              @if (modeTab() === 'generale') {
+                <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
+                                 homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo»."
+                                 [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
+                                 [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" [(rank)]="cloudRank">
+                  <div home-extra>
+                    @if (hasOllama()) {
+                      @if (otherOpen() || otherModel()) {
+                        <hx-field label="Un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b: Ollama lo scarica.">
+                          <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
+                        </hx-field>
+                      } @else { <button type="button" class="link" (click)="otherOpen.set(true)">Un altro modello di Ollama</button> }
                     }
                   </div>
+                </app-setup-chain>
+              } @else {
+                @for (m of modeList; track m.id) {
+                  @if (modeTab() === m.id) {
+                    <label class="same">
+                      <input type="checkbox" [checked]="!modeOwn()[m.id]" (change)="toggleMode(m.id)" />
+                      <span><b>Gli stessi di Generale</b><small>{{ m.help }}</small></span>
+                    </label>
+                    @if (modeOwn()[m.id]; as own) {
+                      <app-setup-chain [homeItems]="localItems()" [home]="own.home" (homeChange)="setMode(m.id, 'home', $event)" [programs]="programs()"
+                                       homeEmpty="Nessun programma per i modelli trovato."
+                                       [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
+                                       [services]="cloudRows()" [tester]="chatTester" [(ready)]="cloudReady" [(tokens)]="cloudTokens"
+                                       [order]="own.order" (orderChange)="setMode(m.id, 'order', $event)"
+                                       [picks]="own.picks" (picksChange)="setMode(m.id, 'picks', $event)"
+                                       [rank]="own.rank" (rankChange)="setMode(m.id, 'rank', $event)" />
+                    }
+                  }
                 }
-              </section>
+              }
             }
 
             @case ('memoria') {
@@ -169,12 +178,21 @@ function store(key: string, value: string): void {
             }
 
             @case ('cervello') {
-              <div class="hero">
-                <span class="mark ok"><hx-icon name="check-circle" [size]="26" tone="success" /></span>
-                <h1>I modelli sono pronti</h1>
-                <p class="lead">{{ state()!.brain.summary || 'Fatto.' }}</p>
-                @if (activeDownloads()) { <p class="fact"><hx-icon name="download" [size]="15" tone="info" /> {{ downloadHint() }}</p> }
+              <h1>I modelli sono pronti</h1>
+              <div class="msg">
+                <span class="av"><hx-icon name="sparkle" [size]="18" tone="accent" /></span>
+                <div class="bubble">
+                  <b>Hestia</b>
+                  @if (hello(); as h) {
+                    @if (h.ok) { <p>{{ h.text }}</p><small>Scritto con {{ h.model }}</small> }
+                    @else {
+                      <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ activeDownloads() ? 'Il modello si sta ancora scaricando: ti scrivo appena è pronto.' : h.detail }}</p>
+                      @if (!activeDownloads()) { <div class="row start"><button hx-btn variant="secondary" size="sm" icon="refresh" [loading]="helloBusy()" (click)="sayHello()">Riprova</button></div> }
+                    }
+                  } @else { <p class="typing"><hx-spinner /> Sta scrivendo…</p> }
+                </div>
               </div>
+              @if (activeDownloads()) { <p class="note">{{ downloadHint() }}</p> }
             }
 
             @case ('telegram') {
@@ -292,7 +310,8 @@ function store(key: string, value: string): void {
                                [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
                                [picks]="voicePicks()[dir.id]" (picksChange)="setVoice(voicePicks, dir.id, $event)"
                                [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)"
-                               [rank]="voiceRank()[dir.id]" (rankChange)="setVoice(voiceRank, dir.id, $event)">
+                               [rank]="voiceRank()[dir.id]" (rankChange)="setVoice(voiceRank, dir.id, $event)"
+                               [trial]="dir.id" [trialState]="trialState()" (tryRow)="tryVoice(dir.id, $event)">
                 <div home-extra>
                   @if (voiceLocal(dir.id).length > 1) {
                     <ul class="engines">
@@ -346,7 +365,7 @@ function store(key: string, value: string): void {
     .steps-nav button:hover:not(:disabled) { background: var(--surface-2); }
     .steps-nav button.cur { background: var(--accent-soft); }
     .steps-nav button:disabled { opacity: .5; cursor: default; }
-    .steps-nav span, .dl li > span, .rrow > span, .mrow > span:first-child, .extra-head > span { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+    .steps-nav span, .dl li > span, .rrow > span { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
     .steps-nav b, .dl b { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
     .steps-nav small, .dl small { font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
     .dlh { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: var(--text-2); padding: 8px 8px 0; border-top: 1px solid var(--border); }
@@ -374,14 +393,16 @@ function store(key: string, value: string): void {
     code { font-family: var(--font-mono); font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: var(--radius-xs); }
     .link { align-self: flex-start; background: none; border: 0; padding: 2px 0; color: var(--accent); font-size: 13px; }
     .howto { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--text-2); line-height: 1.5; }
-    .extra { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); overflow: hidden; }
-    .extra-head { display: flex; gap: 10px; align-items: center; width: 100%; padding: 12px; border: 0; background: none; color: var(--text); text-align: left; }
-    .extra-head b, .mrow b, .rrow b { font-size: 14px; font-weight: 600; }
-    .extra-head small, .mrow small, .rrow small { font-size: 12px; color: var(--text-3); line-height: 1.4; overflow-wrap: anywhere; }
-    .extra-body { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
-    .mrow { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); }
-    .mrow.on { border-color: var(--border-strong); }
-    .mval { font-size: 13px; color: var(--text-2); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .same b, .rrow b { font-size: 14px; font-weight: 600; }
+    .same small, .rrow small { font-size: 12px; color: var(--text-3); line-height: 1.4; overflow-wrap: anywhere; }
+    .modetabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+    .modetabs button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 12px 9px; border: 0; border-bottom: 2px solid transparent;
+                       margin-bottom: -1px; background: none; color: var(--text-2); font-size: 14px; font-weight: 600; white-space: nowrap; }
+    .modetabs button small { font-size: 11px; font-weight: 400; color: var(--text-3); }
+    .modetabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+    .same { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
+    .same input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+    .same span { display: flex; flex-direction: column; gap: 1px; }
     .outlets { display: flex; flex-direction: column; gap: 12px; }
     .outlets hx-plugin-outlet { flex: none; }
     .engines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-3); line-height: 1.45; }
@@ -397,6 +418,15 @@ function store(key: string, value: string): void {
     .recap { display: flex; flex-direction: column; gap: 6px; }
     .rrow { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text); }
     .rrow:hover { border-color: var(--border-strong); }
+    .msg { display: flex; gap: 10px; align-items: flex-start; }
+    .av { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--radius-full); background: var(--accent-soft); }
+    .bubble { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 4px var(--radius-lg, 14px) var(--radius-lg, 14px) var(--radius-lg, 14px);
+              background: var(--surface); border: 1px solid var(--border); }
+    .bubble b { font-size: 13px; font-weight: 600; color: var(--text-2); }
+    .bubble p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-line; }
+    .bubble small { font-size: 12px; color: var(--text-3); }
+    .bubble .warn { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--text-2); }
+    .typing { display: flex; gap: 8px; align-items: center; color: var(--text-3) !important; font-size: 14px !important; }
     .foot { background: var(--surface); border-top: 1px solid var(--border); }
     .foot .col { padding-top: 12px; padding-bottom: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
     .navrow { display: flex; align-items: center; gap: 8px; }
@@ -417,9 +447,8 @@ export class SetupPageComponent {
   readonly claudeType = CLAUDE_TYPE;
   /** The list of the steps + the downloads, opened from the step on the bar at the top. */
   panel = signal(false);
-  /** «Modelli»: the field for another Ollama model, and the optional section of the modes. */
+  /** «Modelli»: the field for another Ollama model. */
   otherOpen = signal(false);
-  modesOpen = signal(false);
 
   state = signal<SetupState | null>(null);
   catalog = signal<BrainCatalog | null>(null);
@@ -532,6 +561,47 @@ export class SetupPageComponent {
       this.voiceError.set(setupError(e));
     }
   }
+  // «Prova» on a chosen voice (hear it) or listening engine (speak, see what it understood): nothing saved.
+  trialState = signal<{ key: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  private mic: MicRecorder | null = null;
+  async tryVoice(dir: VoiceDir, row: { key: string; provider: string; model: string }) {
+    const cur = this.trialState();
+    if (dir === 'voce') {
+      this.trialState.set({ key: row.key, busy: true });
+      try {
+        const r = await this.api.voicePreview(row.provider, row.model);
+        if (r.ok && r.audio_b64) {
+          const url = URL.createObjectURL(b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'));
+          const a = new Audio(url);
+          a.onended = () => URL.revokeObjectURL(url);
+          await a.play().catch(() => undefined);
+          this.trialState.set(null);
+        } else this.trialState.set({ key: row.key, text: r.detail || 'Non ha risposto.' });
+      } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
+      return;
+    }
+    if (cur?.recording && cur.key === row.key && this.mic) {   // second tap: stop and hear it
+      const got = await this.mic.stop();
+      const mime = this.mic.mime;
+      this.mic = null;
+      if (!got) { this.trialState.set({ key: row.key, text: 'Troppo corto: tocca, parla qualche secondo, tocca di nuovo.' }); return; }
+      this.trialState.set({ key: row.key, busy: true });
+      try {
+        const r = await this.api.voiceHear(row.provider, row.model, await blobToB64(got.blob), mime);
+        this.trialState.set({ key: row.key, text: r.ok ? `Ho capito: «${r.text}»` : (r.detail || 'Non ha risposto.') });
+      } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
+      return;
+    }
+    if (this.mic) { await this.mic.stop(true); this.mic = null; }
+    try {
+      this.mic = new MicRecorder();
+      await this.mic.start();
+      this.trialState.set({ key: row.key, recording: true, text: 'Ti ascolto: parla, poi tocca di nuovo.' });
+    } catch {
+      this.mic = null;
+      this.trialState.set({ key: row.key, text: 'Il browser non mi dà il microfono (serve il permesso, o un indirizzo https).' });
+    }
+  }
   setVoice<T>(sig: WritableSignal<Record<VoiceDir, T>>, dir: VoiceDir, value: T) { sig.set({ ...sig(), [dir]: value }); }
   private optionsOf(p: VoiceProvider, dir: VoiceDir) { return dir === 'ascolto' ? p.models : p.voices; }
   voiceLocal(dir: VoiceDir): VoiceProvider[] { return (this.voiceCat()?.[dir].providers || []).filter(p => p.local); }
@@ -614,6 +684,7 @@ export class SetupPageComponent {
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
       this.reached.set(state.brain.recipe ? this.screens().length - 1 : this.index());
       if (this.screen() === 'ascolto' || this.screen() === 'voce') void this.loadVoice();
+      if (this.screen() === 'cervello') void this.sayHello();
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
     } catch (e) {
@@ -645,9 +716,12 @@ export class SetupPageComponent {
       const models: Record<string, string[]> = {};
       for (const [k, v] of Object.entries(state.brain.cloud_models || {})) models[k] = (Array.isArray(v) ? v : [v]).filter(Boolean);
       this.cloudModel.set(models);
-      const modes: Record<string, string> = {};
-      for (const [k, v] of Object.entries(state.brain.modes || {})) if (v?.model) modes[k] = `${v.provider || 'ollama'}|${v.model}`;
-      this.modes.set(modes);
+      const own: Record<string, ModeChoice> = {};
+      for (const [k, v] of Object.entries(state.brain.modes || {})) {
+        const steps = (v?.steps?.length ? v.steps : v?.model ? [v] : []) as { provider?: string; model?: string }[];
+        if (steps.length) own[k] = this.modeFromSteps(steps.map(x => ({ provider: x.provider || 'ollama', model: x.model || '' })));
+      }
+      this.modeOwn.set(own);
       // «Scelti» in the saved order (local and cloud mixed)
       const lk = this.localKey();
       const rank = (state.brain.order || []).map(o => lk && o.provider === this.localProvider() && o.model === this.localModel() ? 'h'
@@ -681,6 +755,9 @@ export class SetupPageComponent {
     this.formError.set('');
     if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
     if ((screen === 'ascolto' || screen === 'voce') && !this.voiceCat()) void this.loadVoice();
+    if (screen === 'cervello' && !this.hello()?.ok) { this.hello.set(null); void this.sayHello(); }
+    if (this.mic) { void this.mic.stop(true); this.mic = null; }
+    this.trialState.set(null);
     this.screen.set(screen);
     this.reached.set(Math.max(this.reached(), this.screens().indexOf(screen)));
     store(SCREEN_KEY, screen);
@@ -737,6 +814,20 @@ export class SetupPageComponent {
     }
   }
 
+  // ── «I modelli sono pronti»: the assistant's first message, written with the models just chosen ──
+  hello = signal<{ ok: boolean; text?: string; model?: string; detail?: string } | null>(null);
+  helloBusy = signal(false);
+  async sayHello() {
+    if (this.helloBusy()) return;
+    this.helloBusy.set(true);
+    try { this.hello.set(await this.api.hello()); }
+    catch (e) { this.hello.set({ ok: false, detail: setupError(e) }); }
+    finally { this.helloBusy.set(false); }
+    this.helloWait = this.hello()?.ok === false && this.activeDownloads() > 0;
+  }
+  /** It failed while a model was downloading: write again once the downloads are over (once). */
+  private helloWait = false;
+
   /** «Tutto pronto»: one row per choice, a tap goes back to it. */
   recapSteps(): Screen[] { return ['modelli', 'memoria', 'voce', 'telegram', 'backup', 'fuori']; }
   recapText(s: Screen): string {
@@ -754,7 +845,8 @@ export class SetupPageComponent {
 
   canNext(): boolean {
     switch (this.screen()) {
-      case 'modelli': return (this.useLocal() || this.useCloud()) && this.cloudPicked().every(n => this.cloudReady()[n]);
+      case 'modelli': return (this.useLocal() || this.useCloud()) && this.cloudPicked().every(n => this.cloudReady()[n])
+        && Object.values(this.modeOwn()).every(c => (!!c.home || c.order.length > 0) && c.order.every(n => this.cloudReady()[n]));
       case 'memoria': return this.embedOrder().every(n => this.embedReady()[n]) && (!!this.embeddingWanted() || !!this.catalog()?.embedding?.model);
       case 'ascolto': case 'voce': return this.voiceQueued() || this.voiceOk(this.screen() as VoiceDir);
       case 'telegram': return this.state()!.telegram.linked || (!this.code() && !this.state()!.telegram.token && !!this.botToken.trim());
@@ -939,39 +1031,50 @@ export class SetupPageComponent {
     return r?.host && !r.configured ? { url: r.url, type: r.type, label: r.label } : {};
   }
 
-  // ── Per modalità: Ragionamento, Codice, Immagini follow Generale unless one gets its own model ──
+  // ── Modalità: Ragionamento, Codice, Immagini use Generale's list unless one gets its own (the same step) ──
   readonly modeList = [
-    { id: 'potente', label: 'Ragionamento', help: 'le domande difficili' },
-    { id: 'codice', label: 'Codice', help: 'quando scrive o corregge codice' },
-    { id: 'visione', label: 'Immagini', help: 'foto e documenti da guardare' },
+    { id: 'generale', label: 'Generale', help: '' },
+    { id: 'potente', label: 'Ragionamento', help: 'Per le domande difficili.' },
+    { id: 'codice', label: 'Codice', help: 'Quando scrive o corregge codice.' },
+    { id: 'visione', label: 'Immagini', help: 'Foto e documenti da guardare.' },
   ];
-  /** Per mode: its own model as «provider|model» (missing = same as Generale). */
-  modes = signal<Record<string, string>>({});
-  openMode = signal('');
-  /** Same as Generale, then every model the step can use: the programs at home and the cloud services that work. */
-  modeItems = computed<PickItem[]>(() => {
-    const out: PickItem[] = [{ id: '', title: 'Come Generale', icon: 'check', note: 'Gli stessi modelli scelti qui sopra.' }];
-    for (const it of this.localItems()) out.push({ ...it, group: 'Locale' });
-    for (const n of this.cloudPicked()) {
-      if (!this.cloudReady()[n]) continue;
-      for (const it of this.cloudLists()[n] || []) out.push({ ...it, id: `${n}|${it.id}`, note: this.cloudLabel(n), group: this.cloudLabel(n) });
+  modeTab = signal('generale');
+  /** Per mode with its own list: the same choices as Generale (local, services in order, models, «Scelti» order). */
+  modeOwn = signal<Record<string, ModeChoice>>({});
+  /** «Gli stessi di Generale» off → a copy of Generale to change; on → back to Generale. */
+  toggleMode(mode: string) {
+    const next = { ...this.modeOwn() };
+    if (next[mode]) delete next[mode];
+    else next[mode] = { home: this.localKey(), order: [...this.cloudPicked()], picks: { ...this.cloudModel() }, rank: [...this.cloudRank()] };
+    this.modeOwn.set(next);
+  }
+  setMode<K extends keyof ModeChoice>(mode: string, field: K, value: ModeChoice[K]) {
+    const cur = this.modeOwn()[mode];
+    if (cur) this.modeOwn.set({ ...this.modeOwn(), [mode]: { ...cur, [field]: value } });
+  }
+  /** A saved list → the step's choices: a step on a program found here (or not a cloud service) is the local one. */
+  private modeFromSteps(steps: { provider: string; model: string }[]): ModeChoice {
+    const cloud = new Set((this.catalog()?.cloud || []).map(c => c.name));
+    const out: ModeChoice = { home: '', order: [], picks: {}, rank: [] };
+    for (const st of steps) {
+      if (!cloud.has(st.provider)) { if (!out.home) { out.home = `${st.provider}|${st.model}`; out.rank.push('h'); } continue; }
+      if (!out.order.includes(st.provider)) out.order.push(st.provider);
+      if (st.model) out.picks[st.provider] = [...(out.picks[st.provider] || []), st.model];
+      out.rank.push(st.model ? `m:${st.provider}:${st.model}` : `s:${st.provider}`);
     }
     return out;
-  });
-  modeText(id: string): string {
-    const own = this.modes()[id];
-    return own ? own.split('|').slice(1).join('|') : 'Come Generale';
   }
-  /** Closed section: «Facoltativo» or the modes that have their own model. */
-  modesSummary(): string {
-    const own = this.modeList.filter(m => this.modes()[m.id]).map(m => `${m.label}: ${this.modeText(m.id)}`);
-    return own.length ? own.join(' · ') : 'Facoltativo: di solito tutte usano i modelli scelti qui sopra.';
-  }
-  pickMode(mode: string, id: string) {
-    const next = { ...this.modes() };
-    if (id) next[mode] = id; else delete next[mode];
-    this.modes.set(next);
-    this.openMode.set('');
+  /** What to send for each mode with its own list: its steps in the «Scelti» order (a program elsewhere with its address). */
+  private modeSteps(): BrainChoice['modes'] {
+    const out: BrainChoice['modes'] = {};
+    for (const [mode, c] of Object.entries(this.modeOwn())) {
+      const steps = ranked(chosenKeys(c.home, c.order, c.picks), c.rank).map(k => {
+        const st = keyStep(k, c.home);
+        return k === 'h' ? { ...st, ...this.runtimeOf(st.provider) } : st;
+      });
+      if (steps.length) out[mode] = { steps };
+    }
+    return out;
   }
 
   // ── Servizi cloud (the same cards as the voice's cloud services) ──
@@ -986,7 +1089,6 @@ export class SetupPageComponent {
       tag: p.type === 'gemini' ? 'Gratis' : '', note: p.type === 'gemini' ? 'Chiave gratis da Google.' : '',
     }));
   /** Per cloud service: its chat models (for «Per modalità») and its memory models, read by «Prova». */
-  cloudLists = signal<Record<string, PickItem[]>>({});
   private embedLists: Record<string, string[]> = {};
   /** «Prova» of a brain service: a typed key is saved once (the module re-reads it in a second), then its model list is
    * read (no tokens spent). The same check serves Modelli (chat models) and Memoria (embedding models). */
@@ -1006,7 +1108,6 @@ export class SetupPageComponent {
   readonly chatTester = async (name: string, key: string): Promise<ServiceCheck> => {
     const r = await this.brainCheck(name, key);
     const options = (r.models || []).map(m => ({ id: m, title: m, icon: 'zap', group: family(m) }));
-    this.cloudLists.set({ ...this.cloudLists(), [name]: options });
     this.embedLists[name] = r.embed || [];
     return { ok: r.ok, detail: r.detail, recommended: r.recommended || [], options };
   };
@@ -1024,14 +1125,11 @@ export class SetupPageComponent {
     const r = this.recipe();
     const local = this.localModel();
     const cloud = this.cloudPicked();
-    const claude = cloud.find(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
+    const used = [...cloud, ...Object.values(this.modeOwn()).flatMap(c => c.order)];
+    const claude = used.find(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
     const models: Record<string, string[]> = {};
     for (const n of cloud) if (this.cloudModel()[n]?.length) models[n] = this.cloudModel()[n];
-    const modes: BrainChoice['modes'] = {};
-    for (const [mode, id] of Object.entries(this.modes())) {
-      const [provider, ...rest] = id.split('|');
-      if (rest.length) modes[mode] = { provider, model: rest.join('|'), ...this.runtimeOf(provider) };
-    }
+    const modes = this.modeSteps();
     const out = await this.api.apply(r, local, cloud, claude ? (this.cloudTokens()[claude] || '').trim() : '', {
       local_provider: this.localProvider(), cloud_models: models, embedding: this.embeddingChoice(),
       local_runtime: local ? this.runtimeOf(this.localProvider()) : {}, modes,
@@ -1105,6 +1203,8 @@ export class SetupPageComponent {
     if (screen === 'telegram' && this.code()) {
       void this.refresh().then(() => { if (this.state()?.telegram.linked) this.code.set(''); });
     }
+    // the local model was still downloading: write again as soon as the downloads are over
+    if (screen === 'cervello' && this.helloWait && !this.activeDownloads() && !this.helloBusy()) { this.helloWait = false; void this.sayHello(); }
     const list = this.downloads();
     if (this.activeDownloads() || (!list.length && this.ticks % 5 === 0) || this.ticks % 20 === 0) void this.refreshDownloads();
     const t = this.tunnel();
