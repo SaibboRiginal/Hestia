@@ -613,6 +613,7 @@ export class SetupPageComponent {
       const many = (cat?.[dir].providers || []).filter(x => x.local).length > 1;
       this.optionsOf(p, dir).forEach((o, i) => out.push({
         id: `${p.name}|${o.id}`, title: many ? `${this.engineName(p)} · ${o.label}` : o.label, group: many ? this.engineName(p) : '',
+        lang: o.lang, langLabel: o.lang_label,
         note: o.note || (p.state === 'ready' ? '' : 'Lo scarico quando confermi.'),
         tag: dir === 'voce' && p.type === 'kokoro' && i === 0 ? 'Consigliato' : '' }));
     }

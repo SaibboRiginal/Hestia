@@ -36,7 +36,7 @@ export interface BrainCatalog {
 }
 /** Any module's download (models through Ollama, voices in Hestia's data folder), as the Download page lists them. */
 /** A speech service of the setup «Voce» (Echo's blocks): local engines first, then cloud ones (key needed). */
-export interface VoiceOption { id: string; label: string; note?: string; }
+export interface VoiceOption { id: string; label: string; note?: string; lang?: string; lang_label?: string; }
 export interface VoiceProvider { name: string; label: string; type: string; local: boolean; needs_key: boolean; key: boolean;
   state: string; models: VoiceOption[]; voices: VoiceOption[]; note?: string; found?: boolean; url?: string; }
 /** ``url``/``type``/``label`` only for a speech program found at home that is not a block yet. */
