@@ -346,7 +346,8 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    Oracle `setup/test` returns `recommended`, `setup/apply` takes `cloud_models {service: [models]}` in order.
    The page has one step component for Modelli (chat models only), Memoria (embedding models, at home or a cloud
    one such as Gemini's), Ascolto and Voce; `setup/apply` also takes `modes` (Ragionamento/Codice/Immagini with their
-   own model first in `potente/codice/visione`).
+   own model first in `potente/codice/visione`) and `order` (the «Scelti» list in the user's order, local and cloud
+   mixed, Hephaestus → Oracle `plan_chains` sorts the chat steps by it).
 2c. Google by hand: setup screen «Calendario, mail e dispositivi» and the Dispositivi page mount Hecate's
    `<hecate-google>` → WebUI `/api/webui/plugins/hecate/call/…` → Hub → Hecate `auth/google/client` (OAuth client
    kept in `Hestia-Hecate/data`), `auth/initiate/google` → Google's page in a new tab → callback or pasted address →
