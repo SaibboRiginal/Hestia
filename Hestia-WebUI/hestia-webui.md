@@ -122,7 +122,9 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - Dashboards from the chat: Hestia reads `webui_widgets` / `webui_dashboards` and proposes `webui.dashboards`
   (Themis, layer `client:webui`); the confirm card appears in the same chat (ChatHub sends the answer with
   `client: webui`, shows the outcome as a notice) and the WebUI reloads its config (also every 60 s).
-- CSP: `script-src … blob:` (plugin modules) and `img-src … https:` (module photos).
+- CSP: `script-src … blob:` (plugin modules), `img-src … https:` (module photos) and `media-src 'self' blob: data:`
+  (every sound the site plays is a blob URL: without it «Ascolta», voice messages, Parla and the setup's voice try
+  stayed silent, fixed 2026-11-07).
 - Icon set (`ui/icon.component.ts`, mirrored by the SDK `hxk-icon`): 2026-10-20 added `bookmark` (Oracle page **Memoria**: what Hestia remembers, from chat or an external AI via `memory_note`); 2026-10-19 added `wallet`, `upload`, `target`,
   `mail`. New plugins that use them: **Spese** (module `plutus`, decade 60: Panoramica, Movimenti, Budget,
   Abbonamenti, Importa, Statistiche, Categorie e regole; widgets *Spese del mese* / *Ultimi movimenti*; quick action
@@ -524,10 +526,12 @@ the Claude code) is already saved, in every step. Modelli lists only chat models
 unticked, the mode gets its own copy of the same step, with its own «Scelti» to change and reorder (sent as
 `modes {mode: {steps: [{provider, model}]}}`; the keys are shared between the modes, the model lists are read by
 each step when a service is opened). «I modelli sono pronti» shows the assistant's first message, written
-with the models just chosen (`brain/hello`, «Scritto con <model>»); when the local model is still downloading it
-writes again once the download is over. In Voce every chosen row has «Ascolta» (a short sentence with that voice,
-`voice/preview`), in Ascolto «Prova a parlare» (tap, speak, tap: «Ho capito: …», `voice/hear`); a local engine not
-downloaded yet says it can be tried after «Conferma». Memoria is the same step with `single`: one embedding model in all,
+with the models just chosen (`brain/hello`, «Scritto con <model>»), drawn by the chat's own `hx-assistant-text`
+(`features/chat/assistant-text.component.ts`: prose, answer blocks, typing dots, caret), so it looks like the chat; when the local model is still downloading it
+writes again once the download is over. In Voce every voice has «Ascolta», in the lists too, before choosing it (a short sentence with that voice,
+`voice/preview`; `setup-pick` `trial`), in Ascolto «Prova a parlare» on every engine (tap, speak, tap: «Ho capito: …»,
+`voice/hear`); a local engine not downloaded yet says it can be tried after «Conferma», a sound the browser refuses
+to play says so (never a silent play). Memoria is the same step with `single`: one embedding model in all,
 local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
 Voce writes both chains and queues the downloads. The «Calendario, mail e Garmin» screen mounts only Hecate's own

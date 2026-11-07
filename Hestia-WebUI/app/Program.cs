@@ -208,10 +208,12 @@ app.Use(async (context, next) =>
         // photos a module shows from the web (e.g. Scout listing photos). Client plugins SPEC §4.3.
         // frame-ancestors: only Telegram Web/Desktop may embed the page (Mini App, docs/work/2026-10-23-telegram-da-zero);
         // it replaces X-Frame-Options DENY, which cannot name an allowed origin.
+        // media-src blob: = every sound the site plays (Ascolta, voice messages, Parla, the setup's voice try) is a
+        // blob URL; without it default-src 'self' blocks them and the browser plays nothing (2026-11-07).
         "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws: wss:; " +
-        "img-src 'self' data: blob: https:; frame-src 'none'; object-src 'none'; " +
+        "img-src 'self' data: blob: https:; media-src 'self' blob: data:; frame-src 'none'; object-src 'none'; " +
         "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org";
     await next();
 });

@@ -271,7 +271,7 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` | — | Optional Gmail push: `projects/<project>/subscriptions/<sub>` (pull). Push is active only when topic + subscription are set |
 | `HECATE_GMAIL_PUBSUB_CREDENTIALS` | `/code/data/gmail-pubsub-sa.json` | Service-account JSON key (only *Pub/Sub Subscriber*) used for the streaming pull |
 | `GARMIN_EMAIL` · `GARMIN_PASSWORD` | — | Optional: Garmin Connect login without the secret form (used once to get the tokens) |
-| `HECATE_GARMIN_TOKENS` | `/code/data/garmin` | Garmin OAuth tokens (garth), data volume |
+| `HECATE_GARMIN_TOKENS` | `/code/data/garmin` | Garmin tokens (`garmin_tokens.json`, garminconnect ≥ 0.3), data volume |
 | `HECATE_PHONE_TOKEN` | — | Secret the phone sends in `X-Hestia-Phone-Token`; empty = phone webhook off (503) |
 | `HECATE_UI_DIST` | `/ui/dist` | WebUI plugin bundle folder (set in the Dockerfile; infra only) |
 | `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
@@ -322,6 +322,10 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   so there is no notification to chase; from Telegram or the assistant (tool `garmin_collega`) a Hermes secret form
   is sent instead. The password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
   signal `wearable.woke_at`. A missing part (e.g. HRV on an older watch) is skipped, the day stays.
+  Login uses `garminconnect ≥ 0.3.20` (its own Garmin login; the old `garth` one stopped working when Garmin
+  changed its sign-in, so old `oauth1/oauth2_token.json` files count as not connected and are removed on the next
+  link). A refused login answers 422 with the reason in words (`GarminService.explain`: wrong email/password,
+  too many attempts, Garmin not answering) and logs `[🔄] event=garmin_login_failed error=<type>`.
 - **Phone** (Cindy 32): Tasker / MacroDroid POST `https://<tunnel>/api/gateway/phone/push` with header
   `X-Hestia-Phone-Token: <HECATE_PHONE_TOKEN>`. On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
   "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Fuori casa», no

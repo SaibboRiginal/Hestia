@@ -41,11 +41,23 @@ export function family(id: string): string {
     }
     <div class="choices" [attr.role]="multi() ? 'group' : 'radiogroup'">
       @for (it of visible(); track it.id) {
-        <button type="button" class="choice" [attr.role]="multi() ? 'checkbox' : 'radio'" [attr.aria-checked]="on(it.id)" [class.sel]="on(it.id)" (click)="picked.emit(it.id)">
-          <hx-icon [name]="multi() && on(it.id) ? 'check-circle' : it.warn ? 'alert' : (it.icon || 'host')" [size]="18" [tone]="on(it.id) ? 'accent' : (it.warn ? 'warning' : 'muted')" />
-          <span class="ct"><b>{{ it.title }}</b>@if (place(it.id); as n) { <span class="rec">{{ n }}º</span> } @else if (it.tag) { <span class="rec">{{ it.tag }}</span> }
-            @if (it.note) { <small>{{ it.note }}</small> }</span>
-        </button>
+        <div class="item">
+          <button type="button" class="choice" [attr.role]="multi() ? 'checkbox' : 'radio'" [attr.aria-checked]="on(it.id)" [class.sel]="on(it.id)" (click)="picked.emit(it.id)">
+            <hx-icon [name]="multi() && on(it.id) ? 'check-circle' : it.warn ? 'alert' : (it.icon || 'host')" [size]="18" [tone]="on(it.id) ? 'accent' : (it.warn ? 'warning' : 'muted')" />
+            <span class="ct"><b>{{ it.title }}</b>@if (place(it.id); as n) { <span class="rec">{{ n }}º</span> } @else if (it.tag) { <span class="rec">{{ it.tag }}</span> }
+              @if (it.note) { <small>{{ it.note }}</small> }
+              @if (trying(it.id)?.text; as t) { <small class="heard">{{ t }}</small> }</span>
+          </button>
+          @if (trial()) {
+            @if (trying(it.id)?.busy) { <span class="try"><hx-spinner /></span> }
+            @else {
+              <button type="button" class="try" [class.rec]="!!trying(it.id)?.recording" (click)="tried.emit(it.id)"
+                      [attr.aria-label]="trial() === 'voce' ? 'Ascolta ' + it.title : (trying(it.id)?.recording ? 'Ferma e prova' : 'Prova a parlare con ' + it.title)">
+                <hx-icon [name]="trial() === 'voce' ? 'play' : (trying(it.id)?.recording ? 'stop' : 'mic')" [size]="16" />
+              </button>
+            }
+          }
+        </div>
       } @empty {
         <p class="none">{{ query() ? 'Nessun risultato.' : empty() }}</p>
       }
@@ -59,6 +71,12 @@ export function family(id: string): string {
     .search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0 10px; background: var(--surface); }
     .search input { border: 0; background: none; box-shadow: none; padding-left: 0; flex: 1; min-width: 0; }
     .choices { display: flex; flex-direction: column; gap: 6px; }
+    .item { display: flex; gap: 6px; align-items: stretch; }
+    .try { flex: none; display: grid; place-items: center; width: 42px; border: 1px solid var(--border); border-radius: var(--radius-md);
+           background: var(--surface); color: var(--text-2); }
+    .try:hover { border-color: var(--border-strong); color: var(--accent); }
+    .try.rec { border-color: var(--danger); color: var(--danger); }
+    .heard { color: var(--text-2) !important; }
     .choice { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 11px 12px; border: 1px solid var(--border);
               border-radius: var(--radius-md); background: var(--surface); color: var(--text); width: 100%;
               transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
@@ -86,6 +104,12 @@ export class SetupPickComponent {
   /** Cards before «Mostra tutti». */
   limit = input<number>(5);
   picked = output<string>();
+  /** A try button on every card: «voce» = hear it, «ascolto» = speak and see what it understood ('' = none). */
+  trial = input<'voce' | 'ascolto' | ''>('');
+  /** The try in progress or just done, by card id. */
+  trialState = input<{ id: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  tried = output<string>();
+  trying(id: string) { const t = this.trialState(); return t && t.id === id ? t : null; }
   /** Chips only on lists long enough to need them (the search box is always there: every list looks the same). */
   readonly searchFrom = 6;
   query = signal('');

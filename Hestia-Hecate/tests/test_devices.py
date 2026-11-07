@@ -24,7 +24,7 @@ RUN = {"activityId": 991, "activityName": "Corsa mattutina", "activityType": {"t
 class FakeGarmin:
     def __init__(self, email=None, password=None, mfa=False):
         self.email, self.password, self.mfa = email, password, mfa
-        self.garth = self
+        self.client = self                      # garminconnect >= 0.3: tokens live on .client
 
     def login(self, tokenstore=None):
         return ("needs_mfa", {"s": 1}) if self.mfa else (None, None)
@@ -34,7 +34,7 @@ class FakeGarmin:
 
     def dump(self, path):
         from pathlib import Path
-        Path(path, "oauth1_token.json").write_text("{}")
+        Path(path, "garmin_tokens.json").write_text("{}")
 
     def get_sleep_data(self, d):
         return SLEEP
@@ -76,6 +76,28 @@ def test_login_with_code_then_day(tmp_path):
     svc.forget()
     with pytest.raises(GarminError):
         svc.client()
+
+
+def test_old_garth_tokens_count_as_not_connected(tmp_path):
+    d = tmp_path / "g"
+    d.mkdir()
+    (d / "oauth1_token.json").write_text("{}")              # Garmin changed its login: these no longer work
+    svc = GarminService(d, factory=lambda e=None, p=None: FakeGarmin(e, p), env=lambda k: None)
+    assert svc.status()["connected"] is False
+    assert svc.login("me@example.org", "pw")["status"] == "connected"
+    assert not (d / "oauth1_token.json").exists() and (d / "garmin_tokens.json").is_file()
+
+
+def test_explain_failed_login():
+    class GarminConnectAuthenticationError(Exception):
+        pass
+
+    class GarminConnectTooManyRequestsError(Exception):
+        pass
+
+    assert "email o password" in GarminService.explain(GarminConnectAuthenticationError("401"))
+    assert "un'ora" in GarminService.explain(GarminConnectTooManyRequestsError("429"))
+    assert "(KeyError)" in GarminService.explain(KeyError("x"))
 
 
 @pytest.fixture

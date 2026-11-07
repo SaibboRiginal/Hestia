@@ -111,7 +111,7 @@ never changes.
 | Method | Path | What |
 | --- | --- | --- |
 | POST | `/transcribe` | `{audio_b64, mime_type, use_case, language?, keep?}` → `{text, language, duration_s, provider, model, chain, mode, fallback, blob_id?}` |
-| POST | `/speak` | `{text, use_case, format?, voice?, keep?}` → `{audio_b64, mime_type, duration_s, provider, voice, blob_id?}` (reuses kept audio of the same message + text) |
+| POST | `/speak` | `{text, use_case, format?, voice?, keep?}` → `{audio_b64, mime_type, duration_s, provider, voice, blob_id?}` (reuses kept audio of the same message + text); an answer under 0.2 s or with no sound (peak under `MUTE_PEAK`) is a 400 with the reason, never a mute file |
 | POST | `/listen`, `/listen/{sid}/chunk`, `/listen/{sid}/end` | mic stream: open · chunk `{seq, audio_b64, partial?}` → `{partial, silence_ms, duration_s}` · end → like `/transcribe` |
 | POST | `/say`, `/say/{sid}/text`, `/say/{sid}/end` | voice stream: open `{use_case, format}` · text `{delta}` → `{blocks[{seq, text, audio_b64, mime_type}]}` · end `{keep?}` |
 | GET | `/live` | `{silence_ms, language, voiceprint}` for clients' live mode |

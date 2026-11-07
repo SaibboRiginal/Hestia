@@ -114,8 +114,9 @@ def garmin_login(body: dict = Body(...)):
     except GarminError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:  # noqa: BLE001 — wrong password, Garmin down…
-        logger.warning("event=garmin_login_failed error=%s", type(exc).__name__)
-        raise HTTPException(status_code=422, detail="Garmin non ha accettato l'accesso, riprova")
+        # the library's message (never the password) tells what really happened: logged and turned into words
+        logger.warning("[🔄] event=garmin_login_failed error=%s detail=%s", type(exc).__name__, str(exc)[:200])
+        raise HTTPException(status_code=422, detail=garmin.explain(exc))
     if out["status"] == "needs_code":
         if direct:
             return {**out, "message": "Garmin ti ha mandato un codice: scrivilo qui."}

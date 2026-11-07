@@ -541,3 +541,12 @@ def test_setup_hear_tries_that_provider_only(world):
 def test_setup_preview_speaks_with_that_voice(world):
     out = world["echo"].setup_preview({"provider": "due", "voice": "v9"})
     assert out["ok"] and out["audio_b64"] and world["engine"].calls[-1][:3] == ("s", "due", "v9")
+
+
+@needs_ffmpeg
+def test_mute_voice_is_an_error_not_a_silent_play(world):
+    """Marko 2026-11-07 «play della voce non sento niente»: a mute file is said, never played as if fine."""
+    world["engine"].speak = lambda *a, **k: (audio.wav_bytes(b"\x00\x00" * 16000, 16000), "audio/wav")
+    out = world["echo"].setup_preview({"provider": "due", "voice": "v9"})
+    assert out["ok"] is False and "muto" in out["detail"]
+    assert audio.peak(tone(0.3)) > 0.25 and audio.peak(b"not a wav") == 0.0

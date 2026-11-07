@@ -101,7 +101,8 @@ export function keyStep(key: string, home: string): { provider: string; model: s
     @if (tab() === 'locale') {
       <section class="pane">
         @if (homeItems().length) {
-          <app-setup-pick [items]="homeItems()" [selected]="home()" [limit]="5" placeholder="Cerca" (picked)="pickHome($event)" />
+          <app-setup-pick [items]="homeItems()" [selected]="home()" [limit]="5" placeholder="Cerca" (picked)="pickHome($event)"
+                          [trial]="trial()" [trialState]="itemTrial('h|')" (tried)="tryItem('h|' + $event)" />
         } @else {
           <p class="none">{{ homeEmpty() }}</p>
           @for (r of programs(); track r.name; let first = $first) {
@@ -170,7 +171,8 @@ export function keyStep(key: string, home: string): { provider: string; model: s
                   }
                   @if ((lists()[p.name] || []).length) {
                     <app-setup-pick [items]="lists()[p.name]" [multi]="!single()" [chosen]="picks()[p.name] || []" [selected]="(picks()[p.name] || [])[0] || ''"
-                                    [limit]="5" placeholder="Cerca" (picked)="pick(p.name, $event)" />
+                                    [limit]="5" placeholder="Cerca" (picked)="pick(p.name, $event)"
+                                    [trial]="trial()" [trialState]="itemTrial('m:' + p.name + ':')" (tried)="tryItem('m:' + p.name + ':' + $event)" />
                   } @else if (p.kind === 'none') {
                     <div class="row"><button hx-btn [variant]="inUse(p.name) ? 'ghost' : 'primary'" (click)="useService(p.name)">{{ inUse(p.name) ? 'Togli' : 'Usa' }}</button></div>
                   } @else {
@@ -326,6 +328,15 @@ export class SetupChainComponent {
   });
 
   emitTry(key: string) { this.tryRow.emit({ key, ...keyStep(key, this.home()) }); }
+  /** The try button of a card in the lists (before choosing it): key «h|program|id» (local) or «m:svc:id» (cloud). */
+  tryItem(key: string) {
+    this.tryRow.emit(key.startsWith('h|') ? { key, ...keyStep('h', key.slice(2)) } : { key, ...keyStep(key, '') });
+  }
+  /** The page's try state seen by one list (its cards' ids are the key without the prefix). */
+  itemTrial(prefix: string) {
+    const t = this.trialState();
+    return t && t.key.startsWith(prefix) ? { ...t, id: t.key.slice(prefix.length) } : null;
+  }
 
   /** ↑ ↓: swap with the neighbour; the whole order is kept from then on. */
   move(i: number, d: -1 | 1) {

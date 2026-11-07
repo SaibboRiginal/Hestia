@@ -1,7 +1,7 @@
 """Garmin Connect (B10, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4): fully automatic, or nothing.
 
 Garmin has no official API for personal use: the ``garminconnect`` library logs in like the Garmin Connect app and
-keeps OAuth tokens (``garth``) in ``HECATE_GARMIN_TOKENS`` (default ``/code/data/garmin``, a data folder, never in
+keeps its tokens (``garmin_tokens.json``, garminconnect ≥ 0.3) in ``HECATE_GARMIN_TOKENS`` (default ``/code/data/garmin``, a data folder, never in
 git). The password is used once and never stored: Marko types it in the secret form (Hermes «Collega Garmin») or
 sets ``GARMIN_EMAIL``/``GARMIN_PASSWORD`` in Hecate's ``.env``; a two-step code (MFA) is asked with a second form.
 
@@ -30,6 +30,9 @@ ACTIVITY_KINDS = {"running": "corsa", "trail_running": "corsa", "treadmill_runni
 
 class GarminError(RuntimeError):
     pass
+
+
+TOKEN_FILE = "garmin_tokens.json"
 
 
 def _default_factory(email: str | None = None, password: str | None = None):
@@ -96,7 +99,9 @@ class GarminService:
 
     # ── account ──────────────────────────────────────────────────────────────
     def has_tokens(self) -> bool:
-        return self.dir.is_dir() and any(self.dir.iterdir())
+        # garminconnect ≥ 0.3 keeps one ``garmin_tokens.json``; the old garth files (oauth1/oauth2_token.json) no
+        # longer work since Garmin changed its login (2026): they count as not connected, so the user links again.
+        return (self.dir / TOKEN_FILE).is_file()
 
     def status(self) -> dict:
         env_creds = bool(self.env("GARMIN_EMAIL") and self.env("GARMIN_PASSWORD"))
@@ -105,8 +110,22 @@ class GarminService:
 
     def _save(self, client) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
-        client.garth.dump(str(self.dir))
+        for old in ("oauth1_token.json", "oauth2_token.json"):   # garth's, unreadable now
+            (self.dir / old).unlink(missing_ok=True)
+        client.client.dump(str(self.dir))   # garminconnect ≥ 0.3: native tokens (garth is gone)
         self._client = client
+
+    @staticmethod
+    def explain(exc: Exception) -> str:
+        """A failed login in words, from the kind of error garminconnect raises."""
+        kind = type(exc).__name__
+        if "TooManyRequests" in kind or "429" in str(exc):
+            return "Garmin ha bloccato i tentativi per un po' (troppi accessi): riprova tra un'ora."
+        if "Authentication" in kind:
+            return "Garmin non ha accettato email o password. Se sono giuste, accedi una volta su connect.garmin.com e riprova."
+        if "Connection" in kind or "Timeout" in kind:
+            return "Garmin non risponde in questo momento: riprova tra poco."
+        return f"Garmin non ha accettato l'accesso ({kind}): riprova."
 
     def login(self, email: str, password: str) -> dict:
         """First step: email + password (never stored). → ``{status: connected | needs_code}``."""
