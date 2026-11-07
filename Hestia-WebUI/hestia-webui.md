@@ -531,7 +531,9 @@ with the models just chosen (`brain/hello`, «Scritto con <model>»), drawn by t
 writes again once the download is over. In Voce every voice has «Ascolta», in the lists too, before choosing it (a short sentence with that voice,
 `voice/preview`; `setup-pick` `trial`), in Ascolto «Prova a parlare» on every engine (tap, speak, tap: «Ho capito: …»,
 `voice/hear`); a local engine not downloaded yet says it can be tried after «Conferma», a sound the browser refuses
-to play says so (never a silent play). Memoria is the same step with `single`: one embedding model in all,
+to play says so (never a silent play). Voce says it speaks in the language you write in; every voice shows its
+language, and under the local list (in every step) «Altri programmi gratis» lists the programs not found yet
+(Modelli: LM Studio…; Voce: Chatterbox, Kokoro-FastAPI, Speaches) with their site. Memoria is the same step with `single`: one embedding model in all,
 local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
 Voce writes both chains and queues the downloads. The «Calendario, mail e Garmin» screen mounts only Hecate's own

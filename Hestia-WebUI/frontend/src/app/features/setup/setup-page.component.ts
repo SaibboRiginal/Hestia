@@ -302,6 +302,7 @@ function store(key: string, value: string): void {
               @if (voiceError()) { <p class="fact warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
             } @else {
               <app-setup-chain [homeItems]="voiceLocalItems(dir.id)" [home]="voiceLocalPick()[dir.id]" (homeChange)="setVoice(voiceLocalPick, dir.id, $event)"
+                               [programs]="voiceCat()?.[dir.id]?.programs || []"
                                homeEmpty="Nessun programma per la voce trovato."
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)"
@@ -503,7 +504,7 @@ export class SetupPageComponent {
   // ── Voce (Echo's blocks, the same cards as the cloud services) ──
   readonly voiceDirs = [
     { id: 'ascolto' as const, question: 'Come ti ascolta?', lead: 'Per capire quello che dici a voce.' },
-    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'La voce con cui Hestia ti parla.' },
+    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'Parla nella lingua in cui le scrivi: se scrivi in inglese, risponde con una voce inglese.' },
   ];
   /** The voice screen open now (Ascolto or Voce): the same step, one direction each. */
   voiceDir = computed(() => this.voiceDirs.find(d => d.id === this.screen()) || null);

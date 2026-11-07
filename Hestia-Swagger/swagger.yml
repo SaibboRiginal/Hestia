@@ -7948,7 +7948,7 @@ paths:
       parameters:
         - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
-        "200": {description: "{ascolto {providers[], current}, voce {providers[], current}}"}
+        "200": {description: "{ascolto {providers[], current, steps, programs[]}, voce {…}}; programs = free speech programs to install {name, label, site, note}"}
 
   /api/setup/voice/preview:
     post:
@@ -13068,7 +13068,7 @@ paths:
   /api/voice/setup/catalog:
     get:
       tags: [Echo]
-      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
+      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Chatterbox 8004, Kokoro-FastAPI 8880, Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
       servers:
         - url: http://localhost:19021
       parameters:

@@ -491,7 +491,9 @@ def test_voice_setup_finds_speech_programs_at_home_and_adds_the_chosen_one(monke
     from app.core import voice_setup
     from app.core.blocks import Blocks, PROVIDERS_KEY
 
-    def fake_openai(base):
+    def fake_openai(base, model=""):
+        if base == "http://host.docker.internal:8004/v1":              # Chatterbox: no model list, only voices
+            return {"ascolto": [], "voce": [], "voices": [{"id": "Emily.wav", "label": "Emily.wav"}]}
         return ({"ascolto": [{"id": "Systran/faster-whisper-small", "label": "Systran/faster-whisper-small"}],
                  "voce": [{"id": "speaches-ai/Kokoro-82M", "label": "speaches-ai/Kokoro-82M"}],
                  "voices": [{"id": "af_heart", "label": "af_heart"}]} if base == "http://192.168.1.20:8000/v1" else None)
@@ -513,6 +515,25 @@ def test_voice_setup_finds_speech_programs_at_home_and_adds_the_chosen_one(monke
     assert out["ok"] and stored[PROVIDERS_KEY]["speaches-192-168-1-20"]["url"] == "http://192.168.1.20:8000/v1"
     assert "_new" not in out["chains"]["ascolto"]["steps"][0]
     assert voice_setup.is_home("http://192.168.1.20:8000/v1") and not voice_setup.is_home("https://api.groq.com/openai/v1")
+    # Marko 2026-11-07 «mettiamo tutte le voci locali»: Chatterbox found by its voices, the others offered to install
+    assert speak["chatterbox"]["voices"][0]["id"] == "Emily.wav"
+    offered = [p["name"] for p in cat["voce"]["programs"]]
+    assert "chatterbox" not in offered and "kokoro-fastapi" in offered and "speaches" not in offered
+
+
+@pytest.mark.unit
+def test_voice_follows_the_language_of_the_text():
+    """Marko 2026-11-07: an English reply in English with an English voice of the same kind, never Italian Sara."""
+    from app.core import lang, standards
+    k, p = standards.Kokoro(), standards.Piper()
+    assert lang.detect("Hi, tomorrow at nine you have the gym.", "it") == "en"
+    assert lang.detect("Domani alle nove hai la palestra.", "en") == "it" and lang.detect("Ok", "it") == "it"
+    assert k.for_language("if_sara", "en") == "af_heart" and k.for_language("im_nicola", "en") == "am_michael"
+    assert k.for_language("if_sara", "it") == "if_sara" and k.voice_language("bf_emma") == "en"
+    assert p.for_language("it_IT-riccardo-x_low", "en") == "en_US-ryan-medium"
+    with pytest.raises(standards.EngineError):        # no German Kokoro voice: the chain moves on
+        k.for_language("if_sara", "de")
+    assert len(k.voices({}, "auto")) == len(standards.KOKORO_ALL) and k.voices({}, "auto")[0]["label"] == "Sara · italiano"
 
 
 @pytest.mark.unit

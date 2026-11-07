@@ -62,8 +62,8 @@ API = "/api/voice"
 # ── settings (Themis) ────────────────────────────────────────────────────────
 MODES = [("interna", "Interna: catene di Echo"), ("esterna", "Esterna: un motore voce fa tutto, Echo fa da porta")]
 FALLBACKS = [("interna", "Torna alle catene interne"), ("nessuno", "Nessuno: dimmi che non va")]
-LANGUAGES = [("it", "Italiano"), ("en", "Inglese"), ("es", "Spagnolo"), ("fr", "Francese"), ("de", "Tedesco"),
-             ("auto", "Riconosci da solo (solo ascolto)")]
+LANGUAGES = [("auto", "Segui la conversazione"), ("it", "Italiano"), ("en", "Inglese"), ("es", "Spagnolo"),
+             ("fr", "Francese"), ("de", "Tedesco")]
 
 settings = SettingsClient("echo")
 settings.declare([
@@ -88,7 +88,7 @@ settings.declare([
             depends_on={"key": MODE_KEY, "equals": "esterna"}, help="Vuoto = quello predefinito del motore."),
     setting(FALLBACK_KEY, "Se il motore esterno non risponde", "enum", "interna", group="Voce", order=6,
             options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
-    setting("echo.language", "Lingua", "enum", "it", group="Voce", order=7, options=LANGUAGES),
+    setting("echo.language", "Lingua", "enum", "auto", group="Voce", order=7, options=LANGUAGES),
     setting("echo.voce.max_chars", "Lettura massima", "int", 1200, group="Voce", order=8, min=200, max=10000,
             unit="caratteri", help="Oltre, la voce legge l'inizio e dice che il resto è nel testo."),
     setting("echo.ascolto.max_seconds", "Audio più lungo accettato", "int", 600, group="Voce", order=9, min=30,

@@ -42,7 +42,9 @@ export interface VoiceProvider { name: string; label: string; type: string; loca
 /** ``url``/``type``/``label`` only for a speech program found at home that is not a block yet. */
 export interface VoiceStep { provider: string; model: string; voice: string; url?: string; type?: string; label?: string; }
 /** Per direction: the services, the first step now and the whole chain in order. */
-export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep; steps?: VoiceStep[]; }
+export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep; steps?: VoiceStep[];
+  /** Free speech programs not found at home, offered to install (Chatterbox, Kokoro, Speaches). */
+  programs?: { name: string; label: string; site: string; note: string }[]; }
 export interface VoiceCatalog { ascolto: VoiceDirection; voce: VoiceDirection; }
 export interface Download { module?: string; id: string; what: string; source?: string;
   state: 'in_coda' | 'in_corso' | 'in_pausa' | 'fatto' | 'errore'; size: number; done: number;

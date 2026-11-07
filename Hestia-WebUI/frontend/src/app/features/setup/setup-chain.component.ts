@@ -105,10 +105,13 @@ export function keyStep(key: string, home: string): { provider: string; model: s
                           [trial]="trial()" [trialState]="itemTrial('h|')" (tried)="tryItem('h|' + $event)" />
         } @else {
           <p class="none">{{ homeEmpty() }}</p>
+        }
+        @if (programs().length) {
+          @if (homeItems().length) { <p class="more-head">Altri programmi gratis: installane uno, aprilo e premi «Cerca di nuovo».</p> }
           @for (r of programs(); track r.name; let first = $first) {
             <a class="prog" [href]="r.site" target="_blank" rel="noopener">
               <span class="ct"><b>{{ r.label }}</b><small>{{ r.note }}</small></span>
-              @if (first) { <span class="tag">Consigliato</span> }
+              @if (first && !homeItems().length) { <span class="tag">Consigliato</span> }
               <hx-icon name="external" [size]="15" tone="muted" />
             </a>
           }
@@ -199,6 +202,7 @@ export function keyStep(key: string, home: string): { provider: string; model: s
     .ct b { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .ct small { font-size: 12px; color: var(--text-3); line-height: 1.4; }
     .warn { color: var(--warning); }
+    .more-head { margin: 6px 0 0; font-size: 13px; color: var(--text-2); }
     .ib { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-sm); border: 0; background: none; color: var(--text-3); }
     .ib:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
     .ib:disabled { opacity: .3; cursor: default; }
