@@ -406,8 +406,11 @@ def _default_model(provider: str) -> str:
 
 def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[str, dict],
                 local_provider: str = "ollama", cloud_models: dict[str, list[str] | str] | None = None,
-                embedding: dict[str, str] | None = None, modes: dict[str, dict] | None = None) -> dict[str, dict]:
-    """New ``oracle.chains`` for a recipe. ``modes``: per chat chain (``potente``, ``codice``, ``visione``) a model
+                embedding: dict[str, str] | None = None, modes: dict[str, dict] | None = None,
+                order: list[dict] | None = None) -> dict[str, dict]:
+    """New ``oracle.chains`` for a recipe. ``order``: the setup's «Scelti» list (``{provider, model}``, model empty =
+    every model of that service) to put the chosen steps in the user's order, the local one included; a step it does
+    not name keeps its place after the named ones. ``modes``: per chat chain (``potente``, ``codice``, ``visione``) a model
     chosen for that mode only (``{provider, model}``): it answers first there, the general choice follows as fallback. Pure function (tests): local steps use ``local_provider``/``local_model``;
     each chosen cloud service uses the models picked for it in order (``cloud_models``, one or more: the next one takes
     over when the first fails), or its default models; the embedding
@@ -440,6 +443,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
             steps = cloud_steps
         else:   # entrambi, claude (the chains stay the fallback of the external brain)
             steps = local_steps + cloud_steps
+        steps = _in_order(steps, order)
         own = (modes or {}).get(name) or {}
         if own.get("model"):
             first = {"provider": own.get("provider") or "ollama", "model": own["model"]}
@@ -447,7 +451,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
         if steps:
             out[name] = {"label": out.get(name, default).get("label") or default["label"], "steps": steps}
     if "cloud" in out and cloud:
-        steps = cloud_steps_of(llm_chains.DEFAULT_CHAINS["cloud"]["steps"])
+        steps = _in_order(cloud_steps_of(llm_chains.DEFAULT_CHAINS["cloud"]["steps"]), order)
         if steps:
             out["cloud"] = {"label": out["cloud"].get("label") or "Cloud", "steps": steps}
     emb = embedding or {}
@@ -457,6 +461,21 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
         if now[:1] != [step]:
             out[llm_chains.EMBEDDING_CHAIN] = {"label": "Embedding", "steps": [step]}
     return out
+
+
+def _in_order(steps: list[dict], order: list[dict] | None) -> list[dict]:
+    """``steps`` sorted by the user's «Scelti» order; steps it does not name stay after, in their own order."""
+    wanted = [o for o in (order or []) if isinstance(o, dict) and o.get("provider")]
+    if not wanted:
+        return steps
+
+    def rank(item: tuple[int, dict]) -> tuple[int, int]:
+        i, s = item
+        for pos, o in enumerate(wanted):
+            if o["provider"] == s["provider"] and (not o.get("model") or o["model"] == s["model"]):
+                return (0, pos)
+        return (1, i)
+    return [s for _, s in sorted(enumerate(steps), key=rank)]
 
 
 def _as_lists(cloud_models: dict | None) -> dict[str, list[str]]:
@@ -507,7 +526,8 @@ def _live_models(cloud: list[str], picked: dict[str, list[str]]) -> dict[str, li
 
 def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, local_provider: str = "ollama",
           cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
-          local_runtime: dict | None = None, modes: dict[str, dict] | None = None) -> dict[str, Any]:
+          local_runtime: dict | None = None, modes: dict[str, dict] | None = None,
+          order: list[dict] | None = None) -> dict[str, Any]:
     from core.services import llm_chains, oracle_settings
     if recipe not in RECIPES:
         return {"ok": False, "detail": "Scelta non valida."}
@@ -525,7 +545,8 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     chosen = _as_lists(cloud_models)
     cloud_models = {**_live_models(list(cloud or []), chosen), **chosen}
     chains = plan_chains(recipe, local_model if recipe != "cloud" else "", list(cloud or []), llm_chains.chains(),
-                         local_provider=local_provider, cloud_models=cloud_models, embedding=embedding, modes=modes)
+                         local_provider=local_provider, cloud_models=cloud_models, embedding=embedding, modes=modes,
+                         order=order)
     if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason="Setup guidato"):
         return {"ok": False, "detail": "Le impostazioni non hanno accettato la scelta."}
     if recipe == "claude":

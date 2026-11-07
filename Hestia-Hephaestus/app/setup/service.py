@@ -179,7 +179,8 @@ class SetupService:
                     claude_token: str = "", local_provider: str = "ollama",
                     cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
                     local_runtime: dict[str, str] | None = None,
-                    modes: dict[str, dict[str, str]] | None = None) -> dict[str, Any]:
+                    modes: dict[str, dict[str, str]] | None = None,
+                    order: list[dict[str, str]] | None = None) -> dict[str, Any]:
         values = {f"ORACLE_KEY_{name.upper().replace('-', '_')}": key for name, key in keys.items() if key}
         if claude_token:
             values["CLAUDE_CODE_OAUTH_TOKEN"] = claude_token
@@ -195,7 +196,8 @@ class SetupService:
         result = self.oracle("POST", "/api/llm/setup/apply",
                              body={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
                                    "cloud": cloud, "cloud_models": cloud_models or {}, "embedding": emb,
-                                   "local_runtime": local_runtime or {}, "modes": modes or {}})
+                                   "local_runtime": local_runtime or {}, "modes": modes or {},
+                                   "order": order or []})
         # Only Ollama downloads by itself; LM Studio, Jan… already have the model the user picked from their list.
         pulls = []
         if local_model and recipe != "cloud" and local_provider == "ollama":
@@ -212,6 +214,8 @@ class SetupService:
                                      "embedding": emb, "modes": {k: {"provider": v.get("provider", ""),
                                                                       "model": v.get("model", "")}
                                                                   for k, v in (modes or {}).items()},
+                                     "order": [{"provider": o.get("provider", ""), "model": o.get("model", "")}
+                                               for o in (order or [])],
                                      "summary": result.get("detail", "")})
         return {"ok": True, "detail": result.get("detail", "")}
 

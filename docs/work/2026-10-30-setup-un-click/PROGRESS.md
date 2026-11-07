@@ -29,4 +29,5 @@
 - [x] Sixth round (Marko 2026-11-07): `env_keys` + reload-keys in Oracle/Echo + Hephaestus live reload with re-create fallback, `setup-chain` for the four steps, `is_chat` / embed lists + filter chips, `modes`, Hecate `auth/google` + `auth/google/client` + `<hecate-google>`/`<hecate-garmin>` mounted in the setup
 - [x] v2.17 (Marko 2026-11-07): Locale/Cloud wording, one look for the local list in every step
 - [x] v2.18 round 7 (Marko 2026-11-07): new layout (top bar + steps drop-down + fixed footer), `setup-chain` with «Scelti» + Locale/Cloud tabs and the cloud services inside, `setup-services` removed, texts shortened on every screen, outlet fallback generic; ng build + screenshots desktop/phone
+- [x] v2.19 (Marko 2026-11-07): ↑ ↓ on every «Scelti» row, free order; `order` in Oracle/Hephaestus apply + brain state; test `plan_chains` order; Oracle 29 + Hephaestus 18 setup tests, ng build
 - Left to Marko: real Windows install, real Linux run (Actions → Installer → real_run), first tag v1.0.0 + GHCR package public, two-machine run, real tunnel, .NET build

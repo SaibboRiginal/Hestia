@@ -35,6 +35,7 @@ class BrainApply(BaseModel):
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)
     modes: dict[str, dict[str, str]] = Field(default_factory=dict)   # «Per modalità»: potente/codice/visione
+    order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
 
@@ -212,7 +213,8 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         try:
             result = service.apply_brain(req.recipe, req.local_model, req.cloud, req.keys, req.claude_token,
                                          local_provider=req.local_provider, cloud_models=req.cloud_models,
-                                         embedding=req.embedding, local_runtime=req.local_runtime, modes=req.modes)
+                                         embedding=req.embedding, local_runtime=req.local_runtime, modes=req.modes,
+                                         order=req.order)
         except secrets.SecretRefused as exc:
             refused(exc)
         return {"status": "ok", **result}

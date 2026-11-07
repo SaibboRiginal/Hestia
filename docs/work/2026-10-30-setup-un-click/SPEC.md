@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.18 |
+| **Version** | 2.19 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -312,6 +312,10 @@ for the setup (the phone-as-sensor line). Rules applied to every screen:
   The «Calendario, mail e Garmin» screen has only the two cards; «Per modalità» is a closed optional section;
   «Tutto pronto» lists each choice as a row that goes back to it. The plugin outlet says «Non disponibile in
   questo momento» instead of naming the module.
+- **v2.19 (Marko, same night: «non ho modo di cambiare l'ordine»)**: every row of «Scelti» has ↑ and ↓ and the
+  order is free (a cloud model before the local one, models of two services mixed). Modelli sends it as `order`
+  (`[{provider, model}]`) through Hephaestus (kept in the brain state, shown again) to Oracle, whose `plan_chains`
+  sorts the chat steps by it; voice sends its steps already in that order.
 
 ## 5. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 
