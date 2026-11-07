@@ -513,3 +513,16 @@ def test_voice_setup_finds_speech_programs_at_home_and_adds_the_chosen_one(monke
     assert out["ok"] and stored[PROVIDERS_KEY]["speaches-192-168-1-20"]["url"] == "http://192.168.1.20:8000/v1"
     assert "_new" not in out["chains"]["ascolto"]["steps"][0]
     assert voice_setup.is_home("http://192.168.1.20:8000/v1") and not voice_setup.is_home("https://api.groq.com/openai/v1")
+
+
+@pytest.mark.unit
+def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
+    """Round 6: a speech key saved by the setup works at once — Echo re-reads its .env."""
+    from app.core import blocks as blocks_mod
+    env = tmp_path / ".env"
+    env.write_text("ECHO_KEY_GROQ=k1\nORACLE_KEY_X=no\n")
+    monkeypatch.setattr(blocks_mod, "env_path", lambda: env)
+    monkeypatch.setenv("ECHO_KEY_GROQ", "old")   # registers the undo: the reloaded value must not leak
+    assert blocks_mod.reload_keys() == ["ECHO_KEY_GROQ"]
+    import os
+    assert os.environ["ECHO_KEY_GROQ"] == "k1" and "ORACLE_KEY_X" not in os.environ

@@ -3,7 +3,18 @@ import { FormsModule } from '@angular/forms';
 import { UI } from '../../ui';
 
 /** One choice of the setup's picker: a model, a voice, a program's model… */
-export interface PickItem { id: string; title: string; note?: string; warn?: boolean; tag?: string; icon?: string; }
+export interface PickItem { id: string; title: string; note?: string; warn?: boolean; tag?: string; icon?: string;
+  /** The filter chip it belongs to (model family, program, engine): chips appear when a long list has two or more. */
+  group?: string; }
+
+/** A model's family for the filter chips, read from its name (any service): «gemini-2.5-flash-lite-preview» →
+ * «Gemini Flash Lite», «qwen3:14b» → «Qwen3». Version numbers, dates and «preview/exp/latest» do not count. */
+export function family(id: string): string {
+  const words = id.toLowerCase().replace(/^models\//, '').split(/[-_:/. ]+/)
+    .filter(w => w && !/^\d/.test(w) && !/^v\d/.test(w) && !['preview', 'exp', 'experimental', 'latest', 'it', 'instruct', 'chat', 'gguf', 'q4', 'k', 'm'].includes(w) && !/^\d+[bkm]$/.test(w));
+  const name = words.slice(0, 3).join(' ');
+  return name ? name.replace(/\b\w/g, c => c.toUpperCase()) : 'Altri';
+}
 
 /**
  * The one selector of the guided setup (docs/work/2026-10-30-setup-un-click): cards, a search box when the list is long,
@@ -21,6 +32,12 @@ export interface PickItem { id: string; title: string; note?: string; warn?: boo
         <hx-icon name="search" [size]="15" tone="muted" />
         <input class="hx-input" type="search" [placeholder]="placeholder()" [ngModel]="query()" (ngModelChange)="query.set($event)" autocomplete="off" spellcheck="false" />
       </label>
+    }
+    @if (groups().length > 1 && items().length > searchFrom) {
+      <div class="chips" role="group" aria-label="Filtra">
+        <button type="button" class="chip" [class.on]="!group()" (click)="group.set('')">Tutti</button>
+        @for (g of groups(); track g) { <button type="button" class="chip" [class.on]="group() === g" (click)="group.set(group() === g ? '' : g)">{{ g }}</button> }
+      </div>
     }
     <div class="choices" [attr.role]="multi() ? 'group' : 'radiogroup'">
       @for (it of visible(); track it.id) {
@@ -51,6 +68,9 @@ export interface PickItem { id: string; title: string; note?: string; warn?: boo
     .ct b { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
     .ct small { color: var(--text-3); font-size: 12px; line-height: 1.4; }
     .rec { align-self: flex-start; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: var(--radius-full); }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { font-size: 12px; padding: 3px 10px; border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--surface); color: var(--text-2); }
+    .chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
     .more { align-self: flex-start; background: none; border: 0; color: var(--accent); font-size: 13px; padding: 2px 0; }
     .none { font-size: 13px; color: var(--text-3); }
   `],
@@ -69,6 +89,10 @@ export class SetupPickComponent {
   readonly searchFrom = 6;
   query = signal('');
   all = signal(false);
+  /** The filter chip on ('' = all). */
+  group = signal('');
+  /** Chips: the groups of the list in order of first appearance (at most 8; the rest go under «Tutti»). */
+  groups = computed(() => [...new Set(this.items().map(i => i.group || '').filter(Boolean))].slice(0, 8));
 
   on(id: string): boolean { return this.multi() ? this.chosen().includes(id) : id === this.selected(); }
   /** The place of a chosen card when more than one is chosen (0 = none). */
@@ -76,11 +100,13 @@ export class SetupPickComponent {
 
   filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
-    return q ? this.items().filter(i => `${i.title} ${i.note || ''}`.toLowerCase().includes(q)) : this.items();
+    const g = this.groups().includes(this.group()) ? this.group() : '';
+    const list = g ? this.items().filter(i => i.group === g) : this.items();
+    return q ? list.filter(i => `${i.title} ${i.note || ''}`.toLowerCase().includes(q)) : list;
   });
   visible = computed(() => {
     const list = this.filtered();
-    if (this.all() || this.query().trim() || list.length <= this.limit()) return list;
+    if (this.all() || this.query().trim() || this.group() || list.length <= this.limit()) return list;
     const head = list.slice(0, this.limit());
     const sel = list.filter(i => this.on(i.id) && !head.includes(i));   // the chosen ones always stay in sight
     return [...head, ...sel];

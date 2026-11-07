@@ -134,10 +134,53 @@ def is_public_redirect(uri: str) -> bool:
 
 
 def client_credentials() -> tuple[str, str]:
-    return (
-        os.getenv("GOOGLE_CLIENT_ID", "").strip(),
-        os.getenv("GOOGLE_CLIENT_SECRET", "").strip(),
-    )
+    """The OAuth client: ``GOOGLE_CLIENT_ID``/``GOOGLE_CLIENT_SECRET`` from env, else the one typed in the WebUI
+    («Collega Google» in Dispositivi or in the guided setup), kept next to the token in Hecate's data folder."""
+    cid, secret = os.getenv("GOOGLE_CLIENT_ID", "").strip(), os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    if cid and secret:
+        return cid, secret
+    try:
+        data = json.loads(_client_file().read_text(encoding="utf-8"))
+        return str(data.get("client_id") or "").strip(), str(data.get("client_secret") or "").strip()
+    except (OSError, ValueError):
+        return cid, secret
+
+
+def _client_file() -> Path:
+    token_file = Path(os.getenv("GOOGLE_TOKEN_FILE", "/code/data/google_token.json"))
+    return token_file.parent / "google_client.json"
+
+
+def parse_client(client_id: str = "", client_secret: str = "", raw_json: str = "") -> tuple[str, str]:
+    """The two values typed, or the JSON file Google Cloud lets you download (``{"installed": {...}}`` or
+    ``{"web": {...}}``). Raises ``GoogleOAuthError`` with a plain-words message when it does not look right."""
+    if raw_json.strip():
+        try:
+            data = json.loads(raw_json)
+        except ValueError:
+            raise GoogleOAuthError("Il file non è un JSON valido.")
+        inner = data.get("installed") or data.get("web") or data if isinstance(data, dict) else {}
+        client_id, client_secret = str(inner.get("client_id") or ""), str(inner.get("client_secret") or "")
+    client_id, client_secret = client_id.strip(), client_secret.strip()
+    if not client_id.endswith(".apps.googleusercontent.com") or len(client_id) > 200:
+        raise GoogleOAuthError("L'ID client finisce con .apps.googleusercontent.com: copialo da Google Cloud.")
+    if not (8 <= len(client_secret) <= 200) or any(c.isspace() for c in client_secret):
+        raise GoogleOAuthError("Il segreto del client non sembra giusto: copialo da Google Cloud.")
+    return client_id, client_secret
+
+
+def save_client(client_id: str, client_secret: str) -> None:
+    """Keep the OAuth client in Hecate's data folder (owner-only file); the secret is never logged nor returned."""
+    path = _client_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"client_id": client_id, "client_secret": client_secret}), encoding="utf-8")
+    try:
+        os.chmod(tmp, 0o600)
+    except OSError:
+        pass
+    tmp.replace(path)
+    logger.info("event=google_client_saved source=webui")
 
 
 def _pending_file() -> Path:

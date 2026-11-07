@@ -219,3 +219,20 @@ def test_provider_error_explains_testing_mode(monkeypatch):
     provider = gp.GoogleCalendarProvider()
     assert not provider.is_available()
     assert "In production" in provider._init_error
+
+
+@pytest.mark.unit
+def test_client_typed_in_webui_is_kept_and_used(client, monkeypatch, tmp_path):
+    """Round 6 «Collega Google» by hand: the OAuth client from the page, no .env edit, no restart."""
+    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+    monkeypatch.setenv("GOOGLE_TOKEN_FILE", str(tmp_path / "google_token.json"))
+    assert client.get("/api/gateway/auth/google").json()["client_set"] is False
+    bad = client.post("/api/gateway/auth/google/client", json={"client_id": "nope", "client_secret": "x"})
+    assert bad.status_code == 400
+    raw = json.dumps({"installed": {"client_id": "abc.apps.googleusercontent.com", "client_secret": "GOCSPX-secret1"}})
+    ok = client.post("/api/gateway/auth/google/client", json={"json": raw})
+    assert ok.status_code == 200 and "secret" not in json.dumps(ok.json()).replace("client_set", "")
+    assert google_oauth.client_credentials() == ("abc.apps.googleusercontent.com", "GOCSPX-secret1")
+    state = client.get("/api/gateway/auth/google").json()
+    assert state["client_set"] is True and "GOCSPX" not in json.dumps(state)

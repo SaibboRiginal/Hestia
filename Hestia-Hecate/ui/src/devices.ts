@@ -1,10 +1,9 @@
 /**
- * <hecate-devices> — «Dispositivi»: Garmin (connected or not; «Collega Garmin» opens the form right in the card:
- * email and password go straight to the login and are never stored, then the two-step code in the same card, so no
- * notification to chase and the password never passes through the assistant, «Leggi adesso», «Scollega», last reading and error) and the Android phone as a
- * sensor (configured or not, last state at home / charging / battery, home Wi-Fi names and apps passed on, how to
- * set it up). Calls /api/gateway/garmin/* and /api/gateway/phone/status. Dossier 2026-10-24-tutto-brainstorm-cindy
- * B10 + Cindy 32 (W4) + W7.
+ * <hecate-devices> — «Dispositivi»: the accounts and devices that send data by themselves, each its own card element
+ * (the guided setup mounts the same ones): <hecate-google> (Calendar, Gmail, Drive backups, connected by hand),
+ * <hecate-garmin> (watch) and the Android phone as a sensor (configured or not, last state at home / charging /
+ * battery, home Wi-Fi names and apps passed on, how to set it up). Calls /api/gateway/phone/status. Dossier
+ * 2026-10-24-tutto-brainstorm-cindy B10 + Cindy 32 (W4) + W7; Google card 2026-10-30-setup-un-click round 6.
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
 
@@ -17,12 +16,8 @@ function when(iso?: string | null): string {
 }
 
 export class HecateDevices extends HestiaElement {
-  static properties = { ...HestiaElement.properties, garmin: { state: true }, phone: { state: true },
-                        error: { state: true }, busy: { state: true }, form: { state: true }, formError: { state: true } };
-  declare garmin: any; declare phone: any; declare error: string; declare busy: string;
-  /** The Garmin form in the card: '' closed, 'login' email + password, 'code' the two-step code. */
-  declare form: '' | 'login' | 'code'; declare formError: string;
-  private email = ''; private password = ''; private code = '';
+  static properties = { ...HestiaElement.properties, phone: { state: true }, error: { state: true }, loaded: { state: true } };
+  declare phone: any; declare error: string; declare loaded: boolean;
 
   static styles = [...HestiaElement.styles, css`
     .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -32,11 +27,10 @@ export class HecateDevices extends HestiaElement {
     dt { color: var(--text-3); }
     dd { margin: 0; overflow-wrap: anywhere; }
     code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-2); padding: 1px 4px; border-radius: var(--radius-sm); }
-    .form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     ol { margin: 6px 0 0 18px; padding: 0; font-size: 13px; color: var(--text-2); }
   `];
 
-  constructor() { super(); this.garmin = null; this.phone = null; this.error = ''; this.busy = ''; this.form = ''; this.formError = ''; }
+  constructor() { super(); this.phone = null; this.error = ''; this.loaded = false; }
 
   connectedCallback() {
     super.connectedCallback();
@@ -46,80 +40,11 @@ export class HecateDevices extends HestiaElement {
   }
 
   private async load() {
-    const [g, p] = await Promise.all([this.host.api('GET', `${API}/garmin/status`), this.host.api('GET', `${API}/phone/status`)]);
-    if (!g.ok && !p.ok) { this.error = g.status === 0 ? 'Non raggiungibile' : g.error || 'Non raggiungibile'; return; }
+    const p = await this.host.api('GET', `${API}/phone/status`);
+    this.loaded = true;
+    if (!p.ok && p.status === 0) { this.error = 'Non raggiungibile'; return; }
     this.error = '';
-    this.garmin = g.ok ? g.data : null;
     this.phone = p.ok ? p.data : null;
-  }
-
-  private async run(id: string, method: 'POST' | 'DELETE', path: string, ok: string, body?: unknown) {
-    this.busy = id;
-    const r = await this.host.api(method, `${API}${path}`, body === undefined ? undefined : { body });
-    this.busy = '';
-    if (!r.ok || r.data?.status === 'error') { this.host.toast(r.data?.detail || r.data?.message || r.error || 'Non riuscito', 'warning'); return; }
-    this.host.toast(r.data?.message || ok, 'success');
-    this.load();
-  }
-
-  /** Email + password, or the code: straight to Hecate's login (``direct``: the code is asked here, not by a notification). */
-  private async login() {
-    const values = this.form === 'code' ? { code: this.code.trim() } : { email: this.email.trim(), password: this.password };
-    this.busy = 'login';
-    this.formError = '';
-    const r = await this.host.api('POST', `${API}/garmin/login`, { body: { direct: true, values } });
-    this.busy = '';
-    this.password = '';
-    if (!r.ok) { this.formError = r.data?.detail || r.error || 'Garmin non ha accettato l\'accesso, riprova'; return; }
-    if (r.data?.status === 'needs_code') { this.form = 'code'; this.code = ''; return; }
-    this.form = '';
-    this.email = '';
-    this.host.toast(r.data?.message || 'Garmin collegato', 'success');
-    this.load();
-  }
-
-  private garminForm() {
-    const code = this.form === 'code';
-    return html`<div class="form">
-      ${code ? html`<div class="small">Garmin ti ha mandato un codice (mail o SMS): scrivilo qui.</div>
-        <hxk-field label="Codice di Garmin" placeholder="123456" .value=${this.code} @change=${(e: CustomEvent) => { this.code = String(e.detail); }}></hxk-field>`
-      : html`<hxk-field label="Email di Garmin Connect" type="email" .value=${this.email} @change=${(e: CustomEvent) => { this.email = String(e.detail); }}></hxk-field>
-        <hxk-field label="Password" type="password" .value=${this.password} @change=${(e: CustomEvent) => { this.password = String(e.detail); }}></hxk-field>
-        <div class="small muted">Le uso una volta sola per collegare l'orologio e non le salvo: resta solo l'accesso che dà Garmin.</div>`}
-      ${this.formError ? html`<div class="small" style="color:var(--danger)">${this.formError}</div>` : nothing}
-      <div class="row wrap">
-        <hxk-button variant="primary" icon="link" ?loading=${this.busy === 'login'} @click=${() => this.login()}>${code ? 'Conferma' : 'Collega'}</hxk-button>
-        <hxk-button variant="ghost" @click=${() => { this.form = ''; this.formError = ''; this.password = ''; }}>Annulla</hxk-button>
-      </div>
-    </div>`;
-  }
-
-  private async forget() {
-    if (!(await this.host.confirm('Scollegare Garmin?', 'Non leggerò più sonno e attività. Per ricollegarlo servirà di nuovo l\'accesso.', { label: 'Scollega', danger: true }))) return;
-    this.run('forget', 'DELETE', '/garmin', 'Garmin scollegato');
-  }
-
-  private garminCard() {
-    const g = this.garmin;
-    if (!g) return html`<hxk-card heading="Garmin"><hxk-state kind="error" text="Stato non disponibile"></hxk-state></hxk-card>`;
-    const days = (g.last_sync?.days || []).join(', ');
-    return html`<hxk-card heading="Garmin" subtitle=${g.connected ? 'Collegato' : g.waiting_code ? 'Aspetto il codice' : 'Non collegato'}>
-      <div class="small muted">Ogni mattina leggo dall'orologio il sonno (nel diario) e le attività (in Allenamento); se salti il
-        check-in del mattino lo riempio io.</div>
-      <dl>
-        <dt>Stato</dt><dd><hxk-badge tone=${g.connected ? 'success' : g.waiting_code ? 'warning' : 'neutral'}>${g.connected ? 'collegato' : g.waiting_code ? 'serve il codice' : 'non collegato'}</hxk-badge></dd>
-        <dt>Ultima lettura</dt><dd>${g.last_sync ? `${when(g.last_sync.at)}${days ? ` · ${days}` : ''}` : '–'}</dd>
-        ${g.last_error ? html`<dt>Errore</dt><dd style="color:var(--danger)">${g.last_error}</dd>` : nothing}
-      </dl>
-      <div class="row wrap">
-        ${g.connected ? html`
-          <hxk-button icon="refresh" ?loading=${this.busy === 'sync'} @click=${() => this.run('sync', 'POST', '/garmin/sync', 'Letto', { days: 2 })}>Leggi adesso</hxk-button>
-          ${g.tokens ? html`<hxk-button variant="ghost" icon="trash" ?loading=${this.busy === 'forget'} @click=${() => this.forget()}>Scollega</hxk-button>` : nothing}`
-        : this.form ? nothing
-        : html`<hxk-button variant="primary" icon="link" @click=${() => { this.form = g.waiting_code ? 'code' : 'login'; }}>${g.waiting_code ? 'Scrivi il codice' : 'Collega Garmin'}</hxk-button>`}
-      </div>
-      ${!g.connected && this.form ? this.garminForm() : nothing}
-    </hxk-card>`;
   }
 
   private phoneCard() {
@@ -146,10 +71,10 @@ export class HecateDevices extends HestiaElement {
 
   render() {
     if (this.error) return html`<div class="page"><h1>Dispositivi</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
-    if (!this.garmin && !this.phone) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
+    if (!this.loaded) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>Dispositivi</h1><span class="sub">L'orologio e il telefono che mandano dati da soli</span></div>
-      <div class="cols">${this.garminCard()}${this.phoneCard()}</div>
+      <div class="head"><h1>Dispositivi</h1><span class="sub">Gli account, l'orologio e il telefono che mandano dati da soli</span></div>
+      <div class="cols"><hecate-google .host=${this.host}></hecate-google><hecate-garmin .host=${this.host}></hecate-garmin>${this.phoneCard()}</div>
     </div>`;
   }
 }

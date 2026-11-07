@@ -76,6 +76,18 @@ def key_env(name: str) -> str:
     return "ECHO_KEY_" + re.sub(r"[^A-Z0-9]", "_", name.upper())
 
 
+def env_path():
+    """Echo's own ``.env`` (``Hestia-Echo/app/.env``, mounted at ``/code/app``), written by the guided setup."""
+    from pathlib import Path
+    return Path(__file__).resolve().parents[1] / ".env"
+
+
+def reload_keys() -> list[str]:
+    """Re-read the ``ECHO_KEY_*`` lines of Echo's ``.env``: a key saved by the setup works at once."""
+    from hestia_common import env_keys
+    return env_keys.reload(env_path(), "ECHO_KEY_")
+
+
 class Blocks:
     def __init__(self, get: Callable[[str, Any], Any], registry: Callable[[], list[dict]] | None = None):
         self.get = get

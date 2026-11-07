@@ -2,13 +2,16 @@ import { ChangeDetectionStrategy, Component, DestroyRef, WritableSignal, compute
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
-import { SetupPickComponent, PickItem } from './setup-pick.component';
+import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
+import { PluginsService } from '../plugins/plugins.service';
+import { HomeProgram, SetupChainComponent } from './setup-chain.component';
+import { SetupPickComponent, PickItem, family } from './setup-pick.component';
 import { ServiceCheck, ServiceRow, SetupServicesComponent } from './setup-services.component';
-import { BrainCatalog, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
+import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
-type Screen = 'benvenuto' | 'ricetta' | 'locale' | 'cloud' | 'cervello' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
-/** What the server stores: derived from the two boxes (computer, cloud). «claude» (Claude Code as the whole brain)
- * is no longer offered here: the Claude subscription is one of the cloud services, in the chain like the others. */
+type Screen = 'benvenuto' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
+/** What the server stores, derived from the choices: something at home, something in the cloud, or both. «claude»
+ * (Claude Code as the whole brain) is not offered here: the Claude subscription is one of the cloud services. */
 type Recipe = 'locale' | 'cloud' | 'entrambi';
 type VoiceDir = 'ascolto' | 'voce';
 const CLAUDE_TYPE = 'claude_cli';
@@ -24,7 +27,7 @@ const SCREEN_KEY = 'hestia_setup_screen';
 const HOSTS_KEY = 'hestia_setup_hosts';
 /** The side summary: one line per screen. */
 const TITLES: Record<Screen, string> = {
-  benvenuto: 'Inizio', ricetta: 'Dove pensa', locale: 'Modello in casa', cloud: 'Servizi cloud', cervello: 'Modelli pronti',
+  benvenuto: 'Inizio', modelli: 'Modelli', memoria: 'Memoria', cervello: 'Modelli pronti', ascolto: 'Ascolto',
   voce: 'Voce', telegram: 'Telegram', backup: 'Backup', esterni: 'Calendario e dispositivi', fuori: 'Fuori casa', pronto: 'Fine',
 };
 /** No address after this long: say so instead of a spinner forever. */
@@ -46,7 +49,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [...UI, FormsModule, RouterLink, SetupPickComponent, SetupServicesComponent],
+  imports: [...UI, FormsModule, RouterLink, SetupPickComponent, SetupChainComponent, PluginOutletComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap">
@@ -120,79 +123,46 @@ function store(key: string, value: string): void {
               <p class="hw"><hx-icon name="host" [size]="16" tone="muted" /> {{ hardwareText() }}</p>
             }
 
-            @case ('ricetta') {
+            @case ('modelli') {
               <hx-icon name="brain" [size]="30" tone="accent" />
-              <h1>Dove pensa Hestia?</h1>
-              <p class="lead">Scegli una o tutte e due: Hestia usa prima i modelli di casa e, se il computer è occupato o spento, il cloud.</p>
-              <div class="choices">
-                <button type="button" class="choice" role="checkbox" [attr.aria-checked]="useLocal()" [class.sel]="useLocal()" (click)="useLocal.set(!useLocal())">
-                  <hx-icon [name]="useLocal() ? 'check-circle' : 'host'" [size]="20" [tone]="useLocal() ? 'accent' : 'muted'" />
-                  <span class="ct"><b>In casa</b>@if (recommendLocal()) { <span class="rec">Consigliato</span> }
-                    <small>Privato e gratis, su questo computer o su un altro di casa (per esempio se Hestia gira su un Raspberry). Funziona con Ollama, LM Studio, Jan, llama.cpp o vLLM. Serve una buona scheda video.</small></span>
-                </button>
-                <button type="button" class="choice" role="checkbox" [attr.aria-checked]="useCloud()" [class.sel]="useCloud()" (click)="useCloud.set(!useCloud())">
-                  <hx-icon [name]="useCloud() ? 'check-circle' : 'zap'" [size]="20" [tone]="useCloud() ? 'accent' : 'muted'" />
-                  <span class="ct"><b>Cloud</b><span class="rec">Consigliato</span>
-                    <small>Veloce su ogni computer. Gemini (chiave gratis), il tuo abbonamento Claude o un'altra chiave: li scegli dopo.</small></span>
-                </button>
-              </div>
-              <p class="hint">Puoi cambiarlo quando vuoi da Impostazioni.</p>
-            }
-
-            @case ('locale') {
-              <hx-icon name="host" [size]="30" tone="accent" />
-              <h1>Quale modello in casa?</h1>
-              @if (found().length) {
-                <p class="lead">I modelli che hai già su {{ foundNames() }}.</p>
-                <app-setup-pick [items]="localItems()" [selected]="localKey()" placeholder="Cerca un modello"
-                                empty="Nessun modello caricato: aprilo, scaricane uno da lì e premi «Cerca di nuovo»."
-                                (picked)="pickLocalKey($event)" />
-                @if (hasOllama()) {
-                  <hx-field label="Oppure un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b. Se non c'è, Ollama lo scarica.">
-                    <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
-                  </hx-field>
-                }
-              } @else {
-                <p class="lead">In casa non ho trovato programmi per i modelli. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo». Se è su un altro computer, scrivi qui sotto il suo indirizzo.</p>
-                <div class="choices">
-                  @for (r of missing(); track r.name; let first = $first) {
-                    <a class="choice" [href]="r.site" target="_blank" rel="noopener">
-                      <hx-icon name="external" [size]="20" tone="muted" />
-                      <span class="ct"><b>{{ r.label }}</b>@if (first) { <span class="rec">Consigliato</span> }
-                        <small>{{ runtimeText(r) }}</small></span>
-                    </a>
+              <h1>Con quali modelli pensa?</h1>
+              <p class="lead">Rispondono a tutto (modalità Generale): prima quello in casa, poi i servizi cloud in ordine, se il primo non risponde o ha finito la quota. Scegli almeno uno.</p>
+              <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
+                               homeEmpty="In casa non ho trovato programmi per i modelli. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo», oppure usa solo il cloud."
+                               [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
+                               [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens">
+                <div home-extra>
+                  @if (hasOllama()) {
+                    <hx-field label="Oppure un altro modello di Ollama" hint="Il nome come su ollama.com/library, per esempio qwen3:32b. Se non c'è, Ollama lo scarica.">
+                      <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
+                    </hx-field>
                   }
                 </div>
-                <p class="hint">Oppure torna indietro e usa solo il cloud.</p>
-              }
-              <div class="hostrow">
-                <hx-field label="Su un altro computer di casa">
-                  <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="hostDraft()" (ngModelChange)="hostDraft.set($event)" (keydown.enter)="addHost()" placeholder="192.168.1.20" />
-                </hx-field>
-                <button hx-btn variant="secondary" icon="search" [disabled]="!hostDraft().trim()" [loading]="searching()" (click)="addHost()">Cerca lì</button>
-              </div>
-              <p class="note2">L'indirizzo del computer con la scheda video, per esempio 192.168.1.20 o pc-studio.local: cerco lì Ollama, LM Studio e gli altri, e anche i programmi per la voce.</p>
-              @if (hosts().length) {
-                <p class="hint">Cerco anche su: @for (h of hosts(); track h) { <span class="chip">{{ h }} <button type="button" aria-label="Togli" (click)="removeHost(h)"><hx-icon name="x" [size]="12" /></button></span> }</p>
-              }
-              <div class="row"><button hx-btn variant="ghost" icon="refresh" [loading]="searching()" (click)="searchAgain()">Cerca di nuovo</button></div>
-              @if (memoryHere() === 'locale') {
-                <div class="sub">Per la memoria <small>serve a ritrovare ricordi e documenti. Se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</small></div>
-                <app-setup-pick [items]="embedItems()" [selected]="embeddingSelected()" [limit]="3" placeholder="Cerca" (picked)="pickEmbedding($event)" />
-              }
+              </app-setup-chain>
+              <section class="modes">
+                <div class="sub">Per modalità <small>di solito tutte usano i modelli qui sopra; se vuoi, una modalità può avere il suo modello (prima quello, poi questi).</small></div>
+                @for (m of modeList; track m.id) {
+                  <div class="moderow">
+                    <span class="ct"><b>{{ m.label }}</b><small>{{ m.help }} · {{ modeText(m.id) }}</small></span>
+                    <button type="button" class="linkbtn" (click)="openMode.set(openMode() === m.id ? '' : m.id)">{{ openMode() === m.id ? 'Fatto' : 'Cambia' }}</button>
+                  </div>
+                  @if (openMode() === m.id) {
+                    <app-setup-pick [items]="modeItems()" [selected]="modes()[m.id] || ''" [limit]="5" placeholder="Cerca un modello"
+                                    empty="Scegli prima un modello qui sopra." (picked)="pickMode(m.id, $event)" />
+                  }
+                }
+              </section>
             }
 
-            @case ('cloud') {
-              <hx-icon name="zap" [size]="30" tone="accent" />
-              <h1>Quali servizi nel cloud?</h1>
-              <p class="lead">Scegline uno o più: li usa in quest'ordine, il secondo se il primo non risponde o ha finito la quota.</p>
-              <app-setup-services [services]="cloudRows()" [tester]="brainTester" optionsLabel="Modelli"
-                                  [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" />
-              @if (memoryHere() === 'cloud') {
-                <div class="sub">Per la memoria <small>serve a ritrovare ricordi e documenti. In casa non c'è un programma per i modelli, quindi uso quello del servizio cloud.</small></div>
-                <app-setup-pick [items]="embedItems()" [selected]="embeddingSelected()" [limit]="3" placeholder="Cerca"
-                                empty="Appena la chiave funziona, qui compare il modello per la memoria del servizio." (picked)="pickEmbedding($event)" />
-              }
+            @case ('memoria') {
+              <hx-icon name="memory" [size]="30" tone="accent" />
+              <h1>Con quale modello ricorda?</h1>
+              <p class="lead">Serve a ritrovare ricordi e documenti. Uno solo, in casa o nel cloud: se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</p>
+              <app-setup-chain [single]="true" [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
+                               homeEmpty="In casa non ho trovato programmi per i modelli: usa un modello per la memoria di un servizio cloud, oppure installa Ollama e premi «Cerca di nuovo»."
+                               [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
+                               [services]="embedRows()" [tester]="embedTester" optionsLabel="Modello" cloudEmpty="Nessun servizio cloud con modelli per la memoria."
+                               [(order)]="embedOrder" [(picks)]="embedPicks" [(ready)]="embedReady" [(tokens)]="embedTokens" />
             }
 
             @case ('cervello') {
@@ -200,36 +170,6 @@ function store(key: string, value: string): void {
               <h1>I modelli sono pronti</h1>
               <p class="lead">{{ state()!.brain.summary || 'Fatto.' }}</p>
               @if (activeDownloads()) { <p class="hint"><hx-icon name="download" [size]="15" tone="info" /> {{ downloadHint() }}</p> }
-            }
-
-            @case ('voce') {
-              <hx-icon name="volume" [size]="30" tone="accent" />
-              <h1>Come ti ascolta e ti risponde a voce?</h1>
-              <p class="lead">Sul tuo computer è gratis e privato: scarico subito quello che serve, così la prima volta non aspetti. Nel cloud serve una chiave.</p>
-              @if (!voiceCat()) {
-                @if (voiceError()) { <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
-              } @else {
-                @for (dir of voiceDirs; track dir.id) {
-                  <section class="vdir">
-                    <h2><hx-icon [name]="dir.id === 'ascolto' ? 'mic' : 'volume'" [size]="18" tone="accent" /> {{ dir.title }} <small>{{ dir.help }}</small></h2>
-                    @if (voiceLocal(dir.id).length) {
-                      <div class="sub">In casa <small>uno solo: gratis e privato, su questo computer o su un altro di casa</small></div>
-                      <ul class="engines">
-                        @for (p of voiceLocal(dir.id); track p.name) { <li><b>{{ engineName(p) }}</b> {{ p.note }}</li> }
-                      </ul>
-                      <app-setup-pick [items]="voiceLocalItems(dir.id)" [selected]="voiceLocalPick()[dir.id]" [limit]="4" placeholder="Cerca"
-                                      (picked)="setVoice(voiceLocalPick, dir.id, $event)" />
-                    }
-                    @if (voiceCloudRows(dir.id).length) {
-                      <div class="sub">Nel cloud <small>facoltativo: uno o più, in ordine, se il computer non ce la fa</small></div>
-                      <app-setup-services [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)" [optionsLabel]="dir.id === 'ascolto' ? 'Modelli' : 'Voci'"
-                                          [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
-                                          [picks]="voicePicks()[dir.id]" (picksChange)="setVoice(voicePicks, dir.id, $event)"
-                                          [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)" />
-                    }
-                  </section>
-                }
-              }
             }
 
             @case ('telegram') {
@@ -272,12 +212,12 @@ function store(key: string, value: string): void {
             @case ('esterni') {
               <hx-icon name="link" [size]="30" tone="accent" />
               <h1>Calendario, mail e dispositivi</h1>
-              <p class="lead">Si collegano quando ti servono, non adesso per forza.</p>
-              <ul class="list">
-                <li><hx-icon name="calendar" [size]="18" tone="info" /><span><b>Google Calendar e Gmail</b><small>Scrivi al bot «collega Google Calendar».</small></span></li>
-                <li><hx-icon name="pulse" [size]="18" tone="success" /><span><b>Orologio Garmin e telefono</b>
-                  <small>In Dispositivi premi «Collega Garmin» e metti lì email e password. <a href="/p/hecate/dispositivi" target="_blank" rel="noopener">Apri Dispositivi <hx-icon name="external" [size]="12" /></a></small></span></li>
-              </ul>
+              <p class="lead">Collegali qui, oppure quando ti servono dalla pagina Dispositivi: sono le stesse schede.</p>
+              <div class="outlets">
+                <hx-plugin-outlet module="hecate" element="hecate-google" />
+                <hx-plugin-outlet module="hecate" element="hecate-garmin" />
+              </div>
+              <p class="hint">Il telefono come sensore (a casa, in carica) si prepara da <a href="/p/hecate/dispositivi" target="_blank" rel="noopener">Dispositivi <hx-icon name="external" [size]="12" /></a>.</p>
             }
 
             @case ('fuori') {
@@ -334,6 +274,31 @@ function store(key: string, value: string): void {
                 <li><hx-icon [name]="tunnel()?.on ? 'check-circle' : 'clock'" [size]="18" [tone]="tunnel()?.on ? 'success' : 'muted'" />
                   <span><b>Fuori casa</b><small>{{ tunnel()?.on ? (tunnel()!.url || 'Attivo.') : 'Solo in casa e da Telegram.' }}</small></span></li>
               </ul>
+            }
+          }
+
+          @if (voiceDir(); as dir) {
+            <hx-icon [name]="dir.id === 'ascolto' ? 'mic' : 'volume'" [size]="30" tone="accent" />
+            <h1>{{ dir.question }}</h1>
+            <p class="lead">{{ dir.lead }}</p>
+            @if (!voiceCat()) {
+              @if (voiceError()) { <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
+            } @else {
+              <app-setup-chain [homeItems]="voiceLocalItems(dir.id)" [home]="voiceLocalPick()[dir.id]" (homeChange)="setVoice(voiceLocalPick, dir.id, $event)"
+                               homeEmpty="In casa non ho trovato programmi per la voce."
+                               [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
+                               [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)" [optionsLabel]="dir.id === 'ascolto' ? 'Modelli' : 'Voci'"
+                               [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
+                               [picks]="voicePicks()[dir.id]" (picksChange)="setVoice(voicePicks, dir.id, $event)"
+                               [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)">
+                <div home-extra>
+                  @if (voiceLocal(dir.id).length) {
+                    <ul class="engines">
+                      @for (p of voiceLocal(dir.id); track p.name) { <li><b>{{ engineName(p) }}</b> {{ p.note }}</li> }
+                    </ul>
+                  }
+                </div>
+              </app-setup-chain>
             }
           }
 
@@ -403,6 +368,11 @@ function store(key: string, value: string): void {
     .group { display: flex; flex-direction: column; gap: 8px; }
     .gh { display: flex; gap: 6px; align-items: center; font-size: 14px; }
     .gh small { color: var(--text-3); font-size: 12px; }
+    .outlets { display: flex; flex-direction: column; gap: 12px; }
+    .outlets hx-plugin-outlet { flex: none; }
+    .modes { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .moderow { display: flex; gap: 10px; align-items: center; }
+    .moderow .linkbtn { align-self: center; }
     .vdir { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
     .vdir + .vdir { border-top: 1px solid var(--border); padding-top: 16px; }
     .vdir h2 { display: flex; gap: 8px; align-items: center; font-size: 17px; font-weight: 600; color: var(--text); }
@@ -468,14 +438,19 @@ export class SetupPageComponent {
   code = signal('');
   searching = signal(false);
 
-  useLocal = signal(true);
-  useCloud = signal(true);
+  /** The home choice of «Modelli» as «program|model» ('' = nothing at home). */
+  localKey = signal('');
+  localProvider = computed(() => this.localKey().split('|')[0] || 'ollama');
+  localModel = computed(() => this.localKey().split('|').slice(1).join('|'));
+  useLocal = computed(() => !!this.localModel());
+  useCloud = computed(() => this.cloudPicked().length > 0);
   recipe = computed<Recipe>(() => this.useLocal() && this.useCloud() ? 'entrambi' : this.useLocal() ? 'locale' : 'cloud');
-  /** The local program (provider block name) and its model. */
-  localProvider = signal('ollama');
-  localModel = signal('');
-  /** The memory's model as «provider|model»; empty = keep the current one. */
-  embeddingKey = signal('');
+  /** «Memoria»: one model, at home («program|model») or one cloud service with one model. */
+  embedHome = signal('');
+  embedOrder = signal<string[]>([]);
+  embedPicks = signal<Record<string, string[]>>({});
+  embedReady = signal<Record<string, boolean>>({});
+  embedTokens = signal<Record<string, string>>({});
   /** The chosen cloud services, in the order they are tried. */
   cloudPicked = signal<string[]>([]);
   /** Per service: the models chosen, in order (the next takes over when the first fails); usable or not; the Claude code. */
@@ -488,18 +463,10 @@ export class SetupPageComponent {
   screen = signal<Screen>('benvenuto');
   /** The furthest screen reached in this run: the summary jumps back freely, forward only up to here. */
   reached = signal(0);
-  needsLocal = computed(() => this.useLocal());
-  recommendLocal = computed(() => this.catalog()?.recommended?.recipe !== 'cloud');
-  /** The screens of this run: the brain's sub-screens follow the recipe. */
-  screens = computed<Screen[]>(() => {
-    const r = this.recipe();
-    return ['benvenuto', 'ricetta',
-      ...(this.needsLocal() ? ['locale' as Screen] : []),
-      ...(r === 'cloud' || r === 'entrambi' ? ['cloud' as Screen] : []),
-      'cervello', 'voce', 'telegram', 'backup', 'esterni', 'fuori', 'pronto'];
-  });
+  /** The screens: Modelli, Memoria, Ascolto and Voce are the same step (app-setup-chain) on a different module. */
+  screens = signal<Screen[]>(['benvenuto', 'modelli', 'memoria', 'cervello', 'ascolto', 'voce', 'telegram', 'backup', 'esterni', 'fuori', 'pronto']);
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
-  optional = computed(() => (this.screen() === 'voce' && !this.voiceQueued())
+  optional = computed(() => (['ascolto', 'voce'].includes(this.screen()) && !this.voiceQueued())
     || (['telegram', 'backup'].includes(this.screen()) && !this.stepDone(this.screen())));
   voiceQueued = signal(false);
   tunnel = signal<TunnelState | null>(null);
@@ -519,9 +486,11 @@ export class SetupPageComponent {
 
   // ── Voce (Echo's blocks, the same cards as the cloud services) ──
   readonly voiceDirs = [
-    { id: 'ascolto' as const, title: 'Ascolto', help: 'capire quello che dici' },
-    { id: 'voce' as const, title: 'Voce', help: 'come ti risponde' },
+    { id: 'ascolto' as const, question: 'Come ti ascolta?', lead: 'Per capire quello che dici. In casa è gratis e privato: scarico subito quello che serve, così la prima volta non aspetti. Nel cloud serve una chiave.' },
+    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'In casa è gratis e privato: scarico subito la voce, così la prima volta non aspetti. Nel cloud serve una chiave.' },
   ];
+  /** The voice screen open now (Ascolto or Voce): the same step, one direction each. */
+  voiceDir = computed(() => this.voiceDirs.find(d => d.id === this.screen()) || null);
   voiceCat = signal<VoiceCatalog | null>(null);
   voiceError = signal('');
   /** Per direction: the local engine and its model/voice as «provider|id» (one), then cloud services in order. */
@@ -541,6 +510,7 @@ export class SetupPageComponent {
       const picks: Record<VoiceDir, Record<string, string[]>> = { ascolto: {}, voce: {} };
       for (const d of this.voiceDirs) {
         const own = d.id === 'ascolto' ? saved.listen : saved.speak;
+        // what the user chose in the setup, else the chain in use; never Hestia's defaults for services without a key
         const steps: VoiceStep[] = (Array.isArray(own) ? own : own?.provider ? [own] : null) || cat[d.id].steps || (cat[d.id].current?.provider ? [cat[d.id].current] : []);
         const byName = (n: string) => cat[d.id].providers.find(p => p.name === n);
         for (const st of steps) {
@@ -548,7 +518,7 @@ export class SetupPageComponent {
           if (!p) continue;
           const id = d.id === 'ascolto' ? st.model : st.voice;
           if (p.local) { if (!local[d.id]) local[d.id] = `${p.name}|${id || this.optionsOf(p, d.id)[0]?.id || ''}`; }
-          else {
+          else if (p.key || !p.needs_key) {   // a cloud service is preselected only when its key is saved
             if (!order[d.id].includes(p.name)) order[d.id].push(p.name);
             if (id) picks[d.id][p.name] = [...(picks[d.id][p.name] || []), id];
           }
@@ -625,11 +595,15 @@ export class SetupPageComponent {
     }
     return out;
   }
-  voiceOk(): boolean {
-    return !!this.voiceCat() && this.voiceDirs.every(d => this.voiceOrder()[d.id].every(n => this.voiceReadyMap()[d.id][n]));
+  /** One direction can go on: something chosen at home or in the cloud, and every cloud service chosen usable. */
+  voiceOk(dir: VoiceDir): boolean {
+    if (!this.voiceCat()) return false;
+    const order = this.voiceOrder()[dir];
+    return (!!this.voiceLocalPick()[dir] || order.length > 0) && order.every(n => this.voiceReadyMap()[dir][n]);
   }
 
   constructor() {
+    inject(PluginsService).start();   // the «Google» and «Garmin» cards of the esterni screen are Hecate's plugin elements
     const timer = setInterval(() => this.poll(), 3000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     void this.load();
@@ -644,7 +618,7 @@ export class SetupPageComponent {
       const saved = stored(SCREEN_KEY) as Screen;
       this.screen.set(this.screens().includes(saved) ? saved : this.firstOpen(state));
       this.reached.set(state.brain.recipe ? this.screens().length - 1 : this.index());
-      if (this.screen() === 'voce') void this.loadVoice();
+      if (this.screen() === 'ascolto' || this.screen() === 'voce') void this.loadVoice();
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
     } catch (e) {
@@ -652,49 +626,43 @@ export class SetupPageComponent {
     }
   }
 
-  /** Apply a catalog: the saved answers first, otherwise the best guess (first fitting model of the first program found). */
+  /** Apply a catalog: the saved answers first, otherwise the best guess (first fitting model of the first program
+   * found). A cloud service is preselected only when its key (or the Claude code) is already saved. */
   private useCatalog(catalog: BrainCatalog, state: SetupState, first: boolean) {
     this.catalog.set(catalog);
-    const saved = state.brain.recipe || catalog.recommended.recipe || 'entrambi';
-    if (first) {
-      // «claude» was the old fourth choice (Claude as the whole brain, chains as fallback): computer + cloud with Claude.
-      this.useLocal.set(saved !== 'cloud');
-      this.useCloud.set(saved !== 'locale');
-    }
     const found = (catalog.runtimes || []).filter(r => r.found);
     const has = (p: string, m: string) => found.some(r => r.name === p && r.models.some(x => x.model === m));
     const savedProvider = state.brain.local_provider || 'ollama';
-    if (!(this.localModel() && has(this.localProvider(), this.localModel()))) {
+    const keep = this.localModel() && (has(this.localProvider(), this.localModel()) || this.otherModel());
+    if (!keep && !(first && state.brain.recipe === 'cloud')) {
       const firstFit = found.map(r => ({ r, m: r.models.find(m => m.fits) || r.models[0] })).find(x => x.m);
-      if (state.brain.local_model && has(savedProvider, state.brain.local_model)) {
-        this.localProvider.set(savedProvider);
-        this.localModel.set(state.brain.local_model);
-      } else if (firstFit) {
-        this.localProvider.set(firstFit.r.name);
-        this.localModel.set(firstFit.m!.model);
-      } else if (found.some(r => r.name === 'ollama')) {
-        this.localProvider.set('ollama');
-        this.localModel.set(state.brain.local_model || catalog.recommended.model);
-      } else {
-        this.localModel.set('');
-      }
+      if (state.brain.local_model && has(savedProvider, state.brain.local_model)) this.localKey.set(`${savedProvider}|${state.brain.local_model}`);
+      else if (firstFit) this.localKey.set(`${firstFit.r.name}|${firstFit.m!.model}`);
+      else if (found.some(r => r.name === 'ollama')) this.localKey.set(`ollama|${state.brain.local_model || catalog.recommended.model}`);
+      else this.localKey.set('');
     }
     if (first) {
       const cloud = catalog.cloud;
+      const keyed = (p: CloudProvider) => p.type === CLAUDE_TYPE ? !!state.claude.token || p.available : p.key_set;
       let picked = (state.brain.cloud || []).filter(n => cloud.some(p => p.name === n));
-      if (saved === 'claude') {
-        const claude = cloud.find(p => p.type === CLAUDE_TYPE)?.name;
-        if (claude && !picked.includes(claude)) picked = [claude, ...picked];
-      }
-      if (!picked.length) {
-        const one = cloud.find(p => p.key_set)?.name || cloud.find(p => p.type === 'gemini')?.name || cloud[0]?.name;
-        picked = one ? [one] : [];
-      }
+      if (!state.brain.recipe) picked = cloud.filter(keyed).map(p => p.name);
       this.cloudPicked.set(picked);
       const models: Record<string, string[]> = {};
       for (const [k, v] of Object.entries(state.brain.cloud_models || {})) models[k] = (Array.isArray(v) ? v : [v]).filter(Boolean);
       this.cloudModel.set(models);
+      const modes: Record<string, string> = {};
+      for (const [k, v] of Object.entries(state.brain.modes || {})) if (v?.model) modes[k] = `${v.provider || 'ollama'}|${v.model}`;
+      this.modes.set(modes);
+      // «Memoria»: the model in use (at home or in the cloud), else the recommended one at home
+      const now = catalog.embedding;
+      const nowProvider = now?.provider || 'ollama';
+      if (now?.model && cloud.some(p => p.name === nowProvider)) {
+        this.embedOrder.set([nowProvider]);
+        this.embedPicks.set({ [nowProvider]: [now.model] });
+        this.embedHome.set('');
+      }
     }
+    if (!this.embedOrder().length && !this.embedItemsHas(this.embedHome())) this.embedHome.set(this.embedHomeItems()[0]?.id || '');
   }
 
   private firstOpen(s: SetupState): Screen {
@@ -712,7 +680,7 @@ export class SetupPageComponent {
   private go(screen: Screen) {
     this.formError.set('');
     if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
-    if (screen === 'voce' && !this.voiceCat()) void this.loadVoice();
+    if ((screen === 'ascolto' || screen === 'voce') && !this.voiceCat()) void this.loadVoice();
     this.screen.set(screen);
     this.reached.set(Math.max(this.reached(), this.screens().indexOf(screen)));
     store(SCREEN_KEY, screen);
@@ -737,11 +705,11 @@ export class SetupPageComponent {
     if (!st) return false;
     switch (s) {
       case 'benvenuto': return this.reached() > 0;
-      case 'ricetta': case 'locale': case 'cloud': case 'cervello': return !!st.brain.recipe;
-      case 'voce': return this.voiceQueued();
+      case 'modelli': case 'memoria': case 'cervello': return !!st.brain.recipe;
+      case 'ascolto': case 'voce': return this.voiceQueued();
       case 'telegram': return st.telegram.linked;
       case 'backup': return st.backup.passphrase;
-      case 'esterni': return false;   // nothing to fill in: it only says where to connect them
+      case 'esterni': return false;   // optional cards, connected now or later
       case 'fuori': return !!this.tunnel()?.on;
       default: return false;
     }
@@ -759,10 +727,9 @@ export class SetupPageComponent {
     const st = this.state();
     if (!st) return '';
     switch (s) {
-      case 'ricetta': return this.recipe() === 'entrambi' ? 'In casa e cloud' : this.recipe() === 'locale' ? 'Solo in casa' : 'Solo il cloud';
-      case 'locale': return this.localModel() ? `${this.localModel()} (${this.runtimeLabel(this.localProvider())})` : '';
-      case 'cloud': return this.cloudPicked().map(n => this.cloudLabel(n)).join(', ');
-      case 'voce': return this.voiceQueued() ? 'In download' : st.later.includes('voce') ? 'Più tardi' : '';
+      case 'modelli': return [this.localModel(), ...this.cloudPicked().map(n => this.cloudLabel(n))].filter(Boolean).join(', ');
+      case 'memoria': { const c = this.embeddingWanted(); return c ? c.model : ''; }
+      case 'ascolto': case 'voce': return this.voiceQueued() ? 'In download' : st.later.includes('voce') ? 'Più tardi' : '';
       case 'telegram': return st.telegram.linked ? 'Collegato' : st.later.includes('telegram') ? 'Più tardi' : '';
       case 'backup': return st.backup.passphrase ? 'Pronto' : st.later.includes('backup') ? 'Più tardi' : '';
       case 'fuori': return this.tunnel()?.on ? 'Attivo' : '';
@@ -772,10 +739,9 @@ export class SetupPageComponent {
 
   canNext(): boolean {
     switch (this.screen()) {
-      case 'ricetta': return this.useLocal() || this.useCloud();
-      case 'locale': return !!this.localModel();
-      case 'voce': return this.voiceQueued() || this.voiceOk();
-      case 'cloud': return this.cloudPicked().length > 0 && this.cloudPicked().every(n => this.cloudReady()[n]);
+      case 'modelli': return (this.useLocal() || this.useCloud()) && this.cloudPicked().every(n => this.cloudReady()[n]);
+      case 'memoria': return this.embedOrder().every(n => this.embedReady()[n]) && (!!this.embeddingWanted() || !!this.catalog()?.embedding?.model);
+      case 'ascolto': case 'voce': return this.voiceQueued() || this.voiceOk(this.screen() as VoiceDir);
       case 'telegram': return this.state()!.telegram.linked || (!this.code() && !this.state()!.telegram.token && !!this.botToken.trim());
       case 'backup': return this.state()!.backup.passphrase || this.passphrase.length >= 12;
       default: return true;
@@ -785,11 +751,11 @@ export class SetupPageComponent {
   nextLabel(): string {
     switch (this.screen()) {
       case 'benvenuto': return 'Iniziamo';
-      case 'locale': return this.screens()[this.index() + 1] === 'cervello' ? 'Conferma' : 'Avanti';
-      case 'cloud': return 'Conferma';
+      case 'memoria': return 'Conferma';
       case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? 'Avanti' : 'Collega';
       case 'backup': return this.state()!.backup.passphrase ? 'Avanti' : 'Salva';
       case 'voce': return this.voiceQueued() ? 'Avanti' : 'Conferma';
+      case 'ascolto': return 'Avanti';
       case 'fuori': return this.tunnel()?.on ? 'Avanti' : 'Più tardi';
       case 'pronto': return 'Inizia';
       default: return 'Avanti';
@@ -801,7 +767,7 @@ export class SetupPageComponent {
     const following = this.screens()[this.index() + 1];
     this.busy.set(true);
     try {
-      if (following === 'cervello' && screen !== 'ricetta') { await this.applyBrain(); return; }
+      if (following === 'cervello') { await this.applyBrain(); return; }
       if (screen === 'voce' && !this.voiceQueued()) {
         const out = await this.api.voiceApply(this.voiceSteps('ascolto'), this.voiceSteps('voce'));
         if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }
@@ -835,7 +801,7 @@ export class SetupPageComponent {
   }
 
   async later() {
-    const step = this.screen();
+    const step = this.screen() === 'ascolto' ? 'voce' : this.screen();   // the voice is one step on the server
     try { this.state.set(await this.api.later(step)); } catch { /* the step stays open: nothing lost */ }
     this.forward();
   }
@@ -846,14 +812,15 @@ export class SetupPageComponent {
   missing = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => !r.found && !r.host));
   foundNames(): string { const l = this.found().map(r => r.label); return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || ''; }
   hasOllama = computed(() => this.found().some(r => r.name === 'ollama'));
-  localKey = computed(() => this.otherModel() ? '' : `${this.localProvider()}|${this.localModel()}`);
+  /** The programs to install when none is found at home (the same list for Modelli and Memoria). */
+  programs = computed<HomeProgram[]>(() => this.missing().map(r => ({ name: r.name, label: r.label, site: r.site, note: this.runtimeText(r) })));
   /** Every model of every program found, in one searchable list; an empty Ollama gets the suggestions to download. */
   localItems = computed<PickItem[]>(() => {
     const many = this.found().length > 1;
     const out: PickItem[] = [];
     for (const r of this.found()) {
       for (const m of r.models) {
-        out.push({ id: `${r.name}|${m.model}`, title: m.model, warn: !m.fits,
+        out.push({ id: `${r.name}|${m.model}`, title: m.model, warn: !m.fits, group: many ? r.label : family(m.model),
                    note: [many ? r.label : '', this.localText(m)].filter(Boolean).join(' · ') });
       }
       if (r.name === 'ollama' && !r.models.length) {
@@ -864,15 +831,13 @@ export class SetupPageComponent {
     }
     return out;
   });
-  pickLocalKey(key: string) { const [p, ...m] = key.split('|'); this.pickLocal(p, m.join('|')); }
+  /** A tap on the list (again on the chosen one = nothing at home). */
+  pickLocalKey(key: string) { this.localKey.set(key); this.otherModel.set(''); }
   otherModel = signal('');
-  isLocal(provider: string, model: string): boolean { return this.localProvider() === provider && this.localModel() === model && !this.otherModel(); }
-  pickLocal(provider: string, model: string) { this.localProvider.set(provider); this.localModel.set(model); this.otherModel.set(''); }
   typeLocal(name: string) {
     this.otherModel.set(name);
     const clean = name.trim();
-    if (clean) { this.localProvider.set('ollama'); this.localModel.set(clean); }
-    else this.localModel.set('');
+    this.localKey.set(clean ? `ollama|${clean}` : '');
   }
   localText(m: LocalModel): string {
     const what = [m.params, m.quant].filter(Boolean).join(' · ');
@@ -887,77 +852,106 @@ export class SetupPageComponent {
       : 'Si scaricano i modelli da lì.';
   }
   runtimeLabel(name: string): string { return (this.catalog()?.runtimes || []).find(r => r.name === name)?.label || name; }
+  /** «Cerca di nuovo» / another computer added: the models and the speech programs are looked for again. */
   async searchAgain() {
     this.searching.set(true);
-    try { this.useCatalog(await this.api.catalog(this.hosts()), this.state()!, false); } catch { /* keep the last list */ } finally { this.searching.set(false); }
+    try {
+      const voice = ['ascolto', 'voce'].includes(this.screen()) || !!this.voiceCat();
+      await Promise.all([
+        this.api.catalog(this.hosts()).then(c => this.useCatalog(c, this.state()!, false)).catch(() => undefined),
+        voice ? this.loadVoice() : Promise.resolve(),
+      ]);
+    } finally { this.searching.set(false); }
   }
   // ── Other computers of the house (Hestia on a Raspberry, the models on the PC): remembered in this browser ──
   hosts = signal<string[]>(stored(HOSTS_KEY).split(',').map(h => h.trim()).filter(Boolean));
-  hostDraft = signal('');
-  async addHost() {
-    const h = this.hostDraft().trim().replace(/^https?:\/\//, '').split(/[/:]/)[0];
+  async addHost(raw: string) {
+    const h = raw.trim().replace(/^https?:\/\//, '').split(/[/:]/)[0];
     if (!h) return;
     this.hosts.set([...this.hosts().filter(x => x !== h), h].slice(-4));
     store(HOSTS_KEY, this.hosts().join(','));
-    this.hostDraft.set('');
-    this.voiceCat.set(null);              // the voice looks there too, next time it opens
     await this.searchAgain();
   }
   async removeHost(h: string) {
     this.hosts.set(this.hosts().filter(x => x !== h));
     store(HOSTS_KEY, this.hosts().join(','));
-    this.voiceCat.set(null);
     await this.searchAgain();
   }
-  /** Where «Per la memoria» is asked: under the local model when something runs at home, else on the cloud screen. */
-  memoryHere = computed<'locale' | 'cloud' | ''>(() => this.useLocal() && this.found().length ? 'locale' : this.useCloud() ? 'cloud' : '');
-  /** Per cloud service: the embedding models its list has (after the key works). */
-  cloudEmbed = signal<Record<string, string[]>>({});
-  /** The memory's model, chosen like the chat model: the one in use (when it can still run), every embedding model the
-   * programs at home have, Ollama's recommended one when Ollama has none, and the cloud services' ones (when nothing runs
-   * at home, the first of these is chosen by itself: the memory must work). */
-  embedItems = computed<PickItem[]>(() => {
+
+  // ── Memoria: the same step on the embedding models ──
+  /** At home: the model in use (when it still runs there), every embedding model the programs have, and Ollama's
+   * recommended one when Ollama has none. */
+  embedHomeItems = computed<PickItem[]>(() => {
     const now = this.catalog()?.embedding;
     const nowKey = now?.model ? `${now.provider || 'ollama'}|${now.model}` : '';
-    const homeUsed = this.useLocal() && this.found().length > 0;
     const many = this.found().length > 1;
     const out: PickItem[] = [];
-    const cloudReady = this.cloudPicked().filter(n => this.cloudReady()[n]);
-    const nowWorks = nowKey && (this.found().some(r => r.name === (now!.provider || 'ollama')) || cloudReady.includes(now!.provider));
-    if (nowWorks) out.push({ id: nowKey, title: now!.model, icon: 'memory', tag: 'Ora', note: many ? this.runtimeLabel(now!.provider) : '' });
-    if (homeUsed) for (const r of this.found()) {
-      for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, icon: 'memory', note: many ? r.label : '' });
+    const nowHome = nowKey && this.found().some(r => r.name === (now!.provider || 'ollama'));
+    if (nowHome) out.push({ id: nowKey, title: now!.model, icon: 'memory', tag: 'Ora', note: many ? this.runtimeLabel(now!.provider || 'ollama') : '' });
+    for (const r of this.found()) {
+      for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, icon: 'memory', note: many ? r.label : '', group: many ? r.label : '' });
       const rec = this.catalog()?.recommended?.embedding;
       if (r.name === 'ollama' && rec && !r.embed.includes(rec.model) && `ollama|${rec.model}` !== nowKey) {
-        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowWorks ? '' : 'Consigliato',
+        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowHome ? '' : 'Consigliato',
                    note: `${rec.good} ${this.gb(rec.size_gb)} GB: Ollama lo scarica mentre finisci il resto.` });
-      }
-    }
-    if (this.useCloud()) for (const n of cloudReady) {
-      for (const m of this.cloudEmbed()[n] || []) if (`${n}|${m}` !== nowKey) {
-        out.push({ id: `${n}|${m}`, title: m, icon: 'cloud', note: `${this.cloudLabel(n)} · nel cloud`, tag: !out.length ? 'Consigliato' : '' });
       }
     }
     return out;
   });
-  embeddingSelected = computed(() => {
-    const items = this.embedItems();
-    const k = this.embeddingKey();
-    return k && items.some(i => i.id === k) ? k : items[0]?.id || '';
-  });
-  pickEmbedding(id: string) { this.embeddingKey.set(id); }
+  private embedItemsHas(id: string): boolean { return !!id && this.embedHomeItems().some(i => i.id === id); }
+  /** The cloud services that can have memory models (not the Claude subscription, not Anthropic: they have none). */
+  embedRows = computed<ServiceRow[]>(() => this.cloudRows().filter(r => {
+    const t = this.catalog()?.cloud.find(c => c.name === r.name)?.type;
+    return t !== CLAUDE_TYPE && t !== 'anthropic';
+  }));
+  /** The memory model chosen: at home, or the one model of the cloud service. */
+  embeddingWanted(): { provider: string; model: string } | null {
+    if (this.embedHome()) { const [provider, ...rest] = this.embedHome().split('|'); return { provider, model: rest.join('|') }; }
+    const n = this.embedOrder()[0];
+    const m = n ? (this.embedPicks()[n] || [])[0] : '';
+    return n && m ? { provider: n, model: m } : null;
+  }
   /** What to send: nothing when it stays the one in use (the memory is not re-read). */
-  private embeddingChoice(): { provider: string; model: string; url?: string; type?: string; label?: string } | null {
-    const sel = this.embeddingSelected();
+  private embeddingChoice(): ({ provider: string; model: string } & { url?: string; type?: string; label?: string }) | null {
+    const sel = this.embeddingWanted();
     const now = this.catalog()?.embedding;
-    if (!sel || (now?.model && sel === `${now.provider || 'ollama'}|${now.model}`)) return null;
-    const [provider, ...rest] = sel.split('|');
-    return { provider, model: rest.join('|'), ...this.runtimeOf(provider) };
+    if (!sel || (now?.model && sel.provider === (now.provider || 'ollama') && sel.model === now.model)) return null;
+    return { ...sel, ...this.runtimeOf(sel.provider) };
   }
   /** A program on another computer of the house: its address goes with the choice, so it becomes a block. */
   private runtimeOf(name: string): { url?: string; type?: string; label?: string } {
     const r = this.found().find(x => x.name === name);
     return r?.host && !r.configured ? { url: r.url, type: r.type, label: r.label } : {};
+  }
+
+  // ── Per modalità: Ragionamento, Codice, Immagini follow Generale unless one gets its own model ──
+  readonly modeList = [
+    { id: 'potente', label: 'Ragionamento', help: 'le domande difficili' },
+    { id: 'codice', label: 'Codice', help: 'quando scrive o corregge codice' },
+    { id: 'visione', label: 'Immagini', help: 'foto e documenti da guardare' },
+  ];
+  /** Per mode: its own model as «provider|model» (missing = same as Generale). */
+  modes = signal<Record<string, string>>({});
+  openMode = signal('');
+  /** Same as Generale, then every model the step can use: the programs at home and the cloud services that work. */
+  modeItems = computed<PickItem[]>(() => {
+    const out: PickItem[] = [{ id: '', title: 'Come Generale', icon: 'check', note: 'Gli stessi modelli scelti qui sopra.' }];
+    for (const it of this.localItems()) out.push({ ...it, group: 'In casa' });
+    for (const n of this.cloudPicked()) {
+      if (!this.cloudReady()[n]) continue;
+      for (const it of this.cloudLists()[n] || []) out.push({ ...it, id: `${n}|${it.id}`, note: this.cloudLabel(n), group: this.cloudLabel(n) });
+    }
+    return out;
+  });
+  modeText(id: string): string {
+    const own = this.modes()[id];
+    return own ? own.split('|').slice(1).join('|') + (this.cloudPicked().includes(own.split('|')[0]) ? ' nel cloud' : '') : 'come Generale';
+  }
+  pickMode(mode: string, id: string) {
+    const next = { ...this.modes() };
+    if (id) next[mode] = id; else delete next[mode];
+    this.modes.set(next);
+    this.openMode.set('');
   }
 
   // ── Servizi cloud (the same cards as the voice's cloud services) ──
@@ -971,39 +965,60 @@ export class SetupPageComponent {
       name: p.name, label: p.label || p.name, icon: 'unlock', kind: 'key' as const, keySet: p.key_set, keyLink: this.keyLink(p),
       tag: p.type === 'gemini' ? 'Gratis' : '', note: p.type === 'gemini' ? 'Chiave gratis da Google.' : 'Serve una chiave.',
     }));
-  /** «Prova» of a brain service: a typed key is saved once, then its model list is read (no tokens spent). */
-  readonly brainTester = async (name: string, key: string): Promise<ServiceCheck> => {
-    const toCheck = (r: { ok: boolean; detail?: string; models?: string[]; recommended?: string[]; embed?: string[] }): ServiceCheck => {
-      this.cloudEmbed.set({ ...this.cloudEmbed(), [name]: r.embed || [] });
-      return { ok: r.ok, detail: r.detail, recommended: r.recommended || [], options: (r.models || []).map(m => ({ id: m, title: m, icon: 'zap' })) };
-    };
+  /** Per cloud service: its chat models (for «Per modalità») and its memory models, read by «Prova». */
+  cloudLists = signal<Record<string, PickItem[]>>({});
+  private embedLists: Record<string, string[]> = {};
+  /** «Prova» of a brain service: a typed key is saved once (the module re-reads it in a second), then its model list is
+   * read (no tokens spent). The same check serves Modelli (chat models) and Memoria (embedding models). */
+  private async brainCheck(name: string, key: string) {
     const markKey = () => this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
     try {
       const r = await this.api.test(name, key);
       if (key) markKey();
-      return toCheck(r);
+      return r;
     } catch (e) {
-      // A slow restart can drop the answer while the key was saved: if it is there, read the list again.
+      // A slow answer can be lost while the key was saved: if it is there, read the list again.
       const saved = key ? await this.api.catalog().then(c => c.cloud.find(x => x.name === name)?.key_set).catch(() => false) : false;
-      if (saved) { markKey(); return toCheck(await this.api.test(name, '')); }
+      if (saved) { markKey(); return this.api.test(name, ''); }
       throw new Error(setupError(e));
     }
+  }
+  readonly chatTester = async (name: string, key: string): Promise<ServiceCheck> => {
+    const r = await this.brainCheck(name, key);
+    const options = (r.models || []).map(m => ({ id: m, title: m, icon: 'zap', group: family(m) }));
+    this.cloudLists.set({ ...this.cloudLists(), [name]: options });
+    this.embedLists[name] = r.embed || [];
+    return { ok: r.ok, detail: r.detail, recommended: r.recommended || [], options };
+  };
+  readonly embedTester = async (name: string, key: string): Promise<ServiceCheck> => {
+    const r = await this.brainCheck(name, key);
+    const embed = r.embed || [];
+    this.embedLists[name] = embed;
+    const ok = r.ok && embed.length > 0;
+    return { ok, detail: ok ? `La chiave funziona: ${embed.length === 1 ? 'un modello' : embed.length + ' modelli'} per la memoria.`
+                            : r.ok ? 'Questo servizio non ha modelli per la memoria.' : r.detail,
+             recommended: embed.slice(0, 1), options: embed.map(m => ({ id: m, title: m, icon: 'memory', group: family(m) })) };
   };
 
   private async applyBrain() {
     const r = this.recipe();
-    const local = this.needsLocal() ? this.localModel() : '';
-    const cloud = this.useCloud() ? this.cloudPicked() : [];
+    const local = this.localModel();
+    const cloud = this.cloudPicked();
     const claude = cloud.find(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
     const models: Record<string, string[]> = {};
     for (const n of cloud) if (this.cloudModel()[n]?.length) models[n] = this.cloudModel()[n];
+    const modes: BrainChoice['modes'] = {};
+    for (const [mode, id] of Object.entries(this.modes())) {
+      const [provider, ...rest] = id.split('|');
+      if (rest.length) modes[mode] = { provider, model: rest.join('|'), ...this.runtimeOf(provider) };
+    }
     const out = await this.api.apply(r, local, cloud, claude ? (this.cloudTokens()[claude] || '').trim() : '', {
       local_provider: this.localProvider(), cloud_models: models, embedding: this.embeddingChoice(),
-      local_runtime: local ? this.runtimeOf(this.localProvider()) : {},
+      local_runtime: local ? this.runtimeOf(this.localProvider()) : {}, modes,
     });
     this.cloudTokens.set({});
     if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }
-    await Promise.all([this.refresh(), this.refreshDownloads()]);
+    await Promise.all([this.refresh(), this.refreshDownloads(), this.api.catalog(this.hosts()).then(c => this.catalog.set(c)).catch(() => undefined)]);
     this.forward();
   }
 

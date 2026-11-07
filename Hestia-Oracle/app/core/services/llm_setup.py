@@ -325,8 +325,8 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     listed, error = _list_checked(provider)
     if error:
         return {"ok": False, "detail": error, "models": []}
-    # chat models for the picker; the embedding ones go to «Per la memoria» (a cloud memory when nothing runs at home)
-    models = None if listed is None else [m for m in listed if not _is_embedding(m)]
+    # only chat models for «Modelli» (no speech, pictures, live audio); the embedding ones go to «Memoria»
+    models = None if listed is None else [m for m in listed if is_chat(m)]
     embed = [m for m in listed or [] if _is_embedding(m)]
     if models is not None:
         if not models:
@@ -343,12 +343,17 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
 _NOT_CHAT = ("tts", "image", "audio", "live", "native", "embed", "aqa", "imagen", "veo", "computer-use", "robotics")
 
 
+def is_chat(name: str) -> bool:
+    """A model to chat with: not an embedding one, not speech/pictures/live audio (the «Modelli» step lists only these)."""
+    return not _is_embedding(name) and not any(w in name.lower() for w in _NOT_CHAT)
+
+
 def recommended(provider: str, listed: list[str], limit: int = 2) -> list[str]:
     """The models preselected for a service once its key works, in order (the first answers, the next ones take over
     when it fails or its quota ends): Hestia's default models that the service still lists, then the cheapest-looking
     chat models it lists. The user may change them; nothing is asked when the key is right."""
     from core.services import llm_chains, llm_providers
-    chat = [m for m in listed if not _is_embedding(m) and not any(w in m.lower() for w in _NOT_CHAT)]
+    chat = [m for m in listed if is_chat(m)]
     out: list[str] = []
     for chain in llm_chains.DEFAULT_CHAINS.values():
         for step in chain["steps"]:
@@ -401,8 +406,9 @@ def _default_model(provider: str) -> str:
 
 def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[str, dict],
                 local_provider: str = "ollama", cloud_models: dict[str, list[str] | str] | None = None,
-                embedding: dict[str, str] | None = None) -> dict[str, dict]:
-    """New ``oracle.chains`` for a recipe. Pure function (tests): local steps use ``local_provider``/``local_model``;
+                embedding: dict[str, str] | None = None, modes: dict[str, dict] | None = None) -> dict[str, dict]:
+    """New ``oracle.chains`` for a recipe. ``modes``: per chat chain (``potente``, ``codice``, ``visione``) a model
+    chosen for that mode only (``{provider, model}``): it answers first there, the general choice follows as fallback. Pure function (tests): local steps use ``local_provider``/``local_model``;
     each chosen cloud service uses the models picked for it in order (``cloud_models``, one or more: the next one takes
     over when the first fails), or its default models; the embedding
     chain changes only when ``embedding`` names another model; chains the setup does not know stay."""
@@ -434,6 +440,10 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
             steps = cloud_steps
         else:   # entrambi, claude (the chains stay the fallback of the external brain)
             steps = local_steps + cloud_steps
+        own = (modes or {}).get(name) or {}
+        if own.get("model"):
+            first = {"provider": own.get("provider") or "ollama", "model": own["model"]}
+            steps = [first] + [s for s in steps if s != first]
         if steps:
             out[name] = {"label": out.get(name, default).get("label") or default["label"], "steps": steps}
     if "cloud" in out and cloud:
@@ -497,7 +507,7 @@ def _live_models(cloud: list[str], picked: dict[str, list[str]]) -> dict[str, li
 
 def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, local_provider: str = "ollama",
           cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
-          local_runtime: dict | None = None) -> dict[str, Any]:
+          local_runtime: dict | None = None, modes: dict[str, dict] | None = None) -> dict[str, Any]:
     from core.services import llm_chains, oracle_settings
     if recipe not in RECIPES:
         return {"ok": False, "detail": "Scelta non valida."}
@@ -508,10 +518,14 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     if emb.get("model") and not ensure_runtime(emb.get("provider") or "ollama",
                                                {k: emb.get(k, "") for k in ("url", "type", "label")}):
         return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
+    modes = {k: v for k, v in (modes or {}).items() if k in CHAT_CHAINS and isinstance(v, dict) and v.get("model")}
+    for own in modes.values():
+        if not ensure_runtime(own.get("provider") or "ollama", {k: own.get(k, "") for k in ("url", "type", "label")}):
+            return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
     chosen = _as_lists(cloud_models)
     cloud_models = {**_live_models(list(cloud or []), chosen), **chosen}
     chains = plan_chains(recipe, local_model if recipe != "cloud" else "", list(cloud or []), llm_chains.chains(),
-                         local_provider=local_provider, cloud_models=cloud_models, embedding=embedding)
+                         local_provider=local_provider, cloud_models=cloud_models, embedding=embedding, modes=modes)
     if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason="Setup guidato"):
         return {"ok": False, "detail": "Le impostazioni non hanno accettato la scelta."}
     if recipe == "claude":

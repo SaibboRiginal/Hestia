@@ -54,6 +54,18 @@ def key_env(name: str) -> str:
     return KEY_PREFIX + re.sub(r"[^A-Z0-9]+", "_", str(name or "").upper()).strip("_")
 
 
+def env_path():
+    """Oracle's own ``.env`` (``Hestia-Oracle/app/.env``, mounted at ``/code``), written by the guided setup."""
+    from pathlib import Path
+    return Path(__file__).resolve().parents[2] / ".env"
+
+
+def reload_keys() -> list[str]:
+    """Re-read the ``ORACLE_KEY_*`` lines of Oracle's ``.env``: a key saved by the setup works at once."""
+    from hestia_common import env_keys
+    return env_keys.reload(env_path(), KEY_PREFIX)
+
+
 def api_key(name: str) -> str:
     return (os.getenv(key_env(name)) or "").strip()
 

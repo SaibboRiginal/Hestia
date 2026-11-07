@@ -4,5 +4,7 @@
  */
 import { definePlugin } from '@hestia/webui-sdk';
 import { HecateDevices } from './devices';
+import { HecateGarmin } from './garmin';
+import { HecateGoogle } from './google';
 
-definePlugin({ 'hecate-devices': HecateDevices });
+definePlugin({ 'hecate-devices': HecateDevices, 'hecate-google': HecateGoogle, 'hecate-garmin': HecateGarmin });

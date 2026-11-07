@@ -11,6 +11,9 @@ Provides cross-cutting utilities consumed by all Hestia services:
 - `logging_utils.py` — Uniform service logging setup, log event helpers, and in-memory ring buffer for runtime inspection.
 - `startup_utils.py` — Generic Hub readiness wait and dependency-check helpers.
 - `task_lifecycle.py` — Background thread lifecycle management utilities.
+- `env_keys.py` — `reload(path, prefix)`: a module re-reads the `prefix*` lines of its own `.env` into `os.environ`
+  (values never logged nor returned) and gets the names back. Oracle (`ORACLE_KEY_`) and Echo (`ECHO_KEY_`) use it
+  at startup and in `…/setup/reload-keys`, so a key saved by the guided setup works without re-creating the container.
 
 ---
 
