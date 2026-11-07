@@ -522,7 +522,8 @@ the models already chosen in the same picker, «Cambia chiave». A cloud service
 the Claude code) is already saved, in every step. Modelli lists only chat models and has a tab per mode
 (Generale, Ragionamento, Codice, Immagini): the three others say «Gli stessi di Generale» (ticked by default);
 unticked, the mode gets its own copy of the same step, with its own «Scelti» to change and reorder (sent as
-`modes {mode: {steps: [{provider, model}]}}`). «I modelli sono pronti» shows the assistant's first message, written
+`modes {mode: {steps: [{provider, model}]}}`; the keys are shared between the modes, the model lists are read by
+each step when a service is opened). «I modelli sono pronti» shows the assistant's first message, written
 with the models just chosen (`brain/hello`, «Scritto con <model>»); when the local model is still downloading it
 writes again once the download is over. In Voce every chosen row has «Ascolta» (a short sentence with that voice,
 `voice/preview`), in Ascolto «Prova a parlare» (tap, speak, tap: «Ho capito: …», `voice/hear`); a local engine not
