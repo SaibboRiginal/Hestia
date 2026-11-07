@@ -27,6 +27,7 @@ import requests
 
 from .blocks import CHAINS_KEY, DEFAULT_CHAINS, DEFAULT_PROVIDERS, DIRECTIONS, PROVIDERS_KEY
 from .standards import STANDARDS
+from . import lang
 
 logger = logging.getLogger("hestia_echo.voice_setup")
 
@@ -183,7 +184,10 @@ def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
 
 
 def _items(rows: list[dict]) -> list[dict]:
-    return [{"id": str(r.get("id")), "label": str(r.get("label") or r.get("id"))} for r in rows if r.get("id")]
+    # ``lang``: the language a voice speaks (the setup filters the list with a language selector, Marko 2026-11-07)
+    return [{"id": str(r.get("id")), "label": str(r.get("label") or r.get("id")),
+             **({"lang": r["lang"], "lang_label": lang.name(r["lang"]).capitalize()} if r.get("lang") else {})}
+            for r in rows if r.get("id")]
 
 
 def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) -> dict[str, Any]:

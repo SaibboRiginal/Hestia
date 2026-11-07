@@ -24,7 +24,6 @@ from urllib.parse import urlsplit
 import requests
 
 from . import audio
-from .lang import name as lang_name
 
 logger = logging.getLogger("hestia_echo.standards")
 
@@ -264,8 +263,8 @@ class Piper(Standard):
         d = MODELS_DIR / "piper"
         if d.is_dir():
             names |= {p.stem for p in d.glob("*.onnx")}
-        return [{"id": n, "label": (n.split("-")[1].replace("_", " ").capitalize() + " · " + lang_name(self.voice_language(n)))
-                 if n.count("-") >= 2 else n} for n in sorted(names, key=lambda n: (self.voice_language(n) != lang, n))]
+        return [{"id": n, "label": n.split("-")[1].replace("_", " ").capitalize() if n.count("-") >= 2 else n,
+                 "lang": self.voice_language(n)} for n in sorted(names, key=lambda n: (self.voice_language(n) != lang, n))]
 
     @staticmethod
     def title(name: str, suffix: str = ".onnx") -> str:
@@ -379,7 +378,7 @@ class Kokoro(Standard):
         lang = "it" if (language or "auto") == "auto" else language[:2]
         first = [v for v, _ in KOKORO_VOICES.get(lang, []) + KOKORO_VOICES["en"]]   # the usual ones on top
         order = first + [v for v in KOKORO_ALL if v not in first]
-        return [{"id": v, "label": f"{v[3:].replace('_', ' ').capitalize()} · {lang_name(self.voice_language(v))}"}
+        return [{"id": v, "label": v[3:].replace("_", " ").capitalize(), "lang": self.voice_language(v)}
                 for v in dict.fromkeys(order)]
 
     def voice_language(self, voice: str) -> str:

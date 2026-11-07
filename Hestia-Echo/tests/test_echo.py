@@ -533,7 +533,7 @@ def test_voice_follows_the_language_of_the_text():
     assert p.for_language("it_IT-riccardo-x_low", "en") == "en_US-ryan-medium"
     with pytest.raises(standards.EngineError):        # no German Kokoro voice: the chain moves on
         k.for_language("if_sara", "de")
-    assert len(k.voices({}, "auto")) == len(standards.KOKORO_ALL) and k.voices({}, "auto")[0]["label"] == "Sara · italiano"
+    assert len(k.voices({}, "auto")) == len(standards.KOKORO_ALL) and k.voices({}, "auto")[0] == {"id": "if_sara", "label": "Sara", "lang": "it"}
 
 
 @pytest.mark.unit
