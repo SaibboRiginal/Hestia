@@ -1,8 +1,9 @@
 """Guided setup of the brain (docs/work/2026-10-30-setup-un-click §4.2 «Cervello»).
 
 What the setup screen needs from Oracle, and only from Oracle (it owns the providers):
-- ``runtimes(vram_gb)``: the programs that run models on this computer (Ollama, LM Studio, Jan, llama.cpp, vLLM),
-  found by asking their usual port, each with the models it really has and a warning on those bigger than the video
+- ``runtimes(vram_gb, hosts)``: the programs that run models at home (Ollama, LM Studio, Jan, llama.cpp, vLLM), on
+  this computer and on the other computers of the home network the user names (e.g. Hestia on a Raspberry, the
+  models on the PC with the video card), found by asking their usual port, each with the models it really has and a warning on those bigger than the video
   card. Hestia keeps no model list of its own for them: the program knows;
 - ``CATALOG``: a few suggested models per hardware tier, shown only when nothing is installed (Ollama downloads them);
 - ``recommend(vram_gb, ram_gb)``: the tier for this PC and its preselected models;
@@ -18,10 +19,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 logger = logging.getLogger("hestia_oracle.llm_setup")
 
@@ -58,13 +61,19 @@ def local_models(vram_gb: float = 0) -> list[dict[str, Any]]:
     from core.services import llm_providers
     if not llm_providers.get("ollama"):
         return []
+    return _ollama_models(llm_providers.url("ollama"), vram_gb) or []
+
+
+def _ollama_models(base: str, vram_gb: float = 0, timeout: float = 5) -> list[dict[str, Any]] | None:
+    """The chat models of the Ollama at ``base`` (None when nothing answers there)."""
+    import requests
     try:
-        resp = requests.get(f"{llm_providers.url('ollama')}/api/tags", timeout=5)
+        resp = requests.get(f"{base.rstrip('/')}/api/tags", timeout=timeout)
         resp.raise_for_status()
         rows = (resp.json() or {}).get("models", [])
     except Exception as exc:
-        logger.warning("[🔄] event=llm_setup_local_models_failed error=%s", str(exc)[:160])
-        return []
+        logger.info("[🔄] event=llm_setup_local_models_failed base=%s error=%s", base, str(exc)[:160])
+        return None
     vram = float(vram_gb or 0)
     out = []
     for m in rows:
@@ -79,6 +88,16 @@ def local_models(vram_gb: float = 0) -> list[dict[str, Any]]:
                     # ~10% over the file for the context; unknown card → no warning
                     "fits": not vram or size_gb * 1.1 <= vram})
     return sorted(out, key=lambda r: (not r["fits"], -r["size_gb"]))
+
+
+def _ollama_embed(base: str) -> list[str]:
+    import requests
+    try:
+        rows = requests.get(f"{base.rstrip('/')}/api/tags", timeout=3).json().get("models", [])
+    except Exception:
+        return []
+    return [str(m.get("name")) for m in rows if m.get("name") and _is_embedding(str(m.get("name")),
+                                                                            str((m.get("details") or {}).get("family") or ""))]
 
 
 # Programs that serve models on the user's PC with the OpenAI-compatible API (``/v1/models``), on their usual port.
@@ -119,61 +138,108 @@ def _probe_openai(base: str) -> list[str] | None:
         return None
 
 
-def runtimes(vram_gb: float = 0) -> list[dict[str, Any]]:
-    """Every program for local models: Ollama first, then the OpenAI-compatible ones of ``RUNTIMES``. Each row:
-    ``{name, label, url, site, found, configured, models: [{model, size_gb, params, quant, fits}], embed: [model]}``.
-    A program already configured as a block (same address) keeps its block name."""
+HOST_RE = re.compile(r"[A-Za-z0-9.-]{1,120}")
+
+
+def home_hosts(hosts: str | list[str] | None) -> list[str]:
+    """The other computers of the home network to look on (names or addresses, at most 4), checked."""
+    raw = hosts.split(",") if isinstance(hosts, str) else list(hosts or [])
+    out: list[str] = []
+    for h in raw:
+        h = str(h).strip().removeprefix("http://").removeprefix("https://").split("/")[0].split(":")[0]
+        if h and HOST_RE.fullmatch(h) and h != _host() and h not in out:
+            out.append(h)
+    return out[:4]
+
+
+def _slug(host: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", host.lower()).strip("-")
+
+
+def runtimes(vram_gb: float = 0, hosts: str | list[str] | None = None) -> list[dict[str, Any]]:
+    """Every program for local models: on this computer Ollama first, then the OpenAI-compatible ones of
+    ``RUNTIMES``; then the same programs on each other computer of ``hosts``. Each row: ``{name, label, type, url,
+    host, site, found, configured, models: [{model, size_gb, params, quant, fits}], embed: [model]}`` (``host`` empty
+    = this computer). A program already configured as a block (same address) keeps its block name; one on another
+    computer is named ``<program>-<address>``."""
     from concurrent.futures import ThreadPoolExecutor
     from core.services import llm_providers
-    ollama = {"name": "ollama", "label": "Ollama", "url": llm_providers.url("ollama") if llm_providers.get("ollama") else "",
+    ollama = {"name": "ollama", "label": "Ollama", "type": "ollama", "host": "",
+              "url": llm_providers.url("ollama") if llm_providers.get("ollama") else "",
               "site": OLLAMA_SITE, "configured": bool(llm_providers.get("ollama")), "found": False,
               "models": [], "embed": []}
     if ollama["configured"] and _ollama_up():
         ollama["found"] = True
         ollama["models"] = local_models(vram_gb)
         ollama["embed"] = [m for m in llm_providers.list_models("ollama") if _is_embedding(m)]
-    host = _host()
     blocks = {llm_providers.url(n).rstrip("/"): n for n in llm_providers.providers()
-              if llm_providers.type_of(n) == "openai"}
-    bases = [f"http://{host}:{r['port']}/v1" for r in RUNTIMES]
-    with ThreadPoolExecutor(max_workers=len(bases)) as pool:
-        answers = list(pool.map(_probe_openai, bases))
+              if llm_providers.type_of(n) in ("openai", "ollama")}
+    probes: list[tuple[dict, str, str]] = [(spec, _host(), f"http://{_host()}:{spec['port']}/v1") for spec in RUNTIMES]
+    others = home_hosts(hosts)
+    for host in others:
+        probes.append(({"name": "ollama", "label": "Ollama", "port": 11434, "site": OLLAMA_SITE}, host, f"http://{host}:11434"))
+        probes += [(spec, host, f"http://{host}:{spec['port']}/v1") for spec in RUNTIMES]
+
+    def ask(probe):
+        spec, host, base = probe
+        if spec["name"] == "ollama":
+            return _ollama_models(base, vram_gb, timeout=1.5), _ollama_embed(base)
+        ids = _probe_openai(base)
+        return ([{"model": m, "size_gb": 0, "params": "", "quant": "", "fits": True} for m in ids if not _is_embedding(m)]
+                if ids is not None else None), [m for m in ids or [] if _is_embedding(m)]
+    with ThreadPoolExecutor(max_workers=min(16, len(probes))) as pool:
+        answers = list(pool.map(ask, probes))
     rows = [ollama]
-    for spec, base, ids in zip(RUNTIMES, bases, answers):
-        rows.append({"name": blocks.get(base, spec["name"]), "label": spec["label"], "url": base, "site": spec["site"],
-                     "configured": base in blocks, "found": ids is not None,
-                     # the program does not say the size: no warning rather than a wrong one
-                     "models": [{"model": m, "size_gb": 0, "params": "", "quant": "", "fits": True}
-                                for m in ids or [] if not _is_embedding(m)],
-                     "embed": [m for m in ids or [] if _is_embedding(m)]})
+    for (spec, host, base), (models, embed) in zip(probes, answers):
+        remote = host != _host()
+        if remote and models is None:
+            continue                       # another computer: only what answers there
+        own = f"{spec['name']}-{_slug(host)}" if remote else spec["name"]
+        rows.append({"name": blocks.get(base.rstrip("/"), own), "label": f"{spec['label']} · {host}" if remote else spec["label"],
+                     "type": "ollama" if spec["name"] == "ollama" else "openai", "url": base, "host": host if remote else "",
+                     "site": spec["site"], "configured": base.rstrip("/") in blocks, "found": models is not None,
+                     # an OpenAI-compatible program does not say the size: no warning rather than a wrong one
+                     "models": models or [], "embed": embed})
     return rows
 
 
-def ensure_runtime(name: str) -> bool:
-    """A found program becomes a provider block (type ``openai``, its address) the first time the user picks it."""
+def ensure_runtime(name: str, runtime: dict | None = None) -> bool:
+    """A found program becomes a provider block the first time the user picks it: type ``openai`` (or ``ollama`` on
+    another computer) with its address. ``runtime {url, type, label}`` comes from ``runtimes`` (another computer);
+    without it the program is one of ``RUNTIMES`` on this computer."""
     from core.services import llm_providers, oracle_settings
     if llm_providers.providers().get(name):
         return True
+    runtime = runtime or {}
+    url = str(runtime.get("url") or "")
     spec = next((r for r in RUNTIMES if r["name"] == name), None)
-    if spec is None:
+    if url:
+        host = urlsplit(url).hostname or ""
+        if not url.startswith("http://") or not HOST_RE.fullmatch(host):
+            return False
+        entry = {"type": "ollama" if runtime.get("type") == "ollama" else "openai",
+                 "label": str(runtime.get("label") or name)[:80], "url": url}
+    elif spec is not None:
+        entry = {"type": "openai", "label": f"{spec['label']} (locale)", "url": f"http://{_host()}:{spec['port']}/v1"}
+    else:
         return False
     current = oracle_settings.settings.get(oracle_settings.PROVIDERS_KEY)
     provs = {k: dict(v) for k, v in (current if isinstance(current, dict) and current
                                      else llm_providers.DEFAULT_PROVIDERS).items()}
-    provs[name] = {"type": "openai", "label": f"{spec['label']} (locale)", "url": f"http://{_host()}:{spec['port']}/v1"}
+    provs[name] = entry
     ok = oracle_settings.settings.put(oracle_settings.PROVIDERS_KEY, provs, actor="user",
-                                      reason=f"Setup guidato: {spec['label']} sul computer")
+                                      reason=f"Setup guidato: {entry['label']}")
     logger.info("event=llm_setup_runtime_added provider=%s ok=%s", name, ok)
     return bool(ok)
 
 
-def catalog(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
+def catalog(vram_gb: float = 0, ram_gb: float = 0, hosts: str | list[str] | None = None) -> dict[str, Any]:
     from core.services import llm_chains, llm_providers
     installed = llm_providers.list_models("ollama") if llm_providers.get("ollama") else []
     cloud = [{"name": p["name"], "label": p["label"], "type": p["type"], "key_env": p["key_env"],
               "key_set": p["key_set"], "available": p["available"]}
              for p in llm_providers.public_view() if not llm_providers.is_local(p["name"])]
-    found = runtimes(vram_gb)
+    found = runtimes(vram_gb, hosts)
     embedding = ((llm_chains.chains().get(llm_chains.EMBEDDING_CHAIN) or {}).get("steps") or [{}])[0]
     return {"recommended": recommend(vram_gb, ram_gb), "tiers": CATALOG, "installed": installed,
             "local": next((r["models"] for r in found if r["name"] == "ollama"), []), "runtimes": found,
@@ -220,7 +286,7 @@ def _list_checked(provider: str) -> tuple[list[str] | None, str]:
         if ptype == "gemini":
             resp = requests.get(f"{base}/v1beta/models", params={"key": key, "pageSize": 1000}, timeout=10)
             ids = lambda data: [str(m.get("name") or "").removeprefix("models/") for m in data.get("models") or []
-                                if "generateContent" in (m.get("supportedGenerationMethods") or [])]
+                                if {"generateContent", "embedContent"} & set(m.get("supportedGenerationMethods") or [])]
         elif ptype in ("openai", "llamacpp"):
             resp = requests.get(f"{base}/models", headers={"Authorization": f"Bearer {key}"} if key else {}, timeout=10)
             ids = lambda data: [str(m.get("id")) for m in data.get("data") or [] if m.get("id")]
@@ -240,7 +306,7 @@ def _list_checked(provider: str) -> tuple[list[str] | None, str]:
     if not resp.ok:
         return None, f"Non risponde (errore {resp.status_code})."
     try:
-        return [m for m in ids(resp.json() or {}) if m and not _is_embedding(m)], ""
+        return [m for m in ids(resp.json() or {}) if m], ""
     except ValueError:
         return None, "Risposta non valida dal servizio."
 
@@ -256,9 +322,12 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     ok, why = llm_providers.available(provider)
     if not ok:
         return {"ok": False, "detail": "Manca la chiave." if "not set" in why else why}
-    models, error = _list_checked(provider)
+    listed, error = _list_checked(provider)
     if error:
         return {"ok": False, "detail": error, "models": []}
+    # chat models for the picker; the embedding ones go to «Per la memoria» (a cloud memory when nothing runs at home)
+    models = None if listed is None else [m for m in listed if not _is_embedding(m)]
+    embed = [m for m in listed or [] if _is_embedding(m)]
     if models is not None:
         if not models:
             return {"ok": True, "detail": "La chiave funziona (per oggi la quota potrebbe essere finita).",
@@ -266,7 +335,7 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
         chosen = _pick_model(provider, model, models)
         logger.info("event=llm_setup_test_ok provider=%s models=%s via=list", provider, len(models))
         return {"ok": True, "detail": f"La chiave funziona: {len(models)} modelli disponibili.", "model": chosen,
-                "models": models, "recommended": recommended(provider, models)}
+                "models": models, "recommended": recommended(provider, models), "embed": embed}
     return _tiny_call(provider, model or _default_model(provider))
 
 
@@ -427,14 +496,17 @@ def _live_models(cloud: list[str], picked: dict[str, list[str]]) -> dict[str, li
 
 
 def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, local_provider: str = "ollama",
-          cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None) -> dict[str, Any]:
+          cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
+          local_runtime: dict | None = None) -> dict[str, Any]:
     from core.services import llm_chains, oracle_settings
     if recipe not in RECIPES:
         return {"ok": False, "detail": "Scelta non valida."}
     local_provider = local_provider or "ollama"
-    if recipe != "cloud" and local_model and not ensure_runtime(local_provider):
+    if recipe != "cloud" and local_model and not ensure_runtime(local_provider, local_runtime):
         return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
-    if (embedding or {}).get("model") and not ensure_runtime((embedding or {}).get("provider") or "ollama"):
+    emb = embedding or {}
+    if emb.get("model") and not ensure_runtime(emb.get("provider") or "ollama",
+                                               {k: emb.get(k, "") for k in ("url", "type", "label")}):
         return {"ok": False, "detail": "Non riesco ad aggiungere quel programma alle impostazioni."}
     chosen = _as_lists(cloud_models)
     cloud_models = {**_live_models(list(cloud or []), chosen), **chosen}

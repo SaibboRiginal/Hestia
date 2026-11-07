@@ -393,6 +393,7 @@ class SetupApply(BaseModel):
     cloud: list[str] = Field(default_factory=list)
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
     embedding: dict[str, str] = Field(default_factory=dict)
+    local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
 
 
 class SetupPull(BaseModel):
@@ -405,10 +406,10 @@ class SetupMachine(BaseModel):
 
 
 @app.get("/api/llm/setup/catalog")
-def llm_setup_catalog(vram_gb: float = 0, ram_gb: float = 0):
+def llm_setup_catalog(vram_gb: float = 0, ram_gb: float = 0, hosts: str = ""):
     """Guided setup «Cervello»: recommended models for this hardware, installed ones, cloud providers (no keys)."""
     from core.services import llm_setup
-    return {"status": "ok", **llm_setup.catalog(vram_gb, ram_gb)}
+    return {"status": "ok", **llm_setup.catalog(vram_gb, ram_gb, hosts)}
 
 
 @app.post("/api/llm/setup/test")
@@ -423,7 +424,7 @@ def llm_setup_apply(req: SetupApply):
     """The user's choice in the setup → ``oracle.chains`` (+ brain mode for «claude») through Themis."""
     from core.services import llm_setup
     result = llm_setup.apply(req.recipe, req.local_model, req.cloud, local_provider=req.local_provider,
-                             cloud_models=req.cloud_models, embedding=req.embedding)
+                             cloud_models=req.cloud_models, embedding=req.embedding, local_runtime=req.local_runtime)
     if not result.get("ok"):
         raise HTTPException(status_code=502, detail=result.get("detail"))
     return {"status": "ok", **result}

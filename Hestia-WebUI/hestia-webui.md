@@ -504,18 +504,20 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
 
 `/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell (it scrolls by itself): one question per screen (where the brain
-thinks: two boxes, «Il tuo computer» and «Cloud» → local model, one list with search of the models every program found on the PC really has (Ollama, LM
+thinks: two boxes, «In casa» (this computer or another of the house: «Su un altro computer di casa» takes an address,
+remembered in the browser and passed as `?hosts=` to both catalogs) and «Cloud» → local model, one list with search of the models every program found on the PC really has (Ollama, LM
 Studio, Jan, llama.cpp, vLLM; the program is the card's note), and under it «Per la memoria», the embedding model
-chosen the same way (the one in use, the programs' embedding models, and when Ollama has none the recommended one
-that Ollama downloads), a warning on those bigger than the video card, links
+chosen the same way (the one in use when it can still run, the programs' embedding models, and when Ollama has none
+the recommended one that Ollama downloads); with nothing at home it is asked on the cloud screen instead, from the
+services' own embedding models (e.g. Gemini's), the first chosen by itself, a warning on those bigger than the video card, links
 to install Ollama or LM Studio when none is found, «Cerca di nuovo»
 → cloud services, one or more in the order they are tried («Prima di …» to reorder), all through the one component
 `setup-services` (also used by the voice): key typed once, «Salva e prova» reads the service's list (a saved key is
 checked by itself), and when it works the card closes on «La chiave funziona» with the models already chosen, more
 than one in order as fallbacks (`recommended` from the service), «Cambia» to change them; the Claude subscription as one of them with its
 `claude setup-token` code → result and downloads → voice, configured like the models: for «Ascolto» and «Voce» one
-local engine (one list of every local engine's models or voices, with a line on each engine: Kokoro natural, Piper
-light) and then, optionally, cloud services in order through the same `setup-services` cards; «Conferma» writes
+engine at home (one list of every local engine's models or voices, with a line on each engine: Kokoro natural, Piper
+light, plus the speech programs Echo finds at home such as Speaches or Home Assistant's Wyoming) and then, optionally, cloud services in order through the same `setup-services` cards; «Conferma» writes
 those steps first in Echo's chains, the other steps kept as fallbacks, and queues the local downloads → Telegram token and one-time
 code → backup passphrase → calendar, mail and devices (Garmin connects from the Dispositivi page, opened in another tab, with the form in its card) → outside home (what
 turning it on does and «Attiva l'indirizzo» right there, the steps while it starts, then the address with «Provalo»

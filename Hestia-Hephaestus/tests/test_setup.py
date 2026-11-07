@@ -196,3 +196,22 @@ def test_tunnel_first_start_downloads_the_image_as_a_tracked_job(monkeypatch, tm
     job = next(j for j in tunnel.downloads().list() if j["source"] == "docker")
     assert job["state"] == "fatto" and job["module"] == "hephaestus"
     tunnel.stop(dock)
+
+
+def test_tunnel_joins_the_compose_group_of_the_stack(monkeypatch):
+    """Marko 2026-11-06: the tunnel showed outside the «hestia» group in Docker; it now carries the stack's labels."""
+    from app.setup import tunnel
+    monkeypatch.setattr(tunnel.requests, "get", lambda *a, **kw: (_ for _ in ()).throw(OSError("no metrics")))
+
+    class _Own:
+        labels = {"com.docker.compose.project": "hestia", "com.docker.compose.service": "hephaestus"}
+
+    class _Grouped(_Docker):
+        def get(self, name):
+            return super().get(name) if name == "hestia_tunnel" or name == tunnel.IMAGE else _Own()
+
+    dock = _Grouped()
+    tunnel.start(dock, wait=5)
+    labels = dock.created["labels"]
+    assert labels["com.docker.compose.project"] == "hestia" and labels["com.docker.compose.service"] == "tunnel"
+    tunnel.stop(dock)

@@ -258,3 +258,40 @@ def test_plan_puts_every_chosen_model_of_a_service_in_order(monkeypatch):
     assert out["veloce"]["steps"] == [{"provider": "ollama", "model": "qwen3:8b"},
                                       {"provider": "gemini", "model": "gemini-a"},
                                       {"provider": "gemini", "model": "gemini-b"}]
+
+
+def test_runtimes_also_look_on_another_computer_of_the_house(monkeypatch):
+    """Marko 2026-11-06: «locale» may be another PC of the house (Hestia on a Raspberry, the models on the PC)."""
+    monkeypatch.setattr(llm_setup, "_ollama_up", lambda: False)
+    monkeypatch.setattr(llm_setup, "_host", lambda: "host.docker.internal")
+    monkeypatch.setattr(llm_providers, "providers", lambda: {})
+    monkeypatch.setattr(llm_setup, "_probe_openai", lambda base: ["qwen3-14b"] if base == "http://192.168.1.20:1234/v1" else None)
+    monkeypatch.setattr(llm_setup, "_ollama_models", lambda base, vram=0, timeout=5: (
+        [{"model": "qwen3:8b", "size_gb": 5.2, "params": "8B", "quant": "Q4", "fits": True}] if "192.168.1.20" in base else None))
+    monkeypatch.setattr(llm_setup, "_ollama_embed", lambda base: ["qwen3-embedding:0.6b"])
+    rows = {r["name"]: r for r in llm_setup.runtimes(16, "192.168.1.20, bad host!, 192.168.1.20")}
+    assert rows["ollama-192-168-1-20"]["type"] == "ollama" and rows["ollama-192-168-1-20"]["host"] == "192.168.1.20"
+    assert rows["ollama-192-168-1-20"]["embed"] == ["qwen3-embedding:0.6b"]
+    assert rows["lmstudio-192-168-1-20"]["label"] == "LM Studio · 192.168.1.20"
+    assert "jan-192-168-1-20" not in rows                      # another computer: only what answers there
+    assert rows["lmstudio"]["host"] == "" and rows["lmstudio"]["found"] is False
+
+
+def test_ensure_runtime_adds_a_program_of_another_computer(monkeypatch):
+    stored = {oracle_settings.PROVIDERS_KEY: dict(llm_providers.DEFAULT_PROVIDERS)}
+    monkeypatch.setattr(oracle_settings.settings, "get", lambda key, default=None: stored.get(key, default))
+    monkeypatch.setattr(oracle_settings.settings, "put", lambda key, value, **kw: stored.__setitem__(key, value) or True)
+    assert llm_setup.ensure_runtime("ollama-192-168-1-20", {"url": "http://192.168.1.20:11434", "type": "ollama",
+                                                            "label": "Ollama · 192.168.1.20"})
+    assert stored[oracle_settings.PROVIDERS_KEY]["ollama-192-168-1-20"]["type"] == "ollama"
+    assert llm_setup.ensure_runtime("x", {"url": "file:///etc/passwd"}) is False
+
+
+def test_key_check_also_gives_the_cloud_memory_models(monkeypatch):
+    _keys(monkeypatch, "gemini")
+    import requests
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _ListResp({"models": [
+        {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+        {"name": "models/gemini-embedding-001", "supportedGenerationMethods": ["embedContent"]}]}))
+    result = llm_setup.test("gemini")
+    assert result["models"] == ["gemini-2.5-flash"] and result["embed"] == ["gemini-embedding-001"]

@@ -20,9 +20,11 @@ const KEY_LINKS: Record<string, string> = {
   openai: 'https://platform.openai.com/api-keys',
 };
 const SCREEN_KEY = 'hestia_setup_screen';
+/** Other computers of the house to look on for models and speech programs. */
+const HOSTS_KEY = 'hestia_setup_hosts';
 /** The side summary: one line per screen. */
 const TITLES: Record<Screen, string> = {
-  benvenuto: 'Inizio', ricetta: 'Dove pensa', locale: 'Modello sul computer', cloud: 'Servizi cloud', cervello: 'Modelli pronti',
+  benvenuto: 'Inizio', ricetta: 'Dove pensa', locale: 'Modello in casa', cloud: 'Servizi cloud', cervello: 'Modelli pronti',
   voce: 'Voce', telegram: 'Telegram', backup: 'Backup', esterni: 'Calendario e dispositivi', fuori: 'Fuori casa', pronto: 'Fine',
 };
 /** No address after this long: say so instead of a spinner forever. */
@@ -121,12 +123,12 @@ function store(key: string, value: string): void {
             @case ('ricetta') {
               <hx-icon name="brain" [size]="30" tone="accent" />
               <h1>Dove pensa Hestia?</h1>
-              <p class="lead">Scegli una o tutte e due: Hestia usa prima il tuo computer e, se è occupato o spento, il cloud.</p>
+              <p class="lead">Scegli una o tutte e due: Hestia usa prima i modelli di casa e, se il computer è occupato o spento, il cloud.</p>
               <div class="choices">
                 <button type="button" class="choice" role="checkbox" [attr.aria-checked]="useLocal()" [class.sel]="useLocal()" (click)="useLocal.set(!useLocal())">
                   <hx-icon [name]="useLocal() ? 'check-circle' : 'host'" [size]="20" [tone]="useLocal() ? 'accent' : 'muted'" />
-                  <span class="ct"><b>Il tuo computer</b>@if (recommendLocal()) { <span class="rec">Consigliato</span> }
-                    <small>Privato e gratis. Funziona con Ollama, LM Studio, Jan, llama.cpp o vLLM. Serve una buona scheda video.</small></span>
+                  <span class="ct"><b>In casa</b>@if (recommendLocal()) { <span class="rec">Consigliato</span> }
+                    <small>Privato e gratis, su questo computer o su un altro di casa (per esempio se Hestia gira su un Raspberry). Funziona con Ollama, LM Studio, Jan, llama.cpp o vLLM. Serve una buona scheda video.</small></span>
                 </button>
                 <button type="button" class="choice" role="checkbox" [attr.aria-checked]="useCloud()" [class.sel]="useCloud()" (click)="useCloud.set(!useCloud())">
                   <hx-icon [name]="useCloud() ? 'check-circle' : 'zap'" [size]="20" [tone]="useCloud() ? 'accent' : 'muted'" />
@@ -139,7 +141,7 @@ function store(key: string, value: string): void {
 
             @case ('locale') {
               <hx-icon name="host" [size]="30" tone="accent" />
-              <h1>Quale modello sul tuo computer?</h1>
+              <h1>Quale modello in casa?</h1>
               @if (found().length) {
                 <p class="lead">I modelli che hai già su {{ foundNames() }}.</p>
                 <app-setup-pick [items]="localItems()" [selected]="localKey()" placeholder="Cerca un modello"
@@ -151,7 +153,7 @@ function store(key: string, value: string): void {
                   </hx-field>
                 }
               } @else {
-                <p class="lead">Sul tuo computer non ho trovato programmi per i modelli. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo».</p>
+                <p class="lead">In casa non ho trovato programmi per i modelli. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo». Se è su un altro computer, scrivi qui sotto il suo indirizzo.</p>
                 <div class="choices">
                   @for (r of missing(); track r.name; let first = $first) {
                     <a class="choice" [href]="r.site" target="_blank" rel="noopener">
@@ -163,8 +165,18 @@ function store(key: string, value: string): void {
                 </div>
                 <p class="hint">Oppure torna indietro e usa solo il cloud.</p>
               }
+              <div class="hostrow">
+                <hx-field label="Su un altro computer di casa">
+                  <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="hostDraft()" (ngModelChange)="hostDraft.set($event)" (keydown.enter)="addHost()" placeholder="192.168.1.20" />
+                </hx-field>
+                <button hx-btn variant="secondary" icon="search" [disabled]="!hostDraft().trim()" [loading]="searching()" (click)="addHost()">Cerca lì</button>
+              </div>
+              <p class="note2">L'indirizzo del computer con la scheda video, per esempio 192.168.1.20 o pc-studio.local: cerco lì Ollama, LM Studio e gli altri, e anche i programmi per la voce.</p>
+              @if (hosts().length) {
+                <p class="hint">Cerco anche su: @for (h of hosts(); track h) { <span class="chip">{{ h }} <button type="button" aria-label="Togli" (click)="removeHost(h)"><hx-icon name="x" [size]="12" /></button></span> }</p>
+              }
               <div class="row"><button hx-btn variant="ghost" icon="refresh" [loading]="searching()" (click)="searchAgain()">Cerca di nuovo</button></div>
-              @if (found().length) {
+              @if (memoryHere() === 'locale') {
                 <div class="sub">Per la memoria <small>serve a ritrovare ricordi e documenti. Se lo cambi, Hestia rilegge la memoria e ci vuole un po'.</small></div>
                 <app-setup-pick [items]="embedItems()" [selected]="embeddingSelected()" [limit]="3" placeholder="Cerca" (picked)="pickEmbedding($event)" />
               }
@@ -176,6 +188,11 @@ function store(key: string, value: string): void {
               <p class="lead">Scegline uno o più: li usa in quest'ordine, il secondo se il primo non risponde o ha finito la quota.</p>
               <app-setup-services [services]="cloudRows()" [tester]="brainTester" optionsLabel="Modelli"
                                   [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" />
+              @if (memoryHere() === 'cloud') {
+                <div class="sub">Per la memoria <small>serve a ritrovare ricordi e documenti. In casa non c'è un programma per i modelli, quindi uso quello del servizio cloud.</small></div>
+                <app-setup-pick [items]="embedItems()" [selected]="embeddingSelected()" [limit]="3" placeholder="Cerca"
+                                empty="Appena la chiave funziona, qui compare il modello per la memoria del servizio." (picked)="pickEmbedding($event)" />
+              }
             }
 
             @case ('cervello') {
@@ -196,7 +213,7 @@ function store(key: string, value: string): void {
                   <section class="vdir">
                     <h2><hx-icon [name]="dir.id === 'ascolto' ? 'mic' : 'volume'" [size]="18" tone="accent" /> {{ dir.title }} <small>{{ dir.help }}</small></h2>
                     @if (voiceLocal(dir.id).length) {
-                      <div class="sub">Sul tuo computer <small>uno solo: gratis e privato</small></div>
+                      <div class="sub">In casa <small>uno solo: gratis e privato, su questo computer o su un altro di casa</small></div>
                       <ul class="engines">
                         @for (p of voiceLocal(dir.id); track p.name) { <li><b>{{ engineName(p) }}</b> {{ p.note }}</li> }
                       </ul>
@@ -395,6 +412,11 @@ function store(key: string, value: string): void {
     .urlrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .urlrow .code { flex: 1 1 220px; min-width: 0; text-align: left; }
     .row.start { justify-content: flex-start; }
+    .note2 { font-size: 12px; color: var(--text-3); line-height: 1.4; margin-top: -6px; }
+    .hostrow { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+    .hostrow hx-field { flex: 1 1 240px; min-width: 0; }
+    .chip { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; background: var(--surface-2); border-radius: var(--radius-full); padding: 1px 4px 1px 9px; }
+    .chip button { background: none; border: 0; padding: 2px; color: var(--text-3); display: inline-flex; }
     select.hx-input { width: 100%; }
     .ct { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
     .ct b { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
@@ -511,7 +533,7 @@ export class SetupPageComponent {
   async loadVoice() {
     this.voiceError.set('');
     try {
-      const cat = await this.api.voiceCatalog();
+      const cat = await this.api.voiceCatalog(this.hosts());
       this.voiceCat.set(cat);
       const saved = this.state()?.voice || {};
       const local: Record<VoiceDir, string> = { ascolto: '', voce: '' };
@@ -552,7 +574,7 @@ export class SetupPageComponent {
       this.optionsOf(p, dir).forEach((o, i) => out.push({
         id: `${p.name}|${o.id}`, title: many ? `${this.engineName(p)} · ${o.label}` : o.label, icon: dir === 'ascolto' ? 'mic' : 'volume',
         note: o.note || (p.state === 'ready' ? '' : 'Lo scarico quando confermi.'),
-        tag: dir === 'voce' && i === 0 && out.length === 0 ? 'Consigliato' : '' }));
+        tag: dir === 'voce' && p.type === 'kokoro' && i === 0 ? 'Consigliato' : '' }));
     }
     return out;
   }
@@ -592,7 +614,10 @@ export class SetupPageComponent {
     const out: VoiceStep[] = [];
     const [lp, ...lid] = (this.voiceLocalPick()[dir] || '').split('|');
     const one = (provider: string, id: string): VoiceStep => ({ provider, model: dir === 'ascolto' ? id : '', voice: dir === 'voce' ? id : '' });
-    if (lp) out.push(one(lp, lid.join('|')));
+    if (lp) {
+      const p = this.voiceLocal(dir).find(x => x.name === lp);
+      out.push({ ...one(lp, lid.join('|')), ...(p?.found && p.url ? { url: p.url, type: p.type, label: p.label } : {}) });
+    }
     for (const n of this.voiceOrder()[dir]) {
       const ids = this.voicePicks()[dir][n] || [];
       if (ids.length) ids.forEach(id => out.push(one(n, id)));
@@ -613,7 +638,7 @@ export class SetupPageComponent {
   async load() {
     this.loadError.set('');
     try {
-      const [state, catalog] = await Promise.all([this.api.state(), this.api.catalog().catch(() => null)]);
+      const [state, catalog] = await Promise.all([this.api.state(), this.api.catalog(this.hosts()).catch(() => null)]);
       this.state.set(state);
       if (catalog) this.useCatalog(catalog, state, true);
       const saved = stored(SCREEN_KEY) as Screen;
@@ -734,7 +759,7 @@ export class SetupPageComponent {
     const st = this.state();
     if (!st) return '';
     switch (s) {
-      case 'ricetta': return this.recipe() === 'entrambi' ? 'Computer e cloud' : this.recipe() === 'locale' ? 'Solo il computer' : 'Solo il cloud';
+      case 'ricetta': return this.recipe() === 'entrambi' ? 'In casa e cloud' : this.recipe() === 'locale' ? 'Solo in casa' : 'Solo il cloud';
       case 'locale': return this.localModel() ? `${this.localModel()} (${this.runtimeLabel(this.localProvider())})` : '';
       case 'cloud': return this.cloudPicked().map(n => this.cloudLabel(n)).join(', ');
       case 'voce': return this.voiceQueued() ? 'In download' : st.later.includes('voce') ? 'Più tardi' : '';
@@ -818,7 +843,7 @@ export class SetupPageComponent {
   // ── Modello sul computer ──
   gb(n: number): string { return String(n).replace('.', ','); }
   found = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => r.found));
-  missing = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => !r.found));
+  missing = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => !r.found && !r.host));
   foundNames(): string { const l = this.found().map(r => r.label); return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || ''; }
   hasOllama = computed(() => this.found().some(r => r.name === 'ollama'));
   localKey = computed(() => this.otherModel() ? '' : `${this.localProvider()}|${this.localModel()}`);
@@ -864,29 +889,76 @@ export class SetupPageComponent {
   runtimeLabel(name: string): string { return (this.catalog()?.runtimes || []).find(r => r.name === name)?.label || name; }
   async searchAgain() {
     this.searching.set(true);
-    try { this.useCatalog(await this.api.catalog(), this.state()!, false); } catch { /* keep the last list */ } finally { this.searching.set(false); }
+    try { this.useCatalog(await this.api.catalog(this.hosts()), this.state()!, false); } catch { /* keep the last list */ } finally { this.searching.set(false); }
   }
-  /** The memory's model, chosen like the chat model: the one in use, every embedding model the programs found have,
-   * and when Ollama has none the recommended one (Ollama downloads it). */
+  // ── Other computers of the house (Hestia on a Raspberry, the models on the PC): remembered in this browser ──
+  hosts = signal<string[]>(stored(HOSTS_KEY).split(',').map(h => h.trim()).filter(Boolean));
+  hostDraft = signal('');
+  async addHost() {
+    const h = this.hostDraft().trim().replace(/^https?:\/\//, '').split(/[/:]/)[0];
+    if (!h) return;
+    this.hosts.set([...this.hosts().filter(x => x !== h), h].slice(-4));
+    store(HOSTS_KEY, this.hosts().join(','));
+    this.hostDraft.set('');
+    this.voiceCat.set(null);              // the voice looks there too, next time it opens
+    await this.searchAgain();
+  }
+  async removeHost(h: string) {
+    this.hosts.set(this.hosts().filter(x => x !== h));
+    store(HOSTS_KEY, this.hosts().join(','));
+    this.voiceCat.set(null);
+    await this.searchAgain();
+  }
+  /** Where «Per la memoria» is asked: under the local model when something runs at home, else on the cloud screen. */
+  memoryHere = computed<'locale' | 'cloud' | ''>(() => this.useLocal() && this.found().length ? 'locale' : this.useCloud() ? 'cloud' : '');
+  /** Per cloud service: the embedding models its list has (after the key works). */
+  cloudEmbed = signal<Record<string, string[]>>({});
+  /** The memory's model, chosen like the chat model: the one in use (when it can still run), every embedding model the
+   * programs at home have, Ollama's recommended one when Ollama has none, and the cloud services' ones (when nothing runs
+   * at home, the first of these is chosen by itself: the memory must work). */
   embedItems = computed<PickItem[]>(() => {
     const now = this.catalog()?.embedding;
     const nowKey = now?.model ? `${now.provider || 'ollama'}|${now.model}` : '';
+    const homeUsed = this.useLocal() && this.found().length > 0;
     const many = this.found().length > 1;
     const out: PickItem[] = [];
-    if (nowKey) out.push({ id: nowKey, title: now!.model, icon: 'memory', tag: 'Ora', note: many ? this.runtimeLabel(now!.provider) : '' });
-    for (const r of this.found()) {
+    const cloudReady = this.cloudPicked().filter(n => this.cloudReady()[n]);
+    const nowWorks = nowKey && (this.found().some(r => r.name === (now!.provider || 'ollama')) || cloudReady.includes(now!.provider));
+    if (nowWorks) out.push({ id: nowKey, title: now!.model, icon: 'memory', tag: 'Ora', note: many ? this.runtimeLabel(now!.provider) : '' });
+    if (homeUsed) for (const r of this.found()) {
       for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, icon: 'memory', note: many ? r.label : '' });
       const rec = this.catalog()?.recommended?.embedding;
       if (r.name === 'ollama' && rec && !r.embed.includes(rec.model) && `ollama|${rec.model}` !== nowKey) {
-        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowKey ? '' : 'Consigliato',
+        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowWorks ? '' : 'Consigliato',
                    note: `${rec.good} ${this.gb(rec.size_gb)} GB: Ollama lo scarica mentre finisci il resto.` });
+      }
+    }
+    if (this.useCloud()) for (const n of cloudReady) {
+      for (const m of this.cloudEmbed()[n] || []) if (`${n}|${m}` !== nowKey) {
+        out.push({ id: `${n}|${m}`, title: m, icon: 'cloud', note: `${this.cloudLabel(n)} · nel cloud`, tag: !out.length ? 'Consigliato' : '' });
       }
     }
     return out;
   });
-  embeddingSelected = computed(() => this.embeddingKey() || this.embedItems()[0]?.id || '');
-  /** The one in use = nothing to change (the memory is not re-read). */
-  pickEmbedding(id: string) { this.embeddingKey.set(this.embedItems()[0]?.tag === 'Ora' && id === this.embedItems()[0].id ? '' : id); }
+  embeddingSelected = computed(() => {
+    const items = this.embedItems();
+    const k = this.embeddingKey();
+    return k && items.some(i => i.id === k) ? k : items[0]?.id || '';
+  });
+  pickEmbedding(id: string) { this.embeddingKey.set(id); }
+  /** What to send: nothing when it stays the one in use (the memory is not re-read). */
+  private embeddingChoice(): { provider: string; model: string; url?: string; type?: string; label?: string } | null {
+    const sel = this.embeddingSelected();
+    const now = this.catalog()?.embedding;
+    if (!sel || (now?.model && sel === `${now.provider || 'ollama'}|${now.model}`)) return null;
+    const [provider, ...rest] = sel.split('|');
+    return { provider, model: rest.join('|'), ...this.runtimeOf(provider) };
+  }
+  /** A program on another computer of the house: its address goes with the choice, so it becomes a block. */
+  private runtimeOf(name: string): { url?: string; type?: string; label?: string } {
+    const r = this.found().find(x => x.name === name);
+    return r?.host && !r.configured ? { url: r.url, type: r.type, label: r.label } : {};
+  }
 
   // ── Servizi cloud (the same cards as the voice's cloud services) ──
   keyLink(p: CloudProvider): string { return KEY_LINKS[p.type] || KEY_LINKS[p.name] || ''; }
@@ -901,8 +973,10 @@ export class SetupPageComponent {
     }));
   /** «Prova» of a brain service: a typed key is saved once, then its model list is read (no tokens spent). */
   readonly brainTester = async (name: string, key: string): Promise<ServiceCheck> => {
-    const toCheck = (r: { ok: boolean; detail?: string; models?: string[]; recommended?: string[] }): ServiceCheck => ({
-      ok: r.ok, detail: r.detail, recommended: r.recommended || [], options: (r.models || []).map(m => ({ id: m, title: m, icon: 'zap' })) });
+    const toCheck = (r: { ok: boolean; detail?: string; models?: string[]; recommended?: string[]; embed?: string[] }): ServiceCheck => {
+      this.cloudEmbed.set({ ...this.cloudEmbed(), [name]: r.embed || [] });
+      return { ok: r.ok, detail: r.detail, recommended: r.recommended || [], options: (r.models || []).map(m => ({ id: m, title: m, icon: 'zap' })) };
+    };
     const markKey = () => this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
     try {
       const r = await this.api.test(name, key);
@@ -923,9 +997,9 @@ export class SetupPageComponent {
     const claude = cloud.find(n => this.catalog()?.cloud.find(p => p.name === n)?.type === CLAUDE_TYPE);
     const models: Record<string, string[]> = {};
     for (const n of cloud) if (this.cloudModel()[n]?.length) models[n] = this.cloudModel()[n];
-    const [ep, em] = this.embeddingKey() ? this.embeddingKey().split('|') : ['', ''];
     const out = await this.api.apply(r, local, cloud, claude ? (this.cloudTokens()[claude] || '').trim() : '', {
-      local_provider: this.localProvider(), cloud_models: models, embedding: em ? { provider: ep, model: em } : null,
+      local_provider: this.localProvider(), cloud_models: models, embedding: this.embeddingChoice(),
+      local_runtime: local ? this.runtimeOf(this.localProvider()) : {},
     });
     this.cloudTokens.set({});
     if (!out.ok) { this.formError.set(out.detail || 'Non sono riuscito a salvare la scelta.'); return; }

@@ -26,7 +26,15 @@ public class SetupController : ControllerBase
 
     [HttpGet("{**path}")]
     public Task<IActionResult> Get(string path)
-        => Gets.Contains(path) ? Forward(HttpMethod.Get, path, null, 30) : Task.FromResult<IActionResult>(NotFound());
+        => Gets.Contains(path) ? Forward(HttpMethod.Get, path, null, 30, Hosts()) : Task.FromResult<IActionResult>(NotFound());
+
+    /// <summary>The catalogs also look on other computers of the home network (<c>?hosts=192.168.1.20</c>): only that
+    /// query key is passed on, the module checks each address.</summary>
+    private Dictionary<string, string>? Hosts()
+    {
+        var hosts = Request.Query["hosts"].ToString();
+        return string.IsNullOrWhiteSpace(hosts) ? null : new Dictionary<string, string> { ["hosts"] = hosts[..Math.Min(hosts.Length, 300)] };
+    }
 
     /// <summary>A key test or a brain change re-creates Oracle and waits for it, the outside address may first
     /// download cloudflared, an update check fetches from GitHub: up to three minutes.</summary>
@@ -36,9 +44,10 @@ public class SetupController : ControllerBase
             ? Forward(HttpMethod.Post, path, body is JsonElement b ? b : new { }, path.StartsWith("brain/") || path.StartsWith("voice/") || path == "tunnel" || path.StartsWith("update/") ? 180 : 60)
             : Task.FromResult<IActionResult>(NotFound());
 
-    private async Task<IActionResult> Forward(HttpMethod method, string path, object? body, double timeout)
+    private async Task<IActionResult> Forward(HttpMethod method, string path, object? body, double timeout,
+        Dictionary<string, string>? query = null)
     {
-        var (status, payload) = await _hub.RouteRawAsync(Svc, $"/api/setup/{path}", method, body, null, timeout,
+        var (status, payload) = await _hub.RouteRawAsync(Svc, $"/api/setup/{path}", method, body, query, timeout,
             HttpContext.RequestAborted);
         return new ContentResult
         {

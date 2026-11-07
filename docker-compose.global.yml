@@ -599,6 +599,8 @@ services:
       dockerfile: Hestia-Echo/Dockerfile                    # also builds the WebUI plugin bundle (ui/) and installs ffmpeg
     container_name: hestia_echo
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"                 # speech programs on this computer (Speaches, Wyoming) for the setup «Voce»
     ports:
       - "19021:19021"  # Echo API port (voice: listening and speaking)
     env_file:

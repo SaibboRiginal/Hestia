@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.14 |
+| **Version** | 2.15 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -173,7 +173,7 @@ answer makes them needed**, not at the end.
    - Embedding: always one model (vectors must stay comparable), changed only from «Avanzate»; the setup warns that
      changing it re-indexes the memory.
    Choices become Themis values (the user is the one choosing, so no extra confirmation).
-5. **Voce** (optional, v2.14 the same cards as the models): per direction one local engine (one list of every local engine's models or voices, with a line on what each engine is: Kokoro natural, Piper light), then optionally cloud services in order through `setup-services` (key, list read with it, voices/models preselected, more than one as fallbacks); «Conferma» writes those steps first in `echo.chains`, the others kept; the local Echo models (Hugging Face) go in the download list. Cloud brain services (v2.14) work the same: a working key closes the card with several models preselected in order (`recommended`), «Cambia» to change them; the memory's model is chosen like the chat model.
+5. **Voce** (optional, v2.14 the same cards as the models): per direction one local engine (one list of every local engine's models or voices, with a line on what each engine is: Kokoro natural, Piper light), then optionally cloud services in order through `setup-services` (key, list read with it, voices/models preselected, more than one as fallbacks); «Conferma» writes those steps first in `echo.chains`, the others kept; the local Echo models (Hugging Face) go in the download list. Cloud brain services (v2.14) work the same: a working key closes the card with several models preselected in order (`recommended`), «Cambia» to change them; the memory's model is chosen like the chat model. v2.15: «local» = in the house: the brain and voice catalogs also look on other computers of the home network the user names (`hosts`), a found program becomes a block with its address; Echo also finds Speaches/LocalAI and Wyoming servers; with nothing at home the memory uses the cloud service's embedding model.
 6. **Telegram**: paste the BotFather token, «Prova» checks it; then the screen shows a one-time code «scrivi questo
    codice al bot»; the bot, in setup mode, answers only to that code and gives the setup the sender's id → no need
    to know your own Telegram id. `ALLOWED_USER_ID` stays fail-closed for everyone else.

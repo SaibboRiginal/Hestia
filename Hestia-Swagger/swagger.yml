@@ -4775,11 +4775,13 @@ paths:
   /api/llm/setup/catalog:
     get:
       tags: [Oracle]
-      summary: "Guided setup «Cervello» — programs for local models found on the PC (Ollama, LM Studio, Jan, llama.cpp, vLLM) with their real models, suggestions for the hardware (query vram_gb, ram_gb), cloud providers (no keys)"
+      summary: "Guided setup «Cervello» — programs for local models found at home (this PC and the computers in hosts: Ollama, LM Studio, Jan, llama.cpp, vLLM) with their real models, suggestions for the hardware (query vram_gb, ram_gb), cloud providers (no keys)"
       servers:
         - url: http://localhost:19004
+      parameters:
+        - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
-        "200": {description: "{recommended {tier,label,chat[],model,embedding,recipe}, tiers, installed, local[], runtimes[{name,label,url,site,found,configured,models[{model,size_gb,params,quant,fits}],embed[]}], embedding {provider,model}, ollama, cloud[{name,label,type,key_env,key_set,available}], recipes}"}
+        "200": {description: "{recommended {tier,label,chat[],model,embedding,recipe}, tiers, installed, local[], runtimes[{name,label,type,url,host,site,found,configured,models[{model,size_gb,params,quant,fits}],embed[]}] (host '' = this PC; on another computer only what answers, named <program>-<address>), embedding {provider,model}, ollama, cloud[{name,label,type,key_env,key_set,available}], recipes}"}
 
   /api/llm/setup/test:
     post:
@@ -7661,9 +7663,11 @@ paths:
   /api/setup/brain/catalog:
     get:
       tags: [Hephaestus]
-      summary: "Oracle's setup catalog for the detected hardware (→ Oracle via Hub)"
+      summary: "Oracle's setup catalog for the detected hardware (→ Oracle via Hub), hosts passed on"
       servers:
         - url: http://localhost:19010
+      parameters:
+        - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
         "200": {description: ok}
 
@@ -7886,9 +7890,11 @@ paths:
   /api/setup/voice/catalog:
     get:
       tags: [Hephaestus]
-      summary: "Setup «Voce»: Echo's speech services per direction (→ Echo /api/voice/setup/catalog)"
+      summary: "Setup «Voce»: Echo's speech services per direction (→ Echo /api/voice/setup/catalog), hosts passed on"
       servers:
         - url: http://localhost:19010
+      parameters:
+        - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
         "200": {description: "{ascolto {providers[], current}, voce {providers[], current}}"}
 
@@ -12992,11 +12998,13 @@ paths:
   /api/voice/setup/catalog:
     get:
       tags: [Echo]
-      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step"
+      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
       servers:
         - url: http://localhost:19021
+      parameters:
+        - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
-        "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,note,models[],voices[]}], current {provider,model,voice}, steps[] (the whole chain)}, voce {…}}; note = one line on what the engine is (Kokoro vs Piper)"}
+        "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,note,models[],voices[],found?,url?}] (found = a program at home, not a block yet: its url comes back with the step and apply adds it), current {provider,model,voice}, steps[] (the whole chain)}, voce {…}}; note = one line on what the engine is (Kokoro vs Piper)"}
 
   /api/voice/setup/test:
     post:
