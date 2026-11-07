@@ -4858,7 +4858,7 @@ paths:
                 cloud: {type: array, items: {type: string}}
                 cloud_models: {type: object, additionalProperties: {oneOf: [{type: array, items: {type: string}}, {type: string}]}, description: "provider → models picked from its list, in order (the next takes over when the first fails); a single name is still accepted"}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model (at home or a cloud one, e.g. gemini-embedding-001); only a different one changes the chain (re-index)"}
-                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Per modalità»: potente|codice|visione → its own model, first in that chain, the general choice after"}
+                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "potente|codice|visione → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
                 order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Scelti» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
       responses:
         "200": {description: "{ok, detail} (detail = one-sentence summary)"}
@@ -7750,7 +7750,7 @@ paths:
                 cloud: {type: array, items: {type: string}}
                 cloud_models: {type: object, additionalProperties: {type: string}}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}}
-                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Per modalità»: potente|codice|visione → its own model, first in that chain, the general choice after"}
+                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "potente|codice|visione → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
                 order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Scelti» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
                 keys: {type: object, description: "provider → key (written to Oracle's .env, then Oracle re-reads it; re-create only as fallback)"}
                 claude_token: {type: string}
