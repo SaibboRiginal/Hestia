@@ -12,4 +12,6 @@
 - [x] Root CHANGELOG
 - [x] precheck (reaction emoji list exempted from the icon gate as chat content)
 - [x] PR #79 opened
-- [ ] Merge once CI is green
+- [x] Merged PR #79
+- [x] F1b identity on every path (v1.3) + regression tests
+- [ ] PR F1b, merge

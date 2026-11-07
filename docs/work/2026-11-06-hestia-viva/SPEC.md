@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | user via external chat (thread «Rendere Hestia viva come Verity», 2026-11-06) |
 | **Status** | Approved plan («puoi iniziare con lo sviluppo», 2026-11-06) |
 
@@ -72,6 +72,13 @@ and does and of what she did, reacts with emoji like any chat, and gets faster. 
   `POST /api/chat/reaction {session_id, emoji, text}` which saves one history line
   «[reazione dell'utente: 👍 a «…»]» so the next turn sees it. No LLM call.
 - Chat reactions are real emoji (Marko 2026-11-06: the no‑emoji rule is for UI chrome, not chat content).
+
+### F1b — One identity on every path (v1.3, after Marko's real run 2026-11-07)
+- The agent loop said «Sei il motore di ragionamento di Hestia» and, on Ollama native tool calling, replaced the
+  persona with «You are Hestia's tool-calling engine»: a local model answered «Sono il motore di ragionamento di
+  Hestia» and «pronta ad assisterti». Now the persona is the system prompt on every path (+ short STRUMENTI rule on
+  Ollama native), the preambles open with «Sei Hestia, la persona descritta sopra», the quick answer asks 1–2
+  sentences, the persona names herself and lists bot phrases to avoid.
 
 ### F5 — Notifications as a sentence of Hestia (Hermes) — an option (Marko 2026-11-06)
 - Hermes setting `hermes.notifiche.stile`: `scheda` (default, as today) · `frase`. With `frase`, Hermes (still the
