@@ -72,6 +72,13 @@ export class SetupApi {
   complete() { return this.post<SetupState>('complete'); }
   /** ``hosts``: other computers of the house to look on too. */
   catalog(hosts: string[] = []) { return this.get<BrainCatalog>('brain/catalog' + (hosts.length ? `?hosts=${encodeURIComponent(hosts.join(','))}` : '')); }
+  /** «Ascolta» on a chosen voice / «Prova» of listening, with that provider only (nothing saved). */
+  voicePreview(provider: string, voice: string, model = '') {
+    return this.post<{ ok: boolean; audio_b64?: string; mime_type?: string; detail?: string }>('voice/preview', { provider, voice, model });
+  }
+  voiceHear(provider: string, model: string, audio_b64: string, mime_type: string) {
+    return this.post<{ ok: boolean; text?: string; detail?: string }>('voice/hear', { provider, model, audio_b64, mime_type });
+  }
   /** «I modelli sono pronti»: the assistant's first message, written with the models just chosen. */
   hello() { return this.post<{ ok: boolean; text?: string; model?: string; provider?: string; detail?: string }>('brain/hello'); }
   test(provider: string, key = '', model = '') { return this.post<TestOutcome>('brain/test', { provider, key, model }); }

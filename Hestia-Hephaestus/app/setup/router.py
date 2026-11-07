@@ -192,6 +192,18 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     def voice_catalog(hosts: str = ""):
         return service.echo("GET", "/api/voice/setup/catalog", timeout=30, query={"hosts": hosts} if hosts else None)
 
+    @router.post("/voice/preview")
+    def voice_preview(body: dict):
+        """«Ascolta» on a voice of the setup (→ Echo, nothing saved)."""
+        keep = {k: body.get(k) for k in ("provider", "model", "voice", "text") if body.get(k)}
+        return service.echo("POST", "/api/voice/setup/preview", body=keep, timeout=90)
+
+    @router.post("/voice/hear")
+    def voice_hear(body: dict):
+        """«Prova» of listening in the setup: the recording heard by that provider (→ Echo, nothing saved)."""
+        keep = {k: body.get(k) for k in ("provider", "model", "audio_b64", "mime_type") if body.get(k)}
+        return service.echo("POST", "/api/voice/setup/hear", body=keep, timeout=120)
+
     @router.post("/voice/test")
     def voice_test(req: VoiceTest):
         if req.key:

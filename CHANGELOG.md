@@ -3,7 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-07
-- Guided setup: Modelli has a tab for each mode (Generale, Ragionamento, Codice, Immagini), each with its own list in order or the same as Generale; when the models are ready the assistant greets you with a message written by them → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
+- Guided setup: Modelli has a tab for each mode (Generale, Ragionamento, Codice, Immagini), each with its own list in order or the same as Generale; when the models are ready the assistant greets you with a message written by them; chosen voices can be heard and listening tried by speaking, right in the setup → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup: the chosen models (and voices) can be put in any order with ↑ and ↓, a cloud model even before the local one, and Hestia tries them in that order → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup redone: one clean column with the step on top (a tap shows every step and the downloads) and the buttons always at the bottom; Modelli, Memoria, Ascolto and Voce show what is chosen on top, in order, and below two tabs, Locale and Cloud; every screen has one short line of text, nothing about things that do not matter for the setup → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Guided setup: «Locale» and «Cloud» instead of «In casa» and «Nel cloud», and the local list looks exactly the same in Modelli, Memoria, Ascolto and Voce (search always there, same icons and text) → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

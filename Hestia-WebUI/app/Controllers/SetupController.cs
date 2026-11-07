@@ -17,7 +17,7 @@ public class SetupController : ControllerBase
     private static readonly HashSet<string> Gets = new() { "state", "brain/catalog", "brain/pulls", "voice/catalog", "machines", "tunnel", "update" };
     private static readonly HashSet<string> Posts = new()
     {
-        "later", "complete", "brain/test", "brain/apply", "brain/pull", "brain/hello", "voice/test", "voice/apply", "telegram/token", "telegram/code", "backup",
+        "later", "complete", "brain/test", "brain/apply", "brain/pull", "brain/hello", "voice/test", "voice/apply", "voice/preview", "voice/hear", "telegram/token", "telegram/code", "backup",
         "machines/pair", "machines/revoke", "machines/brain", "tunnel", "update/check", "update/apply", "update/back",
     };
     private readonly HubClient _hub;

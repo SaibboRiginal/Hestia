@@ -7949,6 +7949,24 @@ paths:
       responses:
         "200": {description: "{ascolto {providers[], current}, voce {providers[], current}}"}
 
+  /api/setup/voice/preview:
+    post:
+      tags: [Hephaestus]
+      summary: "Setup «Ascolta» on a chosen voice (→ Echo /api/voice/setup/preview)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{ok, audio_b64, mime_type} or {ok: false, detail}"}
+
+  /api/setup/voice/hear:
+    post:
+      tags: [Hephaestus]
+      summary: "Setup «Prova» of listening with the chosen engine (→ Echo /api/voice/setup/hear)"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: "{ok, text} or {ok: false, detail}"}
+
   /api/setup/voice/test:
     post:
       tags: [Hephaestus]
@@ -13079,6 +13097,34 @@ paths:
             schema: {type: object, properties: {provider: {type: string}}}
       responses:
         "200": {description: "{ok, detail, models[], voices[], recommended {ascolto[], voce[]}}"}
+
+  /api/voice/setup/preview:
+    post:
+      tags: [Echo]
+      summary: "Setup «Ascolta»: a short sentence spoken by that provider and voice only (no chain, nothing saved)"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {provider: {type: string}, voice: {type: string}, model: {type: string}, text: {type: string}}}
+      responses:
+        "200": {description: "{ok, audio_b64, mime_type} or {ok: false, detail}"}
+
+  /api/voice/setup/hear:
+    post:
+      tags: [Echo]
+      summary: "Setup «Prova» of listening: the recording heard by that provider and model only (nothing saved)"
+      servers:
+        - url: http://localhost:19021
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {provider: {type: string}, model: {type: string}, audio_b64: {type: string}, mime_type: {type: string}}}
+      responses:
+        "200": {description: "{ok, text} or {ok: false, detail}"}
 
   /api/voice/setup/apply:
     post:

@@ -443,6 +443,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   a mode in `modes` can carry its own `steps` list (Ollama models in it are pulled, kept in the state too).
   `POST /api/setup/brain/hello`: the assistant's first message for «I modelli sono pronti», asked to Oracle
   `/api/llm/generate` with the use case `hephaestus.setup` (chain veloce) → `{ok, text, model, provider}`.
+  `voice/preview` and `voice/hear` pass the setup's «Ascolta» / «Prova a parlare» to Echo `/api/voice/setup/*`.
 - `recreate_with_env`: `env_file` is read only when a container is created, so a restart would not see a new key.
   The container is re-created through the Docker API with the same image, mounts, ports, networks/aliases, restart
   policy and healthcheck plus the changed variables; the old one is renamed and kept until the new one starts, and

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.20 |
+| **Version** | 2.21 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -321,6 +321,9 @@ for the setup (the phone-as-sensor line). Rules applied to every screen:
   step with their own «Scelti» (`modes {mode: {steps}}`, Oracle uses the list as the whole chain). «I modelli sono
   pronti» shows the assistant's first message written with the chosen models (Hephaestus `brain/hello` → Oracle
   generate, use case `hephaestus.setup`), written again once a local download ends.
+- **v2.21 (Marko: «anche per la voce un sample… o provarla direttamente»)**: each chosen row of Voce has «Ascolta»
+  (Echo `setup/preview`, that provider and voice only), of Ascolto «Prova a parlare» (record in the browser, Echo
+  `setup/hear` with that engine, «Ho capito: …»); nothing is saved, a local engine not downloaded says so.
 
 ## 5. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 

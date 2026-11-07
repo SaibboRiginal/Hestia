@@ -6,6 +6,7 @@ import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
 import { PluginsService } from '../plugins/plugins.service';
 import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
+import { MicRecorder, b64ToBlob, blobToB64 } from '../../services/voice.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
@@ -309,7 +310,8 @@ function store(key: string, value: string): void {
                                [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
                                [picks]="voicePicks()[dir.id]" (picksChange)="setVoice(voicePicks, dir.id, $event)"
                                [ready]="voiceReadyMap()[dir.id]" (readyChange)="setVoice(voiceReadyMap, dir.id, $event)"
-                               [rank]="voiceRank()[dir.id]" (rankChange)="setVoice(voiceRank, dir.id, $event)">
+                               [rank]="voiceRank()[dir.id]" (rankChange)="setVoice(voiceRank, dir.id, $event)"
+                               [trial]="dir.id" [trialState]="trialState()" (tryRow)="tryVoice(dir.id, $event)">
                 <div home-extra>
                   @if (voiceLocal(dir.id).length > 1) {
                     <ul class="engines">
@@ -559,6 +561,47 @@ export class SetupPageComponent {
       this.voiceError.set(setupError(e));
     }
   }
+  // «Prova» on a chosen voice (hear it) or listening engine (speak, see what it understood): nothing saved.
+  trialState = signal<{ key: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  private mic: MicRecorder | null = null;
+  async tryVoice(dir: VoiceDir, row: { key: string; provider: string; model: string }) {
+    const cur = this.trialState();
+    if (dir === 'voce') {
+      this.trialState.set({ key: row.key, busy: true });
+      try {
+        const r = await this.api.voicePreview(row.provider, row.model);
+        if (r.ok && r.audio_b64) {
+          const url = URL.createObjectURL(b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'));
+          const a = new Audio(url);
+          a.onended = () => URL.revokeObjectURL(url);
+          await a.play().catch(() => undefined);
+          this.trialState.set(null);
+        } else this.trialState.set({ key: row.key, text: r.detail || 'Non ha risposto.' });
+      } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
+      return;
+    }
+    if (cur?.recording && cur.key === row.key && this.mic) {   // second tap: stop and hear it
+      const got = await this.mic.stop();
+      const mime = this.mic.mime;
+      this.mic = null;
+      if (!got) { this.trialState.set({ key: row.key, text: 'Troppo corto: tocca, parla qualche secondo, tocca di nuovo.' }); return; }
+      this.trialState.set({ key: row.key, busy: true });
+      try {
+        const r = await this.api.voiceHear(row.provider, row.model, await blobToB64(got.blob), mime);
+        this.trialState.set({ key: row.key, text: r.ok ? `Ho capito: «${r.text}»` : (r.detail || 'Non ha risposto.') });
+      } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
+      return;
+    }
+    if (this.mic) { await this.mic.stop(true); this.mic = null; }
+    try {
+      this.mic = new MicRecorder();
+      await this.mic.start();
+      this.trialState.set({ key: row.key, recording: true, text: 'Ti ascolto: parla, poi tocca di nuovo.' });
+    } catch {
+      this.mic = null;
+      this.trialState.set({ key: row.key, text: 'Il browser non mi dà il microfono (serve il permesso, o un indirizzo https).' });
+    }
+  }
   setVoice<T>(sig: WritableSignal<Record<VoiceDir, T>>, dir: VoiceDir, value: T) { sig.set({ ...sig(), [dir]: value }); }
   private optionsOf(p: VoiceProvider, dir: VoiceDir) { return dir === 'ascolto' ? p.models : p.voices; }
   voiceLocal(dir: VoiceDir): VoiceProvider[] { return (this.voiceCat()?.[dir].providers || []).filter(p => p.local); }
@@ -713,6 +756,8 @@ export class SetupPageComponent {
     if (screen === 'fuori') this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
     if ((screen === 'ascolto' || screen === 'voce') && !this.voiceCat()) void this.loadVoice();
     if (screen === 'cervello' && !this.hello()?.ok) { this.hello.set(null); void this.sayHello(); }
+    if (this.mic) { void this.mic.stop(true); this.mic = null; }
+    this.trialState.set(null);
     this.screen.set(screen);
     this.reached.set(Math.max(this.reached(), this.screens().indexOf(screen)));
     store(SCREEN_KEY, screen);

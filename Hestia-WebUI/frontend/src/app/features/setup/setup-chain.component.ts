@@ -70,7 +70,18 @@ export function keyStep(key: string, home: string): { provider: string; model: s
       @for (r of rows(); track r.key; let i = $index) {
         <div class="crow">
           <span class="num">{{ i + 1 }}</span>
-          <span class="ct"><b>{{ r.title }}</b><small>{{ r.where }}@if (r.waiting) { · <span class="warn">manca la chiave</span> }</small></span>
+          <span class="ct"><b>{{ r.title }}</b><small>{{ r.where }}@if (r.waiting) { · <span class="warn">manca la chiave</span> }</small>
+            @if (trialState()?.key === r.key && trialState()!.text) { <small class="heard">{{ trialState()!.text }}</small> }</span>
+          @if (trial() && !r.waiting) {
+            @if (trialState()?.key === r.key && trialState()!.busy) { <span class="ib"><hx-spinner /></span> }
+            @else {
+              <button type="button" class="ib try" [class.rec]="trialState()?.key === r.key && trialState()!.recording"
+                      [attr.aria-label]="trial() === 'voce' ? 'Ascolta' : (trialState()?.key === r.key && trialState()!.recording ? 'Ferma e prova' : 'Prova a parlare')"
+                      (click)="emitTry(r.key)">
+                <hx-icon [name]="trial() === 'voce' ? 'play' : (trialState()?.key === r.key && trialState()!.recording ? 'stop' : 'mic')" [size]="16" />
+              </button>
+            }
+          }
           @if (!single() && rows().length > 1) {
             <button type="button" class="ib" aria-label="Sposta prima" [disabled]="i === 0" (click)="move(i, -1)"><hx-icon name="chevron-up" [size]="16" /></button>
             <button type="button" class="ib" aria-label="Sposta dopo" [disabled]="i === rows().length - 1" (click)="move(i, 1)"><hx-icon name="chevron-down" [size]="16" /></button>
@@ -188,6 +199,9 @@ export function keyStep(key: string, home: string): { provider: string; model: s
     .ib { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-sm); border: 0; background: none; color: var(--text-3); }
     .ib:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
     .ib:disabled { opacity: .3; cursor: default; }
+    .ib.try { color: var(--accent); }
+    .ib.try.rec { color: var(--danger); background: var(--surface-2); }
+    .heard { color: var(--text-2) !important; font-style: italic; }
     .none { font-size: 13px; color: var(--text-3); }
     .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--surface-2); }
     .tabs button { display: flex; flex-direction: column; gap: 1px; align-items: center; justify-content: center; padding: 8px; border: 0; border-radius: var(--radius-sm);
@@ -229,6 +243,10 @@ export class SetupChainComponent {
   cloudEmpty = input<string>('Nessun servizio cloud per questo passo.');
   emptyList = input<string>('La chiave funziona, ma il servizio non ha niente da scegliere qui.');
   single = input<boolean>(false);
+  /** «Prova» on each chosen row: hear a voice ('voce') or speak and see what it understood ('ascolto'). */
+  trial = input<'' | 'voce' | 'ascolto'>('');
+  trialState = input<{ key: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  tryRow = output<{ key: string; provider: string; model: string }>();
 
   /** The local choice («program|id»), '' = none. */
   home = model<string>('');
@@ -304,6 +322,8 @@ export class SetupChainComponent {
       return { key, title, where: `Cloud · ${label}`, waiting, kind: 'model' as const, svc, id };
     });
   });
+
+  emitTry(key: string) { this.tryRow.emit({ key, ...keyStep(key, this.home()) }); }
 
   /** ↑ ↓: swap with the neighbour; the whole order is kept from then on. */
   move(i: number, d: -1 | 1) {
